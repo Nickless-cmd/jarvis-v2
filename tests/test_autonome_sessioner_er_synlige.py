@@ -17,6 +17,8 @@ Kontrasten der afslørede det, målt på CT105:
 """
 from __future__ import annotations
 
+import hashlib
+
 
 
 def _fyr_autonomt_run(monkeypatch, *, ejer: str = "ejer-42"):
@@ -161,3 +163,77 @@ def test_users_json_vinder_over_tabellen_om_rollen(monkeypatch) -> None:
         "tabellen vandt over users.json — så er ejeren en anden her end i "
         "resten af systemet"
     )
+
+
+def test_kun_migrationsdaekkede_autonome_sessioner_skjules(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db_core import connect
+    from core.services import chat_sessions
+
+    monkeypatch.setattr(
+        "core.services.keyring_store.get_user_key",
+        lambda owner: (owner.encode("utf-8") + b"x" * 32)[:32],
+    )
+    for session_id in ("auto-linked", "auto-quarantined", "auto-unverified"):
+        chat_sessions.get_or_create_named_session(session_id, session_id)
+
+    from core.runtime import db_routines
+
+    routine = db_routines.create_routine(
+        owner_user_id="member-a", access_scope="user_private", created_by="migration",
+        status="paused", name="Migreret", instruction=b"privat",
+        capability_scope="chat", trigger_kind="manual", trigger_config={},
+        permission_policy={}, delivery_policy={}, inbox_policy={},
+        retention_policy={}, failure_policy={},
+    )
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO routine_legacy_links "
+            "(legacy_link_id,routine_id,source_kind,source_id,source_ref_enc,created_at) "
+            "VALUES ('link-1',?,'autonomous_session','auto-linked',X'00','2026-10-13')",
+            (routine["routine_id"],),
+        )
+    source_hash = hashlib.sha256(
+        b"autonomous_session:auto-quarantined"
+    ).hexdigest()
+    db_routines.put_quarantine(
+        source_kind="autonomous_session", source_id_hash=source_hash,
+        source_reference={"source_id": "auto-quarantined"},
+        classifier_evidence={"codes": ["missing_structured_owner"]},
+        reason_code="missing_structured_owner",
+    )
+
+    visible = {row["id"] for row in chat_sessions.list_chat_sessions()}
+    assert "auto-linked" not in visible
+    assert "auto-quarantined" not in visible
+    assert "auto-unverified" in visible
+    searched = {
+        row["session_id"] for row in chat_sessions.search_chat_sessions("auto")
+    }
+    assert "auto-linked" not in searched
+    assert "auto-quarantined" not in searched
+    assert "auto-unverified" in searched
+
+    monkeypatch.setattr(
+        "core.services.chat_crypto.medlem_for_raekke", lambda **_kw: object(),
+    )
+    monkeypatch.setattr(
+        "core.services.chat_session_private_metadata.search_member_sessions",
+        lambda *_args: [
+            {"session_id": "auto-linked", "title": "linked"},
+            {"session_id": "auto-quarantined", "title": "quarantine"},
+            {"session_id": "auto-unverified", "title": "unverified"},
+        ],
+    )
+    member_search = {
+        row["session_id"]
+        for row in chat_sessions.search_chat_sessions("auto", user_id="member-a")
+    }
+    assert member_search == {"auto-unverified"}
+
+    assert db_routines.delete_routine_content(routine["routine_id"]) is True
+    visible_after_delete = {
+        row["id"] for row in chat_sessions.list_chat_sessions()
+    }
+    assert "auto-linked" not in visible_after_delete

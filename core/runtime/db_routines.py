@@ -439,6 +439,12 @@ def update_routine_definition(
                 "VALUES (?,?,?,?)",
                 (routine_id, version, seal(owner, _json_bytes(_definition_snapshot(values))), now),
             )
+            if "inbox_policy" in changes:
+                conn.execute(
+                    "UPDATE routine_inbox_preferences SET policy_enc=?,updated_at=? "
+                    "WHERE owner_user_id=? AND routine_id=?",
+                    (seal(owner, _json_bytes(values["inbox_policy"])), now, owner, routine_id),
+                )
             updated = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
             conn.commit()
         except Exception:
@@ -611,7 +617,12 @@ def delete_routine_content(routine_id: str, *, reason_code: str = "user_deleted"
                 conn.execute("DELETE FROM routine_run_events WHERE run_id=?", (run_id,))
             conn.execute("DELETE FROM routine_runs WHERE routine_id=?", (routine_id,))
             conn.execute("DELETE FROM routine_versions WHERE routine_id=?", (routine_id,))
-            conn.execute("DELETE FROM routine_legacy_links WHERE routine_id=?", (routine_id,))
+            # Keep the content-free cutover marker when private Routine data is
+            # erased, otherwise its legacy chat would reappear in navigation.
+            conn.execute(
+                "UPDATE routine_legacy_links SET routine_id=NULL WHERE routine_id=?",
+                (routine_id,),
+            )
             conn.execute("DELETE FROM routine_inbox_preferences WHERE routine_id=?", (routine_id,))
             conn.execute("DELETE FROM routines WHERE routine_id=?", (routine_id,))
             conn.execute(
@@ -977,6 +988,62 @@ def transition_run(
     return dict(updated)
 
 
+def complete_run_success(
+    run_id: str, *, expected_generation: int, result: bytes,
+    delivery_channel: str | None,
+) -> dict[str, Any]:
+    """Atomically persist success, its terminal event, and private outbox row."""
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute(
+                "SELECT * FROM routine_runs WHERE run_id=?", (run_id,),
+            ).fetchone()
+            if (
+                row is None
+                or row["status"] != "running"
+                or int(row["lease_generation"]) != int(expected_generation)
+            ):
+                raise ValueError("stale routine lease")
+            owner = str(row["owner_user_id"])
+            now = _now()
+            conn.execute(
+                "UPDATE routine_runs SET status='succeeded',result_enc=?,diagnostic_code='',"
+                "updated_at=?,finished_at=? WHERE run_id=?",
+                (seal(owner, result), now, now, run_id),
+            )
+            channel = str(delivery_channel or "").strip().lower()
+            if channel and channel != "none":
+                conn.execute(
+                    "INSERT INTO routine_deliveries "
+                    "(delivery_id,run_id,owner_user_id,channel,status,payload_enc,created_at,updated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (_id("delivery"), run_id, owner, channel, "pending",
+                     seal(owner, result), now, now),
+                )
+            seq = int(conn.execute(
+                "SELECT COALESCE(MAX(seq),0)+1 FROM routine_run_events WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            conn.execute(
+                "INSERT INTO routine_run_events "
+                "(event_id,run_id,seq,kind,payload_enc,terminal,created_at) "
+                "VALUES (?,?,?,?,?,1,?)",
+                (_id("event"), run_id, seq, "succeeded",
+                 seal(owner, _json_bytes({"diagnostic_code": ""})), now),
+            )
+            updated = conn.execute(
+                "SELECT * FROM routine_runs WHERE run_id=?", (run_id,),
+            ).fetchone()
+            conn.commit()
+            return dict(updated)
+        except Exception:
+            conn.rollback()
+            raise
+
+
 def create_delivery(
     *, run_id: str, channel: str, payload: bytes | None = None,
 ) -> dict[str, Any]:
@@ -1159,6 +1226,41 @@ def get_legacy_routine_id(*, source_kind: str, source_id: str) -> str | None:
             (source_kind, source_id),
         ).fetchone()
     return None if row is None or not row[0] else str(row[0])
+
+
+def hidden_migrated_source_ids(
+    *, source_kind: str, source_ids: list[str] | tuple[str, ...],
+) -> set[str]:
+    """Return only legacy rows covered by applied migration artifacts.
+
+    Assigned rows have an exact legacy link. Quarantined rows remain sealed;
+    their one-way source hash is enough to remove the corresponding legacy
+    session from ordinary navigation without opening its private reference.
+    """
+    candidates = tuple(dict.fromkeys(str(value) for value in source_ids if value))
+    if not candidates:
+        return set()
+    placeholders = ",".join("?" for _ in candidates)
+    with connect() as conn:
+        _ensure_tables(conn)
+        linked = conn.execute(
+            f"SELECT source_id FROM routine_legacy_links "
+            f"WHERE source_kind=? AND source_id IN ({placeholders})",
+            (source_kind, *candidates),
+        ).fetchall()
+        hashes = {
+            hashlib.sha256(f"{source_kind}:{source_id}".encode("utf-8")).hexdigest(): source_id
+            for source_id in candidates
+        }
+        quarantined = conn.execute(
+            f"SELECT source_id_hash FROM routine_migration_quarantine "
+            f"WHERE source_kind=? AND status='quarantined' "
+            f"AND source_id_hash IN ({placeholders})",
+            (source_kind, *hashes),
+        ).fetchall()
+    hidden = {str(row[0]) for row in linked}
+    hidden.update(hashes[str(row[0])] for row in quarantined if str(row[0]) in hashes)
+    return hidden
 
 
 def run_exists_for_trigger(*, routine_id: str, idempotency_key: str) -> bool:

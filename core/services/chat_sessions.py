@@ -321,7 +321,8 @@ def list_chat_sessions(
                 """,
                 (uid, 1 if inkluder_arkiverede else 0, art, art),
             ).fetchall()
-        return [_session_summary(dict(row)) for row in rows]
+        summaries = [_session_summary(dict(row)) for row in rows]
+        return _without_migrated_autonomous_sessions(summaries)
     with connect() as conn:
         _sikr_flag_kolonner(conn)
         rows = conn.execute(
@@ -359,7 +360,24 @@ def list_chat_sessions(
             """,
             (1 if inkluder_arkiverede else 0, art, art),
         ).fetchall()
-    return [_session_summary(dict(row)) for row in rows]
+    summaries = [_session_summary(dict(row)) for row in rows]
+    return _without_migrated_autonomous_sessions(summaries)
+
+
+def _without_migrated_autonomous_sessions(
+    sessions: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Hide applied legacy cutover rows; never infer migration from a prefix."""
+    from core.runtime.db_routines import hidden_migrated_source_ids
+
+    ids = tuple(str(row.get("id") or row.get("session_id") or "") for row in sessions)
+    hidden = hidden_migrated_source_ids(
+        source_kind="autonomous_session", source_ids=ids,
+    )
+    return [
+        row for row in sessions
+        if str(row.get("id") or row.get("session_id") or "") not in hidden
+    ]
 
 
 def _make_snippet(content: str, query: str, width: int = 140) -> str:
@@ -396,7 +414,9 @@ def search_chat_sessions(
         from core.services import chat_crypto
         if chat_crypto.medlem_for_raekke(user_id=uid):
             from core.services.chat_session_private_metadata import search_member_sessions
-            return search_member_sessions(q, uid, lim)
+            return _without_migrated_autonomous_sessions(
+                search_member_sessions(q, uid, lim)
+            )
 
     # BUNDET SØGNING (Bjørn 9. jul, "search_sessions hænger"): den gamle query brugte en KORRELERET
     # EXISTS-subquery PR. session (`content LIKE '%q%'` er ikke-indekserbar → fuld scan af
@@ -461,7 +481,7 @@ def search_chat_sessions(
             "updated_at": d.get("updated_at"),
         }
     out = sorted(by_session.values(), key=lambda r: str(r.get("updated_at") or ""), reverse=True)
-    return out[:lim]
+    return _without_migrated_autonomous_sessions(out[:lim])
 
 
 def session_version(session_id: str) -> str | None:

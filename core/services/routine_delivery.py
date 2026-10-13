@@ -92,6 +92,17 @@ class RoutineDeliveryService:
             if "stale delivery lease" in str(exc):
                 raise StaleDeliveryLease("delivery lease is no longer current") from exc
             raise
+        if outcome == "failed":
+            run = db_routines.get_run(str(row["run_id"]))
+            if run is not None:
+                from core.services.routine_inbox import project_event_to_inbox
+
+                project_event_to_inbox({
+                    "owner_user_id": run["owner_user_id"],
+                    "routine_id": run["routine_id"],
+                    "event_id": f"{delivery_id}:delivery-failed",
+                    "event_type": "delivery_failed",
+                })
         return _view(row)
 
     def record_terminal_failure(self, *, run_id: str) -> None:

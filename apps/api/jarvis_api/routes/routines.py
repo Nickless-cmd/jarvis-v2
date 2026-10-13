@@ -68,10 +68,13 @@ class InboxPolicyBody(BaseModel):
     edited: bool | None = None
     paused: bool | None = None
     stopped: bool | None = None
+    archived: bool | None = None
+    deleted: bool | None = None
     failed: bool | None = None
     cancelled: bool | None = None
     action_required: bool | None = None
     delivery_failed: bool | None = None
+    retention: bool | None = None
 
 
 class EmptyBody(BaseModel):

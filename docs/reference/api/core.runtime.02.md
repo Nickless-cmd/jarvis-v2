@@ -405,36 +405,38 @@ _SQLite repository for first-class, owner-scoped Routines._
 | function | `list_routines` | `(*, owner_user_id, include_deleted=…, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L316) |
 | function | `transition_routine` | `(routine_id, *, to_status, expected_version=…)` | — | [src](../../../core/runtime/db_routines.py#L330) |
 | function | `update_routine_definition` | `(routine_id, *, expected_version, changes, reactivate=…)` | Atomically write a new immutable definition version. | [src](../../../core/runtime/db_routines.py#L365) |
-| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L450) |
-| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L485) |
-| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L530) |
-| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L550) |
-| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L560) |
-| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L581) |
-| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L591) |
-| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L629) |
-| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L645) |
-| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L675) |
-| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L693) |
-| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L712) |
-| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L732) |
-| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L741) |
-| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L782) |
-| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L824) |
-| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L835) |
-| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L886) |
-| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L907) |
-| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L918) |
-| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L951) |
-| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L980) |
-| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1007) |
-| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1050) |
-| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1088) |
-| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1096) |
-| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1115) |
-| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1128) |
-| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1154) |
-| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1164) |
+| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L456) |
+| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L491) |
+| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L536) |
+| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L556) |
+| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L566) |
+| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L587) |
+| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L597) |
+| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L640) |
+| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L656) |
+| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L686) |
+| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L704) |
+| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L723) |
+| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L743) |
+| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L752) |
+| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L793) |
+| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L835) |
+| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L846) |
+| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L897) |
+| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L918) |
+| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L929) |
+| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L962) |
+| function | `complete_run_success` | `(run_id, *, expected_generation, result, delivery_channel)` | Atomically persist success, its terminal event, and private outbox row. | [src](../../../core/runtime/db_routines.py#L991) |
+| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L1047) |
+| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1074) |
+| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1117) |
+| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1155) |
+| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1163) |
+| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1182) |
+| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1195) |
+| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1221) |
+| function | `hidden_migrated_source_ids` | `(*, source_kind, source_ids)` | Return only legacy rows covered by applied migration artifacts. | [src](../../../core/runtime/db_routines.py#L1231) |
+| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1266) |
 
 ## `core/runtime/db_runtime_browser.py`
 _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._

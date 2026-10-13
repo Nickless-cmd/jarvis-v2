@@ -160,6 +160,36 @@ def test_wrong_delivery_holder_cannot_settle(delivery_service, successful_run):
         )
 
 
+def test_terminal_delivery_failure_uses_routine_inbox_policy(
+    isolated_runtime, member_principal, monkeypatch,
+):
+    from core.services.routine_delivery import RoutineDeliveryService
+    from core.services.routine_service import RoutineService
+
+    writes = []
+    monkeypatch.setattr(
+        "core.services.inbox_state.registrer_kilde",
+        lambda **kw: writes.append(kw) or {"status": "ok"},
+    )
+    service = RoutineService(member_principal)
+    routine = service.create_and_activate(RoutineCreate(
+        name="Levering", instruction=b"privat", capability_scope="chat",
+        trigger_kind="manual", inbox_policy={"delivery_failed": True},
+    ))
+    writes.clear()
+    run = service.enqueue_run(routine.id, trigger_key="manual:delivery-fail")
+    from core.runtime.db_routines import create_delivery, transition_run
+    transition_run(run.run_id, to_status="succeeded", result=b"resultat")
+    create_delivery(run_id=run.run_id, channel="desk", payload=b"resultat")
+    delivery = RoutineDeliveryService()
+    claim = delivery.claim_for_run(run.run_id, holder="delivery-worker")
+    delivery.settle(claim.delivery_id, holder="delivery-worker", outcome="failed")
+
+    assert [item["beskrivelse"] for item in writes] == [
+        "Routinehændelse: delivery_failed",
+    ]
+
+
 def test_inbox_defaults_are_copied_then_overridable(
     isolated_runtime, member_principal, command
 ):
@@ -170,10 +200,10 @@ def test_inbox_defaults_are_copied_then_overridable(
     inbox_service.set_user_defaults(member_principal, {"edited": False, "failed": True})
     routine = RoutineService(member_principal).create_and_activate(command)
     inbox_service.set_override(member_principal, routine.id, {"edited": True})
-    assert inbox_service.effective_policy(member_principal, routine.id) == {
-        "edited": True,
-        "failed": True,
-    }
+    effective = inbox_service.effective_policy(member_principal, routine.id)
+    assert effective["edited"] is True
+    assert effective["failed"] is True
+    assert effective["created"] is True
 
 
 def test_inbox_projection_obeys_user_policy(
@@ -202,6 +232,67 @@ def test_inbox_projection_obeys_user_policy(
         "routine_id": routine.id,
     })["status"] == "ok"
     assert len(writes) == 1
+
+
+def test_lifecycle_operations_project_only_user_selected_events(
+    isolated_runtime, member_principal, monkeypatch,
+):
+    from core.services.routine_service import RoutineService
+
+    writes = []
+    monkeypatch.setattr(
+        "core.services.inbox_state.registrer_kilde",
+        lambda **kw: writes.append(kw) or {"status": "ok"},
+    )
+    command = RoutineCreate(
+        name="Inbox-rutine", instruction=b"privat", capability_scope="chat",
+        trigger_kind="manual",
+        inbox_policy={
+            "created": True, "edited": True, "paused": True,
+            "stopped": True, "archived": True, "deleted": True,
+        },
+    )
+    service = RoutineService(member_principal)
+    routine = service.create_and_activate(command)
+    routine = service.update(routine.id, expected_version=1, name="Nyt navn")
+    service.pause(routine.id)
+    service.resume(routine.id)
+    service.stop(routine.id)
+    service.restart(routine.id)
+    service.stop(routine.id)
+    service.archive(routine.id)
+    service.restore(routine.id)
+    assert service.delete(routine.id) is True
+
+    event_types = [item["beskrivelse"].split(": ", 1)[1] for item in writes]
+    assert event_types == [
+        "created", "edited", "paused", "resumed", "stopped", "restarted",
+        "stopped", "archived", "restored", "deleted",
+    ]
+
+
+def test_editing_inbox_policy_changes_the_effective_projection(
+    isolated_runtime, member_principal, command, monkeypatch,
+):
+    from core.services.routine_inbox import RoutineInboxService
+    from core.services.routine_service import RoutineService
+
+    writes = []
+    monkeypatch.setattr(
+        "core.services.inbox_state.registrer_kilde",
+        lambda **kw: writes.append(kw) or {"status": "ok"},
+    )
+    service = RoutineService(member_principal)
+    routine = service.create_and_activate(command)
+    writes.clear()
+    service.update(
+        routine.id, expected_version=1,
+        inbox_policy={"created": False, "edited": True},
+    )
+    assert RoutineInboxService().effective_policy(member_principal, routine.id) == {
+        "created": False, "edited": True,
+    }
+    assert [item["beskrivelse"] for item in writes] == ["Routinehændelse: edited"]
 
 
 def test_only_diagnostics_module_imports_chat_append():

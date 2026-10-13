@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -19,6 +20,26 @@ from core.services.agentic_execution import (
 )
 from core.services.routine_run_recorder import RoutineRunRecorder
 from core.services.routine_types import AccessScope, RoutineExecutionContext
+
+
+_log = logging.getLogger(__name__)
+
+
+def publish_operational_failure(
+    *, routine_id: str, run_id: str, component: str,
+) -> None:
+    """Best-effort fixed-schema projection; never expose execution content."""
+    try:
+        from core.services.routine_diagnostics import project_failure, publish_failure
+
+        projection = project_failure(RuntimeError("routine execution failed"), {
+            "routine_id": routine_id,
+            "run_id": run_id,
+            "trusted_component": component,
+        })
+        publish_failure(projection)
+    except Exception:
+        _log.warning("routine failure projection could not be published", exc_info=True)
 
 
 class StaleRoutineLease(RuntimeError):
@@ -153,6 +174,18 @@ class RoutineRunRepository:
         except ValueError as exc:
             raise _stale(exc) from exc
 
+    def complete_success(
+        self, run_id: str, *, generation: int, result: bytes,
+        delivery_channel: str | None,
+    ) -> RunState:
+        try:
+            return _state(db_routines.complete_run_success(
+                run_id, expected_generation=generation, result=result,
+                delivery_channel=delivery_channel,
+            ))
+        except ValueError as exc:
+            raise _stale(exc) from exc
+
     def get_failure_count(self, routine_id: str) -> int:
         return db_routines.get_execution_failure_count(routine_id)
 
@@ -189,6 +222,9 @@ class _RunSink:
 
     def tool_requested(self, call: ToolCall) -> None:
         self._append("tool_requested", {"call_id": call.call_id, "name": call.name})
+
+    def approval_requested(self, call: ToolCall) -> None:
+        self._append("approval_requested", {"call_id": call.call_id, "name": call.name})
 
     def tool_result(self, result: ToolResult) -> None:
         self._append("tool_result", {
@@ -305,16 +341,42 @@ class RoutineRunner:
             _LeaseProbe(self.repository, claim, self.holder),
         )
         if result.status == "succeeded":
-            self.repository.transition(
-                run_id, status="succeeded", generation=claim.lease_generation,
-                result=result.text.encode("utf-8"),
+            delivery_policy = dict(row["definition_snapshot"].get("delivery_policy") or {})
+            channel = str(delivery_policy.get("channel") or "desk").strip().lower()
+            self.repository.complete_success(
+                run_id, generation=claim.lease_generation,
+                result=result.text.encode("utf-8"), delivery_channel=channel,
             )
             self.record_execution_success(claim.routine_id)
+        elif result.status == "waiting_approval":
+            self.repository.transition(
+                run_id, status="failed", generation=claim.lease_generation,
+                result=result.text.encode("utf-8"), diagnostic_code="action_required",
+            )
+            from core.services.routine_inbox import project_event_to_inbox
+
+            project_event_to_inbox({
+                "owner_user_id": claim.owner_user_id,
+                "routine_id": claim.routine_id,
+                "event_id": f"{run_id}:action-required",
+                "event_type": "action_required",
+            })
         else:
             code = result.error_code or result.status
             self.repository.transition(
                 run_id, status="failed", generation=claim.lease_generation,
                 result=result.text.encode("utf-8"), diagnostic_code=code,
+            )
+            from core.services.routine_inbox import project_event_to_inbox
+
+            project_event_to_inbox({
+                "owner_user_id": claim.owner_user_id,
+                "routine_id": claim.routine_id,
+                "event_id": f"{run_id}:failed",
+                "event_type": "failed",
+            })
+            publish_operational_failure(
+                routine_id=claim.routine_id, run_id=run_id, component="runner",
             )
             self.record_execution_failure(claim.routine_id, run_id=run_id)
         return result
@@ -348,6 +410,6 @@ class RoutineRunner:
                 "owner_user_id": routine["owner_user_id"],
                 "routine_id": routine_id,
                 "event_id": f"{run_id}:failure-threshold",
-                "event_type": "failed",
+                "event_type": "auto_paused",
             })
         return count

@@ -8,6 +8,14 @@ from core.services.routine_authorization import Action, require_authorized
 from core.services.routine_types import RoutinePrincipal
 
 
+_POLICY_KEY = {
+    "resumed": "paused",
+    "restarted": "stopped",
+    "restored": "archived",
+    "auto_paused": "action_required",
+}
+
+
 class RoutineInboxService:
     def set_user_defaults(
         self, principal: RoutinePrincipal, policy: Mapping[str, object]
@@ -52,17 +60,23 @@ class RoutineInboxService:
         if not owner or not routine_id or not event_id or not event_type:
             return {"status": "invalid"}
         policy = db_routines.get_inbox_preference(owner, routine_id=routine_id)
-        if not bool(policy.get(event_type, False)):
+        if not bool(policy.get(_POLICY_KEY.get(event_type, event_type), False)):
             return {"status": "suppressed"}
         from core.services.inbox_state import registrer_kilde
 
-        return registrer_kilde(
-            bruger_id=owner,
-            kildetype="routine_event",
-            kilde_id=event_id,
-            kilde_ejer="jarvis",
-            beskrivelse=f"Routinehændelse: {event_type}",
-        )
+        try:
+            return registrer_kilde(
+                bruger_id=owner,
+                kildetype="routine_event",
+                kilde_id=event_id,
+                kilde_ejer="jarvis",
+                beskrivelse=f"Routinehændelse: {event_type}",
+            )
+        except Exception:
+            # Inbox delivery is a projection after the authoritative lifecycle
+            # mutation; an unavailable inbox must not turn a committed action
+            # into a misleading API failure.
+            return {"status": "error"}
 
 
 def project_event_to_inbox(event: Mapping[str, object]) -> dict:

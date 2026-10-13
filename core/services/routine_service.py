@@ -80,6 +80,20 @@ _TRANSITIONS = {
     "restart": {"stopped": "active"},
 }
 
+_DEFAULT_INBOX_POLICY = {
+    "created": True,
+    "edited": True,
+    "paused": True,
+    "stopped": True,
+    "archived": True,
+    "deleted": True,
+    "failed": True,
+    "cancelled": True,
+    "action_required": True,
+    "delivery_failed": True,
+    "retention": True,
+}
+
 
 def _routine_view(row: Mapping[str, Any]) -> RoutineView:
     return RoutineView(
@@ -145,6 +159,17 @@ class RoutineService:
             return self._actor(args[0]), args[1:]
         return self._actor(), args
 
+    @staticmethod
+    def _project(view: RoutineView, event_type: str) -> None:
+        from core.services.routine_inbox import project_event_to_inbox
+
+        project_event_to_inbox({
+            "owner_user_id": view.owner_user_id,
+            "routine_id": view.routine_id,
+            "event_id": f"{view.routine_id}:{event_type}:{view.updated_at}",
+            "event_type": event_type,
+        })
+
     def create_and_activate(self, *args: Any) -> RoutineView:
         actor, rest = self._actor_and_rest(args)
         if len(rest) != 1:
@@ -153,6 +178,7 @@ class RoutineService:
         if values["access_scope"] == AccessScope.SYSTEM_OWNER.value and actor.role != "owner":
             raise RoutineForbidden("system-owner routines require the owner role")
         values["inbox_policy"] = {
+            **_DEFAULT_INBOX_POLICY,
             **db_routines.get_inbox_preference(actor.canonical_user_id),
             **dict(values.get("inbox_policy") or {}),
         }
@@ -161,7 +187,9 @@ class RoutineService:
             status="active",
             **values,
         )
-        return _routine_view(row)
+        view = _routine_view(row)
+        self._project(view, "created")
+        return view
 
     def create_proposal(
         self, principal: RoutinePrincipal, *, for_owner: RoutinePrincipal,
@@ -173,6 +201,7 @@ class RoutineService:
         values = _command_values(command)
         values["created_by"] = "jarvis"
         values["inbox_policy"] = {
+            **_DEFAULT_INBOX_POLICY,
             **db_routines.get_inbox_preference(for_owner.canonical_user_id),
             **dict(values.get("inbox_policy") or {}),
         }
@@ -227,7 +256,9 @@ class RoutineService:
             if "stale routine version" in str(exc):
                 raise StaleRoutineVersion("routine was edited by another writer") from exc
             raise
-        return _routine_view(updated)
+        view = _routine_view(updated)
+        self._project(view, "edited")
+        return view
 
     def _transition(self, operation: str, *args: Any) -> RoutineView:
         actor, rest = self._actor_and_rest(args)
@@ -242,9 +273,14 @@ class RoutineService:
         if target is None:
             raise InvalidRoutineTransition(f"cannot {operation} from {row['status']}")
         db_routines.transition_routine(routine_id, to_status=target)
-        return _routine_view(
+        view = _routine_view(
             db_routines.get_routine(routine_id, decrypt_for=actor.canonical_user_id)
         )
+        self._project(view, {
+            "pause": "paused", "resume": "resumed",
+            "archive": "archived", "restore": "restored",
+        }[operation])
+        return view
 
     def pause(self, *args: Any) -> RoutineView:
         return self._transition("pause", *args)
@@ -268,9 +304,11 @@ class RoutineService:
             raise KeyError(routine_id)
         require_authorized(actor, Action.MUTATE, row)
         db_routines.stop_routine(routine_id)
-        return _routine_view(
+        view = _routine_view(
             db_routines.get_routine(routine_id, decrypt_for=actor.canonical_user_id)
         )
+        self._project(view, "stopped")
+        return view
 
     def restart(self, *args: Any) -> RoutineView:
         actor, rest = self._actor_and_rest(args)
@@ -292,7 +330,9 @@ class RoutineService:
         updated = db_routines.transition_routine(routine_id, to_status=target)
         if actor.actor_kind != "jarvis":
             updated = db_routines.get_routine(routine_id, decrypt_for=actor.canonical_user_id)
-        return _routine_view(updated)
+        view = _routine_view(updated)
+        self._project(view, "restarted")
+        return view
 
     def delete(self, *args: Any) -> bool:
         actor, rest = self._actor_and_rest(args)
@@ -303,6 +343,10 @@ class RoutineService:
         if row is None:
             return False
         require_authorized(actor, Action.DELETE, row)
+        private = _routine_view(db_routines.get_routine(
+            routine_id, decrypt_for=actor.canonical_user_id,
+        ))
+        self._project(private, "deleted")
         return db_routines.delete_routine_content(routine_id)
 
     def enqueue_run(
@@ -347,7 +391,16 @@ class RoutineService:
         if row is None:
             raise KeyError(str(rest[0]))
         require_authorized(actor, Action.MUTATE, row)
-        return _run_view(db_routines.cancel_run(str(rest[0])))
+        cancelled = db_routines.cancel_run(str(rest[0]))
+        from core.services.routine_inbox import project_event_to_inbox
+
+        project_event_to_inbox({
+            "owner_user_id": row["owner_user_id"],
+            "routine_id": row["routine_id"],
+            "event_id": f"{row['run_id']}:cancelled",
+            "event_type": "cancelled",
+        })
+        return _run_view(cancelled)
 
     def list(self, *args: Any) -> list[RoutineView]:
         actor, rest = self._actor_and_rest(args)
@@ -432,6 +485,7 @@ class RoutineService:
             policy = dict(row.get("retention_policy") or {})
             delete_days = policy.get("auto_delete_days")
             if delete_days is not None and stopped_at <= current - timedelta(days=int(delete_days)):
+                self._project(_routine_view(row), "retention")
                 if db_routines.delete_routine_content(
                     str(row["routine_id"]), reason_code="retention_auto_delete"
                 ):
@@ -440,5 +494,6 @@ class RoutineService:
             archive_days = int(policy.get("archive_stopped_days", 30))
             if stopped_at <= current - timedelta(days=archive_days):
                 db_routines.transition_routine(str(row["routine_id"]), to_status="archived")
+                self._project(_routine_view(row), "retention")
                 archived += 1
         return {"archived": archived, "deleted": deleted}

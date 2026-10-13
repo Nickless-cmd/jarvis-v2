@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_history_grounding.py`
+_Prompten maa ikke forveksle et rygte med en kendsgerning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `QueryProfile` | `` | — | [src](../../../core/services/self_history_grounding.py#L28) |
+| function | `classify_self_history_query` | `(text)` | Hvad spoerges der om? Deterministisk, uden model. | [src](../../../core/services/self_history_grounding.py#L59) |
+| function | `_verdens_fakta` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L74) |
+| function | `_emner` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L79) |
+| function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
+| function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
+| function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
+
 ## `core/services/self_model_blind_spots.py`
 _Self-Model Blind Spots — LLM-drevet opdagelse af egne usete fejlmønstre._
 
@@ -739,18 +752,4 @@ _start_session — Jarvis starter selv et run i en session der er Bjørns._
 | function | `antal_sidste_time` | `()` | Hvor mange selv-startede runs ligger i det rullende vindue lige nu. | [src](../../../core/services/session_spawn.py#L44) |
 | function | `start_session` | `(prompt, *, session_id=…, title=…, origin=…)` | Start et autonomt run i en session der tilhører Bjørn. | [src](../../../core/services/session_spawn.py#L50) |
 | function | `_exec_start_session` | `(args)` | — | [src](../../../core/services/session_spawn.py#L141) |
-
-## `core/services/session_titling.py`
-_Session titling — giv sessionerne rigtige titler i sidebaren._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rens` | `(titel)` | Renset sammenligningsform: små bogstaver, ingen haler, ét mellemrum. | [src](../../../core/services/session_titling.py#L97) |
-| function | `er_ubrugelig_titel` | `(titel)` | Er titlen værdiløs i sidebaren — en pladsholder eller en hilsen? | [src](../../../core/services/session_titling.py#L104) |
-| function | `_kandidater` | `(*, limit=…)` | Seneste sessioner hvis titel er ubrugelig OG som vi må læse. | [src](../../../core/services/session_titling.py#L118) |
-| function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L156) |
-| function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L205) |
-| function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L223) |
-| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L266) |
-| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en ubrugelig titel. | [src](../../../core/services/session_titling.py#L300) |
 

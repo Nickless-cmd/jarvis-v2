@@ -132,6 +132,29 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     else:
         resolved_session = session_id.strip()
 
+    # FÆLLES CROSS-PROCES-VAGT (13/10-2026). Se `core/services/run_guard.py`.
+    #
+    # Kilden er den DELTE journal, ikke run-loggen. Daemonerne kører i
+    # jarvis-runtime (8011) og Bjørns tur i jarvis-api (8080), så en lokal log
+    # kan ikke se den anden — og uden dette startede et wakeup sit EGET run
+    # oveni hans tur. Målt 13/10-2026: to runs `running` i samme session med 31
+    # sekunders mellemrum. Kilden tages RÅ: `normalize_origin` kollapser
+    # ukendte navne til "autonomous", og så ville «inbox» og et vilkårligt
+    # autonomt run blive uskelnelige.
+    try:
+        from core.services.run_guard import blokeringsgrund
+
+        _vagt = blokeringsgrund(str(origin or ""), resolved_session)
+    except Exception:  # noqa: BLE001 — self-safe: kan vagten ikke laeses, starter runnet
+        _vagt = ""
+    if _vagt:
+        logger.info(
+            "autonomt run afvist af run-guarden: %s (session=%s origin=%s) — "
+            "forpligtelsen bliver i indbakken til sessionen er ledig",
+            _vagt, resolved_session[:24], origin,
+        )
+        return
+
     # Spec D / D1-konsument (første ægte autoritet): når Centralen EJER agendaen (flag ON), kommer et
     # retningsløst autonomt runs RETNING fra Centralens valgte næste-intention — Jarvis handler på SIN
     # EGEN dagsorden, ikke en generisk check-in. Fylder KUN tomrummet (eksplicit besked vinder altid).

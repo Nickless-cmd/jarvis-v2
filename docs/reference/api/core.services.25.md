@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_titling.py`
+_Session titling — giv sessionerne rigtige titler i sidebaren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rens` | `(titel)` | Renset sammenligningsform: små bogstaver, ingen haler, ét mellemrum. | [src](../../../core/services/session_titling.py#L97) |
+| function | `er_ubrugelig_titel` | `(titel)` | Er titlen værdiløs i sidebaren — en pladsholder eller en hilsen? | [src](../../../core/services/session_titling.py#L104) |
+| function | `_kandidater` | `(*, limit=…)` | Seneste sessioner hvis titel er ubrugelig OG som vi må læse. | [src](../../../core/services/session_titling.py#L118) |
+| function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L156) |
+| function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L205) |
+| function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L223) |
+| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L266) |
+| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en ubrugelig titel. | [src](../../../core/services/session_titling.py#L300) |
+
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 
@@ -562,16 +576,4 @@ _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 |---|---|---|---|---|
 | function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
 | function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
-
-## `core/services/social_labilizer.py`
-_Social labilizer — Fase 2 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
-| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
-| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
-| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
-| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
-| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
 

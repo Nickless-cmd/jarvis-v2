@@ -2,6 +2,32 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_action_executor.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_classify_action_risk` | `(action)` | Classify runtime action risk for emotional gating. | [src](../../../core/services/runtime_action_executor.py#L66) |
+| class | `RuntimeExecutionResult` | `` | — | [src](../../../core/services/runtime_action_executor.py#L81) |
+| function | `_publish_gate_event` | `(*, input_action, gated_action, gate_reason, snapshot, risk)` | Emit emotional gate decision to eventbus for telemetry. | [src](../../../core/services/runtime_action_executor.py#L90) |
+| function | `_feeling_for_reason` | `(reason)` | Oversæt emotional-controls' reason til det feeling-navn veto_events bærer. | [src](../../../core/services/runtime_action_executor.py#L124) |
+| function | `_log_gate_block` | `(*, action, feeling, reason)` | Skriv blokeringen til veto_events — uden rækken findes intet event_id. | [src](../../../core/services/runtime_action_executor.py#L129) |
+| function | `_gate_overstyret` | `(action, feeling)` | Er der en armeret one-shot for (action, feeling)? Forbruger den i så fald. | [src](../../../core/services/runtime_action_executor.py#L148) |
+| function | `execute_runtime_action` | `(*, action_id, payload)` | — | [src](../../../core/services/runtime_action_executor.py#L162) |
+| function | `execute_refresh_memory_context` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L307) |
+| function | `execute_follow_open_loop` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L323) |
+| function | `execute_inspect_repo_context` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L371) |
+| function | `execute_review_recent_conversations` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L432) |
+| function | `execute_write_internal_work_note` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L444) |
+| function | `execute_bounded_self_check` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L481) |
+| function | `execute_propose_next_user_step` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L499) |
+| function | `execute_promote_initiative_to_visible_lane` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L517) |
+| function | `_publish_action_event` | `(result)` | — | [src](../../../core/services/runtime_action_executor.py#L551) |
+| function | `_matching_loop_closure` | `(*, loop_id, canonical_key)` | — | [src](../../../core/services/runtime_action_executor.py#L565) |
+| function | `_loop_domain_key` | `(*, loop_id, canonical_key)` | — | [src](../../../core/services/runtime_action_executor.py#L580) |
+| function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L591) |
+| function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L604) |
+| function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L626) |
+
 ## `core/services/runtime_action_outcome_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -725,17 +751,4 @@ _Self-Experiments — A/B testing on Jarvis' own behavior._
 | function | `_build_visible_run_observation_note` | `(*, experiment, run, cohort, success)` | — | [src](../../../core/services/self_experiments.py#L507) |
 | function | `_curriculum_focus_key` | `(value)` | — | [src](../../../core/services/self_experiments.py#L524) |
 | function | `_curriculum_priority` | `(priority)` | — | [src](../../../core/services/self_experiments.py#L528) |
-
-## `core/services/self_history_grounding.py`
-_Prompten maa ikke forveksle et rygte med en kendsgerning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `QueryProfile` | `` | — | [src](../../../core/services/self_history_grounding.py#L28) |
-| function | `classify_self_history_query` | `(text)` | Hvad spoerges der om? Deterministisk, uden model. | [src](../../../core/services/self_history_grounding.py#L59) |
-| function | `_verdens_fakta` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L74) |
-| function | `_emner` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L79) |
-| function | `_selvbilleder` | `(limit=…)` | — | [src](../../../core/services/self_history_grounding.py#L84) |
-| function | `_model_epoke` | `()` | — | [src](../../../core/services/self_history_grounding.py#L89) |
-| function | `build_self_history_grounding_section` | `(text, *, session_id=…)` | Byg blokken — eller `None` naar der ikke spoerges om noget af det. | [src](../../../core/services/self_history_grounding.py#L99) |
 

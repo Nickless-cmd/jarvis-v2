@@ -104,9 +104,16 @@ def _active_turn_blocks(session_id: str) -> str:
     # Run-loggen ved det præcist og pr. samtale. Den bor i API-processen, som
     # også er dér brugerens ture kører.
     if session_id:
+        # 13/10-2026: kilden er nu den FÆLLES vagt, ikke kun den lokale log.
+        # `run_event_log` er in-memory per proces, og daemonerne kører i
+        # jarvis-runtime mens Bjørns tur kører i jarvis-api — så dette tjek
+        # svarede «ingen» præcis når svaret betød mest. `run_guard` spørger
+        # BÅDE loggen og den delte journal (`in_flight_runs`), som er
+        # ejer-verificeret på tværs af processer.
         try:
-            from core.services import run_event_log as _rel
-            if _rel.active_run_for_session(session_id):
+            from core.services.run_guard import levende_run_i_session
+
+            if levende_run_i_session(session_id):
                 return "session_har_levende_run"
         except Exception as exc:
             # Self-safe: et wakeup må aldrig forsvinde fordi loggen ikke

@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/turn_trace.py`
+_core/services/turn_trace.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
+| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
+| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
+| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
+| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
+
 ## `core/services/ui_panel_store.py`
 _Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
 
@@ -624,18 +635,4 @@ _SSE / Chat-Completions stream parsing + small cost/token utilities._
 | function | `_chat_completion_stream_is_terminal` | `(event)` | — | [src](../../../core/services/visible_model_sse.py#L167) |
 | function | `_raa_linjer` | `(response, maale_noegle=…)` | Rå linjer fra streamen — og, når sporet er tændt, HVOR tiden gik. | [src](../../../core/services/visible_model_sse.py#L177) |
 | function | `_iter_sse_events` | `(response, *, provider=…, model=…, maale_noegle=…)` | Hærdet SSE-decoder (spec §1A + §11.1 A11). | [src](../../../core/services/visible_model_sse.py#L226) |
-
-## `core/services/visible_model_types.py`
-_Value/result classes and typed exceptions for the visible model lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `VisibleModelResult` | `` | — | [src](../../../core/services/visible_model_types.py#L22) |
-| class | `VisibleModelDelta` | `` | — | [src](../../../core/services/visible_model_types.py#L55) |
-| class | `VisibleModelReasoningDelta` | `` | Én tanke-bid fra en thinking-model, UNDER første pas. | [src](../../../core/services/visible_model_types.py#L60) |
-| class | `VisibleModelStreamDone` | `` | — | [src](../../../core/services/visible_model_types.py#L74) |
-| class | `VisibleModelToolCalls` | `` | — | [src](../../../core/services/visible_model_types.py#L79) |
-| class | `VisibleModelStreamCancelled` | `` | — | [src](../../../core/services/visible_model_types.py#L83) |
-| class | `VisibleModelRateLimited` | `` | Visible-lanens provider er rate-limited (429) eller returnerede en | [src](../../../core/services/visible_model_types.py#L87) |
-| method | `VisibleModelRateLimited.__init__` | `(self, *args, provider=…, model=…)` | — | [src](../../../core/services/visible_model_types.py#L94) |
 

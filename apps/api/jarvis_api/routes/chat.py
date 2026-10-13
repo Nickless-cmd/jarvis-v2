@@ -1297,6 +1297,43 @@ def chat_session_recovery(session_id: str, response: Response) -> dict:
 # der aldrig blev markeret faerdig.
 _AKTIVE_RUNS_ALDER_LOFT_S = 600.0
 
+#: Stilstands-loft for den DELTE journal (13/10-2026). Mere generøst end
+#: loftet ovenfor, fordi det måler noget andet: `last_progress_at` opdateres ved
+#: hvert værktøjskald, og et enkelt langt kald (en build, en stor læsning) må
+#: ikke få indikatoren til at blinke af. 30 minutter uden ét eneste
+#: værktøjskald er dødt nok.
+_JOURNAL_STILSTAND_LOFT_S = 1800.0
+
+
+def _journal_sessions() -> list[dict]:
+    """Sessioner med et LEVENDE run i den DELTE journal (13/10-2026).
+
+    `run_event_log` er in-memory per proces. Daemonerne kører i jarvis-runtime
+    (8011) og DETTE endpoint i jarvis-api (8080) — så et autonomt run var
+    usynligt for indikatoren, og Bjørn så det først ved næste run eller en
+    manuel opdatering. Det er præcis det han rapporterede: «de fyre ikke i desk
+    chatview ... indikator-linjen over composeren burde starte op igen af sig
+    selv».
+
+    `in_flight_runs` er delt (fil + flock) og ejer-verificeret via /proc, så
+    den er sandheden om hvad der kører — uanset hvilken proces der startede
+    det. Self-safe: kan journalen ikke læses, bidrager den med intet.
+    """
+    try:
+        from core.services import in_flight_runs as _ifr
+
+        return [
+            {
+                "session_id": str(r.get("session_id") or ""),
+                "run_id": str(r.get("run_id") or ""),
+                "status": "working",
+            }
+            for r in _ifr.levende_koersler(max_alder_s=_JOURNAL_STILSTAND_LOFT_S)
+            if str(r.get("session_id") or "")
+        ]
+    except Exception:  # noqa: BLE001 — self-safe: uden journalen bidrager kilden med intet
+        return []
+
 
 @router.get("/active-runs")
 def chat_active_runs() -> dict:
@@ -1345,6 +1382,13 @@ def chat_active_runs() -> dict:
                 except Exception:
                     pass
                 sessions.append(item)
+        # 13/10-2026: OGSÅ den DELTE journal. Run-loggen ovenfor er
+        # in-memory per proces, så et run født i jarvis-runtime var usynligt
+        # her. Journalen er ejer-verificeret og dækker begge processer.
+        for _js in _journal_sessions():
+            if _js["session_id"] not in sids:
+                sids.append(_js["session_id"])
+                sessions.append(_js)
         return {"session_ids": sids, "sessions": sessions}
     # FLAG OFF -> run_follow.live_sessions (uaendret)
     #
@@ -1363,6 +1407,10 @@ def chat_active_runs() -> dict:
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)
+        # 13/10-2026: samme delte kilde som flag-ON-grenen — se `_journal_sessions`.
+        for _js in _journal_sessions():
+            if _js["session_id"] not in sids:
+                sids.append(_js["session_id"])
         return {"session_ids": sids, "sessions": [{"session_id": sid, "run_id": "", "status": "working"} for sid in sids]}
     except Exception:
         return {"session_ids": []}

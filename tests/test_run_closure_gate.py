@@ -514,3 +514,90 @@ class TestAutoCommitBlockedNotification:
         assert "når du har tid" in kald[0]["m"], (
             "beskedens egen ordlyd er begrundelsen for at den ikke er akut"
         )
+
+
+class TestRunClosureGaarTilIndbakken:
+    """13/10-2026: gatens besked skal i INDBAKKEN, ikke til Discord.
+
+    Bjørn: «run-closure-gate skal ikk sende til min discord. Den bør lande i
+    din inbox i dine og mine sessioner.» Indbakken læses af
+    `inbox_prompt_section` i både autonome kørsler og hans egne samtaler, så
+    samme post står begge steder uden en kanal-binding.
+    """
+
+    def test_kildetypen_kan_ikke_gate(self):
+        """Posten må være SYNLIG men aldrig nægte en mutation.
+
+        Uden dette led kunne en post fra et AFLUTTET run gate det næste
+        værktøjskald — den lammelse kostede 8,5 timer 12/10.
+        """
+        from core.services.inbox_state import IKKE_GATENDE_KILDETYPER
+        assert "run_closure" in IKKE_GATENDE_KILDETYPER
+
+    def test_registrerer_i_indbakken_som_huset(self):
+        from core.services.run_closure_gate import _registrer_i_indbakken
+        kald: list[dict] = []
+
+        def fake(**kw):
+            kald.append(kw)
+            return {"status": "ok"}
+
+        with patch("core.services.inbox_state.registrer_kilde", fake), \
+             patch("core.services.inbox_state._ejer_id", return_value="bjorn"):
+            _registrer_i_indbakken(
+                kildetype="run_closure",
+                kilde_id="silent-rid-9",
+                beskrivelse="Run rid-9 endte uden svar",
+                run_id="rid-9",
+            )
+
+        assert len(kald) == 1
+        assert kald[0]["bruger_id"] == "bjorn"
+        assert kald[0]["kildetype"] == "run_closure"
+        assert kald[0]["kilde_id"] == "silent-rid-9"
+        assert kald[0]["paastaaet_ejer"] == "huset"
+        assert kald[0]["oprettende_run_id"] == "rid-9"
+
+    def test_taaler_at_ejeren_ikke_kan_oploeses(self):
+        """En indbakke der ikke kunne skrives må ikke vælte afslutningen af et run."""
+        from core.services.run_closure_gate import _registrer_i_indbakken
+        with patch("core.services.inbox_state._ejer_id",
+                   side_effect=RuntimeError("db nede")):
+            _registrer_i_indbakken(
+                kildetype="run_closure", kilde_id="x", beskrivelse="y")
+
+    def test_unstaged_flow_lander_i_indbakken(self):
+        """Den fulde vej: run med diff → post i indbakken, ikke Discord."""
+        from core.services.run_closure_gate import _on_run_completed
+        kald: list[dict] = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                pass
+
+        def fake(**kw):
+            kald.append(kw)
+            return {"status": "ok"}
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M new_file.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"new_file.py": "h-after"},
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=(set(), {}),
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.inbox_state.registrer_kilde", fake,
+        ), patch(
+            "core.services.inbox_state._ejer_id", return_value="bjorn",
+        ):
+            _on_run_completed({"run_id": "rid-42", "session_id": "sid-42"})
+
+        assert kald, "gaten skulle have registreret en indbakke-post"
+        assert kald[0]["kildetype"] == "run_closure"
+        assert kald[0]["kilde_id"] == "unstaged-rid-42"
+        assert "new_file.py" in kald[0]["beskrivelse"]

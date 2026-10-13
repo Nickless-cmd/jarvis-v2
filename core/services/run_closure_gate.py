@@ -463,6 +463,49 @@ def _notify_auto_commit_blocked(
             logger.warning("run_closure_gate: auto-commit-blocked notice delivery failed", exc_info=True)
 
 
+def _registrer_i_indbakken(
+    *,
+    kildetype: str,
+    kilde_id: str,
+    beskrivelse: str,
+    run_id: str = "",
+) -> None:
+    """Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord.
+
+    Bjørn 13/10-2026: «run-closure-gate skal ikk sende til min discord. Den bør
+    lande i din inbox i dine og mine sessioner.»
+
+    Indbakken læses af `inbox_prompt_section`, som slår op på den autentificerede
+    bruger og — i en autonom kørsel uden bruger — falder tilbage til ejerens
+    workspace. Derfor står SAMME post i både mine autonome kørsler og hans egne
+    samtaler, uden at nogen af dem skal bindes til en kanal. Det var netop dét
+    Discord-vejen ikke kunne: `_resolve_channel_for_session` faldt tilbage til
+    owner-DM'en, så et nat-run uden Discord-session endte i hans DM alligevel.
+
+    Posten registreres som `huset` og med kildetypen `run_closure` (der står i
+    `IKKE_GATENDE_KILDETYPER`), så den er SYNLIG men aldrig kan nægte en
+    mutation. Gaten må informere — ikke lamme.
+
+    Self-safe og tavs: en indbakke der ikke kunne skrives må aldrig kunne vælte
+    afslutningen af et run.
+    """
+    try:
+        from core.services.inbox_state import _ejer_id, registrer_kilde
+        bruger = _ejer_id()
+        if not bruger:
+            return
+        registrer_kilde(
+            bruger_id=bruger,
+            kildetype=kildetype,
+            kilde_id=kilde_id,
+            oprettende_run_id=run_id,
+            paastaaet_ejer="huset",
+            beskrivelse=beskrivelse,
+        )
+    except Exception:
+        logger.debug("run_closure_gate: indbakke-registrering fejlede", exc_info=True)
+
+
 def _on_run_completed(payload: dict[str, Any]) -> None:
     """Handle a runtime.autonomous_run_completed event."""
     run_id = str(payload.get("run_id") or "")
@@ -594,6 +637,21 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
             # event ville forsvinde i stilhed. Nudge-brønden leverer til Bjørn
             # uanset kanal og venter til han er der. (Synlige chats: brugeren
             # er til stede, eksisterende kanaler dækker det.)
+            #
+            # Indbakken bærer den SAMME besked nu (13/10-2026) — og der er den
+            # synlig i både autonome kørsler og hans egne samtaler, uanset om
+            # en kanal var bundet til runet.
+            _registrer_i_indbakken(
+                kildetype="run_closure",
+                kilde_id=f"unstaged-{run_id}",
+                beskrivelse=(
+                    f"Run {run_id[:12]} efterlod {summary['count']} ucommittet "
+                    f"fil(er): {', '.join(summary['paths'][:5])}"
+                    + (f" — auto-commit fejlede: {_last_auto_commit_error[:120]}"
+                       if _last_auto_commit_error else "")
+                ),
+                run_id=run_id,
+            )
             if autonomous:
                 _notify_auto_commit_blocked(summary, run_id=run_id, session_id=session_id)
 
@@ -631,6 +689,18 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                 logger.info(
                     "run_closure_gate: silent run %s — %d tool calls, no visible output",
                     run_id[:12], len(tool_calls),
+                )
+                # Indbakken, ikke Discord (13/10-2026). Eventet ovenfor er
+                # telemetri; dette er leveringen til Bjørn.
+                _registrer_i_indbakken(
+                    kildetype="run_closure",
+                    kilde_id=f"silent-{run_id}",
+                    beskrivelse=(
+                        f"Run {run_id[:12]} endte uden svar — "
+                        f"{len(tool_calls)} værktøjskald, ingen tekst. "
+                        f"Værktøjer: {', '.join(sorted(set(tool_calls))[:6])}"
+                    ),
+                    run_id=run_id,
                 )
         except Exception:
             logger.warning("run_closure_gate: failed silent-run check", exc_info=True)

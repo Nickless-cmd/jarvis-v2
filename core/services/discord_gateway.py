@@ -1637,64 +1637,19 @@ def _eventbus_subscriber_loop() -> None:
                 else:
                     logger.debug("discord_sub: %s sid=%s — no pending", kind.split(".")[-1], session_id[:12])
 
-            # 2026-05-22 (Claude): silent-run detection — run completed
-            # with tool-calls but no visible text. Without this, Bjørn
-            # sees "Jarvis is typing..." that never finishes. Emit a
-            # status message so he knows what happened.
-            elif kind == "runtime.run_ended_silent":
-                session_id = str(payload.get("session_id") or "")
-                run_id = str(payload.get("run_id") or "")
-                unique_tools = list(payload.get("unique_tools") or [])
-                tool_count = int(payload.get("tool_call_count") or 0)
-                # Look up the channel via in-flight registry, falling
-                # back to the owner DM if we can't resolve.
-                channel_id = _resolve_channel_for_session(session_id)
-                if channel_id and unique_tools:
-                    summary = (
-                        f"_(auto-status fra run-closure-gate)_\n"
-                        f"Jeg afsluttede en agentic run uden at returnere tekst. "
-                        f"Tools brugt: **{', '.join(unique_tools[:6])}** "
-                        f"({tool_count} total). Run-id `{run_id[:12]}`.\n"
-                        f"Hvis du venter på et svar — sig til hvad du så efter."
-                    )
-                    try:
-                        send_discord_message(channel_id, summary)
-                        logger.info(
-                            "discord_sub: silent-run auto-status sent to channel=%s run=%s",
-                            channel_id, run_id[:12],
-                        )
-                    except Exception:
-                        logger.debug("discord_sub: silent-run send failed", exc_info=True)
-
-            # 2026-05-22 (Claude): unstaged-changes notification —
-            # Bjørn was hitting "Jarvis edited code but didn't commit" pattern
-            # repeatedly. Surface it explicitly so he knows there's a working-tree
-            # diff sitting after the run.
-            elif kind == "runtime.run_left_unstaged_changes":
-                session_id = str(payload.get("session_id") or "")
-                run_id = str(payload.get("run_id") or "")
-                summary = dict(payload.get("summary") or {})
-                paths = list(summary.get("paths") or [])
-                count = int(summary.get("count") or 0)
-                truncated = bool(summary.get("truncated"))
-                channel_id = _resolve_channel_for_session(session_id)
-                if channel_id and paths:
-                    listing = "\n".join(f"  • `{p}`" for p in paths)
-                    more = f"\n  …og {count - len(paths)} mere" if truncated else ""
-                    notice = (
-                        f"⚠️ _(run-closure-gate)_ Run `{run_id[:12]}` efterlod **{count} "
-                        f"uncommitted ændring(er)** i working tree:\n"
-                        f"{listing}{more}\n"
-                        f"Husk at committe — eller bed mig om det."
-                    )
-                    try:
-                        send_discord_message(channel_id, notice)
-                        logger.info(
-                            "discord_sub: unstaged-changes notice sent to channel=%s run=%s count=%d",
-                            channel_id, run_id[:12], count,
-                        )
-                    except Exception:
-                        logger.debug("discord_sub: unstaged-changes send failed", exc_info=True)
+            # 13/10-2026 (Jarvis): run-closure-gatens to beskeder er FLYTTET ud
+            # af Discord og ind i indbakken. Bjørn: «run-closure-gate skal ikk
+            # sende til min discord. Den bør lande i din inbox i dine og mine
+            # sessioner.»
+            #
+            # Grenene her sendte `runtime.run_ended_silent` og
+            # `runtime.run_left_unstaged_changes` til en Discord-kanal — og
+            # `_resolve_channel_for_session` faldt tilbage til owner-DM'en, så
+            # selv et nat-run uden Discord-session endte i hans DM. Gaten
+            # registrerer dem nu selv i indbakken (`run_closure_gate.
+            # _registrer_i_indbakken`), hvor de står i både autonome kørsler og
+            # hans egne samtaler uden en kanal-binding. Eventerne publiceres
+            # stadig — de er telemetri; kun leveringen er flyttet.
 
     finally:
         logger.warning("discord_sub: subscriber loop exited")

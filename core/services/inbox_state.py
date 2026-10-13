@@ -91,6 +91,13 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # ville hver fyret `schedule_task` laegge en blokerende post i indbakken
     # — og en planlagt efterkontrol ville gate det naeste vaerktoejskald.
     "scheduled", "routine_event",
+    # `run_closure` (13/10-2026): run-closure-gatens beskeder (tavst run,
+    # ucommittede ændringer) flyttede fra Discord til indbakken efter Bjørns
+    # ønske — «den bør lande i din inbox i dine og mine sessioner». De er
+    # INFORMATION: huset må oprette dem, aldrig nægte en mutation på dem. Uden
+    # dette led kunne en post fra et AFLUTTET run gate det næste værktøjskald —
+    # præcis den lammelse der kostede 8,5 timer 12/10.
+    "run_closure",
 })
 
 

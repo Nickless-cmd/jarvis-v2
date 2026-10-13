@@ -288,7 +288,6 @@ function Shell({
             <ChatView
               sessionId={activeId}
               userName={userName}
-              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
               onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}
@@ -298,7 +297,6 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               role={role}
-              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
               onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}

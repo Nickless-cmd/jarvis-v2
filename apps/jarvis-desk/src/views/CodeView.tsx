@@ -97,8 +97,8 @@ async function pickFolder(): Promise<string | null> {
  *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
  *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
 export function CodeView({
-  sessionId, userName, role = 'owner', onOpenMarketplace, onOpenPrivacy,
-}: { sessionId: string | null; userName?: string; role?: Role; onOpenMarketplace?: () => void; onOpenPrivacy?: () => void }) {
+  sessionId, userName, role = 'owner', onOpenPrivacy,
+}: { sessionId: string | null; userName?: string; role?: Role; onOpenPrivacy?: () => void }) {
   const stream = useStream()
   const { permission } = usePermission()
   const { settings } = useSettings()
@@ -1189,7 +1189,6 @@ export function CodeView({
             mode="code"
             config={config}
             userName={userName ?? 'Bruger'}
-            onOpenMarketplace={() => onOpenMarketplace?.()}
             onSuggest={(text) => resend(text)}
           >
             {workspaceSelector}

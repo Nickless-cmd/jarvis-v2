@@ -8,9 +8,9 @@ import { prepareExternalWindow } from '../../lib/host'
 
 /** Returnerer null naar der slet ingen bro er (web-fanen) — ellers selve
  *  loeftet, saa kalderen kan se om browseren faktisk aabnede. */
-/** Tom-session-skærm: tids-bevidst greeting + presence-ring tonet efter tidspunkt
- *  + op til 3 connector-forslag (kun ikke-forbundne) + "Flere apps →". Composeren
- *  gives som children, så den sidder under hilsenen (spec §3.4). */
+/** Tom-session-skærm: tids-bevidst greeting + op til 3 connector-forslag (kun
+ *  ikke-forbundne). Composeren gives som children, så den sidder under hilsenen
+ *  (spec §3.4). */
 /** Chat: hukommelse og samtale — det fladen ER til. */
 const CHAT_FORSLAG = [
   'Hvad talte vi om sidst?',
@@ -30,11 +30,6 @@ export function GreetingHero({
 }: {
   config?: ApiConfig
   userName: string
-  /** @deprecated 13/10-2026: «Flere apps»-knappen er væk fra tom-skærmen.
-   *  Opsætningen af apps hører i Marketplace, ikke her. Propen holdes i
-   *  signaturen et øjeblik så kaldestederne ikke skal røres i samme commit —
-   *  den bruges ikke længere. */
-  onOpenMarketplace?: () => void
   onSuggest?: (text: string) => void
   /** Hvilken flade man staar paa — afgoer hvilke forslag der giver mening. */
   mode?: 'chat' | 'code'

@@ -63,6 +63,12 @@ _SCHEDULE: dict[str, timedelta] = {
     "memory_decay_sweep": timedelta(hours=24),
     "dream_distillation_sweep": timedelta(hours=24),
     "concept_baseline_evaluation": timedelta(hours=24),
+    # 13/10-2026: sessionstitlerne stod som den raa foerste besked — «hey»,
+    # «yo», «Godmorgen» — fordi titlen saettes ÉN gang fra besked nummer ét
+    # og aldrig samles op igen. 608 sessioner, maalt. Sweepet navngiver 3 pr.
+    # gang, saa kadencen bestemmer hvor hurtigt efterslaebet forsvinder:
+    # 15 min = 12 i timen.
+    "session_titling_sweep": timedelta(minutes=15),
 }
 
 

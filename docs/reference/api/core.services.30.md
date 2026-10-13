@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/voice_anchor.py`
+_Voice anchor — combined static seed + auto-refreshed external exemplars._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `read_voice_anchor` | `()` | Return concatenated VOICE.md + VOICE_RECENT.md, or empty string. | [src](../../../core/services/voice_anchor.py#L20) |
+
 ## `core/services/voice_curator.py`
 _Voice curator — refresh VOICE_RECENT.md from EXTERNAL output only._
 

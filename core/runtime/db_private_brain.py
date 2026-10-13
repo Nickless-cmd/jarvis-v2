@@ -62,6 +62,21 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_private_brain_records_session "
         "ON private_brain_records(session_id, id DESC)"
     )
+    # PARTIAL + COVERING, målt 13/10-2026: semantic_indexer's sweeper kalder
+    # backfill_all() hvert 5. minut (288x/døgn), og dens id-query
+    #   SELECT record_id FROM private_brain_records
+    #    WHERE status NOT IN ('released','archived','superseded','deleted')
+    #    ORDER BY created_at DESC
+    # ramte en FULD SCAN + TEMP B-TREE: 204.210 rækker gennemlæst for at bruge ~17.000.
+    # 92% af tabellen er released/archived og filtreres væk EFTER læsning.
+    # Partial-vilkåret spejler queryens WHERE, så indekset kun bærer de aktive rækker
+    # (1,1 MB mod tabellens 130 MB). record_id er med, så planen bliver covering og
+    # tabelopslaget forsvinder helt. Målt: 0,06 s -> 0,00 s.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_private_brain_records_active_created "
+        "ON private_brain_records(created_at DESC, record_id) "
+        "WHERE status NOT IN ('released','archived','superseded','deleted')"
+    )
 
 
 def _private_brain_record_from_row(row: sqlite3.Row) -> dict[str, Any]:

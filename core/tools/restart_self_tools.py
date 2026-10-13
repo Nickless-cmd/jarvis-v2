@@ -56,12 +56,15 @@ RESTART_SELF_TOOL_DEFINITIONS = [
                     "defer_until_idle": {
                         "type": "boolean",
                         "description": (
-                            "Vent til din EGEN tur er slut, og genstart saa. "
+                            "Vent til der IKKE koerer noget — hverken din EGEN "
+                            "tur eller en ANDEN session — og genstart saa. "
                             "Brug denne naar genstarten ikke kan vente paa at "
                             "du svarer — den draeber ALDRIG turen og giver "
                             "derfor intet dublet-svar. I stedet for et antal "
-                            "sekunder venter den paa et faktum: at runnet ikke "
-                            "laengere er i live."
+                            "sekunder venter den paa et faktum: at ingen "
+                            "koersler er i live. Koerer der stadig nogen naar "
+                            "vinduet lober ud, ABBRYDES genstarten (den "
+                            "udskydes, den draeber ikke)."
                         ),
                         "default": False,
                     },
@@ -142,6 +145,19 @@ def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
         return []
 
 
+def _andre_aktive_koersler(egen_run_id: str, graense: int = 5) -> list[dict[str, str]]:
+    """Levende koersler UD OVER min egen (13/10-2026).
+
+    Den udskudte genstart venter nu paa at ALLE koersler er faerdige — ikke kun
+    mit eget run. Uden dette svar vidste jeg ikke hvad genstarten stod og ventede
+    paa, og et svar der ikke kan ses er et svar man ikke kan stole paa.
+    """
+    return [
+        k for k in _aktive_koersler(graense)
+        if str(k.get("run_id") or "") != str(egen_run_id or "")
+    ]
+
+
 def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     services = args.get("services") or ["jarvis-api", "jarvis-runtime"]
     channel = args.get("channel") or "discord"
@@ -172,6 +188,13 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     # bagvendt: den naegter paa det faktum den skulle vente paa. Maalt samme
     # dag: vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur
     # der kaldte det, saa den udskudte sti blev aldrig naaet.
+    #
+    # 13/10-2026: vagten bliver ogsaa sprunget over naar en ANDEN session
+    # koerer — men svaret er ikke laengere «saa koer bare». Den udskudte sti
+    # tager selv ansvaret: `deferred_restart.py` venter nu paa at ALLE koersler
+    # er faerdige og ABBRYDER hvis nogen stadig koerer naar vinduet lober ud.
+    # (Bjoern: «den der checker om turen er slut foer genstart udvides.. du
+    # draebte lige en anden session.»)
     _defer = bool(args.get("defer_until_idle"))
     if not bool(args.get("force")) and not _defer:
         aktive = _aktive_koersler()
@@ -222,6 +245,7 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             PENDING_RESTART_FILE.unlink(missing_ok=True)
             return {"status": "error", "error": f"Failed to schedule deferred restart: {e}"}
         logger.info("restart_self: deferred restart scheduled pid=%s run_id=%s", proc.pid, _rid)
+        andre = _andre_aktive_koersler(_rid)
         return {
             "status": "ok",
             "scheduled": True,
@@ -230,7 +254,13 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             "services": services,
             "pid": proc.pid,
             "channel": channel,
-            "note": "Genstarter naar turen er slut — ingen fast forsinkelse.",
+            "andre_koersler": andre,
+            "note": (
+                "Genstarter naar INGEN koersler er i live — hverken min tur "
+                "eller en anden session. Ingen fast forsinkelse."
+                + (f" Venter ogsaa paa: {', '.join(k['run_id'][:12] for k in andre)}."
+                   if andre else "")
+            ),
         }
     restart_cmds = " && ".join(f"sudo systemctl restart {svc}" for svc in services)
     full_cmd = f"sleep 3 && {restart_cmds}"

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8938/17061 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8940/17063 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,19 +25,19 @@ Generated from source. 8938/17061 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 823 | 1517 | 54% |
-| `core.services` | 5961 | 11598 | 51% |
+| `core.services` | 5960 | 11597 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 533 | 1074 | 49% |
+| `core.tools` | 534 | 1075 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 274 | 599 | 45% |
+| `scripts` | 276 | 601 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1826,7 +1826,7 @@ Generated from source. 8938/17061 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L812)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L769)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L320)
 - `core/services/run_event_log.py` :: `append` (L189)
 - `core/services/run_event_log.py` :: `create` (L102)
@@ -2406,7 +2406,7 @@ Generated from source. 8938/17061 functions/methods documented (52%). The list b
 - `scripts/db_path_fixture_audit.py` :: `main` (L20)
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
-- `scripts/deferred_restart.py` :: `main` (L80)
+- `scripts/deferred_restart.py` :: `main` (L199)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)

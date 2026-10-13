@@ -98,6 +98,12 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # dette led kunne en post fra et AFLUTTET run gate det næste værktøjskald —
     # præcis den lammelse der kostede 8,5 timer 12/10.
     "run_closure",
+    # `genstart` (13/10-2026): den udskudte genstart skriver her naar den
+    # ABBRYDER fordi en anden session koerer. Samme klasse som `run_closure`:
+    # huset informerer. Posten registreres med `paastaaet_ejer="huset"`, saa
+    # `kraever_handling` er allerede False (`inbox_state.py:408`) — leddet her
+    # goer reglen EKSPLICIT i stedet for at hvile paa proveniensen alene.
+    "genstart",
 })
 
 

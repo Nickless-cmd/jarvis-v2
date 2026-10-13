@@ -466,53 +466,69 @@ class TestOnRunCompletedFailClosed:
         assert "runtime.run_auto_committed" in kinds
 
 
-class TestAutoCommitBlockedNotification:
-    def test_nudges_via_bridge_when_commit_blocked(self):
-        from core.services.run_closure_gate import _notify_auto_commit_blocked
-        sent: list[str] = []
-        with patch("core.services.run_closure_gate._last_auto_commit_error",
-                   "hook blokerede"), \
-             patch("core.services.outbound_nudges.push_nudge",
-                   return_value={"status": "ok"}) as push:
-            _notify_auto_commit_blocked(
-                {"count": 2, "paths": ["a.py", "b.py"], "truncated": False},
-                run_id="rid-9", session_id="sid-9",
-            )
-        assert push.call_count == 1
-        msg = push.call_args.kwargs["message"]
-        assert "rid-9" in msg
-        assert "hook blokerede" in msg
+class TestAutoCommitBlokeretGaarTilIndbakken:
+    """13/10-2026: auto-commit-blokeringen leverer ÉN vej — indbakken.
 
-    def test_falls_back_to_session_notification(self):
-        """Fallback'en naar nudge-systemet ikke tog beskeden.
+    Bjørn: «Ja den ska osse i din inbox.» Funktionen
+    `_notify_auto_commit_blocked` sendte den SAMME besked gennem nudge-brønden,
+    og brønden leverer uden om indbakken (den ruter til `proactive_candidates`
+    og videre til en kanal). Den er fjernet; posten skrives af grenen i
+    `_on_run_completed`, som bærer årsagen i teksten.
+    """
 
-        2/10-2026: stubben var `lambda m, source, urgent` og pinnede dermed
-        kaldets SIGNATUR, ikke en beslutning. Da `urgent=True` blev fjernet,
-        faldt den paa et manglende argument. Den maaler nu kontrakten i stedet:
-        beskeden skal komme frem, OG den maa ikke springe koe-vagten over.
-        """
-        from core.services.run_closure_gate import _notify_auto_commit_blocked
+    def test_blokeret_auto_commit_lander_i_indbakken_med_aarsagen(self):
+        from core.services.run_closure_gate import _on_run_completed
         kald: list[dict] = []
-        with patch("core.services.run_closure_gate._last_auto_commit_error", ""), \
-             patch("core.services.outbound_nudges.push_nudge",
-                   return_value={"status": "disabled"}), \
-             patch("core.services.notification_bridge.send_session_notification",
-                   side_effect=lambda m, **kw: kald.append({"m": m, **kw})):
-            _notify_auto_commit_blocked(
-                {"count": 1, "paths": ["x.py"], "truncated": False},
-                run_id="rid-10", session_id="sid-10",
-            )
-        assert len(kald) == 1
-        assert "rid-10" in kald[0]["m"]
-        assert kald[0]["source"] == "run-closure-gate"
-        # Kernen: beskeden slutter med «Kig paa repoet naar du har tid», saa den
-        # maa IKKE bryde ind midt i en saetning. Er sessionen aktiv, skal den
-        # koees og flushes naar Bjoerns tur er omme.
-        assert kald[0].get("urgent", False) is False, (
-            "fallback'en springer koe-vagten over igen"
-        )
-        assert "når du har tid" in kald[0]["m"], (
-            "beskedens egen ordlyd er begrundelsen for at den ikke er akut"
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                pass
+
+        def fake(**kw):
+            kald.append(kw)
+            return {"status": "ok"}
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M a.py", " M b.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"a.py": "h1", "b.py": "h2"},
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=(set(), {}),
+        ), patch(
+            "core.services.run_closure_gate._try_auto_commit",
+            return_value=None,
+        ), patch(
+            "core.services.run_closure_gate._last_auto_commit_error",
+            "hook blokerede",
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.inbox_state.registrer_kilde", fake,
+        ), patch(
+            "core.services.inbox_state._ejer_id", return_value="bjorn",
+        ):
+            _on_run_completed({
+                "run_id": "rid-9", "session_id": "sid-9", "autonomous": True,
+            })
+
+        assert kald, "den blokerede auto-commit skulle staa i indbakken"
+        assert kald[0]["kilde_id"] == "unstaged-rid-9"
+        beskrivelse = str(kald[0]["beskrivelse"])
+        assert "rid-9" in beskrivelse
+        assert "hook blokerede" in beskrivelse, beskrivelse
+
+    def test_den_gamle_nudge_vej_er_væk(self):
+        """Kanalen uden om indbakken skal være FJERNET, ikke bare ubrugt.
+
+        En funktion der stadig findes kan kaldes igen — af mig, om en måned,
+        fordi navnet ser rigtigt ud.
+        """
+        from core.services import run_closure_gate as rcg
+        assert not hasattr(rcg, "_notify_auto_commit_blocked"), (
+            "den gamle nudge-vej staar stadig i modulet"
         )
 
 

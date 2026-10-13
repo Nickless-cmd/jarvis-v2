@@ -412,55 +412,13 @@ def _try_auto_commit(
         return None
 
 
-def _notify_auto_commit_blocked(
-    summary: dict[str, Any],
-    *,
-    run_id: str,
-    session_id: str,
-) -> None:
-    """Nudge Bjørn når gaten ikke kunne forsegle et autonomt runs ændringer.
-
-    Nudge-brønden leverer uanset kanal og venter til han er til stede —
-    den gamle Discord-only-sti ramte aldrig nat-runs uden session-binding.
-    """
-    paths = ", ".join(summary.get("paths") or [])
-    error = _last_auto_commit_error or ""
-    message = (
-        f"🛡️ **run-closure-gate:** autonomt run `{run_id[:12]}` efterlod "
-        f"**{summary.get('count', 0)} ucommitted fil(er)** i repoet — "
-        f"auto-commit kunne ikke forsegle dem."
-    )
-    if error:
-        message += f"\nÅrsag: `{error[:200]}`"
-    if paths:
-        message += f"\nFiler: {paths}"
-    message += "\nKig på repoet når du har tid — eller sig til, så ordner jeg det."
-
-    nudged = False
-    try:
-        from core.services.outbound_nudges import push_nudge
-        result = push_nudge(
-            source="run_closure_gate",
-            kind="unstaged_changes",
-            message=message,
-            importance="high",
-        )
-        nudged = result.get("status") in ("ok", "queued")
-    except Exception:
-        nudged = False
-    if not nudged:
-        # Fallback: notification bridge. 2/10-2026: urgent=True er fjernet.
-        # Beskeden slutter ordret med «Kig på repoet når du har tid» og
-        # modsagde dermed sit eget flag — den sprang inbox-køen over og kunne
-        # lande midt i en sætning. Bjørn saa den tre gange paa tre doegn i sin
-        # arbejdssession. Er han aktiv, koees den nu og flushes naar hans tur
-        # er omme (eller senest efter fallback-vinduet); er han ikke aktiv,
-        # leveres den direkte MED mobil-push praecis som foer.
-        try:
-            from core.services.notification_bridge import send_session_notification
-            send_session_notification(message, source="run-closure-gate")
-        except Exception:
-            logger.warning("run_closure_gate: auto-commit-blocked notice delivery failed", exc_info=True)
+# 13/10-2026: her stod `_notify_auto_commit_blocked`. Den sendte den SAMME
+# besked gennem nudge-broenden, som leverer uden om indbakken (den ruter til
+# `proactive_candidates` og videre til en kanal). Bjoern: «Ja den ska osse i
+# din inbox» — og beskeden ER i indbakken: grenen i `_on_run_completed`
+# skriver `unstaged-{run_id}` med aarsagen i teksten. Funktionen tilfoejede
+# derfor ikke information, men en KANAL — og det var netop den udenom-vej
+# Bjoern bad om at faa lukket for gatens to andre beskeder.
 
 
 def _registrer_i_indbakken(
@@ -634,13 +592,14 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                 logger.debug("run_closure_gate: failed to publish unstaged event", exc_info=True)
 
             # Autonome nat-runs har ofte INGEN Discord-session — den gamle
-            # event ville forsvinde i stilhed. Nudge-brønden leverer til Bjørn
-            # uanset kanal og venter til han er der. (Synlige chats: brugeren
-            # er til stede, eksisterende kanaler dækker det.)
+            # event ville forsvinde i stilhed.
             #
-            # Indbakken bærer den SAMME besked nu (13/10-2026) — og der er den
-            # synlig i både autonome kørsler og hans egne samtaler, uanset om
-            # en kanal var bundet til runet.
+            # 13/10-2026: indbakken er nu den ENESTE leverance for gatens
+            # beskeder. Foer laa der ogsaa en nudge-broend her
+            # (`_notify_auto_commit_blocked`); den bar den SAMME tekst og
+            # tilfoejede kun en kanal uden om indbakken. Bjoern: «Ja den ska
+            # osse i din inbox» — og her er den, i baade autonome koersler og
+            # hans egne samtaler, uanset om en kanal var bundet til runet.
             _registrer_i_indbakken(
                 kildetype="run_closure",
                 kilde_id=f"unstaged-{run_id}",
@@ -652,8 +611,6 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                 ),
                 run_id=run_id,
             )
-            if autonomous:
-                _notify_auto_commit_blocked(summary, run_id=run_id, session_id=session_id)
 
     # Silent-run detection: tool calls happened but no visible text was
     # delivered. We check the run-record DB for the final preview text.

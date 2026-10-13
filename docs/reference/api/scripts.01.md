@@ -248,9 +248,11 @@ _Udskudt genstart — vent til turen er SLUT, genstart saa._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L49) |
-| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til runnet er doedt + margin. Returnerer sekunder ventet. | [src](../../../scripts/deferred_restart.py#L67) |
-| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L80) |
+| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L64) |
+| function | `_andre_lever` | `(egen_run_id)` | Run-id for et ANDET levende run — "" hvis ingen, "?" hvis vi ikke ved det. | [src](../../../scripts/deferred_restart.py#L82) |
+| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til MIT run er doedt OG ingen andre koersler lever. | [src](../../../scripts/deferred_restart.py#L129) |
+| function | `_afbryd` | `(waited, grund, run_id)` | Genstarten blev UDSKUDT — ikke udfoert. Sig det hoejt, og ryd op. | [src](../../../scripts/deferred_restart.py#L159) |
+| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L199) |
 
 ## `scripts/dispatcher_adoption.py`
 _Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._

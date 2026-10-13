@@ -195,3 +195,41 @@ def test_uden_defer_bruges_den_gamle_vej(monkeypatch):
     ud = rst._exec_restart_self({"services": ["jarvis-api"]})
     assert ud.get("deferred") is not True
     assert "sleep 3" in " ".join(kaldt[0])
+
+
+def test_andre_aktive_koersler_filtrerer_eget_run(monkeypatch):
+    """13/10-2026: genstarten venter nu ogsaa paa ANDRE sessioner.
+
+    Bjoern: «den der checker om turen er slut foer genstart udvides.. du
+    draebte lige en anden session.» Vaerktoejet skal derfor kunne SIGE hvad
+    genstarten staar og venter paa — et svar der ikke kan ses, er et svar man
+    ikke kan stole paa.
+    """
+    kandidater = [
+        {"run_id": "visible-min-tur", "preview": "tag begge to"},
+        {"run_id": "autonomous-anden", "preview": "nat-run"},
+    ]
+    monkeypatch.setattr(rst, "_aktive_koersler", lambda *a, **k: list(kandidater))
+    andre = rst._andre_aktive_koersler("visible-min-tur")
+    assert [k["run_id"] for k in andre] == ["autonomous-anden"]
+
+
+def test_den_udskudte_genstart_naevner_de_andre(monkeypatch):
+    """Noten skal vaere aerlig om HVORFOR den venter."""
+    monkeypatch.setattr(
+        rst, "_aktive_koersler",
+        lambda *a, **k: [
+            {"run_id": "visible-min-tur", "preview": "x"},
+            {"run_id": "autonomous-anden", "preview": "nat-run"},
+        ],
+    )
+    monkeypatch.setattr(rst.subprocess, "Popen",
+                        lambda cmd, **k: type("P", (), {"pid": 9})())
+    from core.services import run_autonomy_context as rac
+    monkeypatch.setattr(rac, "current_run_id", lambda: "visible-min-tur")
+
+    ud = rst._exec_restart_self({"services": ["jarvis-api"], "defer_until_idle": True})
+
+    assert ud["status"] == "ok" and ud["deferred"] is True
+    assert [k["run_id"] for k in ud["andre_koersler"]] == ["autonomous-anden"]
+    assert "autonomous-" in ud["note"], ud["note"]

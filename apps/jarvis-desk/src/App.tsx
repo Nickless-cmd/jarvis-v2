@@ -37,7 +37,10 @@ import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { ArtifactsView } from './views/ArtifactsView'
-import { Sidebar, type Surface } from './components/shell/Sidebar'
+import { RoutinesView } from './views/RoutinesView'
+import { RoutineEditor } from './components/routines/RoutineEditor'
+import type { Routine } from './lib/routinesApi'
+import { Sidebar, modeFor, type Surface } from './components/shell/Sidebar'
 import { WebSidebarFrame } from './components/shell/WebSidebarFrame'
 // OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026): det lille arbejder-felt i
 // højre nederste hjørne skulle ud. Komponenten er bevaret — kun renderingen
@@ -54,6 +57,7 @@ import './styles/desk-settings.css'
 import './styles/raekkevisning.css'
 import './styles/chat-reading.css'
 import './styles/web-sidebar.css'
+import './styles/routines.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
@@ -111,6 +115,7 @@ export function App() {
               surface={surface}
               setSurface={setSurface}
               role={auth?.role ?? 'guest'}
+              currentUserId={auth?.user_id ?? ''}
               userName={auth?.display_name ?? 'Bruger'}
               model={settings.defaultModel}
             />
@@ -197,19 +202,26 @@ function Shell({
   surface,
   setSurface,
   role,
+  currentUserId,
   userName,
   model,
 }: {
   surface: Surface
   setSurface: (s: Surface) => void
   role: 'owner' | 'partner' | 'member' | 'guest'
+  currentUserId: string
   userName: string
   model: string
 }) {
   const { activeId, select } = useSessions()
   const { settings } = useSettings()
   const panel = usePanel()
-  const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  const apiBaseUrl = settings?.apiBaseUrl
+  const authToken = settings?.authToken ?? null
+  const cfg = useMemo(
+    () => apiBaseUrl ? { apiBaseUrl, authToken } : undefined,
+    [apiBaseUrl, authToken],
+  )
   // Web-push: gen-etablér abonnementet ved opstart, men KUN hvis tilladelsen
   // allerede er givet (side-67aea8c5b6). Spørger aldrig af sig selv — browseren
   // kræver en brugerhandling, og et prompt ved hver opstart ville være støj.
@@ -230,9 +242,18 @@ function Shell({
   // privatlivs-dialogen: begge er `<dialog>`-elementer der skal ligge i
   // top-laget MIDT på skærmen, ikke inde i sidens kolonne-layout.
   const [bugOpen, setBugOpen] = useState(false)
+  const [routineReturnMode, setRoutineReturnMode] = useState<'chat' | 'code'>('chat')
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null)
+
+  const navigate = (next: Surface) => {
+    if (next === 'routines' && surface !== 'routines' && surface !== 'routine-editor') {
+      setRoutineReturnMode(modeFor(surface) === 'code' ? 'code' : 'chat')
+    }
+    setSurface(next)
+  }
   return (
     <WebSidebarFrame web={__WEB_BUILD__} sidebar={
-      <Sidebar surface={surface} onSurface={setSurface} userName={userName} onSearch={() => setSearchOpen(true)}
+      <Sidebar surface={surface} onSurface={navigate} routineReturnMode={routineReturnMode} userName={userName} onSearch={() => setSearchOpen(true)}
                onOpenBug={() => setBugOpen(true)}
                onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })} />
     }>
@@ -254,7 +275,7 @@ function Shell({
               setSurface('cowork')
               emitZone(id.slice(5) as Parameters<typeof emitZone>[0])
             } else if (id.startsWith('surface:')) {
-              setSurface(id.slice(8) as Surface)
+              navigate(id.slice(8) as Surface)
             }
           }}
         />
@@ -285,6 +306,19 @@ function Shell({
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'artifacts' && <ArtifactsView onOpenCode={() => setSurface('code')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
+          {surface === 'routines' && <RoutinesView
+            config={cfg!}
+            currentUserId={currentUserId}
+            role={role}
+            onClose={() => setSurface(routineReturnMode)}
+            onEdit={(routine) => { setEditingRoutine(routine); setSurface('routine-editor') }}
+          />}
+          {surface === 'routine-editor' && <RoutineEditor
+            config={cfg!}
+            routine={editingRoutine}
+            onClose={() => setSurface('routines')}
+            onSaved={() => setSurface('routines')}
+          />}
         </ShellWithPanel>
         {privacyOpen && <PrivacyDialog config={cfg} onClose={() => setPrivacyOpen(false)} />}
         {bugOpen && <BugRapport config={cfg} onClose={() => setBugOpen(false)} />}

@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
   Gauge, Users, Bug,
+  Repeat2,
   type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
@@ -41,7 +42,7 @@ const ROLLE_NAVN: Record<string, string> = {
   owner: 'owner', partner: 'partner', member: 'member', guest: 'gæst',
 }
 
-export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
+export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts' | 'routines' | 'routine-editor'
 
 /**
  * Hvilken mode en flade hører til.
@@ -51,8 +52,9 @@ export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
  * skiftede til chat-grupper i samme øjeblik man åbnede artefakterne — man
  * forlod code uden at have bedt om det.
  */
-export function modeFor(surface: Surface): Mode {
+export function modeFor(surface: Surface, routineReturnMode: 'chat' | 'code' = 'chat'): Mode {
   if (surface === 'artifacts') return 'code'
+  if (surface === 'routines' || surface === 'routine-editor') return routineReturnMode
   return (['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'
 }
 
@@ -64,6 +66,7 @@ export function Sidebar({
   onSearch,
   onOpenBug,
   onOpenAgent,
+  routineReturnMode = 'chat',
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
@@ -75,6 +78,8 @@ export function Sidebar({
   /** Aabner fejl-rapporten MIDT PAA SKAERMEN. Rapporten sendes til
    *  `/chat/inbox/flag`, ikke til skrivefeltet. (Bjørn 4/10-2026.) */
   onOpenBug?: () => void
+  /** Rutiner findes i begge modes og beholder den mode de blev åbnet fra. */
+  routineReturnMode?: 'chat' | 'code'
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
@@ -199,14 +204,14 @@ export function Sidebar({
           plads ved siden af. */}
       <div className="sidebar-top">
         <ModeDropdown
-          active={modeFor(surface)}
+          active={modeFor(surface, routineReturnMode)}
           onChange={(m) => onSurface(m)}
         />
         {/* Egen gruppe i hoejre side: mode-vaelgeren siger HVOR man er,
             ikonerne er ting man GOER. To slags, hver sin ende. */}
         <div className="sidebar-top-actions">
           <ModeBladrer
-            active={modeFor(surface)}
+            active={modeFor(surface, routineReturnMode)}
             onChange={(m) => onSurface(m)}
           />
           <button
@@ -276,11 +281,19 @@ export function Sidebar({
           <Images size={14} /> Billeder
         </button>
 
+        <button
+          type="button"
+          className={`sidebar-nav-row ${surface === 'routines' || surface === 'routine-editor' ? 'active' : ''}`}
+          onClick={() => onSurface('routines')}
+        >
+          <Repeat2 size={14} /> Rutiner
+        </button>
+
         {/* Artefakter — kun i code mode, hvor de hører hjemme: de filer Jarvis
             har skrevet og rettet i den valgte mappe, på tværs af samtaler
             (Bjørn 18/9-2026). Samme mønster som Billeder: en destination der
             ikke er en session. */}
-        {modeFor(surface) === 'code' && (
+        {modeFor(surface, routineReturnMode) === 'code' && (
           <button
             type="button"
             className={`sidebar-nav-row ${surface === 'artifacts' ? 'active' : ''}`}

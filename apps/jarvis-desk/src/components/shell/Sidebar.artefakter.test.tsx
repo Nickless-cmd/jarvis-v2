@@ -27,6 +27,18 @@ vi.mock('../../lib/api', () => ({
 import { Sidebar, modeFor } from './Sidebar'
 
 describe('artefakt-rækken', () => {
+  it.each(['chat', 'code'] as const)('viser Rutiner i %s mode og åbner samme flade', (mode) => {
+    const skift = vi.fn()
+    render(<Sidebar surface={mode} onSurface={skift} userName="Bjørn" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Rutiner' }))
+    expect(skift).toHaveBeenCalledWith('routines')
+  })
+
+  it('beholder den mode rutinerne blev åbnet fra', () => {
+    expect(modeFor('routines', 'chat')).toBe('chat')
+    expect(modeFor('routine-editor', 'code')).toBe('code')
+  })
+
   it('findes i code mode', () => {
     render(<Sidebar surface="code" onSurface={() => {}} userName="Bjørn" />)
     expect(screen.getByRole('button', { name: /Artefakter/ })).toBeTruthy()

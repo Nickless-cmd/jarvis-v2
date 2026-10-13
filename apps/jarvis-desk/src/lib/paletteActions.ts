@@ -48,6 +48,8 @@ export const PALETTE_HANDLINGER: PaletteHandling[] = [
     ord: ['gallery', 'billeder', 'images'] },
   { id: 'surface:artifacts', navn: 'Artefakter', hvad: 'Filer Jarvis har skrevet og rettet i mappen',
     ord: ['artifacts', 'artefakter', 'filer', 'ændringer', 'diff'] },
+  { id: 'surface:routines', navn: 'Rutiner', hvad: 'Opret, styr og se selvkørende arbejde',
+    ord: ['routine', 'rutine', 'autonom', 'gentagelse', 'automation'] },
   { id: 'surface:scheduling', navn: 'Planlagt', hvad: 'Opgaver på klokken',
     ord: ['scheduling', 'planlagt', 'cron', 'schedule', 'wakeup'] },
 ]

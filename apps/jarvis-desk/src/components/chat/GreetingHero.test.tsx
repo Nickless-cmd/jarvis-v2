@@ -45,12 +45,12 @@ describe('GreetingHero', () => {
     expect(screen.queryByText('slack')).not.toBeInTheDocument()
   })
 
-  it('Flere apps → kalder onOpenMarketplace', async () => {
+  it('har ingen «Flere apps»-knap — opsætningen hører i Marketplace', async () => {
+    // 13/10-2026 (Bjørn): «flere apps skal væk». Rækken viser de apps der
+    // mangler at blive sat op; resten hører i Marketplace, ikke på tom-skærmen.
     getConnectors.mockResolvedValue([])
-    const onOpen = vi.fn()
-    render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={onOpen}>c</GreetingHero>)
-    fireEvent.click(screen.getByText(/Flere apps/i))
-    expect(onOpen).toHaveBeenCalled()
+    render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
+    await waitFor(() => expect(screen.queryByText(/Flere apps/i)).not.toBeInTheDocument())
   })
 
   it('post-connect-hint: viser chip + Ja tak kalder onSuggest', async () => {

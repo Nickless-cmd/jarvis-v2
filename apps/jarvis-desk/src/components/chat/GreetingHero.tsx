@@ -26,11 +26,15 @@ const KODE_FORSLAG = [
 ]
 
 export function GreetingHero({
-  config, userName, onOpenMarketplace, onSuggest, mode = 'chat', children,
+  config, userName, onSuggest, mode = 'chat', children,
 }: {
   config?: ApiConfig
   userName: string
-  onOpenMarketplace: () => void
+  /** @deprecated 13/10-2026: «Flere apps»-knappen er væk fra tom-skærmen.
+   *  Opsætningen af apps hører i Marketplace, ikke her. Propen holdes i
+   *  signaturen et øjeblik så kaldestederne ikke skal røres i samme commit —
+   *  den bruges ikke længere. */
+  onOpenMarketplace?: () => void
   onSuggest?: (text: string) => void
   /** Hvilken flade man staar paa — afgoer hvilke forslag der giver mening. */
   mode?: 'chat' | 'code'
@@ -144,9 +148,6 @@ export function GreetingHero({
         {forbindFejl && (
           <p className="greeting-forbind-fejl" role="alert">{forbindFejl}</p>
         )}
-        <div className="greeting-more">
-          <button type="button" onClick={onOpenMarketplace}>Flere apps →</button>
-        </div>
       </div>
     </div>
   )

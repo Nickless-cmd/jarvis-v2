@@ -1680,10 +1680,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 6px 9px; border-radius: 8px;
   background: color-mix(in srgb, var(--error-fg, #ff6b6b) 12%, transparent);
   color: var(--error-fg, #ff8e8e); }
-.greeting-more { text-align: right; margin-top: 10px; }
-.greeting-more button { background: none; border: none; color: var(--fg-3); cursor: pointer;
-  font-size: 12px; padding: 4px 6px; border-radius: 6px; }
-.greeting-more button:hover { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .greeting-hint { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px;
   padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
   border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
@@ -2607,6 +2603,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * (Bjørn 2026-06-17: "der er stadig stort gap, det burde bare stå under composer"). */
 .composer-shell { width: 100%; }
 .composer-disclaimer { max-width: 820px; margin: 6px auto 0; text-align: center; font-size: 11px; color: var(--fg-3); opacity: 0.75; }
+/* Status-badges under disclaimeren (13/10-2026). De er status, ikke handling —
+ * derfor samme vaegt som disclaimer-linjen og ikke headerens panel-knapper. */
+.composer-footer-slot { display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap; max-width: 820px; margin: 8px auto 0; opacity: 0.85; }
 /* Notices (afbrudt/hang/fejl) centreret OVER composeren i stedet for i transcript */
 .composer-notices { max-width: 820px; margin: 0 auto 8px; display: flex; flex-direction: column; gap: 8px; }
 .composer-notices:empty { display: none; }

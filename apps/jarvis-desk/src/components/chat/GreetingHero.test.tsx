@@ -27,14 +27,22 @@ describe('GreetingHero', () => {
     expect(screen.getByText('composer')).toBeInTheDocument()
   })
 
-  it('viser oauth-apps med Gmail først + forbundne sidst (max 4) + ✓ på forbundne', async () => {
+  // 13/10-2026: sol/måne-glyphen er væk — hilsenen er ren tekst.
+  it('tegner ingen sol/måne-glyph', () => {
+    getConnectors.mockResolvedValue([])
+    render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
+    expect(screen.queryByText(/🌅|☀️|🌆|🌙/)).not.toBeInTheDocument()
+  })
+
+  it('viser kun IKKE-forbundne apps, Gmail først, max 3 — forbundne forsvinder', async () => {
     getConnectors.mockResolvedValue([oauthC('github', false), oauthC('gmail', false), oauthC('cal', false), oauthC('drive', false), oauthC('slack', true)])
     render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
     await waitFor(() => expect(screen.getByText('gmail')).toBeInTheDocument())
-    // forbundne vises også (med ✓), men kun 4 i alt → en af de ikke-forbundne klippes
+    // «slack» er forbundet → sat op én gang → væk fra rækken. Kun 3 vises.
     const names = screen.getAllByText(/^(github|gmail|cal|drive|slack)$/).map((n) => n.textContent)
     expect(names[0]).toBe('gmail') // Gmail først
-    expect(names.length).toBe(4)
+    expect(names.length).toBe(3)
+    expect(screen.queryByText('slack')).not.toBeInTheDocument()
   })
 
   it('Flere apps → kalder onOpenMarketplace', async () => {
@@ -55,11 +63,10 @@ describe('GreetingHero', () => {
     expect(onSuggest).toHaveBeenCalledWith('Nu kan jeg kigge i dine GitHub-issues — skal jeg?')
   })
 
-  it('Forbind kalder startConnect + openExternal', async () => {
+  it('klik på en app-pille kalder startConnect + openExternal', async () => {
     getConnectors.mockResolvedValue([oauthC('github', false)])
     render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
-    await waitFor(() => expect(screen.getByText('Forbind')).toBeInTheDocument())
-    fireEvent.click(screen.getByText('Forbind'))
+    fireEvent.click(await screen.findByText('github'))
     await waitFor(() => expect(startConnect).toHaveBeenCalledWith(cfg, 'github'))
   })
 
@@ -70,7 +77,7 @@ describe('GreetingHero', () => {
     const open = vi.fn(() => popup)
     vi.stubGlobal('open', open)
     render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
-    fireEvent.click(await screen.findByText('Forbind'))
+    fireEvent.click(await screen.findByText('github'))
     expect(open).toHaveBeenCalledWith('about:blank', '_blank')
     await waitFor(() => expect(popup.location.href).toBe('https://github.com/login/oauth/authorize?x'))
     vi.unstubAllGlobals()

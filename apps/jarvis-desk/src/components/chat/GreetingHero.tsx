@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { getConnectors, startConnect, type Connector } from '../../lib/connectorsApi'
-import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
+import { connectorIcon } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
 import { takePendingHint } from '../../lib/postConnect'
 import { prepareExternalWindow } from '../../lib/host'
@@ -50,15 +50,19 @@ export function GreetingHero({
     void getConnectors(config)
       .then((list) => {
         if (cancelled) return
-        // Vis OAuth-apps (både forbundne m. ✓ og ikke-forbundne) — Gmail først,
-        // forbundne sidst. Maks 4 (som Codex).
-        const oauth = list.filter((c) => c.kind === 'oauth' && c.status !== 'coming_soon')
+        // Kun IKKE-forbundne OAuth-apps — Gmail først. En app der er sat op én
+        // gang forsvinder fra rækken: opsætningen er en engangs-handling, ikke
+        // en fast del af skærmen (Bjørn 13/10-2026). Maks 3, så rækken bliver
+        // et diskret hjørne og ikke en blok.
+        const oauth = list.filter(
+          (c) => c.kind === 'oauth' && c.status !== 'coming_soon' && !c.connected,
+        )
         oauth.sort((a, b) => {
           if (a.id === 'gmail') return -1
           if (b.id === 'gmail') return 1
-          return Number(a.connected) - Number(b.connected)
+          return 0
         })
-        setSuggestions(oauth.slice(0, 4))
+        setSuggestions(oauth.slice(0, 3))
       })
       .catch(() => { /* tom — ingen forslag er fint */ })
     return () => { cancelled = true }
@@ -85,9 +89,10 @@ export function GreetingHero({
 
   return (
     <div className="greeting-hero">
+      {/* Ingen glyph og ingen ring: hilsenen ER tidspunktet, i ord.
+          (Bjørn 13/10-2026: «det icon med sol og måne passer ikk rigtigt ind».) */}
       <div className="greeting-top">
-        <div className="greeting-ring" style={{ ['--tint' as string]: g.tint }}>{g.glyph}</div>
-        <div className="greeting-hello">{g.hello}, {userName} {g.glyph}</div>
+        <div className="greeting-hello">{g.hello}, {userName}</div>
         <div className="greeting-line">{g.line}</div>
       </div>
 
@@ -118,35 +123,23 @@ export function GreetingHero({
 
       <div className="greeting-connectors">
         {suggestions.length > 0 && (
-          <>
-            <div className="greeting-connectors-row">
-              {suggestions.map((c) => {
-                const Icon = connectorIcon(c.icon)
-                const brand = connectorBrandColor(c.id)
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`greeting-connector ${c.connected ? 'is-connected' : ''}`}
-                    onClick={() => onConnect(c)}
-                    disabled={c.connected}
-                  >
-                    <span
-                      className="greeting-connector-icon"
-                      style={brand ? { background: brand, color: '#fff' } : undefined}
-                    ><Icon size={16} /></span>
-                    <span className="greeting-connector-body">
-                      <span className="greeting-connector-name">{c.name}</span>
-                      <span className="greeting-connector-desc">{c.desc}</span>
-                    </span>
-                    <span className="greeting-connector-cta">
-                      {c.connected ? '✓ Forbundet' : 'Forbind'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </>
+          <div className="greeting-connectors-row">
+            {suggestions.map((c) => {
+              const Icon = connectorIcon(c.icon)
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="greeting-connector"
+                  title={`Forbind ${c.name}`}
+                  onClick={() => onConnect(c)}
+                >
+                  <span className="greeting-connector-icon"><Icon size={14} /></span>
+                  <span className="greeting-connector-name">{c.name}</span>
+                </button>
+              )
+            })}
+          </div>
         )}
         {forbindFejl && (
           <p className="greeting-forbind-fejl" role="alert">{forbindFejl}</p>

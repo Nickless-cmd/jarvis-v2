@@ -106,6 +106,31 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     "genstart",
 })
 
+#: Kildetyper der KAN dispatches — starte et run når intet kører — men som
+#: ALDRIG må nægte en mutation. Den TREDJE klasse (13/10-2026).
+#:
+#: Grænsen er hele kontrakten: «kun det du selv har lovet kan blokere». En
+#: `wakeup` er netop det — Jarvis' egen forpligtelse, booket af ham selv — så
+#: den MÅ vække ham. Men magten til at låse det næste værktøjskald kommer fra
+#: `kraever_handling`, ikke herfra: sættet her siger kun «denne post må starte
+#: et run», og `kan_dispatch` rører ikke gating-flaget.
+#:
+#: HVORFOR det skal stå EKSPLICIT: målt 13/10-2026 står ALLE 148 `wakeup`-
+#: rækker med `kraever_handling=0`. Ikke fordi nogen besluttede det — fordi
+#: `opret_eller_hent` giver enhver gatende post en frist (`_FRIST_DAGE`), og
+#: `kraever_handling` falder ved udløb. Rækkerne er altså gamle. Uden dette
+#: led ville vækkerens kandidat-filter derfor afhænge af hvor længe siden
+#: vækningen blev booket — en usynlig afhængighed af en udløbstid. Sættet her
+#: er stabilt uanset alder, og det er den egenskab vækkeren skal bygge på.
+KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
+    "wakeup",
+})
+
+
+def kan_dispatch(kildetype: str) -> bool:
+    """Må denne kildetype starte et run når intet kører? Rent opslag."""
+    return str(kildetype or "").strip().lower() in KAN_DISPATCHES_KILDETYPER
+
 
 def _autentificeret_bruger_matcher(bruger_id: str) -> bool:
     """Er den autentificerede principal netop `bruger_id`?

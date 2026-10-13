@@ -167,13 +167,15 @@ const HOEJDE_SCRIPT = `
   var sidste = -1;
   function sig() {
     try {
-      // MÅL PÅ DET DER FAKTISK VOKSER. 13/10-2026: her stod
-      // \`document.body.scrollHeight\` — men server-dokumentet sætter
-      // \`overflow:hidden\` på html,body, og så kollapser body's scrollHeight
-      // til 0 i en sandkasse. Højden blev meldt som 0 + 24 = 24 px, klemt op
+      // MÅL PÅ DET DER FAKTISK VOKSER — OG VENT PÅ LAYOUTET.
+      // 13/10-2026: her stod et SYNKRONT kald ved parse. Målt i Chrome i en
+      // sandkasset iframe: SAMME dokument gav 0 px målt ved parse og 724 px
+      // målt efter load. Højden blev derfor meldt som 0 + 24 = 24 px, klemt op
       // på minimum 48, og rammen stod fast på sine 160 px mens indholdet blev
-      // klippet. Vi måler nu det HØJESTE af alle tre kandidater, så ét kollapset
-      // element ikke kan trække svaret ned.
+      // klippet. Det var TIMING — ikke overflow: med \`overflow:hidden\` måler
+      // alle fire kandidater 724 px, så den linje var uskyldig.
+      // Vi måler nu det HØJESTE af fire kandidater, så ét kollapset element
+      // ikke kan trække svaret ned.
       var kandidater = [
         document.body ? document.body.scrollHeight : 0,
         document.body ? document.body.offsetHeight : 0,

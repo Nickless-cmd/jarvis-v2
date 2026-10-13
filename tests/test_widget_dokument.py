@@ -108,21 +108,23 @@ def test_dokumentet_bruger_mobilens_bredde_og_tillader_knib_zoom():
 
 
 def test_dokumentet_KLIPPER_ikke_sit_eget_indhold():
-    """Dokumentet maa ikke klippe — klienten saetter hoejden (13/10-2026).
+    """Dokumentet maa ikke klippe — klienten saetter hoejden.
 
     Denne test hed tidligere `test_dokumentet_kan_ikke_scrolle_internt` og
-    kraevede `overflow:hidden`. Den paastand var FORKERT, og den laaste fejlen
-    inde: `scrollHeight` maaler ALTID hele indholdet — det er `clientHeight`
-    der maaler det synlige.
+    kraevede `overflow:hidden`, med den begrundelse at `scrollHeight` ellers
+    «maaler kun det SYNLIGE». Den begrundelse var forkert: `scrollHeight`
+    maaler ALTID hele indholdet — det er `clientHeight` der maaler det synlige.
 
-    Maalt i Chrome: med `overflow:hidden` paa html,body kollapser
-    `body.scrollHeight` til 0 inde i en sandkasse. Hoejden blev meldt som
-    0 + 24 = 24 px, klemt op paa minimum 48, og rammen stod fast paa sine
-    160 px mens indholdet blev klippet. Bjoern saa det paa baade 0.6.225 og
-    0.6.226 — rettelsen laa hele tiden i denne ene linje.
+    MEN: linjen var heller ikke fejlen. Det troede jeg et oejeblik, og det er
+    vaerd at skrive ned saa naeste ikke gaar samme vej. Maalt i Chrome i en
+    sandkasset iframe giver `overflow:hidden` og `overflow:visible` BEGGE
+    724 px — `scrollHeight` kollapser ikke. Den aegte aarsag til at Bjoerns
+    widget stod fast paa 160 px var TIMING: klientens script maalte synkront
+    ved parse (0 px) i stedet for efter load (724 px), samme dokument.
 
-    Retningen er derfor vendt med vilje: dokumentet skal VOKSE med sit
-    indhold, og klienten saetter rammens hoejde efter det.
+    Testen staar derfor paa det der ER sandt: dokumentet skal vokse med sit
+    indhold, og klienten saetter rammens hoejde. Den paastaar ikke at vaere
+    rettelsen.
     """
     d = pak("<p>x</p>")
     assert "overflow:hidden" not in d, (

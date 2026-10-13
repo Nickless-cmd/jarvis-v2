@@ -102,3 +102,35 @@ def test_runtime_awareness_marks_blocked_runtime_work_constrained(isolated_runti
         for item in tracked["items"]
     }
     assert canonical["runtime-awareness:runtime-task-backlog"]["status"] == "constrained"
+
+
+def test_surface_cache_overlever_et_helt_warmer_tick(isolated_runtime, monkeypatch) -> None:
+    """Surface-cachen skal være varm når prompt_assembly_cache_warmer fyrer igen.
+
+    Målt 13/10-2026: TTL'en stod på 120 s, mens warmerens ticks lå 259-297 s
+    fra hinanden (journal 14:00-14:19). Cachen udløb derfor i hullet mellem to
+    ticks, og både warmeren og enhver visible tur i hullet betalte den fulde
+    kolde genopbygning (~1,15 GB læst pr. gang, målt med strace).
+    """
+    tracking = __import__(
+        "core.services.runtime_awareness_signal_tracking",
+        fromlist=["build_runtime_awareness_signal_surface"],
+    )
+
+    class _Uur:
+        t = 0.0
+
+        def monotonic(self) -> float:
+            return self.t
+
+    ur = _Uur()
+    monkeypatch.setattr(tracking, "_time", ur)
+    monkeypatch.setattr(tracking, "_surface_cache_by_limit", {})
+
+    foerste = tracking.build_runtime_awareness_signal_surface(limit=8)
+    ur.t = 297.0  # længste målte interval mellem to warmer-ticks
+    andet = tracking.build_runtime_awareness_signal_surface(limit=8)
+
+    assert andet is foerste, (
+        "surface-cachen udløb før warmerens næste tick — TTL-kollisionen er tilbage"
+    )

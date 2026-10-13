@@ -29,11 +29,30 @@ _STALE_AFTER_DAYS = 7
 # This surface costs ~7s per call due to mutation-on-read (DB persist + status
 # refresh) over many sub-signals. Prompt assembly calls it 2-3x per visible
 # turn (autonomy_pressure, proactive_question_gate, rule_conclusions via
-# list_all_surfaces). 30s TTL keeps freshness aligned with heartbeat cadence
-# without re-running the full extract+persist+refresh pipeline on every call.
+# list_all_surfaces). The cache avoids re-running the full
+# extract+persist+refresh pipeline on every call.
 # Perf-fix 2026-05-08: 7.2s → ~0ms warm.
+#
+# ⚠️ INVARIANT (målt 13/10-2026): TTL'en SKAL være større end
+# prompt_assembly_cache_warmer's kadence — ellers udløber cachen i hullet
+# mellem to ticks, og hvert kald i hullet betaler den fulde kolde
+# genopbygning (målt med strace: ~1,15 GB læst pr. kold genopbygning).
+#
+# Historik: værdien stod på 120 s, mens warmeren fyrer med 259-297 s
+# mellemrum (målt i journal 14:00-14:19). Cachen udløb derfor ~2 min FØR
+# hvert tick, og var kold i over halvdelen af hver cykel — både warmeren og
+# enhver visible tur i hullet genopbyggede. Simuleret kaldmønster (fake ur,
+# 94 kald/time, tick hver 258 s): 120 s → 27 kolde genopbygninger/time,
+# 600 s → 6/time.
+#
+# Prisen er friskhed: runtime-awareness-delen af rule_conclusions kan nu være
+# op til ~10 min gammel i stedet for ~2. Signalernes indhold er hardware-,
+# browser- og memory-lags-tilstand — ikke tidskritisk. Er friskheden
+# vigtigere end bygerne, er 300 s (5 min, 12 genopbygninger/time) det næste
+# trin; 600 s er valgt fordi marginen skal dække scheduler-drift (målt op til
+# 297 s mellem ticks).
 import time as _time
-_SURFACE_CACHE_TTL = 120.0
+_SURFACE_CACHE_TTL = 600.0
 # Keyed by `limit` because callers pass different values (8 default,
 # 6 from autonomy_pressure / proactive_question_gate). Each gets its own slot.
 _surface_cache_by_limit: dict[int, tuple[float, dict]] = {}

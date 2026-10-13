@@ -23650,7 +23650,7 @@
       "created_at_formats": []
     },
     "private_brain_records": {
-      "digest": "a7:f6:ea:63:08:d5:a5:49:5c:89:38:10:ad:52:e8:49:46:ec:91:50:27:8c:0f:f2:26:3c:68:07:18:37:9c:76",
+      "digest": "b2:30:c7:28:8f:26:26:31:44:df:ac:8c:1a:50:56:bb:1b:31:4a:33:cf:ef:26:9b:26:55:18:a7:dc:4e:e2:c4",
       "schema": {
         "columns": [
           {
@@ -23791,6 +23791,30 @@
           }
         ],
         "indexes": [
+          {
+            "name": "idx_private_brain_records_active_created",
+            "unique": false,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "created_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": "record_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_private_brain_records_active_created ON private_brain_records(created_at DESC, record_id) WHERE status NOT IN ('released','archived','superseded','deleted')"
+          },
           {
             "name": "idx_private_brain_records_session",
             "unique": false,

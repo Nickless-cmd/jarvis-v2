@@ -43,6 +43,21 @@ from core.runtime.db import (
 
 logger = logging.getLogger(__name__)
 
+# Modulniveau-pool (13/10-2026). FØR: en ny ThreadPoolExecutor(max_workers=6)
+# blev oprettet INDE i build_cognitive_state_for_prompt, per kald, og lukket
+# igen med shutdown(wait=False) bagefter. Målt: funktionen kaldtes 752 gange
+# på ét døgn → ~4.500 tråde født og dræbt, og 45 % af runtime-processens CPU
+# lå i tråde der ikke længere fandtes. Tråd-oprettelse/-nedrivning VAR den
+# CPU man prøvede at spare. Poolen lever nu hele processens levetid.
+#
+# BEVIDST en EGEN pool, ikke delt med prompt_contracts "prompt-assembly"-pool:
+# de to nestes (prompt_contract submitter _safe_build_cognitive_state_for_prompt,
+# som kalder denne funktion). Delte de pool, kunne 6 ydre opgaver optage alle
+# 6 pladser mens de ventede på indre opgaver der aldrig fik en plads → deadlock.
+_HEAVY_EXECUTOR = ThreadPoolExecutor(
+    max_workers=6, thread_name_prefix="cognitive-state"
+)
+
 # Last assembled state for MC transparency
 _LAST_COGNITIVE_INJECTION: dict[str, object] = {}
 _LAST_COGNITIVE_INJECTION_AT: str = ""
@@ -345,9 +360,9 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
     # Fetching user_mood (a fast DB read) unblocks it. Launching it here,
     # at function entry, lets it overlap with EVERY other section's work
     # instead of waiting until we reach the associative-recall block.
-    _heavy_executor = ThreadPoolExecutor(
-        max_workers=6, thread_name_prefix="cognitive-state"
-    )
+    # Poolen er modulniveau (_HEAVY_EXECUTOR) — se kommentaren ved dens
+    # definition for hvorfor den ikke oprettes her.
+    _heavy_executor = _HEAVY_EXECUTOR
     _early_user_mood = _safe_call(get_latest_cognitive_user_emotional_state)
     future_recall_for_message = None
     # Baggrunds-recall (12. jul): når slået til kører recall_for_message i
@@ -396,7 +411,8 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
     future_experiment_state = _heavy_executor.submit(
         _build_cognitive_core_experiment_state_line, compact=compact
     )
-    _heavy_executor.shutdown(wait=False)
+    # INGEN shutdown her: poolen er delt på modulniveau og skal leve videre
+    # til næste kald. Futures resolves nedenfor via .result().
 
     # --- Ejerskab / Mineness (LLM-narrativized self-anchor) ---
     self_anchor = future_self_anchor.result()

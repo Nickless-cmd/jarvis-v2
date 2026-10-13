@@ -5,11 +5,11 @@ import { erBaggrund, erKodeSamtale, grupperAf, grupperSessioner, GRUPPE_ORDEN, G
 //   chat-*  278 · auto-dream-* 65 · auto-recurring-* 57 · auto-heartbeat-* 46
 //   auto-wakeup-* 11 · auto-work-* 1 · auto-autonomous-* 1 · proactivity-bridge 1
 describe('hvilken gruppe hører sessionen til', () => {
-  it('kender alle de autonome præfikser der findes i runtime', () => {
+  it('fortolker ikke længere legacy auto-præfikser som en UI-gruppe', () => {
     for (const id of ['auto-dream-20260908', 'auto-recurring-20260908',
       'auto-heartbeat-20260908', 'auto-wakeup-20260904', 'auto-work-1',
       'auto-autonomous-0']) {
-      expect(erBaggrund(id)).toBe(true)
+      expect(erBaggrund(id)).toBe(false)
     }
   })
 
@@ -28,8 +28,8 @@ describe('hvilken gruppe hører sessionen til', () => {
     expect(grupperAf({ id: 'chat-4' })).toBe('chat')
   })
 
-  it('en autonom kørsel er baggrund selv med workspace_kind', () => {
-    expect(grupperAf({ id: 'auto-work-1', workspace_kind: 'code' })).toBe('baggrund')
+  it('en uverificeret legacy-række følger sin kind og skjules ikke i klienten', () => {
+    expect(grupperAf({ id: 'auto-work-1', kind: 'code' })).toBe('kode')
   })
 })
 
@@ -47,8 +47,8 @@ describe('inddelingen', () => {
     expect(g.map((x) => x.gruppe)).toEqual(['chat', 'kode', 'baggrund'])
     // serveren sorterer på updated_at — en omsortering her ville betyde at
     // "øverst" holdt op med at betyde "senest"
-    expect(g[0]?.sessioner.map((s) => s.id)).toEqual(['chat-a', 'chat-c'])
-    expect(g[2]?.sessioner.map((s) => s.id)).toEqual(['auto-dream-1', 'proactivity-bridge'])
+    expect(g[0]?.sessioner.map((s) => s.id)).toEqual(['chat-a', 'auto-dream-1', 'chat-c'])
+    expect(g[2]?.sessioner.map((s) => s.id)).toEqual(['proactivity-bridge'])
   })
 
   it('tomme grupper vises ikke', () => {
@@ -146,8 +146,8 @@ describe('arten afgøres af kind', () => {
     expect(erKodeSamtale({ id: 'b', kind: 'Chat' })).toBe(false)
   })
 
-  it('baggrunds-kørsler er stadig baggrund, uanset kind', () => {
-    expect(grupperAf({ id: 'auto-dream-20260929', kind: 'code' })).toBe('baggrund')
+  it('kun den proaktive kanal er stadig baggrund, uanset kind', () => {
+    expect(grupperAf({ id: 'auto-dream-20260929', kind: 'code' })).toBe('kode')
     expect(grupperAf({ id: 'proactivity-bridge', kind: 'code' })).toBe('baggrund')
   })
 
@@ -183,9 +183,9 @@ describe('arkiverede samtaler', () => {
     expect(grupperAf({ id: 'chat-2', kind: 'chat', archived: 1 })).toBe('arkiv')
   })
 
-  it('arkiverede autonome står i arkiv, ikke blandt de kørsler der stadig lever', () => {
+  it('arkiverede legacy-rækker står fortsat i arkiv', () => {
     expect(grupperAf({ id: 'auto-dream-1', archived: 1 })).toBe('arkiv')
-    expect(grupperAf({ id: 'auto-dream-2' })).toBe('baggrund')
+    expect(grupperAf({ id: 'auto-dream-2' })).toBe('chat')
   })
 
   it('gruppen står NEDERST — efter det han selv har skrevet', () => {

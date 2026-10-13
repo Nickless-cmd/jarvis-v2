@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { listRoutineEvents, listRoutineRuns, type RoutineEvent, type RoutineRun } from '../../lib/routinesApi'
 
 const visiblePayload = (payload: Record<string, unknown> | undefined): string[] => {
   if (!payload) return []
-  const keys = ['visible', 'summary', 'message', 'result', 'diagnostic_code', 'status']
+  // Explicit allow-list: the API has already authorized and decrypted this
+  // owner's event. Keep internal identifiers/arguments out, but show the
+  // observable model text, tool name/output and terminal summaries.
+  const keys = [
+    'visible', 'summary', 'message', 'result', 'text', 'name', 'output',
+    'diagnostic_code', 'status',
+  ]
   return keys.flatMap((key) => {
     const value = payload[key]
     return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -18,9 +24,11 @@ export function RoutineRuns({ config, routineId }: { config: ApiConfig; routineI
   const [selected, setSelected] = useState<string | null>(null)
   const [events, setEvents] = useState<RoutineEvent[] | null>(null)
   const [error, setError] = useState('')
+  const eventRequest = useRef(0)
 
   useEffect(() => {
     let alive = true
+    eventRequest.current += 1
     setRuns(null); setSelected(null); setEvents(null); setError('')
     listRoutineRuns(config, routineId).then((items) => { if (alive) setRuns(items) })
       .catch((reason) => { if (alive) setError(reason instanceof Error ? reason.message : 'Kunne ikke hente kørsler') })
@@ -28,9 +36,15 @@ export function RoutineRuns({ config, routineId }: { config: ApiConfig; routineI
   }, [config, routineId])
 
   const open = (runId: string) => {
+    const request = ++eventRequest.current
     setSelected(runId); setEvents(null); setError('')
-    void listRoutineEvents(config, runId).then(setEvents)
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Kunne ikke hente hændelser'))
+    void listRoutineEvents(config, runId)
+      .then((items) => { if (request === eventRequest.current) setEvents(items) })
+      .catch((reason) => {
+        if (request === eventRequest.current) {
+          setError(reason instanceof Error ? reason.message : 'Kunne ikke hente hændelser')
+        }
+      })
   }
 
   if (!runs && !error) return <div className="routine-empty"><Loader2 size={14} className="spin" /> Henter kørsler…</div>

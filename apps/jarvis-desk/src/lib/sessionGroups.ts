@@ -59,12 +59,12 @@ export function erKodeSamtale(s: GrupperbarSession): boolean {
   return Boolean(s.workspace_kind)
 }
 
-/** Autonome kørsler og den proaktive kanal. Præfikserne er runtime'ens egne:
- *  `auto-dream-*`, `auto-recurring-*`, `auto-heartbeat-*`, `auto-wakeup-*`,
- *  `auto-work-*`, `auto-autonomous-*` — plus den ene faste `proactivity-bridge`. */
+/** Den proaktive kanal er fortsat en samtaleoverflade. Legacy `auto-*`-rækker
+ * skjules kun server-side, når et verificeret migrationsartefakt dækker dem;
+ * klienten må aldrig gætte privatliv eller migration ud fra et præfiks. */
 export function erBaggrund(id: string): boolean {
   const s = (id || '').toLowerCase()
-  return s.startsWith('auto-') || s === 'proactivity-bridge'
+  return s === 'proactivity-bridge'
 }
 
 export function grupperAf(s: GrupperbarSession): SessionGruppe {

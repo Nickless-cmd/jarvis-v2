@@ -1,7 +1,7 @@
 # Routines: first-class, private autonomous work
 
 **Date:** 2026-10-12
-**Status:** Approved design
+**Status:** Implemented for the approved Routine cutover (2026-10-13); approval continuation remains gated
 **Scope:** Jarvis runtime, API, migration, and Jarvis Desk
 
 ## 1. Purpose

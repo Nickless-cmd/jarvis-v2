@@ -19,8 +19,6 @@ const SESSIONER = [
     workspace_root: '/media/projects/jarvis-v2' },
   { id: 'chat-ddd', title: 'andet projekt', updated_at: 'x', workspace_kind: 'code',
     workspace_root: '/home/bs/andet' },
-  { id: 'auto-heartbeat-20260908', title: 'Autonom · Hjerteslag · 2026-09-08', updated_at: 'x' },
-  { id: 'auto-dream-20260908', title: 'Autonom · Drømme · 2026-09-08', updated_at: 'x' },
   { id: 'proactivity-bridge', title: '💭 Proaktive spørgsmål', updated_at: 'x' },
 ]
 
@@ -51,12 +49,12 @@ const vis = (surface: 'chat' | 'code' = 'chat') =>
 const gruppe = (navn: string) => screen.getByRole('button', { name: new RegExp(navn, 'i') })
 
 describe('sessions-listen er inddelt', () => {
-  it('chat-mode viser samtaler og de autonome — ikke kode', () => {
+  it('chat-mode viser samtaler og den proaktive kanal — ikke legacy-runs eller kode', () => {
     // Bjørn 8/9-2026: «istedet for at vise chat samtale i code mode og omvendt
     // … sådan de samtaler der hører til det pågældende mode kun bliver vist».
     vis('chat')
     expect(within(gruppe('samtaler')).getByText('2')).toBeInTheDocument()
-    expect(within(gruppe('proaktive & autonome')).getByText('3')).toBeInTheDocument()
+    expect(within(gruppe('proaktive & autonome')).getByText('1')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Projekter/i })).toBeNull()
     expect(screen.queryByText('ret lige den fil')).not.toBeInTheDocument()
   })
@@ -95,9 +93,8 @@ describe('sessions-listen er inddelt', () => {
     expect(onSearch).toHaveBeenCalled()
   })
 
-  it('de autonome er FOLDET SAMMEN — 181 kørsler ville drukne resten', () => {
+  it('den proaktive kanal er foldet sammen som udgangspunkt', () => {
     vis()
-    expect(screen.queryByText('Autonom · Hjerteslag · 2026-09-08')).not.toBeInTheDocument()
     expect(screen.queryByText('💭 Proaktive spørgsmål')).not.toBeInTheDocument()
     expect(gruppe('proaktive & autonome')).toHaveAttribute('aria-expanded', 'false')
   })

@@ -49,7 +49,7 @@ vi.mock('../lib/api', () => ({
   // vaeret roed siden. Ikke en aegte fejl, men en roed suite skjuler den
   // naeste der ER aegte.
   warmSession: vi.fn().mockResolvedValue(undefined),
-  followRun: vi.fn(() => ({ abort: vi.fn() })),
+  followRun: vi.fn(() => ({ abort: vi.fn(), getOffset: () => 0, getRunId: () => null })),
   uploadAttachment: vi.fn(async () => ({ id: 'att-1' })),
   // Opsamlingen af et ventende godkendelses-kort (20/9-2026): uden den
   // i mocken falder hele viewet, fordi StreamContext kalder den.
@@ -302,12 +302,12 @@ describe('ChatView integration', () => {
   }, 12000)
 
   it('kobler passiv desk-stream på igen efter et netværksbrud', async () => {
-    let onDone: (() => void) | undefined
+    let onDone: Parameters<typeof api.followRun>[3] | undefined
     vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-1', status: 'working' }])
     vi.mocked(api.followRun).mockClear()
     vi.mocked(api.followRun).mockImplementation((_cfg, _sid, _onEvent, done) => {
       onDone = done
-      return { abort: vi.fn() }
+      return { abort: vi.fn(), getOffset: () => 0, getRunId: () => 'run-1' }
     })
     try {
       render(
@@ -318,11 +318,11 @@ describe('ChatView integration', () => {
         </SessionProvider></SettingsProvider>,
       )
       await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(1))
-      act(() => onDone?.())
+      act(() => onDone?.('error'))
       await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(2), { timeout: 4000 })
     } finally {
       vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
-      vi.mocked(api.followRun).mockImplementation(() => ({ abort: vi.fn() }))
+      vi.mocked(api.followRun).mockImplementation(() => ({ abort: vi.fn(), getOffset: () => 0, getRunId: () => null }))
     }
   }, 6000)
 

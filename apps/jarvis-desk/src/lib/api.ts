@@ -969,62 +969,142 @@ export async function toggleCentralNerve(config: ApiConfig, nerve: string, enabl
   return apiFetch(config, `/central/nerve/${encodeURIComponent(nerve)}/toggle?enabled=${enabled}`, { method: 'POST' })
 }
 
-/** Token-stream det aktive autonome run i en session (desk-pickup af wakeup).
- *  GET SSE → v2-events til onEvent. Kortlivet (ingen reconnect): når runnet er
- *  færdigt lukker serveren, og onDone kaldes. Lader ChatView vise Jarvis'
- *  wakeup-svar token-for-token i stedet for at "dumpe" det ind. */
+export type FollowEndReason = 'terminal' | 'idle' | 'reconcile' | 'error'
+
+export interface FollowRunControl {
+  abort(): void
+  getOffset(): number
+  getRunId(): string | null
+}
+
+/** Passiv GET-follow med global frame-cursor. Starter aldrig et model-run. */
 export function followRun(
   config: ApiConfig,
   sessionId: string,
   onEvent: (ev: import('./sseProtocol').StreamEvent) => void,
-  onDone: () => void,
+  onDone: (reason: FollowEndReason) => void,
   runId?: string | null,
-): { abort: () => void } {
-  const ctrl = new AbortController()
+): FollowRunControl {
+  let ctrl: AbortController | null = null
+  let aborted = false
+  let generation = 0
+  let offset = 0
+  let currentRunId = runId ?? null
+  let finished = false
+  let attempt = 0
+
+  const finish = (reason: FollowEndReason) => {
+    if (finished || aborted) return
+    finished = true
+    onDone(reason)
+  }
+  const pause = (ms: number, myGeneration: number) => new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(!aborted && generation === myGeneration), ms)
+    if (aborted) { clearTimeout(timer); resolve(false) }
+  })
+
   const run = async () => {
-    const url = new URL(
-      runId
-        ? `/chat/runs/${encodeURIComponent(runId)}/subscribe?from_idx=0`
-        : `/chat/sessions/${encodeURIComponent(sessionId)}/live`,
-      config.apiBaseUrl,
-    ).toString()
-    const headers: Record<string, string> = { Accept: 'text/event-stream' }
-    if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
-    let resp: Response
-    try { resp = await fetch(url, { method: 'GET', headers, signal: ctrl.signal }) } catch { onDone(); return }
-    if (runId && resp.status === 404) {
-      onEvent({ type: 'message_stop' })
-      onDone()
-      return
-    }
-    if (!resp.ok || !resp.body) { onDone(); return }
-    const reader = resp.body.getReader()
-    const dec = new TextDecoder()
-    let buf = ''
-    try {
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buf += dec.decode(value, { stream: true })
-        let i: number
-        while ((i = buf.indexOf('\n\n')) !== -1) {
-          const block = buf.slice(0, i); buf = buf.slice(i + 2)
-          if (!block.trim()) continue
-          let data = ''
-          for (const line of block.split('\n')) {
-            if (line.startsWith('data:')) data += (data ? '\n' : '') + line.slice(5).trimStart()
-          }
-          if (!data) continue
-          try { onEvent(JSON.parse(data) as import('./sseProtocol').StreamEvent) } catch { /* skip malformet */ }
-        }
+    while (!aborted && !finished) {
+      const myGeneration = ++generation
+      ctrl = new AbortController()
+      const path = currentRunId
+        ? `/chat/runs/${encodeURIComponent(currentRunId)}/subscribe?from_idx=${offset}`
+        : `/chat/sessions/${encodeURIComponent(sessionId)}/live`
+      const url = new URL(path, config.apiBaseUrl).toString()
+      const headers: Record<string, string> = { Accept: 'text/event-stream' }
+      if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+      let resp: Response
+      try {
+        resp = await fetch(url, { method: 'GET', headers, signal: ctrl.signal })
+      } catch {
+        if (aborted || generation !== myGeneration) return
+        attempt += 1
+        if (attempt > 6) { finish('error'); return }
+        if (!await pause(Math.min(250 * 2 ** (attempt - 1), 5000), myGeneration)) return
+        continue
       }
-    } catch { /* aborted/network */ } finally {
-      try { reader.releaseLock() } catch { /* noop */ }
-      onDone()
+      if (aborted || generation !== myGeneration) return
+      const responseRunId = resp.headers.get('x-run-id')
+      if (responseRunId) currentRunId = responseRunId
+      if (resp.status === 204) { finish('idle'); return }
+      if (resp.status === 404 || resp.status === 410) { finish('reconcile'); return }
+      if (resp.status === 401 || resp.status === 403) {
+        if (resp.status === 401) reportUnauthorized()
+        finish('error')
+        return
+      }
+      if (resp.status === 503) {
+        attempt += 1
+        if (attempt > 6) { finish('error'); return }
+        if (!await pause(Math.min(250 * 2 ** (attempt - 1), 5000), myGeneration)) return
+        continue
+      }
+      if (!resp.ok || !resp.body) { finish('error'); return }
+
+      const reader = resp.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      let sawStop = false
+      try {
+        for (;;) {
+          const { value, done } = await reader.read()
+          if (done) break
+          if (aborted || generation !== myGeneration) return
+          buf += dec.decode(value, { stream: true })
+          let i: number
+          while ((i = buf.indexOf('\n\n')) !== -1) {
+            const block = buf.slice(0, i); buf = buf.slice(i + 2)
+            if (!block.trim()) continue
+            let data = ''
+            for (const line of block.split('\n')) {
+              if (line.startsWith('data:')) data += (data ? '\n' : '') + line.slice(5).trimStart()
+            }
+            if (!data) continue
+            let event: import('./sseProtocol').StreamEvent
+            try { event = JSON.parse(data) as import('./sseProtocol').StreamEvent } catch { continue }
+            if (aborted || generation !== myGeneration) return
+            if (event.type === 'system_event' && event.kind === 'relay_gap') {
+              const raw = event as unknown as { resume_idx?: unknown; payload?: { resume_idx?: unknown } }
+              const resume = Number(raw.resume_idx ?? raw.payload?.resume_idx)
+              if (Number.isFinite(resume) && resume >= 0) offset = resume
+            } else if (event.type !== 'ping') {
+              offset += 1
+            }
+            // Nyt autoritativt indhold beviser fremgang. Retry-loftet beskytter
+            // mod en ubrudt fejlspiral, ikke mod mange adskilte netværksbrud i
+            // et langt run.
+            if (event.type !== 'ping') attempt = 0
+            onEvent(event)
+            if (event.type === 'message_stop') {
+              sawStop = true
+              finish('terminal')
+              break
+            }
+          }
+          if (sawStop) break
+        }
+      } catch {
+        if (aborted || generation !== myGeneration) return
+      } finally {
+        try { reader.releaseLock() } catch { /* noop */ }
+      }
+      if (sawStop || finished || aborted) return
+      attempt += 1
+      if (attempt > 6) { finish('error'); return }
+      if (!await pause(Math.min(250 * 2 ** (attempt - 1), 5000), myGeneration)) return
     }
   }
   void run()
-  return { abort: () => ctrl.abort() }
+  return {
+    abort: () => {
+      if (aborted) return
+      aborted = true
+      generation += 1
+      ctrl?.abort()
+    },
+    getOffset: () => offset,
+    getRunId: () => currentRunId,
+  }
 }
 
 /** Kontekst-tærskler til composer-ringen (#9). compact_at = autocompact-punkt. */

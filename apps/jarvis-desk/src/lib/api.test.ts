@@ -20,13 +20,106 @@ it('passiv desk følger det konkrete run med GET', async () => {
   )
 })
 
-it('et forsvundet run afslutter reattach uden gentagne netvaerksforsoeg', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
-  const onEvent = vi.fn()
-  const onDone = vi.fn()
-  followRun(cfg, 's1', onEvent, onDone, 'finished-run')
-  await vi.waitFor(() => expect(onDone).toHaveBeenCalledOnce())
-  expect(onEvent).toHaveBeenCalledWith({ type: 'message_stop' })
+function sseResponse(events: unknown[]): Response {
+  const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
+  return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+}
+
+describe('followRun authoritative reconnect contract', () => {
+  it.each([404, 410])('%s reconciles without inventing message_stop', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status })))
+    const onEvent = vi.fn()
+    const onDone = vi.fn()
+    followRun(cfg, 's1', onEvent, onDone, 'finished-run')
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(onDone).toHaveBeenCalledWith('reconcile')
+    expect(onEvent).not.toHaveBeenCalled()
+  })
+
+  it.each([401, 403])('%s is an error and never a terminal', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status })))
+    const onEvent = vi.fn()
+    const onDone = vi.fn()
+    followRun(cfg, 's1', onEvent, onDone, 'run-auth')
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith('error'))
+    expect(onEvent).not.toHaveBeenCalled()
+  })
+
+  it('reconnects after 503 from the current cursor', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(sseResponse([{ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'a' } }]))
+        .mockResolvedValueOnce(new Response(null, { status: 503 }))
+        .mockResolvedValueOnce(sseResponse([{ type: 'message_stop' }]))
+      vi.stubGlobal('fetch', fetchMock)
+      const onDone = vi.fn()
+      const control = followRun(cfg, 's1', vi.fn(), onDone, 'run-retry')
+      await vi.runAllTimersAsync()
+      await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith('terminal'))
+      expect(fetchMock.mock.calls[1]?.[0]).toContain('from_idx=1')
+      expect(fetchMock.mock.calls[2]?.[0]).toContain('from_idx=1')
+      expect(control.getOffset()).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('pings do not advance and relay_gap replaces the cursor base', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(sseResponse([
+          { type: 'ping' },
+          { type: 'system_event', kind: 'relay_gap', resume_idx: 7, payload: {} },
+        ]))
+        .mockResolvedValueOnce(sseResponse([{ type: 'message_stop' }]))
+      vi.stubGlobal('fetch', fetchMock)
+      const done = vi.fn()
+      const control = followRun(cfg, 's1', vi.fn(), done, 'run-gap')
+      await vi.runAllTimersAsync()
+      await vi.waitFor(() => expect(done).toHaveBeenCalledWith('terminal'))
+      expect(fetchMock.mock.calls[1]?.[0]).toContain('from_idx=7')
+      expect(control.getOffset()).toBe(8)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a real message_stop completes exactly once', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse([{ type: 'message_stop' }])))
+    const onEvent = vi.fn()
+    const onDone = vi.fn()
+    const control = followRun(cfg, 's1', onEvent, onDone, 'run-stop')
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith('terminal'))
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(onEvent).toHaveBeenCalledWith({ type: 'message_stop' })
+    expect(control.getRunId()).toBe('run-stop')
+  })
+
+  it('real frame progress resets the retry budget for long runs', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchMock = vi.fn()
+      for (let i = 0; i < 7; i += 1) {
+        fetchMock.mockResolvedValueOnce(sseResponse([
+          { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: String(i) } },
+        ]))
+      }
+      fetchMock.mockResolvedValueOnce(sseResponse([{ type: 'message_stop' }]))
+      vi.stubGlobal('fetch', fetchMock)
+      const onDone = vi.fn()
+
+      followRun(cfg, 's1', vi.fn(), onDone, 'run-long')
+      await vi.runAllTimersAsync()
+      await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith('terminal'))
+
+      expect(fetchMock).toHaveBeenCalledTimes(8)
+      expect(onDone).not.toHaveBeenCalledWith('error')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('cancelRun', () => {

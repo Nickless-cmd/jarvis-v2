@@ -326,10 +326,10 @@ _Notification bridge — lets Jarvis push messages to the active session._
 | function | `delivery_succeeded` | `(result)` | True når notifikationen er ANTAGET til levering. | [src](../../../core/services/notification_bridge.py#L94) |
 | function | `_koe_afsender` | `(user_id, workspace_name)` | Kun de afsender-felter der faktisk er sat — se begrundelsen ved | [src](../../../core/services/notification_bridge.py#L107) |
 | function | `send_session_notification` | `(content, *, source=…, urgent=…, session_id=…, user_id=…, workspace_name=…, push=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L119) |
-| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L277) |
-| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L325) |
-| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L352) |
-| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L364) |
+| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L297) |
+| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L345) |
+| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L372) |
+| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L384) |
 
 ## `core/services/notification_router.py`
 _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._

@@ -184,6 +184,26 @@ def send_session_notification(
     except Exception:
         pass
 
+    # Interne markører — backstop (målt 14/10-2026). `visible_runs` scrubber
+    # sine egne to veje, men denne tragt har FEM kaldere uden om den
+    # (`send_webchat_message`, wakeup-nudges, restart-bekræftelsen,
+    # self-review, heartbeat). En gate-note der efterlignes i Jarvis' hale
+    # kunne derfor slippe ud herfra uscrubvet — præcis den lækage
+    # `visible_text_scrub` blev bygget til at lukke, blot ad en anden vej.
+    # Vagten sidder i tragten, ikke hos de fem kaldere: én placering kan
+    # ikke glemmes når en sjette kalder dukker op.
+    try:
+        from core.services.visible_text_scrub import fjern_interne_markoerer
+        content = fjern_interne_markoerer(content).strip()
+        if not content:
+            return {"status": "blocked", "error": "internal-marker-only-content"}
+    except Exception as exc:  # noqa: BLE001 — scrubberen er en backstop, ikke en port
+        # Kan scrubberen ikke importeres eller kaster, leveres beskeden
+        # USCRUBBET frem for ikke at leveres: en notifikation der forsvinder
+        # tavst er værre end en der baerer en note. Fejlen logges, saa den
+        # ikke er tavs — det er hele grunden til at hooken findes.
+        logger.warning("notification_bridge: markoer-scrub kunne ikke koere: %s", exc)
+
     # Use the pinned session if set (e.g. the session currently active in the user's browser),
     # otherwise fall back to the most recently updated session that has user messages
     # (to avoid sending to autonomous-run-only sessions which the user may not be watching).

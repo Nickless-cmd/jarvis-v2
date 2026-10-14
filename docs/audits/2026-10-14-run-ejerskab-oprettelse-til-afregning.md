@@ -71,16 +71,26 @@ Bindingen skal komme fra **oprettelsespunktet**, ikke fra rammen. Skitse:
 Generatoren er vores egen og får id'et som argument, så en fremmed ramme kan
 ikke bære det.
 
-**Uafklaret — og det afgør om designet virker:** *hvorfor* et fremmed id
-overhovedet nåede vores strøm. To mekanismer giver modsat svar:
+**Premissen er nu afgjort — statisk, i kilden (målt 14/10-2026 efter auditten).**
+Spørgsmålet var *hvorfor* et fremmed id kan nå vores strøm. Den ene af de to
+mekanismer er udelukket:
 
-- Rammen kom fra en **anden** `start_visible_run`-kald → stemplet virker.
-- **Vores egen** generator adopterede et fremmed run (fx via den globale
-  aktive-run-slot, `visible_runs.py:722`) → vores eget stempel står på den, og
-  stemplet hjælper ikke.
+- **Vores egen generator kan IKKE adoptere et fremmed run.** `start_visible_run`
+  genererer sit id lokalt (`run_id=f"visible-{uuid4().hex}"`,
+  `visible_runs.py:964`), og hver `run_id` der emitteres kommer fra `run.run_id`
+  (`:1264`, `:1328`). Den globale aktiv-run-slot bruges kun til at **rydde**
+  (`_set_active_visible_run({})`, `:745`, `:785`) og til at **læse** `run_id` for
+  levetids-tjek (`:722`, `:768`) — den skriver aldrig et id ind i runnet.
+- Derfor må det fremmede id være kommet fra **en anden `start_visible_run`-kalds
+  frames**, der løb ind i vores strøm.
 
-Mekanismen er **ikke målt**. Den kræver en levende kollision at reproducere, og
-den bør måles før nogen bygger stempelmekanikken.
+**Konsekvens for designet: stemplet virker.** En ramme fra et andet kald bærer
+*det* kalds wrapper-id, ikke vores — så `_consume` kan skelne dem. Premissen er
+dermed ikke længere et åbent punkt.
+
+**Hvad der stadig ikke er målt:** *hvor* de to strømme blandes — hvilket led der
+lækker frames mellem to samtidige runs i samme session. Stemplet gør afregningen
+immun over for blandingen, men det kurérer ikke blandingen selv.
 
 ## Ærlig begrænsning
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 
-def test_past_context_router_calls_recall_only_for_context_cues(monkeypatch):
+def test_past_context_router_is_noop_because_bundle_owns_recall(monkeypatch):
     from core.services import past_context_router as pcr
     import core.services.recall as recall_mod
 
@@ -18,9 +18,8 @@ def test_past_context_router_calls_recall_only_for_context_cues(monkeypatch):
         }
 
     monkeypatch.setattr(recall_mod, "recall", fake_recall)
-    assert pcr.build_past_context_section("kan du huske hvad vi besluttede?") \
-        == "Relevant tidligere kontekst:\n- [chat] Vi besluttede at bruge recall først."
-    assert calls and calls[0][1]["sources"] == ["session_summary", "chat"]
+    assert pcr.build_past_context_section("kan du huske hvad vi besluttede?") == ""
+    assert calls == []
     assert pcr.build_past_context_section("hej") == ""
 
 

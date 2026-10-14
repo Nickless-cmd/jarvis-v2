@@ -20,6 +20,11 @@ def isolated_db(monkeypatch, tmp_path):
         "core.services.sensory_archive",
     ]:
         importlib.reload(__import__(mod_name, fromlist=[""]))
+    from core.identity.workspace_context import user_context
+    from core.services import scoped_recall_policy
+    monkeypatch.setattr(scoped_recall_policy, "recall_enabled", lambda: True)
+    with user_context(discord_id="test-user"):
+        yield
 
 
 class TestExecRecordSensoryMemory:

@@ -81,8 +81,7 @@ def test_emit_is_fire_and_forget(monkeypatch):
     mrt.emit_recall_empty(tool="search_memory", query="test")
 
 
-def test_emit_truncates_long_query(monkeypatch):
-    """emit_recall_empty caps query length to 200 chars."""
+def test_emit_never_persists_query_or_identity(monkeypatch):
     captured = {}
     def _capture(kind, payload, **kw):
         captured["kind"] = kind
@@ -91,7 +90,8 @@ def test_emit_truncates_long_query(monkeypatch):
     long_query = "x" * 1000
     mrt.emit_recall_empty(tool="search_memory", query=long_query)
     assert captured["kind"] == "memory.recall_empty"
-    assert len(captured["payload"]["query"]) == 200
+    assert "query" not in captured["payload"]
+    assert "workspace_id" not in captured["payload"]
 
 
 def test_emit_includes_month_key(monkeypatch):

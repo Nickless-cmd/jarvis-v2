@@ -5,6 +5,13 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import core.services.agent_observation_compressor as aoc
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def scoped_observations(monkeypatch):
+    monkeypatch.setattr(aoc.scoped_recall_policy, "recall_enabled", lambda: True)
+    monkeypatch.setattr(aoc.scoped_recall_policy, "require_private_scope", lambda: "u1")
 
 
 def test_compress_skips_empty_output(monkeypatch):
@@ -48,9 +55,11 @@ def test_list_observations_filters_by_role(monkeypatch):
     now = datetime.now(UTC).isoformat()
     state = [
         {"obs_id": "o1", "role": "researcher", "recorded_at": now,
+         "user_id": "u1",
          "goal": "g1", "compression_ratio": 3.0, "compressed_chars": 100,
          "compressed_text": "a"},
         {"obs_id": "o2", "role": "critic", "recorded_at": now,
+         "user_id": "u1",
          "goal": "g2", "compression_ratio": 2.0, "compressed_chars": 80,
          "compressed_text": "b"},
     ]
@@ -65,8 +74,10 @@ def test_list_observations_respects_days_back(monkeypatch):
     fresh = datetime.now(UTC).isoformat()
     state = [
         {"obs_id": "old", "role": "r", "recorded_at": old, "goal": "",
+         "user_id": "u1",
          "compression_ratio": 1, "compressed_chars": 1, "compressed_text": ""},
         {"obs_id": "fresh", "role": "r", "recorded_at": fresh, "goal": "",
+         "user_id": "u1",
          "compression_ratio": 1, "compressed_chars": 1, "compressed_text": ""},
     ]
     monkeypatch.setattr(aoc, "load_json", lambda *a, **k: list(state))
@@ -76,7 +87,7 @@ def test_list_observations_respects_days_back(monkeypatch):
 
 
 def test_get_observation_by_id(monkeypatch):
-    state = [{"obs_id": "found", "role": "r", "compressed_text": "hi"}]
+    state = [{"obs_id": "found", "role": "r", "compressed_text": "hi", "user_id": "u1"}]
     monkeypatch.setattr(aoc, "load_json", lambda *a, **k: list(state))
     assert aoc.get_agent_observation("found") is not None
     assert aoc.get_agent_observation("notfound") is None
@@ -85,6 +96,7 @@ def test_get_observation_by_id(monkeypatch):
 def test_mark_stale_marks_old_records(monkeypatch):
     state: list = [
         {"obs_id": "old", "recorded_at": (datetime.now(UTC) - timedelta(days=20)).isoformat(),
+         "user_id": "u1",
          "stale": False},
         {"obs_id": "fresh", "recorded_at": datetime.now(UTC).isoformat(), "stale": False},
     ]

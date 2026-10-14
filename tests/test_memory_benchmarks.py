@@ -245,6 +245,8 @@ class TestD2Benchmarks:
         """
         query = "memory architecture"
         result = multi_signal_recall(query=query, total_limit=6, with_mood=False)
+        if result.get("status") == "disabled":
+            pytest.skip("scoped recall is intentionally disabled for rollout")
         assert result["status"] == "ok"
         sources = set(
             str(r.get("source", "?")) for r in (result.get("results") or [])
@@ -281,22 +283,23 @@ class TestD2Benchmarks:
 def test_empty_query_unified():
     """Tom query — unified_recall bør returnere tomt resultat."""
     r = unified_recall(query="")
-    assert r["status"] == "ok"
+    assert r["status"] in {"ok", "disabled"}
     assert r["count"] == 0
 
 
 def test_empty_query_multi_signal():
     """Tom query — multi_signal_recall bør returnere tomt resultat."""
     r = multi_signal_recall(query="")
-    assert r["status"] == "ok"
+    assert r["status"] in {"ok", "disabled"}
     assert r["count"] == 0
-    assert r["multi_signal"] is False
+    if r["status"] == "ok":
+        assert r["multi_signal"] is False
 
 
 def test_empty_query_cold_tier():
     """Tom query — cold_tier_recall bør returnere tomt resultat."""
     r = cold_tier_recall(query="", include_private_brain=True)
-    assert r["status"] == "ok"
+    assert r["status"] in {"ok", "disabled"}
     assert r["count"] == 0
 
 

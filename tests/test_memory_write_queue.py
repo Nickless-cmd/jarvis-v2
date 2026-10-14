@@ -23,7 +23,10 @@ def fresh_queue(monkeypatch, tmp_path):
         importlib.reload(__import__(mod_name, fromlist=[""]))
 
     from core.services import memory_write_queue as mwq
-    return mwq
+    from core.identity.workspace_context import user_context
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "test-user")
+    with user_context(discord_id="test-user"):
+        yield mwq
 
 
 class TestEnqueueWrite:

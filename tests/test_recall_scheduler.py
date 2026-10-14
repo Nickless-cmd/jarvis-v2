@@ -17,10 +17,10 @@ import core.services.recall_scheduler as rs
 @pytest.fixture(autouse=True)
 def _reset_scheduler():
     with rs._recall_lock:
-        rs._recall_running = False
+        rs._recall_running_users.clear()
     yield
     with rs._recall_lock:
-        rs._recall_running = False
+        rs._recall_running_users.clear()
 
 
 def _wait_done(timeout: float = 3.0) -> None:
@@ -28,7 +28,7 @@ def _wait_done(timeout: float = 3.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         with rs._recall_lock:
-            if not rs._recall_running:
+            if not rs._recall_running_users:
                 return
         time.sleep(0.01)
 
@@ -44,6 +44,8 @@ def test_triggers_recall_with_actual_message(monkeypatch):
         return []
 
     monkeypatch.setattr(rs, "background_recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "require_private_scope", lambda: "member-1")
     monkeypatch.setattr(rs, "_build_emotional_state", lambda: {"joy": 0.4})
     import core.services.associative_recall as ar
     monkeypatch.setattr(ar, "recall_for_message", _fake_recall)
@@ -63,6 +65,8 @@ def test_kill_switch_off_skips(monkeypatch):
         return []
 
     monkeypatch.setattr(rs, "background_recall_enabled", lambda: False)
+    monkeypatch.setattr(rs, "recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "require_private_scope", lambda: "member-1")
     import core.services.associative_recall as ar
     monkeypatch.setattr(ar, "recall_for_message", _fake_recall)
 
@@ -74,6 +78,8 @@ def test_kill_switch_off_skips(monkeypatch):
 
 def test_empty_message_is_noop(monkeypatch):
     monkeypatch.setattr(rs, "background_recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "require_private_scope", lambda: "member-1")
     assert rs.trigger_background_recall("") is False
     assert rs.trigger_background_recall("   ") is False
 
@@ -88,6 +94,8 @@ def test_does_not_stack_concurrent_recalls(monkeypatch):
         return []
 
     monkeypatch.setattr(rs, "background_recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "require_private_scope", lambda: "member-1")
     monkeypatch.setattr(rs, "_build_emotional_state", lambda: {})
     import core.services.associative_recall as ar
     monkeypatch.setattr(ar, "recall_for_message", _slow_recall)
@@ -106,6 +114,8 @@ def test_self_safe_when_recall_raises(monkeypatch):
         raise RuntimeError("scoring exploded")
 
     monkeypatch.setattr(rs, "background_recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "recall_enabled", lambda: True)
+    monkeypatch.setattr(rs, "require_private_scope", lambda: "member-1")
     monkeypatch.setattr(rs, "_build_emotional_state", lambda: {})
     import core.services.associative_recall as ar
     monkeypatch.setattr(ar, "recall_for_message", _boom)
@@ -115,4 +125,4 @@ def test_self_safe_when_recall_raises(monkeypatch):
     _wait_done()
     # flag must be released even though recall raised
     with rs._recall_lock:
-        assert rs._recall_running is False
+        assert not rs._recall_running_users

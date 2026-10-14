@@ -10,6 +10,12 @@ import numpy as np
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def scoped_recall(monkeypatch):
+    monkeypatch.setattr("core.services.scoped_recall_policy.recall_enabled", lambda: True)
+    monkeypatch.setattr("core.identity.workspace_context.current_role", lambda: "owner")
+
+
 @pytest.fixture
 def e2e(tmp_path, monkeypatch):
     from core.services import jarvis_brain
@@ -101,7 +107,10 @@ def test_e2e_visibility_gate_prevents_leakage(e2e, monkeypatch):
     assert r["status"] == "ok"
     reindex_once()
 
-    # Public_safe ceiling — intimate must not appear
+    monkeypatch.setattr("core.identity.workspace_context.current_role", lambda: "member")
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "member-1")
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "owner-1")
+    # Bound member ceiling — intimate must not appear; caller argument is ignored.
     sr = search_jarvis_brain(
         query="alpha intimate",
         session_visibility_ceiling="public_safe",

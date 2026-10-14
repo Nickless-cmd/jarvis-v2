@@ -2,6 +2,18 @@
 capture med dedup). De 4 ikke-wirede kilder kalder nu capture_conclusion."""
 from __future__ import annotations
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def scoped_reasoning_user(isolated_runtime):
+    from core.identity.workspace_context import user_context
+    from core.services.scoped_recall_policy import set_recall_enabled
+
+    set_recall_enabled(True)
+    with user_context(discord_id="test-user"):
+        yield
+
 
 def _rows(source: str | None = None) -> int:
     from core.services.reasoning_store import recall_reasoning

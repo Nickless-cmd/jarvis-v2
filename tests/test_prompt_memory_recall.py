@@ -1,8 +1,8 @@
-"""The extracted background recalls still serve cached results without waiting."""
+"""Previous-query background recall is retired."""
 from __future__ import annotations
 
 
-def test_background_recall_serves_previous_result_without_blocking(monkeypatch):
+def test_background_recall_never_serves_previous_query(monkeypatch):
     from core.services import memory_hierarchy, memory_recall_engine, prompt_memory_recall
 
     monkeypatch.setattr(memory_hierarchy, "recall_before_act_summary", lambda **kw: "rba-result")
@@ -28,5 +28,5 @@ def test_background_recall_serves_previous_result_without_blocking(monkeypatch):
     prompt_memory_recall.append_background_recall(
         "Hvad aftalte vi sidst?", session_id, second, second_inputs, lambda *args: None,
     )
-    assert second == ["rba-result", "msr-result"]
-    assert "recall-before-act (cached, non-blocking)" in second_inputs
+    assert second == []
+    assert second_inputs == []

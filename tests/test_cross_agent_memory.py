@@ -5,6 +5,15 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import core.services.cross_agent_memory as cam
+from core.identity.workspace_context import user_context
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def scoped_user(monkeypatch):
+    monkeypatch.setattr(cam.scoped_recall_policy, "recall_enabled", lambda: True, raising=False)
+    with user_context(discord_id="u1"):
+        yield
 
 
 def _fake_obs(role: str, goal: str, text: str, days_ago: float = 1.0, stale: bool = False):
@@ -16,6 +25,7 @@ def _fake_obs(role: str, goal: str, text: str, days_ago: float = 1.0, stale: boo
         "compressed_text": text,
         "recorded_at": ts,
         "stale": stale,
+        "user_id": "u1",
     }
 
 
@@ -92,3 +102,14 @@ def test_recall_section_formats_results():
     assert section is not None
     assert "found memory note" in section
     assert "planner" in section
+
+
+def test_cross_agent_recall_is_per_user(monkeypatch):
+    first = _fake_obs("planner", "alpha", "alpha database")
+    second = _fake_obs("critic", "alpha", "alpha private")
+    second["user_id"] = "u2"
+    with patch.object(cam, "_all_observations", wraps=cam._all_observations), \
+         patch.object(cam, "load_json", return_value=[first, second]):
+        with user_context(discord_id="u1"):
+            rows = cam.cross_agent_recall(query="alpha", requesting_role="researcher")["results"]
+    assert {row["preview"] for row in rows} == {"alpha database"}

@@ -14,6 +14,12 @@ import numpy as np
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def scoped_recall(monkeypatch):
+    monkeypatch.setattr("core.services.scoped_recall_policy.recall_enabled", lambda: True)
+    monkeypatch.setattr("core.identity.workspace_context.current_role", lambda: "owner")
+
+
 @pytest.fixture
 def brain(tmp_path, monkeypatch):
     from core.services import jarvis_brain

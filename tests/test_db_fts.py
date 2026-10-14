@@ -8,6 +8,17 @@ import pytest
 from core.runtime import db_fts
 
 
+@pytest.fixture(autouse=True)
+def bound_test_user():
+    from core.identity.workspace_context import reset_context, set_context
+
+    token = set_context(workspace_name="test", user_id="test-uid")
+    try:
+        yield
+    finally:
+        reset_context(token)
+
+
 def _mem_db() -> sqlite3.Connection:
     c = sqlite3.connect(":memory:")
     c.execute(
@@ -48,6 +59,7 @@ def test_ensure_creates_tables_and_backfills_existing_rows(conn):
         "INSERT INTO session_summaries (session_id, summary, created_at) VALUES ('s1', "
         "'Emne: pfsense api-nøgle flyttet til .env. Resultat: python-dotenv tilføjet.', '2026-09-03T10:00:00')"
     )
+    _stempel(conn, "s1", "test-uid")
     ready = db_fts.ensure_fts_tables(conn)
     assert "session_summaries_fts" in ready and "chat_messages_fts" in ready
     hits = db_fts.search_session_summaries("pfsense nøgle")
@@ -58,12 +70,12 @@ def test_ensure_creates_tables_and_backfills_existing_rows(conn):
 def test_triggers_keep_fts_in_sync(conn):
     db_fts.ensure_fts_tables(conn)
     conn.execute(
-        "INSERT INTO chat_messages (message_id, session_id, role, content, created_at) VALUES "
-        "('m1', 'chat-1', 'assistant', 'Vi besluttede at flytte pfsense-nøglen til .env i går.', '2026-09-03T10:00:00')"
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) VALUES "
+        "('m1', 'chat-1', 'assistant', 'Vi besluttede at flytte pfsense-nøglen til .env i går.', 'test-uid', '2026-09-03T10:00:00')"
     )
     conn.execute(
-        "INSERT INTO chat_messages (message_id, session_id, role, content, created_at) VALUES "
-        "('m2', 'chat-2', 'user', 'hvad med vejret i Svendborg?', '2026-09-03T10:01:00')"
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) VALUES "
+        "('m2', 'chat-2', 'user', 'hvad med vejret i Svendborg?', 'test-uid', '2026-09-03T10:01:00')"
     )
     hits = db_fts.search_chat_messages("pfsense nøgle")
     assert [h["message_id"] for h in hits] == ["m1"]
@@ -132,13 +144,8 @@ def test_search_scopes_to_current_user(conn):
         reset_context(t)
 
 
-def test_search_lets_unstamped_legacy_through(conn):
-    """Ustemplede (enbruger-æraen) sessioner må ikke forsvinde for nogen.
-
-    25.212 af 74.411 beskeder har ingen user_id. Scopede vi dem væk, ville folk
-    miste deres egen historik — så filteret må kun udelukke det der BEVISELIGT
-    tilhører en anden.
-    """
+def test_search_hides_unstamped_legacy_until_ownership_migration(conn):
+    """Unowned legacy history is never exposed through scoped recall."""
     from core.identity.workspace_context import reset_context, set_context
 
     conn.execute(
@@ -155,7 +162,7 @@ def test_search_lets_unstamped_legacy_through(conn):
     t = set_context(workspace_name="bjorn", user_id="owner-uid")
     try:
         sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
-        assert "s-legacy" in sids, "ustemplet historik må ikke blive usynlig for sin ejer"
+        assert "s-legacy" not in sids
         assert "s-other" not in sids
     finally:
         reset_context(t)

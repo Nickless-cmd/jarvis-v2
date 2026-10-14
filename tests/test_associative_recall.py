@@ -22,8 +22,10 @@ def _clear_recall_persistence():
     def _wipe():
         try:
             import core.services.associative_recall as ar
+            ar.recall_enabled = lambda: True
+            ar.require_private_scope = lambda: "test-user"
             ar._clear_persisted_memories()
-            ar._active_memories.clear()
+            ar._active_memories_by_user.clear()
         except Exception:
             pass
 
@@ -38,7 +40,7 @@ def _clear_recall_persistence():
 
 def test_get_experiential_memory_candidates_empty(isolated_runtime) -> None:
     db = isolated_runtime.db
-    result = db.get_experiential_memory_candidates(limit=20)
+    result = db.get_experiential_memory_candidates(limit=20, user_id="test-user")
     assert result == []
 
 
@@ -49,20 +51,23 @@ def test_get_experiential_memory_candidates_ordering(isolated_runtime) -> None:
         narrative="Low importance memory",
         topic="testing",
         importance=0.3,
+        user_id="test-user",
     )
     db.insert_cognitive_experiential_memory(
         memory_id="mem-high",
         narrative="High importance memory",
         topic="testing",
         importance=0.9,
+        user_id="test-user",
     )
     db.insert_cognitive_experiential_memory(
         memory_id="mem-mid",
         narrative="Medium importance memory",
         topic="testing",
         importance=0.6,
+        user_id="test-user",
     )
-    result = db.get_experiential_memory_candidates(limit=20)
+    result = db.get_experiential_memory_candidates(limit=20, user_id="test-user")
     assert len(result) == 3
     # Ordered by importance DESC
     assert result[0]["memory_id"] == "mem-high"
@@ -146,37 +151,39 @@ def _fresh_ar():
     import importlib
     import core.services.associative_recall as ar
     importlib.reload(ar)
+    ar.recall_enabled = lambda: True
+    ar.require_private_scope = lambda: "test-user"
     return ar
 
 
 def test_build_recall_prompt_section_empty() -> None:
     ar = _fresh_ar()
-    result = ar.build_recall_prompt_section()
+    result = ar.build_recall_prompt_section("anything")
     assert result == ""
 
 
 def test_clear_session_recall_resets_state() -> None:
     ar = _fresh_ar()
-    ar._active_memories["mem-1"] = {
+    ar._active_state()["mem-1"] = {
         "memory_id": "mem-1",
         "narrative": "We fixed a bug",
         "topic": "debugging",
         "score": 0.85,
     }
     ar.clear_session_recall()
-    assert ar._active_memories == {}
-    assert ar.build_recall_prompt_section() == ""
+    assert ar._active_state() == {}
+    assert ar.build_recall_prompt_section("debugging") == ""
 
 
 def test_build_recall_prompt_section_formats_correctly() -> None:
     ar = _fresh_ar()
-    ar._active_memories["mem-1"] = {
+    ar._active_state()["mem-1"] = {
         "memory_id": "mem-1",
         "narrative": "We fixed a critical deployment bug together",
         "topic": "deployment",
         "score": 0.85,
     }
-    result = ar.build_recall_prompt_section()
+    result = ar.build_recall_prompt_section("deployment bug")
     assert "deployment" in result
     assert "0.85" in result
     assert "mem-1" not in result  # memory_id not exposed to prompt
@@ -206,13 +213,13 @@ def test_apply_weak_recall_to_emotions_triggers_concept() -> None:
 def test_cap_enforcement_at_five_memories() -> None:
     ar = _fresh_ar()
     for i in range(5):
-        ar._active_memories[f"mem-{i}"] = {
+        ar._active_state()[f"mem-{i}"] = {
             "memory_id": f"mem-{i}",
             "narrative": f"Memory {i}",
             "topic": "test",
             "score": 0.5 + i * 0.05,
         }
-    assert len(ar._active_memories) == 5
+    assert len(ar._active_state()) == 5
 
     ar._add_to_active({
         "memory_id": "mem-strong",
@@ -220,9 +227,9 @@ def test_cap_enforcement_at_five_memories() -> None:
         "topic": "test",
         "score": 0.95,
     })
-    assert len(ar._active_memories) == 5
-    assert "mem-0" not in ar._active_memories  # weakest (0.5) evicted
-    assert "mem-strong" in ar._active_memories
+    assert len(ar._active_state()) == 5
+    assert "mem-0" not in ar._active_state()  # weakest (0.5) evicted
+    assert "mem-strong" in ar._active_state()
 
 
 def test_topic_repetition_multiplier() -> None:
@@ -253,7 +260,9 @@ def test_cognitive_state_includes_recall_section(isolated_runtime) -> None:
     import core.services.associative_recall as ar_mod
     importlib.reload(ar_mod)
 
-    ar_mod._active_memories["mem-test"] = {
+    ar_mod.recall_enabled = lambda: True
+    ar_mod.require_private_scope = lambda: "test-user"
+    ar_mod._active_state()["mem-test"] = {
         "memory_id": "mem-test",
         "narrative": "We debugged a tricky race condition together",
         "topic": "concurrency",
@@ -265,7 +274,29 @@ def test_cognitive_state_includes_recall_section(isolated_runtime) -> None:
 
     result = csa.build_cognitive_state_for_prompt(compact=False)
     assert result is not None
-    assert "concurrency" in result or "race condition" in result
+    assert "concurrency" not in result and "race condition" not in result
+
+
+def test_active_associations_never_cross_users(monkeypatch):
+    ar = _fresh_ar()
+    current = {"uid": "u1"}
+    monkeypatch.setattr(ar, "require_private_scope", lambda: current["uid"])
+    ar._add_to_active({
+        "memory_id": "m1", "narrative": "database migration",
+        "topic": "database", "score": 0.9,
+    })
+    current["uid"] = "u2"
+    assert ar.build_recall_prompt_section("database migration") == ""
+
+
+def test_association_must_match_current_query():
+    ar = _fresh_ar()
+    ar._add_to_active({
+        "memory_id": "m1", "narrative": "database migration",
+        "topic": "database", "score": 0.9,
+    })
+    assert ar.build_recall_prompt_section("middag og vejret") == ""
+    assert "database migration" in ar.build_recall_prompt_section("database migration")
 
 
 def test_observe_assoc_recall_scalar_only(monkeypatch):

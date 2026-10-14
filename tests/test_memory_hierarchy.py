@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+import pytest
 
 from core.services.memory_hierarchy import (
     _hot_tier_snapshot,
@@ -10,6 +11,11 @@ from core.services.memory_hierarchy import (
     recall_before_act,
     recall_before_act_summary,
 )
+
+
+@pytest.fixture(autouse=True)
+def recall_enabled(monkeypatch):
+    monkeypatch.setattr("core.services.scoped_recall_policy.recall_enabled", lambda: True)
 
 
 def test_hot_tier_returns_signals():
@@ -48,18 +54,16 @@ def test_cold_tier_skips_short_query():
     assert snap["results"] == []
 
 
-def test_cold_tier_uses_cold_tier_recall():
-    # 2026-06-08 Memory Fix Phase 1: _cold_tier_search now calls
-    # cold_tier_recall() (quality-scored) rather than unified_recall() directly.
-    with patch("core.services.memory_recall_engine.cold_tier_recall", return_value={
+def test_cold_tier_uses_authoritative_recall():
+    with patch("core.services.recall.recall", return_value={
         "results": [
-            {"source": "private_brain", "text": "deep memory note", "weighted_score": 0.8},
+            {"source": "private_brain", "text": "deep memory note", "score": 0.8},
         ],
-        "mood_boosted": True,
+        "status": "ok",
     }):
         snap = _cold_tier_search(query="memory architecture")
     assert len(snap["results"]) == 1
-    assert snap["mood_boosted"] is True
+    assert snap["results"][0]["score"] == 0.8
 
 
 def test_recall_before_act_assembles_all_tiers():
@@ -68,8 +72,8 @@ def test_recall_before_act_assembles_all_tiers():
          patch("core.services.memory_search.search_memory", return_value=[]), \
          patch("core.services.chronicle_engine.get_chronicle_context_for_prompt",
                return_value=""), \
-         patch("core.services.memory_recall_engine.unified_recall",
-               return_value={"results": [], "mood_boosted": False}):
+         patch("core.services.recall.recall",
+               return_value={"status": "ok", "results": []}):
         bundle = recall_before_act(query="test query", include_cold=True)
     assert "hot" in bundle
     assert "warm" in bundle
@@ -120,21 +124,15 @@ def test_summary_lists_cold_tier_results():
 # hallucinations are filtered by compute_recall_score(). _cold_tier_search now
 # delegates to cold_tier_recall() which applies the gate.
 
-def test_cold_tier_quality_gates_private_brain():
-    """Cold-tier delegates to cold_tier_recall() with an explicit quality
-    threshold and include_private_brain flag (quality gate, not hard exclusion)."""
+def test_cold_tier_delegates_to_authoritative_recall():
     from unittest.mock import patch
     from core.services.memory_hierarchy import _cold_tier_search
 
-    with patch("core.services.memory_recall_engine.cold_tier_recall") as mock_recall:
-        mock_recall.return_value = {"results": [], "mood_boosted": False}
+    with patch("core.services.recall.recall") as mock_recall:
+        mock_recall.return_value = {"status": "ok", "results": []}
         _cold_tier_search(query="test query")
         assert mock_recall.called
-        call_kwargs = mock_recall.call_args.kwargs
-        # Quality threshold is passed through (default 0.25) — this is the gate
-        # that replaced the old hard private_brain exclusion.
-        assert "quality_threshold" in call_kwargs
-        assert "include_private_brain" in call_kwargs
+        assert mock_recall.call_args.args[0] == "test query"
 
 
 def test_cold_tier_skips_short_query():

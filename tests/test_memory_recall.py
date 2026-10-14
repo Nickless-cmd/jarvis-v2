@@ -259,15 +259,18 @@ class TestVisibleMemoryRecallBundleSection:
             )
             assert result is None
 
-    def test_includes_private_brain_section(self) -> None:
+    def test_includes_current_query_recall(self) -> None:
+        seen = {}
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=["brain line 1", "brain line 2"],
+            "core.services.recall.recall",
+            side_effect=lambda query, **kwargs: (
+                seen.update(query=query, kwargs=kwargs) or {
+                    "delivery_status": "delivered",
+                    "results": [{"source": "brain", "text": "current line"}],
+                }
+            ),
         ), patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
-            return_value=[],
-        ), patch(
-            "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
             return_value=[],
         ):
             result = _module()._visible_memory_recall_bundle_section(
@@ -276,19 +279,16 @@ class TestVisibleMemoryRecallBundleSection:
                 compact=False,
             )
             assert result is not None
-            assert "Private continuity" in result
-            assert "brain line 1" in result
+            assert seen["query"] == "test"
+            assert "[brain] current line" in result
 
     def test_includes_tool_section(self) -> None:
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=[],
+            "core.services.recall.recall",
+            return_value={"delivery_status": "empty", "results": []},
         ), patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
             return_value=["tool: read file"],
-        ), patch(
-            "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
-            return_value=[],
         ):
             result = _module()._visible_memory_recall_bundle_section(
                 session_id="session-1",
@@ -299,76 +299,67 @@ class TestVisibleMemoryRecallBundleSection:
             assert "Internal tool observations" in result
             assert "tool: read file" in result
 
-    def test_includes_candidate_section(self) -> None:
+    def test_does_not_include_pending_candidate_or_stale_private_sections(self) -> None:
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=[],
+            "core.services.recall.recall",
+            return_value={"delivery_status": "empty", "results": []},
         ), patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
             return_value=[],
         ), patch(
             "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
             return_value=["candidate: test"],
-        ):
+        ) as candidates:
             result = _module()._visible_memory_recall_bundle_section(
                 session_id="session-1",
                 user_message="test",
                 compact=False,
             )
-            assert result is not None
-            assert "Pending memory candidates" in result
+            assert result is None
+            candidates.assert_not_called()
 
     def test_compact_reduces_limits(self) -> None:
-        """Compact mode sender lavere limits til sub-funktioner."""
+        """Compact mode requests fewer current-query hits."""
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=["brain"] * 3,
-        ) as mock_brain, patch(
+            "core.services.recall.recall",
+            return_value={"delivery_status": "empty", "results": []},
+        ) as mock_recall, patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
-            return_value=["tool"] * 5,
-        ) as mock_tool, patch(
-            "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
-            return_value=["candidate"] * 3,
-        ) as mock_cand:
+            return_value=[],
+        ) as mock_tool:
             _module()._visible_memory_recall_bundle_section(
                 session_id="session-1",
                 user_message="test",
                 compact=True,
             )
-            # Compact = limit=3 for brain, 3 for tool, 2 for candidates
-            assert mock_brain.call_args[1]["limit"] == 3
+            assert mock_recall.call_args[1]["limit"] == 3
             assert mock_tool.call_args[1]["limit"] == 3
-            assert mock_cand.call_args[1]["limit"] == 2
 
     def test_non_compact_uses_full_limits(self) -> None:
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=["brain"],
-        ) as mock_brain, patch(
+            "core.services.recall.recall",
+            return_value={"delivery_status": "empty", "results": []},
+        ) as mock_recall, patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
-            return_value=["tool"],
-        ) as mock_tool, patch(
-            "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
-            return_value=["candidate"],
-        ) as mock_cand:
+            return_value=[],
+        ) as mock_tool:
             _module()._visible_memory_recall_bundle_section(
                 session_id="session-1",
                 user_message="test",
                 compact=False,
             )
-            assert mock_brain.call_args[1]["limit"] == 4
+            assert mock_recall.call_args[1]["limit"] == 5
             assert mock_tool.call_args[1]["limit"] == 5
-            assert mock_cand.call_args[1]["limit"] == 3
 
     def test_appends_continuity_disclaimer(self) -> None:
         with patch(
-            "core.services.prompt_sections.memory_recall._private_brain_recall_lines",
-            return_value=["brain line"],
+            "core.services.recall.recall",
+            return_value={
+                "delivery_status": "delivered",
+                "results": [{"source": "brain", "text": "brain line"}],
+            },
         ), patch(
             "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
-            return_value=[],
-        ), patch(
-            "core.services.prompt_sections.memory_recall._memory_candidate_recall_lines",
             return_value=[],
         ):
             result = _module()._visible_memory_recall_bundle_section(

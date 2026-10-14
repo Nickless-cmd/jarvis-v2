@@ -33,6 +33,7 @@ def stub_db(monkeypatch, tmp_path):
     monkeypatch.setattr(reasoning_store, "connect", lambda: fake_conn)
     monkeypatch.setattr(reasoning_store, "_ensure_table", lambda conn: None)
     monkeypatch.setattr(reasoning_store, "is_enabled", lambda: True)
+    monkeypatch.setattr(reasoning_store.scoped_recall_policy, "require_private_scope", lambda: "user-a")
 
     return fake_conn
 
@@ -58,7 +59,9 @@ def test_capture_conclusion_emit_event_uses_publish(stub_db):
     assert call_kind == "reasoning.conclusion.captured"
     assert call_payload["source"] == "test"
     assert call_payload["confidence"] == 0.5
-    assert call_payload["conclusion_id"] == cid
+    assert call_payload["owner_scoped"] is True
+    assert "conclusion_id" not in call_payload
+    assert "conclusion_text" not in call_payload
 
 
 def test_capture_conclusion_emit_event_false_skips_publish(stub_db):

@@ -28,7 +28,7 @@ def test_db_cognitive_read_paths_are_callable(isolated_runtime):
     assert m.list_cognitive_experiments() == []
     assert m.list_cognitive_conversation_signatures() == []
     assert m.list_cognitive_user_emotional_states() == []
-    assert m.list_cognitive_experiential_memories() == []
+    assert m.list_cognitive_experiential_memories(user_id="test-user") == []
     assert m.list_cognitive_self_surprises() == []
     assert m.list_cognitive_narrative_identities() == []
     assert m.list_cognitive_gratitude_signals() == []
@@ -37,7 +37,7 @@ def test_db_cognitive_read_paths_are_callable(isolated_runtime):
     assert m.list_cognitive_conflict_memories() == []
     assert m.list_active_cognitive_emotion_concept_signals(now_iso="2999-01-01T00:00:00Z") == []
     assert m.list_cognitive_chronicle_entries() == []
-    assert m.get_experiential_memory_candidates() == []
+    assert m.get_experiential_memory_candidates(user_id="test-user") == []
 
     # GET/latest singleton reads: None on a fresh DB.
     assert m.get_latest_cognitive_personality_vector() is None

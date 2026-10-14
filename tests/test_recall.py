@@ -3,7 +3,15 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from core.services import recall as R
+
+
+@pytest.fixture(autouse=True)
+def enabled_scoped_recall(monkeypatch):
+    monkeypatch.setattr(R, "recall_enabled", lambda: True)
+    monkeypatch.setattr(R, "require_private_scope", lambda session_id="": "u1")
 
 
 def _stub(source: str, items: list[tuple[str, float]]):
@@ -40,6 +48,38 @@ def test_recall_merges_sources_and_is_failsoft():
     assert {r["source"] for r in out["results"]} == {"workspace", "session_summary"}
     assert "brain" in out["errors"]
     assert out["text"].startswith("Hukommelse for «pfsense nøgle»")
+
+
+def test_recall_returns_ready_sources_as_partial_at_deadline():
+    import threading
+
+    release = threading.Event()
+
+    def blocking_source(query, limit):
+        release.wait(1)
+        return []
+
+    funcs = {
+        "workspace": _stub("workspace", [("match", 0.9)]),
+        "brain": blocking_source,
+    }
+    try:
+        with patch.dict(R.SOURCE_FUNCS, funcs, clear=True):
+            out = R.recall(
+                "match", sources=list(funcs), deadline_s=0.05, min_score=0
+            )
+    finally:
+        release.set()
+    assert out["delivery_status"] == "partial"
+    assert [item["source"] for item in out["results"]] == ["workspace"]
+
+
+def test_disabled_recall_does_not_call_sources(monkeypatch):
+    monkeypatch.setattr(R, "recall_enabled", lambda: False)
+    with patch.dict(R.SOURCE_FUNCS, {"workspace": lambda *_: 1 / 0}, clear=True):
+        assert R.recall("private", sources=["workspace"]) == {
+            "status": "disabled", "path": "recall", "results": [], "count": 0,
+        }
 
 
 def test_recall_empty_has_message_and_emits_event():

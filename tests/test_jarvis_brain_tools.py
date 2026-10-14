@@ -4,6 +4,12 @@ from datetime import datetime, timezone, timedelta
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def scoped_recall(monkeypatch):
+    monkeypatch.setattr("core.services.scoped_recall_policy.recall_enabled", lambda: True)
+    monkeypatch.setattr("core.identity.workspace_context.current_role", lambda: "owner")
+
+
 @pytest.fixture
 def isolated_brain(tmp_path, monkeypatch):
     """Isolate brain storage to tmp_path; reset rate-limit counters."""
@@ -187,13 +193,16 @@ def test_search_jarvis_brain_returns_excerpts(isolated_brain, stubbed_embedder):
     assert "excerpt" in res["results"][0]
 
 
-def test_search_jarvis_brain_reports_hidden_count(isolated_brain, stubbed_embedder):
+def test_search_jarvis_brain_reports_hidden_count(isolated_brain, stubbed_embedder, monkeypatch):
     from core.tools.jarvis_brain_tools import remember_this, search_jarvis_brain
     from core.services import jarvis_brain
     remember_this(kind="fakta", title="Alpha", content="alpha details",
                   visibility="intimate", domain="d", session_id="s", turn_id="t1")
     jarvis_brain.embed_pending_entries()
 
+    monkeypatch.setattr("core.identity.workspace_context.current_role", lambda: "member")
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "member-1")
+    monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "owner-1")
     res = search_jarvis_brain(
         query="alpha lookup", session_visibility_ceiling="public_safe", limit=5,
     )

@@ -273,3 +273,71 @@ def test_den_synlige_lane_udloeber_som_foer(_isolated_records):
                        timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
     ifr.claim_due_recovery(owner="100:1")
     assert _isolated_records["vis1"]["status"] == "failed_terminal"
+
+
+# ── Ogsaa `interrupted` skal udloebe (14/10-2026) ──────────────────────────
+#
+# Testene ovenfor rammer alle `recovering`. Men `mark_interrupted` skriver en
+# ANDEN tilstand — `interrupted` — og den faldt i `else: continue` FOER
+# alders-tjekket. `interrupted` staar heller ikke i `_AFSLUTTEDE`, saa
+# aldersfejningen tog den ikke. Maalt 14/10: 12 autonome poster, op til 70
+# timer gamle, som hverken kunne genoptages eller udloebe — fordi kommentaren
+# i boot-forligeren paastod at «scheduleren» tog dem. Der findes ingen scheduler.
+
+def _afbrudt(records, rid, *, kind, timer):
+    """Posten bygget gennem den AEGTE vej — `mark_interrupted` — og derefter
+    flyttet `timer` timer tilbage i tiden. Sa matcher fixturen koden, ikke min
+    erindring om hvilke felter vejen skriver."""
+    ifr.mark_started(run_id=rid, session_id="s1",
+                     user_message="maal latensen", kind=kind)
+    ifr.mark_interrupted(rid, reason="api-nedlukning",
+                         summary="processen lukkede mens turen koerte")
+    t = (datetime.now(UTC) - timedelta(hours=timer)).isoformat()
+    for felt in ("started_at", "interrupted_at", "settled_at"):
+        if felt in records[rid]:
+            records[rid][felt] = t
+
+
+def test_en_afbrudt_autonom_post_kan_UDLOEBE(_isolated_records):
+    """Regressionen: 12 autonome `interrupted`-poster stod urørt i op til 70
+    timer, fordi udloebs-tjekket laa efter `else: continue`."""
+    _afbrudt(_isolated_records, "afb-auto1", kind="autonomous",
+             timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["afb-auto1"]["status"] == "failed_terminal"
+    assert (_isolated_records["afb-auto1"]["exit_reason"]
+            == "genoptagelses-vinduet udloeb")
+
+
+def test_en_frisk_afbrudt_post_roeres_ikke(_isolated_records):
+    """Inden for vinduet er den hverken doed eller vores — den skal staa."""
+    _afbrudt(_isolated_records, "afb-auto2", kind="autonomous", timer=1.0)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["afb-auto2"]["status"] == "interrupted"
+
+
+def test_en_afbrudt_post_bliver_ALDRIG_genoptaget(_isolated_records):
+    """Den negative kontrol: en FRISK `interrupted`-post maa ikke pludselig
+    blive taget op som en samtale. Genoptagelsen gaar gennem
+    `settle_recovering`, ikke gennem denne funktion."""
+    _afbrudt(_isolated_records, "afb-vis1", kind="visible", timer=1.0)
+    assert ifr.claim_due_recovery(owner="100:1") is None
+    assert _isolated_records["afb-vis1"]["status"] == "interrupted"
+
+
+def test_en_afbrudt_synlig_post_udloeber_ogsaa(_isolated_records):
+    """Vinduet, ikke slagsen, afgoer det — ogsaa for `interrupted`."""
+    _afbrudt(_isolated_records, "afb-vis2", kind="visible",
+             timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["afb-vis2"]["status"] == "failed_terminal"
+
+
+def test_udloebet_post_er_nu_i_ryddeklassen(_isolated_records):
+    """Efter udloeb staar posten som `failed_terminal` — altsaa i
+    `_AFSLUTTEDE`. Det er dét der lukker kaeden: foer udloeb var `interrupted`
+    hverken genoptagelig eller ryddelig, saa den laa for evigt."""
+    _afbrudt(_isolated_records, "afb-auto3", kind="autonomous",
+             timer=ifr.GENOPTAGELSES_VINDUE_TIMER + 2)
+    ifr.claim_due_recovery(owner="100:1")
+    assert _isolated_records["afb-auto3"]["status"] in ifr._AFSLUTTEDE

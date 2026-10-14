@@ -689,7 +689,12 @@ def create_app() -> FastAPI:
                 # post er ikke forfalden for dispatcheren, så en synlig tur
                 # dræbt af nedlukningen ville aldrig blive taget op igen —
                 # arbejdet, værktøjskaldene og checkpointet var tabt ved
-                # genstarten. Autonome kørsler beholder scheduleren.
+                # genstarten.
+                #
+                # Autonome kørsler har ingen scheduler der tager dem (målt
+                # 14/10-2026 — se `session_boot_reconciler`): de stemples
+                # `interrupted` og udløber nu efter genoptagelses-vinduet i
+                # stedet for at ligge urørt for evigt.
                 if str(_r.get("kind") or "visible") == "visible":
                     from core.services.in_flight_runs import settle_recovering
                     settle_recovering(

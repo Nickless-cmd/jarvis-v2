@@ -734,12 +734,20 @@ def claim_due_recovery(
         udloebne: list[str] = []
         for key, rec in records.items():
             status = str(rec.get("status") or "")
+            # `genoptagelig` skiller «kommer ind i loekken» fra «kan tages».
+            # En `interrupted`-post skal ALDERS-VURDERES (se udloebs-blokken
+            # nedenfor), men den er ikke en genoptagelses-kandidat: den vej gaar
+            # gennem `settle_recovering`, ikke herfra. (14/10-2026.)
+            genoptagelig = False
             if status == "recovering":
-                pass
+                genoptagelig = True
             elif status == "running" and rec.get("recovery_owner"):
                 lease = _parsed(rec.get("recovery_lease_until"))
                 if lease is not None and lease > instant:
                     continue
+                genoptagelig = True
+            elif status == "interrupted":
+                pass          # kun alders-vurdering — aldrig kandidat
             else:
                 continue
             # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
@@ -765,6 +773,14 @@ def claim_due_recovery(
                 instant - settled
             ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
                 udloebne.append(key)
+                continue
+            # 14/10-2026: `interrupted` naaede ALDRIG hertil foer. Den faldt i
+            # `else: continue` foer alders-tjekket, og `interrupted` staar ikke
+            # i `_AFSLUTTEDE`, saa aldersfejningen tog den heller ikke. Maalt:
+            # 12 autonome `interrupted`-poster, op til 70 timer gamle, som
+            # hverken kunne genoptages eller udloebe. Nu faar de deres dom her,
+            # og falder ud lige efter — de genoptages stadig aldrig.
+            if not genoptagelig:
                 continue
             if str(rec.get("kind") or "visible") != "visible":
                 continue

@@ -158,8 +158,15 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
                 # synlig tur der døde med processen har stadig sin opgave,
                 # sine færdige værktøjskald og sit checkpoint. `mark_interrupted`
                 # lukkede den som «det skete», og så var der intet forfaldent
-                # for dispatcheren at tage. Autonome kørsler beholder deres egen
-                # vej: de genoptages af scheduleren, ikke herfra.
+                # for dispatcheren at tage.
+                #
+                # AUTONOME KØRSLER GENOPTAGES IKKE (målt 14/10-2026). Den gamle
+                # kommentar her lovede at «scheduleren» tog dem. Der findes
+                # ingen scheduler: `claim_due_recovery` er husets ENESTE
+                # genoptager, og den filtrerer på `kind == "visible"` — så en
+                # autonom post kunne hverken genoptages eller udløbe. Målt: 12
+                # `interrupted` autonome poster, op til 70 timer gamle, urørt af
+                # alt. De udløber nu efter `GENOPTAGELSES_VINDUE_TIMER`.
                 if str(rec.get("kind") or "visible") == "visible":
                     in_flight_runs.settle_recovering(
                         run_id, reason=_INTERRUPTION_REASON,

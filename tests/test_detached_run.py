@@ -1,5 +1,6 @@
 import time
-from unittest import mock
+
+import pytest
 
 
 def _make_async_iter(items):
@@ -186,3 +187,71 @@ def test_levende_fortsaettelse_holder_sit_krav_fra_at_udloebe(monkeypatch):
 
     d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterEtTick())
     assert kald == [(('task-1', 2), {'owner': 'owner-1', 'lease_seconds': 120.0})]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "KENDT HUL, MAALT 14/10-2026: _consume() afviser kun FOREIGN, saa en "
+        "UNKNOWN ramme faar lov at binde aliaset — og bagefter svarer "
+        "ramme_ejerskab 'owned', fordi rammen selv satte det. Kontrollen er "
+        "CIRKULAER. Hullet kan IKKE lukkes ved at afvise alle ukendte id'er: et "
+        "NYT indre run er unknown pr. konstruktion (start_visible_run laver sit "
+        "eget id, visible_runs.py:964). Maalt: et strengt 'owned'-krav blinder "
+        "den aegte vej — 'opgave opg-A kan ikke afregnes endnu: run visible-gen "
+        "status=mangler' — og opgaven brænder sit forsoegs-loft op. Den aegte "
+        "binding skal komme fra OPRETTELSESPUNKTET. Se "
+        "docs/audits/2026-10-14-run-ejerskab-oprettelse-til-afregning.md. "
+        "strict=True: naar hullet lukkes, fejler denne som XPASS og skal "
+        "opdateres."
+    ),
+)
+def test_ukendt_ramme_maa_ikke_etablere_ejerskab(monkeypatch):
+    """UNKNOWN maa ikke blive OWNED (ChatGPT's femte indvending, 14/10-2026).
+
+    Rammer den VIRKELIGE ``_consume()``-vej. En ``system_event(kind=run)``-ramme
+    hvis id hverken findes i ``_RUNS`` eller ``_ALIASER`` er UKENDT — ikke vores.
+    Faar den lov at oprette aliaset, svarer ``ramme_ejerskab`` bagefter
+    ``owned``: kontrollen er cirkulaer, fordi den bekraefter et alias rammen
+    selv satte. Maalt 14/10-2026: ``_ALIASER`` fik
+    ``{'visible-fremmed-ukendt': '<vores wrapper>'}``.
+
+    Testen FEJLER i dag og staar derfor som ``xfail``. Den er kravet, ikke
+    tilstanden.
+    """
+    import core.services.run_event_log as rel
+    import core.services.visible_runs as vr
+    import core.services.visible_runs_sse_v2 as v2
+    from core.services.visible_runs_sections import detached_run as d
+
+    for _d in (rel._RUNS, rel._ALIASER, rel._ALIASER_OMVENDT):
+        _d.clear()
+
+    fremmed = (
+        'event: system_event\n'
+        'data: {"type": "system_event", "kind": "run", '
+        '"payload": {"run_id": "visible-fremmed-ukendt"}}\n'
+    )
+    monkeypatch.setattr(rel, "create", lambda rid, sid: rel._RUNS.__setitem__(
+        rid, {"session_id": sid}))
+    monkeypatch.setattr(rel, "append", lambda rid, f: None)
+    monkeypatch.setattr(rel, "mark_done", lambda rid: None)
+    monkeypatch.setattr(rel, "prune", lambda: None)
+    monkeypatch.setattr(vr, "start_visible_run", lambda **kw: _make_async_iter([]))
+    monkeypatch.setattr(v2, "translate_to_v2", lambda it, **kw: _make_async_iter([fremmed]))
+
+    rid = d.start_user_run_detached(message="fortsæt", session_id="s1",
+                                    recovery_task_id="task-1", recovery_generation=1)
+    # Vent til _consume har set rammen: aliaset ville vaere sat nu hvis den fik lov.
+    for _ in range(60):
+        if rel._ALIASER or rel._ALIASER_OMVENDT:
+            break
+        time.sleep(0.05)
+
+    assert "visible-fremmed-ukendt" not in rel._ALIASER, (
+        "en UKENDT ramme maa ikke etablere ejerskab — ellers bliver "
+        "afregnings-tjekket cirkulaert"
+    )
+    assert rel.ramme_ejerskab("visible-fremmed-ukendt", rid) != rel.EJERSKAB_OWNED, (
+        "et ukendt id maa ikke blive 'owned' ved at rammen selv satte aliaset"
+    )

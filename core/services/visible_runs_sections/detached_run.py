@@ -295,6 +295,10 @@ def start_user_run_detached(
         "model_override": model_override,
         "local_tool_exec": local_tool_exec,
         "surface": surface,
+        # Opgavens id foelger med ind i den INDRE koersel (14/10-2026). Uden
+        # den journalfoerer den sig under sit eget id, og afregningen kan ikke
+        # se at den hoerer til opgaven — se `start_visible_run`s docstring.
+        "recovery_task_id": recovery_task_id,
     }
     if research_mode:
         from core.services.research_orchestrator import research_enabled, stream_research_run

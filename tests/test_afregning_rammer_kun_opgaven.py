@@ -128,3 +128,48 @@ def test_eget_run_lukker_opgaven(poster):
     assert poster["visible-gen"]["status"] == "completed", (
         "vores eget afsluttede run skal stadig lukke opgaven"
     )
+
+
+def test_den_indre_koersel_baerer_opgaven(poster):
+    """REGRESSIONEN (målt 14/10-2026, kl. 20:23:36).
+
+    Genoptagelsens INDRE koersel journalfoerer sig selv under sit EGET id.
+    Foer rettelsen faldt `mark_started` tilbage til `run_id`, saa posten fik
+    `task_id` = sig selv — og `_afregn_genoptaget_run`s task_id-vaern afviste
+    afregningen. Opgaven laa tilbage, leasemaalet udloeb, og dispatcheren tog
+    den igen som generation 2 mens generation 1 koerte.
+
+    Maalt i drift: `afregning: run visible-7c365254 baerer opgave
+    visible-7c365254 — ikke visible-55ad6c59`.
+    """
+    from core.services import in_flight_runs as ifr
+
+    ifr.stempl_genoptagelse(
+        run_id="visible-wrapper", session_id="s1", task_id="opgave-1",
+        recovery_attempt=1, recovery_generation=1,
+    )
+    # Den indre koersel — gennem den AEGTE funktion, saa testen ogsaa fanger
+    # hvis videresendelsen i `mark_visible_run_started` forsvinder igen.
+    from core.services.visible_run_journal import mark_visible_run_started
+
+    class _Run:
+        run_id = "visible-indre"
+        session_id = "s1"
+        user_message = "x"
+        autonomous = False
+        provider = ""
+        model = ""
+        trust_all = False
+        thinking_mode = "think"
+        surface = ""
+        user_id = ""
+        local_tool_exec = False
+
+    mark_visible_run_started(_Run(), recovery_task_id="opgave-1")
+
+    indre = ifr.get_record("visible-indre")
+    assert indre is not None, "den indre koersel skal have sin egen post"
+    assert indre["task_id"] == "opgave-1", (
+        "den indre koersel skal baere OPGAVEN, ikke sit eget id — ellers "
+        "afviser afregningen dens 'faerdig' som fremmed"
+    )

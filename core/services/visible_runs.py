@@ -675,10 +675,20 @@ def start_visible_run(
     model_override: str = "",
     local_tool_exec: bool = False,
     surface: str = "",
+    recovery_task_id: str = "",
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
     Args:
+        recovery_task_id: opgavens id, naar denne tur er en GENOPTAGELSE.
+            Uden den journalfoerer den indre koersel sig under sit EGET id
+            (`mark_started` falder tilbage til `run_id`), og dens post baerer
+            derfor ikke opgaven. Maalt 14/10-2026: `_afregn_genoptaget_run`
+            laeste `task_id` fra den indre post, saa den fremmede sig selv —
+            afregningen blev afvist, opgaven laa tilbage, leasemaalet udloeb,
+            og dispatcheren tog den igen som generation 2 mens generation 1
+            koerte. Foeres opgaven med herind, baerer BAADE wrapperen og den
+            indre koersel den, og afregningen kan se hvad der er dens egen.
         surface: hvilken flade turen blev skrevet fra ("desk" | "mobil").
             Baeres med paa kørslen, saa en notifikation om den kan finde
             tilbage til den enhed han faktisk sad ved. Tom = ukendt.
@@ -1257,7 +1267,10 @@ async def _stream_visible_run(
         )
     # Journalfør den synlige tur og dens composer-indstillinger samlet.
     from core.services.visible_run_journal import mark_visible_run_started
-    mark_visible_run_started(run, tool_scope=tool_scope, force_user_id=force_user_id)
+    mark_visible_run_started(
+        run, tool_scope=tool_scope, force_user_id=force_user_id,
+        recovery_task_id=recovery_task_id,
+    )
     event_bus.publish(
         "runtime.visible_run_started",
         {

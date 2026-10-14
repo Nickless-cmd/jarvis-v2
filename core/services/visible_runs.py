@@ -990,23 +990,16 @@ def start_visible_run(
     # SSE-læser via GIL-contention (bevist: DeepSeek 621ms isoleret → 9052ms under
     # baggrunds-tråde). enter ved første iteration, exit i finally (også ved klient-
     # drop/abort → GeneratorExit rammer finally). Se visible_stream_gate.
-    _inner_stream = _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
+    _inner_stream = _stream_visible_run(
+        run,
+        force_user_id=force_user_id,
+        tool_scope=tool_scope,
+        recovery_task_id=recovery_task_id,
+    )
 
-    async def _gated_visible_stream():
-        try:
-            from core.services.visible_stream_gate import enter_visible_stream, exit_visible_stream
-        except Exception:
-            async for _c in _inner_stream:
-                yield _c
-            return
-        enter_visible_stream()
-        try:
-            async for _c in _inner_stream:
-                yield _c
-        finally:
-            exit_visible_stream()
+    from core.services.visible_stream_gate_wrapper import gate_visible_stream
 
-    return _gated_visible_stream()
+    return gate_visible_stream(_inner_stream)
 
 
 # Autonome runs (starter + observation) er flyttet til core/services/visible_autonomous_run.py
@@ -1050,6 +1043,7 @@ async def _stream_visible_run(
     *,
     force_user_id: str | None = None,
     tool_scope: str = "",
+    recovery_task_id: str = "",
 ) -> AsyncIterator[str]:
     # Rebind workspace_context if the caller captured user_id at request
     # time. FastAPI's StreamingResponse iterates this generator AFTER the

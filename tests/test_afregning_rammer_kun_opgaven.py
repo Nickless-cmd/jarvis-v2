@@ -173,3 +173,42 @@ def test_den_indre_koersel_baerer_opgaven(poster):
         "den indre koersel skal baere OPGAVEN, ikke sit eget id — ellers "
         "afviser afregningen dens 'faerdig' som fremmed"
     )
+
+
+def test_start_visible_run_foerer_opgaven_ind_i_streamen(monkeypatch):
+    """En genoptagelses opgave-id skal nå den indre stream ved rigtig opstart.
+
+    Produktionsbruddet 14/10-2026 tilføjede ``recovery_task_id`` til den ydre
+    indgang, men brugte navnet i den indre generator uden at føre det med ind.
+    Resultatet var at samtlige synlige ture døde før model-loopet.
+    """
+    from core.services import visible_runs
+
+    monkeypatch.setattr(visible_runs, "load_settings", lambda: type("S", (), {
+        "primary_model_lane": "primary",
+        "visible_model_provider": "deepseek",
+        "visible_model_name": "deepseek-flash",
+    })())
+
+    modtaget: dict[str, str] = {}
+
+    def fake_stream(
+        run, *, force_user_id=None, tool_scope="", recovery_task_id: str,
+    ):
+        modtaget["task_id"] = recovery_task_id
+
+        async def tom_stream():
+            if False:
+                yield ""
+
+        return tom_stream()
+
+    monkeypatch.setattr(visible_runs, "_stream_visible_run", fake_stream)
+
+    visible_runs.start_visible_run(
+        "fortsaet opgaven",
+        session_id="s1",
+        recovery_task_id="opgave-1",
+    )
+
+    assert modtaget == {"task_id": "opgave-1"}

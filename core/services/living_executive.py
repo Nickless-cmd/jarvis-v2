@@ -295,11 +295,29 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
         )
 
     if kind == _GENOPTAG_ART:
-        # Den varige run-journal ejer allerede denne opgave. En ekstra
-        # self-wakeup starter en løs synlig tur uden composer-kontekst og kan
-        # genstarte arbejdet efter at dispatcheren har afsluttet det.
+        # TO porte foer en genoptagelse bookes — og de svarer paa to
+        # FORSKELLIGE spoergsmaal.
+        #
+        # 1) Er koerslen allerede SLUT? Det kan journalen nedenfor ikke svare
+        #    paa: `mark_completed` FJERNER posten ved terminal tilstand, saa
+        #    `get_record` svarer `None` for baade en doed koersel OG en faerdig
+        #    en. Maalt 13/10-2026: to `interrupted`-koersler stod i
+        #    `visible_runs` men manglede i journalen — og bookeren planlagde en
+        #    genoptagelse af arbejde der var forbi. Et afsluttet run maa ikke
+        #    vaekkes igen.
+        #
+        # 2) Ejer run-journalen stadig opgaven? En ekstra self-wakeup starter en
+        #    løs synlig tur uden composer-kontekst og kan genstarte arbejdet
+        #    efter at dispatcheren har afsluttet det.
         rid = str(payload.get("run_id") or "").strip()
         if rid:
+            try:
+                from core.services.visible_runs_outcomes import run_er_terminal
+                if run_er_terminal(rid) is True:
+                    return None
+            except Exception:
+                logger.warning("kunne ikke afgoere om %s er terminal", rid,
+                               exc_info=True)
             try:
                 from core.services.in_flight_runs import get_record
                 if get_record(rid) is not None:

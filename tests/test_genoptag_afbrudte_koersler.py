@@ -96,6 +96,15 @@ def vaekninger(monkeypatch):
     return kaldt
 
 
+@pytest.fixture(autouse=True)
+def _koersel_ikke_terminal(monkeypatch):
+    """Denne fil har ingen base. Standarden er «ikke terminal», saa de oevrige
+    proever maaler nedkoelingen — ikke en tilfaeldig raekke i hans rigtige
+    `visible_runs`. Den enkelte proev overskriver selv naar den vil."""
+    monkeypatch.setattr(
+        "core.services.visible_runs_outcomes.run_er_terminal", lambda rid: False)
+
+
 def _afbrudt(run_id: str, *, event_id: int = 1) -> dict:
     return {
         "id": event_id,
@@ -144,6 +153,41 @@ def test_durabel_journal_ejer_genoptagelsen_uden_ekstra_vaekning(monkeypatch, va
         "run_id": rid, "status": "recovering",
     })
     assert lex.process_event(_afbrudt("visible-journal")) is None
+    assert vaekninger == []
+
+
+def test_afsluttet_koersel_booker_IKKE_genoptagelse(monkeypatch, vaekninger):
+    """Journalen kan ikke svare paa «er den faerdig» — `mark_completed` fjerner
+    posten, saa `get_record` svarer `None` for baade en doed OG en faerdig
+    koersel. Maalt 13/10-2026: to `interrupted`-koersler stod i `visible_runs`
+    men manglede i journalen, og bookeren planlagde genoptagelse af forbi
+    arbejde. Et afsluttet run maa ikke vaekkes igen."""
+    monkeypatch.setattr(
+        "core.services.visible_runs_outcomes.run_er_terminal", lambda rid: True)
+    monkeypatch.setattr("core.services.in_flight_runs.get_record", lambda rid: None)
+    assert lex.process_event(_afbrudt("visible-faerdig")) is None
+    assert vaekninger == []
+
+
+def test_doed_koersel_uden_journal_booker_STADIG(monkeypatch, vaekninger):
+    """Negativ kontrol: en aegte zombie (ingen raekke, ikke terminal) SKAL
+    genoptages. Ellers byttede fixet én defekt ud med en anden."""
+    monkeypatch.setattr(
+        "core.services.visible_runs_outcomes.run_er_terminal", lambda rid: False)
+    monkeypatch.setattr("core.services.in_flight_runs.get_record", lambda rid: None)
+    lex.process_event(_afbrudt("visible-zombie"))
+    assert len(vaekninger) == 1, vaekninger
+
+
+def test_ukendt_status_falder_tilbage_til_journalen(monkeypatch, vaekninger):
+    """`run_er_terminal` kan svare `None` («kunne ikke afgoeres»). Saa maa
+    journal-ejerskabet stadig gaelde — vi booker ikke i blinde."""
+    monkeypatch.setattr(
+        "core.services.visible_runs_outcomes.run_er_terminal", lambda rid: None)
+    monkeypatch.setattr("core.services.in_flight_runs.get_record", lambda rid: {
+        "run_id": rid, "status": "recovering",
+    })
+    assert lex.process_event(_afbrudt("visible-ukendt")) is None
     assert vaekninger == []
 
 

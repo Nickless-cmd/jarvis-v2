@@ -19,4 +19,3 @@ _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
 | function | `_importerede_moduler` | `(traeet)` | — | [src](../../../scripts/verify_vagt_graenser.py#L44) |
 | function | `brud` | `()` | — | [src](../../../scripts/verify_vagt_graenser.py#L55) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vagt_graenser.py#L74) |
-

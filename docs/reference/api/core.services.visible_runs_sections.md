@@ -33,10 +33,10 @@ _Detached (request-uafhængig) bruger-run → server-autoritativt via run_event_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_afregn_genoptaget_run` | `(task_id, inner_run_id, *, generation, wrapper_run_id=…)` | Close or retry the *same* task using the synchronous run journal. | [src](../../../core/services/visible_runs_sections/detached_run.py#L18) |
-| function | `_hold_recovery_lease` | `(task_id, generation, owner, stop)` | Hold et langt levende run claimet, indtil det selv afregner opgaven. | [src](../../../core/services/visible_runs_sections/detached_run.py#L81) |
-| function | `_foedselsvagt` | `(*, run_id, sid, task_id, generation, owner, birth, stop)` | Luk et run der blev ANONNCERET men aldrig født. | [src](../../../core/services/visible_runs_sections/detached_run.py#L106) |
-| function | `start_user_run_detached` | `(*, message, original_message=…, session_id, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, eff_model=…, eff_provider=…, lane=…, run_id=…, local_tool_exec=…, research_mode=…, recovery_task_id=…, recovery_generation=…, recovery_attempt=…, surface=…)` | Start et server-autoritativt run. Returnerer run_id (klienten abonnerer | [src](../../../core/services/visible_runs_sections/detached_run.py#L178) |
-| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L460) |
+| function | `_hold_recovery_lease` | `(task_id, generation, owner, stop)` | Hold et langt levende run claimet, indtil det selv afregner opgaven. | [src](../../../core/services/visible_runs_sections/detached_run.py#L100) |
+| function | `_foedselsvagt` | `(*, run_id, sid, task_id, generation, owner, birth, stop)` | Luk et run der blev ANONNCERET men aldrig født. | [src](../../../core/services/visible_runs_sections/detached_run.py#L125) |
+| function | `start_user_run_detached` | `(*, message, original_message=…, session_id, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, eff_model=…, eff_provider=…, lane=…, run_id=…, local_tool_exec=…, research_mode=…, recovery_task_id=…, recovery_generation=…, recovery_attempt=…, surface=…)` | Start et server-autoritativt run. Returnerer run_id (klienten abonnerer | [src](../../../core/services/visible_runs_sections/detached_run.py#L197) |
+| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L491) |
 
 ## `core/services/visible_runs_sections/run_control_state.py`
 _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._

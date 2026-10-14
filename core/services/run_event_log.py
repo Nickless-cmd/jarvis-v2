@@ -186,26 +186,54 @@ def run_id_fra_ramme(frame: str) -> str | None:
     return None
 
 
-def er_fremmed_log_id(kandidat: str, vores_log_id: str = "") -> bool:
-    """Er dette id en ANDEN samtales log — ikke et runs eget id?
+#: De TRE udfald af et ejerskabs-opslag. Kun ``owned`` må afregne en opgave.
+EJERSKAB_OWNED = "owned"
+EJERSKAB_FOREIGN = "foreign"
+EJERSKAB_UNKNOWN = "unknown"
 
-    ``system_event(kind=run)`` bærer runnets EGET id (nøglen i ``_ALIASER``).
-    Er et andet run aktivt i samme samtale, kan den ramme komme fra DETS strøm,
-    og så står vi med et id der er oprettet som log for et andet run.
 
-    Forskellen er målbar: et LOG-id står i ``_RUNS`` (oprettet af ``create``
-    eller ``claim_or_create``), mens et runs EGET id kun findes som nøgle i
-    ``_ALIASER``.
+def ramme_ejerskab(kandidat: str, vores_log_id: str) -> str:
+    """Hvem ejer dette run-id: os, en anden — eller kan det ikke afgoeres?
 
-    Målt 14/10-2026: afregningen læste tilstanden fra ``visible-9d85c1f5`` —
-    brugerens NÆSTE tur, hvis log-id netop står i ``_RUNS`` — og lukkede en
-    genoptagelse der kørte. Se ``detached_run._afregn_genoptaget_run``.
+    ``er_fremmed_log_id`` svarer kun paa «er dette et LOG-id?» (findes i
+    ``_RUNS``). Et fremmed runs EGET id ligger i ``_ALIASER`` og slap derfor
+    igennem — vaernet var smallere end rapporten gav indtryk af (ChatGPT,
+    14/10-2026).
+
+    TRE udfald, ikke to (ChatGPT's fjerde indvending, samme dag): et UKENDT id
+    er ikke det samme som et EJET. Fail-open her ville genskabe praecis den fejl
+    vaernet findes for — et fremmed «faerdig» kunne lukke vores koerende opgave.
+
+    ``owned``   — id'et ER vores log, eller alias for NETOP vores log.
+    ``foreign`` — id'et er log for en anden, eller alias for en anden.
+    ``unknown`` — hverken log eller alias her. Relationen kan ikke afgoeres.
+
+    Retningen er valgt paa asymmetrien: at lukke en LEVENDE opgave paa et
+    fremmed signal TABER arbejde. At lade en faerdig opgave ligge og tage den
+    igen koster ét forsoeg mere, og forsoegs-loftet fanger den. Derfor afviser
+    ``unknown`` — tvivlen skal falde ud til at bevare opgaven.
+
+    AERLIG BEGRAENSNING: ``_RUNS``/``_ALIASER`` er PROCESLOKALE og forsvinder
+    ved genstart. De er praecise nok til frame-routing i én proces — ikke et
+    varigt, tvaerproces bevis for ejerskab. Et id der blev kendt foer en
+    genstart er derfor ``unknown`` bagefter, og opgaven tages igen.
     """
     rid = str(kandidat or "").strip()
-    if not rid or rid == str(vores_log_id or "").strip():
-        return False
+    vores = str(vores_log_id or "").strip()
+    if not rid or not vores:
+        # Uden et eget log-id findes der intet at holde kandidaten op imod.
+        return EJERSKAB_UNKNOWN
+    if rid == vores:
+        return EJERSKAB_OWNED
     with _lock:
-        return rid in _RUNS
+        # Alias for en ANDEN log end vores → beviseligt fremmed.
+        peger_paa = _ALIASER.get(rid)
+        if peger_paa is not None:
+            return EJERSKAB_OWNED if peger_paa == vores else EJERSKAB_FOREIGN
+        # Et log-id vi ikke selv oprettede → fremmed.
+        if rid in _RUNS:
+            return EJERSKAB_FOREIGN
+    return EJERSKAB_UNKNOWN
 
 
 def append(run_id: str, frame: str) -> None:

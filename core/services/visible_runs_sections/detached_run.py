@@ -37,15 +37,34 @@ def _afregn_genoptaget_run(
     from core.services.visible_runs_outcomes import run_er_terminal
     from core.services.visible_terminal_policy import is_non_retryable_recovery_reason
 
-    if rel.er_fremmed_log_id(inner_run_id, wrapper_run_id):
+    ejerskab = rel.ramme_ejerskab(inner_run_id, wrapper_run_id)
+    if ejerskab != rel.EJERSKAB_OWNED:
+        # FOREIGN og UNKNOWN afvises BEGGE (ChatGPT's fjerde indvending,
+        # 14/10-2026): et UKENDT id er ikke det samme som et EJET. Foer stod
+        # der fail-open paa ukendte id'er — og det genskabte praecis den fejl
+        # vaernet findes for. Tvivlen skal bevare opgaven, ikke lukke den.
         logger.error(
-            "afregning: run %s er en ANDEN samtales log — ikke %s's fortsaettelse. "
-            "Opgave %s bliver liggende; et fremmed 'faerdig' er ikke et bevis.",
-            inner_run_id, wrapper_run_id or task_id, task_id,
+            "afregning: run %s er %s for %s — ikke vores fortsaettelse. "
+            "Opgave %s bliver liggende; et fremmed eller ukendt 'faerdig' "
+            "er ikke et bevis.",
+            inner_run_id, ejerskab, wrapper_run_id or task_id, task_id,
         )
         return
 
     rec = get_record(inner_run_id)
+    # OPGAVE-RELATIONEN (ChatGPT's tredje indvending, 14/10-2026). Ejerskabet
+    # ovenfor siger «dette id er VORES run». Det siger IKKE «dette run baerer
+    # VORES opgave» — og det er en anden paastand. Journal-posten goer: den
+    # skrives ved oprettelsen med opgavens id og er DURABEL, i modsaetning til
+    # ``_RUNS``/``_ALIASER`` der er proceslokale og forsvinder ved genstart.
+    # Et runs «faerdig» maa ikke afgoere en ANDEN opgaves skaebne.
+    if rec and str(rec.get("task_id") or "") not in ("", task_id):
+        logger.error(
+            "afregning: run %s baerer opgave %s — ikke %s. Et runs 'faerdig' "
+            "maa ikke afgoere en anden opgaves skaebne; den bliver liggende.",
+            inner_run_id, rec.get("task_id"), task_id,
+        )
+        return
     status = str((rec or {}).get("status") or "")
     if status in {"completed", "cancelled", "failed_terminal"} or (
         status not in {"recovering", "interrupted"}
@@ -335,7 +354,19 @@ def start_user_run_detached(
                     # det id klienten genoptager med. Se run_event_log._ALIASER.
                     if not aliaseret and '"run"' in frame and "system_event" in frame:
                         eget = rel.run_id_fra_ramme(frame)
-                        if eget:
+                        # EJERSKAB FOER ALIAS (ChatGPT's fjerde indvending,
+                        # 14/10-2026). Stod aliaseringen her ukritisk, gjorde
+                        # en fremmed ramme sig selv til «vores» — og saa ville
+                        # ejerskabs-tjekket ved afregningen vaere CIRKULAERT:
+                        # det ville bekraefte et alias som rammen selv havde
+                        # sat. En ramme der beviseligt er fremmed maa derfor
+                        # ikke faa lov at binde vores stream.
+                        if eget and rel.ramme_ejerskab(eget, run_id) == rel.EJERSKAB_FOREIGN:
+                            logger.warning(
+                                "detached-run: ramme med FREMMED id %s afvist — "
+                                "binder ikke alias for %s", eget, run_id,
+                            )
+                        elif eget:
                             rel.alias(eget, run_id)
                             indre_run_id = eget
                             aliaseret = True

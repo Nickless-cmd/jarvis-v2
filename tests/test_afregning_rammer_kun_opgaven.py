@@ -39,6 +39,17 @@ def poster(monkeypatch):
     return records
 
 
+@pytest.fixture(autouse=True)
+def _ren_log():
+    """_RUNS/_ALIASER er procesglobale — ryd dem så testene ikke lækker."""
+    from core.services import run_event_log as rel
+    for d in (rel._RUNS, rel._ALIASER, rel._ALIASER_OMVENDT):
+        d.clear()
+    yield
+    for d in (rel._RUNS, rel._ALIASER, rel._ALIASER_OMVENDT):
+        d.clear()
+
+
 def _genoptagelse(poster, *, wrapper="visible-gen", opgave="opg-A", session="s1"):
     """Den kørende genoptagelses EGEN post — den der bærer opgaven."""
     poster[wrapper] = {
@@ -89,13 +100,22 @@ def test_fremmed_run_maa_ikke_lukke_opgaven(poster):
 
 def test_eget_run_lukker_opgaven(poster):
     """Modstykket: den ægte vej må ikke blive blind af værnet."""
+    from core.services import run_event_log as rel
     from core.services.visible_runs_sections.detached_run import _afregn_genoptaget_run
 
     _genoptagelse(poster)
+    # OPRETTELSESPUNKTET: vores log oprettes, og runnets eget id bindes til NETOP
+    # den. Uden bindingen er id'et ``unknown`` — og så afregner vi ikke, med
+    # vilje. Det er relationen, ikke id'ets form, der gør det til vores.
+    rel.create("visible-gen", "s1")
+    rel.alias("visible-indre", "visible-gen")
     # Runnets EGET id (ikke et log-id) — terminalt, altså fortsættelsen er færdig.
+    # Posten BÆRER opgaven (``task_id`` = opgavens id, ikke sit eget): det er
+    # ``mark_started(task_id=…)`` der skriver den, og den er den durabelt
+    # verificerbare relation mellem run og opgave.
     poster["visible-indre"] = {
         "run_id": "visible-indre",
-        "task_id": "visible-indre",
+        "task_id": "opg-A",
         "session_id": "s1",
         "status": "completed",
         "kind": "visible",

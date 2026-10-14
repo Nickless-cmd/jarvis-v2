@@ -73,7 +73,7 @@ def test_genoptaget_tur_lukker_opgaven_fra_synkron_journal(monkeypatch):
                         lambda *args, **kw: closed.append((args, kw)))
     monkeypatch.setattr("core.services.visible_runs_outcomes.run_er_terminal",
                         lambda rid: False)
-    d._afregn_genoptaget_run("task-1", "inner-1", generation=1)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=1, wrapper_run_id="inner-1")
     assert closed == [(("task-1",), {
         "status": "completed", "reason": "recovery-run-terminal",
         "expected_generation": 1, "expected_owner": "owner-1",
@@ -92,7 +92,7 @@ def test_faerdigt_svar_lukker_opgaven_selv_om_in_flight_stadig_staar_running(mon
     monkeypatch.setattr("core.services.visible_runs_outcomes.run_er_terminal",
                         lambda rid: True)
 
-    d._afregn_genoptaget_run("task-1", "inner-1", generation=1)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=1, wrapper_run_id="inner-1")
 
     assert len(closed) == 1
     assert closed[0][0] == ("task-1",)
@@ -109,7 +109,7 @@ def test_afbrudt_genoptagelse_giver_samme_krav_tilbage(monkeypatch):
     monkeypatch.setattr(ifr, "current_owner", lambda: "owner-1")
     monkeypatch.setattr(ifr, "release_recovery_claim",
                         lambda *args, **kw: released.append((args, kw)) or True)
-    d._afregn_genoptaget_run("task-1", "inner-1", generation=2)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=2, wrapper_run_id="inner-1")
     assert released == [(("task-1", 2), {
         "owner": "owner-1", "reason": "budget-opbrugt", "retry_after_s": 30.0,
     })]
@@ -129,7 +129,7 @@ def test_providerens_http_400_genstarter_ikke_samme_opgave(monkeypatch):
     monkeypatch.setattr(ifr, "release_recovery_claim",
                         lambda *args, **kw: released.append((args, kw)))
 
-    d._afregn_genoptaget_run("task-1", "inner-1", generation=2)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=2, wrapper_run_id="inner-1")
 
     assert len(closed) == 1
     assert closed[0][1]["status"] == "failed_terminal"

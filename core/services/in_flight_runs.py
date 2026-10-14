@@ -312,7 +312,14 @@ def mark_started(
             previous_role = str(tidligere.get("producer_process") or "")
             producer_process = previous_role if previous_role in {"api", "runtime"} else ""
         records[str(run_id)] = {
-            "task_id": str(task_id or run_id),
+            # OPGAVENS id arves fra stemplet (14/10-2026). `start_visible_run`
+            # kalder herind UDEN recovery-parametre, og uden arven skiftede
+            # hvert led i kaeden identitet. Maalt i produktionen:
+            # `detached-run visible-9ae8aafd fortsaetter opgave visible-9f31b94c`
+            # — hvor `9f31b94c` selv var en fortsaettelse af `visible-ea72d19e`.
+            # Er identiteten ny ved hvert led, er der ikke ÉN opgave men en
+            # raekke af enkelte, og saa kan ingen taeller samle dem.
+            "task_id": str(task_id or tidligere.get("task_id") or run_id),
             "run_id": str(run_id),
             "session_id": sid,
             "status": "running",

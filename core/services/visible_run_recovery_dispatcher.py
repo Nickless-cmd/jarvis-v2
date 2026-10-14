@@ -25,6 +25,7 @@ import os
 import threading
 
 from core.services import in_flight_runs
+from core.services.visible_terminal_policy import svar_beviser_faerdig
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -268,7 +269,22 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     # Samme lukning som ovenfor: `settle_terminal` og ikke `release_recovery_claim`
     # (ellers tager næste tick kravet igen og dropper det igen), og `cancelled`
     # frem for `failed_terminal`, så en opgave der ER besvaret ikke giver et varsel.
-    if _runnet_har_svaret(task_id):
+    # 14/10-2026: MEN ET SVAR ER IKKE ALTID ET SVAR.
+    #
+    # Bjørn: «dette værn forsætter ikk et run som designet: En tvungen slutrunde
+    # manglede bevis for at opgaven var faerdig. Jarvis fortsaetter automatisk
+    # fra sit checkpoint.» Varslet lovede en fortsættelse — og droppet her
+    # dræbte den, fordi en afslutning altid skriver et svar.
+    #
+    # Er grunden en hvor afslutningen blev TVUNGEN eller AFKORTET, har policyen
+    # selv dømt at der mangler belæg. Så er det skrevne svar ikke beviset, men
+    # netop dét der skal fortsættes forbi. Droppet fyrer derfor kun når svaret
+    # faktisk beviser at opgaven er færdig (`svar_beviser_faerdig`).
+    #
+    # Målt samme dag: `visible-c1bafe9b` blev tvunget til slutrunde efter 18
+    # runder, skrev sit svar, og blev droppet — tre gange i én samtale, hver
+    # gang efter et varsel der lovede en genoptagelse.
+    if _runnet_har_svaret(task_id) and svar_beviser_faerdig(krav.get("exit_reason")):
         try:
             in_flight_runs.settle_terminal(
                 task_id, status="cancelled",

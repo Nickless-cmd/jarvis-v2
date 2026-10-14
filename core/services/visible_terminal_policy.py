@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Final
 import re
 
 
@@ -98,6 +99,43 @@ def is_recoverable_exit_reason(reason: str | None) -> bool:
         # (fundet 17/9-2026 da fejlklasserne blev kørt igennem).
         or value == "breaker-open"
     )
+
+
+#: Grunde hvor et skrevet svar IKKE er bevis for at opgaven er færdig.
+#:
+#: Fælles for dem: afslutningen blev TVUNGEN eller AFKORTET — den var ikke
+#: modellens eget valg. Runnet skriver et svar i alle fire tilfælde (det ER hvad
+#: en afslutning gør), men svaret er ikke opgaven løst, og `recovery_notice`
+#: lover derfor «Jarvis fortsætter automatisk fra sit checkpoint».
+SVAR_ER_IKKE_BEVIS: Final[frozenset[str]] = frozenset({
+    "forced-finalize-unverified",
+    "completed-truncated",
+    "budget-opbrugt",
+    "breaker-open",
+})
+
+
+def svar_beviser_faerdig(reason: str | None) -> bool:
+    """Er et svar fra et run med denne grund BEVIS for at opgaven er færdig?
+
+    Nej for de grunde hvor afslutningen blev fremtvunget eller afkortet: der
+    skriver runnet et svar, men svaret er ikke beviset — det er netop dét
+    `recovery_notice` lover at fortsætte forbi.
+
+    Ja for alt andet, inklusive `shutdown` og `pending-tool-intent`, hvor runnet
+    nåede at afslutte sin egen tur, og svaret derfor ER svaret.
+
+    Grænsen er målt, ikke gættet. 10/10-2026 gav et `pending-tool-intent`-run et
+    KOMPLET svar, og en genoptagelse oveni gav Bjørn to svar på én besked — den
+    grund hører derfor ikke her. 14/10-2026 blev `visible-c1bafe9b` tvunget til
+    slutrunde efter 18 runder, skrev sit svar, og blev droppet af netop
+    `_runnet_har_svaret`: tre gange på én dag i én samtale, hver gang med et
+    varsel der lovede en fortsættelse der aldrig kom.
+    """
+    value = str(reason or "").strip().lower()
+    if not value:
+        return True
+    return value not in SVAR_ER_IKKE_BEVIS
 
 
 def classify_terminal(evidence: TerminalEvidence) -> TerminalDecision:

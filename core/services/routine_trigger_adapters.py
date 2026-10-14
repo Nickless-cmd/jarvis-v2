@@ -190,13 +190,20 @@ def dispatch_system(
 
 
 def dispatch_heartbeat_initiative(
-    *, focus: str, initiative_id: str,
+    *, focus: str, initiative_id: str, session_id: str = "",
 ) -> TriggerResult | None:
-    """Extracted heartbeat execution boundary for the oversized runtime module."""
+    """Extracted heartbeat execution boundary for the oversized runtime module.
+
+    ``session_id`` (14/10-2026): initiativet kan bære den samtale det kom fra
+    (fx et scheduled-job der lagde det i køen — se ``initiative_queue``). Tom =
+    systemets eget initiativ; der findes ingen samtale at vende tilbage til.
+    """
     def _legacy() -> None:
         from core.services.visible_runs import start_autonomous_run
 
-        start_autonomous_run(focus, origin="heartbeat")
+        start_autonomous_run(
+            focus, session_id=str(session_id or "") or None, origin="heartbeat",
+        )
 
     return dispatch_system(
         "heartbeat", initiative_id,

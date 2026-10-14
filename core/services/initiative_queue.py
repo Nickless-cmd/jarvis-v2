@@ -95,6 +95,7 @@ def push_initiative(
     source: str = "inner-voice",
     source_id: str = "",
     priority: str = "medium",
+    session_id: str = "",
 ) -> str:
     """Push a new initiative to the queue. Returns the initiative_id.
 
@@ -170,6 +171,8 @@ def push_initiative(
                 updated_at=now.isoformat(),
             )
             return existing_id
+        from core.services.session_binding import bind_session
+
         runtime_db.create_runtime_initiative(
             initiative_id=initiative_id,
             initiative_type="initiative",
@@ -183,6 +186,7 @@ def push_initiative(
             first_seeded_at=now.isoformat(),
             next_attempt_at=now.isoformat(),
             updated_at=now.isoformat(),
+            session_id=bind_session(session_id),
         )
         _trim_pending(now)
         queue_size = len(

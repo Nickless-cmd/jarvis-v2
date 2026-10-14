@@ -25,12 +25,22 @@ def push_scheduled_task(
     focus: str,
     delay_minutes: int,
     source: str = "jarvis-tool",
+    session_id: str = "",
 ) -> dict[str, object]:
-    """Schedule a task to fire after delay_minutes. Returns task info dict."""
+    """Schedule a task to fire after delay_minutes. Returns task info dict.
+
+    ``session_id`` (14/10-2026): den samtale opgaven blev bestilt i. Tom →
+    læses fra den aktive kontekst (se ``session_binding.bind_session``). Uden
+    binding sendte fyringen runnet til en frisk app-session — aldrig tilbage
+    til den samtale hvor opgaven blev lovet.
+    """
     now = datetime.now(UTC)
     run_at = now + timedelta(minutes=max(delay_minutes, 1))
     task_id = f"sched-{uuid4().hex[:10]}"
     normalized_focus = focus[:300].strip() or "Follow up"
+
+    from core.services.session_binding import bind_session
+    sid = bind_session(session_id)
 
     runtime_db.create_scheduled_task(
         task_id=task_id,
@@ -39,13 +49,16 @@ def push_scheduled_task(
         run_at=run_at.isoformat(),
         created_at=now.isoformat(),
         updated_at=now.isoformat(),
+        session_id=sid,
     )
-    logger.info("scheduled_tasks: created %s run_at=%s focus=%r", task_id, run_at.isoformat(), normalized_focus[:60])
+    logger.info("scheduled_tasks: created %s run_at=%s session=%s focus=%r",
+                task_id, run_at.isoformat(), sid or "-", normalized_focus[:60])
     return {
         "task_id": task_id,
         "focus": normalized_focus,
         "run_at": run_at.isoformat(),
         "delay_minutes": delay_minutes,
+        "session_id": sid,
     }
 
 
@@ -292,7 +305,7 @@ def _fire_due_tasks() -> None:
                                 # wakeup_dispatcher bruger (13/6-2026).
                                 target_session = pick_wakeup_run_target(
                                     channel="app",
-                                    record_session="",
+                                    record_session=str(task.get("session_id") or ""),
                                     app_resolver=resolve_owner_app_session,
                                     owner_resolver=resolve_owner_target_session,
                                     is_external=session_is_external_channel,

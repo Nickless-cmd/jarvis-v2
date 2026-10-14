@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.runtime import db as runtime_db
+from core.services.session_binding import bind_session
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,13 @@ def _ensure_table() -> None:
         # rammes. Idempotent ALTER, samme moenster som channel ovenfor.
         if "weekdays" not in cols:
             conn.execute("ALTER TABLE recurring_tasks ADD COLUMN weekdays TEXT NOT NULL DEFAULT ''")
+        # SESSION-BINDING (14/10-2026). Bjørn: «tingene skal vække den aktive
+        # session de er bestilt i». Uden kolonnen kunne `_fire_due` ikke vide
+        # hvor opgaven hørte til, og hvert run landede i `auto-recurring` —
+        # 367 svar i en session ingen læser. '' = ukendt (rækker fra før
+        # kolonnen fandtes); de falder tilbage til den gamle adfærd.
+        if "session_id" not in cols:
+            conn.execute("ALTER TABLE recurring_tasks ADD COLUMN session_id TEXT NOT NULL DEFAULT ''")
         conn.commit()
 
 
@@ -117,6 +125,9 @@ def _row_to_dict(row) -> dict:
         "user_id": (row["user_id"] if "user_id" in keys else None),
         # '' = alle dage — ogsaa for raekker skrevet foer kolonnen fandtes.
         "weekdays": (row["weekdays"] if "weekdays" in keys else ""),
+        # '' = ingen binding (raekker fra foer 14/10-2026). Kalderen falder
+        # tilbage til den gamle adfaerd for dem.
+        "session_id": (row["session_id"] if "session_id" in keys else ""),
     }
 
 
@@ -127,15 +138,17 @@ def _scope() -> str:
 
 
 def _create(*, task_id: str, focus: str, source: str, interval_minutes: int,
-            next_fire_at: str, now: str, weekdays: str = "") -> None:
+            next_fire_at: str, now: str, weekdays: str = "",
+            session_id: str = "") -> None:
     with runtime_db.connect() as conn:
         conn.execute(
             """
             INSERT INTO recurring_tasks
-              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id, weekdays)
-            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id, weekdays, session_id)
+            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
             """,
-            (task_id, focus, source, interval_minutes, next_fire_at, now, now, _scope() or None, weekdays),
+            (task_id, focus, source, interval_minutes, next_fire_at, now, now,
+             _scope() or None, weekdays, session_id),
         )
         conn.commit()
 
@@ -357,8 +370,13 @@ def create_recurring_task(
     source: str = "jarvis-tool",
     delay_minutes: int = 0,
     weekdays: str = "",
+    session_id: str = "",
 ) -> dict:
     """Schedule a recurring task. Returns task info dict.
+
+    ``session_id`` (14/10-2026): den samtale opgaven blev bestilt i — se
+    ``session_binding.bind_session``. Uden binding fyrede hvert gennemloeb et
+    run i `auto-recurring`, hvor ingen laeser svaret (367 maalt samme dag).
 
     ``weekdays`` (Bjoern 28/9-2026: «begraens medicin-paamindelserne til
     hverdage»): hvilke ugedage opgaven maa fyre paa — ``'man-fre'``,
@@ -393,6 +411,11 @@ def create_recurring_task(
         first_fire = _ryk_til_ugedag(first_fire, timedelta(days=1), ugedage)
     task_id = f"rec-{uuid4().hex[:10]}"
     focus = focus[:300].strip() or "Recurring reminder"
+    # SESSION-BINDING (14/10-2026): skriv NED hvilken samtale opgaven blev
+    # bestilt i. `bind_session` læser den aktive kontekst og afviser en
+    # auto-*-silo, så et autonomt run der opretter en opgave ikke binder den
+    # til sin egen silo.
+    sid = bind_session(session_id)
     _create(
         task_id=task_id,
         focus=focus,
@@ -401,15 +424,17 @@ def create_recurring_task(
         next_fire_at=first_fire.isoformat(),
         now=now.isoformat(),
         weekdays=ud,
+        session_id=sid,
     )
-    logger.info("recurring_tasks: created %s every %dm weekdays=%r focus=%r",
-                task_id, interval_minutes, ud or "alle", focus[:60])
+    logger.info("recurring_tasks: created %s every %dm weekdays=%r session=%s focus=%r",
+                task_id, interval_minutes, ud or "alle", sid or "-", focus[:60])
     return {
         "task_id": task_id,
         "focus": focus,
         "interval_minutes": interval_minutes,
         "next_fire_at": first_fire.isoformat(),
         "weekdays": ud,
+        "session_id": sid,
         "status": "active",
     }
 
@@ -489,7 +514,14 @@ def _fire_due() -> None:
             def _legacy() -> None:
                 from core.services.visible_runs import start_autonomous_run
 
-                start_autonomous_run(message=focus, session_id=None, origin="recurring")
+                # SESSION-BINDING (14/10-2026): kør i den samtale opgaven blev
+                # bestilt i. Er bindingen tom (raekke fra foer kolonnen fandtes),
+                # falder vi tilbage til den gamle adfaerd — `None` → auto-silo.
+                start_autonomous_run(
+                    message=focus,
+                    session_id=str(task.get("session_id") or "") or None,
+                    origin="recurring",
+                )
 
             dispatch_recurring(
                 task_id,

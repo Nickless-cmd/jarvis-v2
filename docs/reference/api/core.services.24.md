@@ -682,6 +682,14 @@ _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 | function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
 | function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
 
+## `core/services/session_binding.py`
+_Hvilken SAMTALE hører et job til? — én definition, tre ure._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_auto_session` | `(session_id)` | Er dette en autonom silo (``auto-*``) og ikke en rigtig samtale? | [src](../../../core/services/session_binding.py#L16) |
+| function | `bind_session` | `(session_id=…)` | Den samtale et job blev bestilt i — eller ``''`` hvis ingen. | [src](../../../core/services/session_binding.py#L21) |
+
 ## `core/services/session_boot_reconciler.py`
 _Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
 
@@ -769,19 +777,4 @@ _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark
 | function | `_llm_segment` | `(turns)` | Bed den billige lane segmentere samtalen i kapitler. Returnerer milepæle eller None. | [src](../../../core/services/session_milestones.py#L59) |
 | function | `_generate` | `(turns)` | — | [src](../../../core/services/session_milestones.py#L104) |
 | function | `get_session_milestones` | `(session_id)` | Milepæle for rail'en: [{anchor_id, title}]. Cached pr. session+turn-antal; regenereres | [src](../../../core/services/session_milestones.py#L110) |
-
-## `core/services/session_model_pin.py`
-_Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_model_pin.py#L60) |
-| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L71) |
-| function | `_compact_epoch` | `(session_id)` | Compaction-markøren. Skifter den, er historikken skrevet om og cachen | [src](../../../core/services/session_model_pin.py#L75) |
-| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_model_pin.py#L88) |
-| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_model_pin.py#L99) |
-| function | `get_pinned` | `(session_id)` | Det låste (udbyder, model) — ``None`` når intet er låst, eller når | [src](../../../core/services/session_model_pin.py#L107) |
-| function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L123) |
-| function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L139) |
-| function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L163) |
 

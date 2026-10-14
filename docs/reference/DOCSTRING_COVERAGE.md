@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8965/17148 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8967/17150 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 821 | 1521 | 53% |
-| `core.services` | 5974 | 11660 | 51% |
+| `core.services` | 5976 | 11662 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -589,11 +589,11 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 - `core/runtime/db_runtime_hooks.py` :: `get_runtime_hook_dispatch` (L84)
 - `core/runtime/db_runtime_hooks.py` :: `list_runtime_hook_dispatches` (L115)
 - `core/runtime/db_runtime_hooks.py` :: `record_runtime_hook_dispatch` (L36)
-- `core/runtime/db_runtime_initiatives.py` :: `create_runtime_initiative` (L106)
-- `core/runtime/db_runtime_initiatives.py` :: `find_pending_runtime_initiative_by_focus` (L217)
-- `core/runtime/db_runtime_initiatives.py` :: `get_runtime_initiative` (L178)
-- `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L269)
-- `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L328)
+- `core/runtime/db_runtime_initiatives.py` :: `create_runtime_initiative` (L113)
+- `core/runtime/db_runtime_initiatives.py` :: `find_pending_runtime_initiative_by_focus` (L228)
+- `core/runtime/db_runtime_initiatives.py` :: `get_runtime_initiative` (L188)
+- `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L281)
+- `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L341)
 - `core/runtime/db_runtime_signals.py` :: `ensure_runtime_signals_tables` (L17)
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_action_outcomes` (L122)
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L146)
@@ -604,11 +604,11 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 - `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)
 - `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L207)
 - `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L253)
-- `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L70)
-- `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L101)
-- `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L92)
-- `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L129)
-- `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L115)
+- `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L79)
+- `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L111)
+- `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
+- `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
+- `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
 - `core/runtime/db_schema.py` :: `init_db` (L348)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
@@ -1323,8 +1323,8 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 - `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L861)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L275)
-- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
-- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L535)
+- `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L554)
+- `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L539)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_surface` (L35)
 - `core/services/inner_dialectic_engine.py` :: `run_inner_dialectic` (L13)
@@ -1674,10 +1674,10 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L417)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L425)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L554)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L563)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L442)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L450)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L586)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L595)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -1955,8 +1955,8 @@ Generated from source. 8965/17148 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L404)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L413)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L417)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L426)
 - `core/services/scoped_recall_policy.py` :: `disabled_result` (L51)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)

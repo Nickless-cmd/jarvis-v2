@@ -34,7 +34,8 @@ def _ensure_scheduled_tasks_table(conn: sqlite3.Connection) -> None:
             cancelled_at TEXT NOT NULL DEFAULT '',
             updated_at TEXT NOT NULL,
             scheduled_for_user_id TEXT,
-            initiated_by TEXT
+            initiated_by TEXT,
+            session_id TEXT NOT NULL DEFAULT ''
         )
         """
     )
@@ -42,6 +43,13 @@ def _ensure_scheduled_tasks_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status_run_at "
         "ON scheduled_tasks(status, run_at, id DESC)"
     )
+    # SESSION-BINDING (14/10-2026). Samme grund som i recurring_tasks: uden
+    # kolonnen kunne `_fire_due_tasks` ikke vide hvilken samtale opgaven blev
+    # bestilt i, og `record_session=""` sendte runnet til en frisk app-session.
+    # Idempotent ALTER — CREATE IF NOT EXISTS rører ikke en eksisterende tabel.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(scheduled_tasks)").fetchall()}
+    if "session_id" not in cols:
+        conn.execute("ALTER TABLE scheduled_tasks ADD COLUMN session_id TEXT NOT NULL DEFAULT ''")
 
 
 def _row_get(row: sqlite3.Row, key: str, default=None):
@@ -64,6 +72,7 @@ def _scheduled_task_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "cancelled_at": row["cancelled_at"],
         "updated_at": row["updated_at"],
         "scheduled_for_user_id": _row_get(row, "scheduled_for_user_id"),
+        "session_id": _row_get(row, "session_id", "") or "",
     }
 
 
@@ -75,15 +84,16 @@ def create_scheduled_task(
     run_at: str,
     created_at: str,
     updated_at: str,
+    session_id: str = "",
 ) -> dict[str, Any]:
     with connect() as conn:
         _ensure_scheduled_tasks_table(conn)
         conn.execute(
             """
-            INSERT INTO scheduled_tasks (task_id, focus, source, status, run_at, created_at, updated_at)
-            VALUES (?, ?, ?, 'pending', ?, ?, ?)
+            INSERT INTO scheduled_tasks (task_id, focus, source, status, run_at, created_at, updated_at, session_id)
+            VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
             """,
-            (task_id, focus, source, run_at, created_at, updated_at),
+            (task_id, focus, source, run_at, created_at, updated_at, str(session_id or "")),
         )
         conn.commit()
     return get_scheduled_task(task_id)

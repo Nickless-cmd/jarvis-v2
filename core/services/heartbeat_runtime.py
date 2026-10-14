@@ -5271,7 +5271,9 @@ def _execute_heartbeat_internal_action(
                     dispatch_heartbeat_initiative,
                 )
                 dispatch_heartbeat_initiative(
-                    focus=focus, initiative_id=initiative_id or tick_id,
+                    focus=focus,
+                    initiative_id=initiative_id or tick_id,
+                    session_id=str(initiative.get("session_id") or ""),
                 )
                 return {
                     "status": "executed",

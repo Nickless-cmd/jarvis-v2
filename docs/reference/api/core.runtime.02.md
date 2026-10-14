@@ -698,14 +698,14 @@ _Persistence for the runtime-initiatives cluster._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_ensure_runtime_initiatives_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L16) |
-| function | `_runtime_initiative_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L78) |
-| function | `create_runtime_initiative` | `(*, initiative_id, initiative_type=…, focus, why_text=…, source=…, source_id=…, status=…, priority=…, detected_at, first_seeded_at=…, next_attempt_at=…, updated_at, scheduled_for_user_id=…, initiated_by=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L106) |
-| function | `get_runtime_initiative` | `(initiative_id)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L178) |
-| function | `find_pending_runtime_initiative_by_focus` | `(focus, *, initiative_type=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L217) |
-| function | `list_runtime_initiatives` | `(*, status=…, initiative_type=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L269) |
-| function | `update_runtime_initiative` | `(initiative_id, *, status=…, initiative_type=…, priority=…, detected_at=…, why_text=…, first_seeded_at=…, attempt_count=…, last_attempt_at=…, next_attempt_at=…, blocked_reason=…, acted_at=…, last_action_at=…, abandoned_at=…, action_summary=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L328) |
-| function | `approve_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-approved. Sets user_approved_at and outcome='approved'. | [src](../../../core/runtime/db_runtime_initiatives.py#L391) |
-| function | `reject_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-rejected. Sets outcome='rejected' and expires it. | [src](../../../core/runtime/db_runtime_initiatives.py#L418) |
+| function | `_runtime_initiative_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L84) |
+| function | `create_runtime_initiative` | `(*, initiative_id, initiative_type=…, focus, why_text=…, source=…, source_id=…, status=…, priority=…, detected_at, first_seeded_at=…, next_attempt_at=…, updated_at, scheduled_for_user_id=…, initiated_by=…, session_id=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L113) |
+| function | `get_runtime_initiative` | `(initiative_id)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L188) |
+| function | `find_pending_runtime_initiative_by_focus` | `(focus, *, initiative_type=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L228) |
+| function | `list_runtime_initiatives` | `(*, status=…, initiative_type=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L281) |
+| function | `update_runtime_initiative` | `(initiative_id, *, status=…, initiative_type=…, priority=…, detected_at=…, why_text=…, first_seeded_at=…, attempt_count=…, last_attempt_at=…, next_attempt_at=…, blocked_reason=…, acted_at=…, last_action_at=…, abandoned_at=…, action_summary=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_initiatives.py#L341) |
+| function | `approve_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-approved. Sets user_approved_at and outcome='approved'. | [src](../../../core/runtime/db_runtime_initiatives.py#L404) |
+| function | `reject_runtime_initiative` | `(initiative_id, *, outcome_note=…, updated_at)` | Mark an initiative as user-rejected. Sets outcome='rejected' and expires it. | [src](../../../core/runtime/db_runtime_initiatives.py#L431) |
 
 ## `core/runtime/db_runtime_misc.py`
 _Persistence for small self-contained runtime CRUD domains._

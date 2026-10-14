@@ -33098,7 +33098,7 @@
       ]
     },
     "runtime_initiatives": {
-      "digest": "39:ce:c3:44:e8:42:2c:77:3e:5c:64:24:e9:7d:89:a6:2f:6b:3a:9e:a4:72:0b:d0:5f:87:68:c4:88:52:ec:a1",
+      "digest": "fa:5e:9e:eb:88:d6:bf:a8:77:58:84:41:61:47:43:72:c5:e8:92:36:19:59:57:ff:1c:19:52:13:64:79:ba:3c",
       "schema": {
         "columns": [
           {
@@ -33258,6 +33258,14 @@
             "type": "TEXT",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -43629,7 +43637,7 @@
       ]
     },
     "scheduled_tasks": {
-      "digest": "2c:1f:33:10:68:1a:90:6b:fe:2d:d8:71:4f:ee:2e:e3:3e:12:a1:4d:84:57:b8:6b:41:76:06:f9:73:ac:5a:76",
+      "digest": "17:9b:c9:9d:b7:20:c5:f4:90:61:91:0c:27:b2:e8:eb:e7:99:4b:f4:7b:0c:ba:67:13:71:98:12:fa:87:25:ac",
       "schema": {
         "columns": [
           {
@@ -43693,6 +43701,14 @@
             "type": "TEXT",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

@@ -67,6 +67,12 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
         "ALTER TABLE runtime_initiatives ADD COLUMN first_seeded_at TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE runtime_initiatives ADD COLUMN last_action_at TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE runtime_initiatives ADD COLUMN abandoned_at TEXT NOT NULL DEFAULT ''",
+        # SESSION-BINDING (14/10-2026). Et initiativ er det tredje urs
+        # indgang: heartbeat plukker en række herfra og starter et run. Uden
+        # kolonnen tabes samtalen undervejs — scheduled → initiativ →
+        # heartbeat → `auto-heartbeat`, selv når scheduled-tasken vidste hvor
+        # den hørte til. '' = systemets eget initiativ, ingen samtale.
+        "ALTER TABLE runtime_initiatives ADD COLUMN session_id TEXT NOT NULL DEFAULT ''",
     ):
         try:
             conn.execute(col_sql)
@@ -100,6 +106,7 @@ def _runtime_initiative_from_row(row: sqlite3.Row) -> dict[str, object]:
         "outcome_note": d.get("outcome_note", ""),
         "user_approved_at": d.get("user_approved_at", ""),
         "updated_at": d.get("updated_at", ""),
+        "session_id": d.get("session_id", ""),
     }
 
 
@@ -119,6 +126,7 @@ def create_runtime_initiative(
     updated_at: str,
     scheduled_for_user_id: str | None = None,
     initiated_by: str | None = None,
+    session_id: str = "",
 ) -> dict[str, object]:
     # Auto-stamp from workspace_context if caller did not provide values.
     if scheduled_for_user_id is None and initiated_by is None:
@@ -147,9 +155,10 @@ def create_runtime_initiative(
                 next_attempt_at,
                 updated_at,
                 scheduled_for_user_id,
-                initiated_by
+                initiated_by,
+                session_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 initiative_id,
@@ -166,6 +175,7 @@ def create_runtime_initiative(
                 updated_at,
                 scheduled_for_user_id,
                 initiated_by,
+                str(session_id or ""),
             ),
         )
         conn.commit()
@@ -202,7 +212,8 @@ def get_runtime_initiative(initiative_id: str) -> dict[str, object] | None:
                 outcome,
                 outcome_note,
                 user_approved_at,
-                updated_at
+                updated_at,
+                session_id
             FROM runtime_initiatives
             WHERE initiative_id = ?
             LIMIT 1
@@ -253,7 +264,8 @@ def find_pending_runtime_initiative_by_focus(
                 outcome,
                 outcome_note,
                 user_approved_at,
-                updated_at
+                updated_at,
+                session_id
             FROM runtime_initiatives
             WHERE {' AND '.join(clauses)}
             ORDER BY id DESC
@@ -314,7 +326,8 @@ def list_runtime_initiatives(
                 outcome,
                 outcome_note,
                 user_approved_at,
-                updated_at
+                updated_at,
+                session_id
             FROM runtime_initiatives
             {where_sql}
             ORDER BY id DESC

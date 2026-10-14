@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17148 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17150 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,13 +53,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17148 functions/
 - [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relation_state_signal_tracking`
 - [`core.services.22`](core.services.22.md) — `relational_warmth` … `run_follow`
 - [`core.services.23`](core.services.23.md) — `run_guard` … `self_authored_prompt_proposal_tracking`
-- [`core.services.24`](core.services.24.md) — `self_compassion` … `session_model_pin`
-- [`core.services.25`](core.services.25.md) — `session_permission` … `skill_relevance_surface`
-- [`core.services.26`](core.services.26.md) — `skill_scanner` … `temporal_recurrence_signal_tracking`
-- [`core.services.27`](core.services.27.md) — `temporal_rhythm` … `totp_verifier`
-- [`core.services.28`](core.services.28.md) — `truth_gate_v2` … `visible_model_adapters`
-- [`core.services.29`](core.services.29.md) — `visible_model_observe` … `visible_turn_accumulator`
-- [`core.services.30`](core.services.30.md) — `visible_turn_blocks` … `world_model_signal_tracking`
+- [`core.services.24`](core.services.24.md) — `self_compassion` … `session_milestones`
+- [`core.services.25`](core.services.25.md) — `session_model_pin` … `skill_gate_guard`
+- [`core.services.26`](core.services.26.md) — `skill_relevance_surface` … `temporal_narrative`
+- [`core.services.27`](core.services.27.md) — `temporal_recurrence_signal_tracking` … `tool_world_change`
+- [`core.services.28`](core.services.28.md) — `totp_verifier` … `visible_model`
+- [`core.services.29`](core.services.29.md) — `visible_model_adapters` … `visible_tool_labels`
+- [`core.services.30`](core.services.30.md) — `visible_turn_accumulator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -252,28 +252,29 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `stempl_genoptagelse` | `(*, run_id, session_id=…, task_id=…, recovery_attempt=…, recovery_generation=…)` | Skriv kaedenummeret paa en genoptagelse FOER den journalfoerer sig selv. | [src](../../../core/services/in_flight_runs.py#L353) |
 | function | `aktiv_kaede_nr` | `(session_id)` | Hvilket forsoeg i raekken er samtalens NYESTE synlige koersel? | [src](../../../core/services/in_flight_runs.py#L407) |
 | function | `aktiv_kaede` | `(session_id)` | Samtalens aktive kæde: ``(kaedenummer, opgavens id)`` for den NYESTE post. | [src](../../../core/services/in_flight_runs.py#L435) |
-| function | `stempl_aktiv_kaede` | `(*, run_id, session_id, origin=…, task_id=…)` | Stempl samtalens aktive kæde paa et nyt run. True = der blev stemplet. | [src](../../../core/services/in_flight_runs.py#L479) |
-| function | `_genoptagelse_opbrugt` | `(rec)` | Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang. | [src](../../../core/services/in_flight_runs.py#L541) |
-| function | `recovery_snapshot` | `(session_id)` | Hvad er der at genoptage for DENNE samtale? `None` = ingenting. | [src](../../../core/services/in_flight_runs.py#L555) |
-| function | `_kvitter_varsel` | `(task_id)` | Varslet er hentet — sig det ikke igen. | [src](../../../core/services/in_flight_runs.py#L651) |
-| function | `queue_steer` | `(run_id, text)` | Gem en brugerbesked der ikke kunne leveres til en kørende tur. | [src](../../../core/services/in_flight_runs.py#L673) |
-| function | `mark_tool` | `(run_id, tool_name)` | Update the last-tool-attempted hint for an in-flight run. | [src](../../../core/services/in_flight_runs.py#L699) |
-| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L711) |
-| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L723) |
-| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L741) |
-| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L791) |
-| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L798) |
-| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L816) |
-| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L888) |
-| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L1028) |
-| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L1057) |
-| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L1152) |
-| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L1187) |
-| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L1214) |
-| function | `levende_koersler` | `(*, session_id=…, max_alder_s=…)` | Records der LEVER lige nu — cross-proces. Ren læsning, ingen skrivning. | [src](../../../core/services/in_flight_runs.py#L1271) |
-| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1327) |
-| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1341) |
-| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1353) |
+| function | `aktiv_kaede_for_opgave` | `(session_id, task_id)` | Hvor langt er DENNE opgaves kæde nået? 0 = ingen post for opgaven. | [src](../../../core/services/in_flight_runs.py#L463) |
+| function | `stempl_aktiv_kaede` | `(*, run_id, session_id, origin=…, task_id=…)` | Stempl samtalens aktive kæde paa et nyt run. True = der blev stemplet. | [src](../../../core/services/in_flight_runs.py#L510) |
+| function | `_genoptagelse_opbrugt` | `(rec)` | Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang. | [src](../../../core/services/in_flight_runs.py#L580) |
+| function | `recovery_snapshot` | `(session_id)` | Hvad er der at genoptage for DENNE samtale? `None` = ingenting. | [src](../../../core/services/in_flight_runs.py#L594) |
+| function | `_kvitter_varsel` | `(task_id)` | Varslet er hentet — sig det ikke igen. | [src](../../../core/services/in_flight_runs.py#L690) |
+| function | `queue_steer` | `(run_id, text)` | Gem en brugerbesked der ikke kunne leveres til en kørende tur. | [src](../../../core/services/in_flight_runs.py#L712) |
+| function | `mark_tool` | `(run_id, tool_name)` | Update the last-tool-attempted hint for an in-flight run. | [src](../../../core/services/in_flight_runs.py#L738) |
+| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L750) |
+| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L762) |
+| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L780) |
+| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L830) |
+| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L837) |
+| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L855) |
+| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L927) |
+| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L1067) |
+| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L1096) |
+| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L1191) |
+| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L1226) |
+| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L1253) |
+| function | `levende_koersler` | `(*, session_id=…, max_alder_s=…)` | Records der LEVER lige nu — cross-proces. Ren læsning, ingen skrivning. | [src](../../../core/services/in_flight_runs.py#L1310) |
+| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1366) |
+| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1380) |
+| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1392) |
 
 ## `core/services/inbox_gate.py`
 _Indbakkens to-trins forudsætning i mutationspunktet._

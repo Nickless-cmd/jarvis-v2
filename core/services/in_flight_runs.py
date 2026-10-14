@@ -460,6 +460,37 @@ def aktiv_kaede(session_id: str) -> tuple[int, str]:
     return kaede, opgave
 
 
+def aktiv_kaede_for_opgave(session_id: str, task_id: str) -> int:
+    """Hvor langt er DENNE opgaves kæde nået? 0 = ingen post for opgaven.
+
+    `aktiv_kaede` svarer på «hvad er samtalens nyeste kæde». Det er det rigtige
+    spørgsmål når vi ikke ved hvilken opgave vi står i — men det er det FORKERTE
+    når vi gør. Målt 14/10-2026 (ChatGPT's anden indvending): opgave A stod på
+    forsøg 2 i samtalen, opgave B blev vækket med sit EGET eksplicitte id — og
+    arvede A's tal, `recovery_attempt=3`. Identiteten var rigtig, budgettet
+    lånt, og loftet på tre kunne omgås ved at skifte opgave i samme samtale.
+
+    Opslaget er derfor på OPGAVENS poster, ikke samtalens: nyeste post hvis
+    `task_id` (eller `run_id`, for et led der endnu ikke har arvet et id) matcher.
+    Er der ingen post for opgaven, er svaret 0 — et nyt led i en kæde vi ikke
+    har set før, og så er ét forsøg det ærlige tal.
+    """
+    sid = str(session_id or "").strip()
+    opgave = str(task_id or "").strip()
+    if not sid or not opgave:
+        return 0
+    kandidater = [
+        rec for rec in _load().values()
+        if str(rec.get("session_id") or "") == sid
+        and str(rec.get("kind") or "visible") == "visible"
+        and opgave in {str(rec.get("task_id") or ""), str(rec.get("run_id") or "")}
+    ]
+    if not kandidater:
+        return 0
+    nyeste = max(kandidater, key=lambda r: str(r.get("started_at") or ""))
+    return max(0, int(nyeste.get("recovery_attempt") or 0))
+
+
 #: Origins der TAGER EN FORPLIGTELSE OP — i modsætning til dem der starter en
 #: NY opgave. Maalt 14/10-2026 ved hvert kaldested i repoet:
 #:
@@ -518,9 +549,17 @@ def stempl_aktiv_kaede(*, run_id: str, session_id: str, origin: str = "",
     if not eksplicit and str(origin or "").strip() not in _FORTSAETTELSES_ORIGINS:
         return False
     try:
-        kaede, opgave = aktiv_kaede(session_id)
-        if not eksplicit and kaede <= 0:
-            return False
+        if eksplicit:
+            # OPGAVENS EGEN KÆDE (14/10-2026). Er id'et kendt, er samtalens
+            # nyeste post det FORKERTE sted at hente tallet: en anden opgave i
+            # samme samtale ville laane sit budget ud (målt: B arvede A's
+            # `recovery_attempt=3`). Vi slaar op på opgavens egne poster.
+            kaede = aktiv_kaede_for_opgave(session_id, eksplicit)
+            opgave = eksplicit
+        else:
+            kaede, opgave = aktiv_kaede(session_id)
+            if kaede <= 0:
+                return False
         # Tallet er stadig et bedste bud naar journalen ikke kan svare: vi VED
         # opgaven (eksplicit), men ikke hvor langt kæden er nået. Er den 0, er
         # dette i det mindste ét forsøg brugt — runnet ER en fortsættelse.

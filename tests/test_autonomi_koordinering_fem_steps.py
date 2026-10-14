@@ -360,6 +360,75 @@ def test_eksplicit_id_arver_kaede_tallet(monkeypatch):
     assert kald["recovery_attempt"] == 3
 
 
+def test_eksplicit_id_arver_IKKE_en_anden_opgaves_taeller(monkeypatch):
+    """REGRESSIONSTEST (ChatGPT's anden indvending, 14/10-2026).
+
+    «Forsøgstælleren skal findes ud fra `task_id`, når det er angivet — ikke
+    fra sessionens seneste kæde.»
+
+    Opgave A staar paa forsoeg 2 i samtalen. Opgave B vaekkes i SAMME samtale
+    med sit EGET eksplicitte id. B skal have sit eget budget: ét forsoeg brugt
+    — ikke A's 3. Ellers er identiteten rigtig og budgettet laant, og loftet
+    paa tre kan stadig omgaas ved at skifte opgave inden for samme samtale.
+    """
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(
+        ifr,
+        "_load",
+        lambda: {
+            "A": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 2,
+                "task_id": "opg-A", "run_id": "A",
+                "started_at": "2026-10-14T10:00:00+00:00",
+            }
+        },
+    )
+    kald: dict = {}
+    monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
+
+    assert ifr.stempl_aktiv_kaede(run_id="B", session_id="s1",
+                                  origin="wakeup", task_id="opg-B") is True
+    assert kald["task_id"] == "opg-B", "B's eget id — ikke A's"
+    assert kald["recovery_attempt"] == 1, (
+        "B maa ikke arve A's forsoegstal: en anden opgave er et andet budget"
+    )
+
+
+def test_eksplicit_id_arver_sit_eget_tal_naar_opgaven_er_set_foer(monkeypatch):
+    """Samme opgave, tidligere led: tallet skal FORTSÆTTE, ikke nulstilles.
+
+    Modstykket til testen ovenfor. Uden den kunne rettelsen blive «tæl altid
+    fra 1», og saa kunne loftet aldrig naas for den opgave der faktisk
+    genoptages.
+    """
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(
+        ifr,
+        "_load",
+        lambda: {
+            "A": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 2,
+                "task_id": "opg-A", "run_id": "A",
+                "started_at": "2026-10-14T10:00:00+00:00",
+            },
+            "B": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 1,
+                "task_id": "opg-B", "run_id": "B",
+                "started_at": "2026-10-14T11:00:00+00:00",
+            },
+        },
+    )
+    kald: dict = {}
+    monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
+
+    assert ifr.stempl_aktiv_kaede(run_id="C", session_id="s1",
+                                  origin="wakeup", task_id="opg-B") is True
+    assert kald["task_id"] == "opg-B"
+    assert kald["recovery_attempt"] == 2, "B's eget led nummer to"
+
+
 def test_vaekningen_gemmer_opgavens_id(monkeypatch):
     """`schedule_self_wakeup` skal kunne BÆRE forpligtelsen videre."""
     from core.services import self_wakeup as sw

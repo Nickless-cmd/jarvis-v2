@@ -430,7 +430,7 @@ _Fastlaast bro-dispatch til EN bestemt klient (agent-contract-v1 E, spec 8)._
 | function | `_local_conn` | `(user_id, client_id)` | — | [src](../../../core/services/agent_bridge_dispatch.py#L33) |
 | function | `client_info` | `(user_id, client_id)` | Klientens annoncerede tilstand (lokalt eller via presence fra den anden proces), eller None. | [src](../../../core/services/agent_bridge_dispatch.py#L38) |
 | function | `dispatch_pinned` | `(*, user_id, client_id, tool, args, timeout_s, extra=…, allow_cross_process=…)` | Send ``tool`` til netop ``client_id``. Aldrig failover til en anden klient. Rejser ikke. | [src](../../../core/services/agent_bridge_dispatch.py#L55) |
-| function | `_forward` | `(*, user_id, client_id, tool, args, timeout_s, extra)` | Til den proces presence siger holder KLIENTEN. Ingen presence -> klienten er ikke forbundet. | [src](../../../core/services/agent_bridge_dispatch.py#L91) |
+| function | `_forward` | `(*, user_id, client_id, tool, args, timeout_s, extra)` | Til den proces presence siger holder KLIENTEN. Ingen presence -> klienten er ikke forbundet. | [src](../../../core/services/agent_bridge_dispatch.py#L97) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._

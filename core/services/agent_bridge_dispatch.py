@@ -65,7 +65,13 @@ async def dispatch_pinned(*, user_id: str, client_id: str, tool: str, args: dict
     correlation_id = str(uuid.uuid4())
     loop = asyncio.get_event_loop()
     fut: asyncio.Future = loop.create_future()
-    conn._pending[correlation_id] = (fut, loop)
+    # Broen forventer `PendingBridgeCall` med `.terminal`/`.last_seq`, ikke en
+    # raa `(fut, loop)`-tuple. Da `_pending` skiftede fra tuple til objekt, fulgte
+    # denne linje ikke med: HVERT pinned kald fejlede med "'tuple' object has no
+    # attribute 'terminal'" og blev rapporteret som `bridge_send_failed`, ogsaa
+    # naar klienten svarede korrekt. (Maalt 14/10-2026; 3 tests i
+    # tests/test_agent_bridge_dispatch.py fejlede paa ren HEAD.)
+    conn.register_pending(correlation_id, fut, loop)
     try:
         await conn.send_invoke(correlation_id=correlation_id, tool=tool, args=args,
                                timeout_ms=int(timeout_s * 1000), extra=extra)

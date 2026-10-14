@@ -164,7 +164,15 @@ def test_autonomous_default_is_ollama_cloud(isolated_runtime):
     p, m = ra.resolve_autonomous_model()
     assert p == "ollama", "baggrunden ramte en anden udbyder end ollama"
     assert p != "deepseek", "baggrunden ramte det BETALTE deepseek-API"
-    assert m == "deepseek-v4.1-flash:cloud"
+    # Modelnavnet ROTERER med vilje: `_pris_bevidst_base` skifter til den faste
+    # billige model i Ollamas myldretid (10/10-2026). At pinne ét navn er praecis
+    # den faelde testens egen docstring advarer om — den pinned
+    # `deepseek-v4-flash:cloud` 25/9 og fejlede igen 12/10 med
+    # `glm-5.3-flash:cloud`. Det vi holder fast i er MAENGDEN af lovlige
+    # baggrunds-modeller, ikke versionen.
+    assert m in {ra._AUTONOMOUS_FALLBACK_MODEL, ra._AUTONOMOUS_PEAK_MODEL}, (
+        f"baggrunden valgte en model uden for de to lovlige baggrunds-modeller: {m}"
+    )
 
 
 def test_autonomous_honors_configured_background_model(isolated_runtime):

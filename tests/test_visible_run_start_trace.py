@@ -28,7 +28,7 @@ _SCHEMA = (
     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
     "run_id TEXT NOT NULL UNIQUE, lane TEXT, provider TEXT, model TEXT, "
     "status TEXT, started_at TEXT, finished_at TEXT, text_preview TEXT, "
-    "error TEXT, capability_id TEXT)",
+    "error TEXT, capability_id TEXT, user_id TEXT NOT NULL DEFAULT '')",
     # Outcome-stien skriver tre tabeller i ÉT write-lock. Uden dem her fejler
     # `_persist_visible_run_outcome` midtvejs, og testen ville måle en fejl der
     # ikke findes i produktion.
@@ -240,18 +240,22 @@ def test_autonom_vej_skriver_sporet_FOER_traaden():
 def test_nedluknings_sweepen_stempler_ogsaa_raekken():
     src = open("apps/api/jarvis_api/app.py", encoding="utf-8").read()
     i = src.index("list_running_orphans(0.0")
-    vindue = src[i:i + 2200]
+    vindue = src[i:i + 3200]
     # 12/9-2026: sweepen SKAL sende sin egen identitet med. Uden den stempler
     # en nedlukning af api-processen runtime-processens aktive ture — begge
     # kører samme app mod samme delte fil.
     assert "dying_owner=current_owner()" in vindue
     # KALDET, ikke bare navnet: import-linjen står der uanset, så et navnetjek
     # bestod selv da kaldet var fjernet. (Mutationstest 12/9-2026.)
-    assert "stamp_visible_run_interrupted(_rid" in vindue
+    #
+    # 17/9-2026 skiftede den SYNILIGE gren fra `stamp_visible_run_interrupted`
+    # til `settle_recovering`: en tur dræbt af nedlukningen skal være
+    # GENOPTAGELIG, ikke bare afbrudt (commit dc685128d). Testen pegede stadig
+    # på det gamle kald og fejlede derfor på ren HEAD indtil 14/10-2026.
+    assert "settle_recovering(_rid" in vindue, "den synlige gren skal stemple raekken"
     # Og det skal komme EFTER terminal-spørgsmålet, ellers stemples en
     # afsluttet tur.
-    assert vindue.index("run_er_terminal") < vindue.index(
-        "stamp_visible_run_interrupted(_rid")
+    assert vindue.index("run_er_terminal") < vindue.index("settle_recovering(_rid")
 
 
 def test_hvert_mark_started_kald_sender_kind_og_provider_med():

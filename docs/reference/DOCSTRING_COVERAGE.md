@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8953/17087 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8953/17088 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8953/17087 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 276 | 602 | 45% |
+| `scripts` | 276 | 603 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2534)
+## Undocumented public functions (2535)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L218)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2488,6 +2488,7 @@ Generated from source. 8953/17087 functions/methods documented (52%). The list b
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/migrate_member_session_titles.py` :: `migrate` (L10)
+- `scripts/migrate_recall_ownership.py` :: `main` (L22)
 - `scripts/migrate_routine_identities.py` :: `main` (L14)
 - `scripts/migrate_routines.py` :: `main` (L18)
 - `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)

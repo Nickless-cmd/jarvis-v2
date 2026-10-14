@@ -347,6 +347,13 @@ _Encrypt existing member chat titles without printing private text._
 |---|---|---|---|---|
 | function | `migrate` | `(*, dry_run=…, batch_size=…)` | — | [src](../../../scripts/migrate_member_session_titles.py#L10) |
 
+## `scripts/migrate_recall_ownership.py`
+_Dry-run, apply or roll back a signed recall ownership migration._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/migrate_recall_ownership.py#L22) |
+
 ## `scripts/migrate_routine_identities.py`
 _Dry-run/apply the explicit legacy identity bridge required by Routines._
 
@@ -436,13 +443,4 @@ _Peer model adapters for interlanguage validation experiment._
 | function | `_generate_ollama_local` | `(prompt)` | deepseek-v4.1-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
 | function | `_generate_random` | `(prompt)` | Random baseline — bruger generate_state_expression() uden mood-bias. | [src](../../../scripts/peer_models.py#L99) |
 | function | `generate` | `(prompt, peer_id)` | Dispatch til peer-specific adapter. Raise ValueError ved ukendt peer. | [src](../../../scripts/peer_models.py#L123) |
-
-## `scripts/peer_practice_runner.py`
-_Peer practice runner — kører kontinuerligt i ~7 dage per peer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
-| function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
-| function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
 

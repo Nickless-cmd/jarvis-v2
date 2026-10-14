@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/peer_practice_runner.py`
+_Peer practice runner — kører kontinuerligt i ~7 dage per peer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
+| function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
+| function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
+
 ## `scripts/perception_mix.py`
 _Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?_
 
@@ -428,13 +437,4 @@ _Compare the live SQLite schema with its reviewed, per-table snapshot._
 | function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L108) |
 | function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L162) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L201) |
-
-## `scripts/verify_vaert_evner.py`
-_Vagt: de evner den SERVERENDE vært skal have, skal faktisk være der._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_mermaid` | `()` | — | [src](../../../scripts/verify_vaert_evner.py#L59) |
-| function | `tjek` | `()` | Kør alle evne-tjek. Returnér (navn, ok, grund, konsekvens) for hver. | [src](../../../scripts/verify_vaert_evner.py#L72) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vaert_evner.py#L88) |
 

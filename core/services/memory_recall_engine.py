@@ -445,9 +445,29 @@ def cold_tier_recall(
     Returns:
         Dict with keys: status, results, count, sources_searched, quality_filtered.
     """
+    from core.services import scoped_recall_policy
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("cold_tier_recall")
     query = (query or "").strip()
     if not query:
         return {"status": "ok", "results": [], "count": 0}
+
+    from core.services.recall import recall
+    recall_sources = None if include_private_brain else ["workspace", "session_summary", "chronicle"]
+    result = recall(query, limit=max_results, sources=recall_sources)
+    if result.get("status") == "disabled":
+        return result
+    translated = []
+    for item in result.get("results") or []:
+        row = dict(item)
+        row["weighted_score"] = float(row.get("score", 0.0) or 0.0)
+        translated.append(row)
+    return {
+        "status": "ok", "results": translated, "count": len(translated),
+        "total_candidates": len(translated), "mood_boosted": False,
+        "sources_searched": recall_sources or ["workspace", "chronicle", "private_brain"], "quality_filtered": 0,
+        "quality_threshold": quality_threshold, "tier": "cold",
+    }
 
     limit_per_source = max(2, max_results // 2)
 
@@ -520,9 +540,29 @@ def unified_recall(
     with_mood: bool = True,
 ) -> dict[str, Any]:
     """Search across all configured memory sources, mood-weighted."""
+    from core.services import scoped_recall_policy
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("unified_recall")
     query = (query or "").strip()
     if not query:
         return {"status": "ok", "results": [], "count": 0, "mood_boosted": False}
+
+    from core.services.recall import recall
+    source_map = {"workspace": "workspace", "private_brain": "private_brain", "chronicle": "chronicle"}
+    mapped_sources = [source_map[source] for source in (sources or []) if source in source_map] or None
+    result = recall(query, limit=total_limit, sources=mapped_sources)
+    if result.get("status") == "disabled":
+        return result
+    translated = []
+    for item in result.get("results") or []:
+        row = dict(item)
+        row["weighted_score"] = float(row.get("score", 0.0) or 0.0)
+        translated.append(row)
+    return {
+        "status": "ok", "results": translated, "count": len(translated),
+        "total_searched": len(translated), "mood_boosted": False,
+        "sources_searched": mapped_sources or [],
+    }
 
     enabled = set(sources or _SOURCE_WEIGHTS_DEFAULT.keys())
     weights = _SOURCE_WEIGHTS_DEFAULT
@@ -728,12 +768,35 @@ def multi_signal_recall(
         Dict with keys: status, results, count, sources_searched,
         multi_signal, signal_weights.
     """
+    from core.services import scoped_recall_policy
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("multi_signal_recall")
     query = (query or "").strip()
     if not query:
         return {
             "status": "ok", "results": [], "count": 0,
             "multi_signal": False,
         }
+
+    from core.services.recall import recall
+    source_map = {"workspace": "workspace", "private_brain": "private_brain", "chronicle": "chronicle"}
+    mapped_sources = [source_map[source] for source in (sources or []) if source in source_map] or None
+    result = recall(query, limit=total_limit, sources=mapped_sources, min_score=min_score)
+    if result.get("status") == "disabled":
+        return result
+    translated = []
+    for item in result.get("results") or []:
+        row = dict(item)
+        score = float(row.get("score", 0.0) or 0.0)
+        row.update({"multi_signal_score": score, "weighted_score": score,
+                    "signals": {"authoritative": score}, "method": "authoritative_recall"})
+        translated.append(row)
+    return {
+        "status": "ok", "results": translated, "count": len(translated),
+        "total_candidates": len(translated), "mood_boosted": False,
+        "temporal_boosted": False, "multi_signal": True,
+        "sources_searched": mapped_sources or [], "signal_weights": {"authoritative": 1.0},
+    }
 
     enabled = set(sources or _MULTI_SIGNAL_SOURCES)
     weights = _SOURCE_WEIGHTS_DEFAULT

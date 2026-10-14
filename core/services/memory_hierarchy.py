@@ -126,13 +126,9 @@ def _cold_tier_search(*, query: str, max_results: int = 6) -> dict[str, Any]:
         pass
 
     try:
-        from core.services.memory_recall_engine import cold_tier_recall
-        result = cold_tier_recall(
-            query=query,
-            max_results=max_results,
-            quality_threshold=quality_threshold,
-            include_private_brain=include_pb,
-        )
+        from core.services.recall import recall
+        sources = None if include_pb else ["workspace", "session_summary", "chronicle"]
+        result = recall(query, limit=max_results, sources=sources)
         snapshot["results"] = [
             {
                 "source": r.get("source"),
@@ -182,6 +178,9 @@ def recall_before_act(
     cold_max: int = 6,
 ) -> dict[str, Any]:
     """Compose hot+warm+(optional cold) tier snapshot before an action."""
+    from core.services.scoped_recall_policy import disabled_result, recall_enabled
+    if not recall_enabled():
+        return disabled_result("recall_before_act")
     composed: dict[str, Any] = {
         "hot": _hot_tier_snapshot(),
         "warm": _warm_tier_snapshot(query=query),
@@ -194,6 +193,8 @@ def recall_before_act(
 def recall_before_act_summary(query: str = "") -> str | None:
     """Compact text summary of recall-before-act for prompt awareness."""
     bundle = recall_before_act(query=query, include_cold=bool(query))
+    if bundle.get("status") == "disabled":
+        return None
     parts: list[str] = []
 
     hot = bundle.get("hot", {}).get("signals", {})
@@ -231,13 +232,16 @@ def recall_before_act_summary(query: str = "") -> str | None:
 
 
 def _exec_recall_before_act(args: dict[str, Any]) -> dict[str, Any]:
+    bundle = recall_before_act(
+        query=str(args.get("query") or ""),
+        include_cold=bool(args.get("include_cold", True)),
+        cold_max=int(args.get("cold_max") or 6),
+    )
+    if bundle.get("status") == "disabled":
+        return bundle
     return {
         "status": "ok",
-        "bundle": recall_before_act(
-            query=str(args.get("query") or ""),
-            include_cold=bool(args.get("include_cold", True)),
-            cold_max=int(args.get("cold_max") or 6),
-        ),
+        "bundle": bundle,
     }
 
 

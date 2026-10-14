@@ -989,6 +989,8 @@ def init_db() -> None:
         _ensure_counterfactuals_table(conn)
         _ensure_absence_traces_table(conn)
         _ensure_reasoning_conclusions_table(conn)
+        from core.services.recall_ownership_migration import ensure_recall_ownership_migration_tables
+        ensure_recall_ownership_migration_tables(conn)
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
         _ensure_user_temperature_active_table(conn)
@@ -1282,6 +1284,7 @@ def _ensure_reasoning_conclusions_table(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS reasoning_conclusions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             conclusion_id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+            user_id TEXT,
             source TEXT NOT NULL,
             conclusion_text TEXT NOT NULL,
             context TEXT NOT NULL DEFAULT '',
@@ -1300,6 +1303,13 @@ def _ensure_reasoning_conclusions_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_created "
         "ON reasoning_conclusions(created_at DESC)"
+    )
+    columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(reasoning_conclusions)").fetchall()}
+    if "user_id" not in columns:
+        conn.execute("ALTER TABLE reasoning_conclusions ADD COLUMN user_id TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_user_created "
+        "ON reasoning_conclusions(user_id, created_at DESC)"
     )
 
 

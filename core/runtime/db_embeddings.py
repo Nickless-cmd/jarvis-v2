@@ -106,6 +106,8 @@ def list_embeddings(
     modalities: list[str] | None = None,
     source_tables: list[str] | None = None,
     limit: int | None = None,
+    user_id: str | None = None,
+    private_statuses: tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     """Return raw embedding rows (including blobs). Caller decodes."""
     where: list[str] = []
@@ -118,6 +120,28 @@ def list_embeddings(
         placeholders = ",".join("?" for _ in source_tables)
         where.append(f"source_table IN ({placeholders})")
         params.extend(source_tables)
+    if user_id:
+        requested = set(source_tables or ())
+        scoped: list[str] = []
+        if "private_brain_records" in requested:
+            statuses = private_statuses or ("active", "settling", "fading", "completed")
+            placeholders = ",".join("?" for _ in statuses)
+            scoped.append(
+                "(source_table='private_brain_records' AND EXISTS ("
+                "SELECT 1 FROM private_brain_records p "
+                "WHERE p.record_id=memory_embeddings.source_id "
+                f"AND p.user_id=? AND p.status IN ({placeholders})))"
+            )
+            params.extend([user_id, *statuses])
+        if "sensory_memories" in requested:
+            scoped.append(
+                "(source_table='sensory_memories' AND EXISTS ("
+                "SELECT 1 FROM sensory_memories s "
+                "WHERE s.id=memory_embeddings.source_id AND s.user_id=?))"
+            )
+            params.append(user_id)
+        # A scoped private query never admits an unregistered source by accident.
+        where.append(f"({' OR '.join(scoped)})" if scoped else "0")
     clause = f"WHERE {' AND '.join(where)}" if where else ""
     limit_clause = f"LIMIT {int(limit)}" if limit else ""
     query = (

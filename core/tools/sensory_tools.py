@@ -11,11 +11,16 @@ from __future__ import annotations
 from typing import Any
 
 from core.services import sensory_archive
+from core.services import scoped_recall_policy
 
 _VALID_MODALITIES = ("visual", "audio", "atmosphere", "mixed")
 
 
 def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        user_id = scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope as exc:  # Private writes require a bound user.
+        return {"status": "error", "error": str(exc)}
     modality = str(args.get("modality") or "").strip().lower()
     content = str(args.get("content") or "").strip()
     mood_tone = args.get("mood_tone")
@@ -41,7 +46,7 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
                   "has_mood": bool(mood_tone)},
             reason="sensory intake",
         )
-    except Exception:
+    except Exception:  # Optional scalar observation must not block the private write.
         pass
 
     # Queue the write for async processing — returns immediately.
@@ -50,6 +55,7 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
     queue_id = enqueue_write(
         "sensory",
         {
+            "user_id": user_id,
             "modality": modality,
             "content": content,
             "mood_tone": str(mood_tone).strip() if mood_tone else None,
@@ -71,12 +77,18 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
             mood_tone=(str(mood_tone).strip() if mood_tone else None),
             metadata=metadata,
         )
-    except ValueError as exc:
+    except ValueError as exc:  # Validation errors are returned without a partial write.
         return {"status": "error", "error": str(exc)}
     return {"status": "ok", "memory": record}
 
 
 def _exec_recall_sensory_memories(args: dict[str, Any]) -> dict[str, Any]:
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("sensory_recall")
+    try:
+        scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope as exc:  # Private reads fail closed.
+        return {"status": "error", "error": str(exc), "items": [], "count": 0}
     query = str(args.get("query") or "").strip()
     modality = args.get("modality")
     if modality:

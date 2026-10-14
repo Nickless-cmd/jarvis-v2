@@ -30,6 +30,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.runtime.state_store import load_json, save_json
+from core.services import scoped_recall_policy
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,12 @@ def compress_agent_run(
     goal: str,
     raw_output: str,
     proposer: str = "auto-compressor",
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Run cheap-lane LLM summarisation, store as agent_observation."""
     if not raw_output or not raw_output.strip():
         return {"status": "skipped", "reason": "empty raw_output"}
+    scoped_user_id = str(user_id or scoped_recall_policy.require_private_scope()).strip()
 
     raw_chars = len(raw_output)
     truncated_input = raw_output[:6000]  # cap input to keep cost predictable
@@ -86,7 +89,7 @@ def compress_agent_run(
             fallback="",
             daemon_name="agent_observation_compressor",
         )
-    except Exception as exc:
+    except Exception as exc:  # Compression failure is returned to the caller without persisting.
         return {"status": "error", "error": f"llm call failed: {exc}"}
 
     compressed = (compressed or "").strip()
@@ -96,6 +99,7 @@ def compress_agent_run(
     obs_id = f"obs-{uuid4().hex[:12]}"
     record = {
         "obs_id": obs_id,
+        "user_id": scoped_user_id,
         "recorded_at": _now_iso(),
         "agent_id": str(agent_id),
         "role": str(role)[:60],
@@ -114,7 +118,7 @@ def compress_agent_run(
             records = []
         records.append(record)
         save_json(_OBS_KEY, records[-_MAX_OBS_RECORDS:])
-    except Exception as exc:
+    except Exception as exc:  # Persistence failure is surfaced as an error result.
         logger.warning("compressor: persist failed: %s", exc)
         return {"status": "error", "error": str(exc)}
 
@@ -124,7 +128,7 @@ def compress_agent_run(
             "agent_observation.recorded",
             {"obs_id": obs_id, "role": role, "compression_ratio": record["compression_ratio"]},
         )
-    except Exception:
+    except Exception:  # Observation delivery is best-effort after durable persistence.
         pass
 
     return {"status": "ok", "observation": record}
@@ -136,13 +140,20 @@ def list_agent_observations(
     agent_id: str | None = None,
     days_back: int = 14,
     limit: int = 50,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, Any]] | dict[str, object]:
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("agent_observation_list")
+    try:
+        user_id = scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope:  # Unscoped private reads return nothing.
+        return []
     try:
         records = load_json(_OBS_KEY, [])
         if not isinstance(records, list):
             records = []
-    except Exception:
+    except Exception:  # Corrupt optional state is treated as an empty private log.
         records = []
+    records = [record for record in records if record.get("user_id") == user_id]
     if days_back > 0:
         cutoff = (datetime.now(UTC) - timedelta(days=days_back)).isoformat()
         records = [r for r in records if str(r.get("recorded_at", "")) >= cutoff]
@@ -166,27 +177,46 @@ def list_agent_observations(
 
 
 def get_agent_observation(obs_id: str) -> dict[str, Any] | None:
+    if not scoped_recall_policy.recall_enabled():
+        return None
+    try:
+        user_id = scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope:  # A known ID never bypasses missing scope.
+        return None
     try:
         records = load_json(_OBS_KEY, [])
         if not isinstance(records, list):
             return None
-    except Exception:
+    except Exception:  # Corrupt optional state cannot authorize a matching record.
         return None
-    return next((r for r in records if r.get("obs_id") == obs_id), None)
+    return next(
+        (r for r in records if r.get("obs_id") == obs_id and r.get("user_id") == user_id),
+        None,
+    )
 
 
 def mark_stale_observations(*, days: int = _OBSERVATION_STALE_DAYS) -> dict[str, Any]:
     """Mark records older than N days as stale (for decay tracking)."""
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("agent_observation_decay")
+    try:
+        user_id = scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope:  # Unscoped maintenance mutates nothing.
+        return {"status": "ok", "marked": 0}
     try:
         records = load_json(_OBS_KEY, [])
         if not isinstance(records, list):
             return {"status": "ok", "marked": 0}
-    except Exception:
+    except Exception:  # Corrupt state is reported without mutating the file.
         return {"status": "error", "marked": 0}
     cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
     marked = 0
     for r in records:
-        if str(r.get("recorded_at", "")) < cutoff and not r.get("stale"):
+        if (
+            r.get("user_id") == user_id
+            and str(r.get("recorded_at", "")) < cutoff
+            and not r.get("stale")
+        ):
             r["stale"] = True
             marked += 1
     if marked > 0:
@@ -208,14 +238,17 @@ def _exec_compress_agent_run(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_list_agent_observations(args: dict[str, Any]) -> dict[str, Any]:
+    observations = list_agent_observations(
+        role=args.get("role"),
+        agent_id=args.get("agent_id"),
+        days_back=int(args.get("days_back") or 14),
+        limit=int(args.get("limit") or 50),
+    )
+    if isinstance(observations, dict):
+        return observations
     return {
         "status": "ok",
-        "observations": list_agent_observations(
-            role=args.get("role"),
-            agent_id=args.get("agent_id"),
-            days_back=int(args.get("days_back") or 14),
-            limit=int(args.get("limit") or 50),
-        ),
+        "observations": observations,
     }
 
 

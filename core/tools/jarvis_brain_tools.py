@@ -354,7 +354,11 @@ def search_jarvis_brain(
     auto-inject) — tool-stien havde intet relevansgulv, så samme tophit kom
     tilbage uanset spørgsmål.
     """
+    from core.services import scoped_recall_policy
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("brain_search")
     from core.services import jarvis_brain
+    session_visibility_ceiling = _bound_visibility_ceiling()
     try:
         results = jarvis_brain.search_brain(
             query_text=query,
@@ -415,6 +419,9 @@ def search_jarvis_brain(
 
 def read_brain_entry(entry_id: str) -> dict[str, Any]:
     """Hent fuld content for én brain entry."""
+    from core.services import scoped_recall_policy
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("brain_read")
     from core.services import jarvis_brain
     try:
         e = jarvis_brain.read_entry(entry_id)
@@ -422,6 +429,9 @@ def read_brain_entry(entry_id: str) -> dict[str, Any]:
         return {"status": "error", "error": "not_found"}
     except Exception as exc:
         return {"status": "error", "error": "read_failed", "details": str(exc)}
+    from core.services.jarvis_brain_visibility import can_recall
+    if not can_recall(str(e.visibility or "public_safe"), _bound_visibility_ceiling()):
+        return {"status": "error", "error": "not_found"}
     return {
         "status": "ok",
         "entry": {
@@ -438,6 +448,23 @@ def read_brain_entry(entry_id: str) -> dict[str, Any]:
             "superseded_by": e.superseded_by,
         },
     }
+
+
+def _bound_visibility_ceiling() -> str:
+    """Derive the ceiling only from the authenticated request context."""
+    from core.identity.workspace_context import current_role, current_user_id
+    from core.identity.owner_resolver import owner_user_id
+
+    principal = str(current_user_id() or "").strip()
+    raw_owner = str(owner_user_id() or "").strip()
+    try:
+        from core.services.routine_migration import resolve_canonical_identity
+        owner = str(resolve_canonical_identity(raw_owner) or raw_owner)
+    except Exception:
+        owner = raw_owner
+    if current_role() == "owner" or (principal and principal == owner):
+        return "intimate"
+    return "public_safe"
 
 
 def archive_brain_entry(entry_id: str, *, reason: str = "manual") -> dict[str, Any]:

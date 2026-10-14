@@ -20,6 +20,11 @@ _MSR_INFLIGHT: set = set()
 
 
 def append_background_recall(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err):
+    """Compatibility no-op: previous-query cache delivery is privacy-unsafe.
+
+    Current-turn recall is assembled synchronously by the bounded recall bundle.
+    """
+    return None
     # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
     # in heartbeat phases. Surface relevant memories tied to user_message so
     # Jarvis answers from memory, not stub-context.

@@ -354,25 +354,7 @@ def _latest_user_message_text() -> str:
 
 
 def _recall_hints_line() -> Optional[str]:
-    """Cross-memory awareness: which of the three memory systems hold something
-    about the current topic? Returns a compact hint like 'Emne X findes i brain + arkiv'.
-    2026-09-04 (memory repair, R5): unified_recall.py var død på alle tre arme
-    (positionelt kald mod keyword-only signatur, forkert resultatnøgle, tomt
-    query) → linjen renderede aldrig. Bruger nu recall() med den seneste
-    brugerbesked som query."""
-    try:
-        from core.services.recall import recall as _recall
-        query = str(_latest_user_message_text() or "").strip()
-        if len(query) < 8:
-            return None
-        result = _recall(query, limit=3)
-        hits = result.get("results") or []
-        if not hits:
-            return None
-        sources = sorted({str(h.get("source") or "") for h in hits if h.get("source")})
-        return "Hukommelse: emnet findes i " + " + ".join(sources)
-    except Exception:
-        logger.debug("inner-life: recall hints failed", exc_info=True)
+    """No global latest-session recall: this surface has no safe current query."""
     return None
 
 

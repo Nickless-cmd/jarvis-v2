@@ -15,11 +15,13 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.services import scoped_recall_policy
 
 _STORE_ENABLED_KEY = "reasoning_store_enabled"
 _DEFAULT_TTL_DAYS = 30
@@ -40,6 +42,7 @@ def _ensure_table(conn) -> None:
         CREATE TABLE IF NOT EXISTS reasoning_conclusions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             conclusion_id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+            user_id TEXT,
             source TEXT NOT NULL,
             conclusion_text TEXT NOT NULL,
             context TEXT NOT NULL DEFAULT '',
@@ -51,6 +54,9 @@ def _ensure_table(conn) -> None:
         )
         """
     )
+    columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(reasoning_conclusions)").fetchall()}
+    if "user_id" not in columns:
+        conn.execute("ALTER TABLE reasoning_conclusions ADD COLUMN user_id TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_source "
         "ON reasoning_conclusions(source, created_at DESC)"
@@ -58,6 +64,10 @@ def _ensure_table(conn) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_created "
         "ON reasoning_conclusions(created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_user_created "
+        "ON reasoning_conclusions(user_id, created_at DESC)"
     )
 
 
@@ -84,6 +94,14 @@ def _parse_embedding(raw: str) -> list[float]:
     return []
 
 
+def _lexical_score(query: str, text: str) -> float:
+    query_terms = set(re.findall(r"[\wæøåÆØÅ]+", query.lower()))
+    if not query_terms:
+        return 0.0
+    text_terms = set(re.findall(r"[\wæøåÆØÅ]+", text.lower()))
+    return len(query_terms & text_terms) / len(query_terms)
+
+
 # ── public API ───────────────────────────────────────────────────────────
 
 
@@ -98,6 +116,7 @@ def capture_conclusion(
     metadata: dict[str, Any] | None = None,
     emit_event: bool = True,
     dedup_key: str = "",
+    user_id: str | None = None,
 ) -> str | None:
     """Store a reasoning conclusion and return its conclusion_id.
 
@@ -117,6 +136,7 @@ def capture_conclusion(
     """
     if not is_enabled():
         return None
+    scoped_user_id = str(user_id or scoped_recall_policy.require_private_scope()).strip()
 
     conn = connect()
     try:
@@ -138,12 +158,12 @@ def capture_conclusion(
         cur = conn.execute(
             f"""
             {insert_sql} reasoning_conclusions
-                (conclusion_id, source, conclusion_text, context,
+                (conclusion_id, user_id, source, conclusion_text, context,
                  confidence, embedding_json, source_record_id,
                  metadata_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (cid, source, conclusion_text, context,
+            (cid, scoped_user_id, source, conclusion_text, context,
              confidence, emb_json, source_record_id,
              meta_json, now),
         )
@@ -155,10 +175,9 @@ def capture_conclusion(
             # AttributeError waiting to fire the first time emit_event=True
             # is passed. Bus exposes publish() only (async since 2c82d5ba).
             event_bus.publish("reasoning.conclusion.captured", {
-                "conclusion_id": cid,
                 "source": source,
                 "confidence": confidence,
-                "conclusion_text": conclusion_text[:200],
+                "owner_scoped": True,
             })
 
         return cid
@@ -174,7 +193,8 @@ def recall_reasoning(
     min_confidence: float = 0.0,
     limit: int = 10,
     days_back: int | None = 30,
-) -> list[dict[str, Any]]:
+    user_id: str | None = None,
+) -> list[dict[str, Any]] | dict[str, object]:
     """Retrieve stored reasoning conclusions, ranked by relevance.
 
     If query_text or query_embedding is provided, conclusions are scored
@@ -196,14 +216,15 @@ def recall_reasoning(
         context, confidence, source_record_id, metadata_json, created_at,
         and 'score' (0.0-1.0) if similarity was computed.
     """
-    if not is_enabled():
-        return []
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("reasoning_recall")
+    scoped_user_id = str(user_id or scoped_recall_policy.require_private_scope()).strip()
 
     conn = connect()
     try:
         _ensure_table(conn)
-        where_clauses: list[str] = []
-        params: list[Any] = []
+        where_clauses: list[str] = ["user_id = ?"]
+        params: list[Any] = [scoped_user_id]
 
         if source_filter:
             where_clauses.append("source = ?")
@@ -230,7 +251,7 @@ def recall_reasoning(
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (*params, min(limit, _MAX_RECALL_RESULTS)),
+            (*params, max(100, min(limit, _MAX_RECALL_RESULTS) * 20)),
         ).fetchall()
 
         # Parse embedding from query if needed
@@ -248,20 +269,29 @@ def recall_reasoning(
                 "metadata_json": row["metadata_json"],
                 "created_at": row["created_at"],
                 "score": 0.0,
+                "ranking_method": "recency",
             }
 
             if q_emb:
                 stored_emb = _parse_embedding(row["embedding_json"])
                 if stored_emb:
                     entry["score"] = round(_cosine_similarity(q_emb, stored_emb), 4)
+                    entry["ranking_method"] = "embedding"
+            elif query_text:
+                entry["score"] = round(
+                    _lexical_score(query_text, f"{row['conclusion_text']} {row['context']}"),
+                    4,
+                )
+                entry["ranking_method"] = "lexical"
 
             results.append(entry)
 
         # Sort by score if we have a query embedding
-        if q_emb:
+        if q_emb or query_text:
+            results = [row for row in results if row["score"] > 0]
             results.sort(key=lambda r: r["score"], reverse=True)
 
-        return results
+        return results[: min(limit, _MAX_RECALL_RESULTS)]
     finally:
         conn.close()
 
@@ -273,11 +303,12 @@ def get_recent_conclusions(
     days_back: int = 7,
 ) -> list[dict[str, Any]]:
     """Quick access to recent conclusions, no embedding scoring."""
-    return recall_reasoning(
+    result = recall_reasoning(
         source_filter=source,
         limit=limit,
         days_back=days_back,
     )
+    return result if isinstance(result, list) else []
 
 
 def is_enabled() -> bool:

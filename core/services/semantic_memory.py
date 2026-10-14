@@ -29,6 +29,7 @@ from core.runtime.db_embeddings import (
     list_indexed_source_ids,
     upsert_embedding,
 )
+from core.services.scoped_recall_policy import require_private_scope
 
 logger = logging.getLogger(__name__)
 
@@ -532,9 +533,14 @@ def search(
 
     _default_sources_registered()
 
+    private_sources = {"private_brain_records", "sensory_memories"}
+    requested = set(source_tables or ())
+    user_id = require_private_scope() if requested & private_sources else None
     rows = list_embeddings(
         modalities=modalities,
         source_tables=source_tables,
+        user_id=user_id,
+        private_statuses=("active", "settling", "fading", "completed"),
     )
     if not rows:
         return []
@@ -711,5 +717,4 @@ def build_semantic_memory_surface() -> dict[str, object]:
         "summary": "Module loaded; entry points available.",
         "authority": "derived-read-only",
     }
-
 

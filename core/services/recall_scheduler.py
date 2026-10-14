@@ -26,13 +26,16 @@ from __future__ import annotations
 
 import logging
 import threading
+import contextvars
 from typing import Any
+
+from core.services.scoped_recall_policy import recall_enabled, require_private_scope
 
 logger = logging.getLogger(__name__)
 
 _FLAG = "background_recall_enabled"     # default ON — owner kill-switch
 _recall_lock = threading.Lock()
-_recall_running = False                  # undgå at stakke recall-tråde oven på hinanden
+_recall_running_users: set[str] = set()
 
 
 def background_recall_enabled() -> bool:
@@ -41,7 +44,7 @@ def background_recall_enabled() -> bool:
         from core.runtime.db_core import get_runtime_state_value
         v = get_runtime_state_value(_FLAG, True)
         return True if v is None else bool(v)
-    except Exception:
+    except Exception:  # Runtime-state outages preserve the legacy scheduler switch only.
         return True
 
 
@@ -53,21 +56,20 @@ def _build_emotional_state() -> dict[str, Any]:
         baseline = aff.get("emotional_baseline") or {}
         if isinstance(baseline, dict):
             return {k: float(v) for k, v in baseline.items() if isinstance(v, (int, float))}
-    except Exception:
+    except Exception:  # Emotional enrichment is optional for background recall.
         pass
     return {}
 
 
-def _run_recall(message_text: str, emotional_state: dict[str, Any]) -> None:
-    global _recall_running
+def _run_recall(user_id: str, message_text: str, emotional_state: dict[str, Any]) -> None:
     try:
         from core.services.associative_recall import recall_for_message
         recall_for_message(message_text, emotional_state)
-    except Exception:
+    except Exception:  # Scheduler failures are logged and never escape the request path.
         logger.debug("recall_scheduler: background recall failed", exc_info=True)
     finally:
         with _recall_lock:
-            _recall_running = False
+            _recall_running_users.discard(user_id)
 
 
 def trigger_background_recall(
@@ -78,26 +80,30 @@ def trigger_background_recall(
     Returnerer True hvis en tråd blev startet, ellers False (flag off / tom besked /
     en recall kører allerede). Blokerer ALDRIG den kaldende tur; kaster aldrig.
     """
-    global _recall_running
     try:
-        if not background_recall_enabled():
+        if not recall_enabled() or not background_recall_enabled():
             return False
+        user_id = require_private_scope()
         msg = str(user_message or "").strip()
         if not msg:
             return False
         with _recall_lock:
-            if _recall_running:
+            if user_id in _recall_running_users:
                 return False               # en recall er i gang — spring over, ingen stakning
-            _recall_running = True
+            _recall_running_users.add(user_id)
         emo = emotional_state if isinstance(emotional_state, dict) else _build_emotional_state()
+        ctx = contextvars.copy_context()
         t = threading.Thread(
-            target=_run_recall, args=(msg, emo),
-            name="background-recall", daemon=True,
+            target=lambda: ctx.run(_run_recall, user_id, msg, emo),
+            name=f"background-recall-{hash(user_id) & 0xffff:x}", daemon=True,
         )
         t.start()
         return True
     except Exception:
         logger.debug("recall_scheduler: trigger failed", exc_info=True)
         with _recall_lock:
-            _recall_running = False
+            try:
+                _recall_running_users.discard(user_id)
+            except Exception:  # Cleanup is best-effort when setup failed before user_id existed.
+                pass
         return False

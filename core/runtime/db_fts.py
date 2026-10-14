@@ -36,7 +36,7 @@ def fts5_available(conn: sqlite3.Connection) -> bool:
         conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS _fts5_probe USING fts5(x)")
         conn.execute("DROP TABLE IF EXISTS _fts5_probe")
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError:  # FTS5 is optional; absence is a supported capability state.
         return False
 
 
@@ -129,7 +129,7 @@ def _bm25_to_score(rank: float) -> float:
     """FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]."""
     try:
         return 1.0 / (1.0 + abs(float(rank)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # Invalid ranks are treated as the lowest score.
         return 0.0
 
 
@@ -151,26 +151,38 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
     if not match:
         return []
     try:
-        from core.services.user_scope import scope_uid
-
-        uid = (scope_uid() or "").strip()
-    except Exception:
-        uid = ""
+        from core.services.scoped_recall_policy import require_private_scope
+        uid = require_private_scope()
+    except Exception:  # Missing principal must hide all private summary rows.
+        return []
     try:
         with connect() as conn:
             if "session_summaries_fts" not in ensure_fts_tables(conn):
                 return []
+            if _base_table_exists(conn, "recall_ownership_quarantine"):
+                quarantine_hashes = {
+                    str(row[0]) for row in conn.execute(
+                        "SELECT source_id_hash FROM recall_ownership_quarantine "
+                        "WHERE source_kind='chat_session'"
+                    ).fetchall()
+                }
+            else:
+                quarantine_hashes = set()
             if uid:
+                # Only sessions proven to belong solely to this principal.
                 rows = conn.execute(
                     "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
                     "s.decisions_made, s.created_at, bm25(session_summaries_fts) AS rank "
                     "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
                     "WHERE session_summaries_fts MATCH ? "
-                    "AND s.session_id NOT IN ("
-                    "  SELECT DISTINCT session_id FROM chat_messages "
-                    "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?) "
+                    "AND EXISTS (SELECT 1 FROM chat_messages own "
+                    "  WHERE own.session_id=s.session_id AND own.user_id=?) "
+                    "AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
+                    "  WHERE foreign_row.session_id=s.session_id "
+                    "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
+                    "  AND foreign_row.user_id<>?) "
                     "ORDER BY rank LIMIT ?",
-                    (match, uid, int(limit)),
+                    (match, uid, uid, int(limit)),
                 ).fetchall()
             else:
                 rows = conn.execute(
@@ -183,6 +195,7 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
     except sqlite3.OperationalError as exc:
         logger.debug("db_fts: summaries search failed: %s", exc)
         return []
+    import hashlib
     return [
         {
             "id": r[0], "session_id": r[1], "run_id": r[2], "summary": r[3],
@@ -190,6 +203,7 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
             "score": _bm25_to_score(r[7]),
         }
         for r in rows
+        if hashlib.sha256(str(r[1]).encode("utf-8")).hexdigest() not in quarantine_hashes
     ]
 
 
@@ -209,11 +223,10 @@ def search_chat_messages(
     if not match:
         return []
     try:
-        from core.services.user_scope import scope_uid
-
-        uid = (scope_uid() or "").strip()
-    except Exception:
-        uid = ""
+        from core.services.scoped_recall_policy import require_private_scope
+        uid = require_private_scope()
+    except Exception:  # Missing principal must hide all private chat rows.
+        return []
     sql = (
         "SELECT m.id, m.message_id, m.session_id, m.role, m.content, m.created_at, "
         "bm25(chat_messages_fts) AS rank FROM chat_messages_fts f "
@@ -228,25 +241,42 @@ def search_chat_messages(
         params.append(role)
     if uid:
         sql += (
-            " AND m.session_id NOT IN ("
-            "  SELECT DISTINCT session_id FROM chat_messages "
-            "  WHERE user_id IS NOT NULL AND user_id <> '' AND user_id <> ?)"
+            " AND EXISTS (SELECT 1 FROM chat_messages own "
+            "  WHERE own.session_id=m.session_id AND own.user_id=?)"
+            " AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
+            "  WHERE foreign_row.session_id=m.session_id "
+            "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
+            "  AND foreign_row.user_id<>?)"
         )
-        params.append(uid)
+        params.extend([uid, uid])
     sql += " ORDER BY rank LIMIT ?"
     params.append(int(limit))
     try:
         with connect() as conn:
             if "chat_messages_fts" not in ensure_fts_tables(conn):
                 return []
+            if _base_table_exists(conn, "recall_ownership_quarantine"):
+                # Quarantine stores only SHA-256 source hashes; SQLite has no
+                # portable sha256(), so fetch the bounded FTS set then filter
+                # conflicted session hashes below.
+                quarantine_hashes = {
+                    str(row[0]) for row in conn.execute(
+                        "SELECT source_id_hash FROM recall_ownership_quarantine "
+                        "WHERE source_kind='chat_session'"
+                    ).fetchall()
+                }
+            else:
+                quarantine_hashes = set()
             rows = conn.execute(sql, params).fetchall()
     except sqlite3.OperationalError as exc:
         logger.debug("db_fts: chat search failed: %s", exc)
         return []
+    import hashlib
     return [
         {
             "id": r[0], "message_id": r[1], "session_id": r[2], "role": r[3],
             "content": r[4], "created_at": r[5], "score": _bm25_to_score(r[6]),
         }
         for r in rows
+        if hashlib.sha256(str(r[2]).encode("utf-8")).hexdigest() not in quarantine_hashes
     ]

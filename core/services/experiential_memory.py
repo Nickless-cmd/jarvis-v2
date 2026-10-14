@@ -15,6 +15,7 @@ from urllib import request as urllib_request
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.scoped_recall_policy import require_private_scope
 from core.runtime.db import (
     get_relevant_experiential_memories,
     insert_cognitive_experiential_memory,
@@ -32,6 +33,7 @@ def create_experiential_memory_from_run(
     assistant_response: str,
     outcome_status: str,
     user_mood: str = "neutral",
+    user_id: str | None = None,
 ) -> dict[str, object] | None:
     """Create an experiential memory from a visible run."""
     if not user_message.strip():
@@ -80,15 +82,14 @@ def create_experiential_memory_from_run(
         emotion_arc=emotion_arc,
         topic=topic,
         importance=importance,
+        user_id=str(user_id or require_private_scope()),
     )
 
     event_bus.publish(
         "cognitive_experiential.memory_created",
         {
-            "memory_id": memory_id,
-            "topic": topic,
-            "user_mood": user_mood,
             "importance": importance,
+            "owner_scoped": True,
         },
     )
     return result
@@ -96,8 +97,10 @@ def create_experiential_memory_from_run(
 
 def create_experiential_memory_async(**kwargs) -> None:
     """Fire-and-forget wrapper."""
+    captured = dict(kwargs)
+    captured["user_id"] = str(captured.get("user_id") or require_private_scope())
     threading.Thread(
-        target=lambda: _safe(create_experiential_memory_from_run, **kwargs),
+        target=lambda: _safe(create_experiential_memory_from_run, **captured),
         daemon=True,
     ).start()
 
@@ -127,7 +130,11 @@ def recall_with_nostalgia(memory_id: str) -> str | None:
 
 def build_experiential_memory_surface() -> dict[str, object]:
     """MC surface for experiential memories."""
-    memories = list_cognitive_experiential_memories(limit=15)
+    from core.services.scoped_recall_policy import MissingRecallScope
+    try:
+        memories = list_cognitive_experiential_memories(limit=15)
+    except MissingRecallScope:
+        memories = []
     mood_counts: dict[str, int] = {}
     for m in memories:
         mood = m.get("user_mood", "neutral")

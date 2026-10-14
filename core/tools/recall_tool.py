@@ -50,6 +50,9 @@ RECALL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 
 
 def _exec_recall(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.scoped_recall_policy import disabled_result, recall_enabled
+    if not recall_enabled():
+        return disabled_result("recall")
     from core.services.recall import recall
 
     query = str(args.get("query") or "").strip()

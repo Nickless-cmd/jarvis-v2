@@ -27,6 +27,9 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from core.runtime.state_store import load_json
+from core.services import scoped_recall_policy
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,15 +37,15 @@ _DEFAULT_LOOKBACK_DAYS = 14
 _HARD_CUTOFF_DAYS = 30
 
 
-def _all_observations() -> list[dict[str, Any]]:
+def _all_observations(user_id: str | None = None) -> list[dict[str, Any]]:
     """Read full observation log from Layer 1 storage."""
     try:
-        from core.runtime.state_store import load_json
+        scoped_user = str(user_id or scoped_recall_policy.require_private_scope()).strip()
         records = load_json("agent_observations", [])
         if not isinstance(records, list):
             return []
-        return records
-    except Exception:
+        return [record for record in records if record.get("user_id") == scoped_user]
+    except Exception:  # Missing scope or corrupt optional state fails closed to no rows.
         return []
 
 
@@ -75,11 +78,17 @@ def cross_agent_recall(
     min_score: float = 0.2,
 ) -> dict[str, Any]:
     """Find relevant observations from OTHER agents matching the query."""
+    if not scoped_recall_policy.recall_enabled():
+        return scoped_recall_policy.disabled_result("cross_agent_recall")
+    try:
+        user_id = scoped_recall_policy.require_private_scope()
+    except scoped_recall_policy.MissingRecallScope:  # Cross-agent private recall needs a principal.
+        return {"status": "ok", "results": [], "count": 0, "reason": "missing user scope"}
     query = (query or "").strip()
     if not query or len(query) < 4:
         return {"status": "ok", "results": [], "count": 0, "reason": "query too short"}
 
-    records = _all_observations()
+    records = _all_observations(user_id)
     if not records:
         return {"status": "ok", "results": [], "count": 0, "reason": "no observations recorded"}
 
@@ -184,5 +193,3 @@ CROSS_AGENT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
-
-

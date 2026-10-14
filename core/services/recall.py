@@ -17,7 +17,16 @@ from __future__ import annotations
 
 import logging
 import re
+import contextvars
+import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Any, Callable
+
+from core.services.scoped_recall_policy import (
+    disabled_result,
+    recall_enabled,
+    require_private_scope,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,13 +118,20 @@ def _source_workspace(query: str, limit: int) -> list[dict[str, Any]]:
 
 def _source_brain(query: str, limit: int) -> list[dict[str, Any]]:
     from core.services import jarvis_brain
+    from core.identity.owner_resolver import owner_user_id
 
     out = []
-    scored = jarvis_brain.search_brain_scored(query_text=query, limit=limit, min_cosine=0.5)
+    visibility = (
+        "personal" if require_private_scope() == owner_user_id() else "public_safe"
+    )
+    scored = jarvis_brain.search_brain_scored(
+        query_text=query, limit=limit, min_cosine=0.5,
+        visibility_ceiling=visibility,
+    )
     for score, eid in scored:
         try:
             e = jarvis_brain.read_entry(eid)
-        except Exception:
+        except Exception:  # A missing brain file is omitted rather than leaking fallback data.
             continue
         out.append({
             "source": "brain",
@@ -290,6 +306,7 @@ def recall(
     session_id: str | None = None,
     min_score: float = 0.3,
     per_source: int | None = None,
+    deadline_s: float = 3.5,
 ) -> dict[str, Any]:
     """Search every memory source with one fused ranking.
 
@@ -297,6 +314,17 @@ def recall(
     "text"}``. On zero hits ``text`` explains it and ``memory.recall_empty``
     is emitted (best-effort).
     """
+    started = time.monotonic()
+    if not recall_enabled():
+        return disabled_result("recall")
+    try:
+        require_private_scope(str(session_id or ""))
+    except Exception:  # Missing scope fails closed as an explicit recall error.
+        return {
+            "status": "error", "error": "private recall scope is unavailable",
+            "results": [], "count": 0, "delivery_status": "error",
+        }
+
     q = " ".join(str(query or "").split()).strip()
     if not q:
         return {"status": "error", "error": "query is required", "results": [], "count": 0}
@@ -313,25 +341,67 @@ def recall(
 
     candidates: list[dict[str, Any]] = []
     errors: dict[str, str] = {}
-    for name in wanted:
-        try:
-            candidates.extend(SOURCE_FUNCS[name](q, k))
-        except Exception as exc:  # fail-soft per source
-            errors[name] = str(exc)[:160]
-            logger.debug("recall: source %s failed: %s", name, exc)
+    pool = ThreadPoolExecutor(max_workers=min(len(wanted), 6))
+    futures = {}
+    pending = set()
+    try:
+        for name in wanted:
+            ctx = contextvars.copy_context()
+            futures[pool.submit(ctx.run, SOURCE_FUNCS[name], q, k)] = name
+        done, pending = wait(
+            futures, timeout=max(0.01, min(float(deadline_s), 30.0))
+        )
+        for future in done:
+            name = futures[future]
+            try:
+                candidates.extend(future.result())
+            except Exception as exc:
+                errors[name] = str(exc)[:160]
+                logger.debug("recall: source %s failed: %s", name, exc)
+        for future in pending:
+            future.cancel()
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    missed_deadline = len(pending)
+    completed_count = len(wanted) - missed_deadline
+    if missed_deadline and completed_count == 0:
+        delivery_status = "timeout"
+    elif missed_deadline:
+        delivery_status = "partial"
+    elif errors and len(errors) == len(wanted):
+        delivery_status = "error"
+    else:
+        delivery_status = "delivered"
 
     fused = [c for c in fuse(q, candidates) if c["score"] >= float(min_score)]
     results = fused[:limit]
+    if not results and delivery_status == "delivered":
+        delivery_status = "empty"
+
+    try:
+        from core.services.recall_observability import emit_recall_outcome
+        emit_recall_outcome(
+            path="recall",
+            delivery_status=delivery_status,
+            result_count=len(results),
+            latency_ms=round((time.monotonic() - started) * 1000),
+            top_score=float(results[0]["score"]) if results else 0.0,
+            source_count=len(wanted),
+        )
+    except Exception:  # Scalar observability must not affect recall delivery.
+        pass
 
     if not results:
         try:
             from core.services.memory_recall_telemetry import emit_recall_empty
             emit_recall_empty(tool="recall", query=q)
-        except Exception:
+        except Exception:  # Empty-result telemetry is best-effort and content-free.
             pass
         return {
             "status": "ok", "query": q, "count": 0, "results": [],
             "sources": wanted, "errors": errors, "text": empty_message(q),
+            "delivery_status": delivery_status,
         }
 
     lines = [f"Hukommelse for «{q}» — {len(results)} hit(s):"]
@@ -340,4 +410,5 @@ def recall(
     return {
         "status": "ok", "query": q, "count": len(results), "results": results,
         "sources": wanted, "errors": errors, "text": "\n".join(lines),
+        "delivery_status": delivery_status,
     }

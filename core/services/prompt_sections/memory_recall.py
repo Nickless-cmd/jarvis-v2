@@ -283,22 +283,29 @@ def _visible_memory_recall_bundle_section(
     user_message: str,
     compact: bool,
 ) -> str | None:
-    lines: list[str] = ["Memory recall bundle:"]
+    try:
+        from core.services.recall import recall
 
-    private_brain = _private_brain_recall_lines(limit=3 if compact else 4)
-    if private_brain:
-        lines.append("- Private continuity:")
-        lines.extend(f"  - {line}" for line in private_brain)
+        recalled = recall(
+            user_message,
+            limit=3 if compact else 5,
+            session_id=session_id,
+        )
+    except Exception:  # Recall enrichment is optional and must not break prompt assembly.
+        return None
+    if recalled.get("delivery_status") in {"disabled", "timeout", "error"}:
+        return None
+
+    lines: list[str] = ["Memory recall bundle:"]
+    for item in list(recalled.get("results") or []):
+        text = _clip_line(str(item.get("text") or ""), limit=180)
+        if text:
+            lines.append(f"- [{item.get('source') or 'memory'}] {text}")
 
     tool_lines = _recent_tool_recall_lines(session_id, limit=3 if compact else 5)
     if tool_lines:
         lines.append("- Internal tool observations (Jarvis-only, not user-visible chat):")
         lines.extend(f"  - {line}" for line in tool_lines)
-
-    candidate_lines = _memory_candidate_recall_lines(limit=2 if compact else 3, session_id=session_id)
-    if candidate_lines:
-        lines.append("- Pending memory candidates:")
-        lines.extend(f"  - {line}" for line in candidate_lines)
 
     if len(lines) == 1:
         return None

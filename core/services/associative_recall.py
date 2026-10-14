@@ -24,6 +24,11 @@ from collections import deque
 from datetime import UTC, datetime
 from typing import Any
 
+from core.services.scoped_recall_policy import (
+    recall_enabled,
+    require_private_scope,
+)
+
 logger = logging.getLogger(__name__)
 
 _REPETITION_THRESHOLD = 3   # kept hardcoded — not in spec
@@ -36,8 +41,8 @@ _last_extraction_at: float = 0.0
 _extraction_queue: list[dict[str, Any]] = []
 
 # In-memory state (synced to DB)
-_active_memories: dict[str, dict[str, Any]] = {}
-_topic_history: deque[str] = deque(maxlen=_TOPIC_WINDOW)
+_active_memories_by_user: dict[str, dict[str, dict[str, Any]]] = {}
+_topic_history_by_user: dict[str, deque[str]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -94,12 +99,18 @@ def _ensure_active_memories_table() -> None:
                     importance REAL NOT NULL DEFAULT 0,
                     score REAL NOT NULL DEFAULT 0,
                     source_table TEXT NOT NULL DEFAULT 'experiential_memory',
-                    activated_at TEXT NOT NULL
+                    activated_at TEXT NOT NULL,
+                    user_id TEXT
                 )
             """)
+            columns = {str(row[1]) for row in conn.execute(
+                "PRAGMA table_info(recall_active_memories)"
+            ).fetchall()}
+            if "user_id" not in columns:
+                conn.execute("ALTER TABLE recall_active_memories ADD COLUMN user_id TEXT")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_recall_active_memories_score
-                ON recall_active_memories(score DESC)
+                ON recall_active_memories(user_id, score DESC)
             """)
     except Exception as exc:
         logger.warning("associative_recall: DB table init failed: %s", exc)
@@ -110,11 +121,12 @@ def _persist_active_memory(memory: dict[str, Any]) -> None:
     try:
         from core.runtime.db import connect
         _ensure_active_memories_table()
+        user_id = require_private_scope()
         with connect() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO recall_active_memories
-                (memory_id, narrative, topic, emotion_arc, importance, score, source_table, activated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (memory_id, narrative, topic, emotion_arc, importance, score, source_table, activated_at, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 str(memory.get("memory_id") or ""),
                 str(memory.get("narrative") or "")[:500],
@@ -124,6 +136,7 @@ def _persist_active_memory(memory: dict[str, Any]) -> None:
                 float(memory.get("score") or 0),
                 str(memory.get("source_table") or "experiential_memory"),
                 datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                user_id,
             ))
     except Exception as exc:
         logger.debug("associative_recall: persist failed for %s: %s",
@@ -135,25 +148,27 @@ def _remove_persisted_memory(memory_id: str) -> None:
     try:
         from core.runtime.db import connect
         _ensure_active_memories_table()
+        user_id = require_private_scope()
         with connect() as conn:
             conn.execute(
-                "DELETE FROM recall_active_memories WHERE memory_id = ?",
-                (memory_id,),
+                "DELETE FROM recall_active_memories WHERE memory_id = ? AND user_id = ?",
+                (memory_id, user_id),
             )
     except Exception as exc:
         logger.debug("associative_recall: remove persisted failed for %s: %s",
                      memory_id, exc)
 
 
-def _load_active_memories_from_db() -> dict[str, dict[str, Any]]:
+def _load_active_memories_from_db(user_id: str) -> dict[str, dict[str, Any]]:
     """Restore active memories from DB on module load."""
     try:
         from core.runtime.db import connect
         _ensure_active_memories_table()
         with connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM recall_active_memories ORDER BY score DESC LIMIT ?",
-                (_get_max_active(),),
+                "SELECT * FROM recall_active_memories WHERE user_id=? "
+                "ORDER BY score DESC LIMIT ?",
+                (user_id, _get_max_active()),
             ).fetchall()
         restored: dict[str, dict[str, Any]] = {}
         for r in rows:
@@ -179,14 +194,23 @@ def _clear_persisted_memories() -> None:
     try:
         from core.runtime.db import connect
         _ensure_active_memories_table()
+        user_id = require_private_scope()
         with connect() as conn:
-            conn.execute("DELETE FROM recall_active_memories")
+            conn.execute("DELETE FROM recall_active_memories WHERE user_id=?", (user_id,))
     except Exception as exc:
         logger.debug("associative_recall: clear persisted failed: %s", exc)
 
 
-# Restore from DB on module load
-_active_memories = _load_active_memories_from_db()
+def _active_state() -> dict[str, dict[str, Any]]:
+    user_id = require_private_scope()
+    if user_id not in _active_memories_by_user:
+        _active_memories_by_user[user_id] = _load_active_memories_from_db(user_id)
+    return _active_memories_by_user[user_id]
+
+
+def _topic_history() -> deque[str]:
+    user_id = require_private_scope()
+    return _topic_history_by_user.setdefault(user_id, deque(maxlen=_TOPIC_WINDOW))
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +224,9 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
     session_context keys used: channel, bearing, time_of_day (all optional).
     Returns list of memories that were activated.
     """
+    if not recall_enabled():
+        return []
+    active = _active_state()
     from core.runtime.db import get_experiential_memory_candidates
     from core.services.experiential_memory import score_memories_by_relevance
 
@@ -223,7 +250,7 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
         # Fallback: activate top-3 by importance
         for c in candidates[:3]:
             _add_to_active({**c, "score": c["importance"]})
-        return list(_active_memories.values())
+        return list(active.values())
 
     activated = []
     weak = []
@@ -231,7 +258,7 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
         candidate = next((c for c in candidates if c["memory_id"] == memory_id), None)
         if not candidate:
             continue
-        if score >= _get_strong_threshold() and len(_active_memories) < 3:
+        if score >= _get_strong_threshold() and len(active) < 3:
             _add_to_active({**candidate, "score": score})
             activated.append({**candidate, "score": score})
         elif score >= _get_weak_threshold():
@@ -290,6 +317,9 @@ def recall_for_message(
     Applies topic repetition multiplier to scores.
     Returns list of newly activated memories.
     """
+    if not recall_enabled():
+        return []
+    active = _active_state()
     from core.runtime.db import get_experiential_memory_candidates, reinforce_experiential_memory
     from core.services.experiential_memory import score_memories_by_relevance
 
@@ -298,7 +328,7 @@ def recall_for_message(
         _record_topic(topic_hint)
 
     candidates = get_experiential_memory_candidates(limit=15)
-    active_ids = set(_active_memories.keys())
+    active_ids = set(active.keys())
     candidates = [c for c in candidates if c["memory_id"] not in active_ids]
 
     # --- Private brain scope: include private_brain_records ---
@@ -309,7 +339,7 @@ def recall_for_message(
 
     # Check for re-activation of existing active memories
     for mem_id in list(active_ids):
-        mem = _active_memories.get(mem_id)
+        mem = active.get(mem_id)
         if mem and topic_hint and topic_hint.lower() in str(mem.get("topic") or "").lower():
             try:
                 reinforce_experiential_memory(mem_id)
@@ -331,7 +361,7 @@ def recall_for_message(
         # Fallback: activate top-2 by importance when LLM scoring fails
         for c in candidates[:2]:
             _add_to_active({**c, "score": c["importance"]})
-        return list(_active_memories.values())
+        return list(active.values())
 
     # Apply topic repetition multiplier
     for memory_id in list(scores.keys()):
@@ -366,17 +396,21 @@ def recall_for_message(
     return activated
 
 
-def build_recall_prompt_section() -> str:
+def build_recall_prompt_section(query: str = "") -> str:
     """Format active memories as [ASSOCIATIONER] awareness section (Danish, compact).
 
     Returns empty string if no active memories.
     Format: one line per memory — "→ narrative (topic, styrke: score)"
     """
-    if not _active_memories:
+    if not recall_enabled() or not str(query or "").strip():
+        return ""
+    active = _active_state()
+    matching = [m for m in active.values() if _association_matches(query, m)]
+    if not matching:
         return ""
 
     lines = ["[ASSOCIATIONER]"]
-    for mem in sorted(_active_memories.values(), key=lambda m: m.get("score", 0), reverse=True):
+    for mem in sorted(matching, key=lambda m: m.get("score", 0), reverse=True):
         narrative = str(mem.get("narrative") or "")[:80]
         topic = str(mem.get("topic") or "")
         score = float(mem.get("score") or 0)
@@ -421,9 +455,9 @@ def apply_weak_recall_to_emotions(memories: list[dict[str, Any]]) -> None:
 
 def clear_session_recall() -> None:
     """Reset all active memories and topic history. Call at session end."""
-    global _topic_history
-    _active_memories.clear()
-    _topic_history = deque(maxlen=_TOPIC_WINDOW)
+    user_id = require_private_scope()
+    _active_memories_by_user.pop(user_id, None)
+    _topic_history_by_user.pop(user_id, None)
     _clear_persisted_memories()
     logger.debug("associative_recall: session cleared (memory + DB)")
 
@@ -435,20 +469,21 @@ def clear_session_recall() -> None:
 def _add_to_active(memory: dict[str, Any]) -> None:
     """Add memory to active set. Evicts weakest if at cap. Persists to DB."""
     memory_id = str(memory["memory_id"])
-    if len(_active_memories) >= _get_max_active() and memory_id not in _active_memories:
+    active = _active_state()
+    if len(active) >= _get_max_active() and memory_id not in active:
         weakest_id = min(
-            _active_memories.keys(),
-            key=lambda k: float(_active_memories[k].get("score") or 0),
+            active.keys(),
+            key=lambda k: float(active[k].get("score") or 0),
         )
         _remove_persisted_memory(weakest_id)
-        del _active_memories[weakest_id]
-    _active_memories[memory_id] = memory
+        del active[weakest_id]
+    active[memory_id] = memory
     _persist_active_memory(memory)
 
 
 def _record_topic(topic: str) -> None:
     """Record a topic in the sliding window history."""
-    _topic_history.append(topic.lower()[:50])
+    _topic_history().append(topic.lower()[:50])
 
 
 def _get_topic_multiplier(topic: str) -> float:
@@ -456,8 +491,23 @@ def _get_topic_multiplier(topic: str) -> float:
     if not topic:
         return 1.0
     topic_lower = topic.lower()
-    count = sum(1 for t in _topic_history if topic_lower in t or t in topic_lower)
+    count = sum(1 for t in _topic_history() if topic_lower in t or t in topic_lower)
     return _get_repetition_multiplier() if count >= _REPETITION_THRESHOLD else 1.0
+
+
+def _significant_terms(text: str) -> set[str]:
+    return {
+        term.lower() for term in re.findall(r"[0-9A-Za-zÆØÅæøå]{3,}", str(text or ""))
+        if term.lower() not in {"det", "den", "der", "som", "for", "med", "the", "and"}
+    }
+
+
+def _association_matches(query: str, memory: dict[str, Any]) -> bool:
+    query_terms = _significant_terms(query)
+    candidate_terms = _significant_terms(
+        f"{memory.get('topic', '')} {memory.get('narrative', '')}"
+    )
+    return bool(query_terms and candidate_terms and query_terms & candidate_terms)
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +721,20 @@ def tick_associative_recall() -> dict[str, Any]:
     Returns summary dict for daemon_manager.
     """
     global _last_tick_at
+    if not recall_enabled():
+        return {"active_count": 0, "decayed": 0, "evicted": 0, "refreshed": 0}
+    try:
+        require_private_scope()
+    except Exception:
+        from core.identity.owner_resolver import owner_user_id
+        from core.identity.workspace_context import user_context
+
+        owner = owner_user_id()
+        if not owner:
+            return {"active_count": 0, "decayed": 0, "evicted": 0, "refreshed": 0}
+        with user_context(discord_id=owner):
+            return tick_associative_recall()
+    active = _active_state()
 
     now = time.monotonic()
     elapsed_minutes = 2.0
@@ -683,13 +747,13 @@ def tick_associative_recall() -> dict[str, Any]:
     refreshed = 0
 
     # 1. Decay + evict
-    for mem_id in list(_active_memories.keys()):
-        mem = _active_memories[mem_id]
+    for mem_id in list(active.keys()):
+        mem = active[mem_id]
         old_score = float(mem.get("score") or 0)
         new_score = max(0.0, old_score - (_DECAY_RATE_PER_MINUTE * elapsed_minutes))
         if new_score < 0.1:
             _remove_persisted_memory(mem_id)
-            del _active_memories[mem_id]
+            del active[mem_id]
             evicted += 1
         elif new_score < old_score:
             mem["score"] = new_score
@@ -698,13 +762,13 @@ def tick_associative_recall() -> dict[str, Any]:
 
     # 2. If room, scan for new candidates
     max_active = _get_max_active()
-    if len(_active_memories) < max_active:
+    if len(active) < max_active:
         try:
             from core.runtime.db import get_experiential_memory_candidates
             from core.services.experiential_memory import score_memories_by_relevance
 
-            slots = max_active - len(_active_memories)
-            active_ids = set(_active_memories.keys())
+            slots = max_active - len(active)
+            active_ids = set(active.keys())
             candidates = get_experiential_memory_candidates(limit=10)
             candidates = [c for c in candidates if c["memory_id"] not in active_ids]
 
@@ -714,7 +778,7 @@ def tick_associative_recall() -> dict[str, Any]:
 
             if candidates:
                 # Score against current active memory topics as context
-                context = " ".join(str(m.get("topic") or "") for m in _active_memories.values())
+                context = " ".join(str(m.get("topic") or "") for m in active.values())
                 scores = score_memories_by_relevance(
                     candidates=candidates,
                     context_text=context or "idle heartbeat",
@@ -750,7 +814,7 @@ def tick_associative_recall() -> dict[str, Any]:
             except Exception:
                 pass
 
-    active_count = len(_active_memories)
+    active_count = len(active)
     result = {
         "active_count": active_count,
         "decayed": decayed,
@@ -762,4 +826,3 @@ def tick_associative_recall() -> dict[str, Any]:
         logger.debug("associative_recall tick: %s", result)
 
     return result
-

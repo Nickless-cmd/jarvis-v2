@@ -93,6 +93,24 @@ def enqueue_write(
         logger.warning("memory_write_queue: invalid type %r", queue_type)
         return ""
 
+    from core.services.scoped_recall_policy import MissingRecallScope, require_private_scope
+    try:
+        user_id = require_private_scope()
+    except MissingRecallScope:
+        logger.warning("memory_write_queue: private write has no user scope")
+        return ""
+    if queue_type == "brain":
+        from core.identity.owner_resolver import owner_user_id
+        from core.services.routine_migration import resolve_canonical_identity
+        raw_owner = str(owner_user_id() or "").strip()
+        canonical_owner = str(resolve_canonical_identity(raw_owner) or raw_owner)
+        if user_id != canonical_owner:
+            logger.warning("memory_write_queue: non-owner brain write denied")
+            return ""
+
+    owned_payload = dict(payload)
+    owned_payload["user_id"] = user_id
+
     queue_id = f"mwq-{uuid4().hex[:12]}"
     now = datetime.now(UTC).isoformat()
 
@@ -106,7 +124,7 @@ def enqueue_write(
                     (queue_id, queue_type, payload_json, priority, status, created_at)
                 VALUES (?, ?, ?, ?, 'pending', ?)
                 """,
-                (queue_id, queue_type, json.dumps(payload, ensure_ascii=False),
+                (queue_id, queue_type, json.dumps(owned_payload, ensure_ascii=False),
                  priority, now),
             )
     except Exception as exc:
@@ -314,15 +332,27 @@ def _process_item(
     retry_count: int,
 ) -> tuple[bool, str]:
     """Execute one write. Returns (ok, error_message)."""
+    user_id = str(payload.get("user_id") or "").strip()
+    if not user_id:
+        return False, "private queue payload missing user_id"
+    if queue_type == "brain":
+        from core.identity.owner_resolver import owner_user_id
+        from core.services.routine_migration import resolve_canonical_identity
+        raw_owner = str(owner_user_id() or "").strip()
+        canonical_owner = str(resolve_canonical_identity(raw_owner) or raw_owner)
+        if user_id != canonical_owner:
+            return False, "brain queue payload principal is not owner"
     try:
-        if queue_type == "sensory":
-            return _process_sensory(payload, retry_count)
-        elif queue_type == "brain":
-            return _process_brain(payload, retry_count)
-        elif queue_type == "memory_sidecar":
-            return _process_sidecar(payload, retry_count)
-        else:
-            return False, f"unknown type: {queue_type}"
+        from core.identity.workspace_context import user_context
+        with user_context(discord_id=user_id):
+            if queue_type == "sensory":
+                return _process_sensory(payload, retry_count)
+            elif queue_type == "brain":
+                return _process_brain(payload, retry_count)
+            elif queue_type == "memory_sidecar":
+                return _process_sidecar(payload, retry_count)
+            else:
+                return False, f"unknown type: {queue_type}"
     except Exception as exc:
         tb = traceback.format_exc()
         logger.warning("memory_write_queue: %s item failed: %s\n%s",

@@ -43,9 +43,8 @@ def emit_recall_empty(
 ) -> None:
     """Publish a memory.recall_empty event. Best-effort — never raises.
 
-    The event payload is intentionally minimal: just enough for the Phase 2
-    correlation daemon to detect "searched for X around time Y" patterns.
-    No internal state, no PII beyond the query the user/Jarvis already saw.
+    The legacy signature keeps ``query`` for callers, but private query text
+    and identity are never persisted in telemetry.
     """
     try:
         from core.eventbus.bus import event_bus
@@ -53,8 +52,6 @@ def emit_recall_empty(
             "memory.recall_empty",
             {
                 "tool": str(tool or "").strip()[:64],
-                "query": str(query or "").strip()[:200],
-                "workspace_id": str(workspace_id or "default")[:64],
                 "month_key": datetime.now(UTC).strftime("%Y-%m"),
             },
         )
@@ -75,7 +72,7 @@ def count_recent_recall_empty(
     try:
         from core.runtime.db import connect
     except Exception:
-        return {"status": "error", "total": 0, "by_tool": {}}
+        return {"status": "error", "window_hours": hours, "total": 0, "by_tool": {}}
 
     try:
         with connect() as conn:
@@ -99,7 +96,7 @@ def count_recent_recall_empty(
                 total = int(row[0]) if row else 0
     except Exception as exc:
         logger.debug("memory_recall_telemetry: count failed: %s", exc)
-        return {"status": "error", "total": 0, "by_tool": {}}
+        return {"status": "error", "window_hours": hours, "total": 0, "by_tool": {}}
 
     return {
         "status": "ok",

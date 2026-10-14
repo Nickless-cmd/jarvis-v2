@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.services import semantic_memory
+from core.services.scoped_recall_policy import disabled_result, recall_enabled
 
 _VALID_MODALITIES = (
     "visual",
@@ -51,6 +52,8 @@ def _timestamp_for(record: dict[str, Any] | None, source_table: str) -> str:
 
 
 def _exec_recall_memories(args: dict[str, Any]) -> dict[str, Any]:
+    if not recall_enabled():
+        return disabled_result("semantic_memory")
     query = str(args.get("query") or "").strip()
     if not query:
         return {"status": "error", "error": "query is required"}
@@ -88,13 +91,15 @@ def _exec_recall_memories(args: dict[str, Any]) -> dict[str, Any]:
     hits = semantic_memory.search(
         query,
         modalities=modalities,
-        source_tables=source_tables,
+        source_tables=source_tables or ["sensory_memories", "private_brain_records"],
         limit=limit,
         min_score=min_score,
     )
 
     items = []
     for h in hits:
+        if not isinstance(h.get("record"), dict):
+            continue
         items.append(
             {
                 "score": h.get("score"),

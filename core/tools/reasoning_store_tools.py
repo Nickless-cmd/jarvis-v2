@@ -45,6 +45,9 @@ def _exec_recall_reasoning(args: dict[str, Any]) -> dict[str, Any]:
             days_back=days_back,
         )
 
+        if isinstance(results, dict):
+            return results
+
         if not results:
             return {"status": "ok", "text": "No matching reasoning conclusions found.", "results": []}
 
@@ -79,7 +82,7 @@ REASONING_STORE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Retrieve stored reasoning conclusions from deep_analyze, "
                 "reasoning_classify, self_evaluation, counterfactuals, and agent runs. "
-                "Results are ranked by recency. Use this to recall past insights, "
+                "Results are relevance-ranked. Use this to recall past insights, "
                 "conclusions, or reasoning traces across sessions."
             ),
             "parameters": {

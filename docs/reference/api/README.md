@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17075 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17087 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,15 +51,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17075 functions/
 - [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
 - [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relationship_texture`
-- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `run_trailing`
-- [`core.services.23`](core.services.23.md) — `runtime_action_executor` … `self_experiments`
-- [`core.services.24`](core.services.24.md) — `self_history_grounding` … `session_spawn`
-- [`core.services.25`](core.services.25.md) — `session_titling` … `smith_noise_veto`
-- [`core.services.26`](core.services.26.md) — `social_labilizer` … `text_clip`
-- [`core.services.27`](core.services.27.md) — `text_resonance` … `turn_tail_timing`
-- [`core.services.28`](core.services.28.md) — `turn_trace` … `visible_model_sse`
-- [`core.services.29`](core.services.29.md) — `visible_model_types` … `vision_preview`
-- [`core.services.30`](core.services.30.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `run_message_provenance`
+- [`core.services.23`](core.services.23.md) — `run_trailing` … `self_deception_guard`
+- [`core.services.24`](core.services.24.md) — `self_experiments` … `session_prewarm`
+- [`core.services.25`](core.services.25.md) — `session_spawn` … `smith_confrontation`
+- [`core.services.26`](core.services.26.md) — `smith_noise_veto` … `terminal_sanitize`
+- [`core.services.27`](core.services.27.md) — `text_clip` … `turn_changelog`
+- [`core.services.28`](core.services.28.md) — `turn_tail_timing` … `visible_model_prompt`
+- [`core.services.29`](core.services.29.md) — `visible_model_sse` … `vision_backend`
+- [`core.services.30`](core.services.30.md) — `vision_preview` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -77,8 +77,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17075 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `injection_richness_check`
-- [`scripts.02`](scripts.02.md) — `install_git_hooks` … `perception_mix`
-- [`scripts.03`](scripts.03.md) — `phase5_analyze` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `install_git_hooks` … `peer_practice_runner`
+- [`scripts.03`](scripts.03.md) — `perception_mix` … `verify_vaert_evner`
+- [`scripts.04`](scripts.04.md) — `verify_vagt_graenser` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

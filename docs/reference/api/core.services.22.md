@@ -368,8 +368,29 @@ _Canonical, fail-closed identity resolution for Routine entry points._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L9) |
-| function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L13) |
+| class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L8) |
+| function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L12) |
+
+## `core/services/routine_identity_migration.py`
+_Explicit users.json -> canonical account cutover for Routine ownership._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `IdentitySourceChanged` | `` | The source registry changed since the reviewed dry-run. | [src](../../../core/services/routine_identity_migration.py#L25) |
+| class | `IdentityMigrationConflict` | `` | At least one legacy identity cannot be linked without guessing. | [src](../../../core/services/routine_identity_migration.py#L29) |
+| class | `IdentityCutoverItem` | `` | — | [src](../../../core/services/routine_identity_migration.py#L34) |
+| class | `IdentityCutoverReport` | `` | — | [src](../../../core/services/routine_identity_migration.py#L44) |
+| method | `IdentityCutoverReport.create_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L49) |
+| method | `IdentityCutoverReport.linked_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L53) |
+| method | `IdentityCutoverReport.conflict_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L57) |
+| class | `IdentityCutoverResult` | `` | — | [src](../../../core/services/routine_identity_migration.py#L62) |
+| function | `_canonical_id` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L67) |
+| function | `_fingerprint` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L73) |
+| function | `_source_payload` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L77) |
+| function | `_watermark` | `(source)` | — | [src](../../../core/services/routine_identity_migration.py#L89) |
+| function | `_expected_target_matches` | `(external_id, row)` | Verify our deterministic target without treating its ID as proof. | [src](../../../core/services/routine_identity_migration.py#L106) |
+| function | `plan_legacy_identity_cutover` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L124) |
+| function | `apply_legacy_identity_cutover` | `(*, expected_watermark)` | — | [src](../../../core/services/routine_identity_migration.py#L165) |
 
 ## `core/services/routine_inbox.py`
 _User-controlled projections of Routine lifecycle events into durable inbox._
@@ -599,23 +620,4 @@ _Name the source of model input without changing the user's stored text._
 |---|---|---|---|---|
 | function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
 | function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
-
-## `core/services/run_trailing.py`
-_Beskeder der hoerer EFTER historikken i en agentisk tur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `runtime_instruction_message` | `(text)` | A model-facing runtime instruction with explicit non-user provenance. | [src](../../../core/services/run_trailing.py#L97) |
-| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de tre slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L102) |
-| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L107) |
-| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L112) |
-| method | `RundeHale.tilfoej_naeste` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder KUN den naeste runde. | [src](../../../core/services/run_trailing.py#L124) |
-| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…, art=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L145) |
-| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne; de vedvarende bliver, og de naeste rykker ind. | [src](../../../core/services/run_trailing.py#L161) |
-| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L173) |
-| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L183) |
-| method | `RundeHale.antal_naeste` | `(self)` | — | [src](../../../core/services/run_trailing.py#L187) |
-| method | `RundeHale.raadgivning_i_runden` | `(self)` | Hvor mange noter i den sendte hale der er raadgivning, ikke krav. | [src](../../../core/services/run_trailing.py#L191) |
-| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L202) |
-| method | `RundeHale.telemetri` | `(self)` | Kompakt billede af halen, praecis som den sendes i denne runde. | [src](../../../core/services/run_trailing.py#L205) |
 

@@ -12,22 +12,22 @@ _Authenticated, owner-scoped Routine lifecycle API._
 | class | `InboxPolicyBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L64) |
 | class | `EmptyBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L80) |
 | function | `_principal` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L84) |
-| function | `_service` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L93) |
-| function | `_routine` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L97) |
-| function | `_run` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L103) |
-| function | `_not_found` | `(exc)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L113) |
-| function | `list_routines` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L118) |
-| function | `create_routine` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L123) |
-| function | `get_inbox_defaults` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L130) |
-| function | `set_inbox_defaults` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L135) |
-| function | `get_routine` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L140) |
-| function | `patch_routine` | `(routine_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L151) |
-| function | `delete_routine` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L170) |
-| function | `lifecycle_action` | `(routine_id, action)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L181) |
-| function | `run_now` | `(routine_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L194) |
-| function | `list_runs` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L210) |
-| function | `get_run` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L218) |
-| function | `get_run_events` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L229) |
-| function | `cancel_run` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L237) |
-| function | `get_redacted_diagnostic` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L245) |
+| function | `_service` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L103) |
+| function | `_routine` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L107) |
+| function | `_run` | `(value)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L113) |
+| function | `_not_found` | `(exc)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L123) |
+| function | `list_routines` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L128) |
+| function | `create_routine` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L133) |
+| function | `get_inbox_defaults` | `()` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L140) |
+| function | `set_inbox_defaults` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L145) |
+| function | `get_routine` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L150) |
+| function | `patch_routine` | `(routine_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L161) |
+| function | `delete_routine` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L180) |
+| function | `lifecycle_action` | `(routine_id, action)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L191) |
+| function | `run_now` | `(routine_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L204) |
+| function | `list_runs` | `(routine_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L220) |
+| function | `get_run` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L228) |
+| function | `get_run_events` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L239) |
+| function | `cancel_run` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L247) |
+| function | `get_redacted_diagnostic` | `(run_id)` | — | [src](../../../apps/api/jarvis_api/routes/routines.py#L255) |
 

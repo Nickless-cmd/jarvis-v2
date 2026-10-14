@@ -347,6 +347,13 @@ _Encrypt existing member chat titles without printing private text._
 |---|---|---|---|---|
 | function | `migrate` | `(*, dry_run=…, batch_size=…)` | — | [src](../../../scripts/migrate_member_session_titles.py#L10) |
 
+## `scripts/migrate_routine_identities.py`
+_Dry-run/apply the explicit legacy identity bridge required by Routines._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/migrate_routine_identities.py#L14) |
+
 ## `scripts/migrer_filer_per_bruger.py`
 _Flyt de gamle fælles filer ind i ejerens egen mappe._
 
@@ -438,13 +445,4 @@ _Peer practice runner — kører kontinuerligt i ~7 dage per peer._
 | function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
 | function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
 | function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
-
-## `scripts/perception_mix.py`
-_Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L42) |
-| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L64) |
-| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L72) |
 

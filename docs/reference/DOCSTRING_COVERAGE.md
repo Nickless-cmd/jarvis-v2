@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8952/17075 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8953/17087 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 823 | 1517 | 54% |
-| `core.services` | 5969 | 11606 | 51% |
+| `core.services` | 5970 | 11617 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 276 | 601 | 45% |
+| `scripts` | 276 | 602 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2528)
+## Undocumented public functions (2534)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L218)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -119,20 +119,20 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
 - `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
-- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L237)
-- `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L123)
-- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L170)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L130)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L245)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L140)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L218)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L229)
-- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L181)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L118)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L210)
-- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L151)
-- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L194)
-- `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L135)
+- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L247)
+- `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L133)
+- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L180)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L140)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L255)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L150)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L228)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L239)
+- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L191)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L128)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L220)
+- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L161)
+- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L204)
+- `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L145)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
 - `apps/api/jarvis_api/routes/sensory.py` :: `record_memory` (L67)
@@ -1744,14 +1744,19 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 - `core/services/routine_delivery.py` :: `RoutineDeliveryService.settle` (L79)
 - `core/services/routine_diagnostics.py` :: `project_failure` (L39)
 - `core/services/routine_diagnostics.py` :: `render_projection` (L62)
+- `core/services/routine_identity_migration.py` :: `IdentityCutoverReport.conflict_count` (L57)
+- `core/services/routine_identity_migration.py` :: `IdentityCutoverReport.create_count` (L49)
+- `core/services/routine_identity_migration.py` :: `IdentityCutoverReport.linked_count` (L53)
+- `core/services/routine_identity_migration.py` :: `apply_legacy_identity_cutover` (L165)
+- `core/services/routine_identity_migration.py` :: `plan_legacy_identity_cutover` (L124)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.effective_policy` (L41)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.project_event_to_inbox` (L55)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_override` (L27)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_user_defaults` (L20)
 - `core/services/routine_inbox.py` :: `project_event_to_inbox` (L82)
-- `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L51)
-- `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L55)
-- `core/services/routine_migration.py` :: `report_path` (L105)
+- `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L57)
+- `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L61)
+- `core/services/routine_migration.py` :: `report_path` (L111)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
@@ -1803,17 +1808,17 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 - `core/services/routine_service.py` :: `RoutineService.stop` (L297)
 - `core/services/routine_service.py` :: `RoutineService.update` (L227)
 - `core/services/routine_service.py` :: `RoutineView.id` (L55)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L73)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L67)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L116)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L126)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L155)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L168)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L178)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L138)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L134)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L146)
-- `core/services/routine_trigger_adapters.py` :: `routine_cutover_enabled` (L30)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L75)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L69)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L118)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L128)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L157)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L170)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L180)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L140)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L136)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L148)
+- `core/services/routine_trigger_adapters.py` :: `routine_cutover_enabled` (L32)
 - `core/services/routine_types.py` :: `RoutinePatch.changes` (L106)
 - `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L44)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)
@@ -2483,6 +2488,7 @@ Generated from source. 8952/17075 functions/methods documented (52%). The list b
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
 - `scripts/migrate_member_session_titles.py` :: `migrate` (L10)
+- `scripts/migrate_routine_identities.py` :: `main` (L14)
 - `scripts/migrate_routines.py` :: `main` (L18)
 - `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)
 - `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)

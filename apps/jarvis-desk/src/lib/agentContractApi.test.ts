@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import fixture from './__fixtures__/agentContract.json'
 import {
   afgoerAgentApproval, bucketLabel, erKontraktAaben, erKontraktAktiv, getKontraktAgent,
-  hentVentendeAgentGodkendelse, kontraktBesked,
+  aeldsteVentende, hentVentendeAgentGodkendelse, kontraktBesked, ventendeGodkendelser,
   kontraktVarighed, kvitteringTekst,
   type ContractAgentRow, type ContractApproval, type ContractCounts, type ContractDetail, type ContractReceipt,
   type FeedCard,
@@ -117,20 +117,47 @@ describe('fejloversættelse', () => {
     await expect(afgoerAgentApproval(cfg, 'ap1', 'approve', 'dig', 's1')).rejects.toThrow(/må ikke afgøre/)
   })
 
+  // Et ventende approval-kort i FEED-formen — den form funktionen nu laeser.
+  // `feed()` sorterer nyeste foerst, saa raekkefoelgen nedenfor er den serveren
+  // sender: nyeste, derefter aeldste.
+  const ventendeKort = (id: string, updated_at: string, digest: string, session: string, tool: string): FeedCard => ({
+    ref_kind: 'approval', ref_id: id, section: 'venter', bucket: 'approval',
+    agent_id: 'a1', assignment_id: 'as1', origin_session_id: session,
+    title: `Godkend: ${tool}`, reason: 'Venter på din godkendelse', summary: 'skriv',
+    error: null, updated_at, created_at: updated_at,
+    approval: { approval_id: id, digest, risk_class: 'write', expires_at: '', tool_name: tool, status: 'pending' },
+    state: { read: false, acknowledged: false, model_claim: '', assignment_status: '' },
+    can_acknowledge: false,
+  })
+
   it('finder den ÆLDSTE ventende agent-godkendelse — den der er tættest på sit udløb', async () => {
-    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ approvals: [
-      { approval_id: 'ny', tool_name: 'bash', safe_view: 'ls', args_digest: 'd2', origin_session_id: 's2' },
-      { approval_id: 'gammel', tool_name: 'write_file', safe_view: 'skriv', args_digest: 'd1', origin_session_id: 's1' },
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'ok', cards: [
+      ventendeKort('ny', '2026-10-14T12:00:00Z', 'd2', 's2', 'bash'),
+      ventendeKort('gammel', '2026-10-14T10:00:00Z', 'd1', 's1', 'write_file'),
     ] }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     expect(await hentVentendeAgentGodkendelse(cfg)).toEqual({
       approvalId: 'gammel', tool: 'write_file', action: 'skriv', sessionId: 's1', digest: 'd1',
     })
-    expect(String(f.mock.calls[0]![0])).toBe('http://test/agents/approvals?status=pending')
+    // KILDEN er feedet — samme vej som toasten. Foer spurgte kortet
+    // `/agents/approvals?status=pending`, som laeser praecis de samme raekker.
+    expect(String(f.mock.calls[0]![0])).toBe('http://test/agents/contract/feed')
+  })
+
+  it('udvalget: kun VENTENDE kort MED en approval — og den ældste vinder', () => {
+    const ny = ventendeKort('ny', '2026-10-14T12:00:00Z', 'd2', 's2', 'bash')
+    const gammel = ventendeKort('gammel', '2026-10-14T10:00:00Z', 'd1', 's1', 'write_file')
+    expect(ventendeGodkendelser([ny, gammel]).map((k) => k.ref_id)).toEqual(['ny', 'gammel'])
+    expect(aeldsteVentende([ny, gammel])?.ref_id).toBe('gammel')
+    // Et kort i «svar» venter ikke. Og et ventende kort UDEN approval er en
+    // opgave der kvitteres — ikke en godkendelse der afgoeres.
+    expect(ventendeGodkendelser([{ ...ny, section: 'svar' }])).toEqual([])
+    expect(ventendeGodkendelser([{ ...ny, approval: undefined }])).toEqual([])
+    expect(aeldsteVentende([])).toBeNull()
   })
 
   it('ingen ventende — eller en fejl — giver null, aldrig et falsk kort', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"approvals":[]}', { status: 200 })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"status":"ok","cards":[]}', { status: 200 })))
     expect(await hentVentendeAgentGodkendelse(cfg)).toBeNull()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
     expect(await hentVentendeAgentGodkendelse(cfg)).toBeNull()

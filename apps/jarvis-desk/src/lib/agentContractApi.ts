@@ -279,6 +279,37 @@ export async function afgoerAgentApproval(
   }
 }
 
+// ── Udvalgs-laget: hvilke godkendelser venter — og hvilken haster ─────────
+//
+// TO FLADER, ÉT UDVALG (14/10-2026). Kortet over composeren og toasten spurgte
+// hver for sig om det samme: kortet hentede `/agents/approvals` og tog den
+// ældste, toasten hentede hele feedet og tog alle nye. Afgørelsen til sidst var
+// den samme (`afgoerAgentApproval`) — men UDVALGET var delt, og det er to steder
+// at glemme noget den dag en tredje flade kommer til.
+//
+// De to kilder læste i virkeligheden SAMME rækker: `feed()` kalder selv
+// `list_for_owner(status="pending")`. Forskellen var ruten og udvalget, ikke
+// dataene. Udvalget bor derfor nu her, over feedets kort — den hydrerede
+// projektion fladerne allerede henter. Fladerne må stadig VISE forskelligt
+// (én mod alle); de kan ikke længere VÆLGE forskelligt.
+
+/** De kort der VENTER på en godkendelse.
+ *
+ *  Kun dem med en `approval`: et fejlet eller uafklaret assignment kræver også et
+ *  svar, men det svar går gennem feedets kvittering — ikke her. */
+export function ventendeGodkendelser(cards: FeedCard[]): FeedCard[] {
+  return (cards || []).filter((k) => k.section === 'venter' && k.approval?.approval_id)
+}
+
+/** Den ÆLDSTE ventende — den der er tættest på sit udløb.
+ *
+ *  `feed()` sorterer nyeste først, så den ældste er den SIDSTE. Rækkefølgen er
+ *  ikke en detalje: vælger man den nyeste, venter den der udløber først, længst. */
+export function aeldsteVentende(cards: FeedCard[]): FeedCard | null {
+  const v = ventendeGodkendelser(cards)
+  return v.length ? v[v.length - 1]! : null
+}
+
 /** Finder ejerens ventende AGENT-godkendelser — den vej kortet over composeren skal kunne svare på.
  *
  *  Indtil 14/10-2026 kendte kortet kun den gamle tool-approval-vej
@@ -287,10 +318,13 @@ export async function afgoerAgentApproval(
  *  kun i notifikations-feedet, præcis som Bjørn formulerede det: «nu dukker de kun op i
  *  notifikations feed».
  *
+ *  KILDEN er feedet (14/10-2026, anden runde): `/agents/approvals?status=pending` og
+ *  `feed()` læser samme rækker — `feed()` kalder selv `list_for_owner(status="pending")`
+ *  — så kortet spurgte en ANDEN vej om præcis det samme svar som toasten. Nu læser begge
+ *  `getKontraktFeed`, og hvem der vælges bor ét sted: `aeldsteVentende`.
+ *
  *  Vi spørger på TVÆRS af samtaler og gemmer `origin_session_id`, så kun den tilhørende
- *  chat tegner kortet — samme mønster som `hentVentendeGodkendelseOveralt`. Den ÆLDSTE
- *  vælges: `list_for_owner` sorterer nyeste først, og den der er tættest på sit udløb er
- *  den der haster.
+ *  chat tegner kortet — samme mønster som `hentVentendeGodkendelseOveralt`.
  *
  *  Et svar fra en anden session afvises af serveren, så et kort der vises det forkerte
  *  sted kan ikke misbruges — men det kan heller ikke afgøres, og det er derfor sessionen
@@ -299,21 +333,17 @@ export async function hentVentendeAgentGodkendelse(
   config: ApiConfig,
 ): Promise<{ approvalId: string; tool: string; action: string; sessionId: string; digest: string } | null> {
   try {
-    const r = await apiFetch<{ approvals?: ContractApproval[] }>(
-      config, '/agents/approvals?status=pending', { retries: 0 },
-    )
-    const liste = r?.approvals || []
-    if (!liste.length) return null
-    const a = liste[liste.length - 1]
-    if (!a) return null
-    const id = String(a.approval_id || '')
+    const f = await getKontraktFeed(config)
+    const k = aeldsteVentende(f?.cards || [])
+    if (!k?.approval) return null
+    const id = String(k.approval.approval_id || '')
     if (!id) return null
     return {
       approvalId: id,
-      tool: String(a.tool_name || 'agent'),
-      action: String(a.safe_view || a.tool_name || '').slice(0, 400),
-      sessionId: String(a.origin_session_id || ''),
-      digest: String(a.args_digest || ''),
+      tool: String(k.approval.tool_name || 'agent'),
+      action: String(k.summary || k.approval.tool_name || '').slice(0, 400),
+      sessionId: String(k.origin_session_id || ''),
+      digest: String(k.approval.digest || ''),
     }
   } catch {
     return null   // intet kort er et gyldigt svar; en fejl må ikke vise et falsk kort

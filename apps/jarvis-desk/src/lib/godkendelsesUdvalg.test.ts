@@ -1,0 +1,51 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+/**
+ * TO FLADER, ÉT UDVALG (14/10-2026).
+ *
+ * Kortet over composeren og toasten spurgte hver for sig om det samme: hvilke
+ * agent-godkendelser venter — og hvilken haster. Kortet hentede
+ * `/agents/approvals` og tog den ældste; toasten hentede hele feedet og tog
+ * alle nye. Begge endte i `afgoerAgentApproval`, så AFGØRELSEN var fælles — men
+ * UDVALGET var delt, og det er to steder at glemme noget den dag en tredje
+ * flade kommer til.
+ *
+ * De to kilder læste i virkeligheden samme rækker: `feed()` kalder selv
+ * `list_for_owner(status="pending")`. Forskellen var ruten, ikke dataene.
+ *
+ * Kilden læses frem for at rende hele komponenterne op: det der skal pinnes er
+ * ikke hvordan fladerne tegner, men at de ikke kan VÆLGE forskelligt. Det er
+ * samme mønster som `agentGodkendelseRuter.test.ts` og
+ * `godkendelseskortetTegnesEtSted.test.ts` — et navn i en import-linje er ikke
+ * et kald, og et filter i en komponent er ikke et udvalgs-lag.
+ */
+const SRC = resolve(__dirname, '..')
+const api = readFileSync(resolve(SRC, 'lib/agentContractApi.ts'), 'utf-8')
+const toast = readFileSync(resolve(SRC, 'components/shell/NotifikationsToast.tsx'), 'utf-8')
+
+describe('godkendelses-udvalget bor ét sted', () => {
+  it('API-laget ejer udvalget — baade «hvilke» og «hvilken»', () => {
+    expect(api).toContain('export function ventendeGodkendelser')
+    expect(api).toContain('export function aeldsteVentende')
+  })
+
+  it('kortet over composeren læser den ældste fra feedet', () => {
+    expect(api).toContain('aeldsteVentende(f?.cards || [])')
+  })
+
+  it('toasten læser det samme udvalg — ikke sit eget filter', () => {
+    expect(toast).toContain('ventendeGodkendelser(f.cards)')
+    // Regressionen: kom filteret tilbage her, kunne de to flader igen vælge
+    // hver for sig, og fejlen fra 14/10 ville være usynlig indtil nogen
+    // tilføjede en tredje flade.
+    expect(toast).not.toContain("k.section === 'venter' && k.approval")
+  })
+
+  it('kortet spørger ikke længere approvals-ruten selv om udvalget', () => {
+    // Ruten bruges STADIG til selve afgørelsen (`…/decision`). Det er kun
+    // OPSLAGET der er flyttet til feedet, så de to flader ikke læser hver sin.
+    expect(api).not.toContain("'/agents/approvals?status=pending'")
+  })
+})

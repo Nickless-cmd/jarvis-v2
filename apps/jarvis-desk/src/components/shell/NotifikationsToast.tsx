@@ -37,7 +37,7 @@ import { openEventSocket } from '../../lib/api'
 import {
   afgoerNotifikation, hentNotifikationer, setNotifikation, type Notifikation,
 } from '../../lib/notifikationerApi'
-import { getKontraktFeed, type FeedCard } from '../../lib/agentContractApi'
+import { getKontraktFeed, ventendeGodkendelser, type FeedCard } from '../../lib/agentContractApi'
 import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
 import { maaPolle } from '../../lib/ro'
 import { markNotificationsRead } from '../../lib/notificationAttention'
@@ -182,10 +182,11 @@ export function NotifikationsToast({ config, onAabenSession }: {
     getKontraktFeed({ apiBaseUrl, authToken })
       .then((f) => {
         if (!alive.current || version !== kontraktVersion.current) return
-        // Kun de VENTENDE, og kun dem der faktisk baerer en approval. Et fejlet
-        // eller ukendt assignment kraever ogsaa et svar, men det svar gaar
-        // gennem feedet (kvitteringen), ikke her.
-        const ventende = (f.cards || []).filter((k) => k.section === 'venter' && k.approval)
+        // Udvalget bor i API-laget, ikke her (14/10-2026): kortet over
+        // composeren spoerger praecis det samme — hvilke godkendelser venter —
+        // og svarede foer ad sin egen vej. Nu er der ét sted at rette, og
+        // fladerne kan ikke laengere VÆLGE forskelligt, kun VISE forskelligt.
+        const ventende = ventendeGodkendelser(f.cards)
 
         if (kendteAgent.current === null) {
           kendteAgent.current = new Set(ventende.map((k) => k.approval!.approval_id))

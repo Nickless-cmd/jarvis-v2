@@ -88,7 +88,7 @@ def _proc_start_ticks(pid: int) -> str | None:
             data = f.read()
     except FileNotFoundError:
         return None
-    except Exception:
+    except Exception:  # journal writes must survive optional role discovery failure
         return ""
     try:
         # ``comm`` (felt 2) kan indeholde både mellemrum og parenteser, så vi
@@ -107,6 +107,17 @@ def current_owner() -> str:
     """
     pid = os.getpid()
     return f"{pid}:{_proc_start_ticks(pid) or ''}"
+
+
+def _producer_process() -> str:
+    """Stable service role for locating a run's process-local stream."""
+    try:
+        from core.services.central_xproc import process_role
+
+        role = str(process_role() or "").strip().lower()
+        return role if role in {"api", "runtime"} else ""
+    except Exception:
+        return ""
 
 
 def owner_still_alive(owner: str) -> bool | None:
@@ -296,6 +307,10 @@ def mark_started(
             ]
             for noegle in doede:
                 records.pop(noegle, None)
+        producer_process = _producer_process()
+        if not producer_process:
+            previous_role = str(tidligere.get("producer_process") or "")
+            producer_process = previous_role if previous_role in {"api", "runtime"} else ""
         records[str(run_id)] = {
             "task_id": str(task_id or run_id),
             "run_id": str(run_id),
@@ -316,6 +331,7 @@ def mark_started(
             "last_progress_at": _iso(),
             "last_tool": "",
             "owner_proc": current_owner(),
+            "producer_process": producer_process,
             "recovery_generation": max(0, slaegt),
             "recovery_attempt": max(0, kaede),
             "recovery_limit": max(0, int(recovery_limit)),
@@ -366,6 +382,7 @@ def stempl_genoptagelse(
                 "started_at": _iso(),
                 "last_progress_at": _iso(),
                 "owner_proc": current_owner(),
+                "producer_process": _producer_process(),
                 "notice_pending": False,
             }
             records[str(run_id)] = rec

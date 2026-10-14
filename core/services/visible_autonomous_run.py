@@ -225,6 +225,16 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         autonomous=True,
         origin=_origin,
     )
+    from core.services.autonomous_frame_relay import AutonomousFrameRelay
+
+    frame_relay = AutonomousFrameRelay(
+        run_id=run.run_id,
+        session_id=resolved_session,
+        legacy_follow=follow,
+    )
+    # Registrér synkront før worker-tråden: reconnect må kunne finde runnet fra
+    # det øjeblik starteren vender tilbage, også før første model-frame findes.
+    frame_relay.register()
     _vr.event_bus.publish(
         "runtime.autonomous_run_started",
         {
@@ -261,29 +271,23 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         try:
             async def _consume() -> None:
                 nonlocal consumed_frames
-                if follow:
-                    # Tee runnets frames som v2 → run_follow-buffer (desk-streaming).
-                    from core.services.run_follow import (
-                        begin_follow,
-                        end_follow,
-                        publish_follow_frame,
-                    )
-                    from core.services.visible_runs_sse_v2 import translate_to_v2
-                    begin_follow(resolved_session, run.run_id)
-                    try:
-                        async for frame in translate_to_v2(
-                            _vr._stream_visible_run(run),
-                            run_id=run.run_id, model=run.model, provider=run.provider,
-                            lane=run.lane, session_id=resolved_session,
-                            ping_interval_s=10.0,
-                        ):
-                            consumed_frames += 1
-                            publish_follow_frame(resolved_session, frame)
-                    finally:
-                        end_follow(resolved_session)
-                else:
-                    async for _ in _vr._stream_visible_run(run):
+                from core.services.visible_runs_sse_v2 import translate_to_v2
+
+                generator = translate_to_v2(
+                    _vr._stream_visible_run(run),
+                    run_id=run.run_id, model=run.model, provider=run.provider,
+                    lane=run.lane, session_id=resolved_session,
+                    ping_interval_s=10.0,
+                )
+                try:
+                    async for frame in generator:
                         consumed_frames += 1
+                        frame_relay.publish(frame)
+                finally:
+                    try:
+                        await generator.aclose()
+                    except Exception:  # closing an already-failed async generator is best effort
+                        pass
 
             loop.run_until_complete(_consume())
         except Exception as exc:
@@ -303,6 +307,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             _observe_autonomous_run(run=run, session_id=resolved_session,
                                     outcome="failed", frames=consumed_frames, error=str(exc))
         finally:
+            frame_relay.finish()
             if not failed:
                 outcome = _vr.get_last_visible_run_outcome() or {}
                 interrupted = (

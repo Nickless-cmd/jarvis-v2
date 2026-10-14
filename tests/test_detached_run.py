@@ -189,6 +189,69 @@ def test_levende_fortsaettelse_holder_sit_krav_fra_at_udloebe(monkeypatch):
     assert kald == [(('task-1', 2), {'owner': 'owner-1', 'lease_seconds': 120.0})]
 
 
+def test_lease_traaden_efterlader_et_spor(monkeypatch, caplog):
+    """Trådens fødsel, hver fornyelse og dens død skal kunne læses i loggen.
+
+    Målt-behov 14/10-2026: et lejemaal udløb midt i et kørende run
+    (`visible-a8323914`), og uden spor kunne tre forløb ikke skelnes —
+    tråden blev aldrig født, den fornyede i det stille, eller den døde i sit
+    første tick. Fraværet af en advarsel betød både «alt gik godt» og «løkken
+    kørte aldrig», og netop derfor kunne målingen ikke afsluttes.
+    """
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    monkeypatch.setattr(ifr, "renew_recovery_lease", lambda *a, **kw: True)
+
+    class StopEfterToTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 2
+
+    with caplog.at_level("INFO"):
+        d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterToTick())
+
+    tekst = caplog.text
+    assert "lease-traad startet for opgave task-1" in tekst
+    assert "lease fornyet for opgave task-1 (#1" in tekst
+    assert "lease fornyet for opgave task-1 (#2" in tekst
+    assert "lease-traad stoppet for opgave task-1 (fornyelser i alt: 2)" in tekst
+
+
+def test_lease_traaden_siger_hvor_mange_fornyelser_den_naaede(monkeypatch, caplog):
+    """Taber tråden kravet, skal advarslen bære TALLET — ikke kun beskeden.
+
+    Uden tallet kan «mistede sit lejemaal» ikke skelnes fra et run der døde i
+    sit første tick, og det var præcis den tvetydighed der gjorde målingen
+    14/10-2026 umulig at afslutte. Et run der dør efter én fornyelse og et der
+    aldrig fornyede efterlader samme ord i loggen — men ikke samme tal.
+    """
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    kald = {"n": 0}
+
+    def _forny(*a, **kw):
+        kald["n"] += 1
+        return kald["n"] < 2          # første tick fornyer, andet taber kravet
+
+    monkeypatch.setattr(ifr, "renew_recovery_lease", _forny)
+
+    class StopEfterFemTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 5
+
+    with caplog.at_level("INFO"):
+        d._hold_recovery_lease("task-9", 3, "owner-9", StopEfterFemTick())
+
+    assert "mistede sit recovery-lejemaal (fornyelser i alt: 1" in caplog.text
+    # Taber tråden kravet, vender den hjem FØR stop — derfor ingen stop-linje.
+    assert "lease-traad stoppet" not in caplog.text
+
+
 @pytest.mark.xfail(
     strict=True,
     reason=(

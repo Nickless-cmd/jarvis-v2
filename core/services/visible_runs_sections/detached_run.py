@@ -98,19 +98,48 @@ def _afregn_genoptaget_run(
 
 
 def _hold_recovery_lease(task_id: str, generation: int, owner: str, stop) -> None:
-    """Hold et langt levende run claimet, indtil det selv afregner opgaven."""
+    """Hold et langt levende run claimet, indtil det selv afregner opgaven.
+
+    ## Sporet (14/10-2026)
+
+    Tråden var tavs i BEGGE ender: dens fødsel, hver fornyelse og dens død
+    fandtes ikke i loggen. Da et lejemaal udløb midt i et kørende run
+    (`visible-a8323914`, 20:17:38 → genoptaget igen 20:25:09), kunne jeg derfor
+    ikke skelne tre vidt forskellige forløb fra hinanden:
+
+    * tråden blev aldrig født (betingelsen i `start_user_run_detached` svigtede),
+    * den fornyede i det stille, indtil runnet selv sluttede, eller
+    * den døde i sit FØRSTE tick uden at nå at forny noget.
+
+    Advarslen nedenfor blev slaaet 0 gange i hele loggen den dag — og det er
+    netop tvetydigt, fordi fraværet af en advarsel baade betyder «alt gik
+    godt» og «løkken kørte aldrig». Uden spor er målingen en rekonstruktion;
+    med det er den et faktum. Log-linjerne ændrer ingen adfærd.
+    """
     from core.services.in_flight_runs import renew_recovery_lease
 
+    logger.info("lease-traad startet for opgave %s (generation %d, owner=%s)",
+                task_id, generation, owner or "-")
+    fornyelser = 0
     while not stop.wait(30.0):
         try:
             if not renew_recovery_lease(
                 task_id, generation, owner=owner, lease_seconds=120.0,
             ):
-                logger.warning("opgave %s mistede sit recovery-lejemaal", task_id)
+                logger.warning(
+                    "opgave %s mistede sit recovery-lejemaal "
+                    "(fornyelser i alt: %d, generation %d, owner=%s)",
+                    task_id, fornyelser, generation, owner or "-",
+                )
                 return
+            fornyelser += 1
+            logger.info("lease fornyet for opgave %s (#%d, generation %d)",
+                        task_id, fornyelser, generation)
         except Exception:
             logger.warning("kunne ikke forny recovery-lejemaal for %s", task_id,
                            exc_info=True)
+    logger.info("lease-traad stoppet for opgave %s (fornyelser i alt: %d)",
+                task_id, fornyelser)
 
 
 #: Hvor længe et detached run må stå uden sin FØRSTE frame, før fødsels-vagten

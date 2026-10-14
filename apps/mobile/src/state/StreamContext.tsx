@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
-import { approveTool, cancelRun, denyTool, hentVentendeGodkendelse } from '../lib/apiClient'
+import { approveTool, cancelRun, denyTool, getActiveRunSnapshot, hentVentendeGodkendelse } from '../lib/apiClient'
 import { blocksToPersisted } from '../lib/blocksToPersisted'
 import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
@@ -153,7 +153,7 @@ function blocksToAssistantText(blocks: ContentBlock[]): string {
 }
 
 export function StreamProvider({ children }: { children: ReactNode }) {
-  const { appendLocalMessage } = useSessions()
+  const { appendLocalMessage, select } = useSessions()
   const [state, setState] = useState(initialStreamState())
   const [approval, setApproval] = useState<ApprovalViewModel | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
@@ -257,7 +257,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   /** Handlerne deles af send() og genoptagKoerende(): begge foder de SAMME
    *  frames ind i reduceren, saa et genoptaget run opfoerer sig praecis som
    *  et der aldrig blev afbrudt. */
-  const lavHandlers = (): StreamHandlers => ({
+  const lavHandlers = (config?: ApiConfig, sessionId?: string): StreamHandlers => ({
       onReconnecting: () => setReconnecting(true),
       onEvent: (event) => {
         // Ubetinget: enhver indkommende frame = forbindelsen er i live igen.
@@ -285,6 +285,43 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         }
       },
       onInterrupted: () => persistAssistantSnapshot('interrupted'),
+      onReconcile: () => {
+        const sid = sessionId || ejerRef.current
+        if (!config || !sid) {
+          persistAssistantSnapshot('interrupted')
+          return
+        }
+        const savedOffset = control.current?.getOffset() ?? 0
+        setReconnecting(true)
+        void Promise.all([select(config, sid), getActiveRunSnapshot(config)])
+          .then(([, runs]) => {
+            const live = runs.find((item) => item.sessionId === sid && item.runId)
+            if (live) {
+              control.current?.abort()
+              control.current = startStream(
+                {
+                  config,
+                  sessionId: sid,
+                  message: '',
+                  genoptag: { runId: live.runId, fromIdx: savedOffset }
+                },
+                lavHandlers(config, sid)
+              )
+              return
+            }
+            setReconnecting(false)
+            control.current = null
+            updateState((prev) => ({ ...prev, status: 'done', blocks: [] }))
+          })
+          .catch((error) => {
+            setReconnecting(false)
+            const err = error instanceof Error ? error : new Error(String(error))
+            const info = clientErrorToInfo(err)
+            setStreamError(info)
+            setLastError(info.message)
+            updateState((prev) => ({ ...prev, status: 'error' }))
+          })
+      },
       onError: (err) => {
         // Fyrer FØRST når den indbyggede reconnect (offset-baseret re-attach)
         // er opbrugt → ægte terminal fejl. Struktureret + retryable.
@@ -360,7 +397,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             researchMode: opts?.researchMode,
             attachmentIds: opts?.attachmentIds
           },
-          lavHandlers()
+          lavHandlers(config, sessionId)
         )
       },
       stop: async (config) => {
@@ -408,7 +445,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         baggrundRef.current = null
         control.current = startStream(
           { config, sessionId: '', message: '', genoptag: { runId: gemt.runId, fromIdx: gemt.offset } },
-          lavHandlers()
+          lavHandlers(config, ejerRef.current || undefined)
         )
         return true
       },
@@ -507,6 +544,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             if (!skip && stateRef.current.blocks.length === 0) {
               updateState((prev) => (prev.status === 'working' ? { ...prev, status: 'idle' } : prev))
             }
+          },
+          onReconcile: () => {
+            if (!erAktuel()) return
+            followControl.current = null
+            followedRunRef.current = null
+            void select(config, sessionId).catch(() => undefined)
           },
           onError: () => {
             if (!erAktuel()) return

@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/notifikationer.py`
+_Notifikations-feeden. Scoper til den auth'ede bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AfgoerBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L20) |
+| function | `_oversaet_fejl` | `(raa_fejl)` | Oversaet en teknisk/engelsk fejltekst til noget en almindelig bruger | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L32) |
+| function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
+| function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
+| function | `feed` | `(aktiv=…)` | Feedet. `aktiv` = den samtale klienten SIDDER I lige nu. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
+| function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L106) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L170) |
+
+## `apps/api/jarvis_api/routes/notifikations_valg.py`
+_Push-valg per slags. Scoper til den auth'ede bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
+| function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
+| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
+
 ## `apps/api/jarvis_api/routes/oauth.py`
 _OAuth connect-flow til plugin-connectors (16. jun 2026)._
 

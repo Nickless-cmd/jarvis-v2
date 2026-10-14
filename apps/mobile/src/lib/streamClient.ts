@@ -33,6 +33,7 @@ export interface StreamHandlers {
   onInterrupted?: () => void
   onError?: (error: Error) => void
   onComplete?: () => void
+  onReconcile?: (reason: 'unknown' | 'pruned') => void
 }
 
 export function errorDetail(event: unknown): string {
@@ -157,11 +158,14 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     try { source.close() } catch { /* lukning er best effort */ }
 
     const status = (event as { xhrStatus?: number } | undefined)?.xhrStatus
-    if (activeRunId && status === 404) {
-      gotStop = true
+    if (activeRunId && (status === 404 || status === 410)) {
       closed = true
-      handlers.onEvent({ type: 'message_stop' } as StreamEvent)
-      handlers.onComplete?.()
+      handlers.onReconcile?.(status === 404 ? 'unknown' : 'pruned')
+      return
+    }
+    if (status === 401 || status === 403) {
+      closed = true
+      handlers.onError?.(new Error(errorDetail(event)))
       return
     }
     if (activeRunId && attempt < MAX_RECONNECTS) {
@@ -387,8 +391,15 @@ export function followSession(
   }
 
   // En follow der lukker (run færdigt / intet aktivt run) er normalt — ikke en fejl.
-  source.addEventListener('error', () => {
-    handlers.onComplete?.()
+  source.addEventListener('error', (event) => {
+    const status = (event as { xhrStatus?: number }).xhrStatus
+    if (status === 404 || status === 410) {
+      handlers.onReconcile?.(status === 404 ? 'unknown' : 'pruned')
+    } else if (status === 401 || status === 403 || status === 503) {
+      handlers.onError?.(new Error(errorDetail(event)))
+    } else {
+      handlers.onComplete?.()
+    }
     source.close()
   })
 

@@ -22,8 +22,8 @@ def start_autonomous_stream_run(
     import threading
     from uuid import uuid4
 
-    import core.services.run_event_log as relay
     import core.services.visible_runs as vr
+    from core.services.autonomous_frame_relay import AutonomousFrameRelay
     from core.services.central_router_adapt import resolve_autonomous_model
 
     sid = (session_id or "").strip()
@@ -123,10 +123,12 @@ def start_autonomous_stream_run(
         logger.warning("autonomous-run %s: kunne ikke skrive visible_runs-raekken",
                        run.run_id, exc_info=True)
 
-    from core.services.run_follow import begin_follow
-
-    relay.create(run.run_id, sid)
-    begin_follow(sid, run.run_id)
+    frame_relay = AutonomousFrameRelay(
+        run_id=run.run_id,
+        session_id=sid,
+        legacy_follow=True,
+    )
+    frame_relay.register()
     vr.event_bus.publish(
         "runtime.autonomous_run_started",
         {
@@ -156,7 +158,6 @@ def start_autonomous_stream_run(
     def _in_thread() -> None:
         import asyncio
 
-        from core.services.run_follow import end_follow, publish_follow_frame
         from core.services.visible_runs_sse_v2 import translate_to_v2
 
         loop = asyncio.new_event_loop()
@@ -177,8 +178,7 @@ def start_autonomous_stream_run(
             try:
                 async for frame in generator:
                     consumed_frames += 1
-                    relay.append(run.run_id, frame)
-                    publish_follow_frame(sid, frame)
+                    frame_relay.publish(frame)
             finally:
                 try:
                     await generator.aclose()
@@ -209,12 +209,7 @@ def start_autonomous_stream_run(
                 error=str(exc),
             )
         finally:
-            relay.mark_done(run.run_id)
-            end_follow(sid)
-            try:
-                relay.prune()
-            except Exception:
-                pass
+            frame_relay.finish()
             try:
                 state = vr._get_active_visible_run_state() or {}
                 if str(state.get("session_id") or "") == sid:

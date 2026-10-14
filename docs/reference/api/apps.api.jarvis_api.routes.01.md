@@ -528,27 +528,22 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_sessions` | `(kind=…, inkluder_arkiverede=…)` | List chat sessions. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1238) |
 | function | `chat_search_sessions` | `(q=…, limit=…)` | Søg sessioner på titel + besked-indhold. Scopes pr. bruger som | [src](../../../apps/api/jarvis_api/routes/chat.py#L1264) |
 | function | `chat_session_recovery` | `(session_id, response)` | Hvad er der at genoptage for denne samtale? 204 når der ikke er noget. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1274) |
-| function | `_journal_sessions` | `()` | Sessioner med et LEVENDE run i den DELTE journal (13/10-2026). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1308) |
-| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1339) |
-| function | `chat_cancel_active` | `(session_id)` | Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten | [src](../../../apps/api/jarvis_api/routes/chat.py#L1420) |
-| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect | [src](../../../apps/api/jarvis_api/routes/chat.py#L1442) |
-| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset 0 (cross-device + foreground- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1506) |
-| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1567) |
-| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1624) |
-| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1641) |
-| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1655) |
-| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1685) |
-| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1751) |
-| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1761) |
-| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1770) |
-| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1789) |
-| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1798) |
-| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1970) |
-| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1995) |
-| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L2012) |
-| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L2025) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L2039) |
-| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L2053) |
+| function | `chat_cancel_active` | `(session_id)` | Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten | [src](../../../apps/api/jarvis_api/routes/chat.py#L1296) |
+| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1326) |
+| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1343) |
+| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1357) |
+| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1387) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1453) |
+| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1463) |
+| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1472) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1491) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1500) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1672) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1697) |
+| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1714) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1727) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1741) |
+| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1755) |
 
 ## `apps/api/jarvis_api/routes/chat_artifacts.py`
 _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af samtaler._
@@ -586,6 +581,18 @@ _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
 | function | `chat_rewind` | `(session_id, request)` | Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L24) |
 | function | `chat_rewind_undo` | `(session_id, rewind_id)` | Læg beskederne tilbage — kun så længe der ikke er skrevet siden. | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L36) |
 
+## `apps/api/jarvis_api/routes/chat_run_streams.py`
+_Active-run discovery and replayable SSE follow routes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_journal_sessions` | `()` | Sessioner med et levende run i den delte journal. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L35) |
+| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L56) |
+| function | `subscribe_authorized` | `(location, from_idx)` | Authorize and resolve one stream without inventing completion. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L103) |
+| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L134) |
+| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset nul. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L140) |
+| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L152) |
+
 ## `apps/api/jarvis_api/routes/chat_session_view.py`
 _`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
 
@@ -595,21 +602,4 @@ _`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
 | function | `kraev_adgang` | `(session_id)` | 403 hvis den nuværende bruger ikke må røre samtalen. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L21) |
 | function | `chat_session_view` | `(session_id)` | Samtalens visningstilstand: normal, thinking eller verbose. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L33) |
 | function | `chat_set_session_view` | `(session_id, request)` | Skift samtalens visningstilstand. Gælder fra næste runde, også midt i et svar. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L41) |
-
-## `apps/api/jarvis_api/routes/chat_stream_v2.py`
-_POST /chat/stream/v2 — Anthropic-style SSE protokol._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `udled_tool_scope` | `(mode, kind)` | Mode + samtalens art → tool-scope. Ren funktion, så reglen kan testes. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L28) |
-| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L69) |
-| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L96) |
-| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L116) |
-| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L122) |
-| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L128) |
-| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L145) |
-| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L153) |
-| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
-| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
-| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
 

@@ -2,7 +2,7 @@ import { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef
 import { lavVaerdiLager, type VaerdiLager } from '../lib/vaerdiLager'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
-import { cancelRun, approveTool, denyTool, followRun, hentVentendeGodkendelseOveralt } from '../lib/api'
+import { cancelRun, approveTool, denyTool, followRun, getActiveRunSessions, getSession, hentVentendeGodkendelseOveralt } from '../lib/api'
 import { afgoerAgentApproval, hentVentendeAgentGodkendelse } from '../lib/agentContractApi'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
@@ -87,7 +87,6 @@ function eventToErrorInfo(payload: Record<string, unknown>): StreamErrorInfo {
 }
 
 const _RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000]
-const _RECONNECT_MAX = 6
 
 interface DeskRunBridge {
   setActiveRun?: (runId: string | null) => void
@@ -303,19 +302,38 @@ export function StreamProvider({
           if (e.type === 'message_stop') sawStop = true
           dispatch(e)
         },
-        () => {
+        (reason) => {
+          if (!erAktuel()) return
           reconnectCtrlRef.current = null
-          if (sawStop) {
+          if (reason === 'terminal' && sawStop) {
             reconnectAttemptRef.current = 0
             setOverride(null)
             dispatch({ type: 'message_stop' } as StreamEvent)
             deskRunBridge()?.setActiveRun?.(null)
-          } else if (reconnectAttemptRef.current < _RECONNECT_MAX) {
-            reconnectAttemptRef.current += 1
-            reattach(sessionId)
+          } else if (reason === 'reconcile' || reason === 'idle') {
+            // 404/410/204 er ikke en terminal frame. Hent begge autoriteter før
+            // UI'et slipper working: transcriptet kan være færdigt, eller et nyt
+            // stabilt run-id kan være dukket op under proces-genstarten.
+            const cfg = { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken }
+            void Promise.all([getSession(cfg, sessionId), getActiveRunSessions(cfg)])
+              .then(([, active]) => {
+                if (!erAktuel()) return
+                const live = active.find((item) => item.session_id === sessionId && item.run_id)
+                if (live) {
+                  runIdRef.current = live.run_id
+                  reconnectAttemptRef.current = 0
+                  reattach(sessionId)
+                  return
+                }
+                reconnectAttemptRef.current = 0
+                setOverride('interrupted')
+                deskRunBridge()?.setActiveRun?.(null)
+              })
+              .catch(() => {
+                if (!erAktuel()) return
+                setOverride('error')
+              })
           } else {
-            // Opgivet: ChatView's active-runs-polling henter et evt. færdigt svar
-            // alligevel — vis blød netværks-fejl med retry.
             reconnectAttemptRef.current = 0
             setStreamError({ code: 'network', severity: 'warning',
               message: 'Kunne ikke genforbinde til Jarvis.',

@@ -370,7 +370,7 @@ export function ChatView({
         if (ev.type === 'message_stop') stopped = true
         followDispatch(ev)
       },
-      () => {
+      (reason) => {
         if (!alive) return
         followCtrlRef.current = null
         // Et fulgt (cross-device/autonomt) run er afsluttet → hent den
@@ -378,10 +378,14 @@ export function ChatView({
         // står visningen tom indtil bruger skifter session (sessions.refresh i
         // pollet kan misse det sidste run hvis bgActive lige er droppet). Én
         // debounced refresh (var 2 stablede timere) dækker persist-latency.
-        debouncedRefresh(2000)
+        if (reason === 'terminal' || reason === 'reconcile' || reason === 'idle') {
+          debouncedRefresh(2000)
+        }
         // En tabt passiv SSE må ikke stå stille resten af runnet. Et normalt
         // message_stop afventer næste run-id; et netværksbrud prøver igen.
-        if (!stopped && bgRunId) retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
+        if (reason === 'error' && !stopped && bgRunId) {
+          retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
+        }
       },
       bgRunId,
     )

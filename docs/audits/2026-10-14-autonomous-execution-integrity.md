@@ -5,6 +5,8 @@
 **Scope:** `core/services/*`, `core/runtime/db_inbox.py`, `apps/api/*`
 **Mode:** READ-ONLY. No production behaviour was modified. No service was restarted. No autonomous work was triggered.
 
+**Revision note (2026-10-14, later the same day):** this audit was reviewed against the source. **Four claims were wrong and are corrected inline** (B7, the `agent_message_receipt` session claim, the queue-order fix, and the reading of the two-run journal record). **Two defects were added** (B10, B11). Where a proposed fix is withdrawn, it says so in place. See §17 for the changelog.
+
 Evidence labels used throughout:
 
 - **CONFIRMED** — read directly in current source, or measured in live runtime records.
@@ -20,7 +22,7 @@ Jarvis has **nine independent producers** capable of starting a new autonomous m
 
 The Inbox is **not** an execution coordinator. It is an awareness surface, a commitment tracker and a mutation gate. Exactly **one** component reads it as an execution source: `inbox_idle_waker`. Ten components write to it. There is no atomic claim of a commitment, and no shared answer to "is this task already being worked on?".
 
-The most important discovery is not a race. It is an **identity defect**: the architecture has no single identity that represents the *work*. It has `run_id`, `session_id`, `wakeup_id`, `task_id`, `initiative_id`, `agent_id` and inbox item identity — and the one that is supposed to represent the obligation (`task_id`) is **overwritten with the run id at every new link in a recovery chain**. Measured in the live journal: `visible-aa6c3e7e` and `visible-22d2d866` share a `task_id` but both carry `recovery_attempt=1` — the same attempt number, twice. A counter that cannot see the chain cannot stop it.
+The most important discovery is not a race. It is an **identity defect**: the architecture has no single identity that represents the *work*. It has `run_id`, `session_id`, `wakeup_id`, `task_id`, `initiative_id`, `agent_id` and inbox item identity — and the one that is supposed to represent the obligation (`task_id`) is **overwritten with the run id at every new link in a recovery chain**. Measured in the live journal: `visible-aa6c3e7e` and `visible-22d2d866` share a `task_id` but both carry `recovery_attempt=1` — the same attempt number, twice. **What that proves is the broken counter, not duplicate work:** two successive runs under one obligation can be entirely legitimate; the defect is that both registered as the *first* attempt. A counter that cannot see the chain cannot stop it.
 
 ---
 
@@ -174,9 +176,9 @@ Ten writers, one execution reader.
 
 Source 2 is the cross-process one and is why the guard works at all. **CONFIRMED** in `run_guard.py:60-88`.
 
-**The gap:** `inbox_idle_waker._noget_koerer()` does **not** use `run_guard`. It calls `wakeup_dispatcher._active_turn_blocks(session)`, which reads `run_event_log` — **in-memory, per process** (`inbox_idle_waker.py:131-147`). The daemons run in `jarvis-runtime`; Bjørn's turn runs in `jarvis-api`. So the waker's own pre-check is blind to a live api-process run. It is saved only because `start_autonomous_run` re-checks with the cross-process guard — but only for origins on the positive list, and `inbox` is on it, so this path is covered. **The blindness is real but currently masked.**
+**CORRECTED (2026-10-14): the waker's pre-check IS cross-process.** An earlier version of this audit claimed `_noget_koerer()` was per-process only. That was wrong. `_noget_koerer()` (`inbox_idle_waker.py:131-147`) calls `wakeup_dispatcher._active_turn_blocks(session)`, and that function calls `run_guard.levende_run_i_session` (`wakeup_dispatcher.py:113-117`) — which reads *both* the local log and the **shared journal** (`in_flight_runs.levende_koersler`, file + flock). So a live run in the api process **is** visible to the waker. The real limits are narrower: the check runs **once, before the loop** (B6), and it asks about **one** session (`resolve_owner_target_session()`), not every session.
 
-**Session continuity is best-effort, not an invariant.** `session_id` survives through: scheduled tasks (column added 14/10), recurring tasks (column added 14/10), inbox items (column added 14/10), `parker_forpligtelse`. It does **not** survive through: `dreaming_session` (hardcoded `session_id=None`), `agent_message_receipt` (resolves the *current* app session, not the session that delegated), `visible_runs_memory` continuation (passes `run.session_id`, which is correct).
+**Session continuity is best-effort, not an invariant.** `session_id` survives through: scheduled tasks (column added 14/10), recurring tasks (column added 14/10), inbox items (column added 14/10), `parker_forpligtelse`. It does **not** survive through: `dreaming_session` (hardcoded `session_id=None`), and `living_executive`'s recovery wakeup (B10 — it drops the session when booking the wakeup). **CORRECTED:** an earlier version listed `agent_message_receipt` here. That was wrong — it calls `_foraelder_session(agent_id)` first (`agent_message_receipt.py:108`) and uses the app session only as a fallback (`:111`). `visible_runs_memory` continuation passes `run.session_id`, which is correct.
 
 ---
 
@@ -208,7 +210,7 @@ task_id visible-aa6c3e7e7b914385b7d999a9e9 → 2 runs
 
 Two runs, one obligation, **both at attempt 1**. The chain counter never advanced. This is the identity break, measured.
 
-**Second defect, same effect.** `claim_due_recovery` selects the **oldest** candidate (`min` on `settled_at`). Both `settle_recovering` and `release_recovery_claim` write a **fresh** `settled_at`. So a task that was just released goes to the back of the queue, and a different, older task is picked instead. Measured in the log:
+**Second mechanism — a symptom, not a root cause.** `claim_due_recovery` selects the **oldest** candidate (`min` on `settled_at`). Both `settle_recovering` and `release_recovery_claim` write a **fresh** `settled_at`. So a task that was just released goes to the back of the queue, and a different, older task is picked instead. Measured in the log:
 
 ```
 18:26:58  resumed visible-b6aae6e8 as run visible-ca873886 (generation 1)
@@ -217,6 +219,8 @@ Two runs, one obligation, **both at attempt 1**. The chain counter never advance
 ```
 
 The chain does not continue — it hops. **No task is ever claimed three times in a row**, so a limit of three can never be reached.
+
+**WITHDRAWN:** the fix proposed in an earlier version — prefer the most recently released — is withdrawn. It would starve older tasks, and it does not repair the attempt counter. Queue order is a *consequence* of B1: once the counter follows the task, every link is counted correctly no matter which task the queue picks. **No change to `claim_due_recovery` sorting is proposed.**
 
 **Third path.** `living_executive.indhent_forsoemte_afbrydelser()` runs every minute, reads `runtime.visible_run_interrupted` events, and starts runs through `process_event` → `execute_impulse`. It touches the journal exactly once — a **read** (`get_record`, L322). It never writes `task_id`, never writes `recovery_attempt`, never calls `stempl_genoptagelse`. `stempl_genoptagelse` has **one** call site in the whole repository (`detached_run.py:213`), reachable only via `claim_due_recovery` → `start_user_run_detached(recovery_task_id=…)`. **CONFIRMED: only the dispatcher path stamps the chain.**
 
@@ -229,21 +233,24 @@ The chain does not continue — it hops. **No task is ever claimed three times i
 | B1 | `task_id` overwritten by `run_id` at every chain link | `in_flight_runs.py:315,378` | **FIXED** `31f64fe8a` |
 | B2 | Guard rejection was logged but wrote nothing | `visible_autonomous_run.py:153`, `autonomous_stream_run.py:44` | **FIXED** `b43796a9b` |
 | B3 | `living_executive` starts runs without stamping the chain | `living_executive.py:894`, `:322` (read-only) | **OPEN** |
-| B4 | `claim_due_recovery` picks oldest; release resets `settled_at` → chain hops | `in_flight_runs.py:885-906` | **OPEN** |
+| B4 | `claim_due_recovery` picks oldest; release resets `settled_at` → chain hops | `in_flight_runs.py:885-906` | **OPEN — but the *fix* is withdrawn**, see §6: a symptom of B1, not an independent root |
 | B5 | `inbox_idle_waker` marks awakened before start; silent rejection not rolled back | `inbox_idle_waker.py:280-296` | **OPEN** |
 | B6 | `MAKS_PR_RUNDE=2` with `_noget_koerer()` checked once, before the loop | `inbox_idle_waker.py:52,262,264` | **OPEN** |
-| B7 | `_noget_koerer` reads per-process `run_event_log`, not the shared journal | `inbox_idle_waker.py:139-144` | **OPEN** (masked) |
+| B7 | ~~`_noget_koerer` reads per-process `run_event_log`~~ | `inbox_idle_waker.py:139-144` → `wakeup_dispatcher.py:113-117` | **RETRACTED — NOT A BUG.** It is cross-process via `run_guard.levende_run_i_session` |
 | B8 | `agent-completion` and continuation origins are not guarded | `run_guard.py:48-51`, `agent_message_receipt.py:135` | **WORKING AS DESIGNED** for agent-completion; **OPEN** for continuation |
 | B9 | `dreaming_session` hardcodes `session_id=None` → auto-silo | `dreaming_session.py:368` | **OPEN** (low impact) |
+| B10 | `living_executive` books its recovery wakeup **without `session_id`** | `living_executive.py:443-447` (param exists: `self_wakeup.py:85`) | **OPEN** |
+| B11 | `_allerede_besvaret` counts completed runs **without filtering on session** | `living_executive.py:843-851` | **OPEN** |
 
 ---
 
 ## 8. Suspected problems, not confirmed
 
 - **SUPPORTED HYPOTHESIS:** the six-link chain measured on 14/10 (17:29 → 17:34 → 18:01 → 18:03 → 18:26 → 18:31) was driven by B3 and B4 together. In the minutes measured, `living_executive` logged `indhentede 1 afbrydelser, genoptog 0, sprang 1 over` — its own gates stopped it. The engine and its blind spot are confirmed; the finger on the trigger in each individual link is not.
-- **NOT VERIFIED:** whether B7 has ever caused a real duplicate. The cross-process guard in the starter covers the `inbox` origin, so the blindness is currently masked.
 - **NOT VERIFIED:** whether `session_spawn` has ever been called with an origin outside the positive list.
 - **NOT VERIFIED:** the impact of B9 in production.
+- **SUPPORTED HYPOTHESIS:** B10 is a concrete mechanism for work appearing in another session. `living_executive` knows the interrupted `run_id` (`living_executive.py:359`) but does not pass a session to `schedule_self_wakeup` (`:443-447`), so the dispatcher's fallback must choose one. The code path is confirmed; a specific instance of work moving because of it has not been isolated in the logs.
+- **SUPPORTED HYPOTHESIS:** B11 can mark an interrupted task as answered from a completion in a *different* conversation. The unscoped `COUNT(*)` is confirmed (`living_executive.py:843-851`); a concrete case where it suppressed a legitimate recovery has not been measured.
 
 ---
 
@@ -270,12 +277,13 @@ The chain does not continue — it hops. **No task is ever claimed three times i
 
 3. **B5 — a commitment can be marked awakened without execution.** Silent rejection is not rolled back.
 4. **B6 — two runs per round with a single pre-loop check.**
-5. **B7 — the waker's own pre-check is per-process.** Masked today, fragile tomorrow.
+5. **B10 — a recovery wakeup loses its session binding** (`living_executive.py:443-447`). The dispatcher's fallback then picks the session — a concrete mechanism for work appearing in a different conversation.
+6. **B11 — `_allerede_besvaret` is not scoped to the session** (`living_executive.py:843-851`): a completion in another conversation can make recovery believe an interrupted task was already answered, so a legitimate recovery is silently dropped.
 
 ### P2
 
-6. **B9 — `dreaming_session` writes to an auto-silo.**
-7. **B8 (continuation) — continuation runs carry no origin and are therefore unguarded.**
+7. **B9 — `dreaming_session` writes to an auto-silo.**
+8. **B8 (continuation) — continuation runs carry no origin and are therefore unguarded.**
 
 ---
 
@@ -286,18 +294,24 @@ The chain does not continue — it hops. **No task is ever claimed three times i
 **Step 1 (smallest, highest value): make the chain stampable from every producer.**
 Move the chain stamp out of `detached_run.py:213` and into `start_autonomous_run` / `start_autonomous_stream_run`, so *any* producer that starts a run for an existing obligation stamps it. One function, two call sites.
 
-**Step 2: make the queue continue instead of hop.**
-`claim_due_recovery` must prefer the task that was most recently released, not the oldest. One sort key.
+**Step 2 (WITHDRAWN): make the queue continue instead of hop.**
+An earlier version proposed preferring the most recently released task. **Withdrawn** — it starves older tasks and does not repair the counter. Queue order is a symptom of B1; with the counter fixed, order stops mattering. **No change to `claim_due_recovery` sorting.**
 
 **Step 3: make the waker's claim honest.**
 `noter_vaekning` must be written *after* a confirmed start, or `_start_run` must return a status the waker can roll back on. One return value.
 
-**Step 4: make the waker's pre-check cross-process.**
-Replace `_active_turn_blocks` with `run_guard.levende_run_i_session` — the function that already exists for exactly this. One import.
+**Step 4 (WITHDRAWN): make the waker's pre-check cross-process.**
+It already is — `_active_turn_blocks` calls `run_guard.levende_run_i_session`. **No change.**
 
 **Step 5: re-check `_noget_koerer()` between iterations**, not only before the loop. One line.
 
-Steps 1–5 are each a handful of lines. None changes Inbox semantics. None reduces autonomy.
+**Step 6: bind the recovery wakeup to its session.**
+`living_executive._action_schedule_self_wakeup` must pass the session of the `run_id` it already carries. `schedule_self_wakeup` already accepts `session_id` (`self_wakeup.py:85`). One argument.
+
+**Step 7: scope `_allerede_besvaret` to the run's session.**
+Add `AND session_id = ?` so a completion in another conversation cannot mark an interrupted task as answered. One WHERE clause.
+
+Steps 1, 3, 5, 6 and 7 are each a handful of lines. None changes Inbox semantics. None reduces autonomy.
 
 ---
 
@@ -325,13 +339,15 @@ Steps 1–5 are each a handful of lines. None changes Inbox semantics. None redu
 | Stage | Change | Test |
 |---|---|---|
 | 1 | Chain stamp in both starters | a chain of 3 links keeps one `task_id` and increments `recovery_attempt` |
-| 2 | `claim_due_recovery` prefers most-recently-released | released task is claimed next, not an older one |
+| ~~2~~ | ~~`claim_due_recovery` prefers most-recently-released~~ — **WITHDRAWN** | — |
 | 3 | Waker rolls back on silent rejection | a refused start leaves the item unawakened |
-| 4 | Waker uses the cross-process guard | a live api-process run blocks the waker |
+| ~~4~~ | ~~Waker uses the cross-process guard~~ — **WITHDRAWN** (already cross-process) | — |
 | 5 | `_noget_koerer()` re-checked per iteration | two eligible items produce one run, not two |
-| 6 | `dreaming_session` carries a session | dream run lands in a named session |
+| 6 | `living_executive` binds its recovery wakeup to the session | the wakeup carries the interrupted run's session |
+| 7 | `_allerede_besvaret` scoped to the session | a completion in another session does not suppress recovery |
+| 8 | `dreaming_session` carries a session | dream run lands in a named session |
 
-Each stage is independently revertible. Stage 1 is the prerequisite for 2–3 to have any effect.
+Each stage is independently revertible. Stage 1 is the prerequisite for stage 3 to have any effect.
 
 ---
 
@@ -358,8 +374,10 @@ Measured by counting test files referencing each producer:
 2. A chain of N links increments `recovery_attempt` monotonically.
 3. A refused start does not mark the inbox item awakened.
 4. Two eligible inbox items in one round produce one run.
-5. A released task is claimed before an older one.
+5. ~~A released task is claimed before an older one.~~ **WITHDRAWN** — queue order is not the defect.
 6. `living_executive` stamps the chain when it starts a continuation.
+7. `living_executive` binds its recovery wakeup to the interrupted run's session (B10).
+8. `_allerede_besvaret` returns False for a completion in another session (B11).
 
 ---
 
@@ -400,3 +418,29 @@ Measured by counting test files referencing each producer:
 ## 16. Note on requested deliverables
 
 `DEVLOG.md` and `STATUS.md` do not exist anywhere in the repository (verified by `find`). They were not created, because their intended location and format are unknown and inventing them would add documentation that no process reads. This audit is the single documentation change.
+
+---
+
+## 17. Changelog — revision of 2026-10-14
+
+This audit was reviewed against the source after publication. The review found four errors and two omissions. All are corrected inline above; this is the summary.
+
+**Retracted (claims that were wrong):**
+
+| # | Original claim | Correction |
+|---|---|---|
+| B7 | `_noget_koerer()` reads only the per-process `run_event_log` | **Wrong.** It calls `_active_turn_blocks` → `run_guard.levende_run_i_session`, which reads the shared journal (`in_flight_runs`, file + flock). The pre-check **is** cross-process. |
+| §5 | `agent_message_receipt` resolves the current app session | **Wrong.** It calls `_foraelder_session(agent_id)` first (`:108`) and falls back to the app session only when the child has no parent (`:111`). |
+| §11 step 2 | Prefer the most recently released task in `claim_due_recovery` | **Withdrawn.** It would starve older tasks and does not repair the counter. The queue hop is a symptom of B1. |
+| §1 / §6 | The two-run journal record proves duplicate work | **Overstated.** It proves the counter is broken (both runs at attempt 1). Two successive runs under one obligation can be legitimate. |
+
+**Added (defects the first version missed):**
+
+| # | Defect | Evidence |
+|---|---|---|
+| B10 | `living_executive` books its recovery wakeup without `session_id` | `living_executive.py:443-447`; the parameter exists at `self_wakeup.py:85` |
+| B11 | `_allerede_besvaret` counts completed runs without a session filter | `living_executive.py:843-851` |
+
+**Net effect on the conclusion:** none of the corrections changes the headline finding. The architecture still has nine producers, one positive-list guard, and no shared execution coordinator. The corrections narrow *which* fixes are warranted — two of the five original steps are withdrawn, and two new ones are added.
+
+**What remains unproven:** that B10 or B11 has caused a specific, observable case of work moving between sessions. Both code paths are confirmed; neither has been tied to a concrete incident in the logs. They are labelled SUPPORTED HYPOTHESIS, not CONFIRMED.

@@ -28,7 +28,24 @@ vi.mock('../../lib/api', () => ({
 // i. Mock'en holder testen paa adfaerden og ikke paa lydkortet.
 vi.mock('../../lib/toastLyd', () => ({ spilToastKlang: vi.fn() }))
 
+// Agent-approvals er den ANDEN kilde (14/10-2026). Toasten henter nu ogsaa
+// kontrakt-feedet — samme moenster som NotifikationsFeed.agents.test.tsx: den
+// rigtige modul spredes, saa `bucketLabel` m.m. virker, og kun de to kald vi
+// maaler paa overrides.
+const kontraktFeed = vi.fn()
+const afgoerAgent = vi.fn()
+vi.mock('../../lib/agentContractApi', async () => {
+  const rigtig = await vi.importActual<typeof import('../../lib/agentContractApi')>('../../lib/agentContractApi')
+  return {
+    ...rigtig,
+    getKontraktFeed: (...a: unknown[]) => kontraktFeed(...a),
+    afgoerAgentApproval: (...a: unknown[]) => afgoerAgent(...a),
+  }
+})
+
 import { NotifikationsToast } from './NotifikationsToast'
+import fixture from '../../lib/__fixtures__/agentContract.json'
+import type { FeedCard } from '../../lib/agentContractApi'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
@@ -52,11 +69,41 @@ async function medNyPost(ny: Record<string, unknown>) {
   return screen.findByText(String(ny.titel ?? 'Godkendelse'))
 }
 
+// ── Agent-approvals: den anden kilde (14/10-2026) ─────────────────────────
+//
+// Kortformen er den RIGTIGE rute-respons — `agentContract.json` genereres af
+// backend-testen, saa et felt der forsvinder fra serveren ogsaa forsvinder her.
+const agentSkabelon = fixture.feed.approval_card as unknown as FeedCard
+const agentKort = (o: Partial<FeedCard> = {}): FeedCard => ({ ...agentSkabelon, ...o })
+const TOMT_KONTRAKT_FEED = {
+  status: 'ok' as const, cards: [] as FeedCard[],
+  counts: { venter: 0, svar: 0, aktiv: 0, unread: 0 }, contract_version: '1',
+}
+const kontraktFeedMed = (cards: FeedCard[]) => ({
+  status: 'ok' as const, cards,
+  counts: { venter: cards.length, svar: 0, aktiv: 0, unread: 0 }, contract_version: '1',
+})
+
+/** Baseline foerst, saa en NY agent-approval — hentet gennem
+ *  visibility-skiftet, som er den vej der gaar UDEN om ro-loftet.
+ *
+ *  Der findes intet WS-signal for agent-approvals: `notifikation.ny` udsendes
+ *  naar en notifikations-raekke foedes, og en agent-approval foeder ingen. */
+async function medNyAgentApproval(kort: FeedCard) {
+  kontraktFeed.mockResolvedValueOnce(TOMT_KONTRAKT_FEED).mockResolvedValue(kontraktFeedMed([kort]))
+  render(<NotifikationsToast config={cfg} />)
+  await waitFor(() => expect(kontraktFeed).toHaveBeenCalledTimes(1))
+  fireEvent(document, new Event('visibilitychange'))
+  return screen.findByText(kort.title)
+}
+
 describe('NotifikationsToast', () => {
   beforeEach(() => {
     hent.mockReset(); hent.mockResolvedValue({ poster: [], antal: 0 })
     afgoer.mockReset(); afgoer.mockResolvedValue({ ok: true, fejl: '' })
     afslut.mockReset(); afslut.mockResolvedValue(undefined)
+    kontraktFeed.mockReset(); kontraktFeed.mockResolvedValue(TOMT_KONTRAKT_FEED)
+    afgoerAgent.mockReset(); afgoerAgent.mockResolvedValue({})
     sockets.length = 0
     localStorage.clear()
   })
@@ -255,5 +302,86 @@ describe('NotifikationsToast', () => {
 
     sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
     expect(await screen.findByText('Svar klar')).toBeInTheDocument()
+  })
+
+  // ── Agent-approvals: den anden halvdel af klagen (14/10-2026) ───────────
+  //
+  // Bjørns klage havde to halvdele. Den første — kortet over composeren — blev
+  // loest om formiddagen. Den anden er denne: kom posten mens man var et andet
+  // sted, fik man en toast UDEN knapper.
+  //
+  // Aarsagen var ikke at knapperne manglede i toasten. Det var at
+  // agent-approvals slet ikke NAAR toasten: de har ingen krog ind i
+  // notifikations-lageret (`afstem_godkendelser` foeder kun TOOL-approvals), saa
+  // de findes kun i kontrakt-feedet — som toasten aldrig spurgte om.
+  describe('agent-godkendelser', () => {
+    it('viser en NY agent-approval — med Godkend OG Afvis', async () => {
+      expect(await medNyAgentApproval(agentKort())).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Godkend' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Afvis' })).toBeInTheDocument()
+    })
+
+    // Digest'en binder afgoerelsen til netop dette kald, og sessionen binder den
+    // til den samtale posten blev foedt i. Mangler en af dem, afviser lageret
+    // svaret — derfor maa de ikke falde ud undervejs til toasten.
+    it('«Godkend» gaar til AGENT-ruten med digest OG origin_session_id', async () => {
+      await medNyAgentApproval(agentKort())
+      fireEvent.click(screen.getByRole('button', { name: 'Godkend' }))
+      await waitFor(() => expect(afgoerAgent).toHaveBeenCalledWith(
+        cfg, 'appr-c3d3dc5d507040e2', 'approve',
+        '0000000000000000000000000000000000000000000000000000000000000000', 'sess-1'))
+      // IKKE notifikations-ruten: den kender ikke posten.
+      expect(afgoer).not.toHaveBeenCalled()
+    })
+
+    it('«Afvis» sender deny ad samme vej', async () => {
+      await medNyAgentApproval(agentKort())
+      fireEvent.click(screen.getByRole('button', { name: 'Afvis' }))
+      await waitFor(() => expect(afgoerAgent).toHaveBeenCalledWith(
+        cfg, 'appr-c3d3dc5d507040e2', 'deny', expect.any(String), 'sess-1'))
+    })
+
+    it('viser INGEN toast for approvals der laa der i forvejen', async () => {
+      kontraktFeed.mockResolvedValue(kontraktFeedMed([agentKort()]))
+      render(<NotifikationsToast config={cfg} />)
+      await waitFor(() => expect(kontraktFeed).toHaveBeenCalled())
+      expect(screen.queryByText('Godkend: bash')).toBeNull()
+    })
+
+    // En notifikation er et engangs-varsel; en godkendelse er en opgave der
+    // staar aaben. Faldt den efter syv sekunder, var man lige vidne til praecis
+    // det problem knapperne skal loese: at man ikke kan naa at svare.
+    it('har INGEN nedtaelling — den venter paa et svar', async () => {
+      await medNyAgentApproval(agentKort())
+      expect(document.querySelector('.notif-toast-agent')).not.toBeNull()
+      expect(document.querySelector('.notif-toast-agent .notif-toast-nedtaelling')).toBeNull()
+    })
+
+    // Kun VENTENDE kort MED en approval. Et fejlet assignment kraever ogsaa et
+    // svar, men det gaar gennem feedets kvittering — ikke her.
+    it('et ventende kort UDEN approval giver ingen toast', async () => {
+      const udenApproval = agentKort({ ref_kind: 'agent', approval: undefined, bucket: 'failed' })
+      kontraktFeed.mockResolvedValueOnce(TOMT_KONTRAKT_FEED)
+                  .mockResolvedValue(kontraktFeedMed([udenApproval]))
+      render(<NotifikationsToast config={cfg} />)
+      await waitFor(() => expect(kontraktFeed).toHaveBeenCalledTimes(1))
+      fireEvent(document, new Event('visibilitychange'))
+      await new Promise((r) => setTimeout(r, 30))
+      expect(screen.queryByText(udenApproval.title)).toBeNull()
+    })
+
+    it('er posten afgjort, forsvinder feltet', async () => {
+      await medNyAgentApproval(agentKort())
+      fireEvent.click(screen.getByRole('button', { name: 'Godkend' }))
+      await waitFor(() => expect(screen.queryByText('Godkend: bash')).toBeNull())
+    })
+
+    // En afgoerelse der ikke gik igennem maa ikke se ud som om den gjorde.
+    it('fejler afgoerelsen, VISES fejlen — feltet forsvinder ikke tavst', async () => {
+      afgoerAgent.mockRejectedValue(new Error('Godkendelsen er allerede afgjort.'))
+      await medNyAgentApproval(agentKort())
+      fireEvent.click(screen.getByRole('button', { name: 'Godkend' }))
+      expect(await screen.findByText('Godkendelsen er allerede afgjort.')).toBeInTheDocument()
+    })
   })
 })

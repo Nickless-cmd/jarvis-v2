@@ -5189,3 +5189,32 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
      stedet for slukket. */
   .notif-toast-nedtaelling { opacity: 0; }
 }
+
+/* ── Agent-godkendelsen i toasten (14/10-2026) ────────────────────────────
+   Et kort der VENTER paa et svar, ikke et engangs-varsel. To ting skiller det
+   fra notifikations-toasten:
+
+   1. Ingen nedtaelling — den bliver staaende til Godkend/Afvis/X. En
+      godkendelse man ikke naar at se paa i syv sekunder er ikke et varsel,
+      den er en tavs afvisning.
+   2. En egen bredde: knapperne og resuméet (fx `bash({"command": "make"})`)
+      er bredere end en titel, og `notif-toast` er 268px for notifikationer. */
+.notif-toast-agent {
+  width: 320px;
+  cursor: default;
+  border-left-color: var(--error-fg);
+}
+.notif-toast-agent .notif-toast-ikon {
+  color: var(--error-fg);
+  background: color-mix(in srgb, var(--error-fg) 15%, transparent);
+}
+/* AgentFeedCardBody tegner sit eget resume og sine egne knapper. Her gores
+   knapperne bare lidt mindre end i feedet, saa de passer i toast-skalaen. */
+.notif-toast-agent .ac-kort-aarsag,
+.notif-toast-agent .ac-kort-resume { font-size: 10.5px; }
+.notif-toast-agent .ac-kort-handlinger { margin-top: 7px; }
+.notif-toast-agent .ac-kort-handlinger button { min-height: 24px; font-size: 11px; padding: 2px 9px; }
+.notif-toast-fejl {
+  margin: 4px 0 0; font-size: 10.5px; line-height: 1.4;
+  color: var(--error-fg);
+}

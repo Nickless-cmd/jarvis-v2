@@ -37,6 +37,8 @@ import { openEventSocket } from '../../lib/api'
 import {
   afgoerNotifikation, hentNotifikationer, setNotifikation, type Notifikation,
 } from '../../lib/notifikationerApi'
+import { getKontraktFeed, type FeedCard } from '../../lib/agentContractApi'
+import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
 import { maaPolle } from '../../lib/ro'
 import { markNotificationsRead } from '../../lib/notificationAttention'
 import { spilToastKlang } from '../../lib/toastLyd'
@@ -66,12 +68,30 @@ const TONE: Record<string, 'fejl' | 'ok' | 'neutral'> = {
 export const LEVETID_MS = 7000
 const MAKS_SAMTIDIGE = 3
 
+/** Hvad en toast kan bære: en notifikations-post — eller et agent-kort der
+ *  VENTER paa et svar.
+ *
+ *  HVORFOR TO SLAGS (14/10-2026). Agent-approvals har ingen krog ind i
+ *  notifikations-lageret. `afstem_godkendelser` foeder TOOL-approvals som
+ *  notifikations-raekker, men agent-approvals lever i `agent_approvals` og naar
+ *  kun fladerne gennem kontrakt-feedet (`/agents/contract/feed`).
+ *  `NotifikationsFeed` henter derfor TO feeds og samler dem — toasten hentede
+ *  kun ét, og derfor kunne en agent-godkendelse ALDRIG vise sig her.
+ *
+ *  Det var den anden halvdel af Bjørns klage: kortet over composeren loeste den
+ *  flade man staar paa; kom posten mens man var et andet sted, fik man en toast
+ *  uden knapper. Denne type er hvad der lukker det hul.
+ */
+type ToastPost =
+  | { kind: 'notif'; nogle: string; post: Notifikation }
+  | { kind: 'agent'; nogle: string; card: FeedCard }
+
 export function NotifikationsToast({ config, onAabenSession }: {
   config: ApiConfig | null
   /** Kaldes naar brugeren trykker «Aabn». Session-id kan vaere null. */
   onAabenSession?: (sessionId: string | null) => void
 }) {
-  const [koe, setKoe] = useState<Notifikation[]>([])
+  const [koe, setKoe] = useState<ToastPost[]>([])
   const [synlig, setSynlig] = useState(() => document.visibilityState !== 'hidden')
   const apiBaseUrl = config?.apiBaseUrl ?? ''
   const authToken = config?.authToken ?? null
@@ -79,8 +99,13 @@ export function NotifikationsToast({ config, onAabenSession }: {
   // `null` = vi har ikke sat baseline endnu. Foerste svar saetter den og
   // viser intet; derefter er forskellen mod dette saet de nye poster.
   const kendte = useRef<Set<string> | null>(null)
+  // Samme baseline for agent-approvals — men noeglen er `approval_id`, for de
+  // har ingen notifikations-id. Egen version-taeller: de to kilder hentes i
+  // samme rytme, og delte de én, ville den ene annullere den andens svar.
+  const kendteAgent = useRef<Set<string> | null>(null)
   const alive = useRef(true)
   const requestVersion = useRef(0)
+  const kontraktVersion = useRef(0)
 
   // `hentNu` gaar UDEN OM ro-loftet (`maaPolle`). Det er ikke en detalje:
   // klokken har haft samme skel siden 20/9, og uden det her er toasten den
@@ -138,17 +163,53 @@ export function NotifikationsToast({ config, onAabenSession }: {
         const foerste = nye[0]
         if (foerste) spilToastKlang(TONE[foerste.slags] ?? 'neutral')
 
-        setKoe((k) => [...k, ...nye].slice(-MAKS_SAMTIDIGE))
+        setKoe((k) => [...k, ...nye.map((p) => ({ kind: 'notif' as const, nogle: p.id, post: p }))].slice(-MAKS_SAMTIDIGE))
       })
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
   }, [apiBaseUrl, authToken])
 
+  /** Agent-approvals — den anden kilde (14/10-2026).
+   *
+   *  Der findes INTET WS-signal for dem: `notifikation.ny` udsendes naar en
+   *  notifikations-raekke foedes, og en agent-approval foeder ingen. Polling er
+   *  derfor den eneste vej hertil — og den faar sin EGEN ro-noegle. Delte den
+   *  noegle med klokken/feedet, kunne deres poll svare «nej» for toasten og
+   *  sluge posten; praecis den fejl blev maalt 8/10-2026.
+   */
+  const hentKontraktNu = useCallback(() => {
+    if (!apiBaseUrl) return
+    const version = ++kontraktVersion.current
+    getKontraktFeed({ apiBaseUrl, authToken })
+      .then((f) => {
+        if (!alive.current || version !== kontraktVersion.current) return
+        // Kun de VENTENDE, og kun dem der faktisk baerer en approval. Et fejlet
+        // eller ukendt assignment kraever ogsaa et svar, men det svar gaar
+        // gennem feedet (kvitteringen), ikke her.
+        const ventende = (f.cards || []).filter((k) => k.section === 'venter' && k.approval)
+
+        if (kendteAgent.current === null) {
+          kendteAgent.current = new Set(ventende.map((k) => k.approval!.approval_id))
+          return
+        }
+
+        const nye = ventende.filter((k) => !kendteAgent.current!.has(k.approval!.approval_id))
+        if (!nye.length) return
+        nye.forEach((k) => kendteAgent.current!.add(k.approval!.approval_id))
+        spilToastKlang('neutral')
+        setKoe((k) => [...k, ...nye.map((c) => ({ kind: 'agent' as const, nogle: c.approval!.approval_id, card: c }))].slice(-MAKS_SAMTIDIGE))
+      })
+      .catch(() => { /* pollet daekker; en fejlet hentning maa ikke stoeje */ })
+  }, [apiBaseUrl, authToken])
+
   // Pollet — det er SIKKERHEDSNETTET, og her er ro-loftet rigtigt: ingen
   // grund til at spoerge hvert ottende sekund naar ingen kigger.
+  //
+  // To noegler, to lofter: notifikationer og agent-approvals er to kilder, og
+  // en faelles noegle ville lade den ene kildes poll blokere den anden.
   const hent = useCallback(() => {
-    if (!maaPolle('notifikationer', 8000)) return
-    hentNu()
-  }, [hentNu])
+    if (maaPolle('notifikationer', 8000)) hentNu()
+    if (maaPolle('agent-kontrakt', 8000)) hentKontraktNu()
+  }, [hentNu, hentKontraktNu])
 
   useEffect(() => {
     alive.current = true
@@ -181,14 +242,17 @@ export function NotifikationsToast({ config, onAabenSession }: {
     const opdaterSynlighed = () => {
       const erSynlig = document.visibilityState !== 'hidden'
       setSynlig(erSynlig)
-      if (erSynlig) hentNu()
+      // Begge kilder, og UDEN om ro-loftet — samme regel som WS-lytteren.
+      // Kommer man tilbage til vinduet, skal man se hvad der venter nu, ikke
+      // hvad der ventede for otte sekunder siden.
+      if (erSynlig) { hentNu(); hentKontraktNu() }
     }
     document.addEventListener('visibilitychange', opdaterSynlighed)
     return () => document.removeEventListener('visibilitychange', opdaterSynlighed)
-  }, [hentNu])
+  }, [hentNu, hentKontraktNu])
 
-  const luk = useCallback((id: string) => {
-    setKoe((k) => k.filter((p) => p.id !== id))
+  const luk = useCallback((nogle: string) => {
+    setKoe((k) => k.filter((t) => t.nogle !== nogle))
   }, [])
 
   const aabn = useCallback((p: Notifikation) => {
@@ -216,12 +280,15 @@ export function NotifikationsToast({ config, onAabenSession }: {
 
   return (
     <div className="notif-toast-lag" role="status" aria-live="polite">
-      {koe.map((p) => (
-        <ToastKort key={p.id} post={p}
+      {koe.map((t) => t.kind === 'notif' ? (
+        <ToastKort key={t.nogle} post={t.post}
                    synlig={synlig}
-                   onAabn={() => aabn(p)}
-                   onAfvis={() => afvis(p)}
-                   onLuk={() => luk(p.id)} />
+                   onAabn={() => aabn(t.post)}
+                   onAfvis={() => afvis(t.post)}
+                   onLuk={() => luk(t.nogle)} />
+      ) : (
+        <AgentToastKort key={t.nogle} card={t.card} config={config}
+                        onLuk={() => luk(t.nogle)} />
       ))}
     </div>
   )
@@ -298,6 +365,63 @@ function ToastKort({ post, synlig, onAabn, onAfvis, onLuk }: {
       <span className="notif-toast-nedtaelling" aria-hidden="true"
             style={{ animationDuration: `${LEVETID_MS}ms`, animationPlayState: synlig ? undefined : 'paused' }}
             onAnimationEnd={() => { if (synlig) setUde(true) }} />
+    </div>
+  )
+}
+
+/** Et agent-kort i toasten: en godkendelse der VENTER paa et svar.
+ *
+ *  Forskellen fra `ToastKort` er ikke kun kilden — det er at denne IKKE
+ *  forsvinder af sig selv. En notifikation er et engangs-varsel; en
+ *  godkendelse er en opgave der staar aaben indtil nogen svarer. Lod man den
+ *  falde efter syv sekunder, ville man have genskabt praecis det problem
+ *  knapperne skal loese: at man ikke kan naa at svare.
+ *
+ *  Derfor ingen `notif-toast-nedtaelling` her — og derfor er der heller ingen
+ *  `onAnimationEnd` der fjerner feltet. Den bliver staaende til Godkend, Afvis
+ *  eller X.
+ *
+ *  Knapperne er `AgentFeedCardBody`s egne — samme vej som feedet og kortet over
+ *  composeren bruger (`afgoerAgentApproval` med digest OG origin_session_id).
+ *  Ingen ny afgoerelses-rute, ingen ny server-kode.
+ */
+function AgentToastKort({ card, config, onLuk }: {
+  card: FeedCard
+  config: ApiConfig | null
+  onLuk: () => void
+}) {
+  const [ind, setInd] = useState(false)
+  const [fejl, setFejl] = useState('')
+
+  // Glider ind i naeste frame — samme grund som ToastKort: uden en
+  // «foer»-tilstand at animere fra springer overgangen over.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setInd(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  const Ikon = agentKortIkon(card)
+
+  return (
+    <div className={`notif-toast notif-toast-agent${ind ? ' er-ind' : ''}`}
+         role="status">
+      <span className="notif-toast-ikon" aria-hidden="true"><Ikon size={13} /></span>
+      <div className="notif-toast-indhold">
+        <div className="notif-toast-slags">godkendelse</div>
+        <div className="notif-toast-titel">{card.title}</div>
+        {/* `onChanged` lukker feltet: er posten afgjort, venter den ikke
+            laengere. `onError` VISER fejlen frem for at sluge den — en
+            afgoerelse der ikke gik igennem maa ikke se ud som om den gjorde. */}
+        {config && (
+          <AgentFeedCardBody config={config} card={card}
+                             onChanged={onLuk} onError={setFejl} />
+        )}
+        {fejl && <p className="notif-toast-fejl">{fejl}</p>}
+      </div>
+      <button type="button" className="notif-toast-luk" aria-label="Luk feltet"
+              onClick={(e) => { e.stopPropagation(); onLuk() }}>
+        <X size={12} />
+      </button>
     </div>
   )
 }

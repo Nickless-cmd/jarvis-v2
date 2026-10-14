@@ -102,3 +102,70 @@ def blokeringsgrund(origin: str, session_id: str) -> str:
     except Exception as exc:  # noqa: BLE001 — self-safe: hellere køre end tabe
         logger.debug("run_guard: vagten kunne ikke afgoeres: %s", exc)
         return ""
+
+
+def parker_forpligtelse(
+    *,
+    origin: str,
+    session_id: str,
+    beskrivelse: str,
+    kilde_id: str = "",
+) -> dict[str, object]:
+    """Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den.
+
+    ## Hullet (målt 14/10-2026)
+
+    Begge run-startere loggede «forpligtelsen bliver i indbakken til sessionen
+    er ledig» og `return`erede så — uden at skrive noget. Målt: nul nye
+    `inbox_items` i vinduet, og `grep registrer_kilde` i
+    `visible_autonomous_run.py` gav ét træf: en kommentar. Et afvist run
+    forsvandt altså sporløst: hverken kørt eller lagt til side.
+
+    Bjørn 14/10-2026: «istedet for at afvise burde de lande i indbox og så
+    vælger inbox om du er i et run og du for den i prompten til næste runde
+    eller idle vække dig». Det er præcis denne funktion.
+
+    ## Hvorfor `bloker=True` og ikke `kraever_handling` alene
+
+    `kraever_handling` udregnes i `registrer_kilde` som «ejer er Jarvis OG
+    kildetypen står ikke i `IKKE_GATENDE_KILDETYPER`» — og `recurring` og
+    `scheduled` står i den liste. En post med sin egen kildetype ville derfor
+    få `kraever_handling=0`, ikke vække når Bjørn er idle, og først dukke op
+    næste gang han selv skriver. `bloker=True` er den eksplicitte undtagelse
+    (se `flag_fra_bruger`): den gater uanset kildetype, og
+    `opret_eller_hent` giver den automatisk en 30-dages frist — så en afvist
+    forpligtelse kan presse uden at kunne låse nogen fast for evigt.
+
+    ## Samtalen følger med
+
+    `session_id` skrives på posten, så `inbox_idle_waker._maal_session` kan
+    vække DEN samtale forpligtelsen hørte til — ikke en `auto-*`-silo. Det er
+    samme binding som `session_binding` bruger for urene.
+
+    Self-safe: enhver fejl returnerer en fejl-status. En manglende post må
+    aldrig kunne vælte den run-starter der kaldte os.
+    """
+    try:
+        from core.services.inbox_state import _ejer_id, registrer_kilde
+        from core.services.session_context_resolve import aktivt_run_id
+
+        bruger = _ejer_id()
+        if not bruger:
+            return {"status": "fejl", "error": "ingen ejer-identitet"}
+        kid = str(kilde_id or "").strip() or f"afvist-{origin}-{session_id[:12]}"
+        return registrer_kilde(
+            bruger_id=bruger,
+            kildetype="afvist_run",
+            kilde_id=kid,
+            # Det KØRENDE run er beviset: `verificeret_jarvis_run` kræver at
+            # run-id'et matcher det aktive run, og ved en afvisning kører der
+            # netop et i sessionen. Er det tomt, falder posten til `huset` —
+            # og så bærer `bloker` gatingen alene.
+            oprettende_run_id=aktivt_run_id(""),
+            beskrivelse=beskrivelse[:400],
+            bloker=True,
+            session_id=str(session_id or ""),
+        )
+    except Exception as exc:  # noqa: BLE001 — self-safe: en post maa ikke vaelte starteren
+        logger.warning("run_guard: kunne ikke parkere forpligtelsen: %s", exc)
+        return {"status": "fejl", "error": str(exc)}

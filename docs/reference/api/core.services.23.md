@@ -23,6 +23,7 @@ _Én fælles vagt: kører der et run i denne session lige nu?_
 |---|---|---|---|---|
 | function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L54) |
 | function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L87) |
+| function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L107) |
 
 ## `core/services/run_message_provenance.py`
 _Name the source of model input without changing the user's stored text._

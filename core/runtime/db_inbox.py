@@ -145,6 +145,12 @@ _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     # findes for. To skrivere med hver sin betydning må ikke dele ét felt.
     ("sidste_vaekning_at", "TEXT NOT NULL DEFAULT ''"),
     ("sidste_vaekning_tur", "TEXT NOT NULL DEFAULT ''"),
+    # SAMTALEN posten hører til (14/10-2026). En afvist forpligtelse skal
+    # kunne vække DEN samtale den blev bestilt i — ikke ejerens nyeste.
+    # Uden kolonnen faldt `inbox_idle_waker._maal_session` til
+    # `resolve_owner_app_session`, og præcisionen var kun så god som den
+    # fallback. Bjørn: «tingene skal vække den aktive session de er bestilt i».
+    ("session_id", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -195,6 +201,7 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "afgjort_grund": str(r["afgjort_grund"] or ""),
         "expires_at": _felt(r, "expires_at"),
         "bloker": _felt(r, "bloker") in ("1", "True", "true"),
+        "session_id": _felt(r, "session_id"),
     }
     # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
     #
@@ -253,6 +260,7 @@ def opret_eller_hent(
     output_bytes: int | None = None,
     bloker: bool = False,
     expires_at: str = "",
+    session_id: str = "",
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -293,13 +301,15 @@ def opret_eller_hent(
             INSERT OR IGNORE INTO inbox_items (
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
-                output_sti, output_bytes, created_at, bloker, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                output_sti, output_bytes, created_at, bloker, expires_at,
+                session_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
-             output_bytes, _nu(), 1 if bloker else 0, str(expires_at or "")),
+             output_bytes, _nu(), 1 if bloker else 0, str(expires_at or ""),
+             str(session_id or "")),
         )
         r = conn.execute(
             "SELECT * FROM inbox_items WHERE bruger_id = ? AND kildetype = ? "

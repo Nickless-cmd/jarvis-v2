@@ -9153,7 +9153,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -20146,7 +20146,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "4f:1b:9c:7c:cd:4d:16:4e:4c:a4:eb:5e:54:89:0a:0f:3b:7b:72:4c:12:34:e1:92:92:98:79:8d:1f:6e:e5:ca",
+      "digest": "f1:2b:87:c5:c4:57:6b:86:d8:e5:7e:44:83:b4:fa:30:c6:c3:c4:09:60:b3:59:81:a4:f2:8e:50:ec:88:cf:52",
       "schema": {
         "columns": [
           {
@@ -20266,6 +20266,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -26310,7 +26318,7 @@
       ]
     },
     "recurring_tasks": {
-      "digest": "d1:e5:b5:8a:31:ca:fd:79:d1:28:6b:be:18:50:eb:d3:2b:4e:39:6b:4f:92:af:ea:89:15:7e:63:43:8b:91:9a",
+      "digest": "02:de:a5:75:28:fe:5d:1a:4d:17:33:9a:5c:6b:62:b1:7f:15:a7:4a:e0:b1:bd:1f:e7:ff:6b:d5:7b:8b:f6:8d",
       "schema": {
         "columns": [
           {
@@ -26374,6 +26382,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

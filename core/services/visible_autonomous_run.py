@@ -153,6 +153,21 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             "forpligtelsen bliver i indbakken til sessionen er ledig",
             _vagt, resolved_session[:24], origin,
         )
+        # 14/10-2026: log-linjen LOVEDE noget koden ikke gjorde. Målt: nul nye
+        # `inbox_items` i vinduet. Nu lægges forpligtelsen faktisk i indbakken,
+        # bundet til den samtale den hørte til — så vækkeren kan vække DEN når
+        # sessionen er ledig, og posten står i prompten indtil da.
+        try:
+            from core.services.run_guard import parker_forpligtelse
+
+            parker_forpligtelse(
+                origin=str(origin or ""),
+                session_id=resolved_session,
+                beskrivelse=str(message or "")[:400],
+            )
+        except Exception:  # noqa: BLE001 — self-safe: en post maa ikke vaelte starteren
+            logger.debug("visible_autonomous_run: kunne ikke parkere forpligtelsen",
+                         exc_info=True)
         return
 
     # Spec D / D1-konsument (første ægte autoritet): når Centralen EJER agendaen (flag ON), kommer et

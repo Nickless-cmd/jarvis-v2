@@ -49,6 +49,20 @@ def start_autonomous_stream_run(
             "autonomt stream-run afvist af run-guarden: %s (session=%s origin=%s)",
             _vagt, sid[:24], origin,
         )
+        # Samme hul som i `visible_autonomous_run` (målt 14/10-2026): afvisningen
+        # loggede og returnerede uden at skrive noget. Forpligtelsen lægges nu i
+        # indbakken med sin samtale, så den ikke forsvinder sporløst.
+        try:
+            from core.services.run_guard import parker_forpligtelse
+
+            parker_forpligtelse(
+                origin=str(origin or ""),
+                session_id=sid,
+                beskrivelse=str(message or "")[:400],
+            )
+        except Exception:  # noqa: BLE001 — self-safe
+            logger.debug("autonomous_stream_run: kunne ikke parkere forpligtelsen",
+                         exc_info=True)
         return
 
     settings = vr.load_settings()

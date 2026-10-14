@@ -124,6 +124,12 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
 #: er stabilt uanset alder, og det er den egenskab vækkeren skal bygge på.
 KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
     "wakeup",
+    # `afvist_run` (14/10-2026): en forpligtelse der blev afvist af run-guarden
+    # fordi samtalen var optaget. Den er Jarvis' egen — booket af et ur eller en
+    # vækning — og skal derfor kunne vække ham når sessionen er ledig. Uden
+    # dette led ville posten kun dukke op når Bjørn selv skrev næste gang, og
+    # forpligtelsen ville stå stille indtil da.
+    "afvist_run",
 })
 
 
@@ -404,6 +410,8 @@ def registrer_kilde(
     output_bytes: int | None = None,
     expires_at: str = "",
     afsluttet_ved_registrering: bool = False,
+    bloker: bool = False,
+    session_id: str = "",
 ) -> dict[str, Any]:
     """Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id).
 
@@ -453,6 +461,15 @@ def registrer_kilde(
         # afgør `db_inbox.opret_eller_hent` om posten skal have en: kun en post
         # der kan nægte en mutation får en, og reglen står ét sted.
         expires_at=expires_at,
+        # `bloker` (14/10-2026): den eksplicitte undtagelse fra «kun det du
+        # selv har lovet kan blokere». En afvist forpligtelse har kildetypen
+        # `afvist_run`, som ikke står i `IKKE_GATENDE_KILDETYPER` — men dens
+        # ejer kan være `huset`, og så ville `kraever_handling` være falsk.
+        # `bloker` gater uanset, og `opret_eller_hent` giver den en frist.
+        bloker=bool(bloker),
+        # Samtalen forpligtelsen hørte til, så vækkeren kan vække DEN og ikke
+        # en `auto-*`-silo (se `inbox_idle_waker._maal_session`).
+        session_id=str(session_id or ""),
     )
     if r.get("status") != "ok":
         # Spec'ens Global Constraint: en handlingskrævende post der ikke blev

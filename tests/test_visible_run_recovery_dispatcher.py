@@ -628,3 +628,197 @@ def test_et_ulaeseligt_tidsstempel_dropper_ikke_opgaven(spawn, monkeypatch):
     _doede_for("task-1", minutter=20)
 
     assert D.recover_due_once()["started"] == 1
+
+
+# ── Lease-traaden gennem den AEGTE genoptagelses-vej (14/10-2026) ───────────
+#
+# Maalt-behov: i drift udloeb et lejemaal midt i et koerende run
+# (`visible-a8323914`, 20:17:38 → opgaven taget igen 20:25:09), og spoergsmaalet
+# «fornyede traaden overhovedet?» kunne ikke afgoeres bagud: sporet fandtes ikke,
+# og posten var ryddet.
+#
+# Jeg skrev FOERST at fornyelsen rammer en post hvis `status != "running"` og
+# derfor fejler. Det var maalt i en repro hvor jeg SELV konstruerede
+# journaltilstanden — og den tilstand er ikke den oprettelsesvejen producerer.
+# Kilden siger det modsatte: `claim_due_recovery` saetter `recovery_owner` paa
+# ORIGINALEN, og `mark_started` skriver `recovery_owner: ""` paa GENOPTAGELSEN.
+# `_record_key` rammer originalen, som HAR ejerskabet — saa fornyelsen burde
+# lykkes. Praemissen blev trukket tilbage, og her maales den i stedet gennem
+# den vej der faktisk koerer:
+#
+#     recover_due_once() → claim_due_recovery() → start_user_run_detached()
+#     → mark_started() → lease-traaden
+
+
+def _gennem_den_aege_vej(monkeypatch, *, opgave: str = "task-1"):
+    """Kør en forladt opgave gennem den ægte genoptagelses-vej.
+
+    Kun model-laget patches — `run_event_log`s IO og `start_visible_run`s
+    stream. Dispatcheren, `claim_due_recovery`, `stempl_genoptagelse`,
+    `mark_started`, `renew_recovery_lease` og lease-traaden er ALLE de ægte.
+
+    Turen holdes i live af et event, saa lease-traaden ikke dør af sig selv
+    mens vi maaler — praecis som et rigtigt run der arbejder i minutter.
+    Returnerer `(frigiv, oprettede)`; kalderen SKAL saette `frigiv`.
+    """
+    import asyncio
+    import threading
+    import time
+
+    from core.services import run_event_log as rel
+    import core.services.visible_runs as vr
+    import core.services.visible_runs_sse_v2 as v2
+
+    frigiv = threading.Event()
+    oprettede: list[str] = []
+
+    monkeypatch.setattr(rel, "create", lambda rid, sid: oprettede.append(rid))
+    monkeypatch.setattr(rel, "set_surface", lambda rid, s: None)
+    monkeypatch.setattr(rel, "append", lambda rid, f: None)
+    monkeypatch.setattr(rel, "mark_done", lambda rid: None)
+    monkeypatch.setattr(rel, "prune", lambda: None)
+    monkeypatch.setattr(rel, "active_run_for_session", lambda sid: None)
+
+    def _start(**kw):
+        # Den ægte skrivevej er `start_visible_run` → `mark_visible_run_started`
+        # → `mark_started`. Vi kalder den ÆGTE `mark_started` med de samme
+        # parametre — ikke en efterligning — og holder saa turen i live.
+        ifr.mark_started(
+            run_id=oprettede[-1],
+            session_id=str(kw.get("session_id") or ""),
+            user_message=str(kw.get("message") or ""),
+            kind="visible",
+        )
+
+        async def _gen():
+            while not frigiv.is_set():
+                await asyncio.sleep(0.02)
+            return
+            yield  # pragma: no cover
+
+        return _gen()
+
+    monkeypatch.setattr(vr, "start_visible_run", _start)
+    monkeypatch.setattr(v2, "translate_to_v2", lambda it, **kw: it)
+
+    _forladt_opgave(opgave)
+    svar = D.recover_due_once()
+    assert svar["started"] == 1, "den forladte opgave skulle genoptages"
+    # Traaden foedes et oejeblik EFTER posterne skrives: `stempl_genoptagelse`
+    # og `mark_started` skriver synkront inde i `start_user_run_detached`, mens
+    # traaden startes i `_in_thread` bagefter. Maalt 14/10-2026 — uden
+    # ventetiden her maalte testen sin EGEN race og meldte «traaden blev aldrig
+    # foedt» om en traad der var der ~30 ms senere.
+    for _ in range(250):
+        if "jarvis-recovery-lease" in [t.name for t in threading.enumerate()]:
+            break
+        time.sleep(0.02)
+    return frigiv, oprettede
+
+
+def _stop_lease_traaden(frigiv) -> None:
+    import threading
+
+    frigiv.set()
+    for t in threading.enumerate():
+        if t.name == "jarvis-recovery-lease":
+            t.join(timeout=2.0)
+
+
+def test_lease_traaden_bliver_foedt_og_fornyer_gennem_den_aege_vej(monkeypatch):
+    """(a) bliver traaden foedt, og (b) lykkes dens fornyelse?
+
+    Det er praecis de to spoergsmaal sporet i loggen skal kunne svare paa, og
+    her maales de uden at vente 30 sekunder: traaden skal LEVE, og fornyelsen
+    kaldes mod den tilstand vejen FAKTISK gav — ikke en jeg selv byggede.
+    """
+    import threading
+
+    frigiv, _ = _gennem_den_aege_vej(monkeypatch)
+    try:
+        # (a) BLEV TRAADEN FOEDT? — ventetiden ligger i `_gennem_den_aege_vej`.
+        navne = [t.name for t in threading.enumerate()]
+        assert "jarvis-recovery-lease" in navne, (
+            "lease-traaden blev aldrig foedt — udfald (c) i spooret, og det "
+            "ville betyde at betingelsen i start_user_run_detached svigtede"
+        )
+
+        # (b) LYKKES FORNYELSEN MOD DEN TILSTAND VEJEN GAV?
+        generation = int(ifr.get_record("task-1")["recovery_generation"])
+        assert ifr.renew_recovery_lease(
+            "task-1", generation, owner=ifr.current_owner()
+        ) is True, (
+            "fornyelsen ramte ikke kravet — her er fejlen, og den er denne "
+            "gang maalt gennem den aegte oprettelsesvej"
+        )
+    finally:
+        _stop_lease_traaden(frigiv)
+
+
+def test_originalen_beholder_ejerskabet_gennem_hele_oprettelsen(monkeypatch):
+    """Hvem har kravet EFTER den ægte vej har skrevet begge poster?
+
+    Kilden siger: `claim_due_recovery` saetter `recovery_owner` paa ORIGINALEN,
+    og `mark_started` skriver `recovery_owner: ""` paa GENOPTAGELSEN. Det er
+    den modsatte fordeling af hvad jeg foerst skrev — og hele grunden til at
+    fornyelsen kan lykkes. Maalt her, ikke laest.
+    """
+    import time
+
+    frigiv, oprettede = _gennem_den_aege_vej(monkeypatch)
+    try:
+        for _ in range(200):
+            if len(ifr._load()) >= 2:
+                break
+            time.sleep(0.02)
+
+        original = ifr.get_record("task-1")
+        genoptagelse = ifr.get_record(oprettede[-1])
+
+        assert original["status"] == "running"
+        assert original["recovery_owner"] == ifr.current_owner(), (
+            "originalen skal baere kravet — det er den lease-traaden fornyer"
+        )
+        assert original["recovery_generation"] == 1
+
+        assert genoptagelse["task_id"] == "task-1", (
+            "genoptagelsen skal arve OPGAVENS id, ikke faa sit eget"
+        )
+        assert genoptagelse["recovery_owner"] == "", (
+            "genoptagelsens post skrives med tom owner — kravet bor paa originalen"
+        )
+    finally:
+        _stop_lease_traaden(frigiv)
+
+
+def test_fornyelsen_fejler_naar_originalens_status_er_skiftet(monkeypatch):
+    """MODPROEVEN: hvis originalen ikke laengere er `running`, fejler den.
+
+    Uden den ville testen ovenfor kun bevise at funktionen kan svare ja. Her
+    flyttes den ene af `renew_recovery_lease`s fire betingelser — `status` — og
+    fornyelsen skal svare nej. Det er den gren der skal fyre advarslen med
+    tallet i loggen.
+    """
+    import time
+
+    frigiv, _ = _gennem_den_aege_vej(monkeypatch)
+    try:
+        for _ in range(200):
+            if len(ifr._load()) >= 2:
+                break
+            time.sleep(0.02)
+
+        generation = int(ifr.get_record("task-1")["recovery_generation"])
+        poster = ifr._load()
+        noegle = ifr._record_key(poster, "task-1")
+        poster[noegle]["status"] = "interrupted"
+        ifr._save(poster)
+
+        assert ifr.renew_recovery_lease(
+            "task-1", generation, owner=ifr.current_owner()
+        ) is False, (
+            "fornyelsen skal fejle naar posten ikke laengere er `running` — "
+            "ellers er det ikke status der styrer den"
+        )
+    finally:
+        _stop_lease_traaden(frigiv)

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/injection_richness_check.py`
+_Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
+| function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
+
 ## `scripts/install_git_hooks.py`
 _Install or verify the required commit-attribution Git hooks._
 
@@ -431,16 +439,4 @@ _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 | function | `clean_outbound` | `(apply)` | — | [src](../../../scripts/nudge_well_cleanup.py#L24) |
 | function | `clean_broend` | `(apply, path=…)` | — | [src](../../../scripts/nudge_well_cleanup.py#L64) |
 | function | `main` | `()` | — | [src](../../../scripts/nudge_well_cleanup.py#L85) |
-
-## `scripts/peer_models.py`
-_Peer model adapters for interlanguage validation experiment._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_generate_claude` | `(prompt)` | Claude Sonnet 4.6 via GitHub Copilot. | [src](../../../scripts/peer_models.py#L34) |
-| function | `_ollama_chat` | `(model, prompt, *, timeout=…)` | POST mod localhost Ollama /api/chat — virker for cloud-modeller routet via Ollama. | [src](../../../scripts/peer_models.py#L62) |
-| function | `_generate_glm` | `(prompt)` | GLM 5.1 via lokal Ollama cloud-route. | [src](../../../scripts/peer_models.py#L80) |
-| function | `_generate_ollama_local` | `(prompt)` | deepseek-v4.1-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
-| function | `_generate_random` | `(prompt)` | Random baseline — bruger generate_state_expression() uden mood-bias. | [src](../../../scripts/peer_models.py#L99) |
-| function | `generate` | `(prompt, peer_id)` | Dispatch til peer-specific adapter. Raise ValueError ved ukendt peer. | [src](../../../scripts/peer_models.py#L123) |
 

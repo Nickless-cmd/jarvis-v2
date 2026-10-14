@@ -1,0 +1,11 @@
+[Unit]
+Description=Tjek hvert 2. minut for ture der endte uden svar
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+AccuracySec=20s
+Unit=jarvis-cutoff-detector.service
+
+[Install]
+WantedBy=timers.target

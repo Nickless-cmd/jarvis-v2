@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/verify_sqlite_schema.py`
+_Compare the live SQLite schema with its reviewed, per-table snapshot._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_quote` | `(name)` | — | [src](../../../scripts/verify_sqlite_schema.py#L22) |
+| function | `timestamp_format` | `(value)` | — | [src](../../../scripts/verify_sqlite_schema.py#L26) |
+| function | `_timestamp_formats` | `(conn, table)` | — | [src](../../../scripts/verify_sqlite_schema.py#L41) |
+| function | `inventory` | `(conn)` | — | [src](../../../scripts/verify_sqlite_schema.py#L60) |
+| function | `_unobserved` | `(value)` | True når et format ikke er observeret — tom tabel eller ingen kolonne. | [src](../../../scripts/verify_sqlite_schema.py#L98) |
+| function | `compare` | `(current, expected)` | — | [src](../../../scripts/verify_sqlite_schema.py#L108) |
+| function | `_forklar` | `(issues, snapshot)` | Sig hvad der skal ske. En vagt der kun siger NEJ er en blokade. | [src](../../../scripts/verify_sqlite_schema.py#L162) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_sqlite_schema.py#L201) |
+
 ## `scripts/verify_vaert_evner.py`
 _Vagt: de evner den SERVERENDE vært skal have, skal faktisk være der._
 
@@ -19,3 +33,4 @@ _Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
 | function | `_importerede_moduler` | `(traeet)` | — | [src](../../../scripts/verify_vagt_graenser.py#L44) |
 | function | `brud` | `()` | — | [src](../../../scripts/verify_vagt_graenser.py#L55) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vagt_graenser.py#L74) |
+

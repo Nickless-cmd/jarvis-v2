@@ -252,10 +252,14 @@ def test_nedluknings_sweepen_stempler_ogsaa_raekken():
     # til `settle_recovering`: en tur dræbt af nedlukningen skal være
     # GENOPTAGELIG, ikke bare afbrudt (commit dc685128d). Testen pegede stadig
     # på det gamle kald og fejlede derfor på ren HEAD indtil 14/10-2026.
-    assert "settle_recovering(_rid" in vindue, "den synlige gren skal stemple raekken"
+    #
+    # Kaldet er MULTILINJE: `settle_recovering(` står på sin egen linje med
+    # `_rid` på den næste. Derfor matcher vi kaldet UDEN argumentet — og
+    # `(`-parentesen skiller kaldet fra import-linjen, som også bærer navnet.
+    assert "settle_recovering(" in vindue, "den synlige gren skal stemple raekken"
     # Og det skal komme EFTER terminal-spørgsmålet, ellers stemples en
     # afsluttet tur.
-    assert vindue.index("run_er_terminal") < vindue.index("settle_recovering(_rid")
+    assert vindue.index("run_er_terminal") < vindue.index("settle_recovering(")
 
 
 def test_hvert_mark_started_kald_sender_kind_og_provider_med():

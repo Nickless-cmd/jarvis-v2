@@ -75,11 +75,10 @@ import { CompactionNotice } from '../components/transcript/CompactionNotice'
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
  *  hopper ned i bunden, transcript fylder. */
 export function ChatView({
-  sessionId, userName = 'du', onOpenMarketplace, onOpenPrivacy,
+  sessionId, userName = 'du', onOpenPrivacy,
 }: {
   sessionId: string | null
   userName?: string
-  onOpenMarketplace?: () => void
   onOpenPrivacy?: () => void
 }) {
   const sessions = useSessions()
@@ -958,7 +957,6 @@ export function ChatView({
             mode="chat"
             config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
             userName={userName}
-            onOpenMarketplace={() => onOpenMarketplace?.()}
             onSuggest={(text) => resend(text)}
           >
             {composer}

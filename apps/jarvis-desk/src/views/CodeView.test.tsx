@@ -111,20 +111,17 @@ describe('CodeView', () => {
     expect(container.querySelector('.composer-tal')).toBeNull()
   })
 
-  it('viser aktivitet fra en anden enhed som ikon ved Central i headeren', async () => {
+  it('viser aktivitet fra en anden enhed under disclaimeren, ikke i headeren', async () => {
     vi.mocked(api.getActiveRunSessions).mockResolvedValueOnce([
       { session_id: 's1', run_id: 'remote-run', status: 'working' },
     ])
     try {
       const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
       const badge = await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
-      const headerRight = badge.closest('.chatview-head-right')
-      expect(headerRight).toBeInTheDocument()
-      // Ankeret var `central-badge`, men CentralBadge blev slået fra i headeren
-      // 30/9-2026 (DESK_CHROME.centralBadge) og bor nu kun på Systemstatus-siden.
-      // Testens ærinde er at mærket hører i header-right — så det er mærket selv
-      // der er ankeret, ikke en nabo der kan slukkes uden at testen ved det.
-      expect(headerRight?.contains(badge)).toBe(true)
+      const footer = badge.closest('.composer-footer-slot')
+      expect(footer).toBeInTheDocument()
+      expect(badge.closest('.chatview-head-right')).toBeNull()
+      expect(footer?.previousElementSibling).toHaveClass('composer-disclaimer')
       expect(container.querySelector('.takeover-banner')).not.toBeInTheDocument()
     } finally {
       vi.mocked(api.getActiveRunSessions).mockResolvedValue([])

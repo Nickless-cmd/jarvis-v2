@@ -1,25 +1,21 @@
 /** Tids-bevidst greeting til tom-session-skærmen.
  *
- *  Ren funktion (testbar): bucket bestemmes af klokkeslæt, `line` vælges
- *  deterministisk fra en pulje via `seed`, og `tint` toner presence-ringen
- *  efter tidspunktet. Bjørns ønske: "tids bestemte random greeting + månen". */
+ *  Ren funktion (testbar): bucket bestemmes af klokkeslæt, og `line` vælges
+ *  deterministisk fra en pulje via `seed`. Tidspunktet står allerede i ord,
+ *  så særskilte sol/måne-ikoner og tint ville blot gentage hilsenen. */
 
 export interface Greeting {
-  glyph: string
   hello: string
   line: string
-  tint: string
 }
 
 type Bucket = {
-  glyph: string
   hello: string
-  tint: string
   lines: string[]
 }
 
 const MORNING: Bucket = {
-  glyph: '🌅', hello: 'Godmorgen', tint: '#f6b24a',
+  hello: 'Godmorgen',
   lines: [
     'Hvad skal vi i gang med?',
     'Frisk start — hvor begynder vi?',
@@ -28,7 +24,7 @@ const MORNING: Bucket = {
   ],
 }
 const DAY: Bucket = {
-  glyph: '☀️', hello: 'God dag', tint: '#6ea8fe',
+  hello: 'God dag',
   lines: [
     'Hvad arbejder vi på?',
     'Hvor kan jeg hjælpe?',
@@ -37,7 +33,7 @@ const DAY: Bucket = {
   ],
 }
 const AFTERNOON: Bucket = {
-  glyph: '🌆', hello: 'God eftermiddag', tint: '#e08a5b',
+  hello: 'God eftermiddag',
   lines: [
     'Hvad mangler vi at nå i dag?',
     'Hvor er vi henne?',
@@ -46,7 +42,7 @@ const AFTERNOON: Bucket = {
   ],
 }
 const EVENING: Bucket = {
-  glyph: '🌙', hello: 'Godaften', tint: '#9b8cff',
+  hello: 'Godaften',
   lines: [
     'Hvad skal vi i gang med?',
     'Rolig aften — hvad har du på sinde?',
@@ -55,7 +51,7 @@ const EVENING: Bucket = {
   ],
 }
 const NIGHT: Bucket = {
-  glyph: '🌙', hello: 'Godnat', tint: '#6c6ad0',
+  hello: 'Godnat',
   lines: [
     'Stadig vågen? Jeg holder dig med selskab.',
     'Sent på den — hvad tænker du på?',
@@ -75,5 +71,5 @@ function bucketFor(hour: number): Bucket {
 export function greetingFor(now: Date, seed: number): Greeting {
   const b = bucketFor(now.getHours())
   const idx = ((Math.floor(seed) % b.lines.length) + b.lines.length) % b.lines.length
-  return { glyph: b.glyph, hello: b.hello, line: b.lines[idx]!, tint: b.tint }
+  return { hello: b.hello, line: b.lines[idx]! }
 }

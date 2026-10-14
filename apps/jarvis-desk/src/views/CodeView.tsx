@@ -97,8 +97,8 @@ async function pickFolder(): Promise<string | null> {
  *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
  *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
 export function CodeView({
-  sessionId, userName, role = 'owner', onOpenMarketplace, onOpenPrivacy,
-}: { sessionId: string | null; userName?: string; role?: Role; onOpenMarketplace?: () => void; onOpenPrivacy?: () => void }) {
+  sessionId, userName, role = 'owner', onOpenPrivacy,
+}: { sessionId: string | null; userName?: string; role?: Role; onOpenPrivacy?: () => void }) {
   const stream = useStream()
   const { permission } = usePermission()
   const { settings } = useSettings()
@@ -890,6 +890,15 @@ export function CodeView({
   )
 
 
+  const badges = (
+    <>
+      <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
+      {DESK_CHROME.centralBadge && <CentralBadge config={config} isOwner={isOwner} />}
+      {DESK_CHROME.peakBadge && config && <PeakBadge config={config} />}
+      {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
+    </>
+  )
+
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
@@ -912,6 +921,7 @@ export function CodeView({
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
       draftKey="code"
+      footerSlot={badges}
     />
   )
 
@@ -984,10 +994,6 @@ export function CodeView({
     <div className="chatview-head-right">
       {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
-      <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
-      {DESK_CHROME.centralBadge && <CentralBadge config={config} isOwner={isOwner} />}
-      {DESK_CHROME.peakBadge && config && <PeakBadge config={config} />}
-      {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
@@ -1178,10 +1184,8 @@ export function CodeView({
             mode="code"
             config={config}
             userName={userName ?? 'Bruger'}
-            onOpenMarketplace={() => onOpenMarketplace?.()}
             onSuggest={(text) => resend(text)}
           >
-            <p className="codeview-empty-hint">Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
             {workspaceSelector}
             {composer}
           </GreetingHero>

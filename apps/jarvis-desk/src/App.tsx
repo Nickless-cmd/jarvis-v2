@@ -49,6 +49,7 @@ import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/greeting.css'
 import './styles/liveness.css'
 import './styles/environment-inspector.css'
 import './styles/cheap-lane.css'
@@ -288,7 +289,6 @@ function Shell({
             <ChatView
               sessionId={activeId}
               userName={userName}
-              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
               onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}
@@ -298,7 +298,6 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               role={role}
-              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
               onOpenPrivacy={() => setPrivacyOpen(true)}
             />
           )}

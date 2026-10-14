@@ -99,8 +99,14 @@ export function WidgetBlock({ block, config }: {
 
       if (d.type === 'jarvis-widget-hoejde') {
         const h = Number(d.hoejde)
-        if (!Number.isFinite(h) || h <= 0) return
-        setHoejde(Math.min(Math.max(Math.round(h), 48), 1200))
+        // Dokumentet kan nå at melde 0 + sin 24px luft før første layout.
+        // Den måling er ikke en lille widget; den er endnu ingen måling. Hvis
+        // vi accepterer den, klippes rammen til 48px og kan blive stående dér.
+        if (!Number.isFinite(h) || h < 48) return
+        // Loftet er et værn mod model-skrevet JS der poster et absurd tal, ikke
+        // en normal layoutgrænse. Seks meter CSS-pixels er langt over en læsbar
+        // widget, men lader almindelige rapporter vokse uden intern scrollbar.
+        setHoejde(Math.min(Math.round(h), 6000))
         return
       }
 
@@ -158,20 +164,50 @@ export function WidgetBlock({ block, config }: {
 const HOEJDE_SCRIPT = `
 <script>
 (function () {
+  var sidste = -1;
+  var planlagt = false;
   function sig() {
+    planlagt = false;
     try {
+      // Serverens wrapper lægger hele fragmentet i BODY. Body-målet er derfor
+      // indholdets egen højde. documentElement.scrollHeight må IKKE indgå: når
+      // forælderen gør iframen højere, bliver det mål selv højere og skaber en
+      // feedback-loop på +24px for hver ResizeObserver-runde.
       var h = Math.max(
         document.body ? document.body.scrollHeight : 0,
-        document.documentElement ? document.documentElement.scrollHeight : 0
+        document.body ? document.body.offsetHeight : 0
       );
+      if (h <= 0 || h === sidste) return;
+      sidste = h;
       parent.postMessage({ type: 'jarvis-widget-hoejde', hoejde: h + 24 }, '*');
     } catch (e) {}
   }
-  sig();
-  window.addEventListener('load', sig);
-  if (window.ResizeObserver && document.body) {
-    new ResizeObserver(sig).observe(document.body);
+  function sigSnart() {
+    if (planlagt) return;
+    planlagt = true;
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(function () { requestAnimationFrame(sig); });
+    } else {
+      setTimeout(sig, 0);
+    }
   }
+  // Første måling EFTER layout, ikke mens srcdoc stadig parses.
+  sigSnart();
+  window.addEventListener('load', sigSnart);
+  if (window.ResizeObserver && document.body) {
+    new ResizeObserver(sigSnart).observe(document.body);
+  }
+  // Dynamiske widgets kan ændre tekst eller tilføje rækker uden at body-boksen
+  // straks udløser ResizeObserver. Mutationer samles i samme dobbelte rAF.
+  if (window.MutationObserver && document.body) {
+    new MutationObserver(sigSnart).observe(document.body, {
+      childList: true, subtree: true, characterData: true, attributes: true
+    });
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(sigSnart).catch(function () {});
+  }
+  [50, 200, 600, 1200].forEach(function (ms) { setTimeout(sigSnart, ms); });
 })();
 </script>
 `

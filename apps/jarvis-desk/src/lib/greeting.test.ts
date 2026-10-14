@@ -2,24 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { greetingFor } from './greeting'
 
 describe('greetingFor', () => {
-  it('aften → måne + Godaften', () => {
+  it('aften → Godaften uden et gentaget tidsikon', () => {
     const g = greetingFor(new Date('2026-06-16T20:00:00'), 0)
-    expect(g.glyph).toBe('🌙')
     expect(g.hello).toBe('Godaften')
+    expect(g).not.toHaveProperty('glyph')
   })
 
-  it('morgen → soldopgang + Godmorgen', () => {
+  it('morgen → Godmorgen uden et gentaget tidsikon', () => {
     const g = greetingFor(new Date('2026-06-16T07:00:00'), 0)
-    expect(g.glyph).toBe('🌅')
     expect(g.hello).toBe('Godmorgen')
-  })
-
-  it('middag → sol', () => {
-    expect(greetingFor(new Date('2026-06-16T12:00:00'), 0).glyph).toBe('☀️')
-  })
-
-  it('nat → måne', () => {
-    expect(greetingFor(new Date('2026-06-16T02:00:00'), 0).glyph).toBe('🌙')
+    expect(g).not.toHaveProperty('glyph')
   })
 
   it('seed vælger deterministisk linje fra puljen', () => {
@@ -29,7 +21,7 @@ describe('greetingFor', () => {
     expect(a.line.length).toBeGreaterThan(0)
   })
 
-  it('giver en tint (hex) pr. bucket', () => {
-    expect(greetingFor(new Date('2026-06-16T20:00:00'), 0).tint).toMatch(/^#/)
+  it('tilføjer ikke en særskilt tint til den almindelige hilsen', () => {
+    expect(greetingFor(new Date('2026-06-16T20:00:00'), 0)).not.toHaveProperty('tint')
   })
 })

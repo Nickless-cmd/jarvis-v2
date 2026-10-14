@@ -1,0 +1,28 @@
+/* Tom-session-hilsenen er en selvstændig visuel enhed. Den bor her, fordi
+ * app.css er langt over Boy Scout-grænsen. */
+.greeting-hero { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.greeting-top { text-align: center; }
+.greeting-hello { font-size: 22px; font-weight: 600; color: var(--fg-1); }
+.greeting-line { opacity: .55; font-size: 14px; margin-top: 4px; }
+.greeting-connectors { width: 100%; max-width: 560px; }
+.greeting-connectors-label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px;
+  opacity: .45; margin-bottom: 8px; text-align: left; }
+.greeting-connectors-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.greeting-connector { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 6px;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent;
+  color: var(--fg-2); cursor: pointer; font-size: 12px; transition: border-color .15s, color .15s; }
+.greeting-connector:hover { color: var(--fg-1); border-color: var(--fg-3); }
+.greeting-connector-icon { width: 16px; height: 16px; display: grid; place-items: center;
+  flex-shrink: 0; opacity: .75; }
+.greeting-connector-name { font-size: 12px; }
+.greeting-forbind-fejl { margin: 8px 0 0; font-size: 12px; line-height: 1.4;
+  padding: 6px 9px; border-radius: 8px;
+  background: color-mix(in srgb, var(--error-fg, #ff6b6b) 12%, transparent);
+  color: var(--error-fg, #ff8e8e); }
+.greeting-hint { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px;
+  padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
+.greeting-hint-text { flex: 1; font-size: 13px; color: var(--fg-1); text-align: left; }
+.greeting-hint-yes { background: var(--accent); color: var(--bg-0); border: none; border-radius: 8px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.greeting-hint-no { background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 16px; }

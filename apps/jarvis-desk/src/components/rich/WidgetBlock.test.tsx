@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { WidgetBlock, WidgetPrompt } from './WidgetBlock'
 
 /**
@@ -85,6 +85,24 @@ describe('WidgetBlock', () => {
     }))
     await new Promise((r) => setTimeout(r, 0))
     expect(ramme.style.height).toBe(foer)
+  })
+
+  it('en for tidlig nulmåling må ikke krympe widgetten til 48 px', async () => {
+    render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+    const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
+    expect(ramme.style.height).toBe('160px')
+
+    // Før layout målte det indlejrede dokument 0 og sendte 0 + sin 24px luft.
+    // Accepteres den besked, bliver hele widgetten klippet ved minimum 48px,
+    // før en brugbar måling når frem.
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'jarvis-widget-hoejde', hoejde: 24 },
+        source: ramme.contentWindow as unknown as MessageEventSource,
+      }))
+    })
+
+    expect(ramme.style.height).toBe('160px')
   })
 
   it('højde-scriptet følger med dokumentet', async () => {

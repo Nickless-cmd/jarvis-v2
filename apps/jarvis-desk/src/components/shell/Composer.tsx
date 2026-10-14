@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowUp, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
 import { JarvisRing } from './JarvisRing'
 import { emojify } from '../../lib/emojify'
@@ -148,6 +148,7 @@ export function Composer({
   voiceSupported = false,
   indsaet,
   draftKey = 'chat',
+  footerSlot,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -198,6 +199,8 @@ export function Composer({
    * så den samme tekst to gange også virker.
    */
   indsaet?: { tekst: string; n: number } | null
+  /** Ekstra statusindhold under disclaimer-linjen. */
+  footerSlot?: ReactNode
   /**
    * Hvilken flade kladden hører til (chat / code / cowork). Teksten gemmes i
    * localStorage under denne nøgle, så den overlever mode-skift og genstart.
@@ -991,6 +994,7 @@ export function Composer({
         <> · <button type="button" className="composer-privacy-link" onClick={onOpenPrivacy}>Privatliv &amp; cookies</button></>
       )}
     </p>
+    {footerSlot && <div className="composer-footer-slot">{footerSlot}</div>}
     </div>
   )
 }

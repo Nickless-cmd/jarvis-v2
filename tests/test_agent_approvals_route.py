@@ -1,4 +1,12 @@
-"""F4c: API til at afgoere agent-approvals - kun et menneske, totrin ved godkendelse, ejer-scoped."""
+"""F4c: API til at afgoere agent-approvals - kun et menneske, ejer-scoped, session-bundet.
+
+TOTP-PORTEN ER VAEK (14/10-2026). Denne fil pinnede indtil i dag at en godkendelse kraevede en
+totrinskode. Det var en fejl: Bjoerns egen spec (``2026-06-14-totp-override-security-design.md``
+§6.1) siger at TOTP kraeves i en FREMMED session, og at ejeren i sin EGEN desk-session har fri
+adgang fordi «sessionen er allerede kryptografisk bundet til owner». Agent-godkendelser sker i
+hans egen session. Det der nu pinnes i stedet er de to ting der FAKTISK baerer sikkerheden:
+token-identiteten (kun et menneske, kun ejeren) og session-bindingen.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -6,12 +14,10 @@ import asyncio
 import pytest
 from fastapi import HTTPException
 
-import core.identity.users as users
 import core.identity.workspace_context as wc
 from apps.api.jarvis_api.routes import agent_approvals as R
-from core.services import totp_verifier as tv
 
-O = "bjorn"
+EJER = "bjorn"
 
 
 @pytest.fixture
@@ -21,23 +27,20 @@ def rt(isolated_runtime, monkeypatch):
     import core.services.agent_contract_service as svc
     from core.runtime.db_agent_runtime import create_agent_registry_entry
 
-    seed = tv.generate_seed()
-    monkeypatch.setattr(users, "get_totp_seed", lambda discord_id: seed)
-    tv._ATTEMPTS.clear()
     monkeypatch.setattr("core.identity.owner_resolver.owner_user_id", lambda: "platform-ejer")
     started = []
     monkeypatch.setattr(svc, "_run_in_background", lambda fn: started.append(fn))
 
-    def som(uid=O):
+    def som(uid=EJER):
         monkeypatch.setattr(wc, "current_user_id", lambda: uid)
 
     som()
 
     class H:
-        appr_, c_, svc_, seed_, started_ = appr, c, svc, seed, started
+        appr_, c_, svc_, started_ = appr, c, svc, started
         som_ = staticmethod(som)
 
-        def req(self, name="a1", owner=O, session="s1", cmd="ls"):
+        def req(self, name="a1", owner=EJER, session="s1", cmd="ls"):
             create_agent_registry_entry(agent_id=name, role="executor", goal="g")
             c.bind_agent_owner(agent_id=name, owner_user_id=owner, owner_session_id=session)
             acc = c.accept_assignment(agent_id=name, owner_user_id=owner, origin_session_id=session, goal="g",
@@ -45,9 +48,9 @@ def rt(isolated_runtime, monkeypatch):
             return appr.request(owner_user_id=owner, origin_session_id=session, assignment_id=acc["assignment_id"],
                                 tool_name="bash", arguments={"command": cmd})
 
-        def decide(self, r, decision="approve", kode=None, digest=None, **kw):
+        def decide(self, r, decision="approve", digest=None, session="s1", **kw):
             body = R.DecisionRequest(decision=decision, digest=digest if digest is not None else r["args_digest"],
-                                     kode=tv.generate_code(self.seed_) if kode is None else kode, **kw)
+                                     session=session, **kw)
             return asyncio.run(R.decide(r["approval_id"], body))
 
     return H()
@@ -65,33 +68,41 @@ def test_listing_requires_login_and_shows_only_own_approvals_without_raw_argumen
     assert e.value.status_code == 401
 
 
-def test_the_owner_approves_with_the_right_code_and_the_child_is_resumed(rt):
+def test_the_owner_approves_and_the_child_is_resumed(rt):
+    """Ingen kode - login + session er nok. Det er hele aendringen."""
     r = rt.req()
     out = rt.decide(r)
-    assert out["status"] == "ok" and out["approval"]["status"] == "approved" and out["approval"]["decided_by"] == O
+    assert out["status"] == "ok" and out["approval"]["status"] == "approved" and out["approval"]["decided_by"] == EJER
     assert rt.appr_.get(approval_id=r["approval_id"])["status"] == "approved"
 
 
-@pytest.mark.parametrize("kode,status", [("000000", 403), ("", 403)])
-def test_approving_needs_the_two_step_code_when_one_is_set_up(rt, kode, status):
+def test_approving_needs_NO_two_step_code(rt):
+    """Porten er væk. En tom kode (og et felt der ikke findes) maa ikke blokere."""
     r = rt.req()
-    with pytest.raises(HTTPException) as e:
-        rt.decide(r, kode=kode)
-    assert e.value.status_code == status and rt.appr_.get(approval_id=r["approval_id"])["status"] == "pending"
+    assert "kode" not in R.DecisionRequest.model_fields, "TOTP-feltet er tilbage i anmodningen"
+    out = rt.decide(r)
+    assert out["approval"]["status"] == "approved"
 
 
-def test_denying_never_needs_the_code(rt):
+def test_denying_works_without_a_code(rt):
     r = rt.req()
-    out = rt.decide(r, "deny", kode="")
+    out = rt.decide(r, "deny")
     assert out["approval"]["status"] == "denied"
 
 
-def test_without_a_configured_code_the_login_alone_is_enough_but_it_is_logged(rt, monkeypatch, caplog):
-    monkeypatch.setattr(users, "get_totp_seed", lambda discord_id: None)
-    r = rt.req()
-    with caplog.at_level("WARNING"):
-        out = rt.decide(r, kode="")
-    assert out["approval"]["status"] == "approved" and any("UDEN totrinskode" in m for m in caplog.messages)
+def test_a_decision_from_ANOTHER_session_is_refused(rt):
+    """Session-bindingen: en godkendelse der svarer paa noget i EN session maa ikke trykkes fra en ANDEN."""
+    r = rt.req(session="s1")
+    with pytest.raises(HTTPException) as e:
+        rt.decide(r, session="s2")
+    assert e.value.status_code == 403
+    assert rt.appr_.get(approval_id=r["approval_id"])["status"] == "pending", "afvisningen efterlod en afgjort post"
+
+
+def test_an_empty_session_still_works_the_token_carries_the_identity(rt):
+    """En klient der ikke oplyser sin session er ikke laast ude - identiteten baeres da af token'en."""
+    r = rt.req(session="s1")
+    assert rt.decide(r, session="")["approval"]["status"] == "approved"
 
 
 def test_not_logged_in_decides_nothing(rt):
@@ -102,7 +113,7 @@ def test_not_logged_in_decides_nothing(rt):
     assert e.value.status_code == 401 and rt.appr_.get(approval_id=r["approval_id"])["status"] == "pending"
 
 
-def test_another_user_cannot_decide_even_with_a_valid_code(rt):
+def test_another_user_cannot_decide_even_with_the_right_session(rt):
     r = rt.req()
     rt.som_("anden")
     with pytest.raises(HTTPException) as e:
@@ -113,7 +124,7 @@ def test_another_user_cannot_decide_even_with_a_valid_code(rt):
 def test_the_platform_owner_can_decide_a_members_approval(rt):
     r = rt.req(owner="medlem", session="sm")
     rt.som_("platform-ejer")
-    assert rt.decide(r, "deny")["approval"]["status"] == "denied"
+    assert rt.decide(r, "deny", session="sm")["approval"]["status"] == "denied"
 
 
 @pytest.mark.parametrize("case,status", [("digest", 404), ("ukendt", 404), ("dobbelt", 409)])

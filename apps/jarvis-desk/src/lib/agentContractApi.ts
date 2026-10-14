@@ -255,18 +255,23 @@ export async function kvitterKontrakt(config: ApiConfig, assignmentId: string): 
   return apiFetch(config, `${BASE}/assignments/${enc(assignmentId)}/acknowledge`, { method: 'POST', body: {} })
 }
 
-/** Approval-afgørelsen går over den EKSISTERENDE rute (`/agents/approvals`): kun et menneske, og en
- *  godkendelse kræver totrinskoden hvis brugeren har sat en op. Digest'en binder afgørelsen til
- *  netop dette kald — er argumenterne ændret, afvises den og en ny approval kræves. */
+/** Approval-afgørelsen går over den EKSISTERENDE rute (`/agents/approvals`): kun et menneske, og
+ *  afgørelsen bindes til den session den kom fra. Digest'en binder afgørelsen til netop dette kald —
+ *  er argumenterne ændret, afvises den og en ny approval kræves.
+ *
+ *  INGEN TOTRINSKODE (14/10-2026). Her stod der at en godkendelse krævede koden. Spec §6.1 siger
+ *  det modsatte: TOTP hører til en FREMMED session; ejeren i sin egen desk-session har fri adgang,
+ *  fordi sessionen allerede er bundet til ham. Appen leverer sikkerheden ved sin identitet —
+ *  brugeren skal højst trykke godkend eller afvis. */
 export async function afgoerAgentApproval(
-  config: ApiConfig, approvalId: string, decision: 'approve' | 'deny', digest: string, kode = '',
+  config: ApiConfig, approvalId: string, decision: 'approve' | 'deny', digest: string, session = '',
 ): Promise<{ status: string; approval: { status: string } }> {
   try {
     return await apiFetch(config, `/agents/approvals/${enc(approvalId)}/decision`,
-      { method: 'POST', body: { decision, digest, kode } })
+      { method: 'POST', body: { decision, digest, session } })
   } catch (reason) {
     const code = reason instanceof StreamError ? reason.statusCode : null
-    if (code === 403) throw new Error('Afvist: forkert eller manglende totrinskode, eller du må ikke afgøre den.')
+    if (code === 403) throw new Error('Afvist: du må ikke afgøre den, eller den hører til en anden session.')
     if (code === 410) throw new Error('Godkendelsen er udløbet.')
     if (code === 409) throw new Error('Godkendelsen er allerede afgjort.')
     if (code === 404) throw new Error('Godkendelsen passer ikke længere (ændret handling) eller findes ikke.')

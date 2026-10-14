@@ -3,8 +3,19 @@
 Kun en AUTENTIFICERET bruger kan afgoere, og kun ejerens/platformens ejers egne approvals (det haandhaeves
 i ``db_agent_approvals.decide`` - ruten er kun adapteren). Jarvis, en agent og en model har ingen vej hertil
 med et menneskes identitet: ruten saetter ``actor_kind="human"`` KUN naar anmodningen bærer en indlogget brugers
-token, og en GODKENDELSE kraever desuden brugerens totrinskode, hvis han har sat en op - Jarvis kender den ikke,
-selv om han kan kalde API'et med ejerens token. Et AFSLAG kraever ingen kode (det er altid sikkert).
+token.
+
+SIKKERHEDEN ER IDENTITETEN, IKKE EN KODE (14/10-2026). Her stod der indtil i dag at en godkendelse kraevede
+brugerens totrinskode. Det var en fejl, og Bjoerns egen spec siger det modsatte
+(``2026-06-14-totp-override-security-design.md`` §6.1): TOTP kraeves i en FREMMED session - «Owner i sin EGEN
+desk-session: INGEN TOTP, sessionen er allerede kryptografisk bundet til owner». Hele override-flowet (§6.3)
+forudsaetter endda eksplicit «Bjoern er i en fremmed sessions-kontekst».
+
+To ting baerer sikkerheden her, og begge er staerkere end en 6-cifret kode mod det trusselbillede der er
+relevant: (1) et autentificeret token, som ruten kraever (401 uden) og ``decide`` binder til ejeren; (2)
+``session``-bindingen - anmodningen maa oplyse sin session, og ``decide`` afviser den hvis den ikke er den
+approvalen blev foedt i. En TOTP beskyttede kun mod en STJAALET token, og en angriber med token'en kan ogsaa
+laese sessions-listen og faa id'et; til gengaeld ramte den den legitime ejer hver eneste gang.
 """
 from __future__ import annotations
 
@@ -26,7 +37,10 @@ class DecisionRequest(BaseModel):
     decision: Literal["approve", "deny"]
     digest: str
     note: str = ""
-    kode: str = ""          # totrinskoden - kraeves ved godkendelse naar brugeren har en
+    #: Sessionen anmodningen kommer fra. Klienten kender sin egen session og sender den med; ``decide``
+    #: afviser en session der ikke er den approvalen blev foedt i. Tom = klienten oplyser ikke sin session,
+    #: og identiteten baeres da alene af token'en (se modulets docstring).
+    session: str = ""
 
 
 def _bruger() -> str:
@@ -35,19 +49,6 @@ def _bruger() -> str:
     if not uid:
         raise HTTPException(status_code=401, detail="Ikke logget ind")
     return uid
-
-
-def _kraev_totrin_ved_godkendelse(uid: str, kode: str) -> None:
-    from core.identity.users import get_totp_seed
-    seed = get_totp_seed(discord_id=uid)
-    if not seed:
-        logger.warning("approval godkendt af %s UDEN totrinskode (ingen sat op)", uid)
-        return
-    from core.services.device_pairing import TotpFejl, kraev_totp
-    try:
-        kraev_totp(uid, kode)
-    except TotpFejl as exc:
-        raise HTTPException(status_code=exc.kode, detail=str(exc)) from exc
 
 
 @router.get("")
@@ -64,12 +65,10 @@ async def list_approvals(status: str = "", session: str = "") -> dict:
 @router.post("/{approval_id}/decision")
 async def decide(approval_id: str, body: DecisionRequest) -> dict:
     uid = _bruger()
-    if body.decision == "approve":
-        await asyncio.to_thread(_kraev_totrin_ved_godkendelse, uid, body.kode)
     from core.services import agent_contract_service as svc
     out = await asyncio.to_thread(
         svc.decide_approval, approval_id=approval_id, decision=body.decision, actor_user_id=uid,
-        actor_kind="human", digest=body.digest, note=body.note)
+        actor_kind="human", digest=body.digest, note=body.note, actor_session_id=body.session)
     if out.get("status") == "error":
         raise HTTPException(status_code=_HTTP.get(out["code"], 400), detail=out["error"])
     return out

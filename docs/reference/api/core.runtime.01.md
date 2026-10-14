@@ -82,18 +82,18 @@ _Varige approvals til agenters handlinger (agent-contract-v1 F4a, spec 8.2)._
 | function | `get_for_owner` | `(*, owner_user_id, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L156) |
 | function | `request` | `(*, owner_user_id, origin_session_id, assignment_id, tool_name, arguments, run_id=…, risk_class=…, requested_by=…, kind=…, ttl=…, now=…)` | Opret (eller genfind) en ventende approval. Idempotent paa (assignment, digest): samme kald giver | [src](../../../core/runtime/db_agent_approvals.py#L161) |
 | function | `_authorized` | `(actor_user_id, owner_user_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L211) |
-| function | `decide` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, now=…)` | Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder. | [src](../../../core/runtime/db_agent_approvals.py#L223) |
-| function | `consume` | `(*, approval_id, digest, now=…)` | Brug en godkendt approval. Atomisk ``approved -> consumed`` paa digest og foer udloeb - HOEJST EN | [src](../../../core/runtime/db_agent_approvals.py#L267) |
-| function | `expire_due` | `(*, now=…)` | Udloeb ventende og ubrugte godkendte approvals der har overskredet fristen. | [src](../../../core/runtime/db_agent_approvals.py#L281) |
-| function | `cancel_for_assignment` | `(*, assignment_id, reason)` | Annuller ventende/ubrugte approvals for et assignment der er endt. | [src](../../../core/runtime/db_agent_approvals.py#L296) |
-| function | `list_for_owner` | `(*, owner_user_id, status=…, origin_session_id=…, limit=…)` | Ejerens approvals (aldrig en andens). | [src](../../../core/runtime/db_agent_approvals.py#L310) |
-| function | `unannounced_pending` | `(*, owner_user_id, origin_session_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L326) |
-| function | `claim_announcements` | `(*, owner_user_id, origin_session_id)` | Atomisk: markér ventende, endnu ikke omtalte approvals som omtalt og returnér dem. Hver approval | [src](../../../core/runtime/db_agent_approvals.py#L334) |
-| function | `audit_trail` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L355) |
-| function | `save_checkpoint` | `(*, assignment_id, run_id, approval_id, payload)` | Gem barnets loekketilstand. Hoejst én parkeret checkpoint pr. assignment. | [src](../../../core/runtime/db_agent_approvals.py#L363) |
-| function | `parked_checkpoint` | `(*, assignment_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L387) |
-| function | `take_checkpoint` | `(*, assignment_id)` | Atomisk ``parked -> resumed``: HOEJST EN genoptagelse pr. checkpoint. Returnerer | [src](../../../core/runtime/db_agent_approvals.py#L393) |
-| function | `decided_parked` | `()` | Parkerede checkpoints hvis approval er afgjort (godkendt, afslaaet, udloebet eller annulleret) - | [src](../../../core/runtime/db_agent_approvals.py#L414) |
+| function | `decide` | `(*, approval_id, decision, actor_user_id, actor_kind, digest, note=…, now=…, actor_session_id=…)` | Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder. | [src](../../../core/runtime/db_agent_approvals.py#L223) |
+| function | `consume` | `(*, approval_id, digest, now=…)` | Brug en godkendt approval. Atomisk ``approved -> consumed`` paa digest og foer udloeb - HOEJST EN | [src](../../../core/runtime/db_agent_approvals.py#L278) |
+| function | `expire_due` | `(*, now=…)` | Udloeb ventende og ubrugte godkendte approvals der har overskredet fristen. | [src](../../../core/runtime/db_agent_approvals.py#L292) |
+| function | `cancel_for_assignment` | `(*, assignment_id, reason)` | Annuller ventende/ubrugte approvals for et assignment der er endt. | [src](../../../core/runtime/db_agent_approvals.py#L307) |
+| function | `list_for_owner` | `(*, owner_user_id, status=…, origin_session_id=…, limit=…)` | Ejerens approvals (aldrig en andens). | [src](../../../core/runtime/db_agent_approvals.py#L321) |
+| function | `unannounced_pending` | `(*, owner_user_id, origin_session_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L337) |
+| function | `claim_announcements` | `(*, owner_user_id, origin_session_id)` | Atomisk: markér ventende, endnu ikke omtalte approvals som omtalt og returnér dem. Hver approval | [src](../../../core/runtime/db_agent_approvals.py#L345) |
+| function | `audit_trail` | `(*, approval_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L366) |
+| function | `save_checkpoint` | `(*, assignment_id, run_id, approval_id, payload)` | Gem barnets loekketilstand. Hoejst én parkeret checkpoint pr. assignment. | [src](../../../core/runtime/db_agent_approvals.py#L374) |
+| function | `parked_checkpoint` | `(*, assignment_id)` | — | [src](../../../core/runtime/db_agent_approvals.py#L398) |
+| function | `take_checkpoint` | `(*, assignment_id)` | Atomisk ``parked -> resumed``: HOEJST EN genoptagelse pr. checkpoint. Returnerer | [src](../../../core/runtime/db_agent_approvals.py#L404) |
+| function | `decided_parked` | `()` | Parkerede checkpoints hvis approval er afgjort (godkendt, afslaaet, udloebet eller annulleret) - | [src](../../../core/runtime/db_agent_approvals.py#L425) |
 
 ## `core/runtime/db_agent_artifacts.py`
 _Artefaktlager for agentkoersler (agent-contract-v1, leverance C1, spec 9 og 12.1)._

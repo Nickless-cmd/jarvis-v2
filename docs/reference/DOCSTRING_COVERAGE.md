@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8961/17145 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8961/17144 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8961/17145 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 690 | 947 | 72% |
+| `apps.api.jarvis_api.routes` | 690 | 946 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -52,7 +52,7 @@ Generated from source. 8961/17145 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
-- `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L65)
+- `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L66)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `artifact` (L113)
@@ -359,12 +359,12 @@ Generated from source. 8961/17145 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
-- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L355)
+- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L366)
 - `core/runtime/db_agent_approvals.py` :: `ensure_approval_tables` (L46)
 - `core/runtime/db_agent_approvals.py` :: `get` (L152)
 - `core/runtime/db_agent_approvals.py` :: `get_for_owner` (L156)
-- `core/runtime/db_agent_approvals.py` :: `parked_checkpoint` (L387)
-- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L326)
+- `core/runtime/db_agent_approvals.py` :: `parked_checkpoint` (L398)
+- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L337)
 - `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L139)
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)

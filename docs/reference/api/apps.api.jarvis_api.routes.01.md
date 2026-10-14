@@ -50,11 +50,10 @@ _Agent-approvals: list og afgoer (agent-contract-v1 F4c, spec 8.2)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `DecisionRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L25) |
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L32) |
-| function | `_kraev_totrin_ved_godkendelse` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L40) |
-| function | `list_approvals` | `(status=…, session=…)` | Brugerens egne approvals med sikker visning og digest (aldrig raa argumenter). | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L54) |
-| function | `decide` | `(approval_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L65) |
+| class | `DecisionRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L36) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L46) |
+| function | `list_approvals` | `(status=…, session=…)` | Brugerens egne approvals med sikker visning og digest (aldrig raa argumenter). | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L55) |
+| function | `decide` | `(approval_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_approvals.py#L66) |
 
 ## `apps/api/jarvis_api/routes/agent_contract_view.py`
 _Desks laese- og styrings-API til agentkontrakten (agent-contract-v1 G, spec 10)._

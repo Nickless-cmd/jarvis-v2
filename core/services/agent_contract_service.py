@@ -655,15 +655,20 @@ def list_approvals(*, owner_user_id: str, status: str = "", origin_session_id: s
 
 
 def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, actor_kind: str, digest: str,
-                    note: str = "") -> dict[str, Any]:
+                    note: str = "", actor_session_id: str = "") -> dict[str, Any]:
     """Afgoer en approval (kun et menneske, jf. db_agent_approvals.decide) og genoptager straks det parkerede
-    barn. Virker ogsaa naar motoren er slukket: accepteret arbejde og dets approvals kan altid afgoeres."""
+    barn. Virker ogsaa naar motoren er slukket: accepteret arbejde og dets approvals kan altid afgoeres.
+
+    ``actor_session_id`` er den session anmodningen kom fra. Er den oplyst og ikke den approvalen blev
+    foedt i, afvises afgoerelsen i lageret (se ``db_agent_approvals.decide``).
+    """
     from core.runtime import db_agent_approvals as appr
     from core.services.agent_parking import resume_decided
 
     try:
         r = appr.decide(approval_id=approval_id, decision=decision, actor_user_id=actor_user_id,
-                        actor_kind=actor_kind, digest=digest, note=note)
+                        actor_kind=actor_kind, digest=digest, note=note,
+                        actor_session_id=actor_session_id)
     except ContractError as exc:
         logger.info("approval %s: afgoerelsen blev afvist (%s)", approval_id, exc.code)
         return _err(exc.code, exc.detail, "approval")

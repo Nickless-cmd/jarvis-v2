@@ -221,8 +221,14 @@ def _authorized(actor_user_id: str, owner_user_id: str) -> bool:
 
 
 def decide(*, approval_id: str, decision: str, actor_user_id: str, actor_kind: str, digest: str,
-           note: str = "", now: datetime | None = None) -> dict[str, Any]:
-    """Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder."""
+           note: str = "", now: datetime | None = None, actor_session_id: str = "") -> dict[str, Any]:
+    """Afgoer EN approval. ``approve``/``deny``. Atomisk: to samtidige afgoerelser giver én vinder.
+
+    ``actor_session_id`` (14/10-2026) er den session anmodningen kom fra. Er den oplyst og ikke den
+    approvalen blev foedt i (``origin_session_id``), afvises afgoerelsen: en godkendelse der svarer paa
+    noget i EN session maa ikke kunne trykkes fra en ANDEN. Er den tom, baeres identiteten alene af
+    ``actor_user_id``, som allerede er tjekket mod ejeren nedenfor.
+    """
     if decision not in ("approve", "deny"):
         raise ContractError("INVALID_TRANSITION", decision)
     t = now or datetime.now(UTC)
@@ -240,6 +246,11 @@ def decide(*, approval_id: str, decision: str, actor_user_id: str, actor_kind: s
             _audit(conn, approval_id, "refused: uautoriseret", f"{actor_kind}:{actor_user_id}")
             conn.commit()
             raise ContractError("POLICY_DENIED", "aktoeren maa ikke afgoere denne approval")
+        oplyst = str(actor_session_id or "").strip()
+        if oplyst and oplyst != str(r["origin_session_id"] or "").strip():
+            _audit(conn, approval_id, "refused: forkert session", f"{actor_kind}:{actor_user_id}:{oplyst}")
+            conn.commit()
+            raise ContractError("POLICY_DENIED", "approvalen tilhoerer en anden session")
         if r["status"] == PENDING and _parse(r["expires_at"]) <= t:
             conn.execute("UPDATE agent_approvals SET status='expired' WHERE approval_id=? AND status='pending'",
                          (approval_id,))

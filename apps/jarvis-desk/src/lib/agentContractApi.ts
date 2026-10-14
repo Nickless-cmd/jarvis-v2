@@ -293,12 +293,32 @@ export async function afgoerAgentApproval(
 // projektion fladerne allerede henter. Fladerne må stadig VISE forskelligt
 // (én mod alle); de kan ikke længere VÆLGE forskelligt.
 
+/** Kortene i ÉN sektion af feedet — den bredeste udvælgelse.
+ *
+ *  `feed()` giver hvert kort en sektion, og fladerne spørger «hvad venter, hvad
+ *  er besvaret, hvad kører». Filteret lå indtil 14/10-2026 tre steder i
+ *  `NotifikationsFeed` og ét sted i toasten — fire steder at glemme den dag en
+ *  fjerde flade kommer til. Det bor nu her, og fladerne læser det. */
+export function kortISektion(cards: FeedCard[], sektion: FeedCard['section']): FeedCard[] {
+  return (cards || []).filter((k) => k.section === sektion)
+}
+
+/** Alle kort der VENTER på et svar — ikke kun godkendelser.
+ *
+ *  Et fejlet eller uafklaret assignment kræver også et svar (det går gennem
+ *  feedets kvittering), så fladens «Venter på dig»-fane er bredere end
+ *  godkendelserne alene. `ventendeGodkendelser` er den snævre delmængde —
+ *  forskellen er med vilje, og den ligger nu ét sted. */
+export function ventendeKort(cards: FeedCard[]): FeedCard[] {
+  return kortISektion(cards, 'venter')
+}
+
 /** De kort der VENTER på en godkendelse.
  *
  *  Kun dem med en `approval`: et fejlet eller uafklaret assignment kræver også et
  *  svar, men det svar går gennem feedets kvittering — ikke her. */
 export function ventendeGodkendelser(cards: FeedCard[]): FeedCard[] {
-  return (cards || []).filter((k) => k.section === 'venter' && k.approval?.approval_id)
+  return ventendeKort(cards).filter((k) => k.approval?.approval_id)
 }
 
 /** Den ÆLDSTE ventende — den der er tættest på sit udløb.

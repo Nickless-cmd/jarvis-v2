@@ -12,7 +12,7 @@ import { SettingsState, SettingsActionError } from '../settings/SettingsState'
 import { markNotificationsRead, notificationAttention, NOTIFICATION_READ_EVENT } from '../../lib/notificationAttention'
 import { updatesBridge } from '../../lib/updatesBridge'
 import {
-  getKontraktFeed, kvitterKontrakt, markerKontraktLaest, type FeedCard,
+  getKontraktFeed, kortISektion, kvitterKontrakt, markerKontraktLaest, type FeedCard,
 } from '../../lib/agentContractApi'
 import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
 
@@ -358,9 +358,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession, 
   const svar = alle.filter((p) => p.slags === 'run_done')
   const afgjort = tidligere ?? []
   const kortListe = agentKort ?? []
-  const agentVenter = kortListe.filter((k) => k.section === 'venter')
-  const agentSvar = kortListe.filter((k) => k.section === 'svar')
-  const agentAktiv = kortListe.filter((k) => k.section === 'aktiv')
+  // Udvalget bor i API-laget (14/10-2026). De tre filtre stod her og ét mere i
+  // toasten; nu læser alle flader samme sted, så de ikke kan vælge forskelligt.
+  const agentVenter = kortISektion(kortListe, 'venter')
+  const agentSvar = kortISektion(kortListe, 'svar')
+  const agentAktiv = kortISektion(kortListe, 'aktiv')
   const rydBare = alle.filter((p) => RYD_BARE.has(p.slags) && !p.foraeldet &&
     !notificationAttention([p.id]).unread)
 

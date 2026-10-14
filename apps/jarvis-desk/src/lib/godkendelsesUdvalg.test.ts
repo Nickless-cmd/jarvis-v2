@@ -15,6 +15,12 @@ import { resolve } from 'node:path'
  * De to kilder læste i virkeligheden samme rækker: `feed()` kalder selv
  * `list_for_owner(status="pending")`. Forskellen var ruten, ikke dataene.
  *
+ * ANDEN RUNDE, samme figur: feedet selv filtrerede sine tre sektioner inline
+ * (`venter`/`svar`/`aktiv`) — fire steder i alt, når toastens filter tælles med.
+ * Primitiven `kortISektion` ligger nu i API-laget, og `ventendeKort` og
+ * `ventendeGodkendelser` er to navne på henholdsvis den brede og den snævre
+ * udvælgelse ovenpå den.
+ *
  * Kilden læses frem for at rende hele komponenterne op: det der skal pinnes er
  * ikke hvordan fladerne tegner, men at de ikke kan VÆLGE forskelligt. Det er
  * samme mønster som `agentGodkendelseRuter.test.ts` og
@@ -24,11 +30,19 @@ import { resolve } from 'node:path'
 const SRC = resolve(__dirname, '..')
 const api = readFileSync(resolve(SRC, 'lib/agentContractApi.ts'), 'utf-8')
 const toast = readFileSync(resolve(SRC, 'components/shell/NotifikationsToast.tsx'), 'utf-8')
+const feed = readFileSync(resolve(SRC, 'components/shell/NotifikationsFeed.tsx'), 'utf-8')
 
 describe('godkendelses-udvalget bor ét sted', () => {
   it('API-laget ejer udvalget — baade «hvilke» og «hvilken»', () => {
     expect(api).toContain('export function ventendeGodkendelser')
     expect(api).toContain('export function aeldsteVentende')
+  })
+
+  it('sektions-filteret er en primitiv, og de to udvalg bygger paa den', () => {
+    expect(api).toContain('export function kortISektion')
+    expect(api).toContain('export function ventendeKort')
+    // Den snævre er en delmængde af den brede — ikke en kopi af filteret.
+    expect(api).toContain('return ventendeKort(cards).filter((k) => k.approval?.approval_id)')
   })
 
   it('kortet over composeren læser den ældste fra feedet', () => {
@@ -41,6 +55,16 @@ describe('godkendelses-udvalget bor ét sted', () => {
     // hver for sig, og fejlen fra 14/10 ville være usynlig indtil nogen
     // tilføjede en tredje flade.
     expect(toast).not.toContain("k.section === 'venter' && k.approval")
+  })
+
+  it('feedet filtrerer ikke sine sektioner selv længere', () => {
+    expect(feed).toContain("kortISektion(kortListe, 'venter')")
+    expect(feed).toContain("kortISektion(kortListe, 'svar')")
+    expect(feed).toContain("kortISektion(kortListe, 'aktiv')")
+    // Kom et inline-filter tilbage her, var der igen fire steder at rette.
+    // Kun FILTER-formen rammes: `k.section === 'svar'` bruges stadig legitimt
+    // til at vælge CSS-klassen `er-svar` — det er tegning, ikke udvalg.
+    expect(feed).not.toContain('.filter((k) => k.section ===')
   })
 
   it('kortet spørger ikke længere approvals-ruten selv om udvalget', () => {

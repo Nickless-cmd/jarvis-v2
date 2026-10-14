@@ -251,10 +251,18 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     # gav derfor en FRISK post paa forsoeg 0, og loftet paa tre kunne pr.
     # konstruktion ikke naas. Stemplet skrives her — synkront, FOER traaden
     # kalder `mark_started`, som arver tallet fra posten paa samme run_id.
+    #
+    # OPRINDELSEN er med (14/10-2026, ChatGPT's indvending): en samtale er ikke
+    # en forpligtelse. `recurring`, `scheduled`, `dream`, `heartbeat` og
+    # `session_spawn` starter alle et FRISKT arbejde — gav de samtalens kaede
+    # videre, delte to uafhaengige opgaver identitet. Den RAA origin sendes (ikke
+    # `_origin`): `normalize_origin` kollapser ukendte navne til "autonomous", og
+    # saa ville "inbox" vaere uskelnelig fra et vilkaarligt autonomt run.
     try:
         from core.services.in_flight_runs import stempl_aktiv_kaede
 
-        stempl_aktiv_kaede(run_id=run.run_id, session_id=resolved_session)
+        stempl_aktiv_kaede(run_id=run.run_id, session_id=resolved_session,
+                           origin=str(origin or ""))
     except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
         logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
     from core.services.autonomous_frame_relay import AutonomousFrameRelay

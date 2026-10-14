@@ -371,7 +371,8 @@ def _maybe_trigger_continuation(run: "_vr.VisibleRun", assistant_text: str) -> N
                 if active and active.get("session_id") == run.session_id:
                     # A new run is already active in this session — skip continuation
                     return
-                _vr.start_autonomous_run(continuation_message, session_id=run.session_id)
+                _vr.start_autonomous_run(continuation_message, session_id=run.session_id,
+                                         origin="continuation")
             except Exception:
                 pass
 

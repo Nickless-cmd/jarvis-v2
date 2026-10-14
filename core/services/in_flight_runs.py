@@ -460,7 +460,23 @@ def aktiv_kaede(session_id: str) -> tuple[int, str]:
     return kaede, opgave
 
 
-def stempl_aktiv_kaede(*, run_id: str, session_id: str) -> bool:
+#: Origins der TAGER EN FORPLIGTELSE OP — i modsætning til dem der starter en
+#: NY opgave. Maalt 14/10-2026 ved hvert kaldested i repoet:
+#:
+#:   recurring · scheduled · dream · heartbeat · session_spawn ·
+#:   agent-completion · autonomous        → NYE opgaver
+#:   wakeup · inbox · continuation        → løfter en forpligtelse der FINDES
+#:
+#: Uden denne skelnen stemplede et nyt run sin identitet fra samtalens nyeste
+#: kæde — og en fælles SAMTALE blev læst som en fælles OPGAVE. Maalt: en
+#: `recurring`-opgave der fyrede midt i en genoptagelses-kæde blev stemplet med
+#: kaedens `task_id` og `recovery_attempt=3`. Det fjerner ikke
+#: identitets-problemet, det vender det om: to uafhaengige opgaver med ÉN
+#: identitet. (ChatGPT's indvending, 14/10-2026.)
+_FORTSAETTELSES_ORIGINS = frozenset({"wakeup", "inbox", "continuation"})
+
+
+def stempl_aktiv_kaede(*, run_id: str, session_id: str, origin: str = "") -> bool:
     """Stempl samtalens aktive kæde paa et nyt run. True = der blev stemplet.
 
     Kaldt af ALLE run-startere (14/10-2026). Foer stemplede kun `detached_run`
@@ -469,18 +485,27 @@ def stempl_aktiv_kaede(*, run_id: str, session_id: str) -> bool:
     `inbox_idle_waker`) fik en FRISK post paa forsoeg 0. Hvert led var sit eget
     foerste forsoeg, og loftet paa tre kunne pr. konstruktion ikke naas.
 
+    ``origin`` er ikke pynt — den er det ENESTE signal der skelner en
+    fortsaettelse fra en ny opgave i samme samtale. En samtale er ikke en
+    forpligtelse: en `recurring`-paamindelse der fyrer midt i en kaede er et
+    FRISKT arbejde, og gav vi den kaedens id, delte to opgaver identitet. Er
+    oprindelsen ikke en der tager en forpligtelse op, røres posten ikke.
+
     Er kæden 0, er der ingen aktiv kæde: posten er en frisk opgave, og vi rører
     den ikke. Det er den almindelige brugertur (som nulstiller kæden ved at
     journalfoere sig med 0) og enhver opgave i en samtale uden historik.
 
-    Er kæden > 0, er samtalens arbejde midt i en genoptagelses-sekvens, og et
-    nyt autonomt run i den samtale er et LED i den — ikke en frisk opgave.
-    Runnet arver baade opgavens id og kæden + 1.
+    Er kæden > 0 OG oprindelsen tager en forpligtelse op, er samtalens arbejde
+    midt i en genoptagelses-sekvens, og runnet er et LED i den. Det arver baade
+    opgavens id og kæden + 1.
 
     Self-safe: kan stemplet ikke skrives, starter runnet alligevel. Et manglende
-    stempel giver den gamle fejl (et led for meget), ikke en død kørsel.
+    stempel giver den gamle fejl (et led for meget), ikke en død kørsel — og
+    den er at foretrække frem for at give to opgaver samme identitet.
     """
     if not run_id:
+        return False
+    if str(origin or "").strip() not in _FORTSAETTELSES_ORIGINS:
         return False
     try:
         kaede, opgave = aktiv_kaede(session_id)

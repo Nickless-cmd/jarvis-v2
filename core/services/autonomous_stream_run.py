@@ -101,10 +101,14 @@ def start_autonomous_stream_run(
     # `detached_run`, saa en fortsaettelse ad denne vej (wakeup-dispatcheren,
     # self-wakeup) fik en frisk post paa forsoeg 0. Skrives synkront FOER
     # traaden og FOER `mark_started`, som arver tallet fra posten.
+    #
+    # OPRINDELSEN afgoer om der stemples i det hele taget: `wakeup` tager en
+    # forpligtelse op, men `agent-completion` goer ikke — en agent der melder
+    # tilbage er et FRISKT arbejde, ikke et led i en anden opgaves kaede.
     try:
         from core.services.in_flight_runs import stempl_aktiv_kaede
 
-        stempl_aktiv_kaede(run_id=run.run_id, session_id=sid)
+        stempl_aktiv_kaede(run_id=run.run_id, session_id=sid, origin=origin)
     except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
         logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
 

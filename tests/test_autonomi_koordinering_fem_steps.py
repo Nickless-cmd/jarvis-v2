@@ -39,7 +39,8 @@ def test_stempl_aktiv_kaede_arver_naar_kaeden_er_i_gang(monkeypatch):
     kald: dict = {}
     monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
 
-    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1") is True
+    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1",
+                                  origin="wakeup") is True
     assert kald["run_id"] == "nyt"
     assert kald["task_id"] == "opg-1", "opgavens id skal følge kæden"
     assert kald["recovery_attempt"] == 3, "kæden skal tælle op, ikke starte forfra"
@@ -57,7 +58,8 @@ def test_stempl_aktiv_kaede_roerer_ikke_en_frisk_opgave(monkeypatch):
     kald: list = []
     monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.append(kw))
 
-    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1") is False
+    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1",
+                                  origin="wakeup") is False
     assert kald == []
 
 
@@ -69,7 +71,8 @@ def test_stempl_aktiv_kaede_er_self_safe(monkeypatch):
         raise RuntimeError("kunne ikke læse journalen")
 
     monkeypatch.setattr(ifr, "aktiv_kaede", braender)
-    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1") is False
+    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1",
+                                  origin="wakeup") is False
 
 
 def test_aktiv_kaede_giver_baade_tal_og_opgave(monkeypatch):
@@ -95,6 +98,76 @@ def test_aktiv_kaede_giver_baade_tal_og_opgave(monkeypatch):
     assert ifr.aktiv_kaede("s1") == (2, "opg-1")
     assert ifr.aktiv_kaede("") == (0, "")
     assert ifr.aktiv_kaede("ukendt-samtale") == (0, "")
+
+
+def test_ny_opgave_i_samme_samtale_arver_ikke_kaeden(monkeypatch):
+    """REGRESSIONSTEST (ChatGPT's indvending, 14/10-2026).
+
+    «En fælles session er ikke dokumentation for en fælles forpligtelse.»
+
+    Opgave A er midt i en kæde i samtalen. En HELT NY opgave B starter i SAMME
+    samtale — en `recurring`-påmindelse, en `scheduled`-opgave, en drøm. B må
+    ikke arve A's task_id. Gjorde den det, havde vi ikke fjernet
+    identitets-problemet, kun vendt det om: to uafhængige opgaver med ÉN
+    identitet.
+
+    Målt ved hvert kaldested: `recurring`, `scheduled`, `dream`, `heartbeat`,
+    `session_spawn` og `agent-completion` starter alle et FRISKT arbejde. Kun
+    `wakeup` (living_executive's genoptagelse) og `inbox` (vækkeren) løfter en
+    forpligtelse der allerede findes.
+    """
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(
+        ifr,
+        "_load",
+        lambda: {
+            "A": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 2,
+                "task_id": "opg-A", "run_id": "A",
+                "started_at": "2026-10-14T10:00:00+00:00",
+            }
+        },
+    )
+    kald: list = []
+    monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.append(kw))
+
+    for ny_origin in ("recurring", "scheduled", "dream", "heartbeat",
+                      "session_spawn", "agent-completion", "autonomous"):
+        assert ifr.stempl_aktiv_kaede(
+            run_id=f"B-{ny_origin}", session_id="s1", origin=ny_origin
+        ) is False, f"«{ny_origin}» starter en NY opgave og må ikke arve kæden"
+    assert kald == [], "ingen ny opgave må få en anden opgaves identitet"
+
+
+def test_en_fortsaettelse_stempler_stadig(monkeypatch):
+    """Gaten må ikke gøre step 1 virkningsløs.
+
+    En vækning der TAGER en forpligtelse op (`wakeup` fra living_executive,
+    `inbox` fra vækkeren) skal stadig arve kæden — ellers er loftet lige så
+    uopnåeligt som før.
+    """
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(
+        ifr,
+        "_load",
+        lambda: {
+            "A": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 2,
+                "task_id": "opg-A", "run_id": "A",
+                "started_at": "2026-10-14T10:00:00+00:00",
+            }
+        },
+    )
+    for origin in ("wakeup", "inbox", "continuation"):
+        kald: dict = {}
+        monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
+        assert ifr.stempl_aktiv_kaede(
+            run_id="ny", session_id="s1", origin=origin
+        ) is True, f"«{origin}» tager en forpligtelse op og skal stemple"
+        assert kald["task_id"] == "opg-A"
+        assert kald["recovery_attempt"] == 3
 
 
 # ── Step 6 — vækningen bærer sin samtale ────────────────────────────────────

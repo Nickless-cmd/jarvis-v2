@@ -1,0 +1,12 @@
+[Unit]
+Description=Detektér ture der ender uden assistent-svar (tavse cutoffs)
+Documentation=https://github.com/Nickless-cmd/jarvis-v2
+
+[Service]
+Type=oneshot
+User=bs
+Environment=PYTHONPATH=/media/projects/jarvis-v2
+# Flyttet ind i repoet 14/10-2026. Stod foer som /usr/local/sbin/jarvis-cutoff-detector.py
+# — uden for git og uden test, mens den skrev til central_incidents.
+ExecStart=/media/projects/jarvis-v2/scripts/cutoff_detector.py
+Nice=15

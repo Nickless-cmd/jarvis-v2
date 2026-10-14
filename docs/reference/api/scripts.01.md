@@ -219,6 +219,22 @@ _CLI for creating a Git commit with canonical actor attribution._
 | function | `_laes_besked` | `(args)` | Beskeden, uanset hvilken vej den kom ind. | [src](../../../scripts/commit_with_attribution.py#L50) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/commit_with_attribution.py#L58) |
 
+## `scripts/cutoff_detector.py`
+_Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `log` | `(msg)` | — | [src](../../../scripts/cutoff_detector.py#L94) |
+| function | `load_seen` | `()` | — | [src](../../../scripts/cutoff_detector.py#L100) |
+| function | `save_seen` | `(seen)` | — | [src](../../../scripts/cutoff_detector.py#L107) |
+| function | `sidste_vaerktoej` | `(content)` | Vaerktoejsnavnet fra en `tool`-raekkes content — eller "-". | [src](../../../scripts/cutoff_detector.py#L117) |
+| function | `til_utc` | `(tekst)` | ISO-tidsstreg -> tz-aware datetime, eller None hvis den er ulaesbar. | [src](../../../scripts/cutoff_detector.py#L142) |
+| function | `api_restarted_near` | `(when)` | Blev jarvis-api genstartet omkring tidspunktet? | [src](../../../scripts/cutoff_detector.py#L158) |
+| function | `doede_runs_uden_svar` | `(con, siden_ts)` | Runs der DOEDE uden at naa at skrive noget. | [src](../../../scripts/cutoff_detector.py#L202) |
+| function | `turen_koerer_stadig` | `(con, sid)` | Er der et LEVENDE visible-run for denne session lige nu? | [src](../../../scripts/cutoff_detector.py#L242) |
+| function | `_genstart_dom` | `(restarted)` | Teksten der gaar i fundet. `None` maa ikke lyde som et svar. | [src](../../../scripts/cutoff_detector.py#L282) |
+| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L291) |
+
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_
 
@@ -430,12 +446,4 @@ _Identity formation monitor — daily snapshot of Jarvis' becoming._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/identity_formation_monitor.py#L36) |
-
-## `scripts/injection_richness_check.py`
-_Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
-| function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/injection_richness_check.py`
+_Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_lines` | `(text)` | — | [src](../../../scripts/injection_richness_check.py#L10) |
+| function | `richness_ok` | `(*, direct, cached)` | — | [src](../../../scripts/injection_richness_check.py#L14) |
+
 ## `scripts/install_git_hooks.py`
 _Install or verify the required commit-attribution Git hooks._
 
@@ -438,13 +446,4 @@ _Peer practice runner — kører kontinuerligt i ~7 dage per peer._
 | function | `_build_prompt` | `(mood, seed_expressions=…)` | Build per-tick prompt fra protokol + mood + valgfri seed. | [src](../../../scripts/peer_practice_runner.py#L39) |
 | function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
 | function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
-
-## `scripts/perception_mix.py`
-_Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L42) |
-| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L64) |
-| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L72) |
 

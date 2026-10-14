@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/perception_mix.py`
+_Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L42) |
+| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L64) |
+| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L72) |
+
 ## `scripts/phase5_analyze.py`
 _Fase 5 «Bor der nogen?» — analyse._
 
@@ -428,13 +437,4 @@ _Vagt: de evner den SERVERENDE vært skal have, skal faktisk være der._
 | function | `_mermaid` | `()` | — | [src](../../../scripts/verify_vaert_evner.py#L59) |
 | function | `tjek` | `()` | Kør alle evne-tjek. Returnér (navn, ok, grund, konsekvens) for hver. | [src](../../../scripts/verify_vaert_evner.py#L72) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vaert_evner.py#L88) |
-
-## `scripts/verify_vagt_graenser.py`
-_Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_importerede_moduler` | `(traeet)` | — | [src](../../../scripts/verify_vagt_graenser.py#L44) |
-| function | `brud` | `()` | — | [src](../../../scripts/verify_vagt_graenser.py#L55) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vagt_graenser.py#L74) |
 

@@ -1,11 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AgentFeedCardBody } from './AgentFeedCard'
-import { getTotpStatus } from '../../lib/totpApi'
-import type { FeedCard } from '../../lib/agentContractApi'
+import { afgoerAgentApproval, type FeedCard } from '../../lib/agentContractApi'
 import type { ApiConfig } from '../../lib/api'
 
-vi.mock('../../lib/totpApi', () => ({ getTotpStatus: vi.fn() }))
+/**
+ * Kode-feltet er VÆK (14/10-2026).
+ *
+ * Denne fil pinnede indtil i dag at et totrinskode-felt blev skjult eller vist alt
+ * efter om brugeren havde sat totrin op. Det var en fejl hele vejen igennem: ruten
+ * krævede koden ved HVER godkendelse, og Bjørn skulle derfor finde telefonen for at
+ * svare på noget han sad foran. Hans egen spec (§6.1) siger det modsatte — TOTP
+ * hører til en FREMMED session; ejeren i sin egen desk-session har fri adgang, fordi
+ * sessionen allerede er bundet til ham.
+ *
+ * Det der bærer sikkerheden nu er identiteten OG sessionen: afgørelsen sendes med
+ * den samtale posten hører til (`origin_session_id`), og serveren afviser et svar fra
+ * en anden. Derfor måler testen her at SESSIONEN følger med — ikke en kode.
+ */
 vi.mock('../../lib/agentContractApi', () => ({
   afgoerAgentApproval: vi.fn(),
   bucketLabel: (b: string) => b,
@@ -32,30 +44,29 @@ function tegn() {
   return render(<AgentFeedCardBody config={cfg} card={kort()} onChanged={() => {}} onError={() => {}} />)
 }
 
-const kodeFelt = (c: HTMLElement) => c.querySelector('input[aria-label="Totrinskode"]')
-
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
-describe('AgentFeedCard — totrinskode-feltet', () => {
-  it('skjuler kode-feltet naar brugeren IKKE har sat totrin op', async () => {
-    // Maalt 8/10-2026: feltet blev tegnet UBETINGET, saa Bjoern blev bedt om en
-    // sekscifret kode han ikke havde — i et kort hvor ruten springer den over.
-    vi.mocked(getTotpStatus).mockResolvedValue({ configured: false, account: null })
+describe('AgentFeedCard — godkendelsen', () => {
+  it('har Godkend og Afvis — og INTET kode-felt', () => {
     const { container } = tegn()
-    await waitFor(() => expect(kodeFelt(container)).toBeNull())
-    expect(container.textContent).toContain('Godkend')      // handlingerne er der stadig
-    expect(container.textContent).toContain('Afvis')
+    expect(container.querySelector('input[aria-label="Totrinskode"]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Godkend' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Afvis' })).toBeInTheDocument()
   })
 
-  it('viser kode-feltet naar brugeren HAR sat totrin op', async () => {
-    vi.mocked(getTotpStatus).mockResolvedValue({ configured: true, account: 'Bjørn' })
-    const { container } = tegn()
-    await waitFor(() => expect(kodeFelt(container)).not.toBeNull())
+  it('sender kortets egen session med afgørelsen — ikke en kode', async () => {
+    vi.mocked(afgoerAgentApproval).mockResolvedValue({ status: 'ok', approval: { status: 'approved' } })
+    tegn()
+    fireEvent.click(screen.getByRole('button', { name: 'Godkend' }))
+    await waitFor(() => expect(afgoerAgentApproval)
+      .toHaveBeenCalledWith(cfg, 'appr-1', 'approve', 'd', 's1'))
   })
 
-  it('viser feltet naar status ikke kan afgoeres — en godkendelse maa ikke blokeres', async () => {
-    vi.mocked(getTotpStatus).mockRejectedValue(new Error('nede'))
-    const { container } = tegn()
-    await waitFor(() => expect(kodeFelt(container)).not.toBeNull())
+  it('Afvis bærer samme session — afvisningen er bundet til posten, ikke til et svar', async () => {
+    vi.mocked(afgoerAgentApproval).mockResolvedValue({ status: 'ok', approval: { status: 'denied' } })
+    tegn()
+    fireEvent.click(screen.getByRole('button', { name: 'Afvis' }))
+    await waitFor(() => expect(afgoerAgentApproval)
+      .toHaveBeenCalledWith(cfg, 'appr-1', 'deny', 'd', 's1'))
   })
 })

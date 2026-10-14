@@ -279,6 +279,47 @@ export async function afgoerAgentApproval(
   }
 }
 
+/** Finder ejerens ventende AGENT-godkendelser — den vej kortet over composeren skal kunne svare på.
+ *
+ *  Indtil 14/10-2026 kendte kortet kun den gamle tool-approval-vej
+ *  (`/chat/approvals/pending`), og den klasse BLOKERER streamen. En agent-godkendelse
+ *  blokerer ingenting — den parkerer et assignment — så den nåede aldrig kortet. Den lå
+ *  kun i notifikations-feedet, præcis som Bjørn formulerede det: «nu dukker de kun op i
+ *  notifikations feed».
+ *
+ *  Vi spørger på TVÆRS af samtaler og gemmer `origin_session_id`, så kun den tilhørende
+ *  chat tegner kortet — samme mønster som `hentVentendeGodkendelseOveralt`. Den ÆLDSTE
+ *  vælges: `list_for_owner` sorterer nyeste først, og den der er tættest på sit udløb er
+ *  den der haster.
+ *
+ *  Et svar fra en anden session afvises af serveren, så et kort der vises det forkerte
+ *  sted kan ikke misbruges — men det kan heller ikke afgøres, og det er derfor sessionen
+ *  følger med hele vejen. */
+export async function hentVentendeAgentGodkendelse(
+  config: ApiConfig,
+): Promise<{ approvalId: string; tool: string; action: string; sessionId: string; digest: string } | null> {
+  try {
+    const r = await apiFetch<{ approvals?: ContractApproval[] }>(
+      config, '/agents/approvals?status=pending', { retries: 0 },
+    )
+    const liste = r?.approvals || []
+    if (!liste.length) return null
+    const a = liste[liste.length - 1]
+    if (!a) return null
+    const id = String(a.approval_id || '')
+    if (!id) return null
+    return {
+      approvalId: id,
+      tool: String(a.tool_name || 'agent'),
+      action: String(a.safe_view || a.tool_name || '').slice(0, 400),
+      sessionId: String(a.origin_session_id || ''),
+      digest: String(a.args_digest || ''),
+    }
+  } catch {
+    return null   // intet kort er et gyldigt svar; en fejl må ikke vise et falsk kort
+  }
+}
+
 // ── Visning ──────────────────────────────────────────────────────────────
 
 const LABEL: Record<string, string> = {

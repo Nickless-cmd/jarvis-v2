@@ -3,6 +3,7 @@ import { lavVaerdiLager, type VaerdiLager } from '../lib/vaerdiLager'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
 import { cancelRun, approveTool, denyTool, followRun, hentVentendeGodkendelseOveralt } from '../lib/api'
+import { afgoerAgentApproval, hentVentendeAgentGodkendelse } from '../lib/agentContractApi'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 import { lastTextBlock } from '../lib/blockHelpers'
@@ -117,6 +118,28 @@ export interface PendingApproval {
   tool: string
   action: string
   sessionId: string
+  /** Hvilken AFGØRELSES-vej kortet skal bruge (14/10-2026).
+   *
+   *  Der findes to slags godkendelser, og de har hver sin rute:
+   *
+   *  * `tool`  — den gamle klasse. Serveren BLOKERER streamen indtil svar, og
+   *    afgørelsen går over `/chat/approvals` (`approveTool`/`denyTool`).
+   *  * `agent` — et kontrakt-bundet agents værktøjskald. Den blokerer INGEN
+   *    stream; den parkerer et assignment, og afgørelsen går over
+   *    `/agents/approvals/{id}/decision` med den `digest` der binder svaret til
+   *    netop dét kald.
+   *
+   *  Uden dette felt kendte kortet kun den første vej. En agent-godkendelse
+   *  nåede derfor ALDRIG kortet over composeren — den lå kun i
+   *  notifikations-feedet, som Bjørn selv formulerede det: «nu dukker de kun op
+   *  i notifikations feed». Samme post, to flader; kun den ene kunne svare.
+   *
+   *  Fraværende = `tool`: alle eksisterende kaldesteder er den gamle vej. */
+  kind?: 'tool' | 'agent'
+  /** Bindende digest for en agent-godkendelse. Ændres argumenterne, afviser
+   *  serveren svaret og kræver et nyt kort — så et gammelt kort kan ikke
+   *  godkende en handling nogen har ændret undervejs. */
+  digest?: string
 }
 
 export interface PendingAppAction {
@@ -235,6 +258,10 @@ export function StreamProvider({
   // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
   const [workingSessionId, setWorkingSessionId] = useState<string | null>(null)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
+  /** Samme post læst gennem en ref: `approve`/`deny` skal kunne se HVILKEN slags kort
+   *  der venter, uden at skifte identitet hver gang et kort kommer eller ryger. */
+  const pendingApprovalRef = useRef<PendingApproval | null>(null)
+  useLayoutEffect(() => { pendingApprovalRef.current = pendingApproval }, [pendingApproval])
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
   const [autoContinue, setAutoContinue] = useState<string | null>(null)
   const autoContinueRef = useRef<string | null>(null)
@@ -444,20 +471,29 @@ export function StreamProvider({
     setOverride(null)
   }, [])
 
-  const approve = useCallback((approvalId: string) => {
-    setPendingApproval(null) // optimistisk — streamen fortsætter når serveren resolver
-    void approveTool(config, approvalId).catch((e) => {
+  /** Afgør det ventende kort — ad den vej posten kom fra.
+   *
+   *  Der findes to slags godkendelser, og de har hver sin rute (14/10-2026). Kortet
+   *  kender kun `approvalId`; slagsen bor i tilstanden. Uden denne forgrening ville et
+   *  agent-kort blive sendt til tool-ruten, som ikke kender posten — og afgørelsen
+   *  ville forsvinde uden at nogen opdagede det.
+   *
+   *  `kind` er fraværende på alt der kom før feltet fandtes, og betyder `tool`. */
+  const afgoer = useCallback((approvalId: string, decision: 'approve' | 'deny') => {
+    const post = pendingApprovalRef.current
+    setPendingApproval(null) // optimistisk — serveren resolver
+    const fejl = (e: unknown) => {
       setError(e as Error)
-      setStreamError(handlingTilInfo('Kunne ikke godkende værktøjet', e))
-    })
+      setStreamError(handlingTilInfo(decision === 'approve' ? 'Kunne ikke godkende' : 'Kunne ikke afvise', e))
+    }
+    if (post?.approvalId === approvalId && post.kind === 'agent') {
+      void afgoerAgentApproval(config, approvalId, decision, post.digest || '', post.sessionId).catch(fejl)
+      return
+    }
+    void (decision === 'approve' ? approveTool(config, approvalId) : denyTool(config, approvalId)).catch(fejl)
   }, [config])
-  const deny = useCallback((approvalId: string) => {
-    setPendingApproval(null)
-    void denyTool(config, approvalId).catch((e) => {
-      setError(e as Error)
-      setStreamError(handlingTilInfo('Kunne ikke afvise værktøjet', e))
-    })
-  }, [config])
+  const approve = useCallback((approvalId: string) => afgoer(approvalId, 'approve'), [afgoer])
+  const deny = useCallback((approvalId: string) => afgoer(approvalId, 'deny'), [afgoer])
 
   const clearAppAction = useCallback(() => setPendingAppAction(null), [])
   const armAutoContinue = useCallback((message: string) => {
@@ -511,7 +547,18 @@ export function StreamProvider({
       // desk selv har en tur i gang.
       if (!maaPolle('ventende-godkendelse', 4000, { ignorerSkjult: true, loftMs: 20_000 })) return
       void hentVentendeGodkendelseOveralt(cfg).then((k) => {
-        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId })
+        if (!levende) return
+        if (k) {
+          setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId, kind: 'tool' })
+          return
+        }
+        // Den gamle vej svarede intet. Spørg AGENT-vejen (14/10-2026): en
+        // agent-godkendelse blokerer ingen stream, så den kommer ALDRIG som et
+        // live-event i denne samtale — den venter i lageret indtil nogen svarer.
+        // Uden dette kald kendte kortet den ikke, og posten lå kun i feedet.
+        void hentVentendeAgentGodkendelse(cfg).then((a) => {
+          if (levende && a) setPendingApproval({ ...a, kind: 'agent' })
+        })
       })
     }
     const id = window.setInterval(spoerg, 2000)

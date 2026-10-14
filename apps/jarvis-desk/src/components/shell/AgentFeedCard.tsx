@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ShieldAlert, CircleAlert, CircleCheck, Bot, HelpCircle } from 'lucide-react'
 import { afgoerAgentApproval, bucketLabel, type FeedCard } from '../../lib/agentContractApi'
 import type { ApiConfig } from '../../lib/api'
-import { getTotpStatus } from '../../lib/totpApi'
 import '../../styles/agent-contract.css'
 
 const MODEL_CLAIM: Record<string, string> = {
@@ -30,27 +29,8 @@ export function AgentFeedCardBody({
   onChanged: () => void
   onError: (message: string) => void
 }) {
-  const [kode, setKode] = useState('')
   const [travl, setTravl] = useState(false)
-  /**
-   * Totrinskoden kraeves KUN hvis brugeren har sat totrin op — ruten springer den
-   * over ellers (`agent_approvals._kraev_totrin_ved_godkendelse`). Feltet blev tegnet
-   * UBETINGET, saa Bjoern 8/10-2026 blev bedt om en sekscifret kode han ikke havde,
-   * i et kort hvor den ikke blev brugt til noget. ``null`` = vi ved det ikke endnu
-   * (eller status-ruten fejlede): vis feltet, for en godkendelse maa ikke blokeres
-   * af en manglende status.
-   */
-  const [totpAktiv, setTotpAktiv] = useState<boolean | null>(null)
   const a = card.approval
-  const approvalId = a?.approval_id ?? ''
-  useEffect(() => {
-    if (!approvalId) return
-    let lever = true
-    void getTotpStatus(config)
-      .then((s) => { if (lever) setTotpAktiv(Boolean(s.configured)) })
-      .catch(() => { if (lever) setTotpAktiv(null) })
-    return () => { lever = false }
-  }, [config, approvalId])
   const sidste = (card.error?.code || card.error?.reason)
     ? [card.error?.phase && `fase ${card.error.phase}`, card.error?.code, card.error?.reason].filter(Boolean).join(' · ')
     : ''
@@ -59,8 +39,10 @@ export function AgentFeedCardBody({
     if (!a) return
     setTravl(true); onError('')
     try {
-      await afgoerAgentApproval(config, a.approval_id, decision, a.digest, kode)
-      setKode('')
+      // Sessionen følger med, ikke en kode (14/10-2026): ruten bærer identiteten og
+      // binder afgørelsen til den session approvalen blev født i. `origin_session_id`
+      // er kortets egen — det er den samtale posten hører til.
+      await afgoerAgentApproval(config, a.approval_id, decision, a.digest, card.origin_session_id)
       onChanged()
     } catch (reason) {
       onError(reason instanceof Error ? reason.message : 'Afgørelsen kunne ikke sendes.')
@@ -82,10 +64,6 @@ export function AgentFeedCardBody({
       )}
       {a && (
         <div className="ac-kort-handlinger">
-          {totpAktiv !== false && (
-            <input aria-label="Totrinskode" inputMode="numeric" autoComplete="one-time-code" placeholder="Totrinskode"
-                   value={kode} onChange={(e) => setKode(e.target.value)} />
-          )}
           <button type="button" disabled={travl} onClick={() => void afgoer('approve')}>Godkend</button>
           <button type="button" disabled={travl} onClick={() => void afgoer('deny')}>Afvis</button>
         </div>

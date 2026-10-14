@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import fixture from './__fixtures__/agentContract.json'
 import {
-  afgoerAgentApproval, bucketLabel, erKontraktAaben, erKontraktAktiv, getKontraktAgent, kontraktBesked,
+  afgoerAgentApproval, bucketLabel, erKontraktAaben, erKontraktAktiv, getKontraktAgent,
+  hentVentendeAgentGodkendelse, kontraktBesked,
   kontraktVarighed, kvitteringTekst,
   type ContractAgentRow, type ContractApproval, type ContractCounts, type ContractDetail, type ContractReceipt,
   type FeedCard,
@@ -105,15 +106,34 @@ describe('fejloversættelse', () => {
     await expect(kontraktBesked(cfg, 'a1', 'hej')).rejects.toThrow(/slukket|ret til/)
   })
 
-  it('approval-afgørelsen bærer digest og kode, og fejlene forklares', async () => {
+  it('approval-afgørelsen bærer digest og session, og fejlene forklares', async () => {
     const f = vi.fn().mockResolvedValue(new Response('{}', { status: 410 }))
     vi.stubGlobal('fetch', f)
-    await expect(afgoerAgentApproval(cfg, 'ap1', 'approve', 'dig', '123456')).rejects.toThrow('udløbet')
+    await expect(afgoerAgentApproval(cfg, 'ap1', 'approve', 'dig', 's1')).rejects.toThrow('udløbet')
     const [url, init] = f.mock.calls[0]!
     expect(String(url)).toBe('http://test/agents/approvals/ap1/decision')
-    expect(JSON.parse(init.body)).toEqual({ decision: 'approve', digest: 'dig', kode: '123456' })
+    expect(JSON.parse(init.body)).toEqual({ decision: 'approve', digest: 'dig', session: 's1' })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })))
-    await expect(afgoerAgentApproval(cfg, 'ap1', 'approve', 'dig', '')).rejects.toThrow(/totrinskode/)
+    await expect(afgoerAgentApproval(cfg, 'ap1', 'approve', 'dig', 's1')).rejects.toThrow(/må ikke afgøre/)
+  })
+
+  it('finder den ÆLDSTE ventende agent-godkendelse — den der er tættest på sit udløb', async () => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ approvals: [
+      { approval_id: 'ny', tool_name: 'bash', safe_view: 'ls', args_digest: 'd2', origin_session_id: 's2' },
+      { approval_id: 'gammel', tool_name: 'write_file', safe_view: 'skriv', args_digest: 'd1', origin_session_id: 's1' },
+    ] }), { status: 200 }))
+    vi.stubGlobal('fetch', f)
+    expect(await hentVentendeAgentGodkendelse(cfg)).toEqual({
+      approvalId: 'gammel', tool: 'write_file', action: 'skriv', sessionId: 's1', digest: 'd1',
+    })
+    expect(String(f.mock.calls[0]![0])).toBe('http://test/agents/approvals?status=pending')
+  })
+
+  it('ingen ventende — eller en fejl — giver null, aldrig et falsk kort', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"approvals":[]}', { status: 200 })))
+    expect(await hentVentendeAgentGodkendelse(cfg)).toBeNull()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
+    expect(await hentVentendeAgentGodkendelse(cfg)).toBeNull()
   })
 
   it('ingen anmodning bærer ejer eller session', async () => {

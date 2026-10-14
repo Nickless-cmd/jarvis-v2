@@ -137,23 +137,24 @@ describe('NotifikationsFeed — agentkort', () => {
     expect(aabnSession).toHaveBeenCalledWith(udenSession)
   })
 
-  it('en approval afgøres med netop dens digest og totrinskode — og først da hentes feedet igen', async () => {
+  it('en approval afgøres med netop dens digest og SESSION — og først da hentes feedet igen', async () => {
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
     const k = await screen.findByTestId('notif-agent-appr-1')
     const rk = k.closest('li')!
-    fireEvent.change(within(rk).getByLabelText('Totrinskode'), { target: { value: '123456' } })
     const foer = feed.mock.calls.length
     fireEvent.click(within(rk).getByRole('button', { name: 'Godkend' }))
-    await waitFor(() => expect(afgoer).toHaveBeenCalledWith(cfg, 'appr-1', 'approve', 'dig-123', '123456'))
+    // Sessionen, ikke en totrinskode (14/10-2026): ruten bærer identiteten og
+    // binder afgørelsen til den samtale posten blev født i.
+    await waitFor(() => expect(afgoer).toHaveBeenCalledWith(cfg, 'appr-1', 'approve', 'dig-123', udenSession))
     await waitFor(() => expect(feed.mock.calls.length).toBeGreaterThan(foer))
   })
 
-  it('Afvis sender ingen kode, og en afvist godkendelse viser serverens grund', async () => {
+  it('Afvis bærer samme session, og en afvist godkendelse viser serverens grund', async () => {
     afgoer.mockRejectedValue(new Error('Godkendelsen er udløbet.'))
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
     const rk = (await screen.findByTestId('notif-agent-appr-1')).closest('li')!
     fireEvent.click(within(rk).getByRole('button', { name: 'Afvis' }))
-    await waitFor(() => expect(afgoer).toHaveBeenCalledWith(cfg, 'appr-1', 'deny', 'dig-123', ''))
+    await waitFor(() => expect(afgoer).toHaveBeenCalledWith(cfg, 'appr-1', 'deny', 'dig-123', udenSession))
     expect(await screen.findByText('Godkendelsen er udløbet.')).toBeInTheDocument()
   })
 

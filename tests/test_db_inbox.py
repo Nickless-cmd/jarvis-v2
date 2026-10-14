@@ -268,6 +268,63 @@ def test_en_post_UDEN_frist_udloeber_ALDRIG(db):
                          kilde_id="job-evig")["status"] == db_inbox.STATUS_AABEN
 
 
+# ── Oprydning af informerende poster (14/10-2026) ───────────────────────────
+
+def test_en_foraeldet_informerende_post_udsættes_af_fejeren(db):
+    """En post UDEN frist havde ingen vej ud over et manuelt `inbox_done`.
+
+    Målt 14/10-2026: en `run_closure`-post (id 2869) stod åben efter at have
+    beskrevet en tilstand der var væk — filerne var committet to timer efter
+    posten blev skrevet. Uden denne fejer stod den for evigt, og «N åbne
+    poster» voksede med poster der ikke er opgaver.
+    """
+    _opret("info-gammel", kildetype="run_closure", kraever_handling=False)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-8 * 86400), "info-gammel"))
+    r = db_inbox.luk_forældede_informerende(dage=7)
+    assert r["opryddet"] == 1
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="info-gammel")
+    # `drop` — ikke `done`: kilden kan genoplive posten hvis den stadig er
+    # aktuel. Fejeren udsætter, den sletter ikke.
+    assert p["status"] == db_inbox.STATUS_DROP
+    assert p["kraever_handling"] is False
+
+
+def test_fejeren_roerer_IKKE_en_FRISK_informerende_post(db):
+    """Modprøven. Uden den kunne en fejer der lukkede ALT bestå testen ovenfor."""
+    _opret("info-frisk", kildetype="run_closure", kraever_handling=False)
+    assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 0
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="info-frisk")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_fejeren_roerer_IKKE_en_GATENDE_post(db):
+    """Frist-mekanismen er urørt.
+
+    En post der kan nægte en mutation har sin EGEN vej ud (`fej_udloebne`), og
+    de tre tests ovenfor værner det valg. Sweepen må ikke blive en bagdør der
+    alligevel giver gatende poster en anden levetid.
+    """
+    _opret("gate-gammel", kildetype="job", kraever_handling=True)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-8 * 86400), "gate-gammel"))
+    assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 0
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="gate-gammel")["status"] == db_inbox.STATUS_AABEN
+
+
+def test_fejeren_er_IDEMPOTENT(db):
+    """Kørt to gange må den ikke tælle samme post to gange."""
+    _opret("info-2x", kildetype="run_closure", kraever_handling=False)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-8 * 86400), "info-2x"))
+    assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 1
+    assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 0
+
+
 def test_en_UPARSABEL_frist_BEVARER_posten(db):
     """Fald mod at bevare. Godkendelsernes præcedens gør det modsatte
     (`except ValueError: expires_at = now`, altså «udløbet NU»), og det er

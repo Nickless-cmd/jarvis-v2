@@ -84,6 +84,51 @@ def test_huset_kan_ikke_spoofe_jarvis_ejerskab(inbox_db):
         "et paastaaet ejerskab blev taget for et bevis"
 
 
+# ── Informerende poster der ikke er opgaver (14/10-2026) ────────────────────
+
+def test_en_beslutnings_post_efterlader_INGEN_aaben_post(inbox_db):
+    """En beslutning er ikke et stykke arbejde der venter.
+
+    Målt 14/10-2026: fem beslutnings-poster stod åbne 1-3 dage (id 2424, 2436,
+    2487, 2552, 2660) indtil manuel `inbox_drop`. De lever i `dec_*`-registret
+    og vises i BESLUTNINGER-sektionen; spejlingen til `inbox_items` må bevare
+    sporet uden at påstå at der venter en opgave.
+    """
+    r = inbox_state.registrer_kilde(
+        bruger_id=BJORN, kildetype="decision", kilde_id="dec-1",
+        beskrivelse="[imperativ 33%] undgaa X",
+        afsluttet_ved_registrering=True)
+    assert r["status"] == "ok"
+    assert r["post"]["status"] == db_inbox.STATUS_DONE, \
+        "posten stod aaben — den ville vokse i «N aabne poster» for evigt"
+
+
+def test_den_afsluttede_post_GENAABNES_ikke_ved_naeste_registrering(inbox_db):
+    """`done` — ikke `drop` — og det er hele pointen.
+
+    `drop` står i `GENAABNING_STATUSSER`, så en droppet post ville blive
+    genåbnet ved næste registrering (gaten kalder denne vej hver runde), og den
+    falske opgave ville være tilbage. `done` er terminal.
+    """
+    for _ in range(2):
+        r = inbox_state.registrer_kilde(
+            bruger_id=BJORN, kildetype="decision", kilde_id="dec-2",
+            beskrivelse="[advisory 10%] undgaa Y",
+            afsluttet_ved_registrering=True)
+    assert r["post"]["status"] == db_inbox.STATUS_DONE
+
+
+def test_UDEN_flaget_staar_posten_stadig_aaben(inbox_db):
+    """Modprøven: flaget må ikke ændre adfærden for alle andre kilder.
+
+    En `daemon`-post er husets og skal stadig kunne ses som åben indtil nogen
+    kvitterer den.
+    """
+    r = inbox_state.registrer_kilde(
+        bruger_id=BJORN, kildetype="daemon", kilde_id="daemon-1")
+    assert r["post"]["status"] == db_inbox.STATUS_AABEN
+
+
 def test_et_run_id_der_IKKE_koerer_er_ikke_proveniens(inbox_db):
     """Den anden halvdel af samme spoofing: ret format, forkert run.
 

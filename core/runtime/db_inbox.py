@@ -828,6 +828,63 @@ def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
     return {"status": "ok", "fejet": int(n or 0), "bagudfyldt": int(bagudfyldt or 0)}
 
 
+# ── Oprydning af informerende poster (14/10-2026) ───────────────────────────
+#
+# BESLUTNINGEN: en informerende post får INGEN frist — det er et bevidst valg,
+# og det står i `opret_eller_hent` med sin egen begrundelse («en post må ikke
+# kunne gate i det uendelige»; fristen hænger sammen med gating). Men valget
+# havde en konsekvens ingen havde målt: uden frist OG uden en fejer stod
+# posten `aaben` for EVIGT. Målt 14/10-2026: `run_closure`-post 2869 sagde
+# «run efterlod 4 ucommitteret fil(er)» kl. 05:01 — filerne blev committet
+# 07:01, og intet kobler posten til den tilstand den beskriver. Den stod
+# stadig åben, sandheden var væk, og tælleren «N åbne poster» voksede
+# monotont med poster der ikke er opgaver.
+#
+# Løsningen rører IKKE frist-mekanismen (de tre tests der værner den er
+# stadig sande): den giver informerende poster deres egen, langsommere vej ud.
+# `drop` — ikke `done` — fordi `drop` er i `GENAABNING_STATUSSER`: en kilde
+# der STADIG melder posten aktuel genåbner den ved næste registrering. Fejeren
+# udsætter altså, den sletter ikke — samme semantik som resten af huset.
+
+#: Hvor længe en informerende post må stå åben før fejeren udsætter den.
+#: Syv dage: en uge er nok til at en post man faktisk skulle handle på er
+#: blevet set, og kort nok til at tælleren ikke bærer måneders støj.
+_OPRYDNING_DAGE: Final[int] = 7
+
+
+def luk_forældede_informerende(
+    *, dage: int | None = None, maks: int = 500
+) -> dict[str, Any]:
+    """Udsæt informerende poster der har stået åbne for længe.
+
+    «Informerende» = `kraever_handling = 0 AND bloker = 0`: en post der
+    hverken kan nægte en mutation eller er flagget af et menneske. Den har
+    ingen frist (se beslutningen ovenfor), så uden denne fejer har den ingen
+    vej ud over et manuelt `inbox_done`.
+
+    `status = 'aaben'` i WHERE gør skrivningen idempotent: kørt to gange
+    tæller den ikke samme post to gange.
+    """
+    dage_n = int(dage if dage is not None else _OPRYDNING_DAGE)
+    graense = (datetime.now(UTC) - timedelta(days=dage_n)).isoformat()
+    with connect() as conn:
+        _ensure_skema(conn)
+        cur = conn.execute(
+            "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
+            "afgjort_at = ?, afgjort_grund = ? "
+            "WHERE status = ? AND kraever_handling = 0 AND bloker = 0 "
+            "AND created_at < ? "
+            "AND id IN (SELECT id FROM inbox_items WHERE status = ? "
+            "           AND kraever_handling = 0 AND bloker = 0 "
+            "           AND created_at < ? LIMIT ?)",
+            (STATUS_DROP, _nu(), f"informerende post — udsat efter {dage_n} dage",
+             STATUS_AABEN, graense, STATUS_AABEN, graense, max(int(maks), 1)))
+        n = cur.rowcount
+    if n:
+        logger.info("db_inbox: udsatte %d forældet informerende post(er)", n)
+    return {"status": "ok", "opryddet": int(n or 0)}
+
+
 # ── Opgave 9: kildens terminale tilstand ────────────────────────────────────
 #
 # BESLUTNINGEN (trin 1): mulighed **(b)** — en indholdsregel nedgraderer posten

@@ -92,14 +92,29 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
         # fælles fejlpunkt ville gøre det ene subsystems fejl til det andets.
         # Fejlen er stadig LOUD — den logges og står i `sidste_resultat()`.
         try:
-            from core.runtime.db_inbox import fej_udloebne
+            from core.runtime.db_inbox import (
+                fej_udloebne,
+                luk_forældede_informerende,
+            )
             udloebne_indbakke = int(fej_udloebne().get("fejet") or 0)
+            # ── Oprydning af informerende poster (14/10-2026) ───────────────
+            #
+            # En informerende post får INGEN frist (bevidst valg, se
+            # `opret_eller_hent`), så uden denne fejer har den ingen vej ud
+            # over et manuelt `inbox_done`. Målt: en `run_closure`-post stod
+            # åben efter at have beskrevet en tilstand der var væk.
+            #
+            # Samme kadence og samme sted som `fej_udloebne`: begge svarer på
+            # «en post ingen læser skal alligevel have sin tilstand skrevet».
+            opryddede_indbakke = int(
+                luk_forældede_informerende().get("opryddet") or 0)
         except Exception as exc:  # noqa: BLE001
             logger.warning("approval_expiry: indbakkens fejer kunne ikke køre: %s", exc)
             # -1, ikke 0: «kunne ikke køre» og «intet at feje» må ikke se ens
             # ud. Det er husets hyppigste fejlform, og her ville den skjule at
             # en fejer er død bag et tal der betyder «alt er fint».
             udloebne_indbakke = -1
+            opryddede_indbakke = -1
     except Exception as exc:
         # Familien isolerer allerede fejl, men en fejer der stille holder op
         # med at virke er praecis den fejl denne fil blev skrevet for at rette.
@@ -111,7 +126,8 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
     _last_tick_at = nu
     _last_result = {"fejet": True, "udloebet": antal,
                     "foraeldreloese_afsendelser": foraeldreloese,
-                    "udloebne_indbakke": udloebne_indbakke}
+                    "udloebne_indbakke": udloebne_indbakke,
+                    "opryddede_indbakke": opryddede_indbakke}
 
     if foraeldreloese:
         logger.warning("approval_expiry: %d afsendelse(r) uden afslutning — "

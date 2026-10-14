@@ -403,6 +403,7 @@ def registrer_kilde(
     output_sti: str = "",
     output_bytes: int | None = None,
     expires_at: str = "",
+    afsluttet_ved_registrering: bool = False,
 ) -> dict[str, Any]:
     """Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id).
 
@@ -500,6 +501,31 @@ def registrer_kilde(
         if o.get("status") == "ok":
             r = {**r, "post": o.get("post") or post}
             post = r["post"]
+    # ── Informerende poster der ikke er opgaver (målt 14/10-2026) ───────────
+    #
+    # Nogle kildetyper spejles til indbakken som INFORMATION, ikke som arbejde:
+    # en beslutning lever i `behavioral_decisions` (dec_*), vises i
+    # BESLUTNINGER-sektionen, og har sin EGEN eskalering i gaten. Alligevel
+    # blev den spejlet med `status='aaben'` — og intet lukkede den, fordi
+    # `kraever_handling=0` betyder «ingen frist». Målt: fem beslutnings-poster
+    # stod åbne 1-3 dage (id 2424, 2436, 2487, 2552, 2660) indtil manuel
+    # `inbox_drop`, og «N åbne poster» voksede med poster der ikke er opgaver.
+    #
+    # `done` — IKKE `drop` — og det er hele pointen: `drop` står i
+    # `GENAABNING_STATUSSER`, så en droppet post ville blive GENÅBNET ved
+    # næste registrering, og den falske opgave ville være tilbage. `done` er
+    # terminal og kan ikke genoplives af sin kilde.
+    if afsluttet_ved_registrering:
+        a = db_inbox.afgoer(
+            bruger_id=bruger_id, kilde_id=kilde_id,
+            ny_status=db_inbox.STATUS_DONE,
+            grund="informerende post — kilden ejer den, ikke indbakken",
+        )
+        if a.get("status") in ("ok", "allerede"):
+            frisk = db_inbox.hent(bruger_id=bruger_id, kilde_id=kilde_id)
+            if frisk is not None:
+                r = {**r, "post": frisk, "afsluttet": True}
+                post = frisk
     if int(post.get("paamindelser") or 0) == 0 and not post.get("afgjort_at"):
         _spor("inbox.registreret", {
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,

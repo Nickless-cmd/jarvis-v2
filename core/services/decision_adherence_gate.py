@@ -287,6 +287,12 @@ def registrer_i_indbakken(bruger_id: str) -> dict[str, Any]:
             # `decision` kan ikke gate, så det flytter etiketten og intet andet.
             kilde_ejer=str(d.get("created_by") or ""),
             beskrivelse=f"[{baand} {score:.0%}] {str(d.get('directive') or '')}",
+            # Posten er ikke et stykke arbejde der venter (målt 14/10-2026).
+            # Den lever i dec_*-registret og vises i BESLUTNINGER-sektionen;
+            # spejlingen her bevarer sporet uden at påstå at der venter en
+            # opgave. Uden dette stod fem poster åbne 1-3 dage indtil manuel
+            # `inbox_drop` — og «N åbne poster» voksede monotont.
+            afsluttet_ved_registrering=True,
         )
         if r.get("status") == "ok":
             oprettet += 1

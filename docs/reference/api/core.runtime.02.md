@@ -135,9 +135,9 @@ _Embeddings store — unified vector index across all memory surfaces._
 | function | `upsert_embedding` | `(*, source_table, source_id, modality, content_hash, embedding_bytes, model_version)` | Insert or overwrite the embedding for a given source row. | [src](../../../core/runtime/db_embeddings.py#L39) |
 | function | `get_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L78) |
 | function | `delete_embedding` | `(source_table, source_id)` | — | [src](../../../core/runtime/db_embeddings.py#L93) |
-| function | `list_embeddings` | `(*, modalities=…, source_tables=…, limit=…)` | Return raw embedding rows (including blobs). Caller decodes. | [src](../../../core/runtime/db_embeddings.py#L104) |
-| function | `count_embeddings` | `(*, modality=…, source_table=…)` | — | [src](../../../core/runtime/db_embeddings.py#L133) |
-| function | `list_indexed_source_ids` | `(source_table)` | Return the set of source_ids already indexed for a given table. | [src](../../../core/runtime/db_embeddings.py#L156) |
+| function | `list_embeddings` | `(*, modalities=…, source_tables=…, limit=…, user_id=…, private_statuses=…)` | Return raw embedding rows (including blobs). Caller decodes. | [src](../../../core/runtime/db_embeddings.py#L104) |
+| function | `count_embeddings` | `(*, modality=…, source_table=…)` | — | [src](../../../core/runtime/db_embeddings.py#L157) |
+| function | `list_indexed_source_ids` | `(source_table)` | Return the set of source_ids already indexed for a given table. | [src](../../../core/runtime/db_embeddings.py#L180) |
 
 ## `core/runtime/db_emotional_memory.py`
 _DB helpers for emotional_memory_anchors table._
@@ -153,6 +153,19 @@ _DB helpers for emotional_memory_anchors table._
 | function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_emotional_memory.py#L244) |
 | function | `aggregate_emotional_memory_anchors` | `()` | Tællinger over HELE tabellen — ikke over de seneste N rækker. | [src](../../../core/runtime/db_emotional_memory.py#L265) |
 
+## `core/runtime/db_experiential_memory.py`
+_User-scoped persistence for experiential memories._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_experiential_memory.py#L10) |
+| function | `_scope` | `(user_id)` | — | [src](../../../core/runtime/db_experiential_memory.py#L14) |
+| function | `_ensure_cognitive_experiential_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_experiential_memory.py#L22) |
+| function | `insert_cognitive_experiential_memory` | `(*, memory_id, session_id=…, run_id=…, narrative=…, user_mood=…, jarvis_mood=…, key_lesson=…, emotion_arc=…, topic=…, importance=…, user_id=…)` | — | [src](../../../core/runtime/db_experiential_memory.py#L46) |
+| function | `reinforce_experiential_memory` | `(memory_id, *, user_id=…)` | — | [src](../../../core/runtime/db_experiential_memory.py#L66) |
+| function | `list_cognitive_experiential_memories` | `(*, limit=…, user_id=…)` | — | [src](../../../core/runtime/db_experiential_memory.py#L75) |
+| function | `get_experiential_memory_candidates` | `(*, limit=…, user_id=…)` | — | [src](../../../core/runtime/db_experiential_memory.py#L95) |
+
 ## `core/runtime/db_fts.py`
 _FTS5 full-text search over session summaries and chat messages._
 
@@ -165,7 +178,7 @@ _FTS5 full-text search over session summaries and chat messages._
 | function | `to_match_query` | `(query, *, max_terms=…)` | Turn free text into a tolerant FTS5 MATCH expression. | [src](../../../core/runtime/db_fts.py#L109) |
 | function | `_bm25_to_score` | `(rank)` | FTS5 bm25() returns lower-is-better negative numbers; map to (0, 1]. | [src](../../../core/runtime/db_fts.py#L128) |
 | function | `search_session_summaries` | `(query, *, limit=…)` | Keyword search over session_summaries FOR THIS USER. | [src](../../../core/runtime/db_fts.py#L136) |
-| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L196) |
+| function | `search_chat_messages` | `(query, *, limit=…, session_id=…, role=…)` | Keyword search over chat_messages FOR THIS USER. Each hit: id, message_id, | [src](../../../core/runtime/db_fts.py#L210) |
 
 ## `core/runtime/db_gate_verdicts.py`
 _Gate-verdict-ledger — PERSISTENT optælling af hvert governet gate-udfald._
@@ -927,17 +940,4 @@ _Persistence for the runtime learning/outcome signal tables._
 | function | `recent_runtime_learning_signals` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_signals.py#L146) |
 | function | `record_runtime_action_outcome` | `(*, action_id, decision_mode, decision_reason, decision_score, payload_json, result_status, result_summary, result_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L171) |
 | function | `record_runtime_learning_signal` | `(*, outcome_id, source_action_id, target_action_id, target_family, target_domain, signal_key, signal_weight, signal_count, metadata_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L239) |
-
-## `core/runtime/db_runtime_tasks.py`
-_Persistence for the `runtime_tasks` table — Jarvis' durable task queue._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_omdoeb_run_id_til_origin_ref` | `(conn)` | Kolonnen hed `run_id` og indeholdt ikke et run. | [src](../../../core/runtime/db_runtime_tasks.py#L13) |
-| function | `ensure_runtime_tasks_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L41) |
-| function | `_runtime_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L81) |
-| function | `create_runtime_task` | `(*, task_id, kind, origin, status, goal, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L103) |
-| function | `get_runtime_task` | `(task_id)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L174) |
-| function | `list_runtime_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L207) |
-| function | `update_runtime_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L253) |
 

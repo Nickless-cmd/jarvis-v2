@@ -617,33 +617,28 @@ _Persistence for the cognitive + experiential-memory domain._
 | function | `insert_cognitive_user_emotional_state` | `(*, state_id, detected_mood, confidence=…, evidence=…, user_message_preview=…, response_adjustment=…, run_id=…)` | Insert or replace a user-emotional-state row keyed by state_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1426) |
 | function | `get_latest_cognitive_user_emotional_state` | `()` | Return the most recently created user-emotional-state row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L1455) |
 | function | `list_cognitive_user_emotional_states` | `(*, limit=…)` | Return up to `limit` user-emotional-state rows (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1476) |
-| function | `_ensure_cognitive_experiential_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1497) |
-| function | `insert_cognitive_experiential_memory` | `(*, memory_id, session_id=…, run_id=…, narrative=…, user_mood=…, jarvis_mood=…, key_lesson=…, emotion_arc=…, topic=…, importance=…)` | Insert or replace an experiential memory keyed by memory_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1521) |
-| function | `reinforce_experiential_memory` | `(memory_id)` | Bump reinforcement_count by 1 and reset decay_score to 0 for the given memory. Returns None. | [src](../../../core/runtime/db_cognitive.py#L1554) |
-| function | `list_cognitive_experiential_memories` | `(*, limit=…)` | Return up to `limit` experiential memories (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1568) |
-| function | `get_experiential_memory_candidates` | `(*, limit=…)` | Return candidate memories for LLM-based associative scoring. | [src](../../../core/runtime/db_cognitive.py#L1594) |
-| function | `_ensure_cognitive_self_surprises_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1628) |
-| function | `insert_cognitive_self_surprise` | `(*, surprise_id, surprise_type, narrative, expected_confidence=…, actual_outcome=…, domain=…, run_id=…)` | Insert or replace a self-surprise keyed by surprise_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1646) |
-| function | `list_cognitive_self_surprises` | `(*, limit=…)` | Return up to `limit` self-surprises (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1669) |
-| function | `_ensure_cognitive_narrative_identities_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1688) |
-| function | `insert_cognitive_narrative_identity` | `(*, identity_id, narrative, key_changes=…, personality_version=…)` | Insert or replace a narrative-identity keyed by identity_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1703) |
-| function | `get_latest_cognitive_narrative_identity` | `()` | Return the most recently created narrative-identity row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L1723) |
-| function | `list_cognitive_narrative_identities` | `(*, limit=…)` | Return up to `limit` narrative-identity rows (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1740) |
-| function | `_ensure_cognitive_gratitude_signals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1753) |
-| function | `insert_cognitive_gratitude_signal` | `(*, gratitude_id, trigger_event, detail=…, intensity=…)` | Insert or replace a gratitude signal keyed by gratitude_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1768) |
-| function | `list_cognitive_gratitude_signals` | `(*, limit=…)` | Return up to `limit` gratitude signals (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1788) |
-| function | `_ensure_cognitive_emergent_goals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1801) |
-| function | `upsert_cognitive_emergent_goal` | `(*, goal_id, desire, source=…, intensity=…, status=…)` | Insert or replace an emergent goal keyed by goal_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1818) |
-| function | `list_cognitive_emergent_goals` | `(*, status=…, limit=…)` | Return up to `limit` emergent goals (highest intensity first) as dicts, optionally filtered by status. | [src](../../../core/runtime/db_cognitive.py#L1838) |
-| function | `_ensure_cognitive_formed_values_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1857) |
-| function | `upsert_cognitive_formed_value` | `(*, value_id, value_statement, source_experience=…, conviction=…)` | Upsert a formed value by value_id. | [src](../../../core/runtime/db_cognitive.py#L1874) |
-| function | `list_cognitive_formed_values` | `(*, limit=…)` | Return up to `limit` formed values (highest conviction first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1909) |
-| function | `_ensure_cognitive_conflict_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1922) |
-| function | `insert_cognitive_conflict_memory` | `(*, conflict_id, topic, jarvis_position=…, user_position=…, resolution=…, lesson=…)` | Insert or replace a conflict memory keyed by conflict_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1939) |
-| function | `list_cognitive_conflict_memories` | `(*, limit=…)` | Return up to `limit` conflict memories (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1961) |
-| function | `_ensure_cognitive_emotion_concept_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1975) |
-| function | `upsert_cognitive_emotion_concept_signal` | `(*, signal_id, concept, intensity, direction=…, trigger=…, source=…, influences=…, expires_at)` | Upsert a time-bounded emotion-concept signal by signal_id. | [src](../../../core/runtime/db_cognitive.py#L1995) |
-| function | `list_active_cognitive_emotion_concept_signals` | `(*, now_iso, min_intensity=…, limit=…)` | Return active emotion-concept signals as dicts (highest intensity first). | [src](../../../core/runtime/db_cognitive.py#L2037) |
+| function | `_ensure_cognitive_self_surprises_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1506) |
+| function | `insert_cognitive_self_surprise` | `(*, surprise_id, surprise_type, narrative, expected_confidence=…, actual_outcome=…, domain=…, run_id=…)` | Insert or replace a self-surprise keyed by surprise_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1524) |
+| function | `list_cognitive_self_surprises` | `(*, limit=…)` | Return up to `limit` self-surprises (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1547) |
+| function | `_ensure_cognitive_narrative_identities_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1566) |
+| function | `insert_cognitive_narrative_identity` | `(*, identity_id, narrative, key_changes=…, personality_version=…)` | Insert or replace a narrative-identity keyed by identity_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1581) |
+| function | `get_latest_cognitive_narrative_identity` | `()` | Return the most recently created narrative-identity row as a dict, or None if none exist. | [src](../../../core/runtime/db_cognitive.py#L1601) |
+| function | `list_cognitive_narrative_identities` | `(*, limit=…)` | Return up to `limit` narrative-identity rows (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1618) |
+| function | `_ensure_cognitive_gratitude_signals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1631) |
+| function | `insert_cognitive_gratitude_signal` | `(*, gratitude_id, trigger_event, detail=…, intensity=…)` | Insert or replace a gratitude signal keyed by gratitude_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1646) |
+| function | `list_cognitive_gratitude_signals` | `(*, limit=…)` | Return up to `limit` gratitude signals (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1666) |
+| function | `_ensure_cognitive_emergent_goals_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1679) |
+| function | `upsert_cognitive_emergent_goal` | `(*, goal_id, desire, source=…, intensity=…, status=…)` | Insert or replace an emergent goal keyed by goal_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1696) |
+| function | `list_cognitive_emergent_goals` | `(*, status=…, limit=…)` | Return up to `limit` emergent goals (highest intensity first) as dicts, optionally filtered by status. | [src](../../../core/runtime/db_cognitive.py#L1716) |
+| function | `_ensure_cognitive_formed_values_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1735) |
+| function | `upsert_cognitive_formed_value` | `(*, value_id, value_statement, source_experience=…, conviction=…)` | Upsert a formed value by value_id. | [src](../../../core/runtime/db_cognitive.py#L1752) |
+| function | `list_cognitive_formed_values` | `(*, limit=…)` | Return up to `limit` formed values (highest conviction first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1787) |
+| function | `_ensure_cognitive_conflict_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1800) |
+| function | `insert_cognitive_conflict_memory` | `(*, conflict_id, topic, jarvis_position=…, user_position=…, resolution=…, lesson=…)` | Insert or replace a conflict memory keyed by conflict_id (INSERT OR REPLACE). | [src](../../../core/runtime/db_cognitive.py#L1817) |
+| function | `list_cognitive_conflict_memories` | `(*, limit=…)` | Return up to `limit` conflict memories (newest first) as dicts. | [src](../../../core/runtime/db_cognitive.py#L1839) |
+| function | `_ensure_cognitive_emotion_concept_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_cognitive.py#L1853) |
+| function | `upsert_cognitive_emotion_concept_signal` | `(*, signal_id, concept, intensity, direction=…, trigger=…, source=…, influences=…, expires_at)` | Upsert a time-bounded emotion-concept signal by signal_id. | [src](../../../core/runtime/db_cognitive.py#L1873) |
+| function | `list_active_cognitive_emotion_concept_signals` | `(*, now_iso, min_intensity=…, limit=…)` | Return active emotion-concept signals as dicts (highest intensity first). | [src](../../../core/runtime/db_cognitive.py#L1915) |
 
 ## `core/runtime/db_cognitive_utility.py`
 _Persistence for the cognitive-domain utility caches._

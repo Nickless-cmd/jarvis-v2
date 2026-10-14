@@ -476,7 +476,7 @@ _Supplementary non-blocking recall during visible prompt assembly._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | — | [src](../../../core/services/prompt_memory_recall.py#L22) |
+| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Compatibility no-op: previous-query cache delivery is privacy-unsafe. | [src](../../../core/services/prompt_memory_recall.py#L22) |
 
 ## `core/services/prompt_mutation_loop.py`
 _Prompt Mutation Loop — apply, score, auto-rollback on negative score._

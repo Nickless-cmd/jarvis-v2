@@ -2,6 +2,59 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_scanner.py`
+_Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Finding` | `` | — | [src](../../../core/services/skill_scanner.py#L27) |
+| class | `ScanResult` | `` | — | [src](../../../core/services/skill_scanner.py#L35) |
+| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L40) |
+| method | `ScanResult.blocked_reasons` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L46) |
+| method | `ScanResult.as_dict` | `(self)` | — | [src](../../../core/services/skill_scanner.py#L49) |
+| function | `_normalize` | `(content)` | Fold skjult/forvirrende unicode til NFKC så injection ikke gemmer sig i | [src](../../../core/services/skill_scanner.py#L102) |
+| function | `_has_hidden_format_chars` | `(content)` | — | [src](../../../core/services/skill_scanner.py#L110) |
+| function | `scan_skill` | `(content, *, path=…, block_severity=…)` | Scan en skill-definition (tekst/kode) for injection/malware/boundary. | [src](../../../core/services/skill_scanner.py#L114) |
+
+## `core/services/skill_security_scanner.py`
+_Skill Security Scanner — single canonical scanner for SKILL.md + scripts/._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ScanFinding` | `` | — | [src](../../../core/services/skill_security_scanner.py#L54) |
+| class | `ScanResult` | `` | — | [src](../../../core/services/skill_security_scanner.py#L64) |
+| method | `ScanResult.passed` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L71) |
+| method | `ScanResult.has_critical` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L75) |
+| method | `ScanResult.has_high` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L79) |
+| method | `ScanResult.max_severity` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L83) |
+| method | `ScanResult.summary` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L88) |
+| method | `ScanResult.to_dict` | `(self)` | — | [src](../../../core/services/skill_security_scanner.py#L105) |
+| function | `_make_pattern` | `(name, desc, severity, *patterns)` | — | [src](../../../core/services/skill_security_scanner.py#L133) |
+| function | `scan_skill_file` | `(skill_path)` | Scan a single SKILL.md file for security issues. | [src](../../../core/services/skill_security_scanner.py#L322) |
+| function | `scan_skill_by_name` | `(name)` | Scan a skill by its registered name (lookup in skills root). | [src](../../../core/services/skill_security_scanner.py#L374) |
+| function | `scan_all_skills` | `()` | Scan all installed skills. | [src](../../../core/services/skill_security_scanner.py#L391) |
+| function | `format_scan_report` | `(results)` | Aggregate multiple scan results into a single report dict. | [src](../../../core/services/skill_security_scanner.py#L405) |
+| function | `_risk_from_severity` | `(max_sev, score)` | Map (max_severity, total_score) to a risk label. | [src](../../../core/services/skill_security_scanner.py#L427) |
+| function | `_verdict_for_risk` | `(risk)` | — | [src](../../../core/services/skill_security_scanner.py#L444) |
+| function | `_scan_text_block` | `(content, source)` | Scan one text block against all patterns. Used for SKILL.md + scripts/. | [src](../../../core/services/skill_security_scanner.py#L464) |
+| function | `scan_skill_directory` | `(path)` | Scan a skill directory (SKILL.md + scripts/) and return a risk dict. | [src](../../../core/services/skill_security_scanner.py#L496) |
+| function | `scan_skill_directory_gated` | `(path)` | Som scan_skill_directory, men beslutningen GOVERNES af Centralen (SECURITY, | [src](../../../core/services/skill_security_scanner.py#L558) |
+| function | `scan_skill_content` | `(content, name=…)` | Scan raw SKILL.md content (e.g. fetched from URL) before writing to disk. | [src](../../../core/services/skill_security_scanner.py#L594) |
+| function | `is_skill_safe` | `(name, raise_on_critical=…)` | Check if a skill is safe to import. Returns True if clean. | [src](../../../core/services/skill_security_scanner.py#L609) |
+
+## `core/services/smith_confrontation.py`
+_Trin 3: Smith standser handlingen i realtid og tvinger et nyt valg._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ord_i` | `(tekst)` | — | [src](../../../core/services/smith_confrontation.py#L79) |
+| function | `_er_fritaget` | `(navn)` | — | [src](../../../core/services/smith_confrontation.py#L83) |
+| function | `_rammer` | `(label, tool_navn, argumenter=…)` | Peger dette tool-kald paa moensteret? | [src](../../../core/services/smith_confrontation.py#L88) |
+| function | `_hold_taeller` | `(run_id, noegle, *, laes_kun=…)` | Hvor mange gange har vi holdt dette moenster i dette run? | [src](../../../core/services/smith_confrontation.py#L106) |
+| function | `_har_adfaerds_noegle` | `()` | Self-safe: uden svar behandler vi det som INGEN noegle, saa et opslags- | [src](../../../core/services/smith_confrontation.py#L123) |
+| function | `_trin3_moenstre` | `()` | — | [src](../../../core/services/smith_confrontation.py#L134) |
+| function | `smith_confront_on_action` | `(reasoning_text, ctx)` | RED naar et trin-3-moenster er ved at blive gentaget. ``None`` ellers. | [src](../../../core/services/smith_confrontation.py#L151) |
+
 ## `core/services/smith_noise_veto.py`
 _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 
@@ -587,50 +640,4 @@ _Temporal-recurrence signal tracking — migrated onto signal_tracking_framework
 | function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L291) |
 | function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L296) |
 | function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/temporal_recurrence_signal_tracking.py#L301) |
-
-## `core/services/temporal_rhythm.py`
-_Temporal Rhythm — felt time, not computed time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/temporal_rhythm.py#L46) |
-| function | `_gem` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L65) |
-| function | `_pending_initiatives_count` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L74) |
-| function | `_recent_tool_calls_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L82) |
-| function | `_recent_chat_activity_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L92) |
-| function | `_eventbus_queue_depth` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L112) |
-| function | `_compute_pulse_rate` | `(*, initiatives, tool_rate, chat_rate, queue)` | Combine inputs into pulse in [0.1, 2.0]. | [src](../../../core/services/temporal_rhythm.py#L133) |
-| function | `_label_from_pulse` | `(pulse)` | — | [src](../../../core/services/temporal_rhythm.py#L150) |
-| function | `_perceived_elapsed_factor` | `(pulse)` | When pulse is high, subjective time moves slower relative to clock. | [src](../../../core/services/temporal_rhythm.py#L160) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/temporal_rhythm.py#L168) |
-| function | `reset_temporal_rhythm` | `()` | Nulstil rytmen. Rydder OGSAA disken — ellers ville naeste `_synk()` | [src](../../../core/services/temporal_rhythm.py#L215) |
-| function | `get_current_rhythm` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L224) |
-| function | `build_temporal_rhythm_surface` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L229) |
-| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L255) |
-| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L263) |
-
-## `core/services/temporal_self_continuity.py`
-_Temporal self-continuity: past/current/future self handoff._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_temporal_continuity_from_latest_episode` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L16) |
-| function | `update_temporal_continuity_from_episode` | `(episode)` | — | [src](../../../core/services/temporal_self_continuity.py#L23) |
-| function | `build_temporal_self_continuity_surface` | `(*, limit=…)` | — | [src](../../../core/services/temporal_self_continuity.py#L51) |
-| function | `build_temporal_self_continuity_prompt_section` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L66) |
-| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/temporal_self_continuity.py#L79) |
-| function | `_load` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L89) |
-
-## `core/services/terminal_sanitize.py`
-_Fjern terminal-styrekoder fra tool-output før det når modellen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
-| class | `TerminalStreamSanitizer` | `` | Stateful sanitizer that does not leak escape fragments across chunks. | [src](../../../core/services/terminal_sanitize.py#L48) |
-| method | `TerminalStreamSanitizer.__init__` | `(self, *, max_pending_chars=…)` | — | [src](../../../core/services/terminal_sanitize.py#L51) |
-| method | `TerminalStreamSanitizer._incomplete_escape_start` | `(text)` | — | [src](../../../core/services/terminal_sanitize.py#L58) |
-| method | `TerminalStreamSanitizer._finish_discarded_osc` | `(self, text)` | — | [src](../../../core/services/terminal_sanitize.py#L86) |
-| method | `TerminalStreamSanitizer.feed` | `(self, chunk)` | — | [src](../../../core/services/terminal_sanitize.py#L103) |
-| method | `TerminalStreamSanitizer.flush` | `(self)` | — | [src](../../../core/services/terminal_sanitize.py#L122) |
 

@@ -318,17 +318,18 @@ _Reasoning Store — Phase 1 of Generalized Learning._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/reasoning_store.py#L32) |
-| function | `_ensure_table` | `(conn)` | Idempotent table creation. | [src](../../../core/services/reasoning_store.py#L36) |
-| function | `_cosine_similarity` | `(a, b)` | Cosine similarity between two equal-length vectors. | [src](../../../core/services/reasoning_store.py#L64) |
-| function | `_parse_embedding` | `(raw)` | Safely parse embedding JSON, return empty list on failure. | [src](../../../core/services/reasoning_store.py#L76) |
-| function | `capture_conclusion` | `(*, source, conclusion_text, context=…, confidence=…, embedding=…, source_record_id=…, metadata=…, emit_event=…, dedup_key=…)` | Store a reasoning conclusion and return its conclusion_id. | [src](../../../core/services/reasoning_store.py#L90) |
-| function | `recall_reasoning` | `(*, query_text=…, query_embedding=…, source_filter=…, min_confidence=…, limit=…, days_back=…)` | Retrieve stored reasoning conclusions, ranked by relevance. | [src](../../../core/services/reasoning_store.py#L169) |
-| function | `get_recent_conclusions` | `(*, source=…, limit=…, days_back=…)` | Quick access to recent conclusions, no embedding scoring. | [src](../../../core/services/reasoning_store.py#L269) |
-| function | `is_enabled` | `()` | Check the killswitch setting. | [src](../../../core/services/reasoning_store.py#L283) |
-| function | `set_enabled` | `(value)` | Set killswitch — toggle reasoning store on/off without restart. | [src](../../../core/services/reasoning_store.py#L289) |
-| function | `compact_stale` | `(days=…, min_confidence=…)` | Delete stale low-confidence conclusions. Returns count removed. | [src](../../../core/services/reasoning_store.py#L295) |
-| function | `compute_embedding` | `(text)` | Compute embedding vector for semantic search. | [src](../../../core/services/reasoning_store.py#L317) |
+| function | `_now` | `()` | — | [src](../../../core/services/reasoning_store.py#L34) |
+| function | `_ensure_table` | `(conn)` | Idempotent table creation. | [src](../../../core/services/reasoning_store.py#L38) |
+| function | `_cosine_similarity` | `(a, b)` | Cosine similarity between two equal-length vectors. | [src](../../../core/services/reasoning_store.py#L74) |
+| function | `_parse_embedding` | `(raw)` | Safely parse embedding JSON, return empty list on failure. | [src](../../../core/services/reasoning_store.py#L86) |
+| function | `_lexical_score` | `(query, text)` | — | [src](../../../core/services/reasoning_store.py#L97) |
+| function | `capture_conclusion` | `(*, source, conclusion_text, context=…, confidence=…, embedding=…, source_record_id=…, metadata=…, emit_event=…, dedup_key=…, user_id=…)` | Store a reasoning conclusion and return its conclusion_id. | [src](../../../core/services/reasoning_store.py#L108) |
+| function | `recall_reasoning` | `(*, query_text=…, query_embedding=…, source_filter=…, min_confidence=…, limit=…, days_back=…, user_id=…)` | Retrieve stored reasoning conclusions, ranked by relevance. | [src](../../../core/services/reasoning_store.py#L188) |
+| function | `get_recent_conclusions` | `(*, source=…, limit=…, days_back=…)` | Quick access to recent conclusions, no embedding scoring. | [src](../../../core/services/reasoning_store.py#L299) |
+| function | `is_enabled` | `()` | Check the killswitch setting. | [src](../../../core/services/reasoning_store.py#L314) |
+| function | `set_enabled` | `(value)` | Set killswitch — toggle reasoning store on/off without restart. | [src](../../../core/services/reasoning_store.py#L320) |
+| function | `compact_stale` | `(days=…, min_confidence=…)` | Delete stale low-confidence conclusions. Returns count removed. | [src](../../../core/services/reasoning_store.py#L326) |
+| function | `compute_embedding` | `(text)` | Compute embedding vector for semantic search. | [src](../../../core/services/reasoning_store.py#L348) |
 
 ## `core/services/reboot_awareness_daemon.py`
 _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
@@ -355,32 +356,80 @@ _One recall path over every memory source (memory repair 2026-09-04, R5)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L54) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L59) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L64) |
-| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L76) |
-| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L84) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L94) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
-| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L172) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L179) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L193) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L207) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
+| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L63) |
+| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L68) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L73) |
+| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L85) |
+| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L93) |
+| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L103) |
+| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L119) |
+| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L145) |
+| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L170) |
+| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L188) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L195) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L209) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L223) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L253) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L297) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…, deadline_s=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L301) |
+
+## `core/services/recall_observability.py`
+_Scalar-only outcome telemetry for scoped recall._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emit_recall_outcome` | `(**metadata)` | — | [src](../../../core/services/recall_observability.py#L14) |
+
+## `core/services/recall_ownership_migration.py`
+_Signed, fail-closed ownership migration for legacy private recall data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InvalidRecallOwnershipReport` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L20) |
+| class | `RecallOwnershipSourceChanged` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L24) |
+| class | `MigrationDisabled` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L28) |
+| class | `OwnershipItem` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L33) |
+| class | `RecallOwnershipReport` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L42) |
+| method | `RecallOwnershipReport.authoritative_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L49) |
+| method | `RecallOwnershipReport.owner_fallback_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L53) |
+| method | `RecallOwnershipReport.conflict_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L57) |
+| method | `RecallOwnershipReport.destination_for` | `(self, source_kind, source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L60) |
+| method | `RecallOwnershipReport.reason_for` | `(self, source_kind, source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L67) |
+| class | `ApplyResult` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L75) |
+| class | `RollbackResult` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L82) |
+| function | `ensure_recall_ownership_migration_tables` | `(conn)` | — | [src](../../../core/services/recall_ownership_migration.py#L96) |
+| function | `_table_exists` | `(conn, table)` | — | [src](../../../core/services/recall_ownership_migration.py#L116) |
+| function | `_columns` | `(conn, table)` | — | [src](../../../core/services/recall_ownership_migration.py#L122) |
+| function | `_source_hash` | `(source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L126) |
+| function | `_state_path` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L130) |
+| function | `_report_dir` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L136) |
+| function | `report_path` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L142) |
+| function | `_master_key` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L149) |
+| function | `_derived_key` | `(label)` | — | [src](../../../core/services/recall_ownership_migration.py#L158) |
+| function | `_signature` | `(payload)` | — | [src](../../../core/services/recall_ownership_migration.py#L162) |
+| function | `_seal` | `(report_id, value)` | — | [src](../../../core/services/recall_ownership_migration.py#L168) |
+| function | `_open` | `(report_id, value)` | — | [src](../../../core/services/recall_ownership_migration.py#L174) |
+| function | `_linked_users` | `(conn, *, session_id=…, run_id=…, explicit=…)` | — | [src](../../../core/services/recall_ownership_migration.py#L182) |
+| function | `_classify` | `(users, owner_user_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L210) |
+| function | `_candidate_rows` | `(conn, owner_user_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L218) |
+| function | `_watermark` | `(rows)` | — | [src](../../../core/services/recall_ownership_migration.py#L303) |
+| function | `classify_recall_ownership` | `(conn, *, owner_user_id=…)` | — | [src](../../../core/services/recall_ownership_migration.py#L314) |
+| function | `_load_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L354) |
+| function | `_update_item` | `(conn, item, destination)` | — | [src](../../../core/services/recall_ownership_migration.py#L367) |
+| function | `_observation_backup_path` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L399) |
+| function | `_apply_observation_items` | `(report_id, items)` | — | [src](../../../core/services/recall_ownership_migration.py#L404) |
+| function | `apply_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L434) |
+| function | `rollback_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L502) |
 
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L38) |
-| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L48) |
-| function | `_run_recall` | `(message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L61) |
-| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L73) |
+| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L41) |
+| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L51) |
+| function | `_run_recall` | `(user_id, message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L64) |
+| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L75) |
 
 ## `core/services/recurrence_loop_daemon.py`
 _Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
@@ -663,36 +712,4 @@ _Relation-state signal tracking — migrated onto signal_tracking_framework._
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L465) |
 | function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L473) |
 | function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_state_signal_tracking.py#L481) |
-
-## `core/services/relational_warmth.py`
-_Relational Warmth — felt quality of who I'm talking to._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/relational_warmth.py#L55) |
-| function | `_load` | `()` | — | [src](../../../core/services/relational_warmth.py#L60) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/relational_warmth.py#L106) |
-| function | `_has_cue` | `(text, cues)` | — | [src](../../../core/services/relational_warmth.py#L118) |
-| function | `observe_incoming_text` | `(text, *, relation_id=…)` | Register an incoming text from the user. Returns signal breakdown. | [src](../../../core/services/relational_warmth.py#L123) |
-| function | `observe_outgoing_text` | `(text, *, relation_id=…)` | Register an outgoing text from Jarvis. Detects care signals. | [src](../../../core/services/relational_warmth.py#L155) |
-| function | `_decay_over_time` | `(rel)` | Slowly decay playfulness and trust if no recent interaction. | [src](../../../core/services/relational_warmth.py#L176) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/relational_warmth.py#L194) |
-| function | `get_relation` | `(relation_id=…)` | — | [src](../../../core/services/relational_warmth.py#L209) |
-| function | `build_relational_warmth_surface` | `()` | — | [src](../../../core/services/relational_warmth.py#L214) |
-| function | `_surface_summary` | `(rel)` | — | [src](../../../core/services/relational_warmth.py#L229) |
-| function | `build_relational_warmth_prompt_section` | `()` | Surface register-shaping hint only when it should change tone. | [src](../../../core/services/relational_warmth.py#L237) |
-
-## `core/services/relationship_texture.py`
-_Relationship Texture — tracks the quality of the relationship over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_relationship_from_run` | `(*, run_id, user_message, assistant_response, outcome_status, turn_count=…)` | Analyze a run and update relationship texture. | [src](../../../core/services/relationship_texture.py#L45) |
-| function | `update_relationship_async` | `(**kwargs)` | — | [src](../../../core/services/relationship_texture.py#L163) |
-| function | `track_pushback_outcome` | `(*, jarvis_disagreed, user_was_right, topic=…)` | Track when Jarvis disagrees — and who was right. | [src](../../../core/services/relationship_texture.py#L170) |
-| function | `derive_appropriate_autonomy_level` | `()` | Derive autonomy level from trust trajectory. | [src](../../../core/services/relationship_texture.py#L194) |
-| function | `build_relationship_texture_surface` | `()` | — | [src](../../../core/services/relationship_texture.py#L213) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/relationship_texture.py#L230) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L237) |
-| function | `_safe_json_dict` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L250) |
 

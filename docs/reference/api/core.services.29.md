@@ -2,6 +2,52 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_model_observe.py`
+_Central-observe helpers + thinking-delimiter cleanup for the visible lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_observe_visible_prefill` | `(provider, model, *, prompt_tokens, prefill_ms)` | Gør ollama-lanens PREFILL-cache MÅLBAR (2026-07-19, blind-spot-luk). | [src](../../../core/services/visible_model_observe.py#L11) |
+| function | `_observe_visible_provider_error` | `(provider, model, status_code, detail)` | Gør en VISIBLE-lane provider-fejl synlig i Centralen (stream-cluster). Self-safe. | [src](../../../core/services/visible_model_observe.py#L51) |
+| function | `_observe_malformed_stream_payload` | `(provider, model, path, *, ended_malformed, detail=…)` | A11 (spec §11.1): den egne SSE/NDJSON-decoder mødte en malformet/trunkeret | [src](../../../core/services/visible_model_observe.py#L67) |
+| function | `_observe_content_empty_thinking_fallback` | `(provider, model, path, thinking_len)` | Reasoning-model svarede i `message.thinking` mens `message.content` var TOM | [src](../../../core/services/visible_model_observe.py#L94) |
+| function | `_strip_thinking_delimiters` | `(text)` | Fjern løse thinking-delimiter-tokens hvis et thinking-felt surfaces som svar. | [src](../../../core/services/visible_model_observe.py#L115) |
+| function | `_reasoning_fallback_text` | `(reasoning, *, finish_reason=…)` | Surface reasoning only when the provider completed it cleanly. | [src](../../../core/services/visible_model_observe.py#L130) |
+
+## `core/services/visible_model_ollama.py`
+_Ollama visible-lane adapter (execute + native NDJSON streaming)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_vm` | `()` | Return the ``visible_model`` facade module. | [src](../../../core/services/visible_model_ollama.py#L51) |
+| function | `_execute_ollama_model` | `(*, message, model, session_id=…)` | — | [src](../../../core/services/visible_model_ollama.py#L66) |
+| function | `_cache_split` | `(data, prompt_tokens)` | (cache-hit, cache-miss) fra Ollamas ``prompt_eval_cached_count``. | [src](../../../core/services/visible_model_ollama.py#L176) |
+| function | `_apply_thinking_mode` | `(payload, thinking_mode)` | Translate UI thinking-mode label to ollama-chat payload keys. | [src](../../../core/services/visible_model_ollama.py#L196) |
+| function | `_apply_visible_ollama_options` | `(payload)` | Set ollama generation options for the visible lane. | [src](../../../core/services/visible_model_ollama.py#L233) |
+| function | `_opløs` | `(model)` | Modelnavnet ollama faktisk kender. Fail-open. | [src](../../../core/services/visible_model_ollama.py#L273) |
+| function | `_stream_ollama_model` | `(*, message, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model_ollama.py#L282) |
+| function | `_probe_ollama_visible_target` | `(*, model, base_url)` | — | [src](../../../core/services/visible_model_ollama.py#L610) |
+| function | `_build_ollama_prompt` | `(message, *, model, session_id)` | — | [src](../../../core/services/visible_model_ollama.py#L651) |
+
+## `core/services/visible_model_prompt.py`
+_Continuity / support-signal / capability prompt builders for the visible lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_visible_session_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L30) |
+| function | `_visible_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L60) |
+| function | `_capability_continuity_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L87) |
+| function | `_visible_work_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L118) |
+| function | `_private_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L159) |
+| function | `_growth_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L186) |
+| function | `_self_model_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L220) |
+| function | `_retained_memory_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L253) |
+| function | `_temporal_support_signal_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L285) |
+| function | `visible_capability_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L314) |
+| function | `visible_session_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L346) |
+| function | `visible_continuity_summary` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L355) |
+| function | `_capability_instruction` | `()` | — | [src](../../../core/services/visible_model_prompt.py#L391) |
+
 ## `core/services/visible_model_sse.py`
 _SSE / Chat-Completions stream parsing + small cost/token utilities._
 
@@ -475,41 +521,4 @@ _Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
 | function | `_med_etiketter_foer_svaret` | `(blokke, etiketter)` | Læg etiketterne ind lige før den sidste tekstblok. | [src](../../../core/services/visible_turn_accumulator.py#L274) |
 | function | `_med_interne_kald_foer_svaret` | `(blokke, *, forced_ids=…)` | Flyt INTERNE bogførings-kald op FØR svaret, så svaret står sidst. | [src](../../../core/services/visible_turn_accumulator.py#L293) |
 | function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L408) |
-
-## `core/services/visible_turn_blocks.py`
-_Den kanoniske content-blok-array for en assistent-tur (spec §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_label` | `(tool_name, arguments=…)` | Narrationen for ét værktøjskald — samme tekst som live-visningen brugte. | [src](../../../core/services/visible_turn_blocks.py#L31) |
-| function | `_tool_hint` | `(tool_name, arguments=…)` | Emnet alene — «git status», «raekkeModel.ts», uden label foran. | [src](../../../core/services/visible_turn_blocks.py#L42) |
-| function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L54) |
-| function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
-| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L124) |
-
-## `core/services/visible_work_surfaces.py`
-_Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane laver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vr` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L15) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L21) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L53) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L80) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L111) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_work_surfaces.py#L163) |
-
-## `core/services/vision_backend.py`
-_Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `model_can_see` | `(model)` | Kan DENNE model selv se et billede? | [src](../../../core/services/vision_backend.py#L86) |
-| function | `active_visible_target` | `()` | (provider, model) for den synlige tur der koerer lige nu — ("","") hvis ingen. | [src](../../../core/services/vision_backend.py#L99) |
-| function | `resolve_vision_target` | `(*, force_config=…)` | (provider, model, kilde) for syns-vaerktoejerne lige nu. | [src](../../../core/services/vision_backend.py#L111) |
-| function | `resolve_vision_provider` | `(model)` | `"ollama"` eller `"deepseek"`. Eksplicit konfig vinder over gættet. | [src](../../../core/services/vision_backend.py#L131) |
-| function | `describe_via_deepseek` | `(image_b64, *, model, prompt, run_id=…)` | Send billedet til DeepSeeks vision-model og returnér svaret. | [src](../../../core/services/vision_backend.py#L147) |
-| function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L197) |
-| function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L220) |
-| function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L243) |
 

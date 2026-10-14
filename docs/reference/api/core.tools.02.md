@@ -38,10 +38,11 @@ _Visible Jarvis' værktøjer til hjernen._
 | function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L236) |
 | function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L249) |
 | function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L336) |
-| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L416) |
-| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L443) |
-| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L455) |
-| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L531) |
+| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L420) |
+| function | `_bound_visibility_ceiling` | `()` | Derive the ceiling only from the authenticated request context. | [src](../../../core/tools/jarvis_brain_tools.py#L453) |
+| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L470) |
+| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L482) |
+| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L558) |
 
 ## `core/tools/jc_tool_catalog.py`
 _Single source of truth for what jarvis-code (jc) presents as tools._
@@ -507,9 +508,9 @@ _Semantic recall tools — Jarvis-facing recall across all memory surfaces._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_excerpt_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L29) |
-| function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L43) |
-| function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L53) |
+| function | `_excerpt_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L30) |
+| function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L44) |
+| function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L54) |
 
 ## `core/tools/recall_tool.py`
 _`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._

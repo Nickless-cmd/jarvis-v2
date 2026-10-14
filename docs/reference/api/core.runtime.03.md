@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_tasks.py`
+_Persistence for the `runtime_tasks` table — Jarvis' durable task queue._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_omdoeb_run_id_til_origin_ref` | `(conn)` | Kolonnen hed `run_id` og indeholdt ikke et run. | [src](../../../core/runtime/db_runtime_tasks.py#L13) |
+| function | `ensure_runtime_tasks_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L41) |
+| function | `_runtime_task_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L81) |
+| function | `create_runtime_task` | `(*, task_id, kind, origin, status, goal, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, created_at, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L103) |
+| function | `get_runtime_task` | `(task_id)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L174) |
+| function | `list_runtime_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L207) |
+| function | `update_runtime_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…, updated_at)` | — | [src](../../../core/runtime/db_runtime_tasks.py#L253) |
+
 ## `core/runtime/db_runtime_temporal_memory_signals.py`
 _Persistence for Jarvis' runtime temporal/memory-* signal cluster._
 
@@ -87,22 +100,22 @@ _Schema layer for core.runtime.db — init_db + all _ensure_*/_migrate_* helpers
 | function | `_ensure_notification_tables` | `(conn)` | Unified notification routing (spec 2026-06-20 §3.1): per-bruger-præferencer | [src](../../../core/runtime/db_schema.py#L238) |
 | function | `_ensure_security_guard_tables` | `(conn)` | Identity-verification-guard & abuse-monitoring (spec 2026-06-21). Idempotent. | [src](../../../core/runtime/db_schema.py#L301) |
 | function | `init_db` | `()` | — | [src](../../../core/runtime/db_schema.py#L348) |
-| function | `_ensure_decision_trigger_column` | `(conn)` | Add behavioral_decisions.trigger_name column and wire known decisions. | [src](../../../core/runtime/db_schema.py#L1025) |
-| function | `_ensure_chat_messages_reasoning_column` | `(conn)` | Add chat_messages.reasoning_content column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1059) |
-| function | `_ensure_chat_messages_content_json_column` | `(conn)` | Add chat_messages.content_json column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1085) |
-| function | `_ensure_chat_messages_encrypted_column` | `(conn)` | Tilføj `chat_messages.encrypted`. Idempotent. (Spec §16.2, task 3.3.) | [src](../../../core/runtime/db_schema.py#L1098) |
-| function | `_ensure_causal_edges_table` | `(conn)` | Create causal_edges table for the causal graph layer. | [src](../../../core/runtime/db_schema.py#L1119) |
-| function | `_ensure_tool_router_tables` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1156) |
-| function | `_ensure_counterfactuals_table` | `(conn)` | Create counterfactuals table with UNIQUE(cf_key) constraint. | [src](../../../core/runtime/db_schema.py#L1196) |
-| function | `_ensure_absence_traces_table` | `(conn)` | Create absence_traces table for Lag 11 forgetting (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1234) |
-| function | `_ensure_reasoning_conclusions_table` | `(conn)` | Create reasoning_conclusions table for Phase 1 Generalized Learning. | [src](../../../core/runtime/db_schema.py#L1272) |
-| function | `_ensure_soft_deleted_at_columns` | `(conn)` | Add soft_deleted_at column to episodic tables (Lag 11 Phase 1). | [src](../../../core/runtime/db_schema.py#L1306) |
-| function | `_ensure_dream_bias_active_table` | `(conn)` | Create dream_bias_active table for Lag 2 dream-bias (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1339) |
-| function | `_ensure_user_temperature_active_table` | `(conn)` | Create user_temperature_active table for Lag 10 (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1379) |
-| function | `_ensure_experience_episodes_table` | `(conn)` | Append-only log of (context, tool_choice, outcome) episodes. | [src](../../../core/runtime/db_schema.py#L1435) |
-| function | `_ensure_tool_intent_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1491) |
-| function | `_ensure_runtime_webchat_execution_pilot_table` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1549) |
-| function | `_migrate_chronicle_table_add_affective_signature` | `()` | Add affective_signature column to existing tables missing it. | [src](../../../core/runtime/db_schema.py#L1591) |
+| function | `_ensure_decision_trigger_column` | `(conn)` | Add behavioral_decisions.trigger_name column and wire known decisions. | [src](../../../core/runtime/db_schema.py#L1027) |
+| function | `_ensure_chat_messages_reasoning_column` | `(conn)` | Add chat_messages.reasoning_content column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1061) |
+| function | `_ensure_chat_messages_content_json_column` | `(conn)` | Add chat_messages.content_json column. Idempotent. | [src](../../../core/runtime/db_schema.py#L1087) |
+| function | `_ensure_chat_messages_encrypted_column` | `(conn)` | Tilføj `chat_messages.encrypted`. Idempotent. (Spec §16.2, task 3.3.) | [src](../../../core/runtime/db_schema.py#L1100) |
+| function | `_ensure_causal_edges_table` | `(conn)` | Create causal_edges table for the causal graph layer. | [src](../../../core/runtime/db_schema.py#L1121) |
+| function | `_ensure_tool_router_tables` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1158) |
+| function | `_ensure_counterfactuals_table` | `(conn)` | Create counterfactuals table with UNIQUE(cf_key) constraint. | [src](../../../core/runtime/db_schema.py#L1198) |
+| function | `_ensure_absence_traces_table` | `(conn)` | Create absence_traces table for Lag 11 forgetting (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1236) |
+| function | `_ensure_reasoning_conclusions_table` | `(conn)` | Create reasoning_conclusions table for Phase 1 Generalized Learning. | [src](../../../core/runtime/db_schema.py#L1274) |
+| function | `_ensure_soft_deleted_at_columns` | `(conn)` | Add soft_deleted_at column to episodic tables (Lag 11 Phase 1). | [src](../../../core/runtime/db_schema.py#L1316) |
+| function | `_ensure_dream_bias_active_table` | `(conn)` | Create dream_bias_active table for Lag 2 dream-bias (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1349) |
+| function | `_ensure_user_temperature_active_table` | `(conn)` | Create user_temperature_active table for Lag 10 (added 2026-05-10). | [src](../../../core/runtime/db_schema.py#L1389) |
+| function | `_ensure_experience_episodes_table` | `(conn)` | Append-only log of (context, tool_choice, outcome) episodes. | [src](../../../core/runtime/db_schema.py#L1445) |
+| function | `_ensure_tool_intent_approval_request_columns` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1501) |
+| function | `_ensure_runtime_webchat_execution_pilot_table` | `(conn)` | — | [src](../../../core/runtime/db_schema.py#L1559) |
+| function | `_migrate_chronicle_table_add_affective_signature` | `()` | Add affective_signature column to existing tables missing it. | [src](../../../core/runtime/db_schema.py#L1601) |
 
 ## `core/runtime/db_self_repair.py`
 _DB helpers for self_repair_patterns + self_repair_attempts tables._

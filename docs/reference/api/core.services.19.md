@@ -132,7 +132,7 @@ _Past-context cue router for visible prompts._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
+| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Compatibility no-op; the authoritative current-query bundle owns recall. | [src](../../../core/services/past_context_router.py#L28) |
 
 ## `core/services/paste_store.py`
 _Paste-store: eksternalisér store bruger-pastes med en kompakt reference._

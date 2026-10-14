@@ -663,14 +663,14 @@ _Agent observation compressor — Mastra-style intra-session compression._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_observation_compressor.py#L62) |
-| function | `compress_agent_run` | `(*, agent_id, role, goal, raw_output, proposer=…)` | Run cheap-lane LLM summarisation, store as agent_observation. | [src](../../../core/services/agent_observation_compressor.py#L66) |
-| function | `list_agent_observations` | `(*, role=…, agent_id=…, days_back=…, limit=…)` | — | [src](../../../core/services/agent_observation_compressor.py#L133) |
-| function | `get_agent_observation` | `(obs_id)` | — | [src](../../../core/services/agent_observation_compressor.py#L168) |
-| function | `mark_stale_observations` | `(*, days=…)` | Mark records older than N days as stale (for decay tracking). | [src](../../../core/services/agent_observation_compressor.py#L178) |
-| function | `_exec_compress_agent_run` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L200) |
-| function | `_exec_list_agent_observations` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L210) |
-| function | `_exec_get_agent_observation` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L222) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_observation_compressor.py#L63) |
+| function | `compress_agent_run` | `(*, agent_id, role, goal, raw_output, proposer=…, user_id=…)` | Run cheap-lane LLM summarisation, store as agent_observation. | [src](../../../core/services/agent_observation_compressor.py#L67) |
+| function | `list_agent_observations` | `(*, role=…, agent_id=…, days_back=…, limit=…)` | — | [src](../../../core/services/agent_observation_compressor.py#L137) |
+| function | `get_agent_observation` | `(obs_id)` | — | [src](../../../core/services/agent_observation_compressor.py#L179) |
+| function | `mark_stale_observations` | `(*, days=…)` | Mark records older than N days as stale (for decay tracking). | [src](../../../core/services/agent_observation_compressor.py#L198) |
+| function | `_exec_compress_agent_run` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L230) |
+| function | `_exec_list_agent_observations` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L240) |
+| function | `_exec_get_agent_observation` | `(args)` | — | [src](../../../core/services/agent_observation_compressor.py#L255) |
 
 ## `core/services/agent_outcomes_log.py`
 _Agent Outcomes Log — persists solo-agent task completions to AGENT_OUTCOMES.md._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8953/17088 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8951/17131 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 823 | 1517 | 54% |
-| `core.services` | 5970 | 11617 | 51% |
+| `core.runtime` | 819 | 1519 | 53% |
+| `core.services` | 5971 | 11657 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 536 | 1077 | 49% |
+| `core.tools` | 537 | 1078 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2535)
+## Undocumented public functions (2555)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L218)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -470,11 +470,15 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/runtime/db_decisions.py` :: `set_status` (L294)
 - `core/runtime/db_devices.py` :: `kraev_aktivt` (L169)
 - `core/runtime/db_devices.py` :: `saet_kraev` (L178)
-- `core/runtime/db_embeddings.py` :: `count_embeddings` (L133)
+- `core/runtime/db_embeddings.py` :: `count_embeddings` (L157)
 - `core/runtime/db_embeddings.py` :: `delete_embedding` (L93)
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)
 - `core/runtime/db_emotional_memory.py` :: `delete_emotional_memory_anchor` (L234)
 - `core/runtime/db_emotional_memory.py` :: `get_emotional_memory_anchor` (L141)
+- `core/runtime/db_experiential_memory.py` :: `get_experiential_memory_candidates` (L95)
+- `core/runtime/db_experiential_memory.py` :: `insert_cognitive_experiential_memory` (L46)
+- `core/runtime/db_experiential_memory.py` :: `list_cognitive_experiential_memories` (L75)
+- `core/runtime/db_experiential_memory.py` :: `reinforce_experiential_memory` (L66)
 - `core/runtime/db_fts.py` :: `fts5_available` (L34)
 - `core/runtime/db_goals.py` :: `count_goals` (L281)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
@@ -719,8 +723,8 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L84)
 - `core/services/agent_loop_core.py` :: `LoopIO.model` (L79)
 - `core/services/agent_loop_core.py` :: `LoopIO.tool` (L82)
-- `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L168)
-- `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L133)
+- `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L179)
+- `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L137)
 - `core/services/agent_prompt_layers.py` :: `ensure_prompt_tables` (L37)
 - `core/services/agent_retention.py` :: `sweep_artifacts` (L137)
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
@@ -1619,7 +1623,6 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4649)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
-- `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_surface` (L476)
 - `core/services/prompt_mutation_loop.py` :: `get_mutation` (L457)
@@ -1659,7 +1662,18 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L161)
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
-- `core/services/recall.py` :: `empty_message` (L281)
+- `core/services/recall.py` :: `empty_message` (L297)
+- `core/services/recall_observability.py` :: `emit_recall_outcome` (L14)
+- `core/services/recall_ownership_migration.py` :: `RecallOwnershipReport.authoritative_count` (L49)
+- `core/services/recall_ownership_migration.py` :: `RecallOwnershipReport.conflict_count` (L57)
+- `core/services/recall_ownership_migration.py` :: `RecallOwnershipReport.destination_for` (L60)
+- `core/services/recall_ownership_migration.py` :: `RecallOwnershipReport.owner_fallback_count` (L53)
+- `core/services/recall_ownership_migration.py` :: `RecallOwnershipReport.reason_for` (L67)
+- `core/services/recall_ownership_migration.py` :: `apply_report` (L434)
+- `core/services/recall_ownership_migration.py` :: `classify_recall_ownership` (L314)
+- `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
+- `core/services/recall_ownership_migration.py` :: `report_path` (L142)
+- `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L417)
 - `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L425)
 - `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L554)
@@ -1943,6 +1957,12 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
 - `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L404)
 - `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L413)
+- `core/services/scoped_recall_policy.py` :: `disabled_result` (L51)
+- `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
+- `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
+- `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)
+- `core/services/scoped_recall_policy.py` :: `set_recall_enabled` (L25)
+- `core/services/scoped_recall_policy.py` :: `set_recall_migration_enabled` (L29)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)
@@ -2005,7 +2025,7 @@ Generated from source. 8953/17088 functions/methods documented (52%). The list b
 - `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L688)
+- `core/services/semantic_memory.py` :: `get_stats` (L694)
 - `core/services/sensory_archive.py` :: `count` (L480)
 - `core/services/sensory_archive.py` :: `get` (L476)
 - `core/services/sensory_archive.py` :: `list_recent` (L455)

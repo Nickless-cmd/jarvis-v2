@@ -223,10 +223,10 @@ _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._
 | function | `_semantic_dedup_lines` | `(lines, threshold=…)` | Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab, | [src](../../../core/services/prompt_sections/memory_recall.py#L208) |
 | function | `_is_semantic_dup_of_memory` | `(text, user_id=…)` | True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd). | [src](../../../core/services/prompt_sections/memory_recall.py#L245) |
 | function | `_visible_memory_recall_bundle_section` | `(*, session_id, user_message, compact)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L280) |
-| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L311) |
-| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L338) |
-| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L374) |
-| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L434) |
+| function | `_private_brain_recall_lines` | `(*, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L318) |
+| function | `_recent_tool_recall_lines` | `(session_id, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L345) |
+| function | `_memory_candidate_recall_lines` | `(*, limit, session_id=…)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L381) |
+| function | `_clip_line` | `(value, *, limit)` | — | [src](../../../core/services/prompt_sections/memory_recall.py#L441) |
 
 ## `core/services/prompt_sections/memory_scoring.py`
 _core/services/prompt_sections/memory_scoring.py_

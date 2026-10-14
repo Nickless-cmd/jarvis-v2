@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/relational_warmth.py`
+_Relational Warmth — felt quality of who I'm talking to._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/relational_warmth.py#L55) |
+| function | `_load` | `()` | — | [src](../../../core/services/relational_warmth.py#L60) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/relational_warmth.py#L106) |
+| function | `_has_cue` | `(text, cues)` | — | [src](../../../core/services/relational_warmth.py#L118) |
+| function | `observe_incoming_text` | `(text, *, relation_id=…)` | Register an incoming text from the user. Returns signal breakdown. | [src](../../../core/services/relational_warmth.py#L123) |
+| function | `observe_outgoing_text` | `(text, *, relation_id=…)` | Register an outgoing text from Jarvis. Detects care signals. | [src](../../../core/services/relational_warmth.py#L155) |
+| function | `_decay_over_time` | `(rel)` | Slowly decay playfulness and trust if no recent interaction. | [src](../../../core/services/relational_warmth.py#L176) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/relational_warmth.py#L194) |
+| function | `get_relation` | `(relation_id=…)` | — | [src](../../../core/services/relational_warmth.py#L209) |
+| function | `build_relational_warmth_surface` | `()` | — | [src](../../../core/services/relational_warmth.py#L214) |
+| function | `_surface_summary` | `(rel)` | — | [src](../../../core/services/relational_warmth.py#L229) |
+| function | `build_relational_warmth_prompt_section` | `()` | Surface register-shaping hint only when it should change tone. | [src](../../../core/services/relational_warmth.py#L237) |
+
+## `core/services/relationship_texture.py`
+_Relationship Texture — tracks the quality of the relationship over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_relationship_from_run` | `(*, run_id, user_message, assistant_response, outcome_status, turn_count=…)` | Analyze a run and update relationship texture. | [src](../../../core/services/relationship_texture.py#L45) |
+| function | `update_relationship_async` | `(**kwargs)` | — | [src](../../../core/services/relationship_texture.py#L163) |
+| function | `track_pushback_outcome` | `(*, jarvis_disagreed, user_was_right, topic=…)` | Track when Jarvis disagrees — and who was right. | [src](../../../core/services/relationship_texture.py#L170) |
+| function | `derive_appropriate_autonomy_level` | `()` | Derive autonomy level from trust trajectory. | [src](../../../core/services/relationship_texture.py#L194) |
+| function | `build_relationship_texture_surface` | `()` | — | [src](../../../core/services/relationship_texture.py#L213) |
+| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/relationship_texture.py#L230) |
+| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L237) |
+| function | `_safe_json_dict` | `(value)` | — | [src](../../../core/services/relationship_texture.py#L250) |
+
 ## `core/services/release_marker_signal_tracking.py`
 _Release-marker signal tracking — migrated onto signal_tracking_framework._
 
@@ -604,20 +636,4 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L108) |
 | function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
 | function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
-
-## `core/services/run_guard.py`
-_Én fælles vagt: kører der et run i denne session lige nu?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L54) |
-| function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L87) |
-
-## `core/services/run_message_provenance.py`
-_Name the source of model input without changing the user's stored text._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current_run_source_notice` | `()` | Explicit system-level provenance for a scheduled model turn. | [src](../../../core/services/run_message_provenance.py#L7) |
-| function | `current_message_for_model` | `(message)` | A scheduled task uses a request slot, but it did not come from the user now. | [src](../../../core/services/run_message_provenance.py#L19) |
 

@@ -2,6 +2,52 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_rhythm.py`
+_Temporal Rhythm — felt time, not computed time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_synk` | `()` | Hent fra disk hvis filen er aendret siden sidste laesning. | [src](../../../core/services/temporal_rhythm.py#L46) |
+| function | `_gem` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L65) |
+| function | `_pending_initiatives_count` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L74) |
+| function | `_recent_tool_calls_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L82) |
+| function | `_recent_chat_activity_per_min` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L92) |
+| function | `_eventbus_queue_depth` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L112) |
+| function | `_compute_pulse_rate` | `(*, initiatives, tool_rate, chat_rate, queue)` | Combine inputs into pulse in [0.1, 2.0]. | [src](../../../core/services/temporal_rhythm.py#L133) |
+| function | `_label_from_pulse` | `(pulse)` | — | [src](../../../core/services/temporal_rhythm.py#L150) |
+| function | `_perceived_elapsed_factor` | `(pulse)` | When pulse is high, subjective time moves slower relative to clock. | [src](../../../core/services/temporal_rhythm.py#L160) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/temporal_rhythm.py#L168) |
+| function | `reset_temporal_rhythm` | `()` | Nulstil rytmen. Rydder OGSAA disken — ellers ville naeste `_synk()` | [src](../../../core/services/temporal_rhythm.py#L215) |
+| function | `get_current_rhythm` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L224) |
+| function | `build_temporal_rhythm_surface` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L229) |
+| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L255) |
+| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L263) |
+
+## `core/services/temporal_self_continuity.py`
+_Temporal self-continuity: past/current/future self handoff._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_temporal_continuity_from_latest_episode` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L16) |
+| function | `update_temporal_continuity_from_episode` | `(episode)` | — | [src](../../../core/services/temporal_self_continuity.py#L23) |
+| function | `build_temporal_self_continuity_surface` | `(*, limit=…)` | — | [src](../../../core/services/temporal_self_continuity.py#L51) |
+| function | `build_temporal_self_continuity_prompt_section` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L66) |
+| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/temporal_self_continuity.py#L79) |
+| function | `_load` | `()` | — | [src](../../../core/services/temporal_self_continuity.py#L89) |
+
+## `core/services/terminal_sanitize.py`
+_Fjern terminal-styrekoder fra tool-output før det når modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
+| class | `TerminalStreamSanitizer` | `` | Stateful sanitizer that does not leak escape fragments across chunks. | [src](../../../core/services/terminal_sanitize.py#L48) |
+| method | `TerminalStreamSanitizer.__init__` | `(self, *, max_pending_chars=…)` | — | [src](../../../core/services/terminal_sanitize.py#L51) |
+| method | `TerminalStreamSanitizer._incomplete_escape_start` | `(text)` | — | [src](../../../core/services/terminal_sanitize.py#L58) |
+| method | `TerminalStreamSanitizer._finish_discarded_osc` | `(self, text)` | — | [src](../../../core/services/terminal_sanitize.py#L86) |
+| method | `TerminalStreamSanitizer.feed` | `(self, chunk)` | — | [src](../../../core/services/terminal_sanitize.py#L103) |
+| method | `TerminalStreamSanitizer.flush` | `(self)` | — | [src](../../../core/services/terminal_sanitize.py#L122) |
+
 ## `core/services/text_clip.py`
 _core/services/text_clip.py_
 
@@ -519,42 +565,4 @@ _TOTP-verifikation (RFC 6238) til owner-override — ren stdlib, ingen dependenc
 | function | `provisioning_uri` | `(seed, *, account, issuer=…)` | Byg en otpauth://-URI som authenticator-apps (Google Authenticator, Authy, | [src](../../../core/services/totp_verifier.py#L94) |
 | function | `revoke` | `(_old_seed=…)` | Returnér en ny seed. Caller (owner-session) persisterer den + smider den gamle. | [src](../../../core/services/totp_verifier.py#L106) |
 | function | `record_attempt` | `(session_id, *, now=…)` | Registrér et override-forsøg. True hvis tilladt, False hvis rate-limited. | [src](../../../core/services/totp_verifier.py#L120) |
-
-## `core/services/truth_gate_v2.py`
-_Evidens-baseret TruthGate v2 (Fase 2). Detekterer handlings-påstande og verificerer_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ActionClaim` | `` | — | [src](../../../core/services/truth_gate_v2.py#L35) |
-| function | `_er_mellemmenneskeligt` | `(text, m)` | Peger paastanden paa en person eller paa noget der er SAGT? | [src](../../../core/services/truth_gate_v2.py#L74) |
-| function | `detect_action_claims` | `(text)` | Deterministisk: find handlings-påstande. commit_hash tæller kun i commit/git/log- | [src](../../../core/services/truth_gate_v2.py#L85) |
-| function | `_er_hash_vi_selv_har_vist` | `(hash_i_tekst)` | Er det den commit-hash env-blokken selv skrev ind i hans prompt? | [src](../../../core/services/truth_gate_v2.py#L128) |
-| function | `_run_result_text` | `(followup_exchanges)` | — | [src](../../../core/services/truth_gate_v2.py#L165) |
-| function | `verify_claim` | `(claim, executed_tool_names, followup_exchanges)` | In-run evidens: kørte et tool i kategorien? + (for citeret output/hash) matcher | [src](../../../core/services/truth_gate_v2.py#L173) |
-| function | `classify_severity` | `(claims)` | — | [src](../../../core/services/truth_gate_v2.py#L218) |
-| function | `_footnote_for` | `(claim)` | Byg én fodnote-linje for et uverificeret claim i den konsistente stil. | [src](../../../core/services/truth_gate_v2.py#L222) |
-| function | `_annotate` | `(text, claims)` | Bevar teksten + append fodnote(r) i bunden (én pr. claim, adskilt fra | [src](../../../core/services/truth_gate_v2.py#L232) |
-| function | `_annotate_soft` | `(text, claims=…)` | Bagudkompatibel: bløde påstande → fodnote. (claims valgfri; uden dem | [src](../../../core/services/truth_gate_v2.py#L241) |
-| function | `_llm_judge` | `(text)` | Spørg billig lane om teksten påstår en handling der kræver tool-evidens. | [src](../../../core/services/truth_gate_v2.py#L256) |
-| function | `_maybe_llm_claim` | `(text)` | LLM-dommer KUN hvis teksten har et handlings-hint men intet deterministisk match. | [src](../../../core/services/truth_gate_v2.py#L279) |
-| function | `truth_gate_v2` | `(ctx)` | ctx: {text, executed_tool_names, followup_exchanges, run_id, session_id}. | [src](../../../core/services/truth_gate_v2.py#L293) |
-
-## `core/services/turens_vaerktoejer.py`
-_Ét værktøjssæt for HELE turen — begge trin ser det samme._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
-| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
-
-## `core/services/turn_changelog.py`
-_End-of-turn changelog — auto-summarize what this turn changed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_calls_during` | `(run_id, started_at)` | — | [src](../../../core/services/turn_changelog.py#L27) |
-| function | `_git_changed_files` | `(repo)` | — | [src](../../../core/services/turn_changelog.py#L50) |
-| function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
-| function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
-| function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
 

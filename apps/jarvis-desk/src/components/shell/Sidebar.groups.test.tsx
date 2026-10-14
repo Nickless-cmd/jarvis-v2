@@ -49,12 +49,14 @@ const vis = (surface: 'chat' | 'code' = 'chat') =>
 const gruppe = (navn: string) => screen.getByRole('button', { name: new RegExp(navn, 'i') })
 
 describe('sessions-listen er inddelt', () => {
-  it('chat-mode viser samtaler og den proaktive kanal — ikke legacy-runs eller kode', () => {
+  it('chat-mode viser samtaler og Rutiner — ikke proaktive/autonome sessioner eller kode', () => {
     // Bjørn 8/9-2026: «istedet for at vise chat samtale i code mode og omvendt
     // … sådan de samtaler der hører til det pågældende mode kun bliver vist».
     vis('chat')
     expect(within(gruppe('samtaler')).getByText('2')).toBeInTheDocument()
-    expect(within(gruppe('proaktive & autonome')).getByText('1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rutiner' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /proaktive|autonome/i })).toBeNull()
+    expect(screen.queryByText('💭 Proaktive spørgsmål')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Projekter/i })).toBeNull()
     expect(screen.queryByText('ret lige den fil')).not.toBeInTheDocument()
   })
@@ -67,9 +69,7 @@ describe('sessions-listen er inddelt', () => {
     expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()
   })
 
-  it('de autonome følger chat, ikke kode — de har intet workspace', () => {
-    // Havde de ligget begge steder, ville de dukke op to gange, og det er
-    // præcis den slags rod inddelingen blev lavet for at fjerne.
+  it('de autonome vises heller ikke i code — de hører under Rutiner', () => {
     vis('code')
     expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()
   })
@@ -91,19 +91,6 @@ describe('sessions-listen er inddelt', () => {
     render(<Sidebar surface="chat" onSurface={() => {}} userName="Bjørn" onSearch={onSearch} />)
     fireEvent.click(screen.getByLabelText(/Søg \(Ctrl\+K\)/i))
     expect(onSearch).toHaveBeenCalled()
-  })
-
-  it('den proaktive kanal er foldet sammen som udgangspunkt', () => {
-    vis()
-    expect(screen.queryByText('💭 Proaktive spørgsmål')).not.toBeInTheDocument()
-    expect(gruppe('proaktive & autonome')).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('de kan foldes ud', () => {
-    vis()
-    fireEvent.click(gruppe('proaktive & autonome'))
-    expect(screen.getByText('💭 Proaktive spørgsmål')).toBeInTheDocument()
-    expect(gruppe('proaktive & autonome')).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('og hans egne kan foldes sammen', () => {

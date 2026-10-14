@@ -64,6 +64,10 @@ describe('inddelingen', () => {
   it('rækkefølgen er fast: det han selv har skrevet står øverst', () => {
     expect(GRUPPE_ORDEN).toEqual(['chat', 'kode', 'baggrund', 'arkiv'])
   })
+
+  it('ingen baggrunds-sessioner vises i sidepanelets chat-mode efter Routines-cutover', () => {
+    expect(GRUPPER_I_MODE.chat).toEqual(['chat', 'arkiv'])
+  })
 })
 
 describe('projekt-gruppering', () => {

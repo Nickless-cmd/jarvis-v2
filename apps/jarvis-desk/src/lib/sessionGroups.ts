@@ -91,13 +91,13 @@ export const GRUPPE_NAVN: Record<SessionGruppe, string> = {
  * chat samtale i code mode og omvendt … sådan de samtaler der hører til det
  * pågældende mode kun bliver vist»).
  *
- * Baggrunds-kørslerne ligger under chat, ikke kode: de er samtaler Jarvis selv
- * har startet, og de har ingen workspace. Havde de ligget begge steder, ville
- * de være dukket op to gange — og det er præcis den slags rod inddelingen blev
- * lavet for at fjerne.
+ * Efter Routines-cutover vises baggrunds-/autonomesessioner ikke længere som
+ * samtaler i nogen mode. De styres fra Rutiner, som findes i både chat og code.
+ * Gruppen bevares internt, så gamle rækker hverken fejlklassificeres som
+ * almindelige samtaler eller lækker ind i et projekt.
  */
 export const GRUPPER_I_MODE: Record<'chat' | 'code', SessionGruppe[]> = {
-  chat: ['chat', 'baggrund', 'arkiv'],
+  chat: ['chat', 'arkiv'],
   code: ['kode', 'arkiv'],
 }
 

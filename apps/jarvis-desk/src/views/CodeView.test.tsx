@@ -111,15 +111,21 @@ describe('CodeView', () => {
     expect(container.querySelector('.composer-tal')).toBeNull()
   })
 
-  it('viser aktivitet fra en anden enhed under disclaimeren, ikke i headeren', async () => {
+  it('viser aktivitet fra en anden enhed som ikon ved foden, under disclaimeren', async () => {
     vi.mocked(api.getActiveRunSessions).mockResolvedValueOnce([
       { session_id: 's1', run_id: 'remote-run', status: 'working' },
     ])
     try {
       const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
       const badge = await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
+      // 13/10-2026 (Bjørn): «de 3 badges skal flyttes under disclamer». Mærket
+      // hører nu ved foden sammen med disclaimer-linjen — ikke i header-båndet,
+      // der er panel-knappernes række. Testens ærinde er fortsat at mærket
+      // findes og står det rigtige sted; ankeret er mærket selv, ikke en nabo
+      // der kan slukkes uden at testen ved det.
       const footer = badge.closest('.composer-footer-slot')
       expect(footer).toBeInTheDocument()
+      expect(footer?.contains(badge)).toBe(true)
       expect(badge.closest('.chatview-head-right')).toBeNull()
       expect(footer?.previousElementSibling).toHaveClass('composer-disclaimer')
       expect(container.querySelector('.takeover-banner')).not.toBeInTheDocument()

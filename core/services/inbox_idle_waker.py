@@ -15,9 +15,11 @@ tilfældigvis kører.
 
 ## Vækkeren er bevidst KONSERVATIV
 
-  * **Kun gatende poster.** `kraever_handling` + verificeret ejer — samme
-    kandidat-regel som `inbox_gate` bruger. En informerende post må ikke starte
-    et run.
+  * **Kun gatende poster** — plus én eksplicit tredje klasse. `kraever_handling`
+    + verificeret ejer er samme kandidat-regel som `inbox_gate` bruger: en
+    informerende post må ikke starte et run. Dertil `KAN_DISPATCHES_KILDETYPER`
+    (13/10-2026): en post der MÅ starte et run men ALDRIG må nægte en mutation
+    — og kun når kilden selv melder den moden (`_er_moden`).
   * **Kun når INTET kører.** Guarden er `wakeup_dispatcher._active_turn_blocks`
     — genbrugt, ikke kopieret. To definitioner af «nogen taler nu» er præcis den
     drift der gav fire fejl i dette spor.
@@ -55,6 +57,37 @@ MAKS_PR_RUNDE = 2
 _VAEKKET_AF = "inbox-idle-waker"
 
 
+def _wakeup_records() -> dict[str, dict[str, Any]]:
+    """Fyrede, sprangte vækninger — nøglet på `wakeup_id`.
+
+    Self-safe: kan kilden ikke læses, svarer vi TOMT. En vækning vi ikke
+    kunne læse må ikke blive et run på et gæt — og et tomt svar betyder
+    «ingen at løfte», ikke «løft alt».
+    """
+    try:
+        from core.services import self_wakeup
+
+        return {str(r.get("wakeup_id") or ""): r
+                for r in self_wakeup.ventende_efter_skip()}
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("inbox_idle_waker: kunne ikke laese sprangte vaekninger: %s", exc)
+        return {}
+
+
+def _er_moden(post: dict[str, Any], *, vaekninger: dict[str, dict[str, Any]]) -> bool:
+    """Er en dispatchbar post MODEN — melder kilden selv at den er klar?
+
+    Dette led er hele forskellen mellem «findes» og «skal køre». En væknings
+    indbakke-post oprettes ved BOOKINGEN, ikke ved fyringen. Uden en
+    modenheds-test ville vækkeren starte et run for en vækning der først fyrer
+    i morgen — og den ville gøre det hver eneste poll-runde.
+    """
+    kildetype = str(post.get("kildetype") or "")
+    if kildetype == "wakeup":
+        return str(post.get("kilde_id") or "") in vaekninger
+    return False
+
+
 def kandidater(bruger_id: str) -> list[dict[str, Any]]:
     """Åbne, gatende poster for brugeren — dem der må starte et run.
 
@@ -68,17 +101,31 @@ def kandidater(bruger_id: str) -> list[dict[str, Any]]:
     én gate-påmindelse blive permanent usynlig her. Det var målt i drift.
     """
     from core.runtime import db_inbox
+    from core.services.inbox_state import kan_dispatch
 
     bruger_id = str(bruger_id or "").strip()
     if not bruger_id:
         return []
     poster = db_inbox.liste_aktiv(bruger_id=bruger_id)
-    return [
-        p for p in poster
-        if p.get("kraever_handling")
-        and str(p.get("verificeret_ejer") or "") == db_inbox.EJER_JARVIS
-        and not str(p.get("sidste_vaekning_tur") or "").strip()
-    ]
+    vaekninger: dict[str, dict[str, Any]] | None = None
+    ud: list[dict[str, Any]] = []
+    for p in poster:
+        if str(p.get("sidste_vaekning_tur") or "").strip():
+            continue
+        if str(p.get("verificeret_ejer") or "") != db_inbox.EJER_JARVIS:
+            continue
+        if p.get("kraever_handling"):
+            ud.append(p)
+            continue
+        # Den TREDJE klasse. Kilde-læsningen er DOVEN med vilje: en post der
+        # ikke er dispatchbar må ikke koste et opslag i en anden kilde.
+        if not kan_dispatch(p.get("kildetype")):
+            continue
+        if vaekninger is None:
+            vaekninger = _wakeup_records()
+        if _er_moden(p, vaekninger=vaekninger):
+            ud.append(p)
+    return ud
 
 
 def _noget_koerer() -> bool:
@@ -124,6 +171,29 @@ def _direktiv(post: dict[str, Any]) -> str:
     )
 
 
+def _dispatch_tekst(post: dict[str, Any]) -> tuple[str, str | None]:
+    """(tekst, session) for det run vækningen skal starte.
+
+    En SPRUNGT vækning bærer sin egen tekst og sin egen samtale: den skal køre
+    med `direktiv_for` — den samme instruktion dispatcheren ville have givet —
+    i den samtale den blev booket fra, ikke i en auto-session. Er kilden væk
+    eller ikke læsbar, falder vi tilbage til det generiske direktiv; et run
+    med den rigtige post er bedre end intet run.
+
+    Gatende poster (den oprindelige klasse) er urørt: de bruger `_direktiv`.
+    """
+    from core.services.inbox_state import kan_dispatch
+
+    if not post.get("kraever_handling") and kan_dispatch(post.get("kildetype")):
+        if str(post.get("kildetype") or "") == "wakeup":
+            rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
+            if rec:
+                from core.services.self_wakeup import direktiv_for
+
+                return direktiv_for(rec), (str(rec.get("session_id") or "").strip() or None)
+    return _direktiv(post), None
+
+
 def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
     """Væk ét run for de øverste gatende poster — hvis intet kører.
 
@@ -155,8 +225,9 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             logger.debug("inbox_idle_waker: kunne ikke notere %s: %s", kilde_id, exc)
             continue
+        tekst, session_id = _dispatch_tekst(post)
         try:
-            _start_run(_direktiv(post))
+            _start_run(tekst, session_id=session_id)
             vaekket += 1
             logger.info("inbox_idle_waker: vaekkede paa %s/%s", post.get("kildetype"), kilde_id)
         except Exception as exc:  # noqa: BLE001

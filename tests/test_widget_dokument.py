@@ -107,15 +107,31 @@ def test_dokumentet_bruger_mobilens_bredde_og_tillader_knib_zoom():
     assert "user-scalable=yes" in d
 
 
-def test_dokumentet_kan_ikke_scrolle_internt():
-    """Widget'en maa ikke ende i en frame med sit eget rullepanel (7/10-2026).
+def test_dokumentet_KLIPPER_ikke_sit_eget_indhold():
+    """Dokumentet maa ikke klippe — klienten saetter hoejden.
 
-    Uden en overflow-regel kunne dokumentet scrolle internt, og `scrollHeight`
-    maalte saa kun det SYNLIGE — hoejden blev meldt for lavt til klienten, og
-    rammen fik scroll. Dokumentet skal vokse med sit indhold.
+    Denne test hed tidligere `test_dokumentet_kan_ikke_scrolle_internt` og
+    kraevede `overflow:hidden`, med den begrundelse at `scrollHeight` ellers
+    «maaler kun det SYNLIGE». Den begrundelse var forkert: `scrollHeight`
+    maaler ALTID hele indholdet — det er `clientHeight` der maaler det synlige.
+
+    MEN: linjen var heller ikke fejlen. Det troede jeg et oejeblik, og det er
+    vaerd at skrive ned saa naeste ikke gaar samme vej. Maalt i Chrome i en
+    sandkasset iframe giver `overflow:hidden` og `overflow:visible` BEGGE
+    724 px — `scrollHeight` kollapser ikke. Den aegte aarsag til at Bjoerns
+    widget stod fast paa 160 px var TIMING: klientens script maalte synkront
+    ved parse (0 px) i stedet for efter load (724 px), samme dokument.
+
+    Testen staar derfor paa det der ER sandt: dokumentet skal vokse med sit
+    indhold, og klienten saetter rammens hoejde. Den paastaar ikke at vaere
+    rettelsen.
     """
     d = pak("<p>x</p>")
-    assert "overflow:hidden" in d, "dokumentet skal ikke kunne scrolle internt"
+    assert "overflow:hidden" not in d, (
+        "overflow:hidden klipper indholdet i en sandkasse — body.scrollHeight "
+        "kollapser til 0 og rammen laaser paa sin start-hoe jde"
+    )
+    assert "overflow:visible" in d, "dokumentet skal vokse med sit indhold"
 
 
 def test_links_kan_ikke_klikkes():

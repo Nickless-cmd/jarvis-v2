@@ -82,3 +82,36 @@ def test_invalidate_clears(monkeypatch):
     cs._set_cached_state("visible_full", "x", [])
     cs.invalidate_cognitive_state_cache()
     assert cs._get_cached_state("visible_full") is None
+
+
+def test_heavy_executor_er_modulniveau_og_genbruger_traade():
+    """Regression (13/10-2026): poolen blev oprettet PER KALD og lukket igen.
+
+    Målt: build_cognitive_state_for_prompt kaldtes 752 gange på ét døgn →
+    ~4.500 tråde født og dræbt, og 45 % af runtime-processens CPU lå i tråde
+    der ikke længere fandtes. Poolen skal være modulniveau, genbruge sine
+    tråde på tværs af kald, og aldrig shutdown'es af et kald.
+    """
+    import threading
+    import time
+
+    pool = cs._HEAVY_EXECUTOR
+    assert pool._max_workers == 6
+    assert pool._thread_name_prefix == "cognitive-state"
+    assert not pool._shutdown, "poolen må ikke være lukket — den lever hele processen"
+
+    def _live():
+        return {t.ident for t in threading.enumerate()
+                if t.name.startswith("cognitive-state")}
+
+    # Første runde: trådene fødes.
+    for f in [pool.submit(time.sleep, 0.02) for _ in range(6)]:
+        f.result()
+    first = _live()
+    assert len(first) == 6
+
+    # Anden runde: SAMME tråde genbruges — ingen nye fødes.
+    for f in [pool.submit(time.sleep, 0.02) for _ in range(6)]:
+        f.result()
+    assert _live() == first, "trådene skal genbruges, ikke genoprettes per kald"
+    assert not pool._shutdown

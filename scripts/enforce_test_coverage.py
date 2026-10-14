@@ -48,6 +48,11 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # af hans arbejde: en merge gen-stager alt, saa gaten doemte hans filer i
     # min commit, og hans egen commit havde allerede passeret.
     "core/services/handover_tools.py": "tests/test_handover.py",
+    # Sessionstitler (13/10-2026): testene ligger i test_session_navngivning.py,
+    # fordi de maaler FUNKTIONEN — navngivningen af en session — og ikke
+    # modulet. Samme grund som handover-linjen ovenfor, og de daekker baade
+    # pladsholder-reglen og titling-sweepet.
+    "core/services/session_titling.py": "tests/test_session_navngivning.py",
     # Boy Scout-split fra db.py — testet via #154-isolation + surfaces.
     "core/runtime/db_autonomy.py": "tests/test_user_scope_154.py",
     "core/runtime/db_private_brain.py": "tests/test_user_scope_154.py",

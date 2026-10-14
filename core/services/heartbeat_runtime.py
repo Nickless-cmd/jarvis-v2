@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import re
 import threading
 import time
@@ -10,7 +11,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib import error as urllib_error  # noqa: F401  (re-exported surface)
 from urllib import request as urllib_request  # noqa: F401  (re-exported surface)
 
@@ -1272,6 +1273,99 @@ _HEARTBEAT_TICK_COUNTER = 0
 _META_REFLECTION_INFLIGHT = False
 
 
+# ── Delt traad-pulje for deadline-bundne daemon-tik (13/10-2026) ──────────────
+# FOER: _daemon_tick_with_deadline spawnede en raa threading.Thread per kald og
+# lod den do bagefter. Der er 61 kaldesteder, og hvert kald betalte foe+doed:
+# maalt 52 us CPU mod 14 us for at genbruge en traad der allerede findes.
+#
+# Hvorfor ikke ThreadPoolExecutor: dens workers er NON-daemon (maalt 13/10), og
+# dens atexit-handler joiner dem ved interpreter-exit. En daemon der haenger
+# forbi sin deadline ville derfor kunne BLOKERE en genstart. De raa traade i dag
+# er daemon=True og goer det ikke — den egenskab bevares her.
+#
+# Designet: en pulje af daemon-traade med genbrug.
+#   - Er en traad ledig i _DAEMON_POOL_IDLE, faar den opgaven (genbrug).
+#   - Er ingen ledig, foes en frisk traad — praecis som foer.
+#   - En traad der ikke bliver faerdig inden sin deadline gives ALDRIG tilbage
+#     til puljen; den doer efter TTL. Den blokerer derfor ikke andre, og puljen
+#     kan ikke udtoemmes.
+#   - Ledige traade udloeber efter _DAEMON_POOL_TTL_SECONDS, saa antallet falder
+#     tilbage til nul i stille perioder.
+_DAEMON_POOL_TTL_SECONDS = 30.0
+_DAEMON_POOL_LOCK = threading.Lock()
+_DAEMON_POOL_IDLE: list[tuple[threading.Thread, "queue.Queue"]] = []
+_DAEMON_POOL_STATS: dict[str, int] = {"spawned": 0, "reused": 0}
+
+
+def _daemon_pool_worker(task_q: "queue.Queue") -> None:
+    """Koer opgaver fra egen koe indtil TTL udloeber uden nyt arbejde.
+
+    Traaden parkerer IKKE sig selv — den laegges tilbage i puljen af den kalder
+    der fik sit svar (se _daemon_pool_release). En opgave der ikke bliver
+    faerdig inden sin deadline bliver derfor aldrig givet tilbage, og traaden
+    doer efter TTL i stedet for at blive genbrugt.
+    """
+    while True:
+        try:
+            item = task_q.get(timeout=_DAEMON_POOL_TTL_SECONDS)
+        except queue.Empty:
+            # Dobbelt-tjek under laasen: submitteren kan have lagt en opgave i
+            # vinduet mellem at vi fik Empty og nu. Fjern os selv fra _IDLE og
+            # afslut KUN hvis koen stadig er tom — ellers loeser vi opgaven.
+            with _DAEMON_POOL_LOCK:
+                try:
+                    item = task_q.get_nowait()
+                except queue.Empty:
+                    for i, (_t, q) in enumerate(_DAEMON_POOL_IDLE):
+                        if q is task_q:
+                            _DAEMON_POOL_IDLE.pop(i)
+                            break
+                    return
+        if item is None:
+            return
+        runner, box = item
+        try:
+            runner(box)
+        except Exception:
+            pass  # runner fanger selv; sidste vaern mod at draebe workeren
+
+
+def _daemon_pool_dispatch(
+    runner: "Callable[[list[Any]], None]", box: list[Any]
+) -> tuple[threading.Thread, "queue.Queue"]:
+    """Giv opgaven til en ledig daemon-traad — eller foes en frisk.
+
+    Opgaven laegges i koen MENS laasen holdes. Ellers kan en traad der er ved at
+    udloeve sin TTL naa at fjerne sig selv og do i vinduet mellem at vi tog den
+    fra _IDLE og til vi lagde opgaven — og saa ville opgaven aldrig blive loest.
+    """
+    with _DAEMON_POOL_LOCK:
+        while _DAEMON_POOL_IDLE:
+            t, q = _DAEMON_POOL_IDLE.pop()
+            if not t.is_alive():
+                continue  # doed eller doende — smid vaek, proev naeste
+            q.put_nowait((runner, box))
+            _DAEMON_POOL_STATS["reused"] += 1
+            return t, q
+        q = queue.Queue(maxsize=1)
+        t = threading.Thread(
+            target=_daemon_pool_worker,
+            args=(q,),
+            name="daemon-tick-pool",
+            daemon=True,
+        )
+        t.start()
+        q.put_nowait((runner, box))
+        _DAEMON_POOL_STATS["spawned"] += 1
+        return t, q
+
+
+def _daemon_pool_release(t: threading.Thread, q: "queue.Queue") -> None:
+    """Laeg traaden tilbage i puljen, saa naeste kald kan genbruge den."""
+    with _DAEMON_POOL_LOCK:
+        _DAEMON_POOL_IDLE.append((t, q))
+
+
 def _daemon_tick_with_deadline(
     name: str,
     fn: "Callable[..., Any]",
@@ -1297,6 +1391,13 @@ def _daemon_tick_with_deadline(
       - Heartbeat scheduler is free to proceed; next tick of this
         daemon will re-run (typically gated by its own cadence).
 
+    2026-10-13: traaden foe/dt ikke laengere per kald. Den kommer fra en delt
+    pulje af daemon-traade (_daemon_pool_submit) der genbruges naar de er
+    ledige. En traad der ikke bliver faerdig inden sin deadline parkerer sig
+    aldrig og genbruges derfor ikke — orphaning-semantikken er uaendret, og
+    puljen kan ikke udtoemmes. Se kommentaren ved puljen for hvorfor det ikke
+    er en ThreadPoolExecutor.
+
     Result of None means "this tick didn't finish in time". Callers
     that read derived state (get_latest_X functions) still see last
     cycle's value — there's no regression beyond "this cycle is
@@ -1305,34 +1406,39 @@ def _daemon_tick_with_deadline(
     consumer reads its predecessor's get_latest_X cache, which is
     independent of THIS cycle completing.
     """
-    import threading as _threading
     result_box: list[Any] = [None]
-    def _runner():
+    done = threading.Event()
+
+    def _runner(box: list[Any]) -> None:
         try:
-            result_box[0] = fn(*args, **kwargs)
+            box[0] = fn(*args, **kwargs)
         except Exception as exc:
             logger.debug("daemon %s tick crashed: %s", name, exc)
-    t = _threading.Thread(
-        target=_runner,
-        name=f"daemon-bg-{name}",
-        daemon=True,
+        finally:
+            done.set()
+
+    # Traaden kommer fra den delte daemon-pulje i stedet for at blive foe/dt og
+    # draebt per kald — se _daemon_pool_dispatch for hvorfor.
+    worker, task_q = _daemon_pool_dispatch(_runner, result_box)
+
+    if done.wait(timeout=deadline_seconds):
+        # Opgaven blev faerdig inden deadline: laeg traaden tilbage i puljen, saa
+        # naeste kald genbruger den. Ved timeout goer vi det IKKE — den er i gang.
+        _daemon_pool_release(worker, task_q)
+        return result_box[0]
+
+    logger.warning(
+        "daemon %s exceeded %.1fs deadline — orphaning thread",
+        name, deadline_seconds,
     )
-    t.start()
-    t.join(timeout=deadline_seconds)
-    if t.is_alive():
-        logger.warning(
-            "daemon %s exceeded %.1fs deadline — orphaning thread",
-            name, deadline_seconds,
-        )
-        try:
-            event_bus.publish("heartbeat.daemon_tick_deadline_exceeded", {
-                "daemon": name,
-                "deadline_seconds": deadline_seconds,
-            })
-        except Exception:
-            pass
-        return None
-    return result_box[0]
+    try:
+        event_bus.publish("heartbeat.daemon_tick_deadline_exceeded", {
+            "daemon": name,
+            "deadline_seconds": deadline_seconds,
+        })
+    except Exception:
+        pass
+    return None
 
 
 def _run_heartbeat_tick_locked(

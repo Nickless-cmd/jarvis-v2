@@ -889,7 +889,10 @@ export function CodeView({
     </div>
   )
 
-
+  // Status-badges. Flyttet ud af header-båndet 13/10-2026 (Bjørn: «de 3 badges
+  // skal flyttes under disclamer»). De siger hvad der ER, ikke hvad man kan
+  // trykke på — og headeren er panel-knappernes række. De står nu ved foden,
+  // under disclaimeren, hvor resten af «om appen» hører til.
   const badges = (
     <>
       <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
@@ -994,9 +997,10 @@ export function CodeView({
     <div className="chatview-head-right">
       {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
-      {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
-          sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
-          tydeligt tungere end resten (Bjoern 8/9-2026). */}
+      {/* Badges (anden-enhed, Central, myldretid, forbindelse) er flyttet NED
+          under disclaimer-linjen 13/10-2026 (Bjørn: «de 3 badges skal flyttes
+          under disclamer»). De er STATUS, ikke handling — og headeren er
+          panel-knappernes række. Se `badges` nedenfor. */}
       <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       <button
         type="button"

@@ -35,6 +35,22 @@ def start_autonomous_stream_run(
 
         sid = resolve_autonomous_session(normalize_origin(origin))
 
+    # FÆLLES CROSS-PROCES-VAGT (13/10-2026). Se `core/services/run_guard.py`.
+    # Denne sti er wakeup-dispatcherens — den der fyrede sit eget run mens
+    # Bjørn var midt i en tur, fordi vagten spurgte en PROCES-LOKAL log.
+    try:
+        from core.services.run_guard import blokeringsgrund
+
+        _vagt = blokeringsgrund(str(origin or ""), sid)
+    except Exception:  # noqa: BLE001 — self-safe: kan vagten ikke laeses, starter runnet
+        _vagt = ""
+    if _vagt:
+        logger.info(
+            "autonomt stream-run afvist af run-guarden: %s (session=%s origin=%s)",
+            _vagt, sid[:24], origin,
+        )
+        return
+
     settings = vr.load_settings()
     provider, model = resolve_autonomous_model(
         autonomous_provider=settings.autonomous_model_provider,

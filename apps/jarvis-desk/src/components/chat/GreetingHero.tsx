@@ -9,7 +9,8 @@ import { prepareExternalWindow } from '../../lib/host'
 /** Returnerer null naar der slet ingen bro er (web-fanen) — ellers selve
  *  loeftet, saa kalderen kan se om browseren faktisk aabnede. */
 /** Tom-session-skærm: tids-bevidst greeting + op til 3 connector-forslag (kun
- *  ikke-forbundne). Composeren gives som children, så den sidder under hilsenen. */
+ *  ikke-forbundne). Composeren gives som children, så den sidder under hilsenen
+ *  (spec §3.4). */
 /** Chat: hukommelse og samtale — det fladen ER til. */
 const CHAT_FORSLAG = [
   'Hvad talte vi om sidst?',
@@ -48,8 +49,10 @@ export function GreetingHero({
     void getConnectors(config)
       .then((list) => {
         if (cancelled) return
-        // Opsætningen er en engangshandling: vis kun ikke-forbundne OAuth-apps,
-        // Gmail først og højst tre diskrete forslag.
+        // Kun IKKE-forbundne OAuth-apps — Gmail først. En app der er sat op én
+        // gang forsvinder fra rækken: opsætningen er en engangs-handling, ikke
+        // en fast del af skærmen (Bjørn 13/10-2026). Maks 3, så rækken bliver
+        // et diskret hjørne og ikke en blok.
         const oauth = list.filter(
           (c) => c.kind === 'oauth' && c.status !== 'coming_soon' && !c.connected,
         )
@@ -85,6 +88,8 @@ export function GreetingHero({
 
   return (
     <div className="greeting-hero">
+      {/* Ingen glyph og ingen ring: hilsenen ER tidspunktet, i ord.
+          (Bjørn 13/10-2026: «det icon med sol og måne passer ikk rigtigt ind».) */}
       <div className="greeting-top">
         <div className="greeting-hello">{g.hello}, {userName}</div>
         <div className="greeting-line">{g.line}</div>

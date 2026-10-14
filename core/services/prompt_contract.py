@@ -31,6 +31,21 @@ from core.services.prompt_sections.memory_selection import (  # noqa: F401
 )
 from core.services.prompt_sections.output_discipline import _output_discipline_instruction
 
+# Modulniveau-pool (13/10-2026). FØR: en ny ThreadPoolExecutor(max_workers=6)
+# blev oprettet INDE i _build_visible_chat_prompt_assembly_impl, per kald, og
+# lukket med shutdown(wait=False) til sidst. Hvert kald fødte og dræbte seks
+# tråde; målt 13/10 lå 45 % af runtime-processens CPU i tråde der ikke længere
+# fandtes, og spidserne fik blæseren op. Poolen lever nu hele processens levetid.
+#
+# BEVIDST en EGEN pool, ikke delt med cognitive_state_assemblys
+# "cognitive-state"-pool: de to nestes (denne pool kører
+# _safe_build_cognitive_state_for_prompt → build_cognitive_state_for_prompt,
+# som bruger den anden pool). Delte de pool, kunne 6 ydre opgaver optage alle
+# 6 pladser mens de ventede på indre opgaver der aldrig fik en plads → deadlock.
+_ASSEMBLY_EXECUTOR = ThreadPoolExecutor(
+    max_workers=6, thread_name_prefix="prompt-assembly"
+)
+
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
 
@@ -747,7 +762,9 @@ def _build_visible_chat_prompt_assembly_impl(
 
     # CPU per builder — grundlaget for at skille CPU-bundet fra I/O-bundet.
     _phase_cpu: dict[str, int] = {}
-    executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
+    # Poolen er modulniveau (_ASSEMBLY_EXECUTOR) — se kommentaren ved dens
+    # definition for hvorfor den ikke oprettes her.
+    executor = _ASSEMBLY_EXECUTOR
 
     def _measured_submit(_name: str, _fn, *args, **kwargs):
         """Submit fn to executor with self-measuring wall-clock timing.
@@ -2791,7 +2808,9 @@ def _build_visible_chat_prompt_assembly_impl(
     # Awareness står nu lige før Jarvis' tur — stadig i "handlings-mode", bare
     # tættere på selve turen. Måles via R2-gate strict/light-efterlevelse.
 
-    executor.shutdown(wait=False)
+    # INGEN shutdown her: poolen er delt på modulniveau (_ASSEMBLY_EXECUTOR) og
+    # skal leve videre til næste tur. Alle futures resolves ovenfor via
+    # _timed_result/.result().
 
     _mark("after_assembly_complete")
     _total_ms = int((_t_mod.monotonic() - _t_assembly_start) * 1000)

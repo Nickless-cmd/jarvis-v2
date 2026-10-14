@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17049 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17075 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,15 +51,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17049 functions/
 - [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
 - [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relationship_texture`
-- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `runtime_action_executor`
-- [`core.services.23`](core.services.23.md) — `runtime_action_outcome_tracking` … `self_history_grounding`
-- [`core.services.24`](core.services.24.md) — `self_model_blind_spots` … `session_tool_pin`
-- [`core.services.25`](core.services.25.md) — `session_topic_tracker` … `somatic_daemon`
-- [`core.services.26`](core.services.26.md) — `somatic_runtime_body` … `theater_audit`
-- [`core.services.27`](core.services.27.md) — `theory_of_mind` … `ui_panel_store`
-- [`core.services.28`](core.services.28.md) — `unconscious_modulation` … `visible_post_tool_synthesis`
-- [`core.services.29`](core.services.29.md) — `visible_preview_crypto` … `voice_anchor`
-- [`core.services.30`](core.services.30.md) — `voice_curator` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `release_marker_signal_tracking` … `run_trailing`
+- [`core.services.23`](core.services.23.md) — `runtime_action_executor` … `self_experiments`
+- [`core.services.24`](core.services.24.md) — `self_history_grounding` … `session_spawn`
+- [`core.services.25`](core.services.25.md) — `session_titling` … `smith_noise_veto`
+- [`core.services.26`](core.services.26.md) — `social_labilizer` … `text_clip`
+- [`core.services.27`](core.services.27.md) — `text_resonance` … `turn_tail_timing`
+- [`core.services.28`](core.services.28.md) — `turn_trace` … `visible_model_sse`
+- [`core.services.29`](core.services.29.md) — `visible_model_types` … `vision_preview`
+- [`core.services.30`](core.services.30.md) — `visual_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

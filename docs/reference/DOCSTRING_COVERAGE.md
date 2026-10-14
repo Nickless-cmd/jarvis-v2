@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8926/17049 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8952/17075 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 689 | 946 | 72% |
+| `apps.api.jarvis_api.routes` | 690 | 947 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,19 +25,19 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 823 | 1517 | 54% |
-| `core.services` | 5949 | 11586 | 51% |
+| `core.services` | 5969 | 11606 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 533 | 1074 | 49% |
+| `core.tools` | 536 | 1077 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 274 | 599 | 45% |
+| `scripts` | 276 | 601 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1300,11 +1300,11 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L440)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L487)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2193)
-- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L302)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1256)
-- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L272)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2299)
+- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1257)
+- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
 - `core/services/hf_connector.py` :: `model_info` (L85)
@@ -1371,8 +1371,8 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/living_executive.py` :: `choose_impulse` (L108)
 - `core/services/living_executive.py` :: `execute_impulse` (L137)
 - `core/services/living_executive.py` :: `process_event` (L120)
-- `core/services/living_executive.py` :: `start_listener` (L881)
-- `core/services/living_executive.py` :: `stop_listener` (L902)
+- `core/services/living_executive.py` :: `start_listener` (L899)
+- `core/services/living_executive.py` :: `stop_listener` (L920)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
 - `core/services/long_horizon_goals.py` :: `create_goal` (L32)
 - `core/services/long_horizon_goals.py` :: `delete_goal` (L126)
@@ -1610,13 +1610,13 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3539)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3387)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3676)
-- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L158)
-- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L106)
-- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L133)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4630)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3558)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3406)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3695)
+- `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
+- `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
+- `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4649)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_memory_recall.py` :: `append_background_recall` (L22)
@@ -1826,7 +1826,7 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L742)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L769)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L320)
 - `core/services/run_event_log.py` :: `append` (L189)
 - `core/services/run_event_log.py` :: `create` (L102)
@@ -1852,9 +1852,9 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/runtime_action_outcome_tracking.py` :: `record_runtime_action_outcome` (L13)
 - `core/services/runtime_action_registry.py` :: `get_runtime_action_spec` (L113)
 - `core/services/runtime_action_registry.py` :: `list_runtime_action_specs` (L109)
-- `core/services/runtime_awareness_signal_tracking.py` :: `build_runtime_awareness_signal_surface` (L95)
-- `core/services/runtime_awareness_signal_tracking.py` :: `refresh_runtime_awareness_signal_statuses` (L66)
-- `core/services/runtime_awareness_signal_tracking.py` :: `track_runtime_awareness_signals_for_visible_turn` (L42)
+- `core/services/runtime_awareness_signal_tracking.py` :: `build_runtime_awareness_signal_surface` (L114)
+- `core/services/runtime_awareness_signal_tracking.py` :: `refresh_runtime_awareness_signal_statuses` (L85)
+- `core/services/runtime_awareness_signal_tracking.py` :: `track_runtime_awareness_signals_for_visible_turn` (L61)
 - `core/services/runtime_browser_body.py` :: `ensure_browser_body` (L12)
 - `core/services/runtime_browser_body.py` :: `get_browser_body` (L90)
 - `core/services/runtime_browser_body.py` :: `list_browser_bodies` (L97)
@@ -1936,8 +1936,8 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L382)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L391)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L404)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L413)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)
@@ -1989,7 +1989,7 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L385)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L459)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
@@ -2406,7 +2406,7 @@ Generated from source. 8926/17049 functions/methods documented (52%). The list b
 - `scripts/db_path_fixture_audit.py` :: `main` (L20)
 - `scripts/db_split_baseline.py` :: `main` (L43)
 - `scripts/db_split_baseline.py` :: `measure` (L18)
-- `scripts/deferred_restart.py` :: `main` (L80)
+- `scripts/deferred_restart.py` :: `main` (L199)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)

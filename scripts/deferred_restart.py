@@ -24,6 +24,16 @@ koeres i haanden:
 
     python3 scripts/deferred_restart.py <run_id> jarvis-api,jarvis-runtime
 
+13/10-2026 — UDVIDET, fordi den foerste version draebte en anden session.
+Bjoern: «den der checker om turen er slut foer genstart udvides.. du draebte
+lige en anden session.» Den foerste version ventede KUN paa det run der bad om
+genstarten. Men en genstart draeber ALLE koersler, ikke kun mit eget: i det
+oejeblik mit run doede, faldt vagten — ogsaa selv om en anden session var midt
+i en tur. Nu er betingelsen «MIT run er doedt OG ingen ANDRE koersler lever».
+
+Er der stadig nogen i gang naar vinduet lober ud, genstarter vi IKKE. En
+udskudt genstart er en gene; en draebt tur er et tab. Se `_afbryd`.
+
 Self-safe: kan run-tilstanden ikke laeses, venter vi hele max-vinduet ud
 (hellere sent end midt i en tur).
 """
@@ -42,7 +52,12 @@ if str(REPO) not in sys.path:
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_S = 3.0
-MAX_WAIT_S = 900.0  # 15 min — saa er turen enten slut eller laenge vaek
+# 30 min, ikke 15 (13/10-2026). Loftet rammes nu ogsaa naar en ANDEN session
+# koerer — og en session kan sagtens tage tyve minutter. Naar noget andet lever,
+# ABBRYDER vi ved loftet (se `_afbryd`); et for kort vindue ville altsaa goere en
+# helt normal anden tur til en afbrudt genstart. For mit EGET run betyder loftet
+# intet: er det doedt, gaar vi videre med det samme.
+MAX_WAIT_S = 1800.0
 DEFAULT_MARGIN_S = 5.0
 
 
@@ -64,17 +79,121 @@ def _run_is_alive(run_id: str) -> bool:
         return True
 
 
-def wait_for_idle(run_id: str, *, margin_s: float = DEFAULT_MARGIN_S) -> float:
-    """Vent til runnet er doedt + margin. Returnerer sekunder ventet."""
+def _andre_lever(egen_run_id: str) -> str:
+    """Run-id for et ANDET levende run — "" hvis ingen, "?" hvis vi ikke ved det.
+
+    Bjoern 13/10-2026: «den der checker om turen er slut foer genstart
+    udvides.. du draebte lige en anden session.» Den foerste version ventede
+    KUN paa det run der bad om genstarten — men genstarten draeber ALLE
+    koersler. I det oejeblik mit run doede, faldt vagten, og en anden session
+    midt i en tur blev revet med.
+
+    Kilden er den DELTE aktiv-tilstand, den SAMME som `is_visible_run_alive`
+    bygger paa — og vi genbruger dens dom i stedet for at skrive en anden.
+    Tilstanden baerer ÉT run ad gangen: det der koerer NU. Det er nok, fordi
+    genstarten kun skal vide om der er NOGEN at draebe.
+
+    Den daekker baade chat-sessioner og autonome runs: autonome runs rydder
+    selv tilstanden naar de er faerdige (`autonomous_stream_run.py:205`), og
+    det er beviset for at de ogsaa saetter den.
+
+    "?" betyder «ved det ikke», og kalderen venter. Hellere sent end midt i
+    en tur.
+    """
+    try:
+        from core.services.visible_runs import is_visible_run_alive
+        from core.services.visible_runs_sections.run_control_state import (
+            _get_active_visible_run_state,
+        )
+    except Exception:
+        logger.warning("deferred_restart: kan ikke importere aktiv-tilstanden",
+                       exc_info=True)
+        return "?"
+    try:
+        state = _get_active_visible_run_state() or {}
+    except Exception:
+        logger.warning("deferred_restart: kunne ikke laese aktiv-tilstanden",
+                       exc_info=True)
+        return "?"
+    rid = str(state.get("run_id") or "")
+    if not rid or rid == str(egen_run_id or ""):
+        return ""
+    try:
+        return rid if is_visible_run_alive(rid) else ""
+    except Exception:
+        logger.warning("deferred_restart: kunne ikke doemme run %s", rid[:12],
+                       exc_info=True)
+        return "?"
+
+
+def wait_for_idle(run_id: str, *, margin_s: float = DEFAULT_MARGIN_S) -> tuple[float, str]:
+    """Vent til MIT run er doedt OG ingen andre koersler lever.
+
+    Returnerer ``(sekunder_ventet, grund)``. ``grund`` er "" naar det er
+    sikkert at genstarte; ellers en kort forklaring paa hvad der stadig koerer.
+    """
     start = time.monotonic()
     while time.monotonic() - start < MAX_WAIT_S:
-        if not _run_is_alive(run_id):
-            break
+        if not _run_is_alive(run_id) and _andre_lever(run_id) == "":
+            # Margin: race-vinduet mellem svaret i chat_messages og
+            # outcome-raekken i visible_runs er maalt til 1-15 s. 5 s oveni
+            # doeds-tidspunktet er nok.
+            time.sleep(max(0.0, float(margin_s)))
+            return time.monotonic() - start, ""
         time.sleep(POLL_INTERVAL_S)
-    # Margin: race-vinduet mellem svaret i chat_messages og outcome-raekken i
-    # visible_runs er maalt til 1-15 s. 5 s oveni doeds-tidspunktet er nok.
+
+    # Vinduet lob ud. HVAD staar i vejen? Raekkefoelgen er med vilje: mit eget
+    # run foerst, for det er den oprindelige grund til at vente.
+    if _run_is_alive(run_id):
+        return time.monotonic() - start, f"eget run {run_id[:12]} lever stadig"
+    andre = _andre_lever(run_id)
+    if andre == "?":
+        return time.monotonic() - start, "kunne ikke laese run-tilstanden"
+    if andre:
+        return time.monotonic() - start, f"run {andre[:12]} koerer stadig"
+    # Intet i vejen alligevel (kilden blev laesbar i sidste oejeblik) — koer.
     time.sleep(max(0.0, float(margin_s)))
-    return time.monotonic() - start
+    return time.monotonic() - start, ""
+
+
+def _afbryd(waited: float, grund: str, run_id: str) -> None:
+    """Genstarten blev UDSKUDT — ikke udfoert. Sig det hoejt, og ryd op.
+
+    To ting skal ske, og begge er noedvendige:
+
+    1. Den ventende bekræftelses-fil SLETTES. `restart_self` skriver den FOER
+       scriptet startes, og ved naeste api-opstart sender den «genstart
+       gennemfoert». Bliver den liggende, lyver den — der skete ingen genstart.
+    2. Det skal kunne SES. Indbakken er den flade Bjoern og jeg begge laeser,
+       og samme sted som run-closure-gatens beskeder lander nu.
+    """
+    try:
+        from core.tools.restart_self_tools import PENDING_RESTART_FILE
+        PENDING_RESTART_FILE.unlink(missing_ok=True)
+    except Exception:
+        logger.warning("deferred_restart: kunne ikke slette den ventende fil",
+                       exc_info=True)
+    try:
+        from core.services.inbox_state import _ejer_id, registrer_kilde
+        bruger = _ejer_id()
+        if bruger:
+            registrer_kilde(
+                bruger_id=bruger,
+                kildetype="genstart",
+                kilde_id=f"udskudt-{run_id or 'ukendt'}",
+                oprettende_run_id=run_id,
+                paastaaet_ejer="huset",
+                beskrivelse=(
+                    f"Genstart UDSKUDT efter {waited:.0f}s — {grund}. "
+                    "Jeg genstarter ikke mens en anden session koerer. "
+                    "Sig til, saa proever jeg igen."
+                ),
+            )
+    except Exception:
+        logger.warning("deferred_restart: kunne ikke skrive til indbakken",
+                       exc_info=True)
+    print(f"deferred_restart: UDSKUDT efter {waited:.0f}s — {grund}. Ingen genstart.")
+
 
 
 def main(argv: list[str]) -> int:
@@ -84,7 +203,12 @@ def main(argv: list[str]) -> int:
     if not services:
         services = ["jarvis-api", "jarvis-runtime"]
 
-    waited = wait_for_idle(run_id, margin_s=margin)
+    waited, grund = wait_for_idle(run_id, margin_s=margin)
+    if grund:
+        # Der koerer stadig noget. Vi genstarter IKKE — en draebt tur er
+        # dyrere end en udskudt genstart.
+        _afbryd(waited, grund, run_id)
+        return 2
 
     failures: list[str] = []
     for svc in services:

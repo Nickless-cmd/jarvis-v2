@@ -118,7 +118,21 @@ def pak(html: str, *, titel: str = "") -> str:
         # `scrollHeight` maaler saa kun det SYNLIGE — hoejden blev meldt for
         # lavt, og rammen fik sit eget rullepanel. Dokumentet skal vokse med
         # sit indhold, ikke klippe det: klienten saetter hoejden.
-        "  html,body { overflow:hidden; }\n"
+        #
+        # 13/10-2026 — LINJEN HER VAR IKKE FEJLEN, og paastanden ovenfor staar
+        # ved magt: `scrollHeight` maaler ALTID hele indholdet; det er
+        # `clientHeight` der maaler det synlige. Jeg tilskrev foerst klippet
+        # `overflow:hidden` og skiftede til `overflow:visible`. Maalt i Chrome i
+        # en sandkasset iframe giver BEGGE former 724 px — `scrollHeight`
+        # kollapser IKKE, og linjen var uskyldig.
+        #
+        # Den aegte aarsag var TIMING: klientens hoejde-script maalte SYNKRONT
+        # ved parse, foer layoutet fandtes — 0 px ved parse, 724 px efter load,
+        # samme dokument. Rettelsen ligger i `WidgetBlock.tsx`, ikke her.
+        #
+        # Vi beholder `overflow:visible` fordi et dokument der skal vokse med
+        # sit indhold ikke skal klippe sig selv — men den baerer IKKE rettelsen.
+        "  html,body { overflow:visible; }\n"
         "  body { font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;\n"
         "         color:#8a8a8a; padding:12px; }\n"
         "  a { pointer-events:none; text-decoration:none; color:inherit; }\n"

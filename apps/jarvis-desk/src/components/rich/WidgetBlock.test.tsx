@@ -110,6 +110,39 @@ describe('WidgetBlock', () => {
     const ramme = await waitFor(() => screen.getByTitle('w.html'))
     expect(ramme.getAttribute('srcdoc')).toContain('jarvis-widget-hoejde')
   })
+
+  it('en højde-besked fra EGEN iframe ændrer højden', async () => {
+    // Parret til testen ovenfor. Den viser hvad der ikke må slippe igennem;
+    // denne at vejen fra widget'en til rammen virker. Uden den var hele
+    // højde-mekanismen utestet — og fejlen 13/10-2026 kunne ikke fanges her:
+    // Bjørn kørte 0.6.225 og 0.6.226 og rammen stod fast på 160 px, mens
+    // indholdet blev klippet. Kun de to halve tests fandtes.
+    render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+    const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
+    const kilde = ramme.contentWindow as unknown as MessageEventSource
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'jarvis-widget-hoejde', hoejde: 700 },
+      source: kilde,
+    }))
+    await waitFor(() => expect(ramme.style.height).toBe('700px'))
+  })
+
+  it('vrøvl i højden afvises, og loftet holder', async () => {
+    render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+    const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
+    const kilde = ramme.contentWindow as unknown as MessageEventSource
+    const send = (hoejde: unknown) => window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'jarvis-widget-hoejde', hoejde },
+      source: kilde,
+    }))
+
+    // En widget der melder 0 eller Infinity må ikke sætte rammen til noget
+    // ubrugeligt — og et meget højt tal klemmes til loftet.
+    send(0)
+    send(Infinity)
+    send(99999)
+    await waitFor(() => expect(ramme.style.height).toBe('6000px'))
+  })
 })
 
 describe('WidgetBlock sendPrompt-kanalen', () => {

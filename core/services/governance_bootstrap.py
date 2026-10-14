@@ -289,8 +289,25 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _session_titling_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Navngiv et par sessioner hvis titel stadig er en pladsholder/hilsen.
+
+        13/10-2026: titlen sættes én gang fra den RÅ første besked, så
+        sidebaren hed «hey», «yo», «Godmorgen» — 608 sessioner, målt. Sweepet
+        læser et bundet vindue og henter en rigtig titel fra billig-lanen.
+        """
+        try:
+            from core.services.session_titling import sweep
+            return {"status": "ok", "kind": "session_titling_sweep", "result": sweep()}
+        except Exception as exc:
+            # Tavs fejl her ville skjule at titel-sweepet står stille — præcis
+            # den klasse der lod chronicle_refresh sove i ni dage.
+            logger.warning("governance_bootstrap: session_titling_sweep fejlede: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
+        "session_titling_sweep": _session_titling_handler,
         "memory_decay_sweep": _memory_decay_handler,
         "dream_distillation_sweep": _dream_distillation_handler,
         "weekly_manifest_refresh": _weekly_manifest_handler,

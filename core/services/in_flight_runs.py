@@ -1085,6 +1085,62 @@ def list_running_orphans(
     return out
 
 
+def levende_koersler(
+    *,
+    session_id: str = "",
+    max_alder_s: float = 1800.0,
+) -> list[dict[str, Any]]:
+    """Records der LEVER lige nu — cross-proces. Ren læsning, ingen skrivning.
+
+    Hvorfor den findes (13/10-2026)
+    -------------------------------
+    `run_event_log` er in-memory PR. PROCES. jarvis-runtime (8011) kører
+    daemonerne; jarvis-api (8080) serverer desk'en. En vagt i den ene proces
+    kan derfor bogstaveligt talt ikke se den andens runs — og det er ikke en
+    teori. Målt 13/10-2026 stod `autonomous-af9f…` og `visible-4f70…` begge
+    `running` i SAMME session `chat-6f46…` med 31 sekunders mellemrum, fordi
+    wakeup-vagten spurgte den lokale log og fik «ingen».
+
+    Denne fil ER den delte sandhed: `state/in_flight_runs.json` under flock,
+    hver post med `owner_proc` = `<pid>:<starttid>`, og `owner_still_alive`
+    spørger /proc — så et genbrugt pid ikke narrer os.
+
+    Reglen pr. post:
+      * status != "running"  → ikke levende.
+      * ejeren er VÆK        → ikke levende (ægte zombie; `list_running_orphans`
+                               er den der må stemple den).
+      * ellers               → STILSTANDEN afgør: `last_progress_at` (sat ved
+                               hvert værktøjskald) skal være yngre end
+                               ``max_alder_s``.
+
+    ``max_alder_s`` måler altså STILSTAND, ikke samlet levetid: et run der har
+    kørt i en time men rørte sig for to minutter siden er levende. Et run der
+    ikke har rørt sig i 30 minutter er dødt nok — uden det loft ville en post
+    der aldrig blev afmeldt blokere hvert efterfølgende wakeup for evigt.
+    ``max_alder_s <= 0`` slår loftet fra (kun ejer-testen afgør).
+    """
+    out: list[dict[str, Any]] = []
+    sid = str(session_id or "")
+    nu = datetime.now(UTC)
+    for rec in _load().values():
+        if str(rec.get("status") or "running") != "running":
+            continue
+        if sid and str(rec.get("session_id") or "") != sid:
+            continue
+        owner = str(rec.get("owner_proc") or "")
+        if owner and owner_still_alive(owner) is False:
+            continue                        # ejeren findes ikke = ægte zombie
+        if max_alder_s > 0:
+            sidste = (_parsed(rec.get("last_progress_at"))
+                      or _parsed(rec.get("started_at")))
+            if sidste is None:
+                continue                    # uden et tidspunkt gætter vi ikke
+            if (nu - sidste).total_seconds() > float(max_alder_s):
+                continue
+        out.append(rec)
+    return out
+
+
 def clear_session(session_id: str | None) -> int:
     """Drop all in-flight records for a session (used when user explicitly
     says 'restart' / 'forget that')."""

@@ -248,9 +248,11 @@ _Udskudt genstart — vent til turen er SLUT, genstart saa._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L49) |
-| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til runnet er doedt + margin. Returnerer sekunder ventet. | [src](../../../scripts/deferred_restart.py#L67) |
-| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L80) |
+| function | `_run_is_alive` | `(run_id)` | True hvis runnet lever. Kan kilden ikke laeses, svarer vi True (vent). | [src](../../../scripts/deferred_restart.py#L64) |
+| function | `_andre_lever` | `(egen_run_id)` | Run-id for et ANDET levende run — "" hvis ingen, "?" hvis vi ikke ved det. | [src](../../../scripts/deferred_restart.py#L82) |
+| function | `wait_for_idle` | `(run_id, *, margin_s=…)` | Vent til MIT run er doedt OG ingen andre koersler lever. | [src](../../../scripts/deferred_restart.py#L129) |
+| function | `_afbryd` | `(waited, grund, run_id)` | Genstarten blev UDSKUDT — ikke udfoert. Sig det hoejt, og ryd op. | [src](../../../scripts/deferred_restart.py#L159) |
+| function | `main` | `(argv)` | — | [src](../../../scripts/deferred_restart.py#L199) |
 
 ## `scripts/dispatcher_adoption.py`
 _Bliver `call_loaded_tool` faktisk brugt? — tallet der afgør etape B._
@@ -351,9 +353,9 @@ _Pre-commit hook: enforces test coverage for core/ code changes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L167) |
-| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L172) |
-| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L198) |
+| function | `_is_covered` | `(path)` | Check if a file path falls under a directory we enforce tests for. | [src](../../../scripts/enforce_test_coverage.py#L172) |
+| function | `_expected_test_path` | `(staged_path, repo_root=…)` | Given a staged file path like 'core/services/foo.py', | [src](../../../scripts/enforce_test_coverage.py#L177) |
+| function | `main` | `(argv=…)` | Entry point.  Accept optional --repo-root to override REPO_ROOT. | [src](../../../scripts/enforce_test_coverage.py#L203) |
 
 ## `scripts/eval_research_lane.py`
 _Offline deterministic smoke evaluation for research routing and gates._

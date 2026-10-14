@@ -286,6 +286,80 @@ def due_wakeups(*, include_fired_unconsumed: bool = True) -> list[dict[str, Any]
     return out
 
 
+def ventende_efter_skip() -> list[dict[str, Any]]:
+    """Fyrede vækninger som dispatcheren sprang over — klar til indbakken.
+
+    Bjørn 13/10-2026: «Så kør wakeup dispatch skip i indbak».
+
+    Dispatcheren springer en fyret vækning over når en tur kører i dens
+    session (`_active_turn_blocks`). For ét af afvisnings-årsagerne prøver den
+    den ALDRIG igen: `dispatch_skipped_reason` der starter med `user_active`
+    (karantænen efter Bjørns seneste besked, 600 s) får `continue` i
+    `wakeup_dispatcher.dispatch_due_wakeups`. Uden dette led stod en sådan
+    vækning derfor kun i awareness — og en vækning der venter på en tur der
+    aldrig kommer, forsvinder uden et varigt hjem.
+
+    Indbakken er det hjem. Posten findes ALLEREDE fra bookingen
+    (`schedule_self_wakeup` registrerer den), den gater ikke i praksis, og
+    `inbox_idle_waker` kan løfte den når intet kører.
+
+    `dispatched` holdes ude med vilje: en vækning der BLEV dispatchet i et
+    senere tick (fordi afvisningen ikke var `user_active`) har stadig sit
+    `dispatch_skipped`-flag stående. Uden dette led ville vækkeren starte et
+    run oveni det dispatcheren allerede havde startet — præcis den dublet vi
+    fjerner.
+    """
+    out: list[dict[str, Any]] = []
+    for r in _load():
+        if str(r.get("status") or "") != "fired":
+            continue
+        if not r.get("dispatch_skipped") or r.get("dispatched"):
+            continue
+        out.append(r)
+    return out
+
+
+def direktiv_for(record: dict[str, Any]) -> str:
+    """Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026).
+
+    Teksten stod før inline i `wakeup_dispatcher`. Da indbakke-vækkeren nu
+    også skal kunne løfte en sprunget vækning, ville to kopier drive fra
+    hinanden — og den ene ville stille mangle 5/10-reglen nedenfor. Derfor
+    bor teksten her, hvor vækningens semantik hører til, og begge veje kalder
+    den.
+    """
+    wid = str(record.get("wakeup_id") or "")
+    prompt = str(record.get("prompt") or "")
+    reason = str(record.get("reason") or "")
+    extra = str(record.get("extra") or "").strip()
+    return (
+        f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
+        f"Du bad dig selv: {prompt}\n"
+        f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n"
+        + (f"Tilføjelse: {extra}\n" if extra else "")
+        + "\nUDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+        "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "
+        "Hvis den siger 'læs filen X', så BRUG read_file. "
+        "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
+        f"\"{wid}\".\n"
+        # 5/10-2026: her stod «og rapportér resultatet kort til Bjørn» —
+        # ubetinget, paa HVER vaekning. Det var aarsagen til at han fik 3-5
+        # beskeder pr. svar: mellem hans «Check ci» kl. 11:32 og hans klage
+        # kl. 14:35 kom fem beskeder, hvoraf én var svar. Instruktionen skabte
+        # adfaerden; den er fjernet frem for at blive modarbejdet.
+        "RAPPORTÉR KUN hvis der er noget NYT Bjørn skal vide: et resultat "
+        "han venter på, noget der er gået i stykker, eller en beslutning "
+        "han skal tage. Brug da notify_user til at levere den konkrete "
+        "besked. Nudget i trin A er intern telemetri, ikke en besked til ham. "
+        "Fandt kontrollen intet nyt — alt grønt, allerede håndteret, "
+        "uændret, allerede forbrugt — så afslut med præcis "
+        "[wakeup:no-update] og intet andet. Det er en intern markør; "
+        "den gemmes ikke som svar i hans chat. Luk UDEN at skrive til ham.\n"
+        "Og book ikke en ny kontrol når denne fandt noget uændret. Det er "
+        "sådan en kæde opstår, og hvert led skriver i hans chat."
+    )
+
+
 def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
     """Clear a fired wakeup once Jarvis has acted on it."""
     records = _load()

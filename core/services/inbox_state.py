@@ -91,7 +91,45 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # ville hver fyret `schedule_task` laegge en blokerende post i indbakken
     # — og en planlagt efterkontrol ville gate det naeste vaerktoejskald.
     "scheduled", "routine_event",
+    # `run_closure` (13/10-2026): run-closure-gatens beskeder (tavst run,
+    # ucommittede ændringer) flyttede fra Discord til indbakken efter Bjørns
+    # ønske — «den bør lande i din inbox i dine og mine sessioner». De er
+    # INFORMATION: huset må oprette dem, aldrig nægte en mutation på dem. Uden
+    # dette led kunne en post fra et AFLUTTET run gate det næste værktøjskald —
+    # præcis den lammelse der kostede 8,5 timer 12/10.
+    "run_closure",
+    # `genstart` (13/10-2026): den udskudte genstart skriver her naar den
+    # ABBRYDER fordi en anden session koerer. Samme klasse som `run_closure`:
+    # huset informerer. Posten registreres med `paastaaet_ejer="huset"`, saa
+    # `kraever_handling` er allerede False (`inbox_state.py:408`) — leddet her
+    # goer reglen EKSPLICIT i stedet for at hvile paa proveniensen alene.
+    "genstart",
 })
+
+#: Kildetyper der KAN dispatches — starte et run når intet kører — men som
+#: ALDRIG må nægte en mutation. Den TREDJE klasse (13/10-2026).
+#:
+#: Grænsen er hele kontrakten: «kun det du selv har lovet kan blokere». En
+#: `wakeup` er netop det — Jarvis' egen forpligtelse, booket af ham selv — så
+#: den MÅ vække ham. Men magten til at låse det næste værktøjskald kommer fra
+#: `kraever_handling`, ikke herfra: sættet her siger kun «denne post må starte
+#: et run», og `kan_dispatch` rører ikke gating-flaget.
+#:
+#: HVORFOR det skal stå EKSPLICIT: målt 13/10-2026 står ALLE 148 `wakeup`-
+#: rækker med `kraever_handling=0`. Ikke fordi nogen besluttede det — fordi
+#: `opret_eller_hent` giver enhver gatende post en frist (`_FRIST_DAGE`), og
+#: `kraever_handling` falder ved udløb. Rækkerne er altså gamle. Uden dette
+#: led ville vækkerens kandidat-filter derfor afhænge af hvor længe siden
+#: vækningen blev booket — en usynlig afhængighed af en udløbstid. Sættet her
+#: er stabilt uanset alder, og det er den egenskab vækkeren skal bygge på.
+KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
+    "wakeup",
+})
+
+
+def kan_dispatch(kildetype: str) -> bool:
+    """Må denne kildetype starte et run når intet kører? Rent opslag."""
+    return str(kildetype or "").strip().lower() in KAN_DISPATCHES_KILDETYPER
 
 
 def _autentificeret_bruger_matcher(bruger_id: str) -> bool:

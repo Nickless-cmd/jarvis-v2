@@ -1,8 +1,14 @@
 /** Tids-bevidst greeting til tom-session-skærmen.
  *
  *  Ren funktion (testbar): bucket bestemmes af klokkeslæt, og `line` vælges
- *  deterministisk fra en pulje via `seed`. Tidspunktet står allerede i ord,
- *  så særskilte sol/måne-ikoner og tint ville blot gentage hilsenen. */
+ *  deterministisk fra en pulje via `seed`.
+ *
+ *  13/10-2026 — glyphen er væk. Bjørn: «det icon med sol og måne passer ikk
+ *  rigtigt ind». Hilsenen bærer allerede tidspunktet i ORD («Godaften»), så
+ *  emojien ovenover var ren gentagelse — og den stod to steder i GreetingHero
+ *  (i ringen OG i «Godaften, Bjørn 🌙»). `tint` forsvandt med ringen; den
+ *  havde ingen anden forbruger. CSS-tokenet `--tint` i tokens.css er urørt —
+ *  det bruges af presence- og diff-visningerne. */
 
 export interface Greeting {
   hello: string

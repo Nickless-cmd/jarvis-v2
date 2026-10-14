@@ -197,9 +197,13 @@ export function Composer({
    * Læg en tekst i feltet udefra — fx den besked man lige spolede tilbage
    * fra (Claude Desktops «Cancel and edit message»). `n` skifter pr. gang,
    * så den samme tekst to gange også virker.
-   */
+  */
   indsaet?: { tekst: string; n: number } | null
-  /** Ekstra statusindhold under disclaimer-linjen. */
+  /**
+   * Ekstra indhold UNDER disclaimer-linjen. Bjørn 13/10-2026: badges hørte
+   * ikke i header-båndet sammen med panel-knapperne — de er status, ikke
+   * handling, og hører ved foden hvor resten af «om appen» står.
+   */
   footerSlot?: ReactNode
   /**
    * Hvilken flade kladden hører til (chat / code / cowork). Teksten gemmes i

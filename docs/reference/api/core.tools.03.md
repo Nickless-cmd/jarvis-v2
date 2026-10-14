@@ -7,13 +7,16 @@ _restart_self tool — fire-and-forget service restart that survives process dea
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L92) |
-| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L145) |
-| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L265) |
-| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L291) |
-| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L312) |
-| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L343) |
-| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L374) |
+| function | `_aktive_koersler` | `(graense=…)` | Hvilke synlige koersler LEVER lige nu? | [src](../../../core/tools/restart_self_tools.py#L95) |
+| function | `_andre_aktive_koersler` | `(egen_run_id, graense=…)` | Levende koersler UD OVER min egen (13/10-2026). | [src](../../../core/tools/restart_self_tools.py#L148) |
+| function | `_exec_restart_self` | `(args)` | — | [src](../../../core/tools/restart_self_tools.py#L161) |
+| function | `_wait_for_gateway_connected` | `(max_wait=…, interval=…)` | Vent på at Discord gateway er connected efter restart. | [src](../../../core/tools/restart_self_tools.py#L313) |
+| function | `_send_discord_restart_msg` | `(base_msg)` | Send restart-bekræftelse til Bjørn via Discord DM. | [src](../../../core/tools/restart_self_tools.py#L339) |
+| function | `_try_fallback_channels` | `(base_msg)` | Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback. | [src](../../../core/tools/restart_self_tools.py#L360) |
+| function | `_claim_restart_file` | `()` | Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder. | [src](../../../core/tools/restart_self_tools.py#L391) |
+| function | `_genstart_bruger_id` | `(user_id=…)` | Bruger-id til indbakke-posten — fanget ved genstart, ellers ejeren. | [src](../../../core/tools/restart_self_tools.py#L422) |
+| function | `_lever_til_samtalen` | `(besked, *, session_id, user_id, services)` | Verifikationen til den SAMTALE genstarten blev sendt fra. | [src](../../../core/tools/restart_self_tools.py#L439) |
+| function | `send_pending_restart_confirmation` | `()` | On startup, check for a pending restart confirmation file and send it. | [src](../../../core/tools/restart_self_tools.py#L496) |
 
 ## `core/tools/screen_tool.py`
 _Screen control — turn Bjørn's monitors on/off/standby, or read their state._

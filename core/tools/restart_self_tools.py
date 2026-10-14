@@ -56,12 +56,15 @@ RESTART_SELF_TOOL_DEFINITIONS = [
                     "defer_until_idle": {
                         "type": "boolean",
                         "description": (
-                            "Vent til din EGEN tur er slut, og genstart saa. "
+                            "Vent til der IKKE koerer noget — hverken din EGEN "
+                            "tur eller en ANDEN session — og genstart saa. "
                             "Brug denne naar genstarten ikke kan vente paa at "
                             "du svarer — den draeber ALDRIG turen og giver "
                             "derfor intet dublet-svar. I stedet for et antal "
-                            "sekunder venter den paa et faktum: at runnet ikke "
-                            "laengere er i live."
+                            "sekunder venter den paa et faktum: at ingen "
+                            "koersler er i live. Koerer der stadig nogen naar "
+                            "vinduet lober ud, ABBRYDES genstarten (den "
+                            "udskydes, den draeber ikke)."
                         ),
                         "default": False,
                     },
@@ -142,6 +145,19 @@ def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
         return []
 
 
+def _andre_aktive_koersler(egen_run_id: str, graense: int = 5) -> list[dict[str, str]]:
+    """Levende koersler UD OVER min egen (13/10-2026).
+
+    Den udskudte genstart venter nu paa at ALLE koersler er faerdige — ikke kun
+    mit eget run. Uden dette svar vidste jeg ikke hvad genstarten stod og ventede
+    paa, og et svar der ikke kan ses er et svar man ikke kan stole paa.
+    """
+    return [
+        k for k in _aktive_koersler(graense)
+        if str(k.get("run_id") or "") != str(egen_run_id or "")
+    ]
+
+
 def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     services = args.get("services") or ["jarvis-api", "jarvis-runtime"]
     channel = args.get("channel") or "discord"
@@ -172,6 +188,13 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     # bagvendt: den naegter paa det faktum den skulle vente paa. Maalt samme
     # dag: vaerktoejet svarede «der koerer noget lige nu» og pegede paa den tur
     # der kaldte det, saa den udskudte sti blev aldrig naaet.
+    #
+    # 13/10-2026: vagten bliver ogsaa sprunget over naar en ANDEN session
+    # koerer — men svaret er ikke laengere «saa koer bare». Den udskudte sti
+    # tager selv ansvaret: `deferred_restart.py` venter nu paa at ALLE koersler
+    # er faerdige og ABBRYDER hvis nogen stadig koerer naar vinduet lober ud.
+    # (Bjoern: «den der checker om turen er slut foer genstart udvides.. du
+    # draebte lige en anden session.»)
     _defer = bool(args.get("defer_until_idle"))
     if not bool(args.get("force")) and not _defer:
         aktive = _aktive_koersler()
@@ -186,11 +209,29 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             }
 
     # 1. Write pending confirmation file
+    #
+    # 13/10-2026: SAMTALEN med i filen. Foer bar bekræftelsen kun en kanal
+    # (Discord), ikke den samtale genstarten blev bedt om i. Bjørn: «den
+    # verifikation burde lande i den session genstartet blev sendt fra.»
+    # Konteksten fanges HER, hvor den er levende — ved opstart er den væk, og
+    # et gæt på hvilken samtale det gjaldt er værre end intet svar.
+    try:
+        from core.identity.workspace_context import (
+            current_session_id as _csid,
+            current_user_id as _cuid,
+        )
+        _session_id = str(_csid() or "")
+        _user_id = str(_cuid() or "")
+    except Exception:
+        _session_id = ""
+        _user_id = ""
     confirmation = {
         "timestamp": time.time(),
         "services": services,
         "channel": channel,
         "custom_message": custom_message,
+        "session_id": _session_id,
+        "user_id": _user_id,
     }
     PENDING_RESTART_FILE.parent.mkdir(parents=True, exist_ok=True)
     PENDING_RESTART_FILE.write_text(json.dumps(confirmation, indent=2))
@@ -222,6 +263,7 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             PENDING_RESTART_FILE.unlink(missing_ok=True)
             return {"status": "error", "error": f"Failed to schedule deferred restart: {e}"}
         logger.info("restart_self: deferred restart scheduled pid=%s run_id=%s", proc.pid, _rid)
+        andre = _andre_aktive_koersler(_rid)
         return {
             "status": "ok",
             "scheduled": True,
@@ -230,7 +272,13 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             "services": services,
             "pid": proc.pid,
             "channel": channel,
-            "note": "Genstarter naar turen er slut — ingen fast forsinkelse.",
+            "andre_koersler": andre,
+            "note": (
+                "Genstarter naar INGEN koersler er i live — hverken min tur "
+                "eller en anden session. Ingen fast forsinkelse."
+                + (f" Venter ogsaa paa: {', '.join(k['run_id'][:12] for k in andre)}."
+                   if andre else "")
+            ),
         }
     restart_cmds = " && ".join(f"sudo systemctl restart {svc}" for svc in services)
     full_cmd = f"sleep 3 && {restart_cmds}"
@@ -371,6 +419,80 @@ def _claim_restart_file() -> Path | None:
     return claimed_path
 
 
+def _genstart_bruger_id(user_id: str = "") -> str:
+    """Bruger-id til indbakke-posten — fanget ved genstart, ellers ejeren."""
+    b = str(user_id or "").strip()
+    if b:
+        return b
+    try:
+        from core.services.inbox_state import bruger_for_workspace
+        from core.identity.workspace_context import current_workspace_name
+        b = bruger_for_workspace(current_workspace_name() or "")
+        if b:
+            return b
+        return bruger_for_workspace("bjorn")
+    except Exception as exc:
+        logger.debug("restart confirmation: kunne ikke slaa bruger op: %s", exc)
+        return ""
+
+
+def _lever_til_samtalen(
+    besked: str, *, session_id: str, user_id: str, services: list[str],
+) -> bool:
+    """Verifikationen til den SAMTALE genstarten blev sendt fra.
+
+    Bjørn 13/10-2026: «den verifikation burde lande i den session genstartet
+    blev sendt fra.. genstart <-> verifikation -> inbox aktive/idle wakeup».
+
+    Rækkefølgen er med vilje:
+
+      1. INDBakken FØRST — durabel, synlig i prompten uanset om samtalen
+         stadig findes når nogen kigger.
+      2. Derefter samtalen, gennem `send_session_notification` — som ER
+         aktiv/idle-mekanikken: er samtalen aktiv, køes beskeden og flushes
+         når turen er omme; er den idle, leveres den straks.
+
+    `push=False`: verifikationen er informerende og hører i samtalen. En
+    mobil-push for hver genstart ville være støj, og Bjørn bad om det
+    MODSATTE af en kanal udenom.
+    """
+    bruger = _genstart_bruger_id(user_id)
+
+    # 1. Indbakken (durabel). Kildetypen `genstart` står i
+    #    IKKE_GATENDE_KILDETYPER: posten er synlig, men kan aldrig nægte en
+    #    mutation — en post fra et AFLUTTET run må ikke lamme det næste.
+    if bruger:
+        try:
+            from core.services.inbox_state import registrer_kilde
+            registrer_kilde(
+                bruger_id=bruger,
+                kildetype="genstart",
+                kilde_id=f"genstart-{session_id}",
+                beskrivelse=besked,
+            )
+        except Exception:
+            logger.warning("restart confirmation: kunne ikke skrive til indbakken",
+                           exc_info=True)
+
+    # 2. Samtalen — aktiv/idle-bevidst.
+    try:
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
+        r = send_session_notification(
+            besked,
+            session_id=session_id,
+            user_id=bruger or None,
+            source="genstart",
+            push=False,
+        )
+        return bool(delivery_succeeded(r))
+    except Exception as exc:
+        logger.warning("restart confirmation: samtale-levering fejlede: %s", exc)
+        return False
+
+
 def send_pending_restart_confirmation() -> None:
     """On startup, check for a pending restart confirmation file and send it.
 
@@ -402,13 +524,27 @@ def send_pending_restart_confirmation() -> None:
     custom_message = data.get("custom_message", "")
     services = data.get("services", [])
     retries = data.get("retries", 0)
+    session_id = str(data.get("session_id") or "")
+    user_id = str(data.get("user_id") or "")
 
     base_msg = custom_message or f"Restart af {', '.join(services)} gennemført — jeg er tilbage."
 
     sent_ok = False
 
+    # 13/10-2026: verifikationen hører i SAMTALEN, ikke i en kanal. Kender vi
+    # samtalen, er Discord ikke længere førstevalget — den er reservevejen for
+    # det tilfælde hvor samtalen er væk.
+    if session_id:
+        sent_ok = _lever_til_samtalen(
+            base_msg, session_id=session_id, user_id=user_id, services=services,
+        )
+        if sent_ok:
+            logger.info("restart confirmation: leveret til samtalen %s", session_id[:12])
+
     try:
-        if channel == "telegram":
+        if sent_ok:
+            pass  # allerede leveret til samtalen
+        elif channel == "telegram":
             from core.services.telegram_gateway import send_message as tg_send
             result = tg_send(base_msg)
             sent_ok = isinstance(result, dict) and result.get("status") == "sent"

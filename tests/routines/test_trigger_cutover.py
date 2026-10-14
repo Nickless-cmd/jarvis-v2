@@ -46,7 +46,7 @@ def adapters(isolated_runtime):
 
 
 @pytest.mark.parametrize(
-    "producer", ["scheduled", "recurring", "heartbeat", "dream", "council"]
+    "producer", ["scheduled", "recurring", "heartbeat", "dream", "council", "wakeup"]
 )
 def test_producers_enqueue_exactly_one_run_without_session(
     producer, adapters, monkeypatch
@@ -117,4 +117,3 @@ def test_diagnostic_projector_remains_the_only_allowed_session_append(monkeypatc
     publish_failure(project_failure(RuntimeError("private"), {}))
     assert len(calls) == 1
     assert calls[0]["session_id"] == "owner-app"
-

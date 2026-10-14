@@ -30,6 +30,7 @@ def main() -> int:
         for item in report.quarantine:
             reasons[item.reason_code] = reasons.get(item.reason_code, 0) + 1
         summary = {
+            "report_id": report.report_id,
             "assigned_count": report.assigned_count,
             "quarantine_count": report.quarantine_count,
             "quarantine_reasons": reasons,

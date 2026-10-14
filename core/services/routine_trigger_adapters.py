@@ -10,7 +10,9 @@ from core.services.routine_service import RunView, RoutineService
 from core.services.routine_types import RoutinePrincipal
 
 
-SYSTEM_PRODUCERS = frozenset({"heartbeat", "heartbeat_runtime", "dream", "council"})
+SYSTEM_PRODUCERS = frozenset(
+    {"heartbeat", "heartbeat_runtime", "dream", "council", "wakeup"}
+)
 
 
 class UnmigratedRoutineSource(RuntimeError):

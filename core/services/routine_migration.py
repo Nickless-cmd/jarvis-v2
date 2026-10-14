@@ -20,6 +20,12 @@ from core.services.routine_crypto import seal
 
 from core.services.routine_trigger_adapters import SYSTEM_PRODUCERS
 _QUARANTINE_PRINCIPAL = "__migration_quarantine__"
+_SYSTEM_SESSION_ORIGINS = {
+    "council": "council",
+    "dream": "dream",
+    "heartbeat": "heartbeat",
+    "wakeup": "wakeup",
+}
 
 
 class InvalidMigrationReport(RuntimeError):
@@ -224,13 +230,29 @@ def _system_owner() -> str | None:
     return resolve_canonical_identity(owner_user_id())
 
 
-def _classify(row: dict[str, object]) -> tuple[str | None, str, tuple[str, ...]]:
-    source_kind = str(row["source_kind"])
+def _registered_system_producer(row: dict[str, object]) -> str:
     producer = str(row.get("source") or "").strip()
     if producer in SYSTEM_PRODUCERS:
+        return producer
+    session_id = str(row.get("session_id") or "").strip()
+    for origin, registered in _SYSTEM_SESSION_ORIGINS.items():
+        if session_id.startswith(f"auto-{origin}-"):
+            return registered
+    return ""
+
+
+def _classify(row: dict[str, object]) -> tuple[str | None, str, tuple[str, ...]]:
+    source_kind = str(row["source_kind"])
+    producer = _registered_system_producer(row)
+    if producer:
         owner = _system_owner()
         if owner:
-            return owner, "system_owner", ("registered_system_producer", "canonical_owner")
+            evidence = (
+                "registered_system_session_origin"
+                if source_kind == "autonomous_session"
+                else "registered_system_producer"
+            )
+            return owner, "system_owner", (evidence, "canonical_owner")
         return None, "system_owner_unresolved", ("registered_system_producer",)
 
     verified = str(row.get("verified_owner_user_id") or "").strip()
@@ -270,7 +292,7 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
     return {
         "name": f"Migrated {kind}",
         "instruction": str(row.get("focus") or "Legacy autonomous work"),
-        "capability_scope": "system" if str(row.get("source") or "") in SYSTEM_PRODUCERS else "chat",
+        "capability_scope": "system" if _registered_system_producer(row) else "chat",
         "trigger_kind": trigger_kind,
         "trigger_config": trigger_config,
         "delivery_policy": {"channel": str(row.get("channel") or "auto")},

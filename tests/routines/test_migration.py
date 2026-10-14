@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 import pytest
 
@@ -55,6 +57,14 @@ class MigrationFixture:
 
     def verified_recurring(self, *, owner_user_id: str) -> None:
         self.recurring(user_id="", verified_owner_user_id=owner_user_id)
+
+    def autonomous_session(self, session_id: str) -> None:
+        self.conn.execute(
+            "INSERT INTO chat_sessions (session_id,title,created_at,updated_at) "
+            "VALUES (?,?,?,?)",
+            (session_id, "legacy autonomous", "2026-10-12", "2026-10-12"),
+        )
+        self.conn.commit()
 
 
 @pytest.fixture
@@ -207,6 +217,51 @@ def test_only_registered_internal_producer_becomes_system_owner(
     assert report.assigned[0].destination == "system_owner"
     assert report.quarantine_count == 1
     assert report.quarantine[0].reason_code == "missing_structured_owner"
+
+
+def test_registered_internal_session_origins_become_system_owner(
+    migration_fixture, monkeypatch
+):
+    """Removing a known origin from the registry must quarantine its history."""
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    migration_fixture.autonomous_session("auto-dream-20261012")
+    migration_fixture.autonomous_session("auto-heartbeat-20261012")
+    migration_fixture.autonomous_session("auto-wakeup-20261012")
+    migration_fixture.autonomous_session("auto-recurring-20261012")
+
+    report = migration.classify_legacy_sources(migration_fixture.conn)
+
+    assert report.assigned_count == 3
+    assert {item.destination for item in report.assigned} == {"system_owner"}
+    assert report.quarantine_count == 1
+    assert report.quarantine[0].reason_code == "missing_structured_owner"
+
+
+def test_dry_run_cli_prints_signed_report_id_for_exact_apply(monkeypatch, capsys):
+    """Omitting report_id makes the audited report impossible to apply safely."""
+    from scripts import migrate_routines as cli
+
+    @contextmanager
+    def fake_connect():
+        yield object()
+
+    report = SimpleNamespace(
+        report_id="migration_0123456789abcdef",
+        assigned_count=2,
+        quarantine_count=1,
+        quarantine=[SimpleNamespace(reason_code="missing_structured_owner")],
+    )
+    monkeypatch.setattr(cli, "connect", fake_connect)
+    monkeypatch.setattr(cli, "classify_legacy_sources", lambda _conn: report)
+    monkeypatch.setattr(
+        "sys.argv", ["migrate_routines.py", "--dry-run", "--json-summary"]
+    )
+
+    assert cli.main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["report_id"] == "migration_0123456789abcdef"
 
 
 def test_quarantine_apply_is_idempotent(migration_fixture):

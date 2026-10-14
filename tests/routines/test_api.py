@@ -27,6 +27,10 @@ def identity(monkeypatch):
     monkeypatch.setattr(
         "core.identity.workspace_context.current_role", lambda: state["role"]
     )
+    monkeypatch.setattr(
+        "core.services.routine_identity.resolve_principal",
+        lambda raw, role_hint="": RoutinePrincipal(raw, role=state["role"]),
+    )
     return state
 
 
@@ -104,6 +108,48 @@ def test_openapi_has_no_owner_selection_field(client):
     schema = client.get("/openapi.json").json()
     create_schema = schema["components"]["schemas"]["RoutineCreateBody"]
     assert "owner_user_id" not in create_schema.get("properties", {})
+
+
+def test_principal_resolves_legacy_token_to_canonical_account(
+    isolated_runtime, monkeypatch
+):
+    from apps.api.jarvis_api.routes import routines
+
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_user_id", lambda: "legacy-discord"
+    )
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_role", lambda: "owner"
+    )
+    monkeypatch.setattr(
+        "core.services.routine_identity.resolve_principal",
+        lambda raw, role_hint="": RoutinePrincipal("canonical-owner", role="owner"),
+    )
+
+    principal = routines._principal()
+    assert principal.canonical_user_id == "canonical-owner"
+
+
+def test_unresolved_principal_is_unauthorized(isolated_runtime, monkeypatch):
+    from apps.api.jarvis_api.routes import routines
+    from core.services.routine_identity import UnresolvedRoutinePrincipal
+
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_user_id", lambda: "unknown"
+    )
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_role", lambda: "owner"
+    )
+    monkeypatch.setattr(
+        "core.services.routine_identity.resolve_principal",
+        lambda raw, role_hint="": (_ for _ in ()).throw(
+            UnresolvedRoutinePrincipal("unresolved")
+        ),
+    )
+
+    with pytest.raises(Exception) as caught:
+        routines._principal()
+    assert getattr(caught.value, "status_code", None) == 401
 
 
 def test_inbox_defaults_are_user_scoped(client, identity):

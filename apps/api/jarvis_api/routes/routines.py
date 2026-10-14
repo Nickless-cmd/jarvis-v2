@@ -83,11 +83,21 @@ class EmptyBody(BaseModel):
 
 def _principal() -> RoutinePrincipal:
     from core.identity.workspace_context import current_role, current_user_id
+    from core.services.routine_identity import (
+        AmbiguousRoutineIdentity,
+        UnresolvedRoutinePrincipal,
+        resolve_principal,
+    )
 
     user_id = str(current_user_id() or "").strip()
     if not user_id:
         raise HTTPException(status_code=401, detail="not authenticated")
-    return RoutinePrincipal(user_id, role=str(current_role() or "member"))
+    try:
+        return resolve_principal(
+            user_id, role_hint=str(current_role() or "member")
+        )
+    except (UnresolvedRoutinePrincipal, AmbiguousRoutineIdentity) as exc:
+        raise HTTPException(status_code=401, detail="unresolved routine identity") from exc
 
 
 def _service() -> RoutineService:

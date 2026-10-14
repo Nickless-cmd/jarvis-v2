@@ -15,17 +15,35 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 
-def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) -> None:
+def _afregn_genoptaget_run(
+    task_id: str, inner_run_id: str, *, generation: int, wrapper_run_id: str = "",
+) -> None:
     """Close or retry the *same* task using the synchronous run journal.
 
     The visible_runs DB outcome is persisted in a background thread. Reading it
     here can race that write, leaving a completed task leased for another turn.
+
+    ``inner_run_id`` er det id den første ``system_event(kind=run)``-ramme bar.
+    I en DELT samtale kan den ramme tilhøre et ANDET run — og så er dens udfald
+    ikke et bevis for at vores fortsættelse er færdig. Målt 14/10-2026: en
+    kørende genoptagelse blev lukket fordi brugerens næste tur sluttede.
+    Værnet nedenfor afviser et fremmed log-id; opgaven bliver da liggende og
+    tages igen i stedet for at blive dræbt på et fremmed signal.
     """
+    from core.services import run_event_log as rel
     from core.services.in_flight_runs import (
         current_owner, get_record, release_recovery_claim, settle_terminal,
     )
     from core.services.visible_runs_outcomes import run_er_terminal
     from core.services.visible_terminal_policy import is_non_retryable_recovery_reason
+
+    if rel.er_fremmed_log_id(inner_run_id, wrapper_run_id):
+        logger.error(
+            "afregning: run %s er en ANDEN samtales log — ikke %s's fortsaettelse. "
+            "Opgave %s bliver liggende; et fremmed 'faerdig' er ikke et bevis.",
+            inner_run_id, wrapper_run_id or task_id, task_id,
+        )
+        return
 
     rec = get_record(inner_run_id)
     status = str((rec or {}).get("status") or "")
@@ -344,6 +362,9 @@ def start_user_run_detached(
                         _afregn_genoptaget_run(
                             recovery_task_id, indre_run_id or run_id,
                             generation=recovery_generation,
+                            # Vores EGET log-id: det eneste der afgør om et
+                            # indre id er vores run eller en anden samtales.
+                            wrapper_run_id=run_id,
                         )
                     except Exception:
                         logger.warning("kunne ikke lukke opgave %s", recovery_task_id,

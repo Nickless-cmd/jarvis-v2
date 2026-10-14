@@ -186,6 +186,28 @@ def run_id_fra_ramme(frame: str) -> str | None:
     return None
 
 
+def er_fremmed_log_id(kandidat: str, vores_log_id: str = "") -> bool:
+    """Er dette id en ANDEN samtales log — ikke et runs eget id?
+
+    ``system_event(kind=run)`` bærer runnets EGET id (nøglen i ``_ALIASER``).
+    Er et andet run aktivt i samme samtale, kan den ramme komme fra DETS strøm,
+    og så står vi med et id der er oprettet som log for et andet run.
+
+    Forskellen er målbar: et LOG-id står i ``_RUNS`` (oprettet af ``create``
+    eller ``claim_or_create``), mens et runs EGET id kun findes som nøgle i
+    ``_ALIASER``.
+
+    Målt 14/10-2026: afregningen læste tilstanden fra ``visible-9d85c1f5`` —
+    brugerens NÆSTE tur, hvis log-id netop står i ``_RUNS`` — og lukkede en
+    genoptagelse der kørte. Se ``detached_run._afregn_genoptaget_run``.
+    """
+    rid = str(kandidat or "").strip()
+    if not rid or rid == str(vores_log_id or "").strip():
+        return False
+    with _lock:
+        return rid in _RUNS
+
+
 def append(run_id: str, frame: str) -> None:
     rid = (run_id or "").strip()
     if not rid or not frame:

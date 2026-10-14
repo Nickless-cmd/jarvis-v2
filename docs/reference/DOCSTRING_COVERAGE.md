@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8980/17172 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8981/17173 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8980/17172 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 821 | 1521 | 53% |
-| `core.services` | 5987 | 11681 | 51% |
+| `core.services` | 5988 | 11682 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1850,15 +1850,15 @@ Generated from source. 8980/17172 functions/methods documented (52%). The list b
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L775)
-- `core/services/run_event_log.py` :: `active_run_for_session` (L320)
-- `core/services/run_event_log.py` :: `append` (L189)
+- `core/services/run_event_log.py` :: `active_run_for_session` (L342)
+- `core/services/run_event_log.py` :: `append` (L211)
 - `core/services/run_event_log.py` :: `create` (L102)
-- `core/services/run_event_log.py` :: `is_live` (L331)
-- `core/services/run_event_log.py` :: `live_run_ids` (L354)
-- `core/services/run_event_log.py` :: `mark_done` (L251)
-- `core/services/run_event_log.py` :: `session_for_run` (L413)
-- `core/services/run_event_log.py` :: `subscriber_closed` (L447)
-- `core/services/run_event_log.py` :: `subscriber_opened` (L440)
+- `core/services/run_event_log.py` :: `is_live` (L353)
+- `core/services/run_event_log.py` :: `live_run_ids` (L376)
+- `core/services/run_event_log.py` :: `mark_done` (L273)
+- `core/services/run_event_log.py` :: `session_for_run` (L435)
+- `core/services/run_event_log.py` :: `subscriber_closed` (L469)
+- `core/services/run_event_log.py` :: `subscriber_opened` (L462)
 - `core/services/run_stream_proxy.py` :: `stream_error` (L19)
 - `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L187)
 - `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L183)

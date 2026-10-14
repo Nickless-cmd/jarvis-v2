@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8957/17141 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8964/17157 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 690 | 947 | 72% |
+| `apps.api.jarvis_api.routes` | 691 | 949 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 819 | 1519 | 53% |
-| `core.services` | 5971 | 11657 | 51% |
+| `core.services` | 5977 | 11671 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,9 +42,9 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2559)
+## Undocumented public functions (2564)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L218)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -93,6 +93,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `progress` (L222)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `serve_ui` (L269)
 - `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L34)
+- `apps/api/jarvis_api/routes/internal_run_stream.py` :: `internal_run_stream` (L22)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L53)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L128)
 - `apps/api/jarvis_api/routes/live.py` :: `websocket_stream` (L20)
@@ -847,6 +848,9 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 - `core/services/automation_dsl.py` :: `build_automation_dsl_surface` (L228)
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)
 - `core/services/automation_dsl.py` :: `list_automations` (L190)
+- `core/services/autonomous_frame_relay.py` :: `AutonomousFrameRelay.finish` (L44)
+- `core/services/autonomous_frame_relay.py` :: `AutonomousFrameRelay.publish` (L33)
+- `core/services/autonomous_frame_relay.py` :: `AutonomousFrameRelay.register` (L21)
 - `core/services/autonomous_goals.py` :: `update_goal_status` (L108)
 - `core/services/autonomous_outreach_daemon.py` :: `build_autonomous_outreach_surface` (L360)
 - `core/services/autonomous_outreach_daemon.py` :: `recent_log` (L356)
@@ -1320,7 +1324,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L845)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L862)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L275)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
@@ -1855,6 +1859,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 - `core/services/run_event_log.py` :: `session_for_run` (L413)
 - `core/services/run_event_log.py` :: `subscriber_closed` (L447)
 - `core/services/run_event_log.py` :: `subscriber_opened` (L440)
+- `core/services/run_stream_proxy.py` :: `stream_error` (L19)
 - `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L187)
 - `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L183)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L481)

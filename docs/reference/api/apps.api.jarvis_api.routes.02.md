@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_stream_v2.py`
+_POST /chat/stream/v2 — Anthropic-style SSE protokol._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `udled_tool_scope` | `(mode, kind)` | Mode + samtalens art → tool-scope. Ren funktion, så reglen kan testes. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L28) |
+| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L69) |
+| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L96) |
+| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L116) |
+| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L122) |
+| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L128) |
+| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L145) |
+| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L153) |
+| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L184) |
+| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L204) |
+| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L237) |
+
 ## `apps/api/jarvis_api/routes/chat_workspace_trust.py`
 _Workspace-tillid som sin egen rute-flade — udskilt fra `chat.py` 3/10-2026._
 
@@ -168,6 +185,13 @@ _Internal loopback endpoint for canonical error reports (Fase 0)._
 | function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L66) |
 | function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L80) |
 | function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L166) |
+
+## `apps/api/jarvis_api/routes/internal_run_stream.py`
+_Loopback-only endpoint serving the current process' run frame log._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `internal_run_stream` | `(request, run_id, from_idx=…)` | — | [src](../../../apps/api/jarvis_api/routes/internal_run_stream.py#L22) |
 
 ## `apps/api/jarvis_api/routes/internal_runtime_surface.py`
 _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flader._
@@ -715,28 +739,4 @@ _Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
 | function | `_mobile_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L23) |
 | function | `mobile_latest` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L29) |
 | function | `mobile_download` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L45) |
-
-## `apps/api/jarvis_api/routes/notifikationer.py`
-_Notifikations-feeden. Scoper til den auth'ede bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `AfgoerBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L20) |
-| function | `_oversaet_fejl` | `(raa_fejl)` | Oversaet en teknisk/engelsk fejltekst til noget en almindelig bruger | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L32) |
-| function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
-| function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
-| function | `feed` | `(aktiv=…)` | Feedet. `aktiv` = den samtale klienten SIDDER I lige nu. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
-| function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L106) |
-| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
-| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L170) |
-
-## `apps/api/jarvis_api/routes/notifikations_valg.py`
-_Push-valg per slags. Scoper til den auth'ede bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
-| function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
-| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
 

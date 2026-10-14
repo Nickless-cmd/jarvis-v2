@@ -358,6 +358,16 @@ _Automation DSL — declarative triggers → actions._
 | function | `build_automation_dsl_surface` | `()` | — | [src](../../../core/services/automation_dsl.py#L228) |
 | function | `_emit_automation_dsl_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/automation_dsl.py#L257) |
 
+## `core/services/autonomous_frame_relay.py`
+_Shared frame-log lifecycle for autonomous visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AutonomousFrameRelay` | `` | Publish one autonomous run to the authoritative v2 frame log. | [src](../../../core/services/autonomous_frame_relay.py#L8) |
+| method | `AutonomousFrameRelay.register` | `(self)` | — | [src](../../../core/services/autonomous_frame_relay.py#L21) |
+| method | `AutonomousFrameRelay.publish` | `(self, frame)` | — | [src](../../../core/services/autonomous_frame_relay.py#L33) |
+| method | `AutonomousFrameRelay.finish` | `(self)` | — | [src](../../../core/services/autonomous_frame_relay.py#L44) |
+
 ## `core/services/autonomous_goals.py`
 _Autonomous goals — persistent top-level goals with decomposition._
 
@@ -625,19 +635,4 @@ _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 | function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L89) |
 | function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
 | function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L137) |
-
-## `core/services/baggrundsjob_vagt.py`
-_Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu_iso` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L62) |
-| function | `_hent_state` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L66) |
-| function | `_gem_state` | `(state)` | — | [src](../../../core/services/baggrundsjob_vagt.py#L78) |
-| function | `_bro` | `(navn, args)` | Bro-kald til operatoerens maskine. Egen funktion, saa testen har en soem. | [src](../../../core/services/baggrundsjob_vagt.py#L88) |
-| function | `_ejer_uid` | `()` | — | [src](../../../core/services/baggrundsjob_vagt.py#L94) |
-| function | `_varighed` | `(sekunder)` | — | [src](../../../core/services/baggrundsjob_vagt.py#L102) |
-| function | `beskedtekst` | `(job)` | Én linje der kan staa alene i en inbox. Udfaldet FOERST — det er det der | [src](../../../core/services/baggrundsjob_vagt.py#L116) |
-| function | `_meld` | `(job)` | Levér meldingen. Returnerer (leveret, hvordan). | [src](../../../core/services/baggrundsjob_vagt.py#L138) |
-| function | `tick_baggrundsjob_vagt` | `(*, trigger=…, last_visible_at=…)` | Kadence-producer: meld hvert nyligt afsluttet baggrundsjob ÉN gang. | [src](../../../core/services/baggrundsjob_vagt.py#L182) |
 

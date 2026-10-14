@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17141 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17157 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17141 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_stream_v2`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_workspace_trust` … `notifikations_valg`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `oauth` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_session_view`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_stream_v2` … `mobile_update`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `notifikationer` … `workbench`
 - [`apps.api.jarvis_api.routes.routines`](apps.api.jarvis_api.routes.routines.md) — `routines` … `routines`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
@@ -32,34 +32,34 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17141 functions/
 - [`core.runtime.03`](core.runtime.03.md) — `db_runtime_tasks` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
 - [`core.services.02`](core.services.02.md) — `agent_pool_router` … `apophenia_guard`
-- [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `baggrundsjob_vagt`
-- [`core.services.04`](core.services.04.md) — `bash_sandbox` … `central_body_map_pulse`
-- [`core.services.05`](core.services.05.md) — `central_body_mood_feel` … `central_inner_life_ablation`
-- [`core.services.06`](core.services.06.md) — `central_inner_life_digest` … `central_route_headroom`
-- [`core.services.07`](core.services.07.md) — `central_router_adapt` … `cheap_lane_health_reconcile`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_history` … `companion_initiative`
-- [`core.services.09`](core.services.09.md) — `companion_presence` … `cowork_feed`
-- [`core.services.10`](core.services.10.md) — `creative_drift_daemon` … `deep_reflection_slot`
-- [`core.services.11`](core.services.11.md) — `deepseek_modelnavne` … `dream_influence_proposal_tracking`
-- [`core.services.12`](core.services.12.md) — `dream_influence_runtime` … `existential_wonder_daemon`
-- [`core.services.13`](core.services.13.md) — `experience_correction_listener` … `gate_review`
-- [`core.services.14`](core.services.14.md) — `gate_shadow` … `heartbeat_scheduler`
-- [`core.services.15`](core.services.15.md) — `hentede_vaerktoejer` … `internal_cadence_matrix`
-- [`core.services.16`](core.services.16.md) — `internal_opposition_signal_tracking` … `malware_scan`
-- [`core.services.17`](core.services.17.md) — `markdown_structure` … `model_pair_resolver`
-- [`core.services.18`](core.services.18.md) — `model_probe` … `outbound_nudges`
-- [`core.services.19`](core.services.19.md) — `outcome_learning` … `private_temporal_promotion_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `proactive_candidates` … `provider_autodiscovery`
-- [`core.services.21`](core.services.21.md) — `provider_circuit_breaker` … `relation_state_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `relational_warmth` … `run_follow`
-- [`core.services.23`](core.services.23.md) — `run_guard` … `self_authored_prompt_proposal_tracking`
-- [`core.services.24`](core.services.24.md) — `self_compassion` … `session_model_pin`
-- [`core.services.25`](core.services.25.md) — `session_permission` … `skill_relevance_surface`
-- [`core.services.26`](core.services.26.md) — `skill_scanner` … `temporal_recurrence_signal_tracking`
-- [`core.services.27`](core.services.27.md) — `temporal_rhythm` … `totp_verifier`
-- [`core.services.28`](core.services.28.md) — `truth_gate_v2` … `visible_model_adapters`
-- [`core.services.29`](core.services.29.md) — `visible_model_observe` … `visible_turn_accumulator`
-- [`core.services.30`](core.services.30.md) — `visible_turn_blocks` … `world_model_signal_tracking`
+- [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `background_resume`
+- [`core.services.04`](core.services.04.md) — `baggrundsjob_vagt` … `central_belief_gap`
+- [`core.services.05`](core.services.05.md) — `central_body_map_pulse` … `central_injection_units`
+- [`core.services.06`](core.services.06.md) — `central_inner_life_ablation` … `central_route`
+- [`core.services.07`](core.services.07.md) — `central_route_headroom` … `cheap_lane_floor`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_health_reconcile` … `communication_guard_daemon`
+- [`core.services.09`](core.services.09.md) — `companion_initiative` … `cowork_dispatch`
+- [`core.services.10`](core.services.10.md) — `cowork_feed` … `deep_analyzer`
+- [`core.services.11`](core.services.11.md) — `deep_reflection_slot` … `dream_hypothesis_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `dream_influence_proposal_tracking` … `existential_drift`
+- [`core.services.13`](core.services.13.md) — `existential_wonder_daemon` … `gate_proactivity`
+- [`core.services.14`](core.services.14.md) — `gate_review` … `heartbeat_runtime_providers`
+- [`core.services.15`](core.services.15.md) — `heartbeat_scheduler` … `internal_cadence_maintenance`
+- [`core.services.16`](core.services.16.md) — `internal_cadence_matrix` … `mail_checker_daemon`
+- [`core.services.17`](core.services.17.md) — `malware_scan` … `model_context`
+- [`core.services.18`](core.services.18.md) — `model_pair_resolver` … `orb_phase`
+- [`core.services.19`](core.services.19.md) — `outbound_nudges` … `private_temporal_curiosity_state_tracking`
+- [`core.services.20`](core.services.20.md) — `private_temporal_promotion_signal_tracking` … `prose_tool_calls`
+- [`core.services.21`](core.services.21.md) — `provider_autodiscovery` … `relation_map`
+- [`core.services.22`](core.services.22.md) — `relation_state_signal_tracking` … `run_finding_accounting`
+- [`core.services.23`](core.services.23.md) — `run_follow` … `selective_attention`
+- [`core.services.24`](core.services.24.md) — `selective_consolidation_daemon` … `session_distillation`
+- [`core.services.25`](core.services.25.md) — `session_inbox` … `skill_contract_registry`
+- [`core.services.26`](core.services.26.md) — `skill_engine` … `temporal_context`
+- [`core.services.27`](core.services.27.md) — `temporal_depth` … `tool_tagger`
+- [`core.services.28`](core.services.28.md) — `tool_usage_store` … `visible_inner_life`
+- [`core.services.29`](core.services.29.md) — `visible_member_prompt` … `visible_thinking_trace`
+- [`core.services.30`](core.services.30.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

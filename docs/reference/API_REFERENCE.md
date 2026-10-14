@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-13 from app.routes (live) — 646 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-14 from app.routes (live) — 647 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -73,6 +73,7 @@
 | POST | `/api/internal/discord/dispatch` | dict | internal_discord |
 | POST | `/api/internal/errors/report` |  | internal_errors |
 | POST | `/api/internal/jarvisx-bridge/dispatch` |  | jarvisx_bridge |
+| GET | `/api/internal/run-stream/{run_id}` |  | internal_run_stream |
 | GET | `/api/internal/runtime-surface/{name}` | dict | internal_runtime_surface |
 | GET | `/api/jobs` | dict | jarvisx_processes |
 | GET | `/api/jobs/stream` |  | jarvisx_processes |
@@ -249,7 +250,7 @@
 | GET | `/central/white-rabbit` | dict | central_matrix |
 | GET | `/central/work` | dict | central_absorb_routes |
 | GET | `/chat/active-file` | dict | chat |
-| GET | `/chat/active-runs` | dict | chat |
+| GET | `/chat/active-runs` | dict | chat_run_streams |
 | GET | `/chat/approvals/pending` | dict | chat |
 | POST | `/chat/approvals/{approval_id}/approve` | dict | chat |
 | POST | `/chat/approvals/{approval_id}/deny` | dict | chat |
@@ -277,7 +278,7 @@
 | GET | `/chat/roots` | dict | chat |
 | POST | `/chat/runs/{run_id}/cancel` | dict | chat |
 | POST | `/chat/runs/{run_id}/steer` | dict | chat |
-| GET | `/chat/runs/{run_id}/subscribe` |  | chat |
+| GET | `/chat/runs/{run_id}/subscribe` |  | chat_run_streams |
 | POST | `/chat/runs/{run_id}/tool-result` | dict | chat |
 | GET | `/chat/session-milestones` | dict | chat |
 | GET | `/chat/sessions` | dict | chat |
@@ -287,8 +288,8 @@
 | GET | `/chat/sessions/{session_id}` |  | chat |
 | POST | `/chat/sessions/{session_id}/cancel-active` | dict | chat |
 | PATCH | `/chat/sessions/{session_id}/flags` | dict | chat |
-| GET | `/chat/sessions/{session_id}/follow` |  | chat |
-| GET | `/chat/sessions/{session_id}/live` |  | chat |
+| GET | `/chat/sessions/{session_id}/follow` |  | chat_run_streams |
+| GET | `/chat/sessions/{session_id}/live` |  | chat_run_streams |
 | GET | `/chat/sessions/{session_id}/pending-approval` | dict | chat |
 | GET | `/chat/sessions/{session_id}/permission` | dict | chat |
 | POST | `/chat/sessions/{session_id}/permission` | dict | chat |

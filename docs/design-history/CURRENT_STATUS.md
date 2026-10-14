@@ -1,11 +1,11 @@
 ---
 status: færdig
-audited: 2026-07-08
+audited: 2026-10-14
 ground_truth: 1/1 refs alive, 77d old
 ---
 # CURRENT_STATUS — what's done, in progress, planned
 
-Sidste opdatering: 2026-04-21
+Sidste opdatering: 2026-10-14
 Opdater efter større milepæle. Dette er den ene kilde til sandhed om "hvor er vi."
 
 ## Oversigt
@@ -26,6 +26,7 @@ nu er **vedligeholdelse, udvidelse og bug-fixing** på en fungerende platform.
 | Tools system (~90 tools) | ✅ Live | 2026-04-21 | Inkl. read_chronicles, read_dreams, read_model_config, read_mood |
 | Mission Control dashboard (12 tabs) | ✅ Live | — | — |
 | Multi-channel (webchat/discord/telegram/voice/mail/ntfy) | ✅ Live | 2026-04-21 | Se CHANNELS.md |
+| Cross-process visible streaming | ✅ Live | 2026-10-14 | API/runtime owner-locator, loopback SSE-proxy, globale replay-cursors på Desk/Mobile |
 | Hardware/code-awareness | ✅ Live | — | Proprioception-daemons, repo-aware heartbeat |
 
 ### Living Mind layers
@@ -69,6 +70,24 @@ nu er **vedligeholdelse, udvidelse og bug-fixing** på en fungerende platform.
 | Pre-commit secret-scanning | ✅ Live | `detect-secrets` med baseline |
 | Kill-switch + resource guards | ✅ Live | 4GB RAM, 200% CPU cap |
 | Capability audit (scripts/capability_audit.py) | ✅ Live | Genererer `capability_matrix.md` |
+
+### Seneste streaming-milepæl (2026-10-14)
+
+Autonome visible-runs har nu altid en run-keyed v2-frame-log i den proces der
+ejer kørslen. Den delte in-flight-journal bærer producentrollen (`api` eller
+`runtime`), og den offentlige chat-API kan derfor finde, autorisere og enten
+læse lokalt eller byte-proxy'e SSE-streamen over et tokenbeskyttet loopback-
+endpoint. En rigtig to-proces-test beviser to samtidige abonnenter, reconnect
+fra global cursor, API-recreation midt i runnet og præcis én producentkørsel.
+
+HTTP-kontrakten skelner mellem `404 run_unknown`, `410 stream_pruned`,
+`503 stream_unavailable` og `401/403`; ingen af dem bliver længere omsat til
+en opdigtet succes-terminal i Desk eller Mobile. Begge klienter reconcilerer
+mod gemt transcript + active-runs og genoptager passivt uden en ny POST.
+
+Bevidst begrænsning: frame-vinduet er fortsat bounded og process-lokalt. Dør
+producentprocessen, mistes det live replay-vindue; klienten får eksplicit
+recovery/pruned state og falder tilbage til det persisterede sessionstranscript.
 
 ## Aktive bugs / åbent arbejde
 

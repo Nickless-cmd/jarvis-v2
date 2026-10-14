@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_health_reconcile.py`
+_Reconcile balancer cooldowns with successful calls from the shared cheap lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reconcile_successes` | `(states, now_epoch)` | A later successful invocation proves a profile's old failure has healed. | [src](../../../core/services/cheap_lane_health_reconcile.py#L12) |
+
 ## `core/services/cheap_lane_history.py`
 _Hvordan klarer cheap lane sig? — historikken bag de 90.000 kald._
 
@@ -738,22 +745,4 @@ _Communication guard daemon — vedligeholder TTL-rydning._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_communication_guard_daemon` | `()` | Daemon tick: cleanup expired TTL triggers + log active count. | [src](../../../core/services/communication_guard_daemon.py#L18) |
-
-## `core/services/companion_initiative.py`
-_Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Offer` | `` | — | [src](../../../core/services/companion_initiative.py#L44) |
-| method | `Offer.as_dict` | `(self)` | — | [src](../../../core/services/companion_initiative.py#L49) |
-| function | `_now` | `()` | — | [src](../../../core/services/companion_initiative.py#L54) |
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_initiative.py#L58) |
-| function | `_read_journal` | `()` | — | [src](../../../core/services/companion_initiative.py#L69) |
-| function | `_write_journal` | `(entries)` | — | [src](../../../core/services/companion_initiative.py#L86) |
-| function | `is_quiet_hour` | `(moment)` | Er det tidspunkt hvor en tanke ville vække frem for at nå frem? | [src](../../../core/services/companion_initiative.py#L94) |
-| function | `next_quiet_end` | `(moment)` | Hvornår må den stille periode brydes igen. | [src](../../../core/services/companion_initiative.py#L103) |
-| function | `_recent_for` | `(user_id, journal)` | — | [src](../../../core/services/companion_initiative.py#L113) |
-| function | `check_allowed` | `(user_id, *, now=…)` | Må en tanke sendes lige nu? Ren vurdering — sender ingenting. | [src](../../../core/services/companion_initiative.py#L117) |
-| function | `offer_thought` | `(user_id, text, *, title=…, now=…)` | Tilbyd en tanke. Sender kun hvis grænserne tillader det. | [src](../../../core/services/companion_initiative.py#L144) |
-| function | `recent_thoughts` | `(user_id, *, limit=…)` | Tankerne, nyeste først — også dem der blev holdt tilbage. | [src](../../../core/services/companion_initiative.py#L184) |
 

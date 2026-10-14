@@ -106,6 +106,9 @@ from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.visning import router as visning_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
+from apps.api.jarvis_api.routes.chat_run_streams import (
+    router as chat_run_streams_router,
+)
 from apps.api.jarvis_api.routes.chat_workspace_trust import (
     router as chat_workspace_trust_router,
 )
@@ -145,6 +148,9 @@ from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
 from apps.api.jarvis_api.routes.internal_discord import router as internal_discord_router
 from apps.api.jarvis_api.routes.internal_errors import router as internal_errors_router
+from apps.api.jarvis_api.routes.internal_run_stream import (
+    router as internal_run_stream_router,
+)
 from apps.api.jarvis_api.routes.routines import router as routines_router
 from apps.api.jarvis_api.mcp_server import create_mcp_app
 from core.eventbus.bus import event_bus
@@ -930,6 +936,7 @@ def create_app() -> FastAPI:
     app.include_router(files_router)
     app.include_router(visning_router)
     app.include_router(chat_router)
+    app.include_router(chat_run_streams_router)
     # Boy-scout split 3/10-2026: samme /chat-praefiks, egne tillids-ruter.
     app.include_router(chat_workspace_trust_router)
     app.include_router(chat_inbox_router)
@@ -1034,6 +1041,7 @@ def create_app() -> FastAPI:
     app.include_router(users_admin_router)
     app.include_router(internal_discord_router)
     app.include_router(internal_errors_router)  # Fase 0: canonical error reporter (loopback)
+    app.include_router(internal_run_stream_router)
     app.include_router(routines_router)
     app.mount("/mcp", mcp_app)
 

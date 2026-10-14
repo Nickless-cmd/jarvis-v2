@@ -285,10 +285,11 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 | function | `_er_moden` | `(post, *, vaekninger)` | Er en dispatchbar post MODEN — melder kilden selv at den er klar? | [src](../../../core/services/inbox_idle_waker.py#L77) |
 | function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L91) |
 | function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L131) |
-| function | `_start_run` | `(tekst, *, session_id=…)` | Start det autonome run. Adskilt, så testen kan bytte den ud ét sted. | [src](../../../core/services/inbox_idle_waker.py#L150) |
-| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L157) |
-| function | `_dispatch_tekst` | `(post)` | (tekst, session) for det run vækningen skal starte. | [src](../../../core/services/inbox_idle_waker.py#L174) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L197) |
+| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L150) |
+| function | `_start_run` | `(tekst, *, session_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L190) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L202) |
+| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L219) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L243) |
 
 ## `core/services/inbox_prompt_section.py`
 _Indbakken i prompten — læseren hele kæden manglede._

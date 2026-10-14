@@ -54,6 +54,20 @@ def _post(bruger="bjorn", id="wake-1", **kw) -> dict:
     return r["post"]
 
 
+@pytest.fixture(autouse=True)
+def _samtale(monkeypatch):
+    """Giv hver post en MÅL-samtale — 14/10-2026.
+
+    Vækkeren kræver nu en samtale at vække i: den må ikke længere starte et run
+    i `auto-autonomous` (en session ingen læser). Uden denne fixture ville hver
+    test nedenfor skulle stille en session op for at komme til sit egentlige
+    emne. Den test der måler NETOP dét krav overskriver den selv.
+    """
+    from core.services import inbox_idle_waker as w
+
+    monkeypatch.setattr(w, "_maal_session", lambda post: "chat-1")
+
+
 # ── hvem må vække ───────────────────────────────────────────────────────────
 
 def test_kun_gatende_poster_vaekker(inbox_db):
@@ -237,3 +251,86 @@ def test_fejl_i_run_start_efterlader_ikke_post_som_vaekket(inbox_db, monkeypatch
     startet = []
     monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+
+
+# ── samtalen runnet hører til (14/10-2026) ──────────────────────────────────
+#
+# Bjørn: «men idle vækningen, bør ikk starte autonome sessioner. de bør vække
+# den session de høre til...» Målt: `_dispatch_tekst` gav `session=None` for
+# ALLE gatende poster, og `normalize_origin("inbox")` kollapser ukendte navne
+# til «autonomous». Resultatet var et run i `auto-autonomous-{dato}` — en
+# session ingen læser — hver gang en post ventede.
+
+
+def test_en_post_uden_samtale_vaekker_IKKE(inbox_db, monkeypatch):
+    """Ingen samtale ⇒ ingen vækning. Posten venter; vi laver ikke en silo."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_maal_session", lambda post: "")
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    assert r["vaekket"] == 0, "et run uden samtale er præcis den silo vi fjerner"
+    assert startet == []
+    # Og posten er IKKE brændt af — næste runde må prøve igen.
+    post = db_inbox.hent(bruger_id="bjorn", kilde_id="min")
+    assert post["sidste_vaekning_tur"] == ""
+
+
+def test_runnet_faar_postens_samtale_ikke_en_auto_session(inbox_db, monkeypatch):
+    """Den målte fejl: sessionen skal være postens — ikke `auto-…`."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    kaldt: list[dict] = []
+    monkeypatch.setattr(w, "_start_run",
+                        lambda tekst, **kw: kaldt.append({"tekst": tekst, **kw}))
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+    assert kaldt[0]["session_id"] == "chat-1"
+    assert not kaldt[0]["session_id"].startswith("auto-"), (
+        "et autonomt run i auto-* er præcis den silo Bjørn pegede på"
+    )
+
+
+def test_maal_session_er_dispatcherens_egen_definition():
+    """To definitioner af «hvor skal dette lande» driver fra hinanden.
+
+    Kilden læses fra FILEN — ikke med `inspect.getsource`: autouse-fixturen
+    monkeypatcher `_maal_session`, og `getsource` ville så læse lambda'en i
+    stedet for funktionen. Det målte jeg ved at fejle på det først.
+    """
+    import pathlib
+
+    kilde = pathlib.Path(
+        "core/services/inbox_idle_waker.py").read_text(encoding="utf-8")
+    start = kilde.index("def _maal_session")
+    slut = kilde.index("def _start_run")
+    krop = kilde[start:slut]
+    assert "pick_wakeup_run_target" in krop, (
+        "vækkeren skal bruge dispatcherens session-valg, ikke sin egen kopi"
+    )
+    assert "session_is_external_channel" in krop, (
+        "app-vækninger må ikke re-engagere en ekstern kanal (Discord/Telegram)"
+    )
+
+
+def test_start_run_kraever_en_session():
+    """Signaturen må ikke kunne kaldes uden en samtale.
+
+    Indtil 14/10-2026 var `session_id` valgfri med default `None` — og `None`
+    betød `auto-autonomous`. Kravet skal ligge i signaturen, ikke i en
+    kommentar.
+    """
+    import inspect
+
+    from core.services import inbox_idle_waker as w
+
+    param = inspect.signature(w._start_run).parameters["session_id"]
+    assert param.default is inspect.Parameter.empty, (
+        "en valgfri session_id er hvordan siloen opstod"
+    )

@@ -147,8 +147,53 @@ def _noget_koerer() -> bool:
         return False
 
 
-def _start_run(tekst: str, *, session_id: str | None = None) -> None:
-    """Start det autonome run. Adskilt, så testen kan bytte den ud ét sted."""
+def _maal_session(post: dict[str, Any]) -> str:
+    """Hvilken SAMTALE hører denne post til?
+
+    Vækkeren startede indtil 14/10-2026 et run i `auto-autonomous` for ALLE
+    gatende poster: `_dispatch_tekst` gav `session=None`, og
+    `normalize_origin("inbox")` kollapser ukendte navne til «autonomous».
+    Resultatet var et run i en session ingen læser — Bjørn: «de bør vække den
+    session de høre til».
+
+    Rækkefølgen er den SAMME som wakeup-dispatcheren bruger
+    (`pick_wakeup_run_target`) — ikke en kopi. To definitioner af «hvor skal
+    dette lande» driver fra hinanden, og så bliver den ene stille virkningsløs:
+
+      1. Vækningens egen samtale (en wakeup bærer sin session i recorden).
+      2. Ejerens app-samtale — resolvert, og med guard mod eksterne kanaler
+         (Discord/Telegram), så et app-run ikke re-engagerer en ekstern kanal.
+      3. Tom streng ⇒ INGEN vækning. Et run uden en samtale er præcis den
+         silo vi fjerner; posten venter hellere til næste runde.
+    """
+    from core.identity.owner_resolver import (
+        resolve_owner_app_session,
+        resolve_owner_target_session,
+        session_is_external_channel,
+    )
+    from core.services.wakeup_dispatcher import pick_wakeup_run_target
+
+    record_session = ""
+    if str(post.get("kildetype") or "") == "wakeup":
+        rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
+        if rec:
+            record_session = str(rec.get("session_id") or "")
+    return pick_wakeup_run_target(
+        channel="app",
+        record_session=record_session,
+        app_resolver=resolve_owner_app_session,
+        owner_resolver=resolve_owner_target_session,
+        is_external=session_is_external_channel,
+    ) or ""
+
+
+def _start_run(tekst: str, *, session_id: str) -> None:
+    """Start det autonome run i den samtale posten hører til. Adskilt, så
+    testen kan bytte den ud ét sted.
+
+    `session_id` er PÅKRÆVET: et run uden en samtale ville falde tilbage til
+    `auto-{origin}-{dato}` — den silo vækkeren netop ikke må skabe.
+    """
     from core.services.visible_autonomous_run import start_autonomous_run
 
     start_autonomous_run(tekst, session_id=session_id, origin="inbox")
@@ -171,16 +216,17 @@ def _direktiv(post: dict[str, Any]) -> str:
     )
 
 
-def _dispatch_tekst(post: dict[str, Any]) -> tuple[str, str | None]:
-    """(tekst, session) for det run vækningen skal starte.
+def _dispatch_tekst(post: dict[str, Any]) -> str:
+    """Run-direktivet for posten.
 
-    En SPRUNGT vækning bærer sin egen tekst og sin egen samtale: den skal køre
-    med `direktiv_for` — den samme instruktion dispatcheren ville have givet —
-    i den samtale den blev booket fra, ikke i en auto-session. Er kilden væk
+    En SPRUNGT vækning bærer sin EGEN tekst: den skal køre med `direktiv_for`
+    — den samme instruktion dispatcheren ville have givet. Er kilden væk
     eller ikke læsbar, falder vi tilbage til det generiske direktiv; et run
     med den rigtige post er bedre end intet run.
 
-    Gatende poster (den oprindelige klasse) er urørt: de bruger `_direktiv`.
+    HVOR runnet skal køre, er ikke denne funktions sag — det afgør
+    `_maal_session` for ALLE poster. Indtil 14/10-2026 blandede de to spørgsmål
+    sig her, og kun wakeup-typen fik et svar på det andet.
     """
     from core.services.inbox_state import kan_dispatch
 
@@ -190,8 +236,8 @@ def _dispatch_tekst(post: dict[str, Any]) -> tuple[str, str | None]:
             if rec:
                 from core.services.self_wakeup import direktiv_for
 
-                return direktiv_for(rec), (str(rec.get("session_id") or "").strip() or None)
-    return _direktiv(post), None
+                return direktiv_for(rec)
+    return _direktiv(post)
 
 
 def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
@@ -217,6 +263,17 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
     vaekket = 0
     for post in poster[:MAKS_PR_RUNDE]:
         kilde_id = str(post.get("kilde_id") or post.get("id") or "")
+        # HVOR skal runnet køre? En post uden en samtale vækkes IKKE — den
+        # venter. Faldt den til `auto-{origin}-{dato}`, ville vi skabe præcis
+        # den silo vækkeren findes for at undgå (målt frem til 14/10-2026).
+        # Tjekket ligger FØR sporet: en post vi ikke vækker må ikke stå som
+        # vækket og dermed være usynlig i næste runde.
+        session_id = _maal_session(post)
+        if not session_id:
+            logger.info(
+                "inbox_idle_waker: %s/%s har ingen samtale at vække i — venter",
+                post.get("kildetype"), kilde_id)
+            continue
         # Sporet skrives FØR run'et startes: kaster starten, må posten ikke stå
         # som vækket — så prøves den igen i næste runde.
         try:
@@ -225,7 +282,7 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             logger.debug("inbox_idle_waker: kunne ikke notere %s: %s", kilde_id, exc)
             continue
-        tekst, session_id = _dispatch_tekst(post)
+        tekst = _dispatch_tekst(post)
         try:
             _start_run(tekst, session_id=session_id)
             vaekket += 1

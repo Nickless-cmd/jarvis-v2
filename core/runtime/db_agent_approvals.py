@@ -28,7 +28,7 @@ import logging
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Final
 
 from core.runtime.db_agent_contract import ContractError, _conn, _now_iso, _require, _row
 
@@ -268,6 +268,90 @@ def decide(*, approval_id: str, decision: str, actor_user_id: str, actor_kind: s
         conn.execute("UPDATE agent_approvals SET status=?, decided_at=?, decided_by=?, decision_note=? "
                      "WHERE approval_id=? AND status='pending'", (new, _iso(t), actor_user_id, note[:300], approval_id))
         _audit(conn, approval_id, new, f"human:{actor_user_id}", note)
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    return get(approval_id=approval_id) or {}
+
+
+#: Vaerdien i ``parent_agent_id`` naar JARVIS selv startede agenten (maalt 14/10-2026: alle
+#: levende assignments og approvals baerer den). Det er den eneste parent der maa afgoeres
+#: uden et menneske imellem.
+PARENT = "jarvis"
+
+#: Den ENE ``kind`` Jarvis maa afgoere. ``integration`` er udeladt MED VILJE - se nedenfor.
+PARENT_KINDS: Final[frozenset[str]] = frozenset({"tool_call"})
+
+
+def decide_as_parent(*, approval_id: str, decision: str, digest: str, note: str = "",
+                     now: datetime | None = None) -> dict[str, Any]:
+    """Afgoer en approval for en agent JARVIS selv har startet - uden et menneske imellem.
+
+    ## Hvorfor vejen findes (14/10-2026)
+
+    ``decide`` kraever ``actor_kind == "human"``, og DET KRAV BESTAAR: Jarvis maa ikke godkende
+    sine EGNE handlinger, og en model maa ikke godkende noget som helst. Men en agent han selv
+    har startet er ikke hans egen handling - den er hans uddelegering, inden for hans egen
+    politik. Uden denne vej gik hver uddelegering i staa bag en totrinskode.
+
+    ## Graensen - to krav, begge noedvendige
+
+    * ``parent_agent_id == PARENT``: agenten blev startet af Jarvis. En agent startet af en
+      anden agent, eller en legacy-agent uden parent, falder udenfor.
+    * ``kind in PARENT_KINDS``: agentens EGET vaerktoejskald. ``kind == "integration"`` er en
+      aendring af HUSETS kode - den er ikke agentens handling, og den kraever stadig Bjorns
+      haand. Det er praecis den graense ``test_jarvis_cannot_approve_his_own_integration_request``
+      vogter, og den staar.
+
+    ## Hvem kan kalde den
+
+    Service-laget, som kun Jarvis' eget vaerktoejssaet naar. Den er ikke i en agents
+    vaerktoejer: en agent kan ikke fjerne sin egen bremse ved at kalde den her - og selv hvis
+    den naaede frem, ville ``kind``-kravet begraense den til agentens eget vaerktoejskald,
+    ikke til husets kode.
+
+    ## Hvad den IKKE arver fra ``decide``
+
+    Ingen ``actor_user_id`` og intet ejerskabskrav: Jarvis er ikke en bruger, og det er hele
+    pointen. Autorisationen er ``parent_agent_id``, ikke en identitet i ``users``.
+    """
+    if decision not in ("approve", "deny"):
+        raise ContractError("INVALID_TRANSITION", decision)
+    t = now or datetime.now(UTC)
+    conn = _conn()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        r = _row_or_none(conn, approval_id)
+        if r is None:
+            raise ContractError("INVALID_SCOPE", "ukendt approval")
+        parent = str(r.get("parent_agent_id") or "").strip()
+        kind = str(r.get("kind") or "").strip()
+        if parent != PARENT:
+            _audit(conn, approval_id, "refused: ikke Jarvis' agent", f"parent={parent or '(tom)'}")
+            conn.commit()
+            raise ContractError("POLICY_DENIED", "agenten blev ikke startet af Jarvis")
+        if kind not in PARENT_KINDS:
+            _audit(conn, approval_id, "refused: husets kode kraever mennesket", f"kind={kind}")
+            conn.commit()
+            raise ContractError("POLICY_DENIED", "en aendring af husets kode kraever Bjorns godkendelse")
+        if r["status"] == PENDING and _parse(r["expires_at"]) <= t:
+            conn.execute("UPDATE agent_approvals SET status='expired' WHERE approval_id=? AND status='pending'",
+                         (approval_id,))
+            _audit(conn, approval_id, "expired", "system", "udloebet foer afgoerelse")
+            conn.commit()
+            raise ContractError("EXPIRED", "approval er udloebet")
+        if r["status"] != PENDING:
+            conn.rollback()
+            raise ContractError("INVALID_TRANSITION", f"approval er {r['status']}")
+        if not digest or digest != r["args_digest"]:
+            _audit(conn, approval_id, "refused: digest passer ikke", f"parent:{PARENT}")
+            conn.commit()
+            raise ContractError("INVALID_SCOPE", "digest passer ikke - handlingen er aendret, ny approval kraeves")
+        new = APPROVED if decision == "approve" else DENIED
+        conn.execute("UPDATE agent_approvals SET status=?, decided_at=?, decided_by=?, decision_note=? "
+                     "WHERE approval_id=? AND status='pending'", (new, _iso(t), PARENT, note[:300], approval_id))
+        _audit(conn, approval_id, new, f"parent:{PARENT}", note)
         conn.commit()
     except BaseException:
         conn.rollback()

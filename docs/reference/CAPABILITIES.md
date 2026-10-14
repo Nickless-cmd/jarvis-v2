@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-07 — 502 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-14 — 503 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -83,6 +83,7 @@
 | `daemon_health_alert` | native | no |
 | `daemon_status` | native | no |
 | `db_query` | native | no |
+| `decide_agent_approval` | native | no |
 | `decision_adherence_summary` | native | no |
 | `decision_create` | native | no |
 | `decision_get` | native | no |

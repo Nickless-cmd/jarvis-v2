@@ -109,6 +109,7 @@ from core.tools.agent_worktree_tools import _exec_wt_bash, _exec_wt_write_file  
 from core.tools.agent_contract_tools import (  # agent-contract-v1 (F2)
     _exec_close_agent,
     _exec_convene_agent_council,
+    _exec_decide_agent_approval,
     _exec_dispatch_agent,
     _exec_followup_agent,
     _exec_integrate_agent_work,
@@ -1718,6 +1719,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "integrate_agent_work": _exec_integrate_agent_work,
     "convene_agent_council": _exec_convene_agent_council,
     "review_agent_work": _exec_review_agent_work,
+    "decide_agent_approval": _exec_decide_agent_approval,
     "close_agent": _exec_close_agent,
     "cancel_agent": _exec_cancel_agent,
     "daemon_status": _exec_daemon_status,

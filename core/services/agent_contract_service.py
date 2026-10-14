@@ -689,6 +689,32 @@ def decide_approval(*, approval_id: str, decision: str, actor_user_id: str, acto
     return out
 
 
+def decide_approval_as_parent(*, approval_id: str, decision: str, digest: str, note: str = "") -> dict[str, Any]:
+    """Jarvis afgoer en af SINE EGNE agenters vaerktoejskald - uden et menneske imellem (14/10-2026).
+
+    Graensen ligger i lageret (``db_agent_approvals.decide_as_parent``): kun en agent hvis
+    ``parent_agent_id`` er ``jarvis``, og kun ``kind == "tool_call"``. En integration - en aendring
+    af husets kode - kan IKKE afgoeres her og lander stadig hos Bjorn.
+
+    Genoptager det parkerede barn med det samme, praecis som menneskets vej goer.
+    """
+    from core.runtime import db_agent_approvals as appr
+    from core.services.agent_parking import resume_decided
+
+    try:
+        r = appr.decide_as_parent(approval_id=approval_id, decision=decision, digest=digest, note=note)
+    except ContractError as exc:
+        logger.info("approval %s: Jarvis' afgoerelse blev afvist (%s)", approval_id, exc.code)
+        return _err(exc.code, exc.detail, "approval")
+    try:
+        from core.services.agent_approval_notify import cancel_wake
+        cancel_wake(r, f"approvalen er {r['status']}")
+    except Exception:
+        logger.warning("kunne ikke aflyse vaekning for %s", approval_id, exc_info=True)
+    resume_decided(_start_execution)
+    return {"status": "ok", "approval": approval_view(r), "contract_version": CONTRACT_VERSION}
+
+
 def request_integration(*, owner_user_id: str, origin_session_id: str, assignment_id: str) -> dict[str, Any]:
     """Jarvis beder om integration af et kodeassignments arbejde. Opretter KUN en approval - han kan ikke
     godkende den. Virker ikke naar motoren er slukket (en ny handling); afgoerelsen virker altid."""

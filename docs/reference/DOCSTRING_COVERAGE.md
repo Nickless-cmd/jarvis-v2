@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8961/17144 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8964/17147 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 8961/17144 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 820 | 1520 | 53% |
-| `core.services` | 5972 | 11658 | 51% |
+| `core.runtime` | 821 | 1521 | 53% |
+| `core.services` | 5973 | 11659 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 38 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 537 | 1078 | 49% |
+| `core.tools` | 538 | 1079 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -359,12 +359,12 @@ Generated from source. 8961/17144 functions/methods documented (52%). The list b
 - `core/plugins/base_plugin.py` :: `get_status` (L110)
 - `core/runtime/bootstrap.py` :: `ensure_runtime_dirs` (L32)
 - `core/runtime/bootstrap.py` :: `ensure_settings_file` (L38)
-- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L366)
+- `core/runtime/db_agent_approvals.py` :: `audit_trail` (L450)
 - `core/runtime/db_agent_approvals.py` :: `ensure_approval_tables` (L46)
 - `core/runtime/db_agent_approvals.py` :: `get` (L152)
 - `core/runtime/db_agent_approvals.py` :: `get_for_owner` (L156)
-- `core/runtime/db_agent_approvals.py` :: `parked_checkpoint` (L398)
-- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L337)
+- `core/runtime/db_agent_approvals.py` :: `parked_checkpoint` (L482)
+- `core/runtime/db_agent_approvals.py` :: `unannounced_pending` (L421)
 - `core/runtime/db_agent_artifacts.py` :: `artifact_ref` (L139)
 - `core/runtime/db_agent_artifacts.py` :: `ensure_artifact_tables` (L47)
 - `core/runtime/db_agent_artifacts.py` :: `get_artifact_record` (L134)

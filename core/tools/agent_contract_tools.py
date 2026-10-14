@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 CONTRACT_TOOL_NAMES: tuple[str, ...] = (
     "dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
     "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
-    "convene_agent_council", "review_agent_work",
+    "convene_agent_council", "review_agent_work", "decide_agent_approval",
 )
 #: Dem der KUN findes med kontrakten (de to andre har en aeldre udgave).
 _NEW_ONLY: frozenset[str] = frozenset(
@@ -137,6 +137,18 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
          "budget_tokens": {"type": "integer", "description": "Token budget; 0 = role default."},
          "idempotency_key": _KEY},
         ["builder_assignment_id", "requirements"]),
+    _fn("decide_agent_approval",
+        "Decide a tool-approval for an agent YOU started - no human in the loop. This is your own "
+        "delegation, not your own action: you may approve an agent's OWN tool call, but NEVER an "
+        "integration (a change to the house's code) and never an agent someone else started. Those "
+        "still go to the human. The human's gate for YOUR OWN actions is unchanged.",
+        {"approval_id": {"type": "string", "description": "The approval_id from your inbox."},
+         "decision": {"type": "string", "enum": ["approve", "deny"]},
+         "digest": {"type": "string",
+                    "description": "The args_digest from the approval card - it binds the decision to "
+                    "exactly this call; if the arguments changed, a new approval is required."},
+         "note": {"type": "string", "description": "Optional reason, recorded in the audit trail."}},
+        ["approval_id", "decision", "digest"]),
 ]
 
 
@@ -309,6 +321,21 @@ def _exec_convene_agent_council(args: dict[str, Any]) -> dict[str, Any]:
         facts=str(args.get("facts") or ""), members=args.get("members") or [],
         budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
         idempotency_key=str(args.get("idempotency_key") or ""))
+
+
+def _exec_decide_agent_approval(args: dict[str, Any]) -> dict[str, Any]:
+    """Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026).
+
+    Graensen haandhaeves i LAGERET, ikke her: kun ``parent_agent_id == "jarvis"`` og
+    ``kind == "tool_call"``. En integration - en aendring af husets kode - afvises der og lander
+    stadig hos Bjorn. Ingen ``_principal``: denne afgoerelse er ikke bundet til et assignment,
+    den er bundet til hvem der STARTEDE agenten.
+    """
+    return _svc().decide_approval_as_parent(
+        approval_id=str(args.get("approval_id") or "").strip(),
+        decision=str(args.get("decision") or "").strip(),
+        digest=str(args.get("digest") or "").strip(),
+        note=str(args.get("note") or ""))
 
 
 def _exec_review_agent_work(args: dict[str, Any]) -> dict[str, Any]:

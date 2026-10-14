@@ -77,7 +77,7 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
 
 
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
-                         origin: str | None = None) -> bool:
+                         origin: str | None = None, task_id: str = "") -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
@@ -262,7 +262,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         from core.services.in_flight_runs import stempl_aktiv_kaede
 
         stempl_aktiv_kaede(run_id=run.run_id, session_id=resolved_session,
-                           origin=str(origin or ""))
+                           origin=str(origin or ""), task_id=task_id)
     except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
         logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
     from core.services.autonomous_frame_relay import AutonomousFrameRelay

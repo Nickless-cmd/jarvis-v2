@@ -553,23 +553,23 @@ _Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
 |---|---|---|---|---|
 | function | `_load` | `()` | — | [src](../../../core/services/self_wakeup.py#L67) |
 | function | `_save` | `(records)` | — | [src](../../../core/services/self_wakeup.py#L74) |
-| function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L78) |
-| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L215) |
-| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L260) |
-| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L289) |
-| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L322) |
-| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L363) |
-| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L411) |
-| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L441) |
-| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L459) |
-| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L467) |
-| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L528) |
-| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L537) |
-| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L592) |
-| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L621) |
-| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L631) |
-| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L635) |
-| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L639) |
+| function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…, task_id=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L78) |
+| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L221) |
+| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L266) |
+| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L295) |
+| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L328) |
+| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L369) |
+| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L417) |
+| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L447) |
+| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L465) |
+| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L473) |
+| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L534) |
+| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L543) |
+| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L598) |
+| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L627) |
+| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L637) |
+| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L641) |
+| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L645) |
 
 ## `core/services/selfhood_proposal_tracking.py`
 

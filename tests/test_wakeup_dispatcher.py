@@ -82,6 +82,7 @@ def test_dispatch_starts_wakeup_with_server_stream_relay():
     assert fake_start.call_args.kwargs == {
         "session_id": "chat-origin",
         "origin": "wakeup",
+        "task_id": "",
     }
 
 
@@ -155,7 +156,7 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
     }]
     captured = {}
 
-    def _start(_message, *, session_id, origin):
+    def _start(_message, *, session_id, origin, task_id=""):
         captured.update({
             "session_id": session_id,
             "context_session_id": current_session_id(),

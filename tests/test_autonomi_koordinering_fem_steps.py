@@ -273,3 +273,184 @@ def test_allerede_besvaret_scoper_paa_samtalen(monkeypatch):
     assert "tool_router_decisions" in sqls, "samtale-scopet mangler"
     assert any("session_id = ?" in s for s, _ in fanget)
     assert any("chat-abc" in str(p) for _, p in fanget)
+
+
+def test_allerede_besvaret_genoptager_naar_samtalen_er_ukendt(monkeypatch):
+    """REGRESSIONSTEST (ChatGPT's P1, 14/10-2026).
+
+    Uden samtale faldt funktionen tilbage til en GLOBAL søgning: en afsluttet
+    kørsel i en helt ANDEN samtale blev læst som «brugeren er gået videre», og
+    en legitim genoptagelse blev droppet TAVST. Det er ikke fail-safe, det er
+    fail-silent-drop. Tvivlen skal falde ud til at genoptage — samme regel som
+    når basen ikke kan læses.
+    """
+    from core.services import living_executive as le
+
+    kald: list = []
+
+    class _FakeConn:
+        def execute(self, sql, params):
+            kald.append((sql, params))
+
+            class _R:
+                def fetchone(self):
+                    return ("2026-10-14T10:00:00+00:00",)
+
+            return _R()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(le, "_session_for_run", lambda rid: "")
+    monkeypatch.setattr("core.runtime.db.connect", lambda: _FakeConn())
+
+    assert le._allerede_besvaret("visible-x") is False
+    assert len(kald) == 1, "kun opslaget af finished_at — ingen global søgning"
+
+
+# ── Opgavens id føres eksplicit gennem vækningen (14/10-2026) ───────────────
+#
+# `source_id → task_id → claim → run_id → outcome`. Origin er ikke
+# opgaveidentitet: en `wakeup` eller en inbox-post KAN være en fortsættelse,
+# men kan også være helt nyt arbejde. Bærer kalderen id'et, behøver vi ikke
+# gætte — og origin-gaten degraderes fra «det eneste signal» til en fallback.
+
+
+def test_eksplicit_task_id_stempler_uanset_origin(monkeypatch):
+    """Et eksplicit id VINDER over origin-navnet."""
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(ifr, "_load", lambda: {})
+    kald: dict = {}
+    monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
+
+    # `recurring` er ikke en fortsættelses-origin — men med et eksplicit id
+    # ved vi bedre end navnet.
+    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1",
+                                  origin="recurring", task_id="opg-Z") is True
+    assert kald["task_id"] == "opg-Z"
+    assert kald["recovery_attempt"] == 1, (
+        "mindst ét forsøg er brugt — runnet ER en fortsættelse"
+    )
+
+
+def test_eksplicit_id_arver_kaede_tallet(monkeypatch):
+    """Id'et erstatter identiteten — ikke tælleren. Er kæden kendt, tælles op."""
+    from core.services import in_flight_runs as ifr
+
+    monkeypatch.setattr(
+        ifr,
+        "_load",
+        lambda: {
+            "A": {
+                "session_id": "s1", "kind": "visible", "recovery_attempt": 2,
+                "task_id": "opg-A", "run_id": "A",
+                "started_at": "2026-10-14T10:00:00+00:00",
+            }
+        },
+    )
+    kald: dict = {}
+    monkeypatch.setattr(ifr, "stempl_genoptagelse", lambda **kw: kald.update(kw))
+
+    assert ifr.stempl_aktiv_kaede(run_id="nyt", session_id="s1",
+                                  origin="recurring", task_id="opg-A") is True
+    assert kald["recovery_attempt"] == 3
+
+
+def test_vaekningen_gemmer_opgavens_id(monkeypatch):
+    """`schedule_self_wakeup` skal kunne BÆRE forpligtelsen videre."""
+    from core.services import self_wakeup as sw
+
+    gemt: list = []
+    monkeypatch.setattr(sw, "_load", lambda: [])
+    monkeypatch.setattr(sw, "_save", lambda recs: gemt.extend(recs))
+
+    r = sw.schedule_self_wakeup(delay_seconds=60, prompt="p", task_id="opg-Z")
+    assert r.get("status") == "ok"
+    assert gemt and gemt[0].get("task_id") == "opg-Z"
+
+    gemt.clear()
+    sw.schedule_self_wakeup(delay_seconds=60, prompt="p")
+    assert gemt and gemt[0].get("task_id") is None, "nyt arbejde bærer intet id"
+
+
+def test_genoptagelsen_baerer_opgavens_id(monkeypatch):
+    """Vækningen skal bære FORPLIGTELSEN — ikke kun dens samtale."""
+    from core.services import in_flight_runs as ifr
+    from core.services import living_executive as le
+
+    monkeypatch.setattr(le, "_session_for_run", lambda rid: "chat-abc")
+    monkeypatch.setattr(le, "_genoptag_loft_naaet", lambda: None)
+    monkeypatch.setattr(le, "_noter_genoptagelse", lambda: None)
+    monkeypatch.setattr(
+        ifr, "get_record",
+        lambda rid: {"task_id": "opg-A", "session_id": "chat-abc"},
+    )
+
+    fanget: dict = {}
+
+    def _fake_schedule(**kw):
+        fanget.update(kw)
+        return {"status": "ok", "wakeup": {"wakeup_id": "w1"}}
+
+    monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", _fake_schedule)
+
+    le._action_schedule_self_wakeup({"payload": {
+        "run_id": "visible-x", "prompt": "p", "delay_seconds": 30,
+        "reason": f"living-executive:{le._GENOPTAG_NOEGLE}",
+    }})
+
+    assert fanget.get("task_id") == "opg-A"
+    assert fanget.get("session_id") == "chat-abc"
+
+
+def test_en_paamindelse_baerer_ikke_et_opgave_id(monkeypatch):
+    """En påmindelse er NYT arbejde — den må ikke arve en forpligtelse."""
+    from core.services import living_executive as le
+
+    monkeypatch.setattr(le, "_session_for_run", lambda rid: "chat-abc")
+
+    fanget: dict = {}
+
+    def _fake_schedule(**kw):
+        fanget.update(kw)
+        return {"status": "ok", "wakeup": {"wakeup_id": "w1"}}
+
+    monkeypatch.setattr("core.services.self_wakeup.schedule_self_wakeup", _fake_schedule)
+
+    le._action_schedule_self_wakeup({"payload": {
+        "run_id": "visible-x", "prompt": "p", "delay_seconds": 30,
+        "reason": "living-executive:reminder",
+    }})
+
+    assert fanget.get("task_id") == ""
+
+
+def test_hele_kaeden_baerer_task_id():
+    """KONTRAKTEN: et brud i ét led gør de tre andre virkningsløse.
+
+    Vækningen → dispatcheren → starteren → stemplet. Alle fire skal kunne
+    bære opgavens id, ellers er `source_id → task_id → run_id` en påstand
+    uden et sted at bo.
+    """
+    import inspect
+
+    from core.services import (
+        autonomous_stream_run,
+        in_flight_runs,
+        self_wakeup,
+        visible_autonomous_run,
+    )
+
+    for funktion in (
+        in_flight_runs.stempl_aktiv_kaede,
+        self_wakeup.schedule_self_wakeup,
+        autonomous_stream_run.start_autonomous_stream_run,
+        visible_autonomous_run.start_autonomous_run,
+    ):
+        assert "task_id" in inspect.signature(funktion).parameters, (
+            f"{funktion.__module__}.{funktion.__name__} mangler task_id"
+        )

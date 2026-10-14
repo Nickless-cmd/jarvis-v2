@@ -11,6 +11,7 @@ def start_autonomous_stream_run(
     *,
     session_id: str | None,
     origin: str = "autonomous",
+    task_id: str = "",
 ) -> None:
     """Start autonomous work and relay its v2 frames through ``run_event_log``.
 
@@ -108,7 +109,8 @@ def start_autonomous_stream_run(
     try:
         from core.services.in_flight_runs import stempl_aktiv_kaede
 
-        stempl_aktiv_kaede(run_id=run.run_id, session_id=sid, origin=origin)
+        stempl_aktiv_kaede(run_id=run.run_id, session_id=sid, origin=origin,
+                           task_id=task_id)
     except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
         logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
 

@@ -312,6 +312,11 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                                 self_directive,
                                 session_id=target_session,
                                 origin="wakeup",
+                                # OPGAVENS ID (14/10-2026): er vækningen en
+                                # fortsættelse, følger forpligtelsens id med
+                                # hele vejen til stemplet — så starteren VED
+                                # hvad den fortsætter i stedet for at gætte.
+                                task_id=str(record.get("task_id") or ""),
                             )
                             run_started = True
                         finally:

@@ -177,7 +177,7 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L80) |
 | function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L160) |
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L191) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L362) |
+| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L367) |
 
 ## `core/services/web_push_gateway.py`
 _Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._

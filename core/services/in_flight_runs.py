@@ -476,7 +476,8 @@ def aktiv_kaede(session_id: str) -> tuple[int, str]:
 _FORTSAETTELSES_ORIGINS = frozenset({"wakeup", "inbox", "continuation"})
 
 
-def stempl_aktiv_kaede(*, run_id: str, session_id: str, origin: str = "") -> bool:
+def stempl_aktiv_kaede(*, run_id: str, session_id: str, origin: str = "",
+                       task_id: str = "") -> bool:
     """Stempl samtalens aktive kæde paa et nyt run. True = der blev stemplet.
 
     Kaldt af ALLE run-startere (14/10-2026). Foer stemplede kun `detached_run`
@@ -505,17 +506,29 @@ def stempl_aktiv_kaede(*, run_id: str, session_id: str, origin: str = "") -> boo
     """
     if not run_id:
         return False
-    if str(origin or "").strip() not in _FORTSAETTELSES_ORIGINS:
+    # EKSPLICIT OPGAVE-ID (14/10-2026). Bærer kalderen det, VED vi hvilken
+    # forpligtelse runnet hører til — og origin-gaten nedenfor degraderes fra
+    # «det eneste signal» til en FALLBACK for de kaldesteder der ikke kan svare.
+    # Det er hele pointen: `source_id → task_id → claim → run_id → outcome`.
+    # En `wakeup` eller en inbox-post KAN være en fortsættelse, men den kan også
+    # være helt nyt arbejde — origin alene kan ikke afgøre det, og gættede vi,
+    # gav vi to opgaver samme identitet (målt: en `recurring`-opgave arvede en
+    # kædes `task_id` og `recovery_attempt=3`).
+    eksplicit = str(task_id or "").strip()
+    if not eksplicit and str(origin or "").strip() not in _FORTSAETTELSES_ORIGINS:
         return False
     try:
         kaede, opgave = aktiv_kaede(session_id)
-        if kaede <= 0:
+        if not eksplicit and kaede <= 0:
             return False
+        # Tallet er stadig et bedste bud naar journalen ikke kan svare: vi VED
+        # opgaven (eksplicit), men ikke hvor langt kæden er nået. Er den 0, er
+        # dette i det mindste ét forsøg brugt — runnet ER en fortsættelse.
         stempl_genoptagelse(
             run_id=run_id,
             session_id=str(session_id or ""),
-            task_id=opgave,
-            recovery_attempt=kaede + 1,
+            task_id=eksplicit or opgave,
+            recovery_attempt=(kaede + 1) if kaede > 0 else 1,
             recovery_generation=0,
         )
         return True

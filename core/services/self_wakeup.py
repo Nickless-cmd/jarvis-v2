@@ -88,6 +88,7 @@ def schedule_self_wakeup(
     user_display_name: str | None = None,
     role: str | None = None,
     context_channel: str | None = None,
+    task_id: str = "",
 ) -> dict[str, Any]:
     """Queue a self-wakeup. Returns the wakeup record."""
     prompt = (prompt or "").strip()
@@ -145,6 +146,11 @@ def schedule_self_wakeup(
         "user_display_name": (user_display_name or "").strip() or None,
         "role": (role or "").strip().lower() or None,
         "context_channel": (context_channel or "").strip().lower() or None,
+        # OPGAVENS ID (14/10-2026). Er vækningen en FORTSÆTTELSE af en
+        # forpligtelse der allerede findes, følger dens id med her — så
+        # starteren kan stemple kæden eksplicit i stedet for at gætte ud fra
+        # samtalen og oprindelsen. Tomt = nyt arbejde.
+        "task_id": (task_id or "").strip() or None,
     }
     records.append(record)
     _save(records)

@@ -447,11 +447,26 @@ def _action_schedule_self_wakeup(impulse: dict[str, Any]) -> dict[str, object]:
     # den bare ikke.
     rid = str(payload.get("run_id") or "").strip()
     session_id = _session_for_run(rid) if rid else ""
+    # OPGAVENS ID (14/10-2026). Vækningen bærer nu den FORPLIGTELSE den hører
+    # til — ikke kun dens samtale. Uden det måtte starteren gætte ud fra
+    # samtalen og oprindelsen, og en `wakeup` der fyrede i en samtale med en
+    # aktiv kæde arvede en identitet den ikke havde krav på. Journalen er
+    # kilden; er posten væk (terminal tilstand FJERNER den), er runnets eget id
+    # det ærlige svar. Sættes KUN for genoptagelser: en påmindelse er nyt arbejde.
+    opgave_id = rid
+    if rid:
+        try:
+            from core.services.in_flight_runs import get_record
+
+            opgave_id = str((get_record(rid) or {}).get("task_id") or "") or rid
+        except Exception:  # noqa: BLE001 — et fejlet opslag maa ikke droppe vaekningen
+            pass
     result = schedule_self_wakeup(
         delay_seconds=int(payload.get("delay_seconds") or 300),
         prompt=str(payload.get("prompt") or ""),
         reason=str(payload.get("reason") or "living-executive"),
         session_id=session_id or None,
+        task_id=opgave_id if er_genoptagelse else "",
     )
     if result.get("status") == "ok":
         wakeup = result.get("wakeup") if isinstance(result.get("wakeup"), dict) else {}
@@ -891,33 +906,31 @@ def _allerede_besvaret(run_id: str) -> bool:
             # afsluttet kørsel — også i en anden samtale — som «brugeren er gået
             # videre», og en legitim genoptagelse blev droppet tavst.
             # `visible_runs` har ingen session-kolonne, så samtalen kommer fra
-            # `_session_for_run`. Kan den ikke afgøres, bevarer vi den BREDE
-            # adfærd: tvivlen skal falde ud til at genoptage, ikke til at tie.
+            # `_session_for_run`. Kan den ikke afgøres, genoptager vi — se
+            # nedenfor: den brede søgning er fjernet, fordi den DROPPEDE arbejde.
             sid = _session_for_run(rid)
-            if sid:
-                senere = conn.execute(
-                    """
-                    SELECT COUNT(*) FROM visible_runs
-                    WHERE run_id LIKE 'visible-%'
-                      AND status = 'completed'
-                      AND started_at > ?
-                      AND run_id IN (
-                          SELECT run_id FROM tool_router_decisions
-                          WHERE session_id = ?
-                      )
-                    """,
-                    (raekke[0], sid),
-                ).fetchone()
-            else:
-                senere = conn.execute(
-                    """
-                    SELECT COUNT(*) FROM visible_runs
-                    WHERE run_id LIKE 'visible-%'
-                      AND status = 'completed'
-                      AND started_at > ?
-                    """,
-                    (raekke[0],),
-                ).fetchone()
+            if not sid:
+                # UDEN SAMTALE KAN VI IKKE AFGØRE DET (14/10-2026). Den brede
+                # søgning talte ENHVER senere afsluttet kørsel — også i en helt
+                # anden samtale — som «brugeren er gået videre», og en legitim
+                # genoptagelse blev droppet TAVST. Det er ikke fail-safe, det er
+                # fail-silent-drop: tvivlen skal falde ud til at GENOPTAGE
+                # (Bjørn: «Et run må aldrig dø»), ikke til at tie. Samme regel
+                # som nedenfor når basen ikke kan læses.
+                return False
+            senere = conn.execute(
+                """
+                SELECT COUNT(*) FROM visible_runs
+                WHERE run_id LIKE 'visible-%'
+                  AND status = 'completed'
+                  AND started_at > ?
+                  AND run_id IN (
+                      SELECT run_id FROM tool_router_decisions
+                      WHERE session_id = ?
+                  )
+                """,
+                (raekke[0], sid),
+            ).fetchone()
     except Exception:
         logger.warning("kunne ikke afgoere om %s er besvaret", rid, exc_info=True)
         return False

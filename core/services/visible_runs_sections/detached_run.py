@@ -8,6 +8,7 @@ Log keyed pr. RUN → ingen kollision mellem overlappende runs (A3's fejl elimin
 from __future__ import annotations
 
 import logging
+import threading
 from uuid import uuid4
 
 
@@ -73,6 +74,87 @@ def _hold_recovery_lease(task_id: str, generation: int, owner: str, stop) -> Non
         except Exception:
             logger.warning("kunne ikke forny recovery-lejemaal for %s", task_id,
                            exc_info=True)
+
+
+#: Hvor længe et detached run må stå uden sin FØRSTE frame, før fødsels-vagten
+#: erklærer det aldrig-født og lukker det. Kan overstyres med
+#: `JARVIS_RUN_BIRTH_DEADLINE_S`.
+#: (Ingen env-læsning her: et modul-import efter kode er E402, og en konstant
+#: læst ved import kan ikke overstyres under kørsel alligevel. Testene
+#: monkeypatcher `_FOEDSELSFRIST_S` direkte.)
+_FOEDSELSFRIST_S = 120.0
+
+
+def _foedselsvagt(
+    *,
+    run_id: str,
+    sid: str,
+    task_id: str,
+    generation: int,
+    owner: str,
+    birth: "threading.Event",
+    stop: "threading.Event",
+) -> None:
+    """Luk et run der blev ANONNCERET men aldrig født.
+
+    ## Hullet (målt 14/10-2026)
+
+    `visible-b52c63a8` blev annonceret kl. 18:01:24 — «detached-run …
+    fortsaetter opgave …» — og dispatcheren kvitterede «genoptog». Derefter:
+    ingen frame, ingen fejl, ingen række i `visible_runs`. Klienten pollede det
+    64 gange på fire minutter (503/404) og slap først da søskende-sweepet lukkede
+    posten seks minutter senere.
+
+    *Hvorfor* fødslen udebliver er ikke bevist — kun at den gør. Vagten her
+    måler derfor det ene der ER et faktum: et run der står ÅBENT uden sin første
+    frame. Den spørger ikke hvorfor; den lukker. Det holder uanset mekanismen,
+    og det er hele pointen — en vagt der hviler på en ubevist årsag ville tie
+    netop når årsagen er en anden.
+    """
+    frist = float(_FOEDSELSFRIST_S)
+    if birth.wait(frist):
+        return          # født — vagten har intet at gøre
+    if stop.is_set():
+        return          # turen sluttede af sig selv i vinduet
+    try:
+        import core.services.run_event_log as rel
+    except Exception:  # noqa: BLE001 — uden journalen kan intet lukkes, og et
+        # run der IKKE kan ses maa ikke lukkes i blinde. Saa hellere lade det staa.
+        return
+    if not rel.is_open(run_id):
+        return          # allerede afsluttet — der er intet at lukke
+    logger.error(
+        "foedselsvagt: %s blev annonceret men aldrig foedt — %.0fs uden en "
+        "eneste frame (opgave=%s session=%s). Lukker runnet og frigiver klienten.",
+        run_id, frist, task_id[:24] or "-", sid[:28],
+    )
+    try:
+        import core.services.run_event_log as rel
+
+        rel.append(run_id, rel.synthetic_terminal_frame(
+            run_id, sid, reason="run_never_born"))
+    except Exception:
+        logger.warning("foedselsvagt: kunne ikke sende terminal-frame for %s", run_id)
+    try:
+        import core.services.run_event_log as rel
+
+        rel.mark_done(run_id)
+    except Exception:
+        logger.warning("foedselsvagt: kunne ikke markere %s som done", run_id)
+    if not task_id:
+        return
+    try:
+        from core.services.in_flight_runs import settle_terminal
+
+        settle_terminal(
+            task_id, status="failed_terminal", reason="run-never-born",
+            expected_generation=generation, expected_owner=owner,
+        )
+        logger.error("foedselsvagt: opgave %s lukket som failed_terminal "
+                     "(runnet blev aldrig foedt)", task_id[:24])
+    except Exception:
+        logger.warning("foedselsvagt: kunne ikke lukke opgave %s", task_id,
+                       exc_info=True)
 
 
 def start_user_run_detached(
@@ -180,11 +262,30 @@ def start_user_run_detached(
 
         loop = _asyncio.new_event_loop()
         lease_stop = threading.Event()
+        # 14/10-2026: fødsels-vagten. Et run der annonceres uden at blive født
+        # stod åbent i minutter og holdt klienten i 503/404. `birth` sættes af
+        # den første frame; udebliver den, lukker vagten runnet og frigiver
+        # klienten i stedet for at lade den polle et run der ikke findes.
+        birth = threading.Event()
+        watchdog_stop = threading.Event()
+        try:
+            from core.services.in_flight_runs import current_owner as _co
+            _owner = _co()
+        except Exception:
+            _owner = ""
+        threading.Thread(
+            target=_foedselsvagt,
+            kwargs={
+                "run_id": run_id, "sid": sid, "task_id": recovery_task_id,
+                "generation": recovery_generation, "owner": _owner,
+                "birth": birth, "stop": watchdog_stop,
+            },
+            name="jarvis-birth-watchdog", daemon=True,
+        ).start()
         if recovery_task_id:
-            from core.services.in_flight_runs import current_owner
             threading.Thread(
                 target=_hold_recovery_lease,
-                args=(recovery_task_id, recovery_generation, current_owner(), lease_stop),
+                args=(recovery_task_id, recovery_generation, _owner, lease_stop),
                 name="jarvis-recovery-lease", daemon=True,
             ).start()
 
@@ -209,6 +310,9 @@ def start_user_run_detached(
                         rel.append(run_id, frame)
                     except Exception:
                         pass
+                    # FØRSTE FRAME = RUNNET ER FØDT. Fødsels-vagten venter på
+                    # netop dette signal og lukker runnet hvis det udebliver.
+                    birth.set()
                     # Runnets eget id kommer i system_event(kind=run) — det er
                     # det id klienten genoptager med. Se run_event_log._ALIASER.
                     if not aliaseret and '"run"' in frame and "system_event" in frame:
@@ -324,6 +428,7 @@ def start_user_run_detached(
                 logger.warning("kunne ikke markere %s som done", run_id)
         finally:
             lease_stop.set()
+            watchdog_stop.set()
             loop.close()
 
     _ctx = _ctxvars.copy_context()

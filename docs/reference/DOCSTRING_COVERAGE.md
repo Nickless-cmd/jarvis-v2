@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8957/17141 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8959/17143 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 282 | 613 | 46% |
+| `scripts` | 284 | 615 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2425,10 +2425,10 @@ Generated from source. 8957/17141 functions/methods documented (52%). The list b
 - `scripts/cheap_lane_fuld_proeve.py` :: `vej` (L70)
 - `scripts/commit_history_report.py` :: `build` (L125)
 - `scripts/commit_with_attribution.py` :: `main` (L58)
-- `scripts/cutoff_detector.py` :: `load_seen` (L100)
-- `scripts/cutoff_detector.py` :: `log` (L94)
-- `scripts/cutoff_detector.py` :: `main` (L291)
-- `scripts/cutoff_detector.py` :: `save_seen` (L107)
+- `scripts/cutoff_detector.py` :: `load_seen` (L113)
+- `scripts/cutoff_detector.py` :: `log` (L107)
+- `scripts/cutoff_detector.py` :: `main` (L370)
+- `scripts/cutoff_detector.py` :: `save_seen` (L120)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)
 - `scripts/db_decomposition_map.py` :: `find` (L36)
 - `scripts/db_decomposition_map.py` :: `union` (L40)

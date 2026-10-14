@@ -276,3 +276,143 @@ def test_systemd_enheden_peger_ind_i_repoet():
     linjer = [ln.strip() for ln in enhed.read_text().splitlines()
               if ln.strip().startswith("ExecStart=")]
     assert linjer == ["ExecStart=/media/projects/jarvis-v2/scripts/cutoff_detector.py"]
+
+
+# ── plet 3: svaret blev leveret i en ANDEN session ─────────────────────────
+
+class TestRunIdsPrSession:
+    """Koblingen run -> session kommer fra `events`, ikke fra `visible_runs`."""
+
+    @staticmethod
+    def _con():
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        con.execute("CREATE TABLE events (id INTEGER, kind TEXT, payload_json TEXT, created_at TEXT)")
+        return con
+
+    def test_kobler_run_til_session(self):
+        con = self._con()
+        con.execute("INSERT INTO events VALUES (?,?,?,?)", (
+            1, "runtime.autonomous_run_started",
+            json.dumps({"run_id": "autonomous-a", "session_id": "auto-recurring-x"}),
+            datetime.now(UTC).isoformat()))
+        con.commit()
+        ud = cd.run_ids_pr_session(con, (datetime.now(UTC) - timedelta(hours=1)).isoformat())
+        assert ud == {"auto-recurring-x": ["autonomous-a"]}
+
+    def test_ulaesbar_nyttelast_springes_over(self):
+        con = self._con()
+        con.execute("INSERT INTO events VALUES (?,?,?,?)", (
+            1, "runtime.autonomous_run_started", "{ikke json",
+            datetime.now(UTC).isoformat()))
+        con.commit()
+        assert cd.run_ids_pr_session(con, (datetime.now(UTC) - timedelta(hours=1)).isoformat()) == {}
+
+    def test_uden_events_tabel_giver_tom_ikke_krak(self):
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        assert cd.run_ids_pr_session(con, "2020-01-01T00:00:00+00:00") == {}
+
+
+class TestSvarLeveretEksternt:
+    """Plet 3: et PAENT afsluttet run daemper fundet — alt andet goer ikke."""
+
+    @staticmethod
+    def _con(rows):
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        con.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, error TEXT, "
+                    "started_at TEXT, finished_at TEXT)")
+        for r in rows:
+            con.execute("INSERT INTO visible_runs VALUES (?,?,?,?,?)", r)
+        con.commit()
+        return con
+
+    def test_completed_uden_fejl_daekker_tidspunktet(self):
+        start = datetime(2026, 10, 14, 4, 14, 28, tzinfo=UTC)
+        slut = datetime(2026, 10, 14, 4, 15, 31, tzinfo=UTC)
+        con = self._con([("r1", "completed", "", start.isoformat(), slut.isoformat())])
+        midt = datetime(2026, 10, 14, 4, 15, 28, tzinfo=UTC)
+        assert cd.svar_leveret_eksternt(con, ["r1"], midt) == "r1"
+
+    def test_fejlet_run_daemper_ikke(self):
+        start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
+        slut = datetime(2026, 10, 14, 4, 16, tzinfo=UTC)
+        con = self._con([("r1", "failed", "boom", start.isoformat(), slut.isoformat())])
+        assert cd.svar_leveret_eksternt(
+            con, ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
+
+    def test_completed_med_fejlstreng_daemper_ikke(self):
+        start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
+        slut = datetime(2026, 10, 14, 4, 16, tzinfo=UTC)
+        con = self._con([("r1", "completed", "noget gik galt",
+                          start.isoformat(), slut.isoformat())])
+        assert cd.svar_leveret_eksternt(
+            con, ["r1"], datetime(2026, 10, 14, 4, 15, tzinfo=UTC)) is None
+
+    def test_tidspunkt_uden_for_vinduet_daemper_ikke(self):
+        start = datetime(2026, 10, 14, 4, 14, tzinfo=UTC)
+        slut = datetime(2026, 10, 14, 4, 15, tzinfo=UTC)
+        con = self._con([("r1", "completed", "", start.isoformat(), slut.isoformat())])
+        assert cd.svar_leveret_eksternt(
+            con, ["r1"], datetime(2026, 10, 14, 5, 0, tzinfo=UTC)) is None
+
+    def test_ingen_runs_giver_none(self):
+        con = self._con([])
+        assert cd.svar_leveret_eksternt(con, [], datetime.now(UTC)) is None
+
+
+class TestPlet3EndeTilEnde:
+    """Regressionen: nattens falske positiv maa ikke kunne genskabes."""
+
+    @staticmethod
+    def _scratch(tmp_path, *, med_completed_run):
+        p = tmp_path / "scratch.db"
+        con = sqlite3.connect(str(p))
+        con.execute("CREATE TABLE chat_messages (message_id TEXT, session_id TEXT, "
+                    "role TEXT, content TEXT, created_at TEXT)")
+        con.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, started_at TEXT, "
+                    "error TEXT, lane TEXT, provider TEXT, model TEXT, finished_at TEXT)")
+        con.execute("CREATE TABLE runtime_state_kv (key TEXT, value_json TEXT, updated_at TEXT)")
+        con.execute("CREATE TABLE events (id INTEGER, kind TEXT, payload_json TEXT, created_at TEXT)")
+        # Sessionen gik tavs for 30 min siden — praecis som i nat: kun tool-raekker.
+        tavs = datetime.now(UTC) - timedelta(minutes=30)
+        con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)",
+                    ("m1", "auto-recurring-x", "tool",
+                     "[tool_result:abc]\n[notify_user]: leveret", tavs.isoformat()))
+        con.execute("INSERT INTO events VALUES (?,?,?,?)", (
+            1, "runtime.autonomous_run_started",
+            json.dumps({"run_id": "autonomous-a", "session_id": "auto-recurring-x"}),
+            (tavs - timedelta(seconds=20)).isoformat()))
+        if med_completed_run:
+            con.execute("INSERT INTO visible_runs VALUES (?,?,?,?,?,?,?,?)",
+                        ("autonomous-a", "completed",
+                         (tavs - timedelta(seconds=20)).isoformat(),
+                         "", "primary", "ollama", "m",
+                         (tavs + timedelta(seconds=10)).isoformat()))
+        con.commit()
+        con.close()
+        return p
+
+    def _koer(self, p, tmp_path, monkeypatch):
+        fundet = []
+        monkeypatch.setattr(cd, "DB", str(p))
+        monkeypatch.setattr(cd, "STATE", str(tmp_path / "seen.json"))
+        monkeypatch.setattr(cd, "LOG", str(tmp_path / "log.txt"))
+        monkeypatch.setattr(cd, "api_restarted_near", lambda w: None)
+        monkeypatch.setattr(
+            "core.runtime.db_central_incidents.record_central_incident",
+            lambda **kw: fundet.append(kw))
+        assert cd.main() == 0
+        return fundet
+
+    def test_svar_i_anden_session_er_ikke_et_fund(self, tmp_path, monkeypatch):
+        p = self._scratch(tmp_path, med_completed_run=True)
+        fundet = self._koer(p, tmp_path, monkeypatch)
+        assert fundet == [], "et svar leveret i en anden session maa ikke blive et fund"
+
+    def test_uden_completed_run_er_fundet_bevaret(self, tmp_path, monkeypatch):
+        """Negativ kontrol: uden det paene run SKAL fundet komme."""
+        p = self._scratch(tmp_path, med_completed_run=False)
+        fundet = self._koer(p, tmp_path, monkeypatch)
+        assert len(fundet) == 1, "uden et afsluttet run er det stadig en tavs cutoff"

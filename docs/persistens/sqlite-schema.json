@@ -9153,7 +9153,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -11993,7 +11993,7 @@
       ]
     },
     "cognitive_experiential_memories": {
-      "digest": "6e:34:d9:f2:29:99:08:17:d2:d7:89:e3:9d:27:d8:9f:df:50:f1:e1:70:82:a9:97:35:a6:a5:c5:5f:99:2d:68",
+      "digest": "60:32:18:87:6a:f5:79:dc:9d:21:67:63:a6:a8:66:ec:16:be:d5:a1:a8:be:ca:02:bf:ee:a2:53:74:af:3d:d4",
       "schema": {
         "columns": [
           {
@@ -12101,6 +12101,14 @@
             "hidden": 0
           },
           {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "user_mood",
             "type": "TEXT",
             "nullable": false,
@@ -12110,6 +12118,30 @@
           }
         ],
         "indexes": [
+          {
+            "name": "idx_experiential_user_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_experiential_user_created ON cognitive_experiential_memories(user_id, created_at DESC)"
+          },
           {
             "name": "sqlite_autoindex_cognitive_experiential_memories_1",
             "unique": true,
@@ -25801,7 +25833,7 @@
       "created_at_formats": []
     },
     "reasoning_conclusions": {
-      "digest": "ab:c2:00:69:43:31:87:8d:ae:1d:b1:9f:c2:56:eb:fe:aa:68:6e:97:7e:80:96:8c:7c:9c:52:14:5a:b8:9b:77",
+      "digest": "58:4e:9c:6d:49:3b:c9:f2:65:b3:b3:4d:ef:82:cd:74:d7:90:aa:81:ff:8e:bf:d0:74:e4:24:a6:d7:de:35:1c",
       "schema": {
         "columns": [
           {
@@ -25883,6 +25915,14 @@
             "default": "''",
             "pk": 0,
             "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
           }
         ],
         "indexes": [
@@ -25928,6 +25968,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_reasoning_conclusions_source ON reasoning_conclusions(source, created_at DESC)"
+          },
+          {
+            "name": "idx_reasoning_conclusions_user_created",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "created_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_reasoning_conclusions_user_created ON reasoning_conclusions(user_id, created_at DESC)"
           },
           {
             "name": "sqlite_autoindex_reasoning_conclusions_1",
@@ -26065,6 +26129,185 @@
         ]
       },
       "created_at_formats": []
+    },
+    "recall_ownership_migration_log": {
+      "digest": "ff:42:86:fb:ba:2f:a2:6b:4d:b5:8d:6d:a5:f4:ec:63:34:b8:65:51:0e:3b:be:e0:af:94:3c:d6:46:cf:13:42",
+      "schema": {
+        "columns": [
+          {
+            "name": "applied_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "new_owner",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "previous_owner",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "report_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "rolled_back_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "source_id_hash",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 3,
+            "hidden": 0
+          },
+          {
+            "name": "source_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_recall_ownership_migration_log_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "report_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "source_kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "source_id_hash",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
+    "recall_ownership_quarantine": {
+      "digest": "ca:fc:bd:a2:78:9d:96:a1:37:ad:74:89:29:ce:a5:54:87:ed:cd:f4:75:ff:3b:9f:5b:ca:e2:ab:eb:b9:d9:d0",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "report_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "source_id_hash",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "source_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_recall_ownership_quarantine_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "source_kind",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "source_id_hash",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "unobserved"
+      ]
     },
     "recurring_tasks": {
       "digest": "d1:e5:b5:8a:31:ca:fd:79:d1:28:6b:be:18:50:eb:d3:2b:4e:39:6b:4f:92:af:ea:89:15:7e:63:43:8b:91:9a",
@@ -27332,7 +27575,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_legacy_links": {
@@ -27443,7 +27686,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_migration_quarantine": {
@@ -27578,7 +27821,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_run_events": {
@@ -28217,7 +28460,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routines": {
@@ -28469,7 +28712,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "runtime_action_outcomes": {
@@ -46720,7 +46963,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "user_flags": {

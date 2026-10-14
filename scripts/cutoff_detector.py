@@ -13,7 +13,7 @@ repoet er usynligt for kode-grep.
 Det hoerer her. `scripts/` scannes af `api_docs_gen`, importeres direkte i tests,
 og baerer i forvejen `silent_chain_verify.py` — samme slags bagud-maaling.
 
-TO BLINDE PLETTER RETTET SAMME DAG (begge maalt, ikke gaettet)
+TRE BLINDE PLETTER RETTET SAMME DAG (alle maalt, ikke gaettet)
 --------------------------------------------------------------
 1. `api_restarted_near` svarede "nej (stroemmen doede)" VED KONSTRUKTION.
    Den ledte efter systemds besked `Started jarvis-api`, som `bs` ikke kunne se.
@@ -30,6 +30,19 @@ TO BLINDE PLETTER RETTET SAMME DAG (begge maalt, ikke gaettet)
    klammerne. Parserens `"] ["` fandt ingen i headeren og gled ned i selve
    resultatet, hvor den greb den foerste `] [` den kunne finde. Parseren ligger
    nu i `sidste_vaerktoej()`, er ankret til starten, og har en test.
+3. FALSK POSITIV: et run der svarede — bare i en ANDEN session. Detektoren
+   maalte assistent-svar i runnets EGEN session. Men `auto-recurring-*` er
+   recurring-opgavernes FAELLES auto-session, og baade morgenmedicinen og
+   morgenbriefen leverede deres svar gennem `notify_user` til Bjorns samtale.
+   Sessionen fik derfor kun `tool`-raekker, og detektoren saa en tavs tur der
+   ikke var tavs. Maalt 14/10: begge nats fund (04:20 og 05:05) var falske —
+   begge runs staar `completed` i `visible_runs` (44 og 63 s, tom `error`).
+   Rettelsen hviler paa den VARIGE kobling run -> session, som er
+   `events.kind = 'runtime.autonomous_run_started'` (baerer baade `run_id` og
+   `session_id`). `visible_runs` har ingen `session_id`-kolonne, og
+   `run_event_log.session_for_run` er in-memory og kan ikke bruges af et
+   script. Ligger sessionens sidste besked INDE i et `completed`-run uden fejl
+   for NETOP denne session, springes fundet over.
 
 HVORFOR DEN FINDES (30-08-2026)
 --------------------------------
@@ -288,6 +301,72 @@ def _genstart_dom(restarted: bool | None) -> str:
     return "KUNNE IKKE AFGOERES (journalen svarede ikke)"
 
 
+def run_ids_pr_session(con, cutoff_ts: str) -> dict[str, list[str]]:
+    """session_id -> [run_id] for autonome runs startet i vinduet.
+
+    Koblingen run -> session findes ikke i `visible_runs` (ingen `session_id`-
+    kolonne) og ikke i `run_event_log` (in-memory, doer med processen). Den
+    findes i `events`, hvor `runtime.autonomous_run_started` baerer BEGGE id'er
+    — og den tabel er varig og laeses paa tvaers af processer.
+
+    Ét opslag for hele koerslen, ikke ét pr. session: indekset
+    `idx_events_kind_created` goer det til ~5 ms for 35 raekker i doegnet.
+    """
+    ud: dict[str, list[str]] = {}
+    try:
+        rows = con.execute(
+            "SELECT payload_json FROM events "
+            "WHERE kind = 'runtime.autonomous_run_started' AND created_at > ?",
+            (cutoff_ts,)).fetchall()
+    except Exception:  # skema-drift: hellere ingen kobling end at vaelte koerslen
+        return ud
+    for r in rows:
+        try:
+            p = json.loads(r["payload_json"] or "{}") or {}
+        except Exception:  # ulaesbar nyttelast: spring posten over, gaet ikke
+            continue
+        sid = str(p.get("session_id") or "")
+        rid = str(p.get("run_id") or "")
+        if sid and rid:
+            ud.setdefault(sid, []).append(rid)
+    return ud
+
+
+def svar_leveret_eksternt(con, run_ids: list[str], tavs_ts: datetime) -> str | None:
+    """Laa der et PAENT afsluttet run i denne session da den gik tavs?
+
+    Returnerer run_id'et hvis ja — ellers None. "Paent afsluttet" er praecist:
+    `status='completed'` OG tom `error`. Et `failed`/`cancelled`/`interrupted`
+    run er IKKE et svar og maa ikke kunne daempe et fund.
+
+    Tidskriteriet: sessionens sidste besked skal ligge INDE i runnets vindue
+    [started_at, finished_at]. Maalt 14/10 rammer det begge nats falske fund
+    praecist, uden tolerance — 04:15:28 i [04:14:28, 04:15:31] og 05:01:08 i
+    [05:00:28, 05:01:12].
+    """
+    if not run_ids:
+        return None
+    pladsholdere = ",".join("?" * len(run_ids))
+    try:
+        rows = con.execute(
+            f"SELECT run_id, status, error, started_at, finished_at FROM visible_runs "
+            f"WHERE run_id IN ({pladsholdere})", run_ids).fetchall()
+    except Exception:  # skema-drift: hellere intet svar end et gaettet
+        return None
+    for r in rows:
+        if str(r["status"] or "").lower() != "completed":
+            continue
+        if str(r["error"] or "").strip():
+            continue  # afsluttet MED fejl — ikke et svar
+        start = til_utc(r["started_at"])
+        slut = til_utc(r["finished_at"])
+        if start is None or slut is None:
+            continue
+        if start <= tavs_ts <= slut:
+            return str(r["run_id"])
+    return None
+
+
 def main() -> int:
     if not os.path.exists(DB):
         return 0
@@ -298,6 +377,10 @@ def main() -> int:
     sessions = [r[0] for r in con.execute(
         "SELECT DISTINCT session_id FROM chat_messages WHERE created_at > ?",
         (cutoff_ts,)).fetchall()]
+
+    # Koblingen run -> session bygges ÉN gang for hele koerslen. Uden den kan vi
+    # ikke se at et svar blev leveret i en anden session (docstring, plet 3).
+    runs_pr_session = run_ids_pr_session(con, cutoff_ts)
 
     seen = load_seen()
     found = 0
@@ -338,6 +421,11 @@ def main() -> int:
         _levende = turen_koerer_stadig(con, sid)
         if _levende is True:
             continue   # den er i gang - ikke kappet
+
+        # Svarede et run i DENNE session — bare et andet sted hen? Saa er den
+        # manglende assistent-raekke det RIGTIGE udfald, ikke en kappet tur.
+        if svar_leveret_eksternt(con, runs_pr_session.get(sid, []), last_at):
+            continue
 
         # Forensik: hvor langt naaede turen?
         tools = 0

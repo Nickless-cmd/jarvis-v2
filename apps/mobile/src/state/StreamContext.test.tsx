@@ -10,10 +10,13 @@ const mockFollowSession = jest.fn()
 const mockCancelRun = jest.fn()
 const mockApproveTool = jest.fn()
 const mockDenyTool = jest.fn()
+const mockSelect = jest.fn()
+const mockGetActiveRunSnapshot = jest.fn()
 
 jest.mock('./SessionContext', () => ({
   useSessions: () => ({
-    appendLocalMessage: (message: unknown) => mockAppendLocalMessage(message)
+    appendLocalMessage: (message: unknown) => mockAppendLocalMessage(message),
+    select: (...args: unknown[]) => mockSelect(...args)
   })
 }))
 
@@ -25,7 +28,8 @@ jest.mock('../lib/streamClient', () => ({
 jest.mock('../lib/apiClient', () => ({
   approveTool: (...args: unknown[]) => mockApproveTool(...args),
   cancelRun: (...args: unknown[]) => mockCancelRun(...args),
-  denyTool: (...args: unknown[]) => mockDenyTool(...args)
+  denyTool: (...args: unknown[]) => mockDenyTool(...args),
+  getActiveRunSnapshot: (...args: unknown[]) => mockGetActiveRunSnapshot(...args)
 }))
 
 const config = {
@@ -73,6 +77,47 @@ beforeEach(() => {
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
+  mockSelect.mockResolvedValue(undefined)
+  mockGetActiveRunSnapshot.mockResolvedValue([])
+})
+
+it('reconcile refreshes transcript and active runs without inventing message_stop', async () => {
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  const handlers = mockStartStream.mock.calls[0][1] as StreamHandlers
+
+  await act(async () => { handlers.onReconcile?.('unknown') })
+  await waitFor(() => expect(mockSelect).toHaveBeenCalledWith(config, 'session-1'))
+
+  expect(mockGetActiveRunSnapshot).toHaveBeenCalledWith(config)
+  expect(screen.getByText('done')).toBeTruthy()
+  expect(mockAppendLocalMessage).not.toHaveBeenCalledWith(
+    expect.objectContaining({ role: 'assistant' })
+  )
+})
+
+it('reconcile reattaches the live run with GET semantics and saved cursor', async () => {
+  const abort = jest.fn()
+  mockStartStream.mockReturnValueOnce({
+    abort,
+    getRunId: () => 'run-old',
+    getOffset: () => 6
+  }).mockReturnValue({ abort: jest.fn(), getRunId: () => 'run-new', getOffset: () => 6 })
+  mockGetActiveRunSnapshot.mockResolvedValue([
+    { sessionId: 'session-1', runId: 'run-new', status: 'working' }
+  ])
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  const handlers = mockStartStream.mock.calls[0][1] as StreamHandlers
+
+  await act(async () => { handlers.onReconcile?.('pruned') })
+  await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(2))
+
+  expect(abort).toHaveBeenCalled()
+  expect(mockStartStream.mock.calls[1][0]).toMatchObject({
+    message: '',
+    genoptag: { runId: 'run-new', fromIdx: 6 }
+  })
 })
 
 it('genbruger en levende follow og prøver igen efter passivt SSE-brud', async () => {

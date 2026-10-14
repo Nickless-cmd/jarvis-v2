@@ -283,14 +283,17 @@ it('stopper tavshedsvagten når runnet er afsluttet', () => {
   jest.useRealTimers()
 })
 
-it('treats a 404 on reconnect as benign completion (run finished while away)', () => {
+it.each([[404, 'unknown'], [410, 'pruned']] as const)(
+  'HTTP %s reconciles as %s without synthetic completion',
+  (status, reason) => {
   const onEvent = jest.fn()
   const onError = jest.fn()
   const onReconnecting = jest.fn()
   const onComplete = jest.fn()
+  const onReconcile = jest.fn()
   startStream(
     { config, sessionId: 's1', message: 'Hej' },
-    { onEvent, onError, onReconnecting, onComplete }
+    { onEvent, onError, onReconnecting, onComplete, onReconcile }
   )
 
   // run startede (run_id kendt) — vi backgrounder herefter
@@ -308,14 +311,44 @@ it('treats a 404 on reconnect as benign completion (run finished while away)', (
     })
   })
 
-  // socket gen-abonnerer, men runnet er allerede færdigt + ryddet → 404
-  getListener('error')({ xhrStatus: 404, message: 'run not found' } as never)
+  getListener('error')({ xhrStatus: status, message: 'run unavailable' } as never)
 
-  // IKKE en fejl, IKKE en reconnect-loop — afslut graccelt som 'done'
   expect(onError).not.toHaveBeenCalled()
   expect(onReconnecting).not.toHaveBeenCalled()
-  expect(onComplete).toHaveBeenCalled()
-  expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'message_stop' }))
+  expect(onComplete).not.toHaveBeenCalled()
+  expect(onEvent).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'message_stop' }))
+  expect(onReconcile).toHaveBeenCalledWith(reason)
+})
+
+it.each([401, 403])('HTTP %s is an error, never completion', (status) => {
+  const onEvent = jest.fn()
+  const onError = jest.fn()
+  const onComplete = jest.fn()
+  const onReconcile = jest.fn()
+  startStream(
+    { config, sessionId: 's1', message: '', genoptag: { runId: 'visible-auth', fromIdx: 4 } },
+    { onEvent, onError, onComplete, onReconcile }
+  )
+  getListener('error')({ xhrStatus: status, message: 'denied' } as never)
+  expect(onError).toHaveBeenCalledTimes(1)
+  expect(onComplete).not.toHaveBeenCalled()
+  expect(onReconcile).not.toHaveBeenCalled()
+  expect(onEvent).not.toHaveBeenCalled()
+})
+
+it('HTTP 503 retries the same run from the saved cursor', () => {
+  jest.useFakeTimers()
+  startStream(
+    { config, sessionId: 's1', message: '', genoptag: { runId: 'visible-busy', fromIdx: 9 } },
+    { onEvent: jest.fn(), onReconnecting: jest.fn() }
+  )
+  getListener('error')({ xhrStatus: 503, message: 'retry' } as never)
+  jest.advanceTimersByTime(500)
+  expect(EventSource).toHaveBeenLastCalledWith(
+    'https://api.srvlab.dk/chat/runs/visible-busy/subscribe?from_idx=9',
+    expect.objectContaining({ method: 'GET' })
+  )
+  jest.useRealTimers()
 })
 
 it('omits the authorization header when auth token is empty', () => {

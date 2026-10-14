@@ -187,16 +187,21 @@ def _maal_session(post: dict[str, Any]) -> str:
     ) or ""
 
 
-def _start_run(tekst: str, *, session_id: str) -> None:
+def _start_run(tekst: str, *, session_id: str) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
 
     `session_id` er PÅKRÆVET: et run uden en samtale ville falde tilbage til
     `auto-{origin}-{dato}` — den silo vækkeren netop ikke må skabe.
+
+    Returnerer starterens svar: `False` = run-guarden eller gut-gaten afviste
+    det TAVST, og posten må ikke stå som vækket. `None` bevares for kaldere og
+    tests der bytter funktionen ud uden at returnere noget — tvivlen skal falde
+    ud til fordel for at have startet, ikke til at rulle et rigtigt run tilbage.
     """
     from core.services.visible_autonomous_run import start_autonomous_run
 
-    start_autonomous_run(tekst, session_id=session_id, origin="inbox")
+    return start_autonomous_run(tekst, session_id=session_id, origin="inbox")
 
 
 def _direktiv(post: dict[str, Any]) -> str:
@@ -261,7 +266,13 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
     from core.runtime import db_inbox
 
     vaekket = 0
-    for post in poster[:MAKS_PR_RUNDE]:
+    for indeks, post in enumerate(poster[:MAKS_PR_RUNDE]):
+        # MELLEM-ITERATIONERNES TJEK (14/10-2026). Pre-loop-tjekket ovenfor ser
+        # kun tilstanden FOER foerste start. Uden dette kunne to poster starte
+        # to runs i samme runde — `MAKS_PR_RUNDE = 2` var et loft uden en vagt
+        # undervejs. Den spoerger den SAMME cross-process-vagt som pre-checket.
+        if indeks and _noget_koerer():
+            break
         kilde_id = str(post.get("kilde_id") or post.get("id") or "")
         # HVOR skal runnet køre? En post uden en samtale vækkes IKKE — den
         # venter. Faldt den til `auto-{origin}-{dato}`, ville vi skabe præcis
@@ -284,7 +295,21 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
             continue
         tekst = _dispatch_tekst(post)
         try:
-            _start_run(tekst, session_id=session_id)
+            startet = _start_run(tekst, session_id=session_id)
+            # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
+            # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og
+            # vaekkeren talte det som en vaekning. Posten stod som vaekket, mens
+            # intet koerte, og naeste runde sprang den over. Nu rulles sporet
+            # tilbage, saa posten venter i stedet for at forsvinde.
+            if startet is False:
+                try:
+                    db_inbox.nulstil_vaekning(bruger_id=bruger_id, kilde_id=kilde_id)
+                except Exception:  # noqa: BLE001 — sporet er sat; en fejlet rollback maa ikke vaelte polleren
+                    pass
+                logger.info(
+                    "inbox_idle_waker: %s/%s blev afvist af starteren — posten venter",
+                    post.get("kildetype"), kilde_id)
+                continue
             vaekket += 1
             logger.info("inbox_idle_waker: vaekkede paa %s/%s", post.get("kildetype"), kilde_id)
         except Exception as exc:  # noqa: BLE001

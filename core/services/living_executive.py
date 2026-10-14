@@ -440,10 +440,18 @@ def _action_schedule_self_wakeup(impulse: dict[str, Any]) -> dict[str, object]:
                 ),
             }
         _noter_genoptagelse()
+    # SESSION-BINDINGEN (14/10-2026). Payload'en bærer `run_id`, men vækningen
+    # blev booket UDEN dens samtale — saa da den fyrede, måtte dispatcherens
+    # fallback vælge, og arbejdet kunne dukke op i en anden samtale end den hvor
+    # det blev afbrudt. `schedule_self_wakeup` tager imod `session_id`; vi sendte
+    # den bare ikke.
+    rid = str(payload.get("run_id") or "").strip()
+    session_id = _session_for_run(rid) if rid else ""
     result = schedule_self_wakeup(
         delay_seconds=int(payload.get("delay_seconds") or 300),
         prompt=str(payload.get("prompt") or ""),
         reason=str(payload.get("reason") or "living-executive"),
+        session_id=session_id or None,
     )
     if result.get("status") == "ok":
         wakeup = result.get("wakeup") if isinstance(result.get("wakeup"), dict) else {}
@@ -810,6 +818,45 @@ def _afbrudte_fra_db(*, minutter: int = _INDHENT_MINUTTER, maks: int = 40) -> li
     return ud
 
 
+def _session_for_run(run_id: str) -> str:
+    """Hvilken SAMTALE hørte dette run til? "" naar den ikke kan afgøres.
+
+    To kilder, i rækkefølge: run-journalen (den arkitektoniske kilde — men
+    `mark_completed` FJERNER posten ved terminal tilstand, så den svarer kun for
+    en kørsel der stadig er i gang eller netop er afbrudt) og
+    `tool_router_decisions` (durabel, men dækker ikke alle ældre kørsler: målt
+    14/10-2026 3.542 af 12.567).
+
+    Et tomt svar er ærligt: så kan vi ikke scope, og kalderen skal falde tilbage
+    til den brede adfærd frem for at gætte en samtale.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return ""
+    try:
+        from core.services.in_flight_runs import get_record
+
+        rec = get_record(rid)
+        sid = str((rec or {}).get("session_id") or "").strip()
+        if sid:
+            return sid
+    except Exception:  # noqa: BLE001 — et fejlet opslag må ikke vælte kalderen
+        logger.debug("kunne ikke laese journalen for %s", rid, exc_info=True)
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            raekke = conn.execute(
+                "SELECT session_id FROM tool_router_decisions "
+                "WHERE run_id = ? AND session_id != '' LIMIT 1",
+                (rid,),
+            ).fetchone()
+        return str(raekke[0] or "") if raekke else ""
+    except Exception:  # noqa: BLE001
+        logger.debug("kunne ikke slaa samtalen op for %s", rid, exc_info=True)
+        return ""
+
+
 def _allerede_besvaret(run_id: str) -> bool:
     """Er brugeren gaaet videre siden den her koersel doede?
 
@@ -840,15 +887,37 @@ def _allerede_besvaret(run_id: str) -> bool:
             ).fetchone()
             if not raekke or not raekke[0]:
                 return False
-            senere = conn.execute(
-                """
-                SELECT COUNT(*) FROM visible_runs
-                WHERE run_id LIKE 'visible-%'
-                  AND status = 'completed'
-                  AND started_at > ?
-                """,
-                (raekke[0],),
-            ).fetchone()
+            # SCOPET TIL SAMTALEN (14/10-2026). Uden dette talte ENHVER senere
+            # afsluttet kørsel — også i en anden samtale — som «brugeren er gået
+            # videre», og en legitim genoptagelse blev droppet tavst.
+            # `visible_runs` har ingen session-kolonne, så samtalen kommer fra
+            # `_session_for_run`. Kan den ikke afgøres, bevarer vi den BREDE
+            # adfærd: tvivlen skal falde ud til at genoptage, ikke til at tie.
+            sid = _session_for_run(rid)
+            if sid:
+                senere = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM visible_runs
+                    WHERE run_id LIKE 'visible-%'
+                      AND status = 'completed'
+                      AND started_at > ?
+                      AND run_id IN (
+                          SELECT run_id FROM tool_router_decisions
+                          WHERE session_id = ?
+                      )
+                    """,
+                    (raekke[0], sid),
+                ).fetchone()
+            else:
+                senere = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM visible_runs
+                    WHERE run_id LIKE 'visible-%'
+                      AND status = 'completed'
+                      AND started_at > ?
+                    """,
+                    (raekke[0],),
+                ).fetchone()
     except Exception:
         logger.warning("kunne ikke afgoere om %s er besvaret", rid, exc_info=True)
         return False

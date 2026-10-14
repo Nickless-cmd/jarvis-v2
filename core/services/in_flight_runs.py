@@ -432,6 +432,74 @@ def aktiv_kaede_nr(session_id: str) -> int:
     return max(0, int(nyeste.get("recovery_attempt") or 0))
 
 
+def aktiv_kaede(session_id: str) -> tuple[int, str]:
+    """Samtalens aktive kæde: ``(kaedenummer, opgavens id)`` for den NYESTE post.
+
+    `aktiv_kaede_nr` giver kun TALLET. En starter der tager en forpligtelse op
+    skal ogsaa kende OPGAVENS id — ellers skifter kæden navn ved hvert led, og
+    saa er der ikke én opgave men en række af enkelte, som ingen tæller kan
+    samle (målt 14/10-2026: `visible-9ae8aafd fortsaetter opgave
+    visible-9f31b94c`, hvor `9f31b94c` selv var en fortsættelse).
+
+    Samme udvælgelse som `aktiv_kaede_nr` — den NYESTE, ikke den største — saa
+    de to kan ikke svare forskelligt om samme samtale.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return 0, ""
+    kandidater = [
+        rec for rec in _load().values()
+        if str(rec.get("session_id") or "") == sid
+        and str(rec.get("kind") or "visible") == "visible"
+    ]
+    if not kandidater:
+        return 0, ""
+    nyeste = max(kandidater, key=lambda r: str(r.get("started_at") or ""))
+    kaede = max(0, int(nyeste.get("recovery_attempt") or 0))
+    opgave = str(nyeste.get("task_id") or nyeste.get("run_id") or "")
+    return kaede, opgave
+
+
+def stempl_aktiv_kaede(*, run_id: str, session_id: str) -> bool:
+    """Stempl samtalens aktive kæde paa et nyt run. True = der blev stemplet.
+
+    Kaldt af ALLE run-startere (14/10-2026). Foer stemplede kun `detached_run`
+    — genoptagelses-dispatcherens ene vej — saa en fortsaettelse der blev
+    startet ad en anden vej (`living_executive`, `wakeup_dispatcher`,
+    `inbox_idle_waker`) fik en FRISK post paa forsoeg 0. Hvert led var sit eget
+    foerste forsoeg, og loftet paa tre kunne pr. konstruktion ikke naas.
+
+    Er kæden 0, er der ingen aktiv kæde: posten er en frisk opgave, og vi rører
+    den ikke. Det er den almindelige brugertur (som nulstiller kæden ved at
+    journalfoere sig med 0) og enhver opgave i en samtale uden historik.
+
+    Er kæden > 0, er samtalens arbejde midt i en genoptagelses-sekvens, og et
+    nyt autonomt run i den samtale er et LED i den — ikke en frisk opgave.
+    Runnet arver baade opgavens id og kæden + 1.
+
+    Self-safe: kan stemplet ikke skrives, starter runnet alligevel. Et manglende
+    stempel giver den gamle fejl (et led for meget), ikke en død kørsel.
+    """
+    if not run_id:
+        return False
+    try:
+        kaede, opgave = aktiv_kaede(session_id)
+        if kaede <= 0:
+            return False
+        stempl_genoptagelse(
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            task_id=opgave,
+            recovery_attempt=kaede + 1,
+            recovery_generation=0,
+        )
+        return True
+    except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
+        logger.warning("kunne ikke stemple den aktive kaede paa %s", run_id,
+                       exc_info=True)
+        return False
+
+
 def _genoptagelse_opbrugt(rec: dict[str, Any]) -> bool:
     """Er genoptagelses-budgettet brugt op? Saa er posten OPGIVET, ikke i gang.
 

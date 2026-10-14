@@ -77,7 +77,7 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
 
 
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
-                         origin: str | None = None) -> None:
+                         origin: str | None = None) -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
@@ -89,6 +89,11 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     stedet for at "dumpe" beskeden ind når den er færdig). Bruges af
     operator_wakeup_fired (kører i api-processen → samme proces som follow-
     endpointet → in-memory buffer virker).
+
+    Returnerer ``True`` naar runnet blev FOEDT, og ``False`` naar det blev
+    afvist (run-guarden, gut-gaten). Kaldere der ignorerer svaret er upaavirkede
+    — men den der SKAL vide det (indbakke-vaekkeren) kan nu rulle sit spor
+    tilbage i stedet for at tro at et afvist run kører (14/10-2026).
     """
     import threading
 
@@ -105,7 +110,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             f"legacy-call-{uuid4().hex}",
             trigger_inputs={"prompt": str(message or "")},
         )
-        return
+        return True
     if routine_cutover_enabled() and managed_origin in {"scheduled", "recurring"}:
         raise UnmigratedRoutineSource(
             "scheduled and recurring cutover requires the structured source id"
@@ -168,7 +173,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         except Exception:  # noqa: BLE001 — self-safe: en post maa ikke vaelte starteren
             logger.debug("visible_autonomous_run: kunne ikke parkere forpligtelsen",
                          exc_info=True)
-        return
+        return False
 
     # Spec D / D1-konsument (første ægte autoritet): når Centralen EJER agendaen (flag ON), kommer et
     # retningsløst autonomt runs RETNING fra Centralens valgte næste-intention — Jarvis handler på SIN
@@ -228,7 +233,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     if preflight_allows is not None and not preflight_allows(message):
         logger.info("autonomt run stoppet af gut-gaten (pre-flight): %s",
                     (message or "")[:80])
-        return
+        return False
 
     run = _vr.VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
@@ -240,6 +245,18 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         autonomous=True,
         origin=_origin,
     )
+    # KAEDE-STEMPLET (14/10-2026). Foer stemplede kun `detached_run` — og kun
+    # genoptagelses-dispatcheren gaar den vej. Enhver anden producent der tog
+    # en forpligtelse op (living_executive, wakeup_dispatcher, inbox_idle_waker)
+    # gav derfor en FRISK post paa forsoeg 0, og loftet paa tre kunne pr.
+    # konstruktion ikke naas. Stemplet skrives her — synkront, FOER traaden
+    # kalder `mark_started`, som arver tallet fra posten paa samme run_id.
+    try:
+        from core.services.in_flight_runs import stempl_aktiv_kaede
+
+        stempl_aktiv_kaede(run_id=run.run_id, session_id=resolved_session)
+    except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
+        logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
     from core.services.autonomous_frame_relay import AutonomousFrameRelay
 
     frame_relay = AutonomousFrameRelay(
@@ -417,3 +434,4 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         name="jarvis-autonomous-run",
         daemon=True,
     ).start()
+    return True

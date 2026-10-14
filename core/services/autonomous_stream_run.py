@@ -96,6 +96,18 @@ def start_autonomous_stream_run(
         origin=origin,
     )
 
+    # KAEDE-STEMPLET (14/10-2026). Samme begrundelse som i
+    # `visible_autonomous_run.start_autonomous_run`: foer stemplede kun
+    # `detached_run`, saa en fortsaettelse ad denne vej (wakeup-dispatcheren,
+    # self-wakeup) fik en frisk post paa forsoeg 0. Skrives synkront FOER
+    # traaden og FOER `mark_started`, som arver tallet fra posten.
+    try:
+        from core.services.in_flight_runs import stempl_aktiv_kaede
+
+        stempl_aktiv_kaede(run_id=run.run_id, session_id=sid)
+    except Exception:  # noqa: BLE001 — self-safe: et manglende stempel maa ikke dræbe runnet
+        logger.debug("kunne ikke stemple kaeden paa %s", run.run_id, exc_info=True)
+
     # SPORET SKRIVES FØR TRÅDEN (målt 12/9-2026). Runnet kører i en daemon-tråd,
     # så et genstart midt i turen dræbte tråden uden at efterlade noget som
     # helst: ingen række i `visible_runs`, ingen in-flight-post. Dispatcheren

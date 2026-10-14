@@ -334,3 +334,57 @@ def test_start_run_kraever_en_session():
     assert param.default is inspect.Parameter.empty, (
         "en valgfri session_id er hvordan siloen opstod"
     )
+
+
+# ── de fem steps fra autonomi-auditten: ærlig vækning + re-tjek (14/10-2026) ──
+#
+# Audit: docs/audits/2026-10-14-autonomous-execution-integrity.md §11.
+# Testene bor HER fordi de bruger `inbox_db`-fixturen, som er defineret i denne
+# fil — en fixture i en anden testfil kan ikke importeres ind.
+
+
+def test_afvist_start_lader_ikke_posten_staa_vaekket(inbox_db, monkeypatch):
+    """Run-guarden afviste TAVST (returvaerdi False) → posten maa ikke staa vaekket."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: False)
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 0
+
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+
+
+def test_ukendt_returvaerdi_bevarer_gammel_adfaerd(inbox_db, monkeypatch):
+    """`None` = startet. Tvivlen skal falde ud til at have startet."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: None)
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+
+
+def test_re_tjek_mellem_iterationer_stopper_anden_start(inbox_db, monkeypatch):
+    """MAKS_PR_RUNDE = 2 var et loft uden en vagt undervejs."""
+    from core.services import inbox_idle_waker as w
+
+    for i in range(3):
+        _post(id=f"p{i}", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+
+    kald = {"n": 0}
+
+    def _koerer():
+        kald["n"] += 1
+        return kald["n"] > 1
+
+    monkeypatch.setattr(w, "_noget_koerer", _koerer)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
+    assert len(startet) == 1

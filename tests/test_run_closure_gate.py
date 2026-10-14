@@ -537,8 +537,12 @@ class TestRunClosureGaarTilIndbakken:
 
     Bjørn: «run-closure-gate skal ikk sende til min discord. Den bør lande i
     din inbox i dine og mine sessioner.» Indbakken læses af
-    `inbox_prompt_section` i både autonome kørsler og hans egne samtaler, så
-    samme post står begge steder uden en kanal-binding.
+    `inbox_prompt_section`, så posten står i hans samtaler uden en
+    kanal-binding.
+
+    Rettet 14/10-2026: her stod «i både autonome kørsler og hans egne
+    samtaler». Den halvdel er væk — en autonom kørsel læser ikke længere
+    indbakken. Posten er synlig der hvor nogen kan svare på den.
     """
 
     def test_kildetypen_kan_ikke_gate(self):

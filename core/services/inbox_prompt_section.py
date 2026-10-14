@@ -119,6 +119,30 @@ def inbox_prompt_section() -> str | None:
     skal ses, for en sektion der tavst forsvinder er netop den tilstand filen
     er skrevet for at fjerne.
     """
+    # VÆRN (14/10-2026): en AUTONOM kørsel må ikke læse principalens indbakke.
+    #
+    # Målt samme dag: et autonomt run kaldte `inbox` fem gange og begyndte at
+    # arbejde på Bjørns poster — «Wakeup'en beder om en konkret måling … jeg
+    # henter indbakke-konteksten» — og skrev sin konklusion i en session ingen
+    # læser. 29 af 45 sessioner på en uge var autonome.
+    #
+    # Indbakken er den flade hvor Jarvis MØDER Bjørn: den kan nægte en mutation,
+    # og den læses der hvor nogen kan svare. En kørsel uden vidner har ingen at
+    # svare til, så en post bliver en opgave den ikke kan fuldføre.
+    #
+    # Værnet lukker kun LÆSNINGEN. `inbox_done`/`inbox_drop` er uændret tilladte
+    # i autonome kørsler: et vækket run skal stadig kunne lukke sin EGEN post, og
+    # gatens nægtelse navngiver de id'er der skal lukkes (`inbox_gate._naegtelse`).
+    # Fejler flaget, vises sektionen som før — `is_autonomous` kaster aldrig, og
+    # «ved vi det ikke, er svaret nej».
+    try:
+        from core.services.run_autonomy_context import is_autonomous
+        if is_autonomous():
+            return None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "inbox_prompt_section: kunne ikke laese autonomi-flaget: %s", exc)
+
     try:
         bruger = _bruger_id()
         if not bruger:

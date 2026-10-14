@@ -435,10 +435,16 @@ def _registrer_i_indbakken(
 
     Indbakken læses af `inbox_prompt_section`, som slår op på den autentificerede
     bruger og — i en autonom kørsel uden bruger — falder tilbage til ejerens
-    workspace. Derfor står SAMME post i både mine autonome kørsler og hans egne
-    samtaler, uden at nogen af dem skal bindes til en kanal. Det var netop dét
-    Discord-vejen ikke kunne: `_resolve_channel_for_session` faldt tilbage til
-    owner-DM'en, så et nat-run uden Discord-session endte i hans DM alligevel.
+    workspace. Posten står derfor i HANS samtaler, uden at nogen af dem skal
+    bindes til en kanal. Det var netop dét Discord-vejen ikke kunne:
+    `_resolve_channel_for_session` faldt tilbage til owner-DM'en, så et nat-run
+    uden Discord-session endte i hans DM alligevel.
+
+    Rettet 14/10-2026: her stod «i både mine autonome kørsler og hans egne
+    samtaler». Den halvdel er væk — en autonom kørsel læser ikke længere
+    indbakken (`inbox_prompt_section` returnerer `None` når `is_autonomous()`,
+    og `inbox` er ude af `AUTONOMOUS_TOOLS`). Med vilje: en post der kan nægte
+    en mutation hører på den flade hvor nogen kan svare.
 
     Posten registreres som `huset` og med kildetypen `run_closure` (der står i
     `IKKE_GATENDE_KILDETYPER`), så den er SYNLIG men aldrig kan nægte en

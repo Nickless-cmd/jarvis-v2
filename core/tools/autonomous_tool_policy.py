@@ -25,7 +25,7 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     "list_prompt_experiments", "list_identity_pins", "list_proposals",
     "list_process_watches", "list_scheduled_tasks", "list_recurring",
     "list_self_wakeups", "list_initiatives", "list_plans", "list_side_tasks",
-    "inbox", "monitor_list", "verification_status", "decision_adherence_summary",
+    "monitor_list", "verification_status", "decision_adherence_summary",
     "detect_stale_goals", "read_attachment", "verify_file_contains",
     "verify_service_active",
     # Internal memory: reads and additive or corrective writes only.
@@ -42,10 +42,17 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     #
     # Uden dem her er gaten en FAELDE, og det er maalt: `_prepare_call`
     # tjekker denne politik FOER inbox_gaten, saa et autonomt run kunne SE
-    # posten (`inbox` er tilladt), men aldrig lukke den — og dermed heller
-    # ikke sende, skrive eller mutere resten af runnet. 12/10-2026 blev en
-    # recurring-brief blokeret og kunne ikke frigives; indholdet var klaret,
-    # kvitteringen var umulig.
+    # posten, men aldrig lukke den — og dermed heller ikke sende, skrive eller
+    # mutere resten af runnet. 12/10-2026 blev en recurring-brief blokeret og
+    # kunne ikke frigives; indholdet var klaret, kvitteringen var umulig.
+    #
+    # `inbox` — LAESNINGEN — er fjernet 14/10-2026. Indbakken er den flade hvor
+    # Jarvis moeder Bjoern: den kan naegte en mutation, og den laeses der hvor
+    # nogen kan svare. Maalt samme dag kaldte et autonomt run `inbox` fem gange
+    # og begyndte at arbejde paa Bjoerns poster; konklusionen endte i en session
+    # ingen laeser. Udvejen bestaar UDEN den: gatens naegtelse navngiver de
+    # id'er der skal lukkes (`inbox_gate._naegtelse`), saa runnet behoever ikke
+    # se listen for at komme fri.
     #
     # Begge er bogfoering paa Jarvis' EGNE poster — samme klasse som
     # `remember_this` og `mark_wakeup_consumed`, som allerede er tilladte.

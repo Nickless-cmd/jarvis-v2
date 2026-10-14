@@ -175,16 +175,21 @@ def test_visible_run_ignores_origin_grants():
 #
 # Målt: `inbox_gate` frigives KUN af `inbox_done`/`inbox_drop` på dens poster
 # — og `_prepare_call` tjekker DENNE politik FØR gaten. Var de to ikke i
-# bund-sættet, var gaten en fælde: runnet kunne se posten (`inbox` er tilladt),
-# men aldrig lukke den, og dermed heller ikke mutere resten af runnet. 12/10
-# blev en recurring-brief blokeret og kunne ikke frigives.
+# bund-sættet, var gaten en fælde: runnet kunne se posten, men aldrig lukke
+# den, og dermed heller ikke mutere resten af runnet. 12/10 blev en
+# recurring-brief blokeret og kunne ikke frigives.
+#
+# LÆSNINGEN blev lukket 14/10-2026. Indbakken er principalens kontrolflade —
+# et autonomt run der læste den begyndte at arbejde på Bjørns poster og skrev
+# konklusionen i en session ingen læser. Udvejen består UDEN den: gatens
+# nægtelse NAVNGIVER de id'er der skal lukkes (`inbox_gate._naegtelse`), så
+# runnet ikke behøver se listen for at komme fri.
 
 def test_autonomt_run_kan_lukke_sine_egne_indbakke_poster():
     from core.tools.autonomous_tool_policy import is_allowed
 
     token = _as_origin("")  # bund-sættet alene: ingen delegeret udvidelse
     try:
-        assert is_allowed("inbox") is True
         assert is_allowed("inbox_done") is True
         assert is_allowed("inbox_drop") is True
         # Udvejen maa ikke aabne mere end noedvendigt: runnet kan stadig ikke
@@ -194,6 +199,35 @@ def test_autonomt_run_kan_lukke_sine_egne_indbakke_poster():
     finally:
         reset_autonomous(token)
         _clear_origin()
+
+
+def test_LAESNINGEN_af_indbakken_er_lukket_i_ALLE_autonome_origins():
+    """14/10-2026: indbakken er den flade hvor Jarvis MØDER Bjørn — den kan
+    nægte en mutation, og den læses der hvor nogen kan svare.
+
+    Målt samme dag: et autonomt run kaldte `inbox` fem gange og begyndte at
+    arbejde på Bjørns poster («Wakeup'en beder om en konkret måling … jeg
+    henter indbakke-konteksten»). Konklusionen endte i en session ingen læser.
+    29 af 45 sessioner på en uge var autonome.
+
+    Ingen origin må genåbne den — heller ikke en delegeret udvidelse.
+    """
+    from core.tools.autonomous_tool_policy import (
+        allowed_tools_for_origin, is_allowed,
+    )
+
+    for origin in ("", "wakeup", "recurring", "heartbeat", "dream", "inbox"):
+        token = _as_origin(origin)
+        try:
+            assert is_allowed("inbox") is False, f"inbox slipper ind via {origin!r}"
+            assert "inbox" not in allowed_tools_for_origin(origin), origin
+        finally:
+            reset_autonomous(token)
+            _clear_origin()
+
+    # Modprøven: udvejen står stadig, i bund-sættet.
+    assert "inbox_done" in allowed_tools_for_origin("")
+    assert "inbox_drop" in allowed_tools_for_origin("")
 
 
 def test_autonom_udfoerelsesvej_slipper_inbox_done_igennem():

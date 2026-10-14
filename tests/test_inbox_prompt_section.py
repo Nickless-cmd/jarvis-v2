@@ -60,6 +60,45 @@ def test_UDEN_bruger_giver_None():
         assert ips.inbox_prompt_section() is None
 
 
+def test_en_AUTONOM_koersel_laeser_IKKE_indbakken():
+    """Værn 14/10-2026.
+
+    Målt samme dag: et autonomt run kaldte `inbox` fem gange og begyndte at
+    arbejde på Bjørns poster — «Wakeup'en beder om en konkret måling … jeg
+    henter indbakke-konteksten» — og skrev konklusionen i en session ingen
+    læser. 29 af 45 sessioner på en uge var autonome.
+
+    Indbakken kan NÆGTE en mutation, og den læses der hvor nogen kan svare.
+    En kørsel uden vidner har ingen at svare til, så posten bliver en opgave
+    den ikke kan fuldføre.
+    """
+    from core.services.run_autonomy_context import reset_autonomous, set_autonomous
+
+    token = set_autonomous(True)
+    try:
+        assert _kald(_v(venter_paa_dig=[_p("job-1", gater=True)])) is None
+    finally:
+        reset_autonomous(token)
+
+
+def test_den_SYNLIGE_tur_faar_sektionen_uaendret():
+    """Modprøven til værnets test ovenfor.
+
+    Uden den kunne «returnér None når autonom» være blevet et bredt
+    sluk der også tav den flade posten hører på — og så havde jeg byttet en
+    lækage for en tavshed.
+    """
+    from core.services.run_autonomy_context import reset_autonomous, set_autonomous
+
+    token = set_autonomous(False)
+    try:
+        t = _kald(_v(venter_paa_dig=[_p("job-1", gater=True)])) or ""
+        assert "job-1" in t
+        assert "kan nægte en mutation" in t
+    finally:
+        reset_autonomous(token)
+
+
 def test_beslutnings_sektionen_naar_IKKE_prompten():
     """Den har sin EGEN sektion i visningen (5/10-2026), men den skal ikke ind i
     prompten: `[DECISION-ADHERENCE-GATE]` bærer dem allerede i den samme hale, og

@@ -257,3 +257,80 @@ def test_opbevaringen_er_et_doegn():
     """Reconcilerens egen drift-grænse er seks timer; et døgn giver margin."""
     import core.services.in_flight_runs as ifr
     assert ifr.AFSLUTTET_OPBEVARING_S == 86400.0
+
+
+# ── SOESKENDE-SWEEP (14/10-2026) ────────────────────────────────────────────
+#
+# Maalt i drift: `visible-1ade5e96` (en GENOPTAGELSE, task_id =
+# `visible-b39af970`) stod `running` i et kvarter efter at opgaven var droppet.
+# `_record_key` vaelger den EKSAKTE noegle foerst, saa drop'et lukkede
+# originalen og efterlod soesteren. Den blev staaende, fordi `running` hverken
+# er terminal (saa `_ryd_afsluttede` springer den over) eller doed (saa
+# `mark_started`s rydning springer den over).
+
+
+def _kaede_post(lager, rid, task_id, sid="s1", status="running"):
+    lager[rid] = {
+        "run_id": rid, "task_id": task_id, "session_id": sid,
+        "status": status, "started_at": datetime.now(UTC).isoformat(),
+        "recovery_owner": "", "recovery_lease_until": "",
+        "next_attempt_at": "", "notice_pending": False,
+    }
+
+
+def test_soester_post_lukkes_med_naar_opgaven_lukkes(_isoleret_lager):
+    """To poster for ÉN opgave: et drop paa opgavens id skal lukke BEGGE."""
+    _kaede_post(_isoleret_lager, "visible-orig", "visible-orig", status="interrupted")
+    _kaede_post(_isoleret_lager, "visible-gen1", "visible-orig")
+
+    ifr.settle_terminal("visible-orig", status="cancelled", reason="droppet")
+
+    assert _isoleret_lager["visible-orig"]["status"] == "cancelled"
+    assert _isoleret_lager["visible-gen1"]["status"] == "cancelled", (
+        "soesteren blev efterladt — praecis det spoegelse der blev maalt"
+    )
+
+
+def test_soesteren_kan_ogsaa_rammes_paa_sin_EGEN_noegle(_isoleret_lager):
+    """Drop'et kan ramme genoptagelsen direkte; originalen skal saa ogsaa lukkes."""
+    _kaede_post(_isoleret_lager, "visible-orig", "visible-orig", status="interrupted")
+    _kaede_post(_isoleret_lager, "visible-gen1", "visible-orig")
+
+    ifr.settle_terminal("visible-gen1", status="cancelled", reason="droppet")
+
+    assert _isoleret_lager["visible-gen1"]["status"] == "cancelled"
+    assert _isoleret_lager["visible-orig"]["status"] == "cancelled"
+
+
+def test_et_UAFHAENGIGT_run_lukkes_IKKE(_isoleret_lager):
+    """Vaernet maa ikke ramme bredt: et run med sin EGEN task_id er urørt."""
+    _kaede_post(_isoleret_lager, "visible-orig", "visible-orig", status="interrupted")
+    _kaede_post(_isoleret_lager, "visible-gen1", "visible-orig")
+    _kaede_post(_isoleret_lager, "visible-andet", "visible-andet")
+
+    ifr.settle_terminal("visible-orig", status="cancelled", reason="droppet")
+
+    assert _isoleret_lager["visible-andet"]["status"] == "running"
+
+
+def test_terminale_soeskende_roeres_ikke(_isoleret_lager):
+    """En soester der ALLEREDE er afregnet skal ikke stemples om."""
+    _kaede_post(_isoleret_lager, "visible-orig", "visible-orig", status="interrupted")
+    _kaede_post(_isoleret_lager, "visible-gen1", "visible-orig", status="completed")
+    _isoleret_lager["visible-gen1"]["exit_reason"] = "svarede selv"
+
+    ifr.settle_terminal("visible-orig", status="cancelled", reason="droppet")
+
+    assert _isoleret_lager["visible-gen1"]["status"] == "completed"
+    assert _isoleret_lager["visible-gen1"]["exit_reason"] == "svarede selv"
+
+
+def test_soesteren_giver_IKKE_et_varsel(_isoleret_lager):
+    """Kun den primaere post baerer varslet — et soeskende maa ikke dublette."""
+    _kaede_post(_isoleret_lager, "visible-orig", "visible-orig", status="interrupted")
+    _kaede_post(_isoleret_lager, "visible-gen1", "visible-orig")
+
+    ifr.settle_terminal("visible-orig", status="failed_terminal", reason="doed")
+
+    assert _isoleret_lager["visible-orig"]["notice_pending"] is True
+    assert _isoleret_lager["visible-gen1"]["notice_pending"] is False

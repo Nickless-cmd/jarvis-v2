@@ -714,6 +714,43 @@ def settle_terminal(
         rec["recovery_lease_until"] = ""
         rec["next_attempt_at"] = ""
         rec["notice_pending"] = normalized == "failed_terminal"
+
+        # SOESKENDE-SWEEP (14/10-2026). Maalt: en genoptagelse opretter sin EGEN
+        # post — `mark_started(run_id=<nyt>, task_id=<opgavens>)` — saa kaeden
+        # har to poster for ÉN opgave. `_record_key` vaelger den EKSAKTE noegle
+        # foerst, saa et drop paa opgavens id lukkede originalen og efterlod
+        # genoptagelsen som `running`. Den blev staaende: `running` er hverken
+        # terminal (saa `_ryd_afsluttede` springer den over) eller doed (saa
+        # `mark_started`s rydning springer den over). Maalt 14/10-2026:
+        # `visible-1ade5e96` (task_id = `visible-b39af970`) stod `running` i et
+        # kvarter, gav 404 i klienten og holdt en steer fanget i `pending_steers`.
+        #
+        # En opgave er ÉN opgave, uanset hvor mange led kaeden har. Lukkes den,
+        # lukkes hvert ikke-terminalt led der deler dens task_id eller run_id.
+        # `notice_pending=False` med vilje: den primaere post baerer varslet, og
+        # et soeskende maa ikke give Bjørn en dublet.
+        faelles = {str(rec.get("task_id") or ""), str(rec.get("run_id") or "")} - {""}
+        for soester_noegle, soester in list(records.items()):
+            if soester_noegle == key:
+                continue
+            if str(soester.get("status") or "") in _TERMINAL_STATUSES:
+                continue
+            if not (faelles & {str(soester.get("task_id") or ""),
+                              str(soester.get("run_id") or "")}):
+                continue
+            soester.setdefault("task_id", str(soester.get("run_id") or soester_noegle))
+            soester["status"] = normalized
+            soester["exit_reason"] = (
+                f"soeskende lukket med {key[:24]}: {str(reason or normalized)[:90]}"
+            )[:160]
+            soester["settled_at"] = _iso()
+            soester["recovery_owner"] = ""
+            soester["recovery_lease_until"] = ""
+            soester["next_attempt_at"] = ""
+            soester["notice_pending"] = False
+            logger.info(
+                "in_flight_runs: lukkede soeskende-post %s — deler task_id med %s",
+                soester_noegle[:24], key[:24])
         return dict(rec)
     return _mutate(change)
 

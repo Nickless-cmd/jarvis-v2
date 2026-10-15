@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-14 from app.routes (live) — 647 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-15 from app.routes (live) — 648 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -179,6 +179,7 @@
 | GET | `/central/council` | dict | central |
 | GET | `/central/council` | dict | central_absorb_routes |
 | GET | `/central/dark-products` | dict | central_absorb_routes |
+| GET | `/central/db-pool` | dict | central_db_pool |
 | GET | `/central/decentralization` | dict | central_decentralization |
 | GET | `/central/dejavu` | dict | central_matrix |
 | GET | `/central/diagnostics` | dict | central |

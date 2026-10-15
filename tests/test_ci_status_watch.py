@@ -146,7 +146,7 @@ def test_roed_koersel_giver_en_followup(isoleret_state, api, followups):
     ud = w.tik()
     assert ud["status"] == "ok" and ud["nye"] == 1
     assert len(followups) == 1
-    assert followups[0]["source"] == "daemon"
+    assert followups[0]["source"] == "ci_alarm"
     assert "fix: mobile" in followups[0]["text"]
 
 
@@ -195,6 +195,25 @@ def test_levering_der_fejler_meldes_som_fejl(isoleret_state, api, monkeypatch):
 
 
 # ── beskrivelsen ────────────────────────────────────────────────────────
+
+
+def test_hent_runs_henter_baade_main_og_desk_release(monkeypatch):
+    """Maalt 15/10-2026: vagten spurgte kun `?branch=main`, og desk-releasen
+    koerer paa et TAG — saa 0.6.237's fejlede build var usynlig. Begge kilder
+    skal hentes, og et run der optraeder i begge lister taelles kun én gang."""
+    kaldte: list[str] = []
+
+    def _stub(url: str):
+        kaldte.append(url)
+        if "desk-release" in url:
+            return [_run(rid="2", konklusion="failure")]
+        return [_run(rid="1", konklusion="success"), _run(rid="2", konklusion="failure")]
+
+    monkeypatch.setattr(w, "_hent_url", _stub)
+    runs = w._hent_runs()
+    assert any("desk-release" in u for u in kaldte), kaldte
+    assert any("branch=main" in u for u in kaldte), kaldte
+    assert sorted(str(r["id"]) for r in runs) == ["1", "2"]
 
 
 def test_beskrivelsen_viser_sha_konklusion_og_link():

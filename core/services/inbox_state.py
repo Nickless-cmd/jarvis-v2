@@ -135,6 +135,12 @@ KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
     # dette led ville posten kun dukke op når Bjørn selv skrev næste gang, og
     # forpligtelsen ville stå stille indtil da.
     "afvist_run",
+    # `ci_alarm` (15/10-2026): en CI-fejl kræver at Jarvis handler — den er ikke
+    # en informerende husets begivenhed. Vagten (`ci_status_watch`) skrev den
+    # med `daemon`, som hverken gater eller dispatcher, saa alarmen stod stille
+    # til næste heartbeat. Egen klasse, fordi den er den ENESTE ikke-wakeup-post
+    # der baade maa starte et run og er moden i det oejeblik den skrives.
+    "ci_alarm",
 })
 
 

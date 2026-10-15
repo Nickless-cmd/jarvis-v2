@@ -220,6 +220,40 @@ def test_nulstil_vaekning_roerer_ikke_paamindelser(inbox_db):
     assert post["paamindelser"] == 1
 
 
+def test_ci_alarm_vaekker_uden_at_vaere_gatende(inbox_db, monkeypatch):
+    """Maalt 15/10-2026: CI-vagten skrev sin alarm med `daemon`, som hverken
+    gater eller dispatcher. Bjørn sad i en aaben session og fik intet signal da
+    desk-release 0.6.237 fejlede. En CI-alarm er sin EGEN klasse: ikke-gatende
+    (den maa ikke naegte en mutation), men dispatchbar og moden i det oejeblik
+    den skrives."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="ci-status-watch", kildetype="ci_alarm",
+          ejer=db_inbox.EJER_JARVIS, kraever_handling=False)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    r = w.vaek_paa_aabne_poster(bruger_id="bjorn")
+    assert r["vaekket"] == 1, "en CI-alarm skal kunne vaekke en ledig session"
+    assert len(startet) == 1
+
+
+def test_daemon_post_vaekker_stadig_ikke(inbox_db, monkeypatch):
+    """`ci_alarm` er en snaever klasse. En almindelig daemon-post er fortsat
+    informerende og maa IKKE starte et run — ellers bliver hver vagt en silo."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="en-vagt", kildetype="daemon",
+          ejer=db_inbox.EJER_JARVIS, kraever_handling=False)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 0
+    assert startet == []
+
+
 # ── self-safe ───────────────────────────────────────────────────────────────
 
 def test_fejl_i_laesningen_vaelter_ikke_polleren(inbox_db, monkeypatch):

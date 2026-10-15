@@ -45,6 +45,9 @@ logger = logging.getLogger(__name__)
 
 _REPO = "Nickless-cmd/jarvis-v2"
 _API = f"https://api.github.com/repos/{_REPO}/actions/runs"
+#: Desk-releasen kører på et TAG (`jarvis-desktop-v…`), og et tag er ikke en
+#: branch — så `?branch=main` ser den aldrig. Se `_hent_runs`.
+_RUNS_DESK = f"https://api.github.com/repos/{_REPO}/actions/workflows/desk-release.yml/runs"
 
 _STATE = "ci_watch_set"
 _SIDSTE_TJEK = "ci_watch_sidste_tjek"
@@ -140,10 +143,10 @@ def _grundlinje() -> str:
     return stempel
 
 
-def _hent_runs() -> list[dict[str, Any]]:
-    """Kørslerne på `main`. Rejser `ApiUkendt` når vi ikke kunne se dem."""
+def _hent_url(url: str) -> list[dict[str, Any]]:
+    """Kørslerne bag én Actions-URL. Rejser `ApiUkendt` når vi ikke kunne se dem."""
     req = urllib.request.Request(
-        f"{_API}?branch=main&per_page={_VINDUE}",
+        url,
         headers={
             # GitHub afviser et kald uden User-Agent.
             "User-Agent": "jarvis-ci-status-watch",
@@ -162,6 +165,28 @@ def _hent_runs() -> list[dict[str, Any]]:
     if not isinstance(raa, dict):
         raise ApiUkendt("uventet_svarform")
     return [r for r in (raa.get("workflow_runs") or []) if isinstance(r, dict)]
+
+
+def _hent_runs() -> list[dict[str, Any]]:
+    """Kørslerne vi holder øje med — på `main` OG desk-release (tag-styret).
+
+    Målt 15/10-2026: vagten spurgte KUN `?branch=main`. Desk-releasen kører på
+    et TAG, og et tag er ikke en branch — så 0.6.237's fejlede build
+    (`jarvis-desktop-v0.6.237`, TS2741 i electron/preload.ts) var usynligt for
+    vagten. Bjørn sad i en åben session og fik intet signal; han opdagede det
+    selv. Det er præcis den blindhed vagten findes for at fjerne, så begge
+    kilder hentes nu. Dedup paa id, saa et run der optraeder i begge lister
+    kun taelles én gang.
+    """
+    alle = _hent_url(f"{_API}?branch=main&per_page={_VINDUE}") + _hent_url(
+        f"{_RUNS_DESK}?per_page={_VINDUE}"
+    )
+    unikke: dict[str, dict[str, Any]] = {}
+    for run in alle:
+        rid = str(run.get("id") or "")
+        if rid and rid not in unikke:
+            unikke[rid] = run
+    return list(unikke.values())
 
 
 def scan_roede() -> list[dict[str, Any]]:
@@ -287,7 +312,13 @@ def tik() -> dict[str, Any]:
             return {"status": "fejl", "nye": len(nye), "grund": "ingen-bruger"}
         levering = registrer_kilde(
             bruger_id=bruger,
-            kildetype="daemon",
+            # `ci_alarm` og ikke `daemon` (15/10-2026). En CI-fejl er ikke en
+            # informerende husets begivenhed — den KRÆVER at Jarvis handler.
+            # Med `daemon` kunne posten aldrig vække (`daemon` staar i
+            # IKKE_GATENDE_KILDETYPER og er ikke dispatchbar), saa alarmen stod
+            # stille til næste heartbeat eller Bjørns næste besked. Det var
+            # præcis hvad der skete 15/10.
+            kildetype="ci_alarm",
             kilde_id="ci-status-watch",
             beskrivelse=tekst[:1000],
         )

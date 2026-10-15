@@ -85,6 +85,13 @@ def _er_moden(post: dict[str, Any], *, vaekninger: dict[str, dict[str, Any]]) ->
     kildetype = str(post.get("kildetype") or "")
     if kildetype == "wakeup":
         return str(post.get("kilde_id") or "") in vaekninger
+    # `ci_alarm` (15/10-2026): en CI-fejl er moden i det øjeblik den skrives —
+    # den er ikke booket til en fremtidig fyring som en wakeup. Uden dette led
+    # laa `kan_dispatch` alene til grund, men `_er_moden` sagde nej, og alarmen
+    # ventede alligevel. Maalt: Bjørn sad i en aaben session og fik intet
+    # signal da desk-release 0.6.237 fejlede.
+    if kildetype == "ci_alarm":
+        return True
     return False
 
 

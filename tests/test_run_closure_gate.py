@@ -623,26 +623,35 @@ class TestRunClosureGaarTilIndbakken:
         assert "new_file.py" in kald[0]["beskrivelse"]
 
 
-class TestInspektionTilIndbakken:
-    """Runtime-inspektionen skal lande i indbakken (15/10-2026).
+
+class TestRecurringTilIndbakken:
+    """En recurring-opgaves resultat skal kunne lande i indbakken (15/10-2026).
 
     Bjoern: «din daglige runtime inspektion, lander den kun i en autonom
     session eller lander den osse i din inbak?» Maalt: den landede KUN som
     autonomt run — `_fire_due` starter et run uden at roere indbakken.
+
+    Flaget hoerer paa OPGAVEN (`recurring_tasks.inbox_on_complete`), ikke i en
+    tekst-match i gaten: den foerste version matchede strengen
+    «runtime-inspektion» og ville falde ud for den næste stille opgave.
     """
 
-    def _payload(self, *, focus: str, origin: str = "") -> dict:
+    def _payload(self, *, focus: str, origin: str = "",
+                 task_id: str = "rec-test01") -> dict:
         p = {
-            "run_id": "autonomous-inspektion-test",
+            "run_id": "autonomous-recurring-test",
             "session_id": "auto-recurring-2026-10-15",
             "focus": focus,
             "autonomous": True,
         }
         if origin:
             p["origin"] = origin
+        if task_id:
+            p["task_id"] = task_id
         return p
 
-    def _stub(self, monkeypatch, kald: list, *, global_origin: str):
+    def _stub(self, monkeypatch, kald: list, *, global_origin: str,
+              flag: bool = True):
         from core.services import run_closure_gate as g
 
         monkeypatch.setattr(g, "_pop_pre_run_state", lambda _r: None)
@@ -656,35 +665,63 @@ class TestInspektionTilIndbakken:
         monkeypatch.setattr(g, "aktuel_origin", lambda: global_origin)
         monkeypatch.setattr(g, "_registrer_i_indbakken",
                             lambda **kw: kald.append(kw))
+        # Flaget slaas op i DB'en — stubbes her, saa testen maaler GRENEN og
+        # ikke hvad der tilfaeldigt staar i den koerende database.
+        monkeypatch.setattr(
+            "core.services.recurring_tasks.skal_i_indbakken",
+            lambda _t: flag,
+        )
         return g
 
-    def test_inspektion_laegges_i_indbakken(self, monkeypatch):
+    def _poster(self, kald: list) -> list:
+        return [k for k in kald if k["kildetype"] == "recurring"]
+
+    def test_flag_paa_opgaven_laegger_post(self, monkeypatch):
         kald = []
-        g = self._stub(monkeypatch, kald, global_origin="")
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
         monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: ["bash"])
         g._on_run_completed(self._payload(
-            focus="Runtime-inspektion: kig i ~/.jarvis-v2 — incidents, anomalies",
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2 — incidents",
             origin="recurring"))
 
-        # To poster er RIGTIGT: et inspektions-run uden tekst er baade
-        # "tavst" (silent-run-grenen) OG en inspektion. De to grene er
-        # uafhaengige, og begge skal fyre.
-        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
-        assert len(inspektion) == 1, f"forventede én inspektions-post, fik {kald}"
-        assert inspektion[0]["kilde_id"] == "inspektion-autonomous-inspektion-test"
+        poster = self._poster(kald)
+        # To poster er RIGTIGT: et run uden tekst er baade "tavst"
+        # (silent-run-grenen) OG en recurring-post. Grenene er uafhaengige.
+        assert len(poster) == 1, f"forventede én recurring-post, fik {kald}"
+        assert poster[0]["kilde_id"] == "recurring-rec-test01-autonomous-recurring-test"
+        assert "Runtime-inspektion" in poster[0]["beskrivelse"]
 
-    def test_eventets_origin_vejer_tungere_end_den_globale(self, monkeypatch):
-        """Kernen i fixet: den globale kan vaere byttet af et samtidigt run."""
+    def test_uden_flag_ingen_post(self, monkeypatch):
+        """Det er FLAGET der afgoer — ikke om teksten ligner en inspektion."""
         kald = []
-        # Globalen siger heartbeat (et ANDET run har overtaget den), men
-        # eventet — som er bundet til DETTE run — siger recurring.
-        g = self._stub(monkeypatch, kald, global_origin="heartbeat")
+        g = self._stub(monkeypatch, kald, global_origin="", flag=False)
         g._on_run_completed(self._payload(
             focus="Runtime-inspektion: kig i ~/.jarvis-v2",
             origin="recurring"))
 
-        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
-        assert len(inspektion) == 1, (
+        assert self._poster(kald) == [], f"flaget var 0: {kald}"
+
+    def test_flag_uden_inspektions_tekst_laegger_ogsaa_post(self, monkeypatch):
+        """En hvilken som helst opgave med flaget — ikke kun inspektionen."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        g._on_run_completed(self._payload(
+            focus="Sansernes Arkiv — dybde-session",
+            origin="recurring", task_id="rec-arkiv01"))
+
+        poster = self._poster(kald)
+        assert len(poster) == 1, f"flaget skal virke for ALLE opgaver: {kald}"
+        assert poster[0]["kilde_id"] == "recurring-rec-arkiv01-autonomous-recurring-test"
+
+    def test_eventets_origin_vejer_tungere_end_den_globale(self, monkeypatch):
+        """Kernen: den globale kan vaere byttet af et samtidigt run."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="heartbeat", flag=True)
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2",
+            origin="recurring"))
+
+        assert len(self._poster(kald)) == 1, (
             f"eventets origin skal vinde over den globale: {kald}"
         )
 
@@ -693,26 +730,25 @@ class TestInspektionTilIndbakken:
     ):
         """Aeldre events (foer 15/10) har ingen origin — de skal stadig virke."""
         kald = []
-        g = self._stub(monkeypatch, kald, global_origin="recurring")
+        g = self._stub(monkeypatch, kald, global_origin="recurring", flag=True)
         g._on_run_completed(self._payload(
             focus="Runtime-inspektion: kig i ~/.jarvis-v2"))
 
-        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
-        assert len(inspektion) == 1, f"fald-tilbage virker ikke: {kald}"
-
-    def test_andre_recurring_runs_roerer_ikke_indbakken(self, monkeypatch):
-        """Kun INSPEKTIONEN — ikke enhver recurring-task."""
-        kald = []
-        g = self._stub(monkeypatch, kald, global_origin="")
-        g._on_run_completed(self._payload(
-            focus="Send morgenbrief til Bjoern", origin="recurring"))
-
-        assert kald == [], f"morgenbriefen maa ikke blive en indbakke-post: {kald}"
+        assert len(self._poster(kald)) == 1, f"fald-tilbage virker ikke: {kald}"
 
     def test_ikke_recurring_origin_roerer_ikke_indbakken(self, monkeypatch):
         kald = []
-        g = self._stub(monkeypatch, kald, global_origin="")
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
         g._on_run_completed(self._payload(
             focus="Runtime-inspektion: kig i ~/.jarvis-v2", origin="heartbeat"))
 
-        assert kald == [], f"kun recurring-inspektionen: {kald}"
+        assert self._poster(kald) == [], f"kun recurring: {kald}"
+
+    def test_uden_task_id_ingen_post(self, monkeypatch):
+        """Et event uden task_id kan ikke slaa op — og skal ikke gaette."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion", origin="recurring", task_id=""))
+
+        assert self._poster(kald) == [], f"uden task_id maa der ikke gaettes: {kald}"

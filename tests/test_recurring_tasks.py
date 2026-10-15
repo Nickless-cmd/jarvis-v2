@@ -200,3 +200,50 @@ def test_ukendt_ugedag_efterlader_raekken_uaendret(tmp_path, monkeypatch):
         ud = c.execute("SELECT weekdays FROM recurring_tasks WHERE task_id=?",
                        (t["task_id"],)).fetchone()[0]
     assert ud == ""
+
+
+# ── Indbakke-flag (15/10-2026) ───────────────────────────────────────────────
+
+def test_inbox_flag_default_er_0(tmp_path, monkeypatch):
+    """Raekker fra foer kolonnen har flaget 0 — uaendret adfaerd."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="medicin", interval_minutes=1440)
+    assert t["inbox_on_complete"] == 0
+    assert rt.skal_i_indbakken(t["task_id"]) is False
+
+
+def test_set_inbox_on_complete_taender_og_slaar_fra(tmp_path, monkeypatch):
+    """Flaget er sandheden i DB — det SLAAS OP, det gaettes ikke."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="inspektion", interval_minutes=360)
+    assert rt.set_inbox_on_complete(t["task_id"], True) is True
+    assert rt.skal_i_indbakken(t["task_id"]) is True
+    assert rt.set_inbox_on_complete(t["task_id"], False) is True
+    assert rt.skal_i_indbakken(t["task_id"]) is False
+
+
+def test_create_med_flag_saetter_det_ved_foedslen(tmp_path, monkeypatch):
+    """Opgaven kan oprettes med levering fra start — ikke kun efter et set."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="arkiv", interval_minutes=1440,
+                                 inbox_on_complete=True)
+    assert t["inbox_on_complete"] == 1
+    assert rt.skal_i_indbakken(t["task_id"]) is True
+
+
+def test_ukendt_task_id_svarer_false(tmp_path, monkeypatch):
+    """Fail-soft: en ukendt/slettet opgave maa ikke vaelte opslaget."""
+    _fresh(tmp_path, monkeypatch)
+    assert rt.skal_i_indbakken("rec-findes-ikke") is False
+    assert rt.skal_i_indbakken("") is False
+    assert rt.set_inbox_on_complete("rec-findes-ikke", True) is False
+
+
+def test_flaget_overlever_en_ugedags_affyring(tmp_path, monkeypatch):
+    """Flaget hoerer paa raekken — ugedags-gaten maa ikke røre det."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="arkiv", interval_minutes=1440,
+                                 weekdays="man-fre")
+    rt.set_inbox_on_complete(t["task_id"], True)
+    rt.set_weekdays(t["task_id"], "1,2,3")
+    assert rt.skal_i_indbakken(t["task_id"]) is True

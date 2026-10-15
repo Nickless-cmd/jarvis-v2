@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8991/17183 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8993/17185 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8991/17183 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 824 | 1524 | 54% |
-| `core.services` | 5991 | 11684 | 51% |
+| `core.services` | 5993 | 11686 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1678,10 +1678,10 @@ Generated from source. 8991/17183 functions/methods documented (52%). The list b
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L442)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L450)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L586)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L595)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L508)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L516)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L657)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L666)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -1849,7 +1849,7 @@ Generated from source. 8991/17183 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L808)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L821)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)

@@ -15,6 +15,25 @@ test('viser seneste ubesvarede spørgsmål fra en gemt samtale', () => {
   })
 })
 
+test('bevarer spørgsmålet når den PERSISTEREDE tur overtager efter streamen', () => {
+  // Målt 15/10-2026: i mobilen forsvandt kortet i det øjeblik streamen sluttede.
+  // Årsagen er form-forskellen mellem de to visninger af samme tur: live folder
+  // reduceren `tool_result` ind på sin tool_use (så `result` findes), men den
+  // gemte `content_json` bærer dem som TO blokke — og der står INTET `result` på
+  // tool_use-blokken. Verificeret mod DB'en: alle tool_use-blokke i en persisteret
+  // tur har har-result-felt=False, og svaret ligger som streng i tool_result.
+  const gemt: ChatMessage = {
+    id: 'a2', role: 'assistant', content: 'Spørgsmålet står i dit felt.',
+    created_at: '2026-10-15T20:40:00Z',
+    content_json: [
+      { type: 'text', text: 'Spørgsmålet står i dit felt.' },
+      { type: 'tool_use', id: 'ask-9', name: 'pause_and_ask', input: {} },
+      { type: 'tool_result', tool_use_id: 'ask-9', content: result },
+    ],
+  }
+  expect(activePauseAsk([gemt], [])?.question).toBe('Hvilke flader?')
+})
+
 test('skjuler det besvarede spørgsmål efter en brugerbesked', () => {
   const user: ChatMessage = { id: 'u2', role: 'user', content: 'Desk', created_at: '2026-10-09T00:01:00Z' }
   expect(activePauseAsk([assistant, user], [])).toBeNull()

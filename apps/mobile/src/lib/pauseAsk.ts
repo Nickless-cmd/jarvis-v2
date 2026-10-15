@@ -36,10 +36,29 @@ function parseResult(result: unknown): PauseAsk | null {
 }
 
 function pauseIn(blocks: (PersistedBlock | ContentBlock)[]): PauseAsk | null {
+  // En PERSISTERET tur bærer resultatet i en SEPARAT `tool_result`-blok — ikke
+  // som `result` på sin tool_use. Live er de to foldet sammen af reduceren (så
+  // `block.result` findes), men `content_json` fra serveren har dem som TO
+  // blokke, og `result` står ikke på tool_use-blokken.
+  //
+  // Uden dette opslag døde spørgsmålet i det øjeblik streamen sluttede og den
+  // gemte tur overtog: live-vejen virkede, den persisterede gjorde ikke. Målt
+  // 15/10-2026 — Bjørn: «vises under streamen og forsvinder når streamen
+  // stopper, det sker kun i mobilen». Desk slap for det, fordi SessionContext
+  // bærer de foldede lokale blokke over i den server-bekræftede besked; mobilen
+  // har ikke det lag og læser udelukkende de persisterede blokke.
+  const fraResultat = new Map<string, unknown>()
+  for (const block of blocks) {
+    if (!block || block.type !== 'tool_result') continue
+    const r = block as { tool_use_id?: string; content?: unknown; result?: unknown }
+    if (!r.tool_use_id) continue
+    fraResultat.set(r.tool_use_id, r.content ?? r.result)
+  }
   let found: PauseAsk | null = null
   for (const block of blocks) {
-    if (block.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
-    found = parseResult(block.result) ?? found
+    if (!block || block.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
+    const raa = block.result ?? (block.id ? fraResultat.get(block.id) : undefined)
+    found = parseResult(raa) ?? found
   }
   return found
 }

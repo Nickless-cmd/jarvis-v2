@@ -384,6 +384,15 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                         # run_closure_gate: samme flag som started-eventen —
                         # se kommentar der.
                         "autonomous": bool(run.autonomous),
+                        # ORIGIN BAERES I EVENTET (15/10-2026). Forhen laeste
+                        # gate'en `aktuel_origin()` — en PROCES-GLOBAL der
+                        # overskrives naar naeste run starter. To samtidige
+                        # runs i samme proces kunne derfor bytte origin, og
+                        # en gren der vaelger paa den kunne tage fejl.
+                        # Vaerdien findes allerede her i scope (`_origin`,
+                        # normaliseret linje 130) og bæres nu med — samme raa
+                        # kontrakt som started-eventet nedenfor.
+                        "origin": _origin or "autonomous",
                     },
                 )
                 _observe_autonomous_run(run=run, session_id=resolved_session,

@@ -223,6 +223,11 @@ def mc_memory_pipeline(limit: int = 10) -> dict:
     n = max(int(limit), 1)
 
     # ── 1. MEMORY.md candidate pipeline ───────────────────────────────────
+    # Forbindelsen lukkes i `finally` — ikke midt i try-blokken. Rettet 15/10-2026:
+    # den lukkede KUN på succes-stien, så en fejlende query (fx manglende tabel)
+    # efterlod et DB-håndtag indtil GC. Samme klasse som de ni connect-uden-close
+    # der blev lukket 12/10 (15bed9f11 + 1ae9bb822).
+    conn = None
     try:
         conn = sqlite3.connect(str(db_path))
         conn.row_factory = sqlite3.Row
@@ -261,7 +266,6 @@ def mc_memory_pipeline(limit: int = 10) -> dict:
                WHERE target_file='MEMORY.md'
                ORDER BY created_at DESC LIMIT 1"""
         ).fetchone()
-        conn.close()
         contract_pipeline = {
             "pending_count": int(pending_count),
             "applied_count_total": int(applied_count_total),
@@ -295,6 +299,9 @@ def mc_memory_pipeline(limit: int = 10) -> dict:
         }
     except Exception as exc:
         contract_pipeline = {"error": str(exc)}
+    finally:
+        if conn is not None:
+            conn.close()
 
     # ── 2. jarvis_brain auto-remember activity ────────────────────────────
     brain_dir = jarvis_home / "shared" / "jarvis_brain"

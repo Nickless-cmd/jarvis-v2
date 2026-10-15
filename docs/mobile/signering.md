@@ -1,8 +1,16 @@
 # Signering af mobil-appen
 
 > Skrevet 28/9-2026, da release-APK'en blev undersøgt mod Google Plays krav.
-> Status: **upload-nøglen er ikke taget i brug endnu.** Release signeres
-> fortsat med debug-nøglen, med vilje.
+> **Opdateret 15/10-2026:** status-linjen sagde «upload-nøglen er ikke taget i
+> brug endnu». Det er ikke sandt længere. `apps/mobile/android/keystore.properties`
+> findes (oprettet 28/9) og peger på `jarvis-upload.keystore`, så release-bygget
+> signeres med **upload-certifikatet** (`0E:2D:72:23…`) — ikke debug-certifikatet
+> (`FA:C6:17:45…`), som den installerede app på telefonen bruger.
+>
+> Konsekvensen er målt: en APK bygget med `assembleRelease` kan **ikke** lægges
+> ovenpå appen på telefonen. `publish_mobile_apk.py` afviste den med «Forkert
+> APK-signatur … Android afviser opdateringen». **Standardvejen for udgivelse til
+> Bjørns telefon er derfor at bygge med debug-signering** (se nedenfor).
 
 ## Kort
 
@@ -20,17 +28,24 @@
 - **Findes den ikke** → `signingConfigs.release` findes ikke, og release falder
   tilbage til debug-nøglen.
 
-Til sideload-udgivelse kan debug-nøglen vælges eksplicit, også hvis
-`keystore.properties` findes:
+**Standardvejen for udgivelse til Bjørns telefon** er at vælge debug-nøglen
+eksplicit — den matcher den installerede app, så opdateringen går igennem:
 
 ```bash
 cd apps/mobile/android
 ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a -Pjarvis.useDebugSigningForRelease=true
 ```
 
+Uden flaget signeres release-APK'en med upload-nøglen (fordi
+`keystore.properties` findes), og installationen afvises af Android.
+
 Fallbacken er der for to grunde: en frisk klon skal kunne bygge uden at have
 nøglen, og Bjørns installerede app skal ikke brække midt i en almindelig
 opdatering.
+
+**Skal du skifte mellem de to certifikater, kræver det `adb uninstall` først** —
+Android opdaterer kun en app, hvis den nye APK er signeret med samme certifikat
+som den installerede. Se afsnittet nedenfor.
 
 ## ⚠️ Når upload-nøglen tages i brug
 

@@ -207,8 +207,10 @@ def _query_expression_count() -> int | None:
         return None
     try:
         conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-        row = conn.execute("SELECT COUNT(*) FROM expressions").fetchone()
-        conn.close()
+        try:
+            row = conn.execute("SELECT COUNT(*) FROM expressions").fetchone()
+        finally:
+            conn.close()
         return int(row[0]) if row else 0
     except Exception as exc:
         logger.debug("ground_truth: expression count query failed: %s", exc)

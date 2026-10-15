@@ -38,11 +38,13 @@ def _max_created_at_real_deepseek() -> float | None:
     Self-safe (DB lock/error -> None); opens read-only."""
     try:
         c = sqlite3.connect(f"file:{_COSTS_DB}?mode=ro", uri=True, timeout=2)
-        row = c.execute(
-            "select max(created_at) from costs where provider='deepseek' "
-            "and coalesce(lane,'') not like '%warm%'"
-        ).fetchone()
-        c.close()
+        try:
+            row = c.execute(
+                "select max(created_at) from costs where provider='deepseek' "
+                "and coalesce(lane,'') not like '%warm%'"
+            ).fetchone()
+        finally:
+            c.close()
         if not row or not row[0]:
             return None
         from datetime import datetime
@@ -61,10 +63,12 @@ def _max_created_at_visible() -> float | None:
     ingen. Ekskluderer warmeren (lane=primary). Self-safe, read-only."""
     try:
         c = sqlite3.connect(f"file:{_COSTS_DB}?mode=ro", uri=True, timeout=2)
-        row = c.execute(
-            "select max(created_at) from costs where lane in ('visible','agent')"
-        ).fetchone()
-        c.close()
+        try:
+            row = c.execute(
+                "select max(created_at) from costs where lane in ('visible','agent')"
+            ).fetchone()
+        finally:
+            c.close()
         if not row or not row[0]:
             return None
         from datetime import datetime

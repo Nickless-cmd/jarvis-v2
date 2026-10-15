@@ -34,6 +34,7 @@ import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
 import { ChatFlowProvider } from './contexts/ChatFlowContext'
+import { appGate } from './lib/appGate'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
@@ -101,11 +102,16 @@ export function App() {
 
   if (!settings) return __WEB_BUILD__ ? <PwaUpdateHost /> : null
   if (!isConfigured) return <><SetupScreen onSave={(cfg) => void update(cfg)} />{__WEB_BUILD__ && <PwaUpdateHost />}</>
-  if (authStatus === 'checking' || (authStatus === 'ready' && !auth)) {
-    return <><div className="setup" role="status">Kontrollerer login…</div>{__WEB_BUILD__ && <PwaUpdateHost />}</>
-  }
-  if (authStatus === 'offline') {
+  // Beslutningen om der FINDES en identity træffes ét sted — se lib/appGate.ts.
+  // Den lå før her, udledt af `authStatus`, og det kastede i Electron: der er
+  // `authStatus` `undefined`, så ingen af de to daværende grene matchede, og
+  // `identity={auth!}` læste `user_id` på null (målt 15/10-2026).
+  const gate = appGate(authStatus, auth)
+  if (gate === 'offline') {
     return <><div className="setup" role="status">Ingen forbindelse til Jarvis. Prøv igen, når serveren er tilgængelig.</div>{__WEB_BUILD__ && <PwaUpdateHost />}</>
+  }
+  if (gate === 'loading') {
+    return <><div className="setup" role="status">Kontrollerer login…</div>{__WEB_BUILD__ && <PwaUpdateHost />}</>
   }
 
   return (

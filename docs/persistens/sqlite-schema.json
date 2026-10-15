@@ -23019,9 +23019,17 @@
       "created_at_formats": []
     },
     "notifikationer": {
-      "digest": "67:80:45:bf:24:cf:2e:d7:86:e8:c4:bc:dd:ed:1a:3d:19:53:85:2b:21:25:b7:ac:22:f4:03:5f:4b:fd:e6:70",
+      "digest": "e5:3d:50:f4:98:04:5d:f2:c7:b4:45:34:f0:52:da:fc:a3:ee:21:df:53:f3:ba:44:07:88:b9:d0:5a:75:c3:4c",
       "schema": {
         "columns": [
+          {
+            "name": "data_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'{}'",
+            "pk": 0,
+            "hidden": 0
+          },
           {
             "name": "id",
             "type": "TEXT",

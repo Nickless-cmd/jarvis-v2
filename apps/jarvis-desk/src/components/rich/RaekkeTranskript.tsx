@@ -414,13 +414,18 @@ function RaekkeTranskriptImpl({
   // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const arbejdeKoerer = streaming && !finalAnswerStarted
+  // Den første tekst-delta kan lande før det første tool-kald. Turhovedet skal
+  // stadig være den første synlige del af Jarvis' tur; ellers hopper det ind
+  // over tekst, der allerede er begyndt at streame. Et rent, afsluttet svar
+  // beholder den enkle visning uden turhoved.
+  const visTurhoved = arbejde.length > 0 || (arbejdeKoerer && svar.length > 0)
   const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
 
   return (
     <div className="raekkevisning">
-      {arbejde.length > 0 && (
+      {visTurhoved && (
         <>
           <button
             type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
@@ -432,15 +437,17 @@ function RaekkeTranskriptImpl({
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
             <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
           </button>
-          <div className="rv-gruppe" hidden={!aaben}>
-            {aaben && sektioner.map((s, i) => {
-              if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
-              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
-              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                sidste={i === sektioner.length - 1} svarBegyndt={finalAnswerStarted}
-                config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
-            })}
-          </div>
+          {arbejde.length > 0 && (
+            <div className="rv-gruppe" hidden={!aaben}>
+              {aaben && sektioner.map((s, i) => {
+                if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
+                if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
+                return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
+                  sidste={i === sektioner.length - 1} svarBegyndt={finalAnswerStarted}
+                  config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
+              })}
+            </div>
+          )}
         </>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}

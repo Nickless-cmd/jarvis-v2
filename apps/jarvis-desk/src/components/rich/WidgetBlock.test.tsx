@@ -127,7 +127,7 @@ describe('WidgetBlock', () => {
     await waitFor(() => expect(ramme.style.height).toBe('700px'))
   })
 
-  it('vrøvl i højden afvises, og loftet holder', async () => {
+  it('en lang widget vokser forbi 6000 px uden intern scroll', async () => {
     render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
     const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
     const kilde = ramme.contentWindow as unknown as MessageEventSource
@@ -136,12 +136,22 @@ describe('WidgetBlock', () => {
       source: kilde,
     }))
 
-    // En widget der melder 0 eller Infinity må ikke sætte rammen til noget
-    // ubrugeligt — og et meget højt tal klemmes til loftet.
+    // 6000 px var Desks gamle loft. En længere tabel blev derfor klippet og
+    // Chromium lagde scroll inde i iframen i stedet for i chattråden.
     send(0)
     send(Infinity)
-    send(99999)
-    await waitFor(() => expect(ramme.style.height).toBe('6000px'))
+    send(12_000)
+    await waitFor(() => expect(ramme.style.height).toBe('12000px'))
+  })
+
+  it('et absurd højdetal klemmes stadig af nødværnet', async () => {
+    render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+    const ramme = await waitFor(() => screen.getByTitle('w.html')) as HTMLIFrameElement
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'jarvis-widget-hoejde', hoejde: 999_999 },
+      source: ramme.contentWindow as unknown as MessageEventSource,
+    }))
+    await waitFor(() => expect(ramme.style.height).toBe('100000px'))
   })
 })
 

@@ -365,21 +365,21 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | method | `BoundedOutputBuffer.drain` | `(self)` | — | [src](../../../core/services/tool_execution_trace.py#L61) |
 | class | `_ExecutionBinding` | `` | — | [src](../../../core/services/tool_execution_trace.py#L70) |
 | class | `_CallTrace` | `` | — | [src](../../../core/services/tool_execution_trace.py#L81) |
-| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L102) |
-| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L113) |
-| function | `start_call` | `(tool_use_id, *, tool, run_id, session_id=…, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L119) |
-| function | `_tool_source` | `(tool_name)` | — | [src](../../../core/services/tool_execution_trace.py#L145) |
-| function | `_publish_job_event` | `(event_type, item, payload)` | — | [src](../../../core/services/tool_execution_trace.py#L149) |
-| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L164) |
-| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L171) |
-| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L178) |
-| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L185) |
-| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L192) |
-| function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L209) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L271) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L292) |
-| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L297) |
-| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L320) |
+| function | `_timing_enabled` | `()` | — | [src](../../../core/services/tool_execution_trace.py#L104) |
+| function | `_milliseconds` | `(start, end)` | — | [src](../../../core/services/tool_execution_trace.py#L115) |
+| function | `start_call` | `(tool_use_id, *, tool, run_id, session_id=…, title=…, command=…, announced_at=…)` | — | [src](../../../core/services/tool_execution_trace.py#L121) |
+| function | `_tool_source` | `(tool_name)` | — | [src](../../../core/services/tool_execution_trace.py#L157) |
+| function | `_publish_job_event` | `(event_type, item, payload)` | — | [src](../../../core/services/tool_execution_trace.py#L161) |
+| function | `mark_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L176) |
+| function | `mark_execution_complete` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L183) |
+| function | `mark_approval_wait` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L190) |
+| function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
+| function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L204) |
+| function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L221) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L283) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L304) |
+| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L309) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L332) |
 
 ## `core/services/tool_failure_surface.py`
 _Turn raw tool failures into short, actionable text for visible surfaces._

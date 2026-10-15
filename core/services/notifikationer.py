@@ -13,6 +13,7 @@ der lige er klaret. `ryd_gamle()` fjerner dem efter en uge.
 from __future__ import annotations
 
 import logging
+import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -46,7 +47,8 @@ def _nu() -> str:
 
 def opret(*, user_id: str, slags: str, kilde: str, titel: str,
           tekst: str = "", ref: str | None = None,
-          session_id: str | None = None) -> str:
+          session_id: str | None = None,
+          data: dict[str, Any] | None = None) -> str:
     """Laeg en notifikation. Returnerer id.
 
     Findes samme (slags, ref) i forvejen — ogsaa en KLARET — returneres den
@@ -67,9 +69,10 @@ def opret(*, user_id: str, slags: str, kilde: str, titel: str,
         try:
             conn.execute(
                 "INSERT INTO notifikationer"
-                " (id, user_id, slags, kilde, ref, session_id, titel, tekst, oprettet)"
-                " VALUES (?,?,?,?,?,?,?,?,?)",
-                (nid, user_id, slags, kilde, ref, session_id, titel, tekst, _nu()))
+                " (id, user_id, slags, kilde, ref, session_id, titel, tekst, data_json, oprettet)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (nid, user_id, slags, kilde, ref, session_id, titel, tekst,
+                 json.dumps(data or {}, ensure_ascii=False), _nu()))
         except sqlite3.IntegrityError:
             # GREN "fandtes i forvejen": vores INSERT tabte kaploebet (eller
             # raekken laa der bare i forvejen, klaret eller ej). Dette er
@@ -107,14 +110,14 @@ def aabne(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
     del er_owner  # se docstring
     with connect() as conn:
         raekker = conn.execute(
-            "SELECT id, user_id, slags, kilde, ref, session_id, titel, tekst,"
+            "SELECT id, user_id, slags, kilde, ref, session_id, titel, tekst, data_json,"
             " oprettet, klaret, udfald"
             " FROM notifikationer WHERE user_id=? AND klaret IS NULL"
             " ORDER BY oprettet DESC",
             (user_id,)).fetchall()
     kolonner = ("id", "user_id", "slags", "kilde", "ref", "session_id",
-                "titel", "tekst", "oprettet", "klaret", "udfald")
-    return [dict(zip(kolonner, r)) for r in raekker]
+                "titel", "tekst", "data_json", "oprettet", "klaret", "udfald")
+    return [_med_data(dict(zip(kolonner, r))) for r in raekker]
 
 
 def afsluttede(user_id: str, *, dage: int = 7) -> list[dict[str, Any]]:
@@ -133,15 +136,43 @@ def afsluttede(user_id: str, *, dage: int = 7) -> list[dict[str, Any]]:
     graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
     with connect() as conn:
         raekker = conn.execute(
-            "SELECT id, user_id, slags, kilde, ref, session_id, titel, tekst,"
+            "SELECT id, user_id, slags, kilde, ref, session_id, titel, tekst, data_json,"
             " oprettet, klaret, udfald"
             " FROM notifikationer WHERE user_id=? AND klaret IS NOT NULL"
             " AND klaret >= ?"
             " ORDER BY klaret DESC",
             (user_id, graense)).fetchall()
     kolonner = ("id", "user_id", "slags", "kilde", "ref", "session_id",
-                "titel", "tekst", "oprettet", "klaret", "udfald")
-    return [dict(zip(kolonner, r)) for r in raekker]
+                "titel", "tekst", "data_json", "oprettet", "klaret", "udfald")
+    return [_med_data(dict(zip(kolonner, r))) for r in raekker]
+
+
+def _med_data(raekke: dict[str, Any]) -> dict[str, Any]:
+    try:
+        raekke["data"] = json.loads(str(raekke.pop("data_json") or "{}"))
+    except (TypeError, ValueError):
+        raekke.pop("data_json", None)
+        raekke["data"] = {}
+    return raekke
+
+
+def opdater(slags: str, ref: str, *, titel: str, tekst: str = "",
+            data: dict[str, Any] | None = None) -> bool:
+    """Opdater den samme feed-post, fx mens et release gaar gennem CI."""
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT id, user_id FROM notifikationer WHERE slags=? AND ref=?",
+            (slags, ref),
+        ).fetchone()
+        if raekke is None:
+            return False
+        conn.execute(
+            "UPDATE notifikationer SET titel=?, tekst=?, data_json=? WHERE id=?",
+            (titel, tekst, json.dumps(data or {}, ensure_ascii=False), str(raekke[0])),
+        )
+        conn.commit()
+    _udsend("opdateret", str(raekke[0]), str(raekke[1]), slags)
+    return True
 
 
 def luk(notif_id: str, udfald: str) -> None:

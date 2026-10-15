@@ -5,6 +5,7 @@ import { join } from 'node:path'
 const læs = (n: string) => readFileSync(join(__dirname, n), 'utf8')
 const tokens = læs('tokens.css')
 const app = læs('app.css')
+const rail = læs('message-rail.css')
 
 const brugte = (css: string) =>
   new Set([...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]))
@@ -51,7 +52,7 @@ describe('design-tokens', () => {
   // Med fallback brænder den en literal ind, som ikke følger temaskift.
   it('bruger ingen tokens der ikke er defineret', () => {
     const def = new Set([...definerede(tokens), ...definerede(app)])
-    const manglende = [...brugte(app), ...brugte(tokens)].filter((t) => !def.has(t))
+    const manglende = [...brugte(app), ...brugte(rail), ...brugte(tokens)].filter((t) => !def.has(t))
     expect([...new Set(manglende)].sort()).toEqual([])
   })
 
@@ -668,16 +669,31 @@ describe('railens streger — hvile, hover og den nederste (4/10-2026)', () => {
   //
   // Værnet måler derfor de tre ting der stadig gælder: man skal kunne SE den i
   // hvile, den må ikke forveksles med hover, og den må ikke kunne flytte sig.
-  const af = (re: RegExp) => Number(app.match(re)?.[1] ?? 0)
+  const af = (re: RegExp) => Number(rail.match(re)?.[1] ?? 0)
   const sidste = af(/^\.msg-rail-row\.er-sidste \.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
   const hover = af(/^\.msg-rail-row:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
   const almindelig = af(/^\.msg-rail-dash \{[^}]*width:\s*([\d.]+)px/m)
   const sidsteHover = af(/^\.msg-rail-row\.er-sidste:hover \.msg-rail-dash,[^}]*width:\s*([\d.]+)px/m)
 
   it('reglerne findes', () => {
-    expect(sidste, 'er-sidste-reglen mangler i app.css').toBeGreaterThan(0)
-    expect(hover, 'hover-reglen mangler i app.css').toBeGreaterThan(0)
-    expect(almindelig, 'den almindelige streg mangler i app.css').toBeGreaterThan(0)
+    expect(sidste, 'er-sidste-reglen mangler i message-rail.css').toBeGreaterThan(0)
+    expect(hover, 'hover-reglen mangler i message-rail.css').toBeGreaterThan(0)
+    expect(almindelig, 'den almindelige streg mangler i message-rail.css').toBeGreaterThan(0)
+  })
+
+  it('bruger hele chatfladens højde uden den gamle cirka 14-rækkers grænse', () => {
+    const panel = rail.match(/\.msg-rail-panel\s*\{([^}]*)\}/)?.[1] ?? ''
+    const række = rail.match(/\.msg-rail-row\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(panel).toMatch(/max-height:\s*calc\(100vh - 200px\)/)
+    expect(panel).not.toMatch(/240px/)
+    expect(række).toMatch(/min-height:\s*8px/)
+    expect(række).not.toMatch(/flex:\s*0 0 16px/)
+  })
+
+  it('har én indlæst rail-stil som sandhedskilde', () => {
+    const appTsx = readFileSync(join(__dirname, '../App.tsx'), 'utf8')
+    expect(appTsx).toContain("import './styles/message-rail.css'")
+    expect(app).not.toMatch(/^\.msg-rail(?:-|\s|\{)/m)
   })
 
   it('den nederste er længere end en almindelig streg — den skal ses i hvile', () => {

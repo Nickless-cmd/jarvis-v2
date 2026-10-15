@@ -145,7 +145,7 @@ async def run_tool_batch(
     _local = bool(getattr(run, "local_tool_exec", False))
     from core.runtime.settings import load_settings
     from core.services.tool_execution_trace import (
-        BoundedOutputBuffer, cancel_call, start_call,
+        BoundedOutputBuffer, cancel_call, start_call, surface_result,
     )
     from core.services.terminal_sanitize import TerminalStreamSanitizer
 
@@ -231,6 +231,17 @@ async def run_tool_batch(
                     tool=_tc_name,
                     run_id=run.run_id,
                     session_id=getattr(run, "session_id", "") or "",
+                    title=str(
+                        _tc_args.get("description")
+                        or _tc_args.get("titel")
+                        or _tool_label(_tc_name, _tc_args)
+                    ),
+                    command=str(
+                        _tc_args.get("command")
+                        or _tc_args.get("path")
+                        or _tc_args.get("file_path")
+                        or ""
+                    ),
                 )
                 _active_trace_ids.append(_tool_id)
             yield _sse("working_step", {
@@ -386,17 +397,22 @@ async def run_tool_batch(
             _hb["elapsed_s"] = int(time.monotonic() - _start)
             _hb["beat"] = _beats
             yield _sse("heartbeat", _hb)
+        except BaseException as _exc:  # noqa: BLE001 — rejses igen efter oprydning
+            _tool_exc = _exc
+            break
     for _payload in _drain_output():
         yield _sse("tool_output_delta", _payload)
     # Fang kastet frem for at lade det springe PostToolUse over. Undtagelsen
     # rejses igen til sidst, saa kalderen ser praecis det samme som foer —
     # forskellen er KUN at hook-parringen holder.
-    try:
-        _results = await _tool_task
-    except BaseException as _exc:      # noqa: BLE001 — rejses igen nedenfor
-        _tool_exc = _exc
+    if _tool_exc is None:
+        try:
+            _results = await _tool_task
+        except BaseException as _exc:      # noqa: BLE001 — rejses igen nedenfor
+            _tool_exc = _exc
+    if _tool_exc is not None:
         _results = [{"tool_name": "", "status": "error",
-                     "result_text": f"[udfoerelsen kastede] {_exc!r}"[:2000]}]
+                     "result_text": f"[udfoerelsen kastede] {_tool_exc!r}"[:2000]}]
 
     # Flet de blokerede ind paa deres OPRINDELIGE plads. Raekkefoelgen betyder
     # noget: resultaterne laeses parvis med kaldene laengere oppe.
@@ -454,6 +470,12 @@ async def run_tool_batch(
 
     if _tool_exc is not None:
         # Parringen er holdt; nu maa fejlen fortsaette sin vej som foer.
+        for _tool_id in _active_trace_ids:
+            surface_result(
+                _tool_id,
+                status="error",
+                result_text=f"[udfoerelsen kastede] {_tool_exc!r}"[:2000],
+            )
         raise _tool_exc
     # Haeft modellens eget kald-id paa hvert resultat (17/9-2026). Resultaterne
     # ligger paa kaldenes plads — blokerede er flettet ind ovenfor netop for at

@@ -75,12 +75,14 @@ function startedJob(event: LiveJobEvent): BackgroundJob {
     return { ...(supplied as BackgroundJob), job_key: event.job_key }
   }
   const tool = String(payload.tool || 'Værktøj')
+  const title = String(payload.title || payload.description || '').trim()
+  const command = String(payload.command || '').trim()
   return {
     id: String(payload.tool_use_id || event.job_key || ''),
     job_key: event.job_key,
     kilde: source(event.source),
-    navn: tool,
-    kommando: tool,
+    navn: title || command || tool,
+    kommando: command || tool,
     status: 'running',
     can_pause: false,
     can_stop: false,

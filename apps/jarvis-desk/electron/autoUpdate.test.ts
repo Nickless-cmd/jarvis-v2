@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { wireUpdater } from './autoUpdate'
+import { findLinuxAppImage, wireUpdater } from './autoUpdate'
 
 function fakeUpdater() {
   const handlers: Record<string, (x: unknown) => void> = {}
@@ -55,5 +55,20 @@ describe('wireUpdater', () => {
     const api = wireUpdater(up as never, () => {})
     await expect(api.downloadAndInstall()).rejects.toThrow('Netværksfejl')
     expect(up.quitAndInstall).not.toHaveBeenCalled()
+  })
+})
+
+describe('findLinuxAppImage', () => {
+  it('genfinder den installerede AppImage når launcheren har tabt APPIMAGE', () => {
+    const exists = vi.fn((path: string) => path === '/home/bjorn/Applications/J.A.R.V.I.S.AppImage')
+    expect(findLinuxAppImage({ HOME: '/home/bjorn' }, exists)).toBe(
+      '/home/bjorn/Applications/J.A.R.V.I.S.AppImage',
+    )
+  })
+
+  it('bevarer launcherens egen absolutte APPIMAGE-sti', () => {
+    const exists = vi.fn(() => true)
+    expect(findLinuxAppImage({ APPIMAGE: '/opt/Jarvis.AppImage', HOME: '/home/bjorn' }, exists))
+      .toBe('/opt/Jarvis.AppImage')
   })
 })

@@ -42,6 +42,7 @@ import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
 import { maaPolle } from '../../lib/ro'
 import { markNotificationsRead } from '../../lib/notificationAttention'
 import { spilToastKlang } from '../../lib/toastLyd'
+import { updatesBridge } from '../../lib/updatesBridge'
 
 /** Samme mapping som NotifikationsFeed — en post skal se ens ud i listen og
  *  i toasten. Ukendte slags faar klokken, saa en ny router-slags aldrig
@@ -62,6 +63,11 @@ const IKON: Record<string, typeof Bell> = {
 const TONE: Record<string, 'fejl' | 'ok' | 'neutral'> = {
   run_failed: 'fejl', membrane_breach: 'fejl', infra_security: 'fejl',
   run_done: 'ok', release: 'ok', keymaker_key_earned: 'ok',
+}
+
+function toastTone(post: Notifikation): 'fejl' | 'ok' | 'neutral' {
+  if (post.slags === 'release' && post.data?.phase === 'failed') return 'fejl'
+  return TONE[post.slags] ?? 'neutral'
 }
 
 /** Hvor laenge en toast lever, og hvor mange der maa staa paa skaermen. */
@@ -85,6 +91,11 @@ const MAKS_SAMTIDIGE = 3
 type ToastPost =
   | { kind: 'notif'; nogle: string; post: Notifikation }
   | { kind: 'agent'; nogle: string; card: FeedCard }
+
+function toastNoegle(post: Notifikation): string {
+  const phase = post.slags === 'release' ? post.data?.phase : undefined
+  return phase ? `${post.id}:${phase}` : post.id
+}
 
 export function NotifikationsToast({ config, onAabenSession }: {
   config: ApiConfig | null
@@ -150,20 +161,26 @@ export function NotifikationsToast({ config, onAabenSession }: {
         if (kendte.current === null) {
           // Foerste svar: baseline. Ingen toasts — ellers ville et opstart
           // med mange aabne poster dumpe dem alle i hovedet paa brugeren.
-          kendte.current = new Set(aabne.map((p) => p.id))
+          kendte.current = new Set(aabne.map(toastNoegle))
           return
         }
 
-        const nye = aabne.filter((p) => !kendte.current!.has(p.id))
+        const nye = aabne.filter((p) => !kendte.current!.has(toastNoegle(p)))
         if (!nye.length) return
-        nye.forEach((p) => kendte.current!.add(p.id))
+        nye.forEach((p) => kendte.current!.add(toastNoegle(p)))
 
         // Lyden foelger den FOERSTE nye post — en lyd pr. post ville blive
         // en lydsalve naar flere lander i samme hentning.
         const foerste = nye[0]
-        if (foerste) spilToastKlang(TONE[foerste.slags] ?? 'neutral')
+        if (foerste) spilToastKlang(toastTone(foerste))
 
-        setKoe((k) => [...k, ...nye.map((p) => ({ kind: 'notif' as const, nogle: p.id, post: p }))].slice(-MAKS_SAMTIDIGE))
+        setKoe((k) => {
+          const nyeIds = new Set(nye.filter((p) => p.slags === 'release').map((p) => p.id))
+          const udenGammelReleasefase = k.filter((t) => t.kind !== 'notif' || !nyeIds.has(t.post.id))
+          return [...udenGammelReleasefase, ...nye.map((p) => ({
+            kind: 'notif' as const, nogle: toastNoegle(p), post: p,
+          }))].slice(-MAKS_SAMTIDIGE)
+        })
       })
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
   }, [apiBaseUrl, authToken])
@@ -256,13 +273,13 @@ export function NotifikationsToast({ config, onAabenSession }: {
     setKoe((k) => k.filter((t) => t.nogle !== nogle))
   }, [])
 
-  const aabn = useCallback((p: Notifikation) => {
+  const aabn = useCallback((p: Notifikation, nogle: string) => {
     markNotificationsRead([p.id])
     onAabenSession?.(p.session_id)
-    luk(p.id)
+    luk(nogle)
   }, [luk, onAabenSession])
 
-  const afvis = useCallback((p: Notifikation) => {
+  const afvis = useCallback((p: Notifikation, nogle: string) => {
     if (!config) return
     // To slags poster, to veje — og forskellen er `kan_afgoere`:
     //   en post der KRAEVER et svar afgoeres (approved=false = afvist),
@@ -273,7 +290,7 @@ export function NotifikationsToast({ config, onAabenSession }: {
     // Optimistisk: feltet forsvinder straks. Fejler kaldet, kommer posten
     // tilbage ved naeste hentning — den forsvinder ikke af sig selv af den
     // grund, og serveren er stadig kilden.
-    luk(p.id)
+    luk(nogle)
     void kald.catch(() => { /* naeste hentning genopretter sandheden */ })
   }, [config, luk])
 
@@ -284,8 +301,8 @@ export function NotifikationsToast({ config, onAabenSession }: {
       {koe.map((t) => t.kind === 'notif' ? (
         <ToastKort key={t.nogle} post={t.post}
                    synlig={synlig}
-                   onAabn={() => aabn(t.post)}
-                   onAfvis={() => afvis(t.post)}
+                   onAabn={() => aabn(t.post, t.nogle)}
+                   onAfvis={() => afvis(t.post, t.nogle)}
                    onLuk={() => luk(t.nogle)} />
       ) : (
         <AgentToastKort key={t.nogle} card={t.card} config={config}
@@ -332,7 +349,9 @@ function ToastKort({ post, synlig, onAabn, onAfvis, onLuk }: {
   }, [ude])
 
   const Ikon = IKON[post.slags] ?? Bell
-  const tone = TONE[post.slags]
+  const tone = toastTone(post)
+  const releasePhase = post.slags === 'release' ? post.data?.phase : undefined
+  const [installerer, setInstallerer] = useState(false)
   const klasse = [
     'notif-toast',
     ind ? 'er-ind' : '',
@@ -350,9 +369,23 @@ function ToastKort({ post, synlig, onAabn, onAfvis, onLuk }: {
         <div className="notif-toast-slags">{post.slags.replace(/_/g, ' ')}</div>
         <div className="notif-toast-titel">{post.titel}</div>
         {post.tekst && <p className="notif-toast-tekst">{post.tekst}</p>}
+        {post.slags === 'release' && post.data && <div className="notif-release-status">
+          <div className="notif-release-progress" role="progressbar"
+               aria-label="Build-fremdrift" aria-valuemin={0} aria-valuemax={100}
+               aria-valuenow={Math.max(0, Math.min(100, post.data.progress ?? 0))}>
+            <span style={{ width: `${Math.max(0, Math.min(100, post.data.progress ?? 0))}%` }} />
+          </div>
+          <span>{post.data.label}</span>
+        </div>}
         <div className="notif-toast-knapper">
-          <button type="button" className="primaer"
+          {releasePhase === 'ready' && updatesBridge()?.installNow ? <button type="button" className="primaer"
+                  disabled={installerer}
+                  onClick={(e) => {
+                    e.stopPropagation(); setInstallerer(true)
+                    void updatesBridge()!.installNow!().finally(() => setInstallerer(false))
+                  }}>{installerer ? 'Henter…' : 'Installér nu'}</button> : <button type="button" className="primaer"
                   onClick={(e) => { e.stopPropagation(); onAabn() }}>Åbn</button>
+          }
           <button type="button"
                   onClick={(e) => { e.stopPropagation(); onAfvis() }}>
             {post.kan_afgoere ? 'Afvis' : 'Luk'}

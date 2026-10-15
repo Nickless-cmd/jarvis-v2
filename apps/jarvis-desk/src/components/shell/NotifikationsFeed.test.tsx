@@ -161,8 +161,25 @@ describe('NotifikationsFeed', () => {
     expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')
   })
 
-  it('lukker en release straks og lader den ikke genopstå fra et forsinket feed-svar', async () => {
-    hent.mockResolvedValue({ poster: [post({ slags: 'release', kan_afgoere: false })], antal: 1 })
+  it('viser CI-fremdrift uden installation mens releasen bygges', async () => {
+    hent.mockResolvedValue({ poster: [post({
+      slags: 'release', titel: 'Build 0.6.234 er undervejs', kan_afgoere: false,
+      data: { version: '0.6.234', phase: 'building', progress: 40, label: 'Bygger macOS og Windows' },
+    })], antal: 1 })
+    vi.stubGlobal('jarvisDesk', { updates: { installNow: vi.fn() } })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByTestId('notif-1')
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40')
+    expect(screen.getByText('Bygger macOS og Windows')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Installér nu' })).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('tilbyder installation når samme releasepost er klar', async () => {
+    hent.mockResolvedValue({ poster: [post({
+      slags: 'release', titel: 'Version 0.6.234 er klar', kan_afgoere: false,
+      data: { version: '0.6.234', phase: 'ready', progress: 100, label: 'Klar til installation' },
+    })], antal: 1 })
     set.mockResolvedValue(undefined)
     const installNow = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('jarvisDesk', { updates: { installNow } })

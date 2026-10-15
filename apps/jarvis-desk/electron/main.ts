@@ -878,11 +878,15 @@ app.whenReady().then(() => {
   // Graceful: hvis dep/release-config mangler (fx dev) fanges alt og bliver no-op.
   void (async () => {
     try {
+      const { findLinuxAppImage, wireUpdater } = await import('./autoUpdate')
+      if (process.platform === 'linux') {
+        const appImage = findLinuxAppImage(process.env, fs.existsSync)
+        if (appImage) process.env.APPIMAGE = appImage
+      }
       const updMod = await import('electron-updater')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const up = (updMod as any)?.autoUpdater ?? (updMod as any)?.default?.autoUpdater
       if (!up) return
-      const { wireUpdater } = await import('./autoUpdate')
       const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())

@@ -275,10 +275,14 @@ def _ensure_notification_tables(conn) -> None:
             session_id  TEXT,
             titel       TEXT NOT NULL,
             tekst       TEXT NOT NULL DEFAULT '',
+            data_json   TEXT NOT NULL DEFAULT '{}',
             oprettet    TEXT NOT NULL,
             klaret      TEXT,
             udfald      TEXT
         )""")
+    notif_cols = {r[1] for r in conn.execute("PRAGMA table_info(notifikationer)").fetchall()}
+    if "data_json" not in notif_cols:
+        conn.execute("ALTER TABLE notifikationer ADD COLUMN data_json TEXT NOT NULL DEFAULT '{}'")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS ix_notif_aaben "
         "ON notifikationer(user_id, klaret, oprettet)")

@@ -151,3 +151,26 @@ def test_afsluttede_ser_kun_egne_og_kun_inden_for_vinduet(isolated_runtime) -> N
         conn.commit()
 
     assert [r["id"] for r in n.afsluttede("bjorn")] == [min_egen]
+
+
+def test_releasepostens_data_kan_opdateres_uden_at_skifte_id(isolated_runtime) -> None:
+    from core.services import notifikationer as n
+
+    nid = n.opret(
+        user_id="bjorn", slags="release", kilde="egen",
+        ref="jarvis-desktop-v0.6.234", titel="Build 0.6.234 er undervejs",
+        data={"version": "0.6.234", "phase": "building", "progress": 40},
+    )
+
+    assert n.opdater(
+        "release", "jarvis-desktop-v0.6.234",
+        titel="Version 0.6.234 er klar",
+        data={"version": "0.6.234", "phase": "ready", "progress": 100},
+    ) is True
+
+    poster = n.aabne("bjorn", er_owner=True)
+    assert [p["id"] for p in poster] == [nid]
+    assert poster[0]["titel"] == "Version 0.6.234 er klar"
+    assert poster[0]["data"] == {
+        "version": "0.6.234", "phase": "ready", "progress": 100,
+    }

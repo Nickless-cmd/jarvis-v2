@@ -44,6 +44,15 @@ describe('MessageRail', () => {
     expect(rows[2]!.getAttribute('aria-current')).toBe('true')
   })
 
+  it('bevarer positions- og slutmarkøren efter fjorten ankre', () => {
+    render(<Harness ids={Array.from({ length: 20 }, (_, i) => `anker-${i + 1}`)} />)
+    const rows = screen.getAllByRole('button')
+
+    expect(rows).toHaveLength(20)
+    expect(rows[19]).toHaveClass('is-active', 'er-sidste')
+    expect(rows[19]).toHaveAttribute('aria-current', 'true')
+  })
+
   it('rækken har spørgsmålet som tilgængeligt navn', () => {
     // Rækken bærer ingen synlig tekst mere (4/10-2026) — uden aria-label ville
     // knappen stå uden navn for en skærmlæser.

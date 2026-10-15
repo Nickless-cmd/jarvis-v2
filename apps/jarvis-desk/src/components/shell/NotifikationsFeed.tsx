@@ -525,6 +525,8 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession, 
             {agentVenter.map(agentKortRaekke)}
             {venter.map((p) => {
               const Ikon = IKON[p.slags] ?? Bell
+              const releasePhase = p.slags === 'release' ? p.data?.phase : undefined
+              const releaseReady = p.slags === 'release' && (!releasePhase || releasePhase === 'ready')
               return (
                 <SwipeCard key={p.id} className={`notif-item tone-${p.slags}${notificationAttention([p.id]).unread ? '' : ' er-laest'}`}
                   onRead={() => markNotificationsRead([p.id])} onDelete={p.foraeldet ? undefined : () => void afslut(p)}>
@@ -544,7 +546,18 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession, 
                     <span className="notif-tid">{siden(p.oprettet)}</span>
                   </div>
                   {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
-                  {p.slags === 'release' && updatesBridge()?.installNow && <button type="button"
+                  {p.slags === 'release' && p.data && <div className="notif-release-status">
+                    <div className="notif-release-progress" role="progressbar"
+                         aria-label="Build-fremdrift" aria-valuemin={0} aria-valuemax={100}
+                         aria-valuenow={Math.max(0, Math.min(100, p.data.progress ?? 0))}>
+                      <span style={{ width: `${Math.max(0, Math.min(100, p.data.progress ?? 0))}%` }} />
+                    </div>
+                    <span>{p.data.label}</span>
+                    {releasePhase === 'failed' && p.data.workflow_url && <a
+                      href={p.data.workflow_url} target="_blank" rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}>Se build</a>}
+                  </div>}
+                  {releaseReady && updatesBridge()?.installNow && <button type="button"
                     className="notif-install" disabled={installerer === p.id}
                     onClick={() => void installerRelease(p)}>{installerer === p.id ? 'Henter…' : 'Installér nu'}</button>}
                   {p.foraeldet && (

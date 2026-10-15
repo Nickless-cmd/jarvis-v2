@@ -752,3 +752,72 @@ class TestRecurringTilIndbakken:
             focus="Runtime-inspektion", origin="recurring", task_id=""))
 
         assert self._poster(kald) == [], f"uden task_id maa der ikke gaettes: {kald}"
+
+    def _stub_db(self, monkeypatch, tekst: str | None):
+        """Stub `visible_runs`-laesningen. `None` = laesningen FEJLER."""
+        import core.runtime.db as _db
+
+        if tekst is None:
+            def _boom():
+                raise RuntimeError("db nede")
+            monkeypatch.setattr(_db, "connect", _boom)
+            return
+
+        class _FakeConn:
+            def execute(self, *_a, **_kw):
+                class _R:
+                    def fetchone(self):
+                        return (tekst,)
+                return _R()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+        monkeypatch.setattr(_db, "connect", lambda: _FakeConn())
+
+    def test_teksten_baeres_selv_naar_ingen_kald_blev_registreret(
+        self, monkeypatch,
+    ):
+        """MAALT I DRIFT 15/10-2026 — dette er den ægte fejl.
+
+        Inspektionen fyrede 19:17:54 og skrev 319 tegn, men fik 0 registrerede
+        kald: et SAMTIDIGT run overtog `_get_current_run()`. Fordi `output` blev
+        laest inde i `if tool_calls:`, blev teksten aldrig hentet, og posten
+        faldt til «0 værktøjskald, intet referat» — et tomt svar der lignede et
+        svar. Teksten skal bæres uanset kald.
+        """
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: [])  # 0 kald
+        self._stub_db(monkeypatch, "Inspektionen er kørt — ét punkt kræver opmærksomhed.")
+
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2",
+            origin="recurring"))
+
+        poster = self._poster(kald)
+        assert len(poster) == 1, f"forventede én recurring-post: {kald}"
+        assert "Inspektionen er kørt" in poster[0]["beskrivelse"], (
+            f"teksten skal bæres selv uden kald: {poster[0]['beskrivelse']}"
+        )
+        assert "0 værktøjskald" not in poster[0]["beskrivelse"], (
+            "fald-tilbage-teksten må ikke stå alene når runnet HAR skrevet"
+        )
+
+    def test_fejlet_laesning_maa_ikke_ligne_en_tavs_koersel(self, monkeypatch):
+        """`_output_laest` bevarer den gamle kontrakt: kun en LAEST, tom tekst
+        er «tavs». En DB-fejl må ikke udgive et run for at være tavst."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="", flag=True)
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: ["bash"])
+        self._stub_db(monkeypatch, None)  # laesningen fejler
+
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion", origin="recurring"))
+
+        assert [k for k in kald if k["kildetype"] == "run_closure"] == [], (
+            f"en fejlet laesning maa ikke ligne tavshed: {kald}"
+        )

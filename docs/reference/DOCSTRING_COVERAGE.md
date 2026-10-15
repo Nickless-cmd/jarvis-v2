@@ -1849,7 +1849,7 @@ Generated from source. 8999/17197 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L821)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L837)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)

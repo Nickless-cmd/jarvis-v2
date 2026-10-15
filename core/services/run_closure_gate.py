@@ -630,41 +630,57 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     # Initialiseret FOER blokken: referatet nedenfor laeser den, og uden
     # tool-kald ville navnet ellers ikke findes. (Samme unbound-name-fejl som
     # huset allerede har dokumenteret ved _guard_py_escapes.)
+    # 15/10-2026: LAESNINGEN ER FLYTTET UD AF `if tool_calls`. Referatet og
+    # recurring-grenen nedenfor bruger `output` uanset om der blev kaldt
+    # vaerktoejer — og et run kan skrive et svar uden at ét eneste kald blev
+    # registreret. Maalt: inspektions-runnet autonomous-9fa1431 skrev 319 tegn,
+    # men fik 0 registrerede kald fordi et SAMTIDIGT run overtog
+    # `_get_current_run()` (samme proces-global som `aktuel_origin()`), saa
+    # posten faldt til «0 vaerktoejskald, intet referat» — et tomt svar der
+    # lignede et svar. Selv-run-detektionen nedenfor kraever stadig kald: uden
+    # dem er «tavs» ikke et meningsfuldt ord.
     output = ""
-    if tool_calls:
+    _output_laest = False
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT text_preview FROM visible_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+        output = (row[0] if row else "") or ""
+        _output_laest = True
+    except Exception:
+        logger.warning("run_closure_gate: failed to read run output", exc_info=True)
+
+    # `_output_laest` bevarer den gamle kontrakt: en FEJLET laesning maa ikke
+    # ligne en tavs koersel. Kun en laest, tom tekst er «tavs».
+    if tool_calls and _output_laest and not output.strip():
         try:
-            from core.runtime.db import connect
-            with connect() as conn:
-                row = conn.execute(
-                    "SELECT text_preview FROM visible_runs WHERE run_id = ?",
-                    (run_id,),
-                ).fetchone()
-            output = (row[0] if row else "") or ""
-            if not output.strip():
-                from core.eventbus.bus import event_bus
-                event_bus.publish("runtime.run_ended_silent", {
-                    "run_id": run_id,
-                    "session_id": session_id,
-                    "tool_calls": tool_calls,
-                    "tool_call_count": len(tool_calls),
-                    "unique_tools": sorted(set(tool_calls)),
-                })
-                logger.info(
-                    "run_closure_gate: silent run %s — %d tool calls, no visible output",
-                    run_id[:12], len(tool_calls),
-                )
-                # Indbakken, ikke Discord (13/10-2026). Eventet ovenfor er
-                # telemetri; dette er leveringen til Bjørn.
-                _registrer_i_indbakken(
-                    kildetype="run_closure",
-                    kilde_id=f"silent-{run_id}",
-                    beskrivelse=(
-                        f"Run {run_id[:12]} endte uden svar — "
-                        f"{len(tool_calls)} værktøjskald, ingen tekst. "
-                        f"Værktøjer: {', '.join(sorted(set(tool_calls))[:6])}"
-                    ),
-                    run_id=run_id,
-                )
+            from core.eventbus.bus import event_bus
+            event_bus.publish("runtime.run_ended_silent", {
+                "run_id": run_id,
+                "session_id": session_id,
+                "tool_calls": tool_calls,
+                "tool_call_count": len(tool_calls),
+                "unique_tools": sorted(set(tool_calls)),
+            })
+            logger.info(
+                "run_closure_gate: silent run %s — %d tool calls, no visible output",
+                run_id[:12], len(tool_calls),
+            )
+            # Indbakken, ikke Discord (13/10-2026). Eventet ovenfor er
+            # telemetri; dette er leveringen til Bjørn.
+            _registrer_i_indbakken(
+                kildetype="run_closure",
+                kilde_id=f"silent-{run_id}",
+                beskrivelse=(
+                    f"Run {run_id[:12]} endte uden svar — "
+                    f"{len(tool_calls)} værktøjskald, ingen tekst. "
+                    f"Værktøjer: {', '.join(sorted(set(tool_calls))[:6])}"
+                ),
+                run_id=run_id,
+            )
         except Exception:
             logger.warning("run_closure_gate: failed silent-run check", exc_info=True)
 

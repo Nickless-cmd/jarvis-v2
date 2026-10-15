@@ -121,6 +121,44 @@ async def cowork_side_tasks(scope: str = "open") -> dict:
     return {"side_tasks": items, "count": len(items), "scope": "open"}
 
 
+@router.post("/side-tasks")
+async def cowork_side_task_opret(payload: dict = Body(default={})) -> dict:
+    """Opret en sideopgave fra Desk — den flade Bjørn bad om 15/10-2026.
+
+    «jeg mangler et sted i desk jeg kan oprette side-opgaver selv». Indtil nu
+    kunne KUN Jarvis flagge en opgave (`flag_side_task`): en ting Bjørn selv
+    bemærkede midt i noget andet måtte igennem en samtale for at blive skrevet
+    ned — og en samtale koster kontekst, præcis det sideopgaven findes for at
+    undgå.
+
+    Kun ejeren, som de øvrige sideopgave-ruter: en opgaves prompt er
+    selvstændige instruktioner og kan rumme privat kontekst fra den samtale
+    den blev skrevet i.
+
+    `title` og `prompt` er begge påkrævet. Tjenestens `flag` afviser dem der
+    mangler, men vi svarer 400 her ogsaa, saa klienten faar en brugbar fejl i
+    stedet for et tavst `status: error`.
+    """
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan oprette sideopgaver")
+    title = str((payload or {}).get("title") or "").strip()
+    prompt = str((payload or {}).get("prompt") or "").strip()
+    if not title or not prompt:
+        raise HTTPException(status_code=400, detail="titel og beskrivelse er påkrævet")
+    from core.services.side_tasks import flag
+    res = await asyncio.to_thread(
+        flag,
+        title=title,
+        prompt=prompt,
+        tldr=str((payload or {}).get("tldr") or ""),
+        session_id=str((payload or {}).get("session") or "").strip() or None,
+    )
+    if str(res.get("status") or "") != "ok":
+        raise HTTPException(status_code=400, detail=str(res.get("error") or "kunne ikke oprette sideopgaven"))
+    return res
+
+
 @router.post("/side-tasks/{side_task_id}/status")
 async def cowork_side_task_status(side_task_id: str, payload: dict = Body(default={})) -> dict:
     """Skift en sideopgaves status fra Desk: `activated` (startet fra kortet —

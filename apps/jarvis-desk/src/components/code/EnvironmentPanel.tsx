@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BranchVaelger } from './BranchVaelger'
 import { WorkspaceVaelger } from './WorkspaceVaelger'
-import { Globe, Bot, Settings, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
+import { Globe, Bot, Settings, GitCompare, GitCommitHorizontal, Github, ListTodo } from 'lucide-react'
 import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
@@ -25,7 +25,7 @@ export function EnvironmentPanel({
   isOwner = false, onChanged,
   onOpenAgent, onOpenSource, onOpenTool,
   gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
-  onVaelgWorkspace, onVaelgMappe,
+  onVaelgWorkspace, onVaelgMappe, onOpretSideOpgave,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -41,6 +41,11 @@ export function EnvironmentPanel({
   onVaelgWorkspace?: (valg: { kind: string; root: string }) => void
   /** Aabner den native mappe-vaelger paa brugerens egen maskine. */
   onVaelgMappe?: () => Promise<string | null>
+  /** Aabner opret-sideopgave-boksen. Bjørn 15/10-2026: «jeg mangler et sted i
+   *  desk jeg kan oprette side-opgaver selv». Bevidst IKKE gated paa git —
+   *  en sideopgave har intet med et repo at goere, og en post der forsvandt
+   *  naar mappen ikke var et git-repo ville vaere en tavs udeladelse. */
+  onOpretSideOpgave?: () => void
   onChanged?: () => void
   onOpenAgent?: (agent: AgentReference) => void
   onOpenSource?: (source: SourceEvidence) => void
@@ -206,6 +211,13 @@ export function EnvironmentPanel({
               <li className="env-row env-action">
                 <button type="button" className="env-actbtn" onClick={doPr} disabled={!!busy}>
                   <Github size={13} /> {busy === 'pr' ? 'Opretter…' : 'Opret pull request'}
+                </button>
+              </li>
+            )}
+            {onOpretSideOpgave && (
+              <li className="env-row env-action">
+                <button type="button" className="env-actbtn" onClick={onOpretSideOpgave}>
+                  <ListTodo size={13} /> Opret side-opgave
                 </button>
               </li>
             )}

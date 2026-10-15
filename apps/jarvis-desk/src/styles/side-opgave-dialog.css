@@ -1,0 +1,90 @@
+/* Opret-sideopgave-boksen. Formen er den samme som `.privacy-dialog` — se den
+   fils kommentar for hvorfor `position: fixed; inset: 0; margin: auto` er
+   nødvendigt: husets `* { margin: 0 }`-reset i tokens.css staar i
+   AUTHOR-origin og slår UA'ens `dialog { margin: auto }`, så uden den lander
+   `dialog:modal` i øverste venstre hjørne i stedet for midt på skærmen. */
+.sod {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  padding: 0;
+  border: 1px solid var(--overlay-line);
+  border-radius: 14px;
+  background: var(--overlay-bg);
+  color: var(--fg-1);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 50%);
+  overflow: auto;
+}
+.sod::backdrop { background: rgb(0 0 0 / 65%); }
+
+.sod-indi {
+  position: relative;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.sod-luk {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--bg-3);
+  color: var(--fg-1);
+  cursor: pointer;
+}
+.sod-luk:hover { background: var(--bg-4); }
+
+.sod-overskrift { margin: 0; font-size: 17px; font-weight: 600; }
+.sod-hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+.sod-felt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--fg-2);
+}
+.sod-felt input,
+.sod-felt textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  font: inherit;
+}
+.sod-felt textarea { resize: vertical; }
+.sod-felt input:focus,
+.sod-felt textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+.sod-fejl { margin: 0; color: var(--error-fg); font-size: 12.5px; }
+
+.sod-knapper { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.sod-knap {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-3);
+  color: var(--fg-1);
+  font: inherit;
+  cursor: pointer;
+}
+.sod-knap:hover:not(:disabled) { background: var(--bg-4); }
+.sod-knap:disabled { opacity: .55; cursor: default; }
+.sod-knap:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+/* Accenten er lys teal — teksten på den skal være mørk, ikke hvid. */
+.sod-primaer { background: var(--accent); border-color: var(--accent); color: #0e1a18; }
+.sod-primaer:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+
+@media (max-width: 600px) { .sod-indi { padding: 20px; } }

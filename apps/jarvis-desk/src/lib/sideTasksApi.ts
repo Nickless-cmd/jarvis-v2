@@ -82,3 +82,28 @@ export async function setSideTaskSkjult(
   )
   if (r?.status === 'error') throw new Error(r.error || 'Kunne ikke skjule sideopgaven')
 }
+
+/**
+ * Opret en sideopgave fra Desk.
+ *
+ * Bjørn 15/10-2026: «jeg mangler et sted i desk jeg kan oprette side-opgaver
+ * selv». Indtil nu kunne KUN Jarvis flagge en (`flag_side_task`), så en ting
+ * han selv bemærkede midt i noget andet måtte igennem en samtale for at blive
+ * skrevet ned — og det er præcis den omvej sideopgaven findes for at undgå.
+ *
+ * `title` og `prompt` er begge påkrævet; serveren svarer 400 hvis en mangler.
+ * Returnerer opgavens id, så kalderen kan vise den nye opgave med det samme
+ * i stedet for at vente på panelets 8-sekunders poll.
+ */
+export async function opretSideTask(
+  config: ApiConfig, title: string, prompt: string, tldr = '',
+): Promise<string> {
+  const r = await apiFetch<{ status?: string; side_task_id?: string; error?: string }>(
+    config, '/cowork/side-tasks',
+    { method: 'POST', body: { title, prompt, ...(tldr ? { tldr } : {}) } },
+  )
+  if (r?.status !== 'ok' || !r.side_task_id) {
+    throw new Error(r?.error || 'Kunne ikke oprette sideopgaven')
+  }
+  return r.side_task_id
+}

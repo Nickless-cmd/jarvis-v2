@@ -33,6 +33,7 @@ import { PeakBadge } from '../components/shell/PeakBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
+import { SideOpgaveDialog } from '../components/SideOpgaveDialog'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
 import { hasHostCapability } from '../lib/host'
@@ -350,6 +351,13 @@ export function CodeView({
   // Sideopgaver (8/10-2026) — samme rude som i chatten, samme grund: Bjørn
   // havde intet sted at se dem, og krydset i kortet afskrev dem permanent.
   const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
+  // Opret-sideopgave-boksen. `null` = lukket; en streng = åben med den tekst
+  // der stod efter `/side` (tom streng naar den aabnes fra miljoe-feltet).
+  const [nySideOpgave, setNySideOpgave] = useState<string | null>(null)
+  // Bumpes naar en opgave er oprettet, saa panelet henter igen MED DET SAMME i
+  // stedet for at vente paa sin 8-sekunders poll. Feedback paa en handling man
+  // lige har gjort skal ikke komme fra en timer.
+  const [sideOpgaveRefresh, setSideOpgaveRefresh] = useState(0)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
@@ -1131,6 +1139,7 @@ export function CodeView({
             installingTool={installingTool}
             onInstallTool={onInstallTool}
             komprimerVed={gauge.denominator}
+            onOpretSideOpgave={() => setNySideOpgave('')}
           />
         )}
         {changesOpen && (!fuldRude || fuldRude === 'changes') && (
@@ -1172,6 +1181,7 @@ export function CodeView({
         {sideOpgaveOpen && (!fuldRude || fuldRude === 'sideopgaver') && (
           <SideOpgaveListe
             config={config}
+            refreshKey={sideOpgaveRefresh}
             fuld={fuldRude === 'sideopgaver'}
             onFuld={(f) => setFuldRude(f ? 'sideopgaver' : '')}
             onClose={() => { setSideOpgaveOpen(false); setFuldRude((v) => v === 'sideopgaver' ? '' : v) }}
@@ -1357,6 +1367,19 @@ export function CodeView({
         </>
       )}
     </div>
+    {nySideOpgave !== null && (
+      <SideOpgaveDialog
+        config={config}
+        startTekst={nySideOpgave}
+        onClose={() => setNySideOpgave(null)}
+        onOprettet={() => {
+          // Vis den nye opgave med det samme: aabn panelet hvis det er lukket,
+          // og bed det hente igen uden at vente paa sin poll.
+          setSideOpgaveOpen(true)
+          setSideOpgaveRefresh((n) => n + 1)
+        }}
+      />
+    )}
     </VisningContext.Provider>
   )
 }

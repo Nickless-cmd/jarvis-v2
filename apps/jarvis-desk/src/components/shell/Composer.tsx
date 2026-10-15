@@ -17,6 +17,7 @@ import { usePermission } from '../../hooks/usePermission'
 import { useFileMention } from '../../hooks/useFileMention'
 import { useForslag } from '../../hooks/useForslag'
 import { meldValg, type Forslag, type Valg } from '../../lib/forslag'
+import { SideOpgaveDialog } from '../SideOpgaveDialog'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -224,6 +225,9 @@ export function Composer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [permOpen, setPermOpen] = useState(false)
   const [planMode, setPlanMode] = useState(false)
+  // `/side <opgave>`-kommandoen. `null` = boksen er lukket; en streng = den er
+  // åben med den tekst der stod efter kommandoen.
+  const [sideDialog, setSideDialog] = useState<string | null>(null)
   const { permission, setPermission } = usePermission()
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   // Vent-og-send (Bjørn 27/9-2026). En upload der er i gang har endnu intet
@@ -505,6 +509,16 @@ export function Composer({
     // forslags-blokken længere nede — og den hører hjemme dér, sammen med
     // resten af forslaget.
     meldEget.current()
+    // `/side <opgave>` er en KOMMANDO, ikke en besked. Den åbner opret-boksen
+    // med teksten forudfyldt og sendes ALDRIG til modellen. Den ligger før
+    // compacting-grenen med vilje: en lokal kommando skal ikke vente på at
+    // konteksten komprimeres, og den koster ingen tokens.
+    const somKommando = text.trim()
+    if (/^\/side(\s|$)/i.test(somKommando)) {
+      setSideDialog(somKommando.replace(/^\/side\s*/i, ''))
+      setText('')
+      return
+    }
     if (compacting) {
       // Også en upload der endnu ikke har sit id tæller som «noget at sende»
       // — ellers blev beskeden tabt stille mens compaction kørte.
@@ -999,6 +1013,13 @@ export function Composer({
       )}
     </p>
     {footerSlot && <div className="composer-footer-slot">{footerSlot}</div>}
+    {sideDialog !== null && (
+      <SideOpgaveDialog
+        config={config}
+        startTekst={sideDialog}
+        onClose={() => setSideDialog(null)}
+      />
+    )}
     </div>
   )
 }

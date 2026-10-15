@@ -53,11 +53,14 @@ function alder(iso?: string): string {
   return dage === 1 ? '1 dag' : `${dage} dage`
 }
 
-export function SideOpgaveListe({ config, onClose, fuld = false, onFuld }: {
+export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refreshKey = 0 }: {
   config?: ApiConfig
   onClose: () => void
   fuld?: boolean
   onFuld?: (fuld: boolean) => void
+  /** Bumpes naar en opgave er oprettet andetsteds, saa panelet henter igen
+   *  med det samme i stedet for at vente paa sin 8-sekunders poll. */
+  refreshKey?: number
 }) {
   const [opgaver, setOpgaver] = useState<SideTask[] | null>(null)
   const [fejl, setFejl] = useState('')
@@ -82,7 +85,7 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld }: {
     void hent()
     const id = setInterval(() => { if (!document.hidden) void hent() }, 8000)
     return () => clearInterval(id)
-  }, [hent])
+  }, [hent, refreshKey])
 
   const handling = async (t: SideTask, fn: () => Promise<void>) => {
     if (!config || travl) return

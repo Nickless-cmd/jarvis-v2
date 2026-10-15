@@ -131,3 +131,52 @@ def test_skjul_roerer_ikke_status(monkeypatch, lager):
     a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
     asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))
     assert side_tasks.get(a)["status"] == "pending"
+
+
+# ── Opret fra Desk (15/10-2026) ─────────────────────────────────────────────
+# Bjørn: «jeg mangler et sted i desk jeg kan oprette side-opgaver selv». Indtil
+# da kunne KUN Jarvis flagge en opgave, så en ting han selv bemærkede midt i
+# noget andet måtte igennem en samtale for at blive skrevet ned — præcis den
+# omvej sideopgaven findes for at undgå. Ruten er den del af fladen der ikke
+# fandtes på serveren.
+
+
+def test_owner_opretter_opgave(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    res = asyncio.run(cw.cowork_side_task_opret(
+        {"title": "Ret badgen", "prompt": "README viser et gammelt workflow"},
+    ))
+    assert res["status"] == "ok" and res["side_task_id"].startswith("side-")
+    # Den er en rigtig opgave: den står ÅBEN i den liste kortet og panelet læser.
+    liste = asyncio.run(cw.cowork_side_tasks())["side_tasks"]
+    assert [t["title"] for t in liste] == ["Ret badgen"]
+    assert liste[0]["status"] == "pending"
+
+
+def test_opret_klipper_ikke_men_afviser_tomme_felter(monkeypatch, lager):
+    # Blanke felter er ikke udfyldte felter. Uden dette ville en opgave uden
+    # titel kunne oprettes og stå som en tom linje i panelet.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    for payload in ({}, {"title": "A"}, {"prompt": "gør A"}, {"title": "  ", "prompt": "gør A"}):
+        with pytest.raises(HTTPException) as ei:
+            asyncio.run(cw.cowork_side_task_opret(payload))
+        assert ei.value.status_code == 400
+
+
+def test_kun_owner_kan_oprette(monkeypatch, lager):
+    # Samme grund som de øvrige sideopgave-ruter: opgavens prompt er
+    # selvstændige instruktioner og kan rumme privat kontekst.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (False, "u_m"))
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_opret({"title": "A", "prompt": "gør A"}))
+    assert ei.value.status_code == 403
+
+
+def test_oprettet_opgave_kan_afsluttes_og_skjules_som_enhver_anden(monkeypatch, lager):
+    # Den nye vej må ikke lave en opgave i en anden form end Jarvis' egen —
+    # så skulle resten af fladen kende to slags opgaver.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = asyncio.run(cw.cowork_side_task_opret({"title": "A", "prompt": "gør A"}))["side_task_id"]
+    assert asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))["status"] == "ok"
+    assert asyncio.run(cw.cowork_side_task_status(a, {"status": "completed"}))["new_status"] == "completed"
+    assert side_tasks.get(a)["lukket_af"] == "desk"

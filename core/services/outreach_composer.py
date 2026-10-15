@@ -65,6 +65,10 @@ def _last_outreach_timestamp() -> str | None:
     db = _runtime_db_path()
     if not db.exists():
         return None
+    # Luk i `finally` — ikke midt i try-blokken. Rettet 15/10-2026: en fejlende
+    # query efterlod forbindelsen indtil GC. Samme klasse som de ni
+    # connect-uden-close der blev lukket 12/10 (15bed9f11).
+    conn = None
     try:
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
@@ -72,9 +76,11 @@ def _last_outreach_timestamp() -> str | None:
             "SELECT created_at FROM events WHERE kind='impulse.outreach.sent' "
             "ORDER BY id DESC LIMIT 1"
         ).fetchone()
-        conn.close()
     except sqlite3.Error:
         return None
+    finally:
+        if conn is not None:
+            conn.close()
     return str(row["created_at"]) if row else None
 
 
@@ -84,6 +90,8 @@ def _last_user_message_context() -> dict[str, Any]:
     out = {"preview": "", "hours_since": None, "channel_hint": "webchat"}
     if not db.exists():
         return out
+    # Luk i `finally` (rettet 15/10-2026) — se _last_outreach_timestamp.
+    conn = None
     try:
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
@@ -96,9 +104,11 @@ def _last_user_message_context() -> dict[str, Any]:
             ORDER BY id DESC LIMIT 1
             """
         ).fetchone()
-        conn.close()
     except sqlite3.Error:
         return out
+    finally:
+        if conn is not None:
+            conn.close()
     if row:
         out["preview"] = str(row["user_message_preview"] or "")[:200]
         out["hours_since"] = _hours_since(str(row["finished_at"] or ""))

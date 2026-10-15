@@ -66,6 +66,10 @@ def _last_user_message_timestamp() -> str | None:
     db = _runtime_db_path()
     if not db.exists():
         return None
+    # Luk i `finally` — ikke midt i try-blokken. Rettet 15/10-2026: en fejlende
+    # query efterlod forbindelsen indtil GC. Samme klasse som de ni
+    # connect-uden-close der blev lukket 12/10 (15bed9f11).
+    conn = None
     try:
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
@@ -77,9 +81,11 @@ def _last_user_message_timestamp() -> str | None:
             ORDER BY id DESC LIMIT 1
             """
         ).fetchone()
-        conn.close()
     except sqlite3.Error:
         return None
+    finally:
+        if conn is not None:
+            conn.close()
     if not row:
         return None
     return str(row["finished_at"]) if row["finished_at"] else None
@@ -94,6 +100,8 @@ def _last_jarvis_outreach_timestamp() -> str | None:
     db = _runtime_db_path()
     if not db.exists():
         return None
+    # Luk i `finally` (rettet 15/10-2026) — se _last_user_message_timestamp.
+    conn = None
     try:
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
@@ -104,9 +112,11 @@ def _last_jarvis_outreach_timestamp() -> str | None:
             ORDER BY id DESC LIMIT 1
             """
         ).fetchone()
-        conn.close()
     except sqlite3.Error:
         return None
+    finally:
+        if conn is not None:
+            conn.close()
     if not row:
         return None
     return str(row["created_at"]) if row["created_at"] else None
@@ -117,6 +127,8 @@ def _last_user_topic() -> str:
     db = _runtime_db_path()
     if not db.exists():
         return ""
+    # Luk i `finally` (rettet 15/10-2026) — se _last_user_message_timestamp.
+    conn = None
     try:
         conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
@@ -128,9 +140,11 @@ def _last_user_topic() -> str:
             ORDER BY id DESC LIMIT 1
             """
         ).fetchone()
-        conn.close()
     except sqlite3.Error:
         return ""
+    finally:
+        if conn is not None:
+            conn.close()
     if not row:
         return ""
     text = str(row["user_message_preview"] or "").strip()

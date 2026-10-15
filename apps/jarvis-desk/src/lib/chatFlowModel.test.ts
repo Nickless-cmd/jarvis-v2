@@ -28,8 +28,8 @@ describe('deriveChatFlow', () => {
     sparsom[2] = { type: 'text', text: 'halen' }
     const model = deriveChatFlow({ ...base, blocks: sparsom })
     // Rækkefølgen er det afgørende: kastede den, nåede vi aldrig hertil.
-    expect(model.workBlocks).toEqual([{ type: 'text', text: 'halen' }])
-    expect(model.finalBlocks).toEqual([])
+    expect(model.finalBlocks).toEqual([{ type: 'text', text: 'halen' }])
+    expect(model.workBlocks).toEqual([])
     expect(model.allSynthesis).toEqual([])
   })
 
@@ -71,11 +71,34 @@ describe('deriveChatFlow', () => {
     expect(model.calmStatus).toBe('Jarvis tænker ...')
   })
 
-  it('does not treat the first text delta as a final answer', () => {
-    const text = { type: 'text' as const, text: 'foreløbig' }
-    const model = deriveChatFlow({ ...base, blocks: [text], finalAnswerStarted: false })
-    expect(model.finalBlocks).toEqual([])
-    expect(model.workBlocks).toContainEqual(text)
+  // Ændret 15/10-2026 (Bjørn): spec'ens §6 bandt visningen af svaret til
+  // `finalAnswerStarted` alene, og serveren sender først signalet i sin
+  // `done`-handler. Målt konsekvens: svar-fladen stod TOM hele kørslen, og hele
+  // svaret landede i ét hug til sidst. Tekst efter det seneste arbejde er det
+  // svar der skrives nu og vises derfor mens det kommer.
+  it('viser tekst efter det seneste arbejde som svar mens kørslen er aktiv', () => {
+    const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const text = { type: 'text' as const, text: 'Svaret skrives nu.' }
+    const model = deriveChatFlow({ ...base, blocks: [work, text], finalAnswerStarted: false })
+    expect(model.finalBlocks).toEqual([text])
+    expect(model.workBlocks).toEqual([work])
+  })
+
+  it('lader tekst før det seneste arbejde blive i arbejds-detaljerne', () => {
+    const mellemregning = { type: 'text' as const, text: 'Mellemregning.' }
+    const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const svar = { type: 'text' as const, text: 'Svaret.' }
+    const model = deriveChatFlow({ ...base, blocks: [mellemregning, work, svar] })
+    expect(model.finalBlocks).toEqual([svar])
+    expect(model.workBlocks).toEqual([mellemregning, work])
+  })
+
+  it('viser et direkte svar mens det skrives, uden en tom arbejds-overskrift', () => {
+    const answer = { type: 'text' as const, text: 'Hej Bjørn.' }
+    const model = deriveChatFlow({ ...base, blocks: [answer], finalAnswerStarted: false })
+    expect(model.finalBlocks).toEqual([answer])
+    expect(model.workBlocks).toEqual([])
+    expect(model.hasObservableWork).toBe(false)
   })
 
   it('uses the final transition as authoritative and retains work details and deliveries', () => {

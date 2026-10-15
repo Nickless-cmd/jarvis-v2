@@ -104,7 +104,21 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     if (isDelivery(block)) {
       finalBlocks.push(block)
     } else if (block.type === 'text') {
-      const isFinal = terminalFallback || (input.finalAnswerStarted && index > lastWorkIndex)
+      // Tekst EFTER det seneste arbejde er det svar der skrives LIGE NU. Under en
+      // aktiv kørsel vises den derfor i svar-fladen mens den kommer — uden at
+      // vente på `finalAnswerStarted`, som serveren først udsender i sin
+      // `done`-handler (core/services/visible_runs_sse_v2.py). Uden dette stod
+      // svar-fladen TOM hele kørslen, og hele svaret landede i ét hug til sidst
+      // (målt 15/10-2026 med en probe: `<div class="chat-flow"></div>`).
+      //
+      // Det er en bevidst afvigelse fra design-spec'ens §6, som bandt
+      // visningen til signalet alene. Bjørn valgte 15/10-2026 at teksten skal
+      // kunne følges mens den skrives; signalet er for sent til det.
+      //
+      // En blok er enten arbejde eller svar — aldrig begge — så intet
+      // duplikeres, og tekst FØR det seneste arbejde bliver i detaljerne.
+      const isFinal = terminalFallback
+        || (index > lastWorkIndex && (input.finalAnswerStarted || input.status === 'working'))
       ;(isFinal ? finalBlocks : workBlocks).push(block)
     } else {
       workBlocks.push(block)

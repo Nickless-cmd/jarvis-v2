@@ -307,3 +307,49 @@ class TestChronicleFlag:
         )
         assert out["chronicle"] is False
         assert out["dream_note"] is True
+
+
+class TestCarryOverKobling:
+    """Punkt 2 (15/10-2026): `adopt_dream()` havde NUL produktionskaldere.
+
+    Målt: DREAM_CARRY.json var ikke skrevet siden 8/10, og den liste som
+    `maybe_auto_promote_dreams()` itererer HVERT hjerteslag var derfor altid
+    tom. Forbrugeren kørte; producenten fandtes ikke. Konsolideringen er det
+    sted hypotesen faktisk opstår, så det er her den skal adopteres.
+    """
+
+    def test_hypotesen_adopteres_til_carry_over(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(d, "_dreams_dir", lambda: tmp_path)
+        kald: list[dict] = []
+        monkeypatch.setattr(
+            "core.services.dream_carry_over.adopt_dream",
+            lambda **kw: kald.append(kw),
+        )
+
+        out = d._produce_dream_artifacts(
+            {"dream_hypothesis": "En overraskende paastand om natten",
+             "tension": "t", "chronicle_fragment": "", "thematic_insight": "",
+             "confidence": 0.72},
+            "carry01", [{"theme": "nat"}],
+        )
+
+        assert out["carry_over"] is True
+        assert kald and kald[0]["dream_id"] == "dream-carry01"
+        assert kald[0]["confidence"] == 0.72
+
+    def test_uden_hypotese_adopteres_intet(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(d, "_dreams_dir", lambda: tmp_path)
+        kald: list[dict] = []
+        monkeypatch.setattr(
+            "core.services.dream_carry_over.adopt_dream",
+            lambda **kw: kald.append(kw),
+        )
+
+        out = d._produce_dream_artifacts(
+            {"dream_hypothesis": "", "tension": "", "chronicle_fragment": "",
+             "thematic_insight": "x", "confidence": 0.5},
+            "carry02", [{"theme": "x"}],
+        )
+
+        assert out["carry_over"] is False
+        assert kald == []

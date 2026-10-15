@@ -111,9 +111,9 @@ def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = No
                         "title": existing.get("title", ""), "deduplicated": True}
         record = {
             "side_task_id": f"side-{uuid4().hex[:10]}",
-            "title": title[:120],
-            "prompt": prompt[:2000],
-            "tldr": tldr[:240] if tldr else "",
+            "title": title[:200],
+            "prompt": prompt[:12000],
+            "tldr": tldr[:600] if tldr else "",
             "status": "pending",
             "session_id": str(session_id or "_default"),
             "created_at": datetime.now(UTC).isoformat(),

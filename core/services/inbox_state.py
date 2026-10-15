@@ -104,6 +104,11 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # `kraever_handling` er allerede False (`inbox_state.py:408`) — leddet her
     # goer reglen EKSPLICIT i stedet for at hvile paa proveniensen alene.
     "genstart",
+    # `dream` (15/10-2026): en drømmesession fyrer i en baggrundstråd og har
+    # intet run at gate. Posten er INFORMATION — huset informerer, nægter
+    # aldrig en mutation. Uden dette led ville drømmesessioner forblive
+    # usynlige i indbakken (Bjørn 15/10: «ellers er de usynlige for os»).
+    "dream",
 })
 
 #: Kildetyper der KAN dispatches — starte et run når intet kører — men som

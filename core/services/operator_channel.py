@@ -224,6 +224,40 @@ def current_is_owner() -> bool:
         return False
 
 
+def er_agent_koersel() -> bool:
+    """Er kalderen en agent-worker — ikke Bjørn selv?
+
+    Målt 15/10-2026: mens kanalen var åben, blev ALLE bash-kald i runtimen
+    routet til Bjørns maskine — også sub-agenternes. 15 dispatchede agenter
+    returnerede «FORKERT MASKINE (hostname=CheifOne)» og udførte intet arbejde;
+    deres eget confinement-felt sagde ordret «koerer paa operatorens egen
+    maskine over broen». Hele agent-runden gav nul.
+
+    Sessions-nøglen alene kan IKKE skelne dem: en agents værktøjskald bærer
+    origin-sessionens id (`_runtime_session_id` sættes fra
+    `agent_assignments.origin_session_id`), så den matcher præcis den kanal
+    Bjørn åbnede i sin egen session.
+
+    Skellet er derfor ikke en gætteleg: agentens kørsel holder en lease
+    (`agent_lease_scope` i `agent_runtime_spawn`), og `current_assignment_id()`
+    er netop «det indhegnede assignment i denne worker — tom uden for en
+    agent-kørsel». Samme grænse som `uden_foraeldrens_godkendelse()` drager for
+    ejer-godkendelsen: et menneske sagde ja til DEN handling, ikke til alt hvad
+    den måtte finde på at starte. En agent hører til i containeren, hvor dens
+    opgave blev givet.
+
+    Kaster aldrig. Kan skellet ikke afgøres, er svaret nej — så opfører kanalen
+    sig præcis som før dette værn, og fejlen logges i stedet for at lukke
+    Bjørns egen kanal i det stille.
+    """
+    try:
+        from core.runtime.db_agent_lease import current_assignment_id
+        return bool(str(current_assignment_id() or "").strip())
+    except Exception:
+        logger.warning("operator_channel: agent-skellet kunne ikke afgøres", exc_info=True)
+        return False
+
+
 # ── Omdirigering ────────────────────────────────────────────────────────────
 
 def _absolutte_stier(command: str) -> list[str]:
@@ -297,6 +331,11 @@ def maybe_reroute_bash(command: str, cwd: str | None, *, is_owner: bool,
     sin maskine skal ikke stå åben. Se `_GENOPRET_FRIST_S`.
     """
     if not is_owner or not command.strip():
+        return None
+    # En agent er ikke Bjørn (målt 15/10-2026). Uden dette værn røg hele
+    # agent-runden til Bjørns skrivebord, fordi agentens kald bærer
+    # origin-sessionens id og derfor matcher hans åbne kanal.
+    if er_agent_koersel():
         return None
     sid = str(session_id or "").strip()
     if is_open(sid):

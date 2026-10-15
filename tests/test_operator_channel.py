@@ -75,6 +75,52 @@ def test_reroute_sker_ikke_naar_kanalen_er_lukket(monkeypatch):
     assert kaldt == []
 
 
+def test_agent_koersel_routes_ikke_til_bjoerns_maskine(monkeypatch):
+    """Målt 15/10-2026: 15 agenter fik deres bash routet til Bjørns skrivebord.
+
+    Agentens kald bærer origin-sessionens id, så sessions-nøglen alene kunne
+    ikke skelne den fra Bjørns eget kald — hele agent-runden gav nul.
+    """
+    oc.open_channel("s1", is_owner=True)
+    monkeypatch.setattr("core.runtime.db_agent_lease.current_assignment_id",
+                        lambda: "asg-53c896151c6d4a3c")
+    kaldt = []
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda n, a: kaldt.append(n) or {"status": "ok"})
+    assert oc.maybe_reroute_bash("ls", None, is_owner=True, session_id="s1") is None
+    assert kaldt == [], "agentens bash maa ikke ramme Bjorns maskine"
+
+
+def test_bjoerns_eget_kald_routes_stadig(monkeypatch):
+    """Værnet maa ikke lukke Bjorns EGEN kanal: uden agent-scope gaar kaldet over."""
+    oc.open_channel("s1", is_owner=True)
+    monkeypatch.setattr("core.runtime.db_agent_lease.current_assignment_id", lambda: "")
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda n, a: {"status": "ok", "text": "fra hans maskine"})
+    r = oc.maybe_reroute_bash("ls", None, is_owner=True, session_id="s1")
+    assert r is not None and r["via"] == "operator-kanal"
+
+
+def test_agent_skellet_laeser_lease_assignment(monkeypatch):
+    """Skellet er agent-lease'ens assignment — ikke et gaet paa et navn."""
+    monkeypatch.setattr("core.runtime.db_agent_lease.current_assignment_id",
+                        lambda: "asg-abc")
+    assert oc.er_agent_koersel() is True
+    monkeypatch.setattr("core.runtime.db_agent_lease.current_assignment_id", lambda: "  ")
+    assert oc.er_agent_koersel() is False
+
+
+def test_agent_skellet_fejler_til_neutral(monkeypatch):
+    """Kan skellet ikke afgoeres, opfoerer kanalen sig som FOER — ikke laast."""
+    import core.runtime.db_agent_lease as _lease
+
+    def _braek():
+        raise RuntimeError("lease-lageret svarer ikke")
+
+    monkeypatch.setattr(_lease, "current_assignment_id", _braek)
+    assert oc.er_agent_koersel() is False
+
+
 def test_aaben_kanal_sender_bash_over_broen(monkeypatch):
     oc.open_channel("s1", is_owner=True)
     set_kald = {}

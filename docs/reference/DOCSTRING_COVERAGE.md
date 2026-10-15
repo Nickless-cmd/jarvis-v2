@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9002/17217 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9003/17218 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9002/17217 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 825 | 1525 | 54% |
-| `core.services` | 5998 | 11702 | 51% |
+| `core.services` | 5999 | 11703 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1529,7 +1529,7 @@ Generated from source. 9002/17217 functions/methods documented (52%). The list b
 - `core/services/operator_allowlist.py` :: `set_allowlist` (L39)
 - `core/services/operator_allowlist.py` :: `set_enforced` (L65)
 - `core/services/operator_channel.py` :: `close_channel` (L172)
-- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L242)
+- `core/services/operator_channel.py` :: `looks_like_workstation_path` (L276)
 - `core/services/operator_channel.py` :: `open_channel` (L156)
 - `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L189)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L198)

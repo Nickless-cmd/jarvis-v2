@@ -242,3 +242,45 @@ def test_internt_kald_skriver_ingen_tool_events(monkeypatch):
     with t.internt_kald():
         st.execute_tool("_probe", {})  # systemets eget kald — usynligt
     assert spor == [], f"et internt kald skrev alligevel: {spor}"
+
+
+# ── Bro-kaldet mistede sit run-id (15/10-2026) ──────────────────────────────
+#
+# Maalt i `events`: 1.517 af 4.000 `tool.invoked` (38 %) bar `UKENDT` i run_id
+# — og ALLE var `operator_bash`. Bro-kaldet gaar uden om `simple_tool_executor`,
+# som er den der haefter `_runtime_turn_id`, saa henfoeringen faldt tilbage til
+# en PROCES-GLOBAL som samtidige koersler overskriver for hinanden. Koerslen
+# saetter selv sit run-id i en ContextVar; den spoerges nu, som brugeren.
+
+
+def test_bro_kald_faar_koerslens_run_id_fra_konteksten():
+    """Netop den maalte defekt: `operator_bash` uden `_runtime_turn_id`."""
+    from core.services.run_autonomy_context import set_run_identity
+
+    set_run_identity("visible-692e3be9ae5f47839630ee84dfd492c1", "user")
+    try:
+        p = t.byg_payload("operator_bash", {"command": "ls"})
+        assert p["run_id"] == "visible-692e3be9ae5f47839630ee84dfd492c1"
+    finally:
+        set_run_identity("", "")
+
+
+def test_argumenternes_run_id_vinder_over_konteksten():
+    """Executorens stempel er den praecise kilde; konteksten er reserven."""
+    from core.services.run_autonomy_context import set_run_identity
+
+    set_run_identity("visible-fra-kontekst", "")
+    try:
+        p = t.byg_payload("bash", {"_runtime_turn_id": "visible-fra-argument"})
+        assert p["run_id"] == "visible-fra-argument"
+    finally:
+        set_run_identity("", "")
+
+
+def test_uden_koersel_og_uden_argumenter_staar_der_UKENDT():
+    """Et kald uden for enhver koersel skal sige UKENDT — ikke gaette et run."""
+    from core.services.run_autonomy_context import set_run_identity
+
+    set_run_identity("", "")
+    p = t.byg_payload("operator_bash", {"command": "ls"})
+    assert p["run_id"] == t.UKENDT

@@ -508,10 +508,10 @@ _Hvem kaldte hvilket vaerktoej — gjort taelleligt._
 | function | `er_internt_kald` | `()` | Er vi inde i et af systemets egne kald? Se `internt_kald`. | [src](../../../core/tools/tool_call_telemetry.py#L76) |
 | function | `_fra_args` | `(arguments, navn)` | — | [src](../../../core/tools/tool_call_telemetry.py#L88) |
 | function | `identitet` | `(arguments)` | Bruger, samtale og run — fra argumenterne, ellers fra konteksten. | [src](../../../core/tools/tool_call_telemetry.py#L92) |
-| function | `byg_payload` | `(name, arguments)` | Selve eventet. Adskilt fra udgivelsen, saa formen kan testes alene. | [src](../../../core/tools/tool_call_telemetry.py#L115) |
-| function | `udgiv_tool_invoked` | `(name, arguments)` | Udgiv `tool.invoked`. Maa ALDRIG braekke et vaerktoejskald. | [src](../../../core/tools/tool_call_telemetry.py#L124) |
-| function | `udgiv_execution_timing` | `(payload)` | Publish one terminal timing summary without affecting the tool call. | [src](../../../core/tools/tool_call_telemetry.py#L134) |
-| function | `byg_completed_payload` | `(name, status, arguments, result=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L154) |
+| function | `byg_payload` | `(name, arguments)` | Selve eventet. Adskilt fra udgivelsen, saa formen kan testes alene. | [src](../../../core/tools/tool_call_telemetry.py#L131) |
+| function | `udgiv_tool_invoked` | `(name, arguments)` | Udgiv `tool.invoked`. Maa ALDRIG braekke et vaerktoejskald. | [src](../../../core/tools/tool_call_telemetry.py#L140) |
+| function | `udgiv_execution_timing` | `(payload)` | Publish one terminal timing summary without affecting the tool call. | [src](../../../core/tools/tool_call_telemetry.py#L150) |
+| function | `byg_completed_payload` | `(name, status, arguments, result=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L170) |
 
 ## `core/tools/tool_definition_v2.py`
 _De tre akser skilt ad — Fase 3, K1._

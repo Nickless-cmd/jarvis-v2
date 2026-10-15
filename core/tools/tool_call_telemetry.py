@@ -105,10 +105,26 @@ def identitet(arguments: dict[str, Any]) -> dict[str, str]:
         except Exception as exc:  # ImportError/LookupError — kontekst mangler
             logger.debug("tool_call_telemetry: ingen bruger i konteksten: %s", exc)
             uid = ""
+    # Run'et spoerges paa SAMME maade — og af samme grund. Maalt 15/10-2026:
+    # 1.517 af 4.000 `tool.invoked` (38 %) bar ``UKENDT``, og ALLE var
+    # `operator_bash`. Bro-kaldet gaar uden om executoren, saa
+    # `_runtime_turn_id` naaede aldrig med, og henfoeringen faldt tilbage til
+    # en PROCES-GLOBAL (`run_closure_gate._get_current_run`) som samtidige
+    # koersler overskriver for hinanden. Koerslen saetter selv sit run-id i en
+    # ContextVar (`set_run_identity`), saa her er svaret det rigtige — ogsaa
+    # naar to koersler overlapper.
+    rid = _fra_args(arguments, "_runtime_turn_id")
+    if not rid:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+            rid = str(current_run_id() or "").strip()
+        except Exception as exc:  # ImportError/LookupError — kontekst mangler
+            logger.debug("tool_call_telemetry: intet run i konteksten: %s", exc)
+            rid = ""
     return {
         "user_id": uid or UKENDT,
         "session_id": _fra_args(arguments, "_runtime_session_id") or UKENDT,
-        "run_id": _fra_args(arguments, "_runtime_turn_id") or UKENDT,
+        "run_id": rid or UKENDT,
     }
 
 

@@ -687,6 +687,39 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
         except Exception:
             logger.debug("run_closure_gate: referat fejlede", exc_info=True)
 
+    # RUNTIME-INSPEKTIONEN I INDBAKKEN (15/10-2026). Bjoern: «din daglige
+    # runtime inspektion, lander den kun i en autonom session eller lander den
+    # osse i din inbak?» — maalt: den landede KUN som autonomt run. Inspektionen
+    # er en recurring-task (`rec-6456e88d03`, hver 6. time), og `_fire_due`
+    # starter et autonomt run uden at roere indbakken. Resultatet blev derfor
+    # laest af ingen: sessionen er en auto-silo, og posten fandtes ikke.
+    #
+    # Her laegges den — som `huset` og kildetypen `recurring` (der staar i
+    # IKKE_GATENDE_KILDETYPER), saa den er SYNLIG men aldrig kan naegte en
+    # mutation. Samme kontrakt som run_closure: gaten informerer, den lammer
+    # ikke. Idempotent per run_id, saa en genkoersel ikke dublerer.
+    #
+    # Origin laeses FRA EVENTET (15/10-2026). Forhen stod her `aktuel_origin()`
+    # — en proces-global der overskrives naar naeste run starter, saa to
+    # samtidige runs kunne bytte origin og grenen vaelge forkert. Eventet
+    # baerer den nu selv (`visible_autonomous_run.py`), og den globale er kun
+    # et fald-tilbage for events fra aeldre kode.
+    _origin_i_event = str(payload.get("origin") or "").strip().lower()
+    if (_origin_i_event or str(aktuel_origin() or "").strip().lower()) == "recurring":
+        fokus = str(payload.get("focus") or "")
+        if "runtime-inspektion" in fokus.lower():
+            _registrer_i_indbakken(
+                kildetype="recurring",
+                kilde_id=f"inspektion-{run_id}",
+                beskrivelse=(
+                    "Runtime-inspektion "
+                    f"{run_id[:12]}: "
+                    + (output.strip()[:600] if output.strip()
+                       else f"{len(tool_calls)} værktøjskald, intet referat")
+                ),
+                run_id=run_id,
+            )
+
 
 def _on_run_started(payload: dict[str, Any]) -> None:
     """Handle runtime.autonomous_run_started — snapshot git state."""

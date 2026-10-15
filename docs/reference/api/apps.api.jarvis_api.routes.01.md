@@ -302,6 +302,16 @@ _Central 'connections' route — hvem/hvad er forbundet til Jarvis' API (owner-v
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_connections.py#L17) |
 | function | `get_api_connections` | `()` | Live API-forbindelser: aktive/seneste klienter pr. (ip, user) + seneste fejl. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_connections.py#L23) |
 
+## `apps/api/jarvis_api/routes/central_db_pool.py`
+_Central 'db-pool' route — gør DB-forbindelses-poolen læsbar i drift._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L32) |
+| function | `_own_pool` | `()` | Denne proces' pool-attribution. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L37) |
+| function | `_runtime_pool` | `()` | Runtime-processens pool over 8011. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L46) |
+| function | `get_db_pool` | `()` | DB-forbindelses-poolen i begge processer (owner-only, read-only, self-safe). | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L56) |
+
 ## `apps/api/jarvis_api/routes/central_decentralization.py`
 _Central 'decentralization' route — chokepoint-skat + sikre decentraliserings-kandidater (owner)._
 
@@ -599,14 +609,4 @@ _Active-run discovery and replayable SSE follow routes._
 | function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L134) |
 | function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset nul. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L140) |
 | function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L152) |
-
-## `apps/api/jarvis_api/routes/chat_session_view.py`
-_`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SessionViewRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L17) |
-| function | `kraev_adgang` | `(session_id)` | 403 hvis den nuværende bruger ikke må røre samtalen. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L21) |
-| function | `chat_session_view` | `(session_id)` | Samtalens visningstilstand: normal, thinking eller verbose. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L33) |
-| function | `chat_set_session_view` | `(session_id, request)` | Skift samtalens visningstilstand. Gælder fra næste runde, også midt i et svar. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L41) |
 

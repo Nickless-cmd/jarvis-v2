@@ -116,7 +116,43 @@ def _hold_recovery_lease(task_id: str, generation: int, owner: str, stop) -> Non
     godt» og «løkken kørte aldrig». Uden spor er målingen en rekonstruktion;
     med det er den et faktum. Log-linjerne ændrer ingen adfærd.
     """
-    from core.services.in_flight_runs import renew_recovery_lease
+    from core.services.in_flight_runs import get_record, renew_recovery_lease
+
+    # EJERSKABS-TJEK VED FOEDSEL (15/10-2026). Traaden blev foedt
+    # BETINGELSESLOEST naar `recovery_task_id` var sat — ogsaa naar posten for
+    # laengst var givet tilbage. Maalt 15/10: en genoptagelse (`78dee41e`) blev
+    # foedt 07:01:27 paa en opgave der var givet tilbage fire sekunder foer
+    # (status `recovering`, ejer ryddet). Dens foerste fornyelse kunne derfor
+    # ikke andet end at fejle, og advarslen fyrede korrekt med 0 fornyelser —
+    # men traaden var DOEDSDOMT FRA FOEDSELEN, og det saa ud som en fejl i
+    # fornyelsen i stedet for i foedslen.
+    #
+    # `renew_recovery_lease` kraever `status == "running"` OG matchende owner
+    # OG generation. Vi spoerger derfor om PRAECIS det samme her, foer loekken
+    # begynder: er posten ikke vores, er der intet at holde, og traaden skal
+    # ikke foedes. Det goer forloebet entydigt — «traaden blev aldrig foedt» og
+    # «traaden doede i sit foerste tick» er to vidt forskellige ting, og de maa
+    # ikke se ens ud i loggen.
+    rec = get_record(task_id)
+    if rec is None:
+        logger.warning(
+            "lease-traad IKKE foedt for opgave %s: posten findes ikke "
+            "(generation %d, owner=%s)", task_id, generation, owner or "-",
+        )
+        return
+    if (
+        str(rec.get("recovery_owner") or "") != str(owner)
+        or int(rec.get("recovery_generation") or 0) != int(generation)
+        or str(rec.get("status") or "") != "running"
+    ):
+        logger.warning(
+            "lease-traad IKKE foedt for opgave %s: kravet er ikke vores "
+            "(status=%s, ejer=%s, generation=%s — vi er owner=%s, generation=%d). "
+            "Posten er givet tilbage eller overtaget; intet at holde.",
+            task_id, rec.get("status") or "-", rec.get("recovery_owner") or "-",
+            rec.get("recovery_generation"), owner or "-", generation,
+        )
+        return
 
     logger.info("lease-traad startet for opgave %s (generation %d, owner=%s)",
                 task_id, generation, owner or "-")

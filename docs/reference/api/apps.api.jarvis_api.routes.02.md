@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_session_view.py`
+_`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SessionViewRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L17) |
+| function | `kraev_adgang` | `(session_id)` | 403 hvis den nuværende bruger ikke må røre samtalen. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L21) |
+| function | `chat_session_view` | `(session_id)` | Samtalens visningstilstand: normal, thinking eller verbose. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L33) |
+| function | `chat_set_session_view` | `(session_id, request)` | Skift samtalens visningstilstand. Gælder fra næste runde, også midt i et svar. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L41) |
+
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 
@@ -214,7 +224,8 @@ _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flade
 | function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L139) |
 | function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
 | function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
-| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L182) |
+| function | `_db_pool` | `()` | DB-forbindelses-poolen i DENNE proces — gjort læsbar i drift (15/10-2026). | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L162) |
+| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L198) |
 
 ## `apps/api/jarvis_api/routes/jarvisx.py`
 _JarvisX-specific routes — small endpoints used by the desktop app._
@@ -729,14 +740,4 @@ _«Brug denne besked som hukommelse» — fra telefonen ind i hans hjerne._
 | class | `GemSomHukommelse` | `` | — | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L31) |
 | function | `_titel_af` | `(tekst)` | Foerste meningsfulde linje, klippet. En huskeseddel skal kunne skimmes. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L38) |
 | function | `gem_som_hukommelse` | `(body)` | Gem en besked som en post i hjernen. Owner-only via global auth. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L48) |
-
-## `apps/api/jarvis_api/routes/mobile_update.py`
-_Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L18) |
-| function | `_mobile_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L23) |
-| function | `mobile_latest` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L29) |
-| function | `mobile_download` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L45) |
 

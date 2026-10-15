@@ -159,6 +159,21 @@ def _gate_verdicts() -> dict:
     return {"gates": gate_verdict_ledger.summary()}
 
 
+def _db_pool() -> dict:
+    """DB-forbindelses-poolen i DENNE proces — gjort læsbar i drift (15/10-2026).
+
+    Svarer på det spørgsmål /proc ikke kunne: hvilke LEVENDE tråde ejer en pooled
+    jarvis.db-forbindelse, hvor mange er født/død i alt, og hvor mange poster er
+    `orphaned` (ejer-tråden er død, forbindelsen aldrig lukket). Sidstnævnte er den
+    eneste klasse der kan vokse monotont over dage og ende i fd-udmattelse.
+
+    Tællerne er PROCES-LOKALE, så dette er runtime-processens tal når routen kaldes
+    på 8011. Api-processens egne tal læses direkte af `/central/db-pool`.
+    """
+    from core.runtime.db_core import pool_connection_stats
+    return pool_connection_stats()
+
+
 # Navn → builder. Udvides efterhånden som flere runtime-flader absorberes (mind-sektioner).
 _BUILDERS: dict[str, Callable[[], dict]] = {
     "living_executive": _living_executive,
@@ -175,6 +190,7 @@ _BUILDERS: dict[str, Callable[[], dict]] = {
     "counterfactual": _counterfactual,
     "gate_verdicts": _gate_verdicts,
     "autonomous_history": _autonomous_history,
+    "db_pool": _db_pool,
 }
 
 

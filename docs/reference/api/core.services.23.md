@@ -634,7 +634,7 @@ _Fail-closed policy and independent kill switches for private recall._
 | function | `set_recall_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L25) |
 | function | `set_recall_migration_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L29) |
 | function | `require_private_scope` | `(session_id=…)` | — | [src](../../../core/services/scoped_recall_policy.py#L33) |
-| function | `disabled_result` | `(path)` | — | [src](../../../core/services/scoped_recall_policy.py#L51) |
+| function | `disabled_result` | `(path)` | Svar fra et recall-vaerktoej naar den private soegning er slaaet fra. | [src](../../../core/services/scoped_recall_policy.py#L51) |
 
 ## `core/services/scout_inbox_delivery.py`
 _Deliver terminal scout runs to Jarvis' durable inbox._

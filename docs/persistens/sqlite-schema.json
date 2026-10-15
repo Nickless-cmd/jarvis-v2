@@ -22168,9 +22168,17 @@
       "created_at_formats": []
     },
     "memory_write_queue": {
-      "digest": "84:ca:11:19:ac:f5:e2:6c:2d:ff:5a:5a:ab:3a:1c:a1:0e:c0:8c:03:d1:56:d7:24:88:ab:70:34:06:94:46:1a",
+      "digest": "e4:0a:b6:6b:3c:c5:48:1b:56:a6:fd:3b:3b:61:6b:63:3d:83:87:6e:d7:6e:ef:4b:b9:fa:bc:c3:5e:7a:48:44",
       "schema": {
         "columns": [
+          {
+            "name": "claimed_at",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
           {
             "name": "created_at",
             "type": "TEXT",

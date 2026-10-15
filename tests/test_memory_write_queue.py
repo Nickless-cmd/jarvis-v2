@@ -1,6 +1,8 @@
 """Tests for core.services.memory_write_queue — async write queue."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 
@@ -115,3 +117,110 @@ class TestDaemonTick:
         })
         result = mwq.tick_memory_write_queue_daemon()
         assert result.get("processed", 0) >= 1 or result.get("succeeded", 0) >= 1
+
+
+class TestOrphanedProcessing:
+    """En `processing`-post hvis proces doede, maa ikke ligge fast for evigt.
+
+    Maalt i drift 15/10-2026: 99 poster laast siden 22. juni, alle
+    `memory_sidecar`, `retry_count = 0`. Aarsagen er at `process_queue`
+    committer `processing` FOER den udfoerer skrivningen.
+    """
+
+    @staticmethod
+    def _doed(*_args, **_kwargs):
+        raise RuntimeError("processen doede midt i skrivningen")
+
+    def _efterlad_i_processing(self, mwq, monkeypatch, queue_type="sensory"):
+        """Den AEGTE fejlvej: skrivningen kaster efter claimet er committet."""
+        payload = (
+            {"heading": "gammel sektion", "action": "added", "content": "x"}
+            if queue_type == "memory_sidecar"
+            else {"modality": "visual", "content": "afbrudt", "mood_tone": "neutral"}
+        )
+        assert mwq.enqueue_write(queue_type, payload) != ""
+        monkeypatch.setattr(mwq, "_process_item", self._doed)
+        mwq.process_queue(batch_size=10)
+
+    def test_afbrudt_behandling_efterlader_stemplet_claim(self, fresh_queue, monkeypatch):
+        """Posten bliver liggende — og den baerer HVORNAAR den blev claimet."""
+        mwq = fresh_queue
+        self._efterlad_i_processing(mwq, monkeypatch)
+
+        from core.runtime.db import connect
+        with connect() as conn:
+            raekke = conn.execute(
+                "SELECT status, claimed_at FROM memory_write_queue").fetchone()
+        assert raekke["status"] == "processing"
+        assert raekke["claimed_at"], "claimet skal vaere stempler — ellers kan intet se alderen"
+
+    def test_frisk_claim_roeres_ikke(self, fresh_queue, monkeypatch):
+        """Et claim fra NU er ikke foraeldreloest. Sweep'en maa ikke rive det vaek."""
+        mwq = fresh_queue
+        self._efterlad_i_processing(mwq, monkeypatch)
+
+        svar = mwq.requeue_orphaned_processing()
+        assert svar == {"requeued": 0, "abandoned": 0}
+        assert mwq.queue_size()["processing"] == 1
+
+    def test_foraeldreloes_post_genkoeres(self, fresh_queue, monkeypatch):
+        """Naar claimet er blevet gammelt, skal posten tilbage i koen."""
+        mwq = fresh_queue
+        self._efterlad_i_processing(mwq, monkeypatch)
+
+        senere = datetime.now(UTC) + timedelta(hours=1)
+        svar = mwq.requeue_orphaned_processing(now=senere)
+        assert svar["requeued"] == 1
+        assert svar["abandoned"] == 0
+        counts = mwq.queue_size()
+        assert counts["pending"] == 1
+        assert counts["processing"] == 0
+
+    def test_for_gammel_post_lukkes_og_genkoeres_ikke(self, fresh_queue, monkeypatch):
+        """Fire maaneder gammel: maa ikke skrives ind i MEMORY.md igen.
+
+        Begge tider skal vaere gamle: `claimed_at` afgoer OM posten er
+        foraeldreloes, `created_at` afgoer om den maa genkoeres.
+        """
+        mwq = fresh_queue
+        self._efterlad_i_processing(mwq, monkeypatch, queue_type="memory_sidecar")
+
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.execute(
+                "UPDATE memory_write_queue SET created_at = ?, claimed_at = ?",
+                ("2026-06-22T07:31:01+00:00", "2026-06-22T07:31:01+00:00"))
+            conn.commit()
+
+        svar = mwq.requeue_orphaned_processing(now=datetime.now(UTC))
+        assert svar["abandoned"] == 1
+        assert svar["requeued"] == 0
+        counts = mwq.queue_size()
+        assert counts["failed"] == 1
+        assert counts["pending"] == 0
+
+    def test_daemon_ticket_frigor_foraeldreloese_poster(self, fresh_queue, monkeypatch):
+        """Sweep'en skal vaere KOBLET PAA tick'en.
+
+        En funktion ingen kalder frigor intet — praecis husets eget problem med
+        `abandon()`, der kunne skelne fra dag ét men som ingen kaldte.
+
+        Maalet er at posten bliver KOERT FAERDIG efter tick'en: uden sweep'en
+        ville den blive i `processing` for evigt, fordi intet nulstiller den.
+        """
+        mwq = fresh_queue
+        aegte = mwq._process_item
+        self._efterlad_i_processing(mwq, monkeypatch)
+        assert mwq.queue_size()["processing"] == 1
+
+        # Skrivningen virker igen — praecis som efter en genstart.
+        monkeypatch.setattr(mwq, "_process_item", aegte)
+
+        senere = datetime.now(UTC) + timedelta(hours=2)
+        mwq.tick_memory_write_queue_daemon(now=senere)
+
+        counts = mwq.queue_size()
+        assert counts["done"] == 1, (
+            "tick'en skal have frigjort posten OG koert den faerdig; "
+            f"uden sweep'en ville den blive i processing for evigt — fik {counts}")
+        assert counts["processing"] == 0

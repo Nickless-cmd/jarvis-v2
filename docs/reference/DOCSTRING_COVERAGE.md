@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8985/17183 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8994/17192 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 693 | 955 | 72% |
+| `apps.api.jarvis_api.routes` | 697 | 960 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,8 +24,8 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 821 | 1521 | 53% |
-| `core.services` | 5990 | 11685 | 51% |
+| `core.runtime` | 824 | 1524 | 54% |
+| `core.services` | 5992 | 11686 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2564)
+## Undocumented public functions (2563)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -461,8 +461,8 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L86)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L433)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L413)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L520)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L500)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L380)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L365)
@@ -1347,8 +1347,8 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 - `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
 - `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
-- `core/services/jarvis_brain.py` :: `connect_index` (L388)
-- `core/services/jarvis_brain.py` :: `index_db_path` (L326)
+- `core/services/jarvis_brain.py` :: `connect_index` (L403)
+- `core/services/jarvis_brain.py` :: `index_db_path` (L341)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L350)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
@@ -1849,7 +1849,7 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L775)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L808)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)
@@ -1962,7 +1962,6 @@ Generated from source. 8985/17183 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
 - `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L417)
 - `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L426)
-- `core/services/scoped_recall_policy.py` :: `disabled_result` (L51)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)

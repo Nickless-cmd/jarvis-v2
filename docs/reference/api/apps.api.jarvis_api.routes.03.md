@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mobile_update.py`
+_Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L18) |
+| function | `_mobile_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L23) |
+| function | `mobile_latest` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L29) |
+| function | `mobile_download` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L45) |
+
 ## `apps/api/jarvis_api/routes/notifikationer.py`
 _Notifikations-feeden. Scoper til den auth'ede bruger._
 

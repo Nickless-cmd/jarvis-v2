@@ -170,10 +170,20 @@ def test_genoptaget_opgave_lukkes_foer_runlog_slippes(monkeypatch):
     assert raekkefoelge[:2] == ["task-settled", "run-done"]
 
 
+def _vaer_vores(monkeypatch, *, status="running", owner="owner-1", generation=2):
+    """Stub journal-posten saa den ER vores — ellers fødes tråden ikke."""
+    from core.services import in_flight_runs as ifr
+    monkeypatch.setattr(ifr, "get_record", lambda _t: {
+        "status": status, "recovery_owner": owner,
+        "recovery_generation": generation,
+    })
+
+
 def test_levende_fortsaettelse_holder_sit_krav_fra_at_udloebe(monkeypatch):
     """Et run over 120 sekunder må ikke blive taget igen mens det arbejder."""
     from core.services.visible_runs_sections import detached_run as d
     from core.services import in_flight_runs as ifr
+    _vaer_vores(monkeypatch)
     kald = []
     monkeypatch.setattr(ifr, "renew_recovery_lease",
                         lambda *args, **kw: kald.append((args, kw)) or True)
@@ -200,6 +210,7 @@ def test_lease_traaden_efterlader_et_spor(monkeypatch, caplog):
     """
     from core.services.visible_runs_sections import detached_run as d
     from core.services import in_flight_runs as ifr
+    _vaer_vores(monkeypatch)
     monkeypatch.setattr(ifr, "renew_recovery_lease", lambda *a, **kw: True)
 
     class StopEfterToTick:
@@ -229,6 +240,7 @@ def test_lease_traaden_siger_hvor_mange_fornyelser_den_naaede(monkeypatch, caplo
     """
     from core.services.visible_runs_sections import detached_run as d
     from core.services import in_flight_runs as ifr
+    _vaer_vores(monkeypatch, owner="owner-9", generation=3)
     kald = {"n": 0}
 
     def _forny(*a, **kw):
@@ -250,6 +262,83 @@ def test_lease_traaden_siger_hvor_mange_fornyelser_den_naaede(monkeypatch, caplo
     assert "mistede sit recovery-lejemaal (fornyelser i alt: 1" in caplog.text
     # Taber tråden kravet, vender den hjem FØR stop — derfor ingen stop-linje.
     assert "lease-traad stoppet" not in caplog.text
+
+
+def test_lease_traaden_foedes_ikke_paa_et_krav_der_ikke_er_vores(monkeypatch, caplog):
+    """Er posten givet tilbage, er der intet at holde — tråden skal ikke fødes.
+
+    Målt 15/10-2026: en genoptagelse (`78dee41e`) blev født 07:01:27 på en
+    opgave der var givet tilbage fire sekunder før (status `recovering`, ejer
+    ryddet). Dens første fornyelse måtte fejle, og advarslen fyrede korrekt med
+    0 fornyelser — men tråden var DØDSDØMT FRA FØDSELEN, og det så ud som en
+    fejl i fornyelsen i stedet for i fødslen. De to forløb må ikke se ens ud.
+    """
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    _vaer_vores(monkeypatch, status="recovering", owner="")
+    kald = []
+    monkeypatch.setattr(ifr, "renew_recovery_lease",
+                        lambda *a, **kw: kald.append(1) or True)
+
+    class StopEfterEtTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 1
+
+    with caplog.at_level("INFO"):
+        d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterEtTick())
+
+    assert kald == []                       # ingen fornyelse forsøgt
+    assert "lease-traad IKKE foedt" in caplog.text
+    assert "lease-traad startet" not in caplog.text
+
+
+def test_lease_traaden_foedes_ikke_paa_en_fremmed_generation(monkeypatch, caplog):
+    """En post der er overtaget af en NYERE generation er heller ikke vores."""
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    _vaer_vores(monkeypatch, generation=5)   # posten er rykket videre
+    kald = []
+    monkeypatch.setattr(ifr, "renew_recovery_lease",
+                        lambda *a, **kw: kald.append(1) or True)
+
+    class StopEfterEtTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 1
+
+    with caplog.at_level("INFO"):
+        d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterEtTick())
+
+    assert kald == []
+    assert "lease-traad IKKE foedt" in caplog.text
+
+
+def test_lease_traaden_foedes_ikke_naar_posten_er_vaek(monkeypatch, caplog):
+    """Findes posten ikke, er der intet at holde — og det skal siges højt."""
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    monkeypatch.setattr(ifr, "get_record", lambda _t: None)
+    kald = []
+    monkeypatch.setattr(ifr, "renew_recovery_lease",
+                        lambda *a, **kw: kald.append(1) or True)
+
+    class StopEfterEtTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 1
+
+    with caplog.at_level("INFO"):
+        d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterEtTick())
+
+    assert kald == []
+    assert "posten findes ikke" in caplog.text
 
 
 @pytest.mark.xfail(

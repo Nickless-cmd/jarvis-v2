@@ -151,6 +151,90 @@ def _make_connection(_factory) -> sqlite3.Connection:
     return conn
 
 
+# === Pool-attribution (15/10-2026) ==========================================
+# Sporet fra side-fbe495ba3c: de ~92 åbne forbindelser til jarvis.db kunne ikke
+# henføres til en tråd. /proc/PID/task/TID/fd er ÉN delt fd-tabel (målt 15/10:
+# alle TIDs viste samme 105 fds), og `lsof -K` kan ikke læse tråd-niveau på
+# denne host. Tællingen sker derfor ved FØDSEL og DØD — aldrig ved genbrug, så
+# den varme genbrugsvej i connect() er urørt (ingen ekstra fillås, intet PRAGMA).
+#
+# Det afgørende spørgsmål den besvarer: findes der pool-forbindelser hvis EJER-
+# TRÅD er død? Det er den eneste klasse der kan vokse monotont over dage og
+# ende i fd-udmattelse. `pool_connection_stats()` melder dem som `orphaned`.
+#
+# KENDT BEGRÆNSNING: thread-ident kan genbruges af en ny tråd efter en død, og
+# så overskrives posten — en forældreløs forbindelse kan altså skjules af en ny
+# tråd med samme ident. Tællingen er derfor et nedre grænse-estimat, ikke et
+# eksakt tal. Det er nok til at skelne "vokser" fra "flad".
+_pool_births: dict[int, dict] = {}
+_pool_events_lock = _threading_pool.Lock()
+_POOL_BIRTH_SEQ: int = 0
+_POOL_DEATH_SEQ: int = 0
+
+
+def _note_pool_birth() -> None:
+    """Registrér at DENNE tråd netop fik en NY pool-forbindelse. Self-safe."""
+    global _POOL_BIRTH_SEQ
+    try:
+        th = _threading_pool.current_thread()
+        with _pool_events_lock:
+            _POOL_BIRTH_SEQ += 1
+            seq = _POOL_BIRTH_SEQ
+            _pool_births[th.ident] = {
+                "seq": seq,
+                "thread_name": th.name,
+                "daemon": bool(th.daemon),
+                "live_threads_at_birth": _threading_pool.active_count(),
+            }
+            pooled = len(_pool_births)
+        _core_logger.info(
+            "DB_POOL_BIRTH #%d: thread=%s ident=%s daemon=%s live_threads=%d pooled=%d",
+            seq, th.name, th.ident, bool(th.daemon),
+            _threading_pool.active_count(), pooled,
+        )
+    except Exception:  # self-safe: en tæller må aldrig kunne vælte et DB-kald
+        pass
+
+
+def _note_pool_death() -> None:
+    """Registrér at DENNE tråds pool-forbindelse blev lukket rigtigt. Self-safe."""
+    global _POOL_DEATH_SEQ
+    try:
+        th = _threading_pool.current_thread()
+        with _pool_events_lock:
+            _POOL_DEATH_SEQ += 1
+            _pool_births.pop(th.ident, None)
+            pooled = len(_pool_births)
+        _core_logger.info(
+            "DB_POOL_DEATH: thread=%s ident=%s pooled=%d", th.name, th.ident, pooled
+        )
+    except Exception:  # self-safe: en tæller må aldrig kunne vælte et DB-kald
+        pass
+
+
+def pool_connection_stats() -> dict:
+    """Øjebliksbillede: hvilke LEVENDE tråde ejer en pool-forbindelse.
+
+    `orphaned` er svaret på det åbne spørgsmål: poster hvis tråd-ident ikke
+    længere findes blandt de kørende tråde. Er den tom, ejer hver forbindelse
+    en levende tråd — og så er tallet poolens leje, ikke en læk.
+    """
+    with _pool_events_lock:
+        births = dict(_pool_births)
+        seq_b, seq_d = _POOL_BIRTH_SEQ, _POOL_DEATH_SEQ
+    levende = {t.ident: t.name for t in _threading_pool.enumerate()}
+    foraeldreloese = {
+        ident: rec for ident, rec in births.items() if ident not in levende
+    }
+    return {
+        "pooled": len(births),
+        "births_total": seq_b,
+        "deaths_total": seq_d,
+        "threads_alive": len(levende),
+        "orphaned": foraeldreloese,
+    }
+
+
 def close_pooled_connection() -> None:
     """Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe."""
     conn = getattr(_conn_pool, "conn", None)
@@ -160,6 +244,7 @@ def close_pooled_connection() -> None:
         except Exception:
             pass
         _conn_pool.conn = None
+        _note_pool_death()
 
 
 def connect() -> sqlite3.Connection:
@@ -184,6 +269,7 @@ def connect() -> sqlite3.Connection:
         except Exception:
             pass
         _conn_pool.conn = None
+        _note_pool_death()
         conn = None
     if conn is not None:
         try:
@@ -200,6 +286,7 @@ def connect() -> sqlite3.Connection:
     conn = _make_connection(PooledConnection)
     _conn_pool.conn = conn
     _conn_pool.conn_path = DB_PATH
+    _note_pool_birth()  # NY pool-forbindelse for denne tråd (ikke genbrug)
     return conn
 
 

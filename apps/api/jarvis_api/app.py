@@ -978,6 +978,10 @@ def create_app() -> FastAPI:
     app.include_router(_central_feel.router)
     from apps.api.jarvis_api.routes import central_affect as _central_affect
     app.include_router(_central_affect.router)
+    # DB-pool-attribution (15/10-2026): tællerne er proces-lokale, så routen giver
+    # både api'ens (direkte) og runtime'ens (over 8011) pool i ét svar.
+    from apps.api.jarvis_api.routes import central_db_pool as _central_db_pool
+    app.include_router(_central_db_pool.router)
     from apps.api.jarvis_api.routes import central_autonomous as _central_autonomous
     app.include_router(_central_autonomous.router)
     from apps.api.jarvis_api.routes import central_connections as _central_connections

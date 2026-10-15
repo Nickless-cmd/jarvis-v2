@@ -6,6 +6,8 @@ Ingen LLM-kald (konsolidering ligger i daemonen).
 Spec: docs/superpowers/specs/2026-05-02-jarvis-brain-design.md
 """
 from __future__ import annotations
+
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -98,8 +100,21 @@ class BrainEntry:
             raise ValueError(f"invalid visibility: {self.visibility!r}")
         if self.status not in _VALID_STATUS:
             raise ValueError(f"invalid status: {self.status!r}")
-        if self.trigger not in _VALID_TRIGGER:
+        # `trigger` er BESKRIVENDE proveniens, ikke en sikkerheds-vaerdi. Et
+        # ukendt navn maa derfor ikke goere posten ulaeselig — kun et TOMT
+        # navn er en fejl. Maalt 15/10-2026: 31 poster bar fritekst som
+        # `arkiv-migrering (11/10-2026)` og `dybdesession (30 min)`, og
+        # `b4_catchup_infer` fejlede hver time paa dem (den læser posten
+        # gennem `read_entry` → `entry_from_frontmatter` → her).
+        # Vaernet fandtes kun her og beskyttede intet: intet forgrener paa
+        # trigger, og skrive-stederne sender gyldige navne selv.
+        if not str(self.trigger or "").strip():
             raise ValueError(f"invalid trigger: {self.trigger!r}")
+        if self.trigger not in _VALID_TRIGGER:
+            logging.getLogger(__name__).debug(
+                "jarvis_brain: ukendt trigger %r paa %s — bevaret som fritekst",
+                self.trigger, self.id,
+            )
 
 
 # ---------------------------------------------------------------------------

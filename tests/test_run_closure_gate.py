@@ -621,3 +621,98 @@ class TestRunClosureGaarTilIndbakken:
         assert kald[0]["kildetype"] == "run_closure"
         assert kald[0]["kilde_id"] == "unstaged-rid-42"
         assert "new_file.py" in kald[0]["beskrivelse"]
+
+
+class TestInspektionTilIndbakken:
+    """Runtime-inspektionen skal lande i indbakken (15/10-2026).
+
+    Bjoern: «din daglige runtime inspektion, lander den kun i en autonom
+    session eller lander den osse i din inbak?» Maalt: den landede KUN som
+    autonomt run — `_fire_due` starter et run uden at roere indbakken.
+    """
+
+    def _payload(self, *, focus: str, origin: str = "") -> dict:
+        p = {
+            "run_id": "autonomous-inspektion-test",
+            "session_id": "auto-recurring-2026-10-15",
+            "focus": focus,
+            "autonomous": True,
+        }
+        if origin:
+            p["origin"] = origin
+        return p
+
+    def _stub(self, monkeypatch, kald: list, *, global_origin: str):
+        from core.services import run_closure_gate as g
+
+        monkeypatch.setattr(g, "_pop_pre_run_state", lambda _r: None)
+        monkeypatch.setattr(g, "_git_porcelain_status", lambda **kw: set())
+        monkeypatch.setattr(g, "_git_dirty_content_hashes", lambda **kw: {})
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: [])
+        monkeypatch.setattr(g, "_set_current_origin", lambda o: None)
+        # Den GLOBALE staar bevidst paa noget andet end eventet i nogle tests:
+        # grenen skal vaelge paa EVENTET, ikke paa den global der kan bytte
+        # under et samtidigt run.
+        monkeypatch.setattr(g, "aktuel_origin", lambda: global_origin)
+        monkeypatch.setattr(g, "_registrer_i_indbakken",
+                            lambda **kw: kald.append(kw))
+        return g
+
+    def test_inspektion_laegges_i_indbakken(self, monkeypatch):
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="")
+        monkeypatch.setattr(g, "_pop_tool_calls", lambda _r: ["bash"])
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2 — incidents, anomalies",
+            origin="recurring"))
+
+        # To poster er RIGTIGT: et inspektions-run uden tekst er baade
+        # "tavst" (silent-run-grenen) OG en inspektion. De to grene er
+        # uafhaengige, og begge skal fyre.
+        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
+        assert len(inspektion) == 1, f"forventede én inspektions-post, fik {kald}"
+        assert inspektion[0]["kilde_id"] == "inspektion-autonomous-inspektion-test"
+
+    def test_eventets_origin_vejer_tungere_end_den_globale(self, monkeypatch):
+        """Kernen i fixet: den globale kan vaere byttet af et samtidigt run."""
+        kald = []
+        # Globalen siger heartbeat (et ANDET run har overtaget den), men
+        # eventet — som er bundet til DETTE run — siger recurring.
+        g = self._stub(monkeypatch, kald, global_origin="heartbeat")
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2",
+            origin="recurring"))
+
+        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
+        assert len(inspektion) == 1, (
+            f"eventets origin skal vinde over den globale: {kald}"
+        )
+
+    def test_fald_tilbage_til_global_naar_eventet_ikke_baerer_origin(
+        self, monkeypatch,
+    ):
+        """Aeldre events (foer 15/10) har ingen origin — de skal stadig virke."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="recurring")
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2"))
+
+        inspektion = [k for k in kald if k["kildetype"] == "recurring"]
+        assert len(inspektion) == 1, f"fald-tilbage virker ikke: {kald}"
+
+    def test_andre_recurring_runs_roerer_ikke_indbakken(self, monkeypatch):
+        """Kun INSPEKTIONEN — ikke enhver recurring-task."""
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="")
+        g._on_run_completed(self._payload(
+            focus="Send morgenbrief til Bjoern", origin="recurring"))
+
+        assert kald == [], f"morgenbriefen maa ikke blive en indbakke-post: {kald}"
+
+    def test_ikke_recurring_origin_roerer_ikke_indbakken(self, monkeypatch):
+        kald = []
+        g = self._stub(monkeypatch, kald, global_origin="")
+        g._on_run_completed(self._payload(
+            focus="Runtime-inspektion: kig i ~/.jarvis-v2", origin="heartbeat"))
+
+        assert kald == [], f"kun recurring-inspektionen: {kald}"

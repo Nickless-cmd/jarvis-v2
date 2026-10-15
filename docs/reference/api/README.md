@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17192 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17212 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17192 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_run_streams`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_session_view` … `mobile_memory`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mobile_update` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_rewind`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_run_streams` … `mission_control_skills_hardening_lab`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mobile_memory` … `workbench`
 - [`apps.api.jarvis_api.routes.routines`](apps.api.jarvis_api.routes.routines.md) — `routines` … `routines`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
@@ -36,30 +36,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17192 functions/
 - [`core.services.04`](core.services.04.md) — `baggrundsjob_vagt` … `central_belief_gap`
 - [`core.services.05`](core.services.05.md) — `central_body_map_pulse` … `central_injection_units`
 - [`core.services.06`](core.services.06.md) — `central_inner_life_ablation` … `central_route`
-- [`core.services.07`](core.services.07.md) — `central_route_headroom` … `cheap_lane_floor`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_health_reconcile` … `communication_guard_daemon`
-- [`core.services.09`](core.services.09.md) — `companion_initiative` … `cowork_dispatch`
-- [`core.services.10`](core.services.10.md) — `cowork_feed` … `deep_analyzer`
-- [`core.services.11`](core.services.11.md) — `deep_reflection_slot` … `dream_hypothesis_signal_tracking`
-- [`core.services.12`](core.services.12.md) — `dream_influence_proposal_tracking` … `existential_drift`
-- [`core.services.13`](core.services.13.md) — `existential_wonder_daemon` … `gate_proactivity`
-- [`core.services.14`](core.services.14.md) — `gate_review` … `heartbeat_runtime_providers`
-- [`core.services.15`](core.services.15.md) — `heartbeat_scheduler` … `internal_cadence_maintenance`
-- [`core.services.16`](core.services.16.md) — `internal_cadence_matrix` … `mail_checker_daemon`
-- [`core.services.17`](core.services.17.md) — `malware_scan` … `model_context`
-- [`core.services.18`](core.services.18.md) — `model_pair_resolver` … `orb_phase`
-- [`core.services.19`](core.services.19.md) — `outbound_nudges` … `private_temporal_curiosity_state_tracking`
-- [`core.services.20`](core.services.20.md) — `private_temporal_promotion_signal_tracking` … `prose_tool_calls`
-- [`core.services.21`](core.services.21.md) — `provider_autodiscovery` … `relation_map`
-- [`core.services.22`](core.services.22.md) — `relation_state_signal_tracking` … `run_finding_accounting`
-- [`core.services.23`](core.services.23.md) — `run_follow` … `selective_attention`
-- [`core.services.24`](core.services.24.md) — `selective_consolidation_daemon` … `session_continuity`
-- [`core.services.25`](core.services.25.md) — `session_distillation` … `skill_autosurface`
-- [`core.services.26`](core.services.26.md) — `skill_contract_registry` … `temporal_body`
-- [`core.services.27`](core.services.27.md) — `temporal_context` … `tool_router_runtime`
-- [`core.services.28`](core.services.28.md) — `tool_tagger` … `visible_followup_results`
-- [`core.services.29`](core.services.29.md) — `visible_inner_life` … `visible_terminal_policy`
-- [`core.services.30`](core.services.30.md) — `visible_text_scrub` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `central_route_headroom` … `cheap_lane_failure_policy`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_floor` … `communication_guard`
+- [`core.services.09`](core.services.09.md) — `communication_guard_daemon` … `counterfactual_triggers`
+- [`core.services.10`](core.services.10.md) — `cowork_dispatch` … `decisions_journal`
+- [`core.services.11`](core.services.11.md) — `deep_analyzer` … `dream_hypothesis_judge`
+- [`core.services.12`](core.services.12.md) — `dream_hypothesis_signal_tracking` … `executive_contradiction_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `existential_drift` … `gate_privacy`
+- [`core.services.14`](core.services.14.md) — `gate_proactivity` … `heartbeat_runtime_influence`
+- [`core.services.15`](core.services.15.md) — `heartbeat_runtime_providers` … `internal_cadence_inner_life`
+- [`core.services.16`](core.services.16.md) — `internal_cadence_maintenance` … `loyalty_gradient_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `mail_checker_daemon` … `model_catalogue_sweep`
+- [`core.services.18`](core.services.18.md) — `model_context` … `operator_channel`
+- [`core.services.19`](core.services.19.md) — `orb_phase` … `private_state_snapshot_tracking`
+- [`core.services.20`](core.services.20.md) — `private_temporal_curiosity_state_tracking` … `proprioception_metrics`
+- [`core.services.21`](core.services.21.md) — `prose_tool_calls` … `relation_dynamics`
+- [`core.services.22`](core.services.22.md) — `relation_map` … `run_event_log`
+- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `seed_system`
+- [`core.services.24`](core.services.24.md) — `selective_attention` … `session_context_resolve`
+- [`core.services.25`](core.services.25.md) — `session_continuity` … `simple_tool_executor`
+- [`core.services.26`](core.services.26.md) — `skill_autosurface` … `temperament_tendency_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `temporal_body` … `tool_router`
+- [`core.services.28`](core.services.28.md) — `tool_router_runtime` … `visible_followup_lean`
+- [`core.services.29`](core.services.29.md) — `visible_followup_results` … `visible_synthesis_stream`
+- [`core.services.30`](core.services.30.md) — `visible_terminal_policy` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

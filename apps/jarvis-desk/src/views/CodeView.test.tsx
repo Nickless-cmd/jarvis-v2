@@ -12,6 +12,7 @@ import { PermissionProvider } from '../contexts/PermissionContext'
 import * as api from '../lib/api'
 import { usePanel } from '../hooks/usePanel'
 import { PIN_INTERVAL_MS } from '../lib/useChatScroll'
+import { writeRaekkevisning } from '../lib/visningsPref'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -93,6 +94,24 @@ describe('CodeView', () => {
     vi.mocked(api.getSession).mockResolvedValue({
       session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [], etag: null,
     })
+  })
+
+  it('keeps historical Code messages on the existing row renderer', async () => {
+    writeRaekkevisning(true)
+    vi.mocked(api.getSession).mockResolvedValueOnce({
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' },
+      messages: [{ id: 'a1', role: 'assistant', created_at: '2026-09-16T10:00:00Z', content: [
+        { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+        { type: 'text', text: 'Kode-svar' },
+      ] }],
+      etag: null,
+    })
+    try {
+      const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+      await screen.findByText('Kode-svar')
+      expect(container.querySelector('.raekkevisning')).toBeInTheDocument()
+      expect(container.querySelector('[data-chat-flow-mode]')).not.toBeInTheDocument()
+    } finally { writeRaekkevisning(false) }
   })
 
   it('viser INGEN kørselstal-linje — den er fjernet, og det er tredje gang', () => {

@@ -353,6 +353,7 @@ _Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._
 | function | `_exec_get_layout` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L63) |
 | function | `_exec_show_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L67) |
 | function | `_exec_close_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L81) |
+| function | `_exec_set_chat_flow_preference` | `(args)` | Persist presentation state for the verified current run principal. | [src](../../../core/tools/desk_view_tools.py#L88) |
 
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_

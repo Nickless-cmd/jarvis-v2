@@ -1,8 +1,8 @@
 /**
- * Valget mellem bobbler og rækker.
+ * Code Mode-valget mellem bobbler og rækker.
  *
  * Lokal præference, samme mønster som `composerPrefs` — den hører til
- * skærmen, ikke til kontoen, og skal virke uden netværk.
+ * Code-fladen, ikke Chat Flow-kontoindstillingen, og skal virke uden netværk.
  *
  * `useSyncExternalStore` og ikke bare et opslag ved render: `MessageRow` er
  * memoiseret, så et localStorage-opslag i renderkroppen ville aldrig blive

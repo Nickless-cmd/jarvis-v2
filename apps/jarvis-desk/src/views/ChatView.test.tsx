@@ -79,7 +79,7 @@ const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 beforeEach(() => localStorage.clear())
 
 describe('ChatView integration', () => {
-  it('viser rækkevisning når en ældre assistentbesked har et tomt blokindeks', async () => {
+  it('holder historisk Chat Flow adskilt fra Code-rækkevisning ved et tomt blokindeks', async () => {
     writeRaekkevisning(true)
     const sparseContent = new Array<ContentBlock>(2)
     sparseContent[1] = { type: 'tool_use', id: 't1', name: 'read_file', input: {} }
@@ -94,7 +94,7 @@ describe('ChatView integration', () => {
       return null
     }
     try {
-      render(
+      const { container } = render(
         <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
           <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
             <ChatView sessionId="s1" /><InjectMessages />
@@ -102,6 +102,8 @@ describe('ChatView integration', () => {
         </SessionProvider></SettingsProvider>,
       )
       expect(await screen.findByText('Sikkert svar')).toBeInTheDocument()
+      expect(container.querySelector('[data-chat-flow-mode="living"]')).toBeInTheDocument()
+      expect(container.querySelector('.raekkevisning')).not.toBeInTheDocument()
     } finally {
       writeRaekkevisning(false)
     }
@@ -181,6 +183,7 @@ describe('ChatView integration', () => {
     act(() => {
       handlersRef.current?.onRunId('r1')
       handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
+      handlersRef.current?.onEvent({ type: 'system_event', kind: 'final_answer_start', payload: { run_id: 'r1' } })
       handlersRef.current?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
       handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'svar' } })
     })

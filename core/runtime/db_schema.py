@@ -302,6 +302,30 @@ def _ensure_notification_tables(conn) -> None:
         )""")
 
 
+def _ensure_chat_flow_preferences_table(conn) -> None:
+    """Per-authenticated-user Desk Chat presentation preferences."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS chat_flow_preferences (
+            principal_id           TEXT PRIMARY KEY,
+            preference             TEXT NOT NULL DEFAULT 'living',
+            onboarding_seen        INTEGER NOT NULL DEFAULT 0,
+            onboarding_claim_id    TEXT,
+            onboarding_claim_run   TEXT,
+            onboarding_claim_until TEXT,
+            explicit_user_choice   INTEGER NOT NULL DEFAULT 0,
+            suggestions_enabled    INTEGER NOT NULL DEFAULT 1,
+            last_suggestion_kind   TEXT,
+            last_suggestion_at     TEXT,
+            suggestion_rejections INTEGER NOT NULL DEFAULT 0,
+            short_direct_runs      INTEGER NOT NULL DEFAULT 0,
+            multi_step_runs        INTEGER NOT NULL DEFAULT 0,
+            work_expansions        INTEGER NOT NULL DEFAULT 0,
+            living_overrides       INTEGER NOT NULL DEFAULT 0,
+            calm_overrides         INTEGER NOT NULL DEFAULT 0,
+            updated_at             TEXT NOT NULL
+        )""")
+
+
 def _ensure_security_guard_tables(conn) -> None:
     """Identity-verification-guard & abuse-monitoring (spec 2026-06-21). Idempotent.
 
@@ -546,6 +570,7 @@ def init_db() -> None:
         )
         _ensure_chat_session_workspace_columns(conn)
         _ensure_notification_tables(conn)
+        _ensure_chat_flow_preferences_table(conn)
         _ensure_security_guard_tables(conn)  # identity-guard & abuse (spec 2026-06-21)
         conn.execute(
             """

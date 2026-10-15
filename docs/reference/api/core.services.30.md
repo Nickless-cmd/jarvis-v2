@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_terminal_policy.py`
+_Single source of truth for visible task terminal decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TerminalState` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L15) |
+| class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L24) |
+| class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L37) |
+| function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L52) |
+| function | `is_non_retryable_recovery_reason` | `(reason)` | Reject retries for deterministic request and local-code failures. | [src](../../../core/services/visible_terminal_policy.py#L56) |
+| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L65) |
+| function | `svar_beviser_faerdig` | `(reason)` | Er et svar fra et run med denne grund BEVIS for at opgaven er færdig? | [src](../../../core/services/visible_terminal_policy.py#L118) |
+| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L141) |
+| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L180) |
+
 ## `core/services/visible_text_scrub.py`
 _Fjern runtime'ens interne markører fra den tekst brugeren ser._
 

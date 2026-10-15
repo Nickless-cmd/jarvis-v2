@@ -19,6 +19,30 @@ import { EditedFilesCard } from './EditedFilesCard'
 import { maalteRedigeringer, redigeredeDiffPar, redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
 import { usePacedBlocks } from '../../lib/usePacedBlocks'
+import { ChatFlowPresentation } from './ChatFlowPresentation'
+import type { StreamStatus } from '../../lib/streamReducer'
+import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
+
+function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
+  rundeEtiketter, tankeResumeer, raekker }: {
+  blocks: ContentBlock[]
+  density: 'compact' | 'full'
+  streaming: boolean
+  finalAnswerStarted: boolean
+  beskedId?: string
+  config?: ApiConfig
+  rundeEtiketter?: Record<string, string>
+  tankeResumeer?: Record<string, string>
+  raekker: boolean
+}) {
+  const paced = usePacedBlocks(blocks, streaming)
+  return raekker
+    ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
+        beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter} />
+    : <BlocksRenderer blocks={paced} density={density} streaming={streaming}
+        rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+        beskedId={beskedId} config={config} />
+}
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -29,6 +53,12 @@ import { usePacedBlocks } from '../../lib/usePacedBlocks'
 function MessageRowImpl({
   role,
   blocks: rawBlocks,
+  presentation = 'code',
+  chatMode = 'living',
+  status,
+  workingStep,
+  runId,
+  onWorkExpanded,
   density,
   streaming,
   finalAnswerStarted = false,
@@ -46,6 +76,12 @@ function MessageRowImpl({
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
+  presentation?: 'chat' | 'code'
+  chatMode?: ActiveChatFlowMode
+  status?: StreamStatus
+  workingStep?: string | null
+  runId?: string | null
+  onWorkExpanded?: () => void
   density: 'compact' | 'full'
   streaming: boolean
   /** Bekræftet slutsvar fra serveren; folder arbejdet mens teksten stadig kommer. */
@@ -83,7 +119,7 @@ function MessageRowImpl({
   // return braekker hele visningen, og hverken tsc eller testene ser det
   // (maalt tidligere i dette repo).
   const raekker = useRaekkevisning()
-  const blocks = usePacedBlocks(denseBlocks(rawBlocks), streaming && role === 'assistant')
+  const blocks = denseBlocks(rawBlocks)
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const images = blocks.filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')
@@ -150,10 +186,15 @@ function MessageRowImpl({
             {/* Raekkevisning bag en knap (Bjoern 22/9-2026). KUN transskriptet
                 skiftes — fejlhegn, artefakter, kilder og handlinger er de samme,
                 og composer/liveness/save-rail roeres ikke. */}
-            {raekker
-              ? <RaekkeTranskript blocks={blocks} streaming={streaming} finalAnswerStarted={finalAnswerStarted} beskedId={beskedId}
-                  config={config} rundeEtiketter={rundeEtiketter} />
-              : <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />}
+            {presentation === 'chat'
+              ? <ChatFlowPresentation blocks={blocks} mode={chatMode} density={density}
+                  streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
+                  finalAnswerStarted={finalAnswerStarted} workingStep={workingStep}
+                  runId={runId} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded} />
+              : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
+                  finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
+                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

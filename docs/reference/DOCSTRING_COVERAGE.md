@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8994/17192 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8997/17212 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 697 | 960 | 72% |
+| `apps.api.jarvis_api.routes` | 697 | 967 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,15 +24,15 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 824 | 1524 | 54% |
-| `core.services` | 5992 | 11686 | 51% |
+| `core.runtime` | 825 | 1525 | 54% |
+| `core.services` | 5993 | 11697 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 538 | 1079 | 49% |
+| `core.tools` | 539 | 1080 | 49% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2563)
+## Undocumented public functions (2575)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -74,6 +74,12 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
 - `apps/api/jarvis_api/routes/central_profiles.py` :: `get_profiles` (L24)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `observations_post` (L89)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `onboarding_ack` (L81)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `onboarding_claim` (L76)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `preferences_get` (L59)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `preferences_patch` (L64)
+- `apps/api/jarvis_api/routes/chat_flow_preferences.py` :: `suggestion_outcome` (L99)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `audit` (L192)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `capacity` (L123)
 - `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `control` (L218)
@@ -610,7 +616,7 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L352)
+- `core/runtime/db_schema.py` :: `init_db` (L376)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -986,6 +992,12 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_crypto.py` :: `er_krypteret` (L150)
+- `core/services/chat_flow_preferences.py` :: `ack_chat_flow_onboarding` (L137)
+- `core/services/chat_flow_preferences.py` :: `claim_chat_flow_onboarding` (L113)
+- `core/services/chat_flow_preferences.py` :: `get_chat_flow_state` (L71)
+- `core/services/chat_flow_preferences.py` :: `record_chat_flow_observation` (L152)
+- `core/services/chat_flow_preferences.py` :: `record_chat_flow_suggestion` (L176)
+- `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L826)
@@ -2387,10 +2399,10 @@ Generated from source. 8994/17192 functions/methods documented (52%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L325)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L343)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L321)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L348)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L327)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L345)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L323)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L350)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

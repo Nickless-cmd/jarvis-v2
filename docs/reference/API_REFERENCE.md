@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-15 from app.routes (live) — 648 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-15 from app.routes (live) — 654 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -59,6 +59,12 @@
 | GET | `/api/auth/verify-email` |  | auth |
 | GET | `/api/auth/whoami-token` | dict | jarvisx_authtokens |
 | GET | `/api/channels/state` | dict | jarvisx_channels |
+| POST | `/api/chat-flow/observations` | dict | chat_flow_preferences |
+| POST | `/api/chat-flow/onboarding/ack` | dict | chat_flow_preferences |
+| POST | `/api/chat-flow/onboarding/claim` | dict | chat_flow_preferences |
+| GET | `/api/chat-flow/preferences` | dict | chat_flow_preferences |
+| PATCH | `/api/chat-flow/preferences` | dict | chat_flow_preferences |
+| POST | `/api/chat-flow/suggestions/outcome` | dict | chat_flow_preferences |
 | GET | `/api/chat/search` | dict | jarvisx_sessions |
 | POST | `/api/chronicle` | dict | jarvisx_workspace |
 | GET | `/api/connectors` |  | connectors |

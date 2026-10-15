@@ -23,6 +23,13 @@ ALL = [
 
 class TestChatScope:
 
+    def test_authenticated_chat_users_can_change_their_own_chat_flow(self):
+        names = ["set_chat_flow_preference"]
+        assert allowed_tool_names(role="owner", scope="chat", all_names=names) == set(names)
+        assert allowed_tool_names(role="member", scope="chat", all_names=names) == set(names)
+        assert allowed_tool_names(role="partner", scope="chat", all_names=names) == set(names)
+        assert allowed_tool_names(role="guest", scope="chat", all_names=names) == set()
+
     def test_owner_can_account_for_side_tasks_in_chat_and_code(self):
         names = ["flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks"]
         for scope in ("chat", "code"):

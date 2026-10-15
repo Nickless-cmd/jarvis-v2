@@ -510,6 +510,24 @@ _Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
 | function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L240) |
 | function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L278) |
 
+## `core/services/chat_flow_preferences.py`
+_Authenticated per-user presentation preferences for Desk Chat Mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ChatFlowIdentityError` | `` | The current execution has no verified stable preference owner. | [src](../../../core/services/chat_flow_preferences.py#L16) |
+| function | `_now` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L20) |
+| function | `_iso` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L25) |
+| function | `resolve_chat_flow_principal` | `()` | Resolve only token-backed identity; session elevation never changes owner. | [src](../../../core/services/chat_flow_preferences.py#L29) |
+| function | `_ensure_row` | `(conn, principal_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L42) |
+| function | `_state_from_row` | `(row)` | — | [src](../../../core/services/chat_flow_preferences.py#L53) |
+| function | `get_chat_flow_state` | `(principal_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L71) |
+| function | `set_chat_flow_state` | `(principal_id, *, preference=…, suggestions_enabled=…, explicit=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L81) |
+| function | `claim_chat_flow_onboarding` | `(principal_id, run_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L113) |
+| function | `ack_chat_flow_onboarding` | `(principal_id, claim_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L137) |
+| function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
+| function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
+
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._
 
@@ -694,14 +712,4 @@ _Hvor længe skal et cheap-lane-slot i karantæne? Afhænger af HVORFOR det fejl
 | function | `classify` | `(error_kind, message=…)` | ``'permanent'`` | ``'depleted'`` | ``'transient'``. | [src](../../../core/services/cheap_lane_failure_policy.py#L95) |
 | function | `model_retired` | `(error_kind, message=…)` | Er selve MODELLEN væk — for alle konti? (Til den pr.-model-tilstand.) | [src](../../../core/services/cheap_lane_failure_policy.py#L129) |
 | function | `quarantine_seconds` | `(error_kind, *, retry_after_s=…, message=…)` | Karantæne-længde, eller ``0`` når slottet skal følge den normale breaker-trappe. | [src](../../../core/services/cheap_lane_failure_policy.py#L147) |
-
-## `core/services/cheap_lane_floor.py`
-_Aldrig-tør-bund for cheap lane (spec §5.5 Fund 4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `floor_targets` | `()` | Bund-kæden, config-overstyrbar. Self-safe → default ved fejl. | [src](../../../core/services/cheap_lane_floor.py#L46) |
-| function | `floor_result` | `(*, lane, reason, provider=…, model=…, text=…, status=…, extra=…)` | Typet resultat der matcher pool-outputtets form. status='degraded' = tom bund. | [src](../../../core/services/cheap_lane_floor.py#L60) |
-| function | `_execute_floor_target` | `(*, provider, model, message, lane)` | Kør ét bund-target gennem den eksisterende adapter. Kan rejse — indkapsles | [src](../../../core/services/cheap_lane_floor.py#L74) |
-| function | `attempt_floor` | `(*, message, lane, reason)` | Prøv bund-kæden i rækkefølge. Første ikke-tomme svar vinder. Hvis ALT | [src](../../../core/services/cheap_lane_floor.py#L94) |
 

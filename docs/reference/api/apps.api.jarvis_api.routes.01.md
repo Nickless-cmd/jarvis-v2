@@ -581,6 +581,25 @@ _Kontekstforbrug og komprimeringsstatus til Desk._
 | class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L173) |
 | function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L179) |
 
+## `apps/api/jarvis_api/routes/chat_flow_preferences.py`
+_Self-scoped API for Desk Chat Flow presentation preferences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_StrictModel` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L23) |
+| class | `PreferenceUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L27) |
+| class | `OnboardingClaim` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L32) |
+| class | `OnboardingAck` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L36) |
+| class | `Observation` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L40) |
+| class | `SuggestionOutcome` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L46) |
+| function | `_principal` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L51) |
+| function | `preferences_get` | `()` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L59) |
+| function | `preferences_patch` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L64) |
+| function | `onboarding_claim` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L76) |
+| function | `onboarding_ack` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L81) |
+| function | `observations_post` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L89) |
+| function | `suggestion_outcome` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L99) |
+
 ## `apps/api/jarvis_api/routes/chat_inbox.py`
 _Bjørns egen vej ind i indbakken — den fjerde skriver._
 
@@ -597,16 +616,4 @@ _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
 | class | `RewindRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L19) |
 | function | `chat_rewind` | `(session_id, request)` | Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L24) |
 | function | `chat_rewind_undo` | `(session_id, rewind_id)` | Læg beskederne tilbage — kun så længe der ikke er skrevet siden. | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L36) |
-
-## `apps/api/jarvis_api/routes/chat_run_streams.py`
-_Active-run discovery and replayable SSE follow routes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_journal_sessions` | `()` | Sessioner med et levende run i den delte journal. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L35) |
-| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L56) |
-| function | `subscribe_authorized` | `(location, from_idx)` | Authorize and resolve one stream without inventing completion. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L103) |
-| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L134) |
-| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset nul. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L140) |
-| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L152) |
 

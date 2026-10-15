@@ -14,6 +14,53 @@ const REDIGERING: ContentBlock[] = [
 ]
 
 describe('MessageRow', () => {
+  it('isolates Chat presentation from the Code row preference for active and historical messages', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    const historical = render(<MessageRow presentation="chat" chatMode="living" status="done"
+      role="assistant" blocks={[{ type: 'text', text: 'Historisk svar' }]}
+      density="compact" streaming={false} />)
+    expect(historical.container.querySelector('[data-chat-flow-mode="living"]')).toBeInTheDocument()
+    expect(historical.container.querySelector('.raekkevisning')).not.toBeInTheDocument()
+    expect(screen.getByText('Historisk svar')).toBeInTheDocument()
+
+    historical.rerender(<MessageRow presentation="chat" chatMode="calm" status="working"
+      role="assistant" blocks={[{ type: 'tool_use_summary', summary: 'Fandt filen', preceding_tool_use_ids: ['t1'] }]}
+      density="compact" streaming />)
+    expect(historical.container.querySelector('[data-chat-flow-mode="calm"]')).toBeInTheDocument()
+    expect(screen.getByText('Fandt filen')).toBeInTheDocument()
+
+    localStorage.setItem(RAEKKE_KEY, '0')
+    act(() => window.dispatchEvent(new StorageEvent('storage', { key: RAEKKE_KEY, newValue: '0' })))
+    expect(historical.container.querySelector('[data-chat-flow-mode="calm"]')).toBeInTheDocument()
+    historical.unmount()
+    localStorage.removeItem(RAEKKE_KEY)
+  })
+
+  it('keeps Code presentation on its existing row renderer', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    try {
+      const { container } = render(<MessageRow presentation="code" role="assistant"
+        blocks={[{ type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }]}
+        density="compact" streaming={false} />)
+      expect(container.querySelector('.raekkevisning')).toBeInTheDocument()
+      expect(container.querySelector('[data-chat-flow-mode]')).not.toBeInTheDocument()
+    } finally { localStorage.removeItem(RAEKKE_KEY) }
+  })
+
+  it.each([
+    ['done' as const, 'Arbejdsforløb'],
+    ['interrupted' as const, 'Arbejdsforløb afbrudt'],
+    ['error' as const, 'Arbejdsforløb fejlede'],
+  ])('preserves missing-signal Chat text once for %s', (status, label) => {
+    render(<MessageRow presentation="chat" chatMode="living" status={status}
+      role="assistant" blocks={[
+        { type: 'thinking', thinking: 'arbejde' },
+        { type: 'text', text: 'Bevaret indhold' },
+      ]} density="compact" streaming={false} />)
+    expect(screen.getAllByText('Bevaret indhold')).toHaveLength(1)
+    expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
   it('lader live-tekst komme frem i flere trin uden at ændre det færdige svar', () => {
     vi.useFakeTimers()
     try {

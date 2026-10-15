@@ -104,6 +104,8 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Self-scoped UI preference; handler derives the verified current principal.
+    "set_chat_flow_preference",
     # Owner-only via OWNER_ONLY_TOOLS; kan bruges i både chat og code uden
     # at bryde kontrakten om at CHAT_MODE_OWNER_EXTRA kun er fil-læsning.
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",

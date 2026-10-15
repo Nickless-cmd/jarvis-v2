@@ -3,6 +3,8 @@ import { loadTheme, saveTheme, applyTheme, type Theme } from '../../lib/themeSto
 import { useFigurVist } from '../../lib/figurVist'
 import { useFigurSkin, SKIN_VALG } from '../../lib/figurSkin'
 import { useRaekkevisning, writeRaekkevisning } from '../../lib/visningsPref'
+import { useChatFlow } from '../../hooks/useChatFlow'
+import type { ChatFlowPreference } from '../../lib/chatFlowApi'
 
 const OPTIONS: { key: Theme; label: string }[] = [
   { key: 'dark', label: 'Mørkt' },
@@ -20,6 +22,12 @@ export function ThemeSection() {
   // Skinnet bor samme sted som til/fra (figur.json i main-processen), så
   // indstillingerne og figur-vinduet altid ser det samme.
   const [skin, saetSkin] = useFigurSkin()
+  const chatFlow = useChatFlow()
+  const chatOptions: { key: ChatFlowPreference; label: string; description: string }[] = [
+    { key: 'living', label: 'Levende', description: 'Viser op til tre løbende synteser, mens Jarvis arbejder.' },
+    { key: 'calm', label: 'Rolig', description: 'Viser kun Jarvis’ aktuelle arbejdsstatus.' },
+    { key: 'adaptive', label: 'Adaptiv', description: 'Jarvis vælger automatisk den visning, der passer til samtalen.' },
+  ]
 
   return (
     <div className="settings-section theme-section">
@@ -64,6 +72,8 @@ export function ThemeSection() {
           </div>
         </div>
       ) : null}
+      <div className="settings-mode-group">
+      <h4>Code Mode</h4>
       {/* Rækkevisning (22/9-2026). Samtalen som en flad hændelsesrække i
           stedet for bobler: hver tanke og hvert værktøjskald er én linje af
           samme højde, arbejdet folder sig sammen bag turens hoved, og kun
@@ -77,10 +87,28 @@ export function ThemeSection() {
           onChange={(e) => writeRaekkevisning(e.target.checked)}
         />
         <span>
-          <strong>Rækkevisning i chatten</strong>
+          <strong>Rækkevisning</strong>
           <span className="account-google-hint">Ét svar, én linje pr. hændelse. Fold en linje ud for at se indholdet. Slå fra for at få boblerne tilbage.</span>
         </span>
       </label>
+      </div>
+      <fieldset className="settings-mode-group chat-flow-settings">
+        <legend><h4>Chat Mode</h4></legend>
+        {chatOptions.map((option) => (
+          <label className="figur-indstilling" key={option.key}>
+            <input
+              type="radio"
+              name="chat-flow-preference"
+              checked={chatFlow.state.preference === option.key}
+              onChange={() => void chatFlow.setPreference(option.key)}
+            />
+            <span>
+              <strong>{option.label}</strong>
+              <span className="account-google-hint">{option.description}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
     </div>
   )
 }

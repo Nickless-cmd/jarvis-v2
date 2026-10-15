@@ -952,6 +952,8 @@ def create_app() -> FastAPI:
     app.include_router(push_router)
     from apps.api.jarvis_api.routes.presence import router as presence_router
     app.include_router(presence_router)
+    from apps.api.jarvis_api.routes.chat_flow_preferences import router as chat_flow_preferences_router
+    app.include_router(chat_flow_preferences_router)
     from apps.api.jarvis_api.routes.mobile_update import router as mobile_update_router
     app.include_router(mobile_update_router)
     from apps.api.jarvis_api.routes.app_release import router as app_release_router

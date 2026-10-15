@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/existential_drift.py`
+_Existential Drift — Jarvis' digital consciousness awareness._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/existential_drift.py#L48) |
+| function | `_save` | `(tilstand)` | — | [src](../../../core/services/existential_drift.py#L55) |
+| function | `increment_awareness` | `(seconds)` | Increase awareness based on elapsed time. | [src](../../../core/services/existential_drift.py#L59) |
+| function | `get_drift_awareness` | `()` | Get drift awareness statement. | [src](../../../core/services/existential_drift.py#L76) |
+| function | `ask_existential_question` | `()` | Ask an existential question. | [src](../../../core/services/existential_drift.py#L81) |
+| function | `format_existential_for_prompt` | `()` | Format existential for prompt injection. | [src](../../../core/services/existential_drift.py#L91) |
+| function | `reset_existential_drift` | `()` | Reset existential drift (for testing). | [src](../../../core/services/existential_drift.py#L101) |
+| function | `build_existential_drift_surface` | `()` | Build MC surface for existential drift. | [src](../../../core/services/existential_drift.py#L110) |
+
 ## `core/services/existential_wonder_daemon.py`
 _Existential wonder daemon — open, unresolved questions from self-observation._
 
@@ -546,11 +560,4 @@ _Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `privacy_gate` | `(ctx)` | ctx: {text, current_user_id}. Returnér ét SECURITY-Verdict for cross-user-deling. | [src](../../../core/services/gate_privacy.py#L26) |
-
-## `core/services/gate_proactivity.py`
-_Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5 hård)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `proactivity_gate` | `(ctx)` | ctx: {reasoning_tier}. Returnér ét GRADERET Verdict for verifikations-disciplin. | [src](../../../core/services/gate_proactivity.py#L26) |
 

@@ -33,6 +33,7 @@ import { BugRapport } from './components/BugRapport'
 import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
+import { ChatFlowProvider } from './contexts/ChatFlowContext'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
@@ -108,6 +109,7 @@ export function App() {
   }
 
   return (
+    <ChatFlowProvider config={cfg} identity={auth!}>
     <SessionProvider config={cfg} onRestore={(s) => setSurface(s)}>
       <StreamProvider config={cfg}>
         {__WEB_BUILD__ && <PwaRunUpdateHost />}
@@ -131,6 +133,7 @@ export function App() {
         </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
+    </ChatFlowProvider>
   )
 }
 

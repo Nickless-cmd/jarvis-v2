@@ -85,6 +85,37 @@ def _exec_close_pane(args: dict[str, Any]) -> dict[str, Any]:
     return _spoerg("close_pane", {"pane": pane, **_runtime(args)})
 
 
+def _exec_set_chat_flow_preference(args: dict[str, Any]) -> dict[str, Any]:
+    """Persist presentation state for the verified current run principal."""
+    from core.services.chat_flow_preferences import (
+        ChatFlowIdentityError,
+        resolve_chat_flow_principal,
+        set_chat_flow_state,
+    )
+
+    preference = args.get("preference")
+    suggestions = args.get("suggestions_enabled")
+    if preference is None and suggestions is None:
+        return {"status": "error", "error": "preference or suggestions_enabled is required"}
+    if preference is not None and preference not in {"living", "calm", "adaptive"}:
+        return {"status": "error", "error": "preference must be living, calm, or adaptive"}
+    if suggestions is not None and not isinstance(suggestions, bool):
+        return {"status": "error", "error": "suggestions_enabled must be boolean"}
+    try:
+        principal = resolve_chat_flow_principal()
+        state = set_chat_flow_state(
+            principal,
+            preference=preference,
+            suggestions_enabled=suggestions,
+            explicit=preference is not None,
+        )
+    except (ChatFlowIdentityError, ValueError) as exc:
+        # Unverified identity or invalid preference: a caller error that is
+        # reported as a tool result, never raised through the tool boundary.
+        return {"status": "error", "error": str(exc)}
+    return {"status": "ok", **state}
+
+
 _PANE_ENUM = {"type": "string", "enum": list(PANELER)}
 
 DESK_VIEW_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -135,10 +166,37 @@ DESK_VIEW_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {"pane": _PANE_ENUM}, "required": ["pane"]},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_chat_flow_preference",
+            "description": (
+                "Change how work is presented in this authenticated user's Desk Chat Mode. "
+                "Use only when the user explicitly asks to use Living, Calm, or Adaptive "
+                "presentation, or asks to enable/disable presentation suggestions. This changes "
+                "UI presentation only; it never changes reasoning quality or execution."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "preference": {
+                        "type": "string",
+                        "enum": ["living", "calm", "adaptive"],
+                        "description": "The user's explicit Chat Mode presentation choice.",
+                    },
+                    "suggestions_enabled": {
+                        "type": "boolean",
+                        "description": "Whether Jarvis may rarely suggest another presentation.",
+                    },
+                },
+            },
+        },
+    },
 ]
 
 DESK_VIEW_TOOL_HANDLERS = {
     "desk_get_layout": _exec_get_layout,
     "desk_show_pane": _exec_show_pane,
     "desk_close_pane": _exec_close_pane,
+    "set_chat_flow_preference": _exec_set_chat_flow_preference,
 }

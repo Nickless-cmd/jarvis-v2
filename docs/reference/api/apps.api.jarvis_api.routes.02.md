@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/chat_run_streams.py`
+_Active-run discovery and replayable SSE follow routes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_journal_sessions` | `()` | Sessioner med et levende run i den delte journal. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L35) |
+| function | `chat_active_runs` | `()` | Sessioner med et aktivt visible-run lige nu. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L56) |
+| function | `subscribe_authorized` | `(location, from_idx)` | Authorize and resolve one stream without inventing completion. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L103) |
+| function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L134) |
+| function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset nul. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L140) |
+| function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen. | [src](../../../apps/api/jarvis_api/routes/chat_run_streams.py#L152) |
+
 ## `apps/api/jarvis_api/routes/chat_session_view.py`
 _`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
 
@@ -731,13 +743,4 @@ _Mission Control routes: skills, memory, hardening, lab_
 | function | `mc_memory` | `(q=…, limit=…, scope=…)` | Search/list private retained memory records. | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L40) |
 | function | `mc_hardening` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L119) |
 | function | `mc_lab` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L133) |
-
-## `apps/api/jarvis_api/routes/mobile_memory.py`
-_«Brug denne besked som hukommelse» — fra telefonen ind i hans hjerne._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `GemSomHukommelse` | `` | — | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L31) |
-| function | `_titel_af` | `(tekst)` | Foerste meningsfulde linje, klippet. En huskeseddel skal kunne skimmes. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L38) |
-| function | `gem_som_hukommelse` | `(body)` | Gem en besked som en post i hjernen. Owner-only via global auth. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L48) |
 

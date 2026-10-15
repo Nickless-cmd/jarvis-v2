@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mobile_memory.py`
+_«Brug denne besked som hukommelse» — fra telefonen ind i hans hjerne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GemSomHukommelse` | `` | — | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L31) |
+| function | `_titel_af` | `(tekst)` | Foerste meningsfulde linje, klippet. En huskeseddel skal kunne skimmes. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L38) |
+| function | `gem_som_hukommelse` | `(body)` | Gem en besked som en post i hjernen. Owner-only via global auth. | [src](../../../apps/api/jarvis_api/routes/mobile_memory.py#L48) |
+
 ## `apps/api/jarvis_api/routes/mobile_update.py`
 _Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
 

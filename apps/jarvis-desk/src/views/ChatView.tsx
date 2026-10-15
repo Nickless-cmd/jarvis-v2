@@ -69,6 +69,10 @@ import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
+import { useChatFlow } from '../hooks/useChatFlow'
+import { deriveChatFlow } from '../lib/chatFlowModel'
+import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
+import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
 
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
@@ -86,6 +90,7 @@ export function ChatView({
   const { settings, auth } = useSettings()
   const { permission } = usePermission()
   const panel = usePanel()
+  const chatFlow = useChatFlow()
   const reconciledForRun = useRef<string | null>(null)
   // Brister strømmen, ligger svaret allerede gemt på serveren. Hent det hjem.
   useGenopretEfterBrud(stream.status, sessions.activeId ?? null, sessions.refresh)
@@ -517,6 +522,34 @@ export function ChatView({
   useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
 
   const streaming = stream.status === 'working'
+  const historicalChatMode = chatFlow.state.preference === 'calm' ? 'calm' : 'living'
+  const primaryChatMode = stream.activeRunId
+    ? chatFlow.activeModeForRun(stream.activeRunId)
+    : historicalChatMode
+  const followedRunId = followState.activeRunId ?? bgRunId
+  const followedChatMode = followedRunId
+    ? chatFlow.activeModeForRun(followedRunId)
+    : historicalChatMode
+  const primaryChatModel = useMemo(() => deriveChatFlow({
+    blocks: liveBlokke(stream),
+    workingStep: stream.workingStep,
+    rundeEtiketter: stream.rundeEtiketter,
+    tankeResumeer: stream.tankeResumeer,
+    finalAnswerStarted: stream.finalAnswerStarted,
+    status: stream.status,
+  }), [stream])
+  const observedChatRuns = useRef(new Set<string>())
+  const expandedChatRuns = useRef(new Set<string>())
+  useEffect(() => {
+    const runId = stream.activeRunId
+    if (!runId || !['done', 'interrupted', 'error'].includes(stream.status)
+      || observedChatRuns.current.has(runId)) return
+    observedChatRuns.current.add(runId)
+    void chatFlow.recordObservation({
+      meaningful_steps: primaryChatModel.allSynthesis.length,
+      expanded_work: expandedChatRuns.current.has(runId),
+    }).catch(() => { /* Preference telemetry never blocks the transcript. */ })
+  }, [chatFlow, primaryChatModel.allSynthesis.length, stream.activeRunId, stream.status])
 
   // Kø: skriver man mens Jarvis streamer ELLER mens man er offline, lægges beskeden
   // i kø og sendes automatisk når turen er færdig / forbindelsen er tilbage (§14.1).
@@ -1007,6 +1040,9 @@ export function ChatView({
           <div data-rail-id={m.id} className="msg-block"
             data-just-completed={m.clientStatus === 'server_missing_keep_stream' ? '' : undefined}>
           <MessageRow
+            presentation="chat"
+            chatMode={historicalChatMode}
+            status="done"
             role={m.role === 'user' ? 'user' : 'assistant'}
             blocks={withoutPauseAsk(m.content)}
             density="compact"
@@ -1025,15 +1061,29 @@ export function ChatView({
           </Fragment>
         ))}
         {streaming && (stream.blocks.length > 0 || !!stream.provisionalText) && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+          <>
+            {stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
+            <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
+              workingStep={stream.workingStep} runId={stream.activeRunId}
+              onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
+              role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming
+              finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
+              tankeResumeer={stream.tankeResumeer} />
+          </>
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+          <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
+            workingStep={followState.workingStep} runId={followedRunId}
+            role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming
+            finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
+            tankeResumeer={followState.tankeResumeer} />
         )}
+        {!streaming ? <ChatFlowSuggestion streaming={false}
+          onboardingActive={!chatFlow.state.onboarding_seen} /> : null}
         {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
             styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
             uanset hvad der vokser ovenover. Er man rullet op, er det ude af syne,

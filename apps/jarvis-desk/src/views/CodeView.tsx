@@ -1225,6 +1225,7 @@ export function CodeView({
             <div data-rail-id={m.id} className="msg-block"
               data-just-completed={m.clientStatus === 'server_missing_keep_stream' ? '' : undefined}>
             <MessageRow
+              presentation="code"
               role={m.role === 'user' ? 'user' : 'assistant'}
               blocks={withoutPauseAsk(m.content)}
               density="compact"
@@ -1243,12 +1244,12 @@ export function CodeView({
             </Fragment>
           ))}
           {stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText) && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {!(stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText)) && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
           )}
           {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
               styles/transcript-ydelse.css). Står man i bund, holdes det i bund —

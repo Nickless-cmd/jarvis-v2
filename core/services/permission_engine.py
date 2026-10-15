@@ -43,7 +43,11 @@ _MEMBER_CHAT_WEB = frozenset({
     "get_exchange_rate", "wolfram_query", "analyze_image",
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
 })
-_MEMBER_CHAT_UTIL = frozenset({"calculate", "unit_convert", "percentage"})
+_MEMBER_CHAT_UTIL = frozenset({
+    "calculate", "unit_convert", "percentage",
+    # Self-scoped in the handler; members can change only their own Desk UI.
+    "set_chat_flow_preference",
+})
 # 🔒 path-jailed til eget workspace
 _MEMBER_CHAT_MEM = frozenset({
     "remember_this", "search_memory", "recall_memories", "memory_list_headings",

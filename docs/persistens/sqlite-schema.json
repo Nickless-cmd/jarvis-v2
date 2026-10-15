@@ -26334,7 +26334,7 @@
       ]
     },
     "recurring_tasks": {
-      "digest": "02:de:a5:75:28:fe:5d:1a:4d:17:33:9a:5c:6b:62:b1:7f:15:a7:4a:e0:b1:bd:1f:e7:ff:6b:d5:7b:8b:f6:8d",
+      "digest": "7d:9e:1c:a1:ca:01:5f:53:19:fd:aa:eb:19:46:bc:9e:2f:f9:44:49:93:76:9f:eb:8b:43:80:53:22:3e:81:c9",
       "schema": {
         "columns": [
           {
@@ -26375,6 +26375,14 @@
             "nullable": true,
             "default": null,
             "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "inbox_on_complete",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
             "hidden": 0
           },
           {

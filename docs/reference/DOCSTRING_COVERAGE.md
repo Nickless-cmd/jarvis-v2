@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8983/17175 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8984/17175 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8983/17175 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 821 | 1521 | 53% |
-| `core.services` | 5990 | 11684 | 51% |
+| `core.services` | 5991 | 11684 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8983/17175 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2564)
+## Undocumented public functions (2563)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1347,8 +1347,8 @@ Generated from source. 8983/17175 functions/methods documented (52%). The list b
 - `core/services/irony_daemon.py` :: `build_irony_surface` (L56)
 - `core/services/irony_daemon.py` :: `get_latest_irony_observation` (L52)
 - `core/services/irony_daemon.py` :: `tick_irony_daemon` (L20)
-- `core/services/jarvis_brain.py` :: `connect_index` (L388)
-- `core/services/jarvis_brain.py` :: `index_db_path` (L326)
+- `core/services/jarvis_brain.py` :: `connect_index` (L403)
+- `core/services/jarvis_brain.py` :: `index_db_path` (L341)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L350)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.deliver_output` (L283)
 - `core/services/jarvisx_bridge.py` :: `BridgeConnection.register_pending` (L270)
@@ -1962,7 +1962,6 @@ Generated from source. 8983/17175 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
 - `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L417)
 - `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L426)
-- `core/services/scoped_recall_policy.py` :: `disabled_result` (L51)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)

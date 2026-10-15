@@ -49,9 +49,25 @@ def require_private_scope(session_id: str = "") -> str:
 
 
 def disabled_result(path: str) -> dict[str, object]:
+    """Svar fra et recall-vaerktoej naar den private soegning er slaaet fra.
+
+    Formen skal kunne SES. Foer 15/10-2026 returnerede den `results` mens
+    normal-vejen returnerer `items`, og den sagde ikke ét ord om hvorfor.
+    Maalt 14/10-2026: `recall_sensory_memories` svarede `count: 0` for
+    query="stue" mens arkivet havde 188 traef — modellen laeste «slukket»
+    som «tomt» og konkluderede at der ikke var noget. `note` goer tilstanden
+    umulig at forveksle med et tomt resultat, og `items` goer noeglen den
+    samme som normal-vejen bruger.
+    """
+    navn = str(path or "recall")
     return {
         "status": "disabled",
-        "path": str(path or "recall"),
+        "path": navn,
+        "note": (
+            f"{navn}: privat recall er slaaet fra (scoped_recall_enabled=false). "
+            "Dette er IKKE et tomt resultat — der blev ikke soegt."
+        ),
+        "items": [],
         "results": [],
         "count": 0,
     }

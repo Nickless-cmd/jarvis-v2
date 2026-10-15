@@ -70,5 +70,29 @@ def test_disabled_result_has_no_private_payload():
     from core.services import scoped_recall_policy as policy
 
     assert policy.disabled_result("recall") == {
-        "status": "disabled", "path": "recall", "results": [], "count": 0,
+        "status": "disabled",
+        "path": "recall",
+        "note": (
+            "recall: privat recall er slaaet fra (scoped_recall_enabled=false). "
+            "Dette er IKKE et tomt resultat — der blev ikke soegt."
+        ),
+        "items": [],
+        "results": [],
+        "count": 0,
     }
+
+
+def test_disabled_result_kan_ikke_forveksles_med_tomt():
+    """«Slukket» maa ikke se ud som «tomt».
+
+    Maalt 14/10-2026: `recall_sensory_memories` svarede `count: 0` for
+    query="stue" mens arkivet havde 188 traef. Modellen laeste det som
+    «der er intet» — ikke «soegningen blev ikke koert». Noeglen `items`
+    skal vaere den samme som normal-vejen bruger, og `note` skal sige
+    hoejt at der ikke blev soegt.
+    """
+    from core.services import scoped_recall_policy as policy
+
+    tomt = policy.disabled_result("sensory_recall")
+    assert tomt["items"] == [], "normal-vejens noegle skal ogsaa findes her"
+    assert "IKKE et tomt resultat" in str(tomt["note"])

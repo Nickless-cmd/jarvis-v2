@@ -152,9 +152,15 @@ def canonical_source(raw: Any) -> str:
     gætte. Men driften skal kunne ses, ellers vokser den igen.
     """
     if raw is None:
+        # Maalt 15/10-2026: et HELT manglende source-felt blev foldet til
+        # 'ukendt' uden et ord i loggen — tavst, praecis som en kendt fejlklasse
+        # i huset. Et ukendt NAVN blev logget; et manglende felt blev ikke. Nu
+        # goer begge, saa tabet kan findes i loggen i stedet for at vokse stille.
+        logger.warning("sensory_source: ingen kilde angivet — gemt som 'ukendt'")
         return "ukendt"
     tekst = str(raw).strip()
     if not tekst:
+        logger.warning("sensory_source: tom kilde angivet — gemt som 'ukendt'")
         return "ukendt"
 
     noegle = _normaliser(tekst)

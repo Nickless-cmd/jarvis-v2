@@ -247,3 +247,32 @@ def test_flaget_overlever_en_ugedags_affyring(tmp_path, monkeypatch):
     rt.set_inbox_on_complete(t["task_id"], True)
     rt.set_weekdays(t["task_id"], "1,2,3")
     assert rt.skal_i_indbakken(t["task_id"]) is True
+
+
+# ── focus-graensen klippede tavst (15/10-2026) ──────────────────────────────
+#
+# `focus` er ikke en titel. Den bliver BRUGERBESKEDEN til det autonome run
+# (`start_autonomous_run(message=focus)`), altsaa selve instruktionen. Den
+# gamle linje `focus[:300]` klippede uden et ord: natrutinens instruktion stod
+# med praecis 300 tegn og sluttede midt i "4. **recall", saa source-linjen laa
+# efter graensen og blev aldrig laest.
+
+def test_focus_paa_301_tegn_kommer_hel_igennem(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    instruktion = "x" * 301
+    t = rt.create_recurring_task(focus=instruktion, interval_minutes=1440)
+    assert len(t["focus"]) == 301
+    with db.connect() as c:
+        gemt = c.execute(
+            "SELECT focus FROM recurring_tasks WHERE task_id=?", (t["task_id"],)
+        ).fetchone()[0]
+    assert gemt == instruktion
+
+
+def test_focus_over_graensen_klippes_men_logges(tmp_path, monkeypatch, caplog):
+    _fresh(tmp_path, monkeypatch)
+    instruktion = "y" * (rt._FOCUS_MAX + 50)
+    with caplog.at_level("WARNING", logger="core.services.recurring_tasks"):
+        t = rt.create_recurring_task(focus=instruktion, interval_minutes=1440)
+    assert len(t["focus"]) == rt._FOCUS_MAX
+    assert any("klippet" in r.message for r in caplog.records)

@@ -766,7 +766,7 @@ _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 |---|---|---|---|---|
 | function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
 | function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
-| function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L173) |
+| function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L179) |
 
 ## `core/services/session_binding.py`
 _Hvilken SAMTALE hører et job til? — én definition, tre ure._

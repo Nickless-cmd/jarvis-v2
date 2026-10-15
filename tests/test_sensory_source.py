@@ -116,3 +116,14 @@ def test_skrivevejen_normaliserer_kilden(monkeypatch):
     assert fanget["metadata"]["source"] == "dybdesession"
     assert fanget["metadata"]["source_raw"] == "natligt_dyk"
     assert json.dumps(fanget["metadata"])  # stadig JSON-serialiserbar
+
+
+def test_manglende_kilde_logges_og_bliver_ukendt(caplog):
+    """Maalt 15/10-2026: et HELT manglende source-felt blev foldet til 'ukendt'
+    uden et ord i loggen — mens et ukendt NAVN blev logget. Et tab der ikke kan
+    ses, vokser stille."""
+    with caplog.at_level("WARNING", logger="core.services.sensory_source"):
+        assert canonical_source(None) == "ukendt"
+        assert canonical_source("") == "ukendt"
+    advarsler = [r.message for r in caplog.records if "kilde" in r.message]
+    assert len(advarsler) == 2, [r.message for r in caplog.records]

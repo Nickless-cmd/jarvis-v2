@@ -20,6 +20,14 @@ _POLL_INTERVAL_SECONDS = 60
 _poller_thread: threading.Thread | None = None
 _poller_stop = threading.Event()
 
+#: Hvor lang en `focus` maa vaere. Den er ikke en titel — den bliver
+#: BRUGERBESKEDEN til det autonome run (`start_autonomous_run(message=focus)`),
+#: altsaa selve instruktionen. Graensen stod paa 300 fra 23/4-2026 og klippede
+#: STILLE: maalt 15/10-2026 var natrutinens instruktion praecis 300 tegn og
+#: sluttede midt i "4. **recall" — source-linjen laa efter graensen og blev
+#: aldrig laest, saa visual/audio landede som 'ukendt' i Sansernes Arkiv.
+_FOCUS_MAX = 4000
+
 
 # ── DB helpers (self-contained, no db.py modification needed) ────────────────
 
@@ -472,7 +480,16 @@ def create_recurring_task(
         # kl. 00:30 fordi intervallet tilfaeldigt var en time.
         first_fire = _ryk_til_ugedag(first_fire, timedelta(days=1), ugedage)
     task_id = f"rec-{uuid4().hex[:10]}"
-    focus = focus[:300].strip() or "Recurring reminder"
+    # Et klip skal kunne ses. Den gamle linje (`focus[:300]`) klippede uden et
+    # ord, og en afkortet instruktion ligner en komplet — indtil man laeser
+    # halen. Vi klipper stadig, men siger det hoejt.
+    if len(focus) > _FOCUS_MAX:
+        logger.warning(
+            "recurring_tasks: %s focus klippet fra %d til %d tegn",
+            task_id, len(focus), _FOCUS_MAX,
+        )
+        focus = focus[:_FOCUS_MAX]
+    focus = focus.strip() or "Recurring reminder"
     # SESSION-BINDING (14/10-2026): skriv NED hvilken samtale opgaven blev
     # bestilt i. `bind_session` læser den aktive kontekst og afviser en
     # auto-*-silo, så et autonomt run der opretter en opgave ikke binder den

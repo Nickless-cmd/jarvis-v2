@@ -1,7 +1,7 @@
 import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
@@ -13,6 +13,7 @@ import { usePanel } from '../hooks/usePanel'
 import { usePersistedState } from '../hooks/usePersistedState'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
+import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
@@ -933,6 +934,13 @@ export function CodeView({
   // Stabile handlinger til rækkerne — ellers holder MessageRow's memo aldrig,
   // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
   const resendStabil = useSenesteFn(resend)
+  // Widget'ens svar-vej i code mode — samme som ChatView. Uden denne provider
+  // rammer `jarvis.sendPrompt` fra en widget `null`, og klikket forsvinder
+  // lydløst (målt 15/10-2026: ChatView havde den, CodeView havde ingen).
+  const widgetPrompt = useCallback((markeretTekst: string) => {
+    const t = markeretTekst.trim()
+    if (t) resendStabil(t)
+  }, [resendStabil])
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
 
@@ -1208,6 +1216,7 @@ export function CodeView({
         {skinne}
         {trustBanner}
         <div className="transcript-wrap">
+        <WidgetPrompt.Provider value={widgetPrompt}>
         <MessageRail
           containerRef={transcriptRef}
           anchors={railAnchors}
@@ -1243,12 +1252,12 @@ export function CodeView({
             </Fragment>
           ))}
           {stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText) && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {!(stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText)) && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config} />
           )}
           {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
               styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
@@ -1256,6 +1265,7 @@ export function CodeView({
               og intet flytter sig. */}
           <div className="bund-anker" aria-hidden="true" />
         </div>
+        </WidgetPrompt.Provider>
         </div>
         <div className="composer-area">
         <GenoptagelsesVarsel />

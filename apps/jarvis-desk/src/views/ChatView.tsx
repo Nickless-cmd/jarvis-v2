@@ -1025,14 +1025,14 @@ export function ChatView({
           </Fragment>
         ))}
         {streaming && (stream.blocks.length > 0 || !!stream.provisionalText) && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={raekkeConfig} />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={raekkeConfig} />
         )}
         {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
             styles/transcript-ydelse.css). Står man i bund, holdes det i bund —

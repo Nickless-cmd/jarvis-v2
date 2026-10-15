@@ -646,7 +646,7 @@
  * Og padding gennem tokens, ikke tal: `10px 12px` lagde et andet literalt
  * `12px` ind, og rvTokens-vagten fanger det — tokenet ER rollen «side-padding»,
  * så et tal ved siden af er en anden sandhed om samme afstand. */
-.raekkevisning .rv-widget {
+.rv-widget {
   width: 100%;
   border: 0;
   display: block;
@@ -656,14 +656,21 @@
   color-scheme: light dark;
 }
 
-.raekkevisning .rv-widget-venter,
-.raekkevisning .rv-widget-fejl {
+/* IKKE scopet under `.raekkevisning` (målt 15/10-2026): `WidgetBlock` bruges i
+ * BEGGE visninger — også bobblevisningen, hvor der ingen `.raekkevisning`-rod
+ * findes. Var reglen scopet, fik widget'en ingen styling der: en inline-iframe
+ * med standardramme og 4px-stribe under. Vent/fejl beholder `var()` UDEN
+ * px-fallback: `--rv-pad-*` er defineret på `.raekkevisning`, og et literalt tal
+ * ville både være en anden sandhed om samme afstand og bryde rvTokens-vagten.
+ * Prisen er at vent/fejl-beskeden står uden indryk i bobblevisningen. */
+.rv-widget-venter,
+.rv-widget-fejl {
   font-size: 0.86rem;
   opacity: 0.72;
   padding: var(--rv-pad-lodret) var(--rv-pad-side);
 }
 
-.raekkevisning .rv-widget-fejl {
+.rv-widget-fejl {
   /* Samme dæmpede rødtone som resten af husets fejlflader — en widget der
    * ikke kan vises er en oplysning, ikke en alarm. */
   color: var(--fejl-tekst, #d98a7a);

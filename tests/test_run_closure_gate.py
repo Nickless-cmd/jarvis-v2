@@ -675,8 +675,6 @@ class TestInspektionTilIndbakken:
 
     def test_eventets_origin_vejer_tungere_end_den_globale(self, monkeypatch):
         """Kernen i fixet: den globale kan vaere byttet af et samtidigt run."""
-        from core.services import run_closure_gate as g
-
         kald = []
         # Globalen siger heartbeat (et ANDET run har overtaget den), men
         # eventet — som er bundet til DETTE run — siger recurring.

@@ -468,6 +468,16 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 
+  it('lander turhovedet før den første streamede svartekst', () => {
+    const { container } = rtlRender(
+      <RaekkeTranskript blocks={[tekst('Jeg undersøger det nu.')]} streaming />,
+    )
+
+    expect(screen.getByText('Working…')).toBeInTheDocument()
+    expect([...container.querySelector('.raekkevisning')!.children].map((e) => e.className))
+      .toEqual(['rv-tur', 'rv-svar'])
+  })
+
   it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
     expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')

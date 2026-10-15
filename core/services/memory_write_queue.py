@@ -35,6 +35,13 @@ _SENSORY_MAX_RETRIES = 3
 _BRAIN_MAX_RETRIES = 3
 _SIDECAR_MAX_RETRIES = 5        # sidecar is best-effort, more retries
 
+#: En `processing`-post der har staaet saa laenge, har ingen ejer. Intet
+#: legitimt batch-trin tager 30 minutter (10 poster, fil-IO + embedding).
+_ORPHAN_AFTER_S = 1800
+#: Og er den OGSAA saa gammel, maa den ikke genkoeres: en sektion fra i
+#: sidste maaned kan genoplive fakta der er afloest siden. Den lukkes.
+_TOO_OLD_TO_RESCUE_S = 86400
+
 # ---------------------------------------------------------------------------
 # Module-level state
 # ---------------------------------------------------------------------------
@@ -62,7 +69,8 @@ def _ensure_table(conn) -> None:
             retry_count INTEGER NOT NULL DEFAULT 0,
             error TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
-            processed_at TEXT
+            processed_at TEXT,
+            claimed_at TEXT
         )
         """
     )
@@ -72,6 +80,16 @@ def _ensure_table(conn) -> None:
         ON memory_write_queue(status, priority DESC, id ASC)
         """
     )
+    # `claimed_at` kom til 15/10-2026. Uden den kan en `processing`-post ikke
+    # aldersbestemmes — og saa kan en foraeldreloes post ikke skelnes fra en
+    # der arbejdes paa lige nu. Eksisterende poster faar NULL, og netop det
+    # er kendetegnet: al kode der claimer, saetter feltet.
+    kolonner = {
+        str(row["name"])
+        for row in conn.execute("PRAGMA table_info(memory_write_queue)").fetchall()
+    }
+    if "claimed_at" not in kolonner:
+        conn.execute("ALTER TABLE memory_write_queue ADD COLUMN claimed_at TEXT")
 
 
 def enqueue_write(
@@ -167,10 +185,14 @@ def process_queue(batch_size: int = _BATCH_SIZE) -> dict[str, Any]:
                 retry_count = row["retry_count"]
                 payload = json.loads(row["payload_json"])
 
-                # Mark as processing
+                # Mark as processing — og stempl HVORNAAR. Uden stemplet kan
+                # ingen sweep se forskel paa en post der arbejdes paa nu og en
+                # hvis proces doede for fire maaneder siden (15/10-2026).
                 conn.execute(
-                    "UPDATE memory_write_queue SET status = 'processing' WHERE id = ?",
-                    (item_id,),
+                    """UPDATE memory_write_queue
+                       SET status = 'processing', claimed_at = ?
+                       WHERE id = ?""",
+                    (datetime.now(UTC).isoformat(), item_id),
                 )
                 conn.commit()
 
@@ -233,6 +255,82 @@ def process_queue(batch_size: int = _BATCH_SIZE) -> dict[str, Any]:
                 "failed": failed, "error": str(exc)}
 
 
+def requeue_orphaned_processing(now: datetime | None = None) -> dict[str, int]:
+    """Frigoer `processing`-poster hvis ejer er vaek. → `pending` eller `failed`.
+
+    ## Hullet (maalt 15/10-2026)
+
+    `process_queue` saetter status til `processing` og **committer** — og
+    udfoerer foerst derefter skrivningen. Doer processen imellem de to
+    commits (genstart, draebt traad, haardt cut), staar posten fast for evigt:
+    intet nulstiller den, og intet forsoeger den igen. Maalt i drift:
+    **99 poster laast siden 22. juni**, alle `memory_sidecar`,
+    `retry_count = 0`.
+
+    ## Hvorfor alder og ikke opstart
+
+    Begge tjenester koerer samme app (`jarvis-api` paa 8080, `jarvis-runtime`
+    paa 8011), saa en sweep ved opstart ville rive den ANDEN proses aktive
+    arbejde vaek under foedderne paa den. Graensen maa derfor vaere tid.
+
+    ## Hvorfor gamle poster lukkes i stedet for at genkoeres
+
+    En fire maaneder gammel sektion maa ikke skrives ind i MEMORY.md igen —
+    den kan genoplive fakta der er afloest siden. Ældre end 24t lukkes derfor
+    som `failed`, med udfaldet skrevet som ukendt. Det er aarligt, for det ER
+    ukendt: 94 af de 99 havde deres overskrift i MEMORY.md, men hvilke der
+    landede, kan kun posten selv svare paa — og den blev afbrudt.
+    """
+    from core.runtime.db import connect
+
+    nu = now or datetime.now(UTC)
+    graense = (nu - timedelta(seconds=_ORPHAN_AFTER_S)).isoformat()
+    for_gammel = (nu - timedelta(seconds=_TOO_OLD_TO_RESCUE_S)).isoformat()
+
+    genkoert = 0
+    opgivet = 0
+    try:
+        with connect() as conn:
+            _ensure_table(conn)
+            raekker = conn.execute(
+                """SELECT id, created_at, retry_count FROM memory_write_queue
+                   WHERE status = 'processing'
+                     AND (claimed_at IS NULL OR claimed_at < ?)""",
+                (graense,),
+            ).fetchall()
+            for row in raekker:
+                if str(row["created_at"] or "") < for_gammel:
+                    conn.execute(
+                        """UPDATE memory_write_queue
+                           SET status = 'failed', error = ?
+                           WHERE id = ?""",
+                        ("foraeldreloes: ukendt udfald, for gammel til at "
+                         f"genkoere (laast siden {str(row['created_at'] or '')[:19]})",
+                         row["id"]),
+                    )
+                    opgivet += 1
+                else:
+                    conn.execute(
+                        """UPDATE memory_write_queue
+                           SET status = 'pending', retry_count = ?, error = ?
+                           WHERE id = ?""",
+                        (int(row["retry_count"]) + 1,
+                         "foraeldreloes: genkoert efter afbrudt behandling",
+                         row["id"]),
+                    )
+                    genkoert += 1
+            conn.commit()
+    except Exception as exc:
+        logger.error("memory_write_queue: requeue_orphaned failed: %s", exc)
+        return {"requeued": genkoert, "abandoned": opgivet, "error": str(exc)}
+
+    if genkoert or opgivet:
+        logger.warning(
+            "memory_write_queue: %d foraeldreloese poster genkoert, %d opgivet",
+            genkoert, opgivet)
+    return {"requeued": genkoert, "abandoned": opgivet}
+
+
 def queue_size() -> dict[str, int]:
     """Return counts by status."""
     from core.runtime.db import connect
@@ -291,6 +389,14 @@ def tick_memory_write_queue_daemon(now: datetime | None = None) -> dict:
     if _last_tick_at is not None:
         if (now - _last_tick_at) < timedelta(seconds=_CADENCE_SECONDS):
             return {"processed": False, "reason": "cadence"}
+
+    # Foraeldreloese poster frigores FOER koen draenes: en post der staar i
+    # `processing` uden en ejer ville ellers aldrig blive samlet op igen.
+    try:
+        requeue_orphaned_processing(now=now)
+    except Exception:  # noqa: BLE001 — en fejlet sweep maa ikke draebe koen
+        logger.warning("memory_write_queue: sweep af foraeldreloese fejlede",
+                       exc_info=True)
 
     result = process_queue(batch_size=_BATCH_SIZE)
     _last_tick_at = now

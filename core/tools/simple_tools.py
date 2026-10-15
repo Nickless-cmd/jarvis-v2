@@ -1098,8 +1098,33 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 from core.services.connections import note_unauthorized
                 _ua_sid = str(arguments.get("_runtime_session_id")
                               or arguments.get("_session_id") or "")
-                _ua_rid = str(arguments.get("_runtime_run_id")
+                # NØGLENAVNET (15/10-2026). Stien læste `_runtime_run_id` — et navn
+                # der ikke findes NOGEN steder i kodebasen. `simple_tool_executor.
+                # _prepare_call` stamper `_runtime_turn_id`. Maalt: 468 denies i
+                # Michelles session stod med `run=-` og tom session_id, saa ingen af
+                # dem kunne afgoeres — ét loebende run og 300 uafhaengige forsoeg ser
+                # ens ud naar konteksten mangler.
+                _ua_rid = str(arguments.get("_runtime_turn_id")
+                              or arguments.get("_runtime_run_id")
                               or arguments.get("_run_id") or "")
+                # Bar argumenterne dem ikke, spoerger vi KOERSLEN selv. Begge
+                # ContextVars saettes af kørslen dér hvor den ved besked.
+                if not _ua_rid:
+                    try:
+                        from core.services.run_autonomy_context import (
+                            current_run_id as _crid,
+                        )
+                        _ua_rid = str(_crid() or "")
+                    except Exception:
+                        _ua_rid = ""
+                if not _ua_sid:
+                    try:
+                        from core.identity.workspace_context import (
+                            current_session_id as _csid,
+                        )
+                        _ua_sid = str(_csid() or "")
+                    except Exception:
+                        _ua_sid = ""
                 # Fang den ÆGTE bruger (ikke bare rollen "member") så signalet er handlingsbart.
                 try:
                     from core.identity.workspace_context import current_user_id as _cuid

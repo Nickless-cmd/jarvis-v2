@@ -59,7 +59,13 @@ function isDelivery(block: ContentBlock): boolean {
 function synthesisLines(input: ChatFlowInput): string[] {
   const candidates: string[] = []
   for (const block of input.blocks) {
-    if (block.type === 'tool_use_summary') candidates.push(block.summary)
+    // `blocks` kan være sparsomt: SSE'en adresserer blokke med et eksplicit
+    // indeks, og falder et indeks ud (gen-tilslutning midt i et run), står der
+    // et hul — og `for…of` gør et hul til `undefined`. De øvrige læsninger i
+    // denne fil værner allerede (`if (block && …)`, `if (!block) continue`);
+    // denne manglede, og krasjede i produktion 15/10-2026 med
+    // «can't access property "type", s is undefined».
+    if (block && block.type === 'tool_use_summary') candidates.push(block.summary)
   }
   candidates.push(...Object.values(input.rundeEtiketter ?? {}))
   candidates.push(...Object.values(input.tankeResumeer ?? {}))

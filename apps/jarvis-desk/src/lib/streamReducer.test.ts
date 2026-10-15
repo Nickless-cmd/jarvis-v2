@@ -475,4 +475,32 @@ describe('udgivet fil i den levende strøm (7/10-2026)', () => {
     })
     expect(s.blocks[0]).toMatchObject({ type: 'video', attachment_id: 'att-v1' })
   })
+
+  // Regression 15/10-2026: et sprunget blok-indeks efterlod et HUL i `blocks`.
+  // `.filter()` skjuler huller, så testene så det aldrig — men chat-flow-modellen
+  // læser arrayet med `for…of`, og dér bliver et hul til `undefined`:
+  // «can't access property "type", s is undefined» på api.srvlab.dk.
+  it('et hul i blok-arrayet når aldrig forbrugeren — liveBlokke leverer rene blokke', () => {
+    const hul = reduce([
+      { type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },
+      { type: 'content_block_start', index: 2, content_block: { type: 'text', text: 'halen' } },
+    ])
+    expect(hul.blocks.length).toBe(3)
+    expect(0 in hul.blocks).toBe(false) // hullet ER der i rå-state
+
+    const blokke = liveBlokke(hul)
+    expect(blokke.map((b) => b.type)).toEqual(['text'])
+    for (const b of blokke) expect(b).toBeDefined()
+  })
+
+  it('samme hul lukkes naar skill-fladen ligger foran', () => {
+    let s = reduce([
+      { type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },
+    ])
+    s = streamReducer(s, { type: 'skill_surface', matches: [{ name: 'xlsx', score: 0.8, primary: true }], primary: true })
+    s = streamReducer(s, { type: 'content_block_start', index: 2, content_block: { type: 'text', text: 'halen' } })
+    const blokke = liveBlokke(s)
+    expect(blokke.map((b) => b.type)).toEqual(['skill_surface', 'text'])
+    for (const b of blokke) expect(b).toBeDefined()
+  })
 })

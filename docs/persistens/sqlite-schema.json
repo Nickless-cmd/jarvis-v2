@@ -8374,6 +8374,171 @@
         "iso_utc_offset"
       ]
     },
+    "chat_flow_preferences": {
+      "digest": "d7:e4:bf:eb:16:9a:66:a7:2a:1c:56:b5:37:3d:1e:62:cb:51:4c:f3:98:c3:32:da:ed:ef:4f:13:9c:9f:43:1c",
+      "schema": {
+        "columns": [
+          {
+            "name": "calm_overrides",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "explicit_user_choice",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_suggestion_at",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_suggestion_kind",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "living_overrides",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "multi_step_runs",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "onboarding_claim_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "onboarding_claim_run",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "onboarding_claim_until",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "onboarding_seen",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "preference",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'living'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "principal_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "short_direct_runs",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "suggestion_rejections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "suggestions_enabled",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "1",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "work_expansions",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_chat_flow_preferences_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "principal_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "chat_messages": {
       "digest": "9e:19:6b:7f:d6:92:10:f5:61:bb:02:b7:1a:98:24:cc:2f:f9:1d:d6:3d:f2:cb:41:12:88:95:24:7b:92:d6:dc",
       "schema": {
@@ -9153,7 +9318,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

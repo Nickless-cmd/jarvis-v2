@@ -118,6 +118,26 @@ const liveBlokkeCache = new WeakMap<ContentBlock[], {
   result: ContentBlock[]
 }>()
 
+/** Fjern huller fra et blok-array — og returnér SAMME reference når der ingen er.
+ *
+ *  `blocks` kan være sparsomt: SSE'en adresserer hver blok med et eksplicit
+ *  indeks (`blocks[event.index] = …` i `content_block_start` og i
+ *  `provisional_text_commit`), og falder et indeks ud — fx ved gen-tilslutning
+ *  midt i et run — står der et HUL i arrayet. `for…of` og spread gør et hul
+ *  til `undefined`, mens `.filter()` springer det over; derfor var fejlen usynlig
+ *  for testene indtil et `for…of` (chat-flow-modellen) læste arrayet direkte.
+ *
+ *  Produktion 15/10-2026: «can't access property "type", s is undefined» på
+ *  api.srvlab.dk. `liveBlokke` lover rene blokke — den gren der filtrerede holdt
+ *  det løfte, de to andre gjorde ikke. Identiteten bevares når der ikke er
+ *  huller: memoiseringen (WeakMap) og `toBe`-testen hviler på det. */
+function udenHuller(blocks: ContentBlock[]): ContentBlock[] {
+  for (let index = 0; index < blocks.length; index += 1) {
+    if (!blocks[index]) return blocks.filter((b): b is ContentBlock => !!b)
+  }
+  return blocks
+}
+
 export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'> & Partial<Pick<StreamState, 'provisionalText' | 'provisionalBlockIndex'>>): ContentBlock[] {
   if (state.provisionalText) {
     const blocks = state.provisionalBlockIndex == null
@@ -129,10 +149,10 @@ export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'> & P
       { type: 'text', text: state.provisionalText },
     ]
   }
-  if (!state.skillFlade) return state.blocks
+  if (!state.skillFlade) return udenHuller(state.blocks)
   const cached = liveBlokkeCache.get(state.blocks)
   if (cached?.skillFlade === state.skillFlade) return cached.result
-  const result = [state.skillFlade, ...state.blocks]
+  const result = udenHuller([state.skillFlade, ...state.blocks])
   liveBlokkeCache.set(state.blocks, { skillFlade: state.skillFlade, result })
   return result
 }

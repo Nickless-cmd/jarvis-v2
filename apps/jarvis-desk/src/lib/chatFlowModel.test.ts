@@ -20,6 +20,25 @@ function summaries(lines: string[]): ContentBlock[] {
 }
 
 describe('deriveChatFlow', () => {
+  // Regression 15/10-2026: `synthesisLines` læste `block.type` uden værn, mens
+  // resten af filen værner (`if (block && …)`). Et sparsomt blok-array — et
+  // sprunget SSE-indeks efter en gen-tilslutning — kastede derfor i produktion.
+  it('taaler et sparsomt blok-array uden at kaste', () => {
+    const sparsom: ContentBlock[] = []
+    sparsom[2] = { type: 'text', text: 'halen' }
+    const model = deriveChatFlow({ ...base, blocks: sparsom })
+    // Rækkefølgen er det afgørende: kastede den, nåede vi aldrig hertil.
+    expect(model.workBlocks).toEqual([{ type: 'text', text: 'halen' }])
+    expect(model.finalBlocks).toEqual([])
+    expect(model.allSynthesis).toEqual([])
+  })
+
+  it('en tool_use_summary efter et hul bliver laest alligevel', () => {
+    const sparsom: ContentBlock[] = []
+    sparsom[3] = { type: 'tool_use_summary', summary: 'Fandt fejlen', preceding_tool_use_ids: ['t1'] }
+    expect(deriveChatFlow({ ...base, blocks: sparsom }).allSynthesis).toEqual(['Fandt fejlen'])
+  })
+
   it.each([
     [['Et'], ['Et']],
     [['Et', 'To'], ['Et', 'To']],

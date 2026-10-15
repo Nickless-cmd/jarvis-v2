@@ -166,6 +166,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # implementeringsplanen (tests/test_notifikationer_lager.py) fordi senere
     # opgaver (hydrering, ruter) lægger flere tests i samme fil-familie.
     "core/services/notifikationer.py": "tests/test_notifikationer_lager.py",
+    # Cost-surface (15/10-2026): testen ligger i tests/services/ efter modulstien,
+    # ikke i tests/ — samme moenster som tool_router ovenfor. Uden linjen blokerede
+    # gaten enhver aendring i filen (fx granted/topped_up-opdelingen).
+    "core/services/central_cost_surface.py": "tests/services/test_central_cost_surface.py",
 }
 
 

@@ -191,7 +191,8 @@ _Central cost-surface (WS3, 13. jul 2026) — gør det nyfixede cost-regnskab sy
 | function | `_agg_for_window` | `(conn, window, provider)` | — | [src](../../../core/services/central_cost_surface.py#L37) |
 | function | `_breakdown` | `(conn, window, provider)` | — | [src](../../../core/services/central_cost_surface.py#L67) |
 | function | `_deepseek_balance` | `()` | Live DeepSeek-saldo (USD, streng), cachet 5 min. Fejl/offline → None. | [src](../../../core/services/central_cost_surface.py#L104) |
-| function | `build_cost_surface` | `(*, window=…, provider=…)` | Cost-aggregat til /central/cost + `jc cost`. | [src](../../../core/services/central_cost_surface.py#L140) |
+| function | `_deepseek_balance_detail` | `()` | Live DeepSeek-saldo opdelt: total/granted/topped_up (USD-strenge), cachet 5 min. | [src](../../../core/services/central_cost_surface.py#L113) |
+| function | `build_cost_surface` | `(*, window=…, provider=…)` | Cost-aggregat til /central/cost + `jc cost`. | [src](../../../core/services/central_cost_surface.py#L160) |
 
 ## `core/services/central_coverage.py`
 _core/services/central_coverage.py_

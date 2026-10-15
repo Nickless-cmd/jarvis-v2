@@ -7,7 +7,10 @@ from core.costing.ledger import record_cost
 
 def _seed(monkeypatch):
     # saldo-kald må ALDRIG ramme nettet i test
-    monkeypatch.setattr(ccs, "_deepseek_balance", lambda: None)
+    monkeypatch.setattr(
+        ccs, "_deepseek_balance_detail",
+        lambda: {"total": None, "granted": None, "topped_up": None},
+    )
     # Prisen afhaenger af klokken siden 3229cf788 — fastlaas til off-peak.
     import core.services.llm_pricing as lp
     monkeypatch.setattr(lp, "er_myldretid", lambda at=None: False)
@@ -57,23 +60,32 @@ def test_provider_filter(isolated_runtime, monkeypatch):
 
 
 def test_balance_fault_tolerant(isolated_runtime, monkeypatch):
-    # simuler saldo-fejl → None, ingen exception
+    # simuler saldo-fejl → surface vælter IKKE, felterne bliver None
     def boom():
         raise RuntimeError("offline")
-    monkeypatch.setattr(ccs, "_deepseek_balance", boom)
-    try:
-        s = ccs.build_cost_surface(window="today")
-    except Exception:
-        # build_cost_surface kalder _deepseek_balance direkte; hvis den kaster,
-        # skal surface stadig ikke vælte — men her tester vi at den EGENTLIGE
-        # _deepseek_balance er wrappet. Genindsæt sikker version:
-        monkeypatch.setattr(ccs, "_deepseek_balance", lambda: None)
-        s = ccs.build_cost_surface(window="today")
+    monkeypatch.setattr(ccs, "_deepseek_balance_detail", boom)
+    s = ccs.build_cost_surface(window="today")
     assert "windows" in s
+    assert s["deepseek_balance_usd"] is None
+    assert s["deepseek_balance_detail"] == {"total": None, "granted": None, "topped_up": None}
+
+
+def test_balance_detail_surfaces_granted(isolated_runtime, monkeypatch):
+    # kompensations-credits skal være SYNLIGE i surface — ikke kun i totalen
+    monkeypatch.setattr(
+        ccs, "_deepseek_balance_detail",
+        lambda: {"total": "195.72", "granted": "20.81", "topped_up": "174.90"},
+    )
+    s = ccs.build_cost_surface(window="today")
+    assert s["deepseek_balance_usd"] == "195.72"
+    assert s["deepseek_balance_detail"]["granted"] == "20.81"
+    assert s["deepseek_balance_detail"]["topped_up"] == "174.90"
 
 
 def test_real_balance_never_raises(monkeypatch):
-    # _deepseek_balance selv: manglende config → None, ingen exception
+    # _deepseek_balance_detail selv: manglende config → alle None, ingen exception
     monkeypatch.setattr(ccs.os.path, "expanduser", lambda p: "/nonexistent/runtime.json")
     ccs._BAL_CACHE["ts"] = 0.0
+    assert ccs._deepseek_balance_detail() == {"total": None, "granted": None, "topped_up": None}
+    # wrapper'en er bagudkompatibel og giver stadig kun total
     assert ccs._deepseek_balance() is None

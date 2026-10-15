@@ -102,11 +102,26 @@ def _breakdown(conn, window: str, provider: str | None) -> list[dict]:
 
 
 def _deepseek_balance() -> str | None:
-    """Live DeepSeek-saldo (USD, streng), cachet 5 min. Fejl/offline → None."""
+    """Live DeepSeek-saldo (USD, streng), cachet 5 min. Fejl/offline → None.
+
+    Bagudkompatibel wrapper om `_deepseek_balance_detail()`: returnerer kun
+    total_balance som før. Brug detail-varianten når granted/topped_up skal ses.
+    """
+    return _deepseek_balance_detail().get("total")
+
+
+def _deepseek_balance_detail() -> dict:
+    """Live DeepSeek-saldo opdelt: total/granted/topped_up (USD-strenge), cachet 5 min.
+
+    DeepSeek skelner mellem `granted_balance` (gratis-credits, fx kompensation ved
+    nedbrud) og `topped_up_balance` (egne indbetalinger). API'et trækker fra
+    granted FØRST. Uden denne opdeling er en kompensation usynlig i vores egen
+    cost-surface — man ser kun at totalen stiger. Fejl/offline → alle None.
+    """
     now = time.time()
     if now - float(_BAL_CACHE["ts"]) < _BAL_TTL_S:
-        return _BAL_CACHE["value"]  # type: ignore[return-value]
-    val: str | None = None
+        return dict(_BAL_CACHE["value"] or {})  # type: ignore[arg-type]
+    val: dict = {"total": None, "granted": None, "topped_up": None}
     try:
         cfg = json.load(open(os.path.expanduser("~/.jarvis-v2/config/runtime.json")))
 
@@ -129,12 +144,17 @@ def _deepseek_balance() -> str | None:
             d = json.load(urllib.request.urlopen(req, timeout=10))
             infos = d.get("balance_infos") or []
             if infos:
-                val = str(infos[0].get("total_balance"))
+                info = infos[0]
+                val = {
+                    "total": str(info.get("total_balance")),
+                    "granted": str(info.get("granted_balance")),
+                    "topped_up": str(info.get("topped_up_balance")),
+                }
     except Exception:
-        val = None
+        val = {"total": None, "granted": None, "topped_up": None}
     _BAL_CACHE["ts"] = now
     _BAL_CACHE["value"] = val
-    return val
+    return dict(val)
 
 
 def build_cost_surface(*, window: str = "today", provider: str | None = None) -> dict:
@@ -149,15 +169,18 @@ def build_cost_surface(*, window: str = "today", provider: str | None = None) ->
         windows = {w: _agg_for_window(conn, w, provider) for w in _WINDOWS}
         breakdown = _breakdown(conn, window, provider)
     try:
-        balance = _deepseek_balance()
+        balance_detail = _deepseek_balance_detail()
     except Exception:
-        balance = None
+        balance_detail = {"total": None, "granted": None, "topped_up": None}
     return {
         "windows": windows,
         "breakdown": breakdown,
         "breakdown_window": window,
         "provider_filter": provider,
-        "deepseek_balance_usd": balance,
+        "deepseek_balance_usd": balance_detail.get("total"),
+        # Opdelingen er nødvendig for at en kompensation (granted) kan SES: uden
+        # den ser et nedbruds-credit bare ud som en stigende total. Granted trækkes først.
+        "deepseek_balance_detail": balance_detail,
         "note": "WS2: kun DeepSeek fuldt prissat; andre providers cost_usd=0 indtil WS8.",
         "generated_at": datetime.now(UTC).isoformat(),
     }

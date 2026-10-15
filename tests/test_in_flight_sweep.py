@@ -79,7 +79,12 @@ def test_sweepen_spoerger_foer_den_stempler():
     """Kildetjek på kaldestedet: rækkefølgen er hele pointen."""
     src = open("apps/api/jarvis_api/app.py", encoding="utf-8").read()
     i = src.index("list_running_orphans(0.0")
-    vindue = src[i:i + 1400]
+    # Vinduet skal rumme HELE forgreningen. Det var 1400 tegn indtil 15/10-2026,
+    # hvor `kind`-forgreningen (autonome kørsler stemples `interrupted`, synlige
+    # `recovering`) skubbede `settle_recovering` ud over kanten — og testen
+    # fejlede på et KLIP, ikke på en ændret rækkefølge. Målt: `run_er_terminal`
+    # står linje 691, `settle_recovering` linje 705; begge er nu inde.
+    vindue = src[i:i + 2600]
     # Ejer-identiteten skal med (12/9-2026), ellers stempler en proces den
     # andens aktive ture — api og runtime deler både app og state-fil.
     assert "dying_owner=current_owner()" in vindue

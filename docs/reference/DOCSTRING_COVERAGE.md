@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8982/17174 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8985/17183 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8982/17174 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 691 | 948 | 72% |
+| `apps.api.jarvis_api.routes` | 693 | 955 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 8982/17174 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 821 | 1521 | 53% |
-| `core.services` | 5989 | 11683 | 51% |
+| `core.services` | 5990 | 11685 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -64,7 +64,7 @@ Generated from source. 8982/17174 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L138)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
-- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L254)
+- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L405)
 - `apps/api/jarvis_api/routes/auth.py` :: `login` (L56)
 - `apps/api/jarvis_api/routes/auth.py` :: `register` (L34)
 - `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L46)
@@ -610,7 +610,7 @@ Generated from source. 8982/17174 functions/methods documented (52%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L348)
+- `core/runtime/db_schema.py` :: `init_db` (L352)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -1489,10 +1489,10 @@ Generated from source. 8982/17174 functions/methods documented (52%). The list b
 - `core/services/notes_connector.py` :: `list_notes` (L96)
 - `core/services/notes_connector.py` :: `search_notes` (L105)
 - `core/services/notification_router.py` :: `reset_delivery` (L431)
-- `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L82)
-- `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L98)
-- `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L92)
-- `core/services/notifikations_emittere.py` :: `system` (L109)
+- `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L84)
+- `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L100)
+- `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L94)
+- `core/services/notifikations_emittere.py` :: `system` (L111)
 - `core/services/notifikations_opstart.py` :: `koer_ved_opstart` (L13)
 - `core/services/notifikations_valg.py` :: `kanal_for` (L115)
 - `core/services/notifikations_valg.py` :: `saet` (L132)

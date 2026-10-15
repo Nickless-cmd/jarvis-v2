@@ -117,17 +117,24 @@ _App-release-vagt — push i stedet for poll._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_state_fil` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L69) |
-| function | `_laes_sidste_tag` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L74) |
-| function | `_skriv_sidste_tag` | `(tag)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L83) |
-| function | `_parse_atom` | `(tekst)` | Nyeste desk-release ud af atom-feedet. None hvis feedet er tomt/ukendt. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L96) |
-| function | `hent_seneste` | `()` | Sidste desk-release fra GitHub. Blokerende — kaldes i en traad. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L116) |
-| function | `seneste_cached` | `(*, tving=…)` | Seneste release med kort cache, saa /latest ikke rammer GitHub pr. kald. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L135) |
-| function | `app_release_latest` | `()` | Nyeste desk-release. Auth haandteres af middlewaren, som for alle ruter. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L151) |
-| function | `_udsend` | `(data)` | Laeg release-eventet paa bussen. /ws sender det videre til klienterne. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L162) |
-| function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L197) |
-| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L241) |
-| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L254) |
+| function | `_state_fil` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L71) |
+| function | `_laes_sidste_tag` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L76) |
+| function | `_skriv_sidste_tag` | `(tag)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L85) |
+| function | `_laes_state` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L89) |
+| function | `_skriv_state` | `(data)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L97) |
+| function | `_parse_atom` | `(tekst)` | Nyeste desk-release ud af atom-feedet. None hvis feedet er tomt/ukendt. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L110) |
+| function | `hent_seneste` | `()` | Sidste desk-release fra GitHub. Blokerende — kaldes i en traad. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L130) |
+| function | `_ci_status_fra_jobs` | `(jobs, *, workflow_url)` | Omsaet GitHub-jobbenes sandhed til den lille kontrakt Desk viser. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L149) |
+| function | `hent_seneste_ci` | `()` | Seneste tag-startede Desk-workflow inklusive jobfremdrift. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L184) |
+| function | `seneste_cached` | `(*, tving=…)` | Seneste release med kort cache, saa /latest ikke rammer GitHub pr. kald. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L216) |
+| function | `app_release_latest` | `()` | Nyeste desk-release. Auth haandteres af middlewaren, som for alle ruter. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L232) |
+| function | `_release_titel` | `(data)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L243) |
+| function | `_opret_build` | `(data)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L252) |
+| function | `_opdater_build` | `(data)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L265) |
+| function | `_udsend` | `(data)` | Laeg release-eventet paa bussen. /ws sender det videre til klienterne. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L278) |
+| function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L309) |
+| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L392) |
+| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L405) |
 
 ## `apps/api/jarvis_api/routes/attachments.py`
 _Attachment upload and serve endpoints._

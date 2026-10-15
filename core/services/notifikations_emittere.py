@@ -11,6 +11,7 @@ fejler maa aldrig tage raekken med sig.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from core.services import notifikationer as _lager
 from core.services import notifikations_valg as _valg
@@ -73,9 +74,10 @@ def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
 
 def _foed(*, user_id: str, slags: str, kilde: str, titel: str,
           tekst: str = "", ref: str | None = None,
-          session_id: str | None = None) -> None:
+          session_id: str | None = None,
+          data: dict[str, Any] | None = None) -> None:
     _lager.opret(user_id=user_id, slags=slags, kilde=kilde, titel=titel,
-                 tekst=tekst, ref=ref, session_id=session_id)
+                 tekst=tekst, ref=ref, session_id=session_id, data=data)
     _maaske_push(user_id, slags, titel, tekst, session_id=session_id)
 
 
@@ -106,11 +108,13 @@ def fra_jarvis(user_id: str, slags: str, titel: str, tekst: str = "") -> None:
     _foed(user_id=user_id, slags=slags, kilde="egen", titel=titel, tekst=tekst)
 
 
-def system(slags: str, titel: str, tekst: str = "") -> None:
+def system(slags: str, titel: str, tekst: str = "", *, ref: str | None = None,
+           data: dict[str, Any] | None = None) -> None:
     uid = _owner_id()
     if not uid:
         return
-    _foed(user_id=uid, slags=slags, kilde="egen", titel=titel, tekst=tekst)
+    _foed(user_id=uid, slags=slags, kilde="egen", titel=titel, tekst=tekst,
+          ref=ref, data=data)
 
 
 def afstem_godkendelser(user_id: str) -> int:

@@ -43,6 +43,80 @@ def test_parser_taaler_uforstaaeligt_og_tomt_feed():
     assert mod._parse_atom(tomt) is None
 
 
+def test_ci_status_er_building_indtil_publish_jobbet_er_faerdigt():
+    jobs = [
+        {"name": "prepare", "status": "completed", "conclusion": "success"},
+        {"name": "build-linux", "status": "completed", "conclusion": "success"},
+        {"name": "build-mac", "status": "in_progress", "conclusion": None},
+        {"name": "build-win", "status": "queued", "conclusion": None},
+        {"name": "publish", "status": "queued", "conclusion": None},
+    ]
+
+    status = mod._ci_status_fra_jobs(jobs, workflow_url="https://example.invalid/run/1")
+
+    assert status == {
+        "phase": "building",
+        "progress": 40,
+        "label": "Bygger macOS og Windows",
+        "workflow_url": "https://example.invalid/run/1",
+    }
+
+
+def test_ci_status_bliver_foerst_ready_naar_publish_er_faerdig():
+    jobs = [
+        {"name": "prepare", "status": "completed", "conclusion": "success"},
+        {"name": "build-linux", "status": "completed", "conclusion": "success"},
+        {"name": "build-mac", "status": "completed", "conclusion": "success"},
+        {"name": "build-win", "status": "completed", "conclusion": "success"},
+        {"name": "publish", "status": "completed", "conclusion": "success"},
+    ]
+
+    status = mod._ci_status_fra_jobs(jobs, workflow_url="https://example.invalid/run/1")
+
+    assert status["phase"] == "ready"
+    assert status["progress"] == 100
+    assert status["label"] == "Klar til installation"
+
+
+def test_ci_status_viser_fejl_uden_at_tilbyde_installation():
+    jobs = [
+        {"name": "prepare", "status": "completed", "conclusion": "success"},
+        {"name": "build-linux", "status": "completed", "conclusion": "failure"},
+    ]
+
+    status = mod._ci_status_fra_jobs(jobs, workflow_url="https://example.invalid/run/1")
+
+    assert status["phase"] == "failed"
+    assert status["progress"] < 100
+    assert status["label"] == "Build fejlede"
+
+
+def test_buildstart_opretter_fremdrift_uden_at_melde_installation(monkeypatch):
+    from core.eventbus import bus as bus_mod
+    from core.services import notifikations_emittere
+
+    systemkald: list[tuple[tuple, dict]] = []
+    events: list[str] = []
+    monkeypatch.setattr(
+        notifikations_emittere, "system",
+        lambda *args, **kwargs: systemkald.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        bus_mod.event_bus, "publish",
+        lambda kind, payload=None, **kw: events.append(kind),
+    )
+    data = {
+        "tag": "jarvis-desktop-v0.6.235", "version": "0.6.235",
+        "phase": "building", "progress": 20, "label": "Bygger Linux, macOS og Windows",
+    }
+
+    assert mod._opret_build(data) is True
+    assert systemkald[0][0][:2] == ("release", "Build 0.6.235 er undervejs")
+    assert systemkald[0][1]["ref"] == "jarvis-desktop-v0.6.235"
+    assert systemkald[0][1]["data"]["phase"] == "building"
+    assert "app.release.available" not in events
+
+
 def test_state_filen_skrives_og_laeses_saa_baselinen_overlever_genstart(monkeypatch, tmp_path):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     # Uden fil: ingen baseline. Det er den tilstand der udsender et falsk
@@ -163,12 +237,15 @@ def test_baselinen_rykker_ikke_naar_udsendelsen_fejler(monkeypatch, tmp_path):
     mod._skriv_sidste_tag("jarvis-desktop-v0.6.60")
     monkeypatch.setattr(
         mod,
-        "hent_seneste",
+        "hent_seneste_ci",
         lambda: {
             "tag": "jarvis-desktop-v0.6.61",
             "version": "0.6.61",
             "url": None,
             "published_at": None,
+            "phase": "ready",
+            "progress": 100,
+            "label": "Klar til installation",
         },
     )
 
@@ -206,8 +283,10 @@ def test_baselinen_rykker_naar_udsendelsen_lykkes(monkeypatch, tmp_path):
     mod._skriv_sidste_tag("jarvis-desktop-v0.6.60")
     monkeypatch.setattr(
         mod,
-        "hent_seneste",
-        lambda: {"tag": "jarvis-desktop-v0.6.61", "version": "0.6.61"},
+        "hent_seneste_ci",
+        lambda: {"tag": "jarvis-desktop-v0.6.61", "version": "0.6.61",
+                 "phase": "ready", "progress": 100,
+                 "label": "Klar til installation"},
     )
 
     udsendte: list[dict] = []

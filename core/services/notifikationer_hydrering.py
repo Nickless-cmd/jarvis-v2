@@ -153,6 +153,7 @@ def feed(user_id: str, *, er_owner: bool,
             "oprettet": raekke["oprettet"],
             "kan_afgoere": raekke["slags"] in AFGOERBARE and not foraeldet,
             "foraeldet": foraeldet,
+            "data": raekke.get("data") or {},
         })
     return ud
 
@@ -186,5 +187,6 @@ def tidligere(user_id: str, *, er_owner: bool, dage: int = 7) -> list[dict[str, 
             "udfald_tekst": _UDFALD_TEKST.get(udfald, "Klaret"),
             "kan_afgoere": False,
             "foraeldet": False,
+            "data": raekke.get("data") or {},
         })
     return ud

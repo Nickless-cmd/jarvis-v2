@@ -905,7 +905,27 @@ app.whenReady().then(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const up = (updMod as any)?.autoUpdater ?? (updMod as any)?.default?.autoUpdater
       if (!up) return
-      const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
+      const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p), (appImageSti) => {
+        // Start den NYE AppImage som en selvstaendig proces og luk den gamle.
+        // `app.relaunch()` duer IKKE her: den genstarter processen fra det GAMLE
+        // AppImage-mount og ville dermed starte netop den version vi erstattede.
+        // Er filen lagt paa plads (det er den, naar vi naar her), virker en
+        // manuel start ogsaa — saa fejler spawn, mister vi intet.
+        try {
+          const barn = spawn(appImageSti, [], {
+            detached: true,
+            stdio: 'ignore',
+            env: { ...process.env, APPIMAGE_SILENT_INSTALL: 'true' },
+          })
+          barn.unref()
+          app.exit(0)
+        } catch (e) {
+          mainWindow?.webContents.send(
+            'update:error',
+            `opdateringen ligger klar, men appen kunne ikke genstarte selv: ${String(e)}`,
+          )
+        }
+      })
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
       ipcMain.handle('update:install-now', () => api.downloadAndInstall())

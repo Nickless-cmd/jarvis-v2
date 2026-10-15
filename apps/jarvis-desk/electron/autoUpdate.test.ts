@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { findLinuxAppImage, sikkerSwap, wireUpdater, type SwapFs } from './autoUpdate'
+import {
+  afventendeFindes, findLinuxAppImage, markérAfventende, rydAfventende,
+  rulTilbage, sikkerSwap, wireUpdater, type SwapFs,
+} from './autoUpdate'
 
 const MAAL = '/home/bs/Applications/J.A.R.V.I.S.AppImage'
 const HENTET = '/home/bs/.cache/jarvis-desktop-updater/pending/J.A.R.V.I.S-0.6.238.AppImage'
@@ -23,6 +26,7 @@ function fakeFs(over: Partial<SwapFs> = {}): SwapFs {
     chmodSync: vi.fn(),
     renameSync: vi.fn(),
     unlinkSync: vi.fn(),
+    writeFileSync: vi.fn(),
     ...over,
   }
 }
@@ -147,5 +151,82 @@ describe('findLinuxAppImage', () => {
     const exists = vi.fn(() => true)
     expect(findLinuxAppImage({ APPIMAGE: '/opt/Jarvis.AppImage', HOME: '/home/bjorn' }, exists))
       .toBe('/opt/Jarvis.AppImage')
+  })
+})
+
+// ── En defekt release maa ikke kunne laase appen ude af sin opdatering ───────
+//
+// Maalt 15/10-2026: 0.6.240 blev swappet ind, kastede i renderer ved HVER
+// start, og opdaterings-UI'et laa selv i renderer — Bjørn sad fast i en doed
+// app der pegede paa sin egen defekte version. Tre dele lukker hullet: en
+// bevarede kopi af den koerende version, en atomisk tilbagerulning, og en
+// markoer main kan skelne paa ved naeste start.
+
+describe('sikkerSwap bevarer den koerende version', () => {
+  it('kopierer maalet til .forrige FOER swap', () => {
+    const fs = fakeFs()
+    sikkerSwap(HENTET, MAAL, fs)
+    expect(fs.copyFileSync).toHaveBeenCalledWith(MAAL, `${MAAL}.forrige`)
+  })
+
+  it('swapper alligevel hvis backup-kopien fejler — opdateringen blokeres ikke', () => {
+    const fs = fakeFs({
+      copyFileSync: vi.fn((fra: string, til: string) => {
+        if (til.endsWith('.forrige')) throw new Error('disk fuld')
+      }),
+    })
+    expect(sikkerSwap(HENTET, MAAL, fs).ok).toBe(true)
+  })
+})
+
+describe('rulTilbage', () => {
+  it('laegger .forrige atomisk tilbage over maalet', () => {
+    const fs = fakeFs()
+    expect(rulTilbage(MAAL, fs)).toEqual({ ok: true, sti: MAAL })
+    expect(fs.copyFileSync).toHaveBeenCalledWith(`${MAAL}.forrige`, `${MAAL}.ny`)
+    expect(fs.renameSync).toHaveBeenCalledWith(`${MAAL}.ny`, MAAL)
+  })
+
+  it('roerer intet naar der ingen forrige version er', () => {
+    const fs = fakeFs({ existsSync: vi.fn(() => false) })
+    expect(rulTilbage(MAAL, fs).ok).toBe(false)
+    expect(fs.renameSync).not.toHaveBeenCalled()
+  })
+
+  it('efterlader maalet uroert naar tilbagerulningen fejler', () => {
+    const fs = fakeFs({ renameSync: vi.fn(() => { throw new Error('EXDEV') }) })
+    expect(rulTilbage(MAAL, fs).ok).toBe(false)
+    expect(fs.unlinkSync).toHaveBeenCalledWith(`${MAAL}.ny`)
+  })
+})
+
+describe('afventende-markoeren', () => {
+  it('skrives ved swap og kan ryddes igen', () => {
+    const fs = fakeFs()
+    markérAfventende(MAAL, fs)
+    expect(fs.writeFileSync).toHaveBeenCalledWith(`${MAAL}.afventer`, expect.any(String))
+    rydAfventende(MAAL, fs)
+    expect(fs.unlinkSync).toHaveBeenCalledWith(`${MAAL}.afventer`)
+  })
+
+  it('findes kun naar filen er der', () => {
+    expect(afventendeFindes(MAAL, fakeFs({ existsSync: () => true }))).toBe(true)
+    expect(afventendeFindes(MAAL, fakeFs({ existsSync: () => false }))).toBe(false)
+  })
+
+  it('installNow skriver markoeren — saa main kan opdage en crash ved naeste start', async () => {
+    const foer = process.env.APPIMAGE
+    process.env.APPIMAGE = MAAL
+    try {
+      const up = fakeUpdater()
+      const fs = fakeFs()
+      const api = wireUpdater(up as never, () => {}, vi.fn(), fs)
+      up._emit('update-downloaded', { version: '0.3.0', downloadedFile: HENTET })
+      await api.installNow()
+      expect(fs.writeFileSync).toHaveBeenCalledWith(`${MAAL}.afventer`, expect.any(String))
+    } finally {
+      if (foer === undefined) delete process.env.APPIMAGE
+      else process.env.APPIMAGE = foer
+    }
   })
 })

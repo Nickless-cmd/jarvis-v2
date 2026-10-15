@@ -1066,6 +1066,40 @@ app.whenReady().then(() => {
   )
 
   createMainWindow()
+  // ── Rul tilbage hvis den netop installerede version ikke kan starte ────────
+  // (15/10-2026) `sikkerSwap` skriver en markoer naar den laegger en ny version
+  // paa plads. Finder vi den her, er det FORDI appen lige er startet efter en
+  // opdatering. Overlever renderer, rydder vi markoeren; gaar renderer ned
+  // inden for vinduet, ruller vi tilbage til `.forrige` og genstarter — saa en
+  // defekt release ikke kan laase appen ude af sin egen opdatering. Uden dette
+  // sad Bjørn 15/10 fast i 0.6.240, fordi opdaterings-UI'et selv var i renderer.
+  void (async () => {
+    try {
+      const sti = process.env.APPIMAGE
+      if (!sti) return
+      const { afventendeFindes, rydAfventende, rulTilbage } = await import('./autoUpdate')
+      if (!afventendeFindes(sti)) return
+      const rydMarkoer = setTimeout(() => rydAfventende(sti), 30_000)
+      const lyt = (w: BrowserWindow) => {
+        w.webContents.on('render-process-gone', () => {
+          clearTimeout(rydMarkoer)
+          const r = rulTilbage(sti)
+          if (!r.ok) return
+          try {
+            const barn = spawn(sti, [], {
+              detached: true,
+              stdio: 'ignore',
+              env: { ...process.env, APPIMAGE_SILENT_INSTALL: 'true' },
+            })
+            barn.unref()
+          } catch { /* filen ligger paa plads — vi har gjort hvad vi kan */ }
+          app.exit(0)
+        })
+      }
+      if (mainWindow) lyt(mainWindow)
+      else app.once('browser-window-created', (_e, w) => lyt(w))
+    } catch { /* dep/sti mangler → no-op */ }
+  })()
   createTray()
   // Jarvis-figuren. Et klik på dens taleboble viser hovedvinduet på den
   // samtale den taler om — også når hovedvinduet var lukket (skjult).

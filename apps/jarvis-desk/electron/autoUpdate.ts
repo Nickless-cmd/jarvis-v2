@@ -14,7 +14,7 @@
 // poller GitHub, og kilden kan ikke skubbe ned i klienten. En knap der ikke
 // reagerer STRAKS er derfor ikke det samme som en knap der er i stykker.
 
-import { chmodSync, copyFileSync, existsSync, renameSync, unlinkSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
 export interface AutoUpdateConfig {
@@ -58,9 +58,12 @@ export interface SwapFs {
   chmodSync: (p: string, mode: number) => void
   renameSync: (fra: string, til: string) => void
   unlinkSync: (p: string) => void
+  writeFileSync: (p: string, data: string) => void
 }
 
-const nodeFs: SwapFs = { existsSync, copyFileSync, chmodSync, renameSync, unlinkSync }
+const nodeFs: SwapFs = {
+  existsSync, copyFileSync, chmodSync, renameSync, unlinkSync, writeFileSync,
+}
 
 export type SwapResultat = { ok: true; sti: string } | { ok: false; fejl: string }
 
@@ -86,6 +89,14 @@ export function sikkerSwap(
     return { ok: false, fejl: `den hentede fil findes ikke: ${hentet ?? '(ingen sti)'}` }
   }
   const midlertidig = `${maal}.ny`
+  // Bevar den KOERENDE version som `.forrige` FOER vi rorer maalet (15/10-2026).
+  // Uden den kan en defekt ny version ikke rulles tilbage — praecis hvad der
+  // skete 15/10, hvor Bjørn maatte reddes manuelt. Best-effort: kan vi ikke
+  // bevare den, swapper vi alligevel (swap'en er stadig atomisk), men vi mister
+  // rul-tilbage-muligheden frem for at blokere opdateringen.
+  try {
+    if (fs.existsSync(maal)) fs.copyFileSync(maal, `${maal}.forrige`)
+  } catch { /* backup er best-effort */ }
   try {
     fs.copyFileSync(hentet, midlertidig)
     fs.chmodSync(midlertidig, 0o755)
@@ -96,6 +107,53 @@ export function sikkerSwap(
     try { fs.unlinkSync(midlertidig) } catch { /* noop */ }
     return { ok: false, fejl: String(e) }
   }
+}
+
+/** Rul tilbage til den version `sikkerSwap` bevarede som `.forrige`.
+ *
+ *  Samme atomiske moenster som `sikkerSwap`: kopiér til `.ny`, gør executable,
+ *  `rename` over maalet. Maalet findes i hvert oejeblik, og fejler noget, staar
+ *  den nuvaerende fil uroert — vi goer altsaa ikke ondt vaerre.
+ */
+export function rulTilbage(maal: string, fs: SwapFs = nodeFs): SwapResultat {
+  const forrige = `${maal}.forrige`
+  if (!fs.existsSync(forrige)) {
+    return { ok: false, fejl: `ingen forrige version at rulle tilbage til: ${forrige}` }
+  }
+  const midlertidig = `${maal}.ny`
+  try {
+    fs.copyFileSync(forrige, midlertidig)
+    fs.chmodSync(midlertidig, 0o755)
+    fs.renameSync(midlertidig, maal)
+    return { ok: true, sti: maal }
+  } catch (e) {
+    try { fs.unlinkSync(midlertidig) } catch { /* noop */ }
+    return { ok: false, fejl: String(e) }
+  }
+}
+
+/** Markoer-filen der siger «en ny version blev netop lagt paa plads».
+ *
+ *  Den findes KUN i vinduet mellem en swap og det foerste bevis paa at den nye
+ *  version kan starte. Ved naeste opstart: overlever appen, ryddes den; gaar
+ *  renderer ned, rulles der tilbage. Uden markoeren kan main ikke skelne «den
+ *  nye version crashede» fra «appen crashede af en anden grund» — og ville
+ *  enten rulle tilbage i utide eller aldrig.
+ */
+export function afventendeSti(maal: string): string {
+  return `${maal}.afventer`
+}
+
+export function markérAfventende(maal: string, fs: SwapFs = nodeFs): void {
+  try { fs.writeFileSync(afventendeSti(maal), new Date().toISOString()) } catch { /* best-effort */ }
+}
+
+export function afventendeFindes(maal: string, fs: SwapFs = nodeFs): boolean {
+  try { return fs.existsSync(afventendeSti(maal)) } catch { return false }
+}
+
+export function rydAfventende(maal: string, fs: SwapFs = nodeFs): void {
+  try { fs.unlinkSync(afventendeSti(maal)) } catch { /* noop */ }
 }
 
 /** Kobl electron-updater's events til IPC mod renderer, og returnér handlers
@@ -139,6 +197,11 @@ export function wireUpdater(
     }
     const s = sikkerSwap(fil, maal, fs)
     if (!s.ok) throw new Error(`opdateringen blev ikke lagt på plads: ${s.fejl}`)
+    // Markoeren skrives EFTER swap'en og FOER genstarten: naar den nye version
+    // aabner, ved main at den lige er kommet ind — og kan rulle tilbage hvis
+    // renderer doer. 15/10-2026: 0.6.240 kastede ved HVER start, og UI'et der
+    // skulle trykke «opdater» var selv en del af renderer.
+    markérAfventende(maal, fs)
     genstart?.(s.sti)
   }
 

@@ -38,6 +38,14 @@
 .notif-clear-confirm button:hover, .notif-install:hover { background: var(--bg-4); }
 .notif-clear-confirm button:disabled, .notif-install:disabled { opacity: .55; cursor: default; }
 .notif-install { margin-top: 8px; color: var(--accent-text); }
+.notif-release-status { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; margin-top: 8px;
+  color: var(--fg-2); font-size: 10.5px; }
+.notif-release-status > span { min-width: 0; }
+.notif-release-status > a { color: var(--accent-text); }
+.notif-release-progress { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 999px;
+  background: var(--bg-4); }
+.notif-release-progress > span { display: block; height: 100%; border-radius: inherit;
+  background: var(--accent); transition: width .35s ease; }
 @keyframes klokke-ring {
   0%, 8%, 17%, 100% { transform: rotate(0); }
   10% { transform: rotate(-17deg); }

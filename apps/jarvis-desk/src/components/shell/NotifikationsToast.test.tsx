@@ -5,6 +5,7 @@ import { _saetUr, _nulstil, vaagn, maaPolle, ROLIG_EFTER_MS } from '../../lib/ro
 const hent = vi.fn()
 const afgoer = vi.fn()
 const afslut = vi.fn()
+const installer = vi.fn()
 
 vi.mock('../../lib/notifikationerApi', () => ({
   hentNotifikationer: (...a: unknown[]) => hent(...a),
@@ -27,6 +28,9 @@ vi.mock('../../lib/api', () => ({
 // Lyden er ikke det testen maaler, og jsdom har ingen AudioContext at spille
 // i. Mock'en holder testen paa adfaerden og ikke paa lydkortet.
 vi.mock('../../lib/toastLyd', () => ({ spilToastKlang: vi.fn() }))
+vi.mock('../../lib/updatesBridge', () => ({
+  updatesBridge: () => ({ installNow: installer }),
+}))
 
 // Agent-approvals er den ANDEN kilde (14/10-2026). Toasten henter nu ogsaa
 // kontrakt-feedet — samme moenster som NotifikationsFeed.agents.test.tsx: den
@@ -102,6 +106,7 @@ describe('NotifikationsToast', () => {
     hent.mockReset(); hent.mockResolvedValue({ poster: [], antal: 0 })
     afgoer.mockReset(); afgoer.mockResolvedValue({ ok: true, fejl: '' })
     afslut.mockReset(); afslut.mockResolvedValue(undefined)
+    installer.mockReset(); installer.mockResolvedValue({ ok: true })
     kontraktFeed.mockReset(); kontraktFeed.mockResolvedValue(TOMT_KONTRAKT_FEED)
     afgoerAgent.mockReset(); afgoerAgent.mockResolvedValue({})
     sockets.length = 0
@@ -126,6 +131,26 @@ describe('NotifikationsToast', () => {
   it('viser en toast naar en NY post lander', async () => {
     expect(await medNyPost({ id: 'p2', titel: 'Svar klar', slags: 'run_done', kan_afgoere: false }))
       .toBeInTheDocument()
+  })
+
+  it('viser samme release igen naar fasen skifter til klar og kan installere', async () => {
+    const building = post({
+      id: 'release-1', slags: 'release', titel: 'Build 0.6.235 er undervejs',
+      kan_afgoere: false, data: { phase: 'building', progress: 40, label: 'Bygger macOS og Windows' },
+    })
+    const ready = post({
+      ...building, titel: 'Ny version 0.6.235 er klar',
+      data: { phase: 'ready', progress: 100, label: 'Klar til installation' },
+    })
+    hent.mockResolvedValueOnce({ poster: [building], antal: 1 })
+      .mockResolvedValue({ poster: [ready], antal: 1 })
+    render(<NotifikationsToast config={cfg} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.opdateret' }) })
+
+    await screen.findByText('Ny version 0.6.235 er klar')
+    fireEvent.click(screen.getByRole('button', { name: 'Installér nu' }))
+    await waitFor(() => expect(installer).toHaveBeenCalled())
   })
 
   it('bevarer live-forbindelsen naar kun config-objektets identitet skifter', async () => {

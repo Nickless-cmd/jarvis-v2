@@ -16,6 +16,13 @@ export interface Notifikation {
   oprettet: string
   kan_afgoere: boolean
   foraeldet: boolean
+  data?: {
+    version?: string
+    phase?: 'building' | 'ready' | 'failed'
+    progress?: number
+    label?: string
+    workflow_url?: string
+  }
 }
 
 export interface Feed { poster: Notifikation[]; antal: number; venter: number }

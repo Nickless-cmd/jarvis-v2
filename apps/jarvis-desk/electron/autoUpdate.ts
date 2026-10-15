@@ -14,6 +14,8 @@
 // poller GitHub, og kilden kan ikke skubbe ned i klienten. En knap der ikke
 // reagerer STRAKS er derfor ikke det samme som en knap der er i stykker.
 
+import { isAbsolute, join } from 'node:path'
+
 export interface AutoUpdateConfig {
   enabled?: boolean
   channel?: string
@@ -31,6 +33,21 @@ interface FullUpdater {
   quitAndInstall: () => unknown
 }
 type Send = (channel: string, payload: unknown) => void
+
+/** electron-updater kraever APPIMAGE for at kunne erstatte den koerende fil.
+ * Nogle Linux-launchere taber variablen, selv om processen faktisk er startet
+ * fra AppImage-mountet. Genfind den faste installersti uden at overskrive en
+ * gyldig launcher-vaerdi. */
+export function findLinuxAppImage(
+  env: Partial<NodeJS.ProcessEnv>, exists: (path: string) => boolean,
+): string | undefined {
+  const fraLauncher = env.APPIMAGE
+  if (fraLauncher && isAbsolute(fraLauncher) && exists(fraLauncher)) return fraLauncher
+  const home = env.HOME
+  if (!home || !isAbsolute(home)) return undefined
+  const installeret = join(home, 'Applications', 'J.A.R.V.I.S.AppImage')
+  return exists(installeret) ? installeret : undefined
+}
 
 /** Kobl electron-updater's events til IPC mod renderer, og returnér handlers
  *  til bruger-styret download/install. autoDownload slås FRA — vi spørger først

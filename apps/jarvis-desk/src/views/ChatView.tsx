@@ -1068,7 +1068,7 @@ export function ChatView({
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
               role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming
               finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
-              tankeResumeer={stream.tankeResumeer} />
+              tankeResumeer={stream.tankeResumeer} config={raekkeConfig} />
           </>
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
@@ -1080,7 +1080,7 @@ export function ChatView({
             workingStep={followState.workingStep} runId={followedRunId}
             role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
-            tankeResumeer={followState.tankeResumeer} />
+            tankeResumeer={followState.tankeResumeer} config={raekkeConfig} />
         )}
         {!streaming ? <ChatFlowSuggestion streaming={false}
           onboardingActive={!chatFlow.state.onboarding_seen} /> : null}

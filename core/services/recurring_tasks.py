@@ -68,6 +68,16 @@ def _ensure_table() -> None:
         # kolonnen fandtes); de falder tilbage til den gamle adfærd.
         if "session_id" not in cols:
             conn.execute("ALTER TABLE recurring_tasks ADD COLUMN session_id TEXT NOT NULL DEFAULT ''")
+        # INDBOKS-FLAG (15/10-2026). Bjoern: «er der andre autonome sessioner
+        # der burde lande i inbak?» — maalt: en recurring-opgave skriver sit
+        # resultat i en `auto-recurring`-silo som ingen laeser. Flaget hoerer
+        # paa OPGAVEN, ikke i en tekst-match i gaten: den der opretter opgaven
+        # ved om svaret skyldes nogen, og reglen overlever at fokus-teksten
+        # aendres. 0 = uaendret adfaerd for alle raekker fra foer kolonnen.
+        if "inbox_on_complete" not in cols:
+            conn.execute(
+                "ALTER TABLE recurring_tasks ADD COLUMN inbox_on_complete INTEGER NOT NULL DEFAULT 0"
+            )
         conn.commit()
 
 
@@ -109,6 +119,51 @@ def set_weekdays(task_id: str, weekdays: str) -> bool:
         return cur.rowcount > 0
 
 
+def set_inbox_on_complete(task_id: str, flag: bool) -> bool:
+    """Sæt om opgavens resultat skal lægges i indbakken når den fyrer.
+
+    ``True`` = runnets svar efterlader en DURABEL post i ``inbox_items``, så
+    arbejdet kan læses efter det er kørt — ikke kun i en ``auto-recurring``-silo
+    ingen åbner. Posten har kildetypen ``recurring``, der står i
+    ``IKKE_GATENDE_KILDETYPER``: den er SYNLIG men kan aldrig nægte en mutation.
+
+    Rammer kun affyringer FREMAD — et run der kører nu er upåvirket.
+    """
+    _ensure_table()
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET inbox_on_complete = ?, updated_at = ? WHERE task_id = ?",
+            (1 if flag else 0, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def skal_i_indbakken(task_id: str) -> bool:
+    """Skal DETTE runs resultat i indbakken? Slås op på opgaven, ikke på teksten.
+
+    Kaldes fra ``run_closure_gate`` når et run med ``origin=recurring``
+    afsluttes: runnet bærer kun ``task_id``, og flaget er sandheden i DB. Det gør
+    reglen levende — sætter man flaget, ændrer adfærden sig uden genstart — og
+    den overlever at fokus-teksten skrives om.
+
+    Fail-soft: en ukendt eller slettet opgave svarer ``False`` (ingen post), så
+    et manglende opslag aldrig kan blokere eller støje.
+    """
+    if not str(task_id or "").strip():
+        return False
+    try:
+        with runtime_db.connect() as conn:
+            row = conn.execute(
+                "SELECT inbox_on_complete FROM recurring_tasks WHERE task_id = ?",
+                (str(task_id),),
+            ).fetchone()
+        return bool(row and int(row[0] or 0))
+    except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte gaten
+        logger.debug("recurring_tasks: kunne ikke laese inbox-flag for %s", task_id, exc_info=True)
+        return False
+
+
 def _row_to_dict(row) -> dict:
     keys = row.keys() if hasattr(row, "keys") else []
     return {
@@ -128,6 +183,8 @@ def _row_to_dict(row) -> dict:
         # '' = ingen binding (raekker fra foer 14/10-2026). Kalderen falder
         # tilbage til den gamle adfaerd for dem.
         "session_id": (row["session_id"] if "session_id" in keys else ""),
+        # 0 = ingen indbakke-post (raekker fra foer 15/10-2026).
+        "inbox_on_complete": (int(row["inbox_on_complete"]) if "inbox_on_complete" in keys else 0),
     }
 
 
@@ -139,16 +196,16 @@ def _scope() -> str:
 
 def _create(*, task_id: str, focus: str, source: str, interval_minutes: int,
             next_fire_at: str, now: str, weekdays: str = "",
-            session_id: str = "") -> None:
+            session_id: str = "", inbox_on_complete: int = 0) -> None:
     with runtime_db.connect() as conn:
         conn.execute(
             """
             INSERT INTO recurring_tasks
-              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id, weekdays, session_id)
-            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
+              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id, weekdays, session_id, inbox_on_complete)
+            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (task_id, focus, source, interval_minutes, next_fire_at, now, now,
-             _scope() or None, weekdays, session_id),
+             _scope() or None, weekdays, session_id, int(inbox_on_complete)),
         )
         conn.commit()
 
@@ -371,6 +428,7 @@ def create_recurring_task(
     delay_minutes: int = 0,
     weekdays: str = "",
     session_id: str = "",
+    inbox_on_complete: bool = False,
 ) -> dict:
     """Schedule a recurring task. Returns task info dict.
 
@@ -383,6 +441,10 @@ def create_recurring_task(
     ``'1,2,3,4,5'``, ``'weekend'``. Tom = alle dage, praecis som foer, saa alle
     eksisterende opgaver er uaendrede. Klokkeslaettet bevares: en hverdagsoppgave
     springer weekenden over frem for at flytte sig.
+
+    ``inbox_on_complete`` (15/10-2026): opgavens resultat lægges i indbakken når
+    den fyrer, i stedet for kun at ligge i en ``auto-recurring``-silo. Se
+    ``set_inbox_on_complete``.
 
     Foerste affyring (fix 18/9-2026): en EKSPLICIT ``delay_minutes`` vinder over
     intervallet. Foer stod der ``max(delay_minutes, interval_minutes)``, saa et
@@ -425,6 +487,7 @@ def create_recurring_task(
         now=now.isoformat(),
         weekdays=ud,
         session_id=sid,
+        inbox_on_complete=int(bool(inbox_on_complete)),
     )
     logger.info("recurring_tasks: created %s every %dm weekdays=%r session=%s focus=%r",
                 task_id, interval_minutes, ud or "alle", sid or "-", focus[:60])
@@ -436,6 +499,9 @@ def create_recurring_task(
         "weekdays": ud,
         "session_id": sid,
         "status": "active",
+        # Flaget rapporteres tilbage (15/10-2026), saa kalderen kan se om
+        # opgaven blev oprettet med indbakke-levering.
+        "inbox_on_complete": int(bool(inbox_on_complete)),
     }
 
 
@@ -521,6 +587,11 @@ def _fire_due() -> None:
                     message=focus,
                     session_id=str(task.get("session_id") or "") or None,
                     origin="recurring",
+                    # task_id baeres med (15/10-2026), saa runnets afslutning
+                    # kan slaa op paa OPGAVEN om svaret skylder nogen et svar —
+                    # `inbox_on_complete`. Uden den vidste closure-gaten ikke
+                    # hvilken opgave runnet hoerte til.
+                    task_id=task_id,
                 )
 
             dispatch_recurring(

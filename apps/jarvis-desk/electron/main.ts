@@ -32,13 +32,26 @@ import * as path from 'node:path'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import * as geo from './geo'
 import { brugbarPlads, husk } from './vinduesplads'
 import * as jb from './jarvisBrowser'
 import { rendererCsp } from './rendererCsp'
 
 const isDev = process.env.NODE_ENV === 'development'
+
+/** Engangs-nonce for widget-dokumentets inline-scripts — ét stempel pr.
+ *  app-kørsel.
+ *
+ *  Den bor paa MODUL-niveau med vilje: CSP-headeren sættes i én funktion og
+ *  `additionalArguments` i en anden, og begge skal bære PRAECIS samme værdi.
+ *  Blev den genereret to steder, ville widget'ens script have en anden nonce
+ *  end den policy der skal tillade det — og fejlen ville se ud som om fixet
+ *  ikke virkede.
+ *
+ *  Base64 fordi CSP spec'er nonce-værdien som base64. `randomBytes(16)` er
+ *  128 bit: ikke et tal man gætter. */
+const WIDGET_NONCE = randomBytes(16).toString('base64')
 const APP_NAME = 'J.A.R.V.I.S.'
 
 // GPU-rendering: HW-acceleration er TIL (software-rendering gav glitchy grafik
@@ -507,6 +520,11 @@ ipcMain.handle('browser:tilbage', () => { jb.tilbage(); return true })
 ipcMain.handle('browser:frem', () => { jb.frem(); return true })
 ipcMain.handle('browser:genindlaes', () => { jb.genindlaes(); return true })
 
+/** Widget-dokumentets nonce. Laeses af rendereren én gang pr. widget-mount —
+ *  se `WidgetBlock` — saa dens inline-scripts kan baere samme nonce som CSP'en.
+ *  Uden dette kørte INTET inline-script i en widget i den pakkede app. */
+ipcMain.handle('widget:nonce', () => WIDGET_NONCE)
+
 ipcMain.handle('config:get', () => loadConfig())
 ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
   // Bevar app-ID — renderer sender kun apiBaseUrl/authToken og må ikke kunne
@@ -887,7 +905,27 @@ app.whenReady().then(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const up = (updMod as any)?.autoUpdater ?? (updMod as any)?.default?.autoUpdater
       if (!up) return
-      const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
+      const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p), (appImageSti) => {
+        // Start den NYE AppImage som en selvstaendig proces og luk den gamle.
+        // `app.relaunch()` duer IKKE her: den genstarter processen fra det GAMLE
+        // AppImage-mount og ville dermed starte netop den version vi erstattede.
+        // Er filen lagt paa plads (det er den, naar vi naar her), virker en
+        // manuel start ogsaa — saa fejler spawn, mister vi intet.
+        try {
+          const barn = spawn(appImageSti, [], {
+            detached: true,
+            stdio: 'ignore',
+            env: { ...process.env, APPIMAGE_SILENT_INSTALL: 'true' },
+          })
+          barn.unref()
+          app.exit(0)
+        } catch (e) {
+          mainWindow?.webContents.send(
+            'update:error',
+            `opdateringen ligger klar, men appen kunne ikke genstarte selv: ${String(e)}`,
+          )
+        }
+      })
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
       ipcMain.handle('update:install-now', () => api.downloadAndInstall())
@@ -929,6 +967,7 @@ app.whenReady().then(() => {
   const csp = rendererCsp({
     development: isDev,
     connectOrigins: [apiOrigin, wsOrigin, LOGIN_API_ORIGIN, LOGIN_WS_ORIGIN],
+    widgetNonce: WIDGET_NONCE,
   })
 
   // Kombineret response-headers handler: CSP for vores egne HTML/JS,

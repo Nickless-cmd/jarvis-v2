@@ -1,6 +1,7 @@
 """Tests for dreaming_session.py — D4: full-model dreaming during prolonged idle."""
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch, MagicMock
 
@@ -263,6 +264,14 @@ def test_trigger_fires_when_ready(
     result = trigger_dream_session()
     assert result["fired"] is True
     assert result["session_id"] == "dreaming-20260609-000000"
+    # Fyringen sker i en BAGGRUNDSTRAAD (dreaming_session.py:_fire). Den racer
+    # med assert'en her, saa vi venter til traaden har naaet kaldet i stedet
+    # for at laese et oejebliksbillede fra foer den koerte. Maalt 15/10-2026:
+    # uden ventetiden fejlede testen konsistent med «Called 0 times» — baade
+    # med og uden aendringer i dreaming_session.
+    deadline = time.monotonic() + 2.0
+    while not mock_start.called and time.monotonic() < deadline:
+        time.sleep(0.01)
     mock_start.assert_called_once()
 
 
@@ -336,3 +345,56 @@ def test_surface_with_sessions():
     assert surface["active"] is True
     assert len(surface["recent"]) == 1
     assert surface["last_summary"] != ""
+
+
+# ── Punkt 4 (15/10-2026): drømmesessionen skal være SYNLIG i indbakken ──
+#
+# Bjørn 15/10: «disse drømmesession osse lander i inbak ellers er de usynlige
+# for os». Sessionen fyrer i en baggrundstråd og har intet run — run-closure-
+# gaten ser den derfor slet ikke (den fyrer kun for origin=recurring + task_id).
+
+
+def test_trigger_registrerer_sessionen_i_indbakken(monkeypatch):
+    """Punkt 4: registreringen skal ske synkront, foer traaden fyres."""
+    monkeypatch.setattr(
+        "core.services.dreaming_session._check_triggers", lambda: (True, "ready")
+    )
+    monkeypatch.setattr(
+        "core.services.dreaming_session._collect_dream_material",
+        lambda: {"consolidations": [{"at": "t", "theme_count": 1}]},
+    )
+    monkeypatch.setattr(
+        "core.services.dreaming_session._build_dream_prompt", lambda _m: "prompt"
+    )
+    monkeypatch.setattr(
+        "core.services.dreaming_session._record_session",
+        lambda _m, _p: "dreaming-20261015-120000",
+    )
+    # Fyringen sker i en traad; vi maaler KUN registreringen, som er synkron.
+    monkeypatch.setattr(
+        "core.services.routine_trigger_adapters.dispatch_system", lambda *a, **k: None
+    )
+
+    kald = []
+    monkeypatch.setattr(
+        "core.services.dreaming_session._registrer_dream_i_indbakken",
+        lambda sid, keys: kald.append((sid, list(keys))),
+    )
+
+    result = trigger_dream_session()
+
+    assert result["fired"] is True
+    assert kald == [("dreaming-20261015-120000", ["consolidations"])]
+
+
+def test_indbakke_registreringen_er_self_safe(monkeypatch):
+    """En indbakke der ikke kan skrives maa ikke vaelte sessionen."""
+    from core.services import dreaming_session as ds
+
+    def _boom() -> str:
+        raise RuntimeError("indbakke nede")
+
+    monkeypatch.setattr("core.services.inbox_state._ejer_id", _boom)
+
+    # Kaster ikke — registreringen er pakket ind.
+    ds._registrer_dream_i_indbakken("dreaming-x", ["a"])

@@ -45,6 +45,42 @@ const MAX_PROMPTS = 5
 const MIN_MS_MELLEM = 2000
 const MAX_PROMPT_TEGN = 2000
 
+/** Spørger main om widget-dokumentets nonce.
+ *
+ *  Tom naar der ikke er nogen bro: web-fladen, mobilen og testene har ingen
+ *  `jarvisDesk`, og dér er `'unsafe-inline'` stadig aktiv — dokumentet skal
+ *  blot stå urørt. En fejl her maa ikke draebe widget'en, saa den sluges. */
+async function hentWidgetNonce(): Promise<string> {
+  const bro = (window as unknown as {
+    jarvisDesk?: { widgetNonce?: () => Promise<unknown> }
+  }).jarvisDesk
+  if (typeof bro?.widgetNonce !== 'function') return ''
+  try {
+    const n = await bro.widgetNonce()
+    return typeof n === 'string' ? n : ''
+  } catch {
+    return ''
+  }
+}
+
+/** Sætter noncen paa HVERT script i dokumentet.
+ *
+ *  Prod-CSP'en har ikke `'unsafe-inline'`, og en `srcdoc`-iframe arver
+ *  forælderens policy — saa uden dette kørte INTET inline-script i en widget i
+ *  den pakkede app, mens begge kørte fint paa web-fladen. Maalt 15/10-2026:
+ *  proben i widget'ens eget script kørte slet ikke, og rammen stod fast paa
+ *  160 px.
+ *
+ *  Alle scripts faar den, ikke kun vores to. Serverens dokument tillader
+ *  `script-src 'unsafe-inline'` med vilje, fordi en selvstaendig widget ER et
+ *  stykke HTML med sin egen JS — en beregner, et diagram. Gav vi kun vores
+ *  egne en nonce, ville de to flader drive fra hinanden: en widget der virker
+ *  paa telefonen ville staa død i appen. */
+export function medNonce(html: string, nonce: string): string {
+  if (!nonce) return html
+  return html.replace(/<script/gi, `<script nonce="${nonce}"`)
+}
+
 export interface WidgetBlok {
   attachment_id?: string
   filename?: string
@@ -73,6 +109,9 @@ export function WidgetBlock({ block, config }: {
   const [fejl, setFejl] = useState<string | null>(null)
   const iframe = useRef<HTMLIFrameElement | null>(null)
   const [hoejde, setHoejde] = useState(160)
+  /** Noncen fra main. Tom indtil den er hentet — og tom for evigt paa flader
+   *  uden bro (web, mobil, test). Se `hentWidgetNonce`. */
+  const [nonce, setNonce] = useState('')
   /** Takt-tilstand pr. widget-instans. En ref og ikke state: en ændring her
    *  må ikke gentegne iframen (det ville nulstille widget'ens egen tilstand). */
   const sendte = useRef({ antal: 0, sidst: 0 })
@@ -82,11 +121,17 @@ export function WidgetBlock({ block, config }: {
   useEffect(() => {
     if (!id) { setFejl('widget uden reference'); return }
     let levende = true
-    fetchBlobWithAuth(config, `/attachments/media/${encodeURIComponent(id)}`)
-      .then(async (blob) => {
+    // Noncen hentes SAMMEN med dokumentet, saa `srcdoc` saettes praecis én
+    // gang. Kom den bagefter, ville iframen blive genindlaest — og widget'ens
+    // egen tilstand (et felt nogen havde skrevet i) nulstillet.
+    Promise.all([
+      fetchBlobWithAuth(config, `/attachments/media/${encodeURIComponent(id)}`),
+      hentWidgetNonce(),
+    ])
+      .then(async ([blob, n]) => {
         if (blob.size > MAX_BYTES) throw new Error(`for stor (${blob.size} B)`)
         const t = await blob.text()
-        if (levende) setHtml(t)
+        if (levende) { setNonce(n); setHtml(t) }
       })
       .catch((e) => { if (levende) setFejl(String(e?.message || e)) })
     return () => { levende = false }
@@ -157,7 +202,7 @@ export function WidgetBlock({ block, config }: {
       // flade der ikke er rullet frem endnu.
       referrerPolicy="no-referrer"
       loading="lazy"
-      srcDoc={html + HOEJDE_SCRIPT}
+      srcDoc={medNonce(html + HOEJDE_SCRIPT, nonce)}
       style={{ width: '100%', height: hoejde, border: 0, display: 'block' }}
     />
   )

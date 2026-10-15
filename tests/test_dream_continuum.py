@@ -76,3 +76,70 @@ def test_reset_dream_continuum():
     reset_dream_continuum()
     surface = build_dream_continuum_surface()
     assert surface["dream_count"] >= 0
+
+
+# ── Punkt 1 + 3 (15/10-2026): luk drømme-carry-over-sløjfen ──────────────
+#
+# Målt 15/10: systemet LÆSTE men SKREV ikke. `mark_dream_presented` havde nul
+# kaldere, så `presented` forblev False og samme drøm blev injiceret hver tur
+# for evigt. Og `cognitive_state.dream_*` blev publiceret til ingen.
+
+
+def test_format_dreams_for_prompt_markerer_droemmen_som_praesenteret():
+    """Punkt 1: læse-stien skal ogsaa SKRIVE `presented`.
+
+    Uden markeringen blev samme drøm injiceret hver tur for evigt, og
+    `session_carry_count` voksede aldrig — drømmen faldt derfor aldrig for
+    `_FADE_AFTER_SESSIONS`."""
+    adopt_dream(dream_id="test-dream-presented", content="En drøm der markeres")
+    dream = next(d for d in _ACTIVE_DREAMS if d["dream_id"] == "test-dream-presented")
+    assert dream["presented"] is False
+
+    format_dreams_for_prompt()
+
+    assert dream["presented"] is True
+    assert int(dream["session_carry_count"]) == 1
+
+
+def test_samme_droem_praesenteres_kun_en_gang():
+    """Efter markeringen er drømmen ikke længere præsentabel."""
+    adopt_dream(dream_id="test-dream-once", content="Unikt indhold kun én gang")
+
+    foerste = format_dreams_for_prompt()
+    assert "Unikt indhold kun én gang" in foerste
+
+    anden = format_dreams_for_prompt()
+    assert "Unikt indhold kun én gang" not in anden
+
+
+def test_adopt_dream_observerer_tilstandsovergangen(monkeypatch):
+    """Punkt 3: overgangen skal have en FORBRUGER, ikke kun en publicering."""
+    from core.services import dream_carry_over as dco
+
+    kald = []
+    monkeypatch.setattr(
+        dco, "_observe_dream_signal",
+        lambda nerve, **meta: kald.append((nerve, meta)),
+    )
+
+    adopt_dream(dream_id="test-dream-observe", content="Observeret")
+
+    assert kald, "adopt_dream skal føre overgangen videre til en forbruger"
+    assert kald[0][0] == "dream_adopted"
+    assert kald[0][1].get("dream_id") == "test-dream-observe"
+
+
+def test_reject_dream_observerer_tilstandsovergangen(monkeypatch):
+    """Punkt 3: ogsaa afvisning skal have en forbruger."""
+    from core.services import dream_carry_over as dco
+
+    kald = []
+    monkeypatch.setattr(
+        dco, "_observe_dream_signal",
+        lambda nerve, **meta: kald.append((nerve, meta)),
+    )
+
+    adopt_dream(dream_id="test-dream-reject", content="Skal afvises")
+    dco.reject_dream("test-dream-reject")
+
+    assert [k[0] for k in kald] == ["dream_adopted", "dream_rejected"]

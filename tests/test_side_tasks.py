@@ -1,6 +1,27 @@
 from core.services import side_tasks
 
 
+def test_prompt_loftet_tillader_ankere(monkeypatch):
+    """15/10-2026: loftet var 2000 tegn, og en sideopgave med ankere blev
+    klippet i STILHED — accept-kriterierne faldt i gulvet.
+
+    Målt: Bjørns opgave «Luk drømme-carry-over-sløjfen» fyldte præcis 2000
+    tegn, og punkt 3, punkt 4 og alle accept-kriterier forsvandt. Loftet er
+    hævet, så en opgave med ankere kan rummes."""
+    state = []
+    monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: list(state))
+    monkeypatch.setattr(
+        side_tasks, "save_json",
+        lambda _key, items: state.__setitem__(slice(None), items),
+    )
+
+    lang_prompt = "P" * 5000
+    r = side_tasks.flag(title="Opgave med ankere", prompt=lang_prompt)
+
+    assert r["status"] == "ok"
+    assert len(state[0]["prompt"]) == 5000
+
+
 def test_flagged_task_stays_visible_when_activated_until_completed(monkeypatch):
     state = []
     monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: list(state))

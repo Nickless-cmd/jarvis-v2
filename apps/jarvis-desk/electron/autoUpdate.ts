@@ -14,6 +14,7 @@
 // poller GitHub, og kilden kan ikke skubbe ned i klienten. En knap der ikke
 // reagerer STRAKS er derfor ikke det samme som en knap der er i stykker.
 
+import { chmodSync, copyFileSync, existsSync, renameSync, unlinkSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
 export interface AutoUpdateConfig {
@@ -49,24 +50,107 @@ export function findLinuxAppImage(
   return exists(installeret) ? installeret : undefined
 }
 
+/** De filhandlinger `sikkerSwap` bruger. Injicerbare, saa vejen kan testes uden
+ *  at roere disken. */
+export interface SwapFs {
+  existsSync: (p: string) => boolean
+  copyFileSync: (fra: string, til: string) => void
+  chmodSync: (p: string, mode: number) => void
+  renameSync: (fra: string, til: string) => void
+  unlinkSync: (p: string) => void
+}
+
+const nodeFs: SwapFs = { existsSync, copyFileSync, chmodSync, renameSync, unlinkSync }
+
+export type SwapResultat = { ok: true; sti: string } | { ok: false; fejl: string }
+
+/** Læg den hentede AppImage på plads UDEN at der opstår et øjeblik hvor målet
+ *  ikke findes.
+ *
+ *  Hvorfor ikke electron-updater's egen install (målt 15/10-2026):
+ *  `AppImageUpdater.doInstall` gør `unlinkSync(appImageFile)` UBETINGET, og
+ *  tjekker først derefter om der overhovedet er en ny fil at flytte
+ *  (`installerPath == null` → fejl og retur). Fejler den bagefter, står maskinen
+ *  uden AppImage: appen kan ikke starte, og `.desktop` peger på et hul. Det skete
+ *  for Bjørn — og Mikkel ville ikke kunne genskabe filen selv.
+ *
+ *  Her kopieres den nye fil til en temp-fil i SAMME mappe, gøres executable, og
+ *  `rename` flytter den atomisk over målet. Samme filsystem, så det er ét
+ *  atomisk trin: målet findes i hvert eneste øjeblik, og fejler noget undervejs,
+ *  er den gamle AppImage urørt og appen kan stadig starte.
+ */
+export function sikkerSwap(
+  hentet: string | null | undefined, maal: string, fs: SwapFs = nodeFs,
+): SwapResultat {
+  if (!hentet || !fs.existsSync(hentet)) {
+    return { ok: false, fejl: `den hentede fil findes ikke: ${hentet ?? '(ingen sti)'}` }
+  }
+  const midlertidig = `${maal}.ny`
+  try {
+    fs.copyFileSync(hentet, midlertidig)
+    fs.chmodSync(midlertidig, 0o755)
+    fs.renameSync(midlertidig, maal)
+    return { ok: true, sti: maal }
+  } catch (e) {
+    // Oprydning må ikke kaste — fejlen vi allerede har er den vigtige.
+    try { fs.unlinkSync(midlertidig) } catch { /* noop */ }
+    return { ok: false, fejl: String(e) }
+  }
+}
+
 /** Kobl electron-updater's events til IPC mod renderer, og returnér handlers
  *  til bruger-styret download/install. autoDownload slås FRA — vi spørger først
- *  (in-app UpdateCard), og downloader/genstarter kun ved bruger-ja. */
-export function wireUpdater(up: FullUpdater, send: Send) {
+ *  (in-app UpdateCard), og downloader/genstarter kun ved bruger-ja.
+ *
+ *  `genstart` kaldes med stien til den AppImage der nu ligger på plads. Den skal
+ *  starte den NYE fil som en selvstændig proces: `app.relaunch()` duer ikke her,
+ *  fordi den genstarter processen fra det GAMLE AppImage-mount og dermed ville
+ *  starte den version vi netop erstattede. */
+export function wireUpdater(
+  up: FullUpdater,
+  send: Send,
+  genstart?: (appImageSti: string) => void,
+  fs: SwapFs = nodeFs,
+) {
   up.autoDownload = false
+  // Stien til den hentede fil. `update-downloaded` bærer den, og vi gemmer den
+  // her, så «installér nu» kan bruge den uden at hente en gang til.
+  let hentetFil: string | null = null
   up.on('update-available', (info) => send('update:available', info))
   up.on('download-progress', (p) => send('update:progress', p))
-  up.on('update-downloaded', (info) => send('update:ready', info))
+  up.on('update-downloaded', (info) => {
+    const sti = (info as { downloadedFile?: unknown } | null)?.downloadedFile
+    if (typeof sti === 'string' && sti) hentetFil = sti
+    send('update:ready', info)
+  })
   up.on('error', (e) => send('update:error', String(e)))
+
+  /** Læg den hentede AppImage sikkert på plads og genstart.
+   *
+   *  En fejlet opdatering må ALDRIG kunne ødelægge en kørende app: fejler noget
+   *  her, kastes en fejl (renderer viser den) og installationen er urørt. */
+  const installerSikkert = async (): Promise<void> => {
+    const maal = process.env.APPIMAGE
+    if (!maal) throw new Error('APPIMAGE-stien er ikke sat — kan ikke installere sikkert.')
+    let fil = hentetFil
+    if (!fil) {
+      const filer = await up.downloadUpdate()
+      fil = Array.isArray(filer) ? filer.find((f): f is string => typeof f === 'string') ?? null : null
+    }
+    const s = sikkerSwap(fil, maal, fs)
+    if (!s.ok) throw new Error(`opdateringen blev ikke lagt på plads: ${s.fejl}`)
+    genstart?.(s.sti)
+  }
+
   return {
     check: () => { try { up.checkForUpdates() } catch { /* noop */ } },
     download: () => Promise.resolve(up.downloadUpdate()),
-    installNow: () => { try { up.quitAndInstall() } catch { /* noop */ } },
+    installNow: () => installerSikkert(),
     downloadAndInstall: async () => {
       const available = await up.checkForUpdates()
       if (!available) throw new Error('Ingen ny app-version er klar til installation.')
-      await up.downloadUpdate()
-      up.quitAndInstall()
+      if (!hentetFil) await up.downloadUpdate()
+      await installerSikkert()
     },
   }
 }

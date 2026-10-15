@@ -13,13 +13,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
+import logging
 import random
 
 from core.services.dream_carry_over import (
     _ACTIVE_DREAMS,
     get_presentable_dream,
     format_dream_for_prompt,
+    mark_dream_presented,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -137,7 +141,18 @@ def get_top_dream_thought() -> str | None:
 
 
 def format_dreams_for_prompt() -> str:
-    """Format dreams and thoughts for prompt injection."""
+    """Format dreams and thoughts for prompt injection.
+
+    Punkt 1 (15/10-2026): markerer nu drømmen som præsenteret. Uden dette kald
+    blev SAMME drøm injiceret hver tur for evigt: `presented` forblev False, så
+    `get_presentable_dream()` valgte den igen, og `session_carry_count` voksede
+    aldrig — drømmen faldt derfor aldrig for `_FADE_AFTER_SESSIONS`. Læse-siden
+    var koblet, skrive-siden var død.
+
+    Markeringen sker EFTER formatering (teksten bygges fra den præsenterede
+    drøm) og funktionen kaldes kun ét sted — `heartbeat_sections.py:371` — så
+    der markeres højst én gang pr. prompt-bygning.
+    """
     presentable = get_presentable_dream()
     if not presentable:
         top_thought = get_top_dream_thought()
@@ -145,7 +160,14 @@ def format_dreams_for_prompt() -> str:
             return f"[DRØM-TANKER: {top_thought}]"
         return ""
 
-    return format_dream_for_prompt(presentable)
+    rendered = format_dream_for_prompt(presentable)
+    dream_id = str(presentable.get("dream_id") or "")
+    if dream_id:
+        try:
+            mark_dream_presented(dream_id)
+        except Exception:
+            logger.debug("dream_continuum: mark_dream_presented fejlede", exc_info=True)
+    return rendered
 
 
 def get_dream_maturity(dream_id: str) -> float:

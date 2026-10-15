@@ -23,6 +23,33 @@ from core.runtime.workspace_paths import shared_dir
 logger = logging.getLogger(__name__)
 
 
+def _observe_dream_signal(nerve: str, **meta: object) -> None:
+    """Giv drømme-tilstandsovergangene en FORBRUGER (punkt 3, 15/10-2026).
+
+    Målt 15/10-2026: de fire `cognitive_state.dream_*`-begivenheder blev
+    publiceret til eventbus — og persisteret i `events`-tabellen — men INGEN
+    abonnent filtrerede på dem. Signalet gik i jorden: publiceret, aldrig læst.
+
+    Centralen er den der faktisk læser kognition, så overgangen føres ind som
+    en observation dér. `observe_hub` er egress-fri og kaster aldrig, så dette
+    kan ikke vælte en tilstandsovergang. Vi beholder `event_bus.publish` ved
+    siden af: den er den persisterede telemetri, dette er forbrugeren.
+    """
+    try:
+        from core.services.central_private_observe import observe_hub
+
+        observe_hub(
+            nerve,
+            meta={k: v for k, v in meta.items() if v is not None},
+            cluster="cognition",
+        )
+    except Exception as exc:
+        # Tavs var ikke nok (verify-silent-except): en observation der ikke
+        # kunne skrives er ikke en grund til at vælte en tilstandsovergang,
+        # men den skal kunne forklares bagefter.
+        logger.debug("dream_carry_over: observe_hub fejlede: %s", exc)
+
+
 def _persist_file() -> Path:
     return shared_dir() / "DREAM_CARRY.json"
 _LOCK = threading.Lock()
@@ -120,6 +147,7 @@ def adopt_dream(
         "cognitive_state.dream_adopted",
         {"dream_id": dream_id, "confidence": confidence},
     )
+    _observe_dream_signal("dream_adopted", dream_id=dream_id, confidence=confidence)
     return dream
 
 
@@ -170,6 +198,12 @@ def confirm_dream(dream_id: str) -> None:
                     "confidence": d["confidence"],
                 },
             )
+            _observe_dream_signal(
+                "dream_confirmed",
+                dream_id=dream_id,
+                confirmed_sessions=confirmed_sessions,
+                confidence=d["confidence"],
+            )
             if confirmed_sessions >= 2:
                 try:
                     from core.services.ambient_presence import emit_insight_signal
@@ -191,6 +225,7 @@ def reject_dream(dream_id: str) -> None:
                 "cognitive_state.dream_rejected",
                 {"dream_id": dream_id},
             )
+            _observe_dream_signal("dream_rejected", dream_id=dream_id)
     _ACTIVE_DREAMS[:] = [d for d in _ACTIVE_DREAMS if d["dream_id"] != dream_id]
     _save()
 
@@ -295,6 +330,11 @@ def _maybe_fade_old_dreams() -> None:
                 "dream_id": d.get("dream_id"),
                 "session_carry_count": d.get("session_carry_count"),
             },
+        )
+        _observe_dream_signal(
+            "dream_faded",
+            dream_id=d.get("dream_id"),
+            session_carry_count=d.get("session_carry_count"),
         )
     if to_fade:
         _ACTIVE_DREAMS[:] = [d for d in _ACTIVE_DREAMS if d.get("status") == "active"]

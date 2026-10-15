@@ -630,41 +630,57 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     # Initialiseret FOER blokken: referatet nedenfor laeser den, og uden
     # tool-kald ville navnet ellers ikke findes. (Samme unbound-name-fejl som
     # huset allerede har dokumenteret ved _guard_py_escapes.)
+    # 15/10-2026: LAESNINGEN ER FLYTTET UD AF `if tool_calls`. Referatet og
+    # recurring-grenen nedenfor bruger `output` uanset om der blev kaldt
+    # vaerktoejer — og et run kan skrive et svar uden at ét eneste kald blev
+    # registreret. Maalt: inspektions-runnet autonomous-9fa1431 skrev 319 tegn,
+    # men fik 0 registrerede kald fordi et SAMTIDIGT run overtog
+    # `_get_current_run()` (samme proces-global som `aktuel_origin()`), saa
+    # posten faldt til «0 vaerktoejskald, intet referat» — et tomt svar der
+    # lignede et svar. Selv-run-detektionen nedenfor kraever stadig kald: uden
+    # dem er «tavs» ikke et meningsfuldt ord.
     output = ""
-    if tool_calls:
+    _output_laest = False
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT text_preview FROM visible_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+        output = (row[0] if row else "") or ""
+        _output_laest = True
+    except Exception:
+        logger.warning("run_closure_gate: failed to read run output", exc_info=True)
+
+    # `_output_laest` bevarer den gamle kontrakt: en FEJLET laesning maa ikke
+    # ligne en tavs koersel. Kun en laest, tom tekst er «tavs».
+    if tool_calls and _output_laest and not output.strip():
         try:
-            from core.runtime.db import connect
-            with connect() as conn:
-                row = conn.execute(
-                    "SELECT text_preview FROM visible_runs WHERE run_id = ?",
-                    (run_id,),
-                ).fetchone()
-            output = (row[0] if row else "") or ""
-            if not output.strip():
-                from core.eventbus.bus import event_bus
-                event_bus.publish("runtime.run_ended_silent", {
-                    "run_id": run_id,
-                    "session_id": session_id,
-                    "tool_calls": tool_calls,
-                    "tool_call_count": len(tool_calls),
-                    "unique_tools": sorted(set(tool_calls)),
-                })
-                logger.info(
-                    "run_closure_gate: silent run %s — %d tool calls, no visible output",
-                    run_id[:12], len(tool_calls),
-                )
-                # Indbakken, ikke Discord (13/10-2026). Eventet ovenfor er
-                # telemetri; dette er leveringen til Bjørn.
-                _registrer_i_indbakken(
-                    kildetype="run_closure",
-                    kilde_id=f"silent-{run_id}",
-                    beskrivelse=(
-                        f"Run {run_id[:12]} endte uden svar — "
-                        f"{len(tool_calls)} værktøjskald, ingen tekst. "
-                        f"Værktøjer: {', '.join(sorted(set(tool_calls))[:6])}"
-                    ),
-                    run_id=run_id,
-                )
+            from core.eventbus.bus import event_bus
+            event_bus.publish("runtime.run_ended_silent", {
+                "run_id": run_id,
+                "session_id": session_id,
+                "tool_calls": tool_calls,
+                "tool_call_count": len(tool_calls),
+                "unique_tools": sorted(set(tool_calls)),
+            })
+            logger.info(
+                "run_closure_gate: silent run %s — %d tool calls, no visible output",
+                run_id[:12], len(tool_calls),
+            )
+            # Indbakken, ikke Discord (13/10-2026). Eventet ovenfor er
+            # telemetri; dette er leveringen til Bjørn.
+            _registrer_i_indbakken(
+                kildetype="run_closure",
+                kilde_id=f"silent-{run_id}",
+                beskrivelse=(
+                    f"Run {run_id[:12]} endte uden svar — "
+                    f"{len(tool_calls)} værktøjskald, ingen tekst. "
+                    f"Værktøjer: {', '.join(sorted(set(tool_calls))[:6])}"
+                ),
+                run_id=run_id,
+            )
         except Exception:
             logger.warning("run_closure_gate: failed silent-run check", exc_info=True)
 
@@ -687,34 +703,47 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
         except Exception:
             logger.debug("run_closure_gate: referat fejlede", exc_info=True)
 
-    # RUNTIME-INSPEKTIONEN I INDBAKKEN (15/10-2026). Bjoern: «din daglige
+    # RECURRING-OPGAVENS RESULTAT I INDBAKKEN (15/10-2026). Bjoern: «din daglige
     # runtime inspektion, lander den kun i en autonom session eller lander den
     # osse i din inbak?» — maalt: den landede KUN som autonomt run. Inspektionen
-    # er en recurring-task (`rec-6456e88d03`, hver 6. time), og `_fire_due`
-    # starter et autonomt run uden at roere indbakken. Resultatet blev derfor
-    # laest af ingen: sessionen er en auto-silo, og posten fandtes ikke.
+    # er en recurring-task, og `_fire_due` starter et autonomt run uden at roere
+    # indbakken. Resultatet blev derfor laest af ingen: sessionen er en
+    # auto-recurring-silo, og posten fandtes ikke.
     #
-    # Her laegges den — som `huset` og kildetypen `recurring` (der staar i
-    # IKKE_GATENDE_KILDETYPER), saa den er SYNLIG men aldrig kan naegte en
-    # mutation. Samme kontrakt som run_closure: gaten informerer, den lammer
-    # ikke. Idempotent per run_id, saa en genkoersel ikke dublerer.
+    # FLAGET HOERER PAA OPGAVEN (Bjoern 15/10: «flag paa opgaven i
+    # recurring_tasks»). Foerste version matchede strengen «runtime-inspektion»
+    # i fokus-feltet — et specialtilfaelde der lignede en regel: den næste
+    # stille opgave ville falde udenfor, og det ville foerst vise sig naar nogen
+    # spurgte. Nu baerer eventet `task_id`, og `skal_i_indbakken` slaar op i
+    # `recurring_tasks`. Reglen er levende (flaget kan sættes uden genstart) og
+    # overlever at fokus-teksten skrives om.
     #
-    # Origin laeses FRA EVENTET (15/10-2026). Forhen stod her `aktuel_origin()`
-    # — en proces-global der overskrives naar naeste run starter, saa to
-    # samtidige runs kunne bytte origin og grenen vaelge forkert. Eventet
-    # baerer den nu selv (`visible_autonomous_run.py`), og den globale er kun
-    # et fald-tilbage for events fra aeldre kode.
+    # Kildetypen `recurring` staar i IKKE_GATENDE_KILDETYPER, saa posten er
+    # SYNLIG men kan aldrig naegte en mutation. Samme kontrakt som run_closure:
+    # gaten informerer, den lammer ikke. Idempotent per run_id.
+    #
+    # Origin laeses FRA EVENTET: `aktuel_origin()` er en proces-global der
+    # overskrives naar naeste run starter, saa to samtidige runs kunne bytte
+    # origin og grenen vaelge forkert. Eventet baerer den selv, og globalen er
+    # kun et fald-tilbage for events fra aeldre kode.
     _origin_i_event = str(payload.get("origin") or "").strip().lower()
     if (_origin_i_event or str(aktuel_origin() or "").strip().lower()) == "recurring":
-        fokus = str(payload.get("focus") or "")
-        if "runtime-inspektion" in fokus.lower():
+        _task_id = str(payload.get("task_id") or "").strip()
+        try:
+            from core.services.recurring_tasks import skal_i_indbakken
+            _skal_i_indbakken = bool(_task_id) and skal_i_indbakken(_task_id)
+        except Exception:  # noqa: BLE001 — et opslag maa ikke vaelte gaten
+            logger.debug("run_closure_gate: recurring-flag kunne ikke laeses", exc_info=True)
+            _skal_i_indbakken = False
+        if _skal_i_indbakken:
+            _fokus = str(payload.get("focus") or "").strip()
+            _tekst = output.strip()
             _registrer_i_indbakken(
                 kildetype="recurring",
-                kilde_id=f"inspektion-{run_id}",
+                kilde_id=f"recurring-{_task_id}-{run_id}",
                 beskrivelse=(
-                    "Runtime-inspektion "
-                    f"{run_id[:12]}: "
-                    + (output.strip()[:600] if output.strip()
+                    f"{_fokus[:80] or 'Recurring-opgave'} ({run_id[:12]}): "
+                    + (_tekst[:600] if _tekst
                        else f"{len(tool_calls)} værktøjskald, intet referat")
                 ),
                 run_id=run_id,

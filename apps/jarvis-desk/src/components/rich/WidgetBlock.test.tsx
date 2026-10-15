@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { WidgetBlock, WidgetPrompt } from './WidgetBlock'
+import { WidgetBlock, WidgetPrompt, medNonce } from './WidgetBlock'
 
 /**
  * Sandkassen er GRÆNSEN om model-skrevet HTML. De to første tests er derfor de
@@ -28,6 +28,49 @@ beforeEach(() => { hent = mockHent('<p>hej</p>') })
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('WidgetBlock', () => {
+  describe('widget-noncen', () => {
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>).jarvisDesk
+    })
+
+    it('saetter noncen paa HVERT script i dokumentet', () => {
+      // Maalt 15/10-2026: uden dette koerte intet inline-script i en widget i
+      // den pakkede app — prod-CSP'en har ikke `'unsafe-inline'`, og en
+      // srcdoc-iframe arver foraelderens policy.
+      const dok = '<html><head><script>a()</script></head><body><script>b()</script></body></html>'
+      const ud = medNonce(dok, 'N1+/=')
+      expect(ud).toContain('<script nonce="N1+/=">a()</script>')
+      expect(ud).toContain('<script nonce="N1+/=">b()</script>')
+    })
+
+    it('lader dokumentet staa uroert uden nonce', () => {
+      // Web, mobil og dev har ingen nonce: dér er `'unsafe-inline'` stadig
+      // aktiv, og et nonce-attribut ville vaere et fremmedlegeme.
+      const dok = '<script>a()</script>'
+      expect(medNonce(dok, '')).toBe(dok)
+    })
+
+    it('henter noncen fra broen og bruger den i srcdoc', async () => {
+      ;(window as unknown as Record<string, unknown>).jarvisDesk = {
+        widgetNonce: async () => 'N1',
+      }
+      render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+      await waitFor(() => {
+        expect(document.querySelector('iframe.rv-widget')).toBeTruthy()
+      })
+      // Ogsaa hoejde-scriptet skal baere den — det er netop det script der
+      // melder hoejden, og det der stod doedt i den pakkede app.
+      expect(document.querySelector('iframe.rv-widget')?.getAttribute('srcdoc')).toContain('nonce="N1"')
+    })
+
+    it('efterlader srcdoc uden nonce naar broen mangler', async () => {
+      render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
+      await waitFor(() => {
+        expect(document.querySelector('iframe.rv-widget')).toBeTruthy()
+      })
+      expect(document.querySelector('iframe.rv-widget')?.getAttribute('srcdoc')).not.toContain('nonce=')
+    })
+  })
   it('sandkassen tillader scripts men ALDRIG same-origin', async () => {
     render(<WidgetBlock block={{ attachment_id: 'a1', filename: 'w.html' }} config={config} />)
     const ramme = await waitFor(() => screen.getByTitle('w.html'))

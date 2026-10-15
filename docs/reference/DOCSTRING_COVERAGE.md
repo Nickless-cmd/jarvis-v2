@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8997/17212 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9002/17217 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8997/17212 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 825 | 1525 | 54% |
-| `core.services` | 5993 | 11697 | 51% |
+| `core.services` | 5998 | 11702 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1196,9 +1196,9 @@ Generated from source. 8997/17212 functions/methods documented (52%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L232)
-- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L858)
-- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L854)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L267)
+- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L879)
+- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L875)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)
 - `core/services/dream_distillation_daemon.py` :: `clear_expired_dream_residue` (L187)
 - `core/services/dream_distillation_daemon.py` :: `get_dream_residue_for_prompt` (L150)
@@ -1630,13 +1630,13 @@ Generated from source. 8997/17212 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3558)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3406)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3695)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3574)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3422)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3711)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4649)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4665)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -1690,10 +1690,10 @@ Generated from source. 8997/17212 functions/methods documented (52%). The list b
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L442)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L450)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L586)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L595)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L508)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L516)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L657)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L666)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -1861,7 +1861,7 @@ Generated from source. 8997/17212 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L808)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L837)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)

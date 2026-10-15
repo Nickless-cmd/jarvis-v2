@@ -303,6 +303,42 @@ def _build_dream_prompt(material: dict[str, Any]) -> str:
     return "\n\n".join(sections)
 
 
+def _registrer_dream_i_indbakken(session_id: str, content_keys: list[str]) -> None:
+    """Læg drømmesessionen i indbakken som en SYNLIG, ikke-gatende post.
+
+    Punkt 4 (15/10-2026), Bjørn: «disse drømmesession osse lander i inbak
+    ellers er de usynlige for os». Sessionen fyrer i en baggrundstråd
+    (`_threading.Thread` → `dispatch_system`) og har derfor intet run og intet
+    `runtime.autonomous_run_completed`-event — run-closure-gaten kan slet ikke
+    se den (den fyrer kun for `origin=recurring` + `task_id`). Resultatet blev
+    læst af ingen.
+
+    Kildetypen `dream` står i `IKKE_GATENDE_KILDETYPER`: posten er INFORMATION.
+    Huset må oprette den, aldrig nægte en mutation på den. Idempotent pr.
+    (bruger, `dream`, session_id), så et genkald ikke dublerer. Self-safe: en
+    indbakke der ikke kan skrives må ikke vælte sessionen.
+    """
+    try:
+        from core.services.inbox_state import _ejer_id, registrer_kilde
+
+        bruger = _ejer_id()
+        if not bruger:
+            return
+        kilder = ", ".join(str(k) for k in content_keys[:4])
+        registrer_kilde(
+            bruger_id=bruger,
+            kildetype="dream",
+            kilde_id=session_id,
+            paastaaet_ejer="huset",
+            beskrivelse=(
+                f"Drømmesession {session_id} kørt på {len(content_keys)} "
+                f"kildetyper ({kilder}). Note i ~/dreams/."
+            ),
+        )
+    except Exception:
+        logger.debug("dreaming_session: indbakke-registrering fejlede", exc_info=True)
+
+
 def _record_session(material: dict[str, Any], dream_prompt_preview: str) -> str:
     """Record the dream session metadata and return the session identifier."""
     now_iso = datetime.now(UTC).isoformat()
@@ -356,6 +392,10 @@ def trigger_dream_session() -> dict[str, Any]:
             return {"fired": False, "reason": "no-dream-material"}
 
         session_id = _record_session(material, prompt)
+
+        # Punkt 4 (15/10-2026): gør sessionen SYNLIG i indbakken, ellers er den
+        # usynlig for både run-closure-gaten og Bjørn.
+        _registrer_dream_i_indbakken(session_id, content_keys)
 
         # Fire the autonomous run in a background thread
         def _fire() -> None:

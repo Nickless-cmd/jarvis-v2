@@ -393,6 +393,12 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                         # normaliseret linje 130) og bæres nu med — samme raa
                         # kontrakt som started-eventet nedenfor.
                         "origin": _origin or "autonomous",
+                        # TASK-ID BAERES MED (15/10-2026). Et recurring-run
+                        # kommer fra en OPGAVE, og opgaven — ikke runnet — ved
+                        # om svaret skylder nogen et svar (`inbox_on_complete`).
+                        # Uden id'et kunne closure-gaten kun gaette ud fra
+                        # fokus-teksten, og en omskrevet opgave ville falde ud.
+                        "task_id": task_id,
                     },
                 )
                 _observe_autonomous_run(run=run, session_id=resolved_session,

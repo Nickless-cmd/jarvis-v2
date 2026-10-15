@@ -773,6 +773,11 @@ describe('raekkevisning.css', () => {
       // keyframe-trin (`0%`, `90%, 100%`) er ikke selektorer
       .filter((s) => !/^(\d|from\b|to\b)/.test(s))
       .filter((s) => !s.includes('.raekkevisning') && !s.includes('.composer-tal'))
+      // `.rv-widget*` er den ENE bevidste undtagelse (15/10-2026): `WidgetBlock`
+      // bruges i BEGGE visninger, og bobblevisningen har ingen `.raekkevisning`-
+      // rod — scopet gav widget'en ingen styling der (inline-iframe, 4px-stribe).
+      // Klassen sættes KUN af WidgetBlock, så den kan ikke ramme noget fremmed.
+      .filter((s) => !s.startsWith('.rv-widget'))
     expect(uscopede).toEqual([])
   })
 })

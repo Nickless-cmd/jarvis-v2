@@ -156,6 +156,13 @@ export interface JarvisDeskBridge {
     install: (tool: string) => Promise<{ ok: boolean; log?: string }>
   }
   platform: NodeJS.Platform
+  /** Widget-dokumentets nonce, sat af main (se `rendererCsp`).
+   *
+   *  En funktion og ikke en vaerdi: vaerdien lever i main-processen, og en
+   *  bro der bar et snapshot ville kunne drive fra den CSP der faktisk blev
+   *  sendt. Findes broen ikke (web, mobil, test), er feltet fravaerende, og
+   *  kalderen falder tilbage til tom — dér er `'unsafe-inline'` stadig aktiv. */
+  widgetNonce: () => Promise<string>
 }
 
 const bridge: JarvisDeskBridge = {
@@ -238,6 +245,12 @@ const bridge: JarvisDeskBridge = {
     install: (tool) => ipcRenderer.invoke('dep:install', tool),
   },
   platform: process.platform,
+  // Widget-noncen skal staa HER og ikke som en tildeling bagefter: `bridge` er
+  // typet ved DEKLARATIONEN, saa et felt der foerst saettes paa linjen efter
+  // opfylder ikke `JarvisDeskBridge`. Maalt 15/10-2026: `tsc -p
+  // electron/tsconfig.json` afviste bygget med TS2741, mens en `tsc` uden `-p`
+  // (kun src/) gik igennem og skjulte det. Kør den KONFIGURATION CI'en kører.
+  widgetNonce: () => ipcRenderer.invoke('widget:nonce'),
   figur: {
     traekStart: (mx: number, my: number) => ipcRenderer.invoke('figur:traekStart', mx, my),
     traek: (mx: number, my: number) => ipcRenderer.invoke('figur:traek', mx, my),

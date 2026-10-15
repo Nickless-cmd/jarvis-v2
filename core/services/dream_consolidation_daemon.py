@@ -626,6 +626,7 @@ def _produce_dream_artifacts(
         "dream_note": False,
         "hypothesis": False,
         "chronicle": False,
+        "carry_over": False,
     }
 
     hypothesis = str(synthesis.get("dream_hypothesis") or "").strip()
@@ -673,6 +674,26 @@ def _produce_dream_artifacts(
             produced["hypothesis"] = True
         except Exception as exc:
             logger.warning("dream_consolidation: hypothesis creation failed: %s", exc)
+
+    # 1b. Punkt 2 (15/10-2026): før hypotesen videre til carry-over-systemet.
+    # Uden dette havde `adopt_dream()` nul produktionskaldere, så
+    # DREAM_CARRY.json blev aldrig skrevet af driften — og den liste som
+    # `maybe_auto_promote_dreams()` itererer HVERT hjerteslag var derfor altid
+    # tom. Forbrugeren kørte; producenten fandtes ikke. Konsolideringen er det
+    # sted hypotesen faktisk opstår, så det er her den skal adopteres.
+    if hypothesis:
+        try:
+            from core.services.dream_carry_over import adopt_dream
+
+            adopt_dream(
+                dream_id=f"dream-{consolidation_id}",
+                content=hypothesis,
+                confidence=confidence,
+                source_memories=[consolidation_id],
+            )
+            produced["carry_over"] = True
+        except Exception as exc:
+            logger.warning("dream_consolidation: adopt_dream failed: %s", exc)
 
     # 2. Chronicle fragment — write to dreams dir for next chronicle cycle
     if chronicle_frag or insight:

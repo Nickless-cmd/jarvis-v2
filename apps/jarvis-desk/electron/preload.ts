@@ -245,6 +245,12 @@ const bridge: JarvisDeskBridge = {
     install: (tool) => ipcRenderer.invoke('dep:install', tool),
   },
   platform: process.platform,
+  // Widget-noncen skal staa HER og ikke som en tildeling bagefter: `bridge` er
+  // typet ved DEKLARATIONEN, saa et felt der foerst saettes paa linjen efter
+  // opfylder ikke `JarvisDeskBridge`. Maalt 15/10-2026: `tsc -p
+  // electron/tsconfig.json` afviste bygget med TS2741, mens en `tsc` uden `-p`
+  // (kun src/) gik igennem og skjulte det. Kør den KONFIGURATION CI'en kører.
+  widgetNonce: () => ipcRenderer.invoke('widget:nonce'),
   figur: {
     traekStart: (mx: number, my: number) => ipcRenderer.invoke('figur:traekStart', mx, my),
     traek: (mx: number, my: number) => ipcRenderer.invoke('figur:traek', mx, my),
@@ -307,7 +313,5 @@ const bridge: JarvisDeskBridge = {
     },
   },
 }
-
-bridge.widgetNonce = () => ipcRenderer.invoke('widget:nonce')
 
 contextBridge.exposeInMainWorld('jarvisDesk', bridge)

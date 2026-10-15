@@ -1101,7 +1101,23 @@ def _build_visible_chat_prompt_assembly_impl(
         "decision adherence gate",
         "loop-compliance self-check",
     )
-    _AWARENESS_BUDGET = 9000  # chars; ~2.2 KT max for the whole awareness block
+    # 2026-10-15: haevet 9.000 -> 20.000 efter en MAALT tur (ikke et gaet).
+    # Maalt gennem den aegte bygger: med loftet haevet ender `_used` paa 17.341
+    # tegn, og ved 9.000 blev otte sektioner droppet i HVER tur — agent
+    # orchestration (2.118), visible session continuity (1.333), cognitive
+    # frame (852), cognitive state (799), central hypotheses (875), rule
+    # engine conclusions (738), self state (401), own initiatives (175).
+    # 21 drop-hændelser paa 6 timer, de samme sektioner hver gang.
+    #
+    # HVORFOR det skete: decision-adherence-gaten (1.974 tegn) staar paa
+    # _NEVER_DROP_LABELS og springer loftet — den blev tilfoejet ved 10.387 og
+    # blokerede ALT derefter. Drop-tjekket er foerst-til-moelle PR. SEKTION,
+    # ikke vaegtet: en stor sektion kan tabe til to smaa der kommer efter.
+    #
+    # 20.000 daekker den maalte fulde blok med ~2.7k tegns margin (indbakken
+    # svinger) uden at aabne for ubegraenset vaekst. Prisen er ~+11k tegn
+    # (~2.7k tokens) pr. tur; halen er ucachet, saa det er ren per-tur-token.
+    _AWARENESS_BUDGET = 20000  # chars; ~5 KT max for the whole awareness block
 
     # P3.5 (2026-04-29): awareness categories — instead of 30+ flat sections,
     # group by purpose so the model sees a small number of named lanes.

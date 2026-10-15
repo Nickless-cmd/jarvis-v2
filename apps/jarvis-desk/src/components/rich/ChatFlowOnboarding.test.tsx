@@ -60,6 +60,12 @@ describe('ChatFlowOnboarding', () => {
     expect(claim).toHaveBeenCalledWith('run-1')
     expect(acknowledge).not.toHaveBeenCalled()
 
+    // Vent paa at komponenten HAR bedt om en frame. `findByRole` ovenfor kan
+    // returnere i det oejeblik gruppen er i DOM — altsaa foer effekten der
+    // registrerer rAF'en har koert. `frames.shift()` gav da `undefined`,
+    // `frame?.()` gjorde intet, og `acknowledge` blev aldrig kaldt (maalt
+    // 15/10-2026: 1 af 5 koersler fejlede i CI og lokalt).
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0))
     const frame = frames.shift()
     frame?.(performance.now())
     await waitFor(() => expect(acknowledge).toHaveBeenCalledWith('claim-1'))

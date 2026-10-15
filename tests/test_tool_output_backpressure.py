@@ -93,6 +93,84 @@ async def test_disabled_live_output_emits_no_delta_and_preserves_result(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_executor_exception_lukker_live_jobbet_foer_den_rejses(monkeypatch):
+    """Et kast maa ikke efterlade Desk-kortet i `running` til app-genstart."""
+    from core.services import live_job_events
+
+    def execute(_calls, **_kwargs):
+        raise RuntimeError("executor braek")
+
+    monkeypatch.setattr(simple_tool_executor, "_execute_simple_tool_calls", execute)
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: SimpleNamespace(live_tool_output_enabled=False),
+    )
+    live_job_events.reset_for_tests()
+    subscription = live_job_events.subscribe(session_id="s-error", after=0)
+    run = SimpleNamespace(
+        run_id="run-error", session_id="s-error", autonomous=False,
+        user_message="go", local_tool_exec=False, user_id="owner", origin="",
+    )
+
+    with pytest.raises(RuntimeError, match="executor braek"):
+        async for _frame in run_tool_batch(
+            [{"id": "call-error", "function": {
+                "name": "bash", "arguments": '{"command":"npm test"}',
+            }}],
+            run=run, loop=asyncio.get_running_loop(), tool_scope="chat",
+            step_counter=0, heartbeat_interval_s=5, heartbeat_phase="test", out={},
+        ):
+            pass
+
+    await asyncio.sleep(0)
+    events = []
+    while not subscription.queue.empty():
+        events.append(subscription.queue.get_nowait())
+    subscription.close()
+    assert [event.event_type for event in events] == ["job_started", "job_finished"]
+    assert events[-1].payload["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_start_event_foretraekker_modellens_jobbeskrivelse(monkeypatch):
+    """`bash` er værktøjet; beskrivelsen er navnet på den konkrete opgave."""
+    from core.services import live_job_events, tool_execution_trace as trace
+
+    monkeypatch.setattr(
+        simple_tool_executor,
+        "_execute_simple_tool_calls",
+        lambda _calls, **_kwargs: [{
+            "tool_name": "bash", "status": "ok", "result_text": "done",
+        }],
+    )
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: SimpleNamespace(live_tool_output_enabled=False),
+    )
+    live_job_events.reset_for_tests()
+    subscription = live_job_events.subscribe(session_id="s-title", after=0)
+    run = SimpleNamespace(
+        run_id="run-title", session_id="s-title", autonomous=False,
+        user_message="go", local_tool_exec=False, user_id="owner", origin="",
+    )
+
+    async for _frame in run_tool_batch(
+        [{"id": "call-title", "function": {"name": "bash", "arguments": json.dumps({
+            "command": "npm test", "description": "Kører Desk-tests",
+        })}}],
+        run=run, loop=asyncio.get_running_loop(), tool_scope="chat",
+        step_counter=0, heartbeat_interval_s=5, heartbeat_phase="test", out={},
+    ):
+        pass
+
+    await asyncio.sleep(0)
+    started = subscription.queue.get_nowait()
+    subscription.close()
+    assert started.payload["title"] == "Kører Desk-tests"
+    trace.surface_result("call-title", status="ok")
+
+
+@pytest.mark.asyncio
 async def test_mixed_stream_chunks_keep_global_sequence_order(monkeypatch):
     def execute(_calls, *, output_buffer, **_kwargs):
         output_buffer.put(OutputDelta("call-mixed", "stdout", 1, "A"))

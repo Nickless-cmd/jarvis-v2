@@ -21,6 +21,16 @@ describe('liveJobs', () => {
     expect(state.byKey['tool:x']).toMatchObject({ id: 'x', status: 'running', navn: 'bash' })
   })
 
+  it('bruger live-eventets menneskelige titel frem for værktøjsnavnet', () => {
+    const state = applyJobEvent(emptyLiveJobs(), event('job_started', {
+      run_id: 'r', tool: 'edit_file', tool_use_id: 'x',
+      title: 'Redigerer fil: jobsApi.ts', command: '/workspace/jobsApi.ts',
+    }))
+    expect(state.byKey['tool:x']).toMatchObject({
+      navn: 'Redigerer fil: jobsApi.ts', kommando: '/workspace/jobsApi.ts',
+    })
+  })
+
   it('ignorerer replayet output med samme seq', () => {
     let state = fromSnapshot({ jobs: [running], bridge_ok: true }, 10)
     state = applyJobEvent(state, event('job_output', { seq: 1, chunk: 'a' }, 11))

@@ -84,6 +84,8 @@ class _CallTrace:
     run_id: str
     session_id: str
     announced_at: float
+    title: str = ""
+    command: str = ""
     dispatched_at: float | None = None
     execution_completed_at: float | None = None
     approval_wait_started_at: float | None = None
@@ -122,6 +124,8 @@ def start_call(
     tool: str,
     run_id: str,
     session_id: str = "",
+    title: str = "",
+    command: str = "",
     announced_at: float | None = None,
 ) -> None:
     if not tool_use_id:
@@ -131,6 +135,8 @@ def start_call(
         tool=str(tool),
         run_id=str(run_id),
         session_id=str(session_id or ""),
+        title=str(title or ""),
+        command=str(command or ""),
         announced_at=time.monotonic() if announced_at is None else announced_at,
     )
     with _TRACES_LOCK:
@@ -138,7 +144,13 @@ def start_call(
     _publish_job_event(
         "job_started",
         item,
-        {"run_id": item.run_id, "tool_use_id": item.tool_use_id, "tool": item.tool},
+        {
+            "run_id": item.run_id,
+            "tool_use_id": item.tool_use_id,
+            "tool": item.tool,
+            "title": item.title,
+            "command": item.command,
+        },
     )
 
 

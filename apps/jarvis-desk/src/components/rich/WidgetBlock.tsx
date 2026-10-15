@@ -33,6 +33,11 @@ import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
  *  ind i hukommelsen. */
 const MAX_BYTES = 512 * 1024
 
+/** Nødværn mod et model-script der sender en absurd højde. Dette er ikke en
+ * normal layoutgrænse: Desk lader chattråden scrolle og skal derfor kunne
+ * rumme lange tabeller/rapporter uden en ekstra scrollbar inde i widgeten. */
+const MAX_WIDGET_HOEJDE = 100_000
+
 /** Takt-grænser for `jarvis.sendPrompt`. Widget'en kører model-skrevet JS, så
  *  grænserne er ikke høflighed — de er loftet over hvad en løkke kan koste.
  *  Hver sendt besked starter et run. */
@@ -103,10 +108,10 @@ export function WidgetBlock({ block, config }: {
         // Den måling er ikke en lille widget; den er endnu ingen måling. Hvis
         // vi accepterer den, klippes rammen til 48px og kan blive stående dér.
         if (!Number.isFinite(h) || h < 48) return
-        // Loftet er et værn mod model-skrevet JS der poster et absurd tal, ikke
-        // en normal layoutgrænse. Seks meter CSS-pixels er langt over en læsbar
-        // widget, men lader almindelige rapporter vokse uden intern scrollbar.
-        setHoejde(Math.min(Math.round(h), 6000))
+        // Loftet er kun et nødværn mod model-skrevet JS der poster et absurd
+        // tal. Den tidligere normale grænse på 6000 px klippede lange widgets
+        // og flyttede scrollen ind i iframen i stedet for ud i chattråden.
+        setHoejde(Math.min(Math.round(h), MAX_WIDGET_HOEJDE))
         return
       }
 

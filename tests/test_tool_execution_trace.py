@@ -126,6 +126,29 @@ def test_cancel_is_terminal_and_late_completion_cannot_publish(monkeypatch):
     assert sent[0][1]["total_visible_ms"] == 200
 
 
+def test_start_event_baerer_den_menneskelige_jobtitel():
+    """Desk skal kunne navngive kortet ved start, foer et snapshot findes."""
+    from core.services import live_job_events
+
+    live_job_events.reset_for_tests()
+    subscription = live_job_events.subscribe(session_id="s-title", after=0)
+
+    trace.start_call(
+        "title-call",
+        tool="edit_file",
+        run_id="r-title",
+        session_id="s-title",
+        title="Redigerer fil: jobsApi.ts",
+        command="/workspace/jobsApi.ts",
+    )
+
+    event = subscription.queue.get_nowait()
+    subscription.close()
+    trace.cancel_call("title-call")
+    assert event.payload["title"] == "Redigerer fil: jobsApi.ts"
+    assert event.payload["command"] == "/workspace/jobsApi.ts"
+
+
 def test_approval_wait_is_measured_separately_from_approved_execution(monkeypatch):
     sent = _capture_timing(monkeypatch)
     trace.start_call("approved", tool="bash", run_id="r4", announced_at=40.0)

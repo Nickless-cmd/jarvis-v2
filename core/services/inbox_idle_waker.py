@@ -121,6 +121,20 @@ def kandidater(bruger_id: str) -> list[dict[str, Any]]:
             continue
         if str(p.get("verificeret_ejer") or "") != db_inbox.EJER_JARVIS:
             continue
+        # En wakeup-post findes allerede fra BOOKINGEN og kan som frisk,
+        # verificeret Jarvis-post baere `kraever_handling=1`. Det generelle
+        # opgaveflag maa derfor aldrig faa lov at omgaa kildens ur: efter en
+        # genstart er samtalen idle, og polleren ville ellers loefte posten
+        # straks, selv om dens `fire_at` stadig ligger i fremtiden.
+        #
+        # Kilden er autoritativ for wakeup-modenhed uanset postens flag. Andre
+        # gatende typer (fx `afvist_run`) bevarer den generelle vej nedenfor.
+        if str(p.get("kildetype") or "") == "wakeup":
+            if vaekninger is None:
+                vaekninger = _wakeup_records()
+            if _er_moden(p, vaekninger=vaekninger):
+                ud.append(p)
+            continue
         if p.get("kraever_handling"):
             ud.append(p)
             continue

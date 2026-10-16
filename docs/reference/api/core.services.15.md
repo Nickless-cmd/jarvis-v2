@@ -310,12 +310,12 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 | function | `_wakeup_records` | `()` | Fyrede, sprangte vækninger — nøglet på `wakeup_id`. | [src](../../../core/services/inbox_idle_waker.py#L60) |
 | function | `_er_moden` | `(post, *, vaekninger)` | Er en dispatchbar post MODEN — melder kilden selv at den er klar? | [src](../../../core/services/inbox_idle_waker.py#L77) |
 | function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L98) |
-| function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L138) |
-| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L157) |
-| function | `_start_run` | `(tekst, *, session_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L197) |
-| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L214) |
-| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L231) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L255) |
+| function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L152) |
+| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L171) |
+| function | `_start_run` | `(tekst, *, session_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L211) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L228) |
+| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L245) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L269) |
 
 ## `core/services/inbox_prompt_section.py`
 _Indbakken i prompten — læseren hele kæden manglede._

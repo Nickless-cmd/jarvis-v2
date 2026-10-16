@@ -90,6 +90,22 @@ def test_ufyret_vaekning_loeftes_ikke(inbox_db, monkeypatch):
     assert w.kandidater("bjorn") == []
 
 
+def test_ufyret_frisk_gatende_vaekning_loeftes_ikke(inbox_db, monkeypatch):
+    """En frisk booking maa ikke omgaa sit ur via det generelle opgaveflag.
+
+    En Jarvis-ejet wakeup registreres med ``kraever_handling=1`` mens det run,
+    der booker den, stadig lever. Efter en genstart er runnet væk, og
+    indbakke-vækkeren poller straks. Kildens tomme modenheds-svar er stadig
+    autoritativt: wakeup'en er ikke fyret og må derfor ikke blive kandidat.
+    """
+    from core.services import inbox_idle_waker as w
+
+    _vaeknings_post(id="wake-fremtid", kraever_handling=True)
+    monkeypatch.setattr(w, "_wakeup_records", lambda: {})
+
+    assert w.kandidater("bjorn") == []
+
+
 def test_sprunget_vaekning_loeftes(inbox_db, monkeypatch):
     from core.services import inbox_idle_waker as w
 

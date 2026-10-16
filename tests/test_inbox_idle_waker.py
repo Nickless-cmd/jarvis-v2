@@ -45,7 +45,11 @@ def inbox_db(monkeypatch, tmp_path):
 
 def _post(bruger="bjorn", id="wake-1", **kw) -> dict:
     r = db_inbox.opret_eller_hent(
-        bruger_id=bruger, kildetype=kw.pop("kildetype", "wakeup"), kilde_id=id,
+        # Disse tests maaler den GENERELLE gatende indbakke-vej. En wakeup har
+        # sin egen kildeautoritative modenhed og testes i
+        # test_wakeup_skip_til_indbak.py; brugte vi den som standard her,
+        # gjorde fixturen fremtidige wakeups kunstigt modne.
+        bruger_id=bruger, kildetype=kw.pop("kildetype", "job"), kilde_id=id,
         oprettende_run_id="visible-abc",
         verificeret_ejer=kw.pop("ejer", db_inbox.EJER_JARVIS),
         kraever_handling=kw.pop("kraever_handling", True),

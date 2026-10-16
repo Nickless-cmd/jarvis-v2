@@ -34,7 +34,7 @@ def test_flagged_task_stays_visible_when_activated_until_completed(monkeypatch):
     assert [item["side_task_id"] for item in side_tasks.list_open()] == [task_id]
     assert task_id in side_tasks.side_tasks_prompt_section()
 
-    side_tasks.resolve(task_id, decision="completed")
+    side_tasks.resolve(task_id, decision="completed", bevis="Ryddet op i dokumenterne")
     assert side_tasks.list_open() == []
     assert side_tasks.side_tasks_prompt_section() is None
     assert side_tasks.resolve(task_id, decision="activated")["status"] == "error"
@@ -48,8 +48,12 @@ def test_dismiss_tool_preserves_old_default_and_can_complete(monkeypatch):
 
     first = side_tasks.flag(title="Én", prompt="Gør én ting")["side_task_id"]
     second = side_tasks.flag(title="To", prompt="Gør en anden ting")["side_task_id"]
-    assert side_tasks._exec_dismiss_side_task({"side_task_id": first})["new_status"] == "dismissed"
-    assert side_tasks._exec_dismiss_side_task({"side_task_id": second, "decision": "completed"})["new_status"] == "completed"
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": first, "reason": "ikke laengere relevant"},
+    )["new_status"] == "dismissed"
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": second, "decision": "completed", "bevis": "Gjort faerdig"},
+    )["new_status"] == "completed"
     assert side_tasks.list_open() == []
 
 
@@ -106,7 +110,8 @@ def test_en_LUKKET_opgave_binder_ikke_samtalen_laengere(lager):
     """Ellers ville lukke-instruksen staa i prompten for evigt."""
     tid = side_tasks.flag(title="Fix tests", prompt="Ret dem")["side_task_id"]
     side_tasks.resolve(tid, decision="activated", arbejds_session="chat-abc")
-    side_tasks.resolve(tid, decision="completed", lukket_af="jarvis")
+    side_tasks.resolve(tid, decision="completed", lukket_af="jarvis",
+                       bevis="Testsuite groen efter rettelsen")
     assert side_tasks.arbejds_session_for("chat-abc") is None
     assert lager[0]["lukket_af"] == "jarvis"
 
@@ -135,11 +140,18 @@ def test_lukke_instruksen_staar_KUN_i_arbejds_samtalen(lager):
 
 def test_instruksen_siger_hvad_der_skal_ske_hvis_den_IKKE_kan_loeses(lager):
     """Et loefte uden en udvej bliver en tavs loegn: kan opgaven ikke loeses,
-    skal han sige det frem for at lukke den."""
+    skal han sige HVORFOR og afvise den — ikke lukke den eller lade den staa.
+
+    Formen skiftede 16/10-2026 sammen med kravet: vejen ud er nu `dismissed`
+    med en grund, og `completed` kraever et bevis. Instruksen skal navngive
+    BEGGE — ellers kender den naeste mig ikke udvejen, og kravet bliver en
+    faelde uden udgang (samme fejlform som `bloker`-posten)."""
     tid = side_tasks.flag(title="Fix tests", prompt="Ret dem")["side_task_id"]
     side_tasks.resolve(tid, decision="activated", arbejds_session="chat-abc")
     t = side_tasks.side_tasks_prompt_section("chat-abc")
-    assert "Kan den ikke loeses" in t and "lad den staa aaben" in t
+    assert "Kan den ikke loeses" in t
+    assert "bevis=" in t, "kravet skal staa i instruksen — ellers lukker han uden"
+    assert 'reason="' in t, "udvejen skal staa i instruksen — ellers er den tavs"
 
 
 def test_prompt_afsnittet_kaster_ikke_paa_en_halv_post(lager):
@@ -352,7 +364,7 @@ def test_list_alle_viser_ogsaa_de_lukkede(lager):
     data. Persistensen virkede; visningen fandtes ikke."""
     a = side_tasks.flag(title="Lukket", prompt="…")["side_task_id"]
     b = side_tasks.flag(title="Aaben", prompt="…")["side_task_id"]
-    side_tasks.resolve(a, decision="dismissed")
+    side_tasks.resolve(a, decision="dismissed", reason="ikke laengere relevant")
     assert [r["side_task_id"] for r in side_tasks.list_open()] == [b]
     alle = {r["side_task_id"]: r["status"] for r in side_tasks.list_alle()}
     assert alle == {a: "dismissed", b: "pending"}
@@ -365,3 +377,69 @@ def test_list_alle_er_nyeste_foerst_og_har_et_loft(lager):
     assert [r["title"] for r in alle][0] == "nr 4" or len(alle) == 5
     assert len(side_tasks.list_alle(maks=2)) == 2
     assert len(side_tasks.list_alle(maks=0)) == 1, "et loft paa 0 giver mindst én"
+
+
+# ── En lukning skal baere sin egen begrundelse (16/10-2026) ───────────────
+#
+# Bjoern: «Krav ved completed — men dismissed med begrundelse er altid en vej
+# ud». Foer kraevede `completed` INTET. Det er derfor en sideopgave kunne
+# lukkes uden belaeg, mens en MEMORY-sektion blev staaende og kaldte arbejdet
+# «STADIG AABEN» laenge efter at det var gjort: lukningen og paastanden var to
+# poster om samme faktum, og intet bandt dem sammen.
+
+
+def test_completed_uden_bevis_afvises_og_roerer_ikke_status(lager):
+    tid = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    r = side_tasks.resolve(tid, decision="completed")
+    assert r["status"] == "error" and "bevis" in r["error"]
+    assert side_tasks.get(tid)["status"] == "pending", (
+        "en AFVIST lukning maa ikke efterlade opgaven lukket"
+    )
+
+
+def test_completed_med_bevis_gemmer_beviset_paa_posten(lager):
+    tid = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    r = side_tasks.resolve(tid, decision="completed",
+                           bevis="Commit 0ddcd976b landede paa main")
+    assert r["status"] == "ok"
+    assert side_tasks.get(tid)["bevis"] == "Commit 0ddcd976b landede paa main"
+
+
+def test_kort_bevis_taelles_ikke_som_bevis(lager):
+    """«ok» og «done» er paastande uden indhold — praecis dem kravet findes for."""
+    tid = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    for tomt in ("", "   ", "ok"):
+        assert side_tasks.resolve(tid, decision="completed", bevis=tomt)["status"] == "error"
+    assert side_tasks.get(tid)["status"] == "pending"
+
+
+def test_dismissed_uden_grund_afvises(lager):
+    tid = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    r = side_tasks.resolve(tid, decision="dismissed")
+    assert r["status"] == "error" and "grund" in r["error"]
+    assert side_tasks.get(tid)["status"] == "pending"
+
+
+def test_dismissed_med_grund_er_altid_en_vej_ud(lager):
+    """Selv en opgave der ALDRIG kan loeses skal kunne lukkes. Ellers er kravet
+    en faelde uden udgang — samme fejlform som en `bloker`-post der spaerrer
+    for de vaerktoejer der skulle rette den."""
+    tid = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    r = side_tasks.resolve(tid, decision="dismissed", reason="kan ikke reproduceres")
+    assert r["status"] == "ok"
+    assert side_tasks.get(tid)["dismiss_reason"] == "kan ikke reproduceres"
+
+
+def test_vaerktoejet_videresender_bevis_og_grund(lager):
+    """Kravet skal ramme den vej Jarvis selv bruger — ikke kun servicen."""
+    a = side_tasks.flag(title="A", prompt="goer A")["side_task_id"]
+    b = side_tasks.flag(title="B", prompt="goer B")["side_task_id"]
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": a, "decision": "completed"})["status"] == "error"
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": b, "decision": "dismissed"})["status"] == "error"
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": a, "decision": "completed",
+         "bevis": "Rettet i commit abc1234"})["status"] == "ok"
+    assert side_tasks._exec_dismiss_side_task(
+        {"side_task_id": b, "reason": "duplikat af A"})["status"] == "ok"

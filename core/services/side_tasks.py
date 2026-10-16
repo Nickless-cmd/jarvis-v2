@@ -38,6 +38,14 @@ _AABNE = frozenset({"pending", "queued", "activated"})
 _TERMINALE = frozenset({"completed", "dismissed"})
 _MAX_SHOWN = 6
 
+#: Et bevis skal sige HVAD der blev gjort — ikke blot at noget blev gjort.
+#: Grænsen er lav (et par ord), men ikke nul: «ok» og «done» er påstande uden
+#: indhold, og det er præcis dem der lod en sideopgave stå åben i MEMORY længe
+#: efter at arbejdet var gjort. Formen er husets egen — `inbox_drop` har krævet
+#: en grund siden 4/10 af samme årsag: «en afvisning uden grund kan ikke
+#: efterprøves».
+_MIN_BEVIS: Final[int] = 10
+
 
 def _kort(tekst: str, maks: int) -> str:
     """Afkort ved en ORD-grænse, så en halv sætning ikke læses som en hel.
@@ -179,12 +187,39 @@ def list_alle(*, maks: int = 50) -> list[dict[str, Any]]:
 def resolve(side_task_id: str, *, decision: str,
             arbejds_session: str | None = None,
             arbejds_run_id: str | None = None,
-            lukket_af: str = "", reason: str = "") -> dict[str, Any]:
+            lukket_af: str = "", reason: str = "", bevis: str = "") -> dict[str, Any]:
     """Flyt en opgaves status. `arbejds_session` knytter den til den samtale
-    der løser den — se `arbejds_session_for` for hvorfor det er nødvendigt."""
+    der løser den — se `arbejds_session_for` for hvorfor det er nødvendigt.
+
+    ## En lukning skal bære sin egen begrundelse (16/10-2026)
+
+    Bjørn: «Krav ved completed — men dismissed med begrundelse er altid en vej
+    ud». Indtil da krævede `completed` INTET. Det er derfor en sideopgave
+    kunne lukkes uden belæg, mens en MEMORY-sektion blev stående og sagde
+    «STADIG ÅBEN» om arbejde der for længst var gjort: lukningen og påstanden
+    var to poster om samme faktum, og intet bandt dem sammen.
+
+    Nu bærer hver terminal beslutning sin grund:
+
+    * ``completed`` kræver ``bevis`` — hvad der FAKTISK blev gjort.
+    * ``dismissed`` kræver ``reason`` — hvorfor den ikke skal løses.
+
+    Begge gemmes på posten, så lukningen kan efterprøves bagefter. Vejen ud
+    findes altid: en opgave der ikke kan løses afvises med en grund.
+    """
     decision = (decision or "").strip().lower()
     if decision not in {"queued", "dismissed", "activated", "completed"}:
         return {"status": "error", "error": "unknown side-task decision"}
+    if decision == "completed" and len(str(bevis or "").strip()) < _MIN_BEVIS:
+        return {"status": "error",
+                "error": ("completed kræver et bevis: hvad blev der faktisk gjort "
+                          f"(mindst {_MIN_BEVIS} tegn). Uden det er lukningen en "
+                          "påstand ingen kan efterprøve — kan opgaven ikke løses, "
+                          "afvis den i stedet med en grund.")}
+    if decision == "dismissed" and not str(reason or "").strip():
+        return {"status": "error",
+                "error": ("dismissed kræver en grund — en afvisning uden grund "
+                          "kan ikke efterprøves")}
     with med_laas(_STATE_KEY):
         items = _load_all()
         found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
@@ -211,8 +246,10 @@ def resolve(side_task_id: str, *, decision: str,
             found["arbejds_run_id"] = str(arbejds_run_id)
         if lukket_af:
             found["lukket_af"] = str(lukket_af)[:60]
-        if reason and decision == "dismissed":
-            found["dismiss_reason"] = str(reason)[:500]
+        if decision == "dismissed":
+            found["dismiss_reason"] = str(reason).strip()[:500]
+        if decision == "completed":
+            found["bevis"] = str(bevis).strip()[:1000]
         _save_all(items)
     return {"status": "ok", "side_task_id": side_task_id, "new_status": decision}
 
@@ -327,8 +364,11 @@ def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
             f"\n\nDENNE samtale er arbejdet paa [{mit.get('side_task_id')}] "
             f"«{mit.get('title')}». Naar den er loest, skal DU lukke den:\n"
             "  dismiss_side_task(side_task_id=\"" + str(mit.get("side_task_id")) + "\", "
-            "decision=\"completed\")\n"
-            "Kan den ikke loeses, sig hvad der mangler og lad den staa aaben. "
+            "decision=\"completed\", bevis=\"<hvad du faktisk gjorde>\")\n"
+            "Uden et bevis AFVISES lukningen: «completed» er en paastand, og den "
+            "skal kunne efterproeves bagefter. Kan den ikke loeses, saa AFVIS den "
+            "med en grund (decision=\"dismissed\", reason=\"...\") i stedet for at "
+            "lade den staa aaben. "
             "Ingen anden lukker den for dig."
         )
     return afsnit
@@ -375,7 +415,9 @@ def _exec_dismiss_side_task(args: dict[str, Any]) -> dict[str, Any]:
     decision = str(args.get("decision") or "dismissed").strip().lower()
     if decision not in _TERMINALE:
         return {"status": "error", "error": "decision must be 'completed' or 'dismissed'"}
-    return resolve(str(args.get("side_task_id") or ""), decision=decision)
+    return resolve(str(args.get("side_task_id") or ""), decision=decision,
+                   bevis=str(args.get("bevis") or ""),
+                   reason=str(args.get("reason") or ""))
 
 
 def _exec_activate_side_task(args: dict[str, Any]) -> dict[str, Any]:
@@ -438,9 +480,13 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "dismiss_side_task",
             "description": (
-                "Close a flagged side-task. decision='completed' when it has been done; "
-                "decision='dismissed' (default) when the user said no or it's no longer relevant. "
-                "Closed tasks disappear from the prompt and from Desk and cannot be reopened."
+                "Close a flagged side-task. decision='completed' when it has been done "
+                "and you can say WHAT was done; decision='dismissed' (default) when the "
+                "user said no or it's no longer relevant. Both are REFUSED without their "
+                "reason: completed needs `bevis`, dismissed needs `reason`. A closure that "
+                "carries no justification is what let a MEMORY section keep claiming "
+                "'still open' about work that was already finished. Closed tasks "
+                "disappear from the prompt and from Desk and cannot be reopened."
             ),
             "parameters": {
                 "type": "object",
@@ -448,6 +494,10 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "side_task_id": {"type": "string"},
                     "decision": {"type": "string", "enum": ["completed", "dismissed"],
                                  "description": "completed = done; dismissed = dropped (default)."},
+                    "bevis": {"type": "string",
+                              "description": "REQUIRED for decision='completed': what was actually done, concretely — commit, file, or measured result."},
+                    "reason": {"type": "string",
+                               "description": "REQUIRED for decision='dismissed': why the task will not be solved."},
                 },
                 "required": ["side_task_id"],
             },

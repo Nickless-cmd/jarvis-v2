@@ -20,7 +20,7 @@ def test_owner_ser_aabne_opgaver(monkeypatch, lager):
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
     a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
     b = side_tasks.flag(title="B", prompt="gør B")["side_task_id"]
-    side_tasks.resolve(b, decision="dismissed")
+    side_tasks.resolve(b, decision="dismissed", reason="ikke laengere relevant")
     res = asyncio.run(cw.cowork_side_tasks())
     assert res["count"] == 1 and [t["side_task_id"] for t in res["side_tasks"]] == [a]
 
@@ -28,7 +28,7 @@ def test_owner_ser_aabne_opgaver(monkeypatch, lager):
 def test_owner_afslutter_opgave(monkeypatch, lager):
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
     a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
-    res = asyncio.run(cw.cowork_side_task_status(a, {"status": "completed"}))
+    res = asyncio.run(cw.cowork_side_task_status(a, {"status": "completed", "bevis": "A blev gjort"}))
     assert res["status"] == "ok" and res["new_status"] == "completed"
     assert asyncio.run(cw.cowork_side_tasks())["count"] == 0
 
@@ -119,7 +119,7 @@ def test_skjul_af_terminal_opgave_afvises(monkeypatch, lager):
     # ville være en løgn om hvorfor den er væk.
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
     a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
-    side_tasks.resolve(a, decision="dismissed")
+    side_tasks.resolve(a, decision="dismissed", reason="ikke laengere relevant")
     res = asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))
     assert res["status"] == "error"
     assert "dismissed" in res["error"]
@@ -178,5 +178,5 @@ def test_oprettet_opgave_kan_afsluttes_og_skjules_som_enhver_anden(monkeypatch, 
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
     a = asyncio.run(cw.cowork_side_task_opret({"title": "A", "prompt": "gør A"}))["side_task_id"]
     assert asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))["status"] == "ok"
-    assert asyncio.run(cw.cowork_side_task_status(a, {"status": "completed"}))["new_status"] == "completed"
+    assert asyncio.run(cw.cowork_side_task_status(a, {"status": "completed", "bevis": "A blev gjort"}))["new_status"] == "completed"
     assert side_tasks.get(a)["lukket_af"] == "desk"

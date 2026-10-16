@@ -63,12 +63,50 @@ describe('SideOpgavePanel', () => {
     expect(screen.queryByRole('button', { name: 'Fjern' })).toBeNull()
   })
 
-  it('en AABEN opgave kan lukkes herfra, og listen hentes igen', async () => {
+  it('en AABEN opgave kan lukkes herfra — men KUN med et bevis (16/10-2026)', async () => {
+    // Bjoern: «Krav ved completed — men dismissed med begrundelse er altid en
+    // vej ud». Et tomt felt er ikke en begrundelse; formen fanger det FOER
+    // kaldet, saa et afvist server-svar ikke ser ud som en doed knap.
     vi.mocked(getAlleSideTasks).mockResolvedValue([post({ status: 'activated' })] as never)
     render(<SideOpgavePanel config={cfg} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Markér færdig' }))
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'side-1', 'completed'))
+    expect(setSideTaskStatus).not.toHaveBeenCalled()
+
+    const felt = await screen.findByLabelText(/Hvad blev gjort/)
+    await userEvent.type(felt, 'ok')
+    await userEvent.click(screen.getByRole('button', { name: 'Bekræft færdig' }))
+    expect(setSideTaskStatus).not.toHaveBeenCalled()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/hvad der faktisk blev gjort/i)
+
+    await userEvent.clear(felt)
+    await userEvent.type(felt, 'Rettet i commit abc1234')
+    await userEvent.click(screen.getByRole('button', { name: 'Bekræft færdig' }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(
+      cfg, 'side-1', 'completed', { bevis: 'Rettet i commit abc1234' }))
     expect(vi.mocked(getAlleSideTasks).mock.calls.length).toBeGreaterThan(1)
+  })
+
+  it('«Fjern» kraever en grund og sender den som reason', async () => {
+    vi.mocked(getAlleSideTasks).mockResolvedValue([post({ status: 'pending' })] as never)
+    render(<SideOpgavePanel config={cfg} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Fjern' }))
+    const felt = await screen.findByLabelText(/Hvorfor skal den ikke løses/)
+    await userEvent.type(felt, 'duplikat af en anden opgave')
+    await userEvent.click(screen.getByRole('button', { name: 'Bekræft fjern' }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(
+      cfg, 'side-1', 'dismissed', { reason: 'duplikat af en anden opgave' }))
+  })
+
+  it('lukningen kan SES bagefter — beviset staar paa posten', async () => {
+    vi.mocked(getAlleSideTasks).mockResolvedValue([
+      post({ status: 'completed', resolved_at: '2026-10-16T20:00:00+00:00',
+             bevis: 'Commit 0ddcd976b landede' }),
+      post({ side_task_id: 'side-2', status: 'dismissed', resolved_at: '2026-10-16T20:00:00+00:00',
+             dismiss_reason: 'ikke laengere relevant' }),
+    ] as never)
+    render(<SideOpgavePanel config={cfg} />)
+    expect(await screen.findByText(/Commit 0ddcd976b landede/)).toBeInTheDocument()
+    expect(screen.getByText(/ikke laengere relevant/)).toBeInTheDocument()
   })
 
   it('status-ordene er paa dansk og ikke rå felter', async () => {

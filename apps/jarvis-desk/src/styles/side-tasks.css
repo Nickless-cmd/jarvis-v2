@@ -142,3 +142,22 @@
    8/10, og ingen af dem kunne fortrydes. */
 .sol-farlig { color: var(--error-fg); border-color: var(--error-fg); }
 .sol-bekraeft { font-size: 11.5px; color: var(--error-fg); }
+
+/* ── Lukke-formen (16/10-2026) ───────────────────────────────────────────
+   En lukning skal bære sin egen begrundelse: `completed` kræver et bevis for
+   hvad der faktisk blev gjort, `dismissed` en grund til at den ikke løses.
+   Formen erstatter det direkte kald, så et afvist kald ikke ser ud som om
+   knappen ikke virkede. Bjørn: «Krav ved completed — men dismissed med
+   begrundelse er altid en vej ud». */
+.sok-lukform, .sop-lukform { margin-top: 8px; display: grid; gap: 6px; }
+.sok-luklabel, .sop-luklabel { font-size: 11.5px; color: var(--fg-3); }
+.sok-bevis, .sop-begrundelse {
+  width: 100%; resize: vertical; font: inherit; font-size: 12.5px;
+  padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-1);
+}
+.sok-bevis:focus-visible, .sop-begrundelse:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: -1px;
+}
+.sok-lukkald { display: flex; gap: 8px; }
+.sop-bevis { margin: 4px 0 0; font-size: 12px; color: var(--fg-3); }

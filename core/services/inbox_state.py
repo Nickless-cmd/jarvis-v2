@@ -762,7 +762,7 @@ def _hent_eller_optag(bruger_id: str, post_id: str) -> dict[str, Any] | None:
 
 
 def _afgoer_sideopgave(bruger_id: str, post_id: str, *, decision: str,
-                       reason: str = "") -> dict[str, Any] | None:
+                       reason: str = "", bevis: str = "") -> dict[str, Any] | None:
     """Route en sideopgave til dens eget lager; skriv aldrig inbox_items.
 
     Et `side-` præfiks er kun routing. Ejerskab kontrolleres før opslaget,
@@ -783,16 +783,22 @@ def _afgoer_sideopgave(bruger_id: str, post_id: str, *, decision: str,
                     "allerede": old}
         return {"status": "fejl", "type": "side_task", "id": post_id,
                 "error": f"side task is already {old}"}
-    result = resolve(post_id, decision=decision, lukket_af="inbox", reason=reason)
+    result = resolve(post_id, decision=decision, lukket_af="inbox",
+                     reason=reason, bevis=bevis)
     if result.get("status") != "ok":
         return {"status": "fejl", "type": "side_task", "id": post_id,
                 "error": str(result.get("error") or "status update failed")}
     return {"status": "ok", "type": "side_task", "id": post_id}
 
 
-def done(bruger_id: str, post_id: str) -> dict[str, Any]:
-    """Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa."""
-    side = _afgoer_sideopgave(bruger_id, post_id, decision="completed")
+def done(bruger_id: str, post_id: str, bevis: str = "") -> dict[str, Any]:
+    """Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa.
+
+    `bevis` videresendes til sideopgave-lageret: er posten en `side-`-opgave,
+    kræver lukningen hvad der faktisk blev gjort (se `side_tasks.resolve`).
+    For indbakke-poster ignoreres den — de har deres egen kvittering.
+    """
+    side = _afgoer_sideopgave(bruger_id, post_id, decision="completed", bevis=bevis)
     if side is not None:
         return side
     post = _hent_eller_optag(bruger_id, post_id)

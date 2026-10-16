@@ -39,7 +39,7 @@ def test_side_tasks_are_read_only_projection_and_empty_section_disappears(monkey
     active = byg_indbakke("owner", kilder=k)["sideopgaver"][0]
     assert active["status"] == "i gang" and active["session_id"] == "chat-7"
     assert active["run_id"] == "run-8"
-    side_tasks.resolve(tid, decision="completed")
+    side_tasks.resolve(tid, decision="completed", bevis="Startpositionen er verificeret")
     assert byg_indbakke("owner", kilder=k)["sideopgaver"] == []
 
 
@@ -48,7 +48,7 @@ def test_inbox_done_and_drop_change_side_task_source_not_a_second_record(monkeyp
     first = side_tasks.flag(title="A", prompt="Gør A")["side_task_id"]
     second = side_tasks.flag(title="B", prompt="Gør B")["side_task_id"]
     assert inbox_state.done("other", first)["status"] == "ukendt"
-    assert inbox_state.done("owner", first)["status"] == "ok"
+    assert inbox_state.done("owner", first, "A blev gjort")["status"] == "ok"
     assert inbox_state.drop("owner", second, "ikke relevant")["status"] == "ok"
     assert [(r["status"], r.get("lukket_af")) for r in state] == [
         ("completed", "inbox"), ("dismissed", "inbox"),

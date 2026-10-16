@@ -175,12 +175,18 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     # opgaven — og saa stod den som «i gang» til et menneske greb ind.
     arbejds_session = str((payload or {}).get("session") or "").strip() or None
     arbejds_run_id = str((payload or {}).get("run_id") or "").strip() or None
+    # En lukning skal baere sin egen begrundelse (16/10-2026). `bevis` for
+    # `completed`, `reason` for `dismissed` — uden den afviser servicen den,
+    # og svaret gaar retur til desk som en synlig fejl (ikke en tavs no-op).
+    bevis = str((payload or {}).get("bevis") or "").strip()
+    reason = str((payload or {}).get("reason") or "").strip()
     from core.services.side_tasks import resolve
     return await asyncio.to_thread(
         resolve, side_task_id, decision=status,
         arbejds_session=arbejds_session,
         arbejds_run_id=arbejds_run_id,
         lukket_af="desk" if status in ("completed", "dismissed") else "",
+        bevis=bevis, reason=reason,
     )
 
 

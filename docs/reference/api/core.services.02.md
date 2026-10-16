@@ -274,27 +274,28 @@ _Per-agent JSONL transcript persistence._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_agent_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L32) |
-| function | `_ensure_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L36) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_transcript.py#L42) |
-| function | `write_event` | `(agent_id, entry)` | Append one event-line to the agent's transcript.jsonl. | [src](../../../core/services/agent_transcript.py#L50) |
-| function | `write_meta` | `(agent_id, meta)` | Write (or overwrite) the agent's metadata sidecar. | [src](../../../core/services/agent_transcript.py#L67) |
-| function | `write_lifecycle` | `(agent_id, event, *, note=…)` | Convenience: write a lifecycle event (spawned/started/completed/failed/...). | [src](../../../core/services/agent_transcript.py#L75) |
-| function | `write_prompt` | `(agent_id, prompt, *, run_id=…)` | Write the prompt sent to the model. | [src](../../../core/services/agent_transcript.py#L83) |
-| function | `write_result` | `(agent_id, text, *, run_id=…, input_tokens=…, output_tokens=…, cost_usd=…)` | Write the model's result. | [src](../../../core/services/agent_transcript.py#L92) |
-| function | `write_tool_call` | `(agent_id, tool_call_id, name, arguments, *, run_id=…)` | Write a tool call the model requested. | [src](../../../core/services/agent_transcript.py#L106) |
-| function | `write_tool_result` | `(agent_id, tool_call_id, content, *, run_id=…)` | Write the result of a tool execution. | [src](../../../core/services/agent_transcript.py#L118) |
-| function | `write_failure` | `(agent_id, error, *, run_id=…)` | Write a failure/error event. | [src](../../../core/services/agent_transcript.py#L129) |
-| function | `load_transcript` | `(agent_id)` | Load ALL lines from transcript.jsonl as a list of dicts. | [src](../../../core/services/agent_transcript.py#L142) |
-| function | `load_meta` | `(agent_id)` | Load metadata sidecar, or None if missing. | [src](../../../core/services/agent_transcript.py#L151) |
-| function | `load_events_by_kind` | `(agent_id, kind)` | Return only events of a specific kind (e.g. ``"tool_call"``). | [src](../../../core/services/agent_transcript.py#L160) |
-| function | `list_transcripts` | `(limit=…)` | List available agent transcripts with metadata, newest-first. | [src](../../../core/services/agent_transcript.py#L169) |
-| function | `prune_old_transcripts` | `(max_age_days=…)` | Remove transcript directories older than *max_age_days*. | [src](../../../core/services/agent_transcript.py#L193) |
-| function | `write_sidechain` | `(agent_id, role, goal)` | Write a human-readable sidechain.md for quick inspection. | [src](../../../core/services/agent_transcript.py#L215) |
-| function | `resume_from_transcript` | `(agent_id)` | Build a prompt-context dict from the transcript for agent resume. | [src](../../../core/services/agent_transcript.py#L240) |
-| function | `list_agents` | `(limit=…)` | Seneste agenter med transkript, nyeste foerst. | [src](../../../core/services/agent_transcript.py#L303) |
-| function | `read_events` | `(agent_id)` | Alle events for én agent. Tom liste hvis intet transkript. | [src](../../../core/services/agent_transcript.py#L326) |
-| function | `summarize` | `(agent_id, *, max_arg_chars=…, max_result_chars=…)` | Hvad gjorde agenten, og hvad kom der ud af det? | [src](../../../core/services/agent_transcript.py#L343) |
+| function | `transcript_dir` | `()` | Transcript-roden — løst ved KALDSTID, ikke ved import. | [src](../../../core/services/agent_transcript.py#L27) |
+| function | `_agent_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L51) |
+| function | `_ensure_dir` | `(agent_id)` | — | [src](../../../core/services/agent_transcript.py#L55) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_transcript.py#L61) |
+| function | `write_event` | `(agent_id, entry)` | Append one event-line to the agent's transcript.jsonl. | [src](../../../core/services/agent_transcript.py#L69) |
+| function | `write_meta` | `(agent_id, meta)` | Write (or overwrite) the agent's metadata sidecar. | [src](../../../core/services/agent_transcript.py#L86) |
+| function | `write_lifecycle` | `(agent_id, event, *, note=…)` | Convenience: write a lifecycle event (spawned/started/completed/failed/...). | [src](../../../core/services/agent_transcript.py#L94) |
+| function | `write_prompt` | `(agent_id, prompt, *, run_id=…)` | Write the prompt sent to the model. | [src](../../../core/services/agent_transcript.py#L102) |
+| function | `write_result` | `(agent_id, text, *, run_id=…, input_tokens=…, output_tokens=…, cost_usd=…)` | Write the model's result. | [src](../../../core/services/agent_transcript.py#L111) |
+| function | `write_tool_call` | `(agent_id, tool_call_id, name, arguments, *, run_id=…)` | Write a tool call the model requested. | [src](../../../core/services/agent_transcript.py#L125) |
+| function | `write_tool_result` | `(agent_id, tool_call_id, content, *, run_id=…)` | Write the result of a tool execution. | [src](../../../core/services/agent_transcript.py#L137) |
+| function | `write_failure` | `(agent_id, error, *, run_id=…)` | Write a failure/error event. | [src](../../../core/services/agent_transcript.py#L148) |
+| function | `load_transcript` | `(agent_id)` | Load ALL lines from transcript.jsonl as a list of dicts. | [src](../../../core/services/agent_transcript.py#L161) |
+| function | `load_meta` | `(agent_id)` | Load metadata sidecar, or None if missing. | [src](../../../core/services/agent_transcript.py#L170) |
+| function | `load_events_by_kind` | `(agent_id, kind)` | Return only events of a specific kind (e.g. ``"tool_call"``). | [src](../../../core/services/agent_transcript.py#L179) |
+| function | `list_transcripts` | `(limit=…)` | List available agent transcripts with metadata, newest-first. | [src](../../../core/services/agent_transcript.py#L188) |
+| function | `prune_old_transcripts` | `(max_age_days=…)` | Remove transcript directories older than *max_age_days*. | [src](../../../core/services/agent_transcript.py#L212) |
+| function | `write_sidechain` | `(agent_id, role, goal)` | Write a human-readable sidechain.md for quick inspection. | [src](../../../core/services/agent_transcript.py#L234) |
+| function | `resume_from_transcript` | `(agent_id)` | Build a prompt-context dict from the transcript for agent resume. | [src](../../../core/services/agent_transcript.py#L259) |
+| function | `list_agents` | `(limit=…)` | Seneste agenter med transkript, nyeste foerst. | [src](../../../core/services/agent_transcript.py#L322) |
+| function | `read_events` | `(agent_id)` | Alle events for én agent. Tom liste hvis intet transkript. | [src](../../../core/services/agent_transcript.py#L345) |
+| function | `summarize` | `(agent_id, *, max_arg_chars=…, max_result_chars=…)` | Hvad gjorde agenten, og hvad kom der ud af det? | [src](../../../core/services/agent_transcript.py#L362) |
 
 ## `core/services/agent_wake_intentions.py`
 _Varig fortsaettelsesintention for en parent der venter paa agenter (B2, §6)._

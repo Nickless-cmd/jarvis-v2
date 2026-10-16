@@ -29,6 +29,37 @@ def test_state_store_peger_IKKE_paa_den_aegte_mappe():
     assert Path(state_store._STATE_DIR) != _aegte_state()
 
 
+def test_transskript_roden_peger_IKKE_paa_produktionen():
+    """Samme fejlform som `state_store` — målt 16/10-2026.
+
+    `agent_transcript` beregnede sin sti ved IMPORT og hardcodede
+    ``~/.jarvis-v2``, så skjoldet (der sætter ``JARVIS_HOME``) ikke dækkede den.
+    Testfilens cleanup-fixture ryddede derfor PRODUKTIONENS transskripter ved
+    hver kørsel — mappen stod tom, sidste tømning 12:55:41.
+    """
+    from core.services import agent_transcript as at
+    aegte = Path("~/.jarvis-v2/state/agent_transcripts").expanduser()
+    assert at.transcript_dir() != aegte
+
+
+def test_agent_transskript_lander_i_skjoldet_og_ikke_i_produktionen():
+    """Den konkrete vej transskripterne forsvandt ad.
+
+    Tjekket ligger FOER skrivningen. Målt 16/10-2026 under mutationstesten: med
+    ruten pegende på produktionen skrev testen selv et transskript dér og
+    efterlod det — så vagten blev selv en forurener. Rækkefølgen er derfor
+    ikke kosmetisk.
+    """
+    from core.services import agent_transcript as at
+    aegte_rod = Path("~/.jarvis-v2/state/agent_transcripts").expanduser()
+    rod = at.transcript_dir()
+    assert rod != aegte_rod, f"transskript-roden peger paa PRODUKTIONEN: {rod}"
+
+    at.write_event("jarvis-shield-proeve", {"kind": "proeve"})
+    skrevet = rod / "jarvis-shield-proeve" / "transcript.jsonl"
+    assert skrevet.is_file(), "transskriptet blev slet ikke skrevet"
+
+
 def test_en_journal_post_lander_i_skjoldet_og_ikke_i_produktionen():
     """Den konkrete vej fikstur-posterne kom ind ad."""
     in_flight_runs.mark_started(run_id="visible-shield-proeve", session_id="s-shield",

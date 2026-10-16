@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9017/17232 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9031/17246 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9017/17232 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 698 | 968 | 72% |
+| `apps.api.jarvis_api.routes` | 699 | 969 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 9017/17232 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 828 | 1528 | 54% |
-| `core.services` | 6004 | 11708 | 51% |
+| `core.services` | 6017 | 11721 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9017/17232 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2576)
+## Undocumented public functions (2575)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2069,9 +2069,8 @@ Generated from source. 9017/17232 functions/methods documented (52%). The list b
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `flag` (L106)
-- `core/services/side_tasks.py` :: `get` (L165)
-- `core/services/side_tasks.py` :: `list_pending` (L140)
+- `core/services/side_tasks.py` :: `get` (L475)
+- `core/services/side_tasks.py` :: `list_pending` (L450)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)
@@ -2399,10 +2398,10 @@ Generated from source. 9017/17232 functions/methods documented (52%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L327)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L345)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L323)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L350)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L330)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L348)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L326)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L353)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

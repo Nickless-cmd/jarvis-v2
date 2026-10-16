@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-15 — 504 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-16 — 506 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -388,6 +388,7 @@
 | `slides_read` | native | no |
 | `smart_compact` | native | no |
 | `smart_outline` | native | no |
+| `snooze_side_task` | native | no |
 | `spawn_agent_task` | native | no |
 | `stage_edit_file` | native | no |
 | `stage_write_file` | native | no |
@@ -425,6 +426,7 @@
 | `vis_widget` | native | no |
 | `voice_journal` | native | no |
 | `wait_agents` | native | no |
+| `wake_side_task` | native | no |
 | `wake_word` | native | no |
 | `web_fetch` | native | no |
 | `web_scrape` | native | no |

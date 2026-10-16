@@ -54,3 +54,21 @@ def test_inbox_done_and_drop_change_side_task_source_not_a_second_record(monkeyp
         ("completed", "inbox"), ("dismissed", "inbox"),
     ]
     assert side_tasks.list_open() == []
+
+
+def test_en_sovende_sideopgave_er_synlig_men_tidsat(monkeypatch):
+    """Timeren (16/10-2026): den er stadig AABEN — den skal baade SES og vaere
+    TIDSAT. En udskydelse der fik opgaven til at forsvinde fra visningen ville
+    vaere en tavs afvisning i forklædning."""
+    from datetime import UTC, datetime, timedelta
+    _setup(monkeypatch)
+    monkeypatch.setattr(side_tasks, "_book_vaekning", lambda *a, **k: "")
+    k = _kilder()
+    tid = side_tasks.flag(
+        title="Test foerste frame", prompt="Verificér",
+        not_before=(datetime.now(UTC) + timedelta(hours=5)).isoformat(),
+    )["side_task_id"]
+    v = byg_indbakke("owner", kilder=k)["sideopgaver"]
+    assert [p["id"] for p in v] == [tid]
+    assert "sover til" in v[0]["linje"]
+    assert not v[0]["kraever_handling"]

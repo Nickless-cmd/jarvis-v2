@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-16 from app.routes (live) — 655 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-16 from app.routes (live) — 656 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -339,6 +339,7 @@
 | GET | `/cowork/side-tasks` | dict | cowork |
 | POST | `/cowork/side-tasks` | dict | cowork |
 | POST | `/cowork/side-tasks/{side_task_id}/skjul` | dict | cowork |
+| POST | `/cowork/side-tasks/{side_task_id}/snooze` | dict | cowork |
 | POST | `/cowork/side-tasks/{side_task_id}/status` | dict | cowork |
 | GET | `/cowork/todos` | dict | cowork |
 | POST | `/cowork/todos` | dict | cowork |

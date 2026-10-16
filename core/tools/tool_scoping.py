@@ -99,6 +99,7 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # tilstand, ikke en flade en husstand kan skrive i.
     "write_handover",
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",
+    "snooze_side_task", "wake_side_task",
 })
 
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
@@ -109,6 +110,7 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Owner-only via OWNER_ONLY_TOOLS; kan bruges i både chat og code uden
     # at bryde kontrakten om at CHAT_MODE_OWNER_EXTRA kun er fil-læsning.
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",
+    "snooze_side_task", "wake_side_task",
     # Indbakken (Opgave 5, 3/10-2026). ALLE roller, ikke owner-only:
     # isolationen haandhaeves paa `bruger_id` i db_inbox, saa hver bruger ser
     # og afgoer kun sine EGNE poster. Var de owner-only, kunne et
@@ -252,6 +254,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",
+    "snooze_side_task", "wake_side_task",
     "dispatch_to_claude_code", "dispatch_code_mode_task",
     # Owner-only operator backup-channel (jarvis-code bash reroute). Deliberately
     # NOT in the member/guest base scope — a non-owner must never get the

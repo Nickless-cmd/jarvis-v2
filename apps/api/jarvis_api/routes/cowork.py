@@ -190,6 +190,34 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     )
 
 
+@router.post("/side-tasks/{side_task_id}/snooze")
+async def cowork_side_task_snooze(side_task_id: str, payload: dict = Body(default={})) -> dict:
+    """Udskyd en sideopgave til et tidspunkt — eller væk den før tid.
+
+    Én rute for begge, fordi det er samme indstilling: tidspunktet. `not_before`
+    sat = opgaven sover til da. Tom `not_before` = væk den nu.
+
+    En udskydelse lukker INGEN opgave. `dismissed` og `completed` er stadig de
+    eneste udgange — en sovende opgave er åben hele tiden, den er bare ikke i
+    vejen før tiden er inde.
+    """
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
+    from core.services.side_tasks import snooze, vaagn
+    not_before = str((payload or {}).get("not_before") or "").strip()
+    reason = str((payload or {}).get("reason") or "").strip()
+    if not_before:
+        res = await asyncio.to_thread(snooze, side_task_id, until=not_before, reason=reason)
+    else:
+        res = await asyncio.to_thread(vaagn, side_task_id, reason=reason)
+    if str(res.get("status") or "") != "ok":
+        raise HTTPException(
+            status_code=400,
+            detail=str(res.get("error") or "kunne ikke udskyde sideopgaven"))
+    return res
+
+
 @router.post("/side-tasks/{side_task_id}/skjul")
 async def cowork_side_task_skjul(side_task_id: str, payload: dict = Body(default={})) -> dict:
     """Skjul eller vis en sideopgave i chatkortet — uden at lukke den.

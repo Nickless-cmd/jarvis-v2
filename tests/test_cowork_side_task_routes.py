@@ -180,3 +180,29 @@ def test_oprettet_opgave_kan_afsluttes_og_skjules_som_enhver_anden(monkeypatch, 
     assert asyncio.run(cw.cowork_side_task_skjul(a, {"skjult": True}))["status"] == "ok"
     assert asyncio.run(cw.cowork_side_task_status(a, {"status": "completed", "bevis": "A blev gjort"}))["new_status"] == "completed"
     assert side_tasks.get(a)["lukket_af"] == "desk"
+
+
+def test_en_opgave_kan_udskydes_og_vaagnes_fra_desk(monkeypatch, lager):
+    """Timeren (16/10-2026): Desk skal kunne saette OG rydde tidspunktet.
+
+    Udskydelsen lukker INGEN opgave — den er stadig aaben, den er bare ikke i
+    vejen foer tiden er inde. Og en tid der ikke kan bruges skal svare som en
+    SYNLIG fejl, ikke som en tavs no-op.
+    """
+    from datetime import UTC, datetime, timedelta
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    monkeypatch.setattr(side_tasks, "_book_vaekning", lambda *a, **k: "")
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    til = (datetime.now(UTC) + timedelta(hours=3)).isoformat()
+    assert asyncio.run(cw.cowork_side_task_snooze(a, {"not_before": til}))["status"] == "ok"
+    assert side_tasks.sovende(side_tasks.get(a)) is True
+    assert side_tasks.get(a)["status"] == "pending"
+    assert asyncio.run(cw.cowork_side_task_snooze(a, {"not_before": ""}))["status"] == "ok"
+    assert side_tasks.sovende(side_tasks.get(a)) is False
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_snooze(a, {"not_before": "i morgen"}))
+    assert ei.value.status_code == 400
+    monkeypatch.setattr(cw, "_role_owner", lambda: (False, "u_m"))
+    with pytest.raises(HTTPException) as ei2:
+        asyncio.run(cw.cowork_side_task_snooze(a, {"not_before": til}))
+    assert ei2.value.status_code == 403

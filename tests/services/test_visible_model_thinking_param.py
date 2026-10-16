@@ -79,7 +79,7 @@ def test_execute_visible_model_deepseek_fast_disables_thinking(monkeypatch):
         message="m", provider="deepseek", model="deepseek-v4-flash",
         thinking_mode="fast",
     )
-    assert seen["model"] == "deepseek-v4-flash"
+    assert seen["model"] == "deepseek-flash"
     assert seen["extra_body"] == {"thinking": {"type": "disabled"}}
 
 

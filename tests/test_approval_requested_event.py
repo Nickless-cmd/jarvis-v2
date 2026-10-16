@@ -16,9 +16,6 @@ uportede veje.
 
 from __future__ import annotations
 
-import pytest
-
-
 def test_haendelsen_baerer_det_man_skal_bruge_for_at_maale_levering(monkeypatch):
     from core.services import visible_runs as VR
 
@@ -75,18 +72,15 @@ def test_et_resultat_uden_klassifikation_giver_tomme_felter_ikke_fejl(monkeypatc
     assert set_events[0][1]["classification"] == ""
 
 
-@pytest.mark.parametrize("linje", [
-    "_publicer_approval_requested(",
-])
-def test_BEGGE_kortsteder_publicerer(linje):
-    """visible_runs har to steder der laver kort: den simple og den agentiske sti.
+def test_BEGGE_kortsteder_publicerer():
+    """Begge kortveje publicerer: first-pass og den agentiske sti.
 
     Rammer man kun det ene, maaler man kun halvdelen af turene — og det ville
     se ud som om leveringen var daarligere eller bedre end den er.
     """
     import pathlib
-    kilde = pathlib.Path(__file__).resolve().parents[1] / "core" / "services" / "visible_runs.py"
-    tekst = kilde.read_text(encoding="utf-8")
-    assert tekst.count(linje) >= 3, (
-        "forventede definitionen + BEGGE kald; fandt %d" % tekst.count(linje)
-    )
+    services = pathlib.Path(__file__).resolve().parents[1] / "core" / "services"
+    agentisk = (services / "visible_runs.py").read_text(encoding="utf-8")
+    first_pass = (services / "visible_first_pass_results.py").read_text(encoding="utf-8")
+    assert "_publicer_approval_requested(" in agentisk
+    assert "_publicer_approval_requested(" in first_pass

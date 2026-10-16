@@ -79,7 +79,7 @@ def test_start_raekken_gemmer_profilen(tmp_path, monkeypatch):
     db.execute("""CREATE TABLE visible_runs (
         run_id TEXT PRIMARY KEY, lane TEXT, provider TEXT, model TEXT,
         status TEXT, started_at TEXT, finished_at TEXT, text_preview TEXT,
-        error TEXT, capability_id TEXT)""")
+        error TEXT, capability_id TEXT, user_id TEXT NOT NULL DEFAULT '')""")
 
     class _Conn:
         def __enter__(self): return db

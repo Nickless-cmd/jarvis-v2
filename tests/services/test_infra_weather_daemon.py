@@ -35,32 +35,43 @@ def _reload_module():
 # ---------------------------------------------------------------------------
 
 class TestApiCostToday:
-    """Verify _api_cost_today reads from the costs ledger."""
+    """Verify _api_cost_today reads only today's rows from the costs DB."""
+
+    @staticmethod
+    def _connect_with_total(total):
+        connect = MagicMock()
+        connect.return_value.__enter__.return_value.execute.return_value.fetchone.return_value = {
+            "total": total,
+        }
+        return connect
 
     def test_returns_zero_when_no_costs(self):
         mod = _reload_module()
-        with patch("core.costing.ledger.telemetry_summary", return_value={"total_cost_usd": 0.0}):
+        connect = self._connect_with_total(0.0)
+        with patch("core.runtime.db.connect", connect):
             result = mod._api_cost_today()
         assert result == 0.0
 
-    def test_returns_sum_from_ledger(self):
+    def test_returns_sum_from_todays_db_rows(self):
         mod = _reload_module()
-        with patch("core.costing.ledger.telemetry_summary", return_value={"total_cost_usd": 3.42}):
+        connect = self._connect_with_total(3.42)
+        with patch("core.runtime.db.connect", connect):
             result = mod._api_cost_today()
         assert result == 3.42
+        query = connect.return_value.__enter__.return_value.execute.call_args.args[0]
+        assert "date(created_at) = date('now')" in query
 
-    def test_falls_back_to_db_on_ledger_error(self):
+    def test_null_sum_is_zero(self):
         mod = _reload_module()
-        with patch("core.costing.ledger.telemetry_summary", side_effect=ImportError):
-            # Should try DB fallback, return 0.0 if no costs table
+        connect = self._connect_with_total(None)
+        with patch("core.runtime.db.connect", connect):
             result = mod._api_cost_today()
-        assert isinstance(result, float)
+        assert result == 0.0
 
     def test_returns_zero_on_total_failure(self):
         mod = _reload_module()
-        with patch("core.costing.ledger.telemetry_summary", side_effect=ImportError):
-            with patch("core.runtime.db.connect", side_effect=Exception("no db")):
-                result = mod._api_cost_today()
+        with patch("core.runtime.db.connect", side_effect=Exception("no db")):
+            result = mod._api_cost_today()
         assert result == 0.0
 
 

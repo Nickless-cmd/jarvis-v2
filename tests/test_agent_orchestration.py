@@ -215,9 +215,13 @@ def test_state_is_capped_and_says_so(pr):
 def test_the_model_request_carries_the_state_in_the_tail_item_not_in_the_system_instruction(pr):
     """Hele vejen til beskedlisten: tilstanden staar i halen foer den aktuelle bruger-besked, ikke i instruktionen."""
     from core.identity import workspace_context as w
+    from core.identity.users import add_user
     from core.services.visible_model import _build_visible_chat_messages_for_github
     pr.assignment("a1")
-    tok = w.set_context(workspace_name="bjorn", user_id="bjorn", session_id="s1")
+    add_user(discord_id="bjorn", name="Bjørn", role="owner", workspace="bjorn")
+    tok = w.set_context(
+        workspace_name="bjorn", user_id="bjorn", role="owner", session_id="s1"
+    )
     try:
         msgs = _build_visible_chat_messages_for_github("hej", session_id="s1", provider="deepseek",
                                                        model="deepseek-v4-flash")

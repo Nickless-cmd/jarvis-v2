@@ -129,12 +129,14 @@ def test_experiential_memory_requires_a_lesson():
         out = em.create_experiential_memory_from_run(
             run_id="r", user_message="check jarvis_bare experiment runner",
             assistant_response="ok", outcome_status="completed", user_mood="neutral",
+            user_id="owner",
         )
         assert out is None
         ins.assert_not_called()
         em.create_experiential_memory_from_run(
             run_id="r2", user_message="check jarvis_bare experiment runner",
             assistant_response="ok", outcome_status="failed", user_mood="neutral",
+            user_id="owner",
         )
         ins.assert_called_once()
 

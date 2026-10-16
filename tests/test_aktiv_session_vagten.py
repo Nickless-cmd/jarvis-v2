@@ -55,6 +55,10 @@ TILLADTE: dict[str, str] = {
     # Vagten selv og køens udløb — de ER mekanismen.
     "core/services/notification_bridge.py":
         "vagten selv: den skriver først EFTER at have spurgt om sessionen er aktiv",
+    # Routine-resultater er forbudt i notification_bridge. Kun den
+    # indholdsfri, redigerede driftsfejl må spejles til ejerens app-session.
+    "core/services/routine_diagnostics.py":
+        "den eneste routine-undtagelse: indholdsfri driftsfejl til ejerens app-session",
 }
 
 #: Fjernet 5/10-2026: `core/services/session_inbox.py` — «koeens udloeb:
@@ -94,7 +98,7 @@ def _filer_der_skriver_assistent() -> dict[str, list[int]]:
     return ud
 
 
-def test_kun_de_fem_tilladte_skriver_direkte_i_en_session():
+def test_kun_de_tilladte_skriver_direkte_i_en_session():
     """Skralde-spærren. En ny fil her betyder en ny kilde der kan banke på
     midt i en sætning — præcis det Bjørn bad om at få skilt fra."""
     fundet = _filer_der_skriver_assistent()

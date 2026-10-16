@@ -29,7 +29,8 @@ def test_BEGGE_steder_afviser_en_uovervaaget_godkendelse():
     return goer dem ligegyldige. Derfor tjekkes AFSTANDEN — vagten skal ligge
     i samme aandedrag som `approval_needed`, ikke 200 linjer senere.
     """
-    linjer = inspect.getsource(VR).splitlines()
+    from core.services import visible_first_pass_results as FP
+    linjer = (inspect.getsource(VR) + "\n" + inspect.getsource(FP)).splitlines()
     steder = [i for i, l in enumerate(linjer) if '"approval_needed"' in l]
     assert len(steder) >= 2, f"forventede mindst to kort-steder, fandt {len(steder)}"
 
@@ -42,7 +43,8 @@ def test_BEGGE_steder_afviser_en_uovervaaget_godkendelse():
 def test_afvisningen_siger_HVORFOR_til_modellen():
     """Et tavst spring ville faa den til at proeve igen. Beskeden skal sige at
     den ikke KAN godkendes her."""
-    kilde = inspect.getsource(VR)
+    from core.services import visible_first_pass_results as FP
+    kilde = inspect.getsource(VR) + "\n" + inspect.getsource(FP)
     assert "Autonomous run cannot approve tool calls" in kilde
     assert "skipped (autonomous)" in kilde
 

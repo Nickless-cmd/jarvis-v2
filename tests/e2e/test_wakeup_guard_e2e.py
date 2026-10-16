@@ -49,8 +49,20 @@ class _RunSpy:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
 
-    def __call__(self, message: str, *, session_id: str | None, origin: str = "autonomous") -> None:
-        self.calls.append({"message": message, "session_id": session_id, "origin": origin})
+    def __call__(
+        self,
+        message: str,
+        *,
+        session_id: str | None,
+        origin: str = "autonomous",
+        task_id: str = "",
+    ) -> None:
+        self.calls.append({
+            "message": message,
+            "session_id": session_id,
+            "origin": origin,
+            "task_id": task_id,
+        })
 
     @property
     def started(self) -> bool:

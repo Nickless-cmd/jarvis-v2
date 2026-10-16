@@ -234,7 +234,7 @@ def test_autonom_vej_skriver_sporet_FOER_traaden():
     i_traad = src.index("threading.Thread(")
     assert i_spor < i_traad, "sporet skal skrives før tråden starter"
     assert "persist_visible_run_start" in src
-    assert "begin_follow" in src  # kæden er ellers uændret
+    assert "legacy_follow=True" in src  # relayet ejer nu follow-registreringen
 
 
 def test_nedluknings_sweepen_stempler_ogsaa_raekken():

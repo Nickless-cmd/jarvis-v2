@@ -222,12 +222,8 @@ def test_internt_kald_skriver_ingen_tool_events(monkeypatch):
 
     spor: list[str] = []
 
-    class _FakeBus:
-        def publish(self, kind, payload):
-            spor.append(kind)
-
     monkeypatch.setitem(st._TOOL_HANDLERS, "_probe", lambda args: {"status": "ok"})
-    monkeypatch.setattr(st, "event_bus", _FakeBus())
+    monkeypatch.setattr(st.event_bus, "publish", lambda kind, payload: spor.append(kind))
     monkeypatch.setattr(st, "udgiv_tool_invoked", lambda n, a: spor.append("invoked"))
     monkeypatch.setattr(
         st, "_record_tool_outcome_memory", lambda *a, **k: spor.append("memory"))

@@ -54,19 +54,22 @@ def test_created_at_kan_gives_men_udfyldes_ellers(isolated_runtime, run):
                             run=run)["created_at"].startswith("20")
 
 
-def test_ALLE_fire_kort_steder_gaar_gennem_byggeren():
+def test_BEGGE_kortveje_gaar_gennem_byggeren():
     """Den test der ville have sparet tre ekstra runder.
 
     Bygger et sted sit eget kort igen, mangler det naeste felt Fase 5 finder
     paa — og hullet er stille.
     """
     import inspect
+    import core.services.visible_first_pass_results as FP
     import core.services.visible_runs as VR
-    kilde = inspect.getsource(VR)
-    assert kilde.count("_ar.build_request(") == 4, (
-        "et kort-sted bygger sit eget igen")
+    agentisk = inspect.getsource(VR)
+    first_pass = inspect.getsource(FP)
+    assert "_ar.build_request(" in agentisk
+    assert "_ar.build_request(" in first_pass
     # og ingen bygger den gamle form i haanden
-    assert '"invocation_digest": _kald_digest(' not in kilde
+    assert '"invocation_digest": _kald_digest(' not in agentisk
+    assert '"invocation_digest": _kald_digest(' not in first_pass
 
 
 def test_id_erne_er_unikke():

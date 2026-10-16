@@ -74,8 +74,9 @@ def test_stille_men_aabent_run_holder_indikatoren_taendt(monkeypatch):
 
 def test_gammelt_aabent_run_droppes_af_alders_loftet(monkeypatch):
     """Zombie-værnet: et run der ALDRIG blev markeret færdigt må ikke holde
-    indikatoren tændt i det uendelige. Loftet er endpointets eget (10 min)."""
+    indikatoren tændt i det uendelige. Loftet er endpointets eget (30 min)."""
     import core.services.run_event_log as rel
+    from apps.api.jarvis_api.routes import chat_run_streams
 
     class Settings:
         server_authoritative_runs = True
@@ -86,7 +87,7 @@ def test_gammelt_aabent_run_droppes_af_alders_loftet(monkeypatch):
 
     rel.create("visible-zombie", "session-zombie")
     rel._RUNS["visible-zombie"]["created_at"] = time.monotonic() - (
-        chat._AKTIVE_RUNS_ALDER_LOFT_S + 60.0
+        chat_run_streams._JOURNAL_STILSTAND_LOFT_S + 60.0
     )
     try:
         assert "session-zombie" not in chat.chat_active_runs()["session_ids"]

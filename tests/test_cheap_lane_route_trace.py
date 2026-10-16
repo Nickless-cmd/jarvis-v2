@@ -42,7 +42,7 @@ def test_selection_records_selected_and_rejected_candidates(
     monkeypatch.setattr(
         selection,
         "_candidate_adaptive_snapshot",
-        lambda candidate: {
+        lambda candidate, **_kwargs: {
             "effective_priority": candidate["priority"],
             "adaptive_penalty": 0,
         },

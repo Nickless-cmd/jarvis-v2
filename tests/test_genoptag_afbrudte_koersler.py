@@ -420,6 +420,7 @@ def koersels_base(monkeypatch):
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, "
                  "started_at TEXT, finished_at TEXT)")
+    conn.execute("CREATE TABLE tool_router_decisions (run_id TEXT, session_id TEXT)")
 
     class _Uden:
         def __enter__(self): return conn
@@ -430,8 +431,9 @@ def koersels_base(monkeypatch):
     return conn
 
 
-def _run(conn, rid, status, start, slut=None):
+def _run(conn, rid, status, start, slut=None, session="s1"):
     conn.execute("INSERT INTO visible_runs VALUES (?,?,?,?)", (rid, status, start, slut))
+    conn.execute("INSERT INTO tool_router_decisions VALUES (?,?)", (rid, session))
 
 
 def test_en_senere_faerdig_koersel_betyder_gaaet_videre(koersels_base):

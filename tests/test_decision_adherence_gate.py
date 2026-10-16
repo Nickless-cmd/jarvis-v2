@@ -224,9 +224,11 @@ def test_hver_beslutning_UNDER_taersklen_faar_en_adresse(monkeypatch, tmp_path):
          patch("core.services.behavioral_decisions.count_decisions", return_value=5):
         r = g.registrer_i_indbakken("bjorn")
     assert r["status"] == "ok"
-    ider = {p["id"] for p in dbi.liste(bruger_id="bjorn")}
+    poster = dbi.liste(bruger_id="bjorn", kun_aabne=False)
+    ider = {p["id"] for p in poster}
     assert ider == {"dec_krit", "dec_imp", "dec_adv"}, (
         f"forkert udvalg: {ider}")
+    assert {p["status"] for p in poster} == {dbi.STATUS_DONE}
     # Den der gaar godt skal IKKE have en post — ellers er indbakken en liste
     # over alt, og saa er den ikke en indbakke.
     assert "dec_god" not in ider
@@ -281,7 +283,7 @@ def test_en_beslutnings_post_er_MAERKET_som_min_og_GATER_ALDRIG(monkeypatch, tmp
                return_value=_beslutninger()), \
          patch("core.services.behavioral_decisions.count_decisions", return_value=5):
         g.registrer_i_indbakken("bjorn")
-    poster = dbi.liste(bruger_id="bjorn")
+    poster = dbi.liste(bruger_id="bjorn", kun_aabne=False)
     assert poster, "ingen poster — saa maaler resten ingenting"
     for p in poster:
         assert p["kraever_handling"] is False, f"{p['id']} kan gate"
@@ -316,14 +318,11 @@ def test_etiketten_foelger_KILDENS_egen_created_by(monkeypatch, tmp_path):
     assert p["kraever_handling"] is False
 
 
-def test_et_DROP_kan_ikke_tie_en_beslutning(monkeypatch, tmp_path):
-    """Gatens egen begrundelse fra 26/9: «Et bånd der kan revoke, sletter
-    systematisk de svære og beholder de lette: den modsatte af læring.»
+def test_en_informerende_beslutningspost_kan_ikke_genaabnes(monkeypatch, tmp_path):
+    """Beslutningen lever i sit eget register; indbakke-spejlet er ikke en opgave.
 
-    Indbakken kan derfor UDSÆTTE, ikke slette. Et `drop` lukker rækken, men
-    beslutningen står uberørt i sin egen kilde, og næste registrering giver
-    den en ny post. Uden den egenskab ville indbakken være en vej til at
-    slippe for sin egen ansvarlighed.
+    Derfor registreres spejlet som ``done``. Et senere ``drop`` må hverken
+    ændre eller genåbne det, og en ny registrering skal forblive terminal.
     """
     from unittest.mock import patch
 
@@ -338,11 +337,14 @@ def test_et_DROP_kan_ikke_tie_en_beslutning(monkeypatch, tmp_path):
         g.registrer_i_indbakken("bjorn")
         assert inbox_state.drop("bjorn", "dec_krit", "ikke nu")["status"] == "ok"
         assert dbi.hent(bruger_id="bjorn",
-                        kilde_id="dec_krit")["status"] == dbi.STATUS_DROP
+                        kilde_id="dec_krit")["status"] == dbi.STATUS_DONE
         # KILDEN er uberoert — beslutningen staar stadig under taersklen.
         assert any(d["decision_id"] == "dec_krit" for d in beslutninger)
         # Og gaten naevner den fortsat.
         assert "dec_krit" in g.decision_adherence_section()
+        g.registrer_i_indbakken("bjorn")
+        assert dbi.hent(bruger_id="bjorn",
+                        kilde_id="dec_krit")["status"] == dbi.STATUS_DONE
 
 
 def test_en_FEJLENDE_kilde_vaelter_ikke_familie_tikket(monkeypatch, tmp_path):

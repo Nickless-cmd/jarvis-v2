@@ -38,12 +38,9 @@ def test_reasoning_recall_disabled_returns_standard_shape_without_db(monkeypatch
 
     result = reasoning_store.recall_reasoning(query_text="anything")
 
-    assert result == {
-        "status": "disabled",
-        "path": "reasoning_recall",
-        "results": [],
-        "count": 0,
-    }
+    assert result == reasoning_store.scoped_recall_policy.disabled_result(
+        "reasoning_recall"
+    )
 
 
 def test_reasoning_capture_event_contains_no_content_or_record_id(

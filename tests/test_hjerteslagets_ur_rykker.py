@@ -74,7 +74,6 @@ def test_recorderen_saetter_uret_et_helt_interval_frem(monkeypatch) -> None:
                         lambda name="default": {"enabled": True, "kill_switch": "enabled",
                                                 "interval_minutes": 15,
                                                 "budget_status": "bounded-internal-only"})
-    monkeypatch.setattr(h, "ensure_default_workspace", lambda name="default": None)
     monkeypatch.setattr(h, "get_heartbeat_runtime_state", lambda: {"state_id": "default"})
 
     h.record_phased_tick(name="default", trigger="scheduled",

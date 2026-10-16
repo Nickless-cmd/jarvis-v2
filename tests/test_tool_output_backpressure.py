@@ -202,12 +202,15 @@ async def test_mixed_stream_chunks_keep_global_sequence_order(monkeypatch):
 
 
 def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypatch):
-    from core.services import tool_execution_trace
-    from core.tools import simple_tools
-    from core.services import tool_concurrency
+    import importlib
+
+    executor = importlib.import_module("core.services.simple_tool_executor")
+    tool_execution_trace = importlib.import_module("core.services.tool_execution_trace")
+    simple_tools = importlib.import_module("core.tools.simple_tools")
+    tool_concurrency = importlib.import_module("core.services.tool_concurrency")
 
     monkeypatch.setattr(
-        simple_tool_executor,
+        executor,
         "_prepare_call",
         lambda tc, **_kwargs: ("run", {
             "name": tc["function"]["name"], "arguments": {},
@@ -215,13 +218,13 @@ def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypa
         }),
     )
     monkeypatch.setattr(
-        simple_tool_executor,
+        executor,
         "_finalize_call",
         lambda token, raw, **_kwargs: {"tool_name": token["name"], "status": "ok", "raw": raw},
     )
     monkeypatch.setattr(tool_concurrency, "is_parallelizable", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(tool_concurrency, "concurrency_mode", lambda: "on")
-    monkeypatch.setattr(simple_tool_executor, "_tag_checkpoint_hvis_redigering", lambda *_args: None)
+    monkeypatch.setattr(executor, "_tag_checkpoint_hvis_redigering", lambda *_args: None)
     boundaries = []
     monkeypatch.setattr(tool_execution_trace, "mark_dispatch", lambda call_id: boundaries.append(("start", call_id)))
     monkeypatch.setattr(tool_execution_trace, "mark_execution_complete", lambda call_id: boundaries.append(("end", call_id)))
@@ -236,7 +239,7 @@ def test_parallel_executor_binds_each_real_call_id_and_marks_boundaries(monkeypa
         {"id": "call-a", "function": {"name": "read_file", "arguments": {}}},
         {"id": "call-b", "function": {"name": "search", "arguments": {}}},
     ]
-    simple_tool_executor._execute_simple_tool_calls(calls, output_buffer=output)
+    executor._execute_simple_tool_calls(calls, output_buffer=output)
     assert {delta.tool_use_id for delta in output.drain()} == {"call-a", "call-b"}
     assert set(boundaries) == {
         ("start", "call-a"), ("end", "call-a"),
@@ -288,19 +291,22 @@ def test_output_fans_out_to_visible_buffer_and_job_hub(
 
 
 def test_approval_gate_does_not_close_execution_before_approved_run(monkeypatch):
-    from core.services import tool_execution_trace
-    from core.tools import simple_tools
-    from core.services import tool_concurrency
+    import importlib
 
-    monkeypatch.setattr(simple_tool_executor, "_prepare_call", lambda tc, **_kwargs: (
+    executor = importlib.import_module("core.services.simple_tool_executor")
+    tool_execution_trace = importlib.import_module("core.services.tool_execution_trace")
+    simple_tools = importlib.import_module("core.tools.simple_tools")
+    tool_concurrency = importlib.import_module("core.services.tool_concurrency")
+
+    monkeypatch.setattr(executor, "_prepare_call", lambda tc, **_kwargs: (
         "run", {"name": "bash", "arguments": {}, "signature": tc["id"],
                 "soft_warn": "", "run_id": "", "inbox_varsel": ""},
     ))
-    monkeypatch.setattr(simple_tool_executor, "_finalize_call", lambda _token, raw, **_kwargs: {
+    monkeypatch.setattr(executor, "_finalize_call", lambda _token, raw, **_kwargs: {
         "tool_name": "bash", "status": raw["status"], "result": raw,
     })
     monkeypatch.setattr(tool_concurrency, "is_parallelizable", lambda *_args, **_kwargs: False)
-    monkeypatch.setattr(simple_tool_executor, "_tag_checkpoint_hvis_redigering", lambda *_args: None)
+    monkeypatch.setattr(executor, "_tag_checkpoint_hvis_redigering", lambda *_args: None)
     boundaries = []
     monkeypatch.setattr(tool_execution_trace, "mark_dispatch",
                         lambda call_id: boundaries.append(("start", call_id)))
@@ -309,7 +315,7 @@ def test_approval_gate_does_not_close_execution_before_approved_run(monkeypatch)
     monkeypatch.setattr(simple_tools, "execute_tool",
                         lambda _name, _args: {"status": "approval_needed"})
 
-    simple_tool_executor._execute_simple_tool_calls([
+    executor._execute_simple_tool_calls([
         {"id": "call-approval", "function": {"name": "bash", "arguments": {}}},
     ])
     assert boundaries == [("start", "call-approval")]

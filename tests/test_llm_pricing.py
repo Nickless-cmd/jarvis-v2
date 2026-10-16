@@ -46,8 +46,8 @@ def test_unknown_cache_split_is_charged_as_miss():
     assert a == b
 
 
-def test_an_unknown_provider_is_free_not_guessed():
-    assert compute_cost_usd("ollama", "gemma4:31b-cloud", cache_miss_tokens=1_000_000) == 0.0
+def test_known_ollama_cloud_model_is_priced_but_unknown_model_is_not_guessed():
+    assert compute_cost_usd("ollama", "gemma4:31b-cloud", cache_miss_tokens=1_000_000) > 0.0
     assert compute_cost_usd("deepseek", "en-model-vi-ikke-kender", input_tokens=10_000) == 0.0
 
 

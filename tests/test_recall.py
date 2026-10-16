@@ -77,9 +77,8 @@ def test_recall_returns_ready_sources_as_partial_at_deadline():
 def test_disabled_recall_does_not_call_sources(monkeypatch):
     monkeypatch.setattr(R, "recall_enabled", lambda: False)
     with patch.dict(R.SOURCE_FUNCS, {"workspace": lambda *_: 1 / 0}, clear=True):
-        assert R.recall("private", sources=["workspace"]) == {
-            "status": "disabled", "path": "recall", "results": [], "count": 0,
-        }
+        from core.services.scoped_recall_policy import disabled_result
+        assert R.recall("private", sources=["workspace"]) == disabled_result("recall")
 
 
 def test_recall_empty_has_message_and_emits_event():

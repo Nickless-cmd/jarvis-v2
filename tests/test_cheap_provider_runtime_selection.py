@@ -179,7 +179,7 @@ def test_cheap_selection_excludes_paid(monkeypatch):
     monkeypatch.setattr(sel, "_configured_cheap_candidates", lambda **kw: list(fake))
     monkeypatch.setattr(sel, "_candidate_quota_snapshot", lambda c: {"blocked": False})
     monkeypatch.setattr(sel, "_candidate_adaptive_snapshot",
-                        lambda c: {"effective_priority": c.get("priority", 99), "adaptive_penalty": 0})
+                        lambda c, **_kw: {"effective_priority": c.get("priority", 99), "adaptive_penalty": 0})
     monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
                         lambda p: "paid" if p == "copilot-premium" else "free")
     t = sel.select_cheap_lane_target(task_kind="default")

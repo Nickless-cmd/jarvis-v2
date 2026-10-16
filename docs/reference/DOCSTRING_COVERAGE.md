@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9005/17220 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9006/17221 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9005/17220 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 825 | 1525 | 54% |
-| `core.services` | 6000 | 11704 | 51% |
+| `core.services` | 6001 | 11705 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2264,7 +2264,7 @@ Generated from source. 9005/17220 functions/methods documented (52%). The list b
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L919)
 - `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L205)
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
-- `core/services/visible_followup_results.py` :: `to_followup_results` (L35)
+- `core/services/visible_followup_results.py` :: `to_followup_results` (L39)
 - `core/services/visible_member_prompt.py` :: `build_member_prompt` (L30)
 - `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L402)
 - `core/services/visible_model.py` :: `available_provider_models` (L175)
@@ -2287,14 +2287,14 @@ Generated from source. 9005/17220 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6724)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6749)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6787)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6783)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6720)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6682)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6804)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6735)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6731)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6756)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6794)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6790)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6727)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6689)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6811)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6742)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

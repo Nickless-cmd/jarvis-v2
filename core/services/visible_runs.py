@@ -2168,6 +2168,7 @@ async def _stream_visible_run(
                 # gemte tur. Navnet bindes her, fordi begge kalde-steder nedenfor
                 # bruger det.
                 from core.services.visible_followup_results import (
+                    med_react_nudge as _med_react_nudge,
                     to_followup_results as _to_followup_results,
                 )
 
@@ -2178,12 +2179,16 @@ async def _stream_visible_run(
                 )
                 # Tur-akkumulering (first-pass native tools) — genbruger SAMME
                 # tool_calls + results som ToolExchange'en; side-effekt-frit.
+                #
+                # Den gemte tur faar den RENE liste (16/10-2026). Nudgen hoerer
+                # i prompt-kopien nedenfor: laa den her, blev den skrevet ind i
+                # `tool_result.content` og gjorde en JSON-streng ugyldig.
                 _turn.add_tools(_collected_native_tool_calls, _fp_followup_results)
                 _followup_exchanges: list[_vf.ToolExchange] = [
                     _vf.ToolExchange(
                         text="",
                         tool_calls=list(_collected_native_tool_calls),
-                        results=_fp_followup_results,
+                        results=_med_react_nudge(_fp_followup_results),
                         # Thinking-mode replay (Deepseek v4-pro/reasoner):
                         # the API rejects followups if reasoning_content from
                         # the prior assistant turn isn't sent back verbatim.
@@ -4631,6 +4636,8 @@ async def _stream_visible_run(
                     # ikke arbejde Jarvis valgte, og blok-byggeren flytter det
                     # op før hans afsluttende besked (målt 9/10-2026: 339 af
                     # 369 fyringer tvang et kald, overvejende bash/edit_file).
+                    # Den gemte tur faar den RENE liste; nudgen hoerer i
+                    # prompt-kopien nedenfor (16/10-2026).
                     _turn.add_tools(
                         _a_tool_calls, _a_followup_results,
                         forced=bool(_hollow_forced_this_round),
@@ -4640,7 +4647,7 @@ async def _stream_visible_run(
                             text=_exchange_text(),
                             tool_calls=list(_a_tool_calls),
                             reasoning_content=_a_round_reasoning,
-                            results=_a_followup_results,
+                            results=_med_react_nudge(_a_followup_results),
                         )
                     )
                     try:

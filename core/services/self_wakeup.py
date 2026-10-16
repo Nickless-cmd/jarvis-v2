@@ -540,10 +540,53 @@ def tick_wakeup_cleanup() -> dict[str, int]:
     return cleanup_old_wakeups()
 
 
+def _kun_denne_samtale(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen.
+
+    Målt 16/10-2026: en vækning booket fra samtale X (`wake-0352149b73`,
+    `session_id=chat-f6b595cd…`) dukkede op i awareness i samtale Y, fordi
+    Bjørn skrev sin næste besked dér. Svaret landede i Y — ikke i den samtale
+    vækningen pegede på, og som stod stille fra 16:55 til 17:18. Fra hans side
+    så det ud som om jeg ikke kom tilbage, mens arbejdet var gjort et andet
+    sted. Awareness-sektionen filtrerede ikke: den viste ALLE fyrede vækninger,
+    uanset hjem.
+
+    Dispatcheren (`wakeup_dispatcher.pick_wakeup_run_target`) leverer allerede
+    til vækningens eget hjem. Awareness i en FREMMED samtale stjal svaret fra
+    den. Reglen her spejler dispatcherens: hjemmet bestemmer.
+
+      * `session_id` sat og lig den aktuelle → vises.
+      * `session_id` sat og en ANDEN samtale → SKJULES. Dens eget hjem får
+        den; at vise den her ville flytte svaret væk fra det sted nogen venter.
+      * `session_id` tom (booket uden samtale-kontekst) → vises overalt. Den
+        har intet sted at vente, og at skjule den ville gøre den usynlig for
+        alle — værre end den støj den skulle undgå.
+      * Aktuel samtale ukendt (`""`, fx heartbeat) → ALT vises. Vi kan ikke
+        afgøre hjemmet, og en filtrering på et gæt er værre end ingen.
+    """
+    from core.identity.workspace_context import current_session_id
+
+    sid = str(current_session_id() or "").strip()
+    if not sid:
+        return records
+    ud: list[dict[str, Any]] = []
+    for r in records:
+        rsid = str(r.get("session_id") or "").strip()
+        if not rsid or rsid == sid:
+            ud.append(r)
+    return ud
+
+
 def self_wakeup_section() -> str | None:
-    """Awareness section showing fired-but-not-consumed wakeups."""
+    """Awareness section showing fired-but-not-consumed wakeups.
+
+    KUN dem der hører til DENNE samtale — se `_kun_denne_samtale`. En vækning
+    der peger på en anden samtale vises ikke her; dens svar hører der, og
+    dispatcheren leverer det dertil.
+    """
     fired = due_wakeups(include_fired_unconsumed=True)
     fired = [r for r in fired if str(r.get("status") or "") == "fired"]
+    fired = _kun_denne_samtale(fired)
     if not fired:
         return None
     lines = [f"⏰ Du planlagde {len(fired)} self-wakeup(s) der nu er klar:"]

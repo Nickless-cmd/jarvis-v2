@@ -1,6 +1,7 @@
 """Unit tests for self_wakeup."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -266,6 +267,70 @@ def test_section_lists_fired_wakeups(monkeypatch):
     assert section is not None
     assert "Tjek om brugeren er klar" in section
     assert "follow-up" in section
+
+
+# ── Vækningen hører til ÉN samtale (målt 16/10-2026) ─────────────────────
+
+
+@contextmanager
+def _i_samtale(sid: str):
+    """Sæt den aktuelle samtale for blokken — og ryd op bagefter."""
+    from core.identity import workspace_context as ws
+
+    tok = ws.set_session_id(sid)
+    try:
+        yield
+    finally:
+        ws._current_state.reset(tok)
+
+
+def _sektion(monkeypatch, records: list[dict]) -> str | None:
+    monkeypatch.setattr(sw, "due_wakeups", lambda **kw: records)
+    return sw.self_wakeup_section()
+
+
+def test_sektionen_skjuler_vaekninger_fra_en_ANDEN_samtale(monkeypatch):
+    """Målt 16/10-2026: `wake-0352149b73` pegede på `chat-f6b595cd…`, men
+    dukkede op i awareness i en ANDEN samtale — og svaret landede dér. Bjørn:
+    «du kom ikk tilbage?», mens arbejdet var gjort et andet sted.
+
+    En vækning der peger på en fremmed samtale må ikke vises her: dens svar
+    hører hjemme der nogen venter, og awareness her ville flytte det væk.
+    """
+    rec = [{"wakeup_id": "w1", "status": "fired", "prompt": "tjek CI",
+            "session_id": "chat-ANDEN"}]
+    with _i_samtale("chat-MIN"):
+        assert _sektion(monkeypatch, rec) is None
+
+
+def test_sektionen_viser_vaekningen_i_sit_eget_hjem(monkeypatch):
+    """Samme vækning, men i den samtale den peger på — der SKAL den vises."""
+    rec = [{"wakeup_id": "w1", "status": "fired", "prompt": "tjek CI",
+            "session_id": "chat-MIN"}]
+    with _i_samtale("chat-MIN"):
+        sektion = _sektion(monkeypatch, rec)
+    assert sektion is not None
+    assert "tjek CI" in sektion
+
+
+def test_hjemloes_vaekning_vises_i_enhver_samtale(monkeypatch):
+    """Uden `session_id` har vækningen intet sted at vente. At skjule den
+    ville gøre den usynlig for ALLE — værre end den støj filtreringen undgår.
+    """
+    rec = [{"wakeup_id": "w1", "status": "fired", "prompt": "hjemloes"}]
+    with _i_samtale("chat-MIN"):
+        sektion = _sektion(monkeypatch, rec)
+    assert sektion is not None
+    assert "hjemloes" in sektion
+
+
+def test_ukendt_samtale_viser_ALT(monkeypatch):
+    """Kan vi ikke afgøre hjemmet (`""`, fx et heartbeat-tick), må et gæt ikke
+    skjule noget. Filtreringen falder tilbage til den gamle adfærd."""
+    rec = [{"wakeup_id": "w1", "status": "fired", "prompt": "x",
+            "session_id": "chat-ANDEN"}]
+    with _i_samtale(""):
+        assert _sektion(monkeypatch, rec) is not None
 
 
 # ── Sjette fejl: kilden kan være terminal på en måde lukkeren ikke genkendte ──

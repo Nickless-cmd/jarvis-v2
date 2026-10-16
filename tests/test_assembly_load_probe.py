@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+from types import SimpleNamespace
 
 from core.services import assembly_load_probe as probe
 
@@ -39,34 +40,41 @@ def test_en_TRAVL_maaling_giver_hoejt_cpu_forhold():
     assert f["cpu_pr_sek"] > 0.7, f"arbejde blev maalt som ventetid: {f}"
 
 
-def test_forholdet_kan_overstige_1_naar_FLERE_traade_regner():
+def test_forholdet_kan_overstige_1_naar_FLERE_traade_regner(monkeypatch):
     """Over 1 betyder: noget ANDET end assemblyen regnede samtidig i
     processen. Det er netop den tilstand der firedoblede en assembly 4/10 —
     0,44 kerner samtidigt Python-arbejde, 2,0 s → 8,67 s."""
+    cpu = iter((10.0, 10.8))
+    vaegur = iter((20.0, 20.4))
+    monkeypatch.setattr(probe, "_proces_cpu_sek", lambda: next(cpu))
+    monkeypatch.setattr(
+        probe, "time", SimpleNamespace(monotonic=lambda: next(vaegur)))
+
+    f = _felter(probe.afslut(probe.start()))
+    assert f["cpu_pr_sek"] == 2.0, f
+
+
+def test_proben_ser_flere_aktive_traade():
+    """Trådfeltet måler samtidighed uden at antage noget om schedulerens CPU-tid."""
     stop = threading.Event()
+    startet = [threading.Event() for _ in range(3)]
 
-    def spin():
-        x = 0
-        while not stop.is_set():
-            x += 1
+    def vent(klar):
+        klar.set()
+        stop.wait(timeout=2)
 
-    traade = [threading.Thread(target=spin, daemon=True) for _ in range(3)]
+    traade = [threading.Thread(target=vent, args=(klar,), daemon=True)
+              for klar in startet]
     for tr in traade:
         tr.start()
-    t = probe.start()
-    t0 = time.monotonic()
-    y = 0
-    while time.monotonic() - t0 < 0.4:
-        y += 1
-    f = _felter(probe.afslut(t))
-    stop.set()
-    for tr in traade:
-        tr.join(timeout=1)
-    # GIL'en deler tiden mellem fire traade, saa forholdet naermer sig 1 og
-    # kan passere den naar flere kerner faar lov. Paastanden er at proben SER
-    # de andre traade — ikke en bestemt vaerdi.
-    assert f["traade"] >= 4, f"proben saa ikke de samtidige traade: {f}"
-    assert f["cpu_pr_sek"] > 0.7, f
+    try:
+        assert all(klar.wait(timeout=1) for klar in startet)
+        f = _felter(probe.afslut(probe.start()))
+        assert f["traade"] >= 4, f"proben saa ikke de samtidige traade: {f}"
+    finally:
+        stop.set()
+        for tr in traade:
+            tr.join(timeout=1)
 
 
 def test_den_baerer_maskinens_tilstand():

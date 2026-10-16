@@ -173,16 +173,33 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     # `skrevet_at` siger alt: 0 = turen er ikke landet endnu, 1 = forslaget
     # hoerer til svaret nederst, 2+ = samtalen er koert videre og buddet er
     # foraeldet. Se modul-docstringen i `db_composer_jarvis`.
+    #
+    # MEN foraeldelse alene rydder IKKE (maalt 16/10-2026). Et forslag der
+    # aldrig naaede skaermen er ikke foraeldet — det er UBESVARET. Maalt i
+    # drift: klienten hentede forslaget, viste det ikke (feltet var ikke tomt,
+    # svaret streamede), og ved naeste hentning ryddede foraeldelsen det. Et
+    # tilbud Bjørn aldrig fik. Rydningen spoerger derfor `er_vist` — samme
+    # skel som `chat_sessions._ryd_komponist_forslag`. Et uset forslag bliver
+    # derfor ved med at blive tilbudt indtil det ses; det hober sig ikke op,
+    # for `gem_forslag` holder hoejst ét pr. session.
     try:
         from core.runtime.db_composer_jarvis import kig_forslag, ryd_forslag
         eget = kig_forslag(session_id=sid)
         if eget:
             skrevet = str(eget.get("skrevet_at") or "")
             if skrevet and _svar_efter(sid, skrevet) >= 2:
-                # Foraeldet. Ryd raekken, saa den ikke bliver maalt igen og
-                # ikke ligger og fylder.
-                ryd_forslag(session_id=sid)
-                eget = None
+                # Foraeldet — men KUN hvis det blev SET. Fejler afgoerelsen,
+                # behandles det som USET: den sikre side er at rydde for lidt,
+                # ikke at tabe et tilbud der aldrig kom paa skaermen.
+                vis = False
+                try:
+                    from core.runtime.db_composer_choice import er_vist
+                    vis = er_vist(forslag_id=str(eget.get("forslag_id") or ""))
+                except Exception:
+                    logger.debug("composer_suggest: kunne ikke afgoere set/uset", exc_info=True)
+                if vis:
+                    ryd_forslag(session_id=sid)
+                    eget = None
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
         eget = None

@@ -106,6 +106,31 @@ def noter_vist(
     return True
 
 
+def er_vist(*, forslag_id: str) -> bool:
+    """Kom NETOP dette forslag på skærmen? (målt 16/10-2026)
+
+    Rækken opstår først når klienten melder `vist` — altså når teksten faktisk
+    står i feltet. Et forslag der blev hentet men aldrig vist (feltet var ikke
+    tomt, svaret streamede, sessionen skiftede) har derfor INGEN række.
+
+    Det er skellet bag `chat_sessions._ryd_komponist_forslag`: et SET forslag
+    er forældet når næste tur begynder, men et USET er ikke forældet — det er
+    ubesvaret, og at rydde det taber et tilbud Bjørn aldrig fik. Målt
+    16/10-2026: præcis det skete, fordi rydningen var ubetinget.
+
+    Ukendt/ugyldigt id giver False (behandl det som uset — den sikre side).
+    """
+    fid = (forslag_id or "").strip()
+    if not fid:
+        return False
+    with connect() as conn:
+        _sikr_tabel(conn)
+        raekke = conn.execute(
+            f"SELECT 1 FROM {_TABEL} WHERE forslag_id = ? LIMIT 1", (fid,)
+        ).fetchone()
+    return raekke is not None
+
+
 def noter_valg(*, forslag_id: str, valg: str, nu: str | None = None) -> bool:
     """Hvad der skete med forslaget. Returnerer False ved et ukendt valg.
 

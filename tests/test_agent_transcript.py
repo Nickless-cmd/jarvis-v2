@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from core.services.agent_transcript import (
-    AGENT_TRANSCRIPT_DIR,
+    transcript_dir,
     write_event,
     write_meta,
     write_lifecycle,
@@ -35,16 +35,22 @@ def agent_id() -> str:
 
 @pytest.fixture(autouse=True)
 def cleanup(agent_id: str):
-    """Ensure clean test directories before and after."""
-    if AGENT_TRANSCRIPT_DIR.exists():
-        for d in AGENT_TRANSCRIPT_DIR.iterdir():
-            if d.is_dir():
-                shutil.rmtree(d, ignore_errors=True)
+    """Ryd KUN testens EGEN mappe — og nægt at køre hvis roden er produktionen.
+
+    Fixturen ryddede tidligere HELE transcript-roden: hver undermappe, før og
+    efter hver test. Roden var hardcodet til ``~/.jarvis-v2`` ved import, så
+    conftest-skjoldet (der sætter ``JARVIS_HOME``) ikke dækkede den — og hver
+    kørsel af denne fil slettede produktionens agent-transskripter.
+
+    Målt 16/10-2026: en markør lagt i den ægte mappe overlevede ikke én kørsel.
+    """
+    root = transcript_dir()
+    aegte = Path("~/.jarvis-v2/state/agent_transcripts").expanduser()
+    assert root != aegte, f"transcript-roden peger paa PRODUKTIONEN: {root}"
+    d = root / agent_id
+    shutil.rmtree(d, ignore_errors=True)
     yield
-    if AGENT_TRANSCRIPT_DIR.exists():
-        for d in AGENT_TRANSCRIPT_DIR.iterdir():
-            if d.is_dir():
-                shutil.rmtree(d, ignore_errors=True)
+    shutil.rmtree(d, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +60,7 @@ def cleanup(agent_id: str):
 class TestWrite:
     def test_write_event_creates_dir_and_file(self, agent_id: str):
         write_event(agent_id, {"kind": "test", "data": 42})
-        path = AGENT_TRANSCRIPT_DIR / agent_id / "transcript.jsonl"
+        path = transcript_dir() / agent_id / "transcript.jsonl"
         assert path.exists()
         lines = path.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) == 1
@@ -72,7 +78,7 @@ class TestWrite:
 
     def test_write_meta_creates_sidecar(self, agent_id: str):
         write_meta(agent_id, {"role": "researcher", "goal": "test"})
-        path = AGENT_TRANSCRIPT_DIR / agent_id / "meta.json"
+        path = transcript_dir() / agent_id / "meta.json"
         assert path.exists()
         meta = json.loads(path.read_text(encoding="utf-8"))
         assert meta["role"] == "researcher"
@@ -138,7 +144,7 @@ class TestWrite:
 
     def test_sidechain_creates_file(self, agent_id: str):
         write_sidechain(agent_id, "researcher", "find stuff")
-        path = AGENT_TRANSCRIPT_DIR / agent_id / "sidechain.md"
+        path = transcript_dir() / agent_id / "sidechain.md"
         assert path.exists()
         text = path.read_text(encoding="utf-8")
         assert "researcher" in text
@@ -176,7 +182,7 @@ class TestListing:
         # list_transcripts returns [] when the transcript dir doesn't exist
         # The fixture ensures dir exists if any writes happened; this test
         # verifies the empty case by checking BEFORE any writes.
-        if not AGENT_TRANSCRIPT_DIR.exists():
+        if not transcript_dir().exists():
             assert list_transcripts() == []
         else:
             # dir exists from another test — skip this assertion
@@ -185,18 +191,21 @@ class TestListing:
     def test_list_transcripts_returns_meta(self, agent_id: str):
         write_meta(agent_id, {"role": "researcher"})
         result = list_transcripts(limit=5)
-        assert len(result) == 1
+        # JARVIS_HOME-skjoldet deles af hele pytest-sessionen. Cleanup må kun
+        # fjerne denne tests agentmappe, så andre legitime transskripter kan
+        # stadig ligge i roden ved en fuld kørsel.
+        assert result
         assert result[0]["role"] == "researcher"
 
     def test_list_transcripts_fallback_when_no_meta(self, agent_id: str):
         """If meta.json is missing, fallback to just agent_id."""
-        (AGENT_TRANSCRIPT_DIR / agent_id).mkdir(parents=True, exist_ok=True)
+        (transcript_dir() / agent_id).mkdir(parents=True, exist_ok=True)
         result = list_transcripts()
         assert any(r.get("agent_id") == agent_id for r in result)
 
     def test_prune_removes_old(self, agent_id: str):
         write_meta(agent_id, {"role": "old"})
-        d = AGENT_TRANSCRIPT_DIR / agent_id
+        d = transcript_dir() / agent_id
         assert d.exists()
         # max_age_days=0 prunes everything older than *now*.
         # Since the transcript was just created, mtime ≈ now,

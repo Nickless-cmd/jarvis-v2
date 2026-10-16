@@ -99,3 +99,29 @@ def test_valgene_kan_hentes_pr_SESSION(isolated_runtime):
     _vis(fid="cs-a", sid="s1")
     _vis(fid="cs-b", sid="s2")
     assert [r["forslag_id"] for r in dc.seneste_valg(session_id="s2")] == ["cs-b"]
+
+
+def test_er_vist_skelner_set_fra_uset(isolated_runtime):
+    """Skellet bag ryd-ved-ny-tur (maalt 16/10-2026).
+
+    Et forslag der blev hentet men aldrig kom paa skaermen har INGEN raekke —
+    raekken opstaar foerst naar klienten melder `vist`. Det er praecis den
+    forskel `chat_sessions._ryd_komponist_forslag` bruger til at afgoere om et
+    forslag er foraeldet (set) eller ubesvaret (uset).
+    """
+    _vis(fid="cs-set", sid="s1")
+    assert dc.er_vist(forslag_id="cs-set") is True
+    assert dc.er_vist(forslag_id="cs-aldrig-hentet") is False
+    assert dc.er_vist(forslag_id="") is False, "tomt id = uset, den sikre side"
+    assert dc.er_vist(forslag_id="   ") is False
+
+
+def test_er_vist_er_sand_ogsaa_efter_et_terminalt_valg(isolated_runtime):
+    """Et forslag der blev set og derefter taget, er stadig SET.
+
+    Ryd-reglen spoerger «kom det paa skaermen?», ikke «hvad valgte han?». Et
+    accepteret forslag er set og skal ryddes naar naeste tur begynder.
+    """
+    _vis(fid="cs-taget", sid="s1")
+    dc.noter_valg(forslag_id="cs-taget", valg="accepteret")
+    assert dc.er_vist(forslag_id="cs-taget") is True

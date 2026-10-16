@@ -57,12 +57,14 @@ class _RunSpy:
         origin: str = "autonomous",
         task_id: str = "",
     ) -> None:
-        self.calls.append({
-            "message": message,
-            "session_id": session_id,
-            "origin": origin,
-            "task_id": task_id,
-        })
+        self.calls.append(
+            {
+                "message": message,
+                "session_id": session_id,
+                "origin": origin,
+                "task_id": task_id,
+            }
+        )
 
     @property
     def started(self) -> bool:
@@ -291,6 +293,42 @@ def test_e2e_extra_flows_into_dispatched_directive(e2e):
 
     assert e2e.spy.started is True
     assert "Tilføjelse: husk også X" in e2e.spy.calls[0]["message"]
+
+
+def test_e2e_task_id_flows_into_dispatched_run(e2e):
+    """Vækningens opgave-id skal følge med hele vejen ind i runnet.
+
+    Målt 16/10-2026: spionen i denne fil manglede `task_id`, mens produktions-
+    signaturen har haft den siden 14/10. Kalderen fejlede med `unexpected
+    keyword argument`, fejlen blev slugt i dispatcherens `except Exception`,
+    og fire tests så ud som om runnet aldrig startede. Test-doublen var
+    forældet — ikke kæden. Uden denne test kunne den drive igen uden at nogen
+    så det.
+    """
+    rcs._set_active_visible_run({})          # ingen aktiv tur
+    rec = _plant_wakeup(e2e.store, session_id="chat-e2e")
+    rec["task_id"] = "opg-e2e"
+
+    je.enqueue_job(job_type="wakeup_dispatch", payload={"reason": "e2e"}, priority=8)
+    _drain_queue()
+
+    assert e2e.spy.started is True
+    assert e2e.spy.calls[0]["task_id"] == "opg-e2e", (
+        "opgavens id skal følge vækningen ind i runnet — ellers ved starteren "
+        "ikke hvad den fortsætter i stedet for at gætte"
+    )
+
+
+def test_e2e_uden_task_id_sender_TOM_streng(e2e):
+    """En vækning uden opgave-id sender `""` — ikke `None`, ikke et gæt."""
+    rcs._set_active_visible_run({})
+    _plant_wakeup(e2e.store, session_id="chat-e2e")   # ingen task_id
+
+    je.enqueue_job(job_type="wakeup_dispatch", payload={"reason": "e2e"}, priority=8)
+    _drain_queue()
+
+    assert e2e.spy.started is True
+    assert e2e.spy.calls[0]["task_id"] == ""
 
 
 def test_e2e_queue_is_really_used(e2e):

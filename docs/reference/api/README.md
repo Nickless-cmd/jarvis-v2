@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17223 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17232 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -78,8 +78,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17223 functions/
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `identity_formation_monitor`
 - [`scripts.02`](scripts.02.md) — `injection_richness_check` … `nudge_well_cleanup`
-- [`scripts.03`](scripts.03.md) — `peer_models` … `verify_silent_except`
-- [`scripts.04`](scripts.04.md) — `verify_sqlite_schema` … `verify_vagt_graenser`
+- [`scripts.03`](scripts.03.md) — `peer_models` … `verify_persistens`
+- [`scripts.04`](scripts.04.md) — `verify_silent_except` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

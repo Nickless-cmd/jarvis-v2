@@ -668,9 +668,10 @@ _Hvad Bjørn gjorde ved komponistens forslag — tog han det, eller skrev han se
 |---|---|---|---|---|
 | function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_choice.py#L53) |
 | function | `noter_vist` | `(*, forslag_id, session_id, forslag, kilde_besked_id=…, nu=…)` | Forslaget kom på skærmen. Returnerer False hvis kaldet var ubrugeligt. | [src](../../../core/runtime/db_composer_choice.py#L72) |
-| function | `noter_valg` | `(*, forslag_id, valg, nu=…)` | Hvad der skete med forslaget. Returnerer False ved et ukendt valg. | [src](../../../core/runtime/db_composer_choice.py#L109) |
-| function | `seneste_valg` | `(*, session_id=…, limit=…)` | De seneste forslag og hvad der skete med dem. Til fase 3 og til at kigge. | [src](../../../core/runtime/db_composer_choice.py#L135) |
-| function | `optaelling` | `(*, session_id=…)` | Hvor mange forslag endte hvor. Grundlaget for «virker det?». | [src](../../../core/runtime/db_composer_choice.py#L153) |
+| function | `er_vist` | `(*, forslag_id)` | Kom NETOP dette forslag på skærmen? (målt 16/10-2026) | [src](../../../core/runtime/db_composer_choice.py#L109) |
+| function | `noter_valg` | `(*, forslag_id, valg, nu=…)` | Hvad der skete med forslaget. Returnerer False ved et ukendt valg. | [src](../../../core/runtime/db_composer_choice.py#L134) |
+| function | `seneste_valg` | `(*, session_id=…, limit=…)` | De seneste forslag og hvad der skete med dem. Til fase 3 og til at kigge. | [src](../../../core/runtime/db_composer_choice.py#L160) |
+| function | `optaelling` | `(*, session_id=…)` | Hvor mange forslag endte hvor. Grundlaget for «virker det?». | [src](../../../core/runtime/db_composer_choice.py#L178) |
 
 ## `core/runtime/db_composer_jarvis.py`
 _Jarvis' EGET forslag til Bjørns næste besked — skrevet i hans egen tur._

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9009/17223 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9017/17232 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 827 | 1527 | 54% |
-| `core.services` | 6001 | 11705 | 51% |
+| `core.runtime` | 828 | 1528 | 54% |
+| `core.services` | 6004 | 11708 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 284 | 615 | 46% |
+| `scripts` | 288 | 620 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2575)
+## Undocumented public functions (2576)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -815,7 +815,7 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 - `core/services/agentic_working_conclusions.py` :: `latest_for_session` (L55)
 - `core/services/agentic_working_conclusions.py` :: `update_working_conclusion` (L27)
 - `core/services/agentic_working_conclusions.py` :: `working_conclusion_prompt_section` (L73)
-- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L335)
+- `core/services/ambient_sound_daemon.py` :: `build_ambient_sound_surface` (L357)
 - `core/services/anthropic_identity.py` :: `invalidate_cache` (L62)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.begin_message` (L38)
 - `core/services/anthropic_sse_emitter.py` :: `AnthropicSSEEmitter.end_message` (L137)
@@ -1000,12 +1000,12 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 - `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L826)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L848)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1643)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1274)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1595)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1627)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1665)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1296)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1617)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1649)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1197,8 +1197,8 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
 - `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L267)
-- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L879)
-- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L875)
+- `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
+- `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)
 - `core/services/dream_distillation_daemon.py` :: `clear_expired_dream_residue` (L187)
 - `core/services/dream_distillation_daemon.py` :: `get_dream_residue_for_prompt` (L150)
@@ -1412,9 +1412,9 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 - `core/services/malware_scan.py` :: `ScanReport.as_dict` (L30)
 - `core/services/malware_scan.py` :: `ScanReport.safe` (L27)
 - `core/services/malware_scan.py` :: `clamav_available` (L35)
-- `core/services/mcp_auth.py` :: `get_token` (L54)
-- `core/services/mcp_auth.py` :: `needs_refresh` (L81)
-- `core/services/mcp_auth.py` :: `set_token` (L59)
+- `core/services/mcp_auth.py` :: `get_token` (L75)
+- `core/services/mcp_auth.py` :: `needs_refresh` (L102)
+- `core/services/mcp_auth.py` :: `set_token` (L80)
 - `core/services/mcp_client.py` :: `MCPClient.call_tool` (L238)
 - `core/services/mcp_client.py` :: `MCPClient.connected` (L135)
 - `core/services/mcp_client.py` :: `MCPClient.disconnect` (L121)
@@ -2608,6 +2608,7 @@ Generated from source. 9009/17223 functions/methods documented (52%). The list b
 - `scripts/verify_guard_tests.py` :: `main` (L69)
 - `scripts/verify_history_reads.py` :: `fund_i_fil` (L54)
 - `scripts/verify_history_reads.py` :: `main` (L92)
+- `scripts/verify_memory_status.py` :: `main` (L192)
 - `scripts/verify_notes.py` :: `fejl_i` (L50)
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)

@@ -21,8 +21,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-AGENT_TRANSCRIPT_DIR = Path("~/.jarvis-v2/state/agent_transcripts").expanduser()
 EAGER_FLUSH = True
+
+
+def transcript_dir() -> Path:
+    """Transcript-roden — løst ved KALDSTID, ikke ved import.
+
+    Læser ``JARVIS_HOME`` gennem ``workspace_paths._jarvis_home()``, så
+    conftest-skjoldet (som sætter netop den variabel) dækker mappen. Stien blev
+    tidligere beregnet ved import og var derfor usynlig for skjoldet — med den
+    følge at ``tests/test_agent_transcript.py``s cleanup-fixture ryddede
+    PRODUKTIONENS transskripter ved hver kørsel.
+
+    Målt 16/10-2026: mappen stod tom (40.960 bytes på en tom mappe = mange
+    fjernede undermapper), sidste tømning 12:55:41, og en markør overlevede
+    ikke én kørsel af testfilen.
+
+    Produktions-adfærden er uændret: uden ``JARVIS_HOME`` giver den
+    ``~/.jarvis-v2/state/agent_transcripts``, præcis som før.
+    """
+    from core.runtime.workspace_paths import _jarvis_home
+    return _jarvis_home() / "state" / "agent_transcripts"
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +49,7 @@ EAGER_FLUSH = True
 # ---------------------------------------------------------------------------
 
 def _agent_dir(agent_id: str) -> Path:
-    return AGENT_TRANSCRIPT_DIR / agent_id
+    return transcript_dir() / agent_id
 
 
 def _ensure_dir(agent_id: str) -> Path:
@@ -168,11 +187,11 @@ def load_events_by_kind(agent_id: str, kind: str) -> list[dict[str, Any]]:
 
 def list_transcripts(limit: int = 20) -> list[dict[str, Any]]:
     """List available agent transcripts with metadata, newest-first."""
-    if not AGENT_TRANSCRIPT_DIR.exists():
+    if not transcript_dir().exists():
         return []
     results: list[dict[str, Any]] = []
     entries = sorted(
-        AGENT_TRANSCRIPT_DIR.iterdir(),
+        transcript_dir().iterdir(),
         key=lambda p: (p.stat().st_mtime if p.is_dir() else 0),
         reverse=True,
     )
@@ -195,12 +214,12 @@ def prune_old_transcripts(max_age_days: int = 7) -> int:
 
     Returns the number of directories removed.
     """
-    if not AGENT_TRANSCRIPT_DIR.exists():
+    if not transcript_dir().exists():
         return 0
     now = time.time()
     cutoff = now - max_age_days * 86400
     removed = 0
-    for d in list(AGENT_TRANSCRIPT_DIR.iterdir()):
+    for d in list(transcript_dir().iterdir()):
         if d.is_dir() and d.stat().st_mtime < cutoff:
             import shutil
             shutil.rmtree(d)
@@ -302,9 +321,9 @@ def resume_from_transcript(agent_id: str) -> dict[str, Any] | None:
 
 def list_agents(limit: int = 20) -> list[dict[str, Any]]:
     """Seneste agenter med transkript, nyeste foerst."""
-    if not AGENT_TRANSCRIPT_DIR.exists():
+    if not transcript_dir().exists():
         return []
-    mapper = [d for d in AGENT_TRANSCRIPT_DIR.iterdir() if d.is_dir()]
+    mapper = [d for d in transcript_dir().iterdir() if d.is_dir()]
     mapper.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     ud: list[dict[str, Any]] = []
     for d in mapper[: max(1, int(limit or 20))]:

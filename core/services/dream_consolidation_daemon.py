@@ -817,6 +817,7 @@ def consolidate_now() -> dict[str, Any] | None:
             "hypothesis": bool(artifacts.get("hypothesis")),
             "chronicle": bool(artifacts.get("chronicle")),
             "dream_note": bool(artifacts.get("dream_note")),
+            "reason": (synthesis or {}).get("reason", ""),
         },
     }
     data = _load()

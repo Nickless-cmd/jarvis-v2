@@ -23,7 +23,27 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-TOKENS_PATH = Path("~/.jarvis-v2/config/mcp_tokens.json").expanduser()
+
+def tokens_path() -> Path:
+    """Token-filen — løst ved KALDSTID, ikke ved import.
+
+    Læser ``JARVIS_HOME`` gennem ``workspace_paths._jarvis_home()``, så
+    conftest-skjoldet (som sætter netop den variabel) dækker filen. Stien var
+    tidligere en import-tids-konstant med ``~/.jarvis-v2`` hardcodet — samme
+    fejlform som ``agent_transcript`` havde, hvor den gjorde skjoldet
+    virkningsløst og lod en test rydde produktionen.
+
+    Her er risikoen en anden og større: filen bærer OAuth-tokens. En test der
+    skrev gennem ``set_token`` uden at overskrive konstanten ville skrive
+    hemmeligheder ind i produktionens token-lager — eller overskrive dem.
+
+    Produktions-adfærden er uændret: uden ``JARVIS_HOME`` giver den
+    ``~/.jarvis-v2/config/mcp_tokens.json``, præcis som før.
+    """
+    from core.runtime.workspace_paths import _jarvis_home
+    return _jarvis_home() / "config" / "mcp_tokens.json"
+
+
 _ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 # Foernyer lidt FOER udloeb — et token der udloeber mens requesten er i luften
 # giver en 401 vi kunne have undgaaet.
@@ -37,16 +57,17 @@ def _expand_env(value: Any) -> str:
 
 def _load() -> dict[str, Any]:
     try:
-        return json.loads(TOKENS_PATH.read_text(encoding="utf-8"))
+        return json.loads(tokens_path().read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
 def _save(data: dict[str, Any]) -> None:
     try:
-        TOKENS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        TOKENS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        os.chmod(TOKENS_PATH, 0o600)
+        sti = tokens_path()
+        sti.parent.mkdir(parents=True, exist_ok=True)
+        sti.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.chmod(sti, 0o600)
     except Exception:
         logger.warning("mcp_auth: kunne ikke gemme tokens", exc_info=True)
 

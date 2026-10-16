@@ -985,18 +985,47 @@ export function ChatScreen({
   // der gaelder nu — ikke dem der gjaldt da provideren blev monteret.
   sendNuRef.current = (t: string) => sendNu(t)
 
+  // Skub en tekst ind i det KØRENDE run i stedet for at starte et nyt. Delt af
+  // komponistens «Send nu» og af kortets svar: begge steder er teksten en
+  // fortsættelse af et run der allerede kører — ikke en ny besked.
+  const steerAktivtRun = async (tekst: string) => {
+    if (!config) throw new Error('Forbindelsen er ikke klar')
+    const runId = stream.state.activeRunId || activeRunId
+    if (!runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+    await steerRun(config, runId, tekst)
+  }
+
   const followups = useFollowupQueue({
     sessionId: sessions.activeId,
     busy: stream.state.status === 'working' || serverBusy,
     online: connectivity !== 'offline',
     send: (item) => sendNu(item.text, item.attachmentIds, item.controls, item.attachmentBlocks),
-    steer: async (item) => {
-      if (!config) throw new Error('Forbindelsen er ikke klar')
-      const runId = stream.state.activeRunId || activeRunId
-      if (!runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
-      await steerRun(config, runId, item.text)
-    },
+    steer: (item) => steerAktivtRun(item.text),
   })
+
+  // Et svar på et spørgsmål er ikke en NY besked — det er afslutningen på det
+  // run der stillede spørgsmålet.
+  //
+  // Gik det gennem `ensureSessionAndSend`, blev det lagt i followup-KØEN,
+  // fordi `busy` er sand netop mens runnet venter på svaret. Og køen tømmes
+  // først når `busy` falder — men runnet venter på netop dét svar. Svaret
+  // kunne derfor aldrig leveres (målt 16/10-2026 på Bjørns telefon: kortet
+  // stod, knappen sagde «Sender…», og der skete ingenting).
+  //
+  // Den gamle test kunne ikke se fejlen: dens stream-status var `error`, altså
+  // ikke-busy. Virkelighedens tilstand er `working` — runnet venter.
+  //
+  // Steer-vejen er den rigtige her: teksten skubbes ind i det ventende run i
+  // stedet for at vente på et run der venter på den.
+  const answerPauseAsk = async (answer: string) => {
+    if (!config) throw new Error('Forbindelsen er ikke klar')
+    const busy = stream.state.status === 'working' || serverBusy
+    if (busy && (stream.state.activeRunId || activeRunId)) {
+      await steerAktivtRun(answer)
+      return
+    }
+    await ensureSessionAndSend(answer)
+  }
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
   const _voiceExtract = (blocks: ContentBlock[]) =>
@@ -1352,7 +1381,7 @@ export function ChatScreen({
           <PauseAndAskCard
             key={pendingPauseAsk.question}
             ask={pendingPauseAsk}
-            onAnswer={ensureSessionAndSend}
+            onAnswer={answerPauseAsk}
           />
         ) : null}
         </View>

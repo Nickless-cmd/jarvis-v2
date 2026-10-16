@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9010/17224 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9011/17225 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9010/17224 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 827 | 1527 | 54% |
-| `core.services` | 6002 | 11706 | 51% |
+| `core.services` | 6003 | 11707 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1412,9 +1412,9 @@ Generated from source. 9010/17224 functions/methods documented (52%). The list b
 - `core/services/malware_scan.py` :: `ScanReport.as_dict` (L30)
 - `core/services/malware_scan.py` :: `ScanReport.safe` (L27)
 - `core/services/malware_scan.py` :: `clamav_available` (L35)
-- `core/services/mcp_auth.py` :: `get_token` (L54)
-- `core/services/mcp_auth.py` :: `needs_refresh` (L81)
-- `core/services/mcp_auth.py` :: `set_token` (L59)
+- `core/services/mcp_auth.py` :: `get_token` (L75)
+- `core/services/mcp_auth.py` :: `needs_refresh` (L102)
+- `core/services/mcp_auth.py` :: `set_token` (L80)
 - `core/services/mcp_client.py` :: `MCPClient.call_tool` (L238)
 - `core/services/mcp_client.py` :: `MCPClient.connected` (L135)
 - `core/services/mcp_client.py` :: `MCPClient.disconnect` (L121)

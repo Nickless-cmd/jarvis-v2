@@ -57,14 +57,15 @@ _OAuth/bearer til remote MCP-servere._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L33) |
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L38) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L45) |
-| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
-| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
-| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
-| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L96) |
-| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L122) |
+| function | `tokens_path` | `()` | Token-filen — løst ved KALDSTID, ikke ved import. | [src](../../../core/services/mcp_auth.py#L27) |
+| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L53) |
+| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L58) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L65) |
+| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L75) |
+| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L80) |
+| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L102) |
+| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L117) |
+| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L143) |
 
 ## `core/services/mcp_client.py`
 _MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._

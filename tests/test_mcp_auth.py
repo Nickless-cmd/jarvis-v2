@@ -12,7 +12,17 @@ from core.services import mcp_auth
 
 @pytest.fixture(autouse=True)
 def _egen_fil(tmp_path, monkeypatch):
-    monkeypatch.setattr(mcp_auth, "TOKENS_PATH", tmp_path / "mcp_tokens.json")
+    """Peger token-filen paa ``tmp_path`` gennem FUNKTIONEN, ikke en konstant.
+
+    ``TOKENS_PATH`` blev beregnet ved import og hardcodede ``~/.jarvis-v2``, saa
+    ``JARVIS_HOME``-skjoldet i conftest ikke daekkede den. Fixturen holdt
+    ulykken vaek her — men kun fordi den findes. Enhver ANDEN test der kaldte
+    ``set_token`` uden at overskrive konstanten skrev i produktionens
+    token-lager. Rettet 16/10-2026 til kaldstids-oplosning, samme form som
+    ``agent_transcript.transcript_dir()``.
+    """
+    fil = tmp_path / "mcp_tokens.json"
+    monkeypatch.setattr(mcp_auth, "tokens_path", lambda: fil)
     yield
 
 
@@ -26,7 +36,7 @@ def test_gemt_token_kan_laeses_igen():
 def test_filen_er_kun_laesbar_for_ejeren():
     import os
     mcp_auth.set_token("s", access_token="abc")
-    assert oct(os.stat(mcp_auth.TOKENS_PATH).st_mode)[-3:] == "600"
+    assert oct(os.stat(mcp_auth.tokens_path()).st_mode)[-3:] == "600"
 
 
 def test_ukendt_server_har_intet_token():

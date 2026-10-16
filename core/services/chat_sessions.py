@@ -812,15 +812,37 @@ def set_session_workspace(session_id: str, *, kind: str | None, root: str | None
 
 
 def _ryd_komponist_forslag(session_id: str) -> None:
-    """Ryd komponistens forslag naar en NY TUR begynder.
+    """Ryd komponistens forslag naar en NY TUR begynder — MEN KUN hvis det blev SET.
+
+    Bjoern 7/10-2026: «dine suggested next task skal altid nulstilles i
+    composer naar en ny tur starter, ellers haenger gamle ved over mange
+    beskeder». Den regel staar ved magt — for et forslag han SAA.
+
+    Maalt 16/10-2026: rydningen var UBETINGET, og et forslag der aldrig naaede
+    skaermen forsvandt med den. Det skete for et forslag lagt 15:55 og ryddet
+    16:15 — tyve minutter senere, uden at klienten nogensinde havde hentet det
+    (nul raekker i `composer_choices` for sessionen). Et USET forslag er ikke
+    foraeldet; det er ubesvaret, og at rydde det taber et tilbud han aldrig fik.
+
+    Skellet findes allerede: klienten melder `vist` naar teksten staar i feltet
+    (`Composer.tsx`), og `composer_choices` baerer raekken. Er den der, er
+    forslaget set og skal ryddes. Er den ikke, ligger forslaget til
+    foraeldelses-reglen i `foreslaa_naeste_detaljer` tager det (2+ assistent-svar
+    efter `skrevet_at`) — den rydder ogsaa usete forslag, saa intet hober sig op.
 
     Egen funktion, saa kaldestedet i `append_chat_message` kan holde sit `try`
     til ÉN sætning (se `scripts/verify_silent_except.py`) — og saa den tunge
     import bliver liggende hvor den hoerer: lokalt ved kaldet, ikke ved
     modul-load.
     """
-    from core.runtime.db_composer_jarvis import ryd_forslag
-    ryd_forslag(session_id=session_id)
+    from core.runtime.db_composer_choice import er_vist
+    from core.runtime.db_composer_jarvis import kig_forslag, ryd_forslag
+
+    eget = kig_forslag(session_id=session_id)
+    if not eget:
+        return
+    if er_vist(forslag_id=str(eget.get("forslag_id") or "")):
+        ryd_forslag(session_id=session_id)
 
 
 def append_chat_message(

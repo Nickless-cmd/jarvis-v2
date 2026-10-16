@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pytest
 
+from core.runtime import db_composer_choice as dc
 from core.runtime import db_composer_jarvis as dj
 from core.services import composer_suggest as cs
 
@@ -337,13 +338,44 @@ def test_en_ny_tur_rydder_forslaget_ved_START(isolated_runtime):
     et tidsvindue — og derfor ryddes forslaget dér, i append-vejen. Begge flader
     (desk og mobil) laeser samme raekke gennem `/composer/suggest`, saa rydningen
     rammer dem begge uden at nogen af dem skal huske noget selv.
+
+    Gælder for et forslag han SAA. `vist`-raekken meldes af klienten naar
+    teksten staar i feltet (`Composer.tsx`), og det er den der afgoer skellet
+    (se testen nedenfor for det modsatte tilfaelde).
     """
     from core.services.chat_sessions import append_chat_message, create_chat_session
 
     sid = str(create_chat_session(title="ny tur")["id"])
-    dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
+    fid = dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
     assert dj.kig_forslag(session_id=sid) is not None
+    dc.noter_vist(forslag_id=fid, session_id=sid, forslag="fra Jarvis")
 
     append_chat_message(session_id=sid, role="user", content="naeste opgave, tak")
 
-    assert dj.kig_forslag(session_id=sid) is None, "en ny tur skal rydde forslaget"
+    assert dj.kig_forslag(session_id=sid) is None, "en ny tur skal rydde et SET forslag"
+
+
+def test_en_ny_tur_rydder_IKKE_et_forslag_der_aldrig_blev_set(isolated_runtime):
+    """Et USET forslag er ikke foraeldet — det er ubesvaret (maalt 16/10-2026).
+
+    Rydningen var ubetinget, og et forslag der aldrig naaede skaermen forsvandt
+    med den: lagt 15:55, ryddet 16:15 — tyve minutter senere, uden at klienten
+    nogensinde havde hentet det (nul raekker i `composer_choices` for
+    sessionen). Bjørn spurgte selv efter hvad det havde vaeret.
+
+    Uden en `vist`-raekke skal forslaget derfor OVERLEVE turen. Det hober sig
+    ikke op: `gem_forslag` holder hoejst ét pr. session, og foraeldelses-reglen
+    i `foreslaa_naeste_detaljer` rydder ogsaa usete forslag naar samtalen er
+    koert videre (2+ assistent-svar efter `skrevet_at`).
+    """
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+
+    sid = str(create_chat_session(title="uset")["id"])
+    dj.gem_forslag(session_id=sid, forslag="fra Jarvis")
+    assert dc.optaelling(session_id=sid)["vist"] == 0, "ingen vist-raekke endnu"
+
+    append_chat_message(session_id=sid, role="user", content="naeste opgave, tak")
+
+    assert dj.kig_forslag(session_id=sid) is not None, (
+        "et forslag der ALDRIG kom paa skaermen maa ikke ryddes af en ny tur"
+    )

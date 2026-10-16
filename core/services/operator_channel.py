@@ -251,7 +251,16 @@ def er_agent_koersel() -> bool:
     Bjørns egen kanal i det stille.
     """
     try:
-        from core.runtime.db_agent_lease import current_assignment_id
+        from core.runtime.db_agent_lease import (
+            current_assignment_id, er_i_agent_koersel,
+        )
+        # Maerket foerst (16/10-2026): det svarer «er jeg inde i en
+        # agent-koersel?» og afhaenger IKKE af at leasen er gyldig i dette
+        # oejeblik. `current_assignment_id()` falder til "" naar leasen er
+        # udloebet eller et DB-hikke rammer tjekket — og saa ville vaernet
+        # lukke sig selv op, praecis naar agenten rydder op.
+        if er_i_agent_koersel():
+            return True
         return bool(str(current_assignment_id() or "").strip())
     except Exception:
         logger.warning("operator_channel: agent-skellet kunne ikke afgøres", exc_info=True)

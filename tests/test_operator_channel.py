@@ -121,6 +121,56 @@ def test_agent_skellet_fejler_til_neutral(monkeypatch):
     assert oc.er_agent_koersel() is False
 
 
+def test_agent_skellet_holder_naar_leasen_er_tabt(monkeypatch):
+    """Skellet maa ikke slukke sig selv naar leasen mister sin gyldighed.
+
+    Maalt 16/10-2026: `er_agent_koersel` spurgte `current_assignment_id()`, og
+    den falder til "" naar `scope_is_current()` er falsk — altsaa naar leasen
+    er udloebet, frigivet, eller et DB-hikke fik den behandlet som mistet.
+    Praecis i det oejeblik ville vaernet lukke sig OP: agentens bash gik til
+    Bjoerns skrivebord, fordi skellet ikke laengere kunne se at kalderen var en
+    agent. Maerket svarer uafhaengigt af leasen.
+    """
+    from core.runtime.db_agent_lease import agent_koersel_marker
+
+    oc.open_channel("s1", is_owner=True)
+    # Leasen er vaek — det er praecis tilstanden der foer slog vaernet fra.
+    monkeypatch.setattr("core.runtime.db_agent_lease.current_assignment_id",
+                        lambda: "")
+    kaldt = []
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda n, a: kaldt.append(n) or {"status": "ok"})
+    with agent_koersel_marker():
+        assert oc.maybe_reroute_bash("ls", None, is_owner=True,
+                                     session_id="s1") is None
+    assert kaldt == [], "agentens bash maa ikke ramme Bjoerns maskine uden gyldig lease"
+
+
+def test_agent_koerselen_maerker_sig_selv_uden_assignment(monkeypatch):
+    """Maerket saettes UBETINGET — ogsaa for en legacy-agent uden lease.
+
+    `agent_lease_scope` er en no-op naar agenten ikke har et aabent assignment
+    (`open_assignment_for_agent` → None). Uden dette maerke ville skellet staa
+    paa `current_assignment_id()`, som ogsaa er tom der — og agenten ville
+    kunne slippe ud paa Bjoerns maskine.
+    """
+    from core.runtime.db_agent_lease import er_i_agent_koersel
+    from core.services import agent_runtime_spawn as sp
+
+    monkeypatch.setattr("core.runtime.db_agent_outcome_unknown.is_blocked",
+                        lambda _a: False)
+    monkeypatch.setattr("core.services.agent_activation.ensure_activation",
+                        lambda *_a, **_k: {"status": "ok"})
+    monkeypatch.setattr("core.services.scout_inbox_delivery.record_scout_completion",
+                        lambda _s: None)
+    set_under: list[bool] = []
+    monkeypatch.setattr(
+        sp, "_execute_agent_task_impl",
+        lambda **_kw: set_under.append(er_i_agent_koersel()) or {"agent_id": "x"})
+    sp.execute_agent_task(agent_id="agent-uden-assignment")
+    assert set_under == [True], "agent-koerslen skal vaere maerket selv uden lease"
+
+
 def test_aaben_kanal_sender_bash_over_broen(monkeypatch):
     oc.open_channel("s1", is_owner=True)
     set_kald = {}

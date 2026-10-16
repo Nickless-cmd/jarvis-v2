@@ -541,7 +541,7 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     handling, ikke til alt hvad den maatte finde paa at starte. Se
     `child_authority` for hvad der bevares og hvorfor.
     """
-    from core.runtime.db_agent_lease import agent_lease_scope
+    from core.runtime.db_agent_lease import agent_koersel_marker, agent_lease_scope
     from core.services.child_authority import uden_foraeldrens_godkendelse
     # agent-contract-v1 (G): et uafklaret udfald (outcome_unknown) kan have udfoert en skrivning - ingen
     # automatisk genkoersel, hverken planlagt, besked-udloest eller supervisor-genstart, foer det er afgjort.
@@ -560,7 +560,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
         surface["activation"] = {k: activation[k] for k in ("status", "code", "detail")}
         return surface
     # agent-contract-v1 (C2): leasen holdes mens barnet koerer; en gammel worker kan ikke skrive.
-    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse():
+    # `agent_koersel_marker` saettes UBETINGET — ogsaa naar leasen er en no-op
+    # (legacy-agent uden assignment). Operator-kanalen spoerger det maerke for
+    # at afgoere om kalderen er en agent; uden det stod skellet paa
+    # `current_assignment_id()`, som falder til "" naar leasen mister sin
+    # gyldighed — og saa slap agentens bash ud paa Bjørns skrivebord
+    # (16/10-2026).
+    with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse(), agent_koersel_marker():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
                                            execution_mode=execution_mode)
     try:

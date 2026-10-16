@@ -259,10 +259,12 @@ _Workerlease med stigende fencing-token + supervisor-genopretning (agent-contrac
 | function | `release` | `(*, assignment_id, holder, token)` | — | [src](../../../core/runtime/db_agent_lease.py#L115) |
 | function | `current_assignment_id` | `()` | The fenced assignment in this worker, or empty outside an agent run. | [src](../../../core/runtime/db_agent_lease.py#L129) |
 | function | `scope_is_current` | `()` | Maa den NUVAERENDE tråd stadig skrive? Sandt uden scope (legacy-agenter), ellers kun | [src](../../../core/runtime/db_agent_lease.py#L137) |
-| function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L157) |
-| function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L201) |
-| function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L211) |
-| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L233) |
+| function | `er_i_agent_koersel` | `()` | Er den nuvaerende traad inde i en agent-koersel? | [src](../../../core/runtime/db_agent_lease.py#L174) |
+| function | `agent_koersel_marker` | `()` | Maerk traaden som «inde i en agent-koersel» — uafhaengigt af leasen. | [src](../../../core/runtime/db_agent_lease.py#L187) |
+| function | `agent_lease_scope` | `(agent_id, *, lease_seconds=…, renew_seconds=…)` | Hold leasen for agentens aabne assignment mens blokken koerer. Uden et assignment | [src](../../../core/runtime/db_agent_lease.py#L197) |
+| function | `_claim` | `(assignment_id, token, t)` | Overtag en udloebet lease med ét atomisk UPDATE. Kun den ene supervisor faar ``True``. | [src](../../../core/runtime/db_agent_lease.py#L241) |
+| function | `reconcile_expired_leases` | `(*, now=…)` | Find udloebne leases, overtag hver med ét atomisk UPDATE og afgoer sikkert. | [src](../../../core/runtime/db_agent_lease.py#L251) |
+| function | `_decide` | `(assignment_id, t)` | — | [src](../../../core/runtime/db_agent_lease.py#L273) |
 
 ## `core/runtime/db_agent_memory.py`
 _Agentens EGEN erindring paa tvaers af assignments (agent-contract-v1 C4, spec 7.2)._

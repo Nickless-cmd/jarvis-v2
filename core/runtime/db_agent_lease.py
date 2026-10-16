@@ -153,6 +153,46 @@ def scope_is_current() -> bool:
     return ok
 
 
+#: Er denne traad inde i en agent-koersel? Sat UBETINGET — ogsaa naar leasen er
+#: en no-op (legacy-agent uden assignment).
+#:
+#: Maalt 16/10-2026: skellet i `operator_channel.er_agent_koersel` spurgte
+#: ``current_assignment_id()``, og den falder til "" naar ``scope_is_current()``
+#: er falsk — altsaa naar leasen er udloebet, frigivet, eller et DB-hikke fik
+#: den behandlet som mistet. I praecis det oejeblik lukkede vaernet sig selv OP:
+#: agentens bash gik til Bjoerns skrivebord, fordi skellet ikke laengere kunne
+#: se at kalderen var en agent. Et vaern der slukker naar det underliggende
+#: bevis bliver svagt, vogter ikke det det paastaar.
+#:
+#: Maerket svarer paa ÉT spoergsmaal — «er jeg inde i en agent-koersel?» — og
+#: det svar aendrer sig ikke fordi leasen goer. Det saettes foer leasen og
+#: ryddes efter.
+_agent_koersel: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "agent_koersel", default=False)
+
+
+def er_i_agent_koersel() -> bool:
+    """Er den nuvaerende traad inde i en agent-koersel?
+
+    Bevidst UAFHAENGIG af leasen: den siger hvad kalderen ER, ikke om dens
+    skriveret lige nu er gyldig. Se ``_agent_koersel``.
+
+    Ingen try her: en ContextVar-laesning kan ikke fejle, og kalderen
+    (``operator_channel.er_agent_koersel``) fanger selv hvis den goer.
+    """
+    return bool(_agent_koersel.get())
+
+
+@contextlib.contextmanager
+def agent_koersel_marker() -> Iterator[None]:
+    """Maerk traaden som «inde i en agent-koersel» — uafhaengigt af leasen."""
+    tok = _agent_koersel.set(True)
+    try:
+        yield
+    finally:
+        _agent_koersel.reset(tok)
+
+
 @contextlib.contextmanager
 def agent_lease_scope(agent_id: str, *, lease_seconds: float = LEASE_SECONDS,
                       renew_seconds: float = RENEW_SECONDS) -> Iterator[dict[str, Any] | None]:

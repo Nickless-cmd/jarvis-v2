@@ -34,6 +34,47 @@ test('bevarer spørgsmålet når den PERSISTEREDE tur overtager efter streamen',
   expect(activePauseAsk([gemt], [])?.question).toBe('Hvilke flader?')
 })
 
+test('finder spørgsmålet når kaldet gik gennem TRANSPORTEN call_loaded_tool', () => {
+  // Målt 16/10-2026 — den ÆGTE form i `content_json`, læst ud af DB'en på en
+  // rigtig pause_and_ask-tur. Værktøjet var ikke loadet i runden, så kaldet gik
+  // gennem transporten, og navnet står i `input.navn` — ikke på `block.name`.
+  //
+  // Det første fix (15/10) løste `result`-forskellen men ledte stadig efter
+  // `pause_and_ask` på `block.name`, så det sprang blokken over. Kortet døde
+  // derfor igen ved stream-slut, og testen ovenfor fangede det ikke: den byggede
+  // på en form (`name: 'pause_and_ask'` på den gemte tur) der ikke findes i
+  // produktionen. En test der bruger en form virkeligheden ikke har, beviser
+  // kun at koden matcher testen.
+  const gemt: ChatMessage = {
+    id: 'a3', role: 'assistant', content: '',
+    created_at: '2026-10-16T04:20:00Z',
+    content_json: [
+      { type: 'text', text: 'Jeg stiller dig et rigtigt spørgsmål.' },
+      {
+        type: 'tool_use', id: 'call_00_AFdy97tiCFxAHCGIlupM9414',
+        name: 'call_loaded_tool',
+        input: { navn: 'pause_and_ask', argumenter: { kind: 'pause_and_ask', question: 'Hvilke flader?' } },
+      },
+      {
+        type: 'tool_result', tool_use_id: 'call_00_AFdy97tiCFxAHCGIlupM9414',
+        status: 'done', content: result,
+      },
+    ],
+  }
+  expect(activePauseAsk([gemt], [])?.question).toBe('Hvilke flader?')
+})
+
+test('skjuler også transport-formen af spørgsmålet fra tråden', () => {
+  const blocks = [
+    { type: 'text', text: 'Venter på dit svar.' },
+    { type: 'tool_use', id: 'ask-t', name: 'call_loaded_tool', input: { navn: 'pause_and_ask' } },
+    { type: 'tool_result', tool_use_id: 'ask-t', content: result },
+    { type: 'tool_use', id: 'read-1', name: 'read_file' },
+    { type: 'tool_result', tool_use_id: 'read-1', content: 'ok' },
+  ]
+  expect(withoutPauseAsk(blocks)).toEqual([blocks[0], blocks[3], blocks[4]])
+})
+
 test('skjuler det besvarede spørgsmål efter en brugerbesked', () => {
   const user: ChatMessage = { id: 'u2', role: 'user', content: 'Desk', created_at: '2026-10-09T00:01:00Z' }
   expect(activePauseAsk([assistant, user], [])).toBeNull()

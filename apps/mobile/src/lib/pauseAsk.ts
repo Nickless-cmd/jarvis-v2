@@ -35,6 +35,30 @@ function parseResult(result: unknown): PauseAsk | null {
   }
 }
 
+/**
+ * Er dette kaldet `pause_and_ask`?
+ *
+ * Navnet kan stå på TO steder, og det er hele grunden til at kortet døde to
+ * gange i træk. Er værktøjet ikke loadet i runden, går kaldet gennem
+ * TRANSPORTEN `call_loaded_tool`, og det rigtige navn ligger i `input.navn`:
+ *
+ *   {"type": "tool_use", "name": "call_loaded_tool",
+ *    "input": {"navn": "pause_and_ask", "argumenter": {…}}}
+ *
+ * Den GEMTE tur beholder transport-navnet — live får blokken efter udpakning.
+ * Målt 16/10-2026 mod DB'en på en rigtig tur: `name` var `call_loaded_tool`.
+ * Det første fix ledte efter `pause_and_ask` på `block.name` og sprang den
+ * derfor over, præcis som den gamle kode sprang den over på `block.result`.
+ */
+function erPauseAsk(block: { type?: string; name?: string; input?: unknown } | null | undefined): boolean {
+  if (!block || block.type !== 'tool_use') return false
+  if (block.name === 'pause_and_ask') return true
+  if (block.name !== 'call_loaded_tool') return false
+  const input = block.input
+  if (!input || typeof input !== 'object') return false
+  return (input as { navn?: unknown }).navn === 'pause_and_ask'
+}
+
 function pauseIn(blocks: (PersistedBlock | ContentBlock)[]): PauseAsk | null {
   // En PERSISTERET tur bærer resultatet i en SEPARAT `tool_result`-blok — ikke
   // som `result` på sin tool_use. Live er de to foldet sammen af reduceren (så
@@ -56,8 +80,12 @@ function pauseIn(blocks: (PersistedBlock | ContentBlock)[]): PauseAsk | null {
   }
   let found: PauseAsk | null = null
   for (const block of blocks) {
-    if (!block || block.type !== 'tool_use' || block.name !== 'pause_and_ask') continue
-    const raa = block.result ?? (block.id ? fraResultat.get(block.id) : undefined)
+    if (!erPauseAsk(block)) continue
+    // `erPauseAsk` er et ja/nej, ikke en type-guard — union-typen kender derfor
+    // ikke felterne. Før indsnævrede `block.name !== 'pause_and_ask'` dem; det
+    // tjek ligger nu i hjælperen, så felterne læses eksplicit her.
+    const t = block as { result?: unknown; id?: string }
+    const raa = t.result ?? (t.id ? fraResultat.get(t.id) : undefined)
     found = parseResult(raa) ?? found
   }
   return found
@@ -74,16 +102,16 @@ export function activePauseAsk(messages: ChatMessage[], live: ContentBlock[]): P
 
 /** The active question has one host above the composer, not another tool row. */
 export function withoutPauseAsk<T extends {
-  type: string; name?: string; id?: string; tool_use_id?: string
+  type: string; name?: string; id?: string; tool_use_id?: string; input?: unknown
 }>(blocks: T[] | null): T[] | null {
   if (!blocks) return null
   const complete = blocks.filter((block): block is T => block != null)
   const ids = new Set(complete
-    .filter((block) => block.type === 'tool_use' && block.name === 'pause_and_ask')
+    .filter(erPauseAsk)
     .map((block) => block.id)
     .filter((id): id is string => Boolean(id)))
-  if (!ids.size && !complete.some((block) => block.type === 'tool_use' && block.name === 'pause_and_ask')) return complete
+  if (!ids.size && !complete.some(erPauseAsk)) return complete
   return complete.filter((block) =>
-    !(block.type === 'tool_use' && block.name === 'pause_and_ask') &&
+    !erPauseAsk(block) &&
     !(block.type === 'tool_result' && !!block.tool_use_id && ids.has(block.tool_use_id)))
 }

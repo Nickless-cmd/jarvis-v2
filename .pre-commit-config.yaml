@@ -133,6 +133,22 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: en statuspåstand i MEMORY.md skal kunne efterprøves.
+      # Målt 16/10-2026: 51 overskrifter formulerede sig som nutid uden dato,
+      # og 16 af dem var blevet falske — «STADIG ÅBEN» om arbejde der var
+      # færdigt for uger siden, «afventer genstart» om en genstart der for
+      # længst var sket. Filen læses ind i prompten hver tur, så en forkert
+      # linje koster Bjørn et træk. Skraldespærre mod
+      # docs/guards/memory_status_baseline.json: flere end grundlinjen er en
+      # fejl, færre skrives ind med --skriv-grundlinje.
+      - id: verify-memory-status
+        name: Statuspåstande i MEMORY.md skal have et spor
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_memory_status.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: block kitchen-sink commits (mix of code + scaffolding,
       # or >20 files across multiple top-level domains). Catches the
       # 2026-05-25 anti-pattern where Jarvis bundled 8400+ lines of

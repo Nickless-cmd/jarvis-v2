@@ -402,6 +402,16 @@ _Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
 | function | `_filer` | `(a)` | — | [src](../../../scripts/verify_history_reads.py#L76) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_history_reads.py#L92) |
 
+## `scripts/verify_memory_status.py`
+_Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_memories` | `()` | Læsbare MEMORY.md-filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L77) |
+| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver statuspåstand uden spor. | [src](../../../scripts/verify_memory_status.py#L91) |
+| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/MEMORY.md. | [src](../../../scripts/verify_memory_status.py#L103) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L108) |
+
 ## `scripts/verify_notes.py`
 _Vagt: en note skal have en status, en slags, og sine fire overskrifter._
 
@@ -422,17 +432,4 @@ _Vagt: et nyt varigt format skal skrives ind i registret med en dato._
 | function | `_register` | `()` | — | [src](../../../scripts/verify_persistens.py#L102) |
 | function | `afvigelser` | `()` | (uregistrerede nøgler, registrerede nøgler ingen rører længere). | [src](../../../scripts/verify_persistens.py#L109) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_persistens.py#L118) |
-
-## `scripts/verify_silent_except.py`
-_Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_er_tavs` | `(handler)` | Sluger denne handler fejlen uden at sige noget? | [src](../../../scripts/verify_silent_except.py#L51) |
-| function | `_naevner_fejlen` | `(handler, kommentarlinjer)` | Er der en forklaring? En kommentar på `except`-linjen eller i kroppen. | [src](../../../scripts/verify_silent_except.py#L59) |
-| function | `_kommentarlinjer` | `(sti)` | — | [src](../../../scripts/verify_silent_except.py#L70) |
-| function | `fund_i_fil` | `(sti)` | (linje, årsag) for hver tavs handler uden forklaring. | [src](../../../scripts/verify_silent_except.py#L81) |
-| function | `_filer` | `(argumenter)` | — | [src](../../../scripts/verify_silent_except.py#L102) |
-| function | `_laes_grundlinje` | `()` | — | [src](../../../scripts/verify_silent_except.py#L118) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_silent_except.py#L125) |
 

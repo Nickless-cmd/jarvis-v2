@@ -54,7 +54,13 @@ describe('RoutinesView', () => {
     render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={onEdit} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Ny rutine' }))
     expect(onEdit).toHaveBeenCalledWith(null)
-    fireEvent.click(screen.getByRole('listitem', { name: /Min rutine/i }))
+    // `findByRole`, ikke `getByRole`: 'Ny rutine'-knappen staar i DOM fra foerste
+    // render, saa ventningen ovenfor kan loese i samme tick som listen endnu ikke
+    // er hentet (`listRoutines` resolver i en microtask, og React schedulerer
+    // re-renderet bagefter). Maalt 16/10-2026: 0 af 20 isolerede koersler fejlede,
+    // men CI fejlede paa netop denne linje — racen viser sig under last, ikke alene.
+    // De to nabotests venter allerede paa samme faktum.
+    fireEvent.click(await screen.findByRole('listitem', { name: /Min rutine/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Redigér rutine' }))
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ routine_id: 'r-own' }))
   })

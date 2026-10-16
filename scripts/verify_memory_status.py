@@ -35,6 +35,17 @@ nutids-ord uden spor gav **455** træf (ubrugelig støj). Kravet «linjen STARTE
 med statusordet» gav **59**, og et længde-loft på 160 tegn gav de **23** ægte.
 En længere linje er en analyse, ikke en statuslinje.
 
+## Rækkevidde (udvidet 16/10-2026)
+
+Vagten vogtede før kun `MEMORY.md`. Men dens egen begrundelse — «filen læses
+ind i prompten hver tur» — gælder syv filer: `core/services/prompt_contract.py`
+injicerer SOUL/IDENTITY/STANDING_ORDERS/USER, QUICK_FACTS, VISIBLE_CHAT_RULES
+og MEMORY. QUICK_FACTS.md injiceres endda UBETINGET (uden relevans-filter), så
+en forældet linje der koster Bjørn et træk hver gang — ikke kun når han spørger
+om memory. Listen står i `_BESKYTTEDE`, og `tests/test_memory_status_guard.py`
+binder den til prompt_contract.py: omdøbes en fil i prompten, fælder en test i
+stedet for at vagten tavst vogter en fil ingen læser.
+
 ## Skraldespærre, ikke forbud
 
 Grundlinjen i `docs/guards/memory_status_baseline.json` er antallet af
@@ -95,18 +106,44 @@ _BROEDTEKST_PREFIX = re.compile(r"^\s*(?:[-*+>]\s+|\d+\.\s+)?(?:\*\*|__|\*|_)?\s
 _BROEDTEKST_MAX = 160
 
 
-def _memories() -> list[Path]:
-    """Læsbare MEMORY.md-filer — stien løses ved KALDSTID, ikke ved import.
+#: De filer prompten injicerer i HVER tur — se core/services/prompt_contract.py
+#: (SOUL/IDENTITY/STANDING_ORDERS/USER ~linje 1012, QUICK_FACTS ~linje 1030,
+#: VISIBLE_CHAT_RULES og MEMORY). Vagten dækkede før kun MEMORY.md; de øvrige
+#: rådner på samme måde, og QUICK_FACTS.md injiceres endda ubetinget.
+#: Listen må ikke importere prompt_contract — så døde vagten med den. I stedet
+#: binder tests/test_memory_status_guard.py hvert navn til kilden.
+_BESKYTTEDE = (
+    "MEMORY.md",
+    "QUICK_FACTS.md",
+    "USER.md",
+    "SOUL.md",
+    "IDENTITY.md",
+    "STANDING_ORDERS.md",
+    "VISIBLE_CHAT_RULES.md",
+)
+
+
+def _filer() -> list[Path]:
+    """De vogtede filer — stien løses ved KALDSTID, ikke ved import.
 
     Læser ``JARVIS_HOME`` når den er sat, så et skjold eller en flyttet
     runtime peger på sit eget hjem. Import-tids-stier er netop den fejlform
     denne fil er bygget til at fange et andet sted i huset (16/10-2026).
+
+    Kun filer der FAKTISK findes tælles med: et medlems-workspace er krypteret
+    (``.enc``), og en fil vagten ikke kan læse må den ikke gætte om.
     """
     hjem = Path(os.environ.get("JARVIS_HOME") or "~/.jarvis-v2").expanduser()
     roed = hjem / "workspaces"
     if not roed.is_dir():
         return []
-    return sorted(p for p in roed.glob("*/MEMORY.md") if p.is_file())
+    ud: list[Path] = []
+    for mappe in sorted(p for p in roed.iterdir() if p.is_dir()):
+        for navn in _BESKYTTEDE:
+            sti = mappe / navn
+            if sti.is_file():
+                ud.append(sti)
+    return ud
 
 
 def fund_i_fil(sti: Path) -> list[tuple[int, str]]:
@@ -148,8 +185,8 @@ def fund_i_broedtekst(sti: Path) -> list[tuple[int, str]]:
 
 
 def _navn(sti: Path) -> str:
-    """Kort, entydigt navn til grundlinjen: <workspace>/MEMORY.md."""
-    return f"{sti.parent.name}/MEMORY.md"
+    """Kort, entydigt navn til grundlinjen: <workspace>/<fil>."""
+    return f"{sti.parent.name}/{sti.name}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -161,9 +198,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     a = p.parse_args(argv)
 
-    filer = _memories()
+    filer = _filer()
     if not filer:
-        print("verify-memory-status: ingen laesbare MEMORY.md fundet — intet at maale")
+        print("verify-memory-status: ingen laesbare filer fundet — intet at maale")
         return 0
 
     pr_fil: dict[str, int] = {}
@@ -190,9 +227,10 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(
                 {
                     "_forklaring": (
-                        "Statuspaastande i MEMORY.md uden spor (dato, lukke-markoer "
-                        "eller register-pegning) — i overskrifter OG broedtekst. "
-                        "Flere er forbudt; faerre er en sejr."
+                        "Statuspaastande uden spor (dato, lukke-markoer eller "
+                        "register-pegning) i de filer prompten injicerer hver tur "
+                        "— i overskrifter OG broedtekst. Flere er forbudt; faerre "
+                        "er en sejr."
                     ),
                     "i_alt": i_alt,
                     "overskrift": n_overskrift,

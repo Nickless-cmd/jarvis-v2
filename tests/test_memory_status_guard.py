@@ -22,6 +22,8 @@ import pytest
 
 from scripts import verify_memory_status as v
 
+ROD = Path(__file__).resolve().parents[1]
+
 
 @pytest.fixture
 def hjem(tmp_path, monkeypatch):
@@ -139,3 +141,51 @@ def test_faerre_end_grundlinjen_er_ikke_en_fejl(hjem, capsys):
 def test_ingen_memory_filer_er_ikke_en_fejl(tmp_path, monkeypatch):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     assert v.main([]) == 0
+
+
+# ─── rækkevidden: syv filer, ikke én (udvidet 16/10-2026) ───────────────────
+
+
+def test_quick_facts_vogtes_ogsaa(hjem, capsys):
+    """QUICK_FACTS.md injiceres UBETINGET — uden relevans-filter.
+
+    En forældet linje der koster Bjørn et træk hver tur, ikke kun når han
+    spørger om memory. Vagten så før kun MEMORY.md.
+    """
+    (hjem.parent / "QUICK_FACTS.md").write_text(
+        "# QUICK_FACTS\n\n**Afventer genstart** af api.\n", encoding="utf-8"
+    )
+    assert v.main([]) == 1, "vagten vogter ikke QUICK_FACTS.md"
+    assert "QUICK_FACTS.md" in capsys.readouterr().out
+
+
+def test_raekkevidden_er_de_syv_injicerede_filer():
+    """Vagten skal dække præcis de filer prompten læser ind hver tur."""
+    assert set(v._BESKYTTEDE) == {
+        "MEMORY.md",
+        "QUICK_FACTS.md",
+        "USER.md",
+        "SOUL.md",
+        "IDENTITY.md",
+        "STANDING_ORDERS.md",
+        "VISIBLE_CHAT_RULES.md",
+    }
+
+
+def test_beskyttede_filer_bindes_til_prompt_contract():
+    """Listen må ikke drive fra kilden — men må heller ikke importere den.
+
+    Vagten kan ikke importere prompt_contract (så døde den med den). Testen er
+    limen: omdøbes eller fjernes en fil i prompten, fejler denne test i stedet
+    for at vagten tavst vogter en fil ingen læser.
+    """
+    kilde = (ROD / "core" / "services" / "prompt_contract.py").read_text(encoding="utf-8")
+    mangler = [n for n in v._BESKYTTEDE if n not in kilde]
+    assert not mangler, f"vagten vogter filer prompten ikke injicerer: {mangler}"
+
+
+def test_krypteret_medlemsfil_taelles_ikke(hjem):
+    """Et medlems-workspace er krypteret (.enc) — vagten må ikke gætte om den."""
+    hjem.write_text("# M\n", encoding="utf-8")
+    (hjem.parent / "QUICK_FACTS.md.enc").write_bytes(b"\x00\x01krypteret")
+    assert [p.name for p in v._filer()] == ["MEMORY.md"]

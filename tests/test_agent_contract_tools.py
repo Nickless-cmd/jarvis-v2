@@ -3,11 +3,19 @@ from __future__ import annotations
 
 import pytest
 
+#: De kontrakt-KUN vaerktoejer der SKJULES naar motoren er slukket (kildens `_NEW_ONLY`).
+#:
+#: Maalt 16/10-2026: `decide_agent_approval` staar IKKE her — den er synlig ogsaa naar motoren
+#: er slukket, selvom den (som de otte) kun findes med kontrakten. Det er en uoverensstemmelse
+#: med `_NEW_ONLY`s egen regel, ikke en regel i sig selv; flagget 16/10-2026.
 NEW = ("dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
        "convene_agent_council", "review_agent_work")
-ALL7 = ("dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
-        "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
-        "convene_agent_council", "review_agent_work")      # (spec'ens syv + integration + raad/review)
+#: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (ni): de otte ovenfor + approvals-vaerktoejet.
+DEFS = (*NEW, "decide_agent_approval")
+#: Den FASTGJORTE flade naar motoren er taendt (kildens `CONTRACT_TOOL_NAMES`, elleve).
+PINNED = ("dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
+          "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
+          "convene_agent_council", "review_agent_work", "decide_agent_approval")
 
 
 @pytest.fixture
@@ -58,7 +66,7 @@ def _visible(role="owner", scope=""):
 def test_definitions_are_wellformed_and_required_fields_exist():
     from core.tools.agent_contract_tools import AGENT_CONTRACT_TOOL_DEFINITIONS as defs
 
-    assert tuple(d["function"]["name"] for d in defs) == NEW
+    assert tuple(d["function"]["name"] for d in defs) == DEFS
     for d in defs:
         p = d["function"]["parameters"]
         assert d["type"] == "function" and d["function"]["description"]
@@ -97,20 +105,20 @@ def test_non_owner_roles_never_get_the_new_tools_yet(tl, role):
 def test_handlers_are_registered_for_all_tools():
     from core.tools.simple_tools import _TOOL_HANDLERS
 
-    assert all(n in _TOOL_HANDLERS for n in ALL7)
+    assert all(n in _TOOL_HANDLERS for n in PINNED)
 
 
 # --- fast flade -----------------------------------------------------------------------
 
-def test_pinned_set_is_empty_when_off_and_all_seven_when_on(tl):
+def test_pinned_set_is_empty_when_off_and_the_full_surface_when_on(tl):
     from core.tools.copilot_tool_pruning import agent_contract_pinned
 
     assert agent_contract_pinned() == ()
     tl.on()
-    assert agent_contract_pinned() == ALL7
+    assert agent_contract_pinned() == PINNED
 
 
-def test_visible_pool_pins_all_seven_without_load_more_tools_and_is_message_independent(tl):
+def test_visible_pool_pins_the_full_surface_without_load_more_tools_and_is_message_independent(tl):
     from core.tools.copilot_tool_pruning import select_tools_for_visible
     from core.tools.simple_tools import get_tool_definitions
 
@@ -121,16 +129,16 @@ def test_visible_pool_pins_all_seven_without_load_more_tools_and_is_message_inde
     defs = get_tool_definitions(role="owner", scope="")
     a = [d["function"]["name"] for d in select_tools_for_visible(defs, user_message="hej")]
     b = [d["function"]["name"] for d in select_tools_for_visible(defs, user_message="refaktorer kode")]
-    assert set(ALL7) <= set(a) and a == b          # byte-stabilt array -> prefiks-cachen holder
+    assert set(PINNED) <= set(a) and a == b          # byte-stabilt array -> prefiks-cachen holder
     assert len(a) <= 48
 
 
-def test_session_pin_union_includes_the_seven_only_when_on(tl):
+def test_session_pin_union_includes_the_full_surface_only_when_on(tl):
     from core.services.session_tool_pin import _med_garanterede
 
     assert not set(NEW) & set(_med_garanterede([]))
     tl.on()
-    assert set(ALL7) <= set(_med_garanterede([]))
+    assert set(PINNED) <= set(_med_garanterede([]))
 
 
 # --- adaptere --------------------------------------------------------------------------

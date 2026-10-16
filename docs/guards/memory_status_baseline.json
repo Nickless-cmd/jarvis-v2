@@ -1,5 +1,7 @@
 {
-  "_forklaring": "Statuspaastande i MEMORY.md uden spor (dato, lukke-markoer eller register-pegning). Flere er forbudt; faerre er en sejr.",
+  "_forklaring": "Statuspaastande i MEMORY.md uden spor (dato, lukke-markoer eller register-pegning) — i overskrifter OG broedtekst. Flere er forbudt; faerre er en sejr.",
   "i_alt": 0,
+  "overskrift": 0,
+  "broedtekst": 0,
   "pr_fil": {}
 }

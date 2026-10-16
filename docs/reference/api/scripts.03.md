@@ -407,10 +407,11 @@ _Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_memories` | `()` | Læsbare MEMORY.md-filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L77) |
-| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver statuspåstand uden spor. | [src](../../../scripts/verify_memory_status.py#L91) |
-| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/MEMORY.md. | [src](../../../scripts/verify_memory_status.py#L103) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L108) |
+| function | `_memories` | `()` | Læsbare MEMORY.md-filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L98) |
+| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L112) |
+| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L124) |
+| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/MEMORY.md. | [src](../../../scripts/verify_memory_status.py#L150) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L155) |
 
 ## `scripts/verify_notes.py`
 _Vagt: en note skal have en status, en slags, og sine fire overskrifter._

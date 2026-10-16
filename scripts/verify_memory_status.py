@@ -23,19 +23,32 @@ påstand er SAND, men den kan kræve at påstanden bærer et spor — en dato, e
 lukke-markør eller en pegning på sit register. En påstand uden spor kan ingen
 tjekke, og det er præcis dem der rådner.
 
+## To flader (brødteksten tilføjet 16/10-2026)
+
+Vagten så før kun `## `-overskrifter. Men brødteksten bar 23 statuspåstande
+mere — «**Åbent:** fixet er ikke i drift før genstart», «- **Kræver genstart
+af `jarvis-api` for at virke.**» — og de rådner på samme måde. Filen læses
+som helhed, ikke kun som overskrifter.
+
+Brødteksten scannes IKKE bredt, og det er målt: en scanning af alle linjer med
+nutids-ord uden spor gav **455** træf (ubrugelig støj). Kravet «linjen STARTER
+med statusordet» gav **59**, og et længde-loft på 160 tegn gav de **23** ægte.
+En længere linje er en analyse, ikke en statuslinje.
+
 ## Skraldespærre, ikke forbud
 
 Grundlinjen i `docs/guards/memory_status_baseline.json` er antallet af
 eksisterende brud. Flere er en fejl — filen må ikke rådne videre. Færre er en
-sejr og skrives ind med `--skriv-grundlinje`. Vi retter ikke de sidste ti i
-dag for at gøre vagten grøn; vi forhindrer at der kommer en ellevte.
+sejr og skrives ind med `--skriv-grundlinje`.
 
 ## Hvad vagten IKKE kan
 
-- Den ser kun `## `-overskrifter. Statuspåstande i brødteksten, eller i andre
-  ord end markør-listen, fanges ikke.
-- Den afgør ikke sandhed. En overskrift med en dato KAN stadig være forkert;
-  den bærer blot et spor nogen kan følge.
+- Den afgør ikke sandhed. En påstand med en dato KAN stadig være forkert; den
+  bærer blot et spor nogen kan følge.
+- Brødtekst-fund kræver at påstanden STARTER med statusordet. En påstand
+  formuleret midt i en sætning fanges ikke — den er også sværere at skelne fra
+  almindelig prosa. Det er et bevidst valg: hellere et ægte brud ufanget end
+  tyve beskrivende linjer flagget.
 - Den kører ved commit (og manuelt). En fil der rådner mellem to commits
   opdages først ved den næste.
 """
@@ -73,6 +86,14 @@ _SPOR = re.compile(
     re.IGNORECASE,
 )
 
+#: Markdown-foranstillinger der ikke tæller som indhold: listepunkt, nummer,
+#: citat og fed/kursiv-begyndelse. Brødtekst-linjen vurderes EFTER disse er
+#: strippet, så «- **Åbent:**» bedømmes på «Åbent:».
+_BROEDTEKST_PREFIX = re.compile(r"^\s*(?:[-*+>]\s+|\d+\.\s+)?(?:\*\*|__|\*|_)?\s*")
+
+#: Længere linjer er analyser, ikke statuslinjer. Målt 16/10-2026.
+_BROEDTEKST_MAX = 160
+
 
 def _memories() -> list[Path]:
     """Læsbare MEMORY.md-filer — stien løses ved KALDSTID, ikke ved import.
@@ -89,13 +110,39 @@ def _memories() -> list[Path]:
 
 
 def fund_i_fil(sti: Path) -> list[tuple[int, str]]:
-    """(linjenummer, tekst) for hver statuspåstand uden spor."""
+    """(linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor."""
     fund: list[tuple[int, str]] = []
     tekst = sti.read_text(encoding="utf-8", errors="replace")
     for nr, linje in enumerate(tekst.splitlines(), 1):
         if not linje.startswith("## "):
             continue
         if _NUTID.search(linje) and not _SPOR.search(linje):
+            fund.append((nr, linje.strip()))
+    return fund
+
+
+def fund_i_broedtekst(sti: Path) -> list[tuple[int, str]]:
+    """(linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor.
+
+    Kun linjer der STARTER med statusordet (efter markdown-foranstilling) og
+    er kortere end ``_BROEDTEKST_MAX``.
+
+    Kodehegn springes bevidst IKKE over. Et forsøg 16/10-2026 på at skippe
+    linjer mellem ```-hegn slog **16.782 linjer fra** — fordi filen har et
+    ulige antal hegn, så tællingen tippede og resten af filen stod som
+    «inde i en kodeblok». En filtrering der blindt slår 72 % af filen fra er
+    farligere end den støj den skulle fjerne: en statuspåstand inde i en
+    kodeblok er sjælden, en blind vagt er dyr.
+    """
+    fund: list[tuple[int, str]] = []
+    tekst = sti.read_text(encoding="utf-8", errors="replace")
+    for nr, linje in enumerate(tekst.splitlines(), 1):
+        if linje.startswith("#"):
+            continue
+        if len(linje) > _BROEDTEKST_MAX:
+            continue
+        rest = _BROEDTEKST_PREFIX.sub("", linje)
+        if _NUTID.match(rest) and not _SPOR.search(linje):
             fund.append((nr, linje.strip()))
     return fund
 
@@ -121,12 +168,19 @@ def main(argv: list[str] | None = None) -> int:
 
     pr_fil: dict[str, int] = {}
     detaljer: list[str] = []
+    n_overskrift = 0
+    n_broedtekst = 0
     for sti in filer:
-        fund = fund_i_fil(sti)
-        if fund:
-            pr_fil[_navn(sti)] = len(fund)
-        for nr, linje in fund:
-            detaljer.append(f"  {_navn(sti)}:{nr}: {linje[:110]}")
+        ov = fund_i_fil(sti)
+        bt = fund_i_broedtekst(sti)
+        n_overskrift += len(ov)
+        n_broedtekst += len(bt)
+        if ov or bt:
+            pr_fil[_navn(sti)] = len(ov) + len(bt)
+        for nr, linje in ov:
+            detaljer.append(f"  overskrift {_navn(sti)}:{nr}: {linje[:110]}")
+        for nr, linje in bt:
+            detaljer.append(f"  broedtekst {_navn(sti)}:{nr}: {linje[:110]}")
 
     i_alt = sum(pr_fil.values())
 
@@ -137,9 +191,12 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "_forklaring": (
                         "Statuspaastande i MEMORY.md uden spor (dato, lukke-markoer "
-                        "eller register-pegning). Flere er forbudt; faerre er en sejr."
+                        "eller register-pegning) — i overskrifter OG broedtekst. "
+                        "Flere er forbudt; faerre er en sejr."
                     ),
                     "i_alt": i_alt,
+                    "overskrift": n_overskrift,
+                    "broedtekst": n_broedtekst,
                     "pr_fil": pr_fil,
                 },
                 indent=2,
@@ -148,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
             + "\n",
             encoding="utf-8",
         )
-        print(f"grundlinje skrevet: {i_alt} brud")
+        print(f"grundlinje skrevet: {i_alt} brud ({n_overskrift} overskrift, {n_broedtekst} broedtekst)")
         return 0
 
     tilladt = 0
@@ -161,14 +218,17 @@ def main(argv: list[str] | None = None) -> int:
 
     for d in detaljer:
         print(d)
-    print(f"\nstatuspaastande uden spor: {i_alt} (grundlinje {tilladt})")
+    print(
+        f"\nstatuspaastande uden spor: {i_alt} "
+        f"({n_overskrift} overskrift, {n_broedtekst} broedtekst) (grundlinje {tilladt})"
+    )
 
     if i_alt > tilladt:
         print(f"\nFEJL: {i_alt - tilladt} NYE statuspaastande uden spor.")
         print("Giv linjen en dato, en lukke-markoer eller en pegning paa sit register.")
         return 1
     if i_alt < tilladt:
-        print(f"(faerre end grundlinjen — saenk den med --skriv-grundlinje)")
+        print("(faerre end grundlinjen — saenk den med --skriv-grundlinje)")
     return 0
 
 

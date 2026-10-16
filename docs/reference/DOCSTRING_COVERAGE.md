@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9014/17229 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9015/17230 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 9014/17229 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 287 | 619 | 46% |
+| `scripts` | 288 | 620 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2608,7 +2608,7 @@ Generated from source. 9014/17229 functions/methods documented (52%). The list b
 - `scripts/verify_guard_tests.py` :: `main` (L69)
 - `scripts/verify_history_reads.py` :: `fund_i_fil` (L54)
 - `scripts/verify_history_reads.py` :: `main` (L92)
-- `scripts/verify_memory_status.py` :: `main` (L108)
+- `scripts/verify_memory_status.py` :: `main` (L155)
 - `scripts/verify_notes.py` :: `fejl_i` (L50)
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)

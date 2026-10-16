@@ -66,6 +66,60 @@ def test_kun_niveau2_overskrifter_scannes(hjem):
     assert [nr for nr, _ in v.fund_i_fil(hjem)] == [5]
 
 
+# ─── brødtekst-fladen (tilføjet 16/10-2026) ────────────────────────────────
+
+
+def test_broedtekst_paastand_uden_spor_afvises(hjem, capsys):
+    hjem.write_text("# M\n\n**Åbent:** noget der ikke er fulgt op\n", encoding="utf-8")
+    assert v.main([]) == 1, "vagten accepterede en brødtekst-påstand uden spor"
+    assert "broedtekst" in capsys.readouterr().out
+
+
+def test_broedtekst_med_dato_er_et_spor(hjem):
+    hjem.write_text("# M\n\n**Åbent (16/10-2026):** noget\n", encoding="utf-8")
+    assert v.main([]) == 0
+
+
+def test_broedtekst_kraever_at_linjen_STARTER_med_ordet(hjem):
+    """En sætning der tilfældigt nævner ordet er ikke en statuslinje.
+
+    Uden dette krav gav en bred scanning 455 træf på den ægte fil — ubrugelig
+    støj. En påstand midt i en sætning er også svær at skelne fra almindelig
+    prosa.
+    """
+    hjem.write_text("# M\n\nDet er stadig uvist om han kommer, men vi venter.\n", encoding="utf-8")
+    assert v.main([]) == 0
+
+
+def test_broedtekst_lang_linje_er_en_analyse_ikke_en_status(hjem):
+    hjem.write_text("# M\n\n**Åbent:** " + "x" * 200 + "\n", encoding="utf-8")
+    assert v.main([]) == 0
+
+
+def test_listepunkt_og_fed_strippes_foer_vurdering(hjem):
+    hjem.write_text("# M\n\n- **Kræver genstart af api.**\n", encoding="utf-8")
+    assert v.main([]) == 1
+
+
+def test_overskrifter_scannes_ikke_som_broedtekst(hjem):
+    """`## `-linjer hører til fund_i_fil — de må ikke tælles to gange."""
+    hjem.write_text("# M\n\n## Stadig åbent\n", encoding="utf-8")
+    assert v.fund_i_broedtekst(hjem) == []
+    assert len(v.fund_i_fil(hjem)) == 1
+
+
+def test_kodehegn_slaar_ikke_resten_af_filen_fra(hjem):
+    """Regression 16/10-2026: et ulige antal ``` tippede tællingen og slog
+    16.782 linjer fra (72 % af filen). En linje efter et ulige antal hegn
+    SKAL scannes — en blind vagt er dyrere end den støj den fjerner.
+    """
+    hjem.write_text(
+        "# M\n\n```\nkode\n```\n\n```\nhalvt hegn\n\n**Åbent:** efter\n",
+        encoding="utf-8",
+    )
+    assert [nr for nr, _ in v.fund_i_broedtekst(hjem)] == [10]
+
+
 def test_grundlinjen_skrives_kun_med_flaget(hjem):
     hjem.write_text("## Stadig åbent\n", encoding="utf-8")
     assert v.main([]) == 1

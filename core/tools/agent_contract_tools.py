@@ -26,9 +26,18 @@ CONTRACT_TOOL_NAMES: tuple[str, ...] = (
     "convene_agent_council", "review_agent_work", "decide_agent_approval",
 )
 #: Dem der KUN findes med kontrakten (de to andre har en aeldre udgave).
+#:
+#: Reglen er UDLEDT, ikke talt: et navn i den fastgjorte flade skjules hvis det ikke har
+#: sin egen definition uden for ``AGENT_CONTRACT_TOOL_DEFINITIONS``.
+#: ``decide_agent_approval`` manglede her indtil 16/10-2026. Den er kontrakt-KUN — ingen
+#: legacy-udgave — men stod synlig naar motoren var slukket, altsaa i den tilstand flaget
+#: selv starter i (§12.4, fail-closed). Det er den ENE kontrakt-vaerktoej hvis formaal er
+#: at fjerne et menneske fra godkendelses-loopet; den hoerer ikke i den tilstand.
+#: ``test_contract_only_tools_are_the_hidden_set`` udleder reglen og fanger naeste.
 _NEW_ONLY: frozenset[str] = frozenset(
     {"dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
-     "integrate_agent_work", "convene_agent_council", "review_agent_work"})
+     "integrate_agent_work", "convene_agent_council", "review_agent_work",
+     "decide_agent_approval"})
 
 
 def _fn(name: str, description: str, properties: dict[str, Any], required: list[str]) -> dict[str, Any]:

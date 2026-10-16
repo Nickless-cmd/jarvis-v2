@@ -5,13 +5,14 @@ import pytest
 
 #: De kontrakt-KUN vaerktoejer der SKJULES naar motoren er slukket (kildens `_NEW_ONLY`).
 #:
-#: Maalt 16/10-2026: `decide_agent_approval` staar IKKE her — den er synlig ogsaa naar motoren
-#: er slukket, selvom den (som de otte) kun findes med kontrakten. Det er en uoverensstemmelse
-#: med `_NEW_ONLY`s egen regel, ikke en regel i sig selv; flagget 16/10-2026.
+#: Rettet 16/10-2026: `decide_agent_approval` manglede her. Den har — som de otte andre —
+#: ingen egen definition uden for kontrakten, men stod alligevel synlig naar motoren var
+#: slukket. Reglen udledes nu i `test_contract_only_tools_are_the_hidden_set`.
 NEW = ("dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
-       "convene_agent_council", "review_agent_work")
-#: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (ni): de otte ovenfor + approvals-vaerktoejet.
-DEFS = (*NEW, "decide_agent_approval")
+       "convene_agent_council", "review_agent_work", "decide_agent_approval")
+#: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (ni). Sammenfalder i dag med `NEW`,
+#: men maaler noget andet: hvilke definitioner der FINDES, ikke hvilke der SKJULES.
+DEFS = NEW
 #: Den FASTGJORTE flade naar motoren er taendt (kildens `CONTRACT_TOOL_NAMES`, elleve).
 PINNED = ("dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
           "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
@@ -85,6 +86,31 @@ def test_new_tools_are_hidden_while_the_engine_is_off_and_shown_when_on(tl):
     assert set(NEW) <= _visible()
     tl.svc_.set_capability(False)
     assert not set(NEW) & _visible()
+
+
+def test_contract_only_tools_are_the_hidden_set():
+    """Reglen UDLEDES af kilden i stedet for at staa som en haandholdt liste.
+
+    Et navn i den fastgjorte flade SKJULES hvis det ikke har sin egen definition uden
+    for ``AGENT_CONTRACT_TOOL_DEFINITIONS``. Det er praecis hvad ``_NEW_ONLY`` paastaar
+    i sin docstring — «dem der KUN findes med kontrakten».
+
+    Maalt 16/10-2026: `decide_agent_approval` brod reglen. Den er kontrakt-KUN, men stod
+    synlig naar motoren var slukket — den tilstand flaget selv starter i. En haandholdt
+    liste fangede det ikke; den udledte regel goer, ogsaa for det NAESTE vaerktoej.
+    """
+    from core.tools.agent_contract_tools import (
+        AGENT_CONTRACT_TOOL_DEFINITIONS as defs,
+        CONTRACT_TOOL_NAMES,
+        _NEW_ONLY,
+    )
+    from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+
+    kontrakt_defineret = {d["function"]["name"] for d in defs}
+    egen_definition = {
+        (d.get("function") or {}).get("name") for d in TOOL_DEFINITIONS
+    } - kontrakt_defineret - {None}
+    assert set(CONTRACT_TOOL_NAMES) - egen_definition == set(_NEW_ONLY)
 
 
 def test_capability_read_failure_hides_the_tools(tl, monkeypatch):

@@ -129,13 +129,35 @@ def _capture_sample(*, save_wav: bool = True) -> tuple[str | None, float, float,
         import numpy as np
         import sounddevice as sd
 
+        # Vælg en LEVENDE indgang. Standardenheden [20] er en virtuel enhed
+        # uden signal (målt 15/10-2026: rms 0.0, peak 0), og den konfigurerede
+        # NOS X500 findes ikke længere — så fallback landede på en død default,
+        # og arkivet skrev "roligt" om et signal der ikke fandtes.
+        # Kameraets mikrofon ('USB Camera2') er den levende enhed i stuen
+        # (målt rms 0.008-0.016 i et stille rum ved 44,1 kHz — samme rate som
+        # _SAMPLE_RATE her, så ingen resampling er nødvendig).
+        device = None
+        try:
+            for _i, _d in enumerate(sd.query_devices()):
+                if _d["max_input_channels"] > 0 and "Camera" in _d["name"]:
+                    device = _i
+                    break
+        except Exception:
+            device = None
+        # Kassér det første sekund: kameraets mic har et systematisk
+        # opstarts-pop (målt 15/10-2026 over tre optagelser: rms 0.22-0.40 i
+        # sekund 0 mod 0.009-0.016 derefter). Uden dette ville _classify se
+        # peak 1.0 og kalde transienten for "tale".
+        _warmup_s = 1.0
         samples = sd.rec(
-            int(_SAMPLE_DURATION_SECONDS * _SAMPLE_RATE),
+            int((_SAMPLE_DURATION_SECONDS + _warmup_s) * _SAMPLE_RATE),
             samplerate=_SAMPLE_RATE,
             channels=1,
             dtype="float32",
+            device=device,
             blocking=True,
         )
+        samples = samples[int(_warmup_s * _SAMPLE_RATE):]
         amplitude = np.abs(samples.flatten())
         mean = float(amplitude.mean())
         std = float(amplitude.std())

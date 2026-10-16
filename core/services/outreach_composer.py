@@ -228,19 +228,23 @@ def _call_visible_model(prompt: str, *, timeout: int = 30) -> str:
         return ""
 
     try:
-        url = f"{base_url}/api/chat"
-        payload = json.dumps({
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-            "options": {"num_predict": 200, "temperature": 0.85},
-        }).encode()
-        req = urllib_request.Request(
-            url, data=payload, headers={"Content-Type": "application/json"}
+        # Visible-lanen er i dag en CLOUD-provider (deepseek, OpenAI-formen) —
+        # ikke en lokal Ollama. Det gamle kald gik til {base_url}/api/chat uden
+        # auth-header og fik 401 HVER gang (målt 16/10-2026: 7 forsøg, 7 fejl —
+        # hele reach_out-loopet var dødt). Vi genbruger husets egen
+        # OpenAI-kompatible kalder, som henter nøglen og sætter Bearer-headeren.
+        from core.services.heartbeat_provider_fallback import (
+            execute_openai_compat_heartbeat_prompt,
         )
-        with urllib_request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read())
-        text = str((data.get("message") or {}).get("content") or "").strip()
+        compat_target = dict(target)
+        compat_target["model"] = model
+        compat_target["auth_profile"] = (
+            str(compat_target.get("auth_profile") or "").strip() or "default"
+        )
+        res = execute_openai_compat_heartbeat_prompt(
+            prompt=prompt, target=compat_target, max_tokens=200, temperature=0.85,
+        )
+        text = str(res.get("text") or "").strip()
         # Strip leading/trailing quotes that some models add
         text = text.strip().strip('"').strip("'").strip()
         # Collapse leading "Hej Bjørn:" or "Jarvis:" prefixes some models add

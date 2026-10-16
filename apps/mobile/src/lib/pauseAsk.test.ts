@@ -126,3 +126,36 @@ test('viser øvrige live-blokke når listen har et tomt indeks uden spørgsmål'
     { type: 'text', text: 'Efter' },
   ])
 })
+
+test('finder spørgsmålet når serveren har hægtet sin NUDGE på resultatet', () => {
+  // Målt 16/10-2026 — den ÆGTE rod-årsag, efter to fejlede fix.
+  //
+  // Serveren lægger en nudge på det SIDSTE tool-resultat i runden
+  // (`core/services/visible_followup_results.py:70-79`:
+  // `content=last.content.rstrip() + _NUDGE`), og den ender inde i den
+  // PERSISTEREDE `tool_result.content`. `JSON.parse` på hele strengen fejler
+  // derfor med «Unexpected non-whitespace character after JSON».
+  //
+  // Målt på ALLE 13 pause_and_ask-resultater i Bjørns samtale: alle 13 var
+  // ugyldig JSON af præcis denne grund. Derfor forsvandt kortet i mobilen i
+  // det øjeblik streamen sluttede — mens desk slap, fordi SessionContext bærer
+  // de foldede lokale blokke over.
+  const medNudge = JSON.stringify({
+    kind: 'pause_and_ask',
+    question: 'Hvilke flader?',
+    options: ['Desk', 'Mobil'],
+    allow_multiple: true,
+  }) + '\n\n(⟳ Før du fortsætter: skriv én kort sætning om hvad disse resultater betyder og hvad du gør nu.)'
+
+  const msg: ChatMessage = {
+    id: 'a-nudge', role: 'assistant', content: '', created_at: '2026-10-16T00:00:00Z',
+    content_json: [
+      { type: 'tool_use', name: 'call_loaded_tool', id: 'c1', input: { navn: 'pause_and_ask' } },
+      { type: 'tool_result', tool_use_id: 'c1', content: medNudge },
+    ],
+  }
+  const svar = activePauseAsk([msg], [])
+  expect(svar).not.toBeNull()
+  expect(svar?.question).toBe('Hvilke flader?')
+  expect(svar?.options).toEqual(['Desk', 'Mobil'])
+})

@@ -104,8 +104,8 @@ android {
         applicationId 'dk.srvlab.jarvis.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 300
-        versionName "0.2.199"
+        versionCode 301
+        versionName "0.2.200"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 

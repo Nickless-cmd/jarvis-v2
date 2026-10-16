@@ -11,11 +11,64 @@ export type PauseAsk = {
   urgency: 'low' | 'normal' | 'high'
 }
 
+/**
+ * Find det FØRSTE komplette JSON-objekt i en streng — uanset hvad der står bagefter.
+ *
+ * Målt 16/10-2026, og det er den ÆGTE rod-årsag til at kortet døde: serveren
+ * hægter en nudge på det SIDSTE tool-resultat i runden
+ * (`core/services/visible_followup_results.py:70-79`,
+ * `content=last.content.rstrip() + _NUDGE`), og den nudge ender inde i den
+ * PERSISTEREDE `tool_result.content`:
+ *
+ *   { "kind": "pause_and_ask", … }
+ *
+ *   (⟳ Før du fortsætter: skriv én kort sætning …)
+ *
+ * `JSON.parse` på hele strengen fejler derfor med «Unexpected non-whitespace
+ * character after JSON» — og `parseResult` returnerede null, så kortet
+ * forsvandt i det øjeblik streamen sluttede og den gemte tur overtog.
+ *
+ * Målt på ALLE 13 pause_and_ask-resultater i Bjørns samtale: alle 13 var
+ * ugyldig JSON af præcis denne grund. Desk slap, fordi SessionContext bærer de
+ * foldede lokale blokke over — mobilen læser udelukkende de persisterede.
+ *
+ * Desk har samme robusthed i `agentKald.ts`: «rent JSON.parse fejler — vi leder
+ * efter selve feltet». Her leder vi efter det første balancerede objekt.
+ */
+function foersteJsonObjekt(tekst: string): unknown {
+  const start = tekst.indexOf('{')
+  if (start < 0) return null
+  let dybde = 0
+  let iStreng = false
+  let escape = false
+  for (let i = start; i < tekst.length; i++) {
+    const c = tekst[i]
+    if (escape) { escape = false; continue }
+    if (c === '\\') { if (iStreng) escape = true; continue }
+    if (c === '"') { iStreng = !iStreng; continue }
+    if (iStreng) continue
+    if (c === '{') dybde++
+    else if (c === '}') {
+      dybde--
+      if (dybde === 0) {
+        try { return JSON.parse(tekst.slice(start, i + 1)) } catch { return null }
+      }
+    }
+  }
+  return null
+}
+
 function parseResult(result: unknown): PauseAsk | null {
   let data = result
   if (typeof data === 'string') {
-    if (!data.includes('pause_and_ask')) return null
-    try { data = JSON.parse(data) } catch { return null }
+    const tekst = data
+    if (!tekst.includes('pause_and_ask')) return null
+    try {
+      data = JSON.parse(tekst)
+    } catch {
+      data = foersteJsonObjekt(tekst)
+    }
+    if (data === null || data === undefined) return null
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null
   const value = data as Record<string, unknown>

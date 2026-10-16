@@ -10,15 +10,23 @@ Two transcription backends:
 - 'local' — faster-whisper tiny via core.skills.voice.stt, offline + private
   but poor quality on Danish
 
-Audio captured from NOS X500 USB via parec (switched from Logitech PRO
-2026-05-09) or sounddevice fallback.
+Audio captured via sounddevice/ALSA. The device is chosen by NAME, not by
+index, and the capture runs at the device's NATIVE sample rate before being
+resampled to 16 kHz for transcription.
+
+History (measured 16/10-2026): the tool used to shell out to `parec` against
+a PipeWire source name (`alsa_input.usb-NOS_X500_...`). Both halves of that
+were dead: the NOS X500 is no longer attached, and there is no PulseAudio/
+PipeWire daemon inside the container (`pactl` → Connection refused), so
+`parec` could never connect. The fallback then called `sd.rec()` with no
+device, which resolved to ALSA `default` — also silent. Net effect: the tool
+reported success while capturing digital silence.
 """
 from __future__ import annotations
 
 import logging
 import os
 import shutil
-import subprocess
 import tempfile
 import wave
 from datetime import UTC, datetime
@@ -31,12 +39,19 @@ logger = logging.getLogger(__name__)
 _SAMPLE_RATE = 16000
 _DEFAULT_DURATION = 8.0
 _MAX_DURATION = 60.0
-_MIC_SOURCE = "alsa_input.usb-NOS_X500_NOS_X500_20200508V100-00.mono-fallback"
-_PAREC_BIN_CANDIDATES = (
-    "/home/linuxbrew/.linuxbrew/bin/parec",
-    "/usr/bin/parec",
-    shutil.which("parec") or "",
+
+#: Substring matched against ALSA device names, in priority order. The first
+#: device whose name contains one of these wins. Names are used instead of
+#: indices because ALSA indices shift when devices are plugged/unplugged —
+#: an index that works today can silently point at a different card tomorrow.
+#: Override with JARVIS_MIC_DEVICE (a name substring or an exact index).
+_MIC_DEVICE_PREFERENCES = (
+    "PRO: USB Audio",       # Logitech PRO — the only device measured with signal
+    "BUA-200M: USB Audio",  # Plantronics headset (measured silent 16/10-2026)
+    "USB Camera2: Audio",
 )
+_MIC_DEVICE_ENV = "JARVIS_MIC_DEVICE"
+
 _RECORDINGS_REL = "memory/generated/mic"
 
 # Trigger phrases Jarvis recognizes in transcripts. Matched case-insensitively
@@ -168,69 +183,135 @@ def _route_trigger(action_key: str, transcript: str, metadata: dict[str, Any]) -
     return {"routed": action_key, "action": "unhandled"}
 
 
-def _parec_binary() -> str | None:
-    for path in _PAREC_BIN_CANDIDATES:
-        if path and os.path.exists(path):
-            return path
-    return None
-
-
 def _recording_dir() -> Path:
     from core.runtime.workspace_paths import shared_dir
     return shared_dir() / _RECORDINGS_REL
 
 
+# ─── Device selection ─────────────────────────────────────────────────
+
+def _pick_input_device(sd: Any) -> tuple[int | None, str, int]:
+    """Choose an input device by NAME. Returns (index, name, native_rate).
+
+    ``index`` is None when nothing usable was found. The rate is the device's
+    own default — capturing at a rate the hardware does not support is what
+    produced ``Invalid sample rate`` on the camera device (measured
+    16/10-2026: card 3 rejects 16 kHz).
+    """
+    override = os.environ.get(_MIC_DEVICE_ENV, "").strip()
+    try:
+        devices = list(sd.query_devices())
+    except Exception as exc:
+        logger.debug("mic_listen: could not query devices: %s", exc)
+        return None, "", _SAMPLE_RATE
+
+    def _usable(d: dict[str, Any]) -> bool:
+        return int(d.get("max_input_channels") or 0) > 0
+
+    # Explicit override wins: an exact index, or a name substring.
+    if override:
+        if override.isdigit():
+            idx = int(override)
+            if 0 <= idx < len(devices) and _usable(devices[idx]):
+                d = devices[idx]
+                return idx, str(d.get("name") or ""), int(d.get("default_samplerate") or _SAMPLE_RATE)
+        else:
+            for idx, d in enumerate(devices):
+                if _usable(d) and override.lower() in str(d.get("name") or "").lower():
+                    return idx, str(d.get("name") or ""), int(d.get("default_samplerate") or _SAMPLE_RATE)
+        logger.warning("mic_listen: %s=%r matched no usable device — falling back", _MIC_DEVICE_ENV, override)
+
+    for pref in _MIC_DEVICE_PREFERENCES:
+        for idx, d in enumerate(devices):
+            if _usable(d) and pref.lower() in str(d.get("name") or "").lower():
+                return idx, str(d.get("name") or ""), int(d.get("default_samplerate") or _SAMPLE_RATE)
+
+    # Last resort: the system default input, if it has input channels.
+    try:
+        default_in = sd.default.device[0]
+        if isinstance(default_in, int) and 0 <= default_in < len(devices) and _usable(devices[default_in]):
+            d = devices[default_in]
+            return default_in, str(d.get("name") or ""), int(d.get("default_samplerate") or _SAMPLE_RATE)
+    except Exception:  # sd.default kan mangle/vaere en streng — vi falder til None nedenfor
+        pass
+    return None, "", _SAMPLE_RATE
+
+
+def _resample_to_16k(samples: Any, native_rate: int) -> Any:
+    """Resample int16 mono samples from ``native_rate`` to 16 kHz.
+
+    Uses scipy when available; otherwise falls back to linear interpolation
+    via numpy. Never raises — on failure the caller gets the input unchanged
+    (better a wrong-rate transcript than a crash in a perception path).
+    """
+    import numpy as np
+    if native_rate == _SAMPLE_RATE:
+        return samples
+    try:
+        from scipy.signal import resample_poly
+        from math import gcd
+        g = gcd(int(native_rate), _SAMPLE_RATE)
+        up, down = _SAMPLE_RATE // g, int(native_rate) // g
+        return resample_poly(samples.astype(np.float32), up, down).astype(np.int16)
+    except Exception as exc:
+        logger.debug("mic_listen: scipy resample failed (%s) — linear fallback", exc)
+        try:
+            n_out = int(len(samples) * _SAMPLE_RATE / native_rate)
+            if n_out <= 0:
+                return samples
+            x_old = np.linspace(0.0, 1.0, num=len(samples), endpoint=False)
+            x_new = np.linspace(0.0, 1.0, num=n_out, endpoint=False)
+            return np.interp(x_new, x_old, samples.astype(np.float32)).astype(np.int16)
+        except Exception:  # ogsaa lineaer interpolation fejlede — hellere raa lyd end et kast i en perceptions-vej
+            return samples
+
+
 # ─── Capture ──────────────────────────────────────────────────────────
 
-def _capture_parec(duration: float) -> bytes | None:
-    """Capture from Logitech via parec. Returns raw s16le mono 16kHz bytes."""
-    parec = _parec_binary()
-    if not parec:
-        return None
-    n_bytes = int(duration * _SAMPLE_RATE) * 2  # s16le
-    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
-    try:
-        proc = subprocess.Popen(
-            [parec, f"--device={_MIC_SOURCE}", f"--rate={_SAMPLE_RATE}",
-             "--channels=1", "--format=s16le"],
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
-        )
-        raw = proc.stdout.read(n_bytes) if proc.stdout else b""
-        proc.terminate()
-        proc.wait(timeout=3)
-        return raw if len(raw) >= 3200 else None  # at least 100ms
-    except Exception as exc:
-        logger.debug("mic_listen: parec capture failed: %s", exc)
-        return None
+def _capture_sounddevice(duration: float) -> tuple[bytes | None, str]:
+    """Capture via sounddevice/ALSA at the device's native rate.
 
-
-def _capture_sounddevice(duration: float) -> bytes | None:
-    """Fallback capture via sounddevice (default input device)."""
+    Returns (raw s16le mono 16 kHz bytes, description). The description names
+    the device actually used, so a silent capture can be traced to a device
+    rather than to "the mic".
+    """
     try:
         import numpy as np
         import sounddevice as sd
+    except Exception as exc:
+        logger.debug("mic_listen: sounddevice/numpy unavailable: %s", exc)
+        return None, "sounddevice-unavailable"
+
+    idx, name, native_rate = _pick_input_device(sd)
+    if idx is None:
+        return None, "no-input-device"
+
+    try:
         samples = sd.rec(
-            int(duration * _SAMPLE_RATE),
-            samplerate=_SAMPLE_RATE,
+            int(duration * native_rate),
+            samplerate=native_rate,
             channels=1,
             dtype="int16",
+            device=idx,
             blocking=True,
         )
-        return samples.tobytes()
     except Exception as exc:
-        logger.debug("mic_listen: sounddevice capture failed: %s", exc)
-        return None
+        logger.debug("mic_listen: capture failed on device %s (%s): %s", idx, name, exc)
+        return None, f"capture-failed:{name}"
+
+    mono = samples.reshape(-1)
+    resampled = _resample_to_16k(mono, native_rate)
+    return resampled.tobytes(), f"sounddevice:{name}@{native_rate}"
 
 
 def _capture_audio(duration: float) -> tuple[bytes | None, str]:
-    """Try parec first (NOS X500), then sounddevice fallback."""
-    raw = _capture_parec(duration)
-    if raw:
-        return raw, "parec"
-    raw = _capture_sounddevice(duration)
-    if raw:
-        return raw, "sounddevice"
-    return None, "none"
+    """Capture audio. sounddevice/ALSA is the only path.
+
+    `parec` was removed 16/10-2026: it needs a PulseAudio/PipeWire daemon and
+    there is none in the container, so it could only ever fail — while its
+    presence made the failure look like a device problem.
+    """
+    return _capture_sounddevice(duration)
 
 
 def _write_wav(raw_pcm: bytes, path: Path) -> None:
@@ -291,7 +372,11 @@ def listen_and_transcribe(
     if raw_pcm is None:
         return {
             "status": "error",
-            "text": "Could not capture audio — no mic available (parec + sounddevice both failed)",
+            "text": (
+                f"Could not capture audio — no usable input device ({capture_path}). "
+                "Set JARVIS_MIC_DEVICE to a device name substring or index to override."
+            ),
+            "capture_device": capture_path,
         }
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="jarvis-mic-"))

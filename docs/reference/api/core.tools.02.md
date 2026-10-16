@@ -149,20 +149,20 @@ _Mic listen tool — Jarvis hears the room when he actively chooses to._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normalize_for_match` | `(text)` | Lowercase + replace punctuation with spaces + collapse whitespace. | [src](../../../core/tools/mic_listen_tool.py#L54) |
-| function | `detect_trigger` | `(text)` | Return the action_key of a trigger matched in text, or None. | [src](../../../core/tools/mic_listen_tool.py#L66) |
-| function | `_strip_trigger` | `(text, action_key)` | Remove the matched trigger phrase from the transcript so the remainder | [src](../../../core/tools/mic_listen_tool.py#L78) |
-| function | `_route_trigger` | `(action_key, transcript, metadata)` | Route a detected trigger to the appropriate downstream system. | [src](../../../core/tools/mic_listen_tool.py#L102) |
-| function | `_parec_binary` | `()` | — | [src](../../../core/tools/mic_listen_tool.py#L171) |
-| function | `_recording_dir` | `()` | — | [src](../../../core/tools/mic_listen_tool.py#L178) |
-| function | `_capture_parec` | `(duration)` | Capture from Logitech via parec. Returns raw s16le mono 16kHz bytes. | [src](../../../core/tools/mic_listen_tool.py#L185) |
-| function | `_capture_sounddevice` | `(duration)` | Fallback capture via sounddevice (default input device). | [src](../../../core/tools/mic_listen_tool.py#L207) |
-| function | `_capture_audio` | `(duration)` | Try parec first (NOS X500), then sounddevice fallback. | [src](../../../core/tools/mic_listen_tool.py#L225) |
-| function | `_write_wav` | `(raw_pcm, path)` | Wrap raw s16le mono 16kHz bytes as a WAV file. | [src](../../../core/tools/mic_listen_tool.py#L236) |
-| function | `_transcribe_hf` | `(wav_path, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L247) |
-| function | `_transcribe_local` | `(raw_pcm, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L259) |
-| function | `listen_and_transcribe` | `(*, duration=…, backend=…, language=…, save_recording=…)` | Active mic listen. Captures audio, transcribes, returns text. | [src](../../../core/tools/mic_listen_tool.py#L273) |
-| function | `_exec_mic_listen` | `(args)` | — | [src](../../../core/tools/mic_listen_tool.py#L406) |
+| function | `_normalize_for_match` | `(text)` | Lowercase + replace punctuation with spaces + collapse whitespace. | [src](../../../core/tools/mic_listen_tool.py#L69) |
+| function | `detect_trigger` | `(text)` | Return the action_key of a trigger matched in text, or None. | [src](../../../core/tools/mic_listen_tool.py#L81) |
+| function | `_strip_trigger` | `(text, action_key)` | Remove the matched trigger phrase from the transcript so the remainder | [src](../../../core/tools/mic_listen_tool.py#L93) |
+| function | `_route_trigger` | `(action_key, transcript, metadata)` | Route a detected trigger to the appropriate downstream system. | [src](../../../core/tools/mic_listen_tool.py#L117) |
+| function | `_recording_dir` | `()` | — | [src](../../../core/tools/mic_listen_tool.py#L186) |
+| function | `_pick_input_device` | `(sd)` | Choose an input device by NAME. Returns (index, name, native_rate). | [src](../../../core/tools/mic_listen_tool.py#L193) |
+| function | `_resample_to_16k` | `(samples, native_rate)` | Resample int16 mono samples from ``native_rate`` to 16 kHz. | [src](../../../core/tools/mic_listen_tool.py#L240) |
+| function | `_capture_sounddevice` | `(duration)` | Capture via sounddevice/ALSA at the device's native rate. | [src](../../../core/tools/mic_listen_tool.py#L271) |
+| function | `_capture_audio` | `(duration)` | Capture audio. sounddevice/ALSA is the only path. | [src](../../../core/tools/mic_listen_tool.py#L307) |
+| function | `_write_wav` | `(raw_pcm, path)` | Wrap raw s16le mono 16kHz bytes as a WAV file. | [src](../../../core/tools/mic_listen_tool.py#L317) |
+| function | `_transcribe_hf` | `(wav_path, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L328) |
+| function | `_transcribe_local` | `(raw_pcm, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L340) |
+| function | `listen_and_transcribe` | `(*, duration=…, backend=…, language=…, save_recording=…)` | Active mic listen. Captures audio, transcribes, returns text. | [src](../../../core/tools/mic_listen_tool.py#L354) |
+| function | `_exec_mic_listen` | `(args)` | — | [src](../../../core/tools/mic_listen_tool.py#L491) |
 
 ## `core/tools/monitor_tools.py`
 _Tool wrappers for pinned monitor streams (monitor_streams)._

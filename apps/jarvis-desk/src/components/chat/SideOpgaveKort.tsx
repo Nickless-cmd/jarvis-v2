@@ -56,6 +56,11 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
   const [menu, setMenu] = useState(false)
   const [travl, setTravl] = useState(false)
   const [fejl, setFejl] = useState('')
+  // Lukningen skal bære sit bevis (16/10-2026): serveren AFVISER `completed`
+  // uden et — se `lukFaerdig`. Formen erstatter det direkte kald, så et afvist
+  // kald ikke ser ud som om knappen ikke virkede.
+  const [lukker, setLukker] = useState(false)
+  const [bevis, setBevis] = useState('')
   const forbudt = useRef(false)
   const rod = useRef<HTMLDivElement>(null)
 
@@ -97,9 +102,13 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
     setMenu(false); setTravl(true); setFejl('')
     try {
       if (v === 'faerdig') {
-        await setSideTaskStatus(config, t.side_task_id, 'completed')
-        setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
-      } else if (v === 'koe') {
+        // Åbn formen i stedet for at lukke direkte. Serveren afviser
+        // `completed` uden et bevis (16/10-2026), så et direkte kald her ville
+        // fejle — og fejlen ville se ud som om knappen ikke virkede.
+        setLukker(true)
+        return
+      }
+      if (v === 'koe') {
         if (t.status !== 'queued') await setSideTaskStatus(config, t.side_task_id, 'queued')
         setOpgaver((l) => l.map((x) => x.side_task_id === t.side_task_id ? { ...x, status: 'queued' } : x))
       } else {
@@ -111,10 +120,38 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
         // Startet = i gang, OG knyttet til den samtale der løser den — så
         // lukke-instruksen kan stå netop dér.
         if (t.status !== 'activated' || arbejds) {
-          await setSideTaskStatus(config, t.side_task_id, 'activated', arbejds)
+          await setSideTaskStatus(config, t.side_task_id, 'activated', { session: arbejds })
           setOpgaver((l) => l.map((x) => (x.side_task_id === t.side_task_id ? { ...x, status: 'activated' } : x)))
         }
       }
+      void hent(config)
+    } catch (e) {
+      setFejl(e instanceof Error ? e.message : 'Det lykkedes ikke')
+    } finally {
+      setTravl(false)
+    }
+  }
+
+  /**
+   * Luk opgaven som færdig — med det bevis serveren kræver (16/10-2026).
+   *
+   * Bjørn: «Krav ved completed». Uden beviset er lukningen en påstand ingen
+   * kan efterprøve, og det er præcis hvad der lod en MEMORY-sektion kalde
+   * afsluttet arbejde «stadig åben». Kan opgaven ikke løses, er vejen ud
+   * `dismissed` med en grund — ikke en tom lukning.
+   */
+  const lukFaerdig = async () => {
+    if (!config || travl) return
+    const ord = bevis.trim()
+    if (ord.length < 10) {
+      setFejl('Skriv hvad der faktisk blev gjort — lukningen skal kunne efterprøves.')
+      return
+    }
+    setTravl(true); setFejl('')
+    try {
+      await setSideTaskStatus(config, t.side_task_id, 'completed', { bevis: ord })
+      setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
+      setLukker(false); setBevis('')
       void hent(config)
     } catch (e) {
       setFejl(e instanceof Error ? e.message : 'Det lykkedes ikke')
@@ -155,6 +192,20 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
         <h4 className="sok-titel" title={t.title}>{t.title}</h4>
         <p className="sok-tekst" title={t.prompt}>{beskrivelse}</p>
         {fejl ? <p className="sok-fejl" role="alert">{fejl}</p> : null}
+        {lukker ? (
+          <div className="sok-lukform">
+            <label className="sok-luklabel" htmlFor="sok-bevis">Hvad blev gjort?</label>
+            <textarea id="sok-bevis" className="sok-bevis" rows={2} value={bevis}
+                      placeholder="fx commit 0ddcd976b — docs regenereret"
+                      onChange={(e) => setBevis(e.target.value)} />
+            <div className="sok-lukkald">
+              <button type="button" className="sok-start" disabled={travl}
+                      onClick={() => void lukFaerdig()}>Bekræft færdig</button>
+              <button type="button" disabled={travl}
+                      onClick={() => { setLukker(false); setBevis(''); setFejl('') }}>Annullér</button>
+            </div>
+          </div>
+        ) : null}
         <div className="sok-fod">
           <div className="sok-blad" aria-label="Bladr i sideopgaverne">
             <button type="button" aria-label="Forrige sideopgave" disabled={idx === 0} onClick={() => setI(idx - 1)}><ChevronLeft size={15} /></button>

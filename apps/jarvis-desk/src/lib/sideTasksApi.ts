@@ -22,6 +22,11 @@ export interface SideTask {
   resolved_at?: string
   /** Hvem der lukkede den — fx `desk`, `jarvis` eller `auto:stilstand 42min`. */
   lukket_af?: string
+  /** BEVISET for en `completed`-lukning: hvad der faktisk blev gjort
+   *  (16/10-2026). Serveren afviser en lukning uden det. */
+  bevis?: string
+  /** Grunden til en `dismissed`-lukning: hvorfor den ikke skal løses. */
+  dismiss_reason?: string
   /** Samtalen der løser/løste opgaven. */
   arbejds_session?: string
   arbejds_run_id?: string
@@ -50,14 +55,28 @@ export async function getAlleSideTasks(config: ApiConfig): Promise<SideTask[]> {
 }
 
 export async function setSideTaskStatus(
-  config: ApiConfig, id: string, status: SideTaskAfslutning, session?: string,
+  config: ApiConfig,
+  id: string,
+  status: SideTaskAfslutning,
+  opts: { session?: string; bevis?: string; reason?: string } = {},
 ): Promise<void> {
   // `session` er samtalen der LØSER opgaven. Uden den kan serveren ikke knytte
   // turen til opgaven, og så er der ingen der kan lukke den (Bjørn 3/10: «måtte
   // jeg minde ham om at markere den flaggede opgave færdig»).
+  //
+  // `bevis`/`reason` (16/10-2026): serveren AFVISER en lukning uden sin grund —
+  // `completed` kræver hvad der faktisk blev gjort, `dismissed` hvorfor den ikke
+  // skal løses. Bjørn: «Krav ved completed — men dismissed med begrundelse er
+  // altid en vej ud». Derfor er begge felter med her: uden dem virker knapperne
+  // i panelet ikke, og en lukning ville igen kunne efterlade en MEMORY-sektion
+  // der kalder afsluttet arbejde «stadig åben».
+  const body: Record<string, string> = { status }
+  if (opts.session) body.session = opts.session
+  if (opts.bevis) body.bevis = opts.bevis
+  if (opts.reason) body.reason = opts.reason
   const r = await apiFetch<{ status?: string; error?: string }>(
     config, `/cowork/side-tasks/${encodeURIComponent(id)}/status`,
-    { method: 'POST', body: session ? { status, session } : { status } },
+    { method: 'POST', body },
   )
   // Serveren svarer 200 med {status:'error'} for en ukendt eller allerede
   // afsluttet opgave. Det er en fejl for brugeren, ikke en succes.

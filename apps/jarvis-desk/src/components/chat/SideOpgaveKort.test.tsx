@@ -98,7 +98,7 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     // praecis fejlen Bjoern saa 3/10 («maatte jeg minde ham om at markere
     // den flaggede opgave faerdig»).
     const forventet = { startLokalt: 'chat-ny', baggrund: 'chat-bg', loesHer: 'chat-her' }[handling as 'startLokalt']
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated', forventet))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated', { session: forventet }))
     expect(await screen.findByText('i gang')).toBeInTheDocument()
   })
 
@@ -117,7 +117,16 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     expect(await screen.findByText('Anden')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Flere valg'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Markér som færdig' }))
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'b', 'completed'))
+    // Lukningen kræver et bevis (16/10-2026): formen åbner, og først
+    // «Bekræft færdig» sender kaldet. Uden det ville serveren afvise det —
+    // og et afvist kald ser ud som om knappen ikke virkede.
+    expect(setSideTaskStatus).not.toHaveBeenCalledWith(cfg, 'b', 'completed')
+    fireEvent.change(screen.getByLabelText('Hvad blev gjort?'), {
+      target: { value: 'Rettet i commit abc1234' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Bekræft færdig' }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(
+      cfg, 'b', 'completed', { bevis: 'Rettet i commit abc1234' }))
   })
 
   it('sæt i kø ændrer status uden at starte en samtale', async () => {

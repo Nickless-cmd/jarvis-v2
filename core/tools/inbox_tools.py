@@ -67,7 +67,8 @@ INBOX_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "agent kontrollerer den terminalt udfald foerst. Den markerer "
                 "IKKE en endnu ikke fyret vaekning som brugt. Dette er den ene "
                 "af to maader en blokerende post frigives — et blik paa `inbox` "
-                "frigiver ikke."
+                "frigiver ikke. Er posten en `side-`-opgave, kraever lukningen "
+                "et `bevis` for hvad der faktisk blev gjort."
             ),
             "parameters": {
                 "type": "object",
@@ -75,6 +76,10 @@ INBOX_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "id": {"type": "string",
                            "description": "Postens id, praecis som `inbox` viste "
                                           "det (f.eks. wake-49b89a51de)."},
+                    "bevis": {"type": "string",
+                              "description": "Kraves for en side-opgave: hvad der "
+                                             "faktisk blev gjort (commit, fil eller "
+                                             "maalt resultat)."},
                 },
                 "required": ["id"],
             },
@@ -199,7 +204,7 @@ def _exec_inbox_done(arguments: dict[str, Any] | None = None, **_kw) -> dict[str
     if not bruger:
         return {"status": "error", "error": "ingen autentificeret bruger"}
     from core.services.inbox_state import done
-    r = done(bruger, post_id)
+    r = done(bruger, post_id, bevis=str(a.get("bevis") or ""))
     # `ukendt` er IKKE en succes. Et «ok» paa et id der ikke findes ville
     # frigive gaten uden at lukke noget — husets hyppigste fejlform.
     if r.get("status") == "ukendt":

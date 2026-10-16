@@ -406,8 +406,14 @@ describe('NotifikationsFeed', () => {
     hent.mockResolvedValue({ poster: [post(), svarPost()], antal: 2, venter: 1 })
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
 
-    expect(await screen.findByRole('tab', { name: /Venter på dig/ })).toHaveTextContent('1')
-    expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')
+    // Tallene kommer fra den HENTEDE liste, ikke fra fanen selv: fanen findes
+    // allerede FOER data lander. Et bart `findByRole` + `toHaveTextContent`
+    // er derfor et kaploeb — maalt 16/10-2026: groen lokalt, roed i CI, hvor
+    // foerste render er langsommere. Samme fejlform gjorde desk-jobbet roedt.
+    const venterFane = await screen.findByRole('tab', { name: /Venter på dig/ })
+    const svarFane = screen.getByRole('tab', { name: /^Svar/ })
+    await waitFor(() => expect(venterFane).toHaveTextContent('1'))
+    await waitFor(() => expect(svarFane).toHaveTextContent('1'))
 
     fireEvent.click(screen.getByRole('tab', { name: /^Svar/ }))
     expect(await screen.findByText('Her er hvad jeg gjorde.')).toBeInTheDocument()

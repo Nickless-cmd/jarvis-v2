@@ -34,6 +34,11 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
   const [opgaver, setOpgaver] = useState<SideTask[] | null>(null)
   const [fejl, setFejl] = useState('')
   const [travl, setTravl] = useState('')
+  // Lukningen skal bære sin egen begrundelse (16/10-2026): `completed` kræver
+  // hvad der blev gjort, `dismissed` hvorfor den ikke skal løses. Serveren
+  // afviser ellers — se `bekraeft`.
+  const [lukker, setLukker] = useState<{ id: string; beslutning: 'completed' | 'dismissed' } | null>(null)
+  const [tekst, setTekst] = useState('')
 
   const hent = useCallback(async () => {
     if (!config) return
@@ -48,11 +53,34 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
 
   useEffect(() => { void hent() }, [hent])
 
-  const luk = async (t: SideTask, beslutning: 'completed' | 'dismissed') => {
-    if (!config || travl) return
+  /** Åbn lukke-formen. Den lukker IKKE selv — se `bekraeft`. */
+  const aabnLuk = (t: SideTask, beslutning: 'completed' | 'dismissed') => {
+    setFejl('')
+    setTekst('')
+    setLukker({ id: t.side_task_id, beslutning })
+  }
+
+  /**
+   * Luk opgaven — med den begrundelse serveren kræver (16/10-2026).
+   *
+   * Bjørn: «Krav ved completed — men dismissed med begrundelse er altid en vej
+   * ud». Et tomt felt er ikke en begrundelse, og et afvist kald ville se ud som
+   * om knappen ikke virkede; derfor fanges det her først.
+   */
+  const bekraeft = async (t: SideTask) => {
+    if (!config || travl || !lukker || lukker.id !== t.side_task_id) return
+    const ord = tekst.trim()
+    if (ord.length < 10) {
+      setFejl(lukker.beslutning === 'completed'
+        ? 'Skriv hvad der faktisk blev gjort — lukningen skal kunne efterprøves.'
+        : 'Skriv hvorfor opgaven ikke skal løses.')
+      return
+    }
     setTravl(t.side_task_id)
     try {
-      await setSideTaskStatus(config, t.side_task_id, beslutning)
+      await setSideTaskStatus(config, t.side_task_id, lukker.beslutning,
+        lukker.beslutning === 'completed' ? { bevis: ord } : { reason: ord })
+      setLukker(null); setTekst('')
       await hent()
     } catch (e) {
       setFejl(e instanceof Error ? e.message : 'Det lykkedes ikke')
@@ -90,13 +118,39 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
               {t.arbejds_session ? <span> · arbejde i {t.arbejds_session.slice(0, 16)}…</span> : null}
               {t.arbejds_run_id ? <span> · run {t.arbejds_run_id.slice(0, 16)}…</span> : null}
             </p>
+            {t.bevis ? <p className="sop-bevis">Bevis: {t.bevis}</p> : null}
+            {t.dismiss_reason ? <p className="sop-bevis">Grund: {t.dismiss_reason}</p> : null}
             {t.status === 'pending' || t.status === 'queued' || t.status === 'activated' ? (
-              <div className="sop-knapper">
-                <button type="button" disabled={travl === t.side_task_id}
-                        onClick={() => void luk(t, 'completed')}>Markér færdig</button>
-                <button type="button" disabled={travl === t.side_task_id}
-                        onClick={() => void luk(t, 'dismissed')}>Fjern</button>
-              </div>
+              lukker?.id === t.side_task_id ? (
+                <div className="sop-lukform">
+                  <label className="sop-luklabel" htmlFor={`sop-begrundelse-${t.side_task_id}`}>
+                    {lukker.beslutning === 'completed'
+                      ? 'Hvad blev gjort? (beviset gemmes på opgaven)'
+                      : 'Hvorfor skal den ikke løses?'}
+                  </label>
+                  <textarea id={`sop-begrundelse-${t.side_task_id}`} className="sop-begrundelse" rows={2}
+                            value={tekst}
+                            placeholder={lukker.beslutning === 'completed'
+                              ? 'fx commit 0ddcd976b — docs regenereret'
+                              : 'fx ikke længere relevant efter 8d88ab530'}
+                            onChange={(e) => setTekst(e.target.value)} />
+                  <div className="sop-knapper">
+                    <button type="button" disabled={travl === t.side_task_id}
+                            onClick={() => void bekraeft(t)}>
+                      {lukker.beslutning === 'completed' ? 'Bekræft færdig' : 'Bekræft fjern'}
+                    </button>
+                    <button type="button" disabled={travl === t.side_task_id}
+                            onClick={() => { setLukker(null); setTekst('') }}>Annullér</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="sop-knapper">
+                  <button type="button" disabled={travl === t.side_task_id}
+                          onClick={() => aabnLuk(t, 'completed')}>Markér færdig</button>
+                  <button type="button" disabled={travl === t.side_task_id}
+                          onClick={() => aabnLuk(t, 'dismissed')}>Fjern</button>
+                </div>
+              )
             ) : null}
           </li>
         ))}

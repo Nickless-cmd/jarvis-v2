@@ -39,7 +39,7 @@ def test_side_tasks_are_read_only_projection_and_empty_section_disappears(monkey
     active = byg_indbakke("owner", kilder=k)["sideopgaver"][0]
     assert active["status"] == "i gang" and active["session_id"] == "chat-7"
     assert active["run_id"] == "run-8"
-    side_tasks.resolve(tid, decision="completed")
+    side_tasks.resolve(tid, decision="completed", bevis="Startpositionen er verificeret")
     assert byg_indbakke("owner", kilder=k)["sideopgaver"] == []
 
 
@@ -48,9 +48,27 @@ def test_inbox_done_and_drop_change_side_task_source_not_a_second_record(monkeyp
     first = side_tasks.flag(title="A", prompt="Gør A")["side_task_id"]
     second = side_tasks.flag(title="B", prompt="Gør B")["side_task_id"]
     assert inbox_state.done("other", first)["status"] == "ukendt"
-    assert inbox_state.done("owner", first)["status"] == "ok"
+    assert inbox_state.done("owner", first, "A blev gjort")["status"] == "ok"
     assert inbox_state.drop("owner", second, "ikke relevant")["status"] == "ok"
     assert [(r["status"], r.get("lukket_af")) for r in state] == [
         ("completed", "inbox"), ("dismissed", "inbox"),
     ]
     assert side_tasks.list_open() == []
+
+
+def test_en_sovende_sideopgave_er_synlig_men_tidsat(monkeypatch):
+    """Timeren (16/10-2026): den er stadig AABEN — den skal baade SES og vaere
+    TIDSAT. En udskydelse der fik opgaven til at forsvinde fra visningen ville
+    vaere en tavs afvisning i forklædning."""
+    from datetime import UTC, datetime, timedelta
+    _setup(monkeypatch)
+    monkeypatch.setattr(side_tasks, "_book_vaekning", lambda *a, **k: "")
+    k = _kilder()
+    tid = side_tasks.flag(
+        title="Test foerste frame", prompt="Verificér",
+        not_before=(datetime.now(UTC) + timedelta(hours=5)).isoformat(),
+    )["side_task_id"]
+    v = byg_indbakke("owner", kilder=k)["sideopgaver"]
+    assert [p["id"] for p in v] == [tid]
+    assert "sover til" in v[0]["linje"]
+    assert not v[0]["kraever_handling"]

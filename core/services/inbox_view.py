@@ -705,11 +705,17 @@ def byg_indbakke(
             sid = str(t.get("side_task_id") or "")
             if not status or not sid:
                 continue
+            from core.services.side_tasks import sove_tekst
             p = _post(
                 post_id=sid, status=status, kildetype="side_task",
                 beskrivelse=str(t.get("title") or ""),
                 ejer=db_inbox.EJER_JARVIS, nu_ts=nu,
                 alder_dage=_alder_dage(str(t.get("created_at") or ""), nu),
+                # Timeren (16/10-2026): en sovende opgave er stadig ÅBEN — den
+                # skal ses, men den må ikke læses som noget der skal tages nu.
+                # Teksten kommer fra `sove_tekst`, så formen ikke findes i to
+                # kopier; `_post` lægger den ind i selve linjen.
+                tid_tekst=sove_tekst(t),
             )
             p["kraever_handling"] = False  # udsat arbejde må ikke gate aktuelle tools
             p["session_id"] = str(t.get("arbejds_session") or "")

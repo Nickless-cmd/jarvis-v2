@@ -175,13 +175,47 @@ async def cowork_side_task_status(side_task_id: str, payload: dict = Body(defaul
     # opgaven — og saa stod den som «i gang» til et menneske greb ind.
     arbejds_session = str((payload or {}).get("session") or "").strip() or None
     arbejds_run_id = str((payload or {}).get("run_id") or "").strip() or None
+    # En lukning skal baere sin egen begrundelse (16/10-2026). `bevis` for
+    # `completed`, `reason` for `dismissed` — uden den afviser servicen den,
+    # og svaret gaar retur til desk som en synlig fejl (ikke en tavs no-op).
+    bevis = str((payload or {}).get("bevis") or "").strip()
+    reason = str((payload or {}).get("reason") or "").strip()
     from core.services.side_tasks import resolve
     return await asyncio.to_thread(
         resolve, side_task_id, decision=status,
         arbejds_session=arbejds_session,
         arbejds_run_id=arbejds_run_id,
         lukket_af="desk" if status in ("completed", "dismissed") else "",
+        bevis=bevis, reason=reason,
     )
+
+
+@router.post("/side-tasks/{side_task_id}/snooze")
+async def cowork_side_task_snooze(side_task_id: str, payload: dict = Body(default={})) -> dict:
+    """Udskyd en sideopgave til et tidspunkt — eller væk den før tid.
+
+    Én rute for begge, fordi det er samme indstilling: tidspunktet. `not_before`
+    sat = opgaven sover til da. Tom `not_before` = væk den nu.
+
+    En udskydelse lukker INGEN opgave. `dismissed` og `completed` er stadig de
+    eneste udgange — en sovende opgave er åben hele tiden, den er bare ikke i
+    vejen før tiden er inde.
+    """
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
+    from core.services.side_tasks import snooze, vaagn
+    not_before = str((payload or {}).get("not_before") or "").strip()
+    reason = str((payload or {}).get("reason") or "").strip()
+    if not_before:
+        res = await asyncio.to_thread(snooze, side_task_id, until=not_before, reason=reason)
+    else:
+        res = await asyncio.to_thread(vaagn, side_task_id, reason=reason)
+    if str(res.get("status") or "") != "ok":
+        raise HTTPException(
+            status_code=400,
+            detail=str(res.get("error") or "kunne ikke udskyde sideopgaven"))
+    return res
 
 
 @router.post("/side-tasks/{side_task_id}/skjul")

@@ -27,7 +27,8 @@ def test_queue_activation_and_completion_have_distinct_timestamps_and_links(monk
     assert state[0]["arbejds_run_id"] == "run-3"
     assert "resolved_at" not in state[0]
 
-    side_tasks.resolve(tid, decision="completed", lukket_af="jarvis")
+    side_tasks.resolve(tid, decision="completed", lukket_af="jarvis",
+                       bevis="Startpositionen er daekket af en test")
     assert state[0]["resolved_at"] and state[0]["status"] == "completed"
     assert side_tasks.list_open() == []
     assert side_tasks.list_alle()[0]["side_task_id"] == tid
@@ -44,7 +45,8 @@ def test_stable_finding_key_deduplicates_even_after_terminal_decision(monkeypatc
     assert second["side_task_id"] == first["side_task_id"]
     assert second["deduplicated"] is True
     assert len(state) == 1
-    side_tasks.resolve(first["side_task_id"], decision="dismissed")
+    side_tasks.resolve(first["side_task_id"], decision="dismissed",
+                       reason="daekket af en anden opgave")
     third = side_tasks.flag(
         title="Test første frame igen", prompt="Test C", finding_key="coverage:RullendeTal:first-frame",
     )

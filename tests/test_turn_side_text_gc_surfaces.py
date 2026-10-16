@@ -58,7 +58,8 @@ def test_side_tasks_flag_list_and_resolve(monkeypatch):
 
     created = tasks.flag(title="Fix docs", prompt="Update docs", tldr="Docs are stale", session_id="sess-1")
     prompt = tasks.side_tasks_prompt_section()
-    resolved = tasks.resolve(created["side_task_id"], decision="dismissed")
+    resolved = tasks.resolve(created["side_task_id"], decision="dismissed",
+                             reason="ikke laengere relevant")
 
     assert created["status"] == "ok"
     assert prompt is not None

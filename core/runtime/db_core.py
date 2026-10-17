@@ -89,6 +89,7 @@ class PooledConnection(sqlite3.Connection):
 
 import os as _os_pool
 import threading as _threading_pool
+import gc as _gc  # kun til sweepet: en død tråds forbindelse frigives først ved collect
 _conn_pool = _threading_pool.local()
 # Kill-switch: JARVIS_DB_NOPOOL=1 → gammel adfærd (frisk forbindelse pr. connect()).
 _POOL_DISABLED = bool(_os_pool.environ.get("JARVIS_DB_NOPOOL"))
@@ -185,13 +186,12 @@ def _note_pool_birth() -> None:
                 "thread_name": th.name,
                 "daemon": bool(th.daemon),
                 "live_threads_at_birth": _threading_pool.active_count(),
-                # Forbindelsen gemmes HER, ikke kun i thread-local storage.
-                # Thread-local er utilgængelig fra andre tråde, så uden denne
-                # reference kan en sweeper ikke lukke en død tråds forbindelse.
-                # Målt 17/10-2026: deaths_total=0 i BEGGE processer — ingen
-                # pool-forbindelse er nogensinde lukket i produktion, fordi
-                # close_pooled_connection() kun kaldes fra tests.
-                "conn": getattr(_conn_pool, "conn", None),
+                # INGEN conn-reference her — og det er med vilje.
+                # Målt 17/10-2026: en pinnet reference holdt filen åben efter
+                # trådens død (2 fd), mens den samme proces gik til 0 fd så
+                # snart referencen blev sluppet. Thread-local storage frigives
+                # når tråden dør, så refcounting lukker forbindelsen af sig
+                # selv — hvis altså ikke dette dict holder den fast.
             }
             pooled = len(_pool_births)
         _core_logger.info(
@@ -217,6 +217,57 @@ def _note_pool_death() -> None:
         )
     except Exception:  # self-safe: en tæller må aldrig kunne vælte et DB-kald
         pass
+
+
+def _sweep_orphaned_pool_connections() -> dict:
+    """Ryd bogholderiet for døde trådes poster. Self-safe.
+
+    HVORFOR DEN IKKE LUKKER FORBINDELSEN — målt 17/10-2026:
+    ``sqlite3.Connection.close()`` på en anden tråds forbindelse kaster
+    ``ProgrammingError: SQLite objects created in a thread can only be used in
+    that same thread``. Pool-forbindelserne oprettes uden
+    ``check_same_thread=False``, så en sweeper kan per konstruktion ikke lukke
+    dem — den fejlede tavst bag ``except: pass``, og fd-tallet steg mens
+    ``deaths_total`` steg.
+
+    Det er heller ikke nødvendigt. Thread-local storage frigives når tråden
+    dør, så refcounting lukker forbindelsen af sig selv — forudsat at
+    ``_pool_births`` IKKE holder den fast. Målt i isoleret proces: 2 fd med en
+    pinnet ``conn``-reference, 0 fd så snart referencen blev sluppet.
+
+    Sweepet gør derfor kun én ting: fjerner posten, så der ikke længere findes
+    nogen reference fra dette modul. Filen lukkes af refcounting bagefter.
+
+    Thread-ident-genbrug er værn: en post hvis ident findes blandt de LEVENDE
+    tråde røres ikke, så en ny tråd der har fået en gammel ident ikke mister
+    sin post.
+    """
+    global _POOL_DEATH_SEQ
+    try:
+        live = {t.ident for t in _threading_pool.enumerate()}
+        with _pool_events_lock:
+            dead = [i for i in _pool_births if i not in live]
+            if not dead:
+                return {"closed": 0, "remaining": len(_pool_births)}
+            for ident in dead:
+                _pool_births.pop(ident, None)
+                _POOL_DEATH_SEQ += 1
+            remaining = len(_pool_births)
+        # Refcounting alene frigiver dem ikke: thread-local storage og trådens
+        # objekter danner en cyklus, så filen holdes åben indtil en collect
+        # rammer den. Målt 17/10-2026: 2 fd indtil collect, 0 fd efter.
+        # FULD collect, ikke kun generation 0: de døde trådes objekter kan
+        # allerede være promoveret (målt: collect(0) frigav intet i et løb med
+        # otte tråde, fuld collect frigav dem). Kører kun når der faktisk VAR
+        # døde poster, så den almindelige connect-sti er urørt.
+        _gc.collect()
+        _core_logger.info(
+            "DB_POOL_SWEEP: slap %d forældreløse poster, %d tilbage",
+            len(dead), remaining,
+        )
+        return {"closed": len(dead), "remaining": remaining}
+    except Exception:  # self-safe: en sweeper må aldrig kunne vælte et DB-kald
+        return {"closed": 0, "remaining": -1}
 
 
 def pool_connection_stats() -> dict:
@@ -294,6 +345,7 @@ def connect() -> sqlite3.Connection:
     _conn_pool.conn = conn
     _conn_pool.conn_path = DB_PATH
     _note_pool_birth()  # NY pool-forbindelse for denne tråd (ikke genbrug)
+    _sweep_orphaned_pool_connections()  # luk døde trådes forbindelser (17/10-2026)
     return conn
 
 

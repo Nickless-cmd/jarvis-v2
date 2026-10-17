@@ -168,6 +168,9 @@ describe('ChatFlowPresentation', () => {
     const runde = screen.getByTestId('chat-flow-round-line')
     expect(runde.querySelector('[data-testid="chat-flow-round-icon"]')).toBeInTheDocument()
     expect(runde.querySelector('.linje-titel')).toHaveClass('shimmer')
+    // Syntesen er indhold, ikke aktivitet: intet shimmer på den (Bjørn
+    // 17/10-2026). Shimmeret maler gradient ind i teksten og gjorde den grå.
+    expect(synteseFoer.querySelector('.linje-titel')).not.toHaveClass('shimmer')
 
     view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
       blocks[0]!, { type: 'text', text: 'Jeg læser videre uden at hoppe' },

@@ -181,7 +181,14 @@ export function SynteseLinje({ tekst, noegle }: { tekst: string; noegle: number 
           {gammel.tekst}
         </span>
       )}
-      <span className="ls-lag linje-titel shimmer">
+      {/* Syntesen bærer INTET shimmer (Bjørn 17/10-2026: «der ska ikk være
+          shimmer i synteses linjen og den tekst bør være hvid — runde linjen
+          ska have shimmer»). Shimmeret hører på rundelinjen, som er den linje
+          der fortæller at der arbejdes; syntesen er indhold og skal læses.
+          `.shimmer` maler gradient ind i teksten via
+          `-webkit-text-fill-color: transparent`, så det var også dét der
+          gjorde syntesen grå i stedet for hvid. */}
+      <span className="ls-lag linje-titel">
         <span key={`n${vist.id}`} className={`ls-tekst${nyKlasse}`}>{vist.tekst}</span>
       </span>
     </span>

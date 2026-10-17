@@ -169,13 +169,17 @@ describe('syntese-linjen (chat mode)', () => {
     expect(container.querySelector('.ls-tekst')).toHaveClass('ls-ind')
   })
 
-  it('shimmeret bæres af den stabile node gennem hele skiftet', () => {
+  it('syntesen bærer INTET shimmer — og noden er stadig stabil gennem skiftet', () => {
+    // Bjørn 17/10-2026: «der ska ikk være shimmer i synteses linjen og den
+    // tekst bør være hvid — runde linjen ska have shimmer». `.shimmer` maler
+    // gradient ind i teksten via `-webkit-text-fill-color: transparent`, så
+    // det var dét der gjorde syntesen grå i stedet for hvid.
     const { container, rerender } = render(<SynteseLinje tekst="Fandt kilden" noegle={1} />)
     const node = container.querySelector('.linje-titel')
-    expect(node).toHaveClass('shimmer')
+    expect(node).not.toHaveClass('shimmer')
     rerender(<SynteseLinje tekst="Læste filen" noegle={2} />)
     expect(container.querySelector('.linje-titel')).toBe(node)
-    expect(node).toHaveClass('shimmer')
+    expect(node).not.toHaveClass('shimmer')
   })
 
   it('første tegning animerer intet', () => {

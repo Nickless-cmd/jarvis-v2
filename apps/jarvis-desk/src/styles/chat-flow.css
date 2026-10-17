@@ -38,7 +38,11 @@
 .chat-flow-live-synthesis {
   min-height: 1.35em;
   overflow: hidden;
-  color: var(--text-primary, #eef2f5);
+  /* Syntesen er indhold og skal læses som primær tekst — hvid i mørkt tema,
+     sort i lyst. `--fg-1` er temaets primære forgrund; den tidligere
+     `--text-primary` findes ikke i tokens, så den faldt tilbage til en fast
+     nær-hvid der blev usynlig i lyst tema. */
+  color: var(--fg-1);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;

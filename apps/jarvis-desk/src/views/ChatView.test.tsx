@@ -179,7 +179,11 @@ describe('ChatView integration', () => {
       </SettingsProvider>,
     )
     await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
-    expect(screen.getByText('hej')).toBeInTheDocument()
+    // 17/10-2026: `getByText` er SYNKRON — den venter ikke på at den optimistiske
+    // besked er flushet. Under CI-load fejlede den derfor tilfældigt
+    // («Unable to find an element with the text: hej», run 39026252819).
+    // `findByText` venter og gentager; påstanden er den samme, kun ventetiden er ny.
+    expect(await screen.findByText('hej')).toBeInTheDocument()
     act(() => {
       handlersRef.current?.onRunId('r1')
       handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })

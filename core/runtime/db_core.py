@@ -185,6 +185,13 @@ def _note_pool_birth() -> None:
                 "thread_name": th.name,
                 "daemon": bool(th.daemon),
                 "live_threads_at_birth": _threading_pool.active_count(),
+                # Forbindelsen gemmes HER, ikke kun i thread-local storage.
+                # Thread-local er utilgængelig fra andre tråde, så uden denne
+                # reference kan en sweeper ikke lukke en død tråds forbindelse.
+                # Målt 17/10-2026: deaths_total=0 i BEGGE processer — ingen
+                # pool-forbindelse er nogensinde lukket i produktion, fordi
+                # close_pooled_connection() kun kaldes fra tests.
+                "conn": getattr(_conn_pool, "conn", None),
             }
             pooled = len(_pool_births)
         _core_logger.info(

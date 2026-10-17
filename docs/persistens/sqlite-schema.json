@@ -9318,7 +9318,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -26208,7 +26208,7 @@
       ]
     },
     "recall_active_memories": {
-      "digest": "c7:2c:7c:89:16:8b:c0:ac:8b:5e:6d:6a:74:7c:9a:3c:28:71:8b:58:f2:c2:70:86:b3:ec:24:de:92:3e:df:6c",
+      "digest": "25:21:6d:74:9f:12:9f:40:f8:2d:85:f4:4b:a5:b8:cf:66:8f:d9:d3:9a:13:c3:dc:1a:37:b4:d8:39:0e:f1:04",
       "schema": {
         "columns": [
           {
@@ -26292,6 +26292,11 @@
             "partial": false,
             "parts": [
               {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
                 "column": "score",
                 "descending": true,
                 "key": true
@@ -26302,7 +26307,7 @@
                 "key": false
               }
             ],
-            "sql": "CREATE INDEX idx_recall_active_memories_score ON recall_active_memories(score DESC)"
+            "sql": "CREATE INDEX idx_recall_active_memories_score ON recall_active_memories(user_id, score DESC)"
           },
           {
             "name": "sqlite_autoindex_recall_active_memories_1",

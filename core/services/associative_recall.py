@@ -85,33 +85,68 @@ def _get_repetition_multiplier() -> float:
 # DB persistence helpers
 # ---------------------------------------------------------------------------
 
+_RECALL_INDEX = "idx_recall_active_memories_score"
+
+
+def ensure_active_memories_schema(conn) -> None:
+    """Opret tabel + SIKR at indexet daekker den soegning der faktisk koeres.
+
+    Hvorfor den findes (17/10-2026): ``CREATE INDEX IF NOT EXISTS`` ser kun paa
+    NAVNET, ikke paa definitionen. Indexet blev engang oprettet paa ``(score
+    DESC)``; koden bad senere om ``(user_id, score DESC)``. SQLite svarede
+    "findes allerede", det gamle index blev staaende — og hver soegning paa
+    ``WHERE user_id=? ORDER BY score DESC`` maatte sortere hele tabellen i
+    stedet for at gaa direkte til raekkerne. Ingen fejl, intet varsel; kun en
+    stigende omkostning der ikke kunne ses.
+
+    Definitionen laeses derfor fra SQLite selv (``PRAGMA index_info``) frem for
+    at sammenligne SQL-tekst: teksten afhaenger af formatering, kolonnelisten
+    goer ikke. Funktionen er idempotent og ligger her, saa der kun findes ÉN
+    definition af indexet — baade den lazy vej og ``init_db`` kalder den.
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recall_active_memories (
+            memory_id TEXT PRIMARY KEY,
+            narrative TEXT NOT NULL DEFAULT '',
+            topic TEXT NOT NULL DEFAULT '',
+            emotion_arc TEXT NOT NULL DEFAULT '',
+            importance REAL NOT NULL DEFAULT 0,
+            score REAL NOT NULL DEFAULT 0,
+            source_table TEXT NOT NULL DEFAULT 'experiential_memory',
+            activated_at TEXT NOT NULL,
+            user_id TEXT
+        )
+    """)
+    columns = {str(row[1]) for row in conn.execute(
+        "PRAGMA table_info(recall_active_memories)"
+    ).fetchall()}
+    if "user_id" not in columns:
+        conn.execute("ALTER TABLE recall_active_memories ADD COLUMN user_id TEXT")
+    # ``PRAGMA index_info`` svarer (seqno, cid, name) pr. indekseret kolonne.
+    # Tom liste betyder at indexet ikke findes endnu — saa opretter vi det bare.
+    indeks_kolonner = [
+        str(row[2]) for row in conn.execute(
+            f"PRAGMA index_info('{_RECALL_INDEX}')"
+        ).fetchall() if row[2]
+    ]
+    if indeks_kolonner and "user_id" not in indeks_kolonner:
+        logger.info(
+            "associative_recall: index %s daekkede %s uden user_id — genoprettes",
+            _RECALL_INDEX, indeks_kolonner,
+        )
+        conn.execute(f"DROP INDEX {_RECALL_INDEX}")
+    conn.execute(f"""
+        CREATE INDEX IF NOT EXISTS {_RECALL_INDEX}
+        ON recall_active_memories(user_id, score DESC)
+    """)
+
+
 def _ensure_active_memories_table() -> None:
     """Create recall_active_memories table if it doesn't exist (lazy init)."""
     try:
         from core.runtime.db import connect
         with connect() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS recall_active_memories (
-                    memory_id TEXT PRIMARY KEY,
-                    narrative TEXT NOT NULL DEFAULT '',
-                    topic TEXT NOT NULL DEFAULT '',
-                    emotion_arc TEXT NOT NULL DEFAULT '',
-                    importance REAL NOT NULL DEFAULT 0,
-                    score REAL NOT NULL DEFAULT 0,
-                    source_table TEXT NOT NULL DEFAULT 'experiential_memory',
-                    activated_at TEXT NOT NULL,
-                    user_id TEXT
-                )
-            """)
-            columns = {str(row[1]) for row in conn.execute(
-                "PRAGMA table_info(recall_active_memories)"
-            ).fetchall()}
-            if "user_id" not in columns:
-                conn.execute("ALTER TABLE recall_active_memories ADD COLUMN user_id TEXT")
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_recall_active_memories_score
-                ON recall_active_memories(user_id, score DESC)
-            """)
+            ensure_active_memories_schema(conn)
     except Exception as exc:
         logger.warning("associative_recall: DB table init failed: %s", exc)
 

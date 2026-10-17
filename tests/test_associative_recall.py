@@ -83,6 +83,66 @@ def test_get_experiential_memory_candidates_ordering(isolated_runtime) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Index-definition (17/10-2026)
+# ---------------------------------------------------------------------------
+
+def test_gammelt_index_paa_score_alene_rettes_til_user_id(isolated_runtime) -> None:
+    """`CREATE INDEX IF NOT EXISTS` ser kun navnet — ikke definitionen.
+
+    Maalt 17/10-2026: den levende DB havde indexet paa ``(score DESC)`` mens
+    koden bad om ``(user_id, score DESC)``. SQLite svarede "findes allerede",
+    og hver soegning paa ``WHERE user_id=? ORDER BY score DESC`` maatte derfor
+    sortere hele tabellen. Ingen fejl, intet varsel.
+    """
+    import core.services.associative_recall as ar
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        # Genskab driftstilstanden: indexet FINDES, men daekker kun score.
+        conn.execute("DROP INDEX idx_recall_active_memories_score")
+        conn.execute(
+            "CREATE INDEX idx_recall_active_memories_score "
+            "ON recall_active_memories(score DESC)"
+        )
+        conn.commit()
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        kolonner = [
+            str(row[2]) for row in conn.execute(
+                "PRAGMA index_info('idx_recall_active_memories_score')"
+            ).fetchall() if row[2]
+        ]
+
+    assert "user_id" in kolonner, (
+        "indexet daekker stadig ikke user_id — soegningen paa "
+        f"WHERE user_id=? ORDER BY score DESC maa sortere hele tabellen: {kolonner}"
+    )
+    assert "score" in kolonner, f"sorteringskolonnen forsvandt fra indexet: {kolonner}"
+
+
+def test_korrekt_index_genoprettes_ikke(isolated_runtime, caplog) -> None:
+    """Sikringen maa ikke droppe et index der allerede er rigtigt."""
+    import core.services.associative_recall as ar
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        conn.commit()
+
+    with caplog.at_level("INFO", logger="core.services.associative_recall"):
+        with connect() as conn:
+            ar.ensure_active_memories_schema(conn)
+
+    genoprettet = [r for r in caplog.records if "genoprettes" in r.getMessage()]
+    assert not genoprettet, (
+        "sikringen genoprettede et index der allerede var korrekt — "
+        f"det er en unoedig skrivning ved hvert init: {[r.getMessage() for r in genoprettet]}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Task 2: LLM scoring tests
 # ---------------------------------------------------------------------------
 

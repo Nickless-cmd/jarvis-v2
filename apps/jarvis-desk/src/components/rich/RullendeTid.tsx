@@ -14,8 +14,8 @@
  *
  * ## Bredden
  *
- * Hver strimmel er `1ch` bred med `tabular-nums`, så `1m 05s` ikke skubber
- * teksten når sekunderne skifter fra 9 til 10.
+ * Hver strimmel er `1ch` bred med `tabular-nums`, så de enkelte cifre ikke
+ * ændrer bredde. Tidsled har ingen indledende nuller (`1m 5s`).
  */
 import { memo } from 'react'
 

@@ -26,14 +26,14 @@
  */
 import { useEffect, useState } from 'react'
 
-/** `12s` → `1m 05s` → `1t 04m`. Sekund-delen er altid to cifre efter et minut,
- *  så tallet ikke hopper i bredden hvert sekund. */
+/** `12s` → `1m 5s` → `1t 4m`. Ingen indledende nuller: hvert tidsled skrives
+ *  som et almindeligt tal, også lige efter minut- og timeskiftet. */
 export function formaterTurTid(sekunder: number): string {
   const hel = Math.max(0, Math.floor(sekunder))
   if (hel < 60) return `${hel}s`
   const minutter = Math.floor(hel / 60)
-  if (minutter < 60) return `${minutter}m ${String(hel % 60).padStart(2, '0')}s`
-  return `${Math.floor(minutter / 60)}t ${String(minutter % 60).padStart(2, '0')}m`
+  if (minutter < 60) return `${minutter}m ${hel % 60}s`
+  return `${Math.floor(minutter / 60)}t ${minutter % 60}m`
 }
 
 /**

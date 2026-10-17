@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Code2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -7,6 +8,7 @@ import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
+import { LabelSkift } from './LabelSkift'
 import { TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
@@ -153,14 +155,19 @@ export function ChatFlowPresentation({
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, activeLine].filter(Boolean).join('. ')}>
                 {activeSynthesis ? (
-                  <div className="chat-flow-live-synthesis" key={activeSynthesis} aria-hidden="true">
+                  <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
+                    aria-hidden="true">
                     {activeSynthesis}
                   </div>
                 ) : null}
                 {activeLine && activeLine !== activeSynthesis ? (
-                  <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
-                    key={activeLine} aria-hidden="true">
-                    {activeLine}
+                  <div className="chat-flow-synthesis chat-flow-round-line"
+                    data-testid="chat-flow-round-line" aria-hidden="true">
+                    <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
+                      size={15} strokeWidth={1.8} />
+                    <span className="chat-flow-round-label" data-testid="chat-flow-synthesis">
+                      <LabelSkift tekst={activeLine} arbejder className="shimmer" fastIkon />
+                    </span>
                   </div>
                 ) : null}
               </div>

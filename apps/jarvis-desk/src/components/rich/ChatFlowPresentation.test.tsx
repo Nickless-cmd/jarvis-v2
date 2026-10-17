@@ -156,6 +156,31 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })
 
+  it('opdaterer levende syntese uden genmontering og morpher rundelinjen med ikon og shimmer', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Jeg læser' },
+    ]
+    const view = render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+      rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
+
+    const synteseFoer = screen.getByTestId('chat-flow-live-synthesis')
+    const runde = screen.getByTestId('chat-flow-round-line')
+    expect(runde.querySelector('[data-testid="chat-flow-round-icon"]')).toBeInTheDocument()
+    expect(runde.querySelector('.linje-titel')).toHaveClass('shimmer')
+
+    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+      blocks[0]!, { type: 'text', text: 'Jeg læser videre uden at hoppe' },
+    ]} rundeEtiketter={{ t1: 'Tester løsningen' }} />)
+
+    expect(screen.getByTestId('chat-flow-live-synthesis')).toBe(synteseFoer)
+    expect(synteseFoer).toHaveTextContent('Jeg læser videre uden at hoppe')
+    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Læser konfigurationen'))
+      .toHaveAttribute('aria-hidden', 'true')
+    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Tester løsningen'))
+      .toHaveClass('ls-ind', 'shimmer')
+  })
+
   it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {
     render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
       blocks={[summary('Fandt kilden', 1), { type: 'text', text: 'Svaret.' }]} />)

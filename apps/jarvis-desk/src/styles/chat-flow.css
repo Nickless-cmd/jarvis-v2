@@ -28,16 +28,39 @@
 .chat-flow-synthesis {
   color: var(--text-secondary, #8f98a3);
   line-height: 1.35;
-  animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 .chat-flow-live-synthesis {
+  min-height: 1.35em;
   overflow: hidden;
   color: var(--text-primary, #eef2f5);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+  contain: paint;
   animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og
+   label står i hver sin stabile celle, så tekstskift ikke flytter linjen. */
+.chat-flow-round-line {
+  display: flex;
+  min-height: 1.35em;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.chat-flow-round-icon {
+  flex: none;
+  color: var(--fg-2, #aeb6bf);
+}
+
+.chat-flow-round-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-flow-activity--calm .chat-flow-synthesis {
@@ -77,7 +100,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chat-flow-synthesis {
+  .chat-flow-synthesis,
+  .chat-flow-live-synthesis {
     animation: none;
     transition: none;
     transform: none;

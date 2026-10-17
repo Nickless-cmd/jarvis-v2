@@ -40,7 +40,7 @@ export interface TurHovedProps {
   onToggle: () => void
   /** Tænder shimmer i tekst og pil. Kalderen bestemmer hvornår. */
   koerer?: boolean
-  /** Turens forløbne sekunder. Vises som `· 42s` / `· 1m 05s`; `null` = intet ur. */
+  /** Turens forløbne sekunder. Vises som `42s` / `1m 5s`; `null` = intet ur. */
   sekunder?: number | null
   /** Om der er noget at folde. `false` = hovedet er kun en skillestreg med
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der

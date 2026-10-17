@@ -371,6 +371,53 @@ _SYSLOGD_AUTOHEAL = True
 _syslogd_check_counter = 0
 _syslog_stale_flagged = False
 
+# Trussels-notifikationer samles (17/10-2026). Se `_varsle_trusler`.
+_TRUSSEL_COOLDOWN_S = 1800.0      # 30 min pr. trussels-type mellem to notifikationer
+_trussel_sidst: dict[str, float] = {}
+
+
+def _varsle_trusler(dets: list[dict]) -> None:
+    """Én notifikation pr. trussels-TYPE — ikke én pr. kilde-IP.
+
+    Hvorfor (målt 17/10-2026): Bjørn fik 64 "Netværks-trussel"-notifikationer på
+    én dag, 56 af dem i én time, i klynger af op til 8 på 7 sekunder. Han læste
+    det som et angreb — det var min egen detektor der spammede.
+
+    Roden er ikke tærsklen: ``pfsense_syslog._ingest`` har cooldown pr.
+    KILDE-IP (eksponentiel backoff). Men en distribueret scan bruger mange
+    IP'er, så cooldown pr. kilde kan pr. konstruktion ikke dæmpe den — hver ny
+    IP fyrer sin egen notifikation. Aggregeringen hører derfor her, på tværs af
+    kilder.
+
+    Telemetrien er UÆNDRET og stadig granulær: ``central().observe`` og
+    ``record_central_incident`` kaldes fortsat pr. detektion i løkken ovenfor.
+    Kun den menneske-vendte notifikation samles — den er signal, ikke log.
+    """
+    import time as _time
+
+    naa = _time.monotonic()
+    grupper: dict[str, list[dict]] = {}
+    for d in dets:
+        grupper.setdefault(str(d.get("kind") or "ukendt"), []).append(d)
+
+    for kind, gruppe in grupper.items():
+        sidst = _trussel_sidst.get(kind)
+        if sidst is not None and naa - sidst < _TRUSSEL_COOLDOWN_S:
+            continue
+        _trussel_sidst[kind] = naa
+        kilder = len(gruppe)
+        if kilder == 1:
+            d = gruppe[0]
+            msg = (f"{kind} fra {d.get('src')}: {d.get('blocks')} blokke, "
+                   f"{d.get('distinct_ports')} porte (mål {d.get('sample_dst')}) — BLOKERET af pfSense")
+        else:
+            blokke = sum(int(d.get("blocks") or 0) for d in gruppe)
+            top = ", ".join(str(d.get("src")) for d in gruppe[:3])
+            msg = (f"{kind} fra {kilder} kilder ({top}{', …' if kilder > 3 else ''}): "
+                   f"{blokke} blokke i alt — alle BLOKERET af pfSense")
+        _notify_owner_security(
+            f"⚠️ Netværks-trussel: {kind} ({kilder} kilde{'r' if kilder > 1 else ''})", msg)
+
 
 def _pfsense_syslogd_running() -> bool | None:
     """Lever syslogd-PROCESSEN på pfSense? Via REST-API command_prompt (root-shell, read-only ps).
@@ -529,7 +576,8 @@ def poll_syslog() -> dict[str, Any]:
                 elif alive is True and _syslog_stale_flagged:
                     _syslog_stale_flagged = False  # genoplivet → ryd
         for d in dets:
-            src = d.get("src"); kind = d.get("kind")
+            src = d.get("src")
+            kind = d.get("kind")
             msg = (f"{kind} fra {src}: {d.get('blocks')} blokke, "
                    f"{d.get('distinct_ports')} porte (mål {d.get('sample_dst')}) — BLOKERET af pfSense")
             # Severity=warning, IKKE severe: disse er EKSTERNE scans som pfSense ALLEREDE har
@@ -554,7 +602,9 @@ def poll_syslog() -> dict[str, Any]:
                                         kind="security", severity="info", message=msg[:300])
             except Exception:
                 pass
-            _notify_owner_security(f"⚠️ Netværks-trussel: {kind}", msg)
+        # 17/10-2026: notifikationen samles EFTER løkken — én pr. trussels-type.
+        # Telemetrien ovenfor er stadig pr. detektion.
+        _varsle_trusler(dets)
     except Exception:
         pass
     return out

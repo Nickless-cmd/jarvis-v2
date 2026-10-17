@@ -91,6 +91,30 @@ def _save() -> None:
     try:
         pf = _persist_file()
         pf.parent.mkdir(parents=True, exist_ok=True)
+        # Fusion før skrivning: en anden forfatter (fx en håndskrevet
+        # drømmekonsolidering) kan have skrevet til filen siden processens
+        # _load(). Målt 16/10-2026: runtimens write-back fra ældre
+        # hukommelse tabte HC-DREAM-90/91 — to forfattere, ét filnavn,
+        # ingen fusion. Indførelser der IKKE kendes i hukommelsen (aktiv
+        # eller arkiv) flettes ind fra disken før overskrivning.
+        # Begrænsning: konflikter (samme dream_id i disk-arkiv og
+        # hukommelse-aktiv) vinder hukommelsens version.
+        try:
+            disk = json.loads(pf.read_text(encoding="utf-8"))
+            known = {x.get("dream_id") for x in _ACTIVE_DREAMS} | {
+                x.get("dream_id") or x.get("id") for x in _DREAM_ARCHIVE
+            }
+            for x in disk.get("active_dreams") or []:
+                if x.get("dream_id") not in known:
+                    _ACTIVE_DREAMS.append(x)
+            for x in disk.get("archive") or []:
+                if (x.get("dream_id") or x.get("id")) not in known:
+                    _DREAM_ARCHIVE.append(x)
+        except Exception as exc:
+            # Fletningen er en forbedring, ikke en forudsætning: en ulaesbar
+            # disk-fil maa ikke forhindre at hukommelsen skrives. Men tavshed
+            # var praecis problemet (verify-silent-except), saa den meldes.
+            logger.debug("dream_carry_over: disk-fletning fejlede: %s", exc)
         pf.write_text(
             json.dumps(
                 {"active_dreams": _ACTIVE_DREAMS, "archive": _DREAM_ARCHIVE[-50:]},

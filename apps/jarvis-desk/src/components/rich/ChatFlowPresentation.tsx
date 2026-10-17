@@ -87,12 +87,17 @@ export function ChatFlowPresentation({
   const lines = mode === 'calm'
     ? [model.calmStatus]
     : model.visibleSynthesis
-  const visTurhoved = model.hasObservableWork || aktiv
+  // Hovedet skal stå fra FØRSTE ord — også i det vindue hvor turen lige er
+  // startet og der endnu ikke er rapporteret arbejde eller synteser.
+  // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
+  // før de første ord».) Uden `streaming` her manglede hovedet netop i det
+  // øjeblik turen begyndte, og dukkede først op bagefter.
+  const visTurhoved = model.hasObservableWork || aktiv || streaming
 
   // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
   // Bjørn selv har foldet. `null` betyder «følg fasen».
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? aktiv
+  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
@@ -100,7 +105,7 @@ export function ChatFlowPresentation({
         <>
           <TurHoved
             aaben={aaben}
-            koerer={aktiv}
+            koerer={streaming && !finalAnswerStarted}
             tekst={aktiv ? 'Working…' : model.terminalLabel}
             onToggle={() => {
               const naeste = !aaben

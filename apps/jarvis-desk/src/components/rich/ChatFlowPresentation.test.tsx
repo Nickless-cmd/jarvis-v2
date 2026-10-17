@@ -147,3 +147,22 @@ describe('ChatFlowPresentation', () => {
     expect(screen.getAllByRole('status')).toHaveLength(1)
   })
 })
+
+describe('ChatFlowPresentation — turhovedet fra første ord', () => {
+  // Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
+  // før de første ord». Uden dette stod hovedet stille i det vindue hvor
+  // turen lige var startet og intet arbejde var rapporteret endnu.
+  it('viser turhovedet med det samme turen kører — også uden arbejde og synteser', () => {
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('data-koerer')
+    expect(hoved).toHaveTextContent('Working…')
+  })
+
+  it('viser ikke turhovedet på en afsluttet tur uden arbejde', () => {
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[]}
+      streaming={false} status="done" finalAnswerStarted />)
+    expect(document.querySelector('.rv-tur')).toBeNull()
+  })
+})

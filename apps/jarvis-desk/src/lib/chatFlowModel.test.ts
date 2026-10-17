@@ -116,6 +116,34 @@ describe('deriveChatFlow', () => {
     expect(model.workBlocks).toEqual([mellemregning, work])
   })
 
+  it('gendanner gemte synteser ved deres runder og holder kun slutsvaret udenfor folden', () => {
+    // Produktionsformen 17/10-2026: hver syntese står før næste værktøjsrunde,
+    // det egentlige svar står efter sidste runde-resumé, og progress-projektioner
+    // bliver lagt sidst i content_json. Historiske beskeder har ikke det live
+    // `final_answer_start`-flag, så rækkefølgen er deres persistente grænse.
+    const syntese1: ContentBlock = { type: 'text', text: 'Jeg tjekker først repoet.' }
+    const tool1: ContentBlock = { type: 'tool_use', id: 't1', name: 'bash', input: {}, status: 'done' }
+    const syntese2: ContentBlock = { type: 'text', text: 'Nu tjekker jeg visningen.' }
+    const tool2: ContentBlock = { type: 'tool_use', id: 't2', name: 'bash', input: {}, status: 'done' }
+    const summary: ContentBlock = {
+      type: 'tool_use_summary', summary: 'Genbyggede desk-web’en', preceding_tool_use_ids: ['t2'],
+    }
+    const answer: ContentBlock = { type: 'text', text: 'Kørt to runder. Her er resultatet.' }
+    const progress: ContentBlock = {
+      type: 'progress', tool_use_id: 't2', parent_tool_use_id: null,
+      message: 'Kører kommando', tool: 'bash', hint: '', status: 'done',
+    }
+
+    const model = deriveChatFlow({
+      ...base,
+      status: 'done',
+      blocks: [syntese1, tool1, syntese2, tool2, summary, answer, progress],
+    })
+
+    expect(model.workBlocks).toEqual([syntese1, tool1, syntese2, tool2, summary, progress])
+    expect(model.finalBlocks).toEqual([answer])
+  })
+
   it('viser et direkte svar mens det skrives, uden en tom arbejds-overskrift', () => {
     const answer = { type: 'text' as const, text: 'Hej Bjørn.' }
     const model = deriveChatFlow({ ...base, blocks: [answer], finalAnswerStarted: false })

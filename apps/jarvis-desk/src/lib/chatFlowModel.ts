@@ -33,8 +33,12 @@ export interface AdaptiveSnapshot {
   calmOverrides: number
 }
 
-const WORK_TYPES = new Set<ContentBlock['type']>([
-  'thinking', 'skill_surface', 'tool_use_summary', 'tool_use', 'progress',
+// `progress` er en projektion af værktøjskaldet, og ved persistens bliver de
+// blokke samlet sidst i content_json — også efter det egentlige slutsvar. De
+// er arbejde i folden, men kan derfor ikke bruges som svargrænse. De øvrige
+// typer følger turens kronologiske rækkefølge og markerer sidste arbejdsrunde.
+const ANSWER_BOUNDARY_TYPES = new Set<ContentBlock['type']>([
+  'thinking', 'skill_surface', 'tool_use_summary', 'tool_use',
 ])
 
 function normalizeLine(value: string | null | undefined): string {
@@ -112,7 +116,7 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
   let lastWorkIndex = -1
   for (let index = 0; index < input.blocks.length; index += 1) {
     const block = input.blocks[index]
-    if (block && WORK_TYPES.has(block.type)) lastWorkIndex = index
+    if (block && ANSWER_BOUNDARY_TYPES.has(block.type)) lastWorkIndex = index
   }
 
   const workBlocks: ContentBlock[] = []
@@ -129,9 +133,8 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
       // Serveren sender `final_answer_start` FØR første synlige slutdelta, så
       // dét signal er grænsen. Et direkte svar uden værktøj kan derimod vises
       // med det samme.
-      const isFinal = terminalFallback
-        || lastWorkIndex < 0
-        || (index > lastWorkIndex && input.finalAnswerStarted)
+      const isFinal = lastWorkIndex < 0
+        || (index > lastWorkIndex && (input.finalAnswerStarted || terminalFallback))
       ;(isFinal ? finalBlocks : workBlocks).push(block)
     } else {
       workBlocks.push(block)

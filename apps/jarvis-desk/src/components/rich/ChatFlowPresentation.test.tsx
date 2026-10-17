@@ -233,6 +233,31 @@ describe('ChatFlowPresentation', () => {
     expect(within(svar).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
   })
 
+  it('viser historiske synteser i folden selv om final_answer_start ikke genindlæses', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'text', text: 'Jeg tjekker først repoet.' },
+      { type: 'tool_use', id: 't1', name: 'bash', input: {}, status: 'done' },
+      { type: 'text', text: 'Nu tjekker jeg visningen.' },
+      { type: 'tool_use', id: 't2', name: 'bash', input: {}, status: 'done' },
+      { type: 'tool_use_summary', summary: 'Genbyggede desk-web’en', preceding_tool_use_ids: ['t2'] },
+      { type: 'text', text: 'Kørt to runder. Her er resultatet.' },
+      { type: 'progress', tool_use_id: 't2', parent_tool_use_id: null,
+        message: 'Kører kommando', tool: 'bash', hint: '', status: 'done' },
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+      streaming={false} status="done" finalAnswerStarted={false} />)
+
+    fireEvent.click(document.querySelector('.rv-tur') as HTMLElement)
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(within(gruppe).getByText('Jeg tjekker først repoet.')).toBeInTheDocument()
+    expect(within(gruppe).getByText('Nu tjekker jeg visningen.')).toBeInTheDocument()
+
+    const svar = document.querySelector('.chat-flow-answer') as HTMLElement
+    expect(within(svar).getByText('Kørt to runder. Her er resultatet.')).toBeInTheDocument()
+    expect(within(svar).queryByText('Jeg tjekker først repoet.')).not.toBeInTheDocument()
+    expect(within(svar).queryByText('Nu tjekker jeg visningen.')).not.toBeInTheDocument()
+  })
+
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Fandt svaret', 1)]} />)
     const rail = screen.getByTestId('chat-flow-activity')

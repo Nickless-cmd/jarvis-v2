@@ -3,7 +3,7 @@ import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
-import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
+import { PanelRight, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
@@ -17,6 +17,7 @@ import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { varighedFraTider } from '../lib/turTid'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -596,6 +597,23 @@ export function ChatView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+
+  // Persisterede ture bærer ingen varighed i sig — men assistentrækken
+  // skrives ved turens SLUTNING og brugertrækken ved dens START, så spændet
+  // mellem de to er turen, målt på serveren. Uden dette forsvandt uret i
+  // samme øjeblik strømmen stoppede og den persisterede besked tog over
+  // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi»).
+  const varighedForBesked = useMemo(() => {
+    const ud = new Map<string, number>()
+    let sidsteBruger: string | null = null
+    for (const m of transcriptMessages) {
+      if (m.role === 'user') { sidsteBruger = m.created_at; continue }
+      if (m.role !== 'assistant') continue
+      const sekunder = varighedFraTider(sidsteBruger, m.created_at)
+      if (sekunder !== null) ud.set(m.id, sekunder)
+    }
+    return ud
+  }, [transcriptMessages])
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
@@ -746,6 +764,7 @@ export function ChatView({
         compactAt={compactAt}
         compacting={compacting}
         onManualCompact={() => void triggerManualCompact('')}
+        visKontekstRing={false}
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
@@ -783,11 +802,11 @@ export function ChatView({
   // — og det er ikke der man leder efter sine egne opgaver. Nu en rude i samme
   // stak som baggrundsjob, åbnet fra headerens 3-prik-menu.
   const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
-  const [koerendeJobs, setKoerendeJobs] = useState(0)
+  const [, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
   const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
-  const [aendredeFiler, setAendredeFiler] = useState(0)
+  const [, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
 
@@ -938,28 +957,15 @@ export function ChatView({
         {DESK_CHROME.peakBadge && settings && (
           <PeakBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
+        {/* Ændringer og Baggrundsjob er ARBEJDSREDSKABER og hører i code mode
+            (Bjørn 17/10-2026: «i header i chat mode bør ændrings panel og
+            baggrunds panel ikke vises»). Panelerne selv bliver stående i
+            tilstanden — det er kun indgangene her der forsvinder, så et åbent
+            panel ikke efterlader en knap der ikke kan lukke det. */}
         {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
         <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
-        <button
-          type="button"
-          className={`panel-toggle ${changesOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul ændringer" title="Ændringer"
-          onClick={() => setChangesOpen((o) => !o)}
-        >
-          <FileDiff size={15} />
-          {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
-        </button>
-        <button
-          type="button"
-          className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
-          onClick={() => setJobsOpen((o) => !o)}
-        >
-          <SquareStack size={15} />
-          {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
-        </button>
         <button
           type="button"
           className={`panel-toggle ${browserOpen ? 'active' : ''}`}
@@ -970,6 +976,7 @@ export function ChatView({
         </button>
         {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
         <HeaderMere
+          flade="chat"
           visning={visning}
           onVisning={(v) => void skiftVisning(v)}
           valg={[
@@ -1047,6 +1054,7 @@ export function ChatView({
             blocks={withoutPauseAsk(m.content)}
             density="compact"
             streaming={false}
+            varighedSekunder={varighedForBesked.get(m.id) ?? null}
             createdAt={m.created_at}
             beskedId={m.id}
             sessionId={sessionId}
@@ -1060,11 +1068,16 @@ export function ChatView({
           </div>
           </Fragment>
         ))}
-        {streaming && (stream.blocks.length > 0 || !!stream.provisionalText) && (
+        {/* Den levende tur tegnes fra det øjeblik den kører — også før den
+            første blok findes, så turens hoved kan stå der med det samme.
+            (Bjørn 17/10-2026: «tur hoved … skal være der osse uden tool
+            kald».) Gaten krævede før en blok eller midlertidig tekst, så
+            hovedet manglede netop i turens første øjeblik. */}
+        {streaming && (
           <>
             {stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
-              workingStep={stream.workingStep} runId={stream.activeRunId}
+              workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
               role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming
               finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
@@ -1077,7 +1090,7 @@ export function ChatView({
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
-            workingStep={followState.workingStep} runId={followedRunId}
+            workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
             role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig} />

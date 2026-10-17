@@ -1020,6 +1020,12 @@ def init_db() -> None:
         _ensure_reasoning_conclusions_table(conn)
         from core.services.recall_ownership_migration import ensure_recall_ownership_migration_tables
         ensure_recall_ownership_migration_tables(conn)
+        # 17/10-2026: `CREATE INDEX IF NOT EXISTS` ser kun NAVNET. Et index der
+        # blev oprettet paa (score DESC) blev derfor staaende da koden bad om
+        # (user_id, score DESC) — og hver soegning maatte sortere hele tabellen.
+        # Sikringen bor i service-modulet, saa der kun findes ÉN definition.
+        from core.services.associative_recall import ensure_active_memories_schema
+        ensure_active_memories_schema(conn)
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
         _ensure_user_temperature_active_table(conn)

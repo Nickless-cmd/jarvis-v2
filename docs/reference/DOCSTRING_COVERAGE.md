@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9031/17246 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9039/17258 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9031/17246 functions/methods documented (52%). The list b
 | `core.identity` | 75 | 168 | 44% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 828 | 1528 | 54% |
-| `core.services` | 6017 | 11721 | 51% |
+| `core.runtime` | 830 | 1530 | 54% |
+| `core.services` | 6023 | 11726 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -39,10 +39,10 @@ Generated from source. 9031/17246 functions/methods documented (52%). The list b
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 288 | 620 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
-| `scripts.diagnostics` | 1 | 2 | 50% |
+| `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2575)
+## Undocumented public functions (2576)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -724,7 +724,7 @@ Generated from source. 9031/17246 functions/methods documented (52%). The list b
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L647)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L687)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L86)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L84)
@@ -2030,7 +2030,7 @@ Generated from source. 9031/17246 functions/methods documented (52%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L465)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L625)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
@@ -2452,6 +2452,7 @@ Generated from source. 9031/17246 functions/methods documented (52%). The list b
 - `scripts/db_split_baseline.py` :: `measure` (L18)
 - `scripts/deferred_restart.py` :: `main` (L199)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
+- `scripts/diagnostics/recall_canary.py` :: `main` (L138)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
 - `scripts/e2e_indbakke.py` :: `main` (L408)

@@ -10,6 +10,21 @@
   overflow: hidden;
 }
 
+/* Gruppen under turens hoved: én levende statuslinje under stregen eller
+   arbejdsdetaljerne, når en afsluttet tur foldes ud.
+   `display: flex` ovenfor slår browserens egen [hidden]-regel — samme fælde
+   som `.raekkevisning .rv-gruppe` (målt 22/9-2026). Uden linjen skjuler
+   `hidden` ingenting. */
+.chat-flow-gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.2rem;
+  min-width: 0;
+}
+
+.chat-flow-gruppe[hidden] { display: none; }
+
 .chat-flow-synthesis {
   color: var(--text-secondary, #8f98a3);
   line-height: 1.35;

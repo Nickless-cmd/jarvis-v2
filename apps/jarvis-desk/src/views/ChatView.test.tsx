@@ -179,7 +179,11 @@ describe('ChatView integration', () => {
       </SettingsProvider>,
     )
     await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
-    expect(screen.getByText('hej')).toBeInTheDocument()
+    // 17/10-2026: `getByText` er SYNKRON — den venter ikke på at den optimistiske
+    // besked er flushet. Under CI-load fejlede den derfor tilfældigt
+    // («Unable to find an element with the text: hej», run 39026252819).
+    // `findByText` venter og gentager; påstanden er den samme, kun ventetiden er ny.
+    expect(await screen.findByText('hej')).toBeInTheDocument()
     act(() => {
       handlersRef.current?.onRunId('r1')
       handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
@@ -532,16 +536,11 @@ describe('ChatView — baggrundsjob', () => {
     </SettingsProvider>,
   )
 
-  it('har en knap til baggrundsjob i headeren', () => {
+  it('har INGEN baggrundsjob-knap i chat-headeren', () => {
+    // Bjørn 17/10-2026: «i header i chat mode bør ændrings panel og baggrunds
+    // panel ikke vises». Indgangene hører i code mode; panelerne selv består.
     vis()
-    expect(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' })).toBeInTheDocument()
-  })
-
-  it('knappen åbner ruden', async () => {
-    vis()
-    expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
-    expect(screen.getByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vis/skjul baggrundsjob' })).not.toBeInTheDocument()
   })
 })
 
@@ -560,47 +559,22 @@ describe('ChatView — ændringer og jobs i samme skinne', () => {
     </SettingsProvider>,
   )
 
-  it('har et ændringer-ikon ved siden af baggrundsjob', () => {
+  it('har hverken ændringer- eller baggrundsjob-ikon i chat-headeren', () => {
     vis()
-    expect(screen.getByRole('button', { name: 'Vis/skjul ændringer' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vis/skjul ændringer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vis/skjul baggrundsjob' })).not.toBeInTheDocument()
   })
 
-  it('de to ruder kan stå SAMMEN i skinnen', async () => {
-    vis()
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
-    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
-    expect(screen.getByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
-  })
-
-  it('og hver for sig', async () => {
-    vis()
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
-    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
-  })
-
-  it('husker at panelet var åbent — også efter et gen-mount (genstart)', async () => {
-    // Bjørn 4/10-2026: «appen husker ikk om de var åbne … alle paneler nulstiller
-    // ved app genstart». Et gen-mount er det tætteste testen kommer på en genstart.
-    const a = vis()
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
-    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
-    a.unmount()
-    vis()
-    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
-  })
-
-  it('headeren gør plads KUN når skinnen er åben', async () => {
-    const { container } = vis()
-    expect(container.querySelector('.chatview.har-skinne')).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
-    expect(container.querySelector('.chatview.har-skinne')).not.toBeNull()
-    // Lukkes den igen, skal pladsen gives tilbage — ellers står headeren
-    // permanent skubbet ind med et tomt felt til højre.
-    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
-    expect(container.querySelector('.chatview.har-skinne')).toBeNull()
+  it('et gemt åbent ændringer-panel vises stadig — kun indgangen er væk', async () => {
+    // Indgangen er fjernet fra chat-headeren, men tilstanden består: et panel
+    // der var åbent før skiftet må ikke blive usynligt og ulukkeligt.
+    localStorage.setItem('jarvis-desk:panel:changes', 'true')
+    try {
+      vis()
+      expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
+    } finally {
+      localStorage.removeItem('jarvis-desk:panel:changes')
+    }
   })
 })
 

@@ -39,4 +39,33 @@ describe('HeaderMere — flere-menuen (19/9-2026)', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it('chat-fladen skjuler Visning og Side-opgaver — code beholder dem', () => {
+    // Bjørn 17/10-2026: «i 3 priks menu'en skal visning fjernes og side-opgaver
+    // menu. men kun for chat mode ikk for code mode».
+    const medSideopgaver = [
+      ...valg(),
+      { id: 'sideopgaver', navn: 'Side-opgaver', ikon: null, aktiv: false, onClick: vi.fn() },
+    ]
+
+    render(<HeaderMere flade="chat" visning="normal" onVisning={() => {}} valg={medSideopgaver} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Flere valg' }))
+    expect(screen.queryByRole('menuitemradio')).toBeNull()
+    expect(screen.queryByText('Visning')).toBeNull()
+    expect(screen.queryByRole('menuitemcheckbox', { name: /Side-opgaver/ })).toBeNull()
+    // De øvrige valg står uændret.
+    expect(screen.getByRole('menuitemcheckbox', { name: /Filer/ })).toBeInTheDocument()
+  })
+
+  it('code-fladen beholder Visning og Side-opgaver', () => {
+    const medSideopgaver = [
+      ...valg(),
+      { id: 'sideopgaver', navn: 'Side-opgaver', ikon: null, aktiv: false, onClick: vi.fn() },
+    ]
+    render(<HeaderMere flade="code" visning="normal" onVisning={() => {}} valg={medSideopgaver} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Flere valg' }))
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(3)
+    expect(screen.getByText('Visning')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: /Side-opgaver/ })).toBeInTheDocument()
+  })
 })

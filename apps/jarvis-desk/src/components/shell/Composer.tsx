@@ -142,6 +142,7 @@ export function Composer({
   compactAt = 0,
   compacting = false,
   onManualCompact,
+  visKontekstRing = true,
   isOwner = false,
   onOpenPrivacy,
   sessionId = null,
@@ -192,6 +193,12 @@ export function Composer({
   compacting?: boolean
   /** Sat → context-ringen bliver en knap der udløser manuel compaction (Claude-Code /compact). */
   onManualCompact?: () => void
+  /**
+   * Vis kontekst-ringen i hjørnet. Kun code mode (Bjørn 17/10-2026: «contekst
+   * ringen i composer skal heller ikke vises i chat mode, kun i code mode»).
+   * Standard `true`, så code-fladen ikke skal sende noget.
+   */
+  visKontekstRing?: boolean
   /** Owner ser provider-vælger + dynamisk model-liste; member ser kun Standard/Pro. */
   isOwner?: boolean
   /**
@@ -706,7 +713,7 @@ export function Composer({
         Miljø-feltet under Kontekst-rækken (19/9-2026), ikke som en løs linje her. */}
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
-      {ringDenominator > 0 && (
+      {visKontekstRing && ringDenominator > 0 && (
         <div className="composer-ring-corner">
           <ContextRing tokens={contextTokens} compactAt={ringDenominator} overheadTokens={overheadTokens} modelLabel={currentModelLabel} onManualCompact={compacting ? undefined : onManualCompact} />
         </div>

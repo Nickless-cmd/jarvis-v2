@@ -190,23 +190,24 @@ def pick_wakeup_run_target(
 
 def dispatch_due_wakeups() -> dict[str, Any]:
     """Find newly-fired wakeups, push them out via webchat + heartbeat tick."""
-    from core.services.self_wakeup import due_wakeups, _load, _save
+    from core.services.self_wakeup import due_wakeups, marker_dispatch
 
     with _dispatch_lock:
         fired = due_wakeups(include_fired_unconsumed=True)
         if not fired:
             return {"status": "ok", "dispatched": 0}
 
-        # Load full records to check + mutate dispatched flag
-        all_records = _load()
-        by_id = {r.get("wakeup_id"): r for r in all_records}
-
+        # 17/10-2026: her laa et snapshot af HELE lageret (`_load()`), som blev
+        # muteret gennem hele loekken og gemt tilbage til sidst. Loekken starter
+        # autonome runs, saa vinduet var sekunder til minutter — og alt den
+        # anden proces skrev imens blev overskrevet af den faelles gemning.
+        # `due_wakeups` giver recordene selv, og hver markering skrives for sig
+        # via `marker_dispatch` under laas.
         dispatched: list[str] = []
         skipped: list[str] = []
-        for w in fired:
-            wid = w.get("wakeup_id")
-            record = by_id.get(wid)
-            if record is None or record.get("dispatched"):
+        for record in fired:
+            wid = record.get("wakeup_id")
+            if record.get("dispatched"):
                 continue
             # 12/9-2026: en wakeup der blev afvist fordi en tur VAR aktiv, prøves
             # ikke igen. Awareness bærer den (status forbliver 'fired' indtil
@@ -331,15 +332,15 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 # planlagt» fra «faldt tilbage fordi du var aktiv». Målt på
                 # wake-d07eaea13d (intet flag) vs wake-bc9c4ebdbc (flag sat,
                 # +0,76 s efter fired_at, med autonomt run).
-                record["dispatch_skipped"] = True
-                record["dispatch_skipped_at"] = datetime.now(UTC).isoformat()
-                record["dispatch_skipped_reason"] = skip_reason or "unknown"
+                #
+                # 17/10-2026: sporet skrives for SIG SELV, under laas, i stedet
+                # for at vente paa den faelles gemning til sidst.
+                marker_dispatch(str(wid), dispatched=False,
+                                skip_reason=skip_reason or "unknown")
                 skipped.append(str(wid))
                 continue
 
-            # Mark dispatched in record (inside lock — TOCTOU race fix)
-            record["dispatched"] = True
-            record["dispatched_at"] = datetime.now(UTC).isoformat()
+            marker_dispatch(str(wid), dispatched=True)
             dispatched.append(str(wid))
 
             # Eventbus
@@ -351,9 +352,6 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                 )
             except Exception:
                 pass
-
-        if dispatched or skipped:
-            _save(all_records)
 
         return {
             "status": "ok",

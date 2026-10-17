@@ -4,8 +4,61 @@ from __future__ import annotations
 import pytest
 
 
+def _wipe_recall_state(db_path):
+    """Ryd recall-tilstanden i ``db_path`` — uanset hvad ``db_core.DB_PATH`` peger på.
+
+    Hvorfor stien er en parameter (17/10-2026): ved TEARDOWN kan
+    ``isolated_runtime`` have ført ``db_core.DB_PATH`` tilbage til produktion.
+    Uden en eksplicit sti rammer tabel-garantien i ``_clear_persisted_memories``
+    den ægte DB — målt: én kørsel af denne fil ændrede indexet i drift fra
+    ``(score DESC)`` til ``(user_id, score DESC)``.
+    """
+    import core.runtime.db_core as db_core
+
+    forrige = db_core.DB_PATH
+    db_core.DB_PATH = db_path
+    try:
+        import core.services.associative_recall as ar
+        ar.recall_enabled = lambda: True
+        ar.require_private_scope = lambda: "test-user"
+        ar._clear_persisted_memories()
+        ar._active_memories_by_user.clear()
+    except Exception:  # oprydning må ikke vælte en test der ellers er færdig
+        pass
+    finally:
+        db_core.DB_PATH = forrige
+
+
 @pytest.fixture(autouse=True)
-def _clear_recall_persistence():
+def _recall_db_i_tmp(tmp_path, monkeypatch):
+    """Hele filen kører mod en tmp-DB — aldrig den ægte ``~/.jarvis-v2/state/jarvis.db``.
+
+    Hvorfor (17/10-2026): filens autouse-wipe kalder ``_clear_persisted_memories()``
+    → ``_ensure_active_memories_table()``. Den garanti migrerer nu indexet (se
+    ``ensure_active_memories_schema``), og ved TEARDOWN er ``db_core.DB_PATH``
+    tilbage på produktion. Målt: én kørsel af denne fil ændrede indexet i den
+    ægte DB fra ``(score DESC)`` til ``(user_id, score DESC)`` — uden at nogen
+    test havde bedt om det. Wiperen rørte også produktionen før migrationen,
+    men dengang var ``CREATE INDEX IF NOT EXISTS`` en no-op; nu skriver den.
+
+    ``monkeypatch.setattr`` er husets mønster (se ``test_bus.py``): ``connect()``
+    læser ``DB_PATH`` ved kald, så det rerouter koordinator, wipe og read-backs
+    til samme tmp-fil — uden at reloade de ~100 moduler ``isolated_runtime``
+    reloader for hver test.
+    """
+    import core.runtime.db as db_mod
+    import core.runtime.db_core as db_core
+
+    tmp_db = tmp_path / "jarvis.db"
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_db, raising=False)
+    # `db` re-eksporterer DB_PATH som et EGET navn (from db_core import DB_PATH),
+    # så det skal peges på plads separat — ellers læser de to flader hver sin sti.
+    monkeypatch.setattr(db_mod, "DB_PATH", tmp_db, raising=False)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _clear_recall_persistence(_recall_db_i_tmp, tmp_path):
     """Stop the non-isolated recall tests leaking into the REAL runtime DB.
 
     Several tests in this file (e.g. test_cap_enforcement_at_five_memories)
@@ -19,19 +72,9 @@ def _clear_recall_persistence():
     module reload on import restores active memories from this table, so clear
     the in-memory dict too.
     """
-    def _wipe():
-        try:
-            import core.services.associative_recall as ar
-            ar.recall_enabled = lambda: True
-            ar.require_private_scope = lambda: "test-user"
-            ar._clear_persisted_memories()
-            ar._active_memories_by_user.clear()
-        except Exception:
-            pass
-
-    _wipe()
+    _wipe_recall_state(tmp_path / "jarvis.db")
     yield
-    _wipe()
+    _wipe_recall_state(tmp_path / "jarvis.db")
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +123,66 @@ def test_get_experiential_memory_candidates_ordering(isolated_runtime) -> None:
     assert "emotion_arc" in result[0]
     assert "key_lesson" in result[0]
     assert "importance" in result[0]
+
+
+# ---------------------------------------------------------------------------
+# Index-definition (17/10-2026)
+# ---------------------------------------------------------------------------
+
+def test_gammelt_index_paa_score_alene_rettes_til_user_id(isolated_runtime) -> None:
+    """`CREATE INDEX IF NOT EXISTS` ser kun navnet — ikke definitionen.
+
+    Maalt 17/10-2026: den levende DB havde indexet paa ``(score DESC)`` mens
+    koden bad om ``(user_id, score DESC)``. SQLite svarede "findes allerede",
+    og hver soegning paa ``WHERE user_id=? ORDER BY score DESC`` maatte derfor
+    sortere hele tabellen. Ingen fejl, intet varsel.
+    """
+    import core.services.associative_recall as ar
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        # Genskab driftstilstanden: indexet FINDES, men daekker kun score.
+        conn.execute("DROP INDEX idx_recall_active_memories_score")
+        conn.execute(
+            "CREATE INDEX idx_recall_active_memories_score "
+            "ON recall_active_memories(score DESC)"
+        )
+        conn.commit()
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        kolonner = [
+            str(row[2]) for row in conn.execute(
+                "PRAGMA index_info('idx_recall_active_memories_score')"
+            ).fetchall() if row[2]
+        ]
+
+    assert "user_id" in kolonner, (
+        "indexet daekker stadig ikke user_id — soegningen paa "
+        f"WHERE user_id=? ORDER BY score DESC maa sortere hele tabellen: {kolonner}"
+    )
+    assert "score" in kolonner, f"sorteringskolonnen forsvandt fra indexet: {kolonner}"
+
+
+def test_korrekt_index_genoprettes_ikke(isolated_runtime, caplog) -> None:
+    """Sikringen maa ikke droppe et index der allerede er rigtigt."""
+    import core.services.associative_recall as ar
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        ar.ensure_active_memories_schema(conn)
+        conn.commit()
+
+    with caplog.at_level("INFO", logger="core.services.associative_recall"):
+        with connect() as conn:
+            ar.ensure_active_memories_schema(conn)
+
+    genoprettet = [r for r in caplog.records if "genoprettes" in r.getMessage()]
+    assert not genoprettet, (
+        "sikringen genoprettede et index der allerede var korrekt — "
+        f"det er en unoedig skrivning ved hvert init: {[r.getMessage() for r in genoprettet]}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -333,3 +436,104 @@ def test_observe_assoc_recall_empty(monkeypatch):
                         lambda: type("C", (), {"observe": lambda s, e: seen.append(e)})())
     ar._observe_assoc_recall([])
     assert seen[0]["result_count"] == 0 and seen[0]["private_brain_share"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Isolation fra produktionen (17/10-2026)
+# ---------------------------------------------------------------------------
+
+def _aegte_prod_db():
+    """Den ægte produktions-DB — udledt af HOME, ikke af config-modulet.
+
+    `core.runtime.config.STATE_DIR` bliver reloadet til tmp af `isolated_runtime`,
+    så den kan ikke bruges som sandhed om hvad der er produktion.
+    """
+    from pathlib import Path
+
+    return Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
+
+
+def _tael_raekker(db_sti, memory_id):
+    import sqlite3
+
+    conn = sqlite3.connect(str(db_sti))
+    try:
+        return conn.execute(
+            "SELECT COUNT(*) FROM recall_active_memories WHERE memory_id=?",
+            (memory_id,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_denne_fil_peger_paa_en_tmp_db(tmp_path):
+    """Autouse-værnet skal pege på NETOP denne tests tmp-fil — ikke bare væk fra prod.
+
+    Strammet 17/10-2026: den løse variant (``!= produktion``) bestod også med
+    værnet slået fra, fordi den omgivende ``DB_PATH`` tilfældigvis var en tmp-sti
+    fra en tidligere test. En test der består af den grund måler ingenting.
+    """
+    from pathlib import Path
+
+    import core.runtime.db_core as db_core
+
+    assert Path(db_core.DB_PATH) == tmp_path / "jarvis.db", (
+        "autouse-værnet repointede ikke DB_PATH til denne tests tmp-fil — så kan "
+        f"testen skrive i en anden DB end den den tror: {db_core.DB_PATH}"
+    )
+
+
+def test_skrivning_lander_i_tmp_og_ikke_i_produktion(tmp_path):
+    """Ikke bare stien — den faktiske række. Koordinatoren skriver i tmp, ikke drift."""
+    probe = "iso-probe-17okt"
+    ar = _fresh_ar()
+    ar._persist_active_memory({
+        "memory_id": probe,
+        "narrative": "isolation probe",
+        "topic": "test",
+        "emotion_arc": "",
+        "importance": 0.5,
+        "score": 0.5,
+    })
+    assert _tael_raekker(tmp_path / "jarvis.db", probe) == 1, (
+        "skrivningen landede ikke i denne tests tmp-DB"
+    )
+    assert _tael_raekker(_aegte_prod_db(), probe) == 0, "skrivningen lækkede til produktionen"
+
+
+def test_wipe_skriver_til_den_givne_sti_ikke_til_db_path(tmp_path, monkeypatch):
+    """Wipen må ikke følge en omgivende DB_PATH — den skal skrive hvor den får besked.
+
+    Dette er det bærende led: ved teardown peger ``db_core.DB_PATH`` på
+    produktionen, og en wipe der læste den ville migrere den ægte DB. Målt
+    17/10-2026: det var præcis hvad der skete, indtil stien blev en parameter.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    import core.runtime.db_core as db_core
+
+    produktion = _aegte_prod_db()
+
+    def index_sql():
+        conn = sqlite3.connect(f"file:{produktion}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE name='idx_recall_active_memories_score'"
+            ).fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+
+    foer = index_sql()
+    monkeypatch.setattr(db_core, "DB_PATH", produktion, raising=False)
+    anden = tmp_path / "anden.db"
+
+    _wipe_recall_state(anden)
+
+    assert anden.exists(), "wipen skrev ikke til den sti den fik"
+    assert Path(db_core.DB_PATH) == produktion, "wipen efterlod DB_PATH ændret"
+    assert index_sql() == foer, (
+        "wipen fulgte den omgivende DB_PATH og migrerede produktions-DB'en"
+    )

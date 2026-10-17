@@ -1,11 +1,13 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
+import { useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
+import { TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -15,6 +17,13 @@ export interface ChatFlowPresentationProps {
   status: StreamStatus
   finalAnswerStarted: boolean
   runId?: string | null
+  /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
+  turStart?: number | null
+  /** Turens sluttid (ms epoch) — uret fryser her og bliver stående efter turen. */
+  turSlut?: number | null
+  /** Turens varighed udledt af transskriptet. Bruges på persisterede ture, hvor
+   *  stream-tilstanden (og dermed `turStart`/`turSlut`) ikke findes længere. */
+  varighedSekunder?: number | null
   workingStep?: string | null
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -31,6 +40,9 @@ export function ChatFlowPresentation({
   status,
   finalAnswerStarted,
   runId,
+  turStart,
+  turSlut,
+  varighedSekunder,
   workingStep,
   rundeEtiketter,
   tankeResumeer,
@@ -78,41 +90,81 @@ export function ChatFlowPresentation({
     finalAnswerStarted,
     runId,
   })
-  const showActivity = streaming && !finalAnswerStarted && model.terminalState === 'active'
+  // «Aktiv» er arbejdsfasen: Jarvis kører og har ikke begyndt at svare endnu.
+  // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
+  // klapper hovedet sammen og arbejdet lægger sig som detaljer.
+  const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
   const activeLine = mode === 'calm'
     ? model.calmStatus
     : model.visibleSynthesis.at(-1)
-  const showDisclosure = model.hasObservableWork
-    && (finalAnswerStarted || model.terminalState !== 'active')
-  const showTurnHeader = showActivity || showDisclosure
+  // Hovedet skal stå fra FØRSTE ord — også i det vindue hvor turen lige er
+  // startet og der endnu ikke er rapporteret arbejde eller synteser.
+  // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
+  // før de første ord».) Uden `streaming` her manglede hovedet netop i det
+  // øjeblik turen begyndte, og dukkede først op bagefter.
+  // Uret: sekunder mens turen kører, frosset når den slutter. Bjørn
+  // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv» — og
+  // «ueret skal osse når strømmen er forbi». Derfor måles der til `turSlut`
+  // (sat ved `message_stop`), ikke til `aktiv` som bliver falsk allerede når
+  // svaret begynder.
+  //
+  // Persisterede ture har ingen stream-tilstand tilbage. Deres varighed er
+  // udledt af transskriptet, så uret også står der (17/10-2026).
+  const sekunder = useTurSekunder(turStart, turSlut) ?? varighedSekunder ?? null
+
+  // Hovedet er turens skillestreg — ikke en overskrift for værktøjskald.
+  // (Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools… det
+  // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
+  // arbejde at folde, turen kører, eller vi kender dens varighed.
+  const harArbejde = model.hasObservableWork
+  const visTurhoved = harArbejde || streaming || sekunder !== null
+
+  // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
+  // Bjørn selv har foldet. `null` betyder «følg fasen».
+  const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
+  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
-      {showTurnHeader ? (
-        <details className={`chat-flow-work chat-flow-work--${model.terminalState}`}
-          open={showActivity}
-          onToggle={(event) => {
-            if (!showActivity && event.currentTarget.open) onWorkExpanded?.()
-          }}>
-          <summary>{model.terminalLabel}</summary>
-          {showActivity && activeLine ? (
-            <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
-              data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-              aria-label={activeLine}>
-              <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
-                key={activeLine} aria-hidden="true">
-                {activeLine}
+      {visTurhoved ? (
+        <>
+          <TurHoved
+            aaben={aaben}
+            foldbar={harArbejde}
+            koerer={streaming && !finalAnswerStarted}
+            sekunder={sekunder}
+            tekst={model.hovedTekst}
+            onToggle={() => {
+              const naeste = !aaben
+              setAabenManuelt(naeste)
+              if (naeste) onWorkExpanded?.()
+            }}
+          />
+          {/* Chat mode viser én levende statuslinje ad gangen. Den erstattes
+              på stedet under turhovedets streg og forsvinder, når svaret
+              begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
+              at folde en afsluttet tur ud. */}
+          <div className="chat-flow-gruppe" hidden={!aaben}>
+            {aktiv && activeLine ? (
+              <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
+                data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
+                aria-label={activeLine}>
+                <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
+                  key={activeLine} aria-hidden="true">
+                  {activeLine}
+                </div>
               </div>
-            </div>
-          ) : null}
-          {showDisclosure ? (
-            <div className="chat-flow-work-details">
-              <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
-                rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                beskedId={beskedId} config={config} />
-            </div>
-          ) : null}
-        </details>
+            ) : null}
+
+            {!aktiv && retainedWork.length > 0 ? (
+              <div className="chat-flow-work-details">
+                <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
+                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  beskedId={beskedId} config={config} />
+              </div>
+            ) : null}
+          </div>
+        </>
       ) : null}
 
       {answer.length > 0 ? (

@@ -1,0 +1,116 @@
+/**
+ * Turens hoved — den ENESTE vandrette streg i samtalen.
+ *
+ * ## Hvorfor reglerne bor her og ikke i raekkevisning.css
+ *
+ * `raekkevisning.css` er scopet til `.raekkevisning`, og en test kræver at ALT
+ * i den fil bliver ved med at være det — så den ikke lækker ud i bobblevisningen
+ * (målt 17/10-2026: tilføjede jeg `.chat-flow`-selectorer der, faldt testen
+ * «scoper ALT under .raekkevisning»). Chat-visningen ligger uden for den
+ * container, så de delte regler flyttede herud i stedet.
+ *
+ * Reglerne er scopet til `.rv-tur` og `.rv-tur[data-koerer]` — ikke globalt —
+ * så de ikke kan ramme andre `.shimmer`- eller `.rv-ikon-glimt`-elementer.
+ */
+
+.rv-tur {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  height: 33px; padding: 0 0 8px; margin: 0;
+  border: 0; border-bottom: .5px solid var(--line, rgb(255 255 255 / 12%));
+  background: none; text-align: left;
+  font-family: inherit;
+  font-size: 14px; line-height: 1.3; font-weight: 400;
+  color: var(--rv-tertiary, #a6a59c); cursor: pointer;
+}
+
+.rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
+
+/* Hoved uden indhold at folde: samme streg, ingen affordance. */
+.rv-tur--statisk { cursor: default; }
+
+.rv-turTekst {
+  flex: 0 1 auto; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
+   teksten hver gang et sekund skifter (17/10-2026).
+
+   Cifrene ruller lodret (Bjørn 17/10-2026: «tallende skal rulle nedfra og op»):
+   hvert ciffer er en 1em høj viewport med 0-9 stablet under sig, og det aktive
+   ciffer skubbes ind. `overflow: hidden` gør strimmelen til et vindue i
+   stedet for en liste. */
+.rv-turTid {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--rv-tertiary, #a6a59c);
+  opacity: .8;
+}
+
+.rv-turTidCiffer {
+  display: inline-block;
+  position: relative;
+  width: 1ch;
+  height: 1em;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.rv-turTidStrimmel {
+  display: flex;
+  flex-direction: column;
+  /* Rulningen er en transition på transform — ikke en keyframe — så et ciffer
+     der skifter to gange i træk glider videre fra hvor det stod. */
+  transition: transform 260ms cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+
+.rv-turTidStrimmel > span {
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+}
+
+.rv-turTidFast {
+  display: inline-block;
+  height: 1em;
+  line-height: 1em;
+}
+
+/* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
+   hopper i stedet for at rulle. */
+@media (prefers-reduced-motion: reduce) {
+  .rv-turTidStrimmel { transition: none; }
+}
+
+.rv-turC {
+  /* `flex: none`: uden den kan ikonet klemmes fladt når turens tekst er lang. */
+  flex: none; display: flex; width: 16px; height: 16px; align-items: center; justify-content: center;
+  position: relative;
+  color: var(--fg-3, #8f98a3);
+}
+
+/* Ét sweep gennem fold-pilen. Det lyse SVG-lag er klippet til stregen i selve
+   ikonet, så der ikke tegnes en flade hen over rækken. */
+.rv-tur .rv-ikon-glimt {
+  position: absolute; inset: 0; margin: auto;
+  color: #eafff3; opacity: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  -webkit-mask-size: 50% 100%; mask-size: 50% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+
+.rv-tur[data-koerer] .rv-ikon-glimt { opacity: 1; }
+
+.rv-tur[data-koerer] .rv-turC .rv-ikon-glimt {
+  animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
+}
+
+.rv-tur[data-koerer] .shimmer {
+  animation: rv-glimt-tekst 1.8s linear infinite 300ms;
+}

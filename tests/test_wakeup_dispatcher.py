@@ -42,8 +42,12 @@ def test_dispatch_no_fired_returns_zero():
 def test_dispatch_fires_webchat_and_marks_dispatched():
     # Notification now routes through the nudge system when nudge_system_enabled
     # (the default); send_session_notification is only the disabled-nudge fallback.
-    fired = [{"wakeup_id": "w1", "prompt": "check confidence", "reason": "test"}]
     state = [{"wakeup_id": "w1", "prompt": "check confidence", "reason": "test", "status": "fired"}]
+    # 17/10-2026: `due_wakeups` returnerer de SAMME record-objekter som den
+    # laeste fra lageret. Stubben skal derfor vaere identisk med `state` — den
+    # gamle letvaegts-kopi manglede felter som `session_id`/`channel`, saa
+    # testen maalte en record der ikke findes i produktion.
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save") as fake_save, \
@@ -61,7 +65,6 @@ def test_dispatch_fires_webchat_and_marks_dispatched():
 
 
 def test_dispatch_starts_wakeup_with_server_stream_relay():
-    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
@@ -70,6 +73,7 @@ def test_dispatch_starts_wakeup_with_server_stream_relay():
         "channel": "app",
         "session_id": "chat-origin",
     }]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
@@ -87,8 +91,8 @@ def test_dispatch_starts_wakeup_with_server_stream_relay():
 
 
 def test_dispatch_skips_already_dispatched():
-    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
     state = [{"wakeup_id": "w1", "prompt": "p", "reason": "r", "status": "fired", "dispatched": True}]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
@@ -99,8 +103,8 @@ def test_dispatch_skips_already_dispatched():
 
 
 def test_dispatch_continues_if_webchat_fails():
-    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
     state = [{"wakeup_id": "w1", "prompt": "p", "reason": "r", "status": "fired"}]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
@@ -115,11 +119,11 @@ def test_dispatch_continues_if_webchat_fails():
 
 
 def test_dispatch_handles_multiple_fired():
-    fired = [
-        {"wakeup_id": "w1", "prompt": "p1", "reason": "r1"},
-        {"wakeup_id": "w2", "prompt": "p2", "reason": "r2"},
+    state = [
+        {"wakeup_id": "w1", "prompt": "p1", "reason": "r1", "status": "fired"},
+        {"wakeup_id": "w2", "prompt": "p2", "reason": "r2", "status": "fired"},
     ]
-    state = [dict(w, status="fired") for w in fired]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \
@@ -140,7 +144,6 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
         current_workspace_name,
     )
 
-    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
@@ -154,6 +157,7 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
         "role": "owner",
         "context_channel": "jarvisx-electron",
     }]
+    fired = state
     captured = {}
 
     def _start(_message, *, session_id, origin, task_id=""):
@@ -190,7 +194,6 @@ def test_dispatch_restores_recorded_user_context_before_starting_run():
 
 
 def test_dispatch_does_not_mark_delivered_when_run_start_fails():
-    fired = [{"wakeup_id": "w1", "prompt": "p", "reason": "r"}]
     state = [{
         "wakeup_id": "w1",
         "prompt": "p",
@@ -199,6 +202,7 @@ def test_dispatch_does_not_mark_delivered_when_run_start_fails():
         "channel": "app",
         "session_id": "chat-origin",
     }]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save") as fake_save, \
@@ -294,9 +298,9 @@ def test_explicit_discord_channel_still_allowed():
 # svar paa spoergsmaalet. Instruktionen skabte adfaerden.
 
 def _fang_direktivet() -> str:
-    fired = [{"wakeup_id": "w1", "prompt": "tjek ci", "reason": "efterkontrol"}]
     state = [{"wakeup_id": "w1", "prompt": "tjek ci", "reason": "efterkontrol",
               "status": "fired", "channel": "app", "session_id": "chat-origin"}]
+    fired = state
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save"), \

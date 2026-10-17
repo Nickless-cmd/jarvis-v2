@@ -22,7 +22,8 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useRef, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, ChevronRight, SquareTerminal, BookOpen, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, SquareTerminal, BookOpen, type LucideIcon } from 'lucide-react'
+import { FoldPil, TurHoved } from './TurHoved'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -42,17 +43,7 @@ function foersteLinje(s: string): string {
   return t.trim()
 }
 
-/** Fold-pilen. Et RIGTIGT ikon — ikke teksttegnet ▸/▾ (Bjørn 23/9-2026:
- *  «slippe for ▸ som ikon og så bare bruge den rigtige >»).
- *
- *  Retningen skiftes ved at BYTTE ikonet frem for at rotere det, så stregen
- *  står skarp i begge tilstande — samme greb som forlægget
- *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
-function FoldPil({ aaben, className }: { aaben: boolean; className?: string }) {
-  return aaben
-    ? <ChevronDown className={className} size={14} strokeWidth={1.75} />
-    : <ChevronRight className={className} size={14} strokeWidth={1.75} />
-}
+/** Fold-pilen bor nu i TurHoved.tsx, så code og chat deler ÉN definition. */
 
 const Syntese = memo(function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
   return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
@@ -427,16 +418,13 @@ function RaekkeTranskriptImpl({
     <div className="raekkevisning">
       {visTurhoved && (
         <>
-          <button
-            type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
-            {...(arbejdeKoerer && aabenManuelt === null ? { 'data-koerer': '' } : {})}
-            onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
-          >
-            {arbejdeKoerer && aabenManuelt === null
-              ? <span className="rv-turTekst shimmer">Working…</span>
-              : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
-            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
-          </button>
+          <TurHoved
+            knapRef={turRef}
+            aaben={aaben}
+            koerer={arbejdeKoerer && aabenManuelt === null}
+            tekst={arbejdeKoerer && aabenManuelt === null ? 'Working…' : turFortalt(familier, kald, sekunder)}
+            onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
+          />
           {arbejde.length > 0 && (
             <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {

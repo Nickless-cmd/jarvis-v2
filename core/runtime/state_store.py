@@ -30,12 +30,37 @@ def _path(name: str) -> Path:
     return _STATE_DIR / f"{name}.json"
 
 
+def _meld_fejl(name: str, handling: str, exc: BaseException) -> None:
+    """Gør en state-fejl SYNLIG: WARNING + anomali-kanal. Self-safe.
+
+    Hvorfor (17/10-2026): begge stier loggede paa ``debug``, men driften
+    koerer ``INFO`` (``apps/api/jarvis_api/app.py:213``). En fejlet skrivning
+    var derfor 100 % usynlig — praecis den klasse der lod 80 wakeups forsvinde
+    uden et eneste spor. At rapportere fejlen maa aldrig selv fejle.
+    """
+    logger.warning("state_store: kunne IKKE %s %s: %s", handling, name, exc)
+    try:
+        from core.services.central_anomaly import record_anomaly
+
+        record_anomaly(
+            source="state_store",
+            exc_type=type(exc).__name__,
+            message=f"state_store kunne ikke {handling} {name}: {exc}",
+            module=__name__,
+        )
+    except Exception:
+        # Anomali-kanalen er selv self-safe, men dens IMPORT kan fejle (cirkulaer
+        # sti under opstart). WARNING'en ovenfor er allerede skrevet — den staar
+        # tilbage som det primaere spor, saa intet gaar tabt her.
+        return
+
+
 def load_json(name: str, default: Any) -> Any:
     """Read ``state/<name>.json``; return ``default`` if missing/corrupt.
 
-    Never raises — callers want a usable value, not an exception. A debug
-    log fires on parse failure so corruption is visible without crashing
-    the daemon at import time.
+    Never raises — callers want a usable value, not an exception. En MANGLENDE
+    fil er normal drift og logges ikke; en KORRUPT fil er en fejl og meldes
+    synligt (17/10-2026), fordi en laeser ellers stiltiende ser ``default``.
     """
     p = _path(name)
     try:
@@ -43,19 +68,54 @@ def load_json(name: str, default: Any) -> Any:
             return default
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception as exc:
-        logger.debug("state_store: failed to load %s: %s", name, exc)
+        _meld_fejl(name, "læse", exc)
         return default
+
+
+def er_ulaesbar(name: str) -> bool:
+    """True naar filen findes, har indhold, men ikke kan parses som JSON.
+
+    Hvorfor den findes (17/10-2026): :func:`load_json` svarer ``default`` i
+    BEGGE tilfaelde — filen findes ikke, og filen er korrupt. For en LAESER er
+    det rigtigt. For en SKRIVER er det et tab: den skriver hele listen tilbage,
+    og 80 poster bliver til nul, uden at noget i svaret eller loggen viser det.
+    Skrive-stien spoerger derfor her FOERST og naegter at skrive.
+
+    Sikker mod samtidig skrivning: :func:`save_json_strict` skriver til en
+    temp-fil og omdoeber den, saa en laeser ser enten den gamle eller den nye
+    fil — aldrig en halv.
+    """
+    p = _path(name)
+    try:
+        if not p.exists():
+            return False
+        tekst = p.read_text(encoding="utf-8")
+    except OSError as exc:  # ulaesbar fil er ikke det samme som korrupt JSON
+        logger.debug("state_store: kunne ikke laese %s: %s", name, exc)
+        return False
+    if not tekst.strip():
+        return False
+    try:
+        json.loads(tekst)
+    except ValueError:  # ugyldig JSON er netop svaret her: filen ER ulaesbar
+        return True
+    return False
 
 
 def save_json(name: str, data: Any) -> None:
     """Atomically persist ``data`` to ``state/<name>.json``.
 
     Write-temp-then-rename so a crash mid-write can't leave a half-file.
+
+    Self-safe med vilje: de 83 kaldesteder er daemon-tilstande, og en fejlet
+    skrivning maa ikke draebe traaden. Men fejlen er ikke laengere TAVS
+    (17/10-2026): den meldes som WARNING og til anomali-kanalen. Foer dette var
+    et tab af en hel state-fil sporloest — kun et tal der var for lavt.
     """
     try:
         save_json_strict(name, data)
     except Exception as exc:
-        logger.debug("state_store: failed to save %s: %s", name, exc)
+        _meld_fejl(name, "skrive", exc)
 
 
 def save_json_strict(name: str, data: Any) -> None:

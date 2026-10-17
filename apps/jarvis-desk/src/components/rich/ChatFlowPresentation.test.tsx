@@ -38,12 +38,11 @@ describe('ChatFlowPresentation', () => {
   it('shows the live status inside the one open work header while streaming', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Samler svaret', 1)]} />)
 
-    const disclosures = screen.getAllByText('Arbejdsforløb')
-    expect(disclosures).toHaveLength(1)
-    const disclosure = disclosures[0]!.closest('details') as HTMLDetailsElement
-    expect(disclosure).toBeInTheDocument()
-    expect(disclosure.open).toBe(true)
-    expect(within(disclosure).getByTestId('chat-flow-activity')).toHaveTextContent('Samler svaret')
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toBeInTheDocument()
+    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(within(gruppe).getByTestId('chat-flow-activity')).toHaveTextContent('Samler svaret')
   })
 
   it('renders only the latest Calm status and a truthful neutral fallback', () => {
@@ -77,16 +76,17 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    const disclosure = screen.getByText('Arbejdsforløb').closest('details')
-    expect(disclosure).not.toBeNull()
-    expect((disclosure as HTMLDetailsElement).open).toBe(false)
-    expect(within(disclosure as HTMLElement).queryByText('Her er resultatet.')).not.toBeInTheDocument()
+    const hoved = screen.getByText('Arbejdet').closest('button') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toBeNull()
+    expect(within(gruppe).queryByText('Her er resultatet.')).not.toBeInTheDocument()
     expect(screen.getAllByText('Her er resultatet.')).toHaveLength(1)
     const delivery = screen.getByRole('img', { name: 'Rapport' })
     expect(delivery).toBeInTheDocument()
-    expect(disclosure).not.toContainElement(delivery)
-    ;(disclosure as HTMLDetailsElement).open = true
-    fireEvent(disclosure as HTMLElement, new Event('toggle', { bubbles: true }))
+    expect(gruppe).not.toContainElement(delivery)
+    fireEvent.click(hoved)
     expect(onWorkExpanded).toHaveBeenCalledTimes(1)
   })
 
@@ -102,15 +102,15 @@ describe('ChatFlowPresentation', () => {
     view.rerender(<ChatFlowPresentation {...common} mode="living"
       blocks={[firstTool, firstAnswer, secondTool, secondAnswer]} finalAnswerStarted />)
 
-    const disclosure = screen.getByText('Arbejdsforløb').closest('details') as HTMLElement
-    expect(within(disclosure).queryByText('Første bekræftede svar.')).not.toBeInTheDocument()
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(within(gruppe).queryByText('Første bekræftede svar.')).not.toBeInTheDocument()
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Første bekræftede svar.')
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Supplerende svar.')
   })
 
   it.each([
-    ['interrupted' as const, 'Arbejdsforløb afbrudt'],
-    ['error' as const, 'Arbejdsforløb fejlede'],
+    ['interrupted' as const, 'Arbejdet afbrudt'],
+    ['error' as const, 'Arbejdet fejlede'],
   ])('preserves partial text and uses honest %s copy', (status, label) => {
     render(<ChatFlowPresentation {...common} mode="living" status={status} streaming={false}
       blocks={[
@@ -121,10 +121,117 @@ describe('ChatFlowPresentation', () => {
     expect(screen.getAllByText('Et bevaret delsvar.')).toHaveLength(1)
   })
 
+  it('viser kun den nyeste levende syntese under turhovedet — uden rækkevisning', () => {
+    const blocks: ContentBlock[] = [
+      summary('Fandt kilden', 1),
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      summary('Læste filen', 2),
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(hoved).toHaveAttribute('data-koerer')
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toBeNull()
+    expect(gruppe).not.toHaveAttribute('hidden')
+    const synteser = within(gruppe).getAllByTestId('chat-flow-synthesis')
+    expect(synteser).toHaveLength(1)
+    expect(synteser[0]).toHaveTextContent('Læste filen')
+    expect(within(gruppe).queryByText('Fandt kilden')).not.toBeInTheDocument()
+    expect(gruppe.querySelector('.chat-flow-work-details')).toBeNull()
+  })
+
+  it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      blocks={[summary('Fandt kilden', 1), { type: 'text', text: 'Svaret.' }]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    expect(hoved).not.toHaveAttribute('data-koerer')
+    expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
+  })
+
+  it('viser turens ur i hovedet — sekunder, og minutter efter et minut', () => {
+    const blokke = [summary('Fandt kilden', 1)]
+    // Cifrene er delt i lodrette strimler, så den flade tekst læses fra
+    // `aria-label` — det er også den skærmlæserne får.
+    const ur = () => document.querySelector('.rv-turTid')?.getAttribute('aria-label')
+    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
+    expect(ur()).toMatch(/^1[12]s$/)
+
+    rerender(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
+    expect(ur()).toMatch(/^1m 1[12]s$/)
+  })
+
+  it('beholder uret når strømmen er forbi — det fryser på turens sluttid', () => {
+    const start = Date.now() - 95_000
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      finalAnswerStarted turStart={start} turSlut={start + 95_000} blocks={[summary('Fandt kilden', 1)]} />)
+    // 95 sekunder, målt fra start til slut — ikke fra start til nu.
+    expect(document.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('1m 35s')
+  })
+
+  it('fjerner den levende syntese efter turen, men bevarer arbejdsdetaljerne', () => {
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      finalAnswerStarted blocks={[
+        summary('Fandt kilden', 1),
+        { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+        { type: 'text', text: 'Svaret.' },
+      ]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(hoved)
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toHaveAttribute('hidden')
+    expect(within(gruppe).queryByTestId('chat-flow-synthesis')).not.toBeInTheDocument()
+    expect(gruppe.querySelector('.chat-flow-work-details')).not.toBeNull()
+
+    // Og den afsluttede besked bærer den ikke som brødtekst.
+    const svar = document.querySelector('.chat-flow-answer') as HTMLElement
+    expect(within(svar).queryByText('Fandt kilden')).not.toBeInTheDocument()
+  })
+
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Fandt svaret', 1)]} />)
     const rail = screen.getByTestId('chat-flow-activity')
     expect(rail).toHaveClass('chat-flow-activity--motion-safe')
     expect(screen.getAllByRole('status')).toHaveLength(1)
+  })
+})
+
+describe('ChatFlowPresentation — turhovedet fra første ord', () => {
+  // Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
+  // før de første ord». Uden dette stod hovedet stille i det vindue hvor
+  // turen lige var startet og intet arbejde var rapporteret endnu.
+  it('viser turhovedet med det samme turen kører — også uden arbejde og synteser', () => {
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('data-koerer')
+    expect(hoved).toHaveTextContent('Tænker')
+  })
+
+  it('beholder hovedet og uret på en tur uden værktøjskald', () => {
+    // Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools…
+    // det skal være der osse uden tool kald». Hovedet er turens skillestreg,
+    // ikke en overskrift for værktøjskald.
+    const { container } = render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[{ type: 'text', text: 'Et rent svar.' }]}
+      streaming={false} status="done" finalAnswerStarted varighedSekunder={12} />)
+    const hoved = container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    // Intet at folde → hovedet er ikke en knap, og pilen er væk.
+    expect(hoved.tagName).toBe('DIV')
+    expect(container.querySelector('.rv-turC')).toBeNull()
+    expect(container.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('12s')
+  })
+
+  it('tegner intet hoved når der hverken er arbejde, kørsel eller varighed', () => {
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[]}
+      streaming={false} status="done" finalAnswerStarted />)
+    expect(document.querySelector('.rv-tur')).toBeNull()
   })
 })

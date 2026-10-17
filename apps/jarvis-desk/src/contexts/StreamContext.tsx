@@ -173,6 +173,12 @@ export interface StreamContextValue {
   /** Tænke-resuméer slået op på kald-id (visningen «thinking»). */
   tankeResumeer?: Record<string, string>
   activeRunId: string | null
+  /** Turens starttid (ms epoch), sat ved `message_start`. Uret i turhovedet
+   *  måler turen — ikke komponentens montering (17/10-2026). */
+  turStart: number | null
+  /** Turens sluttid (ms epoch), sat ved `message_stop`. Uret fryser her, så
+   *  tiden bliver stående i hovedet efter strømmen er forbi (17/10-2026). */
+  turSlut: number | null
   /** Serveren har bekræftet, at den synlige tekst nu er slutsvaret. */
   finalAnswerStarted: boolean
   elapsedMs: number
@@ -656,6 +662,8 @@ export function StreamProvider({
       rundeEtiketter: state.rundeEtiketter,
       tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
+      turStart: state.turStart,
+      turSlut: state.turSlut,
       finalAnswerStarted: state.finalAnswerStarted,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,

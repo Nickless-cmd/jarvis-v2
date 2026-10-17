@@ -378,3 +378,73 @@ def test_radiatorblaeser_under_1000_er_ikke_pumpealarm_men_doed_pumpe_er(monkeyp
     assert not notes
     isense._check_host_vitals("i9", {"pump_rpm": 1610})
     assert isense._vitals_flagged == {"pump"} and len(notes) == 1
+
+
+# ---------------------------------------------------------------------------
+# Trussels-notifikationer samles (17/10-2026)
+#
+# Maalt: 64 "Netvaerks-trussel"-notifikationer paa én dag, 56 af dem i én time,
+# i klynger af op til 8 paa 7 sekunder. Detektoren har cooldown pr. KILDE-IP,
+# men en distribueret scan bruger mange IP'er — saa hver ny IP fyrede sin egen.
+# ---------------------------------------------------------------------------
+
+def _patch_trusler(monkeypatch, detektioner):
+    """Genbrug _patch_syslog + nulstil cooldown-state (global, ellers laekker den)."""
+    incidents, notes, _checks, _heals = _patch_syslog(
+        monkeypatch, packets=611, last_packet_epoch=0.0, detections=detektioner)
+    monkeypatch.setattr(isense, "_trussel_sidst", {})
+    return incidents, notes
+
+
+def _detektion(src, kind="port_scan", blocks=15, porte=15):
+    return {"src": src, "kind": kind, "blocks": blocks, "distinct_ports": porte,
+            "sample_dst": "100.75.136.21"}
+
+
+def test_otte_detektioner_bliver_EN_notifikation(monkeypatch):
+    incidents, notes = _patch_trusler(
+        monkeypatch, [_detektion(f"45.79.{i}.1") for i in range(8)])
+    isense.poll_syslog()
+    assert len(notes) == 1, f"ventede 1 notifikation, fik {len(notes)}"
+    titel, msg = notes[0]
+    assert "8 kilder" in titel
+    assert "8 kilder" in msg and "120 blokke" in msg
+
+
+def test_cooldown_daemper_gentagne_bolger(monkeypatch):
+    incidents, notes = _patch_trusler(monkeypatch, [_detektion("45.79.1.1")])
+    isense.poll_syslog()
+    assert len(notes) == 1
+    # Ny tick lige efter: cooldown skal holde den tilbage.
+    isense.poll_syslog()
+    assert len(notes) == 1, "cooldown virkede ikke — en ny boelge spammer igen"
+
+
+def test_forskellige_typer_faar_hver_sin_notifikation(monkeypatch):
+    incidents, notes = _patch_trusler(
+        monkeypatch, [_detektion("45.79.1.1"), _detektion("45.79.1.2", kind="brute_force")])
+    isense.poll_syslog()
+    assert len(notes) == 2
+    assert {t for t, _ in notes} == {
+        "⚠️ Netværks-trussel: port_scan (1 kilde)",
+        "⚠️ Netværks-trussel: brute_force (1 kilde)",
+    }
+
+
+def test_en_kilde_bevarer_den_detaljerede_besked(monkeypatch):
+    incidents, notes = _patch_trusler(monkeypatch, [_detektion("74.207.253.160")])
+    isense.poll_syslog()
+    assert len(notes) == 1
+    titel, msg = notes[0]
+    assert "1 kilde" in titel
+    assert "74.207.253.160" in msg and "15 blokke" in msg and "15 porte" in msg
+
+
+def test_telemetrien_er_stadig_granulaer(monkeypatch):
+    """Kun den menneske-vendte notifikation samles — incidenterne skal blive pr. detektion."""
+    incidents, notes = _patch_trusler(
+        monkeypatch, [_detektion(f"45.79.{i}.1") for i in range(8)])
+    isense.poll_syslog()
+    security = [i for i in incidents if i.get("nerve") == "pfsense_security"]
+    assert len(security) == 8, "telemetrien skal vaere pr. detektion, ikke samlet"
+    assert len(notes) == 1

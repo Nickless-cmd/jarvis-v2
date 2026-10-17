@@ -20,7 +20,9 @@ export interface ChatFlowModel {
   finalBlocks: ContentBlock[]
   hasObservableWork: boolean
   terminalState: ChatFlowTerminalState
-  terminalLabel: string
+  /** Turens hoved som ord — «Arbejder» mens den kører, «Arbejdet» når den er
+   *  færdig, og «Tænker»/«Tænkte» på en tur uden værktøjskald (17/10-2026). */
+  hovedTekst: string
 }
 
 export interface AdaptiveSnapshot {
@@ -45,11 +47,28 @@ function isMeaningfulStatus(value: string): boolean {
   return !/^(?:kalder|kører kommando|koerer kommando|bash\b|edit_file\b)/i.test(value)
 }
 
-function terminal(status: StreamStatus): Pick<ChatFlowModel, 'terminalState' | 'terminalLabel'> {
-  if (status === 'done') return { terminalState: 'completed', terminalLabel: 'Arbejdsforløb' }
-  if (status === 'interrupted') return { terminalState: 'interrupted', terminalLabel: 'Arbejdsforløb afbrudt' }
-  if (status === 'error') return { terminalState: 'failed', terminalLabel: 'Arbejdsforløb fejlede' }
-  return { terminalState: 'active', terminalLabel: 'Arbejdsforløb' }
+function terminal(status: StreamStatus): Pick<ChatFlowModel, 'terminalState'> {
+  if (status === 'done') return { terminalState: 'completed' }
+  if (status === 'interrupted') return { terminalState: 'interrupted' }
+  if (status === 'error') return { terminalState: 'failed' }
+  return { terminalState: 'active' }
+}
+
+/**
+ * Turens hoved som ord — hvad den laver NU, eller hvad den gjorde.
+ *
+ * Bjørn 17/10-2026: «istedet for arbejdsorløb så bare arbejder under kørslen og
+ * arbejdet når den er færdig. og hvis det er tekst uden tool kald så tænker
+ * under kørsel og tænkte efter.» Ordet bøjes altså i tid frem for at beskrive
+ * et forløb, og det skelner en tur der rørte værktøjer fra en der kun tænkte.
+ * Før stod der «Arbejdsforløb» i alle faser, hvilket hverken sagde hvad der
+ * foregik eller om den var ovre.
+ */
+function hovedTekst(state: ChatFlowTerminalState, harArbejde: boolean, koerer: boolean): string {
+  if (koerer) return harArbejde ? 'Arbejder' : 'Tænker'
+  if (state === 'interrupted') return harArbejde ? 'Arbejdet afbrudt' : 'Afbrudt'
+  if (state === 'failed') return harArbejde ? 'Arbejdet fejlede' : 'Fejlede'
+  return harArbejde ? 'Arbejdet' : 'Tænkte'
 }
 
 function isDelivery(block: ContentBlock): boolean {
@@ -130,10 +149,19 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     allSynthesis,
     visibleSynthesis,
     calmStatus: visibleSynthesis.at(-1) ?? 'Jarvis tænker ...',
-    workBlocks,
+    // Synteserne er ALLEREDE trukket ud i `allSynthesis` og tegnes i turens
+    // hoved. Ligger de også i `workBlocks`, laver `BlocksRenderer` dem til
+    // etiketter på runde-linjerne — og så står den samme sætning to steder:
+    // én gang som syntese-linje, én gang som runde-etiket. Det var præcis den
+    // dobbeltvisning Bjørn så 17/10-2026 («den gamle visning og det nye
+    // levende»). Én sætning, ét sted.
+    workBlocks: workBlocks.filter((block) => block.type !== 'tool_use_summary'),
     finalBlocks,
     hasObservableWork,
     ...end,
+    // «Kører» er arbejdsfasen: status er working og svaret er ikke bekræftet
+    // endnu. Det er samme betingelse som visningen bruger for `aktiv`.
+    hovedTekst: hovedTekst(end.terminalState, hasObservableWork, input.status === 'working' && !input.finalAnswerStarted),
   }
 }
 

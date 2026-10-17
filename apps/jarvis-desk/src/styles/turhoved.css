@@ -30,6 +30,16 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 
+/* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
+   teksten hver gang et sekund skifter (17/10-2026). */
+.rv-turTid {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--rv-tertiary, #a6a59c);
+  opacity: .8;
+}
+
 .rv-turC {
   /* `flex: none`: uden den kan ikonet klemmes fladt når turens tekst er lang. */
   flex: none; display: flex; width: 16px; height: 16px; align-items: center; justify-content: center;

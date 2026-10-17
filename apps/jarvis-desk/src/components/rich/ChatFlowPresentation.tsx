@@ -4,6 +4,7 @@ import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
+import { useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { TurHoved } from './TurHoved'
@@ -16,6 +17,8 @@ export interface ChatFlowPresentationProps {
   status: StreamStatus
   finalAnswerStarted: boolean
   runId?: string | null
+  /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
+  turStart?: number | null
   workingStep?: string | null
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -32,6 +35,7 @@ export function ChatFlowPresentation({
   status,
   finalAnswerStarted,
   runId,
+  turStart,
   workingStep,
   rundeEtiketter,
   tankeResumeer,
@@ -94,6 +98,15 @@ export function ChatFlowPresentation({
   // øjeblik turen begyndte, og dukkede først op bagefter.
   const visTurhoved = model.hasObservableWork || aktiv || streaming
 
+  // Uret: sekunder mens turen kører, frosset når den slutter. Bjørn
+  // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv».
+  const sekunder = useTurSekunder(turStart, aktiv)
+
+  // Synteserne bliver STÅENDE over runde-linjerne efter turen — de hører til
+  // hovedet, ikke til den afsluttede besked. Kun «rolig» visning har en
+  // enkelt-statuslinje, som ikke giver mening når turen er ovre.
+  const synligeLinjer = mode === 'calm' ? (aktiv ? lines : []) : lines
+
   // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
   // Bjørn selv har foldet. `null` betyder «følg fasen».
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
@@ -106,6 +119,7 @@ export function ChatFlowPresentation({
           <TurHoved
             aaben={aaben}
             koerer={streaming && !finalAnswerStarted}
+            sekunder={sekunder}
             tekst={aktiv ? 'Working…' : model.terminalLabel}
             onToggle={() => {
               const naeste = !aaben
@@ -118,11 +132,11 @@ export function ChatFlowPresentation({
               Ved sammenklap bliver de liggende som en del af arbejdsforløbet
               og følger med ned i den afsluttede besked. */}
           <div className="chat-flow-gruppe" hidden={!aaben}>
-            {aktiv && lines.length > 0 ? (
+            {synligeLinjer.length > 0 ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                aria-label={lines.at(-1)}>
-                {lines.map((line) => (
+                aria-label={synligeLinjer.at(-1)}>
+                {synligeLinjer.map((line) => (
                   <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis" key={line} aria-hidden="true">
                     {line}
                   </div>

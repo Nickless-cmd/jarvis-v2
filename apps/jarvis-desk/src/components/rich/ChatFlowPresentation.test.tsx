@@ -140,6 +140,39 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
   })
 
+  it('viser turens ur i hovedet — sekunder, og minutter efter et minut', () => {
+    const blokke = [summary('Fandt kilden', 1)]
+    const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
+    expect(screen.getByText(/1[12]s/)).toBeInTheDocument()
+
+    rerender(<ChatFlowPresentation {...common} mode="living" streaming={false}
+      status="done" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
+    expect(screen.getByText(/1m 1[12]s/)).toBeInTheDocument()
+  })
+
+  it('beholder synteserne i hovedet efter turen — de hører ikke til den afsluttede besked', () => {
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      finalAnswerStarted blocks={[
+        summary('Fandt kilden', 1),
+        { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+        { type: 'text', text: 'Svaret.' },
+      ]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(hoved)
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toHaveAttribute('hidden')
+    const synteser = within(gruppe).getAllByTestId('chat-flow-synthesis')
+    expect(synteser).toHaveLength(1)
+    expect(synteser[0]).toHaveTextContent('Fandt kilden')
+
+    // Og den afsluttede besked bærer den ikke som brødtekst.
+    const svar = document.querySelector('.chat-flow-answer') as HTMLElement
+    expect(within(svar).queryByText('Fandt kilden')).not.toBeInTheDocument()
+  })
+
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Fandt svaret', 1)]} />)
     const rail = screen.getByTestId('chat-flow-activity')

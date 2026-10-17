@@ -1,3 +1,4 @@
+import threading
 import time
 
 import pytest
@@ -11,6 +12,7 @@ def _make_async_iter(items):
 
 
 def _patch(monkeypatch, frames):
+    import core.services.push_dispatcher as push_dispatcher
     import core.services.run_event_log as rel
     import core.services.visible_runs as vr
     import core.services.visible_runs_sse_v2 as v2
@@ -19,6 +21,9 @@ def _patch(monkeypatch, frames):
     monkeypatch.setattr(rel, "append", lambda rid, f: appended.append((rid, f)))
     monkeypatch.setattr(rel, "mark_done", lambda rid: done.append(rid))
     monkeypatch.setattr(rel, "prune", lambda: None)
+    # Push scheduling has its own focused tests. A five-second timer would
+    # otherwise outlive this test and resolve its owner against a later DB.
+    monkeypatch.setattr(push_dispatcher, "on_run_done", lambda _rid: None)
     monkeypatch.setattr(vr, "start_visible_run", lambda **kw: _make_async_iter([]))
     monkeypatch.setattr(v2, "translate_to_v2", lambda it, **kw: _make_async_iter(frames))
     return created, appended, done
@@ -371,6 +376,7 @@ def test_ukendt_ramme_maa_ikke_etablere_ejerskab(monkeypatch):
     Testen FEJLER i dag og staar derfor som ``xfail``. Den er kravet, ikke
     tilstanden.
     """
+    import core.services.push_dispatcher as push_dispatcher
     import core.services.run_event_log as rel
     import core.services.visible_runs as vr
     import core.services.visible_runs_sse_v2 as v2
@@ -388,7 +394,9 @@ def test_ukendt_ramme_maa_ikke_etablere_ejerskab(monkeypatch):
         rid, {"session_id": sid}))
     monkeypatch.setattr(rel, "append", lambda rid, f: None)
     monkeypatch.setattr(rel, "mark_done", lambda rid: None)
-    monkeypatch.setattr(rel, "prune", lambda: None)
+    finished = threading.Event()
+    monkeypatch.setattr(rel, "prune", finished.set)
+    monkeypatch.setattr(push_dispatcher, "on_run_done", lambda _rid: None)
     monkeypatch.setattr(vr, "start_visible_run", lambda **kw: _make_async_iter([]))
     monkeypatch.setattr(v2, "translate_to_v2", lambda it, **kw: _make_async_iter([fremmed]))
 
@@ -407,3 +415,4 @@ def test_ukendt_ramme_maa_ikke_etablere_ejerskab(monkeypatch):
     assert rel.ramme_ejerskab("visible-fremmed-ukendt", rid) != rel.EJERSKAB_OWNED, (
         "et ukendt id maa ikke blive 'owned' ved at rammen selv satte aliaset"
     )
+    assert finished.wait(timeout=2.0), "det detached test-run skal afslutte før stubs gendannes"

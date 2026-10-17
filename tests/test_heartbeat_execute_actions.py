@@ -162,9 +162,18 @@ def test_initiative_queue_persists_across_module_reload(isolated_runtime) -> Non
     assert persisted["focus"] == "Persist this initiative across runtime reload"
 
 
-def test_act_on_initiative_materializes_runtime_work(isolated_runtime) -> None:
+def test_act_on_initiative_materializes_runtime_work(isolated_runtime, monkeypatch) -> None:
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
     import core.services.initiative_queue as initiative_queue
+    from core.services import routine_trigger_adapters
+
+    # The dispatch boundary is covered separately. This test verifies durable
+    # materialization and must not leave a real autonomous model run behind.
+    monkeypatch.setattr(
+        routine_trigger_adapters,
+        "dispatch_heartbeat_initiative",
+        lambda **_kwargs: {"status": "dispatched-for-test"},
+    )
 
     initiative_id = initiative_queue.push_initiative(
         focus="Inspect the current repo thread",

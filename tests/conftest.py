@@ -618,8 +618,35 @@ import time as _time_modul  # noqa: E402
 _ECHTE_MONOTONIC = _time_modul.monotonic
 
 
+def _vent_paa_nye_traade(foer: set[object]) -> tuple[float, list[object]]:
+    """Drain test-started threads, including descendants created while joining."""
+    import threading
+
+    start = _ECHTE_MONOTONIC()
+    frist = start + float(os.environ.get("JARVIS_TEST_TRAADVENT_S", "3.0"))
+    while True:
+        nye = [
+            t for t in threading.enumerate()
+            if t not in foer and t is not threading.current_thread() and t.is_alive()
+        ]
+        if not nye:
+            break
+        for t in nye:
+            rest = frist - _ECHTE_MONOTONIC()
+            if rest <= 0:
+                return _ECHTE_MONOTONIC() - start, nye
+            t.join(timeout=rest)
+        if _ECHTE_MONOTONIC() >= frist:
+            break
+    stadig = [
+        t for t in threading.enumerate()
+        if t not in foer and t is not threading.current_thread() and t.is_alive()
+    ]
+    return _ECHTE_MONOTONIC() - start, stadig
+
+
 @pytest.fixture(autouse=True)
-def _vent_paa_testens_egne_traade():
+def _vent_paa_testens_egne_traade(monkeypatch):
     """Lad testens egne baggrundstråde skrive færdigt i testens EGEN database.
 
     Forbindelses-poolen (db_core.connect) peger automatisk om når DB_PATH
@@ -637,31 +664,23 @@ def _vent_paa_testens_egne_traade():
     import threading
     foer = set(threading.enumerate())
     yield
-    # _ECHTE_MONOTONIC, ikke time.monotonic: tests patcher den (fx
-    # test_turn_tail_timing med en endelig iterator), og denne oprydning kan
-    # køre før deres patch er fjernet.
-    frist = _ECHTE_MONOTONIC() + float(os.environ.get("JARVIS_TEST_TRAADVENT_S", "3.0"))
-    for t in threading.enumerate():
-        if t in foer or t is threading.current_thread() or not t.is_alive():
-            continue
-        rest = frist - _ECHTE_MONOTONIC()
-        if rest <= 0:
-            break
-        t.join(timeout=rest)
+    # Afhængigheden af monkeypatch er bevidst: denne teardown skal køre FØR
+    # testens stubs rulles tilbage, så en sen tråd ikke pludselig rammer drift.
+    _ = monkeypatch
+    ventet, stadig = _vent_paa_nye_traade(foer)
     _log = os.environ.get("JARVIS_TEST_TRAADLOG")
     if _log:
         with open(_log + ".tid", "a", encoding="utf-8") as f:
-            f.write(f"{3.0 - max(0.0, frist - _ECHTE_MONOTONIC()):.2f}\t{_hvem()}\n")
+            f.write(f"{ventet:.2f}\t{_hvem()}\n")
         with open(_log, "a", encoding="utf-8") as f:
-            for t in threading.enumerate():
-                if t not in foer and t.is_alive() and t is not threading.current_thread():
-                    f.write(f"{t.name}\t{getattr(getattr(t, '_target', None), '__qualname__', '?')}\n")
-                    if os.environ.get("JARVIS_TEST_TRAADSTAK"):
-                        import sys as _sys
-                        import traceback as _tb
-                        fr = _sys._current_frames().get(t.ident)
-                        if fr is not None:
-                            f.write("".join(_tb.format_stack(fr)[-22:-8]) + "\n")
+            for t in stadig:
+                f.write(f"{t.name}\t{getattr(getattr(t, '_target', None), '__qualname__', '?')}\n")
+                if os.environ.get("JARVIS_TEST_TRAADSTAK"):
+                    import sys as _sys
+                    import traceback as _tb
+                    fr = _sys._current_frames().get(t.ident)
+                    if fr is not None:
+                        f.write("".join(_tb.format_stack(fr)[-22:-8]) + "\n")
 
 
 @pytest.fixture(autouse=True)

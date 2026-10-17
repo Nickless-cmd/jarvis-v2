@@ -24,6 +24,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from typing import Any
 
 from core.services import central_timeseries
@@ -47,6 +48,13 @@ _CRITICAL_HOSTS = ("pve", "pfsense")
 # fejl før rødt. Ét glimt = gult (transient), ikke et flag. (2. jul: genstart-vindue gav
 # falsk RØD.) Incident rejses KUN ved OVERGANG grøn/gul→rød, ikke hver tick mens rød.
 _RED_STREAK = 3  # ~6 min sammenhængende api-tavshed (cadence hver 2 min) før rødt flag
+
+# ALDERSGRÆNSE for reachability-samples (målt 17/10-2026). infra_sense skriver reach_*
+# hvert 3. minut; et sample ældre end 2× cadence kan ikke længere siges at beskrive NU.
+# Uden denne grænse blev ét transient probe-fejl (-1.0) læst som et vedvarende nedbrud,
+# og critical_down debounces ikke → RØDT incident med det samme. Målt: pfsense meldt
+# «nede» kl. 15:08:10 mens den svarede 200 og TCP-proben gav 0,5 ms.
+_REACH_STALE_S = 420.0  # 2× infra_sense-cadence (3 min)
 _state_lock = threading.Lock()
 _consec_api_fail = 0
 _prev_status = "green"
@@ -78,15 +86,38 @@ def _latest(cluster: str, nerve: str) -> float | None:
 
 
 def _hosts_down() -> list[str]:
-    """Hosts hvis seneste reachability-sample er 'nede' (infra_sense skriver -1.0 ved nede)."""
+    """Hosts hvis seneste reachability-sample er 'nede' (infra_sense skriver -1.0 ved nede).
+
+    ALDERSGRÆNSE (målt 17/10-2026): et sample må ikke tælle som «nede NU» hvis det er
+    gammelt. ``infra_sense`` kører hvert 3. minut og ``network_health`` hvert 2., så
+    seneste sample kan være op til ~3 min gammelt — og et enkelt transient probe-fejl
+    (3 s timeout) skrev -1.0, som derefter blev læst som et vedvarende nedbrud og rejste
+    et RØDT incident med det samme (``critical_down`` debounces ikke). Målt: pfsense
+    meldt «nede» kl. 15:08:10 mens den svarede 200 og TCP-proben gav 0,5 ms.
+
+    Grænsen er 2× infra_sense-cadence, så et ægte nedbrud stadig fanges ved næste tick,
+    men et gammelt sample ikke kan lyve. Mønstret er det samme som
+    ``discord_gateway._STATUS_STALE_AFTER``.
+    """
     down: list[str] = []
+    now = datetime.now(timezone.utc)
     try:
         for cluster, nerve in central_timeseries.nerves():
             if cluster != "infra" or not nerve.startswith("reach_"):
                 continue
-            v = _latest(cluster, nerve)
-            if v is not None and v < 0:
-                down.append(nerve[len("reach_"):])
+            samples = central_timeseries.recent(cluster, nerve, limit=1)
+            if not samples:
+                continue
+            s = samples[-1]
+            if s.value is None or s.value >= 0:
+                continue
+            try:
+                age_s = (now - datetime.fromisoformat(s.ts)).total_seconds()
+            except Exception:
+                continue  # kan alderen ikke fastslås, antag IKKE at den er nede
+            if age_s > _REACH_STALE_S:
+                continue
+            down.append(nerve[len("reach_"):])
     except Exception:
         pass
     return down

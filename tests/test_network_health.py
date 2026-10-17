@@ -29,6 +29,30 @@ def test_hosts_down_reads_negative_reach_samples():
     assert "fileserver" in down and "pve" not in down
 
 
+def _set_sample_age(nerve: str, value: float, age_s: float) -> None:
+    """Skriv et sample med en bestemt alder (record() sætter altid ts til nu)."""
+    from datetime import datetime, timedelta, timezone
+
+    central_timeseries.record("infra", nerve, value=value)
+    dq = central_timeseries._series[("infra", nerve)]
+    old_ts = (datetime.now(timezone.utc) - timedelta(seconds=age_s)).isoformat()
+    dq[-1] = central_timeseries.Sample(ts=old_ts, value=value)
+
+
+def test_hosts_down_ignores_stale_negative_sample():
+    # Målt 17/10-2026: ét transient probe-fejl skrev -1.0, og _hosts_down() læste det
+    # som et vedvarende nedbrud — pfsense blev meldt «nede» mens den svarede 200.
+    # Et sample ældre end _REACH_STALE_S beskriver ikke NU og må ikke tælle.
+    _set_sample_age("reach_pfsense", -1.0, age_s=nh._REACH_STALE_S + 180)
+    assert nh._hosts_down() == []
+
+
+def test_hosts_down_keeps_fresh_negative_sample():
+    # Frisk nede-sample SKAL stadig fanges — aldersgrænsen må ikke sløve ægte nedbrud.
+    _set_sample_age("reach_pfsense", -1.0, age_s=60)
+    assert nh._hosts_down() == ["pfsense"]
+
+
 def test_tick_green_when_api_fast_and_all_up(monkeypatch):
     monkeypatch.setattr(nh, "measure_api_latency", lambda *a, **k: (True, 12.0))
     central_timeseries.record("infra", "reach_pve", value=0.2, meta={"up": True})

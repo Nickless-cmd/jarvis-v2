@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 
 const MIN_CODE_POINTS = 5
-const MAX_CODE_POINTS = 30
-const MAX_BACKLOG_CODE_POINTS = 300
+/** Loft pr. frame. Var 30 — men et efterslæb på flere tusinde tegn kan ikke
+ *  indhentes med 30/frame uden at springe, og springet VAR dumpet: backlog-
+ *  reglen satte `end` til `target - 300`, så 2700 af 3000 tegn kom i første
+ *  frame (målt 17/10-2026). 60/frame indhenter 3000 tegn på ~50 frames
+ *  (~0,8 s ved 60 fps), hvilket læses som en strøm — ikke som en klump. */
+const MAX_CODE_POINTS = 60
 
 export interface ChatPacingOptions {
   live: boolean
@@ -66,10 +70,12 @@ export function useChatPacedBlocks(
       MAX_CODE_POINTS,
       Math.max(MIN_CODE_POINTS, Math.ceil(pending / 12)),
     )
-    const end = Math.min(
-      targetPoints.length,
-      Math.max(shownPoints.length + ordinaryStep, targetPoints.length - MAX_BACKLOG_CODE_POINTS),
-    )
+    // Ingen «spring til target - N»-regel. Den var årsagen: landede hele
+    // svaret på én gang, satte den `end` til `target - 300`, og 90 % af
+    // teksten kom i FØRSTE frame (Bjørn 17/10-2026: «slutbeskeden bliver
+    // dumpet i stedet for streamet»). Nu bestemmer efterslæbet kun hvor
+    // stort trinnet må være, aldrig hvor vi lander — så alt kommer i trin.
+    const end = Math.min(targetPoints.length, shownPoints.length + ordinaryStep)
     const next = { key: current.key, shown: targetPoints.slice(0, end).join('') }
     cursorRef.current = next
     setCursor(next)

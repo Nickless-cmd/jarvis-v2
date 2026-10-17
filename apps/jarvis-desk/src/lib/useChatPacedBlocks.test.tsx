@@ -41,21 +41,53 @@ describe('useChatPacedBlocks', () => {
     expect(frames).toHaveLength(1)
   })
 
-  it('bounds lag while the source grows faster than rendering', () => {
+  it('dumper ikke et svar der lander i ét hug — det kommer i jævne trin', () => {
+    // Bjørn 17/10-2026: «slutbeskeden bliver dumpet i stedet for streamet».
+    // Serveren replay'er slutsvaret; lander hele teksten på én gang, sprang den
+    // gamle backlog-regel til `target - 300` — 2700 af 3000 tegn i FØRSTE frame.
+    const text = 'Et svar der lander i ét hug. '.repeat(100)
+    const blocks: ContentBlock[] = [{ type: 'text', text }]
+    const { result } = renderHook(() => useChatPacedBlocks(blocks, {
+      live: true, finalAnswerStarted: true, runId: 'run-dump',
+    }))
+    const shown = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+
+    nextFrame()
+    const first = shown()
+    expect(first.length).toBeGreaterThan(0)
+    // Det afgørende: første frame må ikke være nær hele svaret.
+    expect(first.length).toBeLessThan(Array.from(text).length / 10)
+
+    // …og resten skal indhentes i trin, aldrig i ét spring.
+    let previous = first.length
+    let frames = 0
+    while (shown().length < text.length && frames < 200) {
+      nextFrame()
+      const now = shown().length
+      expect(now - previous).toBeLessThanOrEqual(60)
+      previous = now
+      frames += 1
+    }
+    expect(shown()).toBe(text)
+    expect(frames).toBeLessThan(200)
+  })
+
+  it('følger en vedvarende hurtig stream uden at sakke ubegrænset bagud', () => {
     const { result, rerender } = renderHook(({ text }) => useChatPacedBlocks(
       [{ type: 'text', text }],
       { live: true, finalAnswerStarted: true, runId: 'run-fast' },
     ), { initialProps: { text: '' } })
 
     let source = ''
-    for (let index = 0; index < 20; index += 1) {
-      source += '1234567890'.repeat(10)
+    for (let index = 0; index < 60; index += 1) {
+      source += '1234567890'.repeat(5)
       rerender({ text: source })
       nextFrame()
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
-    expect(source.length - visible.length).toBeLessThanOrEqual(300)
     expect(visible.length).toBeLessThan(source.length)
+    // Efterslæbet stabiliserer sig (loftet kan følge kilden) i stedet for at vokse.
+    expect(source.length - visible.length).toBeLessThan(800)
   })
 
   it('never splits a Unicode code point', () => {

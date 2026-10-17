@@ -401,6 +401,25 @@ def is_open(run_id: str) -> bool:
         return bool(st) and not bool(st["done"])
 
 
+def last_activity_at(run_id: str) -> float | None:
+    """Seneste livstegn (monotonic) for et run — eller None hvis loggen ikke kender det.
+
+    Kilden er ``last_append_at``, som opdateres ved HVER frame (inkl. 5s-pings) og af
+    ``touch_liveness``. Det er derfor det tætteste vi kommer på «runnet lever lige nu»
+    uden at gætte ud fra starttidspunktet: et run der venter minutter på et
+    provider-svar har ingen indholds-frames, men det har stadig pings — og et run der
+    er virkelig dødt holder OGSÅ op med at pinge.
+
+    Bruges af ``stream_sentinel`` til at måle STILHED frem for ALDER (17/10-2026).
+    Uden den flagede sentinel levende runs som zombier: et run midt i tre
+    provider-timeouts à ~90s overskred 300s-tærsklen og blev erklæret dødt 1m43s
+    før det faktisk afsluttede rent (målt på incident 14176).
+    """
+    with _lock:
+        st = _hent(run_id)
+        return float(st["last_append_at"]) if st else None
+
+
 def live_run_ids() -> list[str]:
     now = time.monotonic()
     with _lock:

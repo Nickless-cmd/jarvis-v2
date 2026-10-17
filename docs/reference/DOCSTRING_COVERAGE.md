@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9039/17258 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9041/17260 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9039/17258 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 830 | 1530 | 54% |
-| `core.services` | 6023 | 11726 | 51% |
+| `core.services` | 6025 | 11728 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1866,11 +1866,11 @@ Generated from source. 9039/17258 functions/methods documented (52%). The list b
 - `core/services/run_event_log.py` :: `append` (L239)
 - `core/services/run_event_log.py` :: `create` (L102)
 - `core/services/run_event_log.py` :: `is_live` (L381)
-- `core/services/run_event_log.py` :: `live_run_ids` (L404)
+- `core/services/run_event_log.py` :: `live_run_ids` (L423)
 - `core/services/run_event_log.py` :: `mark_done` (L301)
-- `core/services/run_event_log.py` :: `session_for_run` (L463)
-- `core/services/run_event_log.py` :: `subscriber_closed` (L497)
-- `core/services/run_event_log.py` :: `subscriber_opened` (L490)
+- `core/services/run_event_log.py` :: `session_for_run` (L482)
+- `core/services/run_event_log.py` :: `subscriber_closed` (L516)
+- `core/services/run_event_log.py` :: `subscriber_opened` (L509)
 - `core/services/run_stream_proxy.py` :: `stream_error` (L19)
 - `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L187)
 - `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L183)
@@ -2119,7 +2119,7 @@ Generated from source. 9039/17258 functions/methods documented (52%). The list b
 - `core/services/standing_orders_registry.py` :: `add_standing_order` (L25)
 - `core/services/standing_orders_registry.py` :: `list_active_standing_orders` (L47)
 - `core/services/standing_orders_registry.py` :: `set_standing_order_active` (L36)
-- `core/services/stream_sentinel.py` :: `live_count` (L125)
+- `core/services/stream_sentinel.py` :: `live_count` (L198)
 - `core/services/stream_settlement.py` :: `AttemptLedger.frames` (L271)
 - `core/services/stream_settlement.py` :: `AttemptLedger.is_settled` (L289)
 - `core/services/stream_settlement.py` :: `AttemptLedger.settled` (L286)

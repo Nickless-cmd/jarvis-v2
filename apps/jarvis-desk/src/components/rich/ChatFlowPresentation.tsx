@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -6,6 +6,7 @@ import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
+import { TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -78,37 +79,61 @@ export function ChatFlowPresentation({
     finalAnswerStarted,
     runId,
   })
-  const showActivity = streaming && !finalAnswerStarted && model.terminalState === 'active'
+
+  // «Aktiv» er arbejdsfasen: Jarvis kører og har ikke begyndt at svare endnu.
+  // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
+  // klapper hovedet sammen og arbejdet lægger sig som detaljer.
+  const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
   const lines = mode === 'calm'
     ? [model.calmStatus]
     : model.visibleSynthesis
-  const showDisclosure = model.hasObservableWork
-    && (finalAnswerStarted || model.terminalState !== 'active')
+  const visTurhoved = model.hasObservableWork || aktiv
+
+  // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
+  // Bjørn selv har foldet. `null` betyder «følg fasen».
+  const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
+  const aaben = aabenManuelt ?? aktiv
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
-      {showActivity && lines.length > 0 ? (
-        <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
-          data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-          aria-label={lines.at(-1)}>
-          {lines.map((line) => (
-            <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis" key={line} aria-hidden="true">
-              {line}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {visTurhoved ? (
+        <>
+          <TurHoved
+            aaben={aaben}
+            koerer={aktiv}
+            tekst={aktiv ? 'Working…' : model.terminalLabel}
+            onToggle={() => {
+              const naeste = !aaben
+              setAabenManuelt(naeste)
+              if (naeste) onWorkExpanded?.()
+            }}
+          />
+          {/* Synteserne står ØVERST i gruppen — over de runde linjer de hører
+              til — så de ikke længere er skilt fra dem (Bjørn 17/10-2026).
+              Ved sammenklap bliver de liggende som en del af arbejdsforløbet
+              og følger med ned i den afsluttede besked. */}
+          <div className="chat-flow-gruppe" hidden={!aaben}>
+            {aktiv && lines.length > 0 ? (
+              <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
+                data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
+                aria-label={lines.at(-1)}>
+                {lines.map((line) => (
+                  <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis" key={line} aria-hidden="true">
+                    {line}
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
-      {showDisclosure ? (
-        <details className={`chat-flow-work chat-flow-work--${model.terminalState}`}
-          onToggle={(event) => { if (event.currentTarget.open) onWorkExpanded?.() }}>
-          <summary>{model.terminalLabel}</summary>
-          <div className="chat-flow-work-details">
-            <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
-              rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-              beskedId={beskedId} config={config} />
+            {retainedWork.length > 0 ? (
+              <div className="chat-flow-work-details">
+                <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
+                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  beskedId={beskedId} config={config} />
+              </div>
+            ) : null}
           </div>
-        </details>
+        </>
       ) : null}
 
       {answer.length > 0 ? (

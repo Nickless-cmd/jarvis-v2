@@ -64,15 +64,17 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    const disclosure = screen.getByText('Arbejdsforløb').closest('details')
-    expect(disclosure).not.toBeNull()
-    expect(within(disclosure as HTMLElement).queryByText('Her er resultatet.')).not.toBeInTheDocument()
+    const hoved = screen.getByText('Arbejdsforløb').closest('button') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toBeNull()
+    expect(within(gruppe).queryByText('Her er resultatet.')).not.toBeInTheDocument()
     expect(screen.getAllByText('Her er resultatet.')).toHaveLength(1)
     const delivery = screen.getByRole('img', { name: 'Rapport' })
     expect(delivery).toBeInTheDocument()
-    expect(disclosure).not.toContainElement(delivery)
-    ;(disclosure as HTMLDetailsElement).open = true
-    fireEvent(disclosure as HTMLElement, new Event('toggle', { bubbles: true }))
+    expect(gruppe).not.toContainElement(delivery)
+    fireEvent.click(hoved)
     expect(onWorkExpanded).toHaveBeenCalledTimes(1)
   })
 
@@ -88,8 +90,8 @@ describe('ChatFlowPresentation', () => {
     view.rerender(<ChatFlowPresentation {...common} mode="living"
       blocks={[firstTool, firstAnswer, secondTool, secondAnswer]} finalAnswerStarted />)
 
-    const disclosure = screen.getByText('Arbejdsforløb').closest('details') as HTMLElement
-    expect(within(disclosure).queryByText('Første bekræftede svar.')).not.toBeInTheDocument()
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(within(gruppe).queryByText('Første bekræftede svar.')).not.toBeInTheDocument()
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Første bekræftede svar.')
     expect(view.container.querySelector('.chat-flow-answer')).toHaveTextContent('Supplerende svar.')
   })
@@ -105,6 +107,37 @@ describe('ChatFlowPresentation', () => {
       ]} />)
     expect(screen.getByText(label)).toBeInTheDocument()
     expect(screen.getAllByText('Et bevaret delsvar.')).toHaveLength(1)
+  })
+
+  it('viser synteserne OVER arbejdsrunderne under ét turhoved — ikke som to grene', () => {
+    const blocks: ContentBlock[] = [
+      summary('Fandt kilden', 1),
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      summary('Læste filen', 2),
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(hoved).toHaveAttribute('data-koerer')
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(gruppe).not.toBeNull()
+    expect(gruppe).not.toHaveAttribute('hidden')
+    const synteser = within(gruppe).getAllByTestId('chat-flow-synthesis')
+    expect(synteser).toHaveLength(2)
+    const detaljer = gruppe.querySelector('.chat-flow-work-details') as HTMLElement
+    expect(detaljer).not.toBeNull()
+    // Synteserne skal stå FØR arbejdsdetaljerne i DOM-rækkefølgen.
+    expect(synteser[0]!.compareDocumentPosition(detaljer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      blocks={[summary('Fandt kilden', 1), { type: 'text', text: 'Svaret.' }]} />)
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    expect(hoved).not.toHaveAttribute('data-koerer')
+    expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
   })
 
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {

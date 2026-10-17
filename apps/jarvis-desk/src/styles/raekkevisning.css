@@ -174,7 +174,6 @@
 .raekkevisning .rv-r[data-koerer] .rv-ikon .rv-ikon-glimt {
   animation: rv-glimt-venstre 1.8s linear infinite 300ms;
 }
-.raekkevisning [data-koerer] .rv-turC .rv-ikon-glimt,
 .raekkevisning .rv-r[data-koerer] .rv-chev .rv-ikon-glimt {
   animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
 }
@@ -210,28 +209,8 @@
 .raekkevisning .rv-r[data-tanke][data-aaben] .rv-sep { display: none; }
 
 /* ══ TURENS HOVED — den eneste vandrette streg i samtalen ══
-   Målt: 33px, border-bottom .5px, padding 0 0 8px, 8px margin når lukket. */
-.raekkevisning .rv-tur {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  height: 33px; padding: 0 0 8px; margin: 0;
-  border: 0; border-bottom: .5px solid var(--line);
-  background: none; text-align: left;
-  font-family: inherit;
-  font-size: 14px; line-height: 1.3; font-weight: 400;
-  color: var(--rv-tertiary); cursor: pointer;
-}
-.raekkevisning .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
-.raekkevisning .rv-turTekst {
-  flex: 0 1 auto; min-width: 0; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-.raekkevisning .rv-turC {
-  /* `flex: none` som arbejdsknappen allerede havde: uden den kan ikonet
-     klemmes fladt når turens tekst er lang. */
-  flex: none; display: flex; width: 16px; height: 16px; align-items: center; justify-content: center;
-  position: relative;
-  color: var(--fg-3);
-}
+   Selve reglerne bor nu i `turhoved.css`, fordi chat mode deler komponenten
+   og ikke ligger inden for `.raekkevisning` (17/10-2026). */
 .raekkevisning .rv-gruppe {
   position: relative; display: flex; flex-direction: column; padding-top: 8px;
 }

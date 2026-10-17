@@ -47,6 +47,36 @@ def load_json(name: str, default: Any) -> Any:
         return default
 
 
+def er_ulaesbar(name: str) -> bool:
+    """True naar filen findes, har indhold, men ikke kan parses som JSON.
+
+    Hvorfor den findes (17/10-2026): :func:`load_json` svarer ``default`` i
+    BEGGE tilfaelde — filen findes ikke, og filen er korrupt. For en LAESER er
+    det rigtigt. For en SKRIVER er det et tab: den skriver hele listen tilbage,
+    og 80 poster bliver til nul, uden at noget i svaret eller loggen viser det.
+    Skrive-stien spoerger derfor her FOERST og naegter at skrive.
+
+    Sikker mod samtidig skrivning: :func:`save_json_strict` skriver til en
+    temp-fil og omdoeber den, saa en laeser ser enten den gamle eller den nye
+    fil — aldrig en halv.
+    """
+    p = _path(name)
+    try:
+        if not p.exists():
+            return False
+        tekst = p.read_text(encoding="utf-8")
+    except OSError as exc:  # ulaesbar fil er ikke det samme som korrupt JSON
+        logger.debug("state_store: kunne ikke laese %s: %s", name, exc)
+        return False
+    if not tekst.strip():
+        return False
+    try:
+        json.loads(tekst)
+    except ValueError:  # ugyldig JSON er netop svaret her: filen ER ulaesbar
+        return True
+    return False
+
+
 def save_json(name: str, data: Any) -> None:
     """Atomically persist ``data`` to ``state/<name>.json``.
 

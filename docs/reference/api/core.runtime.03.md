@@ -559,10 +559,11 @@ _Tiny JSON-file state store for module-globals that must survive restart._
 |---|---|---|---|---|
 | function | `_path` | `(name)` | — | [src](../../../core/runtime/state_store.py#L29) |
 | function | `load_json` | `(name, default)` | Read ``state/<name>.json``; return ``default`` if missing/corrupt. | [src](../../../core/runtime/state_store.py#L33) |
-| function | `save_json` | `(name, data)` | Atomically persist ``data`` to ``state/<name>.json``. | [src](../../../core/runtime/state_store.py#L50) |
-| function | `save_json_strict` | `(name, data)` | Atomically persist JSON and propagate failures to authoritative callers. | [src](../../../core/runtime/state_store.py#L61) |
-| function | `med_laas` | `(name)` | Serialisér read-modify-write paa én state-fil paa tvaers af processer. | [src](../../../core/runtime/state_store.py#L88) |
-| function | `aendret_ns` | `(name)` | Filens mtime i nanosekunder, eller 0 naar den ikke findes. | [src](../../../core/runtime/state_store.py#L110) |
+| function | `er_ulaesbar` | `(name)` | True naar filen findes, har indhold, men ikke kan parses som JSON. | [src](../../../core/runtime/state_store.py#L50) |
+| function | `save_json` | `(name, data)` | Atomically persist ``data`` to ``state/<name>.json``. | [src](../../../core/runtime/state_store.py#L80) |
+| function | `save_json_strict` | `(name, data)` | Atomically persist JSON and propagate failures to authoritative callers. | [src](../../../core/runtime/state_store.py#L91) |
+| function | `med_laas` | `(name)` | Serialisér read-modify-write paa én state-fil paa tvaers af processer. | [src](../../../core/runtime/state_store.py#L118) |
+| function | `aendret_ns` | `(name)` | Filens mtime i nanosekunder, eller 0 naar den ikke findes. | [src](../../../core/runtime/state_store.py#L140) |
 
 ## `core/runtime/token_renewal.py`
 _Fornyelse af bearer-tokens — så en klient ikke låses ude af tiden alene._

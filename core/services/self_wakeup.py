@@ -34,9 +34,31 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from core.runtime.state_store import load_json, save_json
+from core.runtime.state_store import er_ulaesbar, load_json, med_laas, save_json
 
 logger = logging.getLogger(__name__)
+
+
+class _StateUnreadable(RuntimeError):
+    """Lageret findes, men kan ikke laeses. Vi naegter at skrive over det."""
+
+
+def _sikker_skrivning() -> None:
+    """Kast hvis lageret er korrupt — FOER nogen skriver en tom liste tilbage.
+
+    Kaldes paa hver skrive-sti, inde i laasen. `_load()` kan ikke afgoere det
+    alene: den svarer `[]` baade naar filen mangler og naar den er korrupt, og
+    netop den forskel afgoer om en skrivning er en no-op eller et tab.
+    """
+    if er_ulaesbar(_STATE_KEY):
+        logger.error(
+            "self_wakeup: %s.json kan ikke parses — naegter at skrive over den",
+            _STATE_KEY,
+        )
+        raise _StateUnreadable(
+            "self_wakeups-lageret kan ikke laeses; naegter at overskrive det "
+            "med en tom liste"
+        )
 
 
 _STATE_KEY = "self_wakeups"
@@ -65,6 +87,15 @@ _MAX_PR_SAMTALE_PR_DOEGN = 20
 
 
 def _load() -> list[dict[str, Any]]:
+    """Laes lageret. Dette er den ENESTE laese-søm — ogsaa for skrive-stierne.
+
+    Skrive-stierne kalder den herinde i laasen i stedet for at laese filen selv:
+    saa gaar de gennem samme funktion som tests og fejlfinding patcher, og der
+    findes kun ét sted hvor «hvad er lagerets indhold» afgoeres.
+
+    En korrupt fil giver `[]` her. Det er med vilje — `_sikker_skrivning` er det
+    vaern der forhindrer at den tomme liste bliver skrevet tilbage.
+    """
     raw = load_json(_STATE_KEY, [])
     if not isinstance(raw, list):
         return []
@@ -98,26 +129,11 @@ def schedule_self_wakeup(
         return {"status": "error", "error": "prompt is required"}
     delay = int(max(_MIN_DELAY_SECONDS, min(_MAX_DELAY_SECONDS, delay_seconds)))
 
-    records = _load()
-    pending = [r for r in records if r.get("status") == "pending"]
-    if len(pending) >= _MAX_PENDING:
-        return {
-            "status": "error",
-            "error": f"max {_MAX_PENDING} pending wakeups; cancel one first",
-        }
+    # Loftene proeves INDE i laasen (se nedenfor): baade `_MAX_PENDING` og
+    # doegn-kvoten er laes-og-sammenlign, saa en prove uden for laasen kunne
+    # slippe to bookinger igennem det samme led.
     sid = (session_id or "").strip()
-    i_doegnet = bookinger_seneste_doegn(records, sid)
-    if sid and i_doegnet >= _MAX_PR_SAMTALE_PR_DOEGN:
-        return {
-            "status": "error",
-            "error": (
-                f"{i_doegnet} wakeups already booked from this conversation in the "
-                f"last 24h (limit {_MAX_PR_SAMTALE_PR_DOEGN}). You are in a chain: "
-                "each handled wakeup booking another one is how this gets here. "
-                "Stop re-booking, or ask Bjoern whether the watch is still wanted."
-            ),
-            "bookinger_seneste_doegn": i_doegnet,
-        }
+    i_doegnet = 0
 
     fire_at = datetime.now(UTC) + timedelta(seconds=delay)
     wakeup_id = f"wake-{uuid4().hex[:10]}"
@@ -152,8 +168,33 @@ def schedule_self_wakeup(
         # samtalen og oprindelsen. Tomt = nyt arbejde.
         "task_id": (task_id or "").strip() or None,
     }
-    records.append(record)
-    _save(records)
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            pending = [r for r in records if r.get("status") == "pending"]
+            if len(pending) >= _MAX_PENDING:
+                return {
+                    "status": "error",
+                    "error": f"max {_MAX_PENDING} pending wakeups; cancel one first",
+                }
+            i_doegnet = bookinger_seneste_doegn(records, sid)
+            if sid and i_doegnet >= _MAX_PR_SAMTALE_PR_DOEGN:
+                return {
+                    "status": "error",
+                    "error": (
+                        f"{i_doegnet} wakeups already booked from this conversation "
+                        f"in the last 24h (limit {_MAX_PR_SAMTALE_PR_DOEGN}). You "
+                        "are in a chain: each handled wakeup booking another one "
+                        "is how this gets here. Stop re-booking, or ask Bjoern "
+                        "whether the watch is still wanted."
+                    ),
+                    "bookinger_seneste_doegn": i_doegnet,
+                }
+            records.append(record)
+            _save(records)
+    except _StateUnreadable as exc:  # bliver et SYNLIGT fejlsvar til kalderen
+        return {"status": "error", "error": str(exc)}
 
     try:
         from core.eventbus.bus import event_bus
@@ -264,31 +305,76 @@ def bookinger_seneste_doegn(
 
 
 def due_wakeups(*, include_fired_unconsumed: bool = True) -> list[dict[str, Any]]:
-    """Return wakeups whose fire_at has passed and not yet consumed."""
-    records = _load()
+    """Return wakeups whose fire_at has passed and not yet consumed.
+
+    Laas (17/10-2026): funktionen MUTERER — den flytter forfaldne fra 'pending'
+    til 'fired' — saa den er en skrive-sti, ikke en laesesti. Den kaldes
+    samtidig fra `self_wakeup_section` (hver prompt-bygning) og fra
+    dispatcheren, i to processer, saa uden laasen kunne den ene skrive sin
+    gamle liste tilbage over den andens.
+
+    Den laasefri vej er derfor kun for det normale tilfaelde: intet er
+    forfaldent, intet skal skrives, og et laes er harmloest. Er der noget der
+    SKAL flyttes, tages laasen, og baade laesning og skrivning sker indeni.
+    """
     now_iso = datetime.now(UTC).isoformat()
+
+    def _forfaldent(records: list[dict[str, Any]]) -> bool:
+        return any(
+            str(r.get("status") or "") == "pending"
+            and str(r.get("fire_at", "")) <= now_iso
+            for r in records
+        )
+
+    def _fyrede(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not include_fired_unconsumed:
+            return []
+        return [r for r in records if str(r.get("status") or "") == "fired"]
+
+    peek = _load()
+    if not _forfaldent(peek):
+        return _fyrede(peek)
+
     out: list[dict[str, Any]] = []
-    changed = False
-    for r in records:
-        status = str(r.get("status") or "")
-        if status == "pending" and str(r.get("fire_at", "")) <= now_iso:
-            r["status"] = "fired"
-            r["fired_at"] = now_iso
-            changed = True
-            try:
-                from core.eventbus.bus import event_bus
-                event_bus.publish(
-                    "self_wakeup.fired",
-                    {"wakeup_id": r.get("wakeup_id"),
-                     "reason": str(r.get("reason", ""))[:80]},
-                )
-            except Exception:
-                pass
-            out.append(r)
-        elif status == "fired" and include_fired_unconsumed:
-            out.append(r)
-    if changed:
-        _save(records)
+    begivenheder: list[dict[str, Any]] = []
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            changed = False
+            for r in records:
+                status = str(r.get("status") or "")
+                if status == "pending" and str(r.get("fire_at", "")) <= now_iso:
+                    r["status"] = "fired"
+                    r["fired_at"] = now_iso
+                    changed = True
+                    # Begivenheden SAMLES, ikke udgivet her: en udgivelse inde i
+                    # laasen holder en cross-process flock mens eventbus-arbejde
+                    # koerer, og en langsom abonnent ville blokere den anden
+                    # proces' skrivning.
+                    begivenheder.append(
+                        {"wakeup_id": r.get("wakeup_id"),
+                         "reason": str(r.get("reason", ""))[:80]}
+                    )
+                    out.append(r)
+                elif status == "fired" and include_fired_unconsumed:
+                    out.append(r)
+            if changed:
+                _save(records)
+    except _StateUnreadable:
+        # En LAESER maa ikke do af et korrupt lager — den faar det den kan se.
+        # Skrive-stierne naegter (se `_sikker_skrivning`); her er der intet at
+        # skrive, saa vi falder tilbage til det vi laeste uden laas.
+        return _fyrede(peek)
+
+    for ev in begivenheder:
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("self_wakeup.fired", ev)
+        except Exception:  # noqa: BLE001
+            # Eventbus er telemetri. En fejl der maa ikke vaelte fyringen —
+            # vaekningen er allerede gemt som 'fired' paa dette tidspunkt.
+            pass
     return out
 
 
@@ -368,48 +454,55 @@ def direktiv_for(record: dict[str, Any]) -> str:
 
 def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
     """Clear a fired wakeup once Jarvis has acted on it."""
-    records = _load()
-    record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
-    if record is None:
-        return {"status": "error", "error": "wakeup not found"}
-    status = str(record.get("status") or "")
-    # Kilden kan være ALLEREDE terminal. At kvittere den igen er en no-op,
-    # ikke en fejl — og forskellen er hele sagen.
-    #
-    # `_luk_kilden` i `inbox_state` accepterer «already» som succes og lader
-    # den durable afgørelse lukke rækken. Et «error» gør det modsatte: rækken
-    # bliver stående `aaben` med `kraever_handling=1`, og så gater posten
-    # permanent — og vejen ud går gennem det værktøj gaten blokerer.
-    #
-    # Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` → «status=consumed,
-    # can't consume», mens rækken stod åben og gatede alt `bash`. Samme form
-    # efter `cancel_wakeup` på `wake-99ac19041a`: annulleringen lukkede
-    # vækningen, ikke dens durable række.
-    #
-    # `drop` rammes ikke — den kalder ikke kilden, den afgør rækken direkte.
-    # Det er derfor `inbox_drop` virkede hvor `inbox_done` nægtede.
-    if status in ("consumed", "cancelled"):
-        return {"status": "already", "wakeup_id": wakeup_id, "tilstand": status}
-    if status not in ("pending", "fired"):
-        return {"status": "error", "error": f"wakeup status={status}, can't consume"}
-    was_fired = status == "fired"
-    record["status"] = "consumed"
-    record["consumed_at"] = datetime.now(UTC).isoformat()
-    # 12/9-2026: luk den sidste stille kant. Dispatcheren filtrerer på
-    # status=='fired', så en FYRET wakeup der kvitteres før næste tick (60 s)
-    # er usynlig for den: hverken `dispatched` eller `dispatch_skipped` nåede
-    # at blive sat, og recorden stod tavs. Instruktionerne overlevede
-    # (awareness bar dem), men sporet manglede. Vi skriver det HER, hvor vi
-    # ved at den fyrede ubehandlet — så `list_self_wakeups` kan skelne
-    # «kørte» / «afvist» / «nåede aldrig frem».
-    if was_fired and not record.get("dispatched") and not record.get("dispatch_skipped"):
-        record["consumed_without_dispatch"] = True
-        record["consumed_without_dispatch_reason"] = "consumed_before_dispatch_tick"
-    _save(records)
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
+            if record is None:
+                return {"status": "error", "error": "wakeup not found"}
+            status = str(record.get("status") or "")
+            # Kilden kan være ALLEREDE terminal. At kvittere den igen er en no-op,
+            # ikke en fejl — og forskellen er hele sagen.
+            #
+            # `_luk_kilden` i `inbox_state` accepterer «already» som succes og lader
+            # den durable afgørelse lukke rækken. Et «error» gør det modsatte: rækken
+            # bliver stående `aaben` med `kraever_handling=1`, og så gater posten
+            # permanent — og vejen ud går gennem det værktøj gaten blokerer.
+            #
+            # Målt live 4/10-2026: `inbox_done(wake-558ac30db3)` → «status=consumed,
+            # can't consume», mens rækken stod åben og gatede alt `bash`. Samme form
+            # efter `cancel_wakeup` på `wake-99ac19041a`: annulleringen lukkede
+            # vækningen, ikke dens durable række.
+            #
+            # `drop` rammes ikke — den kalder ikke kilden, den afgør rækken direkte.
+            # Det er derfor `inbox_drop` virkede hvor `inbox_done` nægtede.
+            if status in ("consumed", "cancelled"):
+                return {"status": "already", "wakeup_id": wakeup_id, "tilstand": status}
+            if status not in ("pending", "fired"):
+                return {"status": "error", "error": f"wakeup status={status}, can't consume"}
+            was_fired = status == "fired"
+            record["status"] = "consumed"
+            record["consumed_at"] = datetime.now(UTC).isoformat()
+            # 12/9-2026: luk den sidste stille kant. Dispatcheren filtrerer på
+            # status=='fired', så en FYRET wakeup der kvitteres før næste tick (60 s)
+            # er usynlig for den: hverken `dispatched` eller `dispatch_skipped` nåede
+            # at blive sat, og recorden stod tavs. Instruktionerne overlevede
+            # (awareness bar dem), men sporet manglede. Vi skriver det HER, hvor vi
+            # ved at den fyrede ubehandlet — så `list_self_wakeups` kan skelne
+            # «kørte» / «afvist» / «nåede aldrig frem».
+            if (was_fired and not record.get("dispatched")
+                    and not record.get("dispatch_skipped")):
+                record["consumed_without_dispatch"] = True
+                record["consumed_without_dispatch_reason"] = "consumed_before_dispatch_tick"
+            _save(records)
+    except _StateUnreadable as exc:  # bliver et SYNLIGT fejlsvar til kalderen
+        return {"status": "error", "error": str(exc)}
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("self_wakeup.consumed", {"wakeup_id": wakeup_id})
-    except Exception:
+    except Exception:  # noqa: BLE001
+        # Eventbus er telemetri — kvitteringen er allerede gemt paa dette punkt.
         pass
     return {"status": "ok", "wakeup_id": wakeup_id}
 
@@ -427,38 +520,105 @@ def add_wakeup_extra(wakeup_id: str, extra: str) -> dict[str, Any]:
     extra = (extra or "").strip()
     if not extra:
         return {"status": "error", "error": "extra is required"}
-    records = _load()
-    record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
-    if record is None:
-        return {"status": "error", "error": "wakeup not found"}
-    if record.get("status") not in ("pending", "fired"):
-        return {
-            "status": "error",
-            "error": f"wakeup status={record.get('status')}, can't add extra",
-        }
-    existing = str(record.get("extra") or "").strip()
-    merged = f"{existing}\n{extra}".strip() if existing else extra
-    record["extra"] = merged[:1000]
-    record["extra_updated_at"] = datetime.now(UTC).isoformat()
-    _save(records)
-    return {"status": "ok", "wakeup_id": wakeup_id, "extra": record["extra"]}
+    gemt_extra = ""
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
+            if record is None:
+                return {"status": "error", "error": "wakeup not found"}
+            if record.get("status") not in ("pending", "fired"):
+                return {
+                    "status": "error",
+                    "error": f"wakeup status={record.get('status')}, can't add extra",
+                }
+            existing = str(record.get("extra") or "").strip()
+            merged = f"{existing}\n{extra}".strip() if existing else extra
+            record["extra"] = merged[:1000]
+            record["extra_updated_at"] = datetime.now(UTC).isoformat()
+            gemt_extra = record["extra"]
+            _save(records)
+    except _StateUnreadable as exc:  # bliver et SYNLIGT fejlsvar til kalderen
+        return {"status": "error", "error": str(exc)}
+    return {"status": "ok", "wakeup_id": wakeup_id, "extra": gemt_extra}
 
 
 def cancel_wakeup(wakeup_id: str) -> dict[str, Any]:
     """Cancel a pending wakeup before it fires."""
-    records = _load()
-    record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
-    if record is None:
-        return {"status": "error", "error": "wakeup not found"}
-    if record.get("status") != "pending":
-        return {"status": "error", "error": f"can't cancel wakeup with status={record.get('status')}"}
-    record["status"] = "cancelled"
-    _save(records)
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
+            if record is None:
+                return {"status": "error", "error": "wakeup not found"}
+            if record.get("status") != "pending":
+                return {
+                    "status": "error",
+                    "error": f"can't cancel wakeup with status={record.get('status')}",
+                }
+            record["status"] = "cancelled"
+            _save(records)
+    except _StateUnreadable as exc:  # bliver et SYNLIGT fejlsvar til kalderen
+        return {"status": "error", "error": str(exc)}
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("self_wakeup.cancelled", {"wakeup_id": wakeup_id})
-    except Exception:
+    except Exception:  # noqa: BLE001
+        # Eventbus er telemetri — annulleringen er allerede gemt paa dette punkt.
         pass
+    return {"status": "ok", "wakeup_id": wakeup_id}
+
+
+def marker_dispatch(
+    wakeup_id: str,
+    *,
+    dispatched: bool,
+    skip_reason: str = "",
+) -> dict[str, Any]:
+    """Skriv dispatch-markøren på ÉN vækning — under lås, med det samme.
+
+    Hvorfor den findes (17/10-2026): dispatcheren læste HELE filen ind i et
+    snapshot, startede autonome runs inde i løkken (sekunder til minutter) og
+    skrev hele snapshotet tilbage til sidst. Alt den anden proces skrev i det
+    vindue blev overskrevet — hele filen, hver gang. Målt: `wake-cf45dfee74`
+    fandtes 11 gange i `events` og nul gange i lageret.
+
+    Vinduet er nu ét opslag pr. vækning i stedet for hele løkken.
+
+    Skriver KUN hvis vækningen stadig er 'fired'. Er den kvitteret eller
+    annulleret imens, ville et dispatch-flag modsige `consumed_without_dispatch`
+    — som netop findes for at kunne sige «nåede aldrig frem».
+    """
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            record = next(
+                (r for r in records if r.get("wakeup_id") == wakeup_id), None
+            )
+            if record is None:
+                return {"status": "error", "error": "wakeup not found"}
+            status = str(record.get("status") or "")
+            if status != "fired":
+                return {"status": "no-op", "wakeup_id": wakeup_id, "tilstand": status}
+            if dispatched:
+                if record.get("dispatched"):
+                    return {
+                        "status": "no-op",
+                        "wakeup_id": wakeup_id,
+                        "tilstand": "allerede_dispatchet",
+                    }
+                record["dispatched"] = True
+                record["dispatched_at"] = datetime.now(UTC).isoformat()
+            else:
+                record["dispatch_skipped"] = True
+                record["dispatch_skipped_at"] = datetime.now(UTC).isoformat()
+                record["dispatch_skipped_reason"] = skip_reason or "unknown"
+            _save(records)
+    except _StateUnreadable as exc:  # bliver et SYNLIGT fejlsvar til kalderen
+        return {"status": "error", "error": str(exc)}
     return {"status": "ok", "wakeup_id": wakeup_id}
 
 
@@ -486,47 +646,54 @@ def cleanup_old_wakeups(
     Returns:
         {removed, remaining} — antal fjernede og tilbageværende wakeups
     """
-    records = _load()
-    now = datetime.now(UTC)
-    kept: list[dict[str, Any]] = []
     removed = 0
+    kept: list[dict[str, Any]] = []
+    try:
+        with med_laas(_STATE_KEY):
+            _sikker_skrivning()
+            records = _load()
+            now = datetime.now(UTC)
 
-    for r in records:
-        status = str(r.get("status") or "")
-        if status == "consumed":
-            consumed_at = r.get("consumed_at")
-            if consumed_at:
-                try:
-                    age = (now - datetime.fromisoformat(consumed_at)).total_seconds() / 3600
-                    if age >= consumed_age_hours:
-                        removed += 1
-                        continue
-                except (ValueError, TypeError):
-                    pass
-        elif status == "cancelled":
-            # Brug scheduled_at som proxy hvis cancelled_at ikke findes
-            cancelled_ref = r.get("cancelled_at") or r.get("scheduled_at") or ""
-            if cancelled_ref:
-                try:
-                    age = (now - datetime.fromisoformat(cancelled_ref)).total_seconds() / 3600
-                    if age >= cancelled_age_hours:
-                        removed += 1
-                        continue
-                except (ValueError, TypeError):
-                    pass
-        elif status == "fired" and not r.get("consumed_at"):
-            fired_at = r.get("fired_at") or ""
-            if fired_at:
-                try:
-                    age = (now - datetime.fromisoformat(fired_at)).total_seconds() / 3600
-                    if age >= stale_fired_age_hours:
-                        removed += 1
-                        continue
-                except (ValueError, TypeError):
-                    pass
-        kept.append(r)
+            for r in records:
+                status = str(r.get("status") or "")
+                if status == "consumed":
+                    consumed_at = r.get("consumed_at")
+                    if consumed_at:
+                        try:
+                            age = (now - datetime.fromisoformat(consumed_at)).total_seconds() / 3600
+                            if age >= consumed_age_hours:
+                                removed += 1
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                elif status == "cancelled":
+                    # Brug scheduled_at som proxy hvis cancelled_at ikke findes
+                    cancelled_ref = r.get("cancelled_at") or r.get("scheduled_at") or ""
+                    if cancelled_ref:
+                        try:
+                            age = (now - datetime.fromisoformat(cancelled_ref)).total_seconds() / 3600
+                            if age >= cancelled_age_hours:
+                                removed += 1
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                elif status == "fired" and not r.get("consumed_at"):
+                    fired_at = r.get("fired_at") or ""
+                    if fired_at:
+                        try:
+                            age = (now - datetime.fromisoformat(fired_at)).total_seconds() / 3600
+                            if age >= stale_fired_age_hours:
+                                removed += 1
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                kept.append(r)
 
-    _save(kept)
+            _save(kept)
+    except _StateUnreadable as exc:
+        logger.error("cleanup_old_wakeups: %s", exc)
+        return {"removed": 0, "remaining": -1}
+
     logger.info("cleanup_old_wakeups: removed=%d, remaining=%d", removed, len(kept))
     return {"removed": removed, "remaining": len(kept)}
 

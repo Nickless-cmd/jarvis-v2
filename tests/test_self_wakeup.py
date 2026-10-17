@@ -490,3 +490,177 @@ def test_vinduet_kan_ankres_saa_vagten_kan_afspilles():
                "scheduled_at": (da + timedelta(hours=i)).isoformat()} for i in range(3)]
     assert sw.bookinger_seneste_doegn(poster, "chat-A") == 0
     assert sw.bookinger_seneste_doegn(poster, "chat-A", nu=da + timedelta(hours=3)) == 3
+
+
+# ── Laasen om lageret (17/10-2026) ─────────────────────────────────────────
+#
+# Maalt forud for fixet: `wake-cf45dfee74` fandtes 11 gange i `events` —
+# scheduled, registreret i indbakken, gatede et vaerktoej — og NUL gange i
+# `self_wakeups.json`. Syv skrivesteder gjorde alle `_load()` -> mutér ->
+# `_save()`, og hver `_save()` skriver HELE filen. `jarvis-api` og
+# `jarvis-runtime` deler den, saa den ene skrev sin gamle liste tilbage over
+# den andens. Dispatcheren gjorde vinduet ekstra bredt: den holdt et snapshot
+# gennem hele loekken, der starter autonome runs, og gemte til sidst.
+
+
+def _laase_observatoer(monkeypatch):
+    """Registrer om `_load` blev kaldt INDE i laasen."""
+    tilstand: dict = {"inde": False, "kald": [], "records": []}
+
+    @contextmanager
+    def _fake_laas(_navn):
+        tilstand["inde"] = True
+        try:
+            yield
+        finally:
+            tilstand["inde"] = False
+
+    monkeypatch.setattr(sw, "med_laas", _fake_laas)
+    monkeypatch.setattr(sw, "er_ulaesbar", lambda _navn: False)
+
+    def _load():
+        tilstand["kald"].append(tilstand["inde"])
+        return list(tilstand["records"])
+
+    monkeypatch.setattr(sw, "_load", _load)
+    monkeypatch.setattr(sw, "_save", lambda r: None)
+    return tilstand
+
+
+def test_alle_skrivestier_laeser_inde_i_laasen(monkeypatch):
+    """Laasen skal ligge om LAESNINGEN — ikke kun om skrivningen.
+
+    Blev der laest udenfor, ville to processer laese samme liste, og den sidste
+    gemning vinde. Det er praecis det tab der blev maalt.
+    """
+    obs = _laase_observatoer(monkeypatch)
+    forfaldne = [{"wakeup_id": "w1", "status": "pending",
+                  "fire_at": "2020-01-01T00:00:00+00:00"}]
+    tilfaelde = [
+        ("schedule", lambda: sw.schedule_self_wakeup(delay_seconds=60, prompt="x"), []),
+        ("due", lambda: sw.due_wakeups(), forfaldne),
+        ("consumed", lambda: sw.mark_wakeup_consumed("w1"),
+         [{"wakeup_id": "w1", "status": "fired"}]),
+        ("cancel", lambda: sw.cancel_wakeup("w1"),
+         [{"wakeup_id": "w1", "status": "pending"}]),
+        ("extra", lambda: sw.add_wakeup_extra("w1", "til"),
+         [{"wakeup_id": "w1", "status": "pending"}]),
+        ("cleanup", lambda: sw.cleanup_old_wakeups(), []),
+        ("marker", lambda: sw.marker_dispatch("w1", dispatched=True),
+         [{"wakeup_id": "w1", "status": "fired"}]),
+    ]
+    for navn, kald, records in tilfaelde:
+        obs["records"] = records
+        obs["kald"].clear()
+        kald()
+        assert obs["kald"], f"{navn}: _load blev slet ikke kaldt"
+        # Den SIDSTE laesning er den der foeder skrivningen, og den skal ligge
+        # inde i laasen. `due_wakeups` maa gerne kigge laasefrit FOERST: det er
+        # saadan den undgaar at tage en skrive-laas paa hver prompt-bygning.
+        assert obs["kald"][-1] is True, (
+            f"{navn}: skrive-laesningen laa UDEN FOR laasen — {obs['kald']}"
+        )
+
+
+def test_to_samtidige_skrivere_taber_ikke_hinanden(monkeypatch, tmp_path):
+    """Det oprindelige tab, reproduceret: to skrivere, samme fil.
+
+    Uden laasen laeser begge traade den samme liste, og den sidste gemning
+    vinder — den andens post er vaek. Fjernes `med_laas` fra
+    `schedule_self_wakeup`, fejler denne test.
+    """
+    import threading
+    import time
+
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    ægte_load = sw._load
+
+    def _langsom_load():
+        data = ægte_load()
+        time.sleep(0.05)  # vinduet hvor den anden traad naar at laese det samme
+        return data
+
+    monkeypatch.setattr(sw, "_load", _langsom_load)
+
+    def _book(sid):
+        sw.schedule_self_wakeup(delay_seconds=3600, prompt="x", session_id=sid)
+
+    traade = [threading.Thread(target=_book, args=(sid,)) for sid in ("a", "b")]
+    for t in traade:
+        t.start()
+    for t in traade:
+        t.join()
+
+    gemt = ss.load_json("self_wakeups", [])
+    hjem = sorted(str(r.get("session_id")) for r in gemt)
+    assert hjem == ["a", "b"], f"en booking forsvandt i kaploebet: {hjem}"
+
+
+def test_marker_dispatch_overskriver_ikke_en_post_der_kom_til_imellem(monkeypatch, tmp_path):
+    """Det BREDE tab: dispatcheren gemte hele sit snapshot tilbage til sidst."""
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    ss.save_json("self_wakeups", [{"wakeup_id": "w1", "status": "fired", "prompt": "p"}])
+    # Den anden proces booker en post mens dispatcheren arbejder.
+    ss.save_json("self_wakeups", ss.load_json("self_wakeups", []) + [
+        {"wakeup_id": "w2", "status": "pending", "prompt": "ny"},
+    ])
+
+    sw.marker_dispatch("w1", dispatched=True)
+
+    poster = ss.load_json("self_wakeups", [])
+    ids = [r.get("wakeup_id") for r in poster]
+    assert ids == ["w1", "w2"], f"den anden proces' post blev overskrevet: {ids}"
+    assert poster[0]["dispatched"] is True
+
+
+def test_marker_dispatch_roerer_ikke_en_allerede_lukket_vaekning(monkeypatch, tmp_path):
+    """Et dispatch-flag paa en kvitteret vaekning ville modsige
+    `consumed_without_dispatch`, som netop findes for at kunne sige
+    «naaede aldrig frem»."""
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    ss.save_json("self_wakeups", [
+        {"wakeup_id": "w1", "status": "consumed",
+         "consumed_at": "2026-10-17T00:00:00+00:00"},
+    ])
+
+    svar = sw.marker_dispatch("w1", dispatched=True)
+
+    assert svar["status"] == "no-op"
+    post = ss.load_json("self_wakeups", [])[0]
+    assert "dispatched" not in post
+
+
+def test_korrupt_lager_bliver_ikke_overskrevet_med_en_tom_liste(monkeypatch, tmp_path):
+    """`load_json` svarer `[]` for baade «filen mangler» og «filen er korrupt».
+
+    Skrev en skrive-sti den tomme liste tilbage, var posterne vaek — og der stod
+    intet i svaret, for der var ingen fejl at se.
+    """
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    raa = "{ ikke json"
+    (tmp_path / "self_wakeups.json").write_text(raa, encoding="utf-8")
+
+    svar = sw.schedule_self_wakeup(delay_seconds=60, prompt="x")
+
+    assert svar["status"] == "error"
+    assert "kan ikke laeses" in svar["error"]
+    assert (tmp_path / "self_wakeups.json").read_text(encoding="utf-8") == raa
+
+
+def test_er_ulaesbar_skelner_manglende_fra_korrupt(monkeypatch, tmp_path):
+    import core.runtime.state_store as ss
+
+    monkeypatch.setattr(ss, "_STATE_DIR", tmp_path)
+    assert ss.er_ulaesbar("self_wakeups") is False          # findes ikke
+    (tmp_path / "self_wakeups.json").write_text("[]", encoding="utf-8")
+    assert ss.er_ulaesbar("self_wakeups") is False          # tom, men gyldig
+    (tmp_path / "self_wakeups.json").write_text("{", encoding="utf-8")
+    assert ss.er_ulaesbar("self_wakeups") is True           # korrupt

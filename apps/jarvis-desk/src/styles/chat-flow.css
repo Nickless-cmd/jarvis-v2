@@ -30,6 +30,11 @@
   line-height: 1.35;
 }
 
+/* Den levende syntese. Selve overgangen mellem to synteser ligger nu i
+   `SynteseLinje` (gammel fader ud oveni ny, i samme grid-celle) — her er kun
+   rammen. `chat-flow-enter` er fjernet: den animerede hele linjen ved hver
+   genmontering og gav netop det hop Bjørn så, oveni at den kæmpede med
+   lag-animationen indeni (17/10-2026). */
 .chat-flow-live-synthesis {
   min-height: 1.35em;
   overflow: hidden;
@@ -38,7 +43,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   contain: paint;
-  animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og

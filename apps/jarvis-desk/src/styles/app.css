@@ -2063,6 +2063,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   grid-area: 1 / 1; display: inline-flex; align-items: center; gap: .25rem; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Det indre tekst-lag — det ENESTE der får en ny key ved et skift. Shimmeret
+   ligger på `linje-titel` udenom, så sweepet kører videre gennem skiftet i
+   stedet for at starte forfra hver gang (Bjørn 17/10-2026: «shimmeren
+   staller»). */
+.ls-tekst { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @keyframes ls-fade-ind { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ls-fade-ud  { from { opacity: 1 } to { opacity: 0 } }
 @keyframes ls-spark-afgang { 0%, 50% { opacity: 1 } to { opacity: 0 } }

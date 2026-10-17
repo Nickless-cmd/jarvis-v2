@@ -110,8 +110,79 @@ export function LabelSkift({
           {gammel.tekst}
         </span>
       )}
-      <span key={`n${vist.id}`} className={`ls-lag linje-titel${nyKlasse}${className ? ` ${className}` : ''}`}>
-        {vist.tekst}
+      {/* To lag i den nye tekst, og hvorfor:
+          `linje-titel` bærer `className` (fx `shimmer`) og genmonteres ALDRIG.
+          `shimmer-sweep` har 300 ms delay og 1,5 s bane; skiftede noden ved
+          hvert tekstskift, startede sweepet forfra hver gang og blev aldrig
+          færdigt — det er «shimmeren staller» (Bjørn 17/10-2026). Det indre
+          `ls-tekst` er det der får en ny key, så kun fade-ind-animationen
+          genstarter. */}
+      <span className={`ls-lag linje-titel${className ? ` ${className}` : ''}`}>
+        <span key={`n${vist.id}`} className={`ls-tekst${nyKlasse}`}>{vist.tekst}</span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * Den levende syntese-linje i chat mode.
+ *
+ * Samme lag-mekanik som `LabelSkift`, men med én afgørende forskel: en
+ * STREAMENDE tekst må ikke krydsfade. Mens modellen skriver samme syntese,
+ * kommer der et nyt tegn ad gangen, og en crossfade pr. tegn ville flimre.
+ * Derfor:
+ *
+ *  - samme `noegle` → teksten opdateres PÅ STEDET (ingen animation, og
+ *    shimmer-noden genmonteres ikke)
+ *  - ny `noegle` (syntesen er erstattet) → den gamle fader ud oveni den nye
+ *    i samme grid-celle, så linjen ikke hopper i højden
+ *
+ * Det er `noegle` der afgør det — ikke en tekst-sammenligning, som ville
+ * tage fejl når to synteser tilfældigvis begynder med samme ord.
+ */
+export function SynteseLinje({ tekst, noegle }: { tekst: string; noegle: number | string }) {
+  const [vist, setVist] = useState<{ tekst: string; noegle: number | string; id: number }>({
+    tekst,
+    noegle,
+    id: 0,
+  })
+  const [gammel, setGammel] = useState<{ tekst: string; id: number } | null>(null)
+
+  // Afledt i render, som LabelSkift: skiftet skal ligge i samme tegning som
+  // den nye tekst, ellers står den alene én frame.
+  if (vist.noegle !== noegle) {
+    setGammel({ tekst: vist.tekst, id: vist.id })
+    setVist({ tekst, noegle, id: vist.id + 1 })
+  } else if (vist.tekst !== tekst) {
+    setVist({ tekst, noegle, id: vist.id })
+  }
+
+  // Sikkerhedsnet hvis `animationend` aldrig kommer (fane i baggrunden).
+  useEffect(() => {
+    if (!gammel) return
+    const t = setTimeout(() => setGammel(null), OPRYD_MS)
+    return () => clearTimeout(t)
+  }, [gammel])
+
+  const nyKlasse = vist.id === 0 ? '' : ' ls-ind'
+
+  return (
+    <span className="ls-grid">
+      {gammel && (
+        <span
+          key={`g${gammel.id}`}
+          className="ls-lag ls-ud"
+          aria-hidden="true"
+          data-testid="syntese-gammel"
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget && e.animationName === 'ls-fade-ud') setGammel(null)
+          }}
+        >
+          {gammel.tekst}
+        </span>
+      )}
+      <span className="ls-lag linje-titel shimmer">
+        <span key={`n${vist.id}`} className={`ls-tekst${nyKlasse}`}>{vist.tekst}</span>
       </span>
     </span>
   )

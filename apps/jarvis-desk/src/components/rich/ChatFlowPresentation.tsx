@@ -8,7 +8,7 @@ import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
-import { LabelSkift } from './LabelSkift'
+import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
@@ -99,9 +99,27 @@ export function ChatFlowPresentation({
   const activeLine = mode === 'calm'
     ? model.calmStatus
     : model.visibleSynthesis.at(-1)
-  const activeSynthesis = mode === 'living'
-    ? [...model.workBlocks].reverse().find((block) => block.type === 'text')?.text.trim() || null
-    : null
+  // Den levende syntese er den seneste tekstblok i arbejdet — men kun hvis
+  // den HAR indhold. En ny tekstblok starter tom, og det tidligere
+  // `…?.text.trim() || null` rev linjen ned i netop det øjeblik: den gamle
+  // forsvandt, der blev et glip, og den næste kom streamende bagefter
+  // (Bjørn 17/10-2026). Vi springer tomme blokke over, så den forrige tekst
+  // står stille indtil den nye har noget at vise.
+  //
+  // `noegle` er blokkens indeks i arbejdet. Det skifter KUN når syntesen
+  // erstattes — ikke mens teksten vokser — så visningen kan opdatere på
+  // stedet i stedet for at krydsfade ved hvert tegn.
+  const levendeSyntese = (() => {
+    if (mode !== 'living') return null
+    for (let i = model.workBlocks.length - 1; i >= 0; i--) {
+      const blok = model.workBlocks[i]
+      if (blok && blok.type === 'text' && blok.text.trim()) {
+        return { tekst: blok.text.trim(), noegle: i }
+      }
+    }
+    return null
+  })()
+  const activeSynthesis = levendeSyntese?.tekst ?? null
   // Hovedet skal stå fra FØRSTE ord — også i det vindue hvor turen lige er
   // startet og der endnu ikke er rapporteret arbejde eller synteser.
   // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
@@ -154,10 +172,10 @@ export function ChatFlowPresentation({
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, activeLine].filter(Boolean).join('. ')}>
-                {activeSynthesis ? (
+                {levendeSyntese ? (
                   <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
                     aria-hidden="true">
-                    {activeSynthesis}
+                    <SynteseLinje tekst={levendeSyntese.tekst} noegle={levendeSyntese.noegle} />
                   </div>
                 ) : null}
                 {activeLine && activeLine !== activeSynthesis ? (

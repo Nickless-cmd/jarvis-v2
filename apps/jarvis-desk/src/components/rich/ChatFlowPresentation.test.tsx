@@ -177,8 +177,55 @@ describe('ChatFlowPresentation', () => {
     expect(synteseFoer).toHaveTextContent('Jeg læser videre uden at hoppe')
     expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Læser konfigurationen'))
       .toHaveAttribute('aria-hidden', 'true')
-    expect(within(screen.getByTestId('chat-flow-round-line')).getByText('Tester løsningen'))
-      .toHaveClass('ls-ind', 'shimmer')
+    // Animationen bor nu i det indre tekst-lag, og shimmeret på det stabile
+    // lag udenom — så sweepet ikke starter forfra ved hvert skift
+    // (Bjørn 17/10-2026: «shimmeren staller»).
+    const nytLabel = within(screen.getByTestId('chat-flow-round-line')).getByText('Tester løsningen')
+    expect(nytLabel).toHaveClass('ls-ind')
+    expect(nytLabel.closest('.linje-titel')).toHaveClass('shimmer')
+  })
+
+  it('holder den forrige syntese stående mens den næste blok er tom — intet glip', () => {
+    // Bjørn 17/10-2026: «når syntese linjen forsvinder den første og et glip
+    // og så streames den næste». En ny tekstblok starter tom; den gamle skal
+    // blive stående indtil den nye har indhold.
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Fandt kilden' },
+    ]
+    const view = render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
+    const syntese = screen.getByTestId('chat-flow-live-synthesis')
+    expect(syntese).toHaveTextContent('Fandt kilden')
+
+    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+      blocks[0]!,
+      { type: 'text', text: 'Fandt kilden' },
+      { type: 'tool_use', id: 't2', name: 'bash', input: {}, status: 'running' },
+      { type: 'text', text: '' },
+    ]} />)
+
+    expect(screen.getByTestId('chat-flow-live-synthesis')).toBe(syntese)
+    expect(syntese).toHaveTextContent('Fandt kilden')
+  })
+
+  it('en ny syntese krydsfader i stedet for at hoppe', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Fandt kilden' },
+    ]
+    const view = render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
+    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+      blocks[0]!,
+      { type: 'text', text: 'Fandt kilden' },
+      { type: 'tool_use', id: 't2', name: 'bash', input: {}, status: 'done' },
+      { type: 'text', text: 'Læste filen' },
+    ]} />)
+
+    const linje = screen.getByTestId('chat-flow-live-synthesis')
+    // Den gamle står stadig (på vej ud) oveni den nye — der er ingen frame
+    // hvor linjen er tom.
+    expect(within(linje).getByTestId('syntese-gammel')).toHaveTextContent('Fandt kilden')
+    expect(within(linje).getByText('Læste filen')).toBeInTheDocument()
   })
 
   it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {

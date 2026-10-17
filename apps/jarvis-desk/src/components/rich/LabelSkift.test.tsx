@@ -10,7 +10,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { LabelSkift, formatTid } from './LabelSkift'
+import { LabelSkift, SynteseLinje, formatTid } from './LabelSkift'
 import { ToolGroupCard } from './ToolGroupCard'
 
 afterEach(() => { vi.useRealTimers() })
@@ -28,7 +28,9 @@ describe('label-skiftet (GS)', () => {
   const lag = (c: HTMLElement) => ({
     gammel: c.querySelector('[data-testid="ls-gammel"]'),
     spark: c.querySelector('[data-testid="ls-spark"]'),
-    ny: c.querySelector('.linje-titel')!,
+    // Animationen bor i det indre tekst-lag; `linje-titel` udenom bærer
+    // shimmeret og genmonteres ikke (17/10-2026).
+    ny: c.querySelector('.ls-tekst')!,
   })
 
   it('første tegning animerer intet — en genindlæst tråd skal ikke skifte', () => {
@@ -129,6 +131,56 @@ describe('runde-linjen', () => {
     const { container, rerender } = render(<LabelSkift tekst="Læser a" arbejder />)
     rerender(<LabelSkift tekst="Læste a" arbejder={false} />)
     expect(container.querySelector('[data-testid="ls-spark"]')).not.toBeNull()
+  })
+})
+
+// Bjørn 17/10-2026: «Ret shimmeren i LabelSkift så den ikke genstarter».
+// Sweepet har 300 ms delay + 1,5 s bane; fik noden en ny key ved hvert skift,
+// startede det forfra hver gang og blev aldrig færdigt.
+describe('shimmeret overlever skiftet', () => {
+  it('shimmer-noden genmonteres ikke når labelen skifter', () => {
+    const { container, rerender } = render(
+      <LabelSkift tekst="Læser 2 filer" arbejder className="shimmer" />)
+    const foer = container.querySelector('.linje-titel')
+    expect(foer).toHaveClass('shimmer')
+    rerender(<LabelSkift tekst="Læser 3 filer" arbejder className="shimmer" />)
+    expect(container.querySelector('.linje-titel')).toBe(foer)
+    expect(foer).toHaveTextContent('Læser 3 filer')
+  })
+})
+
+describe('syntese-linjen (chat mode)', () => {
+  it('voksende tekst opdateres på stedet — ingen krydsfade pr. tegn', () => {
+    const { container, rerender } = render(<SynteseLinje tekst="Jeg læser" noegle={1} />)
+    const node = container.querySelector('.linje-titel')
+    rerender(<SynteseLinje tekst="Jeg læser videre" noegle={1} />)
+    expect(container.querySelector('[data-testid="syntese-gammel"]')).toBeNull()
+    expect(container.querySelector('.linje-titel')).toBe(node)
+    expect(node).toHaveTextContent('Jeg læser videre')
+  })
+
+  it('en NY syntese krydsfader: den gamle fader ud oveni den nye', () => {
+    const { container, rerender } = render(<SynteseLinje tekst="Fandt kilden" noegle={1} />)
+    rerender(<SynteseLinje tekst="Læste filen" noegle={2} />)
+    const gammel = container.querySelector('[data-testid="syntese-gammel"]')
+    expect(gammel).toHaveTextContent('Fandt kilden')
+    expect(gammel).toHaveClass('ls-ud')
+    expect(container.querySelector('.linje-titel')).toHaveTextContent('Læste filen')
+    expect(container.querySelector('.ls-tekst')).toHaveClass('ls-ind')
+  })
+
+  it('shimmeret bæres af den stabile node gennem hele skiftet', () => {
+    const { container, rerender } = render(<SynteseLinje tekst="Fandt kilden" noegle={1} />)
+    const node = container.querySelector('.linje-titel')
+    expect(node).toHaveClass('shimmer')
+    rerender(<SynteseLinje tekst="Læste filen" noegle={2} />)
+    expect(container.querySelector('.linje-titel')).toBe(node)
+    expect(node).toHaveClass('shimmer')
+  })
+
+  it('første tegning animerer intet', () => {
+    const { container } = render(<SynteseLinje tekst="Første syntese" noegle={0} />)
+    expect(container.querySelector('.ls-tekst')!.className).not.toMatch(/ls-ind/)
   })
 })
 

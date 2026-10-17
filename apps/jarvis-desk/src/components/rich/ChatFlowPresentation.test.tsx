@@ -64,7 +64,7 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    const hoved = screen.getByText('Arbejdsforløb').closest('button') as HTMLElement
+    const hoved = screen.getByText('Arbejdet').closest('button') as HTMLElement
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
@@ -97,8 +97,8 @@ describe('ChatFlowPresentation', () => {
   })
 
   it.each([
-    ['interrupted' as const, 'Arbejdsforløb afbrudt'],
-    ['error' as const, 'Arbejdsforløb fejlede'],
+    ['interrupted' as const, 'Arbejdet afbrudt'],
+    ['error' as const, 'Arbejdet fejlede'],
   ])('preserves partial text and uses honest %s copy', (status, label) => {
     render(<ChatFlowPresentation {...common} mode="living" status={status} streaming={false}
       blocks={[
@@ -201,7 +201,7 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('data-koerer')
-    expect(hoved).toHaveTextContent('Working…')
+    expect(hoved).toHaveTextContent('Tænker')
   })
 
   it('beholder hovedet og uret på en tur uden værktøjskald', () => {

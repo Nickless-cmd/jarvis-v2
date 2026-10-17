@@ -48,9 +48,9 @@ describe('MessageRow', () => {
   })
 
   it.each([
-    ['done' as const, 'Arbejdsforløb'],
-    ['interrupted' as const, 'Arbejdsforløb afbrudt'],
-    ['error' as const, 'Arbejdsforløb fejlede'],
+    ['done' as const, 'Arbejdet'],
+    ['interrupted' as const, 'Arbejdet afbrudt'],
+    ['error' as const, 'Arbejdet fejlede'],
   ])('preserves missing-signal Chat text once for %s', (status, label) => {
     render(<MessageRow presentation="chat" chatMode="living" status={status}
       role="assistant" blocks={[

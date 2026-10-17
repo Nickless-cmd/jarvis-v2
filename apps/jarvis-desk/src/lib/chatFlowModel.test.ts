@@ -120,9 +120,9 @@ describe('deriveChatFlow', () => {
   })
 
   it.each([
-    ['done' as const, 'completed' as const, 'Arbejdsforløb'],
-    ['interrupted' as const, 'interrupted' as const, 'Arbejdsforløb afbrudt'],
-    ['error' as const, 'failed' as const, 'Arbejdsforløb fejlede'],
+    ['done' as const, 'completed' as const, 'Arbejdet'],
+    ['interrupted' as const, 'interrupted' as const, 'Arbejdet afbrudt'],
+    ['error' as const, 'failed' as const, 'Arbejdet fejlede'],
   ])('promotes retained text exactly once on terminal %s fallback', (status, terminalState, label) => {
     const first: ContentBlock = { type: 'text', text: 'Første del. ' }
     const second: ContentBlock = { type: 'text', text: 'Anden del.' }
@@ -131,7 +131,20 @@ describe('deriveChatFlow', () => {
     expect(model.finalBlocks).toEqual([first, second])
     expect(model.workBlocks).toEqual([work])
     expect(model.terminalState).toBe(terminalState)
-    expect(model.terminalLabel).toBe(label)
+    expect(model.hovedTekst).toBe(label)
+  })
+
+  it('bøjer turens hoved i tid og skelner arbejde fra tanke', () => {
+    // Bjørn 17/10-2026: «istedet for arbejdsorløb så bare arbejder under
+    // kørslen og arbejdet når den er færdig. og hvis det er tekst uden tool
+    // kald så tænker under kørsel og tænkte efter.»
+    const vaerktoej: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const tekst: ContentBlock = { type: 'text', text: 'Et rent svar.' }
+
+    expect(deriveChatFlow({ ...base, blocks: [vaerktoej] }).hovedTekst).toBe('Arbejder')
+    expect(deriveChatFlow({ ...base, blocks: [tekst] }).hovedTekst).toBe('Tænker')
+    expect(deriveChatFlow({ ...base, status: 'done', blocks: [vaerktoej, tekst] }).hovedTekst).toBe('Arbejdet')
+    expect(deriveChatFlow({ ...base, status: 'done', blocks: [tekst] }).hovedTekst).toBe('Tænkte')
   })
 
   it('keeps a generated file visible while a run is still active', () => {

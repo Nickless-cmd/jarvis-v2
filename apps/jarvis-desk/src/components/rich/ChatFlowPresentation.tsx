@@ -139,7 +139,7 @@ export function ChatFlowPresentation({
             foldbar={harArbejde}
             koerer={streaming && !finalAnswerStarted}
             sekunder={sekunder}
-            tekst={aktiv ? 'Working…' : harArbejde ? model.terminalLabel : ''}
+            tekst={model.hovedTekst}
             onToggle={() => {
               const naeste = !aaben
               setAabenManuelt(naeste)

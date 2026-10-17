@@ -3,7 +3,7 @@ import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
-import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
+import { PanelRight, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
@@ -764,6 +764,7 @@ export function ChatView({
         compactAt={compactAt}
         compacting={compacting}
         onManualCompact={() => void triggerManualCompact('')}
+        visKontekstRing={false}
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
@@ -801,11 +802,11 @@ export function ChatView({
   // — og det er ikke der man leder efter sine egne opgaver. Nu en rude i samme
   // stak som baggrundsjob, åbnet fra headerens 3-prik-menu.
   const [sideOpgaveOpen, setSideOpgaveOpen] = usePersistedState('jarvis-desk:panel:sideopgaver', false)
-  const [koerendeJobs, setKoerendeJobs] = useState(0)
+  const [, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
   const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
-  const [aendredeFiler, setAendredeFiler] = useState(0)
+  const [, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
 
@@ -956,28 +957,15 @@ export function ChatView({
         {DESK_CHROME.peakBadge && settings && (
           <PeakBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
+        {/* Ændringer og Baggrundsjob er ARBEJDSREDSKABER og hører i code mode
+            (Bjørn 17/10-2026: «i header i chat mode bør ændrings panel og
+            baggrunds panel ikke vises»). Panelerne selv bliver stående i
+            tilstanden — det er kun indgangene her der forsvinder, så et åbent
+            panel ikke efterlader en knap der ikke kan lukke det. */}
         {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
         <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
-        <button
-          type="button"
-          className={`panel-toggle ${changesOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul ændringer" title="Ændringer"
-          onClick={() => setChangesOpen((o) => !o)}
-        >
-          <FileDiff size={15} />
-          {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
-        </button>
-        <button
-          type="button"
-          className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
-          onClick={() => setJobsOpen((o) => !o)}
-        >
-          <SquareStack size={15} />
-          {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
-        </button>
         <button
           type="button"
           className={`panel-toggle ${browserOpen ? 'active' : ''}`}
@@ -988,6 +976,7 @@ export function ChatView({
         </button>
         {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
         <HeaderMere
+          flade="chat"
           visning={visning}
           onVisning={(v) => void skiftVisning(v)}
           valg={[

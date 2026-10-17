@@ -27,11 +27,19 @@ export interface MereValg {
  * tre radio-valg (samme som øjet før, med «Gør til standard»), og fladens
  * kontakter — Jarvis-figuren, Filer, Preview, Panel, stemme.
  */
-export function HeaderMere({ visning, onVisning, valg }: {
+export function HeaderMere({ visning, onVisning, valg, flade = 'code' }: {
   visning: Visning
   onVisning: (v: Visning) => void
   valg: MereValg[]
+  /**
+   * Hvilken flade menuen står på. I CHAT skjules «Visning» og «Side-opgaver»
+   * (Bjørn 17/10-2026): rækkevisningen hører til code mode, og sideopgaver
+   * er et arbejdsredskab, ikke en samtale-indstilling. Code beholder begge.
+   */
+  flade?: 'chat' | 'code'
 }) {
+  const erChat = flade === 'chat'
+  const synligeValg = erChat ? valg.filter((o) => o.id !== 'sideopgaver') : valg
   const [aaben, setAaben] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -59,8 +67,8 @@ export function HeaderMere({ visning, onVisning, valg }: {
       </button>
       {aaben && (
         <div className="mode-dd-menu visning-menu header-mere-menu" role="menu" aria-label="Flere valg">
-          <div className="header-mere-overskrift">Visning</div>
-          {VISNINGER.map((v) => (
+          {!erChat && <div className="header-mere-overskrift">Visning</div>}
+          {!erChat && VISNINGER.map((v) => (
             <button
               key={v}
               type="button"
@@ -76,15 +84,15 @@ export function HeaderMere({ visning, onVisning, valg }: {
               </span>
             </button>
           ))}
-          {standardVisning() !== visning && (
+          {!erChat && standardVisning() !== visning && (
             <button type="button" role="menuitem" className="mode-dd-item header-mere-standard"
                     onClick={() => { saetStandardVisning(visning); setAaben(false) }}>
               <span className="visning-check" />
               <span>Gør {VISNING_NAVN[visning]} til standard</span>
             </button>
           )}
-          <div className="header-mere-skille" role="separator" />
-          {valg.map((o) => (
+          {!erChat && <div className="header-mere-skille" role="separator" />}
+          {synligeValg.map((o) => (
             <button
               key={o.id}
               type="button"

@@ -25,6 +25,11 @@ export interface StreamState {
    * levende besked afløses af den persisterede (17/10-2026).
    */
   turStart: number | null
+  /** Turens sluttid (ms epoch), sat ved `message_stop`. `null` = turen kører
+   *  eller er aldrig startet. Uret i turhovedet fryser på dette tidspunkt, så
+   *  den afsluttede besked viser turens samlede tid — ikke et ur der nulstilles
+   *  når svaret begynder (Bjørn 17/10-2026). */
+  turSlut: number | null
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number
            // Maalt paa SERVEREN (core/services/svar_tempo), ikke hentet hos
@@ -50,7 +55,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, turStart: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -245,6 +250,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Et ægte nyt run starter uret; en replay af SAMME run beholder det
         // oprindelige starttidspunkt, så tiden ikke springer tilbage.
         turStart: _sameRun ? (state.turStart ?? Date.now()) : Date.now(),
+        // Et ægte nyt run åbner uret igen; en replay beholder den slutning
+        // den allerede har, så tiden ikke springer.
+        turSlut: _sameRun ? state.turSlut : null,
         skillFlade: _sameRun ? state.skillFlade : undefined,
         usage: {
           ...state.usage,
@@ -530,6 +538,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
       }
       return { ...state, status: 'done', blocks, provisionalText: '',
+        // Turens ur skal stå stille fra nu af — og blive stående i hovedet.
+        // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi».)
+        turSlut: state.turSlut ?? Date.now(),
         provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 

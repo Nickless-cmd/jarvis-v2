@@ -19,6 +19,8 @@ export interface ChatFlowPresentationProps {
   runId?: string | null
   /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
   turStart?: number | null
+  /** Turens sluttid (ms epoch) — uret fryser her og bliver stående efter turen. */
+  turSlut?: number | null
   workingStep?: string | null
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -36,6 +38,7 @@ export function ChatFlowPresentation({
   finalAnswerStarted,
   runId,
   turStart,
+  turSlut,
   workingStep,
   rundeEtiketter,
   tankeResumeer,
@@ -99,8 +102,11 @@ export function ChatFlowPresentation({
   const visTurhoved = model.hasObservableWork || aktiv || streaming
 
   // Uret: sekunder mens turen kører, frosset når den slutter. Bjørn
-  // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv».
-  const sekunder = useTurSekunder(turStart, aktiv)
+  // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv» — og
+  // «ueret skal osse når strømmen er forbi». Derfor måles der til `turSlut`
+  // (sat ved `message_stop`), ikke til `aktiv` som bliver falsk allerede når
+  // svaret begynder.
+  const sekunder = useTurSekunder(turStart, turSlut)
 
   // Synteserne bliver STÅENDE over runde-linjerne efter turen — de hører til
   // hovedet, ikke til den afsluttede besked. Kun «rolig» visning har en

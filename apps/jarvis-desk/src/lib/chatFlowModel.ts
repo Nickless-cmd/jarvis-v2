@@ -130,7 +130,13 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     allSynthesis,
     visibleSynthesis,
     calmStatus: visibleSynthesis.at(-1) ?? 'Jarvis tænker ...',
-    workBlocks,
+    // Synteserne er ALLEREDE trukket ud i `allSynthesis` og tegnes i turens
+    // hoved. Ligger de også i `workBlocks`, laver `BlocksRenderer` dem til
+    // etiketter på runde-linjerne — og så står den samme sætning to steder:
+    // én gang som syntese-linje, én gang som runde-etiket. Det var præcis den
+    // dobbeltvisning Bjørn så 17/10-2026 («den gamle visning og det nye
+    // levende»). Én sætning, ét sted.
+    workBlocks: workBlocks.filter((block) => block.type !== 'tool_use_summary'),
     finalBlocks,
     hasObservableWork,
     ...end,

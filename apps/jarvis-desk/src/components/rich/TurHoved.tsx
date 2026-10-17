@@ -18,6 +18,7 @@
 import type { Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formaterTurTid } from '../../lib/turTid'
+import { RullendeTid } from './RullendeTid'
 import '../../styles/turhoved.css'
 
 /** Fold-pilen. Et RIGTIGT ikon — ikke teksttegnet ▸/▾ (Bjørn 23/9-2026:
@@ -56,7 +57,7 @@ export function TurHoved({ tekst, aaben, onToggle, koerer = false, sekunder = nu
     >
       <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
       {typeof sekunder === 'number' ? (
-        <span className="rv-turTid">{formaterTurTid(sekunder)}</span>
+        <RullendeTid tekst={formaterTurTid(sekunder)} />
       ) : null}
       <span className="rv-turC" aria-hidden="true">
         <FoldPil aaben={aaben} />

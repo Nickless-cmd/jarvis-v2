@@ -142,13 +142,24 @@ describe('ChatFlowPresentation', () => {
 
   it('viser turens ur i hovedet — sekunder, og minutter efter et minut', () => {
     const blokke = [summary('Fandt kilden', 1)]
+    // Cifrene er delt i lodrette strimler, så den flade tekst læses fra
+    // `aria-label` — det er også den skærmlæserne får.
+    const ur = () => document.querySelector('.rv-turTid')?.getAttribute('aria-label')
     const { rerender } = render(<ChatFlowPresentation {...common} mode="living" streaming={false}
       status="done" finalAnswerStarted turStart={Date.now() - 12_000} blocks={blokke} />)
-    expect(screen.getByText(/1[12]s/)).toBeInTheDocument()
+    expect(ur()).toMatch(/^1[12]s$/)
 
     rerender(<ChatFlowPresentation {...common} mode="living" streaming={false}
       status="done" finalAnswerStarted turStart={Date.now() - 72_000} blocks={blokke} />)
-    expect(screen.getByText(/1m 1[12]s/)).toBeInTheDocument()
+    expect(ur()).toMatch(/^1m 1[12]s$/)
+  })
+
+  it('beholder uret når strømmen er forbi — det fryser på turens sluttid', () => {
+    const start = Date.now() - 95_000
+    render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
+      finalAnswerStarted turStart={start} turSlut={start + 95_000} blocks={[summary('Fandt kilden', 1)]} />)
+    // 95 sekunder, målt fra start til slut — ikke fra start til nu.
+    expect(document.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('1m 35s')
   })
 
   it('beholder synteserne i hovedet efter turen — de hører ikke til den afsluttede besked', () => {

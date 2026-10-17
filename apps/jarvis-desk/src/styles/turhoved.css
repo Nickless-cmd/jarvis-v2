@@ -31,13 +31,57 @@
 }
 
 /* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
-   teksten hver gang et sekund skifter (17/10-2026). */
+   teksten hver gang et sekund skifter (17/10-2026).
+
+   Cifrene ruller lodret (Bjørn 17/10-2026: «tallende skal rulle nedfra og op»):
+   hvert ciffer er en 1em høj viewport med 0-9 stablet under sig, og det aktive
+   ciffer skubbes ind. `overflow: hidden` gør strimmelen til et vindue i
+   stedet for en liste. */
 .rv-turTid {
   flex: none;
+  display: inline-flex;
+  align-items: center;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
+  line-height: 1;
   color: var(--rv-tertiary, #a6a59c);
   opacity: .8;
+}
+
+.rv-turTidCiffer {
+  display: inline-block;
+  position: relative;
+  width: 1ch;
+  height: 1em;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.rv-turTidStrimmel {
+  display: flex;
+  flex-direction: column;
+  /* Rulningen er en transition på transform — ikke en keyframe — så et ciffer
+     der skifter to gange i træk glider videre fra hvor det stod. */
+  transition: transform 260ms cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+
+.rv-turTidStrimmel > span {
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+}
+
+.rv-turTidFast {
+  display: inline-block;
+  height: 1em;
+  line-height: 1em;
+}
+
+/* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
+   hopper i stedet for at rulle. */
+@media (prefers-reduced-motion: reduce) {
+  .rv-turTidStrimmel { transition: none; }
 }
 
 .rv-turC {

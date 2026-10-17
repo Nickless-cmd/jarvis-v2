@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9039/17253 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9039/17258 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -39,10 +39,10 @@ Generated from source. 9039/17253 functions/methods documented (52%). The list b
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 288 | 620 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
-| `scripts.diagnostics` | 1 | 2 | 50% |
+| `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2575)
+## Undocumented public functions (2576)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2452,6 +2452,7 @@ Generated from source. 9039/17253 functions/methods documented (52%). The list b
 - `scripts/db_split_baseline.py` :: `measure` (L18)
 - `scripts/deferred_restart.py` :: `main` (L199)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
+- `scripts/diagnostics/recall_canary.py` :: `main` (L138)
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
 - `scripts/e2e_indbakke.py` :: `main` (L408)

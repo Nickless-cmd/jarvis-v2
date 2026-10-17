@@ -21,6 +21,9 @@ export interface ChatFlowPresentationProps {
   turStart?: number | null
   /** Turens sluttid (ms epoch) — uret fryser her og bliver stående efter turen. */
   turSlut?: number | null
+  /** Turens varighed udledt af transskriptet. Bruges på persisterede ture, hvor
+   *  stream-tilstanden (og dermed `turStart`/`turSlut`) ikke findes længere. */
+  varighedSekunder?: number | null
   workingStep?: string | null
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -39,6 +42,7 @@ export function ChatFlowPresentation({
   runId,
   turStart,
   turSlut,
+  varighedSekunder,
   workingStep,
   rundeEtiketter,
   tankeResumeer,
@@ -99,14 +103,22 @@ export function ChatFlowPresentation({
   // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
   // før de første ord».) Uden `streaming` her manglede hovedet netop i det
   // øjeblik turen begyndte, og dukkede først op bagefter.
-  const visTurhoved = model.hasObservableWork || aktiv || streaming
-
   // Uret: sekunder mens turen kører, frosset når den slutter. Bjørn
   // 17/10-2026: «timer for turen Xm Xs startende med Xs og så Xm osv» — og
   // «ueret skal osse når strømmen er forbi». Derfor måles der til `turSlut`
   // (sat ved `message_stop`), ikke til `aktiv` som bliver falsk allerede når
   // svaret begynder.
-  const sekunder = useTurSekunder(turStart, turSlut)
+  //
+  // Persisterede ture har ingen stream-tilstand tilbage. Deres varighed er
+  // udledt af transskriptet, så uret også står der (17/10-2026).
+  const sekunder = useTurSekunder(turStart, turSlut) ?? varighedSekunder ?? null
+
+  // Hovedet er turens skillestreg — ikke en overskrift for værktøjskald.
+  // (Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools… det
+  // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
+  // arbejde at folde, turen kører, eller vi kender dens varighed.
+  const harArbejde = model.hasObservableWork
+  const visTurhoved = harArbejde || streaming || sekunder !== null
 
   // Synteserne bliver STÅENDE over runde-linjerne efter turen — de hører til
   // hovedet, ikke til den afsluttede besked. Kun «rolig» visning har en
@@ -124,9 +136,10 @@ export function ChatFlowPresentation({
         <>
           <TurHoved
             aaben={aaben}
+            foldbar={harArbejde}
             koerer={streaming && !finalAnswerStarted}
             sekunder={sekunder}
-            tekst={aktiv ? 'Working…' : model.terminalLabel}
+            tekst={aktiv ? 'Working…' : harArbejde ? model.terminalLabel : ''}
             onToggle={() => {
               const naeste = !aaben
               setAabenManuelt(naeste)

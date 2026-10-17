@@ -17,6 +17,7 @@ import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { varighedFraTider } from '../lib/turTid'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -596,6 +597,23 @@ export function ChatView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+
+  // Persisterede ture bærer ingen varighed i sig — men assistentrækken
+  // skrives ved turens SLUTNING og brugertrækken ved dens START, så spændet
+  // mellem de to er turen, målt på serveren. Uden dette forsvandt uret i
+  // samme øjeblik strømmen stoppede og den persisterede besked tog over
+  // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi»).
+  const varighedForBesked = useMemo(() => {
+    const ud = new Map<string, number>()
+    let sidsteBruger: string | null = null
+    for (const m of transcriptMessages) {
+      if (m.role === 'user') { sidsteBruger = m.created_at; continue }
+      if (m.role !== 'assistant') continue
+      const sekunder = varighedFraTider(sidsteBruger, m.created_at)
+      if (sekunder !== null) ud.set(m.id, sekunder)
+    }
+    return ud
+  }, [transcriptMessages])
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
@@ -1047,6 +1065,7 @@ export function ChatView({
             blocks={withoutPauseAsk(m.content)}
             density="compact"
             streaming={false}
+            varighedSekunder={varighedForBesked.get(m.id) ?? null}
             createdAt={m.created_at}
             beskedId={m.id}
             sessionId={sessionId}
@@ -1060,7 +1079,12 @@ export function ChatView({
           </div>
           </Fragment>
         ))}
-        {streaming && (stream.blocks.length > 0 || !!stream.provisionalText) && (
+        {/* Den levende tur tegnes fra det øjeblik den kører — også før den
+            første blok findes, så turens hoved kan stå der med det samme.
+            (Bjørn 17/10-2026: «tur hoved … skal være der osse uden tool
+            kald».) Gaten krævede før en blok eller midlertidig tekst, så
+            hovedet manglede netop i turens første øjeblik. */}
+        {streaming && (
           <>
             {stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}

@@ -60,6 +60,7 @@ function MessageRowImpl({
   runId,
   turStart,
   turSlut,
+  varighedSekunder,
   onWorkExpanded,
   density,
   streaming,
@@ -87,6 +88,8 @@ function MessageRowImpl({
   turStart?: number | null
   /** Turens sluttid (ms epoch) — uret fryser her og bliver stående. */
   turSlut?: number | null
+  /** Turens varighed udledt af transskriptet (persisterede ture). */
+  varighedSekunder?: number | null
   onWorkExpanded?: () => void
   density: 'compact' | 'full'
   streaming: boolean
@@ -196,7 +199,7 @@ function MessageRowImpl({
               ? <ChatFlowPresentation blocks={blocks} mode={chatMode} density={density}
                   streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
                   finalAnswerStarted={finalAnswerStarted} workingStep={workingStep}
-                  runId={runId} turStart={turStart} turSlut={turSlut} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
                   finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}

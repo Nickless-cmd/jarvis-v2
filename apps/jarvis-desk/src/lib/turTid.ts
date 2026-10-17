@@ -65,19 +65,25 @@ export function useTurSekunder(
 /**
  * Turens varighed udledt af transskriptet, når stream-tilstanden ikke har den.
  *
- * Den persisterede besked bærer ingen varighed, men hver `tool`-række har en
- * `created_at`. Spændet fra brugerens besked til den sidste værktøjsrække er
- * turens faktiske længde — minus det sidste modelsvar, som ikke har et
- * tidsstempel. Det er tæt nok til at uret kan stå der også efter genindlæsning,
- * og det er ærligt: hellere et let undervurderet tal end intet ur.
+ * Den persisterede besked bærer ingen varighed — men den skrives ved turens
+ * SLUTNING, og brugerens besked skrives ved dens START. Spændet mellem de to
+ * rækkers `created_at` er derfor hele turen, målt på serveren.
+ *
+ * Målt mod databasen 17/10-2026 på tre vilkårlige ture: 3m26s, 26s og 7s —
+ * tal der matcher hvad der faktisk blev observeret i UI'et. Den tidligere
+ * variant målte til sidste værktøjsrække og undervurderede systematisk, fordi
+ * det afsluttende modelsvar ikke har et tidsstempel.
  */
-export function varighedFraBesked(
-  beskedTid: string | null | undefined,
-  sidsteVaerktoejTid: string | null | undefined,
+export function varighedFraTider(
+  brugerTid: string | null | undefined,
+  assistentTid: string | null | undefined,
 ): number | null {
-  if (!beskedTid || !sidsteVaerktoejTid) return null
-  const start = Date.parse(beskedTid)
-  const slut = Date.parse(sidsteVaerktoejTid)
+  if (!brugerTid || !assistentTid) return null
+  const start = Date.parse(brugerTid)
+  const slut = Date.parse(assistentTid)
   if (!Number.isFinite(start) || !Number.isFinite(slut) || slut < start) return null
-  return Math.round((slut - start) / 1000)
+  const sekunder = Math.round((slut - start) / 1000)
+  // En tur der løber over to timer er ikke en tur — det er et genoptaget run
+  // eller et ur der lyver. Hellere intet tal end et forkert.
+  return sekunder > 0 && sekunder < 7200 ? sekunder : null
 }

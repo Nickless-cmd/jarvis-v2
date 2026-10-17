@@ -25,6 +25,9 @@
 
 .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
 
+/* Hoved uden indhold at folde: samme streg, ingen affordance. */
+.rv-tur--statisk { cursor: default; }
+
 .rv-turTekst {
   flex: 0 1 auto; min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;

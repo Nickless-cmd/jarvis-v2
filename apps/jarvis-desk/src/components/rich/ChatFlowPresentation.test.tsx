@@ -204,7 +204,22 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(hoved).toHaveTextContent('Working…')
   })
 
-  it('viser ikke turhovedet på en afsluttet tur uden arbejde', () => {
+  it('beholder hovedet og uret på en tur uden værktøjskald', () => {
+    // Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools…
+    // det skal være der osse uden tool kald». Hovedet er turens skillestreg,
+    // ikke en overskrift for værktøjskald.
+    const { container } = render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[{ type: 'text', text: 'Et rent svar.' }]}
+      streaming={false} status="done" finalAnswerStarted varighedSekunder={12} />)
+    const hoved = container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).not.toBeNull()
+    // Intet at folde → hovedet er ikke en knap, og pilen er væk.
+    expect(hoved.tagName).toBe('DIV')
+    expect(container.querySelector('.rv-turC')).toBeNull()
+    expect(container.querySelector('.rv-turTid')?.getAttribute('aria-label')).toBe('12s')
+  })
+
+  it('tegner intet hoved når der hverken er arbejde, kørsel eller varighed', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={[]}
       streaming={false} status="done" finalAnswerStarted />)
     expect(document.querySelector('.rv-tur')).toBeNull()

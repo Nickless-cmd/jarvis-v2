@@ -42,10 +42,41 @@ export interface TurHovedProps {
   koerer?: boolean
   /** Turens forløbne sekunder. Vises som `· 42s` / `· 1m 05s`; `null` = intet ur. */
   sekunder?: number | null
+  /** Om der er noget at folde. `false` = hovedet er kun en skillestreg med
+   *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
+   *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
+  foldbar?: boolean
   knapRef?: Ref<HTMLButtonElement>
 }
 
-export function TurHoved({ tekst, aaben, onToggle, koerer = false, sekunder = null, knapRef }: TurHovedProps) {
+export function TurHoved({
+  tekst, aaben, onToggle, koerer = false, sekunder = null, foldbar = true, knapRef,
+}: TurHovedProps) {
+  const indhold = (
+    <>
+      <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
+      {typeof sekunder === 'number' ? (
+        <RullendeTid tekst={formaterTurTid(sekunder)} />
+      ) : null}
+      {foldbar ? (
+        <span className="rv-turC" aria-hidden="true">
+          <FoldPil aaben={aaben} />
+          <FoldPil aaben={aaben} className="rv-ikon-glimt" />
+        </span>
+      ) : null}
+    </>
+  )
+
+  // Uden indhold at folde er hovedet ikke en knap. En knap der ikke gør noget
+  // er en løgn i tabulatorrækkefølgen — samme streg, ingen affordance.
+  if (!foldbar) {
+    return (
+      <div className="rv-tur rv-tur--statisk" {...(koerer ? { 'data-koerer': '' } : {})}>
+        {indhold}
+      </div>
+    )
+  }
+
   return (
     <button
       type="button"
@@ -55,14 +86,7 @@ export function TurHoved({ tekst, aaben, onToggle, koerer = false, sekunder = nu
       {...(koerer ? { 'data-koerer': '' } : {})}
       onClick={onToggle}
     >
-      <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
-      {typeof sekunder === 'number' ? (
-        <RullendeTid tekst={formaterTurTid(sekunder)} />
-      ) : null}
-      <span className="rv-turC" aria-hidden="true">
-        <FoldPil aaben={aaben} />
-        <FoldPil aaben={aaben} className="rv-ikon-glimt" />
-      </span>
+      {indhold}
     </button>
   )
 }

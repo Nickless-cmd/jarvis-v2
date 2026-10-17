@@ -3,8 +3,12 @@ import type { ContentBlock } from './sseProtocol'
 
 /** Mindste antal kodepunkter pr. frame, så en langsom kilde ikke hakker. */
 const MIN_CODE_POINTS = 5
-/** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
-const BASE_CODE_POINTS_PER_SECOND = 300
+/** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem.
+ *  Sat op fra 300 til 1000 fordi serverens replay nu selv leverer i læsbar
+ *  hastighed (~900 tegn/s, målt 17/10-2026). Ligger klienten under kilden,
+ *  sakker den bagud konstant og indhenter i ryk — så skal den kun følge med
+ *  og være sikkerhedsnet for den korte slut-tail. */
+const BASE_CODE_POINTS_PER_SECOND = 1000
 /** Hele efterslæbet fordeles over så mange sekunder — ALDRIG i ét spring.
  *  Værdien er målt mod serverens replay: den leverer slutsvaret i bidder med
  *  ~30 ms mellemrum, altså flere tusind tegn i sekundet. Er indhentningen

@@ -497,7 +497,28 @@ async def translate_to_v2(
         # Delingen gør de to veje ens. Det er samme tekst, uden et nyt
         # modelkald — og `provisional_text_commit` sendes stadig til sidst, så
         # klienternes foreløbige visning og den bekræftede blok følges ad.
-        chunk_size = max(16, (len(text) + 29) // 30)
+        if final:
+            # SLUTSVARET er det Bjørn faktisk LÆSER — det skal rulle, ikke
+            # vælte ind. MÅLT 17/10-2026 («det er når hoved folder sammen den
+            # dumper»): den gamle form delte i 30 bidder med 30 ms mellemrum,
+            # altså 0,87 s UANSET svarets længde — 3000 tegn landede med
+            # ~3400 tegn/sekund, hvilket læses som et dump, ikke som strøm.
+            #
+            # Nu er hastigheden tidsbaseret og læsbar (~900 tegn/s), og den
+            # samlede tid har et loft, så et meget langt svar ikke hænger i
+            # mange sekunder. Kun `final`: en MELLEMLIGGENDE syntese awaiter
+            # også her, og dér må replayen ikke forsinke det værktøjskald der
+            # kommer lige efter.
+            _REPLAY_MIN_CHARS_PER_SECOND = 900.0
+            _REPLAY_MAX_SECONDS = 6.0
+            _REPLAY_TICK_S = 0.03
+            _rate = max(_REPLAY_MIN_CHARS_PER_SECOND, len(text) / _REPLAY_MAX_SECONDS)
+            # Loftet `len//4` sikrer at selv et KORT svar deles i mindst fire
+            # bidder: ellers ville en 19-tegns-slutbemærkning komme som ÉT
+            # delta (chunken er 27), og så er der intet at rulle.
+            chunk_size = max(2, min(int(round(_rate * _REPLAY_TICK_S)), max(2, len(text) // 4)))
+        else:
+            chunk_size = max(16, (len(text) + 29) // 30)
         for offset in range(0, len(text), chunk_size):
             await queue.put(ContentBlockDelta(
                 index=int(_state["text_block_index"]),

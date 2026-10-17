@@ -79,6 +79,10 @@
   display: inline-block;
   height: 1em;
   line-height: 1em;
+  /* Mellemrummet i «1m 51s» er et inline-block hvis ENESTE indhold er luft.
+     Uden `pre` kollapser browseren det til nul bredde, og uret stod som
+     «1m51s» (målt 17/10-2026: «der mangler mellemrum mellem Xm og Xs»). */
+  white-space: pre;
 }
 
 /* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men

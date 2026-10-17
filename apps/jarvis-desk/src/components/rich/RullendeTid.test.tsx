@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { RullendeTid } from './RullendeTid'
@@ -21,6 +23,18 @@ describe('RullendeTid — turens ur', () => {
     expect(container.querySelectorAll('.rv-turTidCiffer')).toHaveLength(2)
     const faste = [...container.querySelectorAll('.rv-turTidFast')].map((n) => n.textContent)
     expect(faste).toEqual(['s'])
+  })
+
+  it('mellemrummet har BREDDE — det er CSS, ikke DOM', () => {
+    // Bjørn 17/10-2026: «der mangler mellemrum mellem Xm og Xs». Elementet
+    // findes og bærer ' ' (testen ovenfor), men `.rv-turTidFast` er et
+    // inline-block hvis ENESTE indhold er luft — og browseren kollapser
+    // whitespace i en blok-container. Uden `white-space: pre` er bredden 0,
+    // og uret står som «1m51s» uanset hvad DOM'en indeholder.
+    const css = readFileSync(join(__dirname, '../../styles/turhoved.css'), 'utf8')
+    const blok = /\.rv-turTidFast\s*\{([^}]*)\}/.exec(css)
+    expect(blok).not.toBeNull()
+    expect(blok![1]).toMatch(/white-space:\s*pre/)
   })
 
   it('skærmlæsere får den flade streng, ikke ciffer-strimlerne', () => {

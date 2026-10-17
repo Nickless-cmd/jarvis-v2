@@ -936,3 +936,39 @@ async def test_samme_billede_sendes_ikke_to_gange(monkeypatch):
     ]
     assert ider == ["att-en", "att-to"], ider
     pf._nulstil_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_slutsvaret_ruller_i_laesbar_hastighed():
+    """Bjørn 17/10-2026: «det er når hoved folder sammen den dumper».
+
+    Slutsvaret blev delt i 30 bidder med 30 ms mellemrum — 0,87 s UANSET
+    længde. For et 3000-tegnssvar er det ~3400 tegn/sekund, hvilket læses som
+    et dump. Nu er hastigheden tidsbaseret (~900 tegn/s), så et langt svar
+    kommer i mange flere bidder, og ingen enkelt bid bærer hele teksten.
+
+    (Ingen monkeypatch af `asyncio.sleep` her: det sulter forbrugeren og får
+    testen til at hænge. De ~3 s er prisen for at måle den ægte hastighed.)
+    """
+    langt = "Svar " * 600  # 3000 tegn
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": langt})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0)))
+    graense = next(i for i, (kind, data) in enumerate(events)
+                   if kind == "system_event" and data.get("kind") == "final_answer_start")
+    dele = [data["delta"]["text"] for i, (kind, data) in enumerate(events)
+            if kind == "content_block_delta"
+            and data["delta"].get("type") == "text_delta" and i > graense]
+    assert "".join(dele) == langt
+    # ~900 tegn/s og 30 ms pr. bid giver ~27 tegn pr. bid → ~111 dele.
+    # Den gamle regel gav 30 dele à 100 tegn, altså hele teksten i 30 hug.
+    assert len(dele) >= 60, len(dele)
+    assert max(len(d) for d in dele) <= 40

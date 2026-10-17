@@ -97,6 +97,9 @@ export function ChatFlowPresentation({
   const activeLine = mode === 'calm'
     ? model.calmStatus
     : model.visibleSynthesis.at(-1)
+  const activeSynthesis = mode === 'living'
+    ? [...model.workBlocks].reverse().find((block) => block.type === 'text')?.text.trim() || null
+    : null
   // Hovedet skal stå fra FØRSTE ord — også i det vindue hvor turen lige er
   // startet og der endnu ikke er rapporteret arbejde eller synteser.
   // (Bjørn 17/10-2026: «lige som i code mode skal turhoved vises hele tiden
@@ -145,14 +148,21 @@ export function ChatFlowPresentation({
               begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
               at folde en afsluttet tur ud. */}
           <div className="chat-flow-gruppe" hidden={!aaben}>
-            {aktiv && activeLine ? (
+            {aktiv && (activeSynthesis || activeLine) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                aria-label={activeLine}>
-                <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
-                  key={activeLine} aria-hidden="true">
-                  {activeLine}
-                </div>
+                aria-label={[activeSynthesis, activeLine].filter(Boolean).join('. ')}>
+                {activeSynthesis ? (
+                  <div className="chat-flow-live-synthesis" key={activeSynthesis} aria-hidden="true">
+                    {activeSynthesis}
+                  </div>
+                ) : null}
+                {activeLine && activeLine !== activeSynthesis ? (
+                  <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
+                    key={activeLine} aria-hidden="true">
+                    {activeLine}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -160,6 +170,7 @@ export function ChatFlowPresentation({
               <div className="chat-flow-work-details">
                 <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  visTankeResumeer
                   beskedId={beskedId} config={config} />
               </div>
             ) : null}

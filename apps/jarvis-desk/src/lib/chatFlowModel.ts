@@ -123,21 +123,15 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     if (isDelivery(block)) {
       finalBlocks.push(block)
     } else if (block.type === 'text') {
-      // Tekst EFTER det seneste arbejde er det svar der skrives LIGE NU. Under en
-      // aktiv kørsel vises den derfor i svar-fladen mens den kommer — uden at
-      // vente på `finalAnswerStarted`, som serveren først udsender i sin
-      // `done`-handler (core/services/visible_runs_sse_v2.py). Uden dette stod
-      // svar-fladen TOM hele kørslen, og hele svaret landede i ét hug til sidst
-      // (målt 15/10-2026 med en probe: `<div class="chat-flow"></div>`).
-      //
-      // Det er en bevidst afvigelse fra design-spec'ens §6, som bandt
-      // visningen til signalet alene. Bjørn valgte 15/10-2026 at teksten skal
-      // kunne følges mens den skrives; signalet er for sent til det.
-      //
-      // En blok er enten arbejde eller svar — aldrig begge — så intet
-      // duplikeres, og tekst FØR det seneste arbejde bliver i detaljerne.
+      // Efter et værktøj kan tekst være enten en mellemliggende syntese eller
+      // slutsvaret. Placeringen alene kan ikke skelne dem: mens syntesen
+      // streamer, er den midlertidigt også teksten efter det seneste kald.
+      // Serveren sender `final_answer_start` FØR første synlige slutdelta, så
+      // dét signal er grænsen. Et direkte svar uden værktøj kan derimod vises
+      // med det samme.
       const isFinal = terminalFallback
-        || (index > lastWorkIndex && (input.finalAnswerStarted || input.status === 'working'))
+        || lastWorkIndex < 0
+        || (index > lastWorkIndex && input.finalAnswerStarted)
       ;(isFinal ? finalBlocks : workBlocks).push(block)
     } else {
       workBlocks.push(block)
@@ -149,13 +143,10 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     allSynthesis,
     visibleSynthesis,
     calmStatus: visibleSynthesis.at(-1) ?? 'Jarvis tænker ...',
-    // Synteserne er ALLEREDE trukket ud i `allSynthesis` og tegnes i turens
-    // hoved. Ligger de også i `workBlocks`, laver `BlocksRenderer` dem til
-    // etiketter på runde-linjerne — og så står den samme sætning to steder:
-    // én gang som syntese-linje, én gang som runde-etiket. Det var præcis den
-    // dobbeltvisning Bjørn så 17/10-2026 («den gamle visning og det nye
-    // levende»). Én sætning, ét sted.
-    workBlocks: workBlocks.filter((block) => block.type !== 'tool_use_summary'),
+    // Runde-metadataen skal blive sammen med arbejdet. `BlocksRenderer`
+    // fjerner selve metadata-blokken fra output og bruger dens ids til at
+    // placere etiketten og tænke-resuméet ved den rigtige værktøjsrunde.
+    workBlocks,
     finalBlocks,
     hasObservableWork,
     ...end,

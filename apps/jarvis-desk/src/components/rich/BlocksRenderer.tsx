@@ -141,6 +141,7 @@ export function BlocksRenderer({
   streaming,
   rundeEtiketter,
   tankeResumeer,
+  visTankeResumeer = false,
   beskedId,
   config,
 }: {
@@ -159,6 +160,8 @@ export function BlocksRenderer({
   rundeEtiketter?: Record<string, string>
   /** Live tænke-resuméer fra streamen (visningen «thinking»). */
   tankeResumeer?: Record<string, string>
+  /** Chat-forløbet viser rundens korte syntese også i normal visning. */
+  visTankeResumeer?: boolean
 }) {
   const visning = useVisningen()
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
@@ -179,7 +182,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} beskedId={beskedId} config={config} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} visTankeResumeer={visTankeResumeer} beskedId={beskedId} config={config} />
       ))}
     </>
   )
@@ -193,6 +196,7 @@ function BlockView({
   rundeEtiketter,
   tankeResumeer,
   visning,
+  visTankeResumeer,
   beskedId,
   config,
 }: {
@@ -207,6 +211,7 @@ function BlockView({
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
   visning: Visning
+  visTankeResumeer: boolean
 }) {
   switch (block.type) {
     // Narrationen vises KUN mens der streames. Når turen er slut, staar den i
@@ -228,7 +233,9 @@ function BlockView({
         // sen etiket ville ellers saette sig over de forkerte kald.
         const etik = block.tools.map((t) => rundeEtiketter?.[t.id]).find(Boolean)
         // «Tænkning»: resuméet af tænkningen står OVER gruppen (Claude Desktop §2).
-        const resume = visning === 'thinking' ? block.tools.map((t) => tankeResumeer?.[t.id]).find(Boolean) : undefined
+        const resume = visning === 'thinking' || visTankeResumeer
+          ? block.tools.map((t) => tankeResumeer?.[t.id]).find(Boolean)
+          : undefined
         // Generering ELLER analyse — ét opslag, så et nyt billedværktøj ikke
         // kan blive husket her og glemt de to andre steder.
         const billedArbejde = streaming ? levendeBilledArbejde(block.tools) : null

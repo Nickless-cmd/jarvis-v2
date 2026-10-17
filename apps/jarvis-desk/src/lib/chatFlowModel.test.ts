@@ -76,19 +76,42 @@ describe('deriveChatFlow', () => {
   // `done`-handler. Målt konsekvens: svar-fladen stod TOM hele kørslen, og hele
   // svaret landede i ét hug til sidst. Tekst efter det seneste arbejde er det
   // svar der skrives nu og vises derfor mens det kommer.
-  it('viser tekst efter det seneste arbejde som svar mens kørslen er aktiv', () => {
+  it('viser tekst efter det seneste arbejde som svar efter final_answer_start', () => {
     const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
     const text = { type: 'text' as const, text: 'Svaret skrives nu.' }
-    const model = deriveChatFlow({ ...base, blocks: [work, text], finalAnswerStarted: false })
+    const model = deriveChatFlow({ ...base, blocks: [work, text], finalAnswerStarted: true })
     expect(model.finalBlocks).toEqual([text])
     expect(model.workBlocks).toEqual([work])
+  })
+
+  it('holder en levende syntese i arbejdet indtil final_answer_start', () => {
+    const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const synthesis: ContentBlock = { type: 'text', text: 'Jeg fandt årsagen og undersøger næste led.' }
+    const model = deriveChatFlow({ ...base, blocks: [work, synthesis], finalAnswerStarted: false })
+
+    expect(model.workBlocks).toEqual([work, synthesis])
+    expect(model.finalBlocks).toEqual([])
+  })
+
+  it('bevarer runde-metadata i arbejdsblokkene, så den kan kobles ved udfoldning', () => {
+    const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
+    const metadata: ContentBlock = {
+      type: 'tool_use_summary',
+      summary: 'Læste filen',
+      preceding_tool_use_ids: ['t1'],
+      thinking_summary: 'Ville kontrollere den mistænkte sti',
+    }
+    const model = deriveChatFlow({ ...base, blocks: [work, metadata], finalAnswerStarted: true })
+
+    expect(model.workBlocks).toEqual([work, metadata])
+    expect(model.finalBlocks).toEqual([])
   })
 
   it('lader tekst før det seneste arbejde blive i arbejds-detaljerne', () => {
     const mellemregning = { type: 'text' as const, text: 'Mellemregning.' }
     const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
     const svar = { type: 'text' as const, text: 'Svaret.' }
-    const model = deriveChatFlow({ ...base, blocks: [mellemregning, work, svar] })
+    const model = deriveChatFlow({ ...base, blocks: [mellemregning, work, svar], finalAnswerStarted: true })
     expect(model.finalBlocks).toEqual([svar])
     expect(model.workBlocks).toEqual([mellemregning, work])
   })

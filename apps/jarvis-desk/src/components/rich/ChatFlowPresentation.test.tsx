@@ -142,6 +142,20 @@ describe('ChatFlowPresentation', () => {
     expect(gruppe.querySelector('.chat-flow-work-details')).toBeNull()
   })
 
+  it('viser både den levende syntese og rundelinjen under turhovedet', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Jeg fandt årsagen og undersøger næste led.' },
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+      rundeEtiketter={{ t1: 'Læste konfigurationen' }} />)
+
+    const live = screen.getByTestId('chat-flow-activity')
+    expect(within(live).getByText('Jeg fandt årsagen og undersøger næste led.')).toBeInTheDocument()
+    expect(within(live).getByText('Læste konfigurationen')).toBeInTheDocument()
+    expect(document.querySelector('.chat-flow-answer')).toBeNull()
+  })
+
   it('klapper hovedet sammen når turen er ovre, så arbejdet bliver detaljer', () => {
     render(<ChatFlowPresentation {...common} mode="living" streaming={false} status="done"
       blocks={[summary('Fandt kilden', 1), { type: 'text', text: 'Svaret.' }]} />)
@@ -192,6 +206,31 @@ describe('ChatFlowPresentation', () => {
     // Og den afsluttede besked bærer den ikke som brødtekst.
     const svar = document.querySelector('.chat-flow-answer') as HTMLElement
     expect(within(svar).queryByText('Fandt kilden')).not.toBeInTheDocument()
+  })
+
+  it('holder syntesen ved dens runde i udfoldningen og ude af slutsvaret', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Jeg fandt årsagen og går videre.' },
+      { type: 'tool_use_summary', summary: 'Læste konfigurationen',
+        preceding_tool_use_ids: ['t1'], thinking_summary: 'Mistænkte en gammel indstilling' },
+      { type: 'tool_use', id: 't2', name: 'bash', input: { command: 'npm test' }, status: 'done' },
+      { type: 'text', text: 'Alt er rettet.' },
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+      streaming={false} status="done" finalAnswerStarted />)
+
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    fireEvent.click(hoved)
+    const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
+    expect(within(gruppe).getByText('Jeg fandt årsagen og går videre.')).toBeInTheDocument()
+    expect(within(gruppe).getByText('Læste konfigurationen')).toBeInTheDocument()
+    expect(within(gruppe).getByText('Mistænkte en gammel indstilling')).toBeInTheDocument()
+
+    const svar = document.querySelector('.chat-flow-answer') as HTMLElement
+    expect(within(svar).getByText('Alt er rettet.')).toBeInTheDocument()
+    expect(within(svar).queryByText('Jeg fandt årsagen og går videre.')).not.toBeInTheDocument()
+    expect(within(svar).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
   })
 
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {

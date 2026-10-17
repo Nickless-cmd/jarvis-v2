@@ -31,6 +31,15 @@
   animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
+.chat-flow-live-synthesis {
+  overflow: hidden;
+  color: var(--text-primary, #eef2f5);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 .chat-flow-activity--calm .chat-flow-synthesis {
   animation: none;
 }

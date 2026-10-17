@@ -188,6 +188,30 @@ describe('ChatFlowPresentation', () => {
     expect(nytLabel.closest('.linje-titel')).toHaveClass('shimmer')
   })
 
+  it('rundelinjen har en fold-pil der folder arbejdet ud UNDER streaming', () => {
+    // Bjørn 17/10-2026: «runde linjen under streaming bør have > i ende og
+    // kunne foldes ud under streaming». Foldet sammen som udgangspunkt —
+    // den levende linje er nok — men pilen lover et indhold der findes.
+    const blocks: ContentBlock[] = [
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Jeg læser videre' },
+    ]
+    render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
+      rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
+
+    const fold = screen.getByTestId('chat-flow-round-fold')
+    expect(fold).toHaveAttribute('aria-expanded', 'false')
+    expect(document.querySelector('.chat-flow-work-details')).toBeNull()
+
+    fireEvent.click(fold)
+    expect(fold).toHaveAttribute('aria-expanded', 'true')
+    expect(document.querySelector('.chat-flow-work-details')).not.toBeNull()
+
+    fireEvent.click(fold)
+    expect(fold).toHaveAttribute('aria-expanded', 'false')
+    expect(document.querySelector('.chat-flow-work-details')).toBeNull()
+  })
+
   it('holder den forrige syntese stående mens den næste blok er tom — intet glip', () => {
     // Bjørn 17/10-2026: «når syntese linjen forsvinder den første og et glip
     // og så streames den næste». En ny tekstblok starter tom; den gamle skal

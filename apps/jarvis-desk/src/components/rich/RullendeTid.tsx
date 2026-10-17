@@ -22,11 +22,15 @@ import { memo } from 'react'
 /** Ét ciffer som lodret strimmel. `key` på værdien får React til at genstarte
  *  transitionen, så samme ciffer to gange i træk ikke animerer forgæves. */
 const Ciffer = memo(function Ciffer({ tegn }: { tegn: string }) {
-  const tal = Number(tegn)
-  if (!Number.isInteger(tal)) {
+  // Kun et ÆGTE ciffer ruller. `Number.isInteger(Number(' '))` er `true` —
+  // `Number(' ')` er 0 — så mellemrummet i «1m 51s» blev til et rullende nul
+  // og uret stod som «1m051s» (målt 17/10-2026). Testen er derfor på TEGNET,
+  // ikke på om det kan læses som et tal.
+  if (!/^[0-9]$/.test(tegn)) {
     // `m`, `s`, `t` og mellemrum ruller ikke — de står stille.
     return <span className="rv-turTidFast">{tegn}</span>
   }
+  const tal = Number(tegn)
   return (
     <span className="rv-turTidCiffer" aria-hidden="true">
       <span className="rv-turTidStrimmel" style={{ transform: `translateY(${-tal}em)` }}>

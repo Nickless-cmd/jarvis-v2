@@ -50,13 +50,45 @@
 }
 
 /* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og
-   label står i hver sin stabile celle, så tekstskift ikke flytter linjen. */
+   label står i hver sin stabile celle, så tekstskift ikke flytter linjen.
+   Fold-pilen ligger i rækken UDEN FOR den aria-skjulte linje (17/10-2026:
+   «runde linjen under streaming bør have > i ende og kunne foldes ud»). */
+.chat-flow-round {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .chat-flow-round-line {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 1.35em;
   align-items: center;
   gap: 8px;
   overflow: hidden;
+}
+
+.chat-flow-round-fold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-3, #898781);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.chat-flow-round-fold:hover { color: var(--fg-1); }
+
+.chat-flow-round-fold:focus-visible {
+  outline: 2px solid var(--focus, #6aa9ff);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .chat-flow-round-icon {

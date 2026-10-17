@@ -19,10 +19,14 @@ describe('useChatPacedBlocks', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  function nextFrame(): void {
+  // Simuleret ur. Pacingen er tidsbaseret, så frames skal avancere tiden —
+  // ellers måler testen en verden hvor der aldrig går et millisekund.
+  let ur = 0
+  function nextFrame(deltaMs = 16): void {
+    ur += deltaMs
     const callback = frames.shift()
     expect(callback).toBeDefined()
-    act(() => callback?.(performance.now()))
+    act(() => callback?.(ur))
   }
 
   it('reveals the current final text incrementally with one scheduled frame', () => {
@@ -60,34 +64,45 @@ describe('useChatPacedBlocks', () => {
 
     // …og resten skal indhentes i trin, aldrig i ét spring.
     let previous = first.length
-    let frames = 0
-    while (shown().length < text.length && frames < 200) {
+    let antalFrames = 0
+    while (shown().length < text.length && antalFrames < 400) {
       nextFrame()
       const now = shown().length
       expect(now - previous).toBeLessThanOrEqual(60)
       previous = now
-      frames += 1
+      antalFrames += 1
     }
     expect(shown()).toBe(text)
-    expect(frames).toBeLessThan(200)
+    expect(antalFrames).toBeLessThan(400)
   })
 
-  it('følger en vedvarende hurtig stream uden at sakke ubegrænset bagud', () => {
+  it('følger en vedvarende hurtig stream — forsinkelsen stabiliserer sig, den vokser ikke', () => {
     const { result, rerender } = renderHook(({ text }) => useChatPacedBlocks(
       [{ type: 'text', text }],
       { live: true, finalAnswerStarted: true, runId: 'run-fast' },
     ), { initialProps: { text: '' } })
 
     let source = ''
-    for (let index = 0; index < 60; index += 1) {
+    for (let index = 0; index < 240; index += 1) {
       source += '1234567890'.repeat(5)
       rerender({ text: source })
       nextFrame()
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
     expect(visible.length).toBeLessThan(source.length)
-    // Efterslæbet stabiliserer sig (loftet kan følge kilden) i stedet for at vokse.
-    expect(source.length - visible.length).toBeLessThan(800)
+    // Efterslæbet er en FORSINKELSE på ca. et sekunds kildestrøm, ikke en
+    // ophobning: uden indhentningsreglen ville det vokse med 50 tegn pr.
+    // frame og være 12.000 efter 240 frames.
+    expect(source.length - visible.length).toBeLessThan(4000)
+
+    // Da kilden stopper, indhenter pacingen resten i trin.
+    let antal = 0
+    while ((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length < source.length
+      && antal < 400) {
+      nextFrame()
+      antal += 1
+    }
+    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(source)
   })
 
   it('never splits a Unicode code point', () => {
@@ -101,16 +116,41 @@ describe('useChatPacedBlocks', () => {
     expect(visible).toContain('🙂')
   })
 
-  it('flushes immediately when streaming completes', () => {
+  it('ruller færdig selv om strømmen slutter — slutbeskeden dumpes ikke', () => {
+    // Bjørn 17/10-2026: «den dumper stadig ind slut beskeden». `live` bliver
+    // falsk ved `message_stop`, og før kastede det resten op i ÉN tegning.
+    // Et svar der er ved at rulle færdig skal rulle færdig.
     const text = 'Svar '.repeat(100)
     const blocks: ContentBlock[] = [{ type: 'text', text }]
     const { result, rerender } = renderHook(({ live }) => useChatPacedBlocks(blocks, {
       live, finalAnswerStarted: true, runId: 'run-finish',
     }), { initialProps: { live: true } })
     nextFrame()
-    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).not.toBe(text)
+    const shown = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+    const efterFoerste = shown()
+    expect(efterFoerste).not.toBe(text)
+
     rerender({ live: false })
+    // Stadig ikke hele svaret — det fortsætter i trin.
+    expect(shown().length).toBe(efterFoerste.length)
+
+    let antal = 0
+    while (shown().length < text.length && antal < 400) {
+      nextFrame()
+      antal += 1
+    }
+    expect(shown()).toBe(text)
+  })
+
+  it('viser hele svaret straks på en persisteret besked — den blev aldrig streamet', () => {
+    // Undtagelsen til ovenstående: en besked der monteres EFTER turen blev
+    // ikke rullet for øjnene af nogen og skal stå færdig med det samme.
+    const text = 'Et svar der allerede er færdigt.'
+    const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {
+      live: false, finalAnswerStarted: true, runId: 'run-persisted',
+    }))
     expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(text)
+    expect(requestAnimationFrame).not.toHaveBeenCalled()
   })
 
   it('shows tools and deliveries immediately while pacing only text', () => {

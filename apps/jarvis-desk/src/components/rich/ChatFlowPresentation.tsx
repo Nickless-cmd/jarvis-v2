@@ -9,7 +9,7 @@ import { useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
-import { TurHoved } from './TurHoved'
+import { FoldPil, TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -146,6 +146,13 @@ export function ChatFlowPresentation({
   // Bjørn selv har foldet. `null` betyder «følg fasen».
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
+  // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
+  // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
+  // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
+  // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
+  // fold, som før.
+  const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
+  const visArbejdsdetaljer = retainedWork.length > 0 && arbejdeAabent
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
@@ -179,19 +186,37 @@ export function ChatFlowPresentation({
                   </div>
                 ) : null}
                 {activeLine && activeLine !== activeSynthesis ? (
-                  <div className="chat-flow-synthesis chat-flow-round-line"
-                    data-testid="chat-flow-round-line" aria-hidden="true">
-                    <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
-                      size={15} strokeWidth={1.8} />
-                    <span className="chat-flow-round-label" data-testid="chat-flow-synthesis">
-                      <LabelSkift tekst={activeLine} arbejder className="shimmer" fastIkon />
-                    </span>
+                  <div className="chat-flow-round" data-testid="chat-flow-round">
+                    <div className="chat-flow-synthesis chat-flow-round-line"
+                      data-testid="chat-flow-round-line" aria-hidden="true">
+                      <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
+                        size={15} strokeWidth={1.8} />
+                      <span className="chat-flow-round-label" data-testid="chat-flow-synthesis">
+                        <LabelSkift tekst={activeLine} arbejder className="shimmer" fastIkon />
+                      </span>
+                    </div>
+                    {/* Fold-pilen ligger UDEN FOR den aria-skjulte linje: den
+                        er en ægte knap, og en knap må ikke være usynlig for
+                        skærmlæsere. `>` lukket, `v` åben — samme ikon-par som
+                        turhovedet, så de to fold-signaturer er identiske. */}
+                    {retainedWork.length > 0 ? (
+                      <button
+                        type="button"
+                        className="chat-flow-round-fold"
+                        data-testid="chat-flow-round-fold"
+                        aria-expanded={arbejdeAabent}
+                        aria-label={arbejdeAabent ? 'Skjul arbejdet' : 'Vis arbejdet'}
+                        onClick={() => setAabenManuelt(!arbejdeAabent)}
+                      >
+                        <FoldPil aaben={arbejdeAabent} />
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
             ) : null}
 
-            {!aktiv && retainedWork.length > 0 ? (
+            {visArbejdsdetaljer ? (
               <div className="chat-flow-work-details">
                 <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}

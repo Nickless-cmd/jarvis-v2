@@ -379,3 +379,51 @@ def test_the_kill_switch_blocks_new_work_but_never_the_control_of_accepted_work(
     assert sv.svc_.close_agent(owner_user_id=O, origin_session_id=S, agent_id=out["agent_id"])["status"] == "accepted"
     ctl_missing = sv.svc_.interrupt_agent(owner_user_id=O, origin_session_id="", agent_id=out["agent_id"])
     assert ctl_missing["code"] == "INVALID_SCOPE"                       # styring kraever stadig ejer og session
+
+
+# --- vaekning naar barnet er faerdigt (17/10-2026) ----------------------------------
+
+def test_en_dispatch_registrerer_en_ventekontrakt(sv):
+    """En dispatch skal VAEKKE foraelderen — den registrerede ingen kontrakt.
+
+    Maalt 17/10-2026: `commit_terminal_outcome` fyrer udelukkende kontrakter der
+    allerede findes. `dispatch_agent` oprettede ingen, saa et terminalt udfald
+    blev tavst i `agent_result_outbox` indtil nogen tilfaeldigt kaldte `inbox` —
+    en idle foraelder blev aldrig vakt.
+    """
+    import json
+
+    sv.on()
+    out = sv.d(goal="find X")
+    assert out["status"] == "accepted"
+    rows = sv.k._conn().execute(
+        "SELECT * FROM agent_wait_contracts WHERE origin_session_id=? AND parent_run_id=?",
+        (S, R)).fetchall()
+    assert len(rows) == 1, [dict(r) for r in rows]
+    assert json.loads(rows[0]["assignment_ids_json"]) == [out["assignment_id"]]
+    assert rows[0]["status"] == "registered"
+
+
+def test_det_terminale_udfald_fyrer_kontrakten_og_skriver_vaekningen(sv):
+    """Kontrakten alene er ikke nok: udfaldet skal ogsaa FYRE den og skrive vaekningen."""
+    sv.on()
+    out = sv.d(goal="find X")
+    sv.k.commit_terminal_outcome(assignment_id=out["assignment_id"], status="completed",
+                                 summary="klart: X i y.py")
+    row = sv.k._conn().execute(
+        "SELECT * FROM agent_wait_contracts WHERE origin_session_id=?", (S,)).fetchone()
+    assert row["status"] == "fired"
+    assert row["wake_task_id"], "vaekningen blev ikke skrevet — foraelderen ville aldrig vaagne"
+
+
+def test_et_brugerstop_spaerrer_vaekningen_fra_en_dispatch(sv):
+    """Spaerren skal ogsaa gaelde dispatch-vejen, ikke kun `wait_agents`."""
+    sv.on()
+    from core.runtime.db_agent_wait import block_wakes_for_run
+    block_wakes_for_run(run_id=R, reason="user-cancelled")
+    out = sv.d(goal="find X")
+    sv.k.commit_terminal_outcome(assignment_id=out["assignment_id"], status="completed")
+    row = sv.k._conn().execute(
+        "SELECT * FROM agent_wait_contracts WHERE origin_session_id=?", (S,)).fetchone()
+    assert row["status"] == "stopped", row["status"]
+    assert row["wake_task_id"] == ""

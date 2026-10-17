@@ -98,7 +98,7 @@ def convene(*, owner_user_id: str, origin_session_id: str, topic: str, facts: st
             description=MEMBER_GOAL_HEAD.format(i=i, n=len(clean), role=m["role"]) + f"\n\nEMNE: {topic}\n\n"
                         f"FAKTAGRUNDLAG:\n{facts or '(ingen yderligere fakta)'}",
             expected_result="en begrundet vurdering med konfidens og forbehold", budget_tokens=budget_tokens,
-            idempotency_key=f"{cid}:m{i}")
+            idempotency_key=f"{cid}:m{i}", wake_parent=False)
         if out.get("status") != "accepted":
             _abandon(owner_user_id, origin_session_id, cid, started)
             return {**out, "council_id": cid, "failed_member": i, "council_status": store.CANCELLED,
@@ -181,7 +181,8 @@ def advance() -> list[dict[str, Any]]:
                     parent_agent_id=c["parent_agent_id"] or "jarvis", role=c["synthesis_role"],
                     goal=synthesis_goal(c["topic"], outcomes), description=f"EMNE: {c['topic']}",
                     expected_result="en samlet syntese der navngiver medlemmer uden svar",
-                    budget_tokens=c["budget_tokens"], idempotency_key=f"{c['council_id']}:synthesis")
+                    budget_tokens=c["budget_tokens"], idempotency_key=f"{c['council_id']}:synthesis",
+                    wake_parent=False)
                 if out.get("status") != "accepted":
                     logger.warning("syntese for %s afventer: %s", c["council_id"], out.get("error"))
                     continue                                    # f.eks. CAPACITY - proeves igen naeste taek

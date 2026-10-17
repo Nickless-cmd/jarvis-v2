@@ -131,6 +131,35 @@ def _start_execution(agent_id: str) -> bool:
     return True
 
 
+def _registrer_ventekontrakt(*, owner_user_id: str, origin_session_id: str,
+                             parent_run_id: str, assignment_id: str) -> None:
+    """En dispatch skal VAEKKE foraelderen naar barnet er faerdigt (17/10-2026).
+
+    Maalt: `dispatch_agent` og `followup_agent` registrerede ingen ventekontrakt
+    — kun `wait_agents` og councils gjorde. `commit_terminal_outcome` fyrer
+    udelukkende kontrakter der ALLEREDE findes, saa et terminalt udfald uden
+    kontrakt blev tavst: det laa i `agent_result_outbox` indtil nogen
+    tilfaeldigt kaldte `inbox`. Maalt i drift: en researcher kom hjem med nul,
+    og resultatet blev ikke set fordi foraelderen var idle og intet vaekkede den.
+
+    Kontrakten er husets EGEN vej — `agent_wait_contracts` -> `stage_wake` ->
+    `visible_run_recovery_dispatcher` — saa den virker baade naar foraelderen er
+    midt i en tur (dispatcheren har single-flight) og naar den er fri. Et
+    manuelt brugerstop spaerrer den via `block_wakes_for_run`.
+
+    Fejler registreringen, maa det ALDRIG vaelte dispatchen: udfaldet lander
+    stadig i inbox'en, det er kun vaekningen der udebliver.
+    """
+    try:
+        from core.runtime.db_agent_wait import register_wait
+        register_wait(owner_user_id=owner_user_id, origin_session_id=origin_session_id,
+                      parent_run_id=parent_run_id, assignment_ids=[assignment_id],
+                      condition="all_terminal")
+    except Exception:
+        logger.warning("ventekontrakt kunne ikke registreres for %s; udfaldet lander "
+                       "stadig i inbox", assignment_id, exc_info=True)
+
+
 def _drain_ready_queue() -> int:
     """Reclaim worker slots after parked/completed jobs and after process restart."""
     from core.runtime.db_agent_capacity import ready_queue
@@ -196,6 +225,7 @@ def dispatch_agent(
     writes: bool = False, workspace: str = "", model_required: bool = False,
     context_mode: str = "fresh", context_excerpt: str = "", accept_fork_switch: bool = False,
     reasoning_effort: str = "",
+    wake_parent: bool = True,
 ) -> dict[str, Any]:
     """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS.
 
@@ -338,6 +368,11 @@ def dispatch_agent(
         return _err("INVALID_TRANSITION", "assignmentet kunne ikke frigives til koeen")
     _start_execution(agent_id)
     _signal_feed()
+    if wake_parent:
+        _registrer_ventekontrakt(owner_user_id=owner_user_id,
+                                 origin_session_id=origin_session_id,
+                                 parent_run_id=parent_run_id,
+                                 assignment_id=a["assignment_id"])
     run = c._conn().execute("SELECT run_id FROM agent_runs WHERE assignment_id=? "
                             "ORDER BY attempt_no LIMIT 1", (a["assignment_id"],)).fetchone()
     view = _accept_view({"agent_id": agent_id, "assignment_id": a["assignment_id"],
@@ -354,7 +389,7 @@ def dispatch_agent(
 def followup_agent(
     *, owner_user_id: str, origin_session_id: str, agent_id: str, goal: str,
     parent_run_id: str = "", budget_tokens: int = 0, expected_result: str = "",
-    idempotency_key: str = "", operation: str = "followup",
+    idempotency_key: str = "", operation: str = "followup", wake_parent: bool = True,
 ) -> dict[str, Any]:
     """Ny opgave til SAMME agent-id: nyt assignment, nyt run. Ikke til en lukket agent."""
     if (bad := _guard(owner_user_id, origin_session_id)):
@@ -401,6 +436,11 @@ def followup_agent(
         return _err("INVALID_TRANSITION", "assignmentet kunne ikke frigives til koeen")
     _start_execution(agent_id)
     _signal_feed()
+    if wake_parent:
+        _registrer_ventekontrakt(owner_user_id=owner_user_id,
+                                 origin_session_id=origin_session_id,
+                                 parent_run_id=parent_run_id,
+                                 assignment_id=acc["assignment_id"])
     return _accept_view(acc)
 
 

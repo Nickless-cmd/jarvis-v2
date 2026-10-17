@@ -5,19 +5,9 @@
 }
 
 .chat-flow-activity {
-  display: grid;
-  align-content: end;
-  gap: 0.2rem;
+  display: block;
   min-height: 1.35rem;
   overflow: hidden;
-}
-
-.chat-flow-activity--living:has(.chat-flow-synthesis:nth-of-type(2)) {
-  min-height: 2.9rem;
-}
-
-.chat-flow-activity--living:has(.chat-flow-synthesis:nth-of-type(3)) {
-  min-height: 4.45rem;
 }
 
 .chat-flow-synthesis {
@@ -26,8 +16,8 @@
   animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
-.chat-flow-synthesis:last-of-type {
-  color: var(--text-primary, #eef2f5);
+.chat-flow-activity--calm .chat-flow-synthesis {
+  animation: none;
 }
 
 .chat-flow-work {
@@ -37,7 +27,15 @@
 
 .chat-flow-work > summary {
   cursor: pointer;
-  width: fit-content;
+  width: 100%;
+  min-height: 33px;
+  padding-block-end: 8px;
+  border-bottom: 0.5px solid var(--line, rgb(255 255 255 / 12%));
+  list-style-position: inside;
+}
+
+.chat-flow-work[open] > .chat-flow-activity {
+  margin-block-start: 8px;
 }
 
 .chat-flow-work--interrupted > summary,
@@ -46,11 +44,11 @@
 }
 
 .chat-flow-work-details {
-  margin-block-start: 0.55rem;
+  margin-block-start: 8px;
 }
 
 @keyframes chat-flow-enter {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0.72; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -107,6 +105,10 @@
 
 .chat-flow-preview span:last-child {
   color: var(--text-primary, #eef2f5);
+}
+
+.chat-flow-preview--living span {
+  animation: chat-flow-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 .chat-flow-example-label {

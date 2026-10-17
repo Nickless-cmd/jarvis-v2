@@ -11,7 +11,7 @@ Jarvis Desk Chat Mode must present live agentic work as a smooth, calm conversat
 
 The feature introduces three Chat Mode preferences:
 
-- `living`: show up to three rolling, meaningful synthesis lines.
+- `living`: show one rolling, meaningful synthesis line inside the open turn header.
 - `calm`: show only the latest meaningful status.
 - `adaptive`: choose `living` or `calm` deterministically for each run.
 
@@ -56,7 +56,7 @@ It emits a small presentation model containing:
 - whether the run has observable work worth summarizing;
 - the terminal state: completed, interrupted, or failed.
 
-The derivation never invents an action, converts every tool call into prose, or generates artificial reasoning. Exact repeated lines are removed after whitespace normalization. Agentic round boundaries do not reset the list. The retained visible list is bounded to the latest three items, while the underlying blocks remain available to the expandable work details and Mission Control.
+The derivation never invents an action, converts every tool call into prose, or generates artificial reasoning. Exact repeated lines are removed after whitespace normalization. Agentic round boundaries do not reset the list. Chat Mode presents only the newest item inside the already open turn header, while the underlying blocks remain available to the expandable work details and Mission Control.
 
 Approvals, questions requiring user input, errors that require action, attachments, generated files, generated images, widgets, and citations remain rendered as first-class content. They are never hidden solely inside the compact activity summary.
 
@@ -64,9 +64,9 @@ Approvals, questions requiring user input, errors that require action, attachmen
 
 ### Living
 
-The activity viewport starts with no placeholder rows. It grows from one to at most three real synthesis lines. On a fourth line, the oldest exits, the remaining lines move upward, and the newest enters from below.
+The activity viewport starts with no placeholder row. It shows only the newest real synthesis beneath the turn header's divider. A later synthesis replaces it in the same bounded line instead of growing a list.
 
-Once populated, the viewport uses bounded row geometry so replacement does not create large scroll-height changes. The newest line has normal emphasis; older lines are slightly muted. Motion uses approximately 160–220 ms, 5–8 px of vertical displacement, opacity, and non-bouncy easing. There is no continuous decorative motion when data is unchanged.
+Once populated, the viewport keeps fixed one-line geometry so replacement does not change scroll height. Motion uses approximately 160–220 ms, a few pixels of vertical displacement, opacity, and non-bouncy easing. There is no continuous decorative motion when data is unchanged.
 
 ### Calm
 
@@ -123,7 +123,7 @@ The pacing contract is:
 
 On the first actual Chat Mode run for a user, the response includes an inline, side-by-side comparison:
 
-- `B · Levende` shows the same run's rolling one-to-three-line activity.
+- `B · Levende` shows the same run's single rolling activity line.
 - `C · Rolig` shows the same run's latest status.
 
 Both previews subscribe to one derived activity model from one server run. They are live demonstrations, not static cards, and they never issue a second request or duplicate the final answer. If the run does not produce enough real synthesis to demonstrate the density difference, the preview may supplement it with copy explicitly labeled `Eksempel`; illustrative text is never represented as live Jarvis activity.
@@ -174,7 +174,7 @@ This is the existing preference, existing key, and existing behavior.
 
 **Chat Mode**
 
-- `Levende` — `Viser op til tre løbende synteser, mens Jarvis arbejder.`
+- `Levende` — `Viser én levende statuslinje i det åbne turhoved.`
 - `Rolig` — `Viser kun Jarvis' aktuelle arbejdsstatus.`
 - `Adaptiv` — `Jarvis vælger automatisk den visning, der passer til samtalen.`
 
@@ -237,7 +237,7 @@ It never accepts a user id. Its handler resolves a verified authenticated princi
 Frontend Vitest and React Testing Library coverage must verify observable behavior, including:
 
 - strict Chat/Code preference and rendering isolation;
-- one, two, three, and four synthesis events with a hard visible maximum of three;
+- successive synthesis events replacing one another with a hard visible maximum of one;
 - deduplication and newest-line retention;
 - Calm replacement and truthful fallback;
 - authoritative `finalAnswerStarted` transition;
@@ -260,7 +260,7 @@ Backend pytest coverage must verify:
 - tool/API use of the same service and failure on missing verified identity;
 - Chat Mode tool availability through the existing permission architecture.
 
-The critical tests for mode isolation, the three-line limit, final transition, preference ownership, and onboarding deduplication are mutation-proved by deliberately disabling or inverting the relevant production condition, observing the targeted test fail, restoring the implementation, and observing it pass.
+The critical tests for mode isolation, the one-line limit, final transition, preference ownership, and onboarding deduplication are mutation-proved by deliberately disabling or inverting the relevant production condition, observing the targeted test fail, restoring the implementation, and observing it pass.
 
 Final validation runs:
 

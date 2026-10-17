@@ -45,9 +45,10 @@ export function ChatFlowOnboarding({
 
   if (!claimId) return null
 
-  const hasDemonstration = model.visibleSynthesis.length >= 2
-  const living = hasDemonstration ? model.visibleSynthesis : EXAMPLE_LINES
-  const calm = hasDemonstration ? model.calmStatus : EXAMPLE_LINES[EXAMPLE_LINES.length - 1]
+  const hasDemonstration = model.visibleSynthesis.length >= 1
+  const current = hasDemonstration
+    ? model.visibleSynthesis.at(-1)!
+    : EXAMPLE_LINES[EXAMPLE_LINES.length - 1]!
 
   return (
     <section className="chat-flow-onboarding" role="group" aria-label="Vælg Chat Mode-visning">
@@ -57,14 +58,14 @@ export function ChatFlowOnboarding({
           <h3>B · Levende</h3>
           {!hasDemonstration ? <span className="chat-flow-example-label">Eksempel</span> : null}
           <div className="chat-flow-preview chat-flow-preview--living">
-            {living.map((line) => <span key={line}>{line}</span>)}
+            <span key={current}>{current}</span>
           </div>
           <button type="button" onClick={() => void flow.setPreference('living')}>Vælg levende</button>
         </article>
         <article className="chat-flow-onboarding-choice" data-testid="onboarding-calm">
           <h3>C · Rolig</h3>
           {!hasDemonstration ? <span className="chat-flow-example-label">Eksempel</span> : null}
-          <div className="chat-flow-preview chat-flow-preview--calm"><span>{calm}</span></div>
+          <div className="chat-flow-preview chat-flow-preview--calm"><span>{current}</span></div>
           <button type="button" onClick={() => void flow.setPreference('calm')}>Vælg rolig</button>
         </article>
       </div>

@@ -20,17 +20,30 @@ const common = {
 }
 
 describe('ChatFlowPresentation', () => {
-  it('renders only the latest three real Living syntheses with no placeholders', () => {
+  it('replaces the Living status in place instead of accumulating a list', () => {
     const { rerender } = render(<ChatFlowPresentation {...common} mode="living"
       blocks={['Et', 'To', 'Tre', 'Fire'].map(summary)} />)
     const rail = screen.getByTestId('chat-flow-activity')
     expect(within(rail).queryByText('Et')).not.toBeInTheDocument()
-    expect(within(rail).getAllByTestId('chat-flow-synthesis')).toHaveLength(3)
+    expect(within(rail).queryByText('To')).not.toBeInTheDocument()
+    expect(within(rail).queryByText('Tre')).not.toBeInTheDocument()
+    expect(within(rail).getAllByTestId('chat-flow-synthesis')).toHaveLength(1)
     expect(within(rail).getByText('Fire')).toBeInTheDocument()
 
     rerender(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
     expect(screen.queryByTestId('chat-flow-synthesis')).not.toBeInTheDocument()
     expect(screen.queryByText('Jarvis tænker ...')).not.toBeInTheDocument()
+  })
+
+  it('shows the live status inside the one open work header while streaming', () => {
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Samler svaret', 1)]} />)
+
+    const disclosures = screen.getAllByText('Arbejdsforløb')
+    expect(disclosures).toHaveLength(1)
+    const disclosure = disclosures[0]!.closest('details') as HTMLDetailsElement
+    expect(disclosure).toBeInTheDocument()
+    expect(disclosure.open).toBe(true)
+    expect(within(disclosure).getByTestId('chat-flow-activity')).toHaveTextContent('Samler svaret')
   })
 
   it('renders only the latest Calm status and a truthful neutral fallback', () => {
@@ -66,6 +79,7 @@ describe('ChatFlowPresentation', () => {
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
     const disclosure = screen.getByText('Arbejdsforløb').closest('details')
     expect(disclosure).not.toBeNull()
+    expect((disclosure as HTMLDetailsElement).open).toBe(false)
     expect(within(disclosure as HTMLElement).queryByText('Her er resultatet.')).not.toBeInTheDocument()
     expect(screen.getAllByText('Her er resultatet.')).toHaveLength(1)
     const delivery = screen.getByRole('img', { name: 'Rapport' })

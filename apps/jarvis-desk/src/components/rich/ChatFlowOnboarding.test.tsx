@@ -76,7 +76,7 @@ describe('ChatFlowOnboarding', () => {
     const group = await screen.findByRole('group', { name: 'Vælg Chat Mode-visning' })
     const living = within(group).getByTestId('onboarding-living')
     const calm = within(group).getByTestId('onboarding-calm')
-    expect(within(living).getByText('Et')).toBeInTheDocument()
+    expect(within(living).queryByText('Et')).not.toBeInTheDocument()
     expect(within(living).getByText('To')).toBeInTheDocument()
     expect(within(calm).queryByText('Et')).not.toBeInTheDocument()
     expect(within(calm).getByText('To')).toBeInTheDocument()

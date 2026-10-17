@@ -79,35 +79,39 @@ export function ChatFlowPresentation({
     runId,
   })
   const showActivity = streaming && !finalAnswerStarted && model.terminalState === 'active'
-  const lines = mode === 'calm'
-    ? [model.calmStatus]
-    : model.visibleSynthesis
+  const activeLine = mode === 'calm'
+    ? model.calmStatus
+    : model.visibleSynthesis.at(-1)
   const showDisclosure = model.hasObservableWork
     && (finalAnswerStarted || model.terminalState !== 'active')
+  const showTurnHeader = showActivity || showDisclosure
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
-      {showActivity && lines.length > 0 ? (
-        <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
-          data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-          aria-label={lines.at(-1)}>
-          {lines.map((line) => (
-            <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis" key={line} aria-hidden="true">
-              {line}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {showDisclosure ? (
+      {showTurnHeader ? (
         <details className={`chat-flow-work chat-flow-work--${model.terminalState}`}
-          onToggle={(event) => { if (event.currentTarget.open) onWorkExpanded?.() }}>
+          open={showActivity}
+          onToggle={(event) => {
+            if (!showActivity && event.currentTarget.open) onWorkExpanded?.()
+          }}>
           <summary>{model.terminalLabel}</summary>
-          <div className="chat-flow-work-details">
-            <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
-              rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-              beskedId={beskedId} config={config} />
-          </div>
+          {showActivity && activeLine ? (
+            <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
+              data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
+              aria-label={activeLine}>
+              <div className="chat-flow-synthesis" data-testid="chat-flow-synthesis"
+                key={activeLine} aria-hidden="true">
+                {activeLine}
+              </div>
+            </div>
+          ) : null}
+          {showDisclosure ? (
+            <div className="chat-flow-work-details">
+              <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
+                rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                beskedId={beskedId} config={config} />
+            </div>
+          ) : null}
         </details>
       ) : null}
 

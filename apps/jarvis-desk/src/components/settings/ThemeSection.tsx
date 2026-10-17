@@ -24,7 +24,7 @@ export function ThemeSection() {
   const [skin, saetSkin] = useFigurSkin()
   const chatFlow = useChatFlow()
   const chatOptions: { key: ChatFlowPreference; label: string; description: string }[] = [
-    { key: 'living', label: 'Levende', description: 'Viser op til tre løbende synteser, mens Jarvis arbejder.' },
+    { key: 'living', label: 'Levende', description: 'Viser én levende statuslinje i det åbne turhoved.' },
     { key: 'calm', label: 'Rolig', description: 'Viser kun Jarvis’ aktuelle arbejdsstatus.' },
     { key: 'adaptive', label: 'Adaptiv', description: 'Jarvis vælger automatisk den visning, der passer til samtalen.' },
   ]

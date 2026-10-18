@@ -81,6 +81,25 @@ def _workspace_dir() -> Path:
 
 _CURATED_FILE_LIMIT = 30
 
+#: Filnavn der ALTID indekseres, uanset mtime-vinduet ovenfor.
+#:
+#: HVORFOR (18/10-2026): `_CURATED_FILE_LIMIT` er en mtime-kvote, og den gælder
+#: BÅDE `memory/curated` og `memory/daily`. De to mapper konkurrerer derfor om
+#: samme 30 pladser, og `memory/daily` får nye filer hver dag. Målt samme dag:
+#: 115 filer i curated, 1-3 nye i døgnet → en varig vidensfil falder tavst ud af
+#: indekset efter ca. to uger. Ingen fejl, ingen advarsel; den er bare ikke
+#: søgbar mere, og intet i systemet fortæller at den forsvandt.
+#:
+#: Pinning er et TILLÆG, ikke en udskiftning: de pinnede filer lægges oveni
+#: kvoten, så `test_curated_files_are_picked_by_mtime_not_name` (der kræver
+#: præcis 30 i vinduet) stadig holder. En pinnet fil tæller heller ikke med i
+#: sit eget vindue — ellers ville den fortrænge en anden fil og gøre pin til en
+#: omfordeling i stedet for en garanti.
+#:
+#: Navnet er et præfiks-match, så flere filer kan pinnes ved at give dem
+#: præfikset. Filen skal ligge direkte i `memory/curated` eller `memory/daily`.
+_PINNED_PREFIX = "pin-"
+
 
 def _memory_files(ws: Path | None = None) -> list[Path]:
     ws = ws or _workspace_dir()
@@ -96,8 +115,12 @@ def _memory_files(ws: Path | None = None) -> list[Path]:
             # name silently dropped curated-memory.md (the promotion target,
             # 3.460 lines) because "c" sorts before "sansernes-arkiv-…".
             candidates = [f for f in d.glob("*.md") if f.is_file()]
+            # Pinnede filer holdes UDEN FOR kvoten (se _PINNED_PREFIX).
+            pinned = [f for f in candidates if f.name.startswith(_PINNED_PREFIX)]
+            candidates = [f for f in candidates if not f.name.startswith(_PINNED_PREFIX)]
             candidates.sort(key=_file_mtime)
             files.extend(candidates[-_CURATED_FILE_LIMIT:])
+            files.extend(sorted(pinned, key=_file_mtime))
     return files
 
 

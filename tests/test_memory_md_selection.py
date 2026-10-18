@@ -289,3 +289,98 @@ def test_terms_resultat_kan_ikke_muteres(tmp_path):
     assert isinstance(t, frozenset)
     with pytest.raises(AttributeError):
         t.add("snik")  # type: ignore[attr-defined]
+
+
+# ── Pin-mekanisme (18/10-2026) ──────────────────────────────────────────────
+#
+# `_CURATED_FILE_LIMIT` er en mtime-kvote der gaelder BAADE `memory/curated` og
+# `memory/daily`. Maalt 18/10-2026: 115 filer i curated, 1-3 nye i doegnet →
+# en varig vidensfil falder tavst ud af indekset efter ca. to uger. Pin er et
+# TILLAEG ovenpaa kvoten, saa en fil kan garanteres indekseret.
+
+
+def test_pinnet_fil_overlever_et_fyldt_mtime_vindue(tmp_path):
+    """Kernen i fixet: 40 NYERE filer maa ikke skubbe den pinnede ud."""
+    ws = tmp_path / "ws-pin"
+    d = ws / "memory" / "curated"
+    d.mkdir(parents=True)
+    now = time.time()
+    pinned = d / "pin-varig-viden.md"
+    pinned.write_text("# Varig\n- regel der skal blive\n", encoding="utf-8")
+    os.utime(pinned, (now - 100_000, now - 100_000))  # AELDST af alle
+    for i in range(40):
+        f = d / f"ny-{i:02d}.md"
+        f.write_text(f"# {i}\n- x\n", encoding="utf-8")
+        os.utime(f, (now - i, now - i))  # alle NYERE end den pinnede
+
+    names = {f.name for f in memory_search._memory_files(ws)}
+    assert "pin-varig-viden.md" in names, "pinnet fil skal overleve uanset mtime"
+    # ... og den fortraenger ikke nogen: kvoten giver stadig praecis 30.
+    assert len([f for f in memory_search._memory_files(ws) if f.parent == d]) == 31
+
+
+def test_pin_er_et_tillaeg_ikke_en_omfordeling(tmp_path):
+    """Uden pin: 30. Med pin: 31. Pin maa ikke stjaele en plads fra vinduet."""
+    ws = tmp_path / "ws-pin2"
+    d = ws / "memory" / "curated"
+    d.mkdir(parents=True)
+    now = time.time()
+    for i in range(35):
+        f = d / f"f-{i:02d}.md"
+        f.write_text(f"# {i}\n- x\n", encoding="utf-8")
+        os.utime(f, (now - i, now - i))
+    uden = [f for f in memory_search._memory_files(ws) if f.parent == d]
+    assert len(uden) == 30
+
+    pinned = d / "pin-ekstra.md"
+    pinned.write_text("# Pin\n- y\n", encoding="utf-8")
+    os.utime(pinned, (now - 999, now - 999))
+    med = [f for f in memory_search._memory_files(ws) if f.parent == d]
+    assert len(med) == 31
+    assert {f.name for f in uden} <= {f.name for f in med}, "ingen fil maa forsvinde"
+
+
+def test_pin_gaelder_ogsaa_memory_daily(tmp_path):
+    """Kvoten er delt mellem de to mapper — pin skal virke i begge."""
+    ws = tmp_path / "ws-pin3"
+    for sub in ("curated", "daily"):
+        (ws / "memory" / sub).mkdir(parents=True)
+    now = time.time()
+    p = ws / "memory" / "daily" / "pin-daglig.md"
+    p.write_text("# Daglig\n- vigtig\n", encoding="utf-8")
+    os.utime(p, (now - 100_000, now - 100_000))
+    for i in range(35):
+        f = ws / "memory" / "daily" / f"d-{i:02d}.md"
+        f.write_text(f"# {i}\n- x\n", encoding="utf-8")
+        os.utime(f, (now - i, now - i))
+    names = {f.name for f in memory_search._memory_files(ws)}
+    assert "pin-daglig.md" in names
+
+
+def test_pinnet_fil_bliver_faktisk_soegbar(tmp_path, monkeypatch):
+    """Ikke nok at filen er i listen — den skal ogsaa kunne findes."""
+    ws = tmp_path / "ws-pin4"
+    d = ws / "memory" / "curated"
+    d.mkdir(parents=True)
+    now = time.time()
+    pinned = d / "pin-unik-regel.md"
+    pinned.write_text(
+        "# Unik\n\n## Klammetricket\n\npgrep matcher sin egen kommandolinje og draeber sit eget kald.\n",
+        encoding="utf-8")
+    os.utime(pinned, (now - 100_000, now - 100_000))
+    for i in range(40):
+        f = d / f"stoej-{i:02d}.md"
+        f.write_text(f"# Stoej {i}\n\n- irrelevant fyld nummer {i}\n", encoding="utf-8")
+        os.utime(f, (now - i, now - i))
+
+    monkeypatch.setattr(memory_search, "_embed_ollama", lambda texts: np.stack([_bow(t) for t in texts]))
+    monkeypatch.setattr(memory_search, "_embed_single", lambda text: _bow(text))
+    memory_search._MEM_INDEX.clear()
+    files = memory_search._memory_files(ws)
+    mtimes = {str(f): memory_search._file_mtime(f) for f in files}
+    memory_search._build_and_cache_index(files, mtimes, ws)
+
+    hits = memory_search.search_memory("pgrep draeber sit eget kald", limit=5, workspace_dir=ws)
+    assert hits, "soegningen gav intet"
+    assert any("pin-unik-regel.md" in h["source"] for h in hits), \
+        f"pinnet fil blev ikke fundet; fik {[h['source'] for h in hits]}"

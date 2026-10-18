@@ -9,7 +9,9 @@ andens samtale, hvis de kendte id'et.
 
 - **Ejeren må alt.** Det er hans server; de andres arbejdsrum er krypteret
   i forvejen, og han er den der skal kunne rydde op.
-- **Alle andre må kun deres egne samtaler.** Sammenlignet på ARBEJDSRUM, ikke
+- **Alle andre må kun deres egne samtaler.** Ejeren kommer fra den seneste
+  stemplede BRUGERbesked; assistant/tool-rækker kan have proces-identitet og
+  må ikke overtage samtalen. Sammenlignet på ARBEJDSRUM, ikke
   på rå id: målt på CT105 findes Bjørns samtaler under tre stempler
   (hans Discord-id, `bjorn`, `system`), og et id-for-id-tjek ville have
   låst ham ude af 47 af sine egne.
@@ -66,7 +68,7 @@ def ejerstempel_tilhoerer_bruger(owner_user_id: str, user_id: str) -> bool:
 
 
 def session_tilhoerer_bruger(session_id: str, user_id: str) -> bool:
-    """Har samtalens seneste ejer-stempel samme arbejdsrum som brugeren?
+    """Har seneste stemplede brugerbesked samme arbejdsrum som brugeren?
 
     Ustemplede legacy-samtaler bevarer den hidtidige åbne adgang. Hjælperen
     bruges både af adgangsgaten og sessionslisten, så listen ikke tilbyder en

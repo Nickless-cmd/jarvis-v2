@@ -259,7 +259,7 @@ def list_chat_sessions(
     """List chat sessions, optionally filtered to one user.
 
     When user_id is given, the SQL first finds sessions with at least one
-    matching message, then applies the same latest-owner/workspace rule as
+    matching user message, then applies the same latest-user/workspace rule as
     the route access gate. This keeps a mixed historical session from being
     shown to a user who cannot subsequently open or write in it. Sessions
     where no user_id was ever recorded (older webchat rows) are EXCLUDED from
@@ -306,6 +306,7 @@ def list_chat_sessions(
                         SELECT owner.user_id
                         FROM chat_messages owner
                         WHERE owner.session_id = s.session_id
+                          AND owner.role = 'user'
                           AND owner.user_id IS NOT NULL
                           AND owner.user_id <> ''
                         ORDER BY owner.rowid DESC
@@ -321,6 +322,7 @@ def list_chat_sessions(
                     EXISTS (
                         SELECT 1 FROM chat_messages mu
                         WHERE mu.session_id = s.session_id
+                          AND mu.role = 'user'
                           AND mu.user_id = ?
                     )
                 )
@@ -333,8 +335,10 @@ def list_chat_sessions(
         # SQL's EXISTS is an efficient candidate filter, but it is not the
         # ownership rule: a historical row can carry another user's stamp.
         # Keep this aligned with maa_tilgaa_session(), which uses the latest
-        # non-empty owner stamp and workspace aliases. Owneren hentes i samme
-        # query, så en stor liste ikke giver ét databaseopslag pr. samtale.
+        # stamped USER message and workspace aliases. Assistant/tool rows can
+        # be written by another process identity and never transfer ownership.
+        # Owneren hentes i samme query, så en stor liste ikke giver ét
+        # databaseopslag pr. samtale.
         from core.identity.session_access import ejerstempel_tilhoerer_bruger
         owned_rows = [
             dict(row) for row in rows
@@ -1781,7 +1785,10 @@ def parse_channel_from_session_title(title: str | None) -> tuple[str, str | None
 
 
 def get_session_owner(session_id: str) -> str | None:
-    """Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel.
+    """Ejeren = user_id paa den seneste BRUGERbesked der har et stempel.
+
+    Assistant- og tool-rækker kan blive skrevet af en anden procesidentitet
+    end samtalens bruger. De må derfor aldrig flytte samtalens ejerskab.
     Returnerer None for ustemplede (legacy) sessioner."""
     sid = (session_id or "").strip()
     if not sid:
@@ -1790,7 +1797,8 @@ def get_session_owner(session_id: str) -> str | None:
     with connect() as c:
         row = c.execute(
             """SELECT user_id FROM chat_messages
-               WHERE session_id=? AND user_id IS NOT NULL AND user_id<>''
+               WHERE session_id=? AND role='user'
+                 AND user_id IS NOT NULL AND user_id<>''
                ORDER BY rowid DESC LIMIT 1""",
             (sid,),
         ).fetchone()

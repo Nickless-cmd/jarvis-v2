@@ -79,11 +79,26 @@ def _start_headless_chrome() -> bool:
                 "--disable-default-apps",
             ]
             logger.info("browser_session: launching headless Chrome: %s", " ".join(cmd))
-            _CHROME_PROC = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            try:
+                _CHROME_PROC = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except (FileNotFoundError, OSError) as exc:
+                # MÅLT 18/10-2026: `google-chrome` findes ikke i CT105 — kun
+                # Playwrights egen Chromium i ~/.cache/ms-playwright/. Uden
+                # denne fangst kastede Popen en uhåndteret FileNotFoundError
+                # HELE vejen op, så fallback'en til `chromium.launch()` i
+                # _connect_or_launch() aldrig blev nået — og browser-evnen var
+                # reelt død trods installerede browsere. Fald tilbage, ikke op.
+                logger.warning(
+                    "browser_session: kunne ikke starte google-chrome (%s) — "
+                    "falder tilbage til Playwrights egen Chromium",
+                    exc,
+                )
+                _CHROME_PROC = None
+                return False
 
     # Wait up to 8 s for the port to open
     for _ in range(16):

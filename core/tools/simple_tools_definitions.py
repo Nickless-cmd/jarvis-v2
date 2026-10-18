@@ -1683,12 +1683,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "get_weather",
             "description": (
-                "Vejr for et sted: nu, prognose, døgn og luftkvalitet. Default er "
-                "brugerens placering (Svendborg, Danmark). Returnerer Celsius med "
-                "mindre units='imperial'. mode='all' (standard) giver nu + "
-                "3-timers prognose + døgn + luftkvalitet; 'current' kun nu; "
-                "'hourly' kun prognose; 'daily' kun døgn. Prognosen har "
-                "3-timers opløsning og rækker 5 døgn frem."
+                "Vejr for et sted: nu, resten af dagen, prognose, døgn og luftkvalitet. "
+                "Default er brugerens placering (Svendborg, Danmark). Returnerer Celsius "
+                "med mindre units='imperial'. mode='all' (standard) giver nu + RESTEN AF "
+                "DAGEN (fra nu til midnat) + døgn + luftkvalitet — altså hele dagens "
+                "forløb. 'today' giver kun resten af dagen; 'current' kun nu; 'hourly' "
+                "3-timers prognose fremad; 'daily' kun døgn. Sæt date='YYYY-MM-DD' for "
+                "ÉN bestemt dag (fx 'hvordan bliver lørdag?') inden for 5 døgn. "
+                "Prognosen har 3-timers opløsning."
             ),
             "parameters": {
                 "type": "object",
@@ -1699,12 +1701,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "mode": {
                         "type": "string",
-                        "enum": ["all", "current", "hourly", "daily"],
-                        "description": "Hvor meget der returneres. Standard 'all'.",
+                        "enum": ["all", "current", "today", "hourly", "daily"],
+                        "description": "Hvor meget der returneres. Standard 'all' (nu + resten af dagen + døgn + luft).",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Én bestemt dag som YYYY-MM-DD, inden for 5 døgn. Filtrerer prognosen til den dag — hele dagen, ikke kun fremad.",
                     },
                     "hours": {
                         "type": "integer",
-                        "description": "Hvor mange timer prognosen dækker (1-48, standard 24).",
+                        "description": "Hvor mange timer prognosen dækker i 'hourly' (1-48, standard 24).",
                     },
                     "days": {
                         "type": "integer",
@@ -1728,20 +1734,29 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_exchange_rate",
-            "description": "Get current currency exchange rates.",
+            "description": (
+                "Valutakurser og konvertering. Giver kurser fra base til alle andre "
+                "valutaer (eller et udvalg), plus det konverterede beløb og den "
+                "omvendte kurs. Standard base er DKK. Historiske kurser er IKKE "
+                "tilgængelige på denne plan — kun gældende kurs nu."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "base": {
                         "type": "string",
-                        "description": "Base currency code, e.g. 'DKK', 'USD', 'EUR'",
+                        "description": "Base-valuta, fx 'DKK', 'USD', 'EUR'. Standard 'DKK'.",
                     },
                     "targets": {
                         "type": "string",
-                        "description": "Comma-separated target currency codes, e.g. 'USD,EUR,GBP'. Omit for top 10 currencies.",
+                        "description": "Kommaseparerede valutakoder, fx 'USD,EUR,GBP'. Udelad for alle.",
+                    },
+                    "amount": {
+                        "type": "number",
+                        "description": "Beløb der konverteres fra base (standard 1). Fx 500 for 'hvad koster 500 kroner i euro'.",
                     },
                 },
-                "required": ["base"],
+                "required": [],
             },
         },
     },
@@ -1825,24 +1840,46 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_news",
-            "description": "Search for recent news articles on a topic using NewsAPI.",
+            "description": (
+                "Nyheder via NewsAPI. Dansk er standard, og query er VALGFRI — uden "
+                "den søges der bredt på danske nyheder, så «hvad sker der i verden» "
+                "virker. Kan afgrænses til et datointerval og sorteres efter "
+                "udgivelsestid, relevans eller popularitet."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Topic or keywords to search for",
+                        "description": "Emne eller nøgleord. Udelad for en bred dansk nyhedssøgning.",
                     },
                     "language": {
                         "type": "string",
-                        "description": "Language code: 'da' (Danish), 'en' (English), etc. Default 'en'.",
+                        "description": "Sprogkode: 'da' (dansk, standard), 'en', osv.",
+                    },
+                    "from_date": {
+                        "type": "string",
+                        "description": "Tidligste udgivelsesdato, YYYY-MM-DD.",
+                    },
+                    "to_date": {
+                        "type": "string",
+                        "description": "Seneste udgivelsesdato, YYYY-MM-DD.",
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "enum": ["publishedAt", "relevancy", "popularity"],
+                        "description": "Sortering. Standard 'publishedAt' (nyeste først).",
+                    },
+                    "domains": {
+                        "type": "string",
+                        "description": "Kommaseparerede domæner, fx 'dr.dk,tv2.dk'. Valgfrit.",
                     },
                     "max_results": {
                         "type": "integer",
-                        "description": "Number of articles to return (default 5, max 10)",
+                        "description": "Antal artikler (standard 10, maks 100).",
                     },
                 },
-                "required": ["query"],
+                "required": [],
             },
         },
     },
@@ -1850,13 +1887,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "wolfram_query",
-            "description": "Query Wolfram Alpha for mathematical calculations, unit conversions, scientific facts, statistics, and precise factual answers. Use this for anything requiring computation or exact numerical answers.",
+            "description": (
+                "Wolfram Alpha: beregninger, enhedskonvertering, videnskabelige fakta, "
+                "statistik og præcise tal. mode='short' (standard) giver ét kort svar; "
+                "mode='pods' giver de fulde sektioner med enheder og kilde — brug den "
+                "når svaret skal forklares, ikke bare oplyses."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The question or calculation, e.g. 'integral of x^2', 'speed of light in km/h', 'population of Denmark'",
+                        "description": "Spørgsmålet eller beregningen, fx 'integral of x^2', 'speed of light in km/h', 'population of Denmark'",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["short", "pods"],
+                        "description": "'short' = ét kort svar (hurtig). 'pods' = fulde sektioner med enheder og kontekst.",
                     },
                 },
                 "required": ["query"],

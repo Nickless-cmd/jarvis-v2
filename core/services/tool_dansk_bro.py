@@ -54,9 +54,10 @@ from __future__ import annotations
 #: oversættelse af den engelske beskrivelse. Kommasepareret, små bogstaver.
 DANSKE_UDTRYK: dict[str, str] = {
     # ── Vejr, nyheder, eksternt ──────────────────────────────────────────
-    "get_weather": "vejr, vejret, temperatur, hvordan er vejret, vejrudsigt, hvor koldt er det, prognose, bliver det regn, kommer der regn, hvordan bliver vejret, weekendens vejr, luftkvalitet",
-    "get_news": "nyheder, find nyheder, hvad sker der i verden, seneste nyt",
-    "get_exchange_rate": "valutakurs, vekselkurs, hvad koster en dollar, kursen",
+    "get_weather": "vejr, vejret, temperatur, hvordan er vejret, vejrudsigt, hvor koldt er det, prognose, bliver det regn, kommer der regn, hvordan bliver vejret, weekendens vejr, luftkvalitet, resten af dagen, dagens vejr, vejret i dag, hvordan bliver i dag, i morgen, på lørdag, på søndag, næste uge, bliver det godt vejr",
+    "get_news": "nyheder, find nyheder, hvad sker der i verden, seneste nyt, dagens nyheder, nyheder i dag, hvad er der sket, seneste nyheder, nyheder om, hvad skriver aviserne",
+    "get_exchange_rate": "valutakurs, vekselkurs, hvad koster en dollar, kursen, omregn, konverter, hvor mange dollar, hvor mange euro, hvor meget er, pund, dollar, euro, valuta",
+    "wolfram_query": "beregn, regn ud, matematik, hvad er resultatet, omregn enheder, hvor mange meter, hvor mange kilo, videnskabeligt, statistik, præcist tal, befolkningstal, hvor mange indbyggere",
     # ── Kommunikation ────────────────────────────────────────────────────
     "send_discord_dm": "send en besked, skriv til, discord besked, skriv til mig på discord, dm",
     "send_telegram_message": "telegram besked, skriv på telegram, send på telegram",

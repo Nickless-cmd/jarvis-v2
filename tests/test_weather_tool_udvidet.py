@@ -121,15 +121,51 @@ def test_current_henter_kun_nu(owm):
     assert stier == ["/data/2.5/weather"], f"uventede kald: {stier}"
 
 
-def test_all_giver_nu_prognose_doegn_og_luft(owm):
+def test_all_giver_nu_resten_af_dagen_doegn_og_luft(owm):
+    """Standard-svaret skal dække HELE dagen — fra nu til midnat."""
     r = web._exec_get_weather({"city": "Svendborg, DK", "mode": "all"})
 
     assert r["status"] == "ok"
-    for noegle in ("now", "hourly", "daily", "air"):
+    for noegle in ("now", "today", "daily", "air"):
         assert noegle in r, f"mangler {noegle}"
+    assert "hourly" not in r, "hourly er en egen mode — all giver today i stedet"
     stier = [k[0] for k in owm["_kald"]]
     assert "/data/2.5/forecast" in stier
     assert "/data/2.5/air_pollution" in stier
+
+
+def test_today_gaar_fra_nu_til_midnat(owm):
+    """today må ikke tage gårsdagens eller nattens punkter med — kun resten."""
+    r = web._exec_get_weather({"city": "Svendborg, DK", "mode": "today"})
+
+    assert r["status"] == "ok"
+    assert r["today_date"] == "2026-10-18"
+    tidspunkter = [p["time"] for p in r["today"]]
+    # Nu = 04 UTC = 06 lokal. Punkterne 06, 11 og 20 UTC er alle på dagen;
+    # 11 UTC den 19. er næste dag og skal IKKE med.
+    assert all(t.startswith("2026-10-18") for t in tidspunkter), tidspunkter
+    assert tidspunkter == sorted(tidspunkter), "rækkefølgen skal være kronologisk"
+
+
+def test_date_giver_hele_den_bestemte_dag(owm):
+    """date=YYYY-MM-DD filtrerer til én dag — hele dagen, ikke kun fremad."""
+    r = web._exec_get_weather({"city": "Svendborg, DK", "date": "2026-10-19"})
+
+    assert r["status"] == "ok"
+    assert r["date"] == "2026-10-19"
+    assert r["hourly"], "dagen skal have punkter"
+    assert all(p["time"].startswith("2026-10-19") for p in r["hourly"]), r["hourly"]
+    assert len(r["daily"]) == 1
+    assert r["daily"][0]["date"] == "2026-10-19"
+
+
+def test_ugyldig_date_ignoreres_frem_for_at_kaste(owm):
+    """Et vrøvle-input i date må ikke vaelte kaldet."""
+    r = web._exec_get_weather({"city": "Svendborg, DK", "date": "tulipan"})
+
+    assert r["status"] == "ok"
+    assert "date" not in r, "ugyldig dato skal ikke sætte et date-felt"
+    assert r["mode"] == "all"
 
 
 def test_nu_baerer_solopgang_sigtbarhed_og_vindstoed(owm):

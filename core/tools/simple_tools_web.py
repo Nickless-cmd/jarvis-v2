@@ -1054,6 +1054,18 @@ def _read_user_location() -> str:
 _AQI_LABEL = {1: "god", 2: "rimelig", 3: "moderat", 4: "dårlig", 5: "meget dårlig"}
 
 
+def _er_dato(tekst: str) -> bool:
+    """Sandt hvis ``tekst`` er en gyldig YYYY-MM-DD-dato.
+
+    Bruges til ``date``-parameteren: et vrøvle-input skal ignoreres, ikke kaste.
+    """
+    try:
+        datetime.strptime(str(tekst), "%Y-%m-%d")
+        return True
+    except (TypeError, ValueError):  # ikke en dato → parameteren ignoreres
+        return False
+
+
 def _owm_get(path: str, params: dict[str, Any], api_key: str, timeout: float = 12.0) -> dict[str, Any]:
     """Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``."""
     query = "&".join(f"{k}={urllib_request.quote(str(v))}" for k, v in params.items())
@@ -1156,13 +1168,25 @@ def _owm_daily(punkter: list[dict[str, Any]], offset_s: int, antal: int) -> list
 def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
     """Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet.
 
-    ``mode``: ``all`` (standard — nu + 3-timers prognose + døgn + luft),
-    ``current`` (kun nu), ``hourly`` (kun prognose) eller ``daily`` (kun døgn).
+    ``mode``: ``all`` (standard — nu + resten af dagen + døgn + luft),
+    ``current`` (kun nu), ``today`` (resten af dagen, fra nu til midnat),
+    ``hourly`` (3-timers prognose fremad) eller ``daily`` (kun døgn).
+
+    ``date`` (YYYY-MM-DD) filtrerer til ÉN bestemt dag inden for prognosens
+    rækkevidde — fx «hvordan bliver lørdag?». Uden ``date`` er ``all`` dagens
+    forløb fra nu til midnat, hvilket er det morgenbriefet læser.
     """
     city = str(args.get("city") or "").strip() or _read_user_location()
     mode = str(args.get("mode") or "all").strip().lower()
-    if mode not in ("current", "hourly", "daily", "all"):
+    if mode not in ("current", "hourly", "daily", "all", "today"):
         mode = "all"
+    # Specifik dag (18/10-2026, Bjørn: «kan toolet hente specifikke dage osse?»).
+    # Kun en gyldig YYYY-MM-DD accepteres; alt andet ignoreres frem for at kaste.
+    oensket_dag = str(args.get("date") or "").strip()
+    if oensket_dag and not _er_dato(oensket_dag):
+        oensket_dag = ""
+    if oensket_dag:
+        mode = "daily" if mode == "all" else mode
     try:
         timer = max(1, min(int(args.get("hours") or 24), 48))
     except (TypeError, ValueError):
@@ -1227,7 +1251,7 @@ def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
         "status": "ok",
     }
 
-    if mode in ("hourly", "daily", "all"):
+    if mode in ("hourly", "daily", "all", "today") or oensket_dag:
         prognose = _owm_get("/data/2.5/forecast", faelles, api_key)
         if prognose.get("_error"):
             svar["forecast_error"] = prognose["_error"]
@@ -1235,23 +1259,48 @@ def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
         else:
             punkter = prognose.get("list") or []
         if punkter:
-            graense = float(nu_raa.get("dt") or 0) + timer * 3600.0
-            if mode in ("hourly", "all"):
+            nu_dt = float(nu_raa.get("dt") or 0)
+            i_dag = _owm_local(nu_dt, offset)[:10]
+
+            def _punkt(p: dict[str, Any]) -> dict[str, Any]:
+                return {
+                    "time": _owm_local(p.get("dt"), offset),
+                    "temp_c": (p.get("main") or {}).get("temp"),
+                    "description": ((p.get("weather") or [{}])[0] or {}).get("description", ""),
+                    "precip_mm": _owm_precip_mm(p),
+                    "chance_pct": int(round(float(p.get("pop") or 0) * 100)),
+                    "wind_ms": (p.get("wind") or {}).get("speed"),
+                    "wind_gust_ms": (p.get("wind") or {}).get("gust"),
+                }
+
+            if oensket_dag:
+                # Én bestemt dag: alle punkter på den lokale dato — hele dagen,
+                # ikke kun fremad, så man kan se morgenens forløb fra 00:00.
+                svar["date"] = oensket_dag
                 svar["hourly"] = [
-                    {
-                        "time": _owm_local(p.get("dt"), offset),
-                        "temp_c": (p.get("main") or {}).get("temp"),
-                        "description": ((p.get("weather") or [{}])[0] or {}).get("description", ""),
-                        "precip_mm": _owm_precip_mm(p),
-                        "chance_pct": int(round(float(p.get("pop") or 0) * 100)),
-                        "wind_ms": (p.get("wind") or {}).get("speed"),
-                        "wind_gust_ms": (p.get("wind") or {}).get("gust"),
-                    }
-                    for p in punkter
-                    if float(p.get("dt") or 0) <= graense
-                ][: max(1, timer // 3)]
-            if mode in ("daily", "all"):
-                svar["daily"] = _owm_daily(punkter, offset, dage)
+                    _punkt(p) for p in punkter if _owm_local(p.get("dt"), offset)[:10] == oensket_dag
+                ]
+                svar["daily"] = [
+                    d for d in _owm_daily(punkter, offset, 5) if d.get("date") == oensket_dag
+                ]
+            else:
+                if mode == "hourly":
+                    graense = nu_dt + timer * 3600.0
+                    svar["hourly"] = [
+                        _punkt(p) for p in punkter if float(p.get("dt") or 0) <= graense
+                    ][: max(1, timer // 3)]
+                if mode in ("today", "all"):
+                    # Resten af dagen: fra NU til midnat, i stedet for et fast
+                    # timetal. Det er det morgenbriefet læser — hele dagen.
+                    svar["today"] = [
+                        _punkt(p)
+                        for p in punkter
+                        if _owm_local(p.get("dt"), offset)[:10] == i_dag
+                        and float(p.get("dt") or 0) >= nu_dt
+                    ]
+                    svar["today_date"] = i_dag
+                if mode in ("daily", "all"):
+                    svar["daily"] = _owm_daily(punkter, offset, dage)
 
     if mode == "all" and coord.get("lat") is not None and coord.get("lon") is not None:
         luft = _owm_get(
@@ -1282,9 +1331,20 @@ def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_get_exchange_rate(args: dict[str, Any]) -> dict[str, Any]:
-    """Currency exchange rates via exchangerate.host."""
-    base = str(args.get("base") or "DKK").strip().upper()
+    """Valutakurser via exchangerate.host — med lokal konvertering.
+
+    Udvidet 18/10-2026. Målt på nøglen: ``/live`` virker (173 quotes), men
+    ``/historical`` og ``/convert`` svarer **HTTP 429 rate_limit_reached** på
+    denne plan. Konverteringen regnes derfor LOKALT ud fra live-raten i stedet
+    for at kalde et endpoint der ikke er åbent — og det er præcist nok, fordi
+    begge tal kommer fra samme øjebliksbillede.
+    """
+    base = str(args.get("base") or "DKK").strip().upper() or "DKK"
     targets = str(args.get("targets") or "").strip().upper()
+    try:
+        beloeb = float(args.get("amount") or 1.0)
+    except (TypeError, ValueError):  # "mange" er ikke et beloeb → 1 som neutral
+        beloeb = 1.0
 
     api_key = _read_api_key("exchangerate_api_key")
     if not api_key:
@@ -1300,48 +1360,108 @@ def _exec_get_exchange_rate(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"Exchange rate fetch failed: {exc}", "status": "error"}
 
     if not data.get("success"):
-        return {"error": data.get("error", {}).get("info", "API error"), "status": "error"}
+        return {"error": (data.get("error") or {}).get("info", "API error"), "status": "error"}
 
-    quotes = data.get("quotes", {})
+    quotes = data.get("quotes") or {}
     # Strip source prefix from keys (e.g. "DKKUSD" → "USD")
-    rates = {k[len(base):]: v for k, v in quotes.items()}
-    return {"base": base, "rates": rates, "status": "ok"}
+    rates = {k[len(base):]: v for k, v in quotes.items() if k.startswith(base)}
+    return {
+        "base": base,
+        "rates": rates,
+        "amount": beloeb,
+        # Konvertering fra den SAMME øjebliksbillede-rat: beløb × kurs.
+        "converted": {k: round(beloeb * float(v), 4) for k, v in rates.items()},
+        # Omvendt kurs — hvor mange base koster én enhed af valutaen.
+        "inverse": {
+            k: round(1.0 / float(v), 6) for k, v in rates.items() if v
+        },
+        "rate_count": len(rates),
+        "timestamp": data.get("timestamp"),
+        "status": "ok",
+    }
 
 
 def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
-    """Recent news via NewsAPI."""
-    query = str(args.get("query") or "").strip()
-    if not query:
-        return {"error": "query is required", "status": "error"}
-    language = str(args.get("language") or "en").strip()
-    max_results = min(int(args.get("max_results") or 5), 10)
+    """Nyheder via NewsAPI — bred dansk søgning som standard.
+
+    Udvidet 18/10-2026 (Bjørn: «det var nogen af dine aller første tools»). Før
+    krævede den en ``query`` og fejlede derfor på «hvad sker der i verden», og
+    den kunne hverken datoafgrænse eller sortere. Målt på nøglen 18/10-2026:
+
+      ``/v2/top-headlines?country=dk`` → HTTP 200 med **0 artikler**
+      (free-plan-hul; ``country=us`` giver 2 af 35). Vi bruger den derfor ikke.
+      ``/v2/everything?q=Danmark&language=da`` → 1.931 træf. Det er vejen.
+      ``/v2/everything`` uden ``q`` → HTTP 400 «scope too broad». Derfor en bred
+      dansk standard-søgning i stedet for at fejle.
+    """
+    query = str(args.get("query") or "").strip() or "Danmark"
+    language = str(args.get("language") or "da").strip().lower() or "da"
+    sort_by = str(args.get("sort_by") or "publishedAt").strip().lower()
+    if sort_by not in ("publishedat", "relevancy", "popularity"):
+        sort_by = "publishedat"
+    sort_by = {"publishedat": "publishedAt"}.get(sort_by, sort_by)
+    try:
+        max_results = max(1, min(int(args.get("max_results") or 10), 100))
+    except (TypeError, ValueError):  # ikke-tal → standard frem for et kast
+        max_results = 10
 
     api_key = _read_api_key("newsapi_api_key")
     if not api_key:
         return {"error": "newsapi_api_key not configured in runtime.json", "status": "error"}
 
-    url = (
-        f"https://newsapi.org/v2/everything"
-        f"?q={urllib_request.quote(query)}&language={language}"
-        f"&pageSize={max_results}&sortBy=publishedAt&apiKey={api_key}"
-    )
+    dele = [
+        f"q={urllib_request.quote(query)}",
+        f"language={urllib_request.quote(language)}",
+        f"pageSize={max_results}",
+        f"sortBy={sort_by}",
+    ]
+    # Datoafgrænsning (18/10-2026): «hvad skete der i går» var umuligt før.
+    for felt, noegle in (("from_date", "from"), ("to_date", "to")):
+        vaerdi = str(args.get(felt) or "").strip()
+        if vaerdi and _er_dato(vaerdi):
+            dele.append(f"{noegle}={vaerdi}")
+    domaener = str(args.get("domains") or "").strip()
+    if domaener:
+        dele.append(f"domains={urllib_request.quote(domaener)}")
+
+    url = f"https://newsapi.org/v2/everything?{'&'.join(dele)}&apiKey={api_key}"
     try:
         with urllib_request.urlopen(urllib_request.Request(url), timeout=15) as resp:
             data = json.loads(resp.read())
     except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
         return {"error": f"News fetch failed: {exc}", "status": "error"}
 
-    articles = data.get("articles", [])
-    lines: list[str] = []
-    for i, a in enumerate(articles, 1):
-        title = a.get("title", "")
-        source = a.get("source", {}).get("name", "")
-        published = a.get("publishedAt", "")[:10]
-        description = (a.get("description") or "")[:200]
-        url_a = a.get("url", "")
-        lines.append(f"{i}. **{title}** ({source}, {published})\n   {description}\n   {url_a}")
-    text = "\n\n".join(lines) if lines else "[no articles found]"
-    return {"text": text, "article_count": len(articles), "query": query, "status": "ok"}
+    if data.get("status") == "error":
+        return {"error": data.get("message", "NewsAPI error"), "status": "error"}
+
+    artikler = data.get("articles") or []
+    linjer: list[str] = []
+    for i, a in enumerate(artikler, 1):
+        titel = a.get("title") or ""
+        kilde = (a.get("source") or {}).get("name") or ""
+        udgivet = (a.get("publishedAt") or "")[:16].replace("T", " ")
+        beskrivelse = (a.get("description") or "")[:200]
+        link = a.get("url") or ""
+        linjer.append(f"{i}. **{titel}** ({kilde}, {udgivet})\n   {beskrivelse}\n   {link}")
+    tekst = "\n\n".join(linjer) if linjer else "[no articles found]"
+    return {
+        "text": tekst,
+        "articles": [
+            {
+                "title": a.get("title"),
+                "source": (a.get("source") or {}).get("name"),
+                "published_at": a.get("publishedAt"),
+                "url": a.get("url"),
+            }
+            for a in artikler
+        ],
+        "article_count": len(artikler),
+        "total_results": data.get("totalResults"),
+        "query": query,
+        "language": language,
+        "sort_by": sort_by,
+        "status": "ok",
+    }
 
 
 def _stage_image_preview(image_bytes: bytes | None, source_path: str) -> str:
@@ -1563,14 +1683,65 @@ def _exec_read_archive(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:
-    """Precise answers via Wolfram Alpha Short Answers API."""
+    """Wolfram Alpha — kort svar eller de fulde pods.
+
+    Udvidet 18/10-2026. Før brugte den kun Short Answers (``/v1/result``), som
+    giver ÉT ord og intet mere — «Danmarks befolkning» blev til et tal uden
+    kilde eller enhed. ``/v2/query`` med ``output=json&format=plaintext`` virker
+    på samme app_id (målt 18/10) og giver de rigtige sektioner, derfor
+    ``mode='pods'``. Short answers er stadig standard: hurtigere og billigere.
+    """
     query = str(args.get("query") or "").strip()
     if not query:
         return {"error": "query is required", "status": "error"}
+    mode = str(args.get("mode") or "short").strip().lower()
+    if mode not in ("short", "pods"):
+        mode = "short"
 
     app_id = _read_api_key("wolframalpha_app_id")
     if not app_id:
         return {"error": "wolframalpha_app_id not configured in runtime.json", "status": "error"}
+
+    if mode == "pods":
+        url = (
+            "https://api.wolframalpha.com/v2/query"
+            f"?appid={app_id}&input={urllib_request.quote(query)}"
+            "&format=plaintext&output=json"
+        )
+        try:
+            with urllib_request.urlopen(urllib_request.Request(url), timeout=25) as resp:
+                data = json.loads(resp.read())
+        except urllib_error.HTTPError as exc:  # 4xx/5xx fra Wolfram → fejl til kalderen
+            return {"error": f"Wolfram Alpha error: {exc}", "status": "error"}
+        except (urllib_error.URLError, OSError, json.JSONDecodeError) as exc:  # netvaerk/uformeligt JSON → fejl til kalderen
+            return {"error": f"Wolfram Alpha fetch failed: {exc}", "status": "error"}
+
+        svar_blok = data.get("queryresult") or {}
+        if not svar_blok.get("success"):
+            # Wolfram svarer 200 med success=false når den ikke forstår input.
+            fejl = ((svar_blok.get("error") or {}).get("msg")) or "could not interpret this query"
+            return {"error": str(fejl), "query": query, "status": "error"}
+
+        pods: list[dict[str, Any]] = []
+        for pod in svar_blok.get("pods") or []:
+            underdele = [
+                sub.get("plaintext")
+                for sub in (pod.get("subpods") or [])
+                if sub.get("plaintext")
+            ]
+            if underdele:
+                pods.append({"title": pod.get("title") or "", "lines": underdele})
+        tekst = "\n\n".join(
+            f"**{p['title']}**\n" + "\n".join(p["lines"]) for p in pods
+        )
+        return {
+            "mode": "pods",
+            "query": query,
+            "pods": pods,
+            "text": tekst or "[no plaintext pods]",
+            "pod_count": len(pods),
+            "status": "ok",
+        }
 
     url = (
         f"https://api.wolframalpha.com/v1/result"
@@ -1586,7 +1757,7 @@ def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:
     except (urllib_error.URLError, OSError) as exc:
         return {"error": f"Wolfram Alpha fetch failed: {exc}", "status": "error"}
 
-    return {"answer": answer, "query": query, "status": "ok"}
+    return {"mode": "short", "answer": answer, "query": query, "status": "ok"}
 
 
 __all__ = [

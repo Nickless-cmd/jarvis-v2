@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
 import threading
 import time
-from typing import Any
+from typing import Any, Callable
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -253,8 +254,22 @@ def warm_session_prefix_async(
     session_id: str,
     **kwargs: Any,
 ) -> None:
-    """Fire-and-forget: kør warm_session_prefix i en daemon-tråd. Blokerer aldrig
-    kalderen (endpoint returnerer straks). Self-safe."""
+    """Fire-and-forget: kør warm_session_prefix i en GENBRUGT daemon-tråd.
+
+    Blokerer aldrig kalderen (endpoint returnerer straks). Self-safe.
+
+    ROD (målt 18/10-2026): denne funktion startede en NY tråd pr. kald. Hver
+    tråd åbner sin egen thread-lokale SQLite-forbindelse (``db_core._conn_pool``
+    er ``threading.local()``), og ``sqlite3`` nægter at lade en anden tråd lukke
+    den. Målt i drift: ``session-prewarm`` stod for 172 af api-processens 374
+    pool-fødsler på 9 minutter — 46 %, mere end nogen anden tråd. Warmeren kaldes
+    per chat-tur, så det var ~én ny forbindelse pr. tur oveni selve turen.
+
+    Fixet er samme mønster som cadence-workerne (04fe9b08f) og heartbeat-puljen:
+    én langlivet tråd med egen kø. Tråden — og dermed dens DB-forbindelse —
+    genbruges, og den udløber efter ``_WORKER_TTL_S`` uden arbejde, så antallet
+    falder tilbage til nul i stille perioder.
+    """
     def _run() -> None:
         try:
             res = warm_session_prefix(session_id, **kwargs)
@@ -266,7 +281,110 @@ def warm_session_prefix_async(
                 )
         except Exception:
             logger.debug("session_prewarm: async warm fejlede", exc_info=True)
+
     try:
-        threading.Thread(target=_run, name="session-prewarm", daemon=True).start()
+        _dispatch(_run)
     except Exception:
-        logger.debug("session_prewarm: kunne ikke starte warm-tråd", exc_info=True)
+        logger.debug("session_prewarm: kunne ikke aflevere warm-opgave", exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# Genbrugt worker-tråd (18/10-2026)
+# ---------------------------------------------------------------------------
+#
+# Hvorfor ikke ThreadPoolExecutor: dens workers er NON-daemon, og dens
+# atexit-handler joiner dem ved interpreter-exit — en warm der hænger på et
+# DeepSeek-kald ville kunne blokere en genstart. Rå daemon-tråde gør ikke.
+#
+# Designet er heartbeat-puljens (heartbeat_runtime._daemon_pool_*), men holdt
+# lokalt: denne fil må ikke importere heartbeat-laget for at varme en cache.
+#   - Er tråden ledig, får den opgaven (genbrug → samme DB-forbindelse).
+#   - Er den optaget, får opgaven sin EGEN tråd. En warm der hænger må aldrig
+#     blokere den næste brugers warm — det ville gøre en optimering til en
+#     flaskehals.
+#   - En tråd der ikke bliver færdig inden sin deadline gives ALDRIG tilbage
+#     til puljen; den dør efter TTL.
+_WORKER_TTL_S = 30.0
+_WORKER_LOCK = threading.Lock()
+_WORKER_IDLE: list[tuple[threading.Thread, "queue.Queue"]] = []
+_WORKER_STATS: dict[str, int] = {"spawned": 0, "reused": 0}
+
+
+def _worker_loop(task_q: "queue.Queue") -> None:
+    """Kør opgaver fra egen kø indtil TTL udløber uden nyt arbejde."""
+    while True:
+        try:
+            item = task_q.get(timeout=_WORKER_TTL_S)
+        except queue.Empty:
+            # Dobbelt-tjek under låsen: en submitter kan have lagt en opgave i
+            # vinduet mellem at vi fik Empty og nu. Fjern os selv fra _IDLE og
+            # afslut KUN hvis køen stadig er tom.
+            with _WORKER_LOCK:
+                try:
+                    item = task_q.get_nowait()
+                except queue.Empty:
+                    for i, (_t, q) in enumerate(_WORKER_IDLE):
+                        if q is task_q:
+                            _WORKER_IDLE.pop(i)
+                            break
+                    return
+        if item is None:
+            return
+        try:
+            item()
+        except Exception:
+            # opgaven fanger selv; sidste værn mod at dræbe workeren
+            pass
+
+
+def _dispatch(job: Callable[[], None]) -> None:
+    """Giv opgaven til den ledige worker — eller føds en frisk.
+
+    Opgaven lægges i køen MENS låsen holdes. Ellers kan en tråd der er ved at
+    udløbe sin TTL nå at fjerne sig selv og dø i vinduet mellem at vi tog den
+    fra _IDLE og til vi lagde opgaven — og så ville opgaven aldrig blive løst.
+
+    Tråden lægges SELV tilbage i puljen når opgaven er færdig. Det er dét der
+    gør genbrug muligt: uden tilbagelægningen ville hvert kald føde en ny tråd —
+    og dermed en ny DB-forbindelse — præcis som før fixet.
+    """
+    with _WORKER_LOCK:
+        while _WORKER_IDLE:
+            t, q = _WORKER_IDLE.pop()
+            if not t.is_alive():
+                continue  # død eller døende — smid væk, prøv næste
+            q.put_nowait(_wrap(job, t, q))
+            _WORKER_STATS["reused"] += 1
+            return
+        q = queue.Queue(maxsize=1)
+        t = threading.Thread(
+            target=_worker_loop,
+            args=(q,),
+            name="session-prewarm",
+            daemon=True,
+        )
+        t.start()
+        q.put_nowait(_wrap(job, t, q))
+        _WORKER_STATS["spawned"] += 1
+
+
+def _wrap(job: Callable[[], None], t: threading.Thread, q: "queue.Queue") -> Callable[[], None]:
+    """Pak opgaven ind med tilbagelægning til puljen — også når den fejler."""
+    def _wrapped() -> None:
+        try:
+            job()
+        finally:
+            _release_worker(t, q)
+    return _wrapped
+
+
+def _release_worker(t: threading.Thread, q: "queue.Queue") -> None:
+    """Læg tråden tilbage i puljen, så næste kald kan genbruge den."""
+    with _WORKER_LOCK:
+        _WORKER_IDLE.append((t, q))
+
+
+def _worker_stats() -> dict[str, int]:
+    """Observability: hvor mange tråde er født vs. genbrugt. Self-safe."""
+    with _WORKER_LOCK:
+        return {**_WORKER_STATS, "idle": len(_WORKER_IDLE)}

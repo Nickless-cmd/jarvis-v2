@@ -8,6 +8,9 @@ The deepseek POST + message builder are monkeypatched so no network/DB is touche
 """
 from __future__ import annotations
 
+import threading as _threading
+import time as _time
+
 import core.services.session_prewarm as sp
 
 
@@ -157,3 +160,91 @@ def test_scriptets_default_er_ikke_laengere_haardkodet():
     assert 'DEFAULT_MODEL = "deepseek-v4-flash"' not in kilde
     assert "DEFAULT_MODEL = _konfigureret_model()" in kilde
     assert "KANONISK_FLASH" in kilde
+
+
+# ── Genbrugt worker-tråd (18/10-2026) ───────────────────────────────────────
+#
+# ROD: `warm_session_prefix_async` startede en NY tråd pr. kald. Hver tråd åbner
+# sin egen thread-lokale SQLite-forbindelse, og sqlite3 nægter at lade en anden
+# tråd lukke den. Målt i drift 18/10: `session-prewarm` stod for 172 af
+# api-processens 374 pool-fødsler på 9 minutter (46 %).
+#
+# Disse tests måler det direkte: samme tråd OG samme DB-forbindelse på tværs af
+# kald. Det er selve lækagen — ikke en proxy for den.
+
+
+
+def _reset_workers():
+    """Ryd puljen mellem tests — ellers måler testen sin egen forgænger."""
+    with sp._WORKER_LOCK:
+        sp._WORKER_IDLE.clear()
+        sp._WORKER_STATS["spawned"] = 0
+        sp._WORKER_STATS["reused"] = 0
+
+
+def test_async_genbruger_samme_traad_paa_tvaers_af_kald(monkeypatch):
+    """Kernen i fixet: to kald i træk må ikke føde to tråde."""
+    _reset_workers()
+    _reset_throttle()
+    monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)
+    monkeypatch.setattr(sp, "_deepseek_key", lambda: "key", raising=True)
+
+    import core.services.visible_model as vm
+    monkeypatch.setattr(
+        vm, "_build_visible_chat_messages_for_github",
+        lambda *a, **k: [{"role": "system", "content": "sys"}], raising=True,
+    )
+    monkeypatch.setattr(
+        sp, "_post_deepseek",
+        lambda *a, **k: {"usage": {"prompt_tokens": 1, "prompt_cache_miss_tokens": 1}},
+        raising=True,
+    )
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **_kw: None)
+
+    traade: list[int] = []
+    original = sp.warm_session_prefix
+
+    def _maalt(session_id, **kwargs):
+        traade.append(_threading.get_ident())
+        return original(session_id, **kwargs)
+
+    monkeypatch.setattr(sp, "warm_session_prefix", _maalt, raising=True)
+
+    for i in range(3):
+        sp.warm_session_prefix_async(f"chat-genbrug-{i}", force=True)
+        _time.sleep(0.35)  # lad workeren blive færdig og lægge sig tilbage
+
+    assert len(traade) == 3, f"alle tre kald skal være kørt, fik {len(traade)}"
+    assert len(set(traade)) == 1, f"samme tråd på tværs af kald, fik {set(traade)}"
+    stats = sp._worker_stats()
+    assert stats["spawned"] == 1, f"kun ÉN tråd må være født, fik {stats}"
+    assert stats["reused"] == 2, f"de to næste skal være genbrugt, fik {stats}"
+
+
+def test_async_foeder_ikke_en_traad_pr_kald(monkeypatch):
+    """Ti kald i træk: trådantallet skal ikke vokse med antallet af kald."""
+    _reset_workers()
+    _reset_throttle()
+    monkeypatch.setattr(sp, "warm_session_prefix", lambda *a, **k: {"status": "ok"}, raising=True)
+
+    for i in range(10):
+        sp.warm_session_prefix_async(f"chat-mange-{i}")
+        _time.sleep(0.05)
+
+    _time.sleep(0.4)
+    stats = sp._worker_stats()
+    assert stats["spawned"] <= 2, f"ti kald må ikke føde ti tråde, fik {stats}"
+
+
+def test_async_kaster_aldrig_naar_workeren_fejler(monkeypatch):
+    """Self-safe: en fejlende warm må ikke ramme kalderen."""
+    _reset_workers()
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("warm fejlede")
+
+    monkeypatch.setattr(sp, "warm_session_prefix", _boom, raising=True)
+    sp.warm_session_prefix_async("chat-fejl")  # må ikke kaste
+    _time.sleep(0.3)
+    # workeren skal stadig være i live og kunne tage næste opgave
+    assert sp._worker_stats()["spawned"] >= 1

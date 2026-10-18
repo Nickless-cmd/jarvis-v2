@@ -258,13 +258,13 @@ def list_chat_sessions(
 ) -> list[dict[str, object]]:
     """List chat sessions, optionally filtered to one user.
 
-    When user_id is given, only returns sessions that have AT LEAST ONE
-    message stamped with that user_id. This is the privacy guard for
-    multi-user JarvisX: Bjørn shouldn't see Mikkel's chats and vice
-    versa. Sessions where no user_id was ever recorded (older webchat
-    rows) are EXCLUDED from a filtered query — they're either ambiguous
-    or owner-only and should be approached explicitly via the unfiltered
-    API.
+    When user_id is given, the SQL first finds sessions with at least one
+    matching message, then applies the same latest-owner/workspace rule as
+    the route access gate. This keeps a mixed historical session from being
+    shown to a user who cannot subsequently open or write in it. Sessions
+    where no user_id was ever recorded (older webchat rows) are EXCLUDED from
+    a filtered query — they're either ambiguous or owner-only and should be
+    approached explicitly via the unfiltered API.
 
     user_id=None preserves the legacy behavior (return everything) so
     Mission Control and other internal callers aren't affected.
@@ -302,6 +302,15 @@ def list_chat_sessions(
                         FROM chat_messages m2
                         WHERE m2.session_id = s.session_id
                     ), 0) AS message_count,
+                    COALESCE((
+                        SELECT owner.user_id
+                        FROM chat_messages owner
+                        WHERE owner.session_id = s.session_id
+                          AND owner.user_id IS NOT NULL
+                          AND owner.user_id <> ''
+                        ORDER BY owner.rowid DESC
+                        LIMIT 1
+                    ), '') AS owner_user_id,
                     s.workspace_kind,
                     -- Projektet. Kolonnen har ligget her hele tiden; den blev
                     -- bare aldrig sendt med, saa sidepanelet kunne ikke gruppere
@@ -321,7 +330,17 @@ def list_chat_sessions(
                 """,
                 (uid, 1 if inkluder_arkiverede else 0, art, art),
             ).fetchall()
-        summaries = [_session_summary(dict(row)) for row in rows]
+        # SQL's EXISTS is an efficient candidate filter, but it is not the
+        # ownership rule: a historical row can carry another user's stamp.
+        # Keep this aligned with maa_tilgaa_session(), which uses the latest
+        # non-empty owner stamp and workspace aliases. Owneren hentes i samme
+        # query, så en stor liste ikke giver ét databaseopslag pr. samtale.
+        from core.identity.session_access import ejerstempel_tilhoerer_bruger
+        owned_rows = [
+            dict(row) for row in rows
+            if ejerstempel_tilhoerer_bruger(str(row["owner_user_id"] or ""), uid)
+        ]
+        summaries = [_session_summary(row) for row in owned_rows]
         return _without_migrated_autonomous_sessions(summaries)
     with connect() as conn:
         _sikr_flag_kolonner(conn)

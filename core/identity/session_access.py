@@ -28,7 +28,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["maa_tilgaa_session", "arbejdsrum_for"]
+__all__ = [
+    "maa_tilgaa_session",
+    "arbejdsrum_for",
+    "ejerstempel_tilhoerer_bruger",
+    "session_tilhoerer_bruger",
+]
 
 
 def arbejdsrum_for(uid: str) -> str:
@@ -51,6 +56,30 @@ def arbejdsrum_for(uid: str) -> str:
     return u
 
 
+def ejerstempel_tilhoerer_bruger(owner_user_id: str, user_id: str) -> bool:
+    """Har et ejer-stempel samme arbejdsrum som brugeren?"""
+    ejer = (owner_user_id or "").strip()
+    bruger = (user_id or "").strip()
+    if not ejer or not bruger:
+        return True
+    return arbejdsrum_for(ejer) == arbejdsrum_for(bruger)
+
+
+def session_tilhoerer_bruger(session_id: str, user_id: str) -> bool:
+    """Har samtalens seneste ejer-stempel samme arbejdsrum som brugeren?
+
+    Ustemplede legacy-samtaler bevarer den hidtidige åbne adgang. Hjælperen
+    bruges både af adgangsgaten og sessionslisten, så listen ikke tilbyder en
+    samtale som efterfølgende bliver afvist ved åbning eller afsendelse.
+    """
+    sid = (session_id or "").strip()
+    bruger = (user_id or "").strip()
+    if not sid or not bruger:
+        return True
+    from core.services.chat_sessions import get_session_owner
+    return ejerstempel_tilhoerer_bruger(get_session_owner(sid) or "", bruger)
+
+
 def maa_tilgaa_session(session_id: str) -> bool:
     """Må den nuværende bruger læse eller ændre samtalen?"""
     sid = (session_id or "").strip()
@@ -62,8 +91,4 @@ def maa_tilgaa_session(session_id: str) -> bool:
     bruger = (current_user_id() or "").strip()
     if not bruger:
         return True
-    from core.services.chat_sessions import get_session_owner
-    ejer = (get_session_owner(sid) or "").strip()
-    if not ejer:
-        return True
-    return arbejdsrum_for(ejer) == arbejdsrum_for(bruger)
+    return session_tilhoerer_bruger(sid, bruger)

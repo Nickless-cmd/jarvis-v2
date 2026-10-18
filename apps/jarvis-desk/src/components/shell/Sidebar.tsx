@@ -635,6 +635,8 @@ function SessionItem({
   const inputRef = useRef<HTMLInputElement>(null)
   const menuAnkerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const touchSelectedAtRef = useRef(0)
   /** Vender menuen OPAD naar der ikke er plads nedad (Bjoern 29/9-2026:
    *  «folder ud under sessionerne, den skal vaere oven paa»). `.sessions` har
    *  `overflow-y: auto`, saa en menu der aabnede nedad fra en raekke naer
@@ -697,6 +699,20 @@ function SessionItem({
     void setWorkspace(id, 'workstation', sti)
   }
 
+  // iOS-PWA kan bruge første tryk på at etablere CSS :hover, især når
+  // trepriksmenuen bliver synlig. Vælg derfor på et afsluttet, stillestående
+  // touch. Bevægelse annullerer valget, så scrolling i listen fortsat virker.
+  const touchFlyttedeSig = (x: number, y: number) => {
+    const start = touchStartRef.current
+    return start !== null && Math.hypot(x - start.x, y - start.y) > 10
+  }
+  const selectFraKlik = () => {
+    // Et touch kan efterfølges af et syntetisk click. Undgå dobbelt select,
+    // men lad almindelige museklik gå direkte igennem.
+    if (Date.now() - touchSelectedAtRef.current < 750) return
+    onSelect()
+  }
+
   return (
     <div className={`session-item ${active ? 'active' : ''} ${working ? 'working' : ''}`}>
       {editing ? (
@@ -713,7 +729,31 @@ function SessionItem({
           onBlur={commitRename}
         />
       ) : (
-        <button type="button" className="session-item-label" onClick={onSelect}>
+        <button
+          type="button"
+          className="session-item-label"
+          onPointerDown={(e) => {
+            if (e.pointerType === 'touch') touchStartRef.current = { x: e.clientX, y: e.clientY }
+          }}
+          onPointerMove={(e) => {
+            if (e.pointerType === 'touch' && touchFlyttedeSig(e.clientX, e.clientY)) {
+              touchStartRef.current = null
+            }
+          }}
+          onPointerCancel={() => { touchStartRef.current = null }}
+          onPointerUp={(e) => {
+            if (e.pointerType !== 'touch' || touchStartRef.current === null) return
+            if (touchFlyttedeSig(e.clientX, e.clientY)) {
+              touchStartRef.current = null
+              return
+            }
+            touchStartRef.current = null
+            touchSelectedAtRef.current = Date.now()
+            e.preventDefault()
+            onSelect()
+          }}
+          onClick={selectFraKlik}
+        >
           {/* Typen staar FAST til venstre (20/9-2026). Foer havde chat intet tag
               — raekken saa tom ud — og de tre prikker kom og gik FORAN titlen,
               saa den rykkede hver gang en session begyndte at arbejde. */}

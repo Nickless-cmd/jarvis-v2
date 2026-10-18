@@ -377,6 +377,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .session-item:hover .session-more, .session-item.active .session-more { opacity: 1; }
 .session-more:hover { background: var(--bg-4); color: var(--fg-1); }
+/* Safari i en installeret iPhone-PWA kan ellers bruge første tryk på at vise
+   hover-tilstanden og først sende klikket ved andet tryk. */
+@media (hover: none) {
+  .session-more { opacity: 1; }
+}
 .session-menu {
   position: absolute; top: calc(100% + 4px); right: 0; min-width: 150px;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-md);

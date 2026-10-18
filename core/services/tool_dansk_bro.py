@@ -178,6 +178,70 @@ DANSKE_UDTRYK: dict[str, str] = {
     "set_notification_preferences": "hvor skal beskeder lande, skift notifikationer",
     "schedule_self_wakeup": "væk mig om, husk mig om, mind mig om",
     "list_scheduled_tasks": "hvilke opgaver er planlagt, vis planlagte opgaver",
+    # ── Chat-kassen: de 47 huller (18/10-2026) ───────────────────────────
+    #
+    # Maalt samme dag mod `CHAT_MODE_TOOLS_BASE`: 47 af de 67 vaerktoejer Bjoern
+    # faktisk kan ramme naar han skriver i chat havde intet dansk modstykke.
+    # Det er praecis den scope han skriver i — saa hullet var ikke teoretisk:
+    # «soeg paa nettet» og «kan du huske» gik begge forbi `web_search` og
+    # `recall` og landede ingen steder.
+    #
+    # Raekkefoelgen er ikke tilfaeldig: de to foerste er de mest brugte.
+    "web_search": "søg på nettet, søg efter, google det, find ud af på nettet, slå op, hvad siger nettet, søg information om",
+    "recall": "kan du huske, hvad ved du om, søg i hukommelsen, husk tilbage, hvad har du gemt om, find i din hukommelse",
+    # Hukommelse — skriv og grav
+    "remember_this": "husk det her, gem det, skriv det ned, noter det, det skal du huske",
+    "search_memory": "søg i hukommelsen, find i mine noter, hvad har du skrevet om",
+    "memory_upsert_section": "skriv i hukommelsen, gem et afsnit, opdater memory, tilføj til hukommelsen",
+    "read_brain_entry": "læs den post, åbn hjerneposten, vis den gemte post",
+    "resurface_old_memory": "hent det gamle frem, mind mig om, hvad skrev jeg om, gå tilbage til",
+    "read_chronicles": "læs dine krøniker, din historie, hvad har du skrevet om dig selv",
+    "read_dreams": "hvad har du drømt, dine drømme, hvad drømte du om",
+    # Indbakken — hvad venter
+    "inbox": "hvad venter på mig, min indbakke, hvad blokerer, hvad er der i indbakken",
+    "inbox_done": "den er klaret, kvittér, marker som færdig, den er ordnet",
+    "inbox_drop": "drop den, afvis posten, den skal ikke, den er ikke relevant",
+    # Opgaver (todo)
+    "todo_list": "vis mine opgaver, hvad har jeg på listen, mine todos, hvad mangler jeg",
+    "todo_add": "tilføj en opgave, ny todo, skriv på listen, sæt på listen",
+    "todo_set": "sæt opgavelisten, erstat listen, skriv listen om",
+    "todo_update_status": "opgaven er færdig, marker som løst, den er klaret, den er i gang",
+    "todo_remove": "fjern opgaven, slet fra listen, den skal ud",
+    # Sideopgaver
+    "list_side_tasks": "vis sideopgaverne, hvad har jeg af sideopgaver, hvilke sideopgaver",
+    "flag_side_task": "noter til senere, gem som sideopgave, skriv det på listen, tag den senere",
+    "dismiss_side_task": "drop sideopgaven, afvis sideopgaven, glem sideopgaven",
+    "activate_side_task": "sæt sideopgaven i gang, aktivér sideopgaven, tag sideopgaven nu",
+    "snooze_side_task": "udskyd sideopgaven, vent med den, tag den senere",
+    "wake_side_task": "væk sideopgaven, tag den op nu, den skal køre nu",
+    # Kontinuitet og selvstart
+    "start_session": "start en session, sæt dig selv i gang, kør det selv, tag den selv",
+    "write_handover": "skriv en overdragelse, giv den videre, hvad skal den næste vide",
+    "checkpoint": "fortryd det, rul tilbage, gendan filerne, annullér ændringerne, tilbage til før",
+    # Placering og ruter
+    "geolocation_lookup": "hvor er jeg, hvor er vi henne, min placering, hvor står jeg",
+    "geocode": "hvor ligger, find adressen, koordinater for, hvor er henne",
+    "reverse_geocode": "hvilken adresse er det, hvor er den her, hvad ligger her",
+    "route_directions": "hvordan kommer jeg til, rute til, vej til, hvor langt er der til",
+    "nearby_search": "hvad er der i nærheden, find butikker tæt på, i nærheden af, hvad ligger tæt på",
+    # Browsere
+    "jarvis_browser_click": "klik på, tryk på knappen, klik linket, klik der",
+    "jarvis_browser_type": "skriv i feltet, tast ind, udfyld feltet, skriv i søgefeltet",
+    "jarvis_browser_tabs": "hvilke faner, vis fanerne, åbne faner, skift fane",
+    "jarvis_browser_screenshot": "skærmbillede af siden, tag et billede af siden, se siden",
+    "jarvis_browser_close": "luk browseren, luk fanen, luk siden",
+    "desk_close_pane": "luk panelet, luk sidepanelet, luk det panel",
+    # Filer og vedhæftninger
+    "read_attachment": "læs filen jeg sendte, se vedhæftningen, hvad er i filen, åbn det jeg sendte",
+    # Agenter og MCP
+    "mcp": "mcp server, hvilke mcp, eksterne værktøjer, forbind til serveren",
+    "operator_channel": "åbn kanalen, forbind til min maskine, åbn operator-kanalen",
+    # App og stemning
+    "request_app_action": "skift til kode, åbn kode-tilstand, foreslå et skift, skift mode",
+    "set_chat_flow_preference": "foretræk flydende svar, sæt svarmåden, hvordan skal du svare",
+    "adjust_mood": "justér humøret, skru op for humøret, ændr din stemning, bliv gladere",
+    "read_model_config": "hvilken model, hvilken model kører du på, modelkonfiguration, hvilken model bruger du",
+    "send_push_notification": "send en push, giv mig et prik på telefonen, notifikation til mobilen",
 }
 
 

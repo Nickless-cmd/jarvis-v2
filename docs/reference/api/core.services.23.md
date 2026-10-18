@@ -653,6 +653,16 @@ _Deliver terminal scout runs to Jarvis' durable inbox._
 |---|---|---|---|---|
 | function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
 
+## `core/services/search_quality.py`
+_Kvalitetsdommer for søgeresultater — vælger provider ud fra hvad der FAKTISK kom tilbage._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_domaene` | `(url)` | Værtsnavn uden www, til støj-filteret. | [src](../../../core/services/search_quality.py#L49) |
+| function | `_er_dansk_query` | `(query)` | Sandt hvis queryen ser dansk ud. Bruges til at vægte .dk-domæner. | [src](../../../core/services/search_quality.py#L58) |
+| function | `score_resultater` | `(resultater, *, query, url_felt=…)` | Ét tal 0..1 for hvor brugbar en resultatliste er for denne query. | [src](../../../core/services/search_quality.py#L66) |
+| function | `bedste_kandidat` | `(kandidater, *, query)` | Vælg den bedste provider-udfald blandt flere. | [src](../../../core/services/search_quality.py#L155) |
+
 ## `core/services/secret_redaction.py`
 _Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
 
@@ -679,16 +689,4 @@ _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 | function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L156) |
 | function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L180) |
 | function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L198) |
-
-## `core/services/seed_system.py`
-_Seed System — prospective memory / dormant intentions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
-| function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
-| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L119) |
-| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L125) |
-| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L139) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L176) |
 

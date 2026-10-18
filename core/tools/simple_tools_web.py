@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 import re
@@ -864,10 +865,52 @@ def _hent_side(url: str) -> str:
     req = urllib_request.Request(
         url, headers={"User-Agent": "Jarvis/2.0 (personal assistant)"},
     )
-    with aabner.open(req, timeout=15) as response:
-        raw = response.read().decode("utf-8", errors="replace")
+    try:
+        with aabner.open(req, timeout=15) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        # EXA-FALLBACK (målt 18/10-2026). Vores egen hentning er brugbar i 65 %
+        # af tilfældene på de samme 17 sider hvor Exa klarer 94 % — den knækker
+        # på nyhedssites med JS/paywall og på Q&A-sites. Når den fejler, spørger
+        # vi Exa i stedet for at give op. Fejler begge, kastes den oprindelige
+        # fejl videre, så svaret stadig siger hvad der gik galt.
+        exa = _hent_side_via_exa(url)
+        if exa is not None:
+            _fetch_cache_put(url, exa)
+            return exa
+        raise exc
     _fetch_cache_put(url, raw)
     return raw
+
+
+def _hent_side_via_exa(url: str) -> str | None:
+    """Hent en side gennem Exas MCP-server. ``None`` hvis den ikke kan."""
+    payload = {
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {"name": "web_fetch_exa", "arguments": {"urls": [url]}},
+    }
+    req = urllib_request.Request(
+        "https://mcp.exa.ai/mcp",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json",
+                 "Accept": "application/json, text/event-stream"},
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=25) as response:
+            raw = response.read().decode("utf-8", "replace")
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError):
+        return None  # fallback fejlede — den oprindelige fejl er den ærlige
+    tekst = ""
+    for linje in raw.splitlines():
+        if linje.startswith("data:"):
+            try:
+                data = json.loads(linje[5:].strip())
+            except json.JSONDecodeError:  # ikke-JSON i streamen — spring over
+                continue
+            for blok in (data.get("result") or {}).get("content") or []:
+                if isinstance(blok, dict) and blok.get("type") == "text":
+                    tekst += str(blok.get("text") or "")
+    return tekst or None
 
 
 def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
@@ -1007,6 +1050,183 @@ def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
     }
 
 
+def _fetch_serpapi(query: str, max_results: int) -> dict[str, Any]:
+    """Raw SerpAPI (Google SERP) call — no caching.
+
+    Målt 18/10-2026: 0,07-0,22 s på danske queries, og den vandt dansk-specifik
+    hvor Tavily gav ukrainske og amerikanske grantsider. Til gengæld tabte den
+    dansk-lokal (matchede "åbent" som "åbent hus"). Derfor er den ikke en
+    erstatning men en kandidat — se core.services.search_quality.
+    """
+    api_key = _read_api_key("serpapi_api_key")
+    if not api_key:
+        return {"error": "serpapi_api_key not configured in runtime.json", "status": "error"}
+
+    params = urllib_parse.urlencode({
+        "q": query, "api_key": api_key, "engine": "google",
+        "gl": "dk", "hl": "da", "num": str(max_results),
+    })
+    try:
+        with urllib_request.urlopen(
+            f"https://serpapi.com/search.json?{params}", timeout=25
+        ) as response:
+            data = json.loads(response.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:  # netvaerksfejl -> aerlig fejl, ikke tomt svar
+        return {"error": f"SerpAPI failed: {exc}", "status": "error"}
+
+    if data.get("error"):
+        return {"error": f"SerpAPI: {data['error']}", "status": "error"}
+
+    results = [
+        {"title": r.get("title", ""), "url": r.get("link", ""),
+         "content": (r.get("snippet") or "")[:300]}
+        for r in data.get("organic_results", [])
+    ]
+    lines: list[str] = []
+    svar = data.get("answer_box") or {}
+    if svar.get("answer") or svar.get("snippet"):
+        lines.append(f"**Summary:** {svar.get('answer') or svar.get('snippet')}\n")
+    for i, r in enumerate(results, 1):
+        lines.append(f"{i}. **{r['title']}**\n   {r['content']}\n   {r['url']}")
+    return {
+        "text": "\n\n".join(lines) if lines else "[no results]",
+        "results": results,
+        "result_count": len(results),
+        "query": query,
+        "status": "ok",
+    }
+
+
+def _fetch_exa(query: str, max_results: int) -> dict[str, Any]:
+    """Raw Exa MCP search — no caching. Bruges som tredje kandidat.
+
+    Målt 18/10-2026: semantisk søgning, ramte et konkret dansk Innofounder-opslag
+    hvor Tavily svarede at oplysningen ikke fandtes. Kræver ingen nøgle på
+    gratis-niveauet, men giver kortere indhold end de to andre.
+    """
+    payload = {
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {"name": "web_search_exa",
+                   "arguments": {"query": query, "numResults": max_results}},
+    }
+    # MCP over HTTP kraever et haandtryk FOER tools/call (maalt 18/10-2026:
+    # uden initialize svarer serveren fejl, og jeg konkluderede fejlagtigt at
+    # Exa var nede). Session-id'et kommer tilbage i en header og skal med paa
+    # alle efterfoelgende kald.
+    #
+    # ⚠️ User-Agent er IKKE valgfri her. Cloudflare foran mcp.exa.ai afviser
+    # `Python-urllib/3.x` med error 1010, saa et kald uden UA ligner en doed
+    # tjeneste. Maalt 18/10-2026: UA=None -> 403 error 1010, UA='Jarvis/1.0
+    # (agent)' -> 200 + session. Samme faelde som ntfy-gatewayen.
+    _UA = "Jarvis/1.0 (agent)"
+    session_id = ""
+    try:
+        init_req = urllib_request.Request(
+            "https://mcp.exa.ai/mcp",
+            data=json.dumps({
+                "jsonrpc": "2.0", "id": 0, "method": "initialize",
+                "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                           "clientInfo": {"name": "jarvis", "version": "1.0"}},
+            }).encode(),
+            headers={"Content-Type": "application/json",
+                     "User-Agent": _UA,
+                     "Accept": "application/json, text/event-stream"},
+        )
+        with urllib_request.urlopen(init_req, timeout=15) as response:
+            session_id = response.headers.get("Mcp-Session-Id") or ""
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:  # netvaerksfejl -> aerlig fejl, ikke tomt svar
+        return {"error": f"Exa init failed: {exc}", "status": "error"}
+
+    headers = {"Content-Type": "application/json",
+               "User-Agent": _UA,
+               "Accept": "application/json, text/event-stream"}
+    if session_id:
+        headers["Mcp-Session-Id"] = session_id
+    req = urllib_request.Request(
+        "https://mcp.exa.ai/mcp",
+        data=json.dumps(payload).encode(),
+        headers=headers,
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=25) as response:
+            raw = response.read().decode("utf-8", "replace")
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"error": f"Exa failed: {exc}", "status": "error"}
+
+    # Serveren svarer SSE: "event: message\ndata: {...}"
+    data: dict[str, Any] = {}
+    for linje in raw.splitlines():
+        if linje.startswith("data:"):
+            try:
+                data = json.loads(linje[5:].strip())
+            except json.JSONDecodeError:  # SSE-keepalive/ping-linje, ikke JSON — spring over
+                continue
+    indhold = (data.get("result") or {}).get("content") or []
+    tekst = ""
+    for blok in indhold:
+        if isinstance(blok, dict) and blok.get("type") == "text":
+            tekst += str(blok.get("text") or "")
+    if not tekst:
+        return {"error": "Exa: tomt svar", "status": "error"}
+
+    # Exa leverer ren markdown med "Title:"/"URL:"-linjer — parse dem til results.
+    results: list[dict[str, str]] = []
+    for blok in re.split(r"\n(?=Title: )", tekst):
+        t = re.search(r"^Title: (.+)$", blok, re.M)
+        u = re.search(r"^URL: (.+)$", blok, re.M)
+        if t and u:
+            results.append({"title": t.group(1).strip(), "url": u.group(1).strip(),
+                            "content": blok[:300]})
+    return {
+        "text": tekst,
+        "results": results,
+        "result_count": len(results),
+        "query": query,
+        "status": "ok",
+    }
+
+
+def _fetch_alle_providers(query: str, max_results: int) -> dict[str, Any]:
+    """Spørg alle tre kilder og lad kvalitetsdommeren vælge.
+
+    Målt 18/10-2026: ingen af de tre vinder altid. SerpAPI er hurtigst og bedst
+    på dansk-specifik; Tavily vinder dansk-lokal og nyheder; Exa rammer det
+    præcise svar på semantiske queries. En fast rækkefølge ville derfor tabe
+    på de queries hvor den valgte ikke er den bedste.
+
+    Kaldene kører parallelt — den samlede tid er den langsomste, ikke summen.
+    Fejler én, deltager den ikke i dommen (se search_quality.bedste_kandidat).
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from core.services.search_quality import bedste_kandidat
+
+    providers = (("tavily", _fetch_tavily), ("serpapi", _fetch_serpapi),
+                 ("exa", _fetch_exa))
+    kandidater: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+        fremtider = {
+            pool.submit(fn, query, max_results): navn for navn, fn in providers
+        }
+        for fremtid, navn in fremtider.items():
+            try:
+                kandidater.append({"provider": navn, "resultat": fremtid.result(timeout=30)})
+            except Exception as exc:  # én død provider må ikke vælte søgningen
+                logger.warning("web_search: provider %s fejlede: %s", navn, exc)
+
+    bedst = bedste_kandidat(kandidater, query=query)
+    if bedst is None:
+        fejl = [f"{k['provider']}: {(k['resultat'] or {}).get('error', 'ukendt')}"
+                for k in kandidater]
+        return {"error": "alle søgekilder fejlede — " + "; ".join(fejl),
+                "status": "error"}
+    svar = dict(bedst["resultat"])
+    svar["provider"] = bedst["provider"]
+    svar["quality_score"] = bedst["score"]
+    svar["kandidater"] = {k["provider"]: (k["resultat"] or {}).get("status", "?")
+                          for k in kandidater}
+    return svar
+
+
 def _cached_web_search_fn_impl(*, query: str, max_results: int, fetch_fn: Any) -> dict[str, Any]:
     """Wrapper so tests can monkeypatch the cache layer (real impl)."""
     from core.tools.web_cache import cached_web_search
@@ -1021,7 +1241,9 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "query is required", "status": "error"}
     max_results = min(int(args.get("max_results") or 5), 10)
 
-    result = _cached_web_search_fn(query=query, max_results=max_results, fetch_fn=_fetch_tavily)
+    result = _cached_web_search_fn(
+        query=query, max_results=max_results, fetch_fn=_fetch_alle_providers,
+    )
     _observe_research_result("web_search", result)
     return result
 

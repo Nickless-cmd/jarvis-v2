@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17290 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17298 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,14 +52,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17290 functions/
 - [`core.services.20`](core.services.20.md) — `private_temporal_curiosity_state_tracking` … `proprioception_metrics`
 - [`core.services.21`](core.services.21.md) — `prose_tool_calls` … `relation_dynamics`
 - [`core.services.22`](core.services.22.md) — `relation_map` … `run_event_log`
-- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `seed_system`
-- [`core.services.24`](core.services.24.md) — `selective_attention` … `session_context_resolve`
-- [`core.services.25`](core.services.25.md) — `session_continuity` … `simple_tool_executor`
-- [`core.services.26`](core.services.26.md) — `skill_autosurface` … `temperament_tendency_signal_tracking`
-- [`core.services.27`](core.services.27.md) — `temporal_body` … `tool_router`
-- [`core.services.28`](core.services.28.md) — `tool_router_runtime` … `visible_followup_lean`
-- [`core.services.29`](core.services.29.md) — `visible_followup_results` … `visible_synthesis_stream`
-- [`core.services.30`](core.services.30.md) — `visible_terminal_policy` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `security_guard`
+- [`core.services.24`](core.services.24.md) — `seed_system` … `session_boot_reconciler`
+- [`core.services.25`](core.services.25.md) — `session_context_resolve` … `silent_chain_break`
+- [`core.services.26`](core.services.26.md) — `simple_tool_executor` … `telemetry_gate`
+- [`core.services.27`](core.services.27.md) — `temperament_tendency_signal_tracking` … `tool_round_label`
+- [`core.services.28`](core.services.28.md) — `tool_router` … `visible_followup_events`
+- [`core.services.29`](core.services.29.md) — `visible_followup_lean` … `visible_stream_gate_wrapper`
+- [`core.services.30`](core.services.30.md) — `visible_synthesis_stream` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from threading import Event
+import time
 
 import pytest
 
@@ -110,13 +112,48 @@ class TestDaemonTick:
         result = mwq.tick_memory_write_queue_daemon()
         assert isinstance(result, dict)
 
-    def test_tick_processes_items(self, fresh_queue):
+    def test_tick_processes_items_in_background(self, fresh_queue):
         mwq = fresh_queue
         mwq.enqueue_write("sensory", {
             "modality": "visual", "content": "tick test", "mood_tone": "neutral",
         })
         result = mwq.tick_memory_write_queue_daemon()
-        assert result.get("processed", 0) >= 1 or result.get("succeeded", 0) >= 1
+        assert result == {"processed": False, "reason": "drain_started"}
+        deadline = time.monotonic() + 5
+        while mwq.queue_size()["done"] != 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert mwq.queue_size()["done"] == 1
+
+    def test_slow_drain_is_single_flight_and_does_not_block_tick(self, fresh_queue, monkeypatch):
+        """En langsom sidecar maa ikke holde heartbeat eller starte parallelle drains."""
+        mwq = fresh_queue
+        started = Event()
+        release = Event()
+        calls = []
+
+        def slow_process_queue(*, batch_size):
+            calls.append(batch_size)
+            started.set()
+            assert release.wait(timeout=5)
+            return {"processed": 1, "succeeded": 1, "failed": 0, "remaining": 0, "errors": []}
+
+        monkeypatch.setattr(mwq, "process_queue", slow_process_queue)
+
+        first = mwq.tick_memory_write_queue_daemon(now=datetime.now(UTC))
+        assert first == {"processed": False, "reason": "drain_started"}
+        assert started.wait(timeout=1), "baggrundsdrainet blev ikke startet"
+
+        second = mwq.tick_memory_write_queue_daemon(
+            now=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        assert second == {"processed": False, "reason": "in_flight"}
+        assert calls == [mwq._BATCH_SIZE]
+
+        worker = mwq._drain_thread
+        assert worker is not None
+        release.set()
+        worker.join(timeout=5)
+        assert not mwq._drain_thread
 
 
 class TestOrphanedProcessing:
@@ -217,7 +254,11 @@ class TestOrphanedProcessing:
         monkeypatch.setattr(mwq, "_process_item", aegte)
 
         senere = datetime.now(UTC) + timedelta(hours=2)
-        mwq.tick_memory_write_queue_daemon(now=senere)
+        svar = mwq.tick_memory_write_queue_daemon(now=senere)
+        assert svar == {"processed": False, "reason": "drain_started"}
+        deadline = time.monotonic() + 5
+        while mwq.queue_size()["done"] != 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
 
         counts = mwq.queue_size()
         assert counts["done"] == 1, (

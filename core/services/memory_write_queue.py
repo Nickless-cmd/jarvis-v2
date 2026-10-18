@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import traceback
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -48,6 +49,8 @@ _TOO_OLD_TO_RESCUE_S = 86400
 
 _last_tick_at: datetime | None = None
 _last_result: dict[str, Any] = {}
+_drain_state_lock = threading.Lock()
+_drain_thread: threading.Thread | None = None
 
 _VALID_TYPES = frozenset({"sensory", "brain", "memory_sidecar"})
 
@@ -376,47 +379,78 @@ def build_memory_write_queue_surface() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
+def _run_queue_drain(started_at: datetime) -> None:
+    """Drain the queue outside the heartbeat thread, one worker at a time."""
+    global _drain_thread, _last_result
+
+    try:
+        # Foraeldreloese poster frigores FOER koen draenes: en post der staar i
+        # `processing` uden en ejer ville ellers aldrig blive samlet op igen.
+        try:
+            requeue_orphaned_processing(now=started_at)
+        except Exception:  # noqa: BLE001 — en fejlet sweep maa ikke draebe koen
+            logger.warning("memory_write_queue: sweep af foraeldreloese fejlede",
+                           exc_info=True)
+
+        result = process_queue(batch_size=_BATCH_SIZE)
+        with _drain_state_lock:
+            _last_result = result
+
+        if result.get("processed", 0) > 0:
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish("memory.write_queue.processed", {
+                    "processed": result["processed"],
+                    "succeeded": result["succeeded"],
+                    "failed": result["failed"],
+                    "remaining": result.get("remaining", 0),
+                    "timestamp": started_at.isoformat(),
+                })
+            except Exception:
+                pass
+    finally:
+        with _drain_state_lock:
+            _drain_thread = None
+
+
 def tick_memory_write_queue_daemon(now: datetime | None = None) -> dict:
-    """Daemon tick: process pending writes every 120s.
+    """Start one non-blocking queue drain at most every 120 seconds.
 
     Registered in daemon_manager._REGISTRY as 'memory_write_queue'.
+
+    Sidecar processing can include remote LLM calls and take longer than the
+    cluster family's deadline.  The tick therefore only dispatches the daemon
+    worker; a process-local single-flight guard prevents later heartbeat ticks
+    from starting overlapping drains while that worker is still active.
     """
-    global _last_tick_at, _last_result
+    global _drain_thread, _last_tick_at
 
     now = now or datetime.now(UTC)
 
-    # Cadence gate
-    if _last_tick_at is not None:
-        if (now - _last_tick_at) < timedelta(seconds=_CADENCE_SECONDS):
-            return {"processed": False, "reason": "cadence"}
+    with _drain_state_lock:
+        if _drain_thread is not None:
+            return {"processed": False, "reason": "in_flight"}
+        if _last_tick_at is not None:
+            if (now - _last_tick_at) < timedelta(seconds=_CADENCE_SECONDS):
+                return {"processed": False, "reason": "cadence"}
 
-    # Foraeldreloese poster frigores FOER koen draenes: en post der staar i
-    # `processing` uden en ejer ville ellers aldrig blive samlet op igen.
-    try:
-        requeue_orphaned_processing(now=now)
-    except Exception:  # noqa: BLE001 — en fejlet sweep maa ikke draebe koen
-        logger.warning("memory_write_queue: sweep af foraeldreloese fejlede",
-                       exc_info=True)
-
-    result = process_queue(batch_size=_BATCH_SIZE)
-    _last_tick_at = now
-    _last_result = result
-
-    # Publish event if items were processed
-    if result.get("processed", 0) > 0:
+        previous_tick_at = _last_tick_at
+        _last_tick_at = now
+        worker = threading.Thread(
+            target=_run_queue_drain,
+            args=(now,),
+            name="memory-write-queue",
+            daemon=True,
+        )
+        _drain_thread = worker
         try:
-            from core.eventbus.bus import event_bus
-            event_bus.publish("memory.write_queue.processed", {
-                "processed": result["processed"],
-                "succeeded": result["succeeded"],
-                "failed": result["failed"],
-                "remaining": result.get("remaining", 0),
-                "timestamp": now.isoformat(),
-            })
+            worker.start()
         except Exception:
-            pass
+            _drain_thread = None
+            _last_tick_at = previous_tick_at
+            raise
 
-    return result
+    return {"processed": False, "reason": "drain_started"}
 
 
 # ---------------------------------------------------------------------------

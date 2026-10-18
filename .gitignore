@@ -38,3 +38,6 @@ state/anthropic_api_keys.json
 # Fase 6 migration-trigger gate output (generated, not committed)
 /verdict.json
 scripts/judge_run_q4*.log
+
+# Serena MCP arbejdsmappe (genereres lokalt, ikke vaerd at versionsstyre)
+.serena/

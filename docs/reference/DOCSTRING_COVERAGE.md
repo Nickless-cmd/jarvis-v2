@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9093/17326 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9095/17327 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9093/17326 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6064 | 11781 | 51% |
+| `core.services` | 6066 | 11782 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9093/17326 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2577)
+## Undocumented public functions (2576)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1415,15 +1415,14 @@ Generated from source. 9093/17326 functions/methods documented (52%). The list b
 - `core/services/mcp_auth.py` :: `get_token` (L75)
 - `core/services/mcp_auth.py` :: `needs_refresh` (L102)
 - `core/services/mcp_auth.py` :: `set_token` (L80)
-- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L238)
-- `core/services/mcp_client.py` :: `MCPClient.connected` (L135)
-- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L121)
+- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L297)
+- `core/services/mcp_client.py` :: `MCPClient.connected` (L178)
+- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L164)
 - `core/services/mcp_manager.py` :: `call` (L99)
 - `core/services/mcp_manager.py` :: `disconnect_all` (L58)
 - `core/services/mcp_manager.py` :: `list_tools` (L88)
-- `core/services/mcp_registry.py` :: `add_mcp_server` (L28)
 - `core/services/mcp_registry.py` :: `list_mcp_servers` (L24)
-- `core/services/mcp_registry.py` :: `remove_mcp_server` (L40)
+- `core/services/mcp_registry.py` :: `remove_mcp_server` (L73)
 - `core/services/mcp_trust.py` :: `is_allowlisted` (L48)
 - `core/services/mcp_trust.py` :: `list_trust` (L80)
 - `core/services/meaning_significance_signal_tracking.py` :: `build_runtime_meaning_significance_signal_surface` (L69)

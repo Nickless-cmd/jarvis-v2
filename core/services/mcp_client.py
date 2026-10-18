@@ -43,6 +43,49 @@ _STDIO_TIMEOUT_S = 20
 _HTTP_TIMEOUT_S = 20
 
 
+def parse_mcp_http_body(tekst: str, content_type: str = "") -> dict[str, Any]:
+    """Læs et MCP-over-HTTP-svar — JSON *eller* SSE.
+
+    MÅLT 18/10-2026: Context7 (`https://mcp.context7.com/mcp`) svarer
+    `text/event-stream`, ikke `application/json`. Klienten kaldte
+    `response.json()`, som kaster på `event: message\\ndata: {...}` — den
+    meldte altså en sund server som død. MCP-specifikationen tillader begge
+    formater for HTTP-transport, så det er klienten der var for snæver.
+
+    SSE kan bære flere `data:`-linjer; vi tager den FØRSTE der er gyldig
+    JSON, fordi et request/response-kald kun har ét svar. `[DONE]` og tomme
+    linjer springes over.
+    """
+    tekst = (tekst or "").strip()
+    if not tekst:
+        return {"error": "tomt svar fra MCP-serveren"}
+    ser_sse = (
+        "event-stream" in (content_type or "").lower()
+        or tekst.startswith("event:")
+        or tekst.startswith("data:")
+    )
+    if ser_sse:
+        for linje in tekst.splitlines():
+            linje = linje.strip()
+            if not linje.startswith("data:"):
+                continue
+            raa = linje[len("data:"):].strip()
+            if not raa or raa == "[DONE]":
+                continue
+            try:
+                pakke = json.loads(raa)
+            except Exception:
+                continue
+            if isinstance(pakke, dict):
+                return pakke
+        return {"error": "SSE-svar uden gyldig JSON-data"}
+    try:
+        pakke = json.loads(tekst)
+    except Exception:
+        return {"error": f"ikke-JSON svar fra MCP-serveren: {tekst[:200]}"}
+    return pakke if isinstance(pakke, dict) else {"error": "uventet svarform"}
+
+
 class MCPClient:
     """Én forbindelse til én MCP-server."""
 
@@ -177,11 +220,23 @@ class MCPClient:
         return svar or {"error": "intet svar"}
 
     def _http_headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {}
         try:
             from core.services import mcp_auth
-            return mcp_auth.resolve_headers(self.name, self.config)
-        except Exception:
-            return {}
+            headers = dict(mcp_auth.resolve_headers(self.name, self.config) or {})
+        except Exception as exc:
+            # En server uden auth (Context7) skal stadig kunne forbindes: at
+            # mangle et token er en gyldig tilstand, ikke en fejl. Men den
+            # sluges ikke tavst — den logges, så et brudt auth-modul kan
+            # skelnes fra en server der bare ikke kræver nøgle.
+            logger.debug("mcp %s: ingen auth-headere (%s)", self.name, exc)
+            headers = {}
+        # MÅLT 18/10-2026: Context7 svarer `406 Not Acceptable` uden denne.
+        # MCP over HTTP må svare enten JSON eller SSE, så klienten skal
+        # annoncere at den kan læse BEGGE — ellers afviser serveren før den
+        # overhovedet svarer, og det ser ud som om serveren er nede.
+        headers.setdefault("Accept", "application/json, text/event-stream")
+        return headers
 
     def _send_http(self, req: dict) -> dict[str, Any]:
         try:
@@ -194,10 +249,14 @@ class MCPClient:
                     if mcp_auth.refresh(self.name):
                         svar = httpx.post(self.url, json=req, timeout=_HTTP_TIMEOUT_S,
                                           headers=self._http_headers())
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # Refresh er et FORSØG, ikke et krav: fejler den, er det
+                    # oprindelige 401 stadig det sande svar, og det returneres
+                    # nedenfor. Men den logges — ellers kan et brudt auth-modul
+                    # ikke skelnes fra en server der afviser vores token.
+                    logger.debug("mcp %s: token-refresh fejlede (%s)", self.name, exc)
             svar.raise_for_status()
-            return svar.json()
+            return parse_mcp_http_body(svar.text, svar.headers.get("content-type", ""))
         except Exception as exc:
             return {"error": str(exc)}
 

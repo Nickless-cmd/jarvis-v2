@@ -25,13 +25,46 @@ def list_mcp_servers() -> list[dict[str, str]]:
     return _load()
 
 
-def add_mcp_server(name: str, url: str) -> dict[str, object]:
+def add_mcp_server(
+    name: str,
+    url: str = "",
+    *,
+    command: str = "",
+    args: list[str] | None = None,
+    env: dict[str, str] | None = None,
+    transport: str = "",
+) -> dict[str, object]:
+    """Tilføj en server — HTTP (`url`) eller stdio (`command` + `args`).
+
+    MÅLT 18/10-2026: registret kunne kun gemme `url`, så stdio-servere
+    (Chrome DevTools, Serena) kunne ikke tilføjes gennem den rigtige vej —
+    kun ved at skrive rå JSON ind i state. Klienten har hele tiden kunnet
+    stdio (`mcp_client._connect_stdio`), så det var registeret der satte
+    loftet, ikke evnen.
+
+    At TILFØJE er stadig ikke at GODKENDE: `mcp_trust.allow` er beslutningen,
+    og den ligger bevidst et andet sted.
+    """
     name = str(name or "").strip()
     url = str(url or "").strip()
-    if not name or not url:
-        return {"status": "error", "error": "name og url er påkrævet"}
+    command = str(command or "").strip()
+    if not name:
+        return {"status": "error", "error": "name er påkrævet"}
+    if not url and not command:
+        return {"status": "error", "error": "url eller command er påkrævet"}
     servers = _load()
-    entry = {"id": f"mcp-{uuid4().hex[:10]}", "name": name[:120], "url": url[:400]}
+    entry: dict[str, object] = {"id": f"mcp-{uuid4().hex[:10]}", "name": name[:120]}
+    if url:
+        entry["url"] = url[:400]
+        entry["transport"] = transport or "http"
+    else:
+        entry["command"] = command[:400]
+        entry["transport"] = transport or "stdio"
+        rene_args = [str(a) for a in (args or [])]
+        if rene_args:
+            entry["args"] = rene_args
+        if env:
+            entry["env"] = {str(k): str(v) for k, v in env.items()}
     servers.append(entry)
     save_json(_STATE_KEY, servers)
     return {"status": "ok", "server": entry}

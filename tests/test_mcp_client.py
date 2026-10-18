@@ -70,3 +70,47 @@ def test_stdio_uden_svar_haenger_ikke_turen(monkeypatch):
     k._connected = True
     r = k._send_request("tools/list")
     assert "svarede ikke" in str(r.get("error"))
+
+
+# ── HTTP-svar: JSON *eller* SSE (målt 18/10-2026 mod Context7) ──────────────
+#
+# Context7 svarer `text/event-stream`. Klienten kaldte `response.json()`, som
+# kaster på `event: message\ndata: {...}`, så en fuldt sund server blev meldt
+# død. MCP-specifikationen tillader begge formater — klienten var for snæver.
+
+
+def test_sse_svar_fra_context7_parses():
+    krop = ('event: message\n'
+            'data: {"result":{"serverInfo":{"name":"Context7"}},"id":1}\n\n')
+    svar = mcp_client.parse_mcp_http_body(krop, "text/event-stream")
+    assert svar["result"]["serverInfo"]["name"] == "Context7"
+
+
+def test_sse_genkendes_paa_indholdet_ikke_kun_header():
+    """En proxy kan smide content-type væk — så skal kroppen stadig afgøre det."""
+    krop = 'data: {"result":{"x":1}}\n'
+    assert mcp_client.parse_mcp_http_body(krop, "")["result"]["x"] == 1
+
+
+def test_almindeligt_json_svar_virker_stadig():
+    svar = mcp_client.parse_mcp_http_body('{"result":{"ok":true}}', "application/json")
+    assert svar["result"]["ok"] is True
+
+
+def test_done_markering_springes_over():
+    krop = 'data: [DONE]\ndata: {"result":{"x":2}}\n'
+    assert mcp_client.parse_mcp_http_body(krop, "text/event-stream")["result"]["x"] == 2
+
+
+def test_sse_uden_json_bliver_en_fejl_ikke_et_styrt():
+    svar = mcp_client.parse_mcp_http_body("event: ping\n\n", "text/event-stream")
+    assert "error" in svar
+
+
+def test_tomt_svar_bliver_en_fejl():
+    assert "error" in mcp_client.parse_mcp_http_body("", "text/event-stream")
+
+
+def test_ikke_json_bliver_en_fejl_med_uddrag():
+    svar = mcp_client.parse_mcp_http_body("<html>404</html>", "text/html")
+    assert "error" in svar and "404" in svar["error"]

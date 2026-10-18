@@ -1187,43 +1187,85 @@ def _fetch_exa(query: str, max_results: int) -> dict[str, Any]:
 
 
 def _fetch_alle_providers(query: str, max_results: int) -> dict[str, Any]:
-    """Spørg alle tre kilder og lad kvalitetsdommeren vælge.
+    """Exa først — de to andre som fallback. IKKE en dommer (målt 18/10-2026).
 
-    Målt 18/10-2026: ingen af de tre vinder altid. SerpAPI er hurtigst og bedst
-    på dansk-specifik; Tavily vinder dansk-lokal og nyheder; Exa rammer det
-    præcise svar på semantiske queries. En fast rækkefølge ville derfor tabe
-    på de queries hvor den valgte ikke er den bedste.
+    HVORFOR IKKE DOMMEREN LÆNGERE
+    Den blev bygget og målt mod 10 queries med objektivt facit (top-1
+    præcision). Resultatet var negativt:
 
-    Kaldene kører parallelt — den samlede tid er den langsomste, ikke summen.
-    Fejler én, deltager den ikke i dommen (se search_quality.bedste_kandidat).
+        Tavily    2/10 = 20 %
+        SerpAPI   5/10 = 50 %
+        Exa       7/10 = 70 %
+        Dommeren  4/10 = 40 %
+
+    Dommeren var altså dårligere end at vælge Exa blindt, og 28.561
+    vægtkombinationer kunne ikke løfte den over 4/10. Årsagen er strukturel:
+    dens fire led (dansk-andel, støj, dækning, ord-overlap) kan alle beregnes
+    uden at læse hvad resultatet siger, mens Exa vinder på semantisk match —
+    noget dommeren pr. konstruktion ikke kan se. At tune vægtene videre ville
+    være at flytte gætteriet fra en fast rækkefølge til en formel.
+
+    KÆDEN NU
+    1. Exa — bedst på top-1 (70 %) og har det rigtige svar i top-6 i 9/10
+       tilfælde. Gratis-tier, ingen nøgle.
+    2. Fejler Exa (eller giver nul resultater), prøves SerpAPI og Tavily
+       parallelt, og den af dem med flest brugbare resultater bruges.
+    3. Fejler alle tre, returneres en ærlig fejl — ikke en tom "ok".
+
+    `quality_score` og `kandidater` bæres stadig med i svaret som telemetri,
+    så jeg kan se hvad de andre kilder ville have givet. Det er den eneste
+    grund til at score_resultater stadig findes.
     """
     from concurrent.futures import ThreadPoolExecutor
-    from core.services.search_quality import bedste_kandidat
+    from core.services.search_quality import score_resultater
 
-    providers = (("tavily", _fetch_tavily), ("serpapi", _fetch_serpapi),
-                 ("exa", _fetch_exa))
-    kandidater: list[dict[str, Any]] = []
-    with ThreadPoolExecutor(max_workers=len(providers)) as pool:
-        fremtider = {
-            pool.submit(fn, query, max_results): navn for navn, fn in providers
-        }
-        for fremtid, navn in fremtider.items():
-            try:
-                kandidater.append({"provider": navn, "resultat": fremtid.result(timeout=30)})
-            except Exception as exc:  # én død provider må ikke vælte søgningen
-                logger.warning("web_search: provider %s fejlede: %s", navn, exc)
+    def _kør(navn: str, fn: Any) -> dict[str, Any]:
+        try:
+            return {"provider": navn, "resultat": fn(query, max_results)}
+        except Exception as exc:  # én død provider må ikke vælte søgningen
+            logger.warning("web_search: provider %s fejlede: %s", navn, exc)
+            return {"provider": navn, "resultat": {"status": "error", "error": str(exc)}}
 
-    bedst = bedste_kandidat(kandidater, query=query)
-    if bedst is None:
+    def _brugbar(k: dict[str, Any]) -> bool:
+        res = k.get("resultat") or {}
+        return res.get("status") != "error" and bool(res.get("results"))
+
+    # 1. Exa først — den ene måling der skilte sig ud.
+    foerste = _kør("exa", _fetch_exa)
+    kandidater: list[dict[str, Any]] = [foerste]
+    valgt = foerste if _brugbar(foerste) else None
+
+    # 2. Fallback: de to SERP-kilder, parallelt, kun hvis Exa ikke gav noget.
+    if valgt is None:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fremtider = {
+                pool.submit(_kør, navn, fn): navn
+                for navn, fn in (("serpapi", _fetch_serpapi), ("tavily", _fetch_tavily))
+            }
+            for fremtid in fremtider:
+                kandidater.append(fremtid.result(timeout=30))
+        brugbare = [k for k in kandidater if _brugbar(k)]
+        if brugbare:
+            # Flest brugbare resultater vinder — uden dommerens fire led.
+            valgt = max(brugbare, key=lambda k: len((k["resultat"] or {}).get("results") or []))
+
+    if valgt is None:
         fejl = [f"{k['provider']}: {(k['resultat'] or {}).get('error', 'ukendt')}"
                 for k in kandidater]
         return {"error": "alle søgekilder fejlede — " + "; ".join(fejl),
                 "status": "error"}
-    svar = dict(bedst["resultat"])
-    svar["provider"] = bedst["provider"]
-    svar["quality_score"] = bedst["score"]
+
+    svar = dict(valgt["resultat"])
+    svar["provider"] = valgt["provider"]
     svar["kandidater"] = {k["provider"]: (k["resultat"] or {}).get("status", "?")
                           for k in kandidater}
+    # Telemetri: hvad dommeren ville have scoret den valgte liste. Ikke en vælger.
+    try:
+        svar["quality_score"] = score_resultater(
+            svar.get("results") or [], query=query
+        )
+    except Exception:  # telemetri må aldrig vælte et gyldigt svar
+        svar["quality_score"] = None
     return svar
 
 

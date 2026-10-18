@@ -63,11 +63,41 @@ def _er_dansk_query(query: str) -> bool:
     return len(ord_i_query & _DANSKE_STOPORD) >= 2
 
 
+#: Standardvægte for de fire led: dækning, dansk, renhed, overlap.
+#:
+#: IKKE KALIBRERET — og det kan ikke gøres (målt 18/10-2026).
+#:
+#: Målt mod 10 queries med objektivt facit (top-1 præcision, dvs. er det
+#: FØRSTE resultat det rigtige):
+#:
+#:   Tavily    2/10 = 20 %
+#:   SerpAPI   5/10 = 50 %
+#:   Exa       7/10 = 70 %
+#:   Dommeren  4/10 = 40 %
+#:
+#: Dommeren er altså DÅRLIGERE end at vælge Exa blindt. Jeg søgte udtømmende
+#: gennem 28.561 vægtkombinationer — ingen nåede over 4/10. Vægtene kan ikke
+#: redde den, fordi ingen af de fire led måler om top-1 faktisk besvarer
+#: spørgsmålet: dansk-andel, støj, dækning og ord-overlap kan alle beregnes
+#: uden at læse hvad resultatet siger. Exa vinder på noget dommeren ikke kigger
+#: på — semantisk match — så en dommer bygget af de fire led kan pr. konstruktion
+#: ikke se forskellen.
+#:
+#: Derfor er dommeren IKKE længere vælger i produktionskæden. Se
+#: `_fetch_alle_providers` i core/tools/simple_tools_web.py: Exa prøves først,
+#: de to andre er fallback når den fejler eller intet giver. Modulet beholdes
+#: fordi scoren stadig er brugbar som telemetri (og fordi testene vogter de to
+#: fejl der blev målt: ord-overlap uden sjældenhedsvægtning, og dækning der
+#: belønner mængde).
+VAEGTE_STANDARD: tuple[float, float, float, float] = (0.10, 0.25, 0.20, 0.45)
+
+
 def score_resultater(
     resultater: Iterable[dict[str, Any]],
     *,
     query: str,
     url_felt: str = "url",
+    vaegte: tuple[float, float, float, float] = VAEGTE_STANDARD,
 ) -> float:
     """Ét tal 0..1 for hvor brugbar en resultatliste er for denne query.
 
@@ -81,8 +111,10 @@ def score_resultater(
        eller URL. Det fanger "åbent hus"-fejlen: queryen handlede om Rådhus,
        resultaterne om uddannelse.
 
-    Vægtene er valgt så ét stærkt signal ikke kan drukne de andre: dækning 0,25,
-    dansk 0,25, støj 0,20, overlap 0,30.
+    Vægtene er dækning 0,10, dansk 0,25, støj 0,20, overlap 0,45 — men de er
+    IKKE kalibreret til at vælge provider (se VAEGTE_STANDARD: dommeren ramte
+    4/10 mod Exas 7/10, og ingen af 28.561 kombinationer gjorde det bedre).
+    Scoren bruges derfor som telemetri, ikke som vælger.
     """
     liste = [r for r in resultater if isinstance(r, dict)]
     if not liste:
@@ -139,15 +171,18 @@ def score_resultater(
             )
             daekning_pr_ord.append(ramt / len(liste))
         # Et ord der rammer alt eller intet bærer intet signal — vægt det ned.
-        vaegte = [1.0 if 0 < d < 1.0 else 0.25 for d in daekning_pr_ord]
+        # OBS: hed tidligere ogsaa `vaegte` og overskrev dermed parameteren
+        # med samme navn — den ægte fejl, maalt 18/10-2026 (IndexError).
+        ord_vaegte = [1.0 if 0 < d < 1.0 else 0.25 for d in daekning_pr_ord]
         overlap = sum(
-            d * v for d, v in zip(daekning_pr_ord, vaegte)
-        ) / sum(vaegte)
+            d * v for d, v in zip(daekning_pr_ord, ord_vaegte)
+        ) / sum(ord_vaegte)
     else:
         overlap = 0.5  # ingen indholdsord at måle på — neutralt
 
     return round(
-        0.10 * daekning + 0.25 * dansk + 0.20 * renhed + 0.45 * overlap,
+        vaegte[0] * daekning + vaegte[1] * dansk
+        + vaegte[2] * renhed + vaegte[3] * overlap,
         4,
     )
 
@@ -156,6 +191,7 @@ def bedste_kandidat(
     kandidater: list[dict[str, Any]],
     *,
     query: str,
+    vaegte: tuple[float, float, float, float] = VAEGTE_STANDARD,
 ) -> dict[str, Any] | None:
     """Vælg den bedste provider-udfald blandt flere.
 
@@ -178,7 +214,7 @@ def bedste_kandidat(
         # svaret blev en tom liste med status ok i stedet for en ærlig fejl).
         if not liste:
             continue
-        s = score_resultater(liste, query=query)
+        s = score_resultater(liste, query=query, vaegte=vaegte)
         if s > bedst_score:
             bedst_score = s
             bedst = {**k, "score": s}

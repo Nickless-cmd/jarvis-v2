@@ -660,8 +660,8 @@ _Kvalitetsdommer for søgeresultater — vælger provider ud fra hvad der FAKTIS
 |---|---|---|---|---|
 | function | `_domaene` | `(url)` | Værtsnavn uden www, til støj-filteret. | [src](../../../core/services/search_quality.py#L49) |
 | function | `_er_dansk_query` | `(query)` | Sandt hvis queryen ser dansk ud. Bruges til at vægte .dk-domæner. | [src](../../../core/services/search_quality.py#L58) |
-| function | `score_resultater` | `(resultater, *, query, url_felt=…)` | Ét tal 0..1 for hvor brugbar en resultatliste er for denne query. | [src](../../../core/services/search_quality.py#L66) |
-| function | `bedste_kandidat` | `(kandidater, *, query)` | Vælg den bedste provider-udfald blandt flere. | [src](../../../core/services/search_quality.py#L155) |
+| function | `score_resultater` | `(resultater, *, query, url_felt=…, vaegte=…)` | Ét tal 0..1 for hvor brugbar en resultatliste er for denne query. | [src](../../../core/services/search_quality.py#L95) |
+| function | `bedste_kandidat` | `(kandidater, *, query, vaegte=…)` | Vælg den bedste provider-udfald blandt flere. | [src](../../../core/services/search_quality.py#L190) |
 
 ## `core/services/secret_redaction.py`
 _Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._

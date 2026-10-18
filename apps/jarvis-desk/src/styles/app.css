@@ -4931,7 +4931,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 7px;
   font-size: 12px; border-radius: 7px;
 }
-.jbrowser-fane-luk:hover, .jbrowser-genindlaes:hover { color: var(--fg-1); background: rgba(255,255,255,.06); }
+.jbrowser-fane-luk:hover, .jbrowser-genindlaes:hover { color: var(--fg-1); background: color-mix(in srgb, var(--fg-1) 8%, transparent); }
 .jbrowser-ny { border: 1px dashed var(--line); padding: 5px 6px; }
 
 /* Navigations-raekken: pile, genindlaes og adresselinjen. Den ligger UNDER
@@ -4945,7 +4945,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   background: none; border: none; color: var(--fg-3); cursor: pointer;
   display: inline-flex; align-items: center; padding: 5px; border-radius: 7px;
 }
-.jbrowser-nav button:hover:not(:disabled) { color: var(--fg-1); background: rgba(255,255,255,.06); }
+.jbrowser-nav button:hover:not(:disabled) { color: var(--fg-1); background: color-mix(in srgb, var(--fg-1) 8%, transparent); }
 /* En pil der ikke foerer nogen steder skal SE doed ud — ellers tror man at
    klikket blev tabt. */
 .jbrowser-nav button:disabled { opacity: .3; cursor: default; }

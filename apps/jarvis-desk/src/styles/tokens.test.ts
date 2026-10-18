@@ -107,6 +107,51 @@ describe('design-tokens', () => {
     expect(app).not.toMatch(/data-theme="light"\][^{]*\.composer-input\s*\{[^}]*color:\s*#fff/i)
   })
 
+  // 18/10-2026: fem ruder — miljøfeltet, ændrings-panelet, baggrundsjob,
+  // side-opgave og browseren — stod MØRKE i lyst tema. De deler alle
+  // `--overlay-bg`, som (ligesom `--field-bg`) kun var defineret i `:root`,
+  // så lyst tema arvede #20201f.
+  //
+  // Vagten spørger ikke om tokenet FINDES — det gør det, i det mørke tema,
+  // og derfor gik fejlen igennem `bruger ingen tokens der ikke er defineret`.
+  // Den spørger om lyst tema svarer SELV, og om svaret er lyst.
+  it('lyst tema har lyse svævende ruder', () => {
+    const blok = tokens.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(blok, 'lyst tema mangler').toBeTruthy()
+    const vaerdi = (navn: string) =>
+      (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1]?.toLowerCase() ?? ''
+    const overlay = vaerdi('--overlay-bg')
+    expect(overlay, 'lyst tema skal definere --overlay-bg selv').toBeTruthy()
+    expect(overlay, 'lyst tema arver det mørke temas rude').not.toBe('#20201f')
+    const lum = (h: string) => {
+      const kanal = (i: number) => {
+        const c = parseInt(h.substr(i, 2), 16) / 255
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+      }
+      return 0.2126 * kanal(1) + 0.7152 * kanal(3) + 0.0722 * kanal(5)
+    }
+    expect(lum(overlay), 'ruden er mørk').toBeGreaterThan(0.7)
+    expect(vaerdi('--overlay-line'), 'kanten skal også have en lys værdi').toBeTruthy()
+    // Skyggerne var hardkodet pr. rude; 30–50 % sort over hvid er en grå halo.
+    expect(blok, 'lyst tema skal svare på skyggen selv').toMatch(/--overlay-shadow:/)
+    expect(blok, 'lyst tema skal svare på modal-skyggen selv').toMatch(/--modal-shadow:/)
+  })
+
+  it('de fem svævende ruder henter deres flade fra --overlay-bg', () => {
+    const ruder: Record<string, [string, RegExp]> = {
+      miljøfeltet: ['environment-inspector.css', /^\.env-panel \{([\s\S]*?)\}/m],
+      baggrundsjob: ['app.css', /^\.jobs-panel \{([\s\S]*?)\n\}/m],
+      ændringer: ['app.css', /^\.changes-panel \{([\s\S]*?)\n\}/m],
+      browseren: ['app.css', /^\.jbrowser \{([\s\S]*?)\n\}/m],
+      'side-opgave': ['side-tasks.css', /^\.sok \{([\s\S]*?)\n\}/m],
+    }
+    for (const [navn, [fil, moenster]] of Object.entries(ruder)) {
+      const regel = læs(fil).match(moenster)?.[1] ?? ''
+      expect(regel, `${navn} findes ikke i ${fil}`).toBeTruthy()
+      expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1], navn).toBe('--overlay-bg')
+    }
+  })
+
   it('det mørke tema er de MÅLTE pixels fra CC, ikke et skøn', () => {
     const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     const v = (navn: string) =>

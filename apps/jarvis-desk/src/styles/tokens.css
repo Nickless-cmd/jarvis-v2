@@ -65,6 +65,12 @@
      er derfor to forskellige tokens og ikke ét «kort»-token. */
   --overlay-bg: #20201f;
   --overlay-line: #363635;
+  /* Skyggen var hardkodet pr. rude (0.30–0.50 sort). På mørk bund er det
+     rigtigt; på hvid giver 30 % sort en grå halo, så ruden ser mørk ud i
+     kanten. Den er derfor en token som fladen selv — ellers kan lyst tema
+     ikke svare igen uden at overskrive selektorer (18/10-2026). */
+  --overlay-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  --modal-shadow: 0 24px 80px rgb(0 0 0 / 50%);
   --code-bg: #1a1a19;
 
   --error-fg: #ef7e6b;
@@ -155,6 +161,21 @@
      er samme farve en anelse mørkere og lander på 4,87:1. Ét trin fra 1:1,
      fordi det andet ville være at slukke en vagt for at matche en palet. */
   --warn-fg: #a05f00;
+  /* De svævende ruder — miljøfeltet, ændrings-panelet, baggrundsjob,
+     side-opgave og browseren — deler `--overlay-bg` med de mørke temaer.
+     Den blev DEFINERET i `:root` alene, så lyst tema arvede #20201f: fem
+     mørke ruder på en lys flade (Bjørn 18/10-2026). Samme fejl som
+     `--field-bg` havde, og samme svar: mobilens lyse palet, hvor svævende
+     flader er LYSERE end grunden — `bgFloat: #FFFFFF`. Kortet skal ligge
+     PÅ fladen, ikke synke ned i den.
+     `--overlay-line` er ét trin stærkere end `--line` (#dcdcdc → #c9c9c9),
+     samme forhold som i mørkt tema (#292929 → #363635) — på hvidt er det
+     kanten der bærer løftet, når fladen selv er hvid. */
+  --overlay-bg: #ffffff;
+  --overlay-line: #c9c9c9;
+  /* 30–50 % sort over hvid giver en grå halo, ikke en skygge. */
+  --overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --modal-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
 }
 
 /* Høj kontrast — maksimal læsbarhed. */

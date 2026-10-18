@@ -72,11 +72,11 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L52) |
-| function | `_til_tid` | `(iso)` | ISO-tid → `datetime`, uanset om den slutter paa `Z` eller `+00:00`. | [src](../../../core/services/composer_suggest.py#L67) |
-| function | `_svar_efter` | `(session_id, skrevet_at)` | Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue. | [src](../../../core/services/composer_suggest.py#L84) |
-| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L111) |
-| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L116) |
-| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L125) |
+| function | `_til_tid` | `(iso)` | ISO-tid → `datetime`, uanset om den slutter paa `Z` eller `+00:00`. | [src](../../../core/services/composer_suggest.py#L80) |
+| function | `_svar_efter` | `(session_id, skrevet_at)` | Antal assistent-svar NYERE end `skrevet_at` — talt i SQL, ikke i et vindue. | [src](../../../core/services/composer_suggest.py#L97) |
+| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L124) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L129) |
+| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L138) |
 
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._

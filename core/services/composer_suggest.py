@@ -50,9 +50,22 @@ MIN_SVAR_TEGN: Final[int] = 40
 
 
 def _samtale(session_id: str) -> list[dict[str, str]]:
-    """De seneste beskeder. Egen funktion, så testene kan sætte dem."""
-    from core.services.chat_sessions import recent_chat_session_messages
-    return recent_chat_session_messages(session_id, limit=MAKS_HISTORIK)
+    """De seneste beskeder. Egen funktion, så testene kan sætte dem.
+
+    ROD (målt 18/10-2026): vinduet var `recent_chat_session_messages(limit=6)`,
+    som tæller ALLE roller. I en tool-tung session er de sidste seks rækker
+    `tool`-resultater, så der var nul `user`/`assistant` tilbage — og funktionen
+    returnerede tomt FØR den nåede til Jarvis' eget forslag. Målt på Bjørns
+    session (866 rækker): 6 af 6 rækker var `tool`, forslaget lå klar i
+    `composer_jarvis_forslag` og blev aldrig vist. Komponisten stod tom.
+
+    `recent_chat_session_messages_by_user_turns` ankrer i USER-beskeder i
+    stedet, så vinduet altid indeholder rigtige samtale-runder. Samme
+    begrundelse som prompt-stien fik 9/6-2026 (se dens docstring): et
+    råtals-vindue drukner i tool-rækker.
+    """
+    from core.services.chat_sessions import recent_chat_session_messages_by_user_turns
+    return recent_chat_session_messages_by_user_turns(session_id, user_turns=MAKS_HISTORIK)
 
 
 #: Hvor mange assistent-svar der hentes naar foraeldelsen afgoeres. Vi skal

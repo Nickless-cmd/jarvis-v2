@@ -114,3 +114,67 @@ def test_tomt_svar_bliver_en_fejl():
 def test_ikke_json_bliver_en_fejl_med_uddrag():
     svar = mcp_client.parse_mcp_http_body("<html>404</html>", "text/html")
     assert "error" in svar and "404" in svar["error"]
+
+
+# ── Stdio: et timeout må ikke forgifte forbindelsen (målt 18/10-2026) ───────
+#
+# MÅLT i isoleret proces: efter ét timeout timede selv et `1+1`-kald ud.
+# `_send_stdio` startede en læsetråd på readline(); da kaldet blev opgivet,
+# fortsatte tråden med at blokere — og det forsinkede svar blev derfor læst
+# af det NÆSTE kald. Rørene var derefter permanent ude af sync. Det var den
+# ægte årsag til at Serena blev kaldt «hængende» i timer, mens en frisk
+# forbindelse til samme proces svarede på under to sekunder.
+
+
+class _Tavs:
+    """En stdio-server der aldrig svarer."""
+
+    stdin = type("W", (), {"write": lambda s, d: None, "flush": lambda s: None})()
+    stdout = type("R", (), {"readline": lambda s: __import__("time").sleep(30)})()
+
+    def poll(self):
+        return None
+
+
+def test_timeout_markerer_forbindelsen_brudt(monkeypatch):
+    """Efter et timeout skal forbindelsen erklæres død — ikke se sund ud."""
+    mcp_trust.allow("s")
+    monkeypatch.setattr(mcp_client, "_STDIO_TIMEOUT_S", 0.2)
+
+    k = mcp_client.MCPClient("s", {"command": "x"})
+    k.process = _Tavs()
+    k._connected = True
+    k._send_request("tools/list")
+
+    assert k._broken is True, "et timeout skal markere forbindelsen brudt"
+    assert k.connected is False, (
+        "en brudt forbindelse må ikke melde connected=True — så ville næste "
+        "kald læse det FORSINKEDE svar og få et forkert resultat"
+    )
+
+
+def test_brudt_forbindelse_genoprettes_foer_naeste_kald(monkeypatch):
+    """Næste kald skal starte en frisk proces i stedet for at læse gammelt lort."""
+    mcp_trust.allow("s")
+    k = mcp_client.MCPClient("s", {"command": "x"})
+    k._connected = True
+    k._broken = True
+    kald: list[str] = []
+
+    def _disconnect() -> None:
+        kald.append("disconnect")
+        k._broken = False
+
+    def _connect() -> bool:
+        kald.append("connect")
+        k._connected = True
+        return True
+
+    monkeypatch.setattr(k, "disconnect", _disconnect)
+    monkeypatch.setattr(k, "connect", _connect)
+    monkeypatch.setattr(k, "_send_request", lambda m, p=None: {"result": {"ok": True}})
+
+    r = k.call_tool("t", {})
+
+    assert kald == ["disconnect", "connect"], f"forventede genoprettelse, fik {kald}"
+    assert r.get("status") != "error"

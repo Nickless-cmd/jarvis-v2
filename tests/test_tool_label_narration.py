@@ -56,7 +56,7 @@ def test_hintet_er_kort_nok_til_en_linje():
 
 # ───────────────────────────────────────────── navne mennesker kan læse
 
-@pytest.mark.parametrize("navn", ["remember_this", "bash_session_run", "explore",
+@pytest.mark.parametrize("navn", ["remember_this", "bash_session_run",
                                   "scout_agent", "recall", "central_query"])
 def test_de_hyppigste_vaerktoejer_har_et_dansk_navn(navn):
     """Uden en etiket stod funktionsnavnet i klartekst på skærmen."""

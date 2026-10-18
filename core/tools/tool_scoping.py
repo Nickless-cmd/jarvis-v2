@@ -121,9 +121,9 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # kunne han ikke se hvad der blokerer. `inbox_done`/`inbox_drop` er de
     # eneste to veje en blokerende post frigives.
     "inbox", "inbox_done", "inbox_drop",
-    # Undersoegelse — laese-kun agent, aendrer intet (omdøbt fra `explore` 17/9-2026;
-    # det gamle navn står her som alias, så et kald med det ikke afvises af scope)
-    "scout_agent", "explore",
+    # Undersoegelse — laese-kun agent, aendrer intet. Det gamle navn `explore` er
+    # afskaffet 18/10-2026 og staar her ikke laengere.
+    "scout_agent",
     # Kode-flåden i den faste flade også i chat (Bjørn 17/9-2026: «lad ham få
     # det i sit fast toolset så ser vi»). Står i OWNER_ONLY_TOOLS, så member og
     # guest får den strippet — den hører ikke i OWNER_EXTRA, der kun må være
@@ -242,7 +242,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
     # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
     # sparer den kontekst en manuel gennemlaesning ville koste.
-    "scout_agent", "explore",
+    "scout_agent",
     # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode

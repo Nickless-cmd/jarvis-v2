@@ -105,7 +105,6 @@ _TOOL_LABELS: dict[str, str] = {
     "list_dir": "Ser i mappe",
     "multi_edit": "Redigerer fil",
     "verify_file_contains": "Verificerer fil",
-    "explore": "Undersøger",
     "recall": "Genkalder",
     "memory_search": "Søger i hukommelse",
     "memory_upsert_section": "Opdaterer hukommelse",

@@ -22,7 +22,7 @@ class TestHvadDerHegnes:
         "web_fetch", "web_scrape", "web_search", "get_news",
         # `convene_council` stod her indtil 7/10-2026 — vaerktoejet findes ikke
         # laengere, saa `should_fence` har intet at svare paa for det navn.
-        "scout_agent", "explore", "spawn_agent_task", "mcp_noget",
+        "scout_agent", "spawn_agent_task", "mcp_noget",
     ])
     def test_udefra_hegnes(self, t):
         assert should_fence(t)
@@ -39,7 +39,7 @@ class TestHvadDerHegnes:
 
 class TestKilder:
     @pytest.mark.parametrize("t,k", [
-        ("web_fetch", "web"), ("mcp_search", "mcp"), ("scout_agent", "subagent"), ("explore", "subagent"),
+        ("web_fetch", "web"), ("mcp_search", "mcp"), ("scout_agent", "subagent"),
         ("spawn_agent_task", "subagent"), ("bash", "bash"),
         ("runtime_web_fetch", "web"), ("operator_bash", "bash"),
     ])

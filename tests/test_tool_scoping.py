@@ -306,7 +306,7 @@ class TestNyeVaerktoejerErSynlige:
         finally:
             set_tool_scope(foer or "")
 
-    def test_explore_er_i_BEGGE_modes(self):
+    def test_scout_agent_er_i_BEGGE_modes(self):
         """Læse-kun undersøgelse ændrer intet og sparer den kontekst en manuel
         gennemlæsning ville koste — den hører hjemme begge steder."""
         assert "scout_agent" in self._navne("code")
@@ -326,15 +326,21 @@ class TestNyeVaerktoejerErSynlige:
             assert t in navne
 
 
-def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_kun_alias():
-    """Bjørn 17/9-2026: explore omdøbt til scout_agent, og dispatch_code_mode_task
-    i Jarvis' faste værktøjer. Det gamle navn virker stadig ved kald, men
-    tilbydes ikke som definition — ellers ser han to ens værktøjer."""
+def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_helt_vaek():
+    """Bjørn 17/9-2026: explore omdøbt til scout_agent. 18/10-2026: «explore
+    toolet er afskaffet.. du har din agent dispatch og scouts».
+
+    Aliaset blev fjernet HELT, ikke bare skjult bag definitionerne: et navn uden
+    definition kan modellen alligevel ikke kalde, så det var kun død vægt i
+    handler-kortet — og det lod et afskaffet værktøj se levende ud for enhver
+    der læste kortet. Undersøgelse sker nu via `scout_agent` og `dispatch_agent`.
+    """
     from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
     import core.tools.simple_tools as st
     navne = {t["function"]["name"] for t in st.get_tool_definitions()}
-    assert "scout_agent" in navne and "explore" not in navne
-    assert st._TOOL_HANDLERS["explore"] is st._TOOL_HANDLERS["scout_agent"]
+    assert "scout_agent" in navne
+    assert "explore" not in navne, "explore er afskaffet og maa ikke annonceres"
+    assert "explore" not in st._TOOL_HANDLERS, "explore-aliaset skal vaere fjernet"
     assert "scout_agent" in REQUIRED_LAZY_TOOL_NAMES
     assert "dispatch_code_mode_task" in REQUIRED_LAZY_TOOL_NAMES
 

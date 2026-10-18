@@ -1729,10 +1729,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "home_assistant": _exec_home_assistant,
     "spawn_agent_task": _exec_spawn_agent_task,
     "scout_agent": _exec_explore,
-    # Gammelt navn (omdøbt 17/9-2026, Bjørn). Beholdt som skjult alias: Jarvis'
-    # MEMORY.md, dagbøger og gamle ture nævner `explore`, og et kald til et navn
-    # der pludselig ikke findes, er en tavs fejl. Står IKKE i definitionerne.
-    "explore": _exec_explore,
+    # `explore` er AFLYST (18/10-2026, Bjørn: «explore toolet er afskaffet.. du
+    # har din agent dispatch og scouts»). Aliaset stod her for at gamle kald
+    # ikke skulle fejle tavst — men et navn uden definition kan modellen
+    # alligevel ikke kalde, så det var kun død vægt der lod et afskaffet
+    # værktøj se levende ud for enhver der læste handler-kortet. Undersøgelse
+    # sker nu via `scout_agent` og `dispatch_agent`.
     "send_message_to_agent": _contract_exec_send_message_to_agent,
     "relay_to_agent": _exec_relay_to_agent,
     "list_agents": _contract_exec_list_agents,

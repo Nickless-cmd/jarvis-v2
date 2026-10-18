@@ -92,7 +92,12 @@ def cached_web_search(
 
         return {
             **result,
-            "source": "tavily",
+            # Kilden er den provider der FAKTISK vandt dommen — ikke altid tavily.
+            # Rettet 18/10-2026: feltet var hardkodet, så et SerpAPI-svar blev
+            # stemplet som Tavily i både cachen og telemetrien. Målt i drift:
+            # provider=serpapi, source=tavily på samme svar. Falder tilbage til
+            # "tavily" når fetch_fn ikke er den samlede kæde (ældre kald/tests).
+            "source": str(result.get("provider") or "tavily"),
             "cache_key": cache_key,
             "ttl_policy": policy,
         }

@@ -638,6 +638,18 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("release-vagt kunne ikke startes: %s", _exc)
 
+        # Efterladte API-processer (18/10-2026). En genstart efterlod den gamle
+        # proces i live med 172 traade og 261 DB-forbindelser mod samme
+        # jarvis.db. Den lyttede ikke paa porten, saa intet syntes galt — men
+        # den skrev videre som en konkurrerende skriver. Aarsag: KillMode=process
+        # draeber kun MainPID. Vagten venter 90 s (saa en legitim nedlukning er
+        # forbi) og RAPPORTERER; den draeber ikke.
+        try:
+            from core.services.process_identity import start_efterladt_vagt
+            start_efterladt_vagt()
+        except Exception as _exc:
+            logger.warning("efterladt-proces-vagt kunne ikke startes: %s", _exc)
+
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield

@@ -210,9 +210,16 @@ _Hvem koerer denne agent — og lever den proces stadig?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L36) |
-| function | `denne_proces` | `()` | Maerket for den proces der kalder. | [src](../../../core/services/process_identity.py#L51) |
-| function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L70) |
+| function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L41) |
+| function | `denne_proces` | `()` | Maerket for den proces der kalder. | [src](../../../core/services/process_identity.py#L56) |
+| function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L75) |
+| function | `_cmdline` | `(pid)` | Procesens kommandolinje med NUL-bytes erstattet af mellemrum. | [src](../../../core/services/process_identity.py#L135) |
+| function | `_foraeldre` | `(pid)` | PPID for `pid` (felt 4 i /proc/<pid>/stat), 0 hvis ulaesbar. | [src](../../../core/services/process_identity.py#L144) |
+| function | `er_efterladt_api_proces` | `(*, pid, cmdline, main_pids, eget_pid, foraeldre_kæde)` | Er denne proces en API-proces som systemd ikke ejer? | [src](../../../core/services/process_identity.py#L154) |
+| function | `foraeldre_kæde` | `(pid=…)` | Pid'erne over `pid` (default: mig selv) op til init. | [src](../../../core/services/process_identity.py#L194) |
+| function | `efterladte_api_processer` | `(*, main_pids)` | Find API-processer som systemd ikke ejer. | [src](../../../core/services/process_identity.py#L207) |
+| function | `systemd_main_pids` | `(units=…)` | MainPID for hver unit, som systemd kender den lige nu. | [src](../../../core/services/process_identity.py#L251) |
+| function | `start_efterladt_vagt` | `(forsinkelse_s=…)` | Start vagten i en daemon-traad. Opdager og RAPPORTERER — draeber ikke. | [src](../../../core/services/process_identity.py#L286) |
 
 ## `core/services/process_supervisor.py`
 _Process supervisor — track long-running background processes Jarvis spawns._

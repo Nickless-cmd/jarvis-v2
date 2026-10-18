@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9095/17327 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9099/17332 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 9095/17327 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 288 | 620 | 46% |
+| `scripts` | 292 | 625 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2576)
+## Undocumented public functions (2577)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2472,6 +2472,7 @@ Generated from source. 9095/17327 functions/methods documented (52%). The list b
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
 - `scripts/install_git_hooks.py` :: `install` (L115)
 - `scripts/install_git_hooks.py` :: `main` (L179)
+- `scripts/install_system_deps.py` :: `main` (L135)
 - `scripts/installer_desk_appimage.py` :: `byg_profil` (L167)
 - `scripts/installer_desk_appimage.py` :: `main` (L284)
 - `scripts/interlanguage_analyze.py` :: `analyze` (L61)

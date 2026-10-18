@@ -8,6 +8,7 @@ This gets Jarvis running **locally**. For production (systemd, HTTPS, encryption
 - **Python 3.11+** (`requires-python = ">=3.11"`).
 - **conda / miniconda** (the reference deployment uses a conda env named `ai`).
 - **git**.
+- **Host packages** — `rg` and `tesseract` (with the `dan`/`eng` language packs): `python scripts/install_system_deps.py --install`. A missing binary is not an `ImportError`: the tool answers `error` and the caller believes it got a result.
 - *Optional:* **Ollama** if you want a local visible-model instead of a cloud provider.
 
 ## 1. Clone + environment

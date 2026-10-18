@@ -37,6 +37,7 @@ openwakeword
 
 # ── Media / voice ─────────────────────────────────────────────────
 Pillow           # import: PIL
+pytesseract      # OCR — requires the `tesseract` binary, see scripts/install_system_deps.py
 opencv-python    # import: cv2
 moviepy
 fonttools        # import: fontTools

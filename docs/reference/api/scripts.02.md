@@ -22,6 +22,18 @@ _Install or verify the required commit-attribution Git hooks._
 | function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
 
+## `scripts/install_system_deps.py`
+_Install or verify the HOST packages Jarvis' own tools require._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SystemDep` | `` | En binær afhængighed og hvad den koster at mangle. | [src](../../../scripts/install_system_deps.py#L45) |
+| function | `_manager` | `()` | Find den pakkemanager der faktisk findes. Tom streng = ingen fundet. | [src](../../../scripts/install_system_deps.py#L84) |
+| function | `_install_command` | `(manager, packages)` | Byg installationskommandoen. apt og dnf skal have sudo foran. | [src](../../../scripts/install_system_deps.py#L92) |
+| function | `missing_langs` | `(tool, wanted)` | Hvilke sprog tesseract ikke kan laese. Kun for tesseract. | [src](../../../scripts/install_system_deps.py#L106) |
+| function | `check` | `(dep)` | Returnér (ok, forklaring) for én afhaengighed. | [src](../../../scripts/install_system_deps.py#L122) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/install_system_deps.py#L135) |
+
 ## `scripts/installer_desk_appimage.py`
 _Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
 
@@ -430,13 +442,4 @@ _Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel før
 | function | `_laes_alle` | `(conn)` | — | [src](../../../scripts/normalize_sensory_sources.py#L30) |
 | function | `_plan` | `(rows)` | Returnér (id, gammel_json, ny_json, nye_metadata) for rækker der ændres. | [src](../../../scripts/normalize_sensory_sources.py#L35) |
 | function | `main` | `()` | — | [src](../../../scripts/normalize_sensory_sources.py#L59) |
-
-## `scripts/nudge_well_cleanup.py`
-_Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `clean_outbound` | `(apply)` | — | [src](../../../scripts/nudge_well_cleanup.py#L24) |
-| function | `clean_broend` | `(apply, path=…)` | — | [src](../../../scripts/nudge_well_cleanup.py#L64) |
-| function | `main` | `()` | — | [src](../../../scripts/nudge_well_cleanup.py#L85) |
 

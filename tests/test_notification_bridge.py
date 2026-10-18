@@ -175,6 +175,11 @@ def test_implicit_notification_ignores_another_users_global_pin(
     monkeypatch.setattr(cs, "get_chat_session", lambda sid: sessions.get(sid))
     monkeypatch.setattr(
         cs,
+        "get_session_owner",
+        lambda sid: "member-id" if sid == "member-chat" else "owner-id",
+    )
+    monkeypatch.setattr(
+        cs,
         "list_chat_sessions",
         lambda **kwargs: (
             [{"id": "owner-chat"}]
@@ -204,6 +209,46 @@ def test_implicit_notification_ignores_another_users_global_pin(
     assert result["status"] == "ok"
     assert result["session_id"] == "owner-chat"
     assert delivered == ["owner-chat"]
+
+
+def test_implicit_notification_blocks_when_identity_resolution_fails(
+    tmp_db, monkeypatch,
+):
+    """An identity lookup failure must not reopen the global-pin leak."""
+    import core.identity.workspace_context as wc
+    import core.services.chat_sessions as cs
+    import core.services.notification_bridge as nb
+    import core.services.session_inbox as inbox
+
+    delivered: list[str] = []
+    monkeypatch.setattr(nb, "get_pinned_session_id", lambda: "member-chat")
+    monkeypatch.setattr(
+        cs, "get_chat_session",
+        lambda sid: {"id": sid, "messages": [{"role": "user"}]},
+    )
+    monkeypatch.setattr(
+        cs, "list_chat_sessions", lambda **_kwargs: [{"id": "member-chat"}],
+    )
+    monkeypatch.setattr(
+        cs, "append_chat_message",
+        lambda *, session_id, **_kwargs: delivered.append(session_id)
+        or {"id": "message-1"},
+    )
+    monkeypatch.setattr(inbox, "is_session_active", lambda _sid: False)
+    monkeypatch.setattr(
+        wc, "current_user_id",
+        lambda: (_ for _ in ()).throw(RuntimeError("identity store unavailable")),
+    )
+
+    result = nb.send_session_notification(
+        "privat påmindelse", source="jarvis-notify", push=False,
+    )
+
+    assert result == {
+        "status": "blocked",
+        "error": "identity resolution failed",
+    }
+    assert delivered == []
 
 
 # ── Stale pin (17/9-2026) ───────────────────────────────────────────────────

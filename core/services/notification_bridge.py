@@ -212,12 +212,16 @@ def send_session_notification(
     # safe destinations for an implicit private notification.
     explicit_session_id = (session_id or "").strip()
     target_user_id = (user_id or "").strip()
-    if not target_user_id:
+    if not target_user_id and not explicit_session_id:
         try:
             from core.identity.workspace_context import current_user_id
             target_user_id = (current_user_id() or "").strip()
         except Exception:
-            target_user_id = ""
+            logger.warning(
+                "notification_bridge: identity resolution failed for implicit delivery",
+                exc_info=True,
+            )
+            return {"status": "blocked", "error": "identity resolution failed"}
 
     session_id = explicit_session_id
     if not session_id:

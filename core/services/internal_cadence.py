@@ -28,6 +28,7 @@ Design constraints:
 from __future__ import annotations
 
 import logging
+import queue
 import threading
 import time
 from dataclasses import dataclass, field
@@ -83,8 +84,13 @@ def register_producer(spec: ProducerSpec) -> None:
 
 
 def deregister_producer(name: str) -> None:
-    """Remove a producer from the cadence layer."""
+    """Remove a producer from the cadence layer.
+
+    Stopper også dens worker (18/10-2026): en afmeldt producer må ikke
+    efterlade en levende tråd med en åben DB-forbindelse.
+    """
     _producers.pop(name, None)
+    _stop_worker(name)
 
 
 # ---------------------------------------------------------------------------
@@ -198,11 +204,129 @@ _i_flugt: dict[str, threading.Thread] = {}
 _i_flugt_laas = threading.Lock()
 
 
-def stadig_i_flugt(navn: str) -> bool:
-    """Kører en tidligere, timet-ud kørsel af producenten stadig?
+# ---------------------------------------------------------------------------
+# Persistente producer-workers (18/10-2026)
+# ---------------------------------------------------------------------------
+#
+# HVORFOR (målt 18/10-2026): `_run_producer_bounded` startede en NY tråd ved
+# hver kørsel. `core.runtime.db_core._conn_pool` er `threading.local()`, så
+# hver tråd åbnede sin egen SQLite-forbindelse — og `sqlite3` nægter at lade
+# en anden tråd lukke den. `_sweep_orphaned_pool_connections` kunne derfor
+# kun rydde BOGHOLDERIET, ikke forbindelsen, så hver kørsel efterlod en
+# levende forbindelse i poolen. Målt: 9.912 pool-fødsler på 16 timer (~10 i
+# minuttet), hver med en WAL-åbning + PRAGMA×2 — det var de CPU-spikes der
+# blev læst som «uvicorn på 100 %».
+#
+# Med ÉN fast tråd pr. producer åbnes forbindelsen én gang og genbruges, så
+# fødslerne falder fra ~10/minut til antallet af producenter.
+#
+# Timeout-semantikken er UÆNDRET: kalderen venter højst `timeout_s` og giver
+# op; workeren kører videre, og `stadig_i_flugt` afviser at stable endnu en
+# kørsel ovenpå. Forskellen er at der ikke længere følger en ny tråd og en
+# ny forbindelse med hver kørsel.
 
-    Rydder op undervejs: er tråden død, glemmes den, så registret ikke vokser.
+
+class _ProducerWorker:
+    """Én persistent dæmon-tråd pr. producer, med kø og ledigheds-flag."""
+
+    __slots__ = ("name", "_traad", "_koe", "_ledig", "_submit_laas", "_luk")
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self._koe: queue.Queue = queue.Queue()
+        self._ledig = threading.Event()
+        self._ledig.set()                      # ledig indtil første job
+        self._submit_laas = threading.Lock()
+        self._luk = False
+        self._traad = threading.Thread(
+            target=self._loop, name=f"cadence-prod-{name}", daemon=True
+        )
+        self._traad.start()
+
+    @property
+    def busy(self) -> bool:
+        """Kører et job lige nu?"""
+        return not self._ledig.is_set()
+
+    def alive(self) -> bool:
+        return self._traad.is_alive() and not self._luk
+
+    def submit(self, job: Callable[[], None]) -> bool:
+        """Læg job i køen. False = workeren er optaget af den forrige kørsel."""
+        with self._submit_laas:
+            if not self._ledig.is_set():
+                return False
+            self._ledig.clear()
+            self._koe.put(job)
+            return True
+
+    def _loop(self) -> None:
+        while True:
+            job = self._koe.get()
+            if job is None:
+                return
+            try:
+                job()
+            finally:
+                self._ledig.set()
+
+    def stop(self) -> None:
+        """Luk workeren: luk dens DB-forbindelse i dens EGEN tråd, og stop."""
+        self._luk = True
+        try:
+            self._koe.put(_luk_denne_traads_forbindelse)
+            self._koe.put(None)
+        except Exception:  # en koe der ikke kan tage imod ved shutdown er ikke til at handle paa
+            pass
+
+
+def _luk_denne_traads_forbindelse() -> None:
+    """Kører i worker-tråden: luk den thread-lokale pool-forbindelse."""
+    try:
+        from core.runtime.db_core import close_pooled_connection
+        close_pooled_connection()
+    except Exception:  # forbindelsen kan allerede vaere lukket — det ER maalet
+        pass
+
+
+_workers: dict[str, _ProducerWorker] = {}
+_workers_laas = threading.Lock()
+
+
+def _get_worker(navn: str) -> _ProducerWorker:
+    with _workers_laas:
+        w = _workers.get(navn)
+        if w is None or not w.alive():
+            w = _ProducerWorker(navn)
+            _workers[navn] = w
+        return w
+
+
+def _stop_worker(navn: str) -> None:
+    with _workers_laas:
+        w = _workers.pop(navn, None)
+    if w is not None:
+        w.stop()
+
+
+def stadig_i_flugt(navn: str) -> bool:
+    """Kører en tidligere kørsel af producenten stadig?
+
+    MED PERSISTENTE WORKERS (18/10-2026) er svaret «er workeren optaget?» —
+    tråden dør aldrig, så tråd-liveness kan ikke længere bruges som mål. Den
+    gamle tråd-vej beholdes som fallback for kaldere der sætter `_i_flugt`
+    direkte.
+
+    Rydder op undervejs, så registret ikke vokser.
     """
+    with _workers_laas:
+        w = _workers.get(navn)
+    if w is not None:
+        if w.busy:
+            return True
+        with _i_flugt_laas:
+            _i_flugt.pop(navn, None)
+        return False
     with _i_flugt_laas:
         t = _i_flugt.get(navn)
         if t is None:
@@ -219,15 +343,20 @@ def _noter_i_flugt(navn: str, t: threading.Thread) -> None:
 
 
 def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s: float):
-    """Kør en producer i sin EGEN dæmon-tråd med en hård timeout.
+    """Kør en producer i sin EGEN persistente worker-tråd med en hård timeout.
 
     ROD-FIX (Bjørn 2026-06-17): producers kørte synkront i scheduler-tråden uden
     timeout. Én producer der hang i et LLM-kald (inner_voice/dreams/witness) frøs
     HELE cadence-loopet for evigt → warmer + alle private-lag-producers døde.
     Nu kan én hængende producer ikke vælte de andre — den timeout'er og loopet
-    fortsætter. Den hængende tråd er daemon (dør med processen).
+    fortsætter.
+
+    GENBRUG AF DB-FORBINDELSEN (18/10-2026): tråden er ikke ny pr. kørsel. Det er
+    den samme worker hver gang, så dens thread-lokale SQLite-forbindelse genbruges
+    i stedet for at en frisk fødes (og aldrig kan lukkes) pr. kørsel.
     """
     box: dict[str, object] = {}
+    ferdig = threading.Event()
 
     def _target() -> None:
         # Tag hvilken producer der kører NU, så cheap-lane-kald i run_fn (samme tråd) kan
@@ -247,16 +376,21 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
                 _pn2.clear_producer()
             except Exception:
                 pass
+            ferdig.set()
 
-    t = threading.Thread(target=_target, name=f"cadence-prod-{spec.name}", daemon=True)
-    t.start()
-    t.join(timeout_s)
-    if t.is_alive():
-        # Tråden lever videre — «sprunget over» er kun sandt for OS. Noteres
-        # her, så `_evaluate_producer` kan nægte at starte endnu en af samme
-        # slags. Ellers blev en producent der er for langsom til sin egen
-        # timeout startet igen ved HVERT tik.
-        _noter_i_flugt(spec.name, t)
+    worker = _get_worker(spec.name)
+    if not worker.submit(_target):
+        # Workeren er optaget: den forrige kørsel kører endnu (typisk fordi den
+        # timede ud). Samme kontrakt som før — næste tik ser «i_flugt» i stedet
+        # for at stable endnu en kørsel ovenpå.
+        _noter_i_flugt(spec.name, worker._traad)
+        raise TimeoutError(
+            f"producer '{spec.name}' koerer stadig fra forrige tik — sprunget over"
+        )
+    if not ferdig.wait(timeout_s):
+        # Jobbet kører videre i workeren. `stadig_i_flugt` afviser at starte en
+        # ny, indtil det er færdigt.
+        _noter_i_flugt(spec.name, worker._traad)
         raise TimeoutError(f"producer '{spec.name}' overskred {timeout_s:.0f}s — sprunget over")
     if "e" in box:
         raise box["e"]  # type: ignore[misc]

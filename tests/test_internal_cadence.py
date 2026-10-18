@@ -34,6 +34,11 @@ def _reset_cadence_state():
     cadence_mod._last_tick_at = ""
     cadence_mod._last_tick_results.clear()
     yield
+    # Stop persistente workers (18/10-2026): de er daemon-tråde der lever
+    # videre, så uden dette ville hver test efterlade en tråd og en
+    # DB-forbindelse — og testsuiten selv blive den lækage den måler på.
+    for _navn in list(cadence_mod._workers):
+        cadence_mod._stop_worker(_navn)
     cadence_mod._i_flugt.clear()
     cadence_mod._producers.clear()
     cadence_mod._last_run_at.clear()
@@ -501,3 +506,132 @@ def test_registret_vokser_ikke_naar_traaden_er_doed(isolated_runtime, monkeypatc
     _t.sleep(1.0)
     assert cadence_mod.stadig_i_flugt("kort") is False
     assert "kort" not in cadence_mod._i_flugt, "den doede traad blev liggende"
+
+
+# ---------------------------------------------------------------------------
+# Worker-genbrug: DB-forbindelsen fødes ÉN gang, ikke pr. kørsel (18/10-2026)
+# ---------------------------------------------------------------------------
+
+def test_workeren_genbruges_saa_db_forbindelsen_ikke_foedes_pr_koersel(isolated_runtime):
+    """Kernen i fixet: samme tråd → samme thread-lokale SQLite-forbindelse.
+
+    Før 18/10-2026 startede hver kørsel en NY tråd. `db_core._conn_pool` er
+    `threading.local()`, så hver tråd åbnede sin egen forbindelse — og
+    `sqlite3` nægter at lade en anden tråd lukke den, så den blev liggende i
+    poolen som forældreløs. Målt: 9.912 pool-fødsler på 16 timer (~10/minut),
+    hver med WAL-åbning + PRAGMA×2.
+
+    Testen måler det direkte: tråd-identiteten og forbindelses-objektets id
+    skal være UÆNDRET på tværs af tre kørsler.
+    """
+    import threading as _th
+
+    from core.runtime import db_core
+
+    traade: list[int] = []
+    forbindelser: list[int] = []
+
+    def run_fn(*, trigger, last_visible_at=""):
+        traade.append(_th.get_ident())
+        forbindelser.append(id(db_core.connect()))
+        return {"ran": True}
+
+    register_producer(ProducerSpec(
+        name="genbrug", cooldown_minutes=0, visible_grace_minutes=0,
+        run_fn=run_fn, priority=5,
+    ))
+
+    for _ in range(3):
+        run_cadence_tick(trigger="test")
+
+    assert len(traade) == 3, f"producenten kørte ikke tre gange: {traade}"
+    assert len(set(traade)) == 1, f"tråden blev skiftet mellem kørsler: {traade}"
+    assert len(set(forbindelser)) == 1, (
+        f"DB-forbindelsen blev født på ny pr. kørsel: {forbindelser}"
+    )
+
+
+def test_en_worker_pr_producent_ikke_en_pr_koersel(isolated_runtime):
+    """Registret skal have ÉN worker pr. producer — ikke en der vokser."""
+    calls: list[int] = []
+
+    def run_fn(*, trigger, last_visible_at=""):
+        calls.append(1)
+        return {"ran": True}
+
+    for navn in ("a", "b"):
+        register_producer(ProducerSpec(
+            name=navn, cooldown_minutes=0, visible_grace_minutes=0,
+            run_fn=run_fn, priority=5,
+        ))
+
+    for _ in range(4):
+        run_cadence_tick(trigger="test")
+
+    assert len(calls) == 8, f"forventede 4 kørsler × 2 producenter: {len(calls)}"
+    assert set(cadence_mod._workers) == {"a", "b"}, (
+        f"worker-registret voksede: {sorted(cadence_mod._workers)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Genbrug af tråd og DB-forbindelse (18/10-2026)
+# ---------------------------------------------------------------------------
+#
+# `core.runtime.db_core._conn_pool` er `threading.local()`. Derfor er
+# «genbruges tråden?» og «genbruges DB-forbindelsen?» det SAMME spørgsmål —
+# og det er hele pointen med de persistente workers: før startede hver kørsel
+# en ny tråd, som åbnede en frisk SQLite-forbindelse der per konstruktion
+# ikke kunne lukkes af en anden tråd. Målt: 9.912 pool-fødsler på 16 timer.
+
+
+def test_samme_producer_genbruger_traad_og_thread_lokal_forbindelse():
+    import threading as _th
+
+    traade: list[int] = []
+    lokalt: list[object] = []
+    _markoer = _th.local()
+
+    def run_fn(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        traade.append(_th.get_ident())
+        # Thread-lokal state der KUN overlever hvis det er samme tråd —
+        # præcis den mekanisme pool-forbindelsen hviler på.
+        lokalt.append(getattr(_markoer, "sat", None))
+        _markoer.sat = "ja"
+        return {"ran": True}
+
+    register_producer(ProducerSpec(name="genbrug", cooldown_minutes=0,
+                                   visible_grace_minutes=0, run_fn=run_fn, priority=5))
+    for _ in range(5):
+        run_cadence_tick(trigger="test")
+
+    assert len(traade) == 5, f"producenten koerte {len(traade)} gange, ikke 5"
+    assert len(set(traade)) == 1, (
+        f"der blev brugt {len(set(traade))} traade — traaden blev ikke genbrugt"
+    )
+    assert lokalt == [None, "ja", "ja", "ja", "ja"], (
+        f"thread-lokal state overlevede ikke: {lokalt}"
+    )
+
+
+def test_en_haengende_producer_blokerer_ikke_de_andre(monkeypatch):
+    """Én fast tråd pr. producer — ikke én delt. Ellers ville en hængende
+    producent fryse hele cadence-laget, som er den fejl 17/6-fixet fjernede."""
+    monkeypatch.setattr(cadence_mod, "_PRODUCER_TIMEOUT_S", 0.2)
+    spec_langsom, _ = _langsom("haenger", 3.0)
+    spec_langsom.priority = 1  # kører først
+    register_producer(spec_langsom)
+
+    koerte: list[str] = []
+
+    def hurtig_fn(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        koerte.append("hurtig")
+        return {"ran": True}
+
+    register_producer(ProducerSpec(name="hurtig", cooldown_minutes=0,
+                                   visible_grace_minutes=0, run_fn=hurtig_fn, priority=9))
+    run_cadence_tick(trigger="test")
+
+    assert koerte == ["hurtig"], (
+        "den hurtige producent blev blokeret af den haengende — workerne er delt"
+    )

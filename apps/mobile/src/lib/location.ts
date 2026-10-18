@@ -53,8 +53,18 @@ export async function reverseLabel(lat: number, lon: number, precise: boolean): 
   }
 }
 
+/**
+ * GPS er den PRIMÆRE kilde på ALLE delende niveauer (18/10-2026).
+ *
+ * Før spurgte 'city' og 'area' aldrig GPS — de gik direkte til ipwho.is. Bag
+ * carrier-grade NAT kan et IP-opslag strukturelt ikke finde byen: udgangen
+ * ligger hos operatøren, ikke hos brugeren. Målt tre gange som forkert by
+ * (Taastrup 24/9, København 7/10, Ålborg 18/10) mens Bjørn var i Svendborg.
+ * IP er nu kun reserve når GPS ikke kan levere et fix.
+ */
 export function shouldUseGps(precision: LocationPrecision): boolean {
-  return precision === 'now' || precision === 'precise' || precision === 'background'
+  return precision === 'city' || precision === 'area'
+    || precision === 'now' || precision === 'precise' || precision === 'background'
 }
 
 export function precisionLabel(precision: LocationPrecision): string {
@@ -99,18 +109,18 @@ export async function ipLocation(): Promise<LocationPayload | null> {
 /**
  * Hent brugerens lokation efter valgt præcision.
  * - 'off'   → null (kalderen sender {} for at rydde server-side)
- * - 'area'  → IP-baseret område/by-region.
- * - 'now'/'precise'/'background' → GPS → reverse-geocode gade. Falder tilbage til IP.
- * - 'city'  → IP-baseret by-niveau (ingen GPS-opkald → batterivenligt).
+ * - 'city'/'area' → GPS (lav præcision) → by-label. IP kun som reserve.
+ * - 'now'/'precise'/'background' → GPS (høj præcision) → reverse-geocode gade.
+ *                                   IP kun som reserve.
  * Best-effort: returnerer null ved manglende tilladelse/fejl.
+ *
+ * GPS FØRST (18/10-2026): IP-opslaget var standardstien for 'city'/'area' og
+ * reserve for resten — men bag CGNAT peger det på operatørens udgang, ikke på
+ * brugeren. Det gav tre forkerte byer på tre måneder. IP er nu sidste udvej.
  */
 export async function getDeviceLocation(precision: LocationPrecision): Promise<LocationPayload | null> {
   if (precision === 'off') return null
-  if (precision === 'city' || precision === 'area') {
-    const loc = await ipLocation()
-    return loc ? { ...loc, precision } : null
-  }
-  // GPS-niveauer. KRITISK: getCurrentPositionAsync kan hænge i det uendelige
+  // KRITISK: getCurrentPositionAsync kan hænge i det uendelige
   // indendørs/uden fix → vi MÅ tids-begrænse den (race mod 8s) så den aldrig
   // blokerer kalderen. Ved timeout/fejl → IP-fallback.
   // KRITISK (Bjørn 2026-06-21): requestForegroundPermissionsAsync() HÆNGER i det
@@ -125,8 +135,10 @@ export async function getDeviceLocation(precision: LocationPrecision): Promise<L
   ]).then((r) => r ?? ipLocation()).catch(() => ipLocation())
 }
 
-/** Indre precise-flow uden timeout-værn (kalderen race'er det mod en deadline). */
-async function _precisePayload(precision: Extract<LocationPrecision, 'now' | 'precise' | 'background'>): Promise<LocationPayload | null> {
+/** Indre GPS-flow uden timeout-værn (kalderen race'er det mod en deadline).
+ *  'city'/'area' → lav accuracy, by-label. Resten → høj accuracy, gade-label. */
+async function _precisePayload(precision: Exclude<LocationPrecision, 'off'>): Promise<LocationPayload | null> {
+  const wantStreet = precision === 'now' || precision === 'precise' || precision === 'background'
   try {
     // Læs tilladelse uden dialog (getForegroundPermissionsAsync rører ikke en
     // Activity → hænger ikke). Bed kun aktivt hvis status er ubestemt.
@@ -142,9 +154,12 @@ async function _precisePayload(precision: Extract<LocationPrecision, 'now' | 'pr
     // celle/netværks-fix → reverse-geocode giver kun by, INTET vejnavn. Derfor:
     // hent en FRISK høj-præcisions-GPS-fix FØRST (race mod 10s), og brug kun
     // last-known som hurtig fallback hvis det friske fix timer ud/fejler.
+    // 'city'/'area' har ikke brug for gaden — Balanced er nok og tager kortere tid.
     let pos: { coords: { latitude: number; longitude: number; accuracy?: number | null } } | null =
       await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        Location.getCurrentPositionAsync({
+          accuracy: wantStreet ? Location.Accuracy.High : Location.Accuracy.Balanced,
+        }),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
       ]).catch(() => null)
     if (!pos) {
@@ -152,7 +167,7 @@ async function _precisePayload(precision: Extract<LocationPrecision, 'now' | 'pr
     }
     if (!pos) return ipLocation()
     const { latitude, longitude } = pos.coords
-    const label = await reverseLabel(latitude, longitude, true)
+    const label = await reverseLabel(latitude, longitude, wantStreet)
     return {
       lat: latitude,
       lon: longitude,

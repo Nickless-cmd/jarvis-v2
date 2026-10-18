@@ -4,6 +4,15 @@ import { listSessions, getSession, createSession, renameSession, deleteSession, 
 import { parsePauseAsk } from '../lib/pauseAsk'
 import { denseBlocks } from '../lib/blockHelpers'
 
+/** Nøglen hvor den sidste samtale i en given mode ligger.
+ *
+ *  `jarvis-desk:activeSession` (uden mode) er den GAMLE nøgle og bevares: den
+ *  bærer samtalen over en genstart, og den skal en opgradering ikke rive væk.
+ *  De to mode-nøgler er det NYE spor, der gør et fladeskift i stand til at
+ *  skifte samtale med — se `skiftMode`.
+ */
+const modeKey = (mode: 'chat' | 'code') => `jarvis-desk:activeSession:${mode}`
+
 type ClientStatus =
   | 'optimistic_user'
   | 'streaming_assistant'
@@ -27,6 +36,13 @@ export interface SessionContextValue {
   select: (id: string) => void
   /** Ryd aktiv samtale → greeting-skærm (session oprettes først ved første send). */
   newChat: () => void
+  /** Skift mellem chat og code OG tag den rigtige samtale med.
+   *
+   *  `activeId` er ÉN fælles samtale for begge flader, så et rent fladeskift lod
+   *  samtalen stå: chat-fladen viste en kode-samtale indtil man selv valgte en
+   *  anden (Bjørn 18/10-2026: «skifter chatview ikk med før man vælger en
+   *  samtale»). Derfor huskes den sidste samtale pr. mode. */
+  skiftMode: (fra: 'chat' | 'code', til: 'chat' | 'code') => void
   create: (title: string, kind?: 'chat' | 'code') => Promise<ChatSession>
   rename: (id: string, title: string) => Promise<void>
   remove: (id: string) => Promise<void>
@@ -120,7 +136,14 @@ export function SessionProvider({
     // Sidebarens klik gør præcis det samme opslag (`workspace_kind` sat →
     // code); at gøre noget andet her ville være to definitioner af det samme.
     const s = sessions.find((x) => x.id === gemt)
-    if (s) onRestore?.(erKodeSamtale(s) ? 'code' : 'chat')
+    if (s) {
+      const mode = erKodeSamtale(s) ? 'code' : 'chat'
+      // Så den gendannede samtale også er pladsen i sin mode: uden det ville
+      // det første fladeskift efter en genstart gå til en ny chat, selvom man
+      // lige stod i samtalen.
+      try { localStorage.setItem(modeKey(mode), gemt) } catch { /* ignore */ }
+      onRestore?.(mode)
+    }
     // `select` udelades: den gendannes ved hver config-ændring og ville koere
     // gendannelsen igen. `gendannetRef` gør den til en engangs-handling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,6 +230,33 @@ export function SessionProvider({
     loadedRef.current = null
     try { localStorage.removeItem('jarvis-desk:activeSession') } catch { /* ignore */ }
   }, [])
+
+  // Bjørn 18/10-2026: «hvis jeg skifter fra code mode til chat mode skifter
+  // chatview ikk til enten den sidste aktive session i chat mode eller ny chat
+  // skærmen, og omvendt».
+  //
+  // Årsagen er at `activeId` er FÆLLES for begge flader. Fladeskiftet rørte
+  // den ikke, så man stod i chat med en kode-samtale (og omvendt) indtil man
+  // selv valgte en anden. Mobilen har samme fejl: `saveLastSession` gemmer ÉN
+  // plads `{id, kode}`, så et fladeskift overskriver den med den samme samtale.
+  //
+  // Løsningen er to spor. Den samtale man FORLADER gemmes under sin egen mode,
+  // og den nye mode åbner sin egen plads — eller en ny chat, hvis den ikke har
+  // en endnu. Samtalen slås op i `sessions`, så en slettet samtale ikke
+  // genopstår som en tom flade med et 404 bag sig.
+  const skiftMode = useCallback((fra: 'chat' | 'code', til: 'chat' | 'code') => {
+    if (fra === til) return
+    let husket: string | null = null
+    try {
+      if (activeId) localStorage.setItem(modeKey(fra), activeId)
+      husket = localStorage.getItem(modeKey(til))
+    } catch { /* ignore */ }
+    if (husket && sessions.some((s) => s.id === husket)) {
+      select(husket)
+      return
+    }
+    newChat()
+  }, [activeId, sessions, select, newChat])
 
   // Samtaler serveren har AFVIST (403) for denne bruger. Uden denne blev en
   // fremmed samtale hentet igen hvert 1,5 sekund i det uendelige: `refreshMessages`
@@ -349,8 +399,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, skiftMode, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, skiftMode, create, rename, remove, setPinned, setArchived, setWorkspace, releaseWorkspace, refresh, refreshMessages, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { SessionProvider, mergeServer } from './SessionContext'
@@ -245,6 +245,81 @@ describe('SessionContext reconcile', () => {
   it('loads sessions on mount', async () => {
     const { result } = renderHook(() => useSessions(), { wrapper })
     await waitFor(() => expect(result.current.sessions.length).toBe(1))
+  })
+})
+
+/**
+ * Bjørn 18/10-2026: «hvis jeg skifter fra code mode til chat mode skifter
+ * chatview ikk til enten den sidste aktive session i chat mode eller ny chat
+ * skærmen, og omvendt».
+ *
+ * `activeId` er fælles for begge flader, så et rent fladeskift lod samtalen stå.
+ * Testen kræver at fladen tager sin EGEN samtale med — og at en mode uden en
+ * husket samtale lander på den NYE chat, ikke på den man kom fra.
+ */
+describe('skiftMode — samtalen følger fladen', () => {
+  beforeEach(() => {
+    // Nøglerne er delte mellem tests (jsdom'en lever videre). Uden ryddet
+    // localStorage ville en husket samtale fra en tidligere test lække ind.
+    localStorage.clear()
+  })
+
+  // `mockResolvedValue` erstatter mockens implementering for RESTEN af filen,
+  // ikke kun for denne test. Uden denne genopretning arver de ældre
+  // gendannelses-tests nedenfor min to-samtale-liste og timer ud på et id de
+  // aldrig fik. Målt 18/10-2026: to tests der ellers var grønne.
+  afterEach(async () => {
+    const { listSessions } = await import('../lib/api')
+    vi.mocked(listSessions).mockResolvedValue([{ id: 's1', title: 'T', updated_at: 'x' }] as never)
+  })
+
+  it('tager den sidste samtale i den mode man kommer TIL — ikke den man forlod', async () => {
+    const { listSessions } = await import('../lib/api')
+    vi.mocked(listSessions).mockResolvedValue([
+      { id: 'c1', title: 'Chat', updated_at: 'x', kind: 'chat' },
+      { id: 'k1', title: 'Kode', updated_at: 'x', kind: 'code' },
+    ] as never)
+
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions.length).toBe(2))
+
+    // Stå i chat-samtalen.
+    await act(async () => { result.current.select('c1') })
+    expect(result.current.activeId).toBe('c1')
+
+    // Skift til code: ingen kode-samtale husket endnu → NY chat, ikke c1.
+    await act(async () => { result.current.skiftMode('chat', 'code') })
+    expect(result.current.activeId).toBeNull()
+
+    // Vælg kode-samtalen, og skift tilbage: nu skal c1 komme igen.
+    await act(async () => { result.current.select('k1') })
+    await act(async () => { result.current.skiftMode('code', 'chat') })
+    expect(result.current.activeId).toBe('c1')
+  })
+
+  it('genopstår ikke på en slettet samtale — den falder tilbage til ny chat', async () => {
+    const { listSessions } = await import('../lib/api')
+    vi.mocked(listSessions).mockResolvedValue([
+      { id: 'c1', title: 'Chat', updated_at: 'x', kind: 'chat' },
+    ] as never)
+
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions.length).toBe(1))
+
+    // Husk en samtale i code-sporet som ikke findes i listen længere.
+    localStorage.setItem('jarvis-desk:activeSession:code', 'slettet-kode-samtale')
+    await act(async () => { result.current.select('c1') })
+    await act(async () => { result.current.skiftMode('chat', 'code') })
+
+    expect(result.current.activeId).toBeNull()
+  })
+
+  it('gør intet når man bliver i samme mode', async () => {
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(result.current.sessions.length).toBe(1))
+    await act(async () => { result.current.select('s1') })
+    await act(async () => { result.current.skiftMode('chat', 'chat') })
+    expect(result.current.activeId).toBe('s1')
   })
 })
 

@@ -67,6 +67,7 @@ export function Sidebar({
   onOpenBug,
   onOpenAgent,
   routineReturnMode = 'chat',
+  onMode,
 }: {
   surface: Surface
   onSurface: (s: Surface) => void
@@ -80,6 +81,12 @@ export function Sidebar({
   onOpenBug?: () => void
   /** Rutiner findes i begge modes og beholder den mode de blev åbnet fra. */
   routineReturnMode?: 'chat' | 'code'
+  /** Mode-vælgeren. ADSKILT fra `onSurface`, fordi et modeskift også skal
+   *  skifte samtale: `onSurface` bruges af sessionsklik og sekundær-nav, hvor
+   *  samtalen allerede er valgt (eller slet ikke skal røres). Blander man dem,
+   *  overskriver modeskiftet det klik brugeren netop lavede. Falder tilbage til
+   *  `onSurface` hvis den ikke er givet, så en kalder uden den stadig virker. */
+  onMode?: (m: Mode) => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings, auth, update } = useSettings()
@@ -205,14 +212,14 @@ export function Sidebar({
       <div className="sidebar-top">
         <ModeDropdown
           active={modeFor(surface, routineReturnMode)}
-          onChange={(m) => onSurface(m)}
+          onChange={(m) => (onMode ?? onSurface)(m)}
         />
         {/* Egen gruppe i hoejre side: mode-vaelgeren siger HVOR man er,
             ikonerne er ting man GOER. To slags, hver sin ende. */}
         <div className="sidebar-top-actions">
           <ModeBladrer
             active={modeFor(surface, routineReturnMode)}
-            onChange={(m) => onSurface(m)}
+            onChange={(m) => (onMode ?? onSurface)(m)}
           />
           <button
             type="button"

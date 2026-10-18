@@ -43,6 +43,7 @@ import { RoutinesView } from './views/RoutinesView'
 import { RoutineEditor } from './components/routines/RoutineEditor'
 import type { Routine } from './lib/routinesApi'
 import { Sidebar, modeFor, type Surface } from './components/shell/Sidebar'
+import type { Mode } from './components/shell/ModeDropdown'
 import { WebSidebarFrame } from './components/shell/WebSidebarFrame'
 // OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026): det lille arbejder-felt i
 // højre nederste hjørne skulle ud. Komponenten er bevaret — kun renderingen
@@ -224,7 +225,7 @@ function Shell({
   userName: string
   model: string
 }) {
-  const { activeId, select } = useSessions()
+  const { activeId, select, skiftMode } = useSessions()
   const { settings } = useSettings()
   const panel = usePanel()
   const apiBaseUrl = settings?.apiBaseUrl
@@ -262,9 +263,23 @@ function Shell({
     }
     setSurface(next)
   }
+
+  // Mode-vælgeren. ADSKILT fra `navigate`, fordi et modeskift også skal skifte
+  // samtale — og fordi `navigate` kaldes af sessionsklik, hvor klikket netop
+  // HAR valgt en samtale. Blandede man dem, ville modeskiftet overskrive det
+  // klik brugeren lige lavede (Bjørn 18/10-2026).
+  const skiftFlade = (m: Mode) => {
+    // `cowork` er en FLADE, ikke en samtaletype: sessioner er kun chat eller
+    // code. Samme normalisering som sidebaren bruger til gruppe-filtrering —
+    // ellers ville et skift til Arbejde lede efter en samtale der ikke findes.
+    const fra: 'chat' | 'code' = modeFor(surface, routineReturnMode) === 'code' ? 'code' : 'chat'
+    const til: 'chat' | 'code' = m === 'code' ? 'code' : 'chat'
+    if (fra !== til) skiftMode(fra, til)
+    setSurface(m)
+  }
   return (
     <WebSidebarFrame web={__WEB_BUILD__} sidebar={
-      <Sidebar surface={surface} onSurface={navigate} routineReturnMode={routineReturnMode} userName={userName} onSearch={() => setSearchOpen(true)}
+      <Sidebar surface={surface} onSurface={navigate} onMode={skiftFlade} routineReturnMode={routineReturnMode} userName={userName} onSearch={() => setSearchOpen(true)}
                onOpenBug={() => setBugOpen(true)}
                onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })} />
     }>

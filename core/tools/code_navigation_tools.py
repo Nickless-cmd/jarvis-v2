@@ -1,17 +1,31 @@
-"""Symbol find / find usages — regex-based v1.
+"""Symbol find / find usages.
 
-Tree-sitter would give precise AST-aware results but pulls a heavy dep
-tree and per-language parsers. For v1 we use ripgrep with
-language-aware patterns derived from the file extension. Less precise
-than AST (we'd miss `foo()` invoked via `getattr(obj, 'foo')()`) but
-fast, dependency-free, and good enough for the 80% case Jarvis hits
-when refactoring.
+`find_symbol` er regex-baseret (ripgrep med sprogbevidste mønstre).
+`find_usages` går gennem Serenas LSP når den er tilgængelig, og falder
+tilbage til ripgrep når den ikke er.
+
+## Hvorfor LSP i find_usages (målt 18/10-2026)
+
+Ripgrep kan ikke skelne en reference fra en omtale. Målt på
+`normalize_query`: begge veje giver 10 referencer, men ripgrep kan ikke
+sige HVILKET symbol referencen ligger inde i, og den tæller
+docs/kommentarer med som kald. LSP'en giver `enclosing` — fx
+`TestNormalizeQuery/test_basic_normalization` — hvilket er præcis den
+information der afgør om en hit er en ægte kalder eller en docstring.
+
+LSP'en er autoritativ for SYMBOLER, men blind for tekst: et navn der kun
+optræder i en streng eller kommentar findes ikke som symbol. Derfor
+falder vi tilbage til ripgrep når symbolet ikke har nogen definition —
+og markerer hvilken backend der svarede i `backend`-feltet, så svaret
+aldrig ser stærkere ud end det er.
 
 Returned hits include {file, line, kind, snippet} so the model can
 quickly orient. Capped at MAX_HITS to keep responses bounded.
 """
 from __future__ import annotations
 
+import ast
+import logging
 import re
 import shutil
 import subprocess
@@ -20,7 +34,15 @@ from typing import Any
 
 from core.identity.project_context import current_project_root
 
+logger = logging.getLogger(__name__)
+
 MAX_HITS = 200
+
+# Serena accepterer et vilkårligt session-id og opretter sessionen selv
+# (målt 18/10-2026), så vi behøver ikke hente et først. Fast id = samme
+# REPL-tilstand på tværs af kald, hvilket lader LSP'ens cache være varm.
+_LSP_SERVER = "serena"
+_LSP_SESSION = "jarvis-find-usages"
 
 # Language → regex for definition lines. Each pattern uses a
 # placeholder %S% replaced with the symbol (rg's -e supports per-call
@@ -186,6 +208,144 @@ def _exec_find_symbol(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _mcp_tekst(svar: Any) -> str:
+    """Træk svarteksten ud af et MCP-svar og fjern klientens indhegning.
+
+    `mcp_client` pakker hvert svar i `[UTROET …]…[/UTROET]` som
+    injektionsværn. Det er rigtigt for prompten, men her er teksten et
+    Python-udtryk jeg skal parse — markøren ville ødelægge parsingen.
+    """
+    if not isinstance(svar, dict):
+        return ""
+    for del_ in svar.get("content") or []:
+        if isinstance(del_, dict) and del_.get("type") == "text":
+            tekst = str(del_.get("text") or "")
+            tekst = re.sub(r"^\[UTROET[^\]]*\]\s*", "", tekst)
+            tekst = re.sub(r"\s*\[/UTROET\]\s*$", "", tekst)
+            return tekst.strip()
+    return ""
+
+
+def _lsp_repl_kode(name: str) -> str:
+    """Byg REPL-koden Serena skal køre.
+
+    Navnet indsættes med `repr()` — ikke som rå tekst — så et navn med
+    citationstegn ikke kan brække ud af strengen.
+
+    Formen er valgt efter måling: `serena_repl` returnerer det sidste
+    UDTRYK, ikke `print()`-output, og dicts serialiseres som Python-repr.
+    """
+    return (
+        f"_n = {name!r}\n"
+        '_out = {"defs": [], "refs": [], "error": None}\n'
+        "try:\n"
+        "    _syms = s.lsp.find_symbol(_n)\n"
+        "    _defs = [x for x in _syms.symbols"
+        " if x.get_name_path().split('/')[-1] == _n]\n"
+        '    _out["defs"] = [{"file": x.relative_path, "line": x.line,'
+        ' "kind": x.symbol_kind_name} for x in _defs]\n'
+        "    for _d in _defs[:1]:\n"
+        "        _r = s.lsp.find_referencing_symbols(_n, _d.relative_path)\n"
+        '        _out["refs"] = [{"file": x.get_relative_path(),'
+        ' "line": x.line, "enclosing": x.symbol.get_name_path(),'
+        ' "kind": x.symbol.symbol_kind_name} for x in _r.references]\n'
+        "except Exception as _e:\n"
+        '    _out["error"] = type(_e).__name__ + ": " + str(_e)\n'
+        "_out"
+    )
+
+
+def _lsp_usages(name: str) -> dict[str, Any] | None:
+    """Slå referencer op gennem Serenas LSP.
+
+    Returnerer `None` når LSP-vejen ikke kan bruges — serveren svarer
+    ikke, symbolet har ingen definition, eller svaret kan ikke læses.
+    Kalderen falder da tilbage til ripgrep. `None` betyder altså
+    «prøv den anden vej», ikke «der er nul referencer».
+    """
+    try:
+        from core.services import mcp_manager
+    except Exception as exc:  # import kan fejle under bootstrap
+        logger.debug("find_usages: mcp_manager utilgængelig (%s)", exc)
+        return None
+    try:
+        svar = mcp_manager.call(
+            _LSP_SERVER, "serena_repl",
+            {"session_id": _LSP_SESSION, "code": _lsp_repl_kode(name)},
+        )
+    except Exception as exc:  # timeout, død subprocess, manglende tillid
+        logger.warning("find_usages: LSP-kald fejlede (%s) — bruger ripgrep", exc)
+        return None
+    if not isinstance(svar, dict) or svar.get("isError"):
+        logger.debug("find_usages: LSP svarede fejl — bruger ripgrep")
+        return None
+    try:
+        data = ast.literal_eval(_mcp_tekst(svar))
+    except (ValueError, SyntaxError) as exc:
+        logger.warning("find_usages: kunne ikke læse LSP-svar (%s)", exc)
+        return None
+    if not isinstance(data, dict) or data.get("error"):
+        if isinstance(data, dict) and data.get("error"):
+            logger.warning("find_usages: LSP-fejl: %s", data["error"])
+        return None
+    if not data.get("defs"):
+        # Navnet er ikke et symbol LSP'en kender. Det kan stadig være en
+        # streng eller en kommentar — ripgrep ser den slags, LSP'en gør ikke.
+        logger.debug("find_usages: %r har ingen definition — bruger ripgrep", name)
+        return None
+    return data
+
+
+def _lsp_hits(data: dict[str, Any], scope: Path) -> list[dict[str, Any]]:
+    """Byg hits i samme form som ripgrep-vejen giver.
+
+    `kind` bevarer husets vokabular ("definition"/"use"), mens LSP'ens
+    eget `symbol_kind` (Function/Method/Variable/Class) gemmes ved siden
+    af — så bagudkompatible kalderne ikke brækker, og informationen ikke
+    går tabt.
+    """
+    _cache: dict[str, list[str]] = {}
+
+    def _linje(relativ: str, nummer: int) -> str:
+        if relativ not in _cache:
+            try:
+                tekst = (scope / relativ).read_text(encoding="utf-8", errors="replace")
+            except OSError as exc:
+                logger.debug("find_usages: kunne ikke læse %s (%s)", relativ, exc)
+                _cache[relativ] = []
+            else:
+                _cache[relativ] = tekst.splitlines()
+        linjer = _cache[relativ]
+        if 1 <= nummer <= len(linjer):
+            return linjer[nummer - 1].strip()[:200]
+        return ""
+
+    hits: list[dict[str, Any]] = []
+    for d in data.get("defs") or []:
+        fil = str(d.get("file") or "")
+        linje = int(d.get("line") or 0)
+        hits.append({
+            "file": fil,
+            "line": linje,
+            "snippet": _linje(fil, linje),
+            "kind": "definition",
+            "symbol_kind": str(d.get("kind") or ""),
+            "enclosing": None,
+        })
+    for r in data.get("refs") or []:
+        fil = str(r.get("file") or "")
+        linje = int(r.get("line") or 0)
+        hits.append({
+            "file": fil,
+            "line": linje,
+            "snippet": _linje(fil, linje),
+            "kind": "use",
+            "symbol_kind": str(r.get("kind") or ""),
+            "enclosing": str(r.get("enclosing") or "") or None,
+        })
+    return hits[:MAX_HITS]
+
+
 def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
     name = str(args.get("name") or "").strip()
     if not name:
@@ -196,8 +356,32 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
             "status": "error",
             "error": "no project anchored — set X-JarvisX-Project before find_usages",
         }
+
+    # 1. LSP først. Den ved hvilket SYMBOL en reference ligger i, og den
+    #    tæller ikke omtaler i docstrings med som kald.
+    lsp_data = _lsp_usages(name)
+    if lsp_data is not None:
+        hits = _lsp_hits(lsp_data, scope)
+        return {
+            "status": "ok",
+            "name": name,
+            "scope": str(scope),
+            "backend": "lsp",
+            "count": len(hits),
+            "hits": hits,
+            "truncated": len(hits) >= MAX_HITS,
+        }
+
+    # 2. Ripgrep: bredere (ser også strenge og kommentarer), billigere,
+    #    og virker uden LSP — men uden symbol-grænser.
     if not _ripgrep_available():
-        return {"status": "error", "error": "ripgrep not available"}
+        return {
+            "status": "error",
+            "error": (
+                "hverken LSP eller ripgrep er tilgængelig — installér `rg` "
+                "eller gør Serenas LSP klar"
+            ),
+        }
     sym_escaped = re.escape(name)
     # Word-boundary match — skip declarations with a follow-up filter
     pattern = rf"\b{sym_escaped}\b"
@@ -239,6 +423,7 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
         "status": "ok",
         "name": name,
         "scope": str(scope),
+        "backend": "ripgrep",
         "count": len(hits),
         "hits": hits,
         "truncated": len(hits) >= MAX_HITS,
@@ -304,11 +489,17 @@ CODE_NAVIGATION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "find_usages",
             "description": (
-                "Find all uses of a symbol inside the anchored project — "
-                "callers, references, imports. Returns hits with kind="
-                "'definition' for the declaration sites and kind='use' "
-                "everywhere else, so you can quickly see callers separately "
-                "from the def. Cap 200 hits."
+                "Find all references to a symbol inside the anchored project. "
+                "Uses the LSP (Serena) when available: each hit then carries "
+                "`enclosing` — the symbol the reference sits inside, e.g. "
+                "'TestNormalizeQuery/test_basic_normalization' — and "
+                "`symbol_kind` (Function/Method/Variable/Class), which is how "
+                "you tell a real caller from a docstring mention. Falls back "
+                "to ripgrep when the symbol has no definition (it may only "
+                "exist as a string) or the LSP is unreachable; the `backend` "
+                "field says which one answered, so read it before trusting "
+                "the result. kind='definition' marks the declaration site, "
+                "kind='use' everything else. Cap 200 hits."
             ),
             "parameters": {
                 "type": "object",

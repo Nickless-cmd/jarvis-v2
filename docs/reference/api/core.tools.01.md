@@ -186,17 +186,21 @@ _`central_query` — Jarvis' direkte adgang til Den Intelligente Central (pull o
 | function | `central_query` | `(args)` | Eneste indgang. Returnerer ALTID en envelope (status ok/error). Kaster aldrig. | [src](../../../core/tools/central_query_tool.py#L103) |
 
 ## `core/tools/code_navigation_tools.py`
-_Symbol find / find usages — regex-based v1._
+_Symbol find / find usages._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ext_patterns` | `(extensions)` | Return (patterns, ripgrep --type-add args, ripgrep -t args). | [src](../../../core/tools/code_navigation_tools.py#L72) |
-| function | `_scope_dir` | `()` | — | [src](../../../core/tools/code_navigation_tools.py#L94) |
-| function | `_ripgrep_available` | `()` | — | [src](../../../core/tools/code_navigation_tools.py#L102) |
-| function | `_run_rg` | `(patterns, symbol, scope, extra_args)` | — | [src](../../../core/tools/code_navigation_tools.py#L106) |
-| function | `_exec_find_symbol` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L146) |
-| function | `_exec_find_usages` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L189) |
-| function | `_classify` | `(snippet)` | — | [src](../../../core/tools/code_navigation_tools.py#L248) |
+| function | `_ext_patterns` | `(extensions)` | Return (patterns, ripgrep --type-add args, ripgrep -t args). | [src](../../../core/tools/code_navigation_tools.py#L94) |
+| function | `_scope_dir` | `()` | — | [src](../../../core/tools/code_navigation_tools.py#L116) |
+| function | `_ripgrep_available` | `()` | — | [src](../../../core/tools/code_navigation_tools.py#L124) |
+| function | `_run_rg` | `(patterns, symbol, scope, extra_args)` | — | [src](../../../core/tools/code_navigation_tools.py#L128) |
+| function | `_exec_find_symbol` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L168) |
+| function | `_mcp_tekst` | `(svar)` | Træk svarteksten ud af et MCP-svar og fjern klientens indhegning. | [src](../../../core/tools/code_navigation_tools.py#L211) |
+| function | `_lsp_repl_kode` | `(name)` | Byg REPL-koden Serena skal køre. | [src](../../../core/tools/code_navigation_tools.py#L229) |
+| function | `_lsp_usages` | `(name)` | Slå referencer op gennem Serenas LSP. | [src](../../../core/tools/code_navigation_tools.py#L258) |
+| function | `_lsp_hits` | `(data, scope)` | Byg hits i samme form som ripgrep-vejen giver. | [src](../../../core/tools/code_navigation_tools.py#L299) |
+| function | `_exec_find_usages` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L349) |
+| function | `_classify` | `(snippet)` | — | [src](../../../core/tools/code_navigation_tools.py#L433) |
 
 ## `core/tools/coding_lane_tools.py`
 _Coding lane tools — Niveau 1 skeleton dispatcher._

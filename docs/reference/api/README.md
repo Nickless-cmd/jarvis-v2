@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17309 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17325 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,14 +52,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17309 functions/
 - [`core.services.20`](core.services.20.md) — `private_temporal_curiosity_state_tracking` … `proprioception_metrics`
 - [`core.services.21`](core.services.21.md) — `prose_tool_calls` … `relation_dynamics`
 - [`core.services.22`](core.services.22.md) — `relation_map` … `run_event_log`
-- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `secret_redaction`
-- [`core.services.24`](core.services.24.md) — `security_guard` … `session_binding`
-- [`core.services.25`](core.services.25.md) — `session_boot_reconciler` … `silence_patterns`
-- [`core.services.26`](core.services.26.md) — `silent_chain_break` … `telegram_gateway`
-- [`core.services.27`](core.services.27.md) — `telemetry_gate` … `tool_result_store`
-- [`core.services.28`](core.services.28.md) — `tool_round_label` … `visible_followup_adapters`
-- [`core.services.29`](core.services.29.md) — `visible_followup_events` … `visible_stream_gate`
-- [`core.services.30`](core.services.30.md) — `visible_stream_gate_wrapper` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `search_quota`
+- [`core.services.24`](core.services.24.md) — `secret_redaction` … `sensory_source`
+- [`core.services.25`](core.services.25.md) — `session_binding` … `silence_listener`
+- [`core.services.26`](core.services.26.md) — `silence_patterns` … `taste_profile`
+- [`core.services.27`](core.services.27.md) — `telegram_gateway` … `tool_result_aging`
+- [`core.services.28`](core.services.28.md) — `tool_result_store` … `visible_followup`
+- [`core.services.29`](core.services.29.md) — `visible_followup_adapters` … `visible_self_state_summary`
+- [`core.services.30`](core.services.30.md) — `visible_stream_gate` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

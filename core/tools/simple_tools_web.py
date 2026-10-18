@@ -1221,26 +1221,55 @@ def _fetch_alle_providers(query: str, max_results: int) -> dict[str, Any]:
 
     def _kør(navn: str, fn: Any) -> dict[str, Any]:
         try:
-            return {"provider": navn, "resultat": fn(query, max_results)}
+            svar = fn(query, max_results)
         except Exception as exc:  # én død provider må ikke vælte søgningen
             logger.warning("web_search: provider %s fejlede: %s", navn, exc)
-            return {"provider": navn, "resultat": {"status": "error", "error": str(exc)}}
+            svar = {"status": "error", "error": str(exc)}
+        # Kaldet tælles UANSET udfald: en fejl kan stadig have ramt kvoten.
+        # Tavily og SerpAPI læses live fra provideren; dette er kun supplement.
+        try:
+            from core.services.search_quota import noter_kald
+
+            noter_kald(navn)
+        except Exception:  # regnskab må aldrig vælte en søgning
+            pass
+        return {"provider": navn, "resultat": svar}
 
     def _brugbar(k: dict[str, Any]) -> bool:
         res = k.get("resultat") or {}
         return res.get("status") != "error" and bool(res.get("results"))
 
-    # 1. Exa først — den ene måling der skilte sig ud.
-    foerste = _kør("exa", _fetch_exa)
+    # 1. Den foretrukne kilde — men kun så længe den har kvote tilbage.
+    #
+    # KVALITET FØR SPREDNING (målt 18/10-2026). Exa er bedst på top-1 (70 %
+    # mod SerpAPIs 50 % og Tavilys 20 %), så den er default. At sprede
+    # forbruget jævnt «for at spare kvote» ville bytte et reelt kvalitetstab
+    # for en kvote vi ikke er ved at løbe tør for. Skiftet sker derfor først
+    # når en kilde NÆRMER sig loftet (80 %) — så udtømmes vi gradvist i
+    # stedet for at ramme en væg uden varsel.
+    #
+    # Alle over loft → prøv den foretrukne alligevel. «Over loft» er ikke
+    # «nede», og et blokeret søgekald er værre end et kald der måske afvises.
+    from core.services import search_quota as _kvote
+
+    foretrukken, _kvote_status = _kvote.bedste_provider("exa")
+    for _navn, _status in _kvote_status.items():
+        _kvote.varsle_hvis_over_loft(_status)
+
+    foerste_navn = foretrukken or "exa"
+    _kilde_fn = {"exa": _fetch_exa, "serpapi": _fetch_serpapi, "tavily": _fetch_tavily}
+    foerste = _kør(foerste_navn, _kilde_fn[foerste_navn])
     kandidater: list[dict[str, Any]] = [foerste]
     valgt = foerste if _brugbar(foerste) else None
 
-    # 2. Fallback: de to SERP-kilder, parallelt, kun hvis Exa ikke gav noget.
+    # 2. Fallback: de ØVRIGE kilder, parallelt, kun hvis den første ikke gav noget.
     if valgt is None:
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        resten = [(n, f) for n, f in (("serpapi", _fetch_serpapi), ("tavily", _fetch_tavily))
+                  if n != foerste_navn]
+        with ThreadPoolExecutor(max_workers=max(1, len(resten))) as pool:
             fremtider = {
                 pool.submit(_kør, navn, fn): navn
-                for navn, fn in (("serpapi", _fetch_serpapi), ("tavily", _fetch_tavily))
+                for navn, fn in resten
             }
             for fremtid in fremtider:
                 kandidater.append(fremtid.result(timeout=30))

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/secret_redaction.py`
+_Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `contains_secret` | `(text)` | Ser det ud til at indeholde en hemmelighed? Ren, ingen mutation. | [src](../../../core/services/secret_redaction.py#L70) |
+| function | `redact` | `(text)` | Maskér hemmeligheder. Bevarer alt andet tegn for tegn. | [src](../../../core/services/secret_redaction.py#L77) |
+| function | `read_for_prompt` | `(path)` | Læs en workspace-fil TIL PROMPTEN, med hemmeligheder maskeret. | [src](../../../core/services/secret_redaction.py#L92) |
+
 ## `core/services/security_guard.py`
 _Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
 
@@ -801,12 +810,4 @@ _Kilde-navne i Sansernes Arkiv — én liste, ét sted._
 | function | `_normaliser` | `(raw)` | Fold et rå kildenavn sammen: små bogstaver, én separator, ingen parenteser. | [src](../../../core/services/sensory_source.py#L136) |
 | function | `canonical_source` | `(raw)` | Oversæt et vilkårligt kildenavn til det kanoniske sæt. | [src](../../../core/services/sensory_source.py#L147) |
 | function | `normalize_metadata` | `(metadata)` | Returnér metadata med `source` kanoniseret. | [src](../../../core/services/sensory_source.py#L179) |
-
-## `core/services/session_binding.py`
-_Hvilken SAMTALE hører et job til? — én definition, tre ure._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `er_auto_session` | `(session_id)` | Er dette en autonom silo (``auto-*``) og ikke en rigtig samtale? | [src](../../../core/services/session_binding.py#L16) |
-| function | `bind_session` | `(session_id=…)` | Den samtale et job blev bestilt i — eller ``''`` hvis ingen. | [src](../../../core/services/session_binding.py#L21) |
 

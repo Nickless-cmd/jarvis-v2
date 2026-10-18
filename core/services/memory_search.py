@@ -100,6 +100,25 @@ _CURATED_FILE_LIMIT = 30
 #: præfikset. Filen skal ligge direkte i `memory/curated` eller `memory/daily`.
 _PINNED_PREFIX = "pin-"
 
+#: Importeret viden der skal være SØGBAR uden at fortrænge egne noter.
+#:
+#: HVORFOR (18/10-2026): Bjørn bad om at få de 101 claude-mem-filer fra 2026 ind
+#: i søgeindekset — ikke som rå filer på disken, men som noget `recall` faktisk
+#: finder. Målt før: 0 chunks fra `imports/`; de to pinnede destillater (54
+#: chunks) var alt der var kommet ind.
+#:
+#: De ligger i en DEDIKERET mappe og læses UDEN kvote, af to grunde:
+#:  * `_CURATED_FILE_LIMIT` er 30, og `memory/curated` har allerede 115 filer.
+#:    At lægge 101 importerede filer der ville fortrænge næsten alt eget stof.
+#:  * Importeret materiale er ikke mine egne noter. Det skal kunne slettes som
+#:    én mappe uden at røre den øvrige hukommelse.
+#:
+#: Filtreret ved KOPI-tid, ikke her: kun filer med `metadata.modified: 2026` blev
+#: kopieret ind (33 aug, 67 sep, 1 okt). De øvrige 428 har intet `modified`-felt
+#: og beskriver en kodebase der har flyttet sig — de ville give selvsikker viden
+#: om filer der ikke findes længere.
+_IMPORTED_SUBDIRS = ["memory/imported"]
+
 
 def _memory_files(ws: Path | None = None) -> list[Path]:
     ws = ws or _workspace_dir()
@@ -108,6 +127,12 @@ def _memory_files(ws: Path | None = None) -> list[Path]:
         p = ws / name
         if p.exists():
             files.append(p)
+    # Importeret materiale: UDEN kvote (se _IMPORTED_SUBDIRS). rglob fordi
+    # hver import ligger i sin egen undermappe (fx claude-mem/).
+    for subdir in _IMPORTED_SUBDIRS:
+        d = ws / subdir
+        if d.is_dir():
+            files.extend(sorted(f for f in d.rglob("*.md") if f.is_file()))
     for subdir in ["memory/curated", "memory/daily"]:
         d = ws / subdir
         if d.is_dir():

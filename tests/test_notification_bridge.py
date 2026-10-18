@@ -141,6 +141,71 @@ def test_no_session_returns_blocked(tmp_db, monkeypatch):
     assert result["status"] == "blocked"
 
 
+def test_implicit_notification_ignores_another_users_global_pin(
+    tmp_db, monkeypatch,
+):
+    """An owner reminder must never be appended to a member's active chat.
+
+    Regression: the global browser pin pointed at Michelle's session while an
+    owner-scoped autonomous medicine reminder called the bridge without an
+    explicit session id. The bridge trusted the pin and leaked the reminder.
+    """
+    import core.services.chat_sessions as cs
+    import core.services.notification_bridge as nb
+    import core.services.session_inbox as inbox
+    from core.identity.workspace_context import reset_context, set_context
+
+    sessions = {
+        "member-chat": {
+            "id": "member-chat",
+            "messages": [
+                {"role": "user", "user_id": "member-id", "content": "hej"},
+            ],
+        },
+        "owner-chat": {
+            "id": "owner-chat",
+            "messages": [
+                {"role": "user", "user_id": "owner-id", "content": "hej"},
+            ],
+        },
+    }
+    delivered: list[str] = []
+
+    monkeypatch.setattr(nb, "get_pinned_session_id", lambda: "member-chat")
+    monkeypatch.setattr(cs, "get_chat_session", lambda sid: sessions.get(sid))
+    monkeypatch.setattr(
+        cs,
+        "list_chat_sessions",
+        lambda **kwargs: (
+            [{"id": "owner-chat"}]
+            if kwargs.get("user_id") == "owner-id"
+            else [{"id": "member-chat"}, {"id": "owner-chat"}]
+        ),
+    )
+    monkeypatch.setattr(
+        cs,
+        "append_chat_message",
+        lambda *, session_id, **_kwargs: delivered.append(session_id)
+        or {"id": "message-1"},
+    )
+    monkeypatch.setattr(inbox, "is_session_active", lambda _sid: False)
+    monkeypatch.setattr(nb.event_bus, "publish", lambda *_a, **_kw: None)
+
+    token = set_context(
+        workspace_name="bjorn", user_id="owner-id", role="owner",
+    )
+    try:
+        result = nb.send_session_notification(
+            "medicin-påmindelse", source="jarvis-notify", push=False,
+        )
+    finally:
+        reset_context(token)
+
+    assert result["status"] == "ok"
+    assert result["session_id"] == "owner-chat"
+    assert delivered == ["owner-chat"]
+
+
 # ── Stale pin (17/9-2026) ───────────────────────────────────────────────────
 # Pin'en pegede på `chat-8d36a224…`, som ikke længere fandtes. Alle kaldere
 # (wakeup-resolveren, heartbeat) troede de havde et gyldigt mål og sprang

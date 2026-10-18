@@ -204,12 +204,43 @@ def send_session_notification(
         # ikke er tavs — det er hele grunden til at hooken findes.
         logger.warning("notification_bridge: markoer-scrub kunne ikke koere: %s", exc)
 
-    # Use the pinned session if set (e.g. the session currently active in the user's browser),
-    # otherwise fall back to the most recently updated session that has user messages
-    # (to avoid sending to autonomous-run-only sessions which the user may not be watching).
-    session_id = (session_id or "").strip() or get_pinned_session_id()
+    # An explicit target is authoritative. An implicit target is not: the pin
+    # is global (the last browser/user to write wins), so it must belong to the
+    # current sender before a proactive message may use it. 16/10-2026 an
+    # owner-scoped medicine reminder otherwise landed in Michelle's pinned
+    # session. Fail closed for stamped users; ambiguous legacy sessions are not
+    # safe destinations for an implicit private notification.
+    explicit_session_id = (session_id or "").strip()
+    target_user_id = (user_id or "").strip()
+    if not target_user_id:
+        try:
+            from core.identity.workspace_context import current_user_id
+            target_user_id = (current_user_id() or "").strip()
+        except Exception:
+            target_user_id = ""
+
+    session_id = explicit_session_id
     if not session_id:
-        sessions = list_chat_sessions()
+        pinned = get_pinned_session_id()
+        if pinned and target_user_id:
+            try:
+                from core.services.chat_sessions import get_session_owner
+                from core.identity.session_access import ejerstempel_tilhoerer_bruger
+                owner = (get_session_owner(pinned) or "").strip()
+                if not owner or not ejerstempel_tilhoerer_bruger(owner, target_user_id):
+                    pinned = ""
+            except Exception:
+                pinned = ""
+        session_id = pinned
+
+    # Otherwise fall back to the most recently updated session for this user
+    # that has user messages. With no bound identity, preserve the legacy
+    # unfiltered behavior for internal single-user callers.
+    if not session_id:
+        sessions = (
+            list_chat_sessions(user_id=target_user_id)
+            if target_user_id else list_chat_sessions()
+        )
         for s in sessions:
             sid = str((s or {}).get("id") or "").strip()
             if not sid:

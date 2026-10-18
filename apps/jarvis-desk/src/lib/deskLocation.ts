@@ -82,7 +82,16 @@ export async function getDesktopLocation(mode: LocationMode): Promise<DeskLocati
   // browser
   const pos = await browserPosition()
   if (!pos) return null
-  const { latitude, longitude } = pos.coords
+  const { latitude, longitude, accuracy } = pos.coords
+  // Electron uden GOOGLE_API_KEY svarer med en HARDKODET standard-position
+  // (38.883333, -77.0 — Arlington, VA), ikke et rigtigt fix. Målt 18/10-2026:
+  // desk meldte netop de koordinater som «precise», 6.500 km fra Svendborg.
+  // En browser-position er derfor kun brugbar hvis den kan NAVNGIVES: kan
+  // reverse-geocoden ikke sætte et sted på den, melder vi intet. Et gæt der
+  // kalder sig «precise» er værre end ingen lokation — samme fejlklasse som
+  // IP-opslaget, der blev kasseret server-side.
+  if (typeof accuracy === 'number' && accuracy > 50_000) return null
   const label = (await geoBridge()?.reverse(latitude, longitude, true)) || ''
+  if (!label) return null
   return { lat: latitude, lon: longitude, label, source: 'browser', precision: 'precise' }
 }

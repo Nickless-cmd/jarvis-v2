@@ -143,7 +143,15 @@ def test_selector_falls_back_to_lexical_memory_scan(monkeypatch, tmp_path):
     assert lines == ["§ Hardware: GPU-maskine LXC 107 kører Ollama med GTX 1070 passthrough."]
 
 
-def test_curated_files_are_picked_by_mtime_not_name(tmp_path):
+def test_alle_curated_filer_indekseres_uanset_navn_og_mtime(tmp_path):
+    """Varig viden har ingen kvote (18/10-2026): ALLE curated-filer skal med.
+
+    Maalt i drift foer fixet: 115 filer i `memory/curated`, men kun 32
+    indekseret — 83 varige vidensfiler var ikke soegbare. Testen her laaser at
+    hele mappen kommer med, ogsaa naar der er flere end den gamle kvote paa 30,
+    og at sorteringen stadig er mtime-baseret: navnesortering droppede tavst
+    curated-memory.md fordi "c" sorterer foer "sansernes-arkiv-…".
+    """
     ws = tmp_path / "ws2"
     (ws / "memory" / "curated").mkdir(parents=True)
     d = ws / "memory" / "curated"
@@ -158,8 +166,31 @@ def test_curated_files_are_picked_by_mtime_not_name(tmp_path):
     os.utime(old, (now, now))
     files = memory_search._memory_files(ws)
     names = {f.name for f in files}
-    assert "curated-memory.md" in names, "newest file must survive the 30-file window"
-    assert len([f for f in files if f.parent == d]) == 30
+    assert "curated-memory.md" in names, "newest file must survive"
+    # Ingen kvote paa varig viden: alle 32 skal med — ikke 30.
+    assert len([f for f in files if f.parent == d]) == 32
+
+
+def test_kvoten_gaelder_daily_men_ikke_curated(tmp_path):
+    """Den nye kontrakt (18/10-2026): varig viden ubegraenset, rullende log loftet.
+
+    Dette er selve skellet. Gaar det tabt — fx ved at nogen saetter en kvote
+    tilbage paa curated — falder varige noter tavst ud af soegningen igen.
+    """
+    ws = tmp_path / "ws-skel"
+    for sub in ("curated", "daily"):
+        (ws / "memory" / sub).mkdir(parents=True)
+    now = time.time()
+    for sub in ("curated", "daily"):
+        for i in range(45):
+            f = ws / "memory" / sub / f"f-{i:02d}.md"
+            f.write_text(f"# {i}\n- x\n", encoding="utf-8")
+            os.utime(f, (now - i, now - i))
+    files = memory_search._memory_files(ws)
+    cur = [f for f in files if f.parent.name == "curated"]
+    dai = [f for f in files if f.parent.name == "daily"]
+    assert len(cur) == 45, f"alle curated-filer skal med, fik {len(cur)}"
+    assert len(dai) == 30, f"daily skal have loft paa 30, fik {len(dai)}"
 
 
 # ── IDF-vaegtet daekning + cachet sektions-parse (5/10-2026) ────────────────
@@ -291,18 +322,20 @@ def test_terms_resultat_kan_ikke_muteres(tmp_path):
         t.add("snik")  # type: ignore[attr-defined]
 
 
-# ── Pin-mekanisme (18/10-2026) ──────────────────────────────────────────────
+# ── Kvote-skel + pin-mekanisme (18/10-2026) ────────────────────────────────
 #
-# `_CURATED_FILE_LIMIT` er en mtime-kvote der gaelder BAADE `memory/curated` og
-# `memory/daily`. Maalt 18/10-2026: 115 filer i curated, 1-3 nye i doegnet →
-# en varig vidensfil falder tavst ud af indekset efter ca. to uger. Pin er et
-# TILLAEG ovenpaa kvoten, saa en fil kan garanteres indekseret.
+# Maalt 18/10-2026: kvoten var 30 og gjaldt BAADE `memory/curated` (115 filer)
+# og `memory/daily` (179 filer). Kun 32 curated-filer var indekseret — 83
+# varige vidensfiler var tavst usoegbare, uden fejl og uden advarsel.
+# Fixet: varig viden har INGEN kvote; den rullende log har et loft
+# (`_DAILY_FILE_LIMIT`). Pin er et TILLAEG ovenpaa kvoten, saa en daglig fil
+# kan garanteres indekseret uanset hvor mange nyere der er kommet til.
 
 
 def test_pinnet_fil_overlever_et_fyldt_mtime_vindue(tmp_path):
-    """Kernen i fixet: 40 NYERE filer maa ikke skubbe den pinnede ud."""
+    """Kernen i pin: 40 NYERE filer maa ikke skubbe den pinnede ud af daily."""
     ws = tmp_path / "ws-pin"
-    d = ws / "memory" / "curated"
+    d = ws / "memory" / "daily"
     d.mkdir(parents=True)
     now = time.time()
     pinned = d / "pin-varig-viden.md"
@@ -322,7 +355,7 @@ def test_pinnet_fil_overlever_et_fyldt_mtime_vindue(tmp_path):
 def test_pin_er_et_tillaeg_ikke_en_omfordeling(tmp_path):
     """Uden pin: 30. Med pin: 31. Pin maa ikke stjaele en plads fra vinduet."""
     ws = tmp_path / "ws-pin2"
-    d = ws / "memory" / "curated"
+    d = ws / "memory" / "daily"
     d.mkdir(parents=True)
     now = time.time()
     for i in range(35):

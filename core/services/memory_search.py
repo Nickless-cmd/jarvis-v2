@@ -79,22 +79,28 @@ def _workspace_dir() -> Path:
     return workspace_dir_or_owner()
 
 
-_CURATED_FILE_LIMIT = 30
+#: Kvoten gælder KUN den rullende log (`memory/daily`) — ikke varig viden.
+#:
+#: HVORFOR (18/10-2026, målt i drift): kvoten var 30 og gjaldt BEGGE mapper.
+#: `memory/curated` havde 115 filer, men kun **32 var indekseret** — 83 varige
+#: vidensfiler var ikke søgbare, uden fejl og uden advarsel. Hver gang 30 nyere
+#: filer kom til, faldt en ældre tavst ud, og intet i systemet fortalte det.
+#:
+#: Varig viden skal ikke konkurrere med en daglig log om pladser. `curated` er
+#: per definition kurateret: vokser den for meget, er svaret at rydde op i
+#: noterne, ikke at kaste dem ud af indekset. `daily` vokser derimod med 1-3
+#: filer i døgnet og skal have et loft, ellers vokser indekset ubegrænset.
+_DAILY_FILE_LIMIT = 30
 
 #: Filnavn der ALTID indekseres, uanset mtime-vinduet ovenfor.
 #:
-#: HVORFOR (18/10-2026): `_CURATED_FILE_LIMIT` er en mtime-kvote, og den gælder
-#: BÅDE `memory/curated` og `memory/daily`. De to mapper konkurrerer derfor om
-#: samme 30 pladser, og `memory/daily` får nye filer hver dag. Målt samme dag:
-#: 115 filer i curated, 1-3 nye i døgnet → en varig vidensfil falder tavst ud af
-#: indekset efter ca. to uger. Ingen fejl, ingen advarsel; den er bare ikke
-#: søgbar mere, og intet i systemet fortæller at den forsvandt.
-#:
-#: Pinning er et TILLÆG, ikke en udskiftning: de pinnede filer lægges oveni
-#: kvoten, så `test_curated_files_are_picked_by_mtime_not_name` (der kræver
-#: præcis 30 i vinduet) stadig holder. En pinnet fil tæller heller ikke med i
-#: sit eget vindue — ellers ville den fortrænge en anden fil og gøre pin til en
-#: omfordeling i stedet for en garanti.
+#: HVORFOR (18/10-2026): kvoten er en mtime-kvote, og `memory/daily` får nye
+#: filer hver dag. En pinnet fil overlever uanset hvor mange nyere der er kommet
+#: til. Pin er et TILLÆG, ikke en udskiftning: de pinnede filer lægges oveni
+#: kvoten, så de ikke stjæler en plads fra vinduet. En pinnet fil tæller heller
+#: ikke med i sit eget vindue — ellers ville pin være en omfordeling i stedet for
+#: en garanti. I `memory/curated` er der ingen kvote, så pin er harmløs der; den
+#: bevares fordi den samme kode betjener begge mapper.
 #:
 #: Navnet er et præfiks-match, så flere filer kan pinnes ved at give dem
 #: præfikset. Filen skal ligge direkte i `memory/curated` eller `memory/daily`.
@@ -107,11 +113,11 @@ _PINNED_PREFIX = "pin-"
 #: finder. Målt før: 0 chunks fra `imports/`; de to pinnede destillater (54
 #: chunks) var alt der var kommet ind.
 #:
-#: De ligger i en DEDIKERET mappe og læses UDEN kvote, af to grunde:
-#:  * `_CURATED_FILE_LIMIT` er 30, og `memory/curated` har allerede 115 filer.
-#:    At lægge 101 importerede filer der ville fortrænge næsten alt eget stof.
-#:  * Importeret materiale er ikke mine egne noter. Det skal kunne slettes som
-#:    én mappe uden at røre den øvrige hukommelse.
+#: De ligger i en DEDIKERET mappe og læses UDEN kvote fordi importeret
+#: materiale ikke er mine egne noter: det skal kunne slettes som én mappe uden
+#: at røre den øvrige hukommelse. (Før 18/10-2026 var et argument også at
+#: kvoten var 30 og curated havde 115 filer — det argument er væk nu, da
+#: curated ikke længere har en kvote; sletbarheden er den ægte grund.)
 #:
 #: Filtreret ved KOPI-tid, ikke her: kun filer med `metadata.modified: 2026` blev
 #: kopieret ind (33 aug, 67 sep, 1 okt). De øvrige 428 har intet `modified`-felt
@@ -133,18 +139,24 @@ def _memory_files(ws: Path | None = None) -> list[Path]:
         d = ws / subdir
         if d.is_dir():
             files.extend(sorted(f for f in d.rglob("*.md") if f.is_file()))
-    for subdir in ["memory/curated", "memory/daily"]:
+    # Varig viden (`memory/curated`): ALLE filer, ingen kvote — se _DAILY_FILE_LIMIT.
+    # Rullende log (`memory/daily`): de nyeste efter mtime.
+    #
+    # 2026-09-04 (memory repair, R3): sortering er MTIME, ikke navn. Navnesortering
+    # droppede tavst curated-memory.md (promotion-target, 3.460 linjer) fordi "c"
+    # sorterer før "sansernes-arkiv-…".
+    for subdir, limit in (("memory/curated", None), ("memory/daily", _DAILY_FILE_LIMIT)):
         d = ws / subdir
         if d.is_dir():
-            # 2026-09-04 (memory repair, R3): newest 30 by MTIME. Sorting by
-            # name silently dropped curated-memory.md (the promotion target,
-            # 3.460 lines) because "c" sorts before "sansernes-arkiv-…".
             candidates = [f for f in d.glob("*.md") if f.is_file()]
             # Pinnede filer holdes UDEN FOR kvoten (se _PINNED_PREFIX).
             pinned = [f for f in candidates if f.name.startswith(_PINNED_PREFIX)]
             candidates = [f for f in candidates if not f.name.startswith(_PINNED_PREFIX)]
             candidates.sort(key=_file_mtime)
-            files.extend(candidates[-_CURATED_FILE_LIMIT:])
+            if limit is None:
+                files.extend(candidates)
+            else:
+                files.extend(candidates[-limit:])
             files.extend(sorted(pinned, key=_file_mtime))
     return files
 

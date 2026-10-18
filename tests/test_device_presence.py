@@ -132,12 +132,13 @@ def test_location_stored_and_in_summary(monkeypatch):
 
 
 def test_ip_gaet_markeres_som_upaalideligt(monkeypatch):
-    """Et IP-opslag må ikke læses som en by (målt 7/10-2026).
+    """Et IP-opslag må ikke læses som en by (målt 7/10-2026, 18/10-2026).
 
     På mobildata går trafikken gennem operatørens carrier-grade NAT, hvis
     udgang ligger i København/Taastrup — så linjen meldte København, mens Bjørn
-    stod i regn i Svendborg. Kilden står i lokationen; er den «ip», skal linjen
-    sige at stedet er et gæt.
+    stod i regn i Svendborg. Et «upålideligt»-mærke var ikke nok: bynavnet stod
+    stadig i prompten og blev læst som et faktum. Er kilden «ip», er der INGEN
+    by at melde — kun enhed og netværk.
     """
     box = {"t": 1000.0}
     monkeypatch.setattr(dp, "_now", lambda: box["t"])
@@ -148,8 +149,9 @@ def test_ip_gaet_markeres_som_upaalideligt(monkeypatch):
                              "label": "Copenhagen, Region Hovedstaden",
                              "source": "ip", "precision": "city"})
     s = dp.summary("bjorn")
-    assert "Copenhagen" in s
-    assert "IP-gæt" in s
+    assert "Copenhagen" not in s
+    assert "lokation ikke delt" in s
+    assert "mobil" in s
 
 
 def test_gps_lokation_markeres_ikke(monkeypatch):

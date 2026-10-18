@@ -342,8 +342,17 @@ def summary(user_id: str) -> str:
         # København/Taastrup — så linjen meldte København, mens Bjørn stod i regn
         # i Svendborg. Kilden står i lokationen; er den «ip», er stedet et gæt
         # og skal læses som ét, ikke som et faktum.
-        usikker = " [IP-gæt — upålideligt]" if loc.get("source") == "ip" else ""
-        return f"Bjørn er ved {loc['label']} ({where}{net_short}){usikker}."
+        # 18/10-2026: TREDJE gang fejlen tog os — Taastrup 24/9, København
+        # 7/10, Ålborg 18/10. Et «upålideligt»-mærke er ikke nok: bynavnet
+        # står stadig i prompten, og en model læser bynavnet som et faktum
+        # uanset mærkatet. Er kilden «ip», er der INGEN by at melde — den er
+        # operatørens udgang bag carrier-grade NAT, ikke brugerens by. Vi
+        # melder derfor kun enhed og netværk.
+        if loc.get("source") == "ip":
+            return (f"Bjørn er på {where}{net_short} — lokation ikke delt "
+                    f"(IP-opslag kasseret; det peger på operatørens udgang, "
+                    f"ikke hans by).")
+        return f"Bjørn er ved {loc['label']} ({where}{net_short})."
     return f"Bjørn er ved {where} ({fg}{net})."
 
 

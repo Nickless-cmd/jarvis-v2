@@ -723,7 +723,7 @@ export function ChatScreen({
     // code-samtale og en chat-liste — præcis den modstrid han beskrev.
     if (!didRestore.current) {
       didRestore.current = true
-      loadLastSession().then((plads) => {
+      loadLastSession(kodeTilstand).then((plads) => {
         if (!plads) return
         if (plads.kode !== null && plads.kode !== kodeTilstand) onSkiftFlade?.(plads.kode)
         sessions.select(config, plads.id)
@@ -749,16 +749,44 @@ export function ChatScreen({
     }
   }, [config])
 
-  // Skift af flade henter listen om. EGEN effekt frem for at haenge `art` paa
-  // [config]: den ovenfor kalder ogsaa whoami og gendanner sidste session, og
-  // begge dele ville koere igen hver gang man trykkede Code.
+  // Skift af flade henter listen om OG tager den rigtige samtale med.
+  //
+  // Bjørn 18/10-2026: «hvis jeg skifter fra code mode til chat mode skifter
+  // chatview ikk til enten den sidste aktive session i chat mode eller ny chat
+  // skærmen». Effekten hentede kun listen — `activeId` stod urørt, så man blev
+  // i den samtale man kom fra, nu vist i den forkerte flade.
+  //
+  // Samme løsning som desk: den man FORLADER gemmes under sin egen flade, og
+  // den nye flade åbner sin egen huskede samtale — eller en ny chat. Samtalen
+  // slås op i listen, så en slettet samtale ikke genopstår som en tom flade.
   //
   // Foerste gang springes over - effekten ovenfor har lige hentet.
   const forrigeArt = useRef(art)
   useEffect(() => {
     if (forrigeArt.current === art) return
+    const forrige = forrigeArt.current
     forrigeArt.current = art
-    if (config) sessions.refresh(config, art).catch(() => undefined)
+    if (!config) return
+
+    // Den forladte flades plads skal skrives FØR opslaget, ellers pegede den
+    // stadig på den samtale vi er ved at forlade.
+    const forladt = sessions.activeId
+    if (forladt) void saveLastSession(forladt, forrige === 'code')
+
+    void (async () => {
+      // Listen kommer fra refresh' RETURVÆRDI, ikke fra `sessions.sessions`:
+      // den closure-værdi er den FORRIGE flades liste, så opslaget nedenfor
+      // ville aldrig finde den huskede samtale og altid lande på ny chat.
+      const liste = await sessions.refresh(config, art).catch(() => null)
+      const plads = await loadLastSession(art === 'code')
+      // Kun en samtale der findes i DENNE flades liste må åbnes: ellers ville
+      // et skift vise en code-samtale i chat-fladen, som er fejlen selv.
+      if (plads && (liste ?? []).some((s) => s.id === plads.id)) {
+        await sessions.select(config, plads.id).catch(() => undefined)
+        return
+      }
+      sessions.newChat()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [art, config])
 

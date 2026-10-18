@@ -248,6 +248,12 @@ export function SessionProvider({
     if (fra === til) return
     let husket: string | null = null
     try {
+      // Den man FORLADER gemmes under sin egen mode. Den man skifter TIL slås
+      // op i sit eget spor — og det spor skal også opdateres, ellers pegede det
+      // stadig på den samtale man forlod, og næste skift ville føre tilbage til
+      // den i stedet for til den man faktisk var i. (Målt 18/10-2026: chat →
+      // code → chat landede på den forkerte, fordi code-sporet aldrig blev
+      // skrevet.)
       if (activeId) localStorage.setItem(modeKey(fra), activeId)
       husket = localStorage.getItem(modeKey(til))
     } catch { /* ignore */ }

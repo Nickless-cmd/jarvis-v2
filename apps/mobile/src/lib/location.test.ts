@@ -17,12 +17,16 @@ describe('parsePrecision', () => {
 })
 
 describe('location precision policy', () => {
-  it('uses GPS only for precise/current/background levels', () => {
-    expect(shouldUseGps('city')).toBe(false)
-    expect(shouldUseGps('area')).toBe(false)
+  it('bruger GPS på ALLE delende niveauer — IP er kun reserve', () => {
+    // Målt tre gange som forkert by (Taastrup 24/9, København 7/10, Ålborg
+    // 18/10) mens Bjørn var i Svendborg: bag CGNAT kan et IP-opslag ikke
+    // finde byen. Derfor må 'city'/'area' ikke længere springe GPS over.
+    expect(shouldUseGps('city')).toBe(true)
+    expect(shouldUseGps('area')).toBe(true)
     expect(shouldUseGps('precise')).toBe(true)
     expect(shouldUseGps('now')).toBe(true)
     expect(shouldUseGps('background')).toBe(true)
+    expect(shouldUseGps('off')).toBe(false)
   })
 
   it('has user-facing labels for all precision levels', () => {

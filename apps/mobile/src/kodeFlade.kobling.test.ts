@@ -162,8 +162,37 @@ it('fladen gendannes FOER sessionen', () => {
   // Saetter man sessionen foerst, staar man et oejeblik i chat-fladen med en
   // code-samtale og en chat-liste - praecis den modstrid Bjoern beskrev.
   const cs = kilde('screens/ChatScreen.tsx')
-  const blok = cs.slice(cs.indexOf('loadLastSession()'), cs.indexOf('loadLastSession()') + 700)
+  // Ankeret er `loadLastSession(` — ikke `loadLastSession()`: 18/10-2026 fik
+  // kaldet et argument (fladen hvis spor skal læses), og et anker der kræver
+  // den tomme parentes fældede testen på en ændring der var rigtig. Det er
+  // RÆKKEFØLGEN der er pointen, ikke signaturen.
+  const start = cs.indexOf('loadLastSession(')
+  const blok = cs.slice(start, start + 700)
+  expect(start).toBeGreaterThan(-1)
   expect(blok.indexOf('onSkiftFlade?.(plads.kode)')).toBeLessThan(blok.indexOf('sessions.select'))
+})
+
+it('fladeskiftet tager den rigtige samtale med — ikke den man kom fra', () => {
+  // Bjørn 18/10-2026: «hvis jeg skifter fra code mode til chat mode skifter
+  // chatview ikk til enten den sidste aktive session i chat mode eller ny chat
+  // skærmen». Effekten hentede kun listen; `activeId` stod urørt.
+  const cs = kilde('screens/ChatScreen.tsx')
+  const start = cs.indexOf('const forrigeArt = useRef(art)')
+  expect(start).toBeGreaterThan(-1)
+  const blok = cs.slice(start, start + 1200)
+
+  // 1) Den FLADEDE plads gemmes under den flade man forlader.
+  expect(blok).toMatch(/saveLastSession\(forladt, forrige === 'code'\)/)
+  // 2) Den NYE flades eget spor læses — ikke det fælles.
+  expect(blok).toMatch(/loadLastSession\(art === 'code'\)/)
+  // 3) Kun en samtale der findes i DENNE flades liste må åbnes. Uden det ville
+  //    et skift vise en code-samtale i chat-fladen, som er fejlen selv.
+  //    Listen SKAL komme fra refresh' returværdi: `sessions.sessions` er den
+  //    forrige flades liste, og så fandt opslaget aldrig noget.
+  expect(blok).toMatch(/const liste = await sessions\.refresh\(config, art\)/)
+  expect(blok).toMatch(/\(liste \?\? \[\]\)\.some\(\(s\) => s\.id === plads\.id\)/)
+  // 4) Uden en husket samtale: den tomme chat-skærm, ikke den man kom fra.
+  expect(blok).toMatch(/sessions\.newChat\(\)/)
 })
 
 it('samtalens art spoerges KUN naar fladen er uvist', () => {

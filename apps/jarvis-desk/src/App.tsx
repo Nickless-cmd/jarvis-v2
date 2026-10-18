@@ -350,11 +350,21 @@ function Shell({
         {/* Toasterne fra notifikations-feeden. De bor i Shell og ikke i en
             enkelt flade, saa en godkendelse ogsaa naar frem naar man staar i
             kode- eller arbejds-fladen — det er praecis dér man ikke kigger
-            paa klokken. */}
-        <NotifikationsToast
-          config={cfg ?? null}
-          onAabenSession={(id) => { if (id) select(id); setSurface('chat') }}
-        />
+            paa klokken.
+
+            IKKE i PWA'en (Bjørn 18/10-2026: «notifikations toast skal ikk
+            vises i pwa mode»). Browseren har sin egen kanal: web-push til
+            operativsystemet, som naar frem ogsaa naar fanen er lukket — det
+            kan en toast i DOM'en ikke. To kanaler for samme besked betyder
+            at man faar den to gange, og toasten oveni en systemnotifikation
+            er kun stoej. Desk har ingen web-push, saa der er toasten den
+            eneste vej til en godkendelse mens man staar i en anden flade. */}
+        {!__WEB_BUILD__ && (
+          <NotifikationsToast
+            config={cfg ?? null}
+            onAabenSession={(id) => { if (id) select(id); setSurface('chat') }}
+          />
+        )}
       </main>
     </WebSidebarFrame>
   )

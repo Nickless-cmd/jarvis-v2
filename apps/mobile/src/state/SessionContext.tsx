@@ -27,11 +27,22 @@ interface SessionContextValue {
   activeId: string | null
   messages: LocalMessage[]
   loading: boolean
-  refresh: (config: ApiConfig, art?: 'chat' | 'code') => Promise<void>
+  /**
+   * Hent listen for én flade og RETURNÉR den.
+   *
+   * Returværdien er ikke kosmetik: `setSessions` er asynkront, så en kalder der
+   * skal bruge listen lige efter (fladeskiftet, der skal afgøre om den huskede
+   * samtale hører til DENNE flade) læste ellers den forrige flades liste fra
+   * sin closure og fandt aldrig noget. Målt 18/10-2026: skiftet landede derfor
+   * altid på en ny chat i stedet for den huskede samtale.
+   */
+  refresh: (config: ApiConfig, art?: 'chat' | 'code') => Promise<ChatSession[]>
   select: (config: ApiConfig, sessionId: string) => Promise<ChatSession>
   create: (config: ApiConfig, titel?: string, art?: 'chat' | 'code') => Promise<ChatSession>
   appendLocalMessage: (message: ChatMessage) => void
   replaceMessages: (messages: ChatMessage[]) => void
+  /** Ryd aktiv samtale → tom chat-skærm (session oprettes først ved første send). */
+  newChat: () => void
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -54,7 +65,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setLoading(true)
 
         try {
-          setSessions(await listSessions(config, art))
+          const liste = await listSessions(config, art)
+          setSessions(liste)
+          return liste
         } finally {
           setLoading(false)
         }
@@ -121,6 +134,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       replaceMessages: (nextMessages) => {
         sidstFlettet.current = null
         setMessages(nextMessages)
+      },
+      /**
+       * Ryd aktiv samtale → den tomme chat-skærm. Samtalen oprettes først ved
+       * første send, så et fladeskift ikke efterlader en tom session i listen.
+       *
+       * Findes fordi fladeskiftet skal kunne lande på «ny chat» når fladen
+       * ikke har en husket samtale (Bjørn 18/10-2026).
+       */
+      newChat: () => {
+        sidstFlettet.current = null
+        setActiveId(null)
+        setMessages([])
       }
     }),
     [activeId, loading, messages, sessions]

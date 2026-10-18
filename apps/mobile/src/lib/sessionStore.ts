@@ -1,8 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
 
-// Husk hvilken session brugeren sidst var i, så app'en åbner samme sted.
-const KEY = 'jarvis.mobile.lastSession'
-
 export interface SidstePlads {
   id: string
   /**
@@ -18,36 +15,61 @@ export interface SidstePlads {
 }
 
 /**
- * Session og flade gemmes SAMMEN, i én nøgle.
+ * Session og flade gemmes SAMMEN, i én nøgle PR. FLADE.
  *
  * Bjørn 12/9-2026: «appen glemmer code mode så starter den stadig op i chat
  * mode med en code session loaded». To nøgler kan blive uenige — én kan ikke.
  * Det er ikke sparsommelighed; det er den eneste form hvor tilstanden ikke kan
  * være halvt gendannet.
+ *
+ * 18/10-2026: der er nu ét spor pr. flade. Bjørn: «hvis jeg skifter fra code
+ * mode til chat mode skifter chatview ikk til enten den sidste aktive session
+ * i chat mode eller ny chat skærmen». Med ÉN nøgle overskrev fladeskiftet den
+ * anden flades plads, så man altid landede på den samtale man kom fra. Hver
+ * flade har nu sin egen nøgle — stadig id og flade sammen, så de ikke kan
+ * blive uenige.
  */
+const KEY = 'jarvis.mobile.lastSession'
+const sporKey = (kode: boolean) => `${KEY}.${kode ? 'code' : 'chat'}`
+
 export async function saveLastSession(sessionId: string, kode = false): Promise<void> {
   if (!sessionId) return
   try {
-    await SecureStore.setItemAsync(KEY, JSON.stringify({ id: sessionId, kode: !!kode }))
+    await SecureStore.setItemAsync(sporKey(!!kode), JSON.stringify({ id: sessionId, kode: !!kode }))
   } catch {
     // Persistering er best-effort — en fejl må ikke vælte chatten.
   }
 }
 
-export async function loadLastSession(): Promise<SidstePlads | null> {
+/**
+ * Læs pladsen for ÉN flade.
+ *
+ * Uden `kode` læses den gamle fælles nøgle — kun til bagudkompatibilitet, så
+ * en opdatering ikke mister den samtale man stod i. Er der et spor for fladen,
+ * vinder det altid: det er skrevet af den nyere kode.
+ */
+export async function loadLastSession(kode?: boolean): Promise<SidstePlads | null> {
   try {
+    if (kode !== undefined) {
+      const eget = await SecureStore.getItemAsync(sporKey(kode))
+      if (eget) return parse(eget)
+    }
     const raa = await SecureStore.getItemAsync(KEY)
     if (!raa) return null
     // BAGUDKOMPATIBELT: nøglen indeholdt før en bar session-id-streng. Uden det
     // her ville alle der opdaterer miste deres sidste samtale én gang — og det
     // ville ligne at appen havde glemt dem.
-    if (!raa.trimStart().startsWith('{')) return { id: raa, kode: null }
-    const o = JSON.parse(raa) as { id?: unknown; kode?: unknown }
-    const id = typeof o.id === 'string' ? o.id : ''
-    return id ? { id, kode: typeof o.kode === 'boolean' ? o.kode : null } : null
+    return parse(raa)
   } catch {
     return null
   }
+}
+
+function parse(raa: string): SidstePlads | null {
+  if (!raa.trimStart().startsWith('{')) return { id: raa, kode: null }
+  const o = JSON.parse(raa) as { id?: unknown; kode?: unknown }
+  const id = typeof o.id === 'string' ? o.id : ''
+  return id ? { id, kode: typeof o.kode === 'boolean' ? o.kode : null } : null
 }
 
 export async function clearLastSession(): Promise<void> {

@@ -224,3 +224,22 @@ def test_list_viser_ikke_en_gammel_kommando_paa_en_ledig_session():
     r = _list_row("bsh-y", _Attrap(laast=False, kommando="npm run build"), time.time())
     assert r["busy"] is False
     assert r["command"] == ""
+
+
+def test_close_hoester_sit_barn(session):
+    """`close()` maa ikke efterlade en zombie (18/10-2026).
+
+    Maalt: 30 `bash`-zombier paa 23 timer, alle med daemonen som foraelder.
+    `terminate()`s SIGKILL-udvej vendte tilbage uden at reape, og `_reaper`
+    havde allerede pop'et sessionen ud af `sessions` — saa ingen saa den igen.
+    """
+    pid = session.pid
+    session.close()
+    with pytest.raises(ChildProcessError):
+        os.waitpid(pid, os.WNOHANG)
+
+
+def test_close_to_gange_efter_hoest_ma_ikke_kaste(session):
+    """Et barn der allerede er hoestet maa ikke faa `close()` til at kaste."""
+    session.close()
+    session.close()

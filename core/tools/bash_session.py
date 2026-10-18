@@ -399,9 +399,31 @@ class _Session:
         except Exception as exc:
             logger.debug("bash_session %s terminate failed: %s", self.session_id, exc)
 
+    def _reap_now(self, timeout: float = 2.0) -> bool:
+        """Høst barnet efter drabet. True når det er væk.
+
+        HVORFOR (18/10-2026): ``terminate()`` sender SIGKILL som sidste udvej
+        og vender tilbage UDEN at kalde ``alive()`` bagefter — og SIGKILL er
+        ikke instant, så et kald lige efter ville stadig se den som levende.
+        ``_reaper`` pop'er samtidig sessionen ud af ``sessions`` FØR den kalder
+        ``close()``, så ingen ser den igen: barnet blev liggende som zombie.
+        Målt: 30 ``bash``-zombier på 23 timer, alle med daemonen som forælder.
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                pid, _ = os.waitpid(self.pid, os.WNOHANG)
+            except ChildProcessError:  # allerede høstet — målet er nået
+                return True
+            if pid == self.pid:
+                return True
+            time.sleep(0.05)
+        return False
+
     def close(self) -> None:
         """Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører."""
         self.terminate()
+        self._reap_now()
         # Fd'en maa kun lukkes naar ingen select'er paa den: lukkes den under
         # en anden traads select(), kan nummeret blive genbrugt af en helt
         # anden fil. Bash er doed nu, saa en koerende `run` slipper laasen med
@@ -495,10 +517,32 @@ def _daemon_main() -> int:
     sess_lock = threading.Lock()
     last_activity = [time.time()]
 
+    def _reap_orphans() -> int:
+        """Høst ALLE døde børn, ikke kun sessionernes. Sikkerhedsnet.
+
+        HVORFOR (18/10-2026): en session der pop'es ud af ``sessions`` uden at
+        ``close()`` når at reape — eller en ``pty.fork`` der fejler halvvejs i
+        ``_Session.__init__`` — efterlader ellers et lig som ingen ser igen.
+        ``WNOHANG`` returnerer kun døde børn, så levende shells er urørte; en
+        shell der allerede er høstet giver ``ChildProcessError`` i ``alive()``,
+        som allerede tolker det som «død».
+        """
+        n = 0
+        while True:
+            try:
+                pid, _ = os.waitpid(-1, os.WNOHANG)
+            except (ChildProcessError, OSError):  # ingen børn tilbage at høste
+                break
+            if pid == 0:
+                break
+            n += 1
+        return n
+
     def _reaper() -> None:
         while True:
             time.sleep(60)
             now = time.time()
+            _reap_orphans()
             # VIGTIGT (fix 13. sep 2026): pop under låsen, luk UDENFOR.
             # `s.close()` tager sessionens EGEN lås, som en igangværende `run` holder
             # i op til kommandotidens timeout (max 300s). Blev lukningen gjort inde i

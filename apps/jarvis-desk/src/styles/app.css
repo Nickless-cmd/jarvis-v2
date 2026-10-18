@@ -665,7 +665,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* ─── Main ────────────────────────────────────────── */
 .main {
-  background: var(--bg-1);
+  background: var(--page-bg);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -907,7 +907,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* ─── Composer ────────────────────────────────────── */
 .composer-wrap {
   padding: 8px 24px 20px;
-  background: var(--bg-1);
+  /* Side-fladen, ikke --bg-1: den hvide composer-pille skal ligge PÅ noget der
+     er en anelse mørkere, ellers forsvinder den i baggrunden (mobilen gør
+     præcis dette — #FFFFFF pille på #FAFAFA flade). */
+  background: var(--page-bg);
 }
 .composer {
   max-width: 820px;
@@ -1083,7 +1086,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* ─── Statusbar ────────────────────────────────────── */
 .statusbar {
   border-top: 1px solid var(--line);
-  background: var(--bg-1);
+  background: var(--page-bg);
   padding: 0 24px;
   display: flex;
   align-items: center;

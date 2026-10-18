@@ -37,7 +37,13 @@
    målt i CC. */
 :root {
   --bg-0: #111111;   /* sidebar — det mørkeste i billedet */
-  --bg-1: #151515;   /* chat- og hovedflade */
+  --bg-1: #151515;   /* kort og hævede flader; i mørkt tema også siden */
+  /* Den STORE flade — chatten, composer-området, statusbaren, rutine-visningen.
+     Skilt ud fra `--bg-1` 18/10-2026 fordi de to roller kolliderer i lyst tema:
+     mobilen lægger #FAFAFA på hele siden og hvide kort OVENPÅ, mens desk lagde
+     #FFFFFF på den største flade og druknede lagdelingen i hvidt. I mørkt tema
+     er de stadig samme værdi, så intet er ændret der. */
+  --page-bg: var(--bg-1);
   --bg-2: #1a1a19;   /* hævet panel: miljøfelt, jobs-rude, kodeblok */
   --bg-3: #252524;   /* kort inde i et panel */
   --bg-4: #343434;   /* valgt række / hover */
@@ -131,6 +137,11 @@
 :root[data-theme="light"] {
   --bg-0: #fafafa;
   --bg-1: #ffffff;
+  /* MÅLT i mobil-appen 18/10-2026, ikke valgt: chat-fladen er #FAFAFA, og den
+     svævende composer er #FFFFFF. Desk gjorde det modsatte — hvid side med
+     hvide kort — og det er derfor det lyse tema blænder. `--bg-1` bliver hvid
+     så kort, faner og den svævende composer stadig løfter sig. */
+  --page-bg: #fafafa;
   --bg-2: #f0f0f0;
   --bg-3: #e6e6e6;
   --bg-4: #dadada;

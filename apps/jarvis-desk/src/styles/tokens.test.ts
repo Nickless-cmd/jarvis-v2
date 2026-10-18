@@ -184,8 +184,34 @@ describe('design-tokens', () => {
     const sidebar = bg('.sidebar')
     const main = bg('.main')
     expect(sidebar, 'sidebaren skal være den mørkeste flade').toBe('--bg-0')
-    expect(main).toBe('--bg-1')
+    // 18/10-2026: hovedfladen flyttede fra --bg-1 til --page-bg. I mørkt tema
+    // er de samme værdi, men i lyst tema skal den store flade kunne være
+    // #FAFAFA mens kortene bliver hvide — se testen nedenfor.
+    expect(main, 'hovedfladen skal stå på side-fladen, ikke på kort-farven').toBe('--page-bg')
     expect(sidebar).not.toBe(main)
+  })
+
+  // Bjørn 18/10-2026: «det lyse tema er meget hvid … i vores android apk er
+  // temaet lidt bedre». Målt i mobil-appens lyse palet: chat-fladen er #FAFAFA,
+  // og KUN de svævende flader er #FFFFFF. Desk gjorde det modsatte — #FFFFFF på
+  // den største flade og hvide kort ovenpå — så lagdelingen druknede og hele
+  // skærmen stod hvid. Tekstfarven er den samme i begge (#111111), så det er
+  // fladerne og ikke teksten der gør det.
+  it('lyst tema: den store flade er ikke rent hvid, de svævende er', () => {
+    const m = tokens.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)
+    const blok = m?.[1] ?? ''
+    const side = (blok.match(/--page-bg:\s*(#[0-9a-f]{6})/i) ?? [])[1]?.toLowerCase() ?? ''
+    const kort = (blok.match(/--bg-1:\s*(#[0-9a-f]{6})/i) ?? [])[1]?.toLowerCase() ?? ''
+    expect(side, 'lyst tema skal definere --page-bg selv').toBeTruthy()
+    expect(side, 'side-fladen må ikke være rent hvid — dét er blændingen').not.toBe('#ffffff')
+    expect(side, 'side-fladen skal være mobilens bg0, målt').toBe('#fafafa')
+    expect(kort, 'kort og svævende flader skal blive hvide').toBe('#ffffff')
+    // Og den skal faktisk BRUGES — ellers er det bare en ubrugt variabel.
+    for (const vaelger of ['.main', '.composer-wrap', '.statusbar']) {
+      const regel = app.match(new RegExp(`^\\${vaelger} \\{([\\s\\S]*?)\\n\\}`, 'm'))?.[1] ?? ''
+      expect(regel, `${vaelger} findes ikke`).toBeTruthy()
+      expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1], vaelger).toBe('--page-bg')
+    }
   })
 
   // Bjørn 16/9-2026: «fade i enden af sessionerne i venstre panel». «…» koster

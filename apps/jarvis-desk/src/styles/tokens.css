@@ -137,6 +137,12 @@
   --accent-text: #3d7f5c;
   --user-bubble: #cff3e0;
   --code-bg: #f2f2f2;
+  /* Inputfeltet. `--field-bg` blev DEFINERET i det mørke tema alene, så det
+     lyse tema arvede #20201f: et mørkt felt på en lys flade, med `--fg-1`
+     (#111111) som tekst — sort på mørk, ulæseligt. Mobilens lyse palet har
+     hvidt felt, og det er den palet dette tema er 1:1 med. Hvidt, ikke
+     --bg-2: feltet skal ligge PÅ fladen, ikke synke ned i den. */
+  --field-bg: #ffffff;
   --fg-0: #000000;
   --ok: #2e7d32;
   /* Samme to farver i lyst tema — værdierne er runde-linjernes egne. */

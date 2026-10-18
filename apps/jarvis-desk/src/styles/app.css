@@ -940,13 +940,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .composer-input::placeholder { color: var(--fg-3); }
 .composer-input:disabled { opacity: 0.5; cursor: wait; }
-/* Lyst tema: feltet er MØRKT. `--field-bg` (#20201f) findes kun i det mørke
-   tema — det lyse tema arver den, så komposeren står som et mørkt felt på en
-   lys flade. Teksten hentede `--fg-1`, som i lyst tema er #111111: sort på
-   mørk, og man kunne ikke se hvad man skrev.
-   Bjørn 18/10-2026: «i det lyse tema skal teksten man skriver i composer være
-   hvid». Feltet bliver stående som det er; teksten bliver lys. */
-:root[data-theme="light"] .composer-input { color: #ffffff; }
+/* Lyst tema: feltet er nu LYST (se `--field-bg` i tokens.css), så teksten
+   skal være mørk — `--fg-1` gør det af sig selv, og der er ingen
+   tilsidesættelse her. Den tidligere regel satte teksten hvid, fordi feltet
+   stod mørkt; med et hvidt felt ville den gøre teksten usynlig.
+   Bjørn 18/10-2026: «lyst felt i lyst tema, som mobilen — retter alle fire
+   felter». */
 
 /* Auto-forslag (Bjørn 17/9-2026): forslaget står i grå DÉR HVOR PLADSHOLDEREN
    står — i det tomme felt — og Tab gør det til rigtig tekst. Det stod først som

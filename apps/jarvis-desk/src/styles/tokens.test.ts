@@ -87,6 +87,26 @@ describe('design-tokens', () => {
     '--field-bg': '#20201f',
   }
 
+  // 18/10-2026: `--field-bg` blev kun defineret i det mørke tema, så det lyse
+  // arvede #20201f — et mørkt felt på en lys flade. Teksten hentede `--fg-1`
+  // (#111111), altså sort på mørk. Bjørn: «i det lyse tema skal teksten man
+  // skriver i composer være hvid» — og derefter, da valget stod mellem at
+  // lyse feltet op eller lade det være mørkt: «lyst felt i lyst tema, som
+  // mobilen». Mobilens LIGHT_BASE har hvidt felt, og dette tema er 1:1 med den.
+  //
+  // Testen fanger BEGGE halvdele: at feltet er lyst, og at teksten ikke er
+  // tilsidesat til hvid (som ville gøre den usynlig på det lyse felt).
+  it('lyst tema har lyst inputfelt og mørk tekst i det', () => {
+    const blok = tokens.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(blok, 'lyst tema mangler').toBeTruthy()
+    const felt = (blok.match(/--field-bg:\s*(#[0-9a-f]{6})/i) ?? [])[1]?.toLowerCase()
+    expect(felt, 'lyst tema skal definere --field-bg selv').toBe('#ffffff')
+    // Feltet skal være lysere end fladen under det, ellers ser det nedsænket ud.
+    const bg0 = (blok.match(/--bg-0:\s*(#[0-9a-f]{6})/i) ?? [])[1]?.toLowerCase() ?? ''
+    expect(felt).not.toBe(bg0)
+    expect(app).not.toMatch(/data-theme="light"\][^{]*\.composer-input\s*\{[^}]*color:\s*#fff/i)
+  })
+
   it('det mørke tema er de MÅLTE pixels fra CC, ikke et skøn', () => {
     const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
     const v = (navn: string) =>

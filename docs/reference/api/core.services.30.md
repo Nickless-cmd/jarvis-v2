@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_stream_gate_wrapper.py`
+_Livscyklus-gate omkring en synlig async stream._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `gate_visible_stream` | `(inner_stream)` | Hold visible-stream-gaten fra første iteration til generatorens exit. | [src](../../../core/services/visible_stream_gate_wrapper.py#L11) |
+
 ## `core/services/visible_synthesis_stream.py`
 _Den streamede syntese, skrubbet — ét sted._
 

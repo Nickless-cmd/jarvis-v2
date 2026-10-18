@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9103/17336 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9103/17337 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9103/17336 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6066 | 11782 | 51% |
+| `core.services` | 6066 | 11783 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1415,9 +1415,9 @@ Generated from source. 9103/17336 functions/methods documented (52%). The list b
 - `core/services/mcp_auth.py` :: `get_token` (L75)
 - `core/services/mcp_auth.py` :: `needs_refresh` (L102)
 - `core/services/mcp_auth.py` :: `set_token` (L80)
-- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L297)
-- `core/services/mcp_client.py` :: `MCPClient.connected` (L178)
-- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L164)
+- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L319)
+- `core/services/mcp_client.py` :: `MCPClient.connected` (L186)
+- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L171)
 - `core/services/mcp_manager.py` :: `call` (L99)
 - `core/services/mcp_manager.py` :: `disconnect_all` (L58)
 - `core/services/mcp_manager.py` :: `list_tools` (L88)

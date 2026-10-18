@@ -100,6 +100,13 @@ class MCPClient:
         self.connect_error: str | None = None
         self._request_id = 0
         self._connected = False
+        # MÅLT 18/10-2026: et stdio-kald der timer ud efterlader læsetråden
+        # blokeret på readline(). Det forsinkede svar bliver derfor læst af det
+        # NÆSTE kald, og forbindelsen er derefter permanent ude af sync — målt:
+        # efter ét timeout timede selv et `1+1`-kald ud. Derfor en lås om
+        # skriv+læs, og et brudt-flag der tvinger en frisk forbindelse.
+        self._io_lock = threading.Lock()
+        self._broken = False
 
     # ── forbindelse ────────────────────────────────────────────────────────
 
@@ -173,12 +180,14 @@ class MCPClient:
                     pass
             self.process = None
         self._connected = False
+        self._broken = False
 
     @property
     def connected(self) -> bool:
         if self.transport == "http":
             return self._connected
-        return (self._connected and self.process is not None
+        return (self._connected and not self._broken
+                and self.process is not None
                 and self.process.poll() is None)
 
     # ── JSON-RPC ───────────────────────────────────────────────────────────
@@ -195,6 +204,15 @@ class MCPClient:
     def _send_stdio(self, req: dict) -> dict[str, Any]:
         if not self.process or not self.process.stdin or not self.process.stdout:
             return {"error": "ikke forbundet"}
+        # Låsen er ikke kosmetik: uden den kan to samtidige kald skrive og læse
+        # på samme rør og få hinandens svar. MCP's stdio-transport er strengt
+        # sekventiel, så kaldene SKAL serialiseres.
+        with self._io_lock:
+            return self._send_stdio_locked(req)
+
+    def _send_stdio_locked(self, req: dict) -> dict[str, Any]:
+        if self._broken:
+            return {"error": f"{self.name}: forbindelsen er brudt og skal genoprettes"}
         # En server der aldrig svarer maa ikke haenge turen. jarvis-code kunne
         # leve med et blokerende readline i en REPL; her ville det spaerre en
         # request-tråd i api'et.
@@ -216,6 +234,10 @@ class MCPClient:
         t.start()
         t.join(timeout=_STDIO_TIMEOUT_S)
         if t.is_alive():
+            # Rørene kan ikke reddes: læsetråden hænger stadig på readline()
+            # og vil stjæle det næste svar. Målt 18/10-2026 — derfor markeres
+            # forbindelsen brudt, så næste kald starter en frisk proces.
+            self._broken = True
             return {"error": f"{self.name} svarede ikke inden {_STDIO_TIMEOUT_S}s"}
         return svar or {"error": "intet svar"}
 
@@ -295,6 +317,15 @@ class MCPClient:
         return list((svar.get("result") or {}).get("tools") or [])
 
     def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        # Et tidligere timeout har efterladt rørene ude af sync. At genoprette
+        # her koster ~2 s og er den ærlige pris — alternativet er en forbindelse
+        # der svarer forkert eller hænger for evigt (målt 18/10-2026).
+        if self.transport != "http" and self._broken:
+            self.disconnect()
+            if not self.connect():
+                return {"status": "error",
+                        "error": self.connect_error
+                        or f"{self.name}: kunne ikke genoprette forbindelsen"}
         svar = self._send_request("tools/call",
                                   {"name": tool_name, "arguments": arguments or {}})
         if "error" in svar:

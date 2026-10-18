@@ -225,23 +225,44 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
     _t0_e = _t_e.monotonic()
     try:
         import httpx
-        resp = httpx.post(
-            f"{_ollama_base()}/api/embed",
-            json={"model": _EMBED_MODEL, "input": list(texts)},
-            timeout=30,
-        )
-        if resp.status_code == 200:
+        # DELT I PORTIONER (18/10-2026): ét kald med HELE korpus kan ikke naa
+        # igennem. Maalt: en fuld gen-indeksering sender 7.574 chunks, og med
+        # ``timeout=30`` timede batch-kaldet ud efter 568 s — hvorefter
+        # per-tekst-fallbacken (timeout 20 pr. tekst) heller ikke kunne naa
+        # det, og indekset blev bygget UDEN embeddings. Portionen er sat efter
+        # maalt gennemloeb: ~130 ms pr. chunk paa GTX 1070 → 128 chunks ≈ 17 s,
+        # altsaa rigelig margin til 90 s-timeouten ogsaa naar GPU'en er travl.
+        _EMBED_BATCH = 128
+        _EMBED_TIMEOUT_S = 90
+        _all_embs: list[list[float]] = []
+        for _start in range(0, len(texts), _EMBED_BATCH):
+            _portion = list(texts[_start:_start + _EMBED_BATCH])
+            resp = httpx.post(
+                f"{_ollama_base()}/api/embed",
+                json={"model": _EMBED_MODEL, "input": _portion},
+                timeout=_EMBED_TIMEOUT_S,
+            )
+            if resp.status_code != 200:
+                logger.debug(
+                    "memory_search: batch embed uventet svar (%s) — falder til per-tekst",
+                    resp.status_code,
+                )
+                _all_embs = []
+                break
             embs = resp.json().get("embeddings")
-            if isinstance(embs, list) and len(embs) == len(texts) and embs:
-                try:
-                    from core.services import turn_trace as _tt
-                    _tt.mark("embed", f"ms-corpus n={len(texts)}",
-                             int((_t_e.monotonic() - _t0_e) * 1000))
-                except Exception:
-                    pass
-                return np.array(embs, dtype=np.float32)
-        logger.debug("memory_search: batch embed uventet svar (%s) — falder til per-tekst",
-                     resp.status_code)
+            if not (isinstance(embs, list) and len(embs) == len(_portion) and embs):
+                logger.debug("memory_search: batch embed gav uventet svar — falder til per-tekst")
+                _all_embs = []
+                break
+            _all_embs.extend(embs)
+        if len(_all_embs) == len(texts):
+            try:
+                from core.services import turn_trace as _tt
+                _tt.mark("embed", f"ms-corpus n={len(texts)}",
+                         int((_t_e.monotonic() - _t0_e) * 1000))
+            except Exception:
+                pass
+            return np.array(_all_embs, dtype=np.float32)
     except Exception as exc:
         logger.debug("memory_search: batch embed fejlede — falder til per-tekst: %s", exc)
     # Fallback: per-tekst (bevarer korrekthed hvis batch-endpointet ikke virker).

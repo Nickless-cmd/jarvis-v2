@@ -4155,11 +4155,18 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
     # the model saw them — leading to "silent lying" patterns where the
     # model emitted text-form tool calls or promised actions without
     # executing them.
+    #
+    # Bumped 30 → 60 (18/10-2026): de 47 arbejdsregler fra Claude-importen
+    # blev målt mod den ÆGTE prompt og kun 2 af dem fandtes der. 45 er derfor
+    # skrevet ind i filen som én destilleret linje hver — målefælder, DB,
+    # deploy, UI. Filen er nu 35 linjer, så loftet på 30 klippede fem regler
+    # væk uden en lyd. `max_chars` er pr. LINJE, ikke total (målt i
+    # _workspace_file_section), så 2000 er rigeligt til én regel.
     return _workspace_optional_file_section(
         workspace_dir / "VISIBLE_CHAT_RULES.md",
         fallback_path=TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md",
         label="Visible chat guidance rules",
-        max_lines=30,
+        max_lines=60,
         max_chars=2000,
     )
 

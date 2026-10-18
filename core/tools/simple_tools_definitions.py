@@ -1682,13 +1682,42 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_weather",
-            "description": "Get current weather and short forecast for a city. Defaults to the user's location (Svendborg, Denmark) if no city given. Always returns Celsius.",
+            "description": (
+                "Vejr for et sted: nu, prognose, døgn og luftkvalitet. Default er "
+                "brugerens placering (Svendborg, Danmark). Returnerer Celsius med "
+                "mindre units='imperial'. mode='all' (standard) giver nu + "
+                "3-timers prognose + døgn + luftkvalitet; 'current' kun nu; "
+                "'hourly' kun prognose; 'daily' kun døgn. Prognosen har "
+                "3-timers opløsning og rækker 5 døgn frem."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "city": {
                         "type": "string",
-                        "description": "City name, e.g. 'Copenhagen' or 'London, UK'. Omit to use user's default location.",
+                        "description": "By, fx 'Copenhagen' eller 'London, UK'. Udelad for brugerens placering.",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["all", "current", "hourly", "daily"],
+                        "description": "Hvor meget der returneres. Standard 'all'.",
+                    },
+                    "hours": {
+                        "type": "integer",
+                        "description": "Hvor mange timer prognosen dækker (1-48, standard 24).",
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Hvor mange døgn der opsummeres (1-5, standard 3).",
+                    },
+                    "units": {
+                        "type": "string",
+                        "enum": ["metric", "imperial"],
+                        "description": "metric = Celsius (standard), imperial = Fahrenheit.",
+                    },
+                    "lang": {
+                        "type": "string",
+                        "description": "Sprog for vejrbeskrivelsen, fx 'da' (standard) eller 'en'.",
                     },
                 },
                 "required": [],

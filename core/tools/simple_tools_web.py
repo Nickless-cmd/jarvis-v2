@@ -26,6 +26,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 import re
+from datetime import datetime, timedelta, timezone
 from time import monotonic as _monotonic
 
 from core.runtime.config import PROJECT_ROOT
@@ -1037,38 +1038,247 @@ def _read_user_location() -> str:
     return "Svendborg, Denmark"
 
 
+# ── Vejr ─────────────────────────────────────────────────────────────────────
+# Udvidet 18/10-2026 (Bjørn: «det tool burde kunne mange flere ting»). Før
+# hentede det udelukkende /data/2.5/weather — altså NÆRVÆRET — selv om skemaet
+# lovede en «short forecast». Nu dækker det tre gratis-endpoints på samme nøgle:
+#
+#   /data/2.5/weather       → nu: temp, vind, vindstød, sigtbarhed, solopgang/ned
+#   /data/2.5/forecast      → 5 døgn i 3-timers trin med pop og regn/sne-mængde
+#   /data/2.5/air_pollution → AQI + partikler (kræver koordinater fra «weather»)
+#
+# Målt 18/10-2026: /data/3.0/onecall svarer HTTP 401 på denne nøgle (kræver
+# separat abonnement). Derfor er prognosen 3-timers — den kaldes ikke
+# time-for-time, for det ville være en løgn om opløsningen.
+
+_AQI_LABEL = {1: "god", 2: "rimelig", 3: "moderat", 4: "dårlig", 5: "meget dårlig"}
+
+
+def _owm_get(path: str, params: dict[str, Any], api_key: str, timeout: float = 12.0) -> dict[str, Any]:
+    """Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``."""
+    query = "&".join(f"{k}={urllib_request.quote(str(v))}" for k, v in params.items())
+    url = f"https://api.openweathermap.org{path}?{query}&appid={api_key}"
+    try:
+        with urllib_request.urlopen(urllib_request.Request(url), timeout=timeout) as resp:
+            return json.loads(resp.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"_error": f"{path}: {exc}"}
+
+
+def _owm_local(epoch: Any, offset_s: int) -> str:
+    """Epoch → ISO-lokal tid for STEDET.
+
+    OWM leverer kun et offset i sekunder, ingen zone-ident. Vi bygger derfor en
+    fast-offset-zone, så tiderne er stedets og ikke serverens.
+    """
+    try:
+        if not epoch:
+            return ""
+        return datetime.fromtimestamp(
+            float(epoch), timezone(timedelta(seconds=int(offset_s)))
+        ).strftime("%Y-%m-%dT%H:%M")
+    except (TypeError, ValueError, OSError, OverflowError):  # ugyldigt epoch-tal → tom tid, ikke et kast
+        return ""
+
+
+def _owm_precip_mm(punkt: dict[str, Any]) -> float:
+    """Regn + sne i mm. Current bruger ``1h``, forecast bruger ``3h`` — vi summer alt."""
+    total = 0.0
+    for noegle in ("rain", "snow"):
+        blok = punkt.get(noegle)
+        if isinstance(blok, dict):
+            for vaerdi in blok.values():
+                try:
+                    total += float(vaerdi or 0.0)
+                except (TypeError, ValueError):  # OWM kan sende null/tekst i en nedboersblok
+                    continue
+    return round(total, 2)
+
+
+def _owm_daily(punkter: list[dict[str, Any]], offset_s: int, antal: int) -> list[dict[str, Any]]:
+    """Gruppér 3-timers-punkter i lokale døgn og opsummer hvert døgn.
+
+    Beskrivelsen vælges fra punktet nærmest kl. 13 — dagens ansigt, ikke et
+    tilfældigt nattetime-punkt. Døgnet kan være delvist dækket (prognosen
+    starter ved næste 3-timers-grænse), og det er ærligt nok: tallene er
+    summen af de punkter der FINDES for dagen.
+    """
+    dage: dict[str, dict[str, Any]] = {}
+    for p in punkter:
+        dt_vaerdi = p.get("dt")
+        if not dt_vaerdi:
+            continue
+        try:
+            lokal = datetime.fromtimestamp(
+                float(dt_vaerdi), timezone(timedelta(seconds=int(offset_s)))
+            )
+        except (TypeError, ValueError, OSError, OverflowError):  # ét raat punkt maa ikke vaelte hele doegnet
+            continue
+        noegle = lokal.strftime("%Y-%m-%d")
+        main = p.get("main") or {}
+        beskrivelse = ((p.get("weather") or [{}])[0] or {}).get("description", "")
+        d = dage.setdefault(
+            noegle,
+            {
+                "date": noegle,
+                "min_c": None,
+                "max_c": None,
+                "precip_mm": 0.0,
+                "chance_pct": 0,
+                "description": "",
+                "_naermest_middag": 99,
+            },
+        )
+        for felt, raa, vaelger in (
+            ("min_c", main.get("temp_min", main.get("temp")), min),
+            ("max_c", main.get("temp_max", main.get("temp")), max),
+        ):
+            if raa is None:
+                continue
+            d[felt] = float(raa) if d[felt] is None else vaelger(d[felt], float(raa))
+        d["precip_mm"] = round(d["precip_mm"] + _owm_precip_mm(p), 2)
+        d["chance_pct"] = max(d["chance_pct"], int(round(float(p.get("pop") or 0) * 100)))
+        afstand = abs(lokal.hour - 13)
+        if beskrivelse and afstand < d["_naermest_middag"]:
+            d["_naermest_middag"] = afstand
+            d["description"] = beskrivelse
+
+    resultat: list[dict[str, Any]] = []
+    for d in list(dage.values())[:antal]:
+        d.pop("_naermest_middag", None)
+        for felt in ("min_c", "max_c"):
+            if d[felt] is not None:
+                d[felt] = round(d[felt], 1)
+        resultat.append(d)
+    return resultat
+
+
 def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
-    """Current weather via OpenWeatherMap."""
+    """Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet.
+
+    ``mode``: ``all`` (standard — nu + 3-timers prognose + døgn + luft),
+    ``current`` (kun nu), ``hourly`` (kun prognose) eller ``daily`` (kun døgn).
+    """
     city = str(args.get("city") or "").strip() or _read_user_location()
+    mode = str(args.get("mode") or "all").strip().lower()
+    if mode not in ("current", "hourly", "daily", "all"):
+        mode = "all"
+    try:
+        timer = max(1, min(int(args.get("hours") or 24), 48))
+    except (TypeError, ValueError):
+        timer = 24
+    try:
+        dage = max(1, min(int(args.get("days") or 3), 5))
+    except (TypeError, ValueError):
+        dage = 3
+    units = "imperial" if str(args.get("units") or "").lower() == "imperial" else "metric"
+    lang = str(args.get("lang") or "da").strip() or "da"
 
     api_key = _read_api_key("openweathermap_api_key")
     if not api_key:
         return {"error": "openweathermap_api_key not configured in runtime.json", "status": "error"}
 
-    url = (
-        f"https://api.openweathermap.org/data/2.5/weather"
-        f"?q={urllib_request.quote(city)}&appid={api_key}&units=metric&lang=en"
-    )
-    try:
-        with urllib_request.urlopen(urllib_request.Request(url), timeout=10) as resp:
-            data = json.loads(resp.read())
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
-        return {"error": f"Weather fetch failed: {exc}", "status": "error"}
+    faelles = {"q": city, "units": units, "lang": lang}
+    nu_raa = _owm_get("/data/2.5/weather", faelles, api_key)
+    if nu_raa.get("_error"):
+        return {"error": f"Weather fetch failed: {nu_raa['_error']}", "status": "error"}
 
-    main = data.get("main", {})
-    weather = data.get("weather", [{}])[0]
-    wind = data.get("wind", {})
-    name = data.get("name", city)
-    country = data.get("sys", {}).get("country", "")
-    return {
-        "city": f"{name}, {country}",
-        "description": weather.get("description", ""),
+    offset = int(nu_raa.get("timezone") or 0)
+    main = nu_raa.get("main") or {}
+    vind = nu_raa.get("wind") or {}
+    sys_blok = nu_raa.get("sys") or {}
+    coord = nu_raa.get("coord") or {}
+    sol_op = sys_blok.get("sunrise")
+    sol_ned = sys_blok.get("sunset")
+    sigt = nu_raa.get("visibility")
+
+    nu = {
+        "time": _owm_local(nu_raa.get("dt"), offset),
+        "description": ((nu_raa.get("weather") or [{}])[0] or {}).get("description", ""),
         "temp_c": main.get("temp"),
         "feels_like_c": main.get("feels_like"),
         "humidity_pct": main.get("humidity"),
-        "wind_ms": wind.get("speed"),
+        "pressure_hpa": main.get("pressure"),
+        "wind_ms": vind.get("speed"),
+        "wind_gust_ms": vind.get("gust"),
+        "wind_dir_deg": vind.get("deg"),
+        "clouds_pct": (nu_raa.get("clouds") or {}).get("all"),
+        "visibility_km": round(float(sigt) / 1000.0, 1) if sigt is not None else None,
+        "precip_mm": _owm_precip_mm(nu_raa),
+        "sunrise": _owm_local(sol_op, offset),
+        "sunset": _owm_local(sol_ned, offset),
+        "daylight_h": round((float(sol_ned) - float(sol_op)) / 3600.0, 1) if sol_op and sol_ned else None,
+    }
+
+    by = str(nu_raa.get("name") or city).strip()
+    land = str(sys_blok.get("country") or "").strip()
+    svar: dict[str, Any] = {
+        "city": f"{by}, {land}" if land else by,
+        "mode": mode,
+        "units": units,
+        "now": nu,
+        # Bagudkompatible top-niveau-felter: morgenbriefet og ældre læsere
+        # henter stadig «description» og «temp_c» herfra.
+        "description": nu["description"],
+        "temp_c": nu["temp_c"],
+        "feels_like_c": nu["feels_like_c"],
+        "humidity_pct": nu["humidity_pct"],
+        "wind_ms": nu["wind_ms"],
         "status": "ok",
     }
+
+    if mode in ("hourly", "daily", "all"):
+        prognose = _owm_get("/data/2.5/forecast", faelles, api_key)
+        if prognose.get("_error"):
+            svar["forecast_error"] = prognose["_error"]
+            punkter: list[dict[str, Any]] = []
+        else:
+            punkter = prognose.get("list") or []
+        if punkter:
+            graense = float(nu_raa.get("dt") or 0) + timer * 3600.0
+            if mode in ("hourly", "all"):
+                svar["hourly"] = [
+                    {
+                        "time": _owm_local(p.get("dt"), offset),
+                        "temp_c": (p.get("main") or {}).get("temp"),
+                        "description": ((p.get("weather") or [{}])[0] or {}).get("description", ""),
+                        "precip_mm": _owm_precip_mm(p),
+                        "chance_pct": int(round(float(p.get("pop") or 0) * 100)),
+                        "wind_ms": (p.get("wind") or {}).get("speed"),
+                        "wind_gust_ms": (p.get("wind") or {}).get("gust"),
+                    }
+                    for p in punkter
+                    if float(p.get("dt") or 0) <= graense
+                ][: max(1, timer // 3)]
+            if mode in ("daily", "all"):
+                svar["daily"] = _owm_daily(punkter, offset, dage)
+
+    if mode == "all" and coord.get("lat") is not None and coord.get("lon") is not None:
+        luft = _owm_get(
+            "/data/2.5/air_pollution",
+            {"lat": coord["lat"], "lon": coord["lon"]},
+            api_key,
+        )
+        poster = luft.get("list") or []
+        if poster:
+            foerste = poster[0]
+            aqi = (foerste.get("main") or {}).get("aqi")
+            komp = foerste.get("components") or {}
+            try:
+                aqi_nr = int(aqi) if aqi is not None else None
+            except (TypeError, ValueError):
+                aqi_nr = None
+            svar["air"] = {
+                "aqi": aqi_nr,
+                "aqi_label": _AQI_LABEL.get(aqi_nr) if aqi_nr else None,
+                "pm2_5": komp.get("pm2_5"),
+                "pm10": komp.get("pm10"),
+                "o3": komp.get("o3"),
+            }
+        elif luft.get("_error"):
+            svar["air_error"] = luft["_error"]
+
+    return svar
 
 
 def _exec_get_exchange_rate(args: dict[str, Any]) -> dict[str, Any]:

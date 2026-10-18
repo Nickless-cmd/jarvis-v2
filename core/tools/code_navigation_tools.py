@@ -43,6 +43,10 @@ MAX_HITS = 200
 # REPL-tilstand på tværs af kald, hvilket lader LSP'ens cache være varm.
 _LSP_SERVER = "serena"
 _LSP_SESSION = "jarvis-find-usages"
+# Hvor længe LSP-vejen må holde find_usages hen før fallback (målt 18/10-2026).
+# Ripgrep svarer på 12–28 ms; en LSP der ikke gør det inden 3 s er ikke værd
+# at vente på i en synkron værktøjssti.
+_LSP_FRIST_S = 3.0
 
 # Language → regex for definition lines. Each pattern uses a
 # placeholder %S% replaced with the symbol (rg's -e supports per-call
@@ -268,14 +272,30 @@ def _lsp_usages(name: str) -> dict[str, Any] | None:
     except Exception as exc:  # import kan fejle under bootstrap
         logger.debug("find_usages: mcp_manager utilgængelig (%s)", exc)
         return None
-    try:
-        svar = mcp_manager.call(
+    # KORT frist — målt 18/10-2026: `mcp_client` har et stdio-loft på 20 s.
+    # Uden denne frist venter HVER find_usages op til 20 s på en Serena der
+    # ikke svarer, før den falder tilbage til ripgrep (12–28 ms). Det gør
+    # LSP-vejen dyrere end den vej den skulle forbedre. En LSP der ikke
+    # svarer inden for et par sekunder er ubrugelig i en synkron værktøjssti;
+    # så hellere falde hurtigt tilbage og sige det i `backend`.
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
+    with ThreadPoolExecutor(max_workers=1) as _pool:
+        _fut = _pool.submit(
+            mcp_manager.call,
             _LSP_SERVER, "serena_repl",
             {"session_id": _LSP_SESSION, "code": _lsp_repl_kode(name)},
         )
-    except Exception as exc:  # timeout, død subprocess, manglende tillid
-        logger.warning("find_usages: LSP-kald fejlede (%s) — bruger ripgrep", exc)
-        return None
+        try:
+            svar = _fut.result(timeout=_LSP_FRIST_S)
+        except _FutTimeout:
+            logger.warning(
+                "find_usages: LSP svarede ikke inden %.1f s — bruger ripgrep",
+                _LSP_FRIST_S,
+            )
+            return None
+        except Exception as exc:  # timeout, død subprocess, manglende tillid
+            logger.warning("find_usages: LSP-kald fejlede (%s) — bruger ripgrep", exc)
+            return None
     if not isinstance(svar, dict) or svar.get("isError"):
         logger.debug("find_usages: LSP svarede fejl — bruger ripgrep")
         return None

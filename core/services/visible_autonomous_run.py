@@ -162,6 +162,28 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         # `inbox_items` i vinduet. Nu lægges forpligtelsen faktisk i indbakken,
         # bundet til den samtale den hørte til — så vækkeren kan vække DEN når
         # sessionen er ledig, og posten står i prompten indtil da.
+        #
+        # MEN IKKE FOR EN VÆKNING (19/10-2026). Kilden ligger ALLEREDE i
+        # indbakken og bliver løftet igen ved næste idle-runde — så en
+        # parkering skriver en DUBLET der beskriver at løfte den første.
+        # Målt i drift: fire sådanne poster på fem dage (2996, 3325, 4097,
+        # 4601), alle med `oprettende_run_id=''` → `verificeret_ejer='ukendt'`
+        # → `kraever_handling=0`. `kandidater()` kræver `jarvis`, så posten
+        # kan hverken gate eller løftes: en død post der lover handling for
+        # evigt. Gaten påvirkes ikke — det er støj, ikke et sikkerhedshul.
+        #
+        # `wakeup` har samme form: en self-wakeup er booket og fyrer igen af
+        # sig selv, så dens prompt skal heller ikke kopieres ind i indbakken.
+        # En `recurring`/`scheduled`-fyring er derimod ÉN aflevering — den
+        # ville gå tabt uden parkeringen, og den parkeres derfor som før.
+        _raa_origin = str(origin or "").strip().lower()
+        if _raa_origin in {"inbox", "wakeup"}:
+            logger.info(
+                "visible_autonomous_run: afvist %s-vaekning parkeres IKKE — "
+                "kilden ligger allerede i indbakken og loeftes igen",
+                _raa_origin,
+            )
+            return False
         try:
             from core.services.run_guard import parker_forpligtelse
 

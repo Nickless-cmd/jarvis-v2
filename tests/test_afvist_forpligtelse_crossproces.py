@@ -144,3 +144,61 @@ def test_contextvar_vinder_over_journalen(monkeypatch):
         origin="recurring", session_id="chat-e82192", beskrivelse="medicin"
     )
     assert set_kald["oprettende_run_id"] == "visible-lokal"
+
+
+# ── En VÆKNING må ikke parkere sin egen prompt (19/10-2026) ──────────────────
+#
+# Målt i drift: fire døde poster på fem dage (2996, 3325, 4097, 4601). En
+# afvist `inbox`-vækning skrev en DUBLET af den post den var ved at løfte —
+# med `oprettende_run_id=''`, altså `verificeret_ejer='ukendt'` og
+# `kraever_handling=0`. `kandidater()` kræver `jarvis`, så posten kunne
+# hverken gate eller løftes: en død post der lovede handling for evigt.
+#
+# `wakeup` har samme form — en self-wakeup er booket og fyrer igen.
+# `recurring` er ÉN aflevering og SKAL parkeres, ellers går den tabt.
+
+
+@pytest.fixture
+def _parkering(monkeypatch):
+    """Fanger parkerings-kaldet i stedet for at skrive i den ægte indbakke."""
+    kald: list[dict] = []
+
+    def _fake_parker(**kwargs):
+        kald.append(kwargs)
+        return {"status": "ok", "post": {"id": "test"}}
+
+    monkeypatch.setattr(
+        "core.services.run_guard.parker_forpligtelse", _fake_parker
+    )
+    return kald
+
+
+def _afvis(monkeypatch, origin: str) -> bool:
+    """Kør starteren med en vagt der ALTID afviser, og returnér dens svar."""
+    from core.services import visible_autonomous_run as var
+
+    monkeypatch.setattr(
+        "core.services.run_guard.blokeringsgrund",
+        lambda _origin, _session: "levende_run_i_session:test",
+    )
+    return var.start_autonomous_run(
+        "en besked", session_id="chat-test", origin=origin
+    )
+
+
+@pytest.mark.parametrize("origin", ["inbox", "wakeup"])
+def test_en_afvist_vaekning_parkerer_ikke_sin_egen_prompt(
+    monkeypatch, _parkering, origin
+):
+    """Kilden ligger allerede i indbakken — en kopi ville være en død post."""
+    assert _afvis(monkeypatch, origin) is False
+    assert _parkering == [], f"{origin} skrev en dubleret post"
+
+
+@pytest.mark.parametrize("origin", ["recurring", "scheduled"])
+def test_en_afvist_rutine_parkerer_stadig(monkeypatch, _parkering, origin):
+    """Én aflevering: uden parkeringen ville forpligtelsen gå tabt."""
+    assert _afvis(monkeypatch, origin) is False
+    assert len(_parkering) == 1, f"{origin} tabte sin forpligtelse"
+    assert _parkering[0]["origin"] == origin
+    assert _parkering[0]["session_id"] == "chat-test"

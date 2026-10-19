@@ -208,6 +208,107 @@ def skal_i_indbakken(task_id: str) -> bool:
         return False
 
 
+def rutine_session_id(task_id: str) -> str:
+    """Hvilken SAMTALE hører opgaven til? Tom streng = ingen.
+
+    Bruges når en recurring-post skrives i indbakken: runnets EGEN session er
+    `auto-recurring-<dato>`-siloen, og det er netop den silo Bjørn bad os fjerne
+    («de risikerer ikke at få deres indhold»). Posten skal bære den samtale
+    opgaven blev bestilt i, ikke den autonome kørsel den tilfældigvis landede i.
+
+    Rækkefølgen spejler `er_session_rutine`: den eksplicitte klassifikation
+    først, derefter opgavens egen `session_id`. Fail-soft → tom streng.
+    """
+    task_id = str(task_id or "").strip()
+    if not task_id:
+        return ""
+    try:
+        with runtime_db.connect() as conn:
+            link = conn.execute(
+                "SELECT routine_id FROM routine_legacy_links "
+                "WHERE source_kind = 'recurring' AND source_id = ?",
+                (task_id,),
+            ).fetchone()
+            if link:
+                from core.runtime import db_routines
+
+                rutine = db_routines.get_routine(str(link[0]))
+                if rutine:
+                    klass = dict(
+                        dict(rutine.get("delivery_policy") or {}).get("classification") or {}
+                    )
+                    if str(klass.get("execution_mode") or "").strip().lower() == "session":
+                        valg = str(klass.get("session_id") or "").strip()
+                        if valg:
+                            return valg
+            row = conn.execute(
+                "SELECT session_id FROM recurring_tasks WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+        return str(row[0] or "").strip() if row else ""
+    except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte gaten
+        logger.debug("recurring_tasks: kunne ikke laese session for %s",
+                     task_id, exc_info=True)
+        return ""
+
+
+def er_session_rutine(task_id: str) -> bool:
+    """Skal DENNE opgave udføres hvor brugeren er — eller i baggrunden?
+
+    Bjørn 19/10-2026: «når en rutine oprettes skal man vælge om den skal udføre
+    i baggrunden og rapportere til inbox eller om rutines udføres af dig hvor
+    brugeren sidst var aktiv».
+
+    Forskellen er ikke kosmetisk. En BAGGRUNDS-opgave rapporterer til
+    indbakken og venter til nogen kigger — den må ikke starte et run. En
+    SESSION-opgave hører til en samtale og må vække der. Uden denne skelnen
+    ville alle 13 levende opgaver begynde at vække runs, inkl. den 4×daglige
+    runtime-inspektion, som ingen har bedt om at se midt i en samtale.
+
+    Rækkefølgen er bevidst:
+
+    1. Den EKSPLICITTE klassifikation på den migrerede rutine, hvis den findes.
+       Det er valget nogen traf ved oprettelsen, og det vejer tungest.
+    2. ``session_id`` på opgaven — den ældre, men målte, indikation: en opgave
+       der blev bestilt inde i en samtale hører til den samtale. Det er den
+       samme afledning ``routine_migration._definition`` bruger.
+
+    Fail-closed: kan intet læses, svarer vi ``False`` (baggrund). En opgave der
+    ikke kan bevises at høre til en samtale må ikke vække nogen — den venter i
+    indbakken, hvor den stadig er synlig.
+    """
+    task_id = str(task_id or "").strip()
+    if not task_id:
+        return False
+    try:
+        with runtime_db.connect() as conn:
+            link = conn.execute(
+                "SELECT routine_id FROM routine_legacy_links "
+                "WHERE source_kind = 'recurring' AND source_id = ?",
+                (task_id,),
+            ).fetchone()
+            if link:
+                from core.runtime import db_routines
+
+                rutine = db_routines.get_routine(str(link[0]))
+                if rutine:
+                    klass = dict(
+                        dict(rutine.get("delivery_policy") or {}).get("classification") or {}
+                    )
+                    valg = str(klass.get("execution_mode") or "").strip().lower()
+                    if valg:
+                        return valg == "session"
+            row = conn.execute(
+                "SELECT session_id FROM recurring_tasks WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+        return bool(row and str(row[0] or "").strip())
+    except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte vækkeren
+        logger.debug("recurring_tasks: kunne ikke afgoere session-mode for %s",
+                     task_id, exc_info=True)
+        return False
+
+
 def _row_to_dict(row) -> dict:
     keys = row.keys() if hasattr(row, "keys") else []
     return {

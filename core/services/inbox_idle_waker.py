@@ -44,6 +44,7 @@ via `db_inbox.noter_vaekning`/`nulstil_vaekning`, og gatens felt er urørt.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,41 @@ def _er_moden(post: dict[str, Any], *, vaekninger: dict[str, dict[str, Any]]) ->
     # signal da desk-release 0.6.237 fejlede.
     if kildetype == "ci_alarm":
         return True
+    # `recurring` (19/10-2026): HELE todelingen af rutiner ligger her.
+    #
+    # Posten findes allerede når den når hit — `run_closure_gate` skrev den da
+    # runnet sluttede. Spørgsmålet er kun om den må VÆKKE, og svaret er nej
+    # medmindre opgaven er en SESSION-rutine. En baggrunds-rutine rapporterer
+    # til indbakken og venter til nogen kigger; den må ikke trænge ind i en
+    # samtale den ikke hører til. Det er præcis Bjørns valg ved oprettelsen.
+    #
+    # Er opgaven ukendt eller slettet, svarer `er_session_rutine` False, og
+    # posten bliver liggende synlig uden at vække. Det er den rigtige retning:
+    # en post vi ikke kan redegøre for må ikke starte et run.
+    if kildetype == "recurring":
+        from core.services.recurring_tasks import er_session_rutine
+
+        task_id = _task_id_fra_kilde(str(post.get("kilde_id") or ""))
+        return bool(task_id) and er_session_rutine(task_id)
     return False
+
+
+#: `run_closure_gate` skriver `kilde_id` som `recurring-{task_id}-{run_id}`.
+#: Task-id'er er `rec-` plus hex (målt på alle 13 levende). Run-id'er kan være
+#: `autonomous-…`, `visible-…` eller `run_…`, så vi kan ikke bare splitte på
+#: den sidste bindestreg — vi skal have fat i opgave-delen forrest.
+_TASK_ID_RE = re.compile(r"^recurring-(rec-[0-9A-Za-z]+)-")
+
+
+def _task_id_fra_kilde(kilde_id: str) -> str:
+    """Udtræk opgave-id'et fra en recurring-posts `kilde_id`.
+
+    Ukendt form → tom streng. Kalleren behandler det som «kan ikke redegøres
+    for» og vækker ikke. Et gæt her ville vække et run på en post vi ikke
+    forstår.
+    """
+    m = _TASK_ID_RE.match(str(kilde_id or "").strip())
+    return m.group(1) if m else ""
 
 
 def kandidater(bruger_id: str) -> list[dict[str, Any]]:
@@ -199,6 +234,12 @@ def _maal_session(post: dict[str, Any]) -> str:
         rec = _wakeup_records().get(str(post.get("kilde_id") or ""))
         if rec:
             record_session = str(rec.get("session_id") or "")
+    # En post kan BÆRE sin samtale (19/10-2026). For en session-rutine er det
+    # den mest præcise adresse der findes: opgaven blev bestilt i en bestemt
+    # samtale, og posten blev skrevet med den samme. Uden dette led faldt den
+    # til ejerens app-samtale — rigtigt i dag, men et gæt hvis han har flere.
+    if not record_session:
+        record_session = str(post.get("session_id") or "").strip()
     return pick_wakeup_run_target(
         channel="app",
         record_session=record_session,

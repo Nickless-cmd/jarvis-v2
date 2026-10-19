@@ -48,9 +48,47 @@ _BRUGER_KARANTAENE_S = 600.0
 #: vindue — se `verify_history_reads`: ingen nye fulde historik-læsninger.
 _KARANTAENE_VINDUE = 8
 
+#: Karantæne efter MIN egen sidste besked i samtalen (Bjørn 19/10-2026).
+#: Den symmetriske side af `_BRUGER_KARANTAENE_S`, og den manglede: uden den
+#: kunne en session-rutine vække et run i det øjeblik jeg havde svaret, mens
+#: han sad og læste svaret. Han beskrev det selv: «hvis du har feks. Skrevet en
+#: besked inden for de sidste 5 min. Skal vækningen enten udsættes yderligere
+#: eller returnere til inbox med fremhævet markering».
+#:
+#: Fem minutter, ikke ti: hans eget vindue er ti fordi han SKRIVER (og kan
+#: bruge lang tid). Mit er kortere — jeg har svaret, og der er intet mere i
+#: gang. Posten går ikke tabt; den venter i indbakken til vinduet er ude.
+_JARVIS_KARANTAENE_S = 300.0
+
 
 def _bruger_skrev_for_nylig(session_id: str) -> bool:
     """Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl."""
+    return _nylig_rolle_i_session(
+        session_id, rolle="user", vindue_s=_BRUGER_KARANTAENE_S,
+    )
+
+
+def _jarvis_skrev_for_nylig(session_id: str) -> bool:
+    """Skrev JEG inden for karantænen? Self-safe → False ved enhver fejl.
+
+    Den symmetriske side (19/10-2026). Uden den kunne en session-rutine starte
+    et run i det øjeblik jeg havde afsluttet et svar — posten ville lande oven
+    i en samtale hvor Bjørn stadig var ved at læse. Han kaldte det selv
+    forurening af en kørende session.
+    """
+    return _nylig_rolle_i_session(
+        session_id, rolle="assistant", vindue_s=_JARVIS_KARANTAENE_S,
+    )
+
+
+def _nylig_rolle_i_session(session_id: str, *, rolle: str, vindue_s: float) -> bool:
+    """Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe.
+
+    Fælles for begge karantæner med vilje: to kopier af «læs de seneste
+    beskeder og find den nyeste af en rolle» driver fra hinanden, og så bliver
+    den ene stille virkningsløs — præcis den fejl der allerede er målt fire
+    gange i dette spor.
+    """
     try:
         from core.services.chat_sessions import recent_chat_session_messages
         beskeder = recent_chat_session_messages(session_id, limit=_KARANTAENE_VINDUE) or []
@@ -60,7 +98,7 @@ def _bruger_skrev_for_nylig(session_id: str) -> bool:
         return False
     nu = datetime.now(UTC)
     for m in beskeder:                      # nyeste først
-        if str(m.get("role") or "") != "user":
+        if str(m.get("role") or "") != rolle:
             continue
         raa = str(m.get("created_at") or "")
         if not raa:
@@ -73,7 +111,7 @@ def _bruger_skrev_for_nylig(session_id: str) -> bool:
             return False
         if t.tzinfo is None:
             t = t.replace(tzinfo=UTC)
-        return (nu - t).total_seconds() < _BRUGER_KARANTAENE_S
+        return (nu - t).total_seconds() < vindue_s
     return False
 
 
@@ -128,6 +166,17 @@ def _active_turn_blocks(session_id: str) -> str:
     # det her ikke bliver en ny fuld historik-læsning.
     if session_id and _bruger_skrev_for_nylig(session_id):
         return "bruger_skrev_for_nylig"
+
+    # 3) KARANTÆNE EFTER MIN EGEN SIDSTE BESKED (19/10-2026).
+    #
+    # Den symmetriske side, og den manglede. Har jeg svaret for under fem
+    # minutter siden, er samtalen ikke ledig — Bjørn læser måske stadig, og et
+    # rutine-run ville lande oven i hans læsning. Posten venter; den er ikke
+    # tabt. Egen årsag, ikke slået sammen med hans: de to vinduer er
+    # forskellige (10 min vs. 5), og et sammenlagt svar ville skjule hvilken
+    # der holdt runnet tilbage.
+    if session_id and _jarvis_skrev_for_nylig(session_id):
+        return "jarvis_skrev_for_nylig"
 
     try:
         from core.services.visible_runs import _get_active_visible_run_state

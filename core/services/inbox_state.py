@@ -141,6 +141,17 @@ KAN_DISPATCHES_KILDETYPER: Final[frozenset[str]] = frozenset({
     # til næste heartbeat. Egen klasse, fordi den er den ENESTE ikke-wakeup-post
     # der baade maa starte et run og er moden i det oejeblik den skrives.
     "ci_alarm",
+    # `recurring` (19/10-2026). Bjørn: «når en rutine oprettes skal man vælge om
+    # den skal udføre i baggrunden og rapportere til inbox eller om rutines
+    # udføres af dig hvor brugeren sidst var aktiv».
+    #
+    # Sættet her siger KUN «denne post må starte et run». Det er ikke nok: en
+    # baggrunds-rutine skal netop IKKE vække — den rapporterer til indbakken og
+    # venter til nogen kigger. Derfor er `_er_moden` i `inbox_idle_waker` det
+    # afgørende led, og det svarer kun ja for de rutiner der er bundet til en
+    # samtale (`recurring_tasks.session_id`). Uden den todeling ville alle 13
+    # levende opgaver — inkl. den 4×daglige inspektion — begynde at vække runs.
+    "recurring",
 })
 
 

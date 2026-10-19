@@ -427,6 +427,8 @@ def _registrer_i_indbakken(
     kilde_id: str,
     beskrivelse: str,
     run_id: str = "",
+    session_id: str = "",
+    kilde_ejer: str = "",
 ) -> None:
     """Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord.
 
@@ -465,6 +467,8 @@ def _registrer_i_indbakken(
             oprettende_run_id=run_id,
             paastaaet_ejer="huset",
             beskrivelse=beskrivelse,
+            session_id=session_id,
+            kilde_ejer=kilde_ejer,
         )
     except Exception:
         logger.debug("run_closure_gate: indbakke-registrering fejlede", exc_info=True)
@@ -738,6 +742,23 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
         if _skal_i_indbakken:
             _fokus = str(payload.get("focus") or "").strip()
             _tekst = output.strip()
+            # SAMTALEN POSTEN HØRER TIL (19/10-2026). Runnets egen session er
+            # `auto-recurring-<dato>`-siloen — præcis den silo Bjørn sagde at
+            # brugeren ikke har adgang til. Posten bærer i stedet den samtale
+            # OPGAVEN blev bestilt i, så vækkeren kan lande hvor han er.
+            try:
+                from core.services.recurring_tasks import (
+                    er_session_rutine,
+                    rutine_session_id,
+                )
+
+                _sessions_adresse = rutine_session_id(_task_id)
+                _er_session = er_session_rutine(_task_id)
+            except Exception:  # noqa: BLE001 — et opslag må ikke vælte gaten
+                logger.debug("run_closure_gate: rutine-session kunne ikke læses",
+                             exc_info=True)
+                _sessions_adresse = ""
+                _er_session = False
             _registrer_i_indbakken(
                 kildetype="recurring",
                 kilde_id=f"recurring-{_task_id}-{run_id}",
@@ -747,6 +768,22 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                        else f"{len(tool_calls)} værktøjskald, intet referat")
                 ),
                 run_id=run_id,
+                session_id=_sessions_adresse,
+                # EJER-BEVISET (19/10-2026). Målt: alle 16 recurring-poster stod
+                # som `huset`, fordi `verificeret_jarvis_run` kræver at run-id'et
+                # er det KØRENDE run — og posten skrives først ved lukning, hvor
+                # det ikke længere er. Uden et ejer-bevis kan `kandidater()`
+                # aldrig løfte posten, uanset kildetype.
+                #
+                # Kun for SESSION-rutiner: deres resultat er mit eget arbejde i
+                # mit eget run, for en opgave jeg eller Bjørn bestilte. En
+                # baggrunds-rutine bliver `huset` — den må ikke vække nogen, og
+                # etiketten skal sige sandheden.
+                #
+                # `_kilde_ejer_kan_loefte` tillader det netop fordi `recurring`
+                # er ikke-gatende: etiketten flyttes, magten gør ikke.
+                # `kraever_handling` forbliver False.
+                kilde_ejer="jarvis" if _er_session else "",
             )
 
 

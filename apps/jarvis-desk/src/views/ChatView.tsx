@@ -15,7 +15,7 @@ import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
-import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { streamReducer, initialStreamState, liveChatBlokke } from '../lib/streamReducer'
 import { varighedFraTider } from '../lib/turTid'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
@@ -484,7 +484,7 @@ export function ChatView({
     ? chatFlow.activeModeForRun(followedRunId)
     : historicalChatMode
   const primaryChatModel = useMemo(() => deriveChatFlow({
-    blocks: liveBlokke(stream),
+    blocks: liveChatBlokke(stream),
     workingStep: stream.workingStep,
     rundeEtiketter: stream.rundeEtiketter,
     tankeResumeer: stream.tankeResumeer,
@@ -1047,7 +1047,7 @@ export function ChatView({
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
-              role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={streaming}
+              role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
@@ -1060,7 +1060,7 @@ export function ChatView({
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
             workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
-            role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming
+            role="assistant" blocks={withoutPauseAsk(liveChatBlokke(followState))} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig} />
         )}

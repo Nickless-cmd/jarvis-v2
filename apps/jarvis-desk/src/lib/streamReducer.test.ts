@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { streamReducer, initialStreamState, liveBlokke } from './streamReducer'
+import { streamReducer, initialStreamState, liveBlokke, liveChatBlokke } from './streamReducer'
 import type { StreamEvent } from './sseProtocol'
 
 const reduce = (events: StreamEvent[]) =>
@@ -18,23 +18,31 @@ describe('streamReducer', () => {
       content_block: { type: 'tool_use', id: 'tool-1', name: 'bash', input: {} } })
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Første ' }))
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første ' })
+    expect(liveChatBlokke(state).filter((b) => b.type === 'text')).toEqual([])
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'syntese' }))
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første syntese' })
+    expect(liveChatBlokke(state).filter((b) => b.type === 'text')).toEqual([])
     expect(state.usage.output).toBeGreaterThan(0)
     expect(streamReducer(state, system('provisional_text_delta', { run_id: 'other', delta: 'forkert' }))).toBe(state)
 
     state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })
     state = streamReducer(state, { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Første syntese' } })
     expect(liveBlokke(state).filter((b) => b.type === 'text')).toHaveLength(1)
+    expect(liveChatBlokke(state).filter((b) => b.type === 'text'))
+      .toEqual([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('provisional_text_commit', { run_id: 'r1' }))
     expect(liveBlokke(state).filter((b) => b.type === 'text')).toEqual([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'Næste ' }))
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Næste ' })
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'svar' }))
+    expect(liveChatBlokke(state).filter((b) => b.type === 'text'))
+      .toEqual([{ type: 'text', text: 'Første syntese' }])
     state = streamReducer(state, system('final_answer_start', { run_id: 'r1' }))
     state = streamReducer(state, { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } })
     state = streamReducer(state, { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'Næste svar' } })
     expect(liveBlokke(state).filter((b) => b.type === 'text').map((b) => b.type === 'text' && b.text))
+      .toEqual(['Første syntese', 'Næste svar'])
+    expect(liveChatBlokke(state).filter((b) => b.type === 'text').map((b) => b.type === 'text' && b.text))
       .toEqual(['Første syntese', 'Næste svar'])
     state = streamReducer(state, { type: 'message_stop' })
     expect(liveBlokke(state).filter((b) => b.type === 'text').map((b) => b.type === 'text' && b.text))

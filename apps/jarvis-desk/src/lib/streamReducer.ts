@@ -140,6 +140,11 @@ const liveBlokkeCache = new WeakMap<ContentBlock[], {
   result: ContentBlock[]
 }>()
 
+const liveChatBlokkeCache = new WeakMap<ContentBlock[], {
+  skillFlade: Extract<ContentBlock, { type: 'skill_surface' }>
+  result: ContentBlock[]
+}>()
+
 /** Fjern huller fra et blok-array — og returnér SAMME reference når der ingen er.
  *
  *  `blocks` kan være sparsomt: SSE'en adresserer hver blok med et eksplicit
@@ -176,6 +181,30 @@ export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'> & P
   if (cached?.skillFlade === state.skillFlade) return cached.result
   const result = udenHuller([state.skillFlade, ...state.blocks])
   liveBlokkeCache.set(state.blocks, { skillFlade: state.skillFlade, result })
+  return result
+}
+
+/** Chat tegner kun den autoritative blokstrøm — aldrig provisional-teksten.
+ *
+ * Efter et tool-kald ved relæet endnu ikke, om modellens tekst er en syntese
+ * før næste runde eller turens slutsvar. `provisional_text_delta` er derfor
+ * bevidst tvetydig. Tegner Chat den straks, ender et ægte slutsvar inde i den
+ * foldede arbejdsdel og flytter først ud ved `message_stop`.
+ *
+ * Relæet replayer teksten som en almindelig text-block, når grænsen kendes:
+ * uden `final_answer_start` er den syntese; med signalet er den slutsvar.
+ * Denne projektion lader dét replay streame på den rigtige side af folden.
+ * Code mode bruger fortsat `liveBlokke`, hvor den rå foreløbige tekst er en
+ * del af den ønskede arbejdsvisning.
+ */
+export function liveChatBlokke(
+  state: Pick<StreamState, 'blocks' | 'skillFlade'>,
+): ContentBlock[] {
+  if (!state.skillFlade) return udenHuller(state.blocks)
+  const cached = liveChatBlokkeCache.get(state.blocks)
+  if (cached?.skillFlade === state.skillFlade) return cached.result
+  const result = udenHuller([state.skillFlade, ...state.blocks])
+  liveChatBlokkeCache.set(state.blocks, { skillFlade: state.skillFlade, result })
   return result
 }
 

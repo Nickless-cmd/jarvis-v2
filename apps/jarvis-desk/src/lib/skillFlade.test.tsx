@@ -67,12 +67,13 @@ describe('SkillSurfaceLine', () => {
 })
 
 describe('kobling', () => {
-  it('begge views tegner live-beskeden gennem liveBlokke', async () => {
+  it('begge views tegner live-beskeden gennem deres bevidste projektion', async () => {
     const fs = await import('fs')
-    for (const v of ['ChatView', 'CodeView']) {
-      const k = fs.readFileSync(`src/views/${v}.tsx`, 'utf-8')
-      expect(k).toMatch(/liveBlokke\(stream\)/)
-      expect(k).not.toMatch(/withoutPauseAsk\(stream\.blocks\)/)
-    }
+    const chat = fs.readFileSync('src/views/ChatView.tsx', 'utf-8')
+    const code = fs.readFileSync('src/views/CodeView.tsx', 'utf-8')
+    expect(chat).toMatch(/liveChatBlokke\(stream\)/)
+    expect(code).toMatch(/liveBlokke\(stream\)/)
+    expect(chat).not.toMatch(/withoutPauseAsk\(stream\.blocks\)/)
+    expect(code).not.toMatch(/withoutPauseAsk\(stream\.blocks\)/)
   })
 })

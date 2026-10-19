@@ -255,8 +255,10 @@
 }
 .raekkevisning .rv-arbejdsdetaljer[hidden] { display: none; }
 
-/* Målt: 8px er den ENESTE overstyring af 16px i hele forlægget. */
-.raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar { margin-top: 8px; }
+/* Målt: 8px er den ENESTE overstyring af 16px i hele forlægget.
+   `:not(:empty)` fordi containeren nu findes fra første frame (19/10-2026):
+   en tom svar-container må ikke skubbe 8px luft ind under et foldet hoved. */
+.raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar:not(:empty) { margin-top: 8px; }
 
 /* ══ MELLEMSVAR og SVAR ══
    Brødtekstens linjehøjde følger den almindelige chat (1.375), så en sætning

@@ -37,6 +37,7 @@
    lag-animationen indeni (17/10-2026). */
 .chat-flow-live-synthesis {
   min-height: 1.35em;
+  max-height: 4.05em;
   overflow: hidden;
   /* Syntesen er indhold og skal læses som primær tekst — hvid i mørkt tema,
      sort i lyst. `--fg-1` er temaets primære forgrund; den tidligere
@@ -44,53 +45,33 @@
      nær-hvid der blev usynlig i lyst tema. */
   color: var(--fg-1);
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   contain: paint;
 }
 
-/* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og
-   label står i hver sin stabile celle, så tekstskift ikke flytter linjen.
-   Fold-pilen ligger i rækken UDEN FOR den aria-skjulte linje (17/10-2026:
-   «runde linjen under streaming bør have > i ende og kunne foldes ud»). */
-.chat-flow-round {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+/* De generelle LabelSkift-regler er med vilje énlinjede til tool-labels.
+   En syntese er derimod indhold: den må bruge op til tre rolige linjer. */
+.chat-flow-live-synthesis .ls-grid,
+.chat-flow-live-synthesis .ls-lag,
+.chat-flow-live-synthesis .ls-tekst {
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.chat-flow-round-line {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 1.35em;
-  align-items: center;
-  gap: 8px;
+.chat-flow-live-synthesis .ls-lag { align-items: start; }
+
+.chat-flow-live-synthesis .ls-tekst {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
 }
 
-.chat-flow-round-fold {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg-3, #898781);
-  cursor: pointer;
-  line-height: 0;
-}
-
-.chat-flow-round-fold:hover { color: var(--fg-1); }
-
-.chat-flow-round-fold:focus-visible {
-  outline: 2px solid var(--focus, #6aa9ff);
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-
+/* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og
+   label står i hver sin stabile celle, så tekstskift ikke flytter linjen. */
 .chat-flow-round-icon {
   flex: none;
   color: var(--fg-2, #aeb6bf);

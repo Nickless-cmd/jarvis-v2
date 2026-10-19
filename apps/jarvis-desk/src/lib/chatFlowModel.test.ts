@@ -71,6 +71,15 @@ describe('deriveChatFlow', () => {
     expect(model.calmStatus).toBe('Jarvis tænker ...')
   })
 
+  it.each(['operator_bash', 'operator_bash: git status', 'search_memory']) (
+    'skjuler det rå tool-navn %s mens den menneskelige etiket er på vej',
+    (workingStep) => {
+      const model = deriveChatFlow({ ...base, workingStep })
+      expect(model.visibleSynthesis).toEqual([])
+      expect(model.calmStatus).toBe('Jarvis tænker ...')
+    },
+  )
+
   // Ændret 15/10-2026 (Bjørn): spec'ens §6 bandt visningen af svaret til
   // `finalAnswerStarted` alene, og serveren sender først signalet i sin
   // `done`-handler. Målt konsekvens: svar-fladen stod TOM hele kørslen, og hele

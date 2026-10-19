@@ -23,12 +23,12 @@ describe('ChatFlowPresentation', () => {
   it('replaces the Living status in place instead of accumulating a list', () => {
     const { rerender } = render(<ChatFlowPresentation {...common} mode="living"
       blocks={['Et', 'To', 'Tre', 'Fire'].map(summary)} />)
-    const rail = screen.getByTestId('chat-flow-activity')
-    expect(within(rail).queryByText('Et')).not.toBeInTheDocument()
-    expect(within(rail).queryByText('To')).not.toBeInTheDocument()
-    expect(within(rail).queryByText('Tre')).not.toBeInTheDocument()
-    expect(within(rail).getAllByTestId('chat-flow-synthesis')).toHaveLength(1)
-    expect(within(rail).getByText('Fire')).toBeInTheDocument()
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(within(hoved).queryByText('Et')).not.toBeInTheDocument()
+    expect(within(hoved).queryByText('To')).not.toBeInTheDocument()
+    expect(within(hoved).queryByText('Tre')).not.toBeInTheDocument()
+    expect(within(hoved).getAllByTestId('chat-flow-synthesis')).toHaveLength(1)
+    expect(within(hoved).getByText('Fire')).toBeInTheDocument()
 
     rerender(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
     expect(screen.queryByTestId('chat-flow-synthesis')).not.toBeInTheDocument()
@@ -40,21 +40,22 @@ describe('ChatFlowPresentation', () => {
 
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved).toBeInTheDocument()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
-    expect(within(gruppe).getByTestId('chat-flow-activity')).toHaveTextContent('Samler svaret')
+    expect(gruppe).not.toHaveAttribute('hidden')
+    expect(hoved).toHaveTextContent('Samler svaret')
   })
 
   it('renders only the latest Calm status and a truthful neutral fallback', () => {
     const { rerender } = render(<ChatFlowPresentation {...common} mode="calm"
       blocks={['Et', 'To', 'Tre'].map(summary)} />)
-    const rail = screen.getByTestId('chat-flow-activity')
-    expect(within(rail).getAllByTestId('chat-flow-synthesis')).toHaveLength(1)
-    expect(within(rail).getByText('Tre')).toBeInTheDocument()
-    expect(within(rail).queryByText('To')).not.toBeInTheDocument()
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(within(hoved).getAllByTestId('chat-flow-synthesis')).toHaveLength(1)
+    expect(within(hoved).getByText('Tre')).toBeInTheDocument()
+    expect(within(hoved).queryByText('To')).not.toBeInTheDocument()
 
     rerender(<ChatFlowPresentation {...common} mode="calm" blocks={[]} />)
-    expect(screen.getByText('Jarvis tænker ...')).toBeInTheDocument()
+    expect(screen.getByText('Tænker')).toBeInTheDocument()
   })
 
   it('keeps raw tool logs out of the activity rail', () => {
@@ -62,9 +63,9 @@ describe('ChatFlowPresentation', () => {
       message: 'Kører kommando: git status', tool: 'bash', hint: 'git status', status: 'running' }
     render(<ChatFlowPresentation {...common} mode="calm" blocks={[progress]}
       workingStep="Kalder bash: git status" />)
-    const rail = screen.getByTestId('chat-flow-activity')
-    expect(within(rail).queryByText(/git status/i)).not.toBeInTheDocument()
-    expect(within(rail).getByText('Jarvis tænker ...')).toBeInTheDocument()
+    const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(within(hoved).queryByText(/git status/i)).not.toBeInTheDocument()
+    expect(within(hoved).getByText('Jarvis tænker ...')).toBeInTheDocument()
   })
 
   it('shows the work disclosure before one final answer and keeps deliveries outside it', () => {
@@ -76,7 +77,7 @@ describe('ChatFlowPresentation', () => {
     ]
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       finalAnswerStarted status="working" onWorkExpanded={onWorkExpanded} />)
-    const hoved = screen.getByText('Arbejdet').closest('button') as HTMLElement
+    const hoved = screen.getByText('Tænkte').closest('button') as HTMLElement
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
@@ -130,15 +131,15 @@ describe('ChatFlowPresentation', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks} />)
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved).not.toBeNull()
-    expect(hoved).toHaveAttribute('aria-expanded', 'true')
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
     expect(hoved).toHaveAttribute('data-koerer')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
     expect(gruppe).not.toHaveAttribute('hidden')
-    const synteser = within(gruppe).getAllByTestId('chat-flow-synthesis')
+    const synteser = within(hoved).getAllByTestId('chat-flow-synthesis')
     expect(synteser).toHaveLength(1)
     expect(synteser[0]).toHaveTextContent('Læste filen')
-    expect(within(gruppe).queryByText('Fandt kilden')).not.toBeInTheDocument()
+    expect(within(hoved).queryByText('Fandt kilden')).not.toBeInTheDocument()
     expect(gruppe.querySelector('.chat-flow-work-details')).toBeNull()
   })
 
@@ -152,7 +153,7 @@ describe('ChatFlowPresentation', () => {
 
     const live = screen.getByTestId('chat-flow-activity')
     expect(within(live).getByText('Jeg fandt årsagen og undersøger næste led.')).toBeInTheDocument()
-    expect(within(live).getByText('Læste konfigurationen')).toBeInTheDocument()
+    expect(screen.getByTestId('chat-flow-round-line')).toHaveTextContent('Læste konfigurationen')
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })
 
@@ -199,7 +200,7 @@ describe('ChatFlowPresentation', () => {
     render(<ChatFlowPresentation {...common} mode="living" blocks={blocks}
       rundeEtiketter={{ t1: 'Læser konfigurationen' }} />)
 
-    const fold = screen.getByTestId('chat-flow-round-fold')
+    const fold = document.querySelector('.rv-tur') as HTMLElement
     expect(fold).toHaveAttribute('aria-expanded', 'false')
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
 
@@ -358,7 +359,10 @@ describe('ChatFlowPresentation', () => {
   })
 
   it('marks its bounded activity viewport for motion-safe styling and one polite announcement', () => {
-    render(<ChatFlowPresentation {...common} mode="living" blocks={[summary('Fandt svaret', 1)]} />)
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: 'Jeg samler svaret.' },
+    ]} />)
     const rail = screen.getByTestId('chat-flow-activity')
     expect(rail).toHaveClass('chat-flow-activity--motion-safe')
     expect(screen.getAllByRole('status')).toHaveLength(1)

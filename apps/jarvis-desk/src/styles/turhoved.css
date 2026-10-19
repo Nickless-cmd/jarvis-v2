@@ -33,6 +33,42 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 
+.rv-turIkon,
+.rv-turDetalje {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rv-turDetalje > .chat-flow-round-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rv-turIkon { flex: none; color: var(--fg-2, #aeb6bf); }
+
+.rv-turSkel {
+  flex: none;
+  color: var(--fg-3, #8f98a3);
+  opacity: .55;
+}
+
+.rv-turDetalje {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-2, #aeb6bf);
+}
+
+.rv-turDetalje .ls-grid,
+.rv-turDetalje .ls-lag,
+.rv-turDetalje .ls-tekst { min-width: 0; }
+
 /* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
    teksten hver gang et sekund skifter (17/10-2026).
 

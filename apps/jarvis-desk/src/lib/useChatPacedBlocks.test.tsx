@@ -76,26 +76,28 @@ describe('useChatPacedBlocks', () => {
     expect(antalFrames).toBeLessThan(400)
   })
 
-  it('følger en vedvarende hurtig stream — forsinkelsen stabiliserer sig, den vokser ikke', () => {
+  it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {
     const { result, rerender } = renderHook(({ text }) => useChatPacedBlocks(
       [{ type: 'text', text }],
       { live: true, finalAnswerStarted: true, runId: 'run-fast' },
     ), { initialProps: { text: '' } })
 
     let source = ''
-    for (let index = 0; index < 240; index += 1) {
+    let forrige = 0
+    for (let index = 0; index < 60; index += 1) {
       source += '1234567890'.repeat(5)
       rerender({ text: source })
       nextFrame()
+      const vistNu = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
+      // 720 tegn/s ved en 16 ms frame er højst 12 kodepunkter. Replay-kilden
+      // må gerne løbe foran; skærmen må ikke forsøge at matche dens tempo.
+      expect(vistNu - forrige).toBeLessThanOrEqual(12)
+      forrige = vistNu
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
     expect(visible.length).toBeLessThan(source.length)
-    // Efterslæbet er en FORSINKELSE på ca. et sekunds kildestrøm, ikke en
-    // ophobning: uden indhentningsreglen ville det vokse med 50 tegn pr.
-    // frame og være 12.000 efter 240 frames.
-    expect(source.length - visible.length).toBeLessThan(4000)
 
-    // Da kilden stopper, indhenter pacingen resten i trin.
+    // Da kilden stopper, ruller pacingen resten færdig i de samme jævne trin.
     let antal = 0
     while ((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length < source.length
       && antal < 400) {

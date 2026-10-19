@@ -15,7 +15,7 @@
  * og fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer`
  * plus det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
  */
-import type { Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formaterTurTid } from '../../lib/turTid'
 import { RullendeTid } from './RullendeTid'
@@ -46,17 +46,31 @@ export interface TurHovedProps {
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
    *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
   foldbar?: boolean
+  /** Valgfrit ikon foran turens tekst. Chat mode bruger en hjerne, mens code
+   *  mode beholder sit nuvaerende, tekstlige turhoved. */
+  ikon?: ReactNode
+  /** Valgfri rundestatus efter `|`. Ligger i samme kompakte indholdsrække, så
+   *  fold-pilen følger teksten i stedet for at ende ude ved viewets kant. */
+  detalje?: ReactNode
   knapRef?: Ref<HTMLButtonElement>
 }
 
 export function TurHoved({
-  tekst, aaben, onToggle, koerer = false, sekunder = null, foldbar = true, knapRef,
+  tekst, aaben, onToggle, koerer = false, sekunder = null, foldbar = true,
+  ikon, detalje, knapRef,
 }: TurHovedProps) {
   const indhold = (
     <>
+      {ikon ? <span className="rv-turIkon" aria-hidden="true">{ikon}</span> : null}
       <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
       {typeof sekunder === 'number' ? (
         <RullendeTid tekst={formaterTurTid(sekunder)} />
+      ) : null}
+      {detalje ? (
+        <>
+          <span className="rv-turSkel" aria-hidden="true">|</span>
+          <span className="rv-turDetalje">{detalje}</span>
+        </>
       ) : null}
       {foldbar ? (
         <span className="rv-turC" aria-hidden="true">

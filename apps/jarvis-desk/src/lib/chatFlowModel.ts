@@ -48,7 +48,13 @@ function normalizeLine(value: string | null | undefined): string {
 /** Mechanical tool output belongs in the disclosure, never in Chat's status rail. */
 function isMeaningfulStatus(value: string): boolean {
   if (!value) return false
-  return !/^(?:kalder|kører kommando|koerer kommando|bash\b|edit_file\b)/i.test(value)
+  if (/^(?:kalder|kører kommando|koerer kommando|bash\b|edit_file\b)/i.test(value)) return false
+  // working_step kommer før den asynkrone menneskelige rundeetiket. Interne
+  // navne som `operator_bash` og `search_memory` må ikke blinke frem i det
+  // tidsvindue; behold den seneste gode etiket eller brug UI'ens fallback.
+  if (/\b(?:operator|mcp|tool)_[a-z0-9_]+\b/i.test(value)) return false
+  if (/^[a-z][a-z0-9]*(?:_[a-z0-9]+)+(?:\s*[:(].*)?$/i.test(value)) return false
+  return true
 }
 
 function terminal(status: StreamStatus): Pick<ChatFlowModel, 'terminalState'> {

@@ -2,21 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 
 /** Mindste antal kodepunkter pr. frame, så en langsom kilde ikke hakker. */
-const MIN_CODE_POINTS = 5
-/** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem.
- *  Sat op fra 300 til 1000 fordi serverens replay nu selv leverer i læsbar
- *  hastighed (~900 tegn/s, målt 17/10-2026). Ligger klienten under kilden,
- *  sakker den bagud konstant og indhenter i ryk — så skal den kun følge med
- *  og være sikkerhedsnet for den korte slut-tail. */
-const BASE_CODE_POINTS_PER_SECOND = 1000
-/** Hele efterslæbet fordeles over så mange sekunder — ALDRIG i ét spring.
- *  Værdien er målt mod serverens replay: den leverer slutsvaret i bidder med
- *  ~30 ms mellemrum, altså flere tusind tegn i sekundet. Er indhentningen
- *  langsommere end kilden, ophobes forsinkelsen i stedet for at stabilisere
- *  sig — derfor 1,2 s og ikke 2,2 s. */
-const CATCH_UP_SECONDS = 1.2
+const MIN_CODE_POINTS = 2
+/** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
+const BASE_CODE_POINTS_PER_SECOND = 480
+/** Selv en stor replay-backlog må ikke forvandle strømmen til et dump. */
+const MAX_CODE_POINTS_PER_SECOND = 720
+/** Hele efterslæbet forsøges fordelt over så mange sekunder, men det hårde
+ *  hastighedsloft vinder altid. En hurtig server-replay må gerne skabe lidt
+ *  forsinkelse; den må ikke gøre teksten ulæseligt hurtig. */
+const CATCH_UP_SECONDS = 2
 /** Hårdt loft pr. frame. En tabt frame må ikke blive et spring. */
-const MAX_CODE_POINTS = 140
+const MAX_CODE_POINTS = 48
 /** Længste frame-afstand vi regner med. En lang pause må ikke give et spring. */
 const MAX_FRAME_DELTA_S = 0.1
 
@@ -119,7 +115,10 @@ export function useChatPacedBlocks(
     sidst.current = nu
 
     // Efterslæbet bestemmer hvor STORT trinnet må være — aldrig hvor vi lander.
-    const rate = Math.max(BASE_CODE_POINTS_PER_SECOND, pending / CATCH_UP_SECONDS)
+    const rate = Math.min(
+      MAX_CODE_POINTS_PER_SECOND,
+      Math.max(BASE_CODE_POINTS_PER_SECOND, pending / CATCH_UP_SECONDS),
+    )
     const step = Math.min(
       MAX_CODE_POINTS,
       Math.max(MIN_CODE_POINTS, Math.ceil(rate * dt)),

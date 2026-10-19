@@ -48,7 +48,7 @@ describe('MessageRow', () => {
   })
 
   it.each([
-    ['done' as const, 'Arbejdet'],
+    ['done' as const, 'Tænkte'],
     ['interrupted' as const, 'Arbejdet afbrudt'],
     ['error' as const, 'Arbejdet fejlede'],
   ])('preserves missing-signal Chat text once for %s', (status, label) => {

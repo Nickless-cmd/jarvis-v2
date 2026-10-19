@@ -33,6 +33,11 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 
+.rv-turIndhold {
+  display: inline-flex; flex: 0 1 auto; min-width: 0;
+  align-items: center; gap: 8px;
+}
+
 .rv-turMeta {
   flex: none; display: inline-flex; align-items: baseline; gap: 4px;
   color: var(--rv-tertiary, #a6a59c); white-space: nowrap;

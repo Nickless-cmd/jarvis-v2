@@ -305,12 +305,11 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, svarBegyndt, config, etiket, beskedId, turSekunder,
+  elementer, streaming, sidste, config, etiket, beskedId, turSekunder,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
   sidste: boolean
-  svarBegyndt: boolean
   config?: ApiConfig
   beskedId?: string
   etiket?: string
@@ -335,11 +334,8 @@ function ArbejdsrundeImpl({
   // «svar» — også rundeopsummeringen (`tool_use_summary`), som lander lige når
   // værktøjet er færdigt. Derfor døde shimmeren i præcis det vindue hvor
   // modellen tænker på næste runde, og rækken stod død i et par sekunder.
-  // Det ægte signal er `finalAnswerStarted` (serverens `final_answer_start`):
-  // det siger «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
-  const visShimmer = streaming && sidste && (koerer || !svarBegyndt)
-  // Puls og hele-tur-ur bliver på den sidste aktive runde helt til stream-stop.
-  // Tekstens shimmer følger fortsat final_answer_start som før.
+  // Puls, det samlede tur-ur og ét fælles shimmerfelt bliver derfor på den
+  // sidste aktive runde helt til stream-stop.
   const aktivRunde = streaming && sidste
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
@@ -356,20 +352,22 @@ function ArbejdsrundeImpl({
   return (
     <div className="rv-arbejdsrunde">
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
-        {...(visShimmer ? { 'data-koerer': '' } : {})}
+        {...(aktivRunde ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <span className="rv-arbejdsikon" aria-hidden="true">
           {aktivRunde
             ? <JarvisRing size={15} spinning tone="working" />
             : <><Ikon size={13} strokeWidth={1.75} /><Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} /></>}
         </span>
-        <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
-        {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
-          <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
-        </span>}
-        {aktivRunde && typeof turSekunder === 'number'
-          ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
-          : null}
+        <span className={`rv-arbejdsindhold${aktivRunde ? ' shimmer' : ''}`}>
+          <span className="rv-arbejdsfortaelling">{beskrivelse}</span>
+          {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
+            <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
+          </span>}
+          {aktivRunde && typeof turSekunder === 'number'
+            ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
+            : null}
+        </span>
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
       <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
@@ -378,7 +376,7 @@ function ArbejdsrundeImpl({
 }
 
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
-  a.streaming === b.streaming && a.sidste === b.sidste && a.svarBegyndt === b.svarBegyndt
+  a.streaming === b.streaming && a.sidste === b.sidste
   && a.turSekunder === b.turSekunder
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
@@ -416,6 +414,8 @@ function RaekkeTranskriptImpl({
   for (let i = 0; i < sektioner.length; i++) {
     if (sektioner[i]?.slags === 'runde') sidsteRundeIndex = i
   }
+  const rundeKandidat = streaming ? sektioner[sidsteRundeIndex] : undefined
+  const senesteRunde = rundeKandidat?.slags === 'runde' ? rundeKandidat : null
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
   const familier = arbejde.flatMap((e) =>
@@ -445,7 +445,7 @@ function RaekkeTranskriptImpl({
             aaben={aaben}
             koerer={arbejdeKoerer && aabenManuelt === null}
             tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
-            meta={streaming ? <span className="rv-turMeta shimmer"><RullendeTokens tokens={tokens} /> tokens</span> : null}
+            meta={streaming ? <span className="rv-turMeta"><RullendeTokens tokens={tokens} /> tokens</span> : null}
             sekunder={!streaming ? turSekunder : null}
             foldbar={arbejde.length > 0}
             onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
@@ -453,13 +453,24 @@ function RaekkeTranskriptImpl({
           {arbejde.length > 0 && (
             <div className="rv-gruppe" hidden={!aaben}>
               {aaben && sektioner.map((s, i) => {
+                // Den levende runde har én fast slot nederst. Når næste
+                // syntese lander, bliver slotten stående og opdaterer på
+                // stedet; den gamle runde falder først tilbage på sin
+                // historiske plads, når næste runde overtager slotten.
+                if (streaming && i === sidsteRundeIndex && s.slags === 'runde') return null
                 if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
                 if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
                 return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                  sidste={i === sidsteRundeIndex} svarBegyndt={finalAnswerStarted}
+                  sidste={i === sidsteRundeIndex}
                   config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
                   turSekunder={turSekunder} />
               })}
+              {aaben && senesteRunde ? (
+                <Arbejdsrunde key="aktiv-runde" elementer={senesteRunde.elementer}
+                  streaming sidste config={config}
+                  etiket={etiketFor(senesteRunde.elementer, etiketter)}
+                  beskedId={beskedId} turSekunder={turSekunder} />
+              ) : null}
             </div>
           )}
         </>

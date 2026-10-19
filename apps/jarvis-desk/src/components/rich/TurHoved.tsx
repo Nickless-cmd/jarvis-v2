@@ -56,11 +56,15 @@ export function TurHoved({
 }: TurHovedProps) {
   const indhold = (
     <>
-      <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
-      {meta}
-      {typeof sekunder === 'number' ? (
-        <RullendeTid tekst={formaterTurTid(sekunder)} className={koerer ? 'shimmer' : ''} />
-      ) : null}
+      {/* ÉT shimmerfelt over tekst + metadata + ur. Tre `.shimmer`-børn gav
+          tre samtidige lysbånd; nu fortsætter det samme bånd gennem linjen. */}
+      <span className={`rv-turIndhold${koerer ? ' shimmer' : ''}`}>
+        <span className="rv-turTekst">{tekst}</span>
+        {meta}
+        {typeof sekunder === 'number' ? (
+          <RullendeTid tekst={formaterTurTid(sekunder)} />
+        ) : null}
+      </span>
       {foldbar ? (
         <span className="rv-turC" aria-hidden="true">
           <FoldPil aaben={aaben} />

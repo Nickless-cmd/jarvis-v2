@@ -165,7 +165,8 @@ describe('ChatFlowPresentation', () => {
     expect(syntese.compareDocumentPosition(runde) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '7s')
-    expect(hoved.querySelector('.rv-turTid')).toHaveClass('shimmer')
+    expect(hoved.querySelector('.rv-turIndhold')).toHaveClass('shimmer')
+    expect(hoved.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
     expect(runde.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
     expect(within(hoved).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()

@@ -20,6 +20,7 @@ describe('streamReducer', () => {
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første ' })
     state = streamReducer(state, system('provisional_text_delta', { run_id: 'r1', delta: 'syntese' }))
     expect(liveBlokke(state).at(-1)).toEqual({ type: 'text', text: 'Første syntese' })
+    expect(state.usage.output).toBeGreaterThan(0)
     expect(streamReducer(state, system('provisional_text_delta', { run_id: 'other', delta: 'forkert' }))).toBe(state)
 
     state = streamReducer(state, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } })

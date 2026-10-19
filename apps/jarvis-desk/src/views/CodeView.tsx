@@ -898,13 +898,11 @@ export function CodeView({
     </div>
   )
 
-  // Status-badges. Flyttet ud af header-båndet 13/10-2026 (Bjørn: «de 3 badges
-  // skal flyttes under disclamer»). De siger hvad der ER, ikke hvad man kan
-  // trykke på — og headeren er panel-knappernes række. De står nu ved foden,
-  // under disclaimeren, hvor resten af «om appen» hører til.
+  // De generelle status-badges bliver ved foden. Anden-enhed-mærket er derimod
+  // flyttet til headeren nedenfor: når det kommer og går, må det ikke ændre
+  // composerens højde eller skubbe transcriptet.
   const badges = (
     <>
-      <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
       {DESK_CHROME.centralBadge && <CentralBadge config={config} isOwner={isOwner} />}
       {DESK_CHROME.peakBadge && config && <PeakBadge config={config} />}
       {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
@@ -1024,10 +1022,7 @@ export function CodeView({
     <div className="chatview-head-right">
       {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
-      {/* Badges (anden-enhed, Central, myldretid, forbindelse) er flyttet NED
-          under disclaimer-linjen 13/10-2026 (Bjørn: «de 3 badges skal flyttes
-          under disclamer»). De er STATUS, ikke handling — og headeren er
-          panel-knappernes række. Se `badges` nedenfor. */}
+      <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
       <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       <button
         type="button"

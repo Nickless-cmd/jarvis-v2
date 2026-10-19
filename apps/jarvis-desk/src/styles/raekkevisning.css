@@ -177,6 +177,9 @@
 .raekkevisning .rv-r[data-koerer] .rv-chev .rv-ikon-glimt {
   animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
 }
+.raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC .rv-ikon-glimt {
+  animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
+}
 .raekkevisning [data-koerer] .shimmer {
   animation: rv-glimt-tekst 1.8s linear infinite 300ms;
 }
@@ -235,6 +238,10 @@
 .raekkevisning .rv-arbejdsfortaelling {
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--rv-tertiary);
+}
+.raekkevisning .rv-arbejdsindhold {
+  display: inline-flex; flex: 0 1 auto; min-width: 0;
+  align-items: baseline; gap: 9px;
 }
 .raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; white-space: nowrap; }
 .raekkevisning .rv-rundeur {

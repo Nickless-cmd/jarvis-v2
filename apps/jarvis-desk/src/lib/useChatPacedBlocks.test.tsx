@@ -171,6 +171,40 @@ describe('useChatPacedBlocks', () => {
     expect((result.current[1] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
   })
 
+  it('pacer alle tekstblokke i slutsvaret som én strøm', () => {
+    // Serveren kan dele ét markdown-svar ved en intern blokgrænse. Før blev
+    // første blok vist straks, mens kun de sidste linjer i sidste blok blev
+    // pacet — præcis det synlige hop når turhovedet foldede sammen.
+    const first = 'Første del. '.repeat(30)
+    const second = 'Anden del. '.repeat(30)
+    const blocks: ContentBlock[] = [
+      { type: 'text', text: first },
+      { type: 'text', text: second },
+    ]
+    const { result } = renderHook(() => useChatPacedBlocks(blocks, {
+      live: true, finalAnswerStarted: true, runId: 'run-flere-blokke',
+    }))
+    const shown = () => result.current
+      .flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+
+    expect(shown()).toBe('')
+    nextFrame()
+    nextFrame()
+    expect(shown().length).toBeGreaterThan(0)
+    expect(shown().length).toBeLessThan(first.length + second.length)
+    expect((result.current[1] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
+
+    let previous = shown().length
+    let antal = 0
+    while (shown().length < first.length + second.length && antal < 2_000) {
+      nextFrame()
+      expect(shown().length - previous).toBeLessThanOrEqual(2)
+      previous = shown().length
+      antal += 1
+    }
+    expect(result.current).toEqual(blocks)
+  })
+
   it('does not reuse a visible prefix when a new run starts', () => {
     const first = `Samme start ${'A'.repeat(100)}`
     const second = `Samme start ${'B'.repeat(100)}`

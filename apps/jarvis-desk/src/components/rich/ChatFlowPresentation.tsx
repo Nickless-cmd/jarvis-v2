@@ -100,11 +100,9 @@ export function ChatFlowPresentation({
     finalAnswerStarted: pacingFinal,
     runId,
   })
-  const targetSvar = [...answerBlocks].reverse().find((block) => block.type === 'text')
-  const vistSvar = [...answer].reverse().find((block) => block.type === 'text')
-  const svarFaerdigPacet = !!targetSvar && !!vistSvar
-    && targetSvar.type === 'text' && vistSvar.type === 'text'
-    && targetSvar.text === vistSvar.text
+  const targetSvar = answerBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+  const vistSvar = answer.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+  const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
   useEffect(() => {
     if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()
   }, [onAnswerPaced, paceFinalAnswer, svarFaerdigPacet])

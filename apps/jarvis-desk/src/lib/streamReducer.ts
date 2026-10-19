@@ -61,14 +61,23 @@ export function initialStreamState(): StreamState {
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
  * mens streaming kører, fordi Anthropic kun sender det faktiske tal i
  * `message_delta` (typisk én gang til sidst). Heuristik: ~4 chars/token. */
-function estimateOutputTokens(blocks: ContentBlock[]): number {
+function estimateOutputTokens(
+  blocks: ContentBlock[],
+  provisionalText = '',
+  provisionalBlockIndex: number | null = null,
+): number {
   let chars = 0
-  for (const b of blocks) {
+  for (let index = 0; index < blocks.length; index += 1) {
+    const b = blocks[index]
     if (!b) continue
+    // Mens relæets foreløbige tekst vises, erstatter den den autoritative
+    // tekstblok på dette index. Tæl den kun én gang — ligesom `liveBlokke`.
+    if (provisionalText && index === provisionalBlockIndex) continue
     if (b.type === 'text') chars += b.text.length
     else if (b.type === 'thinking') chars += b.thinking.length
     else if (b.type === 'tool_use' && b.partialJson) chars += b.partialJson.length
   }
+  chars += provisionalText.length
   return Math.round(chars / 4)
 }
 
@@ -360,7 +369,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       else if (d.type === 'input_json_delta' && existing.type === 'tool_use') blocks[event.index] = { ...existing, partialJson: (existing.partialJson ?? '') + d.partial_json }
       // Live-estimer output-tokens fra ny content. Erstattes af det rigtige
       // tal når message_delta lander til sidst.
-      return { ...state, blocks, usage: { ...state.usage, output: estimateOutputTokens(blocks) } }
+      return { ...state, blocks, usage: { ...state.usage,
+        output: estimateOutputTokens(blocks, state.provisionalText, state.provisionalBlockIndex) } }
     }
 
     case 'content_block_stop':
@@ -418,13 +428,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Ved sen tilkobling kan message_start være faldet ud af relay-bufferen.
         // Deltaens run-id er nok til at starte en ny live-visning.
         const nytRun = !!state.activeRunId && state.activeRunId !== runId
+        const blocks = nytRun ? [] : state.blocks
+        const provisionalText = (nytRun ? '' : state.provisionalText) + delta
+        const provisionalBlockIndex = nytRun ? null : state.provisionalBlockIndex
         return {
           ...state, status: 'working', activeRunId: runId,
-          blocks: nytRun ? [] : state.blocks,
-          provisionalText: (nytRun ? '' : state.provisionalText) + delta,
-          provisionalBlockIndex: nytRun ? null : state.provisionalBlockIndex,
+          blocks,
+          provisionalText,
+          provisionalBlockIndex,
           provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
           finalAnswerStarted: nytRun ? false : state.finalAnswerStarted,
+          usage: { ...state.usage,
+            output: estimateOutputTokens(blocks, provisionalText, provisionalBlockIndex) },
         }
       }
       if (event.kind === 'provisional_text_commit') {
@@ -434,7 +449,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
         }
         return { ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
-          provisionalMissingBlockIndex: null }
+          provisionalMissingBlockIndex: null,
+          usage: { ...state.usage, output: estimateOutputTokens(blocks) } }
       }
       if (event.kind === 'final_answer_start') {
         const rid = String(event.payload?.run_id ?? '')

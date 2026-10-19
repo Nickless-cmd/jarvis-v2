@@ -144,14 +144,21 @@ describe('RaekkeTranskript', () => {
     expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
     expect(runde.querySelector('.rv-arbejdsikon .jarvis-ring')).toBeInTheDocument()
     expect(runde.querySelector('.rv-rundeur [role="timer"]')).toHaveAttribute('aria-label', '1m 5s')
-    expect(runde.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
+    expect(runde.querySelector('.rv-arbejdsindhold')).toHaveClass('shimmer')
+    expect(runde.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
     expect(runde.querySelector('.rv-turC .rv-ikon-glimt')).toBeInTheDocument()
     expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-turTekst')).toHaveClass('shimmer')
-    expect(container.querySelector('.rv-turMeta')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turIndhold')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turTekst')).not.toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turMeta')).not.toHaveClass('shimmer')
     expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '123')
     expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
+    rerender(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'app.ts' }, 'running'),
+    ]} streaming elapsedMs={66_000} tokens={124} />)
+    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '124')
+    expect(container.querySelector('.rv-rundeur [role="timer"]')).toHaveAttribute('aria-label', '1m 6s')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
     expect(css).not.toMatch(/\.rv-(?:r|tur|arbejdsknap)\[data-koerer\]::after/)
@@ -210,6 +217,34 @@ describe('RaekkeTranskript', () => {
     expect(gruppe.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
   })
 
+  it('bevarer den aktive rundelinjes faste DOM-slot mellem synteser', () => {
+    const første = [
+      tekst('Jeg undersøger først.'),
+      statusKald('read_file', { path: 'a.ts' }, 'running'),
+    ]
+    const { container, rerender } = render(<RaekkeTranskript blocks={første} streaming />)
+    const aktivKnap = container.querySelector('.rv-arbejdsknap')
+    expect(aktivKnap).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={[
+      tekst('Jeg undersøger først.'),
+      statusKald('read_file', { path: 'a.ts' }, 'done'),
+      tekst('Jeg fandt næste spor.'),
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')).toBe(aktivKnap)
+
+    rerender(<RaekkeTranskript blocks={[
+      tekst('Jeg undersøger først.'),
+      statusKald('read_file', { path: 'a.ts' }, 'done'),
+      tekst('Jeg fandt næste spor.'),
+      statusKald('edit_file', { path: 'a.ts' }, 'running'),
+    ]} streaming />)
+    const runder = container.querySelectorAll('.rv-arbejdsrunde')
+    expect(runder).toHaveLength(2)
+    expect(runder[1]?.querySelector('.rv-arbejdsknap')).toBe(aktivKnap)
+    expect(aktivKnap).toHaveTextContent('Redigerer a.ts')
+  })
+
   it('folder værktøjsrækkerne ud fra deres egen arbejdsrække', () => {
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
     const arbejdsrunde = container.querySelectorAll('.rv-arbejdsrunde')[1]!
@@ -258,7 +293,7 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
     expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeInTheDocument()
     expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-arbejdsindhold')).toHaveClass('shimmer')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Jarvis arbejder')
     rerender(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger problemet.'),
@@ -319,7 +354,7 @@ describe('RaekkeTranskript', () => {
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Fandt fejlen i filen')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Læser app.ts')
-    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
   })
 
   it('holder shimmeren i live gennem hullet mellem to runder (3/10-2026)', () => {
@@ -336,12 +371,13 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeInTheDocument()
   })
 
-  it('slukker først shimmeren naar det endelige svar begynder', () => {
-    // `render`-helperen ovenfor klikker selv foldelinjen ud når turen er
-    // sammenfoldet — så der skal IKKE klikkes igen her (det folder den ind).
-    const { container } = render(<RaekkeTranskript blocks={[
+  it('holder shimmeren gennem slutstreamen og slukker ved stream-stop', () => {
+    const blocks = [
       statusKald('read_file', { path: 'a.ts' }, 'done'), tekst('Svar.'),
-    ]} streaming finalAnswerStarted />)
+    ]
+    const { container, rerender } = render(<RaekkeTranskript blocks={blocks} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
+    rerender(<RaekkeTranskript blocks={blocks} streaming={false} finalAnswerStarted />)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
   })
 
@@ -363,7 +399,8 @@ describe('RaekkeTranskript', () => {
       statusKald('bash', { command: 'npm test', description: 'Kør testene' }, 'done'),
       tekst('Alle tests bestod.'),
     ]
-    const { container } = render(<RaekkeTranskript blocks={blocks} streaming />)
+    const { container } = render(<RaekkeTranskript blocks={blocks} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     const knap = container.querySelector('.rv-arbejdsknap')
     expect(knap?.textContent).toContain('Kør testene')
     expect(knap?.textContent).not.toContain('Færdig')
@@ -381,7 +418,8 @@ describe('RaekkeTranskript', () => {
   it('viser blandet fil- og kommandoarbejde med bogikon', () => {
     const { container } = render(<RaekkeTranskript blocks={[
       kald('read_file', { path: 'app.ts' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
-    ]} streaming />)
+    ]} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
   })
 
@@ -390,10 +428,12 @@ describe('RaekkeTranskript', () => {
     // `recall`+`bash` faldt til terminalen. Praedikatet er nu et SAET laesere
     // (Bjoern 24/9-2026).
     for (const laeser of ['search', 'recall', 'web_search', 'operator_grep', 'find_files']) {
-      const { container } = render(<RaekkeTranskript blocks={[
+      const { container, unmount } = render(<RaekkeTranskript blocks={[
         kald(laeser, { pattern: 'x' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
-      ]} streaming />)
+      ]} streaming={false} />)
+      fireEvent.click(container.querySelector('.rv-tur')!)
       expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
+      unmount()
     }
   })
 
@@ -402,7 +442,8 @@ describe('RaekkeTranskript', () => {
     // der ikke noget «saa» — ikonet skal vaere det sidste vaerktoejs eget.
     const { container } = render(<RaekkeTranskript blocks={[
       kald('read_file', { path: 'a.ts' }), kald('search', { pattern: 'x' }), tekst('Fandt den.'),
-    ]} streaming />)
+    ]} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-search')
   })
 

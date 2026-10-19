@@ -30,7 +30,8 @@ function codePoints(value: string): string[] {
 }
 
 /**
- * Paces only the newest final text block; every non-text block stays immediate.
+ * Paces all final text blocks as one continuous stream; every non-text block
+ * stays immediate.
  *
  * ## Hvorfor pacingen ikke må slippe ved `message_stop`
  *
@@ -56,33 +57,29 @@ export function useChatPacedBlocks(
   blocks: readonly ContentBlock[],
   options: ChatPacingOptions,
 ): ContentBlock[] {
-  let index = -1
-  if (options.finalAnswerStarted) {
-    for (let candidate = blocks.length - 1; candidate >= 0; candidate -= 1) {
-      if (blocks[candidate]?.type === 'text') {
-        index = candidate
-        break
-      }
-    }
-  }
-
-  const target = index >= 0
-    ? (blocks[index] as Extract<ContentBlock, { type: 'text' }>).text
-    : ''
-  const key = `${options.runId ?? 'current'}:${index}`
+  const textIndices = options.finalAnswerStarted
+    ? blocks.flatMap((block, index) => block?.type === 'text' ? [index] : [])
+    : []
+  // Serveren kan dele ét markdown-svar over flere content blocks. Den gamle
+  // kode pacede kun den SIDSTE blok; alt før den blev derfor dumpet ind, og
+  // kun de sidste linjer så streamede ud. Én samlet målstreng giver ét ur og
+  // én læsekurve hen over samtlige tekstblokke.
+  const target = textIndices.map((index) =>
+    (blocks[index] as Extract<ContentBlock, { type: 'text' }>).text).join('')
+  const key = `${options.runId ?? 'current'}:final`
   const [cursor, setCursor] = useState<Cursor>({ key: '', shown: '' })
   const cursorRef = useRef(cursor)
   cursorRef.current = cursor
 
   // Blev denne blok set LIVE? Kun da må pacingen fortsætte efter `message_stop`.
   const liveRef = useRef('')
-  if (options.live && index >= 0) liveRef.current = key
+  if (options.live && textIndices.length > 0) liveRef.current = key
   const harVaeretLive = liveRef.current === key
 
-  const active = index >= 0 && target.length > 0 && (options.live || harVaeretLive)
+  const active = textIndices.length > 0 && target.length > 0 && (options.live || harVaeretLive)
 
-  const latest = useRef({ active, index, key, target })
-  latest.current = { active, index, key, target }
+  const latest = useRef({ active, key, target })
+  latest.current = { active, key, target }
   const frame = useRef<number | null>(null)
   const sidst = useRef(0)
   const kredit = useRef(0)
@@ -159,7 +156,12 @@ export function useChatPacedBlocks(
   if (!active) return blocks as ContentBlock[]
   const shown = cursor.key === key && target.startsWith(cursor.shown) ? cursor.shown : ''
   if (shown === target) return blocks as ContentBlock[]
-  return blocks.map((block, blockIndex) => blockIndex === index
-    ? { ...block, text: shown } as ContentBlock
-    : block)
+  let resterende = codePoints(shown).length
+  return blocks.map((block) => {
+    if (block?.type !== 'text') return block
+    const punkter = codePoints(block.text)
+    const antal = Math.min(resterende, punkter.length)
+    resterende -= antal
+    return { ...block, text: punkter.slice(0, antal).join('') } as ContentBlock
+  })
 }

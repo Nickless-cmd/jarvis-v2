@@ -307,6 +307,57 @@ def rutine_session_id(task_id: str) -> str:
         return ""
 
 
+def fire_session_id(task_id: str) -> str:
+    """Hvor skal runnet faktisk LAND? Tom streng = baggrunds-siloen.
+
+    Forskellen fra ``rutine_session_id`` er ikke kosmetisk, og den blev målt
+    19/10-2026 som et gab mellem to svar der så ens ud:
+
+    - ``rutine_session_id`` svarer «hvilken samtale hører opgaven til». Den
+      læser kun hvad der står på opgaven.
+    - ``fire_session_id`` svarer «hvor skal kørslen lande». For en
+      session-rutine uden en LÅST samtale er svaret brugerens aktive
+      app-samtale, slået op i fyringsøjeblikket.
+
+    Gabet: `_fire_due` sendte ``task["session_id"]`` direkte. Medicin-
+    opgaverne er sat til ``session`` med en TOM ``session_id`` — det betyder
+    «slå den aktive op nu», men den rå værdi blev læst som «ingen adresse».
+    Runnet landede derfor i ``auto-recurring``-siloen, hvor
+    ``is_system_session`` er sand og tilstedeværelse er falsk: rutinen vågnede
+    UDEN de værktøjer opgaven kræver. Målt, ikke gættet.
+
+    Fail-soft til ``""``: en manglende adresse sender kørslen til
+    baggrunds-siloen, hvor den har MINDRE magt. Det er den rigtige retning at
+    fejle i — en session-rutine der ikke kan finde sin samtale skal ikke gætte
+    på en.
+    """
+    task_id = str(task_id or "").strip()
+    if not task_id:
+        return ""
+    try:
+        if not er_session_rutine(task_id):
+            # Baggrunds-opgaven hører hjemme i siloen. Det er ikke en fejl.
+            return ""
+    except Exception:  # noqa: BLE001 — fail-closed: uden bevis ingen adresse
+        logger.debug("recurring_tasks: kunne ikke afgoere rutinetype for %s",
+                     task_id, exc_info=True)
+        return ""
+    laast = rutine_session_id(task_id)
+    if laast:
+        return laast
+    # Ingen låst samtale: spørg hvor han er NU. Ikke hvor han var da opgaven
+    # blev oprettet — en medicin-påmindelse skal ramme den samtale han sidder
+    # i kl. 07, ikke den han brugte i går.
+    try:
+        from core.identity.owner_resolver import resolve_owner_app_session
+
+        return str(resolve_owner_app_session() or "").strip()
+    except Exception:  # noqa: BLE001 — self-safe: hellere siloen end et gæt
+        logger.debug("recurring_tasks: kunne ikke finde aktiv app-samtale",
+                     exc_info=True)
+        return ""
+
+
 def er_session_rutine(task_id: str) -> bool:
     """Skal DENNE opgave udføres hvor brugeren er — eller i baggrunden?
 
@@ -826,9 +877,16 @@ def _fire_due() -> None:
                 # SESSION-BINDING (14/10-2026): kør i den samtale opgaven blev
                 # bestilt i. Er bindingen tom (raekke fra foer kolonnen fandtes),
                 # falder vi tilbage til den gamle adfaerd — `None` → auto-silo.
+                #
+                # MEN (19/10-2026): den rå `session_id` er ikke svaret for en
+                # opgave sat til `session`. Tom betyder «slå den aktive op nu»,
+                # og blev læst som «ingen adresse» — så runnet landede i
+                # `auto-recurring`-siloen uden tilstedeværelse og uden de
+                # værktøjer opgaven kræver. `fire_session_id` svarer på hvor
+                # kørslen skal LAND, ikke hvad der står på opgaven.
                 start_autonomous_run(
                     message=focus,
-                    session_id=str(task.get("session_id") or "") or None,
+                    session_id=fire_session_id(task_id) or None,
                     origin="recurring",
                     # task_id baeres med (15/10-2026), saa runnets afslutning
                     # kan slaa op paa OPGAVEN om svaret skylder nogen et svar —

@@ -82,6 +82,21 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
 # sættes ét sted — dér hvor kørslen ved besked. En ukendt eller tom origin
 # falder tilbage til BUND-sættet alene, så en NY run-type aldrig arver en
 # udvidelse den ikke selv har fået. Tilladelsen er altså delegeret, ikke global.
+#: Oprindelser der er VÆKNINGER — ikke baggrunds-kørsler (19/10-2026).
+#:
+#: Skelnen er Bjørns: «det er en vækning, ikke et autonomt baggrunds-run». En
+#: vækning lander i en samtale for at svare nogen, og svaret bliver liggende.
+#: Et baggrunds-run kører af sig selv og har intet svar at efterlade.
+#:
+#: Den bærer `presence_for_run`s tredje led: en vækning i hans egen samtale
+#: arver sættet uanset hvor længe siden han sidst skrev. Uden det led var
+#: friskhedskravet døden for præcis det tilfælde grænsen blev bygget til — en
+#: morgenrutine fyrer kl. 07, hvor han ikke har skrevet siden aftenen før.
+#:
+#: En NY run-type arver ikke dette ved at hedde noget: den skal stå her, og
+#: nogen skal beslutte det. Ukendt origin → friskhedskravet gælder.
+_WAKE_ORIGINS: frozenset[str] = frozenset({"wakeup", "recurring", "inbox"})
+
 ORIGIN_TOOLS: dict[str, frozenset[str]] = {
     # En recurring-opgave er godkendt af Bjørn på forhånd. Den må røre verden —
     # ellers er en påmindelse der ikke kan sendes ikke en påmindelse.
@@ -168,6 +183,30 @@ def presence_for_run(run) -> bool:
         from core.services.wakeup_dispatcher import _bruger_skrev_for_nylig
     except Exception:  # samme: uden en læser kan vi ikke se nogen
         return False
+    # 3) ER DET EN VÆKNING? (19/10-2026)
+    #
+    # Friskhedskravet nedenfor er rigtigt for et BAGGRUNDS-run — men det gjorde
+    # grænsen død i præcis det tilfælde den blev bygget til. Målt 19/10: en
+    # session-rutine fyrer kl. 07, hvor Bjørn ikke har skrevet siden aftenen
+    # før. `_bruger_skrev_for_nylig` svarede False, så morgenmedicinen landede i
+    # hans samtale UDEN `write_file`, `edit_file` og `inbox` — med `bash` og
+    # `web_search` alene, fordi de kommer fra `recurring`-originens eget sæt.
+    #
+    # Forskellen er hvad kørslen ER, ikke hvor længe der er gået: en vækning
+    # lander i hans samtale for at svare ham, og svaret bliver liggende til han
+    # læser det. Et baggrunds-run har intet svar at efterlade — der ER «ingen i
+    # den anden ende» den rigtige læsning, og den beholder friskhedskravet.
+    #
+    # Ejerskabet og kanalen er allerede bevist ovenfor, så dette led flytter
+    # ikke grænsen for HVEM der får sættet — kun for hvornår en vækning gør.
+    try:
+        from core.services.run_autonomy_context import current_origin
+
+        origin = str(getattr(run, "origin", "") or "").strip().lower() or current_origin()
+    except Exception:  # kan oprindelsen ikke læses, gælder friskhedskravet
+        origin = ""
+    if origin in _WAKE_ORIGINS:
+        return True
     try:
         return bool(_bruger_skrev_for_nylig(sid))
     except Exception:  # brækket historik-læsning lukker sættet — fail-closed

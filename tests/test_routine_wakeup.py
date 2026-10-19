@@ -300,3 +300,84 @@ def test_ejer_beviset_naegtes_for_en_gatende_type(inbox_db, monkeypatch):
     )
     assert r["post"]["verificeret_ejer"] != "jarvis"
 
+
+
+# ── 4. HVOR LANDER RUNNET? (19/10-2026) ────────────────────────────────────
+#
+# `_fire_due` sendte `task["session_id"]` direkte. Medicin-opgaverne er sat til
+# `session` med en TOM `session_id` — det betyder «slå den aktive op nu», men
+# den rå værdi blev læst som «ingen adresse». Runnet landede i
+# `auto-recurring`-siloen, hvor `is_system_session` er sand og tilstedeværelse
+# er falsk: rutinen vågnede UDEN de værktøjer opgaven kræver. Målt, ikke gættet.
+
+
+def test_fire_session_id_slaar_hans_aktive_samtale_op(monkeypatch):
+    """Tom session_id på en session-rutine er «hvor er han nu», ikke «ingen»."""
+    from core.services import recurring_tasks as rt
+
+    monkeypatch.setattr(rt, "er_session_rutine", lambda _t: True)
+    monkeypatch.setattr(rt, "rutine_session_id", lambda _t: "")
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.resolve_owner_app_session",
+        lambda: "chat-live-123",
+    )
+    assert rt.fire_session_id("rec-test") == "chat-live-123"
+
+
+def test_fire_session_id_lader_en_laast_samtale_vinde(monkeypatch):
+    """Er samtalen låst på opgaven, skal den ikke slås op igen."""
+    from core.services import recurring_tasks as rt
+
+    monkeypatch.setattr(rt, "er_session_rutine", lambda _t: True)
+    monkeypatch.setattr(rt, "rutine_session_id", lambda _t: "chat-laast")
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.resolve_owner_app_session",
+        lambda: "chat-anden",
+    )
+    assert rt.fire_session_id("rec-test") == "chat-laast"
+
+
+def test_fire_session_id_lader_baggrunds_opgaven_blive_i_siloen(monkeypatch):
+    """En baggrunds-opgave hører hjemme i siloen. Det er ikke en fejl."""
+    from core.services import recurring_tasks as rt
+
+    monkeypatch.setattr(rt, "er_session_rutine", lambda _t: False)
+    assert rt.fire_session_id("rec-test") == ""
+
+
+def test_fire_session_id_fejler_mod_siloen_ikke_mod_et_gaet(monkeypatch):
+    """Kan adressen ikke findes, skal kørslen have MINDRE magt — ikke gætte."""
+    from core.services import recurring_tasks as rt
+
+    monkeypatch.setattr(rt, "er_session_rutine", lambda _t: True)
+    monkeypatch.setattr(rt, "rutine_session_id", lambda _t: "")
+
+    def _boom():
+        raise RuntimeError("resolveren kunne ikke læse samtaler")
+
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.resolve_owner_app_session", _boom,
+    )
+    assert rt.fire_session_id("rec-test") == ""
+
+
+def test_fire_session_id_uden_opgave_er_tom():
+    from core.services import recurring_tasks as rt
+
+    assert rt.fire_session_id("") == ""
+    assert rt.fire_session_id(None) == ""
+
+
+def test_fyringen_bruger_fire_session_id_ikke_raa_kolonne():
+    """Ledningen: `_fire_due` må ikke læse `task["session_id"]` direkte.
+
+    Uden denne vagt kan rettelsen blive liggende som en funktion ingen kalder —
+    og så lander rutinen i siloen igen uden at nogen test ser det.
+    """
+    import inspect
+
+    from core.services import recurring_tasks as rt
+
+    kilde = inspect.getsource(rt._fire_due)
+    assert "fire_session_id(task_id)" in kilde
+    assert 'task.get("session_id")' not in kilde

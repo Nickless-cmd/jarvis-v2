@@ -493,3 +493,97 @@ def test_krypteret_medlems_session_lukkes_ogsaa_uden_beskeder(tmp_path, monkeypa
         _session(c, "s-medlem", "enc:v1:60UhWQs6Nu2MlruEKA4CGA0")
 
     assert is_owner_app_session("s-medlem") is False
+
+
+# ── VÆKNING vs. BAGGRUNDS-RUN (19/10-2026) ──────────────────────────────────
+#
+# Målt i drift: en session-rutine fyrer kl. 07, hvor Bjørn ikke har skrevet
+# siden aftenen før. `_bruger_skrev_for_nylig` svarede False, så morgenmedicinen
+# landede i hans samtale UDEN `write_file`, `edit_file` og `inbox` — kun med
+# `bash` og `web_search`, som kommer fra `recurring`-originens eget sæt.
+#
+# Friskhedskravet var dermed døden for præcis det tilfælde grænsen blev bygget
+# til. Skelnen er hvad kørslen ER: en vækning efterlader et svar han kan læse;
+# et baggrunds-run har intet svar at efterlade.
+
+
+def _klassifikation(monkeypatch, *, hans=True):
+    """Gør kanal- og ejerskabs-beviset til et konstant svar (ingen DB)."""
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: hans,
+    )
+    monkeypatch.setattr(
+        "core.services.autonomous_sessions.is_system_session", lambda _s: False,
+    )
+
+
+@pytest.mark.parametrize("origin", ["wakeup", "recurring", "inbox"])
+def test_en_vaekning_arver_uden_friskhed(monkeypatch, origin):
+    """Kernen i Bjørns pointe: det er en vækning, ikke et baggrunds-run."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    _klassifikation(monkeypatch)
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: False,
+    )
+    assert presence_for_run(_Run(session_id="chat-live", origin=origin)) is True
+
+
+@pytest.mark.parametrize("origin", ["heartbeat", "dream", "autonomous", ""])
+def test_et_baggrunds_run_kraever_at_han_er_der_nu(monkeypatch, origin):
+    """Regressionen: et run uden et svar at efterlade må ikke arve sættet.
+
+    ``set_run_identity("", "")`` rydder ContextVar'en: med en tom ``origin``
+    falder politikken tilbage til ``current_origin()``, og uden oprydning læste
+    testen en lækket værdi fra en tidligere test — den bestod af den forkerte
+    grund i stedet for at måle faldbacken.
+    """
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    _klassifikation(monkeypatch)
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: False,
+    )
+    set_run_identity("", "")
+    assert presence_for_run(_Run(session_id="chat-live", origin=origin)) is False
+
+
+def test_baggrunds_run_arver_stadig_naar_han_er_der(monkeypatch):
+    """Friskhedskravet er ikke fjernet — det gælder stadig hvor det passer."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    _klassifikation(monkeypatch)
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    assert presence_for_run(_Run(session_id="chat-live", origin="heartbeat")) is True
+
+
+def test_vaekning_i_fremmed_samtale_arver_ikke(monkeypatch):
+    """Vækning eller ej: kanalen skal stadig være BEVIST hans egen."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    _klassifikation(monkeypatch, hans=False)
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    assert presence_for_run(_Run(session_id="chat-fremmed", origin="wakeup")) is False
+
+
+def test_vaekning_i_en_silo_arver_ikke(monkeypatch):
+    """En auto-silo er ikke et sted nogen sidder — uanset oprindelsen."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: True,
+    )
+    monkeypatch.setattr(
+        "core.services.autonomous_sessions.is_system_session",
+        lambda s: str(s).startswith("auto-"),
+    )
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    assert presence_for_run(
+        _Run(session_id="auto-recurring-20261019", origin="recurring")
+    ) is False

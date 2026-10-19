@@ -153,15 +153,32 @@ def parker_forpligtelse(
         if not bruger:
             return {"status": "fejl", "error": "ingen ejer-identitet"}
         kid = str(kilde_id or "").strip() or f"afvist-{origin}-{session_id[:12]}"
+        # HVILKET RUN ER BEVISET? (19/10-2026)
+        #
+        # `aktivt_run_id("")` læser en ContextVar i DENNE proces. Det virker
+        # når afvisningen sker i samme proces som det kørende run — men det er
+        # netop ikke tilfældet her: rutinen fyrer i `jarvis-runtime` (8011),
+        # mens Bjørns tur kører i `jarvis-api` (8080). Målt 19/10-2026: mid-
+        # dagsmedicinen blev afvist korrekt, posten blev skrevet, og den stod
+        # med `verificeret_ejer='ukendt'` — hverken gate eller vækning. En
+        # tavs post er værre end ingen post, fordi loggen lovede det modsatte.
+        #
+        # Beviset FINDES: `levende_run_i_session` læser den DELTE journal
+        # (`in_flight_runs`, fil + flock), som begge processer skriver til. Det
+        # er samme kilde vagten selv brugte til at afvise — så vi genbruger
+        # præcis det run-id den netop har set, frem for at gætte.
+        _bevis = str(aktivt_run_id("") or "").strip() or levende_run_i_session(
+            str(session_id or "")
+        )
         return registrer_kilde(
             bruger_id=bruger,
             kildetype="afvist_run",
             kilde_id=kid,
             # Det KØRENDE run er beviset: `verificeret_jarvis_run` kræver at
-            # run-id'et matcher det aktive run, og ved en afvisning kører der
-            # netop et i sessionen. Er det tomt, falder posten til `huset` —
-            # og så bærer `bloker` gatingen alene.
-            oprettende_run_id=aktivt_run_id(""),
+            # run-id'et tilhører et run der kører nu. Er det tomt, falder posten
+            # til `ukendt` — og så bærer `bloker` gatingen alene, hvilket målt
+            # betyder at den hverken gater eller vækker.
+            oprettende_run_id=_bevis,
             beskrivelse=beskrivelse[:400],
             bloker=True,
             session_id=str(session_id or ""),

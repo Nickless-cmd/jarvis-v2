@@ -340,15 +340,16 @@ _Proveniens og bogføring for indbakken._
 | function | `bruger_for_workspace` | `(navn)` | Oversæt et workspace-NAVN til et bruger-id. Tom streng når det ikke går. | [src](../../../core/services/inbox_state.py#L260) |
 | function | `laese_bruger` | `()` | HVIS indbakke skal læses? Tom streng når det ikke kan afgøres. | [src](../../../core/services/inbox_state.py#L293) |
 | function | `verificeret_jarvis_run` | `(oprettende_run_id, bruger_id)` | Er dette Jarvis' EGET arbejde, i et run der kører nu, for denne bruger? | [src](../../../core/services/inbox_state.py#L383) |
-| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L407) |
-| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…, afsluttet_ved_registrering=…, bloker=…, session_id=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L422) |
-| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L583) |
-| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L666) |
-| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L695) |
-| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L746) |
-| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…, bevis=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L775) |
-| function | `done` | `(bruger_id, post_id, bevis=…)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L805) |
-| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L842) |
+| function | `_levende_run_for_bruger` | `(run_id, bruger_id)` | Står dette run i den DELTE journal som levende — for denne bruger? | [src](../../../core/services/inbox_state.py#L421) |
+| function | `_kilde_ejer_kan_loefte` | `(kildetype, kilde_ejer)` | Må KILDENS egen ejer sætte etiketten til `jarvis`? | [src](../../../core/services/inbox_state.py#L449) |
+| function | `registrer_kilde` | `(*, bruger_id, kildetype, kilde_id, oprettende_run_id=…, paastaaet_ejer=…, kilde_ejer=…, beskrivelse=…, output_sti=…, output_bytes=…, expires_at=…, afsluttet_ved_registrering=…, bloker=…, session_id=…)` | Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id). | [src](../../../core/services/inbox_state.py#L464) |
+| function | `flag_fra_bruger` | `(*, bruger_id, titel, beskrivelse=…, bloker=…)` | Et menneske flagger noget. Den FJERDE skriver. | [src](../../../core/services/inbox_state.py#L625) |
+| function | `_luk_kilden` | `(post)` | Kør kildens egen kvitterings-mekanisme, hvis den har én. | [src](../../../core/services/inbox_state.py#L708) |
+| function | `_find_i_kilderne` | `(bruger_id, post_id)` | (kildetype, beskrivelse) for et id visningen VISER men tabellen ikke har. | [src](../../../core/services/inbox_state.py#L737) |
+| function | `_hent_eller_optag` | `(bruger_id, post_id)` | Postens række — og opret den hvis KILDEN findes men rækken ikke gør. | [src](../../../core/services/inbox_state.py#L788) |
+| function | `_afgoer_sideopgave` | `(bruger_id, post_id, *, decision, reason=…, bevis=…)` | Route en sideopgave til dens eget lager; skriv aldrig inbox_items. | [src](../../../core/services/inbox_state.py#L817) |
+| function | `done` | `(bruger_id, post_id, bevis=…)` | Kvittér en ALLEREDE UDFØRT opgave. Typet svar, aldrig prosa. | [src](../../../core/services/inbox_state.py#L847) |
+| function | `drop` | `(bruger_id, post_id, reason)` | Afvis en åben post med begrundelse. | [src](../../../core/services/inbox_state.py#L884) |
 
 ## `core/services/inbox_view.py`
 _Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._

@@ -400,8 +400,50 @@ def verificeret_jarvis_run(oprettende_run_id: str, bruger_id: str) -> bool:
     # Netop den form — «jeg siger det kom fra dette run» — er den spoofing
     # spec'ens Trin 1 tester imod.
     if not levende or levende != run:
-        return False
+        # CROSS-PROCES (19/10-2026). `aktivt_run_id` læser en ContextVar i
+        # DENNE proces. Rutiner fyrer i `jarvis-runtime`, Bjørns tur kører i
+        # `jarvis-api` — så et ægte run-id fra den anden proces kunne
+        # strukturelt aldrig verificeres. Målt: mid-dagsmedicinen blev afvist
+        # korrekt, posten skrevet, og stod derefter `ukendt`: hverken gate
+        # eller vækning.
+        #
+        # Det er ikke en påstand der nu accepteres — det er et OPSLAG i den
+        # DELTE journal (`in_flight_runs`, fil + flock), som begge processer
+        # skriver til. To led skal holde: runnet skal stå som levende, og dets
+        # `force_user_id` skal være netop denne bruger. Uden det andet kunne et
+        # run for en anden bruger løfte posten.
+        if not _levende_run_for_bruger(run, bruger_id):
+            return False
+        return True
     return _autentificeret_bruger_matcher(bruger_id)
+
+
+def _levende_run_for_bruger(run_id: str, bruger_id: str) -> bool:
+    """Står dette run i den DELTE journal som levende — for denne bruger?
+
+    Self-safe: enhver fejl → False. En utilgængelig journal må ikke løfte en
+    post; den må kun undlade at løfte den.
+    """
+    run_id = str(run_id or "").strip()
+    bruger_id = str(bruger_id or "").strip()
+    if not run_id or not bruger_id:
+        return False
+    try:
+        from core.services import in_flight_runs as ifr
+
+        for post in ifr.levende_koersler() or []:
+            if str(post.get("run_id") or "") != run_id:
+                continue
+            if str(post.get("status") or "") != "running":
+                continue
+            # `force_user_id` er den bruger runnet kører for. Er den tom, er
+            # der intet bevis — så tæller runnet ikke.
+            return str(post.get("force_user_id") or "").strip() == bruger_id
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("inbox_state: kunne ikke laese den delte journal: %s", exc)
+        return False
+    return False
+
 
 
 def _kilde_ejer_kan_loefte(kildetype: str, kilde_ejer: str) -> bool:

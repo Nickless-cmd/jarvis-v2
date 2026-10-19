@@ -121,11 +121,17 @@ def presence_for_run(run) -> bool:
     `notify_user`, mens `wakeup` gav 107. Svaret landede stadig i hans samtale
     — det var bare tandløst.
 
-    To led skal holde, og de svarer på hver sit:
+    Tre led skal holde, og de svarer på hver sit:
 
     1. Sessionen er ikke en system-silo. En `auto-recurring-…`-silo er ikke et
        sted nogen sidder.
-    2. Han har talt i den for nylig. En app-session der ikke har været rørt i
+    2. Sessionen er ikke en EKSTERN kanal (Bjørn 19/10-2026: «kun din egen
+       app-samtale tæller»). En wakeup routet til Discord lander i en samtale
+       hvor andre kan se med; gav den fulde owner-værktøjer — `bash`,
+       `operator_bash`, `write_file` — ville den operere med hans rettigheder
+       foran et publikum. Tilstedeværelse er ikke «nogen kan læse med», det er
+       «han sidder her». Grænsen er hans egen app-samtale.
+    3. Han har talt i den for nylig. En app-session der ikke har været rørt i
        timer er ikke tilstedeværelse — den er en gammel række, og et run der
        arver hans rettigheder der, gør det uden vidner.
 
@@ -143,6 +149,15 @@ def presence_for_run(run) -> bool:
     except Exception:  # en manglende klassifikation må lukke sættet, ikke åbne det
         return False
     if is_system_session(sid):
+        return False
+    try:
+        from core.identity.owner_resolver import session_is_external_channel
+    except Exception:  # uden klassifikationen kan vi ikke udelukke en kanal
+        return False
+    try:
+        if session_is_external_channel(sid):
+            return False
+    except Exception:  # en brækket titel-læsning må lukke, ikke åbne
         return False
     try:
         from core.services.wakeup_dispatcher import _bruger_skrev_for_nylig

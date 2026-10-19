@@ -115,6 +115,97 @@ def test_presence_kaaster_aldrig(monkeypatch):
     assert presence_for_run(_Run(session_id="chat-x", origin="wakeup")) is False
 
 
+# ── 2b. Kun hans EGEN app-samtale tæller (Bjørn 19/10-2026) ─────────────────
+
+
+@pytest.mark.real_db
+@pytest.mark.parametrize(
+    "sid",
+    [
+        # Ægte sessioner fra DB (målt 19/10-2026): titlen bærer kanalen, ikke
+        # id'et. `chat-…` er også Discord — præfikset lyver, titlen gør ikke.
+        #
+        # `real_db` er nødvendig: uden den peger `_guard_prod_db_path` på en tom
+        # shield-DB, `get_chat_session` finder ingen titel, og klassifikationen
+        # falder tilbage til «ikke ekstern». Testen ville da bestå af den
+        # forkerte grund — den skulle måle virkeligheden, ikke en tom base.
+        "chat-4fa3d42f08f946d0966e9d5d11303d21",  # "Discord DM — 1246415163603816499"
+        "chat-4b20d15a71ed40c0be31f9db5740c5f9",  # "Telegram DM"
+        "chat-fcf35d02d59c401b9c7159610ff5595d",  # "Discord DM"
+    ],
+)
+def test_en_ekstern_kanal_er_ikke_tilstedevaerelse(monkeypatch, sid):
+    """Han kan have talt der for et minut siden — det gør ikke kanalen til ham.
+
+    En wakeup routet hertil ville ellers operere med hans rettigheder
+    (`bash`, `operator_bash`, `write_file`) foran et publikum.
+    """
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    assert presence_for_run(_Run(session_id=sid, origin="wakeup")) is False
+
+
+def test_hans_egen_app_samtale_er_stadig_tilstedevaerelse(monkeypatch):
+    """Grænsen må ikke ramme den samtale den blev bygget for."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    app = _Run(session_id="chat-e82192b29646453aaf688e2043e43d89", origin="inbox")
+    assert presence_for_run(app) is True
+
+
+def test_en_ekstern_kanal_aabner_ikke_saettet(monkeypatch):
+    """Kontrakten målt på politikken, ikke kun på hjælpefunktionen.
+
+    Måler de værktøjer der KUN kommer fra tilstedeværelse. `bash` er bevidst
+    ikke med: `wakeup`-origin har den allerede i `ORIGIN_TOOLS`, så den siger
+    intet om hvorvidt kanalen åbnede sættet.
+    """
+    from core.tools.autonomous_tool_policy import is_allowed, presence_for_run
+
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.session_is_external_channel",
+        lambda sid: str(sid or "").startswith("discord-"),
+    )
+
+    assert presence_for_run(_Run(session_id="discord-1234", origin="wakeup")) is False
+
+    tok_a = set_autonomous(True)
+    set_run_identity("visible-test", "wakeup")
+    tok_p = set_user_present(False)
+    try:
+        for navn in ("operator_bash", "write_file", "web_search", "notify_user"):
+            assert is_allowed(navn) is False, navn
+    finally:
+        reset_user_present(tok_p)
+        reset_autonomous(tok_a)
+
+
+def test_en_brækket_kanal_klassifikation_lukker(monkeypatch):
+    """Kan vi ikke afgøre om det er en ekstern kanal, må svaret være nej."""
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+
+    def _boom(_sid):
+        raise RuntimeError("titlen kunne ikke læses")
+
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.session_is_external_channel", _boom,
+    )
+    assert presence_for_run(_Run(session_id="chat-x", origin="wakeup")) is False
+
+
 # ── 3. Politikken: gaten der faktisk afgør ──────────────────────────────────
 
 

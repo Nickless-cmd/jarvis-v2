@@ -100,7 +100,7 @@ _Explicit tool permissions for runs without a user present._
 |---|---|---|---|---|
 | function | `allowed_tools_for_origin` | `(origin)` | Bund-sættet plus det kørslens oprindelse har fået delegeret. | [src](../../../core/tools/autonomous_tool_policy.py#L106) |
 | function | `presence_for_run` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/tools/autonomous_tool_policy.py#L112) |
-| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L157) |
+| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L172) |
 
 ## `core/tools/bash_session.py`
 _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_

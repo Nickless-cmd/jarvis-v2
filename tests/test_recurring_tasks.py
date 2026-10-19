@@ -339,3 +339,33 @@ def test_migrationen_laeser_kolonnen_naar_den_findes(tmp_path, monkeypatch):
         rows = [r for r in _source_rows(c) if r["source_kind"] == "recurring"]
     assert rows, "migrationen fandt ingen recurring-raekker"
     assert rows[0]["verified_owner_user_id"] == "canonical-user"
+
+
+def test_session_rutine_faar_post_uden_inbox_flag(tmp_path, monkeypatch):
+    """En session-rutine SKAL efterlade en post — ellers kan den ikke vaekke.
+
+    Maalt i drift 19/10-2026: alle tre medicin-opgaver stod med
+    `inbox_on_complete=0`. Uden en post findes der intet at loefte for
+    `inbox_idle_waker`, saa svaret endte i `auto-recurring`-siloen — praecis
+    den silo brugeren ikke har adgang til. Valget om at udfoere i brugerens
+    samtale er et loefte om at svaret kommer tilbage til ham.
+    """
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="Morgenmedicin", interval_minutes=1440)
+    tid = t["task_id"]
+
+    # Standard: baggrund, intet flag -> ingen post (uaendret adfaerd)
+    assert rt.skal_i_indbakken(tid) is False
+
+    # Saettes til session -> posten skal opstaa af sig selv
+    assert rt.set_execution_mode(tid, "session") is True
+    assert rt.skal_i_indbakken(tid) is True
+
+
+def test_baggrundsrutine_med_flag_faar_stadig_post(tmp_path, monkeypatch):
+    """Flaget virker uaendret for baggrunds-opgaver — rettelsen maa ikke fjerne det."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(
+        focus="Runtime-inspektion", interval_minutes=360, inbox_on_complete=True,
+    )
+    assert rt.skal_i_indbakken(t["task_id"]) is True

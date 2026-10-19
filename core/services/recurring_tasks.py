@@ -241,7 +241,18 @@ def skal_i_indbakken(task_id: str) -> bool:
                 "SELECT inbox_on_complete FROM recurring_tasks WHERE task_id = ?",
                 (str(task_id),),
             ).fetchone()
-        return bool(row and int(row[0] or 0))
+        if bool(row and int(row[0] or 0)):
+            return True
+        # EN SESSION-RUTINE SKAL EFTERLADE EN POST (19/10-2026). Uden en post
+        # findes der intet at vække PÅ: `inbox_idle_waker` løfter poster, ikke
+        # runs. Målt i drift: alle tre medicin-opgaver stod med
+        # `inbox_on_complete=0`, så runnets svar endte i `auto-recurring`-
+        # siloen — præcis den silo Bjørn sagde at brugeren ikke har adgang til.
+        #
+        # Valget om at udføre i brugerens samtale ER et løfte om at svaret
+        # kommer tilbage til ham; uden posten er løftet tomt. Kaldes EFTER
+        # connect-blokken, så det ikke bliver et nested connect.
+        return er_session_rutine(task_id)
     except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte gaten
         logger.debug("recurring_tasks: kunne ikke laese inbox-flag for %s", task_id, exc_info=True)
         return False
@@ -311,11 +322,20 @@ def er_session_rutine(task_id: str) -> bool:
 
     Rækkefølgen er bevidst:
 
-    1. Den EKSPLICITTE klassifikation på den migrerede rutine, hvis den findes.
-       Det er valget nogen traf ved oprettelsen, og det vejer tungest.
-    2. ``session_id`` på opgaven — den ældre, men målte, indikation: en opgave
+    1. Kolonnen ``execution_mode`` på opgaven — det EKSPLICITTE valg, og den
+       nuværende sandhed. En opgave sat til ``session`` må vække, også selv om
+       dens ``session_id`` er tom: adressen slås op når den fyrer.
+    2. Den migrerede rutines klassifikation, hvis et link findes. Kun relevant
+       når kolonnen siger ``background`` — en migreret opgave kan bære valget i
+       ``delivery_policy`` uden at kolonnen er opdateret.
+    3. ``session_id`` på opgaven — den ældre, men målte, indikation: en opgave
        der blev bestilt inde i en samtale hører til den samtale. Det er den
        samme afledning ``routine_migration._definition`` bruger.
+
+    (19/10-2026: rækkefølgen var omvendt — linket blev slået op først, og en
+    manglende tabel eller et manglende link skyggede for kolonne-valget. Målt
+    med en frisk DB hvor ``routine_legacy_links`` ikke findes: opgaven svarede
+    ``False`` selv om den var sat til ``session``.)
 
     Fail-closed: kan intet læses, svarer vi ``False`` (baggrund). En opgave der
     ikke kan bevises at høre til en samtale må ikke vække nogen — den venter i
@@ -326,11 +346,24 @@ def er_session_rutine(task_id: str) -> bool:
         return False
     try:
         with runtime_db.connect() as conn:
-            link = conn.execute(
-                "SELECT routine_id FROM routine_legacy_links "
-                "WHERE source_kind = 'recurring' AND source_id = ?",
+            row = conn.execute(
+                "SELECT session_id, execution_mode FROM recurring_tasks WHERE task_id = ?",
                 (task_id,),
             ).fetchone()
+        if not row:
+            return False
+        # 1) Det EKSPLICITTE valg på opgaven vejer tungest.
+        if str(row[1] or "").strip().lower() == "session":
+            return True
+        # 2) Migreret rutines klassifikation — i sit EGET værn, så en manglende
+        #    tabel eller et manglende link ikke kan skygge for valget ovenfor.
+        try:
+            with runtime_db.connect() as conn:
+                link = conn.execute(
+                    "SELECT routine_id FROM routine_legacy_links "
+                    "WHERE source_kind = 'recurring' AND source_id = ?",
+                    (task_id,),
+                ).fetchone()
             if link:
                 from core.runtime import db_routines
 
@@ -342,12 +375,15 @@ def er_session_rutine(task_id: str) -> bool:
                     valg = str(klass.get("execution_mode") or "").strip().lower()
                     if valg:
                         return valg == "session"
-            row = conn.execute(
-                "SELECT session_id, execution_mode FROM recurring_tasks WHERE task_id = ?",
-                (task_id,),
-            ).fetchone()
-        if not row:
-            return False
+        except Exception:  # noqa: BLE001 — kun klasse 2; valget ovenfor står
+            logger.debug("recurring_tasks: rutine-link kunne ikke laeses for %s",
+                         task_id, exc_info=True)
+        # 3) Den ældre indikation: en opgave bestilt inde i en samtale.
+        return bool(str(row[0] or "").strip())
+    except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte vækkeren
+        logger.debug("recurring_tasks: kunne ikke afgoere session-mode for %s",
+                     task_id, exc_info=True)
+        return False
         # Det EKSPLICITTE valg vejer tungest: en opgave der er sat til `session`
         # maa vaekke selv om dens `session_id` er tom — adressen slaaes op naar
         # den fyrer, i stedet for at vaere laast til den samtale der var aktiv

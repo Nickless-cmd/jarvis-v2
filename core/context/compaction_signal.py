@@ -42,6 +42,24 @@ def _noegle(session_id: str) -> str:
     return _PRAEFIKS + (session_id or "").strip()
 
 
+def _cache():
+    """Det delte lager — importeret lazy, saa try kun har én sætning."""
+    from core.services import shared_cache
+    return shared_cache
+
+
+def _ejer_identitet() -> str:
+    """Denne proces' identitet: ``<pid>:<starttid>`` — eller "" hvis ukendt.
+
+    Markøren skal bære HVEM der satte den, ikke kun hvornaar. Se `er_i_gang`.
+    """
+    try:
+        from core.services.in_flight_runs import current_owner
+        return str(current_owner() or "")
+    except Exception:  # uden en ejer-identitet maa markoeren stadig kunne saettes
+        return ""
+
+
 def marker_start(session_id: str) -> None:
     """Komprimering startet for sessionen. Kaster aldrig."""
     sid = (session_id or "").strip()
@@ -50,10 +68,13 @@ def marker_start(session_id: str) -> None:
     try:
         import time
 
-        from core.services import shared_cache
-        shared_cache.set(_noegle(sid), {"startet": time.time()}, ttl_seconds=_TTL_SEK)
-    except Exception:
-        # Et nede lager maa ikke stoppe komprimeringen. Indikatoren mister sit
+        _cache().set(
+            _noegle(sid),
+            {"startet": time.time(), "owner": _ejer_identitet()},
+            ttl_seconds=_TTL_SEK,
+        )
+    except Exception:  # et nede lager maa ikke stoppe komprimeringen
+        # Indikatoren mister sit
         # signal, men arbejdet bliver gjort.
         pass
 
@@ -64,9 +85,8 @@ def marker_slut(session_id: str) -> None:
     if not sid:
         return
     try:
-        from core.services import shared_cache
-        shared_cache.delete(_noegle(sid))
-    except Exception:
+        _cache().delete(_noegle(sid))
+    except Exception:  # et nede lager maa ikke blokere afslutningen
         pass
 
 
@@ -76,10 +96,45 @@ def er_i_gang(session_id: str) -> bool:
     if not sid:
         return False
     try:
-        from core.services import shared_cache
-        return shared_cache.get(_noegle(sid)) is not None
-    except Exception:
+        markoer = _cache().get(_noegle(sid))
+    except Exception:  # uden et laesbart lager er der intet signal at vise
         return False
+    if markoer is None:
+        return False
+    # BAERER MARKOEREN EN DOED PROCES? (19/10-2026)
+    #
+    # TTL'en alene kunne ikke svare paa det her: maalt 19/10 blev markoeren sat
+    # 18:08:10 og API'et genstartet 18:08:19 — ni sekunder senere. Ingen
+    # komprimerings-proces koerte, alligevel viste desk «komprimerer...» indtil
+    # TTL'en udloeb 18:18:10. Et nedbrud efterlader ikke en indikator der lyser
+    # i ti minutter; det efterlader et spoergsmaal vi kan besvare.
+    #
+    # Kun ``False`` afviser. ``None`` betyder «kunne ikke afgoeres», og et gæt
+    # maa ikke slukke en indikator for en komprimering der faktisk koerer —
+    # samme regel som `owner_still_alive` selv foelger.
+    #
+    # FALDGRUBE (fra opgaven): `shared_cache` deles mellem api (8080) og
+    # runtime (8011). `owner` er den proces der SATTE markoeren — aldrig den
+    # der laeser den. En markoer sat af runtime maa ikke afvises fordi api'ets
+    # pid staar i den anden ende af spoergsmaalet.
+    owner = ""
+    if isinstance(markoer, dict):
+        owner = str(markoer.get("owner") or "")
+    if owner:
+        try:
+            from core.services.in_flight_runs import owner_still_alive
+            if owner_still_alive(owner) is False:
+                # Processen findes ikke. Ryd markoeren, saa naeste poll ikke
+                # skal spoerge igen — og saa en ny komprimering kan saette en
+                # frisk markoer uden at arve den doede.
+                try:
+                    _cache().delete(_noegle(sid))
+                except Exception:  # rydning er en optimering, ikke et krav
+                    pass
+                return False
+        except Exception:  # kan vi ikke spoerge, staar markoeren som foer
+            return True
+    return True
 
 
 def seneste_komprimering(session_id: str) -> str:
@@ -104,5 +159,5 @@ def seneste_komprimering(session_id: str) -> str:
         if not row:
             return ""
         return str(row[0] or "")
-    except Exception:
+    except Exception:  # uden en laesbar base er der ingen markoer at vise
         return ""

@@ -54,6 +54,87 @@ def test_seneste_komprimering_foelger_markoeren(isolated_runtime) -> None:
     assert cs.seneste_komprimering(sid) != ""
 
 
+# ── Markoeren skal bindes til PROCES-IDENTITET (19/10-2026) ──────────────────
+#
+# Maalt i drift: markoeren blev sat 18:08:10 og API'et genstartet 18:08:19 — ni
+# sekunder senere. Ingen komprimerings-proces koerte, alligevel viste desk
+# «komprimerer...» indtil TTL'en udloeb 18:18:10. TTL'en kunne ikke svare,
+# fordi den maaler TID, ikke LIV.
+
+
+def test_markoeren_baerer_proces_identitet(isolated_runtime) -> None:
+    """`marker_start` skal skrive HVEM, ikke kun hvornaar."""
+    from core.services import shared_cache
+    from core.services.in_flight_runs import current_owner
+
+    cs.marker_start("s1")
+    markoer = shared_cache.get("compaction:inflight:s1")
+
+    assert isinstance(markoer, dict)
+    assert markoer.get("owner") == current_owner(), (
+        "markoeren bar ikke den saettende proces — saa kan en doed markoer "
+        "aldrig skelnes fra en levende"
+    )
+
+
+def test_markoer_fra_doed_proces_afvises_med_det_samme(isolated_runtime) -> None:
+    """Den maalte fejl: en markoer hvis ejer er vaek maa ikke lyse i 600 s."""
+    from core.services import shared_cache
+
+    noegle = "compaction:inflight:s1"
+    # pid 999999 findes ikke → `owner_still_alive` svarer False (bevis).
+    shared_cache.set(noegle, {"startet": 0.0, "owner": "999999:12345"}, ttl_seconds=600)
+    assert shared_cache.get(noegle) is not None, "forudsaetning: markoeren staar"
+
+    assert cs.er_i_gang("s1") is False, (
+        "en markoer fra en doed proces blev laest som «komprimerer»"
+    )
+    # Og den skal ryddes, saa naeste poll ikke spoerger forgaeves.
+    assert shared_cache.get(noegle) is None, "den doede markoer blev ikke ryddet"
+
+
+def test_markoer_fra_levende_proces_taelles(isolated_runtime) -> None:
+    """Den anden retning: en LEVENDE proces' markoer maa ikke afvises."""
+    from core.services import shared_cache
+    from core.services.in_flight_runs import current_owner
+
+    shared_cache.set(
+        "compaction:inflight:s1",
+        {"startet": 0.0, "owner": current_owner()},
+        ttl_seconds=600,
+    )
+    assert cs.er_i_gang("s1") is True
+
+
+def test_uafgoerbar_ejer_afviser_ikke(isolated_runtime) -> None:
+    """``None`` er ikke ``False``: et gaet maa ikke slukke en levende indikator.
+
+    Samme regel som `owner_still_alive` selv foelger — en post vi ikke kan
+    afgoere ejerskabet paa maa ikke stemples paa et gaet.
+    """
+    from core.services import shared_cache
+
+    shared_cache.set(
+        "compaction:inflight:s1",
+        {"startet": 0.0, "owner": "ikke-et-pid"},
+        ttl_seconds=600,
+    )
+    assert cs.er_i_gang("s1") is True
+
+
+def test_gammel_markoer_uden_ejer_taelles(isolated_runtime) -> None:
+    """Markoerer skrevet foer kolonnen fandtes skal stadig virke.
+
+    De har ingen `owner` at spoerge om — TTL'en er deres eneste udloeb, som
+    foer. At afvise dem ville slukke indikatoren for en komprimering der
+    faktisk koerer, under en udrulning.
+    """
+    from core.services import shared_cache
+
+    shared_cache.set("compaction:inflight:s1", {"startet": 0.0}, ttl_seconds=600)
+    assert cs.er_i_gang("s1") is True
+
+
 def test_komprimeringen_saetter_og_fjerner_det_delte_flag(isolated_runtime, monkeypatch) -> None:
     """Koblingen i selve komprimeringen — ikke kun modulet for sig."""
     from core.services import prompt_contract as pc

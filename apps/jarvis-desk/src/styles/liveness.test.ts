@@ -5,6 +5,10 @@ import { join } from 'node:path'
 const css = readFileSync(join(__dirname, 'liveness.css'), 'utf8')
 
 describe('liveness i mørkt tema', () => {
+  it('bevarer mellemrummet i rullende varigheder', () => {
+    expect(css).toMatch(/\.rullende \.tegn\s*\{[^}]*white-space:\s*pre/s)
+  })
+
   it('bruger altid en dækkende tekstfarve, også for en afsluttet tanke', () => {
     // 29/9-2026: gennemstregningen skabte et separat malelag; den klippede
     // gradient arvede transparent text-fill og kunne fremstå sort på mørk bund.

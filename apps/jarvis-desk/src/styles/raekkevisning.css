@@ -237,6 +237,10 @@
   color: var(--rv-tertiary);
 }
 .raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; white-space: nowrap; }
+.raekkevisning .rv-rundeur {
+  flex: none; display: inline-flex; align-items: baseline;
+  color: var(--rv-tertiary); font-size: 13px; line-height: 1;
+}
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 
 .raekkevisning .rv-arbejdsdetaljer {

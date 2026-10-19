@@ -24,13 +24,6 @@ vi.mock('../lib/streamClient', () => ({
   startStream: (_r: unknown, h: FakeHandlers) => { handlersRef.current = h; return { abort: vi.fn(), getRunId: () => 'r1' } },
   StreamError: class extends Error {},
 }))
-// Job-tallet i liveness-linjen (8/10-2026). Uden denne mock gik kaldet til
-// den rigtige klient og fejlede tavst — og så kunne ingen test se om viewet
-// sendte SAMTALEN med. Det er hele pointen med testen nedenfor.
-const listJobs = vi.fn().mockResolvedValue({ jobs: [], bridge_ok: true })
-vi.mock('../lib/jobsApi', () => ({
-  listJobs: (...a: unknown[]) => listJobs(...a),
-}))
 vi.mock('../lib/api', () => ({
   listSessions: vi.fn().mockResolvedValue([{ id: 's1', title: 'T', updated_at: 'x' }]),
   getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [] }),
@@ -109,7 +102,7 @@ describe('ChatView integration', () => {
     }
   })
 
-  it('viser komprimering over composer selv når samtalen er i hvile', async () => {
+  it('viser komprimering i composeren uden at genindføre liveness-linjen', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
       etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },
       messages: [{ id: 'u1', role: 'user', created_at: '2026-09-23T19:00:00Z', content: [{ type: 'text', text: 'Hej' }] }],
@@ -127,8 +120,8 @@ describe('ChatView integration', () => {
           </PanelProvider></PermissionProvider></StreamProvider>
         </SessionProvider></SettingsProvider>,
       )
-      expect(await screen.findByText(/Komprimerer kontekst/)).toBeInTheDocument()
-      expect(container.querySelector('.composer-area .liveness')).toHaveClass('is-compacting')
+      expect(await screen.findByPlaceholderText(/Komprimerer kontekst/)).toBeInTheDocument()
+      expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
     } finally {
       vi.mocked(api.getSession).mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [], etag: null })
       vi.mocked(api.getContextUsage).mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, model_window: 0, overhead_tokens: 0, compacting: false, compacted: false })
@@ -363,10 +356,9 @@ describe('ChatView integration', () => {
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
     const pauseCard = container.querySelector('.composer-notices .pauseask')
-    const liveness = container.querySelector('.liveness')
     expect(pauseCard).toBeInTheDocument()
     expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
-    expect(pauseCard!.compareDocumentPosition(liveness!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
     expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
   })
 
@@ -513,7 +505,6 @@ describe('ChatView integration', () => {
   })
 
 })
-
 /**
  * Baggrundsjob i CHATTEN.
  *
@@ -750,58 +741,5 @@ describe('ChatView — Jarvis\' browser', () => {
     expect(document.querySelector('.jbrowser')).not.toBeInTheDocument()
     await userEvent.click(knap)
     expect(document.querySelector('.jbrowser')).toBeInTheDocument()
-  })
-})
-
-/**
- * Job-tallet i liveness-linjen — samtale-scopet (8/10-2026).
- *
- * Bjørn: «baggrundsjobs panel i desk skal osse være sessions bestemt... lige
- * nu vises baggrundsjobs fra andre session i panelet». Panelet blev rettet,
- * men TÆLLEREN over det hentede stadig uden samtale — så den talte hele
- * maskinens job og kunne vise et andet tal end panelet for den samme samtale.
- *
- * Testen holder kaldet fast: forsvinder `sessionId` fra argumenterne igen,
- * falder den her.
- */
-describe('ChatView — job-tallet hører til samtalen', () => {
-  beforeEach(() => {
-    listJobs.mockReset()
-    listJobs.mockResolvedValue({ jobs: [], bridge_ok: true })
-  })
-
-  const vis = (sessionId: string | null) => render(
-    <SettingsProvider initialConfig={cfg}>
-      <SessionProvider config={cfg}>
-        <StreamProvider config={cfg}>
-          <PermissionProvider>
-            <PanelProvider defaultWidth={400}>
-              <ChatView sessionId={sessionId} />
-            </PanelProvider>
-          </PermissionProvider>
-        </StreamProvider>
-      </SessionProvider>
-    </SettingsProvider>,
-  )
-
-  it('sender samtalen med til listJobs', async () => {
-    vis('s1')
-    await waitFor(() => expect(listJobs).toHaveBeenCalled())
-    // Tredje argument er samtalen. `false` = kun aktive job, som er det
-    // liveness-linjen tæller.
-    expect(listJobs).toHaveBeenCalledWith(cfg, false, 's1')
-  })
-
-  it('tæller kun DENNE samtales kørende job', async () => {
-    listJobs.mockResolvedValue({
-      jobs: [
-        { id: 'a', kilde: 'tool', status: 'running' },
-        { id: 'b', kilde: 'tool', status: 'done' },
-      ],
-      bridge_ok: true,
-    })
-    vis('s1')
-    // Tallet skal være 1 — ikke 2. Et færdigt job er ikke «kører».
-    await waitFor(() => expect(listJobs).toHaveBeenCalledWith(cfg, false, 's1'))
   })
 })

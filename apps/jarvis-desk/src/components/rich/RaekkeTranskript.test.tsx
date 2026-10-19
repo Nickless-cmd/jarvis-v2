@@ -135,19 +135,22 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
-  it('har læsbare foldpile og lader aktive rækkers ikoner følge shimmeren', () => {
+  it('har læsbare foldpile og flytter pulsen og det rullende ur til den aktive runde', () => {
     const { container, rerender } = render(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'running'),
-    ]} streaming />)
+    ]} streaming elapsedMs={65_000} tokens={123} />)
     const runde = container.querySelector('.rv-arbejdsknap')!
     expect(runde).toHaveAttribute('data-koerer')
     expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
-    expect(runde.querySelector('.rv-arbejdsikon .rv-ikon-glimt')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-arbejdsikon .jarvis-ring')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-rundeur [role="timer"]')).toHaveAttribute('aria-label', '1m 5s')
     expect(runde.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
     expect(runde.querySelector('.rv-turC .rv-ikon-glimt')).toBeInTheDocument()
     expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
     expect(container.querySelector('.rv-turTekst')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turMeta')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '123')
     expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '14')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
@@ -194,12 +197,12 @@ describe('RaekkeTranskript', () => {
       vi.restoreAllMocks()
     }
   })
-  it('bevarer Working øverst og samler rækker mellem synlige synteser mens arbejdet kører', () => {
+  it('bevarer Arbejder øverst og samler rækker mellem synlige synteser mens arbejdet kører', () => {
     const { container } = render(<RaekkeTranskript blocks={[
       tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),
       tekst('Jeg retter den nu.'), kald('edit_file'),
     ]} streaming />)
-    expect(screen.getByText('Working…')).toBeInTheDocument()
+    expect(screen.getByText('Arbejder')).toBeInTheDocument()
     const gruppe = container.querySelector('.rv-gruppe')!
     expect([...gruppe.children].map((e) => e.className)).toEqual([
       'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem', 'rv-arbejdsrunde',
@@ -247,13 +250,13 @@ describe('RaekkeTranskript', () => {
       .toContain('Læser')
   })
 
-  it('skifter tekst og Lucide-ikon når det aktuelle værktøj skifter', () => {
+  it('skifter tekst mens den aktive runde beholder liveness-pulsen', () => {
     const start = [tekst('Jeg undersøger problemet.'),
       statusKald('read_file', { path: 'app.ts' }, 'running')]
     const { container, rerender } = render(<RaekkeTranskript blocks={start} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-file-text')
+    expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeInTheDocument()
     expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
     expect(container.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Jarvis arbejder')
@@ -264,7 +267,7 @@ describe('RaekkeTranskript', () => {
     ]} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Redigerer app.ts')
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-file-pen')
+    expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeInTheDocument()
   })
 
   it('opdaterer teksten mens argumenterne til samme kald strømmer ind', () => {
@@ -330,6 +333,7 @@ describe('RaekkeTranskript', () => {
       { type: 'tool_use_summary', summary: 'Læste filen', preceding_tool_use_ids: ['read_file-1'] },
     ]} streaming />)
     expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-arbejdsknap .jarvis-ring')).toBeInTheDocument()
   })
 
   it('slukker først shimmeren naar det endelige svar begynder', () => {
@@ -431,8 +435,9 @@ describe('RaekkeTranskript', () => {
   it('folder arbejdet SAMMEN når streamingen er slut — svaret bliver stående', () => {
     // Det var praecis fejlen 22/9: raekkerne blev staaende bagefter, og
     // synteserne druknede i dem.
-    render(<RaekkeTranskript blocks={TUR} streaming={false} />)
-    expect(screen.getByText('Slog noget op og kørte en kommando · 41s')).toBeInTheDocument()
+    render(<RaekkeTranskript blocks={TUR} streaming={false} varighedSekunder={65} />)
+    expect(screen.getByText('Slog noget op og kørte en kommando')).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: '1m 5s' })).toBeInTheDocument()
     // Skjulte runder maa ikke fylde DOM'en i en lang gemt samtale.
     expect(screen.queryByText('Bash')).toBeNull()
     expect(screen.getByText(/ikke betalingsklar/)).toBeInTheDocument()
@@ -464,7 +469,7 @@ describe('RaekkeTranskript', () => {
 
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
     render(<RaekkeTranskript blocks={TUR_UNDER_ARBEJDE} streaming />)
-    expect(screen.getByText('Working…')).toBeInTheDocument()
+    expect(screen.getByText('Arbejder')).toBeInTheDocument()
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 
@@ -473,9 +478,9 @@ describe('RaekkeTranskript', () => {
       <RaekkeTranskript blocks={[tekst('Jeg undersøger det nu.')]} streaming />,
     )
 
-    expect(screen.getByText('Working…')).toBeInTheDocument()
+    expect(screen.getByText('Arbejder')).toBeInTheDocument()
     expect([...container.querySelector('.raekkevisning')!.children].map((e) => e.className))
-      .toEqual(['rv-tur', 'rv-svar'])
+      .toEqual(['rv-tur rv-tur--statisk', 'rv-svar'])
   })
 
   it('folder ved det bekræftede slutsvar før svarteksten er færdig med at streame', () => {
@@ -721,8 +726,8 @@ describe('RaekkeTranskript', () => {
   })
 
   it('kan åbnes igen efter turen er slut', () => {
-    render(<RaekkeTranskript blocks={TUR} streaming={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Slog noget op og kørte en kommando · 41s/ }))
+    render(<RaekkeTranskript blocks={TUR} streaming={false} varighedSekunder={65} />)
+    fireEvent.click(screen.getByRole('button', { name: /Slog noget op og kørte en kommando 1m 5s/ }))
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 })

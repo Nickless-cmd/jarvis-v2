@@ -16,8 +16,8 @@
  *
  * ## Hvad den IKKE rører
  *
- * Composer, liveness-indikator og save-rail (Bjørn 22/9-2026: «vores composer
- * og liveness indikator og savedrail osv. Skal blive»). Kun transskriptet.
+ * Composer og save-rail ligger udenfor. Den tidligere separate liveness-linje
+ * er siden samlet ind i den aktive arbejdsrunde.
  * Prosaen går stadig gennem `BlocksRenderer`, så markdown, kodeblokke og
  * billeder er nøjagtig som i bobblevisningen.
  */
@@ -36,6 +36,8 @@ import { BlocksRenderer, afslutForladteKald, etiketterFraBlokke } from './Blocks
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { useFoldPosition } from './useFoldPosition'
 import { BilledArbejdeAnimation, levendeBilledArbejde } from './ImageGeneration'
+import { JarvisRing } from '../shell/JarvisRing'
+import { RullendeTokens, RullendeUr } from '../feedback/RullendeTal'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -303,7 +305,7 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, svarBegyndt, config, etiket, beskedId,
+  elementer, streaming, sidste, svarBegyndt, config, etiket, beskedId, turSekunder,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
@@ -312,6 +314,7 @@ function ArbejdsrundeImpl({
   config?: ApiConfig
   beskedId?: string
   etiket?: string
+  turSekunder?: number | null
 }) {
   const [aaben, setAaben] = useState(false)
   const foldRef = useRef<HTMLButtonElement>(null)
@@ -335,6 +338,9 @@ function ArbejdsrundeImpl({
   // Det ægte signal er `finalAnswerStarted` (serverens `final_answer_start`):
   // det siger «arbejdsfasen er slut», uafhængigt af hvilke blokke der lander.
   const visShimmer = streaming && sidste && (koerer || !svarBegyndt)
+  // Puls og hele-tur-ur bliver på den sidste aktive runde helt til stream-stop.
+  // Tekstens shimmer følger fortsat final_answer_start som før.
+  const aktivRunde = streaming && sidste
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
@@ -353,13 +359,17 @@ function ArbejdsrundeImpl({
         {...(visShimmer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <span className="rv-arbejdsikon" aria-hidden="true">
-          <Ikon size={13} strokeWidth={1.75} />
-          <Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} />
+          {aktivRunde
+            ? <JarvisRing size={15} spinning tone="working" />
+            : <><Ikon size={13} strokeWidth={1.75} /><Ikon className="rv-ikon-glimt" size={13} strokeWidth={1.75} /></>}
         </span>
         <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
+        {aktivRunde && typeof turSekunder === 'number'
+          ? <span className="rv-rundeur"><RullendeUr sek={turSekunder} /></span>
+          : null}
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /><FoldPil aaben={aaben} className="rv-ikon-glimt" /></span>
       </button>
       <Arbejdsdetaljer elementer={elementer} aaben={aaben} streaming={streaming} config={config} beskedId={beskedId} />
@@ -369,6 +379,7 @@ function ArbejdsrundeImpl({
 
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
   a.streaming === b.streaming && a.sidste === b.sidste && a.svarBegyndt === b.svarBegyndt
+  && a.turSekunder === b.turSekunder
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
@@ -382,6 +393,7 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
 
 function RaekkeTranskriptImpl({
   blocks, streaming, finalAnswerStarted = false, beskedId, config, rundeEtiketter,
+  elapsedMs = 0, tokens = 0, varighedSekunder = null,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
@@ -389,12 +401,21 @@ function RaekkeTranskriptImpl({
   beskedId?: string
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
+  elapsedMs?: number
+  tokens?: number
+  varighedSekunder?: number | null
 }) {
-  const { arbejde, svar, kald, sekunder } = opdel(blocks, streaming && !finalAnswerStarted)
+  const { arbejde, svar, kald } = opdel(blocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
   const sektioner = opdelArbejdsrunder(arbejde)
+  // En syntese kan lande efter et afsluttet tool-kald, før næste kald starter.
+  // Den må ikke stjæle "aktiv" fra den seneste runde i det mellemrum.
+  let sidsteRundeIndex = -1
+  for (let i = 0; i < sektioner.length; i++) {
+    if (sektioner[i]?.slags === 'runde') sidsteRundeIndex = i
+  }
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
   const familier = arbejde.flatMap((e) =>
@@ -405,11 +426,12 @@ function RaekkeTranskriptImpl({
   // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const arbejdeKoerer = streaming && !finalAnswerStarted
+  const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Den første tekst-delta kan lande før det første tool-kald. Turhovedet skal
   // stadig være den første synlige del af Jarvis' tur; ellers hopper det ind
   // over tekst, der allerede er begyndt at streame. Et rent, afsluttet svar
   // beholder den enkle visning uden turhoved.
-  const visTurhoved = arbejde.length > 0 || (arbejdeKoerer && svar.length > 0)
+  const visTurhoved = arbejde.length > 0 || streaming || (arbejdeKoerer && svar.length > 0)
   const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
@@ -422,7 +444,10 @@ function RaekkeTranskriptImpl({
             knapRef={turRef}
             aaben={aaben}
             koerer={arbejdeKoerer && aabenManuelt === null}
-            tekst={arbejdeKoerer && aabenManuelt === null ? 'Working…' : turFortalt(familier, kald, sekunder)}
+            tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
+            meta={streaming ? <span className="rv-turMeta shimmer"><RullendeTokens tokens={tokens} /> tokens</span> : null}
+            sekunder={!streaming ? turSekunder : null}
+            foldbar={arbejde.length > 0}
             onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}
           />
           {arbejde.length > 0 && (
@@ -431,8 +456,9 @@ function RaekkeTranskriptImpl({
                 if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
                 if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
                 return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                  sidste={i === sektioner.length - 1} svarBegyndt={finalAnswerStarted}
-                  config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId} />
+                  sidste={i === sidsteRundeIndex} svarBegyndt={finalAnswerStarted}
+                  config={config} etiket={etiketFor(s.elementer, etiketter)} beskedId={beskedId}
+                  turSekunder={turSekunder} />
               })}
             </div>
           )}

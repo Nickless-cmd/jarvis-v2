@@ -91,4 +91,9 @@
 .rullende .hjul-spor span {
   height: 1em; display: flex; align-items: center; justify-content: center;
 }
-.rullende .tegn { color: var(--fg-3); }
+.rullende .tegn {
+  color: var(--fg-3);
+  /* Et separat flex-item med kun et mellemrum kollapser ellers til nul bredde:
+     `1m 5s` ender visuelt som `1m5s`. */
+  white-space: pre;
+}

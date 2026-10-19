@@ -33,6 +33,11 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 
+.rv-turMeta {
+  flex: none; display: inline-flex; align-items: baseline; gap: 4px;
+  color: var(--rv-tertiary, #a6a59c); white-space: nowrap;
+}
+
 /* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
    teksten hver gang et sekund skifter (17/10-2026).
 

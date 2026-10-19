@@ -169,7 +169,8 @@ describe('CodeView', () => {
     })
     try {
       wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
-      expect(await screen.findByText(/Komprimerer kontekst/)).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText(/Komprimerer kontekst/)).toBeInTheDocument()
+      expect(document.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
       expect(await screen.findByText(/15\.000 konteksttokens frigjort/)).toBeInTheDocument()
     } finally {
       vi.mocked(api.getContextUsage).mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, model_window: 0, overhead_tokens: 0, compacting: false, compacted: false })
@@ -224,10 +225,9 @@ describe('CodeView', () => {
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
     const pauseCard = container.querySelector('.composer-notices .pauseask')
-    const liveness = container.querySelector('.liveness')
     expect(pauseCard).toBeInTheDocument()
     expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
-    expect(pauseCard!.compareDocumentPosition(liveness!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
   })
 
   it('fører historiske kilder fra transcriptet ind i den fælles inspector', async () => {

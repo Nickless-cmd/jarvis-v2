@@ -24,7 +24,7 @@ import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
@@ -34,11 +34,15 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
   raekker: boolean
+  elapsedMs?: number
+  tokens?: number
+  varighedSekunder?: number | null
 }) {
   const paced = usePacedBlocks(blocks, streaming)
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
-        beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter} />
+        beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
+        elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />
     : <BlocksRenderer blocks={paced} density={density} streaming={streaming}
         rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
         beskedId={beskedId} config={config} />
@@ -61,6 +65,8 @@ function MessageRowImpl({
   turStart,
   turSlut,
   varighedSekunder,
+  elapsedMs,
+  tokens,
   onWorkExpanded,
   paceFinalAnswer,
   onAnswerPaced,
@@ -92,6 +98,10 @@ function MessageRowImpl({
   turSlut?: number | null
   /** Turens varighed udledt af transskriptet (persisterede ture). */
   varighedSekunder?: number | null
+  /** Hele den aktive turs forløbne tid; code-rækken viser den ved den aktive runde. */
+  elapsedMs?: number
+  /** Code-turens levende output-token-tal. */
+  tokens?: number
   onWorkExpanded?: () => void
   paceFinalAnswer?: boolean
   onAnswerPaced?: () => void
@@ -208,7 +218,8 @@ function MessageRowImpl({
                   paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
                   finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
-                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker} />}
+                  rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
+                  elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

@@ -15,7 +15,6 @@ import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
-import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
@@ -74,6 +73,7 @@ import { SideOpgaveKort, type SideOpgaveHandlinger } from '../components/chat/Si
 import { startSideOpgave, worktreeTilOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
+import { varighedFraTider } from '../lib/turTid'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
 // (repo) + runtime-home (~/.jarvis-v2/) + eget workspace. Member: KUN eget workspace.
@@ -954,6 +954,17 @@ export function CodeView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  const varighedForBesked = useMemo(() => {
+    const ud = new Map<string, number>()
+    let sidsteBruger: string | null = null
+    for (const m of transcriptMessages) {
+      if (m.role === 'user') { sidsteBruger = m.created_at; continue }
+      if (m.role !== 'assistant') continue
+      const sekunder = varighedFraTider(sidsteBruger, m.created_at)
+      if (sekunder !== null) ud.set(m.id, sekunder)
+    }
+    return ud
+  }, [transcriptMessages])
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
@@ -1249,6 +1260,7 @@ export function CodeView({
               blocks={withoutPauseAsk(m.content)}
               density="compact"
               streaming={false}
+              varighedSekunder={varighedForBesked.get(m.id) ?? null}
               createdAt={m.created_at}
               beskedId={m.id}
               sessionId={sessionId}
@@ -1262,13 +1274,15 @@ export function CodeView({
             </div>
             </Fragment>
           ))}
-          {stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText) && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config} />
+          {stream.status === 'working' && (
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
+              elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
-          {!(stream.status === 'working' && (stream.blocks.length > 0 || !!stream.provisionalText)) && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config} />
+          {stream.status !== 'working' && bgActive && followState.status === 'working' && (
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
+              elapsedMs={bgElapsedMs} tokens={followState.usage.output} />
           )}
           {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
               styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
@@ -1285,17 +1299,6 @@ export function CodeView({
               <PauseAndAskCard ask={pendingPauseAsk} />
             </div>
           )}
-          {/* Liveness PERSISTENT lige over composeren (som Claude Code) — står
-              altid, viser "klar" i hvile og lyser op ved et run (lokalt ELLER
-              cross-device fra mobil). */}
-          <LivenessIndicator
-            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
-            elapsedMs={bgActive && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
-            density="compact"
-            workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
-            tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
-            compacting={compacting}
-          />
           <div className="composer-notices">
             <GodkendelsesKort sessionId={sessionId} />
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}

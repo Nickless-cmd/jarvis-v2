@@ -15,7 +15,7 @@
  * og fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer`
  * plus det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
  */
-import type { Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formaterTurTid } from '../../lib/turTid'
 import { RullendeTid } from './RullendeTid'
@@ -42,6 +42,8 @@ export interface TurHovedProps {
   koerer?: boolean
   /** Turens forløbne sekunder. Vises som `42s` / `1m 5s`; `null` = intet ur. */
   sekunder?: number | null
+  /** Levende metadata efter teksten, fx code-turens rullende token-tal. */
+  meta?: ReactNode
   /** Om der er noget at folde. `false` = hovedet er kun en skillestreg med
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
    *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
@@ -50,11 +52,12 @@ export interface TurHovedProps {
 }
 
 export function TurHoved({
-  tekst, aaben, onToggle, koerer = false, sekunder = null, foldbar = true, knapRef,
+  tekst, aaben, onToggle, koerer = false, sekunder = null, meta, foldbar = true, knapRef,
 }: TurHovedProps) {
   const indhold = (
     <>
       <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
+      {meta}
       {typeof sekunder === 'number' ? (
         <RullendeTid tekst={formaterTurTid(sekunder)} className={koerer ? 'shimmer' : ''} />
       ) : null}

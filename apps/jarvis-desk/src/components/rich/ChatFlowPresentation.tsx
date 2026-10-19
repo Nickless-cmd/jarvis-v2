@@ -5,11 +5,12 @@ import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
-import { useTurSekunder } from '../../lib/turTid'
+import { formaterTurTid, useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
-import { TurHoved } from './TurHoved'
+import { RullendeTid } from './RullendeTid'
+import { FoldPil, TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -143,13 +144,8 @@ export function ChatFlowPresentation({
   const visTurhoved = harArbejde || streaming || sekunder !== null
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
-  // rolig fallback i samme stabile celle.
+  // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
   const rundeTekst = harArbejde ? (activeLine || 'Arbejder…') : null
-  const turTekst = aktiv
-    ? 'Tænker'
-    : model.terminalState === 'interrupted' || model.terminalState === 'failed'
-      ? model.hovedTekst
-      : 'Tænkte'
 
   // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
   // Bjørn selv har foldet. `null` betyder «følg fasen».
@@ -161,10 +157,6 @@ export function ChatFlowPresentation({
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
   const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
-  // Under arbejdet er syntesen altid synlig. Pilen styrer kun de tekniske
-  // detaljer. Når slutsvaret begynder, bliver samme linje det sammenklappede
-  // turhoved og styrer hele arbejdsgruppen.
-  const gruppeAaben = aktiv ? true : aaben
   const visArbejdsdetaljer = retainedWork.length > 0 && arbejdeAabent
 
   return (
@@ -172,24 +164,13 @@ export function ChatFlowPresentation({
       {visTurhoved ? (
         <>
           <TurHoved
-            aaben={aktiv ? arbejdeAabent : aaben}
+            aaben={aaben}
             foldbar={harArbejde}
             koerer={streaming && !finalAnswerStarted}
             sekunder={sekunder}
-            tekst={turTekst}
-            ikon={<Brain size={15} strokeWidth={1.8} />}
-            detalje={rundeTekst ? (
-              <span className="chat-flow-round-line" data-testid="chat-flow-round-line">
-                <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
-                  size={15} strokeWidth={1.8} />
-                <span className="chat-flow-round-label" data-testid="chat-flow-synthesis">
-                  <LabelSkift tekst={rundeTekst} arbejder={aktiv}
-                    className={aktiv ? 'shimmer' : ''} fastIkon />
-                </span>
-              </span>
-            ) : null}
+            tekst={model.hovedTekst}
             onToggle={() => {
-              const naeste = aktiv ? !arbejdeAabent : !aaben
+              const naeste = !aaben
               setAabenManuelt(naeste)
               if (naeste) onWorkExpanded?.()
             }}
@@ -198,15 +179,47 @@ export function ChatFlowPresentation({
               på stedet under turhovedets streg og forsvinder, når svaret
               begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
               at folde en afsluttet tur ud. */}
-          <div className="chat-flow-gruppe" hidden={!gruppeAaben}>
-            {aktiv && activeSynthesis ? (
+          <div className="chat-flow-gruppe" hidden={!aaben}>
+            {aktiv && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                aria-label={activeSynthesis}>
+                aria-label={[activeSynthesis, `Tænker ${typeof sekunder === 'number' ? formaterTurTid(sekunder) : ''}`,
+                  rundeTekst].filter(Boolean).join('. ')}>
                 {levendeSyntese ? (
                   <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
                     aria-hidden="true">
                     <SynteseLinje tekst={levendeSyntese.tekst} noegle={levendeSyntese.noegle} />
+                  </div>
+                ) : null}
+                {rundeTekst ? (
+                  <div className="chat-flow-round" data-testid="chat-flow-round">
+                    <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
+                      aria-hidden="true">
+                      <Brain className="chat-flow-thinking-icon" data-testid="chat-flow-thinking-icon"
+                        size={15} strokeWidth={1.8} />
+                      <span className="chat-flow-thinking-label">Tænker</span>
+                      {typeof sekunder === 'number' ? (
+                        <RullendeTid tekst={formaterTurTid(sekunder)} />
+                      ) : null}
+                      <span className="chat-flow-round-divider">|</span>
+                      <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
+                        size={15} strokeWidth={1.8} />
+                      <span className="chat-flow-round-label" data-testid="chat-flow-round-label">
+                        <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
+                      </span>
+                    </div>
+                    {retainedWork.length > 0 ? (
+                      <button
+                        type="button"
+                        className="chat-flow-round-fold"
+                        data-testid="chat-flow-round-fold"
+                        aria-expanded={arbejdeAabent}
+                        aria-label={arbejdeAabent ? 'Skjul arbejdet' : 'Vis arbejdet'}
+                        onClick={() => setAabenManuelt(!arbejdeAabent)}
+                      >
+                        <FoldPil aaben={arbejdeAabent} />
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

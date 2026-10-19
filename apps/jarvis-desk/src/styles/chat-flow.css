@@ -70,10 +70,62 @@
   overflow: hidden;
 }
 
-/* Rundelinjen genbruger samme label-morph som værktøjsrunderne. Ikon og
-   label står i hver sin stabile celle, så tekstskift ikke flytter linjen. */
-.chat-flow-round-icon {
+/* Status + rundelinje ligger som linje to DIREKTE under syntesen. Den vokser
+   kun med sit indhold, så fold-pilen står lige efter rundeteksten i stedet
+   for ude ved chatviewets højre kant. */
+.chat-flow-round {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-flow-round-line {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 1.35em;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--fg-2, #aeb6bf);
+}
+
+.chat-flow-thinking-icon,
+.chat-flow-round-icon,
+.chat-flow-round-divider {
   flex: none;
+}
+
+.chat-flow-thinking-label { white-space: nowrap; }
+
+.chat-flow-round-divider {
+  color: var(--fg-3, #8f98a3);
+  opacity: .55;
+}
+
+.chat-flow-round-fold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-3, #898781);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.chat-flow-round-fold:hover { color: var(--fg-1); }
+
+.chat-flow-round-fold:focus-visible {
+  outline: 2px solid var(--focus, #6aa9ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.chat-flow-round-icon {
   color: var(--fg-2, #aeb6bf);
 }
 

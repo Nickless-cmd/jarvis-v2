@@ -116,6 +116,23 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
+  it('viser Arbejder med det samme, men venter med tokens og skillelinje', () => {
+    const { container, rerender } = rtlRender(
+      <RaekkeTranskript blocks={[]} streaming tokens={0} />,
+    )
+    const hoved = container.querySelector('.rv-tur')!
+    expect(hoved).toHaveTextContent('Arbejder')
+    expect(hoved).not.toHaveAttribute('data-skillelinje')
+    expect(container.querySelector('.rv-turMeta')).toBeNull()
+
+    rerender(<RaekkeTranskript blocks={[]} streaming tokens={17} />)
+    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '17')
+    expect(hoved).not.toHaveAttribute('data-skillelinje')
+
+    rerender(<RaekkeTranskript blocks={[tekst('Jeg undersøger det.')]} streaming tokens={17} />)
+    expect(hoved).toHaveAttribute('data-skillelinje')
+  })
+
   it('holder arbejdet åbent gennem synteser og folder først ved bekræftet afslutning', () => {
     const arbejde: ContentBlock[] = [tanke('Finder årsagen.'), kald('read_file')]
     const { container, rerender } = rtlRender(<RaekkeTranskript blocks={arbejde} streaming />)
@@ -135,7 +152,7 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Færdig.')).toBeInTheDocument()
   })
 
-  it('har læsbare foldpile og flytter pulsen og det rullende ur til den aktive runde', () => {
+  it('har læsbare foldpile og flytter pulsen og det rullende ur til den aktive runde', async () => {
     const { container, rerender } = render(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'running'),
     ]} streaming elapsedMs={65_000} tokens={123} />)
@@ -157,7 +174,9 @@ describe('RaekkeTranskript', () => {
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'running'),
     ]} streaming elapsedMs={66_000} tokens={124} />)
-    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '124')
+    await waitFor(() => {
+      expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '124')
+    })
     expect(container.querySelector('.rv-rundeur [role="timer"]')).toHaveAttribute('aria-label', '1m 6s')
     // En række-overlay tegnede en stor grå firkant efter "Working…".
     const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')

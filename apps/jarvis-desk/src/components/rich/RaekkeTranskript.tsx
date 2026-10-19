@@ -432,6 +432,14 @@ function RaekkeTranskriptImpl({
   // over tekst, der allerede er begyndt at streame. Et rent, afsluttet svar
   // beholder den enkle visning uden turhoved.
   const visTurhoved = arbejde.length > 0 || streaming || (arbejdeKoerer && svar.length > 0)
+  // `Arbejder` står fra turens start. Kun skillestregen venter på det første
+  // synlige tekststykke, så den ankommer sammen med syntesen/svaret i stedet
+  // for at tegne et tomt arbejdsområde flere sekunder i forvejen.
+  const harSynligTekst = blocks.some((blok) => blok.type === 'text' && blok.text.trim().length > 0)
+  const visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
+  // Tokenfeltet eksisterer først når tælleren faktisk er begyndt. Dermed står
+  // der hverken `0 tokens` eller et ensomt `k tokens` ved turstart.
+  const visTokens = streaming && Number.isFinite(tokens) && tokens > 0
   const aaben = aabenManuelt ?? arbejdeKoerer
   const turRef = useRef<HTMLButtonElement>(null)
   const huskFold = useFoldPosition(turRef, aaben)
@@ -445,7 +453,8 @@ function RaekkeTranskriptImpl({
             aaben={aaben}
             koerer={arbejdeKoerer && aabenManuelt === null}
             tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
-            meta={streaming ? <span className="rv-turMeta"><RullendeTokens tokens={tokens} /> tokens</span> : null}
+            meta={visTokens ? <span className="rv-turMeta"><RullendeTokens tokens={tokens} /> tokens</span> : null}
+            skillelinje={visSkillelinje}
             sekunder={!streaming ? turSekunder : null}
             foldbar={arbejde.length > 0}
             onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}

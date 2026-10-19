@@ -29,10 +29,45 @@ class TriggerResult:
     run: RunView
 
 
+_CUTOVER_TRUE: frozenset[str] = frozenset({"1", "true", "yes", "on"})
+
+
+def _cutover_tokens() -> set[str]:
+    """Env-værdien som mængde: globale sandheds-ord ELLER ``kind:id``-par.
+
+    Bjørn 19/10-2026: «Tænd Routine-cutover på én enkelt opgave som prøve
+    først». Det kræver en forgrening der er smallere end alt-eller-intet —
+    uden den ville en prøve på én opgave flytte alle 13 levende recurrings
+    plus alle scheduled jobs på én gang.
+    """
+    raw = str(os.environ.get("JARVIS_ROUTINES_CUTOVER") or "").strip().lower()
+    if not raw:
+        return set()
+    return {part.strip() for part in raw.split(",") if part.strip()}
+
+
 def routine_cutover_enabled() -> bool:
-    return str(os.environ.get("JARVIS_ROUTINES_CUTOVER") or "").strip().lower() in {
-        "1", "true", "yes", "on",
-    }
+    """GLOBAL cutover — sand kun når env siger det uden at pege på enkeltkilder.
+
+    Bevarer de seks eksisterende kaldesteder (scheduled, heartbeat) urørt:
+    sætter man kun ``recurring:rec-x``, er den globale vej fortsat slukket.
+    """
+    return bool(_cutover_tokens() & _CUTOVER_TRUE)
+
+
+def cutover_allows(source_kind: str, source_id: str) -> bool:
+    """Må netop DENNE kilde gå Routine-vejen?
+
+    ``1/true/yes/on`` = alle kilder. ``recurring:rec-x,scheduled:y`` = kun de
+    nævnte. Ukendt/tom = nej (legacy-vejen, som i dag).
+    """
+    tokens = _cutover_tokens()
+    if not tokens:
+        return False
+    if tokens & _CUTOVER_TRUE:
+        return True
+    key = f"{source_kind}:{str(source_id or '').strip()}".lower()
+    return key in tokens
 
 
 def _runner_principal() -> RoutinePrincipal:
@@ -159,7 +194,7 @@ def dispatch_recurring(
     adapters: RoutineTriggerAdapters | None = None,
     occurrence_id: str | None = None,
 ) -> TriggerResult | None:
-    if routine_cutover_enabled():
+    if cutover_allows("recurring", source_id):
         return (adapters or RoutineTriggerAdapters()).enqueue_recurring(
             source_id, occurrence_id=occurrence_id,
         )

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9108/17342 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9111/17344 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9108/17342 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6070 | 11787 | 51% |
+| `core.services` | 6073 | 11789 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9108/17342 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2577)
+## Undocumented public functions (2576)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1837,17 +1837,16 @@ Generated from source. 9108/17342 functions/methods documented (52%). The list b
 - `core/services/routine_service.py` :: `RoutineService.stop` (L297)
 - `core/services/routine_service.py` :: `RoutineService.update` (L227)
 - `core/services/routine_service.py` :: `RoutineView.id` (L55)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L75)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L69)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L118)
-- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L128)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L157)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L170)
-- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L180)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L140)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L136)
-- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L148)
-- `core/services/routine_trigger_adapters.py` :: `routine_cutover_enabled` (L32)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L110)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L104)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_system` (L153)
+- `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.fire` (L163)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_recurring` (L192)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_scheduled` (L205)
+- `core/services/routine_trigger_adapters.py` :: `dispatch_system` (L215)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L175)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L171)
+- `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L183)
 - `core/services/routine_types.py` :: `RoutinePatch.changes` (L106)
 - `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L44)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)

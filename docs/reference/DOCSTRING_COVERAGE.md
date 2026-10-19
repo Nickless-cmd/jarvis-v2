@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9120/17356 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9124/17361 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9120/17356 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6082 | 11801 | 51% |
+| `core.services` | 6085 | 11805 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 555 | 1095 | 50% |
+| `core.tools` | 556 | 1096 | 50% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 9120/17356 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2577)
+## Undocumented public functions (2578)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1859,7 +1859,8 @@ Generated from source. 9120/17356 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `build_rule_engine_surface` (L224)
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
-- `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
+- `core/services/run_autonomy_context.py` :: `reset_user_present` (L75)
+- `core/services/run_autonomy_context.py` :: `set_run_identity` (L115)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L874)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
@@ -2286,14 +2287,14 @@ Generated from source. 9120/17356 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6731)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6756)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6794)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6790)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6727)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6689)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6811)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6742)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6739)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6764)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6802)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6798)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6735)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6697)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6819)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6750)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

@@ -10,11 +10,21 @@ from __future__ import annotations
 def pump_first_pass(
     run, *, controller, tool_scope: str, loop, queue, sentinel, stream_fn=None,
 ) -> None:
-    from core.services.run_autonomy_context import set_autonomous, set_run_identity
+    from core.services.run_autonomy_context import (
+        set_autonomous, set_run_identity, set_user_present,
+    )
     from core.tools.tool_scoping import set_local_exec, set_tool_scope
 
     set_run_identity(str(run.run_id or ""), str(getattr(run, "origin", "") or ""))
     set_autonomous(bool(getattr(run, "autonomous", False)))
+    # Samme tilstedeværelse som hovedkørslen (19/10-2026): uden den ville
+    # første-pass-pumpen sammensætte prompten med det autonome katalog, mens
+    # resten af turen havde det fulde sæt — to svar på ét spørgsmål.
+    try:
+        from core.tools.autonomous_tool_policy import presence_for_run
+        set_user_present(presence_for_run(run))
+    except Exception:
+        set_user_present(False)
     try:
         if tool_scope:
             set_tool_scope(tool_scope)
@@ -41,4 +51,5 @@ def pump_first_pass(
         # autonomy flag bleed into a later visible prompt assembly.
         set_run_identity("", "")
         set_autonomous(False)
+        set_user_present(False)
         loop.call_soon_threadsafe(queue.put_nowait, sentinel)

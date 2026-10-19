@@ -60,6 +60,27 @@ def resolve_autonomous_session(origin: str | None) -> str:
         return session_id
 
 
+#: Sessions-id'er der IKKE er et sted et menneske sidder. `auto-` er de
+#: roterende autonome siloer, `dreaming-` er drømmesessionen. En samtale Bjørn
+#: sidder i har ingen af disse præfikser.
+_SYSTEM_SESSION_PREFIXES: tuple[str, ...] = (
+    _SESSION_PREFIX, "dreaming-", "autonomous-",
+)
+
+
+def is_system_session(session_id: str | None) -> bool:
+    """Er sessionen en system-silo frem for et sted Bjørn kan være?
+
+    Én definition, fordi svaret afgør om en kørsel må arve brugerens
+    værktøjssæt (19/10-2026). Kopierede præfiks-lister driver fra hinanden, og
+    så bliver den ene stille virkningsløs — det er målt i dette hus før.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return False
+    return sid.startswith(_SYSTEM_SESSION_PREFIXES)
+
+
 def _origin_of_session(session_id: str) -> str:
     """Udled oprindelse fra et ``auto-{origin}-{dato}``-id."""
     if not session_id.startswith(_SESSION_PREFIX):

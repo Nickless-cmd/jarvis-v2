@@ -109,10 +109,65 @@ def allowed_tools_for_origin(origin: str) -> frozenset[str]:
     return AUTONOMOUS_TOOLS | extra
 
 
+def presence_for_run(run) -> bool:
+    """Er der et menneske i den anden ende af DENNE kørsel?
+
+    SESSIONEN FØRST — ikke oprindelsen (Bjørn 19/10-2026: «det er en vækning,
+    ikke et autonomt baggrunds-run»).
+
+    En vækning lander i den samtale hvor Bjørn er. Behandlede vi den som et
+    baggrunds-run, ankom den uden de værktøjer opgaven kræver: målt 19/10 gav
+    `origin="inbox"` 104 værktøjer og hverken `bash`, `web_search` eller
+    `notify_user`, mens `wakeup` gav 107. Svaret landede stadig i hans samtale
+    — det var bare tandløst.
+
+    To led skal holde, og de svarer på hver sit:
+
+    1. Sessionen er ikke en system-silo. En `auto-recurring-…`-silo er ikke et
+       sted nogen sidder.
+    2. Han har talt i den for nylig. En app-session der ikke har været rørt i
+       timer er ikke tilstedeværelse — den er en gammel række, og et run der
+       arver hans rettigheder der, gør det uden vidner.
+
+    Vinduet er hans eget: `_BRUGER_KARANTAENE_S` (10 min), den samme grænse
+    vækkeren allerede bruger for «han er her». Genbrugt frem for kopieret, så
+    de to ikke kan drive fra hinanden.
+
+    Fail-closed: enhver fejl → False, og så gælder den autonome politik som før.
+    """
+    sid = str(getattr(run, "session_id", "") or "").strip()
+    if not sid:
+        return False
+    try:
+        from core.services.autonomous_sessions import is_system_session
+    except Exception:  # en manglende klassifikation må lukke sættet, ikke åbne det
+        return False
+    if is_system_session(sid):
+        return False
+    try:
+        from core.services.wakeup_dispatcher import _bruger_skrev_for_nylig
+    except Exception:  # samme: uden en læser kan vi ikke se nogen
+        return False
+    try:
+        return bool(_bruger_skrev_for_nylig(sid))
+    except Exception:  # brækket historik-læsning lukker sættet — fail-closed
+        return False
+
+
 def is_allowed(name: str) -> bool:
     """Fail closed for autonomous calls; visible runs use their normal policy."""
-    from core.services.run_autonomy_context import current_origin, is_autonomous
+    from core.services.run_autonomy_context import (
+        current_origin, is_autonomous, user_present,
+    )
 
     if not is_autonomous():
+        return True
+    # TILSTEDEVÆRELSE (19/10/2026): en kørsel der lander i en samtale hvor
+    # Bjørn er, arver den sessions sæt. `is_autonomous` bliver ved med at være
+    # sand — det er dét der giver `bash` sin indespærring — men politikken
+    # spørger nu også om der er nogen i den anden ende. Uden dette led var
+    # vækningen tandløs: den landede i hans samtale uden de værktøjer opgaven
+    # krævede.
+    if user_present():
         return True
     return str(name or "").strip() in allowed_tools_for_origin(current_origin())

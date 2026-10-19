@@ -1116,9 +1116,17 @@ async def _stream_visible_run(
     # run-scopede moenster som workspace-trust nedenfor — og ikke et opslag paa
     # `autonomous-`-praefikset, som er en konvention og ikke en sandhed.
     try:
-        from core.services.run_autonomy_context import set_autonomous, set_run_identity
+        from core.services.run_autonomy_context import (
+            set_autonomous, set_run_identity, set_user_present,
+        )
         set_autonomous(bool(getattr(run, "autonomous", False)))
         set_run_identity(run.run_id, getattr(run, "origin", ""))
+        # TILSTEDEVÆRELSE (19/10-2026): en vækning der lander i Bjørns samtale
+        # skal arve den sessions værktøjssæt — ikke behandles som et
+        # baggrunds-run. Udledt af SESSIONEN, ikke af oprindelsen; se
+        # `autonomous_tool_policy.presence_for_run`.
+        from core.tools.autonomous_tool_policy import presence_for_run
+        set_user_present(presence_for_run(run))
     except Exception:
         pass
 

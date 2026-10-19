@@ -53,13 +53,35 @@ def _bruger_til_stede(run) -> bool:
     Flaget beholdes som faldback for kørsler uden en oprindelse, så adfærden er
     uændret for alt der ikke sætter den.
     """
+    # TILSTEDEVÆRELSE FØRST (19/10-2026). Kategorien blev tidligere afgjort af
+    # `origin`: enhver kendt system-oprindelse betød «intet menneske». Det er
+    # forkert for en vækning, der lander i Bjørns egen samtale — dér ER der et
+    # menneske, og præmissen «ingen bruger til stede» var netop falsk i det
+    # tilfælde funktionen blev bygget til.
+    #
+    # Spørgsmålet stilles nu til SESSIONEN, via samme definition som
+    # værktøjspolitikken bruger (`presence_for_run`), så de to ikke kan svare
+    # forskelligt. Kørslen sætter svaret i konteksten ved start — det er den
+    # billige vej, og oprindelsen er kun faldback.
+    try:
+        from core.services.run_autonomy_context import user_present as _ctx_present
+    except Exception:  # kørslen kan mangle konteksten — faldback nedenfor
+        _ctx_present = None
+    if _ctx_present is not None and _ctx_present():
+        return True
+    try:
+        from core.tools.autonomous_tool_policy import presence_for_run
+    except Exception:  # politik-modulet må ikke kunne vælte en tur
+        presence_for_run = None
+    if presence_for_run is not None and presence_for_run(run):
+        return True
     try:
         from core.services.autonomous_sessions import ORIGINS
-        o = str(getattr(run, "origin", "") or "").strip().lower()
-        if o in ORIGINS:
-            return False          # en kendt system-oprindelse: intet menneske
-    except Exception:
-        pass
+    except Exception:  # uden vokabularet falder vi tilbage til flaget
+        ORIGINS = ()
+    o = str(getattr(run, "origin", "") or "").strip().lower()
+    if o in ORIGINS:
+        return False          # en kendt system-oprindelse: intet menneske
     return not bool(getattr(run, "autonomous", False))
 
 
@@ -337,6 +359,10 @@ async def run_tool_batch(
     # broker for the client's result; the prep/finalize (dedup/cache/gate/format) and
     # the run_in_executor + heartbeat scaffolding are unchanged.
     _exec_fn = _execute_local_tool_calls if _local else _execute_simple_tool_calls
+    # Tilstedeværelsen måles ÉN gang for hele batchen (19/10-2026): den læser
+    # samtalens historik, og to kald ville både koste og kunne svare forskelligt
+    # midt i batchen.
+    _tilstede = _bruger_til_stede(run)
 
     async def _await_tools() -> list[dict]:
         return await loop.run_in_executor(
@@ -344,11 +370,14 @@ async def run_tool_batch(
             lambda: _ctx_for_exec.run(
                 _exec_fn,
                 _kald_til_exec,
-                force=run.autonomous,
+                # En vækning i Bjørns samtale har et menneske der kan svare, så
+                # godkendelses-gaten skal være levende — ellers arvede kørslen
+                # rettighederne uden at arve spørgsmålet.
+                force=run.autonomous and not _tilstede,
                 run_id=run.run_id,
                 session_id=run.session_id,
                 user_message=run.user_message,
-                user_present=_bruger_til_stede(run),
+                user_present=_tilstede,
                 **({"output_buffer": _output_buffer} if _output_buffer is not None else {}),
             ),
         )

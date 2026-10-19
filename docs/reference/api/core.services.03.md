@@ -466,8 +466,9 @@ _Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
 | function | `normalize_origin` | `(origin)` | — | [src](../../../core/services/autonomous_sessions.py#L35) |
 | function | `_today` | `()` | — | [src](../../../core/services/autonomous_sessions.py#L40) |
 | function | `resolve_autonomous_session` | `(origin)` | Returnér (opret idempotent) sessionen for (oprindelse, i dag). | [src](../../../core/services/autonomous_sessions.py#L44) |
-| function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L63) |
-| function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L73) |
+| function | `is_system_session` | `(session_id)` | Er sessionen en system-silo frem for et sted Bjørn kan være? | [src](../../../core/services/autonomous_sessions.py#L71) |
+| function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L84) |
+| function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L94) |
 
 ## `core/services/autonomous_stream_run.py`
 _Server-authoritative streaming lifecycle for autonomous visible runs._

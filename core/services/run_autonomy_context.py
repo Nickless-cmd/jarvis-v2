@@ -51,6 +51,46 @@ def is_autonomous() -> bool:
         return False
 
 
+# ── Tilstedeværelse: er der et menneske i den anden ende? (19/10-2026) ──────
+#
+# Bjørn: «en autonom vækning i en tilstedeværelse-session bør arve den
+# igangværende sessions permissions og tool-sæt — det er en vækning, ikke et
+# autonomt baggrunds-run».
+#
+# `is_autonomous` svarer på et ANDET spørgsmål: blev kørslen startet af
+# systemet? Det skal blive ved med at være sandt for en vækning — ellers mister
+# `bash` sin indespærring (K9). Tilstedeværelse er en separat kendsgerning, og
+# den sættes af kørslen selv, samme sted som flaget, udledt af SESSIONEN.
+
+_user_present: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "jarvis_user_present", default=False,
+)
+
+
+def set_user_present(vaerdi: bool):
+    """Markér om der er et menneske i den anden ende. Returnerer token'et."""
+    return _user_present.set(bool(vaerdi))
+
+
+def reset_user_present(token) -> None:
+    try:
+        _user_present.reset(token)
+    except Exception:  # token kan tilhøre en anden kontekst — reset er best-effort
+        pass
+
+
+def user_present() -> bool:
+    """Er der et menneske i den anden ende af DENNE kørsel? Kaster aldrig.
+
+    Fail-closed: ved vi det ikke, er svaret NEJ, og så gælder den autonome
+    politik som før.
+    """
+    try:
+        return bool(_user_present.get())
+    except Exception:  # uden for en kontekst: fail-closed, aldrig fail-open
+        return False
+
+
 # ── Koerslens identitet: run-id og origin (15/9-2026) ────────────────────
 #
 # `skill_invoked` stod med TOMT run_id paa hans synlige tur 16:29, selvom

@@ -401,3 +401,95 @@ def test_konteksten_nulstilles_mellem_koersler():
     assert user_present() is True
     reset_user_present(tok)
     assert user_present() is False
+
+
+# ── 2c. EJERSKABS-BEVISET (Bjørn 19/10-2026) ───────────────────────────────
+#
+# «Giv sessioner et ejerskabs-bevis i stedet for kanal-gæt.»
+#
+# Testene her bygger deres EGEN base i stedet for at læse de levende
+# sessioner. Det er med vilje: en hardkodet session kan ændre sig, og en
+# `real_db`-test kan ikke skelne «reglen virker» fra «rækken findes
+# tilfældigvis». Her er hver række noget testen selv lagde der.
+
+
+def _base(tmp_path, monkeypatch):
+    """Egen DB med skemaet — så hvert eneste svar er testens eget."""
+    import core.runtime.db as db
+    import core.runtime.db_core as db_core
+
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "ejerskab.db")
+    db.init_db()
+    return db
+
+
+def _session(conn, sid: str, title: str) -> None:
+    conn.execute(
+        "INSERT INTO chat_sessions (session_id, title, created_at, updated_at) "
+        "VALUES (?, ?, '2026-10-19T12:00:00+00:00', '2026-10-19T12:00:00+00:00')",
+        (sid, title),
+    )
+
+
+def _besked(conn, sid: str, user_id: str, i: int) -> None:
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, "
+        "created_at, user_id) VALUES (?, ?, 'user', 'hej', ?, ?)",
+        (f"{sid}-{i}", sid, f"2026-10-19T12:0{i}:00+00:00", user_id),
+    )
+
+
+def test_kun_hans_egen_samtale_bevises(tmp_path, monkeypatch):
+    """Kernen i beviset: hans id — og INGEN andres."""
+    from core.identity.owner_resolver import is_owner_app_session, owner_user_id
+
+    db = _base(tmp_path, monkeypatch)
+    ejer = owner_user_id()
+    assert ejer, "testen kræver en kendt ejer"
+
+    with db.connect() as c:
+        _session(c, "s-kun-ham", "en almindelig titel")
+        _besked(c, "s-kun-ham", ejer, 1)
+
+        _session(c, "s-ingen-beskeder", "en almindelig titel")
+
+        _session(c, "s-kun-andre", "en almindelig titel")
+        _besked(c, "s-kun-andre", "en-fremmed-bruger", 1)
+
+        # Den farlige: begge har talt her. Et rent «har han skrevet?» ville
+        # åbne den — målt 19/10-2026 i seks levende sessioner.
+        _session(c, "s-delt", "en almindelig titel")
+        _besked(c, "s-delt", ejer, 1)
+        _besked(c, "s-delt", "en-fremmed-bruger", 2)
+
+    assert is_owner_app_session("s-kun-ham") is True
+    assert is_owner_app_session("s-ingen-beskeder") is False
+    assert is_owner_app_session("s-kun-andre") is False
+    assert is_owner_app_session("s-delt") is False, (
+        "en delt samtale må ikke åbnes af et tilstedeværelses-bevis"
+    )
+
+
+def test_tomt_user_id_hverken_hjaelper_eller_blokerer(tmp_path, monkeypatch):
+    """877 rækker i den levende base har intet stempel — de er ældre, ikke fremmede."""
+    from core.identity.owner_resolver import is_owner_app_session, owner_user_id
+
+    db = _base(tmp_path, monkeypatch)
+    ejer = owner_user_id()
+    with db.connect() as c:
+        _session(c, "s-blandet-tom", "titel")
+        _besked(c, "s-blandet-tom", ejer, 1)
+        _besked(c, "s-blandet-tom", "", 2)
+
+    assert is_owner_app_session("s-blandet-tom") is True
+
+
+def test_krypteret_medlems_session_lukkes_ogsaa_uden_beskeder(tmp_path, monkeypatch):
+    """Krypterings-leddet skal holde selvstændigt, ikke kun via ejer-stemplet."""
+    from core.identity.owner_resolver import is_owner_app_session
+
+    db = _base(tmp_path, monkeypatch)
+    with db.connect() as c:
+        _session(c, "s-medlem", "enc:v1:60UhWQs6Nu2MlruEKA4CGA0")
+
+    assert is_owner_app_session("s-medlem") is False

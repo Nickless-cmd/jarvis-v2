@@ -197,7 +197,7 @@ def is_owner_app_session(session_id: str | None) -> bool:
     ``write_file``). Der er den farlige fejl at give dem væk, så her kræves
     positivt bevis.
 
-    Fire led, og hvert af dem lukker en målt fejlvej:
+    Fem led, og hvert af dem lukker en målt fejlvej:
 
     1. Sessionen skal FINDES. ``get_chat_session`` svarer ``None`` for et
        ukendt id, og den gamle vej behandlede det som «app» fordi
@@ -209,7 +209,11 @@ def is_owner_app_session(session_id: str | None) -> bool:
        kunne læse andres private sessioner»), altså ikke hans samtale. Det er
        ikke et gæt på et præfiks — det er formatets semantik.
     3. Klassifikationen må ikke være en ekstern kanal.
-    4. Enhver fejl undervejs → ``False``.
+    4. EJERSKABS-BEVISET: kun ejerens ``user_id`` må optræde i sessionens
+       beskeder. Se den lange begrundelse ved opslaget nedenfor — kort sagt
+       er «han har skrevet her» ikke nok, fordi et autonomt run skriver hans
+       id på sin egen prompt, og seks sessioner har både hans og andres id.
+    5. Enhver fejl undervejs → ``False``.
 
     Læser KUN titel-kolonnen. ``get_chat_session`` er udfaset og forbudt for
     nye kaldere (``scripts/verify_history_reads.py``); en tilstedeværelses-
@@ -238,8 +242,57 @@ def is_owner_app_session(session_id: str | None) -> bool:
             # Reglen skal holde selvstændigt — ikke kun fordi `presence_for_run`
             # tilfældigvis tjekker siloen først.
             return False
+        # EJERSKABS-BEVISET (19/10-2026). Bjørn: «giv sessioner et
+        # ejerskabs-bevis i stedet for kanal-gæt».
+        #
+        # Indtil nu var grænsen INDIREKTE: en medlems-session blev afvist
+        # fordi dens titel var `enc:v1:`-krypteret, ikke fordi nogen kunne
+        # bevise hvem der ejede den. Krypterer vi en dag medlems-sessioner
+        # mindre, åbner grænsen uden at nogen har rørt den.
+        #
+        # Beviset findes allerede: `chat_messages.user_id`. `list_chat_sessions`
+        # har brugt det hele tiden. Målt 19/10-2026 mod de 648 levende
+        # sessioner:
+        #
+        #   * 243 har mindst én besked fra ejeren — men det er IKKE nok.
+        #     `auto-recurring-20261019` har 139 af dem, fordi et autonomt run
+        #     skriver Bjørns id på sin EGEN prompt. Et rent «har han skrevet
+        #     her?» beviser «noget kørte i hans navn».
+        #   * SEKS sessioner har både hans og andres id — én med 11230 hans
+        #     og 1935 andres. Det er en DELT samtale, og et rent
+        #     tilstedeværelses-opslag ville åbne den.
+        #
+        # Derfor den stærke form: han skal have skrevet der, og INGEN andre
+        # må. Målt: 189 af 648 består — inkl. hans nuværende samtale. De delte
+        # og medlems-sessionerne består ikke, og det gælder nu DIREKTE frem
+        # for gennem en krypterings-antagelse.
+        #
+        # To ting beviset ikke er, og som skal stå her så det ikke overdrives:
+        # `user_id` stemples af runnet, ikke af et menneske — det beviser
+        # «kun Bjørns identitet har talt her», ikke «en person sad og skrev».
+        # Og tomme `user_id`-rækker (877 i alt) tælles hverken med eller
+        # imod; de er ældre rækker uden stempel.
         from core.services.chat_sessions import parse_channel_from_session_title
-        return parse_channel_from_session_title(title)[0] not in ("discord", "telegram")
+        if parse_channel_from_session_title(title)[0] in ("discord", "telegram"):
+            return False
+        ejer = owner_user_id()
+        if not ejer:
+            # Uden en kendt ejer kan vi ikke bevise noget — og så lukker vi.
+            return False
+        with connect() as conn:
+            if not conn.execute(
+                "SELECT 1 FROM chat_messages WHERE session_id = ? AND user_id = ? LIMIT 1",
+                (sid, ejer),
+            ).fetchone():
+                return False
+            if conn.execute(
+                "SELECT 1 FROM chat_messages "
+                "WHERE session_id = ? AND COALESCE(user_id, '') <> '' AND user_id <> ? "
+                "LIMIT 1",
+                (sid, ejer),
+            ).fetchone():
+                return False
+        return True
     except Exception:  # fail-closed: en brækket læsning må ikke åbne sættet
         return False
 

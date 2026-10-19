@@ -19,12 +19,14 @@ import { EditedFilesCard } from './EditedFilesCard'
 import { maalteRedigeringer, redigeredeDiffPar, redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
 import { usePacedBlocks } from '../../lib/usePacedBlocks'
+import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
+import { usePaceMode } from '../../lib/streamPacing'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
@@ -37,8 +39,34 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   elapsedMs?: number
   tokens?: number
   varighedSekunder?: number | null
+  /** Kørslens id — pacing-cursoren nøgles på det, så to beskeder ikke deler ur. */
+  runId?: string | null
 }) {
-  const paced = usePacedBlocks(blocks, streaming)
+  // ── To ure, ét valg (19/10-2026) ────────────────────────────────────────
+  //
+  // Begge hooks KALDES ubetinget — hooks-reglen forbyder en betinget call. Men
+  // kun det valgte lag er AKTIVT: `live` er false for det andet, og så starter
+  // hverken dets interval eller dets frame-løkke. En ubetinget call er derfor
+  // ikke det samme som to kørende ure.
+  //
+  // Nøglen er `runId` og ikke kun beskedens id: cursoren ligger i hookets
+  // state under `${runId}:chat-text`, og uden et unikt id pr. kørsel ville
+  // alle levende beskeder dele ét ur og hoppe mellem hinanden. Persisterede
+  // beskeder er inaktive (streaming=false → `harVaeretLive` er falsk), så de
+  // rører aldrig cursoren; `beskedId` er kun faldback for en levende besked
+  // der endnu ikke har fået sit run-id.
+  const paceMode = usePaceMode()
+  const jaevn = paceMode === 'chat'
+  const chatPaced = useChatPacedBlocks(blocks, {
+    live: streaming && jaevn,
+    finalAnswerStarted,
+    // Også arbejdets narration paces — samme kurve som Chat Mode. Se
+    // `streamPacing.ts`: forskellen mellem de to lag er kurven, ikke træet.
+    paceAllText: streaming && jaevn,
+    runId: runId ?? beskedId ?? null,
+  })
+  const codePaced = usePacedBlocks(blocks, streaming && !jaevn)
+  const paced = jaevn ? chatPaced : codePaced
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
         beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
@@ -219,6 +247,7 @@ function MessageRowImpl({
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
                   finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
+                  runId={runId}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />

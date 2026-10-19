@@ -3,6 +3,7 @@ import { loadTheme, saveTheme, applyTheme, type Theme } from '../../lib/themeSto
 import { useFigurVist } from '../../lib/figurVist'
 import { useFigurSkin, SKIN_VALG } from '../../lib/figurSkin'
 import { useRaekkevisning, writeRaekkevisning } from '../../lib/visningsPref'
+import { usePaceMode, writePaceMode } from '../../lib/streamPacing'
 import { useChatFlow } from '../../hooks/useChatFlow'
 import type { ChatFlowPreference } from '../../lib/chatFlowApi'
 
@@ -17,6 +18,7 @@ const OPTIONS: { key: Theme; label: string }[] = [
 export function ThemeSection() {
   const [theme, setTheme] = useState<Theme>(loadTheme())
   const raekker = useRaekkevisning()
+  const jaevn = usePaceMode() === 'chat'
   const pick = (t: Theme) => { setTheme(t); saveTheme(t); applyTheme(t) }
   const [figur, saetFigur] = useFigurVist()
   // Skinnet bor samme sted som til/fra (figur.json i main-processen), så
@@ -89,6 +91,24 @@ export function ThemeSection() {
         <span>
           <strong>Rækkevisning</strong>
           <span className="account-google-hint">Ét svar, én linje pr. hændelse. Fold en linje ud for at se indholdet. Slå fra for at få boblerne tilbage.</span>
+        </span>
+      </label>
+      {/* Jævn tekststrøm (19/10-2026). Code Mode har haft sit eget pacing-lag
+          siden rækkevisningen blev bygget: 33 ms-tick med op til 28 tegn pr.
+          tick (~848 tegn/s) og et spring frem ved 330 tegns efterslæb. Chat
+          Mode ruller med 48–72 kodepunkter pr. SEKUND og fordeler efterslæbet
+          over 12 s. Forskellen er kurven — træet, folden og teleporteringen af
+          slutsvaret er det samme i begge. Skiftet virker MIDT i en strøm, så
+          man kan mærke forskellen på den samme tekst. */}
+      <label className="figur-indstilling">
+        <input
+          type="checkbox"
+          checked={jaevn}
+          onChange={(e) => writePaceMode(e.target.checked ? 'chat' : 'code')}
+        />
+        <span>
+          <strong>Jævn tekststrøm</strong>
+          <span className="account-google-hint">Samme rul som Chat Mode: teksten kommer i et jævnt tempo og springer ikke frem, når serveren sender hurtigere end skærmen kan læse.</span>
         </span>
       </label>
       </div>

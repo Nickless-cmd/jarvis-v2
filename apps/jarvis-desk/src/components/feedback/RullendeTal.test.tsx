@@ -1,17 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { RullendeUr } from './RullendeTal'
+import { RullendeTokens, RullendeUr } from './RullendeTal'
 
 /**
- * Hjulenes `translateY`, i træets rækkefølge (venstre → højre).
+ * Hjulenes aktuelle cifre i træets rækkefølge (venstre → højre).
  *
- * Et hjul viser cifferet ved `-position em`, så positionen er det eneste
- * sted i DOM'en hvor man kan se HVILKET ciffer der faktisk står — og dermed
- * om et hjul blev GENBRUGT (står på det gamle ciffer) eller nymonteret (står
- * på sit eget).
+ * Hvert hjul har ét aktuelt ciffer og, mens det ruller, ét udgående ciffer.
+ * Det aktuelle står sidst i gridcellen.
  */
-const spor = (c: HTMLElement): string[] =>
-  Array.from(c.querySelectorAll('.hjul-spor')).map((e) => (e as HTMLElement).style.transform)
+const aktuelle = (c: HTMLElement): string[] =>
+  Array.from(c.querySelectorAll('.hjul')).map((e) => e.lastElementChild?.textContent ?? '')
 
 describe('RullendeTal', () => {
   /**
@@ -24,15 +22,33 @@ describe('RullendeTal', () => {
    */
   it('«9s» → «10s»: det nye ciffer foran monteres på sit eget tal', () => {
     const { container, rerender } = render(<RullendeUr sek={9} />)
-    expect(spor(container)).toEqual(['translateY(-9em)'])
+    expect(aktuelle(container)).toEqual(['9'])
 
     rerender(<RullendeUr sek={10} />)
-    expect(spor(container)[0]).toBe('translateY(-1em)')
+    expect(aktuelle(container)).toEqual(['1', '0'])
+    expect(container.querySelectorAll('.hjul-ciffer--ind-op')).toHaveLength(1)
   })
 
   /** Uret skriver «5s»/«45s»/«1m 12s» — ikke «00:05». */
   it('uret skriver varigheden som «1m 12s»', () => {
     const { container } = render(<RullendeUr sek={72} />)
     expect(container.querySelector('[role="timer"]')?.getAttribute('aria-label')).toBe('1m 12s')
+  })
+
+  it('tegner token-cifrene som synlig tekst sammen med k-suffikset', () => {
+    const { container } = render(<RullendeTokens tokens={1_234} />)
+    expect(container.querySelector('.rullende')).toHaveAttribute('aria-label', '1.2k')
+    expect(aktuelle(container)).toEqual(['1', '2'])
+    expect([...container.querySelectorAll('.tegn')].map((e) => e.textContent)).toEqual(['.', 'k'])
+  })
+
+  it('holder det aktuelle ciffer i normal layout, så turens shimmer kan male det', () => {
+    const { container, rerender } = render(<RullendeUr sek={59} />)
+    rerender(<RullendeUr sek={60} />)
+    expect(container.querySelectorAll('.hjul-spor')).toHaveLength(0)
+    // Ener-hjulet genbruges og ruller 9 → 0; det nye minut-hjul monteres
+    // direkte på 1, så format-skiftet ikke starter en falsk ekstra animation.
+    expect(container.querySelectorAll('.hjul-ciffer--ind-op')).toHaveLength(1)
+    expect(aktuelle(container)).toEqual(['1', '0'])
   })
 })

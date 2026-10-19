@@ -5,14 +5,13 @@ import { varighed } from '../../lib/jobsApi'
  *
  *  «sådan som tallende ruller nede fra og op … osse token tællerne i linjen»
  *
- *  Hvert CIFER er sit eget hjul, og hjulet ruller som et mekanisk
- *  kilometertæller-hjul: når cifferet går 9 → 0 mens tallet STIGER, ruller
- *  sporet frem gennem en dublet-0 og sættes tilbage til den ægte 0 — den
- *  springer ikke baglæns gennem 8-7-6. Sek-tiere har cyklus 6 (0-5), så
- *  59 → 00 ruller rigtigt i stedet for at vise et 6-tal undervejs.
+ *  Hvert CIFER er sit eget hjul. Det gamle ciffer ruller ud, mens det nye
+ *  ruller ind fra den modsatte kant — også ved 9 → 0. Cifrene ligger i samme
+ *  gridcelle, så de forbliver almindelig tekst i linjens fælles shimmermaske.
  *
  *  Token-tallet kan også FALDE (kontekst-komprimering). Derfor kan hjulet
- *  rulle begge veje: ved fald glider sporet ned og cifferet kommer ovenfra.
+ *  rulle begge veje: ved fald glider det gamle ciffer ned, og det nye kommer
+ *  ovenfra.
  */
 
 type Retning = 'op' | 'ned'
@@ -29,87 +28,23 @@ function CifferHjul({
   retning: Retning
   hurtig?: boolean
 }) {
-  const sporRef = useRef<HTMLSpanElement | null>(null)
-  const indeksRef = useRef(0)
-  const foersteRef = useRef(true)
-
-  // Viklingen lander på dubletten og skal sættes tilbage. Lytteren sidder på
-  // hjulet — ikke i en effekt der genstarter pr. værdi — for ellers kunne et
-  // hurtigt skift rive lytteren væk og efterlade hjulet på dubletten.
+  const v = ((vaerdi % cyklus) + cyklus) % cyklus
+  const forrigeRef = useRef<number | null>(null)
+  const forrige = forrigeRef.current
+  const animer = forrige !== null && forrige !== v
   useEffect(() => {
-    const spor = sporRef.current
-    if (!spor) return
-    const landede = () => {
-      if (indeksRef.current !== cyklus) return
-      spor.style.transition = 'none'
-      indeksRef.current = 0
-      spor.style.transform = 'translateY(0em)'
-      void spor.offsetHeight
-      spor.style.transition = ''
-    }
-    spor.addEventListener('transitionend', landede)
-    return () => spor.removeEventListener('transitionend', landede)
-  }, [cyklus])
-
-  useEffect(() => {
-    const spor = sporRef.current
-    if (!spor) return
-    const v = ((vaerdi % cyklus) + cyklus) % cyklus
-
-    const saet = (i: number) => {
-      indeksRef.current = i
-      spor.style.transform = `translateY(-${i}em)`
-    }
-
-    // Ved montering sættes hjulet DIREKTE på tallet. Ellers ville et genbrugt
-    // hjul rulle fra 0 til sin værdi, hver gang formen skifter (fx «999» →
-    // «1.0k») og React monterer et nyt hjul på samme plads.
-    if (foersteRef.current) {
-      foersteRef.current = false
-      spor.style.transition = 'none'
-      saet(v)
-      void spor.offsetHeight
-      spor.style.transition = ''
-      return
-    }
-
-    // Står hjulet midt i en vikling, afsluttes den først — ellers ville det
-    // nye tal blive kastet væk.
-    if (indeksRef.current === cyklus) {
-      spor.style.transition = 'none'
-      saet(0)
-      void spor.offsetHeight
-      spor.style.transition = ''
-    }
-
-    const nu = indeksRef.current
-    if (v === nu) return
-    if (retning === 'ned' || v > nu) {
-      saet(v)
-      return
-    }
-
-    // Stigning hvor cifferet går 9 → 0: rul frem gennem dubletten.
-    saet(cyklus)
-    const noed = window.setTimeout(() => {
-      if (indeksRef.current !== cyklus) return
-      spor.style.transition = 'none'
-      saet(0)
-      void spor.offsetHeight
-      spor.style.transition = ''
-    }, 900)
-    return () => window.clearTimeout(noed)
-  }, [vaerdi, cyklus, retning])
-
-  const brikker: string[] = []
-  for (let i = 0; i <= cyklus; i++) brikker.push(String(i % cyklus))
+    forrigeRef.current = v
+  }, [v])
 
   return (
     <span className={hurtig ? 'hjul hjul-hurtig' : 'hjul'} aria-hidden="true">
-      <span className="hjul-spor" ref={sporRef}>
-        {brikker.map((b, i) => (
-          <span key={i}>{b}</span>
-        ))}
+      {animer ? (
+        <span key={`forrige-${forrige}`} className={`hjul-ciffer hjul-ciffer--forrige hjul-ciffer--ud-${retning}`}>
+          {forrige}
+        </span>
+      ) : null}
+      <span key={`aktuel-${v}`} className={`hjul-ciffer${animer ? ` hjul-ciffer--ind-${retning}` : ''}`}>
+        {v}
       </span>
     </span>
   )
@@ -139,7 +74,7 @@ function Ruller({
         // hjul 0 gå 9 → 1. Da 1 < 9 ramte det viklings-grenen og viste «0» —
         // uret stod på «90s» i stedet for «10s». Med ankeret fra højre
         // beholder 's' sin nøgle, ener-hjulet ruller 9 → 0 (den RIGTIGE
-        // vikling), og det nye tier-hjul monteres forfra på sit eget ciffer.
+        // rulning), og det nye tier-hjul monteres forfra på sit eget ciffer.
         const anker = antal - i
         return /\d/.test(c) ? (
           <CifferHjul

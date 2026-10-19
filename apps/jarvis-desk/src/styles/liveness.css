@@ -56,7 +56,7 @@
   font-variant-numeric: tabular-nums;
 }
 .rullende .hjul {
-  position: relative; display: inline-block;
+  position: relative; display: inline-grid;
   width: .62em; height: 1em; overflow: hidden;
   line-height: 1; white-space: nowrap;
 }
@@ -79,21 +79,39 @@
    bogstaverne i «tokens»):
      uden stiven  → cifferet 3,0 px for højt
      med stiven   → 0,0 px (identisk) */
+.rullende .hjul::before,
+.rullende .hjul-ciffer { grid-area: 1 / 1; }
 .rullende .hjul::before { content: "0"; visibility: hidden; }
-.rullende .hjul-spor {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
+/* Hvert synligt ciffer bliver i NORMAL tekst-layout. Den gamle 0-9-strimmel
+   var absolut positioneret og flyttet flere `em`; Chromium kunne derfor ikke
+   tage det valgte ciffer med i ancestorens `background-clip: text`. Inde i
+   shimmeren stod kun de faste tegn tilbage: «k tokens» og «m s».
+
+   To cifferlag i samme gridcelle giver samme hjulbevægelse, men begge har
+   deres tekstmaske på den rigtige plads. Dermed er cifrene både synlige og
+   en del af det ENE shimmerfelt over hele linjen. */
+.rullende .hjul-ciffer {
+  display: flex; width: 100%; height: 1em;
+  align-items: center; justify-content: center;
   will-change: transform;
-  backface-visibility: hidden;
-  transition: transform .45s cubic-bezier(.22, 1, .36, 1);
 }
-.rullende .hjul.hjul-hurtig .hjul-spor { transition-duration: .22s; }
-.rullende .hjul-spor span {
-  height: 1em; display: flex; align-items: center; justify-content: center;
-}
+.rullende .hjul-ciffer--ind-op { animation: hjul-ind-op .45s cubic-bezier(.22, 1, .36, 1) both; }
+.rullende .hjul-ciffer--ud-op { animation: hjul-ud-op .45s cubic-bezier(.22, 1, .36, 1) both; }
+.rullende .hjul-ciffer--ind-ned { animation: hjul-ind-ned .45s cubic-bezier(.22, 1, .36, 1) both; }
+.rullende .hjul-ciffer--ud-ned { animation: hjul-ud-ned .45s cubic-bezier(.22, 1, .36, 1) both; }
+.rullende .hjul.hjul-hurtig .hjul-ciffer { animation-duration: .22s; }
+@keyframes hjul-ind-op { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes hjul-ud-op { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+@keyframes hjul-ind-ned { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes hjul-ud-ned { from { transform: translateY(0); } to { transform: translateY(100%); } }
 .rullende .tegn {
   color: var(--fg-3);
   /* Et separat flex-item med kun et mellemrum kollapser ellers til nul bredde:
      `1m 5s` ender visuelt som `1m5s`. */
   white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rullende .hjul-ciffer { animation: none; }
+  .rullende .hjul-ciffer--forrige { display: none; }
 }

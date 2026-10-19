@@ -26512,7 +26512,7 @@
       ]
     },
     "recurring_tasks": {
-      "digest": "7d:9e:1c:a1:ca:01:5f:53:19:fd:aa:eb:19:46:bc:9e:2f:f9:44:49:93:76:9f:eb:8b:43:80:53:22:3e:81:c9",
+      "digest": "5d:c2:da:13:fb:99:b8:3b:b3:49:88:52:85:d9:be:bc:58:e0:69:8e:80:2a:68:0b:70:0c:81:ba:a6:23:f6:25",
       "schema": {
         "columns": [
           {
@@ -26632,6 +26632,14 @@
             "type": "TEXT",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "verified_owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -27717,7 +27725,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_inbox_preferences": {
@@ -28169,7 +28177,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_runs": {
@@ -28432,7 +28440,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "routine_tombstones": {

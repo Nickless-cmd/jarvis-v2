@@ -276,3 +276,66 @@ def test_focus_over_graensen_klippes_men_logges(tmp_path, monkeypatch, caplog):
         t = rt.create_recurring_task(focus=instruktion, interval_minutes=1440)
     assert len(t["focus"]) == rt._FOCUS_MAX
     assert any("klippet" in r.message for r in caplog.records)
+
+
+# ── Ejerbevis (19/10-2026) ───────────────────────────────────────────────────
+# Routine-migrationen kraever et STRUKTURERET ejerbevis for at flytte en
+# opgave. `recurring_tasks` havde ingen saadan kolonne, saa alle 13 levende
+# opgaver faldt i karantaene med `missing_structured_owner`. Disse tests
+# vogter baade at kolonnen findes OG at den ikke giver ejerskab af sig selv.
+
+
+def test_verified_owner_defaults_tomt_og_giver_ikke_ejerskab(tmp_path, monkeypatch):
+    """En ny opgave maa IKKE kunne migreres: tomt bevis = ingen ejer."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="inspektion", interval_minutes=360)
+    with db.connect() as c:
+        v = c.execute(
+            "SELECT verified_owner_user_id FROM recurring_tasks WHERE task_id=?",
+            (t["task_id"],),
+        ).fetchone()[0]
+    assert v == ""
+
+    from core.services.routine_migration import _classify
+
+    owner, reason, evidence = _classify({
+        "source_kind": "recurring",
+        "task_id": t["task_id"],
+        "user_id": "",                 # ingen skaber heller
+        "verified_owner_user_id": "",  # intet bevis
+        "focus": "inspektion",
+    })
+    assert owner is None
+    assert reason == "missing_structured_owner"
+    assert "no_authoritative_recipient" in evidence
+
+
+def test_set_verified_owner_skriver_og_afviser_tomt(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="arkiv", interval_minutes=1440)
+    tid = t["task_id"]
+
+    assert rt.set_verified_owner(tid, "canonical-user") is True
+    with db.connect() as c:
+        v = c.execute(
+            "SELECT verified_owner_user_id FROM recurring_tasks WHERE task_id=?", (tid,),
+        ).fetchone()[0]
+    assert v == "canonical-user"
+
+    with pytest.raises(ValueError):
+        rt.set_verified_owner(tid, "   ")
+
+
+def test_migrationen_laeser_kolonnen_naar_den_findes(tmp_path, monkeypatch):
+    """Ledningen skal vaere forbundet: `_source_rows` skal baere beviset med."""
+    _fresh(tmp_path, monkeypatch)
+    t = rt.create_recurring_task(focus="arkiv", interval_minutes=1440)
+    rt.set_verified_owner(t["task_id"], "canonical-user")
+
+    from core.runtime.db_core import connect
+    from core.services.routine_migration import _source_rows
+
+    with connect() as c:
+        rows = [r for r in _source_rows(c) if r["source_kind"] == "recurring"]
+    assert rows, "migrationen fandt ingen recurring-raekker"
+    assert rows[0]["verified_owner_user_id"] == "canonical-user"

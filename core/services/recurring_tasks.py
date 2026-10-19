@@ -86,7 +86,43 @@ def _ensure_table() -> None:
             conn.execute(
                 "ALTER TABLE recurring_tasks ADD COLUMN inbox_on_complete INTEGER NOT NULL DEFAULT 0"
             )
+        # EJERBEVIS (19/10-2026). `routine_migration._classify` kraever et
+        # STRUKTURERET ejerbevis for at flytte en opgave til Routine-motoren —
+        # `user_id` alene taelles ikke, fordi den ogsaa kan vaere den der
+        # BESTILTE opgaven paa vegne af en anden. recurring_tasks havde ingen
+        # saadan kolonne, saa alle 13 levende opgaver faldt i karantaene med
+        # `missing_structured_owner` (maalt 19/10-2026).
+        #
+        # '' = intet bevis. Det er med vilje default: en raekke uden bevis
+        # forbliver i legacy-vejen og kan ikke flyttes ved et uheld. Kun de
+        # opgaver hvor ejeren er efterproevet saettes eksplicit.
+        if "verified_owner_user_id" not in cols:
+            conn.execute(
+                "ALTER TABLE recurring_tasks ADD COLUMN verified_owner_user_id TEXT NOT NULL DEFAULT ''"
+            )
         conn.commit()
+
+
+def set_verified_owner(task_id: str, user_id: str) -> bool:
+    """Saet det efterproevede ejerbevis paa en recurring task.
+
+    Vaerdien skal vaere en KANONISK ``user_id`` (den der staar i ``users``),
+    ikke et eksternt id som Discord-id'et: ``_classify`` resolver ganske vist
+    eksterne id'er, men et bevis der allerede er kanonisk kan ikke fejlsluttes
+    til en anden bruger. Returnerer True hvis raekken blev opdateret.
+    """
+    token = (user_id or "").strip()
+    if not token:
+        raise ValueError("verified_owner_user_id maa ikke vaere tom")
+    _ensure_table()
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET verified_owner_user_id = ?, updated_at = ? "
+            "WHERE task_id = ?",
+            (token, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
 
 
 def set_channel(task_id: str, channel: str) -> bool:

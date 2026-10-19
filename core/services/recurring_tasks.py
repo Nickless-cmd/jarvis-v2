@@ -100,7 +100,46 @@ def _ensure_table() -> None:
             conn.execute(
                 "ALTER TABLE recurring_tasks ADD COLUMN verified_owner_user_id TEXT NOT NULL DEFAULT ''"
             )
+        # UDFOERSELSVALG (19/10-2026). Bjørn: «når en rutine oprettes skal man
+        # vælge om den skal udføre i baggrunden og rapportere til inbox eller om
+        # rutines udføres af dig hvor brugeren sidst var aktiv».
+        #
+        # Kolonnen er VALGET — ikke en afledning af `session_id`. Forskellen er
+        # ikke akademisk: en medicin-påmindelse hører til hvor Bjørn ER, og en
+        # låst session ville pege på den samtale der var aktiv den dag opgaven
+        # blev skrevet. `session` + tom `session_id` betyder derfor «brugerens
+        # aktive samtale, slået op når den fyrer».
+        #
+        # 'background' er default: alle rækker fra før kolonnen beholder deres
+        # adfærd, og en opgave uden valg maa ikke begynde at vække nogen.
+        if "execution_mode" not in cols:
+            conn.execute(
+                "ALTER TABLE recurring_tasks ADD COLUMN execution_mode TEXT NOT NULL DEFAULT 'background'"
+            )
         conn.commit()
+
+
+def set_execution_mode(task_id: str, mode: str) -> bool:
+    """Sæt hvor opgaven udføres: ``background`` eller ``session``.
+
+    ``background`` — isoleret run, resultatet lægges i indbakken og venter.
+    ``session``    — udføres hvor brugeren sidst var aktiv, og må vække der.
+
+    En ukendt værdi afvises frem for at blive en stille ``background``: et
+    valg nogen traf skal ikke forsvinde i en tastefejl.
+    """
+    vaerdi = str(mode or "").strip().lower()
+    if vaerdi not in {"background", "session"}:
+        raise ValueError("execution_mode skal vaere 'background' eller 'session'")
+    _ensure_table()
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET execution_mode = ?, updated_at = ? "
+            "WHERE task_id = ?",
+            (vaerdi, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
 
 
 def set_verified_owner(task_id: str, user_id: str) -> bool:
@@ -242,10 +281,15 @@ def rutine_session_id(task_id: str) -> str:
                         if valg:
                             return valg
             row = conn.execute(
-                "SELECT session_id FROM recurring_tasks WHERE task_id = ?",
+                "SELECT session_id, execution_mode FROM recurring_tasks WHERE task_id = ?",
                 (task_id,),
             ).fetchone()
-        return str(row[0] or "").strip() if row else ""
+        if not row:
+            return ""
+        # `session` uden en låst samtale betyder «slå den aktive op nu» — ikke
+        # «ingen adresse». En tom streng her lader `_maal_session` falde til
+        # ejerens app-samtale, som er præcis hvor Bjørn er.
+        return str(row[0] or "").strip()
     except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte gaten
         logger.debug("recurring_tasks: kunne ikke laese session for %s",
                      task_id, exc_info=True)
@@ -299,10 +343,19 @@ def er_session_rutine(task_id: str) -> bool:
                     if valg:
                         return valg == "session"
             row = conn.execute(
-                "SELECT session_id FROM recurring_tasks WHERE task_id = ?",
+                "SELECT session_id, execution_mode FROM recurring_tasks WHERE task_id = ?",
                 (task_id,),
             ).fetchone()
-        return bool(row and str(row[0] or "").strip())
+        if not row:
+            return False
+        # Det EKSPLICITTE valg vejer tungest: en opgave der er sat til `session`
+        # maa vaekke selv om dens `session_id` er tom — adressen slaaes op naar
+        # den fyrer, i stedet for at vaere laast til den samtale der var aktiv
+        # den dag opgaven blev skrevet.
+        valg = str(row[1] or "").strip().lower()
+        if valg:
+            return valg == "session"
+        return bool(str(row[0] or "").strip())
     except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte vækkeren
         logger.debug("recurring_tasks: kunne ikke afgoere session-mode for %s",
                      task_id, exc_info=True)

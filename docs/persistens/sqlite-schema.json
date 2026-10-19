@@ -26512,7 +26512,7 @@
       ]
     },
     "recurring_tasks": {
-      "digest": "5d:c2:da:13:fb:99:b8:3b:b3:49:88:52:85:d9:be:bc:58:e0:69:8e:80:2a:68:0b:70:0c:81:ba:a6:23:f6:25",
+      "digest": "1d:0b:83:f4:06:39:e4:47:ef:82:0f:1b:dd:f6:6d:87:5c:bd:14:ad:db:f9:99:b2:98:ac:06:b5:33:bd:e9:1d",
       "schema": {
         "columns": [
           {
@@ -26528,6 +26528,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "execution_mode",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'background'",
             "pk": 0,
             "hidden": 0
           },

@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { formaterTurTid, varighedFraTider } from './turTid'
+import { beregnTankeSekunder, formaterTurTid, varighedFraTider } from './turTid'
+import type { ContentBlock } from './sseProtocol'
+
+describe('beregnTankeSekunder', () => {
+  it('summerer kun thinking-tid og tæller ikke tool- eller svartid med', () => {
+    const blocks: ContentBlock[] = [
+      { type: 'thinking', thinking: 'første tanke', seconds: 2.8 },
+      { type: 'tool_use', id: 't1', name: 'bash', input: {}, status: 'done' },
+      { type: 'thinking', thinking: 'anden tanke', startet: 8_000 },
+      { type: 'text', text: 'svaret' },
+    ]
+    expect(beregnTankeSekunder(blocks, 12_500)).toBe(7)
+  })
+
+  it('opfinder ikke thinking-tid når udbyderen ikke sender thinking-blokke', () => {
+    expect(beregnTankeSekunder([{ type: 'text', text: 'direkte svar' }], 12_500)).toBeNull()
+  })
+})
 
 describe('varighedFraTider', () => {
   it('regner turen ud af spændet mellem brugertrækken og assistentrækken', () => {

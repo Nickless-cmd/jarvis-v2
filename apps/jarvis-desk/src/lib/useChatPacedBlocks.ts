@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 
-/** Mindste antal kodepunkter pr. frame, så en langsom kilde ikke hakker. */
-const MIN_CODE_POINTS = 2
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
-const BASE_CODE_POINTS_PER_SECOND = 480
+const BASE_CODE_POINTS_PER_SECOND = 72
 /** Selv en stor replay-backlog må ikke forvandle strømmen til et dump. */
-const MAX_CODE_POINTS_PER_SECOND = 720
+const MAX_CODE_POINTS_PER_SECOND = 120
 /** Hele efterslæbet forsøges fordelt over så mange sekunder, men det hårde
  *  hastighedsloft vinder altid. En hurtig server-replay må gerne skabe lidt
  *  forsinkelse; den må ikke gøre teksten ulæseligt hurtig. */
-const CATCH_UP_SECONDS = 2
+const CATCH_UP_SECONDS = 8
 /** Hårdt loft pr. frame. En tabt frame må ikke blive et spring. */
-const MAX_CODE_POINTS = 48
+const MAX_CODE_POINTS_PER_FRAME = 3
 /** Længste frame-afstand vi regner med. En lang pause må ikke give et spring. */
 const MAX_FRAME_DELTA_S = 0.1
 
@@ -87,10 +85,12 @@ export function useChatPacedBlocks(
   latest.current = { active, index, key, target }
   const frame = useRef<number | null>(null)
   const sidst = useRef(0)
+  const kredit = useRef(0)
   const sidsteKey = useRef('')
   if (sidsteKey.current !== key) {
     sidsteKey.current = key
     sidst.current = 0
+    kredit.current = 0
   }
   const tickRef = useRef<FrameRequestCallback>(() => undefined)
 
@@ -119,10 +119,19 @@ export function useChatPacedBlocks(
       MAX_CODE_POINTS_PER_SECOND,
       Math.max(BASE_CODE_POINTS_PER_SECOND, pending / CATCH_UP_SECONDS),
     )
-    const step = Math.min(
-      MAX_CODE_POINTS,
-      Math.max(MIN_CODE_POINTS, Math.ceil(rate * dt)),
+    // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
+    // ellers 72 tegn/s til mindst 120 tegn/s på en 60 Hz-skærm og endnu mere
+    // på hurtigere paneler. Kreditten giver samme rolige tempo uanset fps.
+    kredit.current = Math.min(
+      MAX_CODE_POINTS_PER_FRAME,
+      kredit.current + rate * dt,
     )
+    const step = Math.min(MAX_CODE_POINTS_PER_FRAME, Math.floor(kredit.current))
+    if (step <= 0) {
+      frame.current = requestAnimationFrame((time) => tickRef.current(time))
+      return
+    }
+    kredit.current -= step
     const end = Math.min(targetPoints.length, shownPoints.length + step)
     const next = { key: current.key, shown: targetPoints.slice(0, end).join('') }
     cursorRef.current = next

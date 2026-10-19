@@ -56,7 +56,7 @@ export function TurHoved({
     <>
       <span className={`rv-turTekst${koerer ? ' shimmer' : ''}`}>{tekst}</span>
       {typeof sekunder === 'number' ? (
-        <RullendeTid tekst={formaterTurTid(sekunder)} />
+        <RullendeTid tekst={formaterTurTid(sekunder)} className={koerer ? 'shimmer' : ''} />
       ) : null}
       {foldbar ? (
         <span className="rv-turC" aria-hidden="true">

@@ -5,7 +5,7 @@ import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
-import { formaterTurTid, useTurSekunder } from '../../lib/turTid'
+import { formaterTurTid, useTankeSekunder, useTurSekunder } from '../../lib/turTid'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
@@ -135,6 +135,10 @@ export function ChatFlowPresentation({
   // Persisterede ture har ingen stream-tilstand tilbage. Deres varighed er
   // udledt af transskriptet, så uret også står der (17/10-2026).
   const sekunder = useTurSekunder(turStart, turSlut) ?? varighedSekunder ?? null
+  const tankeSekunder = useTankeSekunder(blocks)
+  const tankeTekst = typeof tankeSekunder === 'number'
+    ? `Tænker ${formaterTurTid(tankeSekunder)}`
+    : 'Tænker'
 
   // Hovedet er turens skillestreg — ikke en overskrift for værktøjskald.
   // (Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools… det
@@ -183,7 +187,7 @@ export function ChatFlowPresentation({
             {aktiv && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                aria-label={[activeSynthesis, `Tænker ${typeof sekunder === 'number' ? formaterTurTid(sekunder) : ''}`,
+                aria-label={[activeSynthesis, tankeTekst,
                   rundeTekst].filter(Boolean).join('. ')}>
                 {levendeSyntese ? (
                   <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
@@ -198,8 +202,8 @@ export function ChatFlowPresentation({
                       <Brain className="chat-flow-thinking-icon" data-testid="chat-flow-thinking-icon"
                         size={15} strokeWidth={1.8} />
                       <span className="chat-flow-thinking-label">Tænker</span>
-                      {typeof sekunder === 'number' ? (
-                        <RullendeTid tekst={formaterTurTid(sekunder)} />
+                      {typeof tankeSekunder === 'number' ? (
+                        <RullendeTid tekst={formaterTurTid(tankeSekunder)} />
                       ) : null}
                       <span className="chat-flow-round-divider">|</span>
                       <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"

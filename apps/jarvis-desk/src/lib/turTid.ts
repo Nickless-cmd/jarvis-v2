@@ -25,6 +25,7 @@
  * sekunder alene indtil det første minut, derefter minutter og sekunder.
  */
 import { useEffect, useState } from 'react'
+import type { ContentBlock } from './sseProtocol'
 
 /** `12s` → `1m 5s` → `1t 4m`. Ingen indledende nuller: hvert tidsled skrives
  *  som et almindeligt tal, også lige efter minut- og timeskiftet. */
@@ -60,6 +61,45 @@ export function useTurSekunder(
   if (typeof start !== 'number' || !Number.isFinite(start)) return null
   const ende = typeof slut === 'number' && Number.isFinite(slut) ? slut : nu
   return Math.max(0, Math.round((ende - start) / 1000))
+}
+
+/** Summen af modellens faktiske thinking-blokke — ikke turens væg-ur.
+ * Afsluttede blokke bærer `seconds`; den ene åbne blok tælles fra `startet`.
+ * Mangler udbyderen thinking-blokke, returneres `null` frem for et opdigtet
+ * tal baseret på hele turen (som også indeholder tools og svarskrivning). */
+export function beregnTankeSekunder(
+  blocks: readonly ContentBlock[],
+  nu = Date.now(),
+): number | null {
+  let sekunder = 0
+  let harTanke = false
+  for (const block of blocks) {
+    if (!block || block.type !== 'thinking') continue
+    harTanke = true
+    if (typeof block.seconds === 'number' && Number.isFinite(block.seconds)) {
+      sekunder += Math.max(0, block.seconds)
+    } else if (typeof block.startet === 'number' && Number.isFinite(block.startet)) {
+      sekunder += Math.max(0, (nu - block.startet) / 1000)
+    }
+  }
+  return harTanke ? Math.max(0, Math.floor(sekunder)) : null
+}
+
+/** Levende thinking-tid. Uret kører kun mens en thinking-blok er åben; under
+ * tool-kald står tallet stille, selv om turens samlede ur fortsætter. */
+export function useTankeSekunder(blocks: readonly ContentBlock[]): number | null {
+  const [nu, setNu] = useState(() => Date.now())
+  const tankeAaben = blocks.some((block) => block?.type === 'thinking'
+    && block.seconds == null && block.startet != null)
+
+  useEffect(() => {
+    if (!tankeAaben) return undefined
+    setNu(Date.now())
+    const id = setInterval(() => setNu(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [tankeAaben])
+
+  return beregnTankeSekunder(blocks, nu)
 }
 
 /**

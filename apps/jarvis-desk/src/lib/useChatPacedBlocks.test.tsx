@@ -10,6 +10,7 @@ describe('useChatPacedBlocks', () => {
 
   beforeEach(() => {
     frames = []
+    ur = 0
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
       frames.push(callback)
       return frames.length
@@ -65,15 +66,15 @@ describe('useChatPacedBlocks', () => {
     // …og resten skal indhentes i trin, aldrig i ét spring.
     let previous = first.length
     let antalFrames = 0
-    while (shown().length < text.length && antalFrames < 400) {
+    while (shown().length < text.length && antalFrames < 2_400) {
       nextFrame()
       const now = shown().length
-      expect(now - previous).toBeLessThanOrEqual(60)
+      expect(now - previous).toBeLessThanOrEqual(2)
       previous = now
       antalFrames += 1
     }
     expect(shown()).toBe(text)
-    expect(antalFrames).toBeLessThan(400)
+    expect(antalFrames).toBeGreaterThan(1_000)
   })
 
   it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {
@@ -89,9 +90,9 @@ describe('useChatPacedBlocks', () => {
       rerender({ text: source })
       nextFrame()
       const vistNu = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
-      // 720 tegn/s ved en 16 ms frame er højst 12 kodepunkter. Replay-kilden
+      // 120 tegn/s ved en 16 ms frame er højst 2 kodepunkter. Replay-kilden
       // må gerne løbe foran; skærmen må ikke forsøge at matche dens tempo.
-      expect(vistNu - forrige).toBeLessThanOrEqual(12)
+      expect(vistNu - forrige).toBeLessThanOrEqual(2)
       forrige = vistNu
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
@@ -100,7 +101,7 @@ describe('useChatPacedBlocks', () => {
     // Da kilden stopper, ruller pacingen resten færdig i de samme jævne trin.
     let antal = 0
     while ((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length < source.length
-      && antal < 400) {
+      && antal < 2_400) {
       nextFrame()
       antal += 1
     }
@@ -112,7 +113,9 @@ describe('useChatPacedBlocks', () => {
     const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {
       live: true, finalAnswerStarted: true, runId: 'run-emoji',
     }))
-    nextFrame()
+    while (!(result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.includes('🙂')) {
+      nextFrame()
+    }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
     expect(visible).toBe(Array.from(text).slice(0, Array.from(visible).length).join(''))
     expect(visible).toContain('🙂')
@@ -137,7 +140,7 @@ describe('useChatPacedBlocks', () => {
     expect(shown().length).toBe(efterFoerste.length)
 
     let antal = 0
-    while (shown().length < text.length && antal < 400) {
+    while (shown().length < text.length && antal < 1_000) {
       nextFrame()
       antal += 1
     }

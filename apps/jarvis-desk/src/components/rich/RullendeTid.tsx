@@ -43,9 +43,15 @@ const Ciffer = memo(function Ciffer({ tegn }: { tegn: string }) {
 })
 
 /** Hele tidsstrengen, ciffer for ciffer. Skærmlæsere får den flade tekst. */
-export const RullendeTid = memo(function RullendeTid({ tekst }: { tekst: string }) {
+export const RullendeTid = memo(function RullendeTid({
+  tekst,
+  className = '',
+}: {
+  tekst: string
+  className?: string
+}) {
   return (
-    <span className="rv-turTid" role="timer" aria-label={tekst}>
+    <span className={`rv-turTid${className ? ` ${className}` : ''}`} role="timer" aria-label={tekst}>
       <span aria-hidden="true">
         {[...tekst].map((tegn, i) => (
           <Ciffer key={`${i}-${tegn}`} tegn={tegn} />

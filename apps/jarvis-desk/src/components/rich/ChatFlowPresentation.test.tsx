@@ -146,6 +146,7 @@ describe('ChatFlowPresentation', () => {
 
   it('viser både den levende syntese og rundelinjen under turhovedet', () => {
     const blocks: ContentBlock[] = [
+      { type: 'thinking', thinking: 'Jeg overvejer kilden', seconds: 3 },
       { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
       { type: 'text', text: 'Jeg fandt årsagen og undersøger næste led.' },
     ]
@@ -157,12 +158,15 @@ describe('ChatFlowPresentation', () => {
     const runde = within(live).getByTestId('chat-flow-round-line')
     expect(syntese).toHaveTextContent('Jeg fandt årsagen og undersøger næste led.')
     expect(within(runde).getByText('Tænker')).toBeInTheDocument()
-    expect(runde.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '7s')
+    expect(runde.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '3s')
     expect(within(runde).getByText('|')).toBeInTheDocument()
     expect(within(runde).getByText('Læste konfigurationen')).toBeInTheDocument()
     expect(runde.querySelector('[data-testid="chat-flow-thinking-icon"]')).toBeInTheDocument()
     expect(syntese.compareDocumentPosition(runde) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const hoved = document.querySelector('.rv-tur') as HTMLElement
+    expect(hoved.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '7s')
+    expect(hoved.querySelector('.rv-turTid')).toHaveClass('shimmer')
+    expect(runde.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
     expect(within(hoved).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })

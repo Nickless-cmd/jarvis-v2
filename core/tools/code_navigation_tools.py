@@ -44,10 +44,15 @@ MAX_HITS = 200
 # REPL-tilstand på tværs af kald, hvilket lader LSP'ens cache være varm.
 _LSP_SERVER = "serena"
 _LSP_SESSION = "jarvis-find-usages"
-# Hvor længe LSP-vejen må holde find_usages hen før fallback (målt 18/10-2026).
-# Ripgrep svarer på 12–28 ms; en LSP der ikke gør det inden 3 s er ikke værd
-# at vente på i en synkron værktøjssti.
-_LSP_FRIST_S = 3.0
+# Hvor længe LSP-vejen må holde find_usages hen før fallback.
+# MÅLT 19/10-2026, og tallet er hævet fra 3,0 s på grund af målingen: selve
+# LSP-opslaget (find_symbol + find_referencing_symbols) tager 4016 ms på dette
+# repo, opkoblingen 1009 ms og første REPL-kald 2056 ms. En 3,0 s frist kunne
+# derfor ALDRIG lykkes — den faldt tilbage på hvert eneste kald, også med en
+# sund Serena, og et timeout forgiftede desuden de næste (stdio serialiseres).
+# 8,0 s dækker det kolde tilfælde med headroom; det varme tilfælde med
+# def-cache svarer på 363–371 ms.
+_LSP_FRIST_S = 8.0
 
 # Definition-cache. MÅLT 18/10-2026, varm Serena:
 #   find_symbol('cached_web_search')              1.374–1.387 ms
@@ -353,6 +358,17 @@ def _lsp_usages(
     # exit, så et hængende kald blokerer alligevel — fristen binder ikke.
     # MÅLT 18/10-2026: med `with` tog et kald 11,4 s trods en 3,0 s frist.
     # Tråden løber derfor videre og lukkes af mcp_clients eget stdio-loft.
+    # Varm forbindelsen FØR uret starter. MÅLT 19/10-2026: opkoblingen til
+    # Serena koster 4–5 s (initialize + pyright-start), og `mcp_manager.call`
+    # etablerer den dovent — så opkoblingen spiste hele fristen. Det FØRSTE
+    # `precise`-kald i en proces faldt derfor altid tilbage til ripgrep med
+    # `lsp_error="timeout"`, selv med en sund Serena. Fristen skal måle
+    # LSP-arbejdet, ikke opkoblingen. Målt ende-til-ende: koldt 6974 ms,
+    # andet kald 1900 ms, varmt med def-cache 363–371 ms.
+    try:
+        mcp_manager.get_client(_LSP_SERVER)
+    except Exception as exc:  # opkobling må ikke kaste her — fristen dækker resten
+        logger.debug("find_usages: kunne ikke varme Serena-forbindelsen (%s)", exc)
     _pool = ThreadPoolExecutor(max_workers=1)
     try:
         _fut = _pool.submit(

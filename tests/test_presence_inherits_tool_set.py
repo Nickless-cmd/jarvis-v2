@@ -89,6 +89,13 @@ def test_presence_kraever_at_han_faktisk_har_talt_der(monkeypatch):
 def test_presence_naar_han_er_i_samtalen(monkeypatch):
     from core.tools.autonomous_tool_policy import presence_for_run
 
+    # Kanal-beviset er en DB-læsning. Kæde-testen måler LOGIKKEN; den ægte
+    # klassifikation måles i `test_en_ekstern_kanal_aabner_ikke_saettet`, som er
+    # markeret `real_db`. Uden denne linje rammer testen en tom shield-DB og
+    # består (eller fejler) af den forkerte grund.
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: True,
+    )
     monkeypatch.setattr(
         "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
     )
@@ -100,6 +107,73 @@ def test_presence_uden_session_er_fail_closed():
     from core.tools.autonomous_tool_policy import presence_for_run
 
     assert presence_for_run(_Run(session_id="", origin="wakeup")) is False
+
+
+def test_ukendt_session_aabner_ikke_saettet(monkeypatch):
+    """FAIL-OPEN'EN DER BLEV LUKKET (19/10-2026).
+
+    Før spurgte vi `session_is_external_channel`, som ved tvivl svarer «ikke
+    ekstern» — den er fail-OPEN med vilje, fordi den bruges til at ROUTE en
+    besked. Brugt som tilstedeværelses-bevis betød det at en session der ikke
+    kunne slås op blev behandlet som Bjørns egen app-samtale.
+
+    Målt i drift: `parse_channel_from_session_title(None)` giver
+    `("webchat", None)`, så fraværet af svar blev læst som et ja. Her er
+    historik-læseren tvunget til «han skrev lige», så kanal-beviset er det
+    ENESTE der holder — og det skal holde.
+    """
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    ukendt = _Run(session_id="chat-findes-ikke-1234567890", origin="wakeup")
+    assert presence_for_run(ukendt) is False
+
+
+def test_krypteret_medlems_samtale_aabner_ikke_saettet(monkeypatch):
+    """En `enc:v1:`-titel er en MEDLEMS-session — ikke Bjørns.
+
+    `chat_crypto`: «hverken Bjørn eller Jarvis må kunne læse andres private
+    sessioner». En wakeup routet dertil må ikke operere med hans rettigheder.
+    """
+    from core.tools.autonomous_tool_policy import presence_for_run
+
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: False,
+    )
+    monkeypatch.setattr(
+        "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
+    )
+    medlem = _Run(session_id="chat-19d9fc4151b346e", origin="wakeup")
+    assert presence_for_run(medlem) is False
+
+
+@pytest.mark.real_db
+@pytest.mark.parametrize(
+    "sid",
+    [
+        # Ægte rækker målt 19/10-2026 mod den levende base.
+        "chat-e82192b29646453aaf688e2043e43d89",   # hans egen app-samtale
+        "chat-19d9fc4151b346e",                    # enc:v1: — medlems-session
+        "auto-recurring-20261019",                 # autonom silo
+        "chat-findes-ikke-1234567890",             # findes ikke
+    ],
+)
+def test_kanal_beviset_mod_den_aegte_base(sid):
+    """Klassifikationen selv — målt mod den levende DB, ikke en shield-fil.
+
+    `real_db` er nødvendig: uden den peger `_guard_prod_db_path` på en tom
+    DB, `SELECT title` finder intet, og ALLE cases ville svare False — også
+    hans egen samtale. Så var testen grøn af den forkerte grund.
+    """
+    from core.identity.owner_resolver import is_owner_app_session
+
+    svar = is_owner_app_session(sid)
+    if sid == "chat-e82192b29646453aaf688e2043e43d89":
+        assert svar is True, "hans egen app-samtale skal bevises"
+    else:
+        assert svar is False, f"{sid} må ikke åbne sættet"
 
 
 def test_presence_kaaster_aldrig(monkeypatch):
@@ -152,6 +226,9 @@ def test_hans_egen_app_samtale_er_stadig_tilstedevaerelse(monkeypatch):
     """Grænsen må ikke ramme den samtale den blev bygget for."""
     from core.tools.autonomous_tool_policy import presence_for_run
 
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: True,
+    )
     monkeypatch.setattr(
         "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
     )
@@ -280,6 +357,9 @@ def test_kataloget_foelger_tilstedevaerelsen():
 def test_vaekning_i_hans_samtale_har_et_menneske(monkeypatch):
     from core.services.visible_tool_exec import _bruger_til_stede
 
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.is_owner_app_session", lambda _s: True,
+    )
     monkeypatch.setattr(
         "core.services.wakeup_dispatcher._bruger_skrev_for_nylig", lambda _s: True,
     )

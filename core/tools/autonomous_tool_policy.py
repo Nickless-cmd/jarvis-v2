@@ -125,12 +125,17 @@ def presence_for_run(run) -> bool:
 
     1. Sessionen er ikke en system-silo. En `auto-recurring-…`-silo er ikke et
        sted nogen sidder.
-    2. Sessionen er ikke en EKSTERN kanal (Bjørn 19/10-2026: «kun din egen
-       app-samtale tæller»). En wakeup routet til Discord lander i en samtale
-       hvor andre kan se med; gav den fulde owner-værktøjer — `bash`,
+    2. Sessionen er BEVIST Bjørns egen app-samtale (Bjørn 19/10-2026: «kun
+       din egen app-samtale tæller»). En wakeup routet til Discord lander i en
+       samtale hvor andre kan se med; gav den fulde owner-værktøjer — `bash`,
        `operator_bash`, `write_file` — ville den operere med hans rettigheder
        foran et publikum. Tilstedeværelse er ikke «nogen kan læse med», det er
        «han sidder her». Grænsen er hans egen app-samtale.
+
+       Beviset hentes med `is_owner_app_session`, ikke med det modsatte
+       spørgsmål `session_is_external_channel` — den er fail-OPEN, og en
+       session der ikke kunne slås op blev derfor behandlet som «app». Målt
+       19/10-2026: en test bed af den gren og bestod af den forkerte grund.
     3. Han har talt i den for nylig. En app-session der ikke har været rørt i
        timer er ikke tilstedeværelse — den er en gammel række, og et run der
        arver hans rettigheder der, gør det uden vidner.
@@ -151,11 +156,11 @@ def presence_for_run(run) -> bool:
     if is_system_session(sid):
         return False
     try:
-        from core.identity.owner_resolver import session_is_external_channel
-    except Exception:  # uden klassifikationen kan vi ikke udelukke en kanal
+        from core.identity.owner_resolver import is_owner_app_session
+    except Exception:  # uden klassifikationen kan vi ikke bevise nogen kanal
         return False
     try:
-        if session_is_external_channel(sid):
+        if not is_owner_app_session(sid):
             return False
     except Exception:  # en brækket titel-læsning må lukke, ikke åbne
         return False

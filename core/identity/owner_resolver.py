@@ -183,6 +183,67 @@ def session_is_external_channel(session_id: str | None) -> bool:
         return False
 
 
+def is_owner_app_session(session_id: str | None) -> bool:
+    """Er dette BEVIST Bjørns egen app-samtale? Fail-CLOSED.
+
+    Det modsatte spørgsmål af ``session_is_external_channel``, og med vilje
+    ikke den samme funktion (Bjørn 19/10-2026: «kun din egen app-samtale
+    tæller»).
+
+    ``session_is_external_channel`` er fail-OPEN: ved tvivl svarer den «ikke
+    ekstern», fordi den bruges til at ROUTE en besked, og der er den farlige
+    fejl at tabe beskeden. Her er beslutningen en anden — svaret afgør om en
+    kørsel får Bjørns fulde owner-værktøjer (``bash``, ``operator_bash``,
+    ``write_file``). Der er den farlige fejl at give dem væk, så her kræves
+    positivt bevis.
+
+    Fire led, og hvert af dem lukker en målt fejlvej:
+
+    1. Sessionen skal FINDES. ``get_chat_session`` svarer ``None`` for et
+       ukendt id, og den gamle vej behandlede det som «app» fordi
+       ``parse_channel_from_session_title(None)`` giver ``("webchat", None)``.
+       Målt 19/10-2026: en test bed af den gren i en tom shield-DB og bestod
+       af den forkerte grund.
+    2. Titlen skal findes og være læsbar. En ``enc:v1:``-titel er en
+       MEDLEMS-session (se ``chat_crypto``: «hverken Bjørn eller Jarvis må
+       kunne læse andres private sessioner»), altså ikke hans samtale. Det er
+       ikke et gæt på et præfiks — det er formatets semantik.
+    3. Klassifikationen må ikke være en ekstern kanal.
+    4. Enhver fejl undervejs → ``False``.
+
+    Læser KUN titel-kolonnen. ``get_chat_session`` er udfaset og forbudt for
+    nye kaldere (``scripts/verify_history_reads.py``); en tilstedeværelses-
+    beslutning skal ikke bære 21,5 MB historik for at se ét felt.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return False
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT title FROM chat_sessions WHERE session_id = ?", (sid,)
+            ).fetchone()
+        if not row:
+            return False
+        title = str(row[0] or "").strip()
+        if not title:
+            return False
+        if title.startswith("enc:v1:"):
+            return False
+        from core.services.autonomous_sessions import is_system_session
+        if is_system_session(sid):
+            # En `auto-recurring-…`-silo har titlen «Autonom · Tilbagevendende»,
+            # som klassificeres som `unknown` og derfor ellers slap igennem.
+            # Reglen skal holde selvstændigt — ikke kun fordi `presence_for_run`
+            # tilfældigvis tjekker siloen først.
+            return False
+        from core.services.chat_sessions import parse_channel_from_session_title
+        return parse_channel_from_session_title(title)[0] not in ("discord", "telegram")
+    except Exception:  # fail-closed: en brækket læsning må ikke åbne sættet
+        return False
+
+
 def _senest_aktive_app_session(sessions: list[Any] | None) -> str:
     """Sidste udvej: den senest opdaterede APP-session med bruger-beskeder.
 

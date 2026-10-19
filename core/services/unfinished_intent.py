@@ -154,6 +154,102 @@ def _er_negeret(tail: str, m: re.Match) -> bool:
     return bool(_NEGATION_BEFORE_RE.search(tail[: m.start()]))
 
 
+# ── Sætnings-guard (19/10-2026, målt: 3 af 8 træf var falske) ──────────────
+# De tre falske havde hver sin form, men fælles fejlklasse: reglen læste et
+# SÆTNINGSFRAGMENT uden at se sætningens type eller polaritet.
+#
+#   19/10 «…og jeg skal lige lukke min egen fejl ordentligt:» — midt i en
+#         sætning der LUKKER en fejl, ikke åbner en opgave.
+#   18/10 «…eller skal vi først finde ud af…?» — et spørgsmål til Bjørn.
+#   11/10 «Jeg skriver ikke noget nu.» — en negation af det regex'et læste
+#         som et løfte.
+#
+# Guarden ser derfor på den sætning matchet står i. Er der en negation i
+# samme sætning, eller er sætningen spørgende, er der ingen pause.
+# Konservativ retning (modulets filosofi): et tabt ægte træf koster ét ping
+# fra Bjørn; et falsk træf starter et autonomt run der svarer i hans navn.
+_SÆTNING_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+# Negation i samme sætning. Dækker «ikke», «aldrig», «ingen», «uden» og
+# sammentrækninger som «ikk'». Bevidst bred: en falsk negation koster kun
+# ét tabt træf, mens en overset negation koster et autonomt run.
+_SÆTNING_NEGATION_RE = re.compile(
+    r"\b(?:ikke|aldrig|ingen|intet|uden|hverken|ikk)\b",
+    re.IGNORECASE,
+)
+
+# Spørgende led i samme sætning. «eller skal vi først» er et spørgsmål selv
+# uden «?» fordi det er en alternativ-tilbud til brugeren.
+# Kun utvetydige spørgsmål. «skal jeg» er BEVIDST udeladt: «Først skal jeg
+# dog hente seneste version» er en konstatering, ikke et spørgsmål — og den
+# er et ægte træf (målt 19/10-2026, kostede en rød test).
+_SÆTNING_SPOERGSMAAL_RE = re.compile(
+    r"(?:\?|\b(?:eller\s+skal\s+(?:vi|jeg)|vil\s+du\b|"
+    r"kunne\s+du\s+tænke|hvad\s+(?:siger|synes)\s+du))",
+    re.IGNORECASE,
+)
+
+# Lukke-verber (19/10-2026): «jeg skal lige LUKKE min egen fejl ordentligt»
+# er ikke en opgave der åbnes — det er en sætning der AFSLUTTER noget. Samme
+# familie som negationen: ordet «skal» bærer ikke et løfte når verbet efter
+# det lukker i stedet for at åbne.
+_LUKKE_VERBUM_RE = re.compile(
+    r"\bjeg\s+skal\s+(?:lige\s+)?(?:lukke|afslutte|runde\s+af|sige|"
+    r"bekræfte|konstatere|indrømme|erkende|gentage|understrege)\b",
+    re.IGNORECASE,
+)
+
+
+def _sætning_omkring(tail: str, m: re.Match) -> tuple[str, int]:
+    """Returner (sætning, startindeks) for sætningen matchet står i."""
+    start = 0
+    for s in _SÆTNING_SPLIT_RE.finditer(tail, 0, m.start()):
+        start = s.end()
+    end = len(tail)
+    for s in _SÆTNING_SPLIT_RE.finditer(tail, m.end()):
+        end = s.start()
+        break
+    return tail[start:end], start
+
+
+def _er_sætningsblokeret(tail: str, m: re.Match) -> bool:
+    """True hvis sætningen omkring matchet er negeret eller spørgende.
+
+    To målte forfinelser (19/10-2026, efter første forsøg slog 4 ægte træf ihjel):
+
+    1. Negationen tæller KUN når den står FØR matchet i samme sætning.
+       «…så jeg ikke kun måler én kilde» negerer bisætningen efter løftet,
+       ikke løftet selv. En negation EFTER matchet er en anden påstand.
+    2. Spørgende led tæller kun når sætningen ER et spørgsmål — dvs. slutter
+       med «?» eller indledes af et spørgeord. «Vil du have jeg tjekker X?» er
+       et tilbud til brugeren, men det er stadig et spørgsmål han skal svare
+       på, så det blokerer. «…eller skal vi først» blokerer af samme grund.
+    """
+    sætning, start = _sætning_omkring(tail, m)
+    før_match = sætning[: max(0, m.start() - start)]
+    efter_match = sætning[max(0, m.end() - start):]
+
+    # Negation der styrer matchet. To positioner tæller:
+    #  - FØR matchet, men kun i samme ledsætning (efter sidste komma/og).
+    #    «…og hvert værktøjskald jeg laver nu…» har «ikke dit» i en ANDEN
+    #    ledsætning — det negerer ikke løftet.
+    #  - DIREKTE EFTER matchet: «Jeg skriver ikke noget nu» — her står
+    #    negationen inde i selve løfte-frasen og vender den.
+    sidste_led = re.split(r",|\bog\b|\bmen\b|;", før_match)[-1]
+    if _SÆTNING_NEGATION_RE.search(sidste_led):
+        return True
+    # Negationen kan ligge INDE i matchet: «Jeg skriver ikke noget nu» rammer
+    # hele frasen, så der står intet negerende tilbage uden for den.
+    if _SÆTNING_NEGATION_RE.search(m.group(0)):
+        return True
+    if _SÆTNING_NEGATION_RE.match(efter_match.strip()):
+        return True
+
+    if _SÆTNING_SPOERGSMAAL_RE.search(sætning):
+        return True
+    return False
+
+
 def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     """Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt
     i en opgave, ellers None.
@@ -205,18 +301,29 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
 
     # 1. "Lad mig først / lad mig se / lad mig selv tjekke ..."
     m = _LAD_MIG_RE.search(tail)
-    if m and not _er_negeret(tail, m):
+    if m and not _er_negeret(tail, m) and not _er_sætningsblokeret(tail, m):
         return UnfinishedIntent(pattern="lad_mig", matched_text=m.group(0))
 
     # 2. "Jeg skal lige / jeg skal først / jeg skal tjekke ..."
     # Negations-guard 1/10-2026: «uden at jeg skal …» er ikke et løfte.
     m = _JEG_SKAL_RE.search(tail)
-    if m and not _er_negeret(tail, m):
+    if (
+        m
+        and not _er_negeret(tail, m)
+        and not _er_sætningsblokeret(tail, m)
+        # Lukke-verbum-guard 19/10-2026: «jeg skal lige LUKKE min fejl» er en
+        # afslutning, ikke en opgave. Verbet står EFTER matchet («jeg skal
+        # lige» + «lukke»), så vi ser på matchet plus dets umiddelbare
+        # fortsættelse — ikke på hele tail, som ville dræbe ægte træf.
+        and not _LUKKE_VERBUM_RE.search(
+            tail[m.start(): m.start() + 60]
+        )
+    ):
         return UnfinishedIntent(pattern="jeg_skal", matched_text=m.group(0))
 
     # 3. "Først skal jeg / først lad mig / først må jeg"
     m = _FOERST_SKAL_RE.search(tail)
-    if m:
+    if m and not _er_sætningsblokeret(tail, m):
         return UnfinishedIntent(pattern="foerst_skal", matched_text=m.group(0))
 
     # 3b. "Jeg fikser/laver/kører X nu" — future-tense action promise.
@@ -224,7 +331,7 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     # handling og afslutte runde uden faktisk tool-kald. Auto-continuation
     # vækker ham med "du sagde X — gør det nu".
     m = _FUTURE_ACTION_PROMISE_RE.search(tail)
-    if m:
+    if m and not _er_sætningsblokeret(tail, m):
         return UnfinishedIntent(
             pattern="future_action_promise", matched_text=m.group(0),
         )

@@ -29,6 +29,7 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,20 @@ _LSP_SESSION = "jarvis-find-usages"
 # Ripgrep svarer på 12–28 ms; en LSP der ikke gør det inden 3 s er ikke værd
 # at vente på i en synkron værktøjssti.
 _LSP_FRIST_S = 3.0
+
+# Definition-cache. MÅLT 18/10-2026, varm Serena:
+#   find_symbol('cached_web_search')              1.374–1.387 ms
+#   find_referencing_symbols(name, kendt fil)       390–419 ms
+#   REPL-rundtur alene (1+1)                             100 ms
+# `find_symbol` er altså ~75 % af prisen, og den søger HELE repoet for
+# hvert kald — selv når svaret er det samme som sidst. Filen et symbol er
+# defineret i flytter sig næsten aldrig, så vi husker den og springer det
+# dyre opslag over. Kold sti: ~1,8 s. Varm sti: ~0,5 s.
+# TTL + fil-eksistens er værn mod et flyttet symbol: er filen væk, eller
+# er posten gammel, laver vi det fulde opslag igen i stedet for at svare
+# ud fra en forældet sti.
+_LSP_DEF_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_LSP_DEF_TTL_S = 900.0
 
 # Language → regex for definition lines. Each pattern uses a
 # placeholder %S% replaced with the symbol (rg's -e supports per-call
@@ -230,7 +245,7 @@ def _mcp_tekst(svar: Any) -> str:
     return ""
 
 
-def _lsp_repl_kode(name: str) -> str:
+def _lsp_repl_kode(name: str, known: dict[str, Any] | None = None) -> str:
     """Byg REPL-koden Serena skal køre.
 
     Navnet indsættes med `repr()` — ikke som rå tekst — så et navn med
@@ -238,28 +253,65 @@ def _lsp_repl_kode(name: str) -> str:
 
     Formen er valgt efter måling: `serena_repl` returnerer det sidste
     UDTRYK, ikke `print()`-output, og dicts serialiseres som Python-repr.
+
+    `known` er en cachet definition. Er den givet, springes
+    `find_symbol` over — det er den del der koster 1,4 s — og vi går
+    direkte til `find_referencing_symbols` (~0,4 s).
     """
-    return (
-        f"_n = {name!r}\n"
-        '_out = {"defs": [], "refs": [], "error": None}\n'
-        "try:\n"
-        "    _syms = s.lsp.find_symbol(_n)\n"
-        "    _defs = [x for x in _syms.symbols"
-        " if x.get_name_path().split('/')[-1] == _n]\n"
-        '    _out["defs"] = [{"file": x.relative_path, "line": x.line,'
-        ' "kind": x.symbol_kind_name} for x in _defs]\n'
-        "    for _d in _defs[:1]:\n"
-        "        _r = s.lsp.find_referencing_symbols(_n, _d.relative_path)\n"
+    dele = [
+        f"_n = {name!r}",
+        '_out = {"defs": [], "refs": [], "error": None}',
+        "try:",
+    ]
+    if known is None:
+        dele += [
+            "    _syms = s.lsp.find_symbol(_n)",
+            "    _defs = [x for x in _syms.symbols"
+            " if x.get_name_path().split('/')[-1] == _n]",
+            '    _out["defs"] = [{"file": x.relative_path, "line": x.line,'
+            ' "kind": x.symbol_kind_name} for x in _defs]',
+            "    _fil = _defs[0].relative_path if _defs else None",
+        ]
+    else:
+        dele += [
+            f"    _out['defs'] = [{known!r}]",
+            f"    _fil = {known.get('file')!r}",
+        ]
+    dele += [
+        "    if _fil:",
+        "        _r = s.lsp.find_referencing_symbols(_n, _fil)",
         '        _out["refs"] = [{"file": x.get_relative_path(),'
         ' "line": x.line, "enclosing": x.symbol.get_name_path(),'
-        ' "kind": x.symbol.symbol_kind_name} for x in _r.references]\n'
-        "except Exception as _e:\n"
-        '    _out["error"] = type(_e).__name__ + ": " + str(_e)\n'
-        "_out"
-    )
+        ' "kind": x.symbol.symbol_kind_name} for x in _r.references]',
+        "except Exception as _e:",
+        '    _out["error"] = type(_e).__name__ + ": " + str(_e)',
+        "_out",
+    ]
+    return "\n".join(dele)
 
 
-def _lsp_usages(name: str) -> dict[str, Any] | None:
+def _cached_def(name: str, scope: Path) -> dict[str, Any] | None:
+    """Hent en frisk nok cachet definition — ellers `None`.
+
+    `None` betyder «lave det fulde opslag», ikke «symbolet findes ikke».
+    En post kasseres hvis den er ældre end TTL, eller hvis filen den
+    peger på ikke længere findes.
+    """
+    post = _LSP_DEF_CACHE.get(name)
+    if post is None:
+        return None
+    tid, def_ = post
+    if time.monotonic() - tid > _LSP_DEF_TTL_S:
+        _LSP_DEF_CACHE.pop(name, None)
+        return None
+    fil = str(def_.get("file") or "")
+    if not fil or not (scope / fil).is_file():
+        _LSP_DEF_CACHE.pop(name, None)
+        return None
+    return def_
+
+
+def _lsp_usages(name: str, scope: Path) -> dict[str, Any] | None:
     """Slå referencer op gennem Serenas LSP.
 
     Returnerer `None` når LSP-vejen ikke kan bruges — serveren svarer
@@ -279,11 +331,17 @@ def _lsp_usages(name: str) -> dict[str, Any] | None:
     # svarer inden for et par sekunder er ubrugelig i en synkron værktøjssti;
     # så hellere falde hurtigt tilbage og sige det i `backend`.
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
-    with ThreadPoolExecutor(max_workers=1) as _pool:
+    kendt = _cached_def(name, scope)
+    # IKKE `with ThreadPoolExecutor(...)`: den kalder shutdown(wait=True) ved
+    # exit, så et hængende kald blokerer alligevel — fristen binder ikke.
+    # MÅLT 18/10-2026: med `with` tog et kald 11,4 s trods en 3,0 s frist.
+    # Tråden løber derfor videre og lukkes af mcp_clients eget stdio-loft.
+    _pool = ThreadPoolExecutor(max_workers=1)
+    try:
         _fut = _pool.submit(
             mcp_manager.call,
             _LSP_SERVER, "serena_repl",
-            {"session_id": _LSP_SESSION, "code": _lsp_repl_kode(name)},
+            {"session_id": _LSP_SESSION, "code": _lsp_repl_kode(name, kendt)},
         )
         try:
             svar = _fut.result(timeout=_LSP_FRIST_S)
@@ -296,6 +354,8 @@ def _lsp_usages(name: str) -> dict[str, Any] | None:
         except Exception as exc:  # timeout, død subprocess, manglende tillid
             logger.warning("find_usages: LSP-kald fejlede (%s) — bruger ripgrep", exc)
             return None
+    finally:
+        _pool.shutdown(wait=False)
     if not isinstance(svar, dict) or svar.get("isError"):
         logger.debug("find_usages: LSP svarede fejl — bruger ripgrep")
         return None
@@ -307,12 +367,21 @@ def _lsp_usages(name: str) -> dict[str, Any] | None:
     if not isinstance(data, dict) or data.get("error"):
         if isinstance(data, dict) and data.get("error"):
             logger.warning("find_usages: LSP-fejl: %s", data["error"])
+        if kendt is not None:
+            # Den cachede sti virkede ikke længere — filen er flyttet eller
+            # symbolet er omdøbt. Kassér posten, så næste kald laver det
+            # fulde opslag i stedet for at fejle på den samme sti igen.
+            _LSP_DEF_CACHE.pop(name, None)
         return None
     if not data.get("defs"):
         # Navnet er ikke et symbol LSP'en kender. Det kan stadig være en
         # streng eller en kommentar — ripgrep ser den slags, LSP'en gør ikke.
         logger.debug("find_usages: %r har ingen definition — bruger ripgrep", name)
         return None
+    if kendt is None:
+        # Første vellykkede opslag for dette symbol: husk hvor det bor, så
+        # næste kald kan springe de ~1,4 s over som `find_symbol` koster.
+        _LSP_DEF_CACHE[name] = (time.monotonic(), dict(data["defs"][0]))
     return data
 
 
@@ -377,9 +446,13 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
             "error": "no project anchored — set X-JarvisX-Project before find_usages",
         }
 
-    # 1. LSP først. Den ved hvilket SYMBOL en reference ligger i, og den
-    #    tæller ikke omtaler i docstrings med som kald.
-    lsp_data = _lsp_usages(name)
+    # 1. LSP kun når den er bedt om det (`precise`). MÅLT 18/10-2026:
+    #    LSP-vejen tager 370 ms varm (efter definition-cachen) og 1,8 s
+    #    kold, mod ripgreps 16-19 ms — altså ~20x dyrere for de samme
+    #    referencer. Den købes for PRÆCISION (`enclosing`), ikke for fart,
+    #    så den skal vælges eksplicit. Dertil: et hængende LSP-kald
+    #    blokerer de næste, fordi stdio-transporten serialiseres.
+    lsp_data = _lsp_usages(name, scope) if args.get("precise") else None
     if lsp_data is not None:
         hits = _lsp_hits(lsp_data, scope)
         return {
@@ -510,21 +583,31 @@ CODE_NAVIGATION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "find_usages",
             "description": (
                 "Find all references to a symbol inside the anchored project. "
-                "Uses the LSP (Serena) when available: each hit then carries "
+                "Fast path is ripgrep (16-19 ms). Set precise=true to resolve "
+                "through the LSP (Serena) instead: each hit then carries "
                 "`enclosing` — the symbol the reference sits inside, e.g. "
                 "'TestNormalizeQuery/test_basic_normalization' — and "
                 "`symbol_kind` (Function/Method/Variable/Class), which is how "
-                "you tell a real caller from a docstring mention. Falls back "
-                "to ripgrep when the symbol has no definition (it may only "
-                "exist as a string) or the LSP is unreachable; the `backend` "
-                "field says which one answered, so read it before trusting "
-                "the result. kind='definition' marks the declaration site, "
-                "kind='use' everything else. Cap 200 hits."
+                "you tell a real caller from a docstring mention. The LSP is "
+                "~20x slower (measured 370 ms warm, 1.8 s cold) and cannot see "
+                "names that only exist as strings, so it falls back to ripgrep "
+                "when the symbol has no definition or the server is "
+                "unreachable. The `backend` field says which one answered, so "
+                "read it before trusting the result. kind='definition' marks "
+                "the declaration site, kind='use' everything else. Cap 200 hits."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "Symbol name"},
+                    "precise": {
+                        "type": "boolean",
+                        "description": (
+                            "Resolve through the LSP for symbol-level precision "
+                            "(`enclosing`, `symbol_kind`). ~20x slower than the "
+                            "default ripgrep scan. Default false."
+                        ),
+                    },
                 },
                 "required": ["name"],
             },

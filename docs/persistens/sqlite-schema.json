@@ -9049,7 +9049,7 @@
       ]
     },
     "chat_sessions": {
-      "digest": "b4:b4:f4:df:a1:be:4d:2e:18:93:d4:b2:94:e9:47:5c:00:7e:35:65:82:f7:cf:e8:19:3b:65:1a:a2:7b:2f:c4",
+      "digest": "03:67:75:c8:6c:b8:94:ca:7b:54:3e:16:80:10:c7:e2:de:c4:7b:53:11:18:fc:f2:c7:18:10:75:1a:e6:24:d1",
       "schema": {
         "columns": [
           {
@@ -9121,6 +9121,14 @@
             "type": "TEXT",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

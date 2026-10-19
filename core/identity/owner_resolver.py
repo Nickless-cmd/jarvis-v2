@@ -209,13 +209,21 @@ def is_owner_app_session(session_id: str | None) -> bool:
        kunne læse andres private sessioner»), altså ikke hans samtale. Det er
        ikke et gæt på et præfiks — det er formatets semantik.
     3. Klassifikationen må ikke være en ekstern kanal.
-    4. EJERSKABS-BEVISET: kun ejerens ``user_id`` må optræde i sessionens
-       beskeder. Se den lange begrundelse ved opslaget nedenfor — kort sagt
-       er «han har skrevet her» ikke nok, fordi et autonomt run skriver hans
-       id på sin egen prompt, og seks sessioner har både hans og andres id.
+    4. EJERSKABS-BEVISET, i to lag. FØRST stemplet på sessionen ved
+       oprettelsen (``chat_sessions.owner_user_id``, 19/10-2026): det blev
+       skrevet i det øjeblik nogen bad om samtalen, hvor vi vidste hvem det
+       var — ikke udledt bagefter. Er stemplet sat, er sagen afgjort, og en
+       delt samtale kan ikke skifte ejer ved næste besked. Er det sat til en
+       anden end ejeren, er svaret nej uanset hvem der har skrevet i den.
+       DEREFTER, kun for historik fra før kolonnen (tomt stempel): kun ejerens
+       ``user_id`` må optræde i sessionens beskeder. Se den lange begrundelse
+       ved opslaget nedenfor — kort sagt er «han har skrevet her» ikke nok,
+       fordi et autonomt run skriver hans id på sin egen prompt, og seks
+       sessioner har både hans og andres id.
     5. Enhver fejl undervejs → ``False``.
 
-    Læser KUN titel-kolonnen. ``get_chat_session`` er udfaset og forbudt for
+    Læser KUN metadata-kolonner (``title`` og ``owner_user_id``).
+    ``get_chat_session`` er udfaset og forbudt for
     nye kaldere (``scripts/verify_history_reads.py``); en tilstedeværelses-
     beslutning skal ikke bære 21,5 MB historik for at se ét felt.
     """
@@ -279,7 +287,31 @@ def is_owner_app_session(session_id: str | None) -> bool:
         if not ejer:
             # Uden en kendt ejer kan vi ikke bevise noget — og så lukker vi.
             return False
+        # STEMPLET VED OPRETTELSEN (19/10-2026). Bjørn: «stemple ejerskab på
+        # sessionen ved oprettelsen». Det er det stærkeste bevis der findes:
+        # det blev skrevet i det øjeblik nogen bad om samtalen, ikke udledt
+        # bagefter af hvem der tilfældigvis skrev sidst. Er det stemplet og
+        # stemplet er ejerens, er sagen afgjort — vi behøver ikke tælle
+        # beskeder, og en delt samtale kan ikke skifte ejer ved næste besked.
+        #
+        # Er stemplet sat til en ANDEN end ejeren, er svaret nej med det samme:
+        # så er samtalen oprettet i en andens navn, uanset hvem der har skrevet
+        # i den siden.
+        #
+        # Tomt stempel = historik fra før kolonnen fandtes → faldback til
+        # besked-beviset nedenfor, som er den gamle regel uændret.
         with connect() as conn:
+            try:
+                stemplet_row = conn.execute(
+                    "SELECT owner_user_id FROM chat_sessions WHERE session_id = ?",
+                    (sid,),
+                ).fetchone()
+            except Exception:
+                # Kolonnen findes ikke i denne base endnu (doven migrering).
+                stemplet_row = None
+            stemplet = str(stemplet_row[0] or "").strip() if stemplet_row else ""
+            if stemplet:
+                return stemplet == ejer
             if not conn.execute(
                 "SELECT 1 FROM chat_messages WHERE session_id = ? AND user_id = ? LIMIT 1",
                 (sid, ejer),

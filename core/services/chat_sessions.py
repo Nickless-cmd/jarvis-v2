@@ -75,11 +75,16 @@ def create_chat_session(
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
+    # Hvem bad om denne samtale? Spørgsmålet stilles HER, hvor svaret findes —
+    # ikke bagefter ud fra hvem der tilfældigvis skrev sidst (19/10-2026).
+    # Tom streng er et ærligt «ved det ikke»: en oprettelse uden for en
+    # request-kontekst (fx en test eller et internt kald) må ikke gætte.
+    from core.identity.workspace_context import current_user_id, current_workspace_name
+    opretter = str(current_user_id() or "").strip()
     if normalized_title != "New chat":
-        from core.identity.workspace_context import current_user_id, current_workspace_name
         normalized_title = encrypt_session_text(
             normalized_title, session_id,
-            user_id=current_user_id() or "", workspace_name=current_workspace_name() or "",
+            user_id=opretter, workspace_name=current_workspace_name() or "",
         )
     # Kun to slags. En ukendt vaerdi bliver til 'chat' frem for at blive skrevet
     # ned: en raekke med kind='kode' (dansk stavning, et tastefejl, hvad som
@@ -92,11 +97,12 @@ def create_chat_session(
         conn.execute(
             """
             INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
-                                       workspace_kind, workspace_root, kind)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                       workspace_kind, workspace_root, kind,
+                                       owner_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, normalized_title, created_at, created_at,
-             (workspace_kind or None), (workspace_root or None), art),
+             (workspace_kind or None), (workspace_root or None), art, opretter),
         )
     # Ledger-kanariefugl (fase 11): er den armet, baerer DENNE session
     # observationsvinduet. Fail-safe — en kanariefugl maa aldrig kunne vaelte
@@ -205,6 +211,18 @@ def _sikr_flag_kolonner(conn) -> None:
             )
         except Exception:
             pass
+    # EJERSKABS-BEVISET (19/10-2026). Bjørn: «stemple ejerskab på sessionen ved
+    # oprettelsen». Indtil nu blev ejeren UDLEDT af den seneste brugerbesked, så
+    # beviset afhang af hvem der tilfældigvis skrev sidst — og et autonomt run
+    # skriver Bjørns id på sin egen prompt. Kolonnen her er stemplet på det
+    # tidspunkt samtalen blev oprettet, hvor vi VED hvem der bad om den.
+    #
+    # Tom streng = ukendt (rækker fra før kolonnen fandtes). De falder tilbage
+    # til den gamle afledning, så ingen historik ændrer ejer ved migreringen.
+    try:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN owner_user_id TEXT NOT NULL DEFAULT ''")
+    except Exception:
+        pass  # findes allerede
 
 
 def set_session_flags(
@@ -1785,16 +1803,38 @@ def parse_channel_from_session_title(title: str | None) -> tuple[str, str | None
 
 
 def get_session_owner(session_id: str) -> str | None:
-    """Ejeren = user_id paa den seneste BRUGERbesked der har et stempel.
+    """Hvem ejer samtalen? STEMPLET ved oprettelsen først, afledning som faldback.
 
-    Assistant- og tool-rækker kan blive skrevet af en anden procesidentitet
-    end samtalens bruger. De må derfor aldrig flytte samtalens ejerskab.
+    Rækkefølgen er hele pointen (19/10-2026). Indtil nu blev ejeren udelukkende
+    UDLEDT af den seneste brugerbesked med et stempel — og det bevis afhang af
+    hvem der tilfældigvis skrev sidst. Et autonomt run skriver Bjørns id på sin
+    EGEN prompt, så en silo kunne se ud som hans samtale; og en delt samtale
+    kunne skifte ejer ved næste besked.
+
+    ``chat_sessions.owner_user_id`` er stemplet på oprettelsestidspunktet, hvor
+    vi vidste hvem der bad om samtalen. Den er derfor beviset, og besked-rækkerne
+    er kun faldback for historik fra før kolonnen fandtes (tom streng).
+
+    Assistant- og tool-rækker kan blive skrevet af en anden procesidentitet end
+    samtalens bruger. De må derfor aldrig flytte samtalens ejerskab.
     Returnerer None for ustemplede (legacy) sessioner."""
     sid = (session_id or "").strip()
     if not sid:
         return None
     from core.runtime.db import connect
     with connect() as c:
+        try:
+            row = c.execute(
+                "SELECT owner_user_id FROM chat_sessions WHERE session_id=?",
+                (sid,),
+            ).fetchone()
+        except Exception:
+            # Kolonnen findes ikke i denne base endnu (migreringen er doven).
+            # Så er der intet stempel at læse — faldback nedenfor, som før.
+            row = None
+        stemplet = str(row[0] or "").strip() if row else ""
+        if stemplet:
+            return stemplet
         row = c.execute(
             """SELECT user_id FROM chat_messages
                WHERE session_id=? AND role='user'

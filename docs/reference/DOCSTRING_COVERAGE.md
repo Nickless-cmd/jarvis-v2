@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9112/17345 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9114/17350 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9112/17345 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6074 | 11790 | 51% |
+| `core.services` | 6076 | 11795 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9112/17345 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2576)
+## Undocumented public functions (2577)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -126,20 +126,20 @@ Generated from source. 9112/17345 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
 - `apps/api/jarvis_api/routes/push.py` :: `web_subscribe` (L59)
 - `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
-- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L247)
-- `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L133)
-- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L180)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L140)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L255)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L150)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L228)
-- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L239)
-- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L191)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L128)
-- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L220)
-- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L161)
-- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L204)
-- `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L145)
+- `apps/api/jarvis_api/routes/routines.py` :: `cancel_run` (L254)
+- `apps/api/jarvis_api/routes/routines.py` :: `create_routine` (L140)
+- `apps/api/jarvis_api/routes/routines.py` :: `delete_routine` (L187)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_inbox_defaults` (L147)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_redacted_diagnostic` (L262)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_routine` (L157)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run` (L235)
+- `apps/api/jarvis_api/routes/routines.py` :: `get_run_events` (L246)
+- `apps/api/jarvis_api/routes/routines.py` :: `lifecycle_action` (L198)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_routines` (L135)
+- `apps/api/jarvis_api/routes/routines.py` :: `list_runs` (L227)
+- `apps/api/jarvis_api/routes/routines.py` :: `patch_routine` (L168)
+- `apps/api/jarvis_api/routes/routines.py` :: `run_now` (L211)
+- `apps/api/jarvis_api/routes/routines.py` :: `set_inbox_defaults` (L152)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
 - `apps/api/jarvis_api/routes/sensory.py` :: `record_memory` (L67)
@@ -1815,27 +1815,27 @@ Generated from source. 9112/17345 functions/methods documented (52%). The list b
 - `core/services/routine_runtime.py` :: `RoutineRuntime.worker_is_alive` (L68)
 - `core/services/routine_runtime.py` :: `start_routine_runtime` (L82)
 - `core/services/routine_runtime.py` :: `stop_routine_runtime` (L91)
-- `core/services/routine_service.py` :: `RoutineService.archive` (L291)
-- `core/services/routine_service.py` :: `RoutineService.archive_stopped_before` (L478)
-- `core/services/routine_service.py` :: `RoutineService.cancel_run` (L386)
-- `core/services/routine_service.py` :: `RoutineService.create_and_activate` (L173)
-- `core/services/routine_service.py` :: `RoutineService.create_proposal` (L194)
-- `core/services/routine_service.py` :: `RoutineService.delete` (L337)
-- `core/services/routine_service.py` :: `RoutineService.enqueue_run` (L352)
-- `core/services/routine_service.py` :: `RoutineService.get` (L215)
-- `core/services/routine_service.py` :: `RoutineService.get_inbox_defaults` (L439)
-- `core/services/routine_service.py` :: `RoutineService.get_redacted_diagnostic` (L455)
-- `core/services/routine_service.py` :: `RoutineService.get_run` (L374)
-- `core/services/routine_service.py` :: `RoutineService.list` (L405)
-- `core/services/routine_service.py` :: `RoutineService.list_run_events` (L426)
-- `core/services/routine_service.py` :: `RoutineService.list_runs` (L415)
-- `core/services/routine_service.py` :: `RoutineService.pause` (L285)
-- `core/services/routine_service.py` :: `RoutineService.restart` (L313)
-- `core/services/routine_service.py` :: `RoutineService.restore` (L294)
-- `core/services/routine_service.py` :: `RoutineService.resume` (L288)
-- `core/services/routine_service.py` :: `RoutineService.set_inbox_defaults` (L445)
-- `core/services/routine_service.py` :: `RoutineService.stop` (L297)
-- `core/services/routine_service.py` :: `RoutineService.update` (L227)
+- `core/services/routine_service.py` :: `RoutineService.archive` (L317)
+- `core/services/routine_service.py` :: `RoutineService.archive_stopped_before` (L504)
+- `core/services/routine_service.py` :: `RoutineService.cancel_run` (L412)
+- `core/services/routine_service.py` :: `RoutineService.create_and_activate` (L197)
+- `core/services/routine_service.py` :: `RoutineService.create_proposal` (L219)
+- `core/services/routine_service.py` :: `RoutineService.delete` (L363)
+- `core/services/routine_service.py` :: `RoutineService.enqueue_run` (L378)
+- `core/services/routine_service.py` :: `RoutineService.get` (L241)
+- `core/services/routine_service.py` :: `RoutineService.get_inbox_defaults` (L465)
+- `core/services/routine_service.py` :: `RoutineService.get_redacted_diagnostic` (L481)
+- `core/services/routine_service.py` :: `RoutineService.get_run` (L400)
+- `core/services/routine_service.py` :: `RoutineService.list` (L431)
+- `core/services/routine_service.py` :: `RoutineService.list_run_events` (L452)
+- `core/services/routine_service.py` :: `RoutineService.list_runs` (L441)
+- `core/services/routine_service.py` :: `RoutineService.pause` (L311)
+- `core/services/routine_service.py` :: `RoutineService.restart` (L339)
+- `core/services/routine_service.py` :: `RoutineService.restore` (L320)
+- `core/services/routine_service.py` :: `RoutineService.resume` (L314)
+- `core/services/routine_service.py` :: `RoutineService.set_inbox_defaults` (L471)
+- `core/services/routine_service.py` :: `RoutineService.stop` (L323)
+- `core/services/routine_service.py` :: `RoutineService.update` (L253)
 - `core/services/routine_service.py` :: `RoutineView.id` (L55)
 - `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L110)
 - `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L104)
@@ -1847,8 +1847,9 @@ Generated from source. 9112/17345 functions/methods documented (52%). The list b
 - `core/services/routine_trigger_adapters.py` :: `enqueue_recurring` (L175)
 - `core/services/routine_trigger_adapters.py` :: `enqueue_scheduled` (L171)
 - `core/services/routine_trigger_adapters.py` :: `enqueue_system` (L183)
-- `core/services/routine_types.py` :: `RoutinePatch.changes` (L106)
-- `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L44)
+- `core/services/routine_types.py` :: `RoutineClassification.as_dict` (L120)
+- `core/services/routine_types.py` :: `RoutinePatch.changes` (L173)
+- `core/services/routine_types.py` :: `RoutinePrincipal.user_id` (L78)
 - `core/services/rule_engine.py` :: `RuleEngine.add_rule` (L84)
 - `core/services/rule_engine.py` :: `RuleEngine.clear_rules` (L92)
 - `core/services/rule_engine.py` :: `RuleEngine.get_rule` (L136)

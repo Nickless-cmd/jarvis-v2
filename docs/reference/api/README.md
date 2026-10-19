@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17345 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17350 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,15 +51,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17345 functions/
 - [`core.services.19`](core.services.19.md) — `orb_phase` … `private_state_snapshot_tracking`
 - [`core.services.20`](core.services.20.md) — `private_temporal_curiosity_state_tracking` … `proprioception_metrics`
 - [`core.services.21`](core.services.21.md) — `prose_tool_calls` … `relation_dynamics`
-- [`core.services.22`](core.services.22.md) — `relation_map` … `run_event_log`
-- [`core.services.23`](core.services.23.md) — `run_finding_accounting` … `search_quota`
-- [`core.services.24`](core.services.24.md) — `secret_redaction` … `sensory_source`
-- [`core.services.25`](core.services.25.md) — `session_binding` … `silence_listener`
-- [`core.services.26`](core.services.26.md) — `silence_patterns` … `taste_profile`
-- [`core.services.27`](core.services.27.md) — `telegram_gateway` … `tool_result_aging`
-- [`core.services.28`](core.services.28.md) — `tool_result_store` … `visible_followup`
-- [`core.services.29`](core.services.29.md) — `visible_followup_adapters` … `visible_self_state_summary`
-- [`core.services.30`](core.services.30.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `relation_map` … `run_closure_gate`
+- [`core.services.23`](core.services.23.md) — `run_event_log` … `search_quality`
+- [`core.services.24`](core.services.24.md) — `search_quota` … `sensory_perception_bridge`
+- [`core.services.25`](core.services.25.md) — `sensory_source` … `silence_detector`
+- [`core.services.26`](core.services.26.md) — `silence_listener` … `task_worker`
+- [`core.services.27`](core.services.27.md) — `taste_profile` … `tool_pattern_miner`
+- [`core.services.28`](core.services.28.md) — `tool_result_aging` … `visible_first_pass_text`
+- [`core.services.29`](core.services.29.md) — `visible_followup` … `visible_runs_watchdog`
+- [`core.services.30`](core.services.30.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

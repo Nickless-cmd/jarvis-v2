@@ -34,8 +34,8 @@ _Fail-closed, evidence-driven migration of legacy autonomous sources._
 | function | `_registered_system_producer` | `(row)` | — | [src](../../../core/services/routine_migration.py#L233) |
 | function | `_classify` | `(row)` | — | [src](../../../core/services/routine_migration.py#L244) |
 | function | `_definition` | `(row)` | — | [src](../../../core/services/routine_migration.py#L280) |
-| function | `classify_legacy_sources` | `(conn)` | Classify without mutating source, Routine, link, or quarantine rows. | [src](../../../core/services/routine_migration.py#L303) |
-| function | `_load_report` | `(report_id)` | — | [src](../../../core/services/routine_migration.py#L357) |
-| function | `_legacy_link_exists` | `(conn, kind, source_id)` | — | [src](../../../core/services/routine_migration.py#L370) |
-| function | `apply_report` | `(report_id)` | Apply one signed report iff its exact legacy source watermark is current. | [src](../../../core/services/routine_migration.py#L377) |
+| function | `classify_legacy_sources` | `(conn)` | Classify without mutating source, Routine, link, or quarantine rows. | [src](../../../core/services/routine_migration.py#L324) |
+| function | `_load_report` | `(report_id)` | — | [src](../../../core/services/routine_migration.py#L378) |
+| function | `_legacy_link_exists` | `(conn, kind, source_id)` | — | [src](../../../core/services/routine_migration.py#L391) |
+| function | `apply_report` | `(report_id)` | Apply one signed report iff its exact legacy source watermark is current. | [src](../../../core/services/routine_migration.py#L398) |
 

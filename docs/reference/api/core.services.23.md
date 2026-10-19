@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_event_log.py`
+_In-memory, append-only, offset-indekseret event-log PR. RUN._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_terminal_frame` | `(frame)` | Er denne SSE-frame en TERMINAL-frame (message_stop)? Klienterne forlader kun | [src](../../../core/services/run_event_log.py#L34) |
+| function | `_is_ephemeral_frame` | `(frame)` | ping/retry-frames er KEEPALIVE-støj på den direkte stream — de er irrelevante | [src](../../../core/services/run_event_log.py#L41) |
+| function | `synthetic_terminal_frame` | `(run_id=…, session_id=…, reason=…)` | H1/G6: byg en syntetisk terminal-SSE-frame til en subscriber der GIVER OP uden | [src](../../../core/services/run_event_log.py#L66) |
+| function | `create` | `(run_id, session_id, surface=…)` | — | [src](../../../core/services/run_event_log.py#L102) |
+| function | `_hent` | `(run_id)` | Loggens tilstand for et id — log-id'et selv eller et alias. Kaldes UNDER _lock. | [src](../../../core/services/run_event_log.py#L139) |
+| function | `alias` | `(extern_id, log_id)` | Lad `extern_id` (runnets eget id) pege paa loggen `log_id`. | [src](../../../core/services/run_event_log.py#L148) |
+| function | `klient_run_id` | `(run_id)` | Det id KLIENTEN kender for dette run — aliaset hvis der findes et. | [src](../../../core/services/run_event_log.py#L160) |
+| function | `run_id_fra_ramme` | `(frame)` | run_id fra en system_event(kind=run)-ramme, ellers None. Kaster aldrig. | [src](../../../core/services/run_event_log.py#L174) |
+| function | `ramme_ejerskab` | `(kandidat, vores_log_id)` | Hvem ejer dette run-id: os, en anden — eller kan det ikke afgoeres? | [src](../../../core/services/run_event_log.py#L195) |
+| function | `append` | `(run_id, frame)` | — | [src](../../../core/services/run_event_log.py#L239) |
+| function | `_emit_cap_nerve` | `(run_id)` | Observe (cluster='stream', nerve='relay_frame_cap') at ring-vinduet begyndte | [src](../../../core/services/run_event_log.py#L271) |
+| function | `touch_liveness` | `(run_id)` | Opdatér et runs liveness (last_append_at) UDEN at persistere en frame. | [src](../../../core/services/run_event_log.py#L286) |
+| function | `mark_done` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L301) |
+| function | `gap_frame` | `(resume_idx)` | Gap-markoeren MED den globale position rammerne efter den starter ved. | [src](../../../core/services/run_event_log.py#L318) |
+| function | `er_gap_frame` | `(frame)` | Er rammen en gap-markoer (med eller uden position)? | [src](../../../core/services/run_event_log.py#L334) |
+| function | `read` | `(run_id, from_idx)` | Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0) | [src](../../../core/services/run_event_log.py#L339) |
+| function | `read_from` | `(run_id, from_idx)` | Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det | [src](../../../core/services/run_event_log.py#L351) |
+| function | `active_run_for_session` | `(session_id)` | — | [src](../../../core/services/run_event_log.py#L370) |
+| function | `is_live` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L381) |
+| function | `is_open` | `(run_id)` | True while the detached producer still owns an unfinished run. | [src](../../../core/services/run_event_log.py#L392) |
+| function | `last_activity_at` | `(run_id)` | Seneste livstegn (monotonic) for et run — eller None hvis loggen ikke kender det. | [src](../../../core/services/run_event_log.py#L404) |
+| function | `live_run_ids` | `()` | — | [src](../../../core/services/run_event_log.py#L423) |
+| function | `hale` | `(run_id, n=…)` | De seneste `n` frames for et run (tom liste hvis ukendt). Til | [src](../../../core/services/run_event_log.py#L435) |
+| function | `aabne_run_ids` | `(max_alder_s=…)` | Runs der stadig er ÅBNE (ikke markeret færdige), og yngre end | [src](../../../core/services/run_event_log.py#L443) |
+| function | `set_surface` | `(run_id, surface)` | Notér hvilken flade turen blev skrevet fra. Tom streng roerer intet. | [src](../../../core/services/run_event_log.py#L459) |
+| function | `surface_for_run` | `(run_id)` | Fladen turen blev skrevet fra, eller "" naar den ikke er kendt. | [src](../../../core/services/run_event_log.py#L475) |
+| function | `session_for_run` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L482) |
+| function | `prune` | `()` | Behold alle ikke-done runs + de seneste _KEEP_DONE_PER_SESSION done-runs | [src](../../../core/services/run_event_log.py#L488) |
+| function | `subscriber_opened` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L509) |
+| function | `subscriber_closed` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L516) |
+| function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L523) |
+| function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L531) |
+| function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L540) |
+
 ## `core/services/run_finding_accounting.py`
 _Structured end-of-run findings and a conservative admission fallback._
 
@@ -679,28 +718,4 @@ _Kvalitetsdommer for søgeresultater — vælger provider ud fra hvad der FAKTIS
 | function | `_er_dansk_query` | `(query)` | Sandt hvis queryen ser dansk ud. Bruges til at vægte .dk-domæner. | [src](../../../core/services/search_quality.py#L58) |
 | function | `score_resultater` | `(resultater, *, query, url_felt=…, vaegte=…)` | Ét tal 0..1 for hvor brugbar en resultatliste er for denne query. | [src](../../../core/services/search_quality.py#L95) |
 | function | `bedste_kandidat` | `(kandidater, *, query, vaegte=…)` | Vælg den bedste provider-udfald blandt flere. | [src](../../../core/services/search_quality.py#L190) |
-
-## `core/services/search_quota.py`
-_Kvote-regnskab pr. søgeprovider — målt hos KILDEN, ikke gættet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_laes` | `(key, default=…)` | — | [src](../../../core/services/search_quota.py#L93) |
-| function | `_skriv` | `(key, vaerdi)` | — | [src](../../../core/services/search_quota.py#L105) |
-| function | `_maaned` | `()` | Kvoterne nulstilles ved månedsskifte, ikke ved midnat. | [src](../../../core/services/search_quota.py#L114) |
-| function | `_periode_noegle` | `(navn)` | Nøglen tælleren gemmes under — og dermed hvornår den nulstilles. | [src](../../../core/services/search_quota.py#L124) |
-| function | `_api_key` | `(navn)` | — | [src](../../../core/services/search_quota.py#L136) |
-| function | `_http_json` | `(url, *, headers=…, timeout=…)` | — | [src](../../../core/services/search_quota.py#L148) |
-| function | `_tavily_live` | `()` | Tavilys eget regnskab: `/usage` → plan_usage / plan_limit. | [src](../../../core/services/search_quota.py#L164) |
-| function | `_serpapi_live` | `()` | SerpAPIs eget regnskab: `/account` → this_month_usage / searches_per_month. | [src](../../../core/services/search_quota.py#L181) |
-| function | `_exa_lokal` | `()` | Exa tælles lokalt: der findes intet kvote-endpoint uden nøgle. | [src](../../../core/services/search_quota.py#L199) |
-| function | `noter_kald` | `(provider, antal=…)` | Tæl et kald op lokalt. Supplement til live-kilden, ikke en erstatning. | [src](../../../core/services/search_quota.py#L223) |
-| function | `noter_429` | `(provider, retry_after=…)` | Registrér et 429 og skel QPS-loft fra forbrugsloft. True = forbrugsloft. | [src](../../../core/services/search_quota.py#L238) |
-| function | `kvote_status` | `(provider, *, brug_cache=…)` | Status for én provider. | [src](../../../core/services/search_quota.py#L270) |
-| function | `_form` | `(data, navn, *, kilde)` | — | [src](../../../core/services/search_quota.py#L304) |
-| function | `alle_status` | `(*, brug_cache=…)` | — | [src](../../../core/services/search_quota.py#L317) |
-| function | `_varsel_koel` | `(navn)` | True hvis der IKKE er varslet for nylig — ellers sæt ny tidsstempel. | [src](../../../core/services/search_quota.py#L324) |
-| function | `varsle_hvis_over_loft` | `(status)` | Send ét varsel når en provider nærmer sig sit loft. True = sendt. | [src](../../../core/services/search_quota.py#L335) |
-| function | `bedste_provider` | `(foretrukken=…, *, brug_cache=…)` | Den foretrukne hvis den har plads — ellers den næstbedste med plads. | [src](../../../core/services/search_quota.py#L374) |
-| function | `rapport` | `()` | Menneskelæsbar linje pr. provider — til drift og til et værktøjssvar. | [src](../../../core/services/search_quota.py#L391) |
 

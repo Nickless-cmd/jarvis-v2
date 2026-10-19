@@ -274,3 +274,35 @@ def test_quarantine_apply_is_idempotent(migration_fixture):
     assert first.created_quarantine == 1
     assert second.created_quarantine == 0
     assert second.already_applied == 1
+
+
+def test_definition_bærer_klassifikation_for_migrerede_opgaver():
+    """En migreret opgave skal have en klassifikation, ikke et tomt felt.
+
+    19/10-2026: uden dette ville runneren og indbakken skulle gætte på en
+    opgave der kom fra legacy-verdenen. Vi afleder fra de felter der findes:
+    var opgaven bundet til en samtale (`session_id`), er `session` den tro
+    adfærd; ellers `background`. `importance` er `normal` — der findes ingen
+    evidens for andet, og at gætte `high` ville fremhæve støj.
+    """
+    from core.services.routine_migration import _definition
+
+    u_bundet = _definition({
+        "source_kind": "recurring", "task_id": "rec-1", "source_id": "rec-1",
+        "focus": "x", "interval_minutes": 60, "source": "jarvis-tool",
+    })
+    klassifikation = u_bundet["delivery_policy"]["classification"]
+    assert klassifikation["execution_mode"] == "background"
+    assert klassifikation["importance"] == "normal"
+    assert klassifikation["cool_down_minutes"] == 0
+    # `channel` må ikke blive spist af klassifikationen — runneren læser den.
+    assert u_bundet["delivery_policy"]["channel"] == "auto"
+
+    bundet = _definition({
+        "source_kind": "recurring", "task_id": "rec-2", "source_id": "rec-2",
+        "focus": "y", "interval_minutes": 60, "source": "jarvis-tool",
+        "session_id": "chat-abc",
+    })
+    bundet_klassifikation = bundet["delivery_policy"]["classification"]
+    assert bundet_klassifikation["execution_mode"] == "session"
+    assert bundet_klassifikation["cool_down_minutes"] == 5

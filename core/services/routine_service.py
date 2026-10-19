@@ -144,6 +144,30 @@ def _command_values(command: RoutineCreate | Mapping[str, object]) -> dict[str, 
     return values
 
 
+def _apply_classification(values: dict[str, Any]) -> dict[str, Any]:
+    """Validér oprettelsens valg og læg den udledte klassifikation i policy'en.
+
+    `execution_mode` og `importance` er *kommando*-felter: de beskriver valget
+    ved oprettelsen. De hører ikke i `routines`-tabellen som egne kolonner —
+    den persisterede form er `delivery_policy['classification']`, som runneren
+    og indbakken læser. Derfor fjernes de fra `values` her; ellers ville
+    `db_routines.create_routine(**values)` fejle på ukendte kwargs.
+
+    En ukendt værdi kaster `ValueError` (se `routine_classification`), så en
+    tastefejl stopper oprettelsen frem for at blive en usynlig `normal`.
+    """
+    from core.services.routine_classification import classify_routine
+
+    klassifikation = classify_routine(
+        execution_mode=values.pop("execution_mode", "") or "",
+        importance=values.pop("importance", "") or "",
+    )
+    delivery = dict(values.get("delivery_policy") or {})
+    delivery["classification"] = klassifikation.as_dict()
+    values["delivery_policy"] = delivery
+    return values
+
+
 class RoutineService:
     def __init__(self, principal: RoutinePrincipal | None = None):
         self.principal = principal
@@ -177,6 +201,7 @@ class RoutineService:
         values = _command_values(rest[0])
         if values["access_scope"] == AccessScope.SYSTEM_OWNER.value and actor.role != "owner":
             raise RoutineForbidden("system-owner routines require the owner role")
+        values = _apply_classification(values)
         values["inbox_policy"] = {
             **_DEFAULT_INBOX_POLICY,
             **db_routines.get_inbox_preference(actor.canonical_user_id),
@@ -200,6 +225,7 @@ class RoutineService:
             raise RoutineForbidden("only Jarvis may create a routine proposal")
         values = _command_values(command)
         values["created_by"] = "jarvis"
+        values = _apply_classification(values)
         values["inbox_policy"] = {
             **_DEFAULT_INBOX_POLICY,
             **db_routines.get_inbox_preference(for_owner.canonical_user_id),

@@ -34,6 +34,40 @@ class AccessScope(StrEnum):
     SYSTEM_OWNER = "system_owner"
 
 
+class RoutineExecutionMode(StrEnum):
+    """Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter.
+
+    Bjørn 19/10-2026: «når en rutine oprettes skal man vælge om den skal udføre
+    i baggrunden og rapportere til inbox eller om rutines udføres af dig hvor
+    brugeren sidst var aktiv». Det er to forskellige livscyklusser, ikke en
+    indstilling: den ene kører uden vidner, den anden deler kontekst med
+    brugeren. Derfor et eksplicit valg frem for en heuristik i indbakken —
+    en dommer der læser teksten ved hver poll er både dyr og
+    nondeterministisk, og det er netop sådan en gammel opgave starter midt i
+    en kørende samtale.
+    """
+
+    BACKGROUND = "background"
+    """Isoleret run. Resultatet projiceres til indbakken; ingen deler kontekst."""
+
+    SESSION = "session"
+    """Udføres i den samtale brugeren sidst var aktiv — med cool-down."""
+
+
+class RoutineImportance(StrEnum):
+    """Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det.
+
+    Klassifikationen sættes ved oprettelsen. `inbox_gate` læser den; den
+    digter den ikke. `kraever_handling` er en *konsekvens* af klassen, ikke et
+    løsrevet flag nogen skriver i hånden.
+    """
+
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 @dataclass(frozen=True)
 class RoutinePrincipal:
     canonical_user_id: str
@@ -67,11 +101,44 @@ class RoutineExecutionContext:
 
 
 @dataclass(frozen=True)
+class RoutineClassification:
+    """Den udledte klassifikation — gemt i ``delivery_policy['classification']``.
+
+    ``as_dict()`` er det der persisteres, så læseren (runner, indbakke, API)
+    ikke skal genskabe reglerne. Tom streng i ``execution_mode``/``importance``
+    ved oprettelsen betyder «brug den bagudkompatible standard», så alle
+    eksisterende kaldesteder er uændrede.
+    """
+
+    execution_mode: RoutineExecutionMode
+    importance: RoutineImportance
+    requires_handling: bool
+    blocks_mutations: bool
+    highlights: bool
+    cool_down_minutes: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "execution_mode": self.execution_mode.value,
+            "importance": self.importance.value,
+            "requires_handling": self.requires_handling,
+            "blocks_mutations": self.blocks_mutations,
+            "highlights": self.highlights,
+            "cool_down_minutes": self.cool_down_minutes,
+        }
+
+
+@dataclass(frozen=True)
 class RoutineCreate:
     name: str
     instruction: bytes
     capability_scope: str
     trigger_kind: str
+    #: Hvor opgaven udføres. Tom = ``background`` (den adfærd alle
+    #: eksisterende rutiner har haft), så tilføjelsen er bagudkompatibel.
+    execution_mode: str = ""
+    #: Hvor vigtigt resultatet er. Tom = ``normal``.
+    importance: str = ""
     trigger_config: Mapping[str, object] = field(default_factory=dict)
     permission_policy: Mapping[str, object] = field(default_factory=dict)
     delivery_policy: Mapping[str, object] = field(default_factory=dict)

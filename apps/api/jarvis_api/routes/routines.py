@@ -27,6 +27,13 @@ class RoutineCreateBody(BaseModel):
     instruction: str = Field(min_length=1, max_length=100_000)
     capability_scope: Literal["chat", "code", "system"]
     trigger_kind: Literal["manual", "schedule", "interval", "event", "system"]
+    #: Hvor opgaven udføres — valgt ved oprettelsen (Bjørn 19/10-2026).
+    #: ``background`` = isoleret run, rapportér til indbakken.
+    #: ``session`` = udfør hvor brugeren sidst var aktiv, med cool-down.
+    execution_mode: Literal["background", "session"] = "background"
+    #: Hvor vigtigt resultatet er. ``high``/``critical`` fremhæves i indbakken;
+    #: kun ``critical`` må blokere en mutation.
+    importance: Literal["low", "normal", "high", "critical"] = "normal"
     trigger_config: dict[str, object] = {}
     permission_policy: dict[str, object] = {}
     delivery_policy: dict[str, object] = {}

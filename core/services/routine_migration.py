@@ -289,13 +289,34 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
     else:
         trigger_kind = "manual"
         trigger_config = {}
+    # KLASSIFIKATION (19/10-2026): en legacy-opgave har ikke noget *valg* —
+    # kun de felter nogen skrev dengang. Vi afleder derfor det nærmeste vi kan
+    # komme og siger det højt, frem for at lade feltet stå tomt så runneren
+    # skal gætte:
+    #
+    # * `session_id` sat  -> opgaven var bundet til en samtale dengang, så
+    #   `session` er den tro adfærd. Ellers `background` (den isolerede silo).
+    # * `importance`      -> `normal`. Der findes ingen evidens for andet, og
+    #   at gætte `high` ville fremhæve støj i indbakken.
+    #
+    # En migreret rutine oprettes `paused`, så klassifikationen kan gennemgås
+    # før den første affyring — den er et udgangspunkt, ikke en dom.
+    from core.services.routine_classification import classify_routine
+
+    klassifikation = classify_routine(
+        execution_mode="session" if str(row.get("session_id") or "").strip() else "background",
+        importance="normal",
+    )
     return {
         "name": f"Migrated {kind}",
         "instruction": str(row.get("focus") or "Legacy autonomous work"),
         "capability_scope": "system" if _registered_system_producer(row) else "chat",
         "trigger_kind": trigger_kind,
         "trigger_config": trigger_config,
-        "delivery_policy": {"channel": str(row.get("channel") or "auto")},
+        "delivery_policy": {
+            "channel": str(row.get("channel") or "auto"),
+            "classification": klassifikation.as_dict(),
+        },
         "source_id": source_id,
     }
 

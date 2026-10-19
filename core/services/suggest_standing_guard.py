@@ -82,15 +82,37 @@ SUGGEST_TOOL_NAMES: tuple[str, ...] = STILLING_TOOL_NAMES
 
 
 def suggest_standing_guard_enabled() -> bool:
-    """Default TRUE (Bjørn bad om den 7/10-2026). Env vinder, så den kan slås
-    fra uden genstart. Enhver tvivl → til."""
+    """Default FALSE (Bjørn 19/10-2026). Env kan tænde den igen.
+
+    ## Hvorfor standarden blev vendt
+
+    Vagten gør noget dyrere end den ser ud: når den fyrer, skriver den en note
+    i halen og kalder ``continue`` — altså **starter en ekstra runde** efter den
+    runde hvor svaret allerede var skrevet. Målt 19/10-2026: ``done`` (og dermed
+    ``final_answer_start``, og dermed folden i chat mode) falder først når
+    løkken ikke har flere værktøjskald. Så hver ekstra runde skubber folden, og
+    slutsvaret skal flytte sig ud af et hoved der allerede er klappet sammen,
+    midt i at det streamer. Det er «teleporteringen» Bjørn beskrev.
+
+    Reglen den skulle flytte ned («tag stilling til næste skridt») står nu som
+    en fast linje i ``output_discipline`` — med den tilføjelse at kaldet skal
+    ligge FØR den afsluttende tekst, ikke efter. En regel i prompten koster
+    ingen ekstra runde.
+
+    Målt før omlægningen: 59 kald af ``suggest_next_task`` den 19/10 alene. Der
+    er altså ingen tegn på at feltet står tomt uden vagten — den antagelse kom
+    fra 7/10, hvor Jarvis var eneste kilde og værktøjet var nyt.
+
+    Env vinder, så den kan tændes igen uden genstart. Enhver tvivl → FRA: en
+    vagt der genstarter turen skal kunne slås fra af den der mærker prisen.
+    """
     try:
         raw = str(os.environ.get(_ENV) or "").strip()
-    except Exception:  # miljøet kan ikke læses → standarden (til) gælder
-        return True
+    except Exception:  # miljøet kan ikke læses → standarden (fra) gælder
+        return False
     if not raw:
-        return True
-    return raw.lower() not in {"0", "false", "no", "off"}
+        return False
+    return raw.lower() in {"1", "true", "yes", "on"}
 
 
 def mangler_stilling(

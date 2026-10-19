@@ -48,12 +48,19 @@ def _output_discipline_instruction(*, strength: str) -> str:
         #
         # Pinned sammen med vis_graf og vis_widget: pinned-filens eget _doc
         # siger at et vaerktoej den STAAENDE prompt beder om SKAL staa der.
-        "- Before you finish a turn that leaves a next step, call suggest_next_task with",
-        "  that step in Bjørn's own words: the instruction he would send to start it — not",
-        "  a reply, not a comment. One line, max ten words, Danish, an order he could send.",
-        "  It waits in his composer and survives an app restart. Since 28/9-2026 there is",
-        "  no local model behind it: skip it and the field stays EMPTY. Skip only when the",
-        "  thread is genuinely done.",
+        "- If the turn leaves a next step, call suggest_next_task with that step in Bjørn's",
+        "  own words: the instruction he would send to start it — not a reply, not a comment.",
+        "  One line, max ten words, Danish, an order he could send. It waits in his composer",
+        "  and survives an app restart. Since 28/9-2026 there is no local model behind it:",
+        "  skip it and the field stays EMPTY. Skip only when the thread is genuinely done.",
+        # Maalt 19/10-2026: `done` — og dermed folden i chat mode — falder foerst
+        # naar loekken ikke har flere vaerktoejskald. Et kald EFTER den afsluttende
+        # tekst skubber derfor folden, og slutsvaret skal flytte sig ud af et hoved
+        # der allerede er klappet sammen, midt i at det streamer. Reglen her siger
+        # derfor hvor kaldet skal LIGGE, ikke bare at det skal ske.
+        "- Call it BEFORE your closing text block — never after. Any tool call placed after",
+        "  the answer forces one more round, and that extra round is what makes the answer",
+        "  jump out of the folded work-section while it is still streaming.",
         # Maalt 11/10-2026: `pause_and_ask` blev naevnt NUL steder i hele
         # prompt_sections/. Reglen fandtes altsaa kun for den ENE halvdel — og
         # den halvdel pegede paa komponisten, bakket op af en vagt. Saa naar

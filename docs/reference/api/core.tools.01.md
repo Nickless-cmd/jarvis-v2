@@ -198,10 +198,10 @@ _Symbol find / find usages._
 | function | `_mcp_tekst` | `(svar)` | Træk svarteksten ud af et MCP-svar og fjern klientens indhegning. | [src](../../../core/tools/code_navigation_tools.py#L230) |
 | function | `_lsp_repl_kode` | `(name, known=…)` | Byg REPL-koden Serena skal køre. | [src](../../../core/tools/code_navigation_tools.py#L248) |
 | function | `_cached_def` | `(name, scope)` | Hent en frisk nok cachet definition — ellers `None`. | [src](../../../core/tools/code_navigation_tools.py#L293) |
-| function | `_lsp_usages` | `(name, scope)` | Slå referencer op gennem Serenas LSP. | [src](../../../core/tools/code_navigation_tools.py#L314) |
-| function | `_lsp_hits` | `(data, scope)` | Byg hits i samme form som ripgrep-vejen giver. | [src](../../../core/tools/code_navigation_tools.py#L388) |
-| function | `_exec_find_usages` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L438) |
-| function | `_classify` | `(snippet)` | — | [src](../../../core/tools/code_navigation_tools.py#L526) |
+| function | `_lsp_usages` | `(name, scope, fejl=…)` | Slå referencer op gennem Serenas LSP. | [src](../../../core/tools/code_navigation_tools.py#L314) |
+| function | `_lsp_hits` | `(data, scope)` | Byg hits i samme form som ripgrep-vejen giver. | [src](../../../core/tools/code_navigation_tools.py#L410) |
+| function | `_exec_find_usages` | `(args)` | — | [src](../../../core/tools/code_navigation_tools.py#L460) |
+| function | `_classify` | `(snippet)` | — | [src](../../../core/tools/code_navigation_tools.py#L563) |
 
 ## `core/tools/coding_lane_tools.py`
 _Coding lane tools — Niveau 1 skeleton dispatcher._

@@ -41,7 +41,7 @@ def anker(monkeypatch, tmp_path: Path):
 
 def test_lsp_svarer_naar_den_er_bedt_om_det(anker, monkeypatch):
     """Med precise=True skal LSP-vejen vaelges, og hits baere `enclosing`."""
-    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope: {
+    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope, fejl=None: {
         "defs": [{"file": "mod.py", "line": 1, "kind": "Function"}],
         "refs": [
             {"file": "mod.py", "line": 6, "enclosing": "caller", "kind": "Function"},
@@ -65,7 +65,7 @@ def test_lsp_bliver_IKKE_spurgt_uden_precise(anker, monkeypatch):
     """
     kaldt: list[str] = []
     monkeypatch.setattr(nav, "_lsp_usages",
-                        lambda navn, scope: kaldt.append(navn) or None)
+                        lambda navn, scope, fejl=None: kaldt.append(navn) or None)
     monkeypatch.setattr(nav, "_ripgrep_available", lambda: True)
 
     class _Res:
@@ -79,7 +79,7 @@ def test_lsp_bliver_IKKE_spurgt_uden_precise(anker, monkeypatch):
 
 def test_lsp_giver_snippet_fra_den_rigtige_linje(anker, monkeypatch):
     """Snippet skal laeses fra filen — LSP'en giver kun linjenummeret."""
-    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope: {
+    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope, fejl=None: {
         "defs": [],
         "refs": [{"file": "mod.py", "line": 6, "enclosing": "caller", "kind": "Function"}],
         "error": None,
@@ -93,7 +93,7 @@ def test_ukendt_symbol_falder_til_ripgrep(anker, monkeypatch):
 
     Det er den aegte grund til fallback: LSP'en er blind for tekst.
     """
-    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope: None)
+    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope, fejl=None: None)
     monkeypatch.setattr(nav, "_ripgrep_available", lambda: True)
 
     class _Res:
@@ -105,9 +105,85 @@ def test_ukendt_symbol_falder_til_ripgrep(anker, monkeypatch):
     assert res["count"] == 2
 
 
+# ── Noten naar precise ikke kan leveres (maalt 19/10-2026) ──────────────
+# `backend="ripgrep"` siger HVAD der svarede, ikke HVORFOR det andet ikke
+# gjorde. En kalder der bad om `enclosing` fik et svar uden — og uden
+# grund. Noten goer fejlen laesbar; `lsp_error` goer den maskinlaesbar.
+
+
+def test_precise_fejl_giver_note_og_kode(anker, monkeypatch):
+    """Bad man om praecision og fik den ikke, skal svaret SIGE det."""
+    def _fejl(navn, scope, fejl=None):
+        if fejl is not None:
+            fejl["kind"] = "timeout"
+            fejl["reason"] = "LSP svarede ikke inden 3.0 s"
+        return None
+
+    monkeypatch.setattr(nav, "_lsp_usages", _fejl)
+    monkeypatch.setattr(nav, "_ripgrep_available", lambda: True)
+
+    class _Res:
+        stdout = f"{anker}/mod.py:6:    return target()\n"
+
+    monkeypatch.setattr(nav.subprocess, "run", lambda *a, **k: _Res())
+    res = nav._exec_find_usages({"name": "target", "precise": True})
+    assert res["backend"] == "ripgrep"
+    assert res["lsp_error"] == "timeout"
+    assert "3.0 s" in res["note"]
+
+
+def test_uden_precise_ingen_note(anker, monkeypatch):
+    """Noten hoerer til `precise`. Uden den er der intet at forklare.
+
+    En note paa standardstien ville vaere stoj: ripgrep ER svaret der,
+    ikke en nedgradering af noget andet.
+    """
+    monkeypatch.setattr(nav, "_ripgrep_available", lambda: True)
+
+    class _Res:
+        stdout = f"{anker}/mod.py:6:    return target()\n"
+
+    monkeypatch.setattr(nav.subprocess, "run", lambda *a, **k: _Res())
+    res = nav._exec_find_usages({"name": "target"})
+    assert res["backend"] == "ripgrep"
+    assert "note" not in res
+    assert "lsp_error" not in res
+
+
+def test_lsp_uden_definition_giver_koden_no_definition(anker, monkeypatch):
+    """Den aegte kaede: LSP-svar uden defs -> fejl-dict -> note i svaret.
+
+    Beviser at aarsagen BAERES fra `_lsp_usages` til svaret — ikke kun at
+    note-feltet findes. Det er forskellen mellem en pyntet fejl og en
+    fejl der kan handles paa.
+    """
+    from core.services import mcp_manager
+
+    monkeypatch.setattr(
+        mcp_manager, "call",
+        lambda *a, **k: {
+            "content": [
+                {"type": "text", "text": '{"defs": [], "refs": [], "error": None}'}
+            ],
+            "isError": False,
+        },
+    )
+    monkeypatch.setattr(nav, "_ripgrep_available", lambda: True)
+
+    class _Res:
+        stdout = f"{anker}/mod.py:6:    return target()\n"
+
+    monkeypatch.setattr(nav.subprocess, "run", lambda *a, **k: _Res())
+    nav._LSP_DEF_CACHE.clear()
+    res = nav._exec_find_usages({"name": "target", "precise": True})
+    assert res["backend"] == "ripgrep"
+    assert res["lsp_error"] == "no_definition"
+    assert "ripgrep kan" in res["note"]
+
+
 def test_ingen_backend_giver_fejl_ikke_nul_hits(anker, monkeypatch):
     """Hverken LSP eller rg = fejl. Et tomt «ok» ville vaere en loegn."""
-    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope: None)
+    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope, fejl=None: None)
     monkeypatch.setattr(nav, "_ripgrep_available", lambda: False)
     res = nav._exec_find_usages({"name": "target", "precise": True})
     assert res["status"] == "error"
@@ -117,7 +193,7 @@ def test_ingen_backend_giver_fejl_ikke_nul_hits(anker, monkeypatch):
 def test_manglende_navn_afvises_foer_nogen_backend(anker, monkeypatch):
     kaldt: list[str] = []
     monkeypatch.setattr(nav, "_lsp_usages",
-                        lambda navn, scope: kaldt.append(navn) or None)
+                        lambda navn, scope, fejl=None: kaldt.append(navn) or None)
     res = nav._exec_find_usages({"name": "  ", "precise": True})
     assert res["status"] == "error"
     assert kaldt == [], "LSP blev spurgt om et tomt navn"
@@ -134,7 +210,7 @@ def test_cache_husker_definitionen(anker, monkeypatch):
         "defs": [{"file": "mod.py", "line": 1, "kind": "Function"}],
         "refs": [], "error": None,
     }
-    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope: svar)
+    monkeypatch.setattr(nav, "_lsp_usages", lambda navn, scope, fejl=None: svar)
     nav._LSP_DEF_CACHE["target"] = (nav.time.monotonic(), dict(svar["defs"][0]))
     post = nav._cached_def("target", anker)
     assert post is not None and post["file"] == "mod.py"

@@ -311,19 +311,36 @@ def _cached_def(name: str, scope: Path) -> dict[str, Any] | None:
     return def_
 
 
-def _lsp_usages(name: str, scope: Path) -> dict[str, Any] | None:
+def _lsp_usages(
+    name: str, scope: Path, fejl: dict[str, str] | None = None
+) -> dict[str, Any] | None:
     """Slå referencer op gennem Serenas LSP.
 
     Returnerer `None` når LSP-vejen ikke kan bruges — serveren svarer
     ikke, symbolet har ingen definition, eller svaret kan ikke læses.
     Kalderen falder da tilbage til ripgrep. `None` betyder altså
     «prøv den anden vej», ikke «der er nul referencer».
+
+    `fejl` (valgfri) fyldes med `kind` + `reason` når vejen opgives. Uden
+    den kan en kalder der bad om `precise` få et svar UDEN præcision og
+    uden at vide hvorfor — `backend="ripgrep"` alene siger hvad der
+    svarede, ikke hvorfor det andet ikke gjorde. `kind` er maskinlæsbar
+    (`timeout`, `no_lsp`, `no_definition`, `bad_reply`, `lsp_error`,
+    `unreadable`), så en kalder kan skelne «prøv igen senere» fra «LSP'en
+    kan ikke se den slags» uden at parse prosa.
     """
+
+    def _nej(kode: str, tekst: str) -> None:
+        if fejl is not None:
+            fejl["kind"] = kode
+            fejl["reason"] = tekst
+        return None
+
     try:
         from core.services import mcp_manager
     except Exception as exc:  # import kan fejle under bootstrap
         logger.debug("find_usages: mcp_manager utilgængelig (%s)", exc)
-        return None
+        return _nej("no_lsp", f"mcp_manager utilgængelig: {exc}")
     # KORT frist — målt 18/10-2026: `mcp_client` har et stdio-loft på 20 s.
     # Uden denne frist venter HVER find_usages op til 20 s på en Serena der
     # ikke svarer, før den falder tilbage til ripgrep (12–28 ms). Det gør
@@ -350,20 +367,20 @@ def _lsp_usages(name: str, scope: Path) -> dict[str, Any] | None:
                 "find_usages: LSP svarede ikke inden %.1f s — bruger ripgrep",
                 _LSP_FRIST_S,
             )
-            return None
+            return _nej("timeout", f"LSP svarede ikke inden {_LSP_FRIST_S:.1f} s")
         except Exception as exc:  # timeout, død subprocess, manglende tillid
             logger.warning("find_usages: LSP-kald fejlede (%s) — bruger ripgrep", exc)
-            return None
+            return _nej("lsp_error", f"LSP-kald fejlede: {type(exc).__name__}: {exc}")
     finally:
         _pool.shutdown(wait=False)
     if not isinstance(svar, dict) or svar.get("isError"):
         logger.debug("find_usages: LSP svarede fejl — bruger ripgrep")
-        return None
+        return _nej("bad_reply", "LSP svarede en fejl (isError)")
     try:
         data = ast.literal_eval(_mcp_tekst(svar))
     except (ValueError, SyntaxError) as exc:
         logger.warning("find_usages: kunne ikke læse LSP-svar (%s)", exc)
-        return None
+        return _nej("unreadable", f"kunne ikke læse LSP-svar: {exc}")
     if not isinstance(data, dict) or data.get("error"):
         if isinstance(data, dict) and data.get("error"):
             logger.warning("find_usages: LSP-fejl: %s", data["error"])
@@ -372,12 +389,17 @@ def _lsp_usages(name: str, scope: Path) -> dict[str, Any] | None:
             # symbolet er omdøbt. Kassér posten, så næste kald laver det
             # fulde opslag i stedet for at fejle på den samme sti igen.
             _LSP_DEF_CACHE.pop(name, None)
-        return None
+        detalje = data.get("error") if isinstance(data, dict) else None
+        return _nej("lsp_error", f"LSP-fejl: {detalje or 'ukendt svarform'}")
     if not data.get("defs"):
         # Navnet er ikke et symbol LSP'en kender. Det kan stadig være en
         # streng eller en kommentar — ripgrep ser den slags, LSP'en gør ikke.
         logger.debug("find_usages: %r har ingen definition — bruger ripgrep", name)
-        return None
+        return _nej(
+            "no_definition",
+            f"{name!r} har ingen definition — LSP'en kan ikke se den slags "
+            "(streng eller kommentar); ripgrep kan",
+        )
     if kendt is None:
         # Første vellykkede opslag for dette symbol: husk hvor det bor, så
         # næste kald kan springe de ~1,4 s over som `find_symbol` koster.
@@ -452,7 +474,10 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
     #    referencer. Den købes for PRÆCISION (`enclosing`), ikke for fart,
     #    så den skal vælges eksplicit. Dertil: et hængende LSP-kald
     #    blokerer de næste, fordi stdio-transporten serialiseres.
-    lsp_data = _lsp_usages(name, scope) if args.get("precise") else None
+    lsp_fejl: dict[str, str] = {}
+    lsp_data = (
+        _lsp_usages(name, scope, lsp_fejl) if args.get("precise") else None
+    )
     if lsp_data is not None:
         hits = _lsp_hits(lsp_data, scope)
         return {
@@ -512,7 +537,7 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
         })
         if len(hits) >= MAX_HITS:
             break
-    return {
+    svar: dict[str, Any] = {
         "status": "ok",
         "name": name,
         "scope": str(scope),
@@ -521,6 +546,18 @@ def _exec_find_usages(args: dict[str, Any]) -> dict[str, Any]:
         "hits": hits,
         "truncated": len(hits) >= MAX_HITS,
     }
+    if args.get("precise"):
+        # Kalderen bad om præcision og fik den ikke. Det skal siges højt:
+        # `backend` alene fortæller HVAD der svarede, ikke HVORFOR det
+        # andet ikke gjorde — og en læser der ikke kender feltet tror
+        # ellers at hits'ene er symbolske. `lsp_error` er den
+        # maskinlæsbare kode, `note` den læsbare sætning.
+        svar["lsp_error"] = lsp_fejl.get("kind") or "unknown"
+        svar["note"] = lsp_fejl.get("reason") or (
+            "LSP-vejen gav intet resultat — svaret er ripgrep-baseret, "
+            "uden `enclosing`"
+        )
+    return svar
 
 
 def _classify(snippet: str) -> str:
@@ -593,7 +630,11 @@ CODE_NAVIGATION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "names that only exist as strings, so it falls back to ripgrep "
                 "when the symbol has no definition or the server is "
                 "unreachable. The `backend` field says which one answered, so "
-                "read it before trusting the result. kind='definition' marks "
+                "read it before trusting the result — when precise=true could "
+                "not be honoured you also get `lsp_error` (timeout, no_lsp, "
+                "no_definition, bad_reply, lsp_error, unreadable) and `note` "
+                "saying why, so a fallback never looks like precision. "
+                "kind='definition' marks "
                 "the declaration site, kind='use' everything else. Cap 200 hits."
             ),
             "parameters": {

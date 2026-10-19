@@ -17,6 +17,8 @@ const MAX_FRAME_DELTA_S = 0.1
 export interface ChatPacingOptions {
   live: boolean
   finalAnswerStarted: boolean
+  /** Pace også levende synteser før serveren kender slutsvarsgrænsen. */
+  paceAllText?: boolean
   runId?: string | null
 }
 
@@ -57,7 +59,7 @@ export function useChatPacedBlocks(
   blocks: readonly ContentBlock[],
   options: ChatPacingOptions,
 ): ContentBlock[] {
-  const textIndices = options.finalAnswerStarted
+  const textIndices = options.finalAnswerStarted || options.paceAllText
     ? blocks.flatMap((block, index) => block?.type === 'text' ? [index] : [])
     : []
   // Serveren kan dele ét markdown-svar over flere content blocks. Den gamle
@@ -66,7 +68,7 @@ export function useChatPacedBlocks(
   // én læsekurve hen over samtlige tekstblokke.
   const target = textIndices.map((index) =>
     (blocks[index] as Extract<ContentBlock, { type: 'text' }>).text).join('')
-  const key = `${options.runId ?? 'current'}:final`
+  const key = `${options.runId ?? 'current'}:chat-text`
   const [cursor, setCursor] = useState<Cursor>({ key: '', shown: '' })
   const cursorRef = useRef(cursor)
   cursorRef.current = cursor

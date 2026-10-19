@@ -59,7 +59,26 @@ export function ChatFlowPresentation({
   paceFinalAnswer = false,
   onAnswerPaced,
 }: ChatFlowPresentationProps) {
+  // Pace fra FØRSTE levende teksttegn, ikke først efter final_answer_start.
+  // No-tool-svar får ingen sådan grænse fra relæet og kunne derfor arve
+  // providerens store bidder, mens autonome follow-runs så fine ud. Samme
+  // cursor følger nu teksten gennem syntese → slutsvar → message_stop.
+  const pacingFinal = finalAnswerStarted || (paceFinalAnswer && status === 'done')
+  const pacedBlocks = useChatPacedBlocks(blocks, {
+    live: streaming || paceFinalAnswer,
+    finalAnswerStarted: pacingFinal,
+    paceAllText: streaming,
+    runId,
+  })
   const model = deriveChatFlow({
+    blocks: pacedBlocks,
+    workingStep,
+    rundeEtiketter,
+    tankeResumeer,
+    finalAnswerStarted,
+    status,
+  })
+  const targetModel = deriveChatFlow({
     blocks,
     workingStep,
     rundeEtiketter,
@@ -73,7 +92,7 @@ export function ChatFlowPresentation({
   let confirmedTexts = priorConfirmed
   if (finalAnswerStarted) {
     confirmedTexts = [...priorConfirmed]
-    for (const block of model.finalBlocks) {
+    for (const block of targetModel.finalBlocks) {
       if (block.type !== 'text' || !block.text) continue
       const related = confirmedTexts.findIndex((text) => text.startsWith(block.text) || block.text.startsWith(text))
       if (related < 0) confirmedTexts.push(block.text)
@@ -87,21 +106,16 @@ export function ChatFlowPresentation({
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))
     : model.workBlocks
-  const currentFinalText = new Set(model.finalBlocks
+  const currentFinalText = new Set(targetModel.finalBlocks
     .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
     .map((block) => block.text))
   const restoredText = finalAnswerStarted
     ? confirmedTexts.filter((text) => !currentFinalText.has(text)).map((text): ContentBlock => ({ type: 'text', text }))
     : []
   const answerBlocks = [...restoredText, ...model.finalBlocks]
-  const pacingFinal = finalAnswerStarted || (paceFinalAnswer && status === 'done')
-  const answer = useChatPacedBlocks(answerBlocks, {
-    live: streaming || paceFinalAnswer,
-    finalAnswerStarted: pacingFinal,
-    runId,
-  })
-  const targetSvar = answerBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
-  const vistSvar = answer.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+  const answer = answerBlocks
+  const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
+  const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
   useEffect(() => {
     if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()

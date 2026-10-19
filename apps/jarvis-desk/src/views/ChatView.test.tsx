@@ -190,6 +190,45 @@ describe('ChatView integration', () => {
     expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
   })
 
+  it('fortsætter den samme rolige pacing efter message_stop uden final_answer_start', async () => {
+    // Svar uden tools får ingen final_answer_start fra relæet. DeepSeek kan
+    // levere dem i store bidder; wakeup/follow-modellen leverer typisk små og
+    // skjulte derfor fejlen. Den lokale Chat-række skal pace fra første delta
+    // og blive monteret, mens resten ruller færdig efter message_stop.
+    const text = 'Et længere normalt chatsvar uden værktøj. '.repeat(40)
+    const view = render(
+      <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+        <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+          <ChatView sessionId="s1" />
+        </PanelProvider></PermissionProvider></StreamProvider>
+      </SessionProvider></SettingsProvider>,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'svar uden tool{Enter}')
+    act(() => {
+      handlersRef.current?.onRunId('r-no-boundary')
+      handlersRef.current?.onEvent({ type: 'message_start', message: {
+        id: 'r-no-boundary', model: 'm', provider: 'p', lane: 'l', session_id: 's1',
+        usage: { input_tokens: 0, output_tokens: 0 },
+      } })
+      handlersRef.current?.onEvent({ type: 'content_block_start', index: 0,
+        content_block: { type: 'text', text: '' } })
+      handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0,
+        delta: { type: 'text_delta', text } })
+    })
+    const synligTekst = () => view.container
+      .querySelector('.chat-flow-answer, .chat-flow-live-synthesis')?.textContent?.length ?? 0
+    await waitFor(() => expect(synligTekst()).toBeGreaterThan(0))
+    const førStop = synligTekst()
+    act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
+
+    const answer = view.container.querySelector('.chat-flow-answer')
+    expect(answer).toBeInTheDocument()
+    expect(answer?.textContent?.length ?? 0).toBeGreaterThanOrEqual(førStop)
+    expect(answer?.textContent?.length ?? 0).toBeLessThan(text.length)
+    expect(view.container.textContent).not.toContain(text)
+    view.unmount()
+  })
+
   it('viser eget uploadet billede straks og skjuler kørselstal i chat', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:chat-preview')
     const { container } = render(

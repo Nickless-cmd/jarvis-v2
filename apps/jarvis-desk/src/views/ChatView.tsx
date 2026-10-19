@@ -495,7 +495,6 @@ export function ChatView({
     && !!stream.activeRunId
     && pacedAnswerRunId !== stream.activeRunId
     && primaryChatModel.finalBlocks.some((block) => block.type === 'text' && block.text.length > 0)
-    && (stream.finalAnswerStarted || primaryChatModel.hasObservableWork)
   const visLevendeTur = streaming || afslutterSvarPacing
   const markerSvarPacet = useCallback(() => {
     if (stream.activeRunId) setPacedAnswerRunId(stream.activeRunId)

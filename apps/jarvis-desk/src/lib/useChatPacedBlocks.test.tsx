@@ -227,4 +227,17 @@ describe('useChatPacedBlocks', () => {
     expect(result.current[0]).toBe(block)
     expect(requestAnimationFrame).not.toHaveBeenCalled()
   })
+
+  it('pacer levende Chat-tekst før final_answer_start når hele chatstrømmen er slået til', () => {
+    const text = 'Et normalt svar uden værktøj. '.repeat(20)
+    const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {
+      live: true, finalAnswerStarted: false, paceAllText: true, runId: 'run-no-tool',
+    }))
+    expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
+    nextFrame()
+    nextFrame()
+    const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+    expect(visible.length).toBeGreaterThan(0)
+    expect(visible.length).toBeLessThan(text.length)
+  })
 })

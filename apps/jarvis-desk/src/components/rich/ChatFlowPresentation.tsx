@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Brain, Code2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
@@ -33,6 +33,10 @@ export interface ChatFlowPresentationProps {
   beskedId?: string
   config?: ApiConfig
   onWorkExpanded?: () => void
+  /** Hold slutsvarets visuelle pacing i live efter message_stop, indtil den
+   *  persisterede besked kan overtage uden et dump. */
+  paceFinalAnswer?: boolean
+  onAnswerPaced?: () => void
 }
 
 export function ChatFlowPresentation({
@@ -52,6 +56,8 @@ export function ChatFlowPresentation({
   beskedId,
   config,
   onWorkExpanded,
+  paceFinalAnswer = false,
+  onAnswerPaced,
 }: ChatFlowPresentationProps) {
   const model = deriveChatFlow({
     blocks,
@@ -88,11 +94,20 @@ export function ChatFlowPresentation({
     ? confirmedTexts.filter((text) => !currentFinalText.has(text)).map((text): ContentBlock => ({ type: 'text', text }))
     : []
   const answerBlocks = [...restoredText, ...model.finalBlocks]
+  const pacingFinal = finalAnswerStarted || (paceFinalAnswer && status === 'done')
   const answer = useChatPacedBlocks(answerBlocks, {
-    live: streaming,
-    finalAnswerStarted,
+    live: streaming || paceFinalAnswer,
+    finalAnswerStarted: pacingFinal,
     runId,
   })
+  const targetSvar = [...answerBlocks].reverse().find((block) => block.type === 'text')
+  const vistSvar = [...answer].reverse().find((block) => block.type === 'text')
+  const svarFaerdigPacet = !!targetSvar && !!vistSvar
+    && targetSvar.type === 'text' && vistSvar.type === 'text'
+    && targetSvar.text === vistSvar.text
+  useEffect(() => {
+    if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()
+  }, [onAnswerPaced, paceFinalAnswer, svarFaerdigPacet])
   // «Aktiv» er arbejdsfasen: Jarvis kører og har ikke begyndt at svare endnu.
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.

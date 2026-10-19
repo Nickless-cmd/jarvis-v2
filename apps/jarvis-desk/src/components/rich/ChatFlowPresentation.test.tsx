@@ -415,4 +415,17 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
       streaming={false} status="done" finalAnswerStarted />)
     expect(document.querySelector('.rv-tur')).toBeNull()
   })
+
+  it('melder først den afsluttede live-række klar til persisteret overtagelse', () => {
+    const onAnswerPaced = vi.fn()
+    render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[
+        { type: 'tool_use', id: 't1', name: 'bash', input: {}, status: 'done' },
+        { type: 'text', text: 'Det færdige svar.' },
+      ]}
+      streaming={false} status="done" finalAnswerStarted paceFinalAnswer
+      onAnswerPaced={onAnswerPaced} />)
+
+    expect(onAnswerPaced).toHaveBeenCalledOnce()
+  })
 })

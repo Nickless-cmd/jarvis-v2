@@ -235,6 +235,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         provisionalBlockIndex: _sameRun ? state.provisionalBlockIndex : null,
         provisionalMissingBlockIndex: _sameRun ? state.provisionalMissingBlockIndex : null,
         workingStep: _sameRun ? state.workingStep : null,
+        rundeEtiketter: _sameRun ? state.rundeEtiketter : undefined,
+        tankeResumeer: _sameRun ? state.tankeResumeer : undefined,
         // Et NYT run rydder genoptagelses-varslet. Foer var `message_delta`
         // med stop_reason end_turn/completed den eneste vej ud — og en tvungen
         // slutrunde har per definition ikke det stop_reason: det er selve
@@ -365,6 +367,20 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      if (event.kind === 'client_turn_start') {
+        // Brugerens send er den tidligste autoritative turgrænse i klienten.
+        // Serverens første `message_start` bærer ofte tomt run-id; uden denne
+        // nulstilling lignede det et replay af forrige run, så dets runde-linje
+        // stod i den nye tur indtil første nye tool-event landede.
+        return {
+          ...initialStreamState(),
+          status: 'working',
+          model: state.model,
+          provider: state.provider,
+          lane: state.lane,
+          turStart: Date.now(),
+        }
+      }
       if (event.kind === 'tool_output_delta') {
         const p = event.payload as {
           run_id?: unknown
@@ -439,7 +455,21 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // run-event bærer det rigtige run_id (message_start har det tomt).
       if (event.kind === 'run') {
         const rp = event.payload as { run_id?: string }
-        return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
+        if (!rp.run_id) return state
+        // En run-frame kan være den første frame ved follow/reconnect. Er id'et
+        // nyt, må intet visuelt arbejde fra den forrige tur følge med over.
+        if (state.activeRunId && state.activeRunId !== rp.run_id) {
+          return {
+            ...initialStreamState(),
+            status: 'working',
+            activeRunId: rp.run_id,
+            model: state.model,
+            provider: state.provider,
+            lane: state.lane,
+            turStart: Date.now(),
+          }
+        }
+        return { ...state, activeRunId: rp.run_id }
       }
       if (event.kind === 'run_recovery') {
         const p = event.payload as { reason?: string; message?: string; continuing?: boolean; ryddet?: boolean }

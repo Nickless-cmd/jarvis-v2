@@ -40,6 +40,7 @@ describe('useChatPacedBlocks', () => {
     expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
     expect(requestAnimationFrame).toHaveBeenCalledTimes(1)
     nextFrame()
+    nextFrame()
     const first = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
     expect(first.length).toBeGreaterThan(0)
     expect(first.length).toBeLessThan(text.length)
@@ -66,7 +67,7 @@ describe('useChatPacedBlocks', () => {
     // …og resten skal indhentes i trin, aldrig i ét spring.
     let previous = first.length
     let antalFrames = 0
-    while (shown().length < text.length && antalFrames < 2_400) {
+    while (shown().length < text.length && antalFrames < 4_000) {
       nextFrame()
       const now = shown().length
       expect(now - previous).toBeLessThanOrEqual(2)
@@ -74,7 +75,7 @@ describe('useChatPacedBlocks', () => {
       antalFrames += 1
     }
     expect(shown()).toBe(text)
-    expect(antalFrames).toBeGreaterThan(1_000)
+    expect(antalFrames).toBeGreaterThan(2_000)
   })
 
   it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {
@@ -90,7 +91,7 @@ describe('useChatPacedBlocks', () => {
       rerender({ text: source })
       nextFrame()
       const vistNu = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
-      // 120 tegn/s ved en 16 ms frame er højst 2 kodepunkter. Replay-kilden
+      // 72 tegn/s ved en 16 ms frame er højst 2 kodepunkter. Replay-kilden
       // må gerne løbe foran; skærmen må ikke forsøge at matche dens tempo.
       expect(vistNu - forrige).toBeLessThanOrEqual(2)
       forrige = vistNu
@@ -101,7 +102,7 @@ describe('useChatPacedBlocks', () => {
     // Da kilden stopper, ruller pacingen resten færdig i de samme jævne trin.
     let antal = 0
     while ((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length < source.length
-      && antal < 2_400) {
+      && antal < 4_000) {
       nextFrame()
       antal += 1
     }
@@ -177,6 +178,7 @@ describe('useChatPacedBlocks', () => {
       [{ type: 'text', text }],
       { live: true, finalAnswerStarted: true, runId },
     ), { initialProps: { text: first, runId: 'run-a' } })
+    nextFrame()
     nextFrame()
     expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length).toBeGreaterThan(0)
     rerender({ text: second, runId: 'run-b' })

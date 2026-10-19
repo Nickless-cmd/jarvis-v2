@@ -74,6 +74,33 @@ describe('streamReducer', () => {
     expect(s.activeRunId).toBe('visible-9')
   })
 
+  it('rydder forrige rundelinje straks når klienten starter en ny tur', () => {
+    const previous = reduce([
+      { type: 'message_start', message: { id: 'old', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 4, output_tokens: 8 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't-old', name: 'bash', input: {} } },
+      { type: 'tool_round_label', run_id: 'old', round: 1, etiket: 'Rettede den gamle tur', tool_use_ids: ['t-old'] },
+      { type: 'message_stop' },
+    ])
+    const started = streamReducer(previous, {
+      type: 'system_event', kind: 'client_turn_start', payload: {},
+    })
+
+    expect(started.status).toBe('working')
+    expect(started.activeRunId).toBeNull()
+    expect(started.blocks).toEqual([])
+    expect(started.workingStep).toBeNull()
+    expect(started.rundeEtiketter).toBeUndefined()
+    expect(started.tankeResumeer).toBeUndefined()
+    expect(started.finalAnswerStarted).toBe(false)
+
+    const emptyStart = streamReducer(started, {
+      type: 'message_start',
+      message: { id: '', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 4, output_tokens: 0 } },
+    })
+    expect(emptyStart.blocks).toEqual([])
+    expect(emptyStart.rundeEtiketter).toBeUndefined()
+  })
+
   it('message_start captures the run model/provider/lane (footer-bug fix)', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'r1', model: 'glm-5.1', provider: 'ollama', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

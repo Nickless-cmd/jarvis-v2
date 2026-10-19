@@ -62,6 +62,8 @@ function MessageRowImpl({
   turSlut,
   varighedSekunder,
   onWorkExpanded,
+  paceFinalAnswer,
+  onAnswerPaced,
   density,
   streaming,
   finalAnswerStarted = false,
@@ -91,6 +93,8 @@ function MessageRowImpl({
   /** Turens varighed udledt af transskriptet (persisterede ture). */
   varighedSekunder?: number | null
   onWorkExpanded?: () => void
+  paceFinalAnswer?: boolean
+  onAnswerPaced?: () => void
   density: 'compact' | 'full'
   streaming: boolean
   /** Bekræftet slutsvar fra serveren; folder arbejdet mens teksten stadig kommer. */
@@ -200,7 +204,8 @@ function MessageRowImpl({
                   streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
                   finalAnswerStarted={finalAnswerStarted} workingStep={workingStep}
                   runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
-                  beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded} />
+                  beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
+                  paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
                   finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker} />}

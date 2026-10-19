@@ -93,6 +93,7 @@ export function ChatView({
   const panel = usePanel()
   const chatFlow = useChatFlow()
   const reconciledForRun = useRef<string | null>(null)
+  const [pacedAnswerRunId, setPacedAnswerRunId] = useState<string | null>(null)
   // Brister strømmen, ligger svaret allerede gemt på serveren. Hent det hjem.
   useGenopretEfterBrud(stream.status, sessions.activeId ?? null, sessions.refresh)
   const transcriptRef = useRef<HTMLDivElement>(null)
@@ -539,6 +540,15 @@ export function ChatView({
     finalAnswerStarted: stream.finalAnswerStarted,
     status: stream.status,
   }), [stream])
+  const afslutterSvarPacing = stream.status === 'done'
+    && !!stream.activeRunId
+    && pacedAnswerRunId !== stream.activeRunId
+    && primaryChatModel.finalBlocks.some((block) => block.type === 'text' && block.text.length > 0)
+    && (stream.finalAnswerStarted || primaryChatModel.hasObservableWork)
+  const visLevendeTur = streaming || afslutterSvarPacing
+  const markerSvarPacet = useCallback(() => {
+    if (stream.activeRunId) setPacedAnswerRunId(stream.activeRunId)
+  }, [stream.activeRunId])
   const observedChatRuns = useRef(new Set<string>())
   const expandedChatRuns = useRef(new Set<string>())
   useEffect(() => {
@@ -597,6 +607,14 @@ export function ChatView({
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  // Mens den levende sluttekst ruller færdig, findes samme svar allerede som
+  // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
+  // levende række melder færdig; ellers står hele svaret ved siden af pacingen
+  // og opleves stadig som et dump.
+  const renderedTranscriptMessages = afslutterSvarPacing && stream.activeRunId
+    ? transcriptMessages.filter((m) => m.id !== `a-${stream.activeRunId}`
+        && String(m.run_id ?? '') !== stream.activeRunId)
+    : transcriptMessages
 
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken
   // skrives ved turens SLUTNING og brugertrækken ved dens START, så spændet
@@ -1034,7 +1052,7 @@ export function ChatView({
             <button type="button" onClick={sessions.genindlaes}>Prøv igen</button>
           </div>
         )}
-        {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
+        {renderedTranscriptMessages.map((m) => m.role === 'compact_marker' ? (
           <div key={m.id} data-rail-id={m.id} className="msg-block">
             <CompactionNotice stats={compactionById.get(m.id)} />
           </div>
@@ -1073,15 +1091,16 @@ export function ChatView({
             (Bjørn 17/10-2026: «tur hoved … skal være der osse uden tool
             kald».) Gaten krævede før en blok eller midlertidig tekst, så
             hovedet manglede netop i turens første øjeblik. */}
-        {streaming && (
+        {visLevendeTur && (
           <>
-            {stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
+            {streaming && stream.activeRunId ? <ChatFlowOnboarding runId={stream.activeRunId} streaming model={primaryChatModel} /> : null}
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
-              role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming
+              role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
-              tankeResumeer={stream.tankeResumeer} config={raekkeConfig} />
+              tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
+              paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
           </>
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er

@@ -380,6 +380,10 @@ export function StreamProvider({
     setWorkingSessionId(opts.sessionId)
     runIdRef.current = null
     startedAtRef.current = Date.now()
+    // Nulstil den synlige tur ved SEND — ikke først når serveren senere har
+    // tildelt et run-id. Første message_start har ofte tomt id og kan derfor
+    // ikke alene skelne et nyt run fra et replay af det gamle.
+    dispatch({ type: 'system_event', kind: 'client_turn_start', payload: {} })
     deskRunBridge()?.setRunAuth?.(config.apiBaseUrl, config.authToken)
     controlRef.current?.abort()
     const minKoersel = ++controlGenRef.current

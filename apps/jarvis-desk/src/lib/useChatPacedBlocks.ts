@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
-const BASE_CODE_POINTS_PER_SECOND = 72
+const BASE_CODE_POINTS_PER_SECOND = 48
 /** Selv en stor replay-backlog må ikke forvandle strømmen til et dump. */
-const MAX_CODE_POINTS_PER_SECOND = 120
+const MAX_CODE_POINTS_PER_SECOND = 72
 /** Hele efterslæbet forsøges fordelt over så mange sekunder, men det hårde
  *  hastighedsloft vinder altid. En hurtig server-replay må gerne skabe lidt
  *  forsinkelse; den må ikke gøre teksten ulæseligt hurtig. */
-const CATCH_UP_SECONDS = 8
+const CATCH_UP_SECONDS = 12
 /** Hårdt loft pr. frame. En tabt frame må ikke blive et spring. */
-const MAX_CODE_POINTS_PER_FRAME = 3
+const MAX_CODE_POINTS_PER_FRAME = 2
 /** Længste frame-afstand vi regner med. En lang pause må ikke give et spring. */
 const MAX_FRAME_DELTA_S = 0.1
 
@@ -120,7 +120,7 @@ export function useChatPacedBlocks(
       Math.max(BASE_CODE_POINTS_PER_SECOND, pending / CATCH_UP_SECONDS),
     )
     // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
-    // ellers 72 tegn/s til mindst 120 tegn/s på en 60 Hz-skærm og endnu mere
+    // ellers 48 tegn/s til mindst 60 tegn/s på en 60 Hz-skærm og endnu mere
     // på hurtigere paneler. Kreditten giver samme rolige tempo uanset fps.
     kredit.current = Math.min(
       MAX_CODE_POINTS_PER_FRAME,

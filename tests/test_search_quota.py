@@ -95,14 +95,63 @@ def test_uden_noegle_svares_none_uden_netvaerkskald(monkeypatch, state):
 # --------------------------------------------------- lokal tælling (Exa)
 
 
-def test_exa_taelles_lokalt_og_nulstilles_pr_maaned(state):
+def test_exa_taelles_lokalt_og_nulstilles_pr_dag(state):
+    """Exa er IP-limitet pr. DØGN — ikke på et månedskredit (målt 19/10-2026).
+
+    Månedsnøglen undervurderede forbruget med op til 30× og kunne derfor
+    aldrig fyre varselet før væggen var der.
+    """
     q.noter_kald("exa", 3)
     s = q.kvote_status("exa", brug_cache=False)
     assert s["brugt"] == 3
     assert s["kilde"] == "lokal"
-    # Nøglen bærer måneden — næste måned starter på nul af sig selv.
     assert any(":exa" in k for k in state)
-    assert q._maaned() in next(k for k in state if ":exa" in k)
+    noegle = next(k for k in state if ":exa" in k)
+    assert q._periode_noegle("exa") in noegle
+
+
+def test_maanedlige_providere_taelles_stadig_pr_maaned(state):
+    """SerpAPI og Tavily ER kreditlofter pr. måned — de må ikke skifte periode."""
+    q.noter_kald("serpapi", 2)
+    noegle = next(k for k in state if ":serpapi" in k)
+    assert q._maaned() in noegle
+    assert q._periode_noegle("serpapi") == q._maaned()
+
+
+# ------------------------------------------------- kalibrering via 429
+
+
+def test_kort_retry_after_er_qps_og_kalibrerer_intet(state):
+    """Retry-After: 1 er QPS-vinduet — nulstilles straks, siger intet om kvoten."""
+    q.noter_kald("exa", 10)
+    assert q.noter_429("exa", 1.0) is False
+    assert f"{q._STATE_PREFIX}:maalt_graense:exa" not in state
+
+
+def test_langt_retry_after_kalibrerer_graensen_til_det_maalte(state):
+    """Rammes forbrugsloftet, ER forbruget pr. definition grænsen."""
+    q.noter_kald("exa", 47)
+    assert q.noter_429("exa", 3600.0) is True
+    assert state[f"{q._STATE_PREFIX}:maalt_graense:exa"] == 47
+    s = q.kvote_status("exa", brug_cache=False)
+    assert s["graense"] == 47
+    assert "målt" in s["plan"]
+
+
+def test_kalibreringen_rykker_kun_ned_ad(state):
+    """Et senere 429 ved højere forbrug må ikke hæve grænsen igen."""
+    q.noter_kald("exa", 47)
+    q.noter_429("exa", 3600.0)
+    q.noter_kald("exa", 40)
+    q.noter_429("exa", 3600.0)
+    assert state[f"{q._STATE_PREFIX}:maalt_graense:exa"] == 47
+
+
+def test_429_uden_retry_after_kalibrerer_intet(state):
+    """Uden Retry-After kan vi ikke skelne QPS fra forbrug — så vi rører intet."""
+    q.noter_kald("exa", 10)
+    assert q.noter_429("exa", None) is False
+    assert f"{q._STATE_PREFIX}:maalt_graense:exa" not in state
 
 
 def test_ukendt_provider_taelles_ikke(state):

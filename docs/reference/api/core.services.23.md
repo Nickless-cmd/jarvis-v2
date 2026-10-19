@@ -685,20 +685,22 @@ _Kvote-regnskab pr. søgeprovider — målt hos KILDEN, ikke gættet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_laes` | `(key, default=…)` | — | [src](../../../core/services/search_quota.py#L83) |
-| function | `_skriv` | `(key, vaerdi)` | — | [src](../../../core/services/search_quota.py#L95) |
-| function | `_maaned` | `()` | Kvoterne nulstilles ved månedsskifte, ikke ved midnat. | [src](../../../core/services/search_quota.py#L104) |
-| function | `_api_key` | `(navn)` | — | [src](../../../core/services/search_quota.py#L114) |
-| function | `_http_json` | `(url, *, headers=…, timeout=…)` | — | [src](../../../core/services/search_quota.py#L126) |
-| function | `_tavily_live` | `()` | Tavilys eget regnskab: `/usage` → plan_usage / plan_limit. | [src](../../../core/services/search_quota.py#L142) |
-| function | `_serpapi_live` | `()` | SerpAPIs eget regnskab: `/account` → this_month_usage / searches_per_month. | [src](../../../core/services/search_quota.py#L159) |
-| function | `_exa_lokal` | `()` | Exa tælles lokalt: der findes intet kvote-endpoint uden nøgle. | [src](../../../core/services/search_quota.py#L177) |
-| function | `noter_kald` | `(provider, antal=…)` | Tæl et kald op lokalt. Supplement til live-kilden, ikke en erstatning. | [src](../../../core/services/search_quota.py#L196) |
-| function | `kvote_status` | `(provider, *, brug_cache=…)` | Status for én provider. | [src](../../../core/services/search_quota.py#L207) |
-| function | `_form` | `(data, navn, *, kilde)` | — | [src](../../../core/services/search_quota.py#L241) |
-| function | `alle_status` | `(*, brug_cache=…)` | — | [src](../../../core/services/search_quota.py#L254) |
-| function | `_varsel_koel` | `(navn)` | True hvis der IKKE er varslet for nylig — ellers sæt ny tidsstempel. | [src](../../../core/services/search_quota.py#L261) |
-| function | `varsle_hvis_over_loft` | `(status)` | Send ét varsel når en provider nærmer sig sit loft. True = sendt. | [src](../../../core/services/search_quota.py#L272) |
-| function | `bedste_provider` | `(foretrukken=…, *, brug_cache=…)` | Den foretrukne hvis den har plads — ellers den næstbedste med plads. | [src](../../../core/services/search_quota.py#L311) |
-| function | `rapport` | `()` | Menneskelæsbar linje pr. provider — til drift og til et værktøjssvar. | [src](../../../core/services/search_quota.py#L328) |
+| function | `_laes` | `(key, default=…)` | — | [src](../../../core/services/search_quota.py#L93) |
+| function | `_skriv` | `(key, vaerdi)` | — | [src](../../../core/services/search_quota.py#L105) |
+| function | `_maaned` | `()` | Kvoterne nulstilles ved månedsskifte, ikke ved midnat. | [src](../../../core/services/search_quota.py#L114) |
+| function | `_periode_noegle` | `(navn)` | Nøglen tælleren gemmes under — og dermed hvornår den nulstilles. | [src](../../../core/services/search_quota.py#L124) |
+| function | `_api_key` | `(navn)` | — | [src](../../../core/services/search_quota.py#L136) |
+| function | `_http_json` | `(url, *, headers=…, timeout=…)` | — | [src](../../../core/services/search_quota.py#L148) |
+| function | `_tavily_live` | `()` | Tavilys eget regnskab: `/usage` → plan_usage / plan_limit. | [src](../../../core/services/search_quota.py#L164) |
+| function | `_serpapi_live` | `()` | SerpAPIs eget regnskab: `/account` → this_month_usage / searches_per_month. | [src](../../../core/services/search_quota.py#L181) |
+| function | `_exa_lokal` | `()` | Exa tælles lokalt: der findes intet kvote-endpoint uden nøgle. | [src](../../../core/services/search_quota.py#L199) |
+| function | `noter_kald` | `(provider, antal=…)` | Tæl et kald op lokalt. Supplement til live-kilden, ikke en erstatning. | [src](../../../core/services/search_quota.py#L223) |
+| function | `noter_429` | `(provider, retry_after=…)` | Registrér et 429 og skel QPS-loft fra forbrugsloft. True = forbrugsloft. | [src](../../../core/services/search_quota.py#L238) |
+| function | `kvote_status` | `(provider, *, brug_cache=…)` | Status for én provider. | [src](../../../core/services/search_quota.py#L270) |
+| function | `_form` | `(data, navn, *, kilde)` | — | [src](../../../core/services/search_quota.py#L304) |
+| function | `alle_status` | `(*, brug_cache=…)` | — | [src](../../../core/services/search_quota.py#L317) |
+| function | `_varsel_koel` | `(navn)` | True hvis der IKKE er varslet for nylig — ellers sæt ny tidsstempel. | [src](../../../core/services/search_quota.py#L324) |
+| function | `varsle_hvis_over_loft` | `(status)` | Send ét varsel når en provider nærmer sig sit loft. True = sendt. | [src](../../../core/services/search_quota.py#L335) |
+| function | `bedste_provider` | `(foretrukken=…, *, brug_cache=…)` | Den foretrukne hvis den har plads — ellers den næstbedste med plads. | [src](../../../core/services/search_quota.py#L374) |
+| function | `rapport` | `()` | Menneskelæsbar linje pr. provider — til drift og til et værktøjssvar. | [src](../../../core/services/search_quota.py#L391) |
 

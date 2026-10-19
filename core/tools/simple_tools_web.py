@@ -1150,7 +1150,20 @@ def _fetch_exa(query: str, max_results: int) -> dict[str, Any]:
     try:
         with urllib_request.urlopen(req, timeout=25) as response:
             raw = response.read().decode("utf-8", "replace")
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+    except urllib_error.HTTPError as exc:
+        # 429 bærer `Retry-After`, og det er den ENESTE kilde til at skelne
+        # QPS-loftet (sekunder, nulstilles straks) fra den daglige kvote
+        # (timer). Målt 19/10-2026: 3 af 6 parallelle kald → 429, Retry-After 1.
+        svar_429: dict[str, Any] = {"error": f"Exa failed: {exc}", "status": "error",
+                                    "http_status": exc.code}
+        ra = exc.headers.get("Retry-After") if exc.headers else None
+        if ra:
+            try:
+                svar_429["retry_after"] = float(ra)
+            except (TypeError, ValueError):
+                pass
+        return svar_429
+    except (urllib_error.URLError, OSError) as exc:  # netvaerksfejl -> aerlig fejl, ikke tomt svar
         return {"error": f"Exa failed: {exc}", "status": "error"}
 
     # Serveren svarer SSE: "event: message\ndata: {...}"
@@ -1231,6 +1244,16 @@ def _fetch_alle_providers(query: str, max_results: int) -> dict[str, Any]:
             from core.services.search_quota import noter_kald
 
             noter_kald(navn)
+        except Exception:  # regnskab må aldrig vælte en søgning
+            pass
+        # Et 429 kan KALIBRERE grænsen: et langt Retry-After betyder at det
+        # daglige forbrugsloft blev ramt, og forbruget er så pr. definition
+        # grænsen. Et kort (≤ 60 s) er kun QPS-vinduet og siger intet om kvoten.
+        try:
+            from core.services.search_quota import noter_429
+
+            if isinstance(svar, dict) and svar.get("http_status") == 429:
+                noter_429(navn, svar.get("retry_after"))
         except Exception:  # regnskab må aldrig vælte en søgning
             pass
         return {"provider": navn, "resultat": svar}

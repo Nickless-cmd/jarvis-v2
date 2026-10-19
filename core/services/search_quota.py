@@ -54,15 +54,25 @@ logger = logging.getLogger(__name__)
 #: De tre kilder i kæden, i kvalitetsrækkefølge (målt top-1 18/10-2026).
 PROVIDERS: tuple[str, ...] = ("exa", "serpapi", "tavily")
 
-#: Kendte gratis-loft pr. måned. `None` = ukendt (kan ikke varsles imod).
+#: Nulstillingsperiode pr. provider — og dermed hvilken slags loft der gælder.
 #:
-#: Exa: $10 kredit/md, instant search $4/1k → 2.500 kald. Der findes intet
-#: kvote-endpoint uden nøgle, så tallet er udledt af prisen og må tælles lokalt.
-#: SerpAPI og Tavily læses live og bruger dette kun som reserve.
+#: MÅLT 19/10-2026: Exa er IKKE på $10-kreditloftet (2.500 kald/md) sådan som
+#: den anonyme MCP-vej bruges her. `mcp.exa.ai` uden egen nøgle er
+#: IP-rate-limitet: kilden (`exa-labs/exa-mcp-server`, `api/mcp.ts`) sætter
+#: `RATE_LIMIT_QPS` (default 2) og `RATE_LIMIT_DAILY` (default 50) for kald
+#: uden API-nøgle, og begge limitere initialiseres sammen.
+#:
+#: QPS-loftet blev målt samme dag: 3 af 6 parallelle kald gav 429 med
+#: `Retry-After: 1` — altså et vindue der nulstilles med det samme, ikke et
+#: forbrugsloft. Det DAGLIGE tal er ikke målt; 50 er kildens default, og
+#: `noter_429()` retter det når loftet faktisk rammes.
+PERIODER: dict[str, str] = {"exa": "dag", "serpapi": "maaned", "tavily": "maaned"}
+
+#: Kendte gratis-loft. `None` = ukendt (kan ikke varsles imod).
 GRAENSER: dict[str, int | None] = {
-    "exa": 2500,
-    "serpapi": 250,
-    "tavily": 1000,
+    "exa": 50,       # pr. DAG — antaget fra kilden, kalibreres af noter_429()
+    "serpapi": 250,  # pr. måned, læses live
+    "tavily": 1000,  # pr. måned, læses live
 }
 
 #: Ved denne andel af kvoten varsles der.
@@ -109,6 +119,18 @@ def _maaned() -> str:
     og dermed undervurdere forbruget groft.
     """
     return datetime.now(UTC).strftime("%Y-%m")
+
+
+def _periode_noegle(navn: str) -> str:
+    """Nøglen tælleren gemmes under — og dermed hvornår den nulstilles.
+
+    Exa er IP-limitet pr. DØGN (målt 19/10-2026), så en månedsnøgle ville
+    undervurdere forbruget med op til 30× og aldrig fyre varselet. De to andre
+    er kreditlofter pr. måned.
+    """
+    if PERIODER.get(str(navn).strip().lower()) == "dag":
+        return datetime.now(UTC).strftime("%Y-%m-%d")
+    return _maaned()
 
 
 def _api_key(navn: str) -> str:
@@ -179,12 +201,17 @@ def _exa_lokal() -> dict[str, Any] | None:
 
     Tælleren er et minimum, ikke sandheden — kald fra scripts og fra processer
     før en genstart tælles ikke med. Det er netop derfor de to andre læses live.
+
+    Grænsen er den MÅLTE hvis loftet er ramt mindst én gang (se `noter_429`),
+    ellers den dokumenterede default fra kilden. Virkeligheden slår kilden.
     """
-    brugt = _laes(f"{_STATE_PREFIX}:lokal:{_maaned()}:exa", 0)
-    graense = GRAENSER.get("exa")
+    brugt = _laes(f"{_STATE_PREFIX}:lokal:{_periode_noegle('exa')}:exa", 0)
+    maalt = _laes(f"{_STATE_PREFIX}:maalt_graense:exa")
+    graense = int(maalt) if maalt else GRAENSER.get("exa")
     if graense is None:
         return None
-    return {"brugt": int(brugt or 0), "graense": int(graense), "plan": "gratis"}
+    return {"brugt": int(brugt or 0), "graense": int(graense),
+            "plan": "gratis (målt loft)" if maalt else "gratis (antaget loft)"}
 
 
 _LIVE = {"tavily": _tavily_live, "serpapi": _serpapi_live, "exa": _exa_lokal}
@@ -200,8 +227,44 @@ def noter_kald(provider: str, antal: int = 1) -> None:
     navn = str(provider or "").strip().lower()
     if navn not in PROVIDERS:
         return
-    noegle = f"{_STATE_PREFIX}:lokal:{_maaned()}:{navn}"
+    noegle = f"{_STATE_PREFIX}:lokal:{_periode_noegle(navn)}:{navn}"
     _skriv(noegle, int(_laes(noegle, 0) or 0) + antal)
+
+
+#: Et 429 med kortere Retry-After end dette er QPS-vinduet, ikke et forbrugsloft.
+QPS_RETRY_TAERSKEL = 60
+
+
+def noter_429(provider: str, retry_after: float | None = None) -> bool:
+    """Registrér et 429 og skel QPS-loft fra forbrugsloft. True = forbrugsloft.
+
+    MÅLT 19/10-2026: `mcp.exa.ai` svarer `Retry-After: 1` når QPS-loftet
+    rammes. Det nulstilles straks og siger intet om forbruget. Den daglige
+    kvote nulstilles timer senere, så et LANGT `Retry-After` er beviset på at
+    forbrugsloftet blev ramt.
+
+    Netop derfor kan 429'en kalibrere grænsen: når loftet rammes, ER forbruget
+    på det tidspunkt grænsen. Vi gemmer det målte tal som et MINIMUM — tælleren
+    kan have misset kald fra scripts — og lader det vinde over den dokumenterede
+    default. Hellere skifte for tidligt end løbe tør.
+    """
+    navn = str(provider or "").strip().lower()
+    if navn not in PROVIDERS:
+        return False
+    if retry_after is None or retry_after <= QPS_RETRY_TAERSKEL:
+        return False  # QPS-vindue, ikke et forbrugsloft
+
+    brugt = int(_laes(f"{_STATE_PREFIX}:lokal:{_periode_noegle(navn)}:{navn}", 0) or 0)
+    if brugt <= 0:
+        return True
+    forrige = _laes(f"{_STATE_PREFIX}:maalt_graense:{navn}")
+    if forrige and int(forrige) <= brugt:
+        return True  # allerede kalibreret til et lige så lavt tal
+    _skriv(f"{_STATE_PREFIX}:maalt_graense:{navn}", brugt)
+    logger.warning(
+        "search_quota: %s ramte forbrugsloftet ved %s kald — grænsen kalibreret "
+        "til det målte tal (var %s)", navn, brugt, GRAENSER.get(navn))
+    return True
 
 
 def kvote_status(provider: str, *, brug_cache: bool = True) -> dict[str, Any]:

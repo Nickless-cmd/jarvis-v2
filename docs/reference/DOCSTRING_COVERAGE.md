@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9103/17337 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9105/17339 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9103/17337 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 831 | 1531 | 54% |
-| `core.services` | 6066 | 11783 | 51% |
+| `core.services` | 6068 | 11785 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1978,7 +1978,7 @@ Generated from source. 9103/17337 functions/methods documented (52%). The list b
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)
 - `core/services/scoped_recall_policy.py` :: `set_recall_enabled` (L25)
 - `core/services/scoped_recall_policy.py` :: `set_recall_migration_enabled` (L29)
-- `core/services/search_quota.py` :: `alle_status` (L254)
+- `core/services/search_quota.py` :: `alle_status` (L317)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)

@@ -74,10 +74,12 @@ _Er sessionen ved at blive komprimeret — og hvornaar blev den det sidst?_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_noegle` | `(session_id)` | — | [src](../../../core/context/compaction_signal.py#L41) |
-| function | `marker_start` | `(session_id)` | Komprimering startet for sessionen. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L45) |
-| function | `marker_slut` | `(session_id)` | Komprimering faerdig — ogsaa naar den fejlede. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L61) |
-| function | `er_i_gang` | `(session_id)` | Koerer der en komprimering for sessionen i NOGEN proces? | [src](../../../core/context/compaction_signal.py#L73) |
-| function | `seneste_komprimering` | `(session_id)` | Tidspunktet for sessionens seneste komprimerings-markoer, ellers "". | [src](../../../core/context/compaction_signal.py#L85) |
+| function | `_cache` | `()` | Det delte lager — importeret lazy, saa try kun har én sætning. | [src](../../../core/context/compaction_signal.py#L45) |
+| function | `_ejer_identitet` | `()` | Denne proces' identitet: ``<pid>:<starttid>`` — eller "" hvis ukendt. | [src](../../../core/context/compaction_signal.py#L51) |
+| function | `marker_start` | `(session_id)` | Komprimering startet for sessionen. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L63) |
+| function | `marker_slut` | `(session_id)` | Komprimering faerdig — ogsaa naar den fejlede. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L82) |
+| function | `er_i_gang` | `(session_id)` | Koerer der en komprimering for sessionen i NOGEN proces? | [src](../../../core/context/compaction_signal.py#L93) |
+| function | `seneste_komprimering` | `(session_id)` | Tidspunktet for sessionens seneste komprimerings-markoer, ellers "". | [src](../../../core/context/compaction_signal.py#L140) |
 
 ## `core/context/kompaktering.py`
 _Kontekst-komprimering: ÉN sti, med de garantier den manglede._

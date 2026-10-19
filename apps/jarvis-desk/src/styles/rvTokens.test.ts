@@ -68,9 +68,10 @@ describe('rækkevisningens afstands-tokens', () => {
     expect(px('12px')).toBeLessThanOrEqual(1)     // kun tom-tilstandens lodrette luft
     expect(brug('--rv-gap')).toBeGreaterThanOrEqual(5)
 
-    // 9px: 10 foer -> 3 literale (to gap og ét venstre-indryk, andre roller)
-    // + 7 blok-padding gennem tokenet
-    expect(px('9px')).toBeLessThanOrEqual(3)      // to gap og ét venstre-indryk
+    // 9px: 10 foer -> 4 literale (tre gap og ét venstre-indryk, andre roller)
+    // + 7 blok-padding gennem tokenet. Det tredje gap er den samlede levende
+    // rundelinjes afstand mellem fortælling, diff og tur-ur (19/10-2026).
+    expect(px('9px')).toBeLessThanOrEqual(4)      // tre gap og ét venstre-indryk
     expect(brug('--rv-pad-lodret')).toBeGreaterThanOrEqual(7)
   })
 

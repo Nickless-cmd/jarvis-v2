@@ -11,9 +11,9 @@
  *
  * ## Kontrakten
  *
- * Højde 33px, `border-bottom: .5px solid var(--line)`, tekst i `--rv-tertiary`
- * og fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer`
- * plus det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
+ * Højde 33px, en reserveret .5px skillelinje, tekst i `--rv-tertiary` og
+ * fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer` plus
+ * det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
  */
 import type { ReactNode, Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -44,6 +44,9 @@ export interface TurHovedProps {
   sekunder?: number | null
   /** Levende metadata efter teksten, fx code-turens rullende token-tal. */
   meta?: ReactNode
+  /** Om skillestregen under hovedet er kommet til syne. Hovedets plads er
+   *  uændret mens stregen glider ind, så `Working` kan stå der fra turstart. */
+  skillelinje?: boolean
   /** Om der er noget at folde. `false` = hovedet er kun en skillestreg med
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
    *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
@@ -52,8 +55,13 @@ export interface TurHovedProps {
 }
 
 export function TurHoved({
-  tekst, aaben, onToggle, koerer = false, sekunder = null, meta, foldbar = true, knapRef,
+  tekst, aaben, onToggle, koerer = false, sekunder = null, meta,
+  skillelinje = true, foldbar = true, knapRef,
 }: TurHovedProps) {
+  const tilstand = {
+    ...(koerer ? { 'data-koerer': '' } : {}),
+    ...(skillelinje ? { 'data-skillelinje': '' } : {}),
+  }
   const indhold = (
     <>
       {/* ÉT shimmerfelt over tekst + metadata + ur. Tre `.shimmer`-børn gav
@@ -78,7 +86,7 @@ export function TurHoved({
   // er en løgn i tabulatorrækkefølgen — samme streg, ingen affordance.
   if (!foldbar) {
     return (
-      <div className="rv-tur rv-tur--statisk" {...(koerer ? { 'data-koerer': '' } : {})}>
+      <div className="rv-tur rv-tur--statisk" {...tilstand}>
         {indhold}
       </div>
     )
@@ -90,7 +98,7 @@ export function TurHoved({
       ref={knapRef}
       className="rv-tur"
       aria-expanded={aaben}
-      {...(koerer ? { 'data-koerer': '' } : {})}
+      {...tilstand}
       onClick={onToggle}
     >
       {indhold}

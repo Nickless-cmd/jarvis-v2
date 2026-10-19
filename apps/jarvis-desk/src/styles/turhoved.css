@@ -16,12 +16,27 @@
 .rv-tur {
   display: flex; align-items: center; gap: 8px; width: 100%;
   height: 33px; padding: 0 0 8px; margin: 0;
-  border: 0; border-bottom: .5px solid var(--line, rgb(255 255 255 / 12%));
+  position: relative;
+  border: 0; border-bottom: .5px solid transparent;
   background: none; text-align: left;
   font-family: inherit;
   font-size: 14px; line-height: 1.3; font-weight: 400;
   color: var(--rv-tertiary, #a6a59c); cursor: pointer;
 }
+
+/* Pladsen til stregen er reserveret af den transparente border ovenfor.
+   Kun selve stregen skalerer ind fra venstre, når første syntese/svartekst
+   lander; turhovedet og alt under det flytter sig derfor ikke. */
+.rv-tur::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -.5px;
+  height: .5px; background: var(--line, rgb(255 255 255 / 12%));
+  opacity: 0; transform: scaleX(0); transform-origin: left center;
+  transition: transform 260ms cubic-bezier(.22, .61, .36, 1), opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.rv-tur[data-skillelinje]::after { opacity: 1; transform: scaleX(1); }
 
 .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
 
@@ -98,6 +113,7 @@
 /* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
    hopper i stedet for at rulle. */
 @media (prefers-reduced-motion: reduce) {
+  .rv-tur::after { transition: none; }
   .rv-turTidStrimmel { transition: none; }
 }
 

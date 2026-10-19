@@ -84,8 +84,8 @@
 .rullende .hjul::before { content: "0"; visibility: hidden; }
 /* Hvert synligt ciffer bliver i NORMAL tekst-layout. Den gamle 0-9-strimmel
    var absolut positioneret og flyttet flere `em`; Chromium kunne derfor ikke
-   tage det valgte ciffer med i ancestorens `background-clip: text`. Inde i
-   shimmeren stod kun de faste tegn tilbage: «k tokens» og «m s».
+   tage det valgte ciffer med i ancestorens tekstmaske. Inde i shimmeren stod
+   kun de faste tegn tilbage: «k tokens» og «m s».
 
    To cifferlag i samme gridcelle giver samme hjulbevægelse, men begge har
    deres tekstmaske på den rigtige plads. Dermed er cifrene både synlige og

@@ -100,11 +100,12 @@ function Ruller({
  *  20 % af tiden ved ~60 opdateringer/sek — det er en blur, ikke en rulning.
  *  Ved 1 opdatering/sek stod den stille 76 %.
  *
- *  Bjørn valgte 4/10-2026 den ULAEMPEDE variant — «ur OG tokens ruller».
- *  Den står derfor på 0 med vilje. Det er ÉT tal at skrue på, hvis bluren
- *  generer i drift: 260 giver den rolige rulning målingen pegede på.
+ *  Den udæmpede variant genstartede 220ms-indløbet ved hvert stream-token.
+ *  Ved høj tokenrate nåede cifrene derfor aldrig ind i viewporten, så kun
+ *  det faste `k tokens` stod tilbage. 240ms giver hvert hjul tid til at lande
+ *  og bevarer samtidig den levende, rullende tæller.
  */
-const DAEMPNING_MS = 0
+const DAEMPNING_MS = 240
 
 /** Dæmpning: vis højst én ny værdi hver `ms`.
  *

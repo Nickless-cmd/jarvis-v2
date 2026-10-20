@@ -1066,6 +1066,19 @@ async def translate_to_v2(
                     await _close_thinking_block_if_open()
                     await _flush_pending_text()
                     await _close_text_block_if_open()
+                    # Samme kontrakt paa GENDANNELSES-vejen (maalt 20/10-2026):
+                    # et run der slutter uden `done` (fejl, cancel, legacy-stream
+                    # der bare ender) sendte `message_stop` uden at have sendt
+                    # fold-signalet — klienten faldt fra «arbejde koerer» til
+                    # «faerdig» i EET glip, praecis som den tomme tekstkoe gav.
+                    # Kommer `message_stop`, skal fold-signalet altid vaere sendt
+                    # foerst; ellers er der intet at folde til.
+                    if not _state["final_answer_started"]:
+                        _state["final_answer_started"] = True
+                        await queue.put(SystemEvent(
+                            kind="final_answer_start",
+                            payload={"run_id": str(_state["run_id"] or "")},
+                        ).to_sse_line())
                     if not _state["saw_done"]:
                         from core.services.visible_terminal_policy import recovery_notice
                         _reason = str(

@@ -1049,3 +1049,36 @@ async def test_runde_linje_efter_svaret_maa_ikke_fjerne_fold_signalet():
     stop_at = next(i for i, (kind, _) in enumerate(events) if kind == "message_stop")
     assert len(signaler) == 1, f"forventede præcis ét fold-signal, fik {len(signaler)}"
     assert signaler[0] < stop_at, "fold-signalet skal komme før message_stop"
+
+
+@pytest.mark.asyncio
+async def test_run_uden_done_maa_heller_ikke_miste_fold_signalet():
+    """Bjørn 20/10-2026, anden doer: gendannelsesvejen.
+
+    `finally`-grenen sender `message_stop` naar streamen slutter uden `done`
+    (fejl, cancel, legacy-stream der bare ender). Den kaldte
+    `_flush_pending_text()` UDEN `final=True`, saa fold-signalet blev aldrig
+    sendt — og klienten faldt fra «arbejde koerer» til «faerdig» i EET glip,
+    samme symptom som den tomme tekstkoe gav.
+
+    Kontrakten: naar klienten faar `message_stop`, skal den ALDRIG foerst
+    have undvaeret fold-signalet.
+    """
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Et svar der blev afbrudt."})
+        # Ingen 'done' — streamen slutter bare.
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0)))
+
+    signaler = [i for i, (kind, data) in enumerate(events)
+                if kind == "system_event" and data.get("kind") == "final_answer_start"]
+    stop_at = next((i for i, (kind, _d) in enumerate(events) if kind == "message_stop"), None)
+
+    assert stop_at is not None, "message_stop skal altid komme (terminal-garanti)"
+    assert signaler, "fold-signalet manglede paa gendannelsesvejen"
+    assert signaler[0] < stop_at, "fold-signalet skal komme FOER message_stop"

@@ -72,6 +72,12 @@ describe('MessageRow', () => {
       expect(view.container.textContent?.length).toBeGreaterThan(0)
       expect(view.container.textContent).not.toContain(text.trim())
       view.rerender(<MessageRow role="assistant" blocks={[{ type: 'text', text }]} density="compact" streaming={false} />)
+      // 20/10-2026: streamens slutning er IKKE et signal om at dumpe resten.
+      // Målt før rettelsen sprang teksten fra 81 til 249 tegn i én frame —
+      // det var «det hurtige svar» Bjørn så. Den skal rulle færdig i sit eget
+      // tempo og først DEREFTER stå komplet.
+      expect(view.container.textContent).not.toContain(text.trim())
+      act(() => vi.advanceTimersByTime(33 * 400))
       expect(view.container.textContent).toContain(text.trim())
     } finally { vi.useRealTimers() }
   })

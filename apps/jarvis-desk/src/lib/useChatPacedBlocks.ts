@@ -3,14 +3,28 @@ import type { ContentBlock } from './sseProtocol'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
 const BASE_CODE_POINTS_PER_SECOND = 48
-/** Selv en stor replay-backlog må ikke forvandle strømmen til et dump. */
-const MAX_CODE_POINTS_PER_SECOND = 72
+/** Selv en stor replay-backlog må ikke forvandle strømmen til et dump.
+ *
+ *  20/10-2026 (Bjørn): «synket mellem den ægte stream og pacen [skal] ikk
+ *  være så stort». Loftet var 72, hvilket betød at et svar på 1000 tegn tog
+ *  18,8 s at rulle færdigt — længe efter serveren havde leveret alt, så
+ *  skærmen og sandheden var ude af trit i hele det vindue. Målt kurve ved
+ *  1000 tegn efterslæb: 72 → 18,8 s, 180 → 9,5 s. Korte svar (100 tegn) er
+ *  UÆNDREDE, fordi de aldrig når loftet — grundtempoet er stadig 48. */
+const MAX_CODE_POINTS_PER_SECOND = 180
 /** Hele efterslæbet forsøges fordelt over så mange sekunder, men det hårde
- *  hastighedsloft vinder altid. En hurtig server-replay må gerne skabe lidt
- *  forsinkelse; den må ikke gøre teksten ulæseligt hurtig. */
-const CATCH_UP_SECONDS = 12
-/** Hårdt loft pr. frame. En tabt frame må ikke blive et spring. */
-const MAX_CODE_POINTS_PER_FRAME = 2
+ *  hastighedsloft vinder altid. 12 s betød at et efterslæb på 300 tegn blev
+ *  fordelt ud over 6,2 s selv om der var plads til at gøre det hurtigere.
+ *  3 s gør kontrakten enkel: pacen indhenter et efterslæb på op til ~540 tegn
+ *  på cirka tre sekunder, og ligger derfor aldrig langt bagefter serveren. */
+const CATCH_UP_SECONDS = 3
+/** Hårdt loft pr. frame. En tabt frame må ikke blive et spring.
+ *
+ *  Hævet fra 2 til 6 sammen med hastighedsloftet: ved 60 fps klippede et loft
+ *  på 2 kurven ved 120 tegn/s, så `MAX_CODE_POINTS_PER_SECOND` ikke kunne
+ *  slå igennem uanset hvad den blev sat til. 6 × 60 = 360 tegn/s er over
+ *  loftet og derfor ikke længere den bindende grænse. */
+const MAX_CODE_POINTS_PER_FRAME = 6
 /** Længste frame-afstand vi regner med. En lang pause må ikke give et spring. */
 const MAX_FRAME_DELTA_S = 0.1
 

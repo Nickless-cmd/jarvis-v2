@@ -106,11 +106,24 @@ export function ChatFlowPresentation({
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))
     : model.workBlocks
-  const currentFinalText = new Set(targetModel.finalBlocks
-    .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
-    .map((block) => block.text))
+  // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
+  //
+  // `confirmedTexts` er den RÅ tekst fra serveren. Da den blev lagt foran
+  // `model.finalBlocks`, stod hele svaret på skærmen i samme frame som turen
+  // vendte tilbage til værktøjsarbejde — mens pacen stadig var på de første
+  // tegn. Målt: 102 tegn vist mod 2 pacede.
+  //
+  // De bekræftede tekster findes OGSÅ i `model.workBlocks`, som er PACET.
+  // Vi henter dem der i stedet: samme tekster, samme ur, og ingen upacet vej
+  // ind i svar-lanen. `retainedWork` filtrerer præcis de samme blokke ud af
+  // arbejdsvisningen, så teksten vises ét sted — aldrig to.
   const restoredText = finalAnswerStarted
-    ? confirmedTexts.filter((text) => !currentFinalText.has(text)).map((text): ContentBlock => ({ type: 'text', text }))
+    ? model.workBlocks.filter((block): block is Extract<ContentBlock, { type: 'text' }> =>
+        block.type === 'text'
+        && block.text.length > 0
+        && confirmedTexts.some((text) => text === block.text
+          || text.startsWith(block.text)
+          || block.text.startsWith(text)))
     : []
   const answerBlocks = [...restoredText, ...model.finalBlocks]
   const answer = answerBlocks

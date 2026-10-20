@@ -70,12 +70,16 @@ describe('useChatPacedBlocks', () => {
     while (shown().length < text.length && antalFrames < 4_000) {
       nextFrame()
       const now = shown().length
-      expect(now - previous).toBeLessThanOrEqual(2)
+      // Frame-loftet er 6 (se MAX_CODE_POINTS_PER_FRAME) — ikke 2. Hensigten
+      // er den samme: resten skal komme i TRIN, aldrig i ét spring.
+      expect(now - previous).toBeLessThanOrEqual(6)
       previous = now
       antalFrames += 1
     }
     expect(shown()).toBe(text)
-    expect(antalFrames).toBeGreaterThan(2_000)
+    // 3000 tegn ved 180 tegn/s ≈ 17 s ≈ 1000 frames ved 60 fps. Kravet er at
+    // det tager målbar tid — ikke at det tager præcis den gamle tid.
+    expect(antalFrames).toBeGreaterThan(800)
   })
 
   it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {
@@ -91,9 +95,10 @@ describe('useChatPacedBlocks', () => {
       rerender({ text: source })
       nextFrame()
       const vistNu = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
-      // 72 tegn/s ved en 16 ms frame er højst 2 kodepunkter. Replay-kilden
-      // må gerne løbe foran; skærmen må ikke forsøge at matche dens tempo.
-      expect(vistNu - forrige).toBeLessThanOrEqual(2)
+      // 180 tegn/s ved en 16 ms frame er højst 6 kodepunkter (frame-loftet).
+      // Replay-kilden løber ~3000 tegn/s foran; skærmen må ikke forsøge at
+      // matche dens tempo.
+      expect(vistNu - forrige).toBeLessThanOrEqual(6)
       forrige = vistNu
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
@@ -171,6 +176,42 @@ describe('useChatPacedBlocks', () => {
     expect((result.current[1] as Extract<ContentBlock, { type: 'text' }>).text).toBe('')
   })
 
+  it('indhenter et stort efterslæb hurtigere end den gamle 72-loft-kurve', () => {
+    // Bjørn 20/10-2026: «synket mellem den ægte stream og pacen [skal] ikk
+    // være så stort». Med MAX=72 tog 1000 tegn 18,8 s. Kontrakten er nu under
+    // 12 s, og grundtempoet (korte svar) må ikke være rørt.
+    const text = 'x'.repeat(1000)
+    const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {
+      live: true, finalAnswerStarted: true, runId: 'run-synk',
+    }))
+    const shown = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
+    let frames = 0
+    while (shown() < text.length && frames < 5_000) {
+      nextFrame()
+      frames += 1
+    }
+    expect(shown()).toBe(text.length)
+    const sekunder = frames / 60
+    expect(sekunder).toBeLessThan(12)
+    expect(sekunder).toBeGreaterThan(5)
+  })
+
+  it('beholder grundtempoet på et kort svar — tuningen må ikke gøre det hurtigere', () => {
+    const text = 'x'.repeat(100)
+    const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {
+      live: true, finalAnswerStarted: true, runId: 'run-kort-synk',
+    }))
+    const shown = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
+    let frames = 0
+    while (shown() < text.length && frames < 5_000) {
+      nextFrame()
+      frames += 1
+    }
+    // 100 tegn ved 48 tegn/s ≈ 2,1 s. Uændret fra før tuningingen.
+    expect(frames / 60).toBeGreaterThan(1.9)
+    expect(frames / 60).toBeLessThan(2.4)
+  })
+
   it('pacer alle tekstblokke i slutsvaret som én strøm', () => {
     // Serveren kan dele ét markdown-svar ved en intern blokgrænse. Før blev
     // første blok vist straks, mens kun de sidste linjer i sidste blok blev
@@ -198,7 +239,7 @@ describe('useChatPacedBlocks', () => {
     let antal = 0
     while (shown().length < first.length + second.length && antal < 2_000) {
       nextFrame()
-      expect(shown().length - previous).toBeLessThanOrEqual(2)
+      expect(shown().length - previous).toBeLessThanOrEqual(6)
       previous = shown().length
       antal += 1
     }

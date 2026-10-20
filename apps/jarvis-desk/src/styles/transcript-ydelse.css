@@ -10,8 +10,6 @@
    den blev vist, så rullebjælken ikke hopper; 240 px er kun gættet for en
    besked der aldrig har været på skærmen. */
 .transcript > .msg-block {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 240px;
   /* ALDRIG krympe. .transcript er en flex-kolonne med fast højde, og et
      flex-item må som standard krympe ned til sin minimumshøjde. Når
      content-visibility springer en besked over, er der intet indhold der
@@ -20,6 +18,27 @@
      8.771, 10.176 og 172.373 px, og rullen røg til toppen og låste
      (Bjørn: «den scroller til rewind og låser der, og ikonet glitcher»). */
   flex-shrink: 0;
+}
+
+/* 20/10-2026: optimeringen er flyttet ind i en bredde-forespoergsel.
+   Bjoern saa paa sin iPhone at beskeder blev KLIPPET midt i ord ved en fast
+   lodret kant, med sort luft til skaermkanten — altsaa klip, ikke manglende
+   ordbrydning. `content-visibility: auto` er den eneste regel i kaeden der
+   opfoerer sig fundamentalt forskelligt i iOS Safari, og den husker en
+   BESKEDS SIDSTE MAALTE stoerrelse (contain-intrinsic-size: auto). Er den
+   huskede bredde ikke den aktuelle, males beskeden klippet.
+   Maalt 20/10-2026 i Chromium paa 390 px med det shippende CSS-bundle:
+   hele kaeden er 342 px, scrollWidth == clientWidth i alle led, ogsaa med
+   kodeblok (pre scroller internt, 838 px indhold) og fire-kolonne-tabel.
+   Fejlen kan altsaa ikke genskabes her — derfor fjernes reglen under 700 px,
+   hvor den ikke har noget at hente (den blev indfoert for 253-beskeds
+   samtaler paa en desktop), frem for at lade en uverificerbar regel klippe
+   teksten paa en telefon. */
+@media (min-width: 700px) {
+  .transcript > .msg-block {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 240px;
+  }
 }
 
 .komprimeringslinje {

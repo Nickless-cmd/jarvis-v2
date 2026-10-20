@@ -886,6 +886,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   vertical-align: top;
 }
 .jarvis-body th { background: var(--bg-2); color: var(--fg-0, #f0f2f7); font-weight: 600; }
+/* 20/10-2026: en tabel kan IKKE begrænses med `max-width` alene — dens
+   minimumsbredde er summen af cellernes indhold, så på en smal skærm bliver
+   den bredere end kolonnen og bliver klippet af `.transcript { overflow-x:
+   hidden }`. Under 700 px får den derfor sin egen vandrette rulning, så
+   kolonnerne kan læses i stedet for at forsvinde ud over kanten. */
+@media (max-width: 700px) {
+  .jarvis-body table { display: block; overflow-x: auto; max-width: 100%; }
+}
 /* billeder + code-blocks må aldrig sprænge bredden */
 .jarvis-body .codeblock { max-width: 100%; }
 .jarvis-body pre {

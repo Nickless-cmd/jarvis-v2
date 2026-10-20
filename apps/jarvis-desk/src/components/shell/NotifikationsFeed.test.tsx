@@ -372,8 +372,15 @@ describe('NotifikationsFeed', () => {
     hentHistorik.mockResolvedValue({ poster: [afgjortPost()], antal: 1 })
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
 
-    expect(await screen.findByRole('tab', { name: /Venter på dig/ })).toHaveTextContent('1')
-    expect(screen.getByRole('tab', { name: /Tidligere/ })).toHaveTextContent('1')
+    // Målt 20/10-2026: CI fejlede på den første af disse to linjer med
+    // «Venter på dig» i stedet for «1». `findByRole` løser så snart fanen
+    // rendres — altså FØR `hent` er afsluttet — og `toHaveTextContent` prøver
+    // ikke igen. Tallet er asynkront og skal VENTES på, ikke læses i samme
+    // frame som fanen. Begge faner hentes hver for sig, så begge ventes der på.
+    const venterFane = await screen.findByRole('tab', { name: /Venter på dig/ })
+    await waitFor(() => expect(venterFane).toHaveTextContent('1'))
+    const tidligereFane = screen.getByRole('tab', { name: /Tidligere/ })
+    await waitFor(() => expect(tidligereFane).toHaveTextContent('1'))
   })
 
   it('historikken fejler for sig selv — «venter» staar uberoert', async () => {

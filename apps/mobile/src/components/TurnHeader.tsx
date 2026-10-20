@@ -4,21 +4,23 @@ import { ChevronDown, ChevronRight } from 'lucide-react-native'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { GlidendeTekst } from './GlidendeTekst'
+import { RullendeTokens } from './RullendeTal'
 
 /** Turens arbejdsdør. Svaret ligger udenfor og bliver altid synligt. */
 export const TurnHeader = memo(function TurnHeader({
-  label, live, open, onToggle,
+  label, live, open, onToggle, tokens: tokenCount,
 }: {
   label: string
   live: boolean
   open: boolean
   onToggle: () => void
+  tokens?: number
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
   const caretLight = useRef(new Animated.Value(1)).current
-  const tekst = live ? 'Working…' : label
+  const tekst = label
   useEffect(() => {
     if (!live || reduced) {
       caretLight.stopAnimation()
@@ -46,6 +48,12 @@ export const TurnHeader = memo(function TurnHeader({
           ? <GlidendeTekst text={tekst} aktiv style={styles.label} numberOfLines={1} />
           : <Text style={styles.label} numberOfLines={1}>{tekst}</Text>}
       </View>
+      {tokenCount != null && tokenCount > 0 ? (
+        <View style={styles.meta}>
+          <RullendeTokens tokens={tokenCount} farve={tokens.color.fg3} tegnFarve={tokens.color.fg3} />
+          <Text style={styles.metaText}>tokens</Text>
+        </View>
+      ) : null}
       <Animated.View style={{ opacity: caretLight }}>
         {open
           ? <ChevronDown size={18} color={tokens.color.fg3} strokeWidth={1.8} />
@@ -66,5 +74,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     gap: 6,
   },
   tekst: { flexShrink: 1, minWidth: 0 },
-  label: { color: tokens.color.fg2, fontSize: 14, fontWeight: '400' },
+  label: { color: tokens.color.fg3, fontSize: 14, fontWeight: '400' },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { color: tokens.color.fg3, fontSize: 13 },
 })

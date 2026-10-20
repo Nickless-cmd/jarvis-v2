@@ -4,7 +4,7 @@ import type { ContentBlock } from './sseProtocol'
 
 afterEach(() => jest.useRealTimers())
 
-it('mobilen viser en hurtig tekstbid over flere trin og slipper hele svaret ved stop', async () => {
+it('mobilen viser en hurtig tekstbid over flere trin og fortsætter pacen ved stop', async () => {
   jest.useFakeTimers()
   const text = 'Mange ord på én gang. '.repeat(15)
   const blocks: ContentBlock[] = [{ type: 'text', text }]
@@ -19,6 +19,10 @@ it('mobilen viser en hurtig tekstbid over flere trin og slipper hele svaret ved 
   await act(async () => { jest.advanceTimersByTime(99) })
   expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length).toBeGreaterThan(first.length)
   await rerender({ live: false })
+  const afterStop = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+  expect(afterStop.length).toBeGreaterThan(first.length)
+  expect(afterStop.length).toBeLessThan(text.length)
+  await act(async () => { jest.advanceTimersByTime(2000) })
   expect((result.current[0] as Extract<ContentBlock, { type: 'text' }>).text).toBe(text)
 })
 

@@ -43,6 +43,8 @@ it('lader en stor live-tekst komme frem i flere trin og viser alt ved afslutning
     await act(async () => { jest.advanceTimersByTime(99) })
     expect(view.queryByText(text)).toBeNull()
     await view.rerender(<MessageList messages={[]} blocks={[{ type: 'text', text }]} working={false} />)
+    expect(view.queryByText(text)).toBeNull()
+    await act(async () => { jest.advanceTimersByTime(2000) })
     expect(view.getByText(text)).toBeTruthy()
   } finally { jest.useRealTimers() }
 })
@@ -167,7 +169,41 @@ it('turens ur staar KUN paa den runde der koerer — ogsaa naar starttidspunktet
 it('viser turn header fra turen starter, før første blok kommer', async () => {
   const s = await render(<MessageList messages={[]} blocks={[]} working />)
   expect(s.getByTestId('turn-header')).toBeTruthy()
-  expect(s.getByText('Working…')).toBeTruthy()
+  expect(s.getByText('Arbejder')).toBeTruthy()
+})
+
+it('chat mode viser Desk-flowets ene levende rundelinje og gemmer Code-detaljerne bag pilen', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'thinking', thinking: 'Finder filen.', startet: 1000, sidst: 3000 },
+    { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' }, status: 'running' },
+  ]
+  const s = await render(
+    <MessageList
+      presentation="chat"
+      messages={[]}
+      blocks={blocks}
+      working
+      arbejdslinje="Læser app.py"
+      turStart={Date.now() - 3000}
+    />
+  )
+  expect(s.getByText('Arbejder')).toBeTruthy()
+  expect(s.getByTestId('chat-flow-activity')).toBeTruthy()
+  expect(s.getByText('Læser app.py')).toBeTruthy()
+  expect(s.getByLabelText('2s')).toBeTruthy()
+  expect(s.queryByTestId('tool-group')).toBeNull()
+  await act(async () => { fireEvent.press(s.getByTestId('chat-flow-round-fold')) })
+  expect(s.queryByTestId('chat-flow-activity')).toBeNull()
+  expect(s.getByTestId('tool-group')).toBeTruthy()
+})
+
+it('code mode viser output-tokens i det fælles turhoved', async () => {
+  const s = await render(
+    <MessageList presentation="code" messages={[]} blocks={[]} working outputTokens={321} />
+  )
+  expect(s.getByText('Arbejder')).toBeTruthy()
+  expect(s.getByTestId('rullende-tokens').props.accessibilityLabel).toBe('321')
+  expect(s.getByText('tokens')).toBeTruthy()
 })
 
 it('holder live arbejde åbent gennem synteser og folder først efter afslutning', async () => {

@@ -1287,6 +1287,9 @@ export function ChatScreen({
             <WidgetPrompt.Provider value={widgetPrompt}>
             <MessageList
               ref={listRef}
+              presentation={art}
+              runId={stream.state.activeRunId}
+              outputTokens={stream.state.usage.output}
               topInset={topInset}
               messages={sessions.messages}
               blocks={withoutPauseAsk(visibleStreamBlocks(stream.state)) ?? []}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { formatTid } from '../lib/arbejdslinje'
 
@@ -223,6 +223,39 @@ export function RullendeUr({ sek, farve, tegnFarve }: { sek: number; farve: stri
       testID="rullende-ur"
     >
       <Ruller tekst={label} retning="op" farve={farve} tegnFarve={tegnFarve} />
+    </View>
+  )
+}
+
+/** Code-turhovedets output-tokens — samme 240 ms dæmpning som Desk. */
+export function RullendeTokens({ tokens, farve, tegnFarve }: {
+  tokens: number
+  farve: string
+  tegnFarve: string
+}) {
+  const [shown, setShown] = useState(tokens)
+  const latest = useRef(tokens)
+  const previous = useRef(tokens)
+  const last = useRef(0)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  latest.current = tokens
+  useEffect(() => {
+    const elapsed = Date.now() - last.current
+    const update = () => {
+      timer.current = null
+      last.current = Date.now()
+      setShown(latest.current)
+    }
+    if (elapsed >= 240) update()
+    else if (timer.current === null) timer.current = setTimeout(update, 240 - elapsed)
+  }, [tokens])
+  useEffect(() => () => { if (timer.current !== null) clearTimeout(timer.current) }, [])
+  const direction: Retning = shown >= previous.current ? 'op' : 'ned'
+  useEffect(() => { previous.current = shown }, [shown])
+  const label = shown >= 1000 ? `${(shown / 1000).toFixed(1)}k` : String(Math.floor(shown))
+  return (
+    <View style={stil.raekke} accessibilityLabel={label} testID="rullende-tokens">
+      <Ruller tekst={label} retning={direction} farve={farve} tegnFarve={tegnFarve} />
     </View>
   )
 }

@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { FlatList, LayoutAnimation, Pressable, StyleSheet, View } from 'react-native'
 import { saetStickyPrompt } from '../lib/stickyPrompt'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
@@ -31,6 +31,10 @@ import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
 import { billedArbejdeFor } from '../lib/billedArbejde'
 import { usePacedBlocks } from '../lib/usePacedBlocks'
+import { useChatPacedBlocks } from '../lib/useChatPacedBlocks'
+import { ChatFlowActivity } from './ChatFlowActivity'
+import { CompactMarkerRow, NyeBeskederRow } from './MessageListMarkers'
+import { useReducedMotion } from '../lib/useReducedMotion'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -46,6 +50,12 @@ export interface MessageListHandle {
 interface MessageListProps {
   messages: ChatMessage[]
   blocks: ContentBlock[]
+  /** Desk-kontrakten der skal tegnes: rolig Chat-flow eller fuld Code-række. */
+  presentation?: 'chat' | 'code'
+  /** Den aktive tur adskiller pacing-cursoren fra næste tur. */
+  runId?: string | null
+  /** Code-turhovedets levende output-tokenfelt. */
+  outputTokens?: number
   /** Sand mens en tur kører, også før første indholdsblok er ankommet. */
   working?: boolean
   /**
@@ -169,6 +179,7 @@ type Row = (
    */
   | { kind: 'compact-marker'; key: string; content: string }
   | { kind: 'turn-header'; key: string; label: string; live: boolean; open: boolean }
+  | { kind: 'chat-activity'; key: string; synthesis?: string; round: string; expandable: boolean }
   /** «Nye beskeder» — over den første besked man ikke har set (Claude Desktop §10). */
   | { kind: 'nye-beskeder'; key: string }
 ) & { turnId?: string; work?: boolean }
@@ -563,7 +574,6 @@ function buildStreamingRows(blocks: ContentBlock[], working = false, finalAnswer
   })
   return rows
 }
-
 /**
  * Sekunder mellem to maalinger — eller undefined hvis der ikke blev maalt.
  *
@@ -575,19 +585,30 @@ function taenketid(start?: number, slut?: number): number | undefined {
   const s = (slut - start) / 1000
   return s > 0 ? s : undefined
 }
-
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, arbejdslinje, turStart, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, presentation = 'code', runId, outputTokens, working = false, arbejdslinje, turStart, finalAnswerStarted = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
-  const pacedBlocks = usePacedBlocks(blocks, working)
+  const reduced = useReducedMotion()
+  const codePacedBlocks = usePacedBlocks(blocks, presentation === 'code' && working)
+  const chatPacedBlocks = useChatPacedBlocks(blocks, {
+    live: presentation === 'chat' && working,
+    finalAnswerStarted,
+    paceAllText: presentation === 'chat' && working,
+    runId,
+  })
+  const pacedBlocks = presentation === 'chat' ? chatPacedBlocks : codePacedBlocks
   const flatRef = useRef<FlatList>(null)
   const [turnOverrides, setTurnOverrides] = useState<Record<string, boolean>>({})
+  const [chatDetailsOpen, setChatDetailsOpen] = useState(false)
+  const [streamPhaseOpen, setStreamPhaseOpen] = useState(working && !finalAnswerStarted)
   const wasWorking = useRef(working)
   useEffect(() => {
     if (working && !wasWorking.current) {
+      setStreamPhaseOpen(true)
+      setChatDetailsOpen(false)
       setTurnOverrides((current) => {
         if (!('stream' in current)) return current
         const next = { ...current }
@@ -597,12 +618,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     }
     wasWorking.current = working
   }, [working])
+  useEffect(() => {
+    if (!finalAnswerStarted || !streamPhaseOpen) return
+    if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity'))
+    setStreamPhaseOpen(false)
+  }, [finalAnswerStarted, reduced, streamPhaseOpen])
+  // Første render af en ny tur er allerede åben — ingen lukket mellemframe.
+  const newStreamStarting = working && !wasWorking.current && !finalAnswerStarted
+  const automaticStreamOpen = streamPhaseOpen || newStreamStarting
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
   //: Folden der er undervejs: hvor skaermen stod, hvor hoejt indholdet var, og
   //: hvilken vej folden skal aendre det. Sat af `toggleFor`, laest af
   //: `onContentSizeChange`. `null` = ingen fold undervejs.
-  //:
   //: MAALT 6/10-2026 (Bjoern): den foerste udgave tog den FOERSTE
   //: stoerrelsesaendring efter et tryk, uanset fortegn. Kom der en maaling i
   //: den forkerte retning foerst, blev den brugt — og den aegte aendring stod
@@ -625,7 +653,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null)
     setSynlige(idx.length ? [Math.min(...idx), Math.max(...idx)] : null)
   }).current
-
   /**
    * Har en gemt assistent-tur strukturerede blokke MED rækkefølge, bruges de
    * frem for den flade `content`. Ellers ville skærmen stadig vise den gamle
@@ -798,14 +825,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     }
     return persisted
   }, [messages])
-
   // Stabile funktioner pr. række: MessageBubble er memo, og en ny inline-
   // funktion ved hver render ville få ALLE synlige bobler til at rendere om
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
   const toggleFor = useRaekkeFn((id) => {
-    const aaben = turnOverrides[id]
-      ?? (id === 'stream' ? working && !finalAnswerStarted : visning === 'verbose')
+    const override = id === 'stream' && newStreamStarting ? undefined : turnOverrides[id]
+    const aaben = override ?? (id === 'stream' ? automaticStreamOpen : visning === 'verbose')
     // Skaermen maa IKKE rykke sig naar et tur-hoved foldes (Bjoern 6/10-2026).
     //
     // Listen er inverteret, saa indsatte arbejdsraekker ligger paa HOEJERE
@@ -827,6 +853,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       retning: aaben ? -1 : 1,
       udloeb: Date.now() + 600,
     }
+    if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity'))
     setTurnOverrides((current) => ({ ...current, [id]: !aaben }))
   })
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
@@ -838,9 +865,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     const m = beskedForRaekke.current.get(id)
     if (m) onSaveMemory?.(m)
   })
-
   // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
-  const levende = buildStreamingRows(pacedBlocks, working, finalAnswerStarted)
+  const chatHasBoundary = presentation === 'chat' && pacedBlocks.some((block) =>
+    block?.type === 'thinking' || block?.type === 'tool_use')
+  const levende = buildStreamingRows(
+    pacedBlocks,
+    presentation === 'chat' ? working && chatHasBoundary : working,
+    finalAnswerStarted,
+  )
   const flade = skillFlade?.matches?.length && levende.length
     ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches,
         turnId: 'stream', work: true }]
@@ -851,12 +883,39 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const gemteHoveder = useMemo(() => medTurHoveder(gemteGrupper,
     (id) => turnOverrides[id] ?? visning === 'verbose'), [gemteGrupper, turnOverrides, visning])
   // Tekst-delta skelner ikke syntese fra slutsvar. Fold først ved bekræftet stop.
-  const erAaben = (id: string) => turnOverrides[id]
-    ?? (id === 'stream' ? working && !finalAnswerStarted : visning === 'verbose')
-  const nyeLive = medTurHoveder(groupToolRounds([...flade, ...levende]), erAaben)
+  const erAaben = (id: string) => (id === 'stream' && newStreamStarting ? undefined : turnOverrides[id])
+    ?? (id === 'stream' ? automaticStreamOpen : visning === 'verbose')
+  const grupperetLive = groupToolRounds([...flade, ...levende])
+  const chatHarArbejde = grupperetLive.some((row) => row.work)
+  const chatThinkingSeconds = blocks.reduce((sum, block) => block?.type === 'thinking'
+    ? sum + Math.max(0, Math.floor(((block.sidst ?? block.startet ?? 0)
+      - (block.startet ?? block.sidst ?? 0)) / 1000)) : sum, 0)
+  let nyeLive = medTurHoveder(grupperetLive, erAaben)
     .map((row) => row.kind === 'turn-header'
-      ? { ...row, live: working && !finalAnswerStarted }
+      ? { ...row, live: working && !finalAnswerStarted,
+          label: presentation === 'chat'
+            ? (working && !finalAnswerStarted
+                ? (chatHarArbejde ? 'Arbejder' : 'Tænker')
+                : (chatHarArbejde ? 'Arbejdet' : 'Tænkte'))
+            : (working && !finalAnswerStarted ? 'Arbejder' : row.label) }
       : row)
+  // Chat viser én syntese/rundelinje; Code-detaljer ligger bag pilen.
+  if (presentation === 'chat' && working && !finalAnswerStarted && erAaben('stream') && !chatDetailsOpen) {
+    const synthesis = [...grupperetLive].reverse().find((row) =>
+      row.kind === 'msg' && row.work && row.message.content.trim())
+    const hasDetails = grupperetLive.some((row) => row.work)
+    const headerIndex = nyeLive.findIndex((row) => row.kind === 'turn-header' && row.turnId === 'stream')
+    nyeLive = nyeLive.filter((row) => row.turnId !== 'stream' || !row.work || row.kind === 'turn-header')
+    const insertAt = headerIndex < 0 ? nyeLive.length : headerIndex + 1
+    if (synthesis || arbejdslinje || hasDetails) {
+      nyeLive.splice(insertAt, 0, {
+        kind: 'chat-activity', key: 'chat-flow-activity', turnId: 'stream', work: true,
+        synthesis: synthesis?.kind === 'msg' ? synthesis.message.content.trim() : undefined,
+        round: arbejdslinje || Object.values(rundeEtiketter ?? {}).at(-1) || 'Arbejder…',
+        expandable: hasDetails,
+      })
+    }
+  }
   // Kun turens SIDSTE arbejdsrunde kan stadig være i gang — og kun den bærer
   // shimmeren videre gennem hullet til næste runde (se `InlineToolGroup`).
   //
@@ -898,14 +957,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   })
   gamleLive.current = naesteLive
   const medHoveder = [...gemteHoveder, ...liveHoveder]
-
   // En tur starter før første SSE-indholdsblok. Behold samme header-nøgle,
   // så rækken ikke hopper når den første tanke eller det første værktøj lander.
   if (working && !medHoveder.some((r) => r.kind === 'turn-header' && r.turnId === 'stream')) {
     const firstLive = medHoveder.findIndex((r) => r.turnId === 'stream')
     medHoveder.splice(firstLive < 0 ? medHoveder.length : firstLive, 0, {
       kind: 'turn-header', key: 'turn-stream', turnId: 'stream',
-      label: 'Working…', live: working, open: erAaben('stream'),
+      label: presentation === 'chat' ? 'Tænker' : 'Arbejder', live: working, open: erAaben('stream'),
     })
   }
   // Skillelinjen over den FØRSTE række der hører til den første nye besked.
@@ -1022,7 +1080,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'turn-header') {
           return <TurnHeader
             label={item.label} live={item.live} open={item.open}
+            tokens={presentation === 'code' && item.turnId === 'stream' ? outputTokens : undefined}
             onToggle={toggleFor(item.turnId!)}
+          />
+        }
+        if (item.kind === 'chat-activity') {
+          return <ChatFlowActivity
+            synthesis={item.synthesis}
+            round={item.round}
+            thinkingSeconds={chatThinkingSeconds || null}
+            expandable={item.expandable}
+            onExpand={() => {
+              if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity'))
+              setChatDetailsOpen(true)
+            }}
           />
         }
         // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.
@@ -1100,41 +1171,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   )
 })
 
-/** «Nye beskeder» — tynd accentlinje med ordet i midten, som desk. */
-function NyeBeskederRow() {
-  const styles = useStyles(makestyles)
-  return (
-    <View style={styles.nyeRow} accessibilityRole="text" accessibilityLabel="Nye beskeder" testID="nye-beskeder">
-      <View style={styles.nyeStreg} />
-      <Text style={styles.nyeTekst}>Nye beskeder</Text>
-      <View style={styles.nyeStreg} />
-    </View>
-  )
-}
-
-/**
- * Kompakteringens markør. Én diskret linje — ikke en boble.
- *
- * Markøren er intern bogholderi: den fortæller at ældre beskeder er blevet
- * foldet sammen til en summary. Den er værd at vise (ellers forstår man ikke
- * hvorfor historikken ændrede sig), men den er ikke en samtale-besked og skal
- * ikke se ud som en. Samme form som desktop-klienten (jarvisx MessageList).
- */
-function CompactMarkerRow({ content }: { content: string }) {
-  const styles = useStyles(makestyles)
-  return (
-    <View style={styles.compactMarkerRow} testID="compact-marker">
-      <Text style={styles.compactMarkerText}>{content}</Text>
-    </View>
-  )
-}
-
-/**
- * INVERTERET liste: indholdet er vendt 180°, så contentContainer'ens
- * `paddingTop` lander VISUELT NEDERST og `paddingBottom` visuelt øverst.
- * Det er kontraintuitivt nok til at være værd at skrive ned.
- *
- * Tallene er plads til de to svævende bjælker. Bunden er 124 og ikke bare
+/** INVERTERET liste: paddingTop lander visuelt nederst. Bunden er 124 og ikke bare
  * komponistens egen højde: handlingsrækken (kopiér/læs op) hænger UNDER
  * turens sidste afsnit, og med for lidt luft gled netop de to ikoner ind bag
  * komponisten. Man skal måle til bunden af det SIDSTE element, ikke af teksten.
@@ -1145,29 +1182,7 @@ const BOTTOM_CLEARANCE = 124
 const TOP_CLEARANCE = 12
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
-  // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
-  compactMarkerRow: {
-    marginHorizontal: tokens.spacing.lg,
-    marginVertical: tokens.spacing.sm,
-    paddingVertical: tokens.spacing.sm,
-    paddingHorizontal: tokens.spacing.md,
-    borderRadius: tokens.radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.warn + '33',
-    backgroundColor: tokens.color.warn + '0D'
-  },
-  compactMarkerText: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    lineHeight: 15,
-    color: tokens.color.warn,
-    opacity: 0.8
-  },
   listeWrap: { flex: 1 },
-  // Under den svævende header (TOP_CLEARANCE), højrestillet som dine bobler.
-  nyeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: tokens.spacing.lg, marginVertical: 10 },
-  nyeStreg: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.accent, opacity: 0.6 },
-  nyeTekst: { color: tokens.color.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
   content: {
     // BEGGE sættes dynamisk i contentContainerStyle — se den.
     //

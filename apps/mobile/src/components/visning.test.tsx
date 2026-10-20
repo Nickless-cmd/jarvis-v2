@@ -42,6 +42,8 @@ describe('visningerne', () => {
   })
 
   it('APK: tidlig syntese er live i folden, som klapper ved slutsvaret', async () => {
+    jest.useFakeTimers()
+    try {
     const arbejde: ContentBlock[] = [
       { type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary' },
       { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.ts' }, status: 'done' },
@@ -58,10 +60,12 @@ describe('visningerne', () => {
     ]} working finalAnswerStarted />) })
     expect(s.getByTestId('turn-header').props.accessibilityState).toMatchObject({ expanded: false })
     expect(s.queryByText('God idé — jeg undersøger det.')).toBeNull()
+    await act(async () => { jest.advanceTimersByTime(330) })
     expect(s.getByText('Her er resultatet.')).toBeTruthy()
 
     await fireEvent.press(s.getByTestId('turn-header'))
     expect(s.getByText('God idé — jeg undersøger det.')).toBeTruthy()
+    } finally { jest.useRealTimers() }
   })
 
   it('aabner turen UDEN at skaermen rykker sig — offset kompenseres for ny hoejde', async () => {

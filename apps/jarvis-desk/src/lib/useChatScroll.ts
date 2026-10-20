@@ -193,12 +193,28 @@ export function useChatScroll(
     // antal px UDEN at læseren har flyttet sig. Uden korrektionen læses den
     // vækst som «læseren forlod bunden» — og det er præcis den beslutning der
     // får chatview til at hoppe ved 3. linje i composeren.
-    const foelger = m.gulv - viewportDeltaRef.current - m.top <= FOELG_TAERSKEL_PX
+    //
+    // ── TOLERANCE ER IKKE EN TILLADELSE (målt 20/10-2026) ──────────────────
+    //
+    // `FOELG_TAERSKEL_PX` blev brugt til to ting på én gang: at afgøre om
+    // læseren er «ved bunden» (UI), og om rullen må flyttes (ejerskab). Det
+    // gjorde tolerancen til et snap: Bjørn målte i den kørende PWA at et
+    // hjultrin på 4–25 px blev smidt tilbage til bunden, mens 26 px blev
+    // stående — grænsen lå præcis på tærsklen. En læser der bevidst flyttede
+    // sig 12 px op blev altså hentet tilbage.
+    //
+    // Nu er de to ting skilt: EJERSKABET kræver at man faktisk står på gulvet
+    // (1 px margin for subpixel), mens VISNINGEN beholder tolerancen — så
+    // composerens vækst stadig ikke flimrer `atBottom`, og testen der holder
+    // DSH's tal fast består uændret.
+    const afstand = m.gulv - viewportDeltaRef.current - m.top
+    const paaGulvet = afstand <= 1
+    const vedBunden = afstand <= FOELG_TAERSKEL_PX
     viewportDeltaRef.current = 0
-    foelgerRef.current = foelger
-    setAtBottom(foelger)
-    if (foelger) {
-      setUnread(0)
+    foelgerRef.current = paaGulvet
+    setAtBottom(vedBunden)
+    if (vedBunden) setUnread(0)
+    if (vedBunden) {
       // Beslutningen skal gælde NU — ikke først når interval-nettet rammer sin
       // næste tick op til 250 ms senere. Det er den forsinkelse der ses som et hop.
       skrivTilBund()
@@ -278,10 +294,18 @@ export function useChatScroll(
     }
 
     // Al anden læserbevægelse er afventende — også inden for tærsklen.
-    if (!afventendeRef.current) {
-      afventendeRef.current = true
-      sampleTimerRef.current = window.setTimeout(afregn, SCROLL_SAMPLE_INTERVAL_MS)
+    //
+    // Timeren GEN-ARMES ved fortsat bevægelse (målt 20/10-2026). Før blev den
+    // kun arméet én gang, så de 500 ms fyrede MIDT i en vedvarende gestus og
+    // besluttede på et tidspunkt hvor læseren stadig flyttede sig. Det er
+    // derfor Bjørn kun kunne forlade bunden ved at scrolle langt i ét træk:
+    // en hurtig fling var ude over tærsklen før afregningen faldt, en langsom
+    // bevægelse var det ikke.
+    if (sampleTimerRef.current !== null) {
+      clearTimeout(sampleTimerRef.current)
     }
+    afventendeRef.current = true
+    sampleTimerRef.current = window.setTimeout(afregn, SCROLL_SAMPLE_INTERVAL_MS)
   }, [afregn, foelgNu, maal, skrivTilBund])
 
   // ── Pin ved overgangen til «arbejder» ─────────────────────────────────────

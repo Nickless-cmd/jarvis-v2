@@ -409,14 +409,37 @@ describe('useChatScroll — composerens vækst er ikke en læserbevægelse', () 
     expect(hook.result.current.atBottom).toBe(false)
   })
 
-  it('når afregningen siger «vi følger», står ruden i bunden med det samme', () => {
-    // MUTATION: fjern `skrivTilBund()` i afregn → ruden bliver 20 px over gulvet
-    // indtil interval-nettet rammer sin næste tick 250 ms senere → fejler.
+  it('når afregningen siger «vi følger», bliver læseren STÅENDE — tolerancen må ikke skrive', () => {
+    // MÅLT OG VENDT 20/10-2026 (Bjørn, i den kørende PWA): «fucker scroll hvis
+    // du ikk scroller hurtigt forbi sidste assistentsvar — nulstiller scroll
+    // tilbage til bunden». Et hjultrin på 4–25 px blev smidt til bunden, mens
+    // 26 px blev stående; grænsen lå præcis på FOELG_TAERSKEL_PX.
+    //
+    // Den gamle kontrakt (porteret fra DSH) krævede at afregningen SKREV når
+    // tolerancen var opfyldt. Det gjorde tolerancen til et snap: en læser der
+    // bevidst flyttede sig 12 px op blev hentet tilbage. Nu er de to ting
+    // skilt — `atBottom` (visningen) beholder tolerancen, men EJERSKABET
+    // kræver at man faktisk står på gulvet.
+    //
+    // MUTATION: skriv igen ubetinget når `vedBunden` → ruden ryger til 1500 → fejler.
     const maal = rude(2000) // gulv = 1500
     const { hook } = opsæt(maal, { aktiv: false })
     act(() => { maal.el.scrollTop = 1480; hook.result.current.onScroll() }) // 20 px op
     act(() => { maal.slut() })
-    expect(hook.result.current.atBottom).toBe(true)
-    expect(maal.top()).toBe(maal.max())
+    expect(hook.result.current.atBottom).toBe(true) // visningen: stadig «ved bunden»
+    expect(maal.top()).toBe(1480) // …men læseren står hvor han stod
+  })
+
+  it('et lille hjultrin (12 px) må ikke smides tilbage til bunden', () => {
+    // Bjørns eget måletal: trin 4/8/12/18/22/24/25 px → afstand 0 (smidt til
+    // bund), trin 26+ → blev stående. 12 px er midt i det døde område.
+    //
+    // MUTATION: lad afregn skrive når `vedBunden` (tolerancen) → 12 ≤ 25 →
+    // ruden skrives til 1500 → fejler.
+    const maal = rude(2000) // gulv = 1500
+    const { hook } = opsæt(maal, { aktiv: false })
+    act(() => { maal.el.scrollTop = 1488; hook.result.current.onScroll() }) // 12 px op
+    act(() => { maal.slut() })
+    expect(maal.top()).toBe(1488)
   })
 })

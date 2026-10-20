@@ -493,6 +493,24 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           ? { ...state, finalAnswerStarted: true }
           : state
       }
+      if (event.kind === 'text_phase_update') {
+        const runId = String(event.payload?.run_id ?? '')
+        const index = Number(event.payload?.index)
+        const phase = event.payload?.phase
+        if ((runId && state.activeRunId && runId !== state.activeRunId)
+          || !Number.isInteger(index) || index < 0
+          || (phase !== 'commentary' && phase !== 'final_answer')) return state
+        const current = state.blocks[index]
+        if (!current || current.type !== 'text') return state
+        const blocks = state.blocks.slice()
+        blocks[index] = { ...current, phase }
+        return {
+          ...state,
+          blocks,
+          finalAnswerStarted: phase === 'final_answer'
+            || blocks.some((block) => block?.type === 'text' && block.phase === 'final_answer'),
+        }
+      }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.

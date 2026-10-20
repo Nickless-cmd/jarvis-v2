@@ -95,6 +95,36 @@ describe('streamReducer', () => {
     expect(answer.finalAnswerStarted).toBe(true)
   })
 
+  it('afgør en tidlig tekst live uden at folde hovedet før fasen er kendt', () => {
+    const started = reduce([{
+      type: 'message_start',
+      message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    }, {
+      type: 'content_block_start', index: 0,
+      content_block: { type: 'text', text: '' },
+    }, {
+      type: 'content_block_delta', index: 0,
+      delta: { type: 'text_delta', text: 'God idé — jeg undersøger det.' },
+    }])
+    expect(started.finalAnswerStarted).toBe(false)
+    expect(started.blocks[0]).toEqual({ type: 'text', text: 'God idé — jeg undersøger det.' })
+
+    const commentary = streamReducer(started, {
+      type: 'system_event', kind: 'text_phase_update',
+      payload: { run_id: 'r1', index: 0, phase: 'commentary' },
+    })
+    expect(commentary.blocks[0]).toEqual({
+      type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary',
+    })
+    expect(commentary.finalAnswerStarted).toBe(false)
+
+    const final = streamReducer(started, {
+      type: 'system_event', kind: 'text_phase_update',
+      payload: { run_id: 'r1', index: 0, phase: 'final_answer' },
+    })
+    expect(final.finalAnswerStarted).toBe(true)
+  })
+
   it('message_start sets working + activeRunId', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'visible-9', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

@@ -97,7 +97,10 @@ async def test_working_step_wrapped_as_system_event():
         legacy(), session_id="s", ping_interval_s=999.0,
     ))
     events = _parse_v2_events(output)
-    sys_events = [e for e in events if e[0] == "system_event"]
+    sys_events = [
+        e for e in events
+        if e[0] == "system_event" and e[1].get("kind") == "working_step"
+    ]
     assert len(sys_events) == 1
     assert sys_events[0][1]["kind"] == "working_step"
     assert sys_events[0][1]["payload"]["action"] == "bash_session_run"
@@ -305,9 +308,37 @@ async def test_text_block_reopens_after_tool():
     ]
     assert len(text_starts) == 2
     assert text_starts[0][1]["index"] != text_starts[1][1]["index"]
-    assert [event[1]["content_block"]["phase"] for event in text_starts] == [
-        "final_answer", "final_answer",
+    assert "phase" not in text_starts[0][1]["content_block"]
+    assert text_starts[1][1]["content_block"]["phase"] == "final_answer"
+    phase_updates = [
+        data["payload"] for kind, data in events
+        if kind == "system_event" and data.get("kind") == "text_phase_update"
     ]
+    assert phase_updates == [{
+        "run_id": "v1", "index": text_starts[0][1]["index"], "phase": "commentary",
+    }]
+
+
+@pytest.mark.asyncio
+async def test_direct_text_stays_unresolved_until_done_then_becomes_final():
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Direkte svar"})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    start_at = next(i for i, (kind, data) in enumerate(events)
+                    if kind == "content_block_start" and data["content_block"]["type"] == "text")
+    boundary_at = next(i for i, (kind, data) in enumerate(events)
+                       if kind == "system_event" and data.get("kind") == "final_answer_start")
+    update_at, update = next(
+        (i, data["payload"]) for i, (kind, data) in enumerate(events)
+        if kind == "system_event" and data.get("kind") == "text_phase_update"
+    )
+    assert "phase" not in events[start_at][1]["content_block"]
+    assert update["phase"] == "final_answer"
+    assert start_at < boundary_at < update_at
 
 
 @pytest.mark.asyncio

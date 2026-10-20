@@ -220,11 +220,14 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
 
     fireEvent.click(fold)
-    expect(fold).toHaveAttribute('aria-expanded', 'true')
     expect(document.querySelector('.chat-flow-work-details')).not.toBeNull()
+    // Udfoldet tilstand ER den levende kronologiske visning. Den kompakte
+    // statusrail må ikke fortsætte ovenover og vise samme syntese to steder.
+    expect(screen.queryByTestId('chat-flow-activity')).not.toBeInTheDocument()
+    expect(document.querySelector('.chat-flow-work-details')).toHaveTextContent('Jeg læser videre')
 
-    fireEvent.click(fold)
-    expect(fold).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(document.querySelector('.rv-tur') as HTMLElement)
+    expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
   })
 

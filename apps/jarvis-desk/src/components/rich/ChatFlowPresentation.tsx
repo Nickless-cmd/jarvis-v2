@@ -212,7 +212,7 @@ export function ChatFlowPresentation({
               begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
               at folde en afsluttet tur ud. */}
           <div className="chat-flow-gruppe" hidden={!aaben}>
-            {aktiv && (activeSynthesis || rundeTekst) ? (
+            {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, tankeTekst,

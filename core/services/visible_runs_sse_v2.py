@@ -372,6 +372,12 @@ async def translate_to_v2(
     # Hold kun den uafklarede tekst tilbage; et nyt værktøj/en ny runde gør
     # den til arbejde, mens terminal done gør den til et bekræftet svar.
     _pending_text: list[str] = []
+    # Tekst kan komme FØR modellen afslører om runden kalder et værktøj. Den
+    # må derfor ikke stemples final ved første token: det var præcis dét der
+    # klappede Chat-hovedet sammen i PWA'en, når et tool fulgte bagefter.
+    # Indeksene afgøres ved første tool (commentary) eller terminal done
+    # (final_answer for en ren teksttur).
+    _unresolved_text_indexes: set[int] = set()
 
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
@@ -382,12 +388,14 @@ async def translate_to_v2(
         _state["next_index"] = idx + 1
         return idx
 
-    async def _open_text_block(*, phase: str) -> None:
+    async def _open_text_block(*, phase: str | None) -> None:
         idx = _alloc_index()
         _state["text_block_index"] = idx
         await queue.put(ContentBlockStart(
             index=idx, block_type="text", phase=phase,
         ).to_sse_line())
+        if phase is None:
+            _unresolved_text_indexes.add(idx)
         _state["text_block_open"] = True
 
     async def _emit_message_start_if_needed() -> None:
@@ -415,9 +423,30 @@ async def translate_to_v2(
         # Text-block åbnes lazily ved første delta (_ensure_text_block_open) —
         # så en evt. reasoning/thinking-block kan komme FØR svar-teksten.
 
-    async def _ensure_text_block_open(*, phase: str) -> None:
+    async def _ensure_text_block_open(*, phase: str | None) -> None:
         if not _state["text_block_open"]:
             await _open_text_block(phase=phase)
+
+    async def _resolve_unresolved_text(*, phase: str) -> None:
+        """Afgør tidlig tekst uden at gensende eller flytte dens indhold."""
+        if not _unresolved_text_indexes:
+            return
+        if phase == "final_answer":
+            # Gammel klient-kontrakt bevares; nye klienter bruger blokfasen.
+            await queue.put(SystemEvent(
+                kind="final_answer_start",
+                payload={"run_id": str(_state["run_id"] or "")},
+            ).to_sse_line())
+        for index in sorted(_unresolved_text_indexes):
+            await queue.put(SystemEvent(
+                kind="text_phase_update",
+                payload={
+                    "run_id": str(_state["run_id"] or ""),
+                    "index": index,
+                    "phase": phase,
+                },
+            ).to_sse_line())
+        _unresolved_text_indexes.clear()
 
     # ── Thinking/reasoning-block (live deepseek-reasoning) ──
     async def _open_thinking_block() -> None:
@@ -565,6 +594,7 @@ async def translate_to_v2(
         _annonceret.add(tool_id)
         tool_input = payload.get("arguments")
         await _flush_pending_text()
+        await _resolve_unresolved_text(phase="commentary")
         _state["has_tool"] = True
         await _close_thinking_block_if_open()
         await _close_text_block_if_open()
@@ -588,6 +618,7 @@ async def translate_to_v2(
         klienten kan markere ToolCard'ens udfald."""
         ptype = str(payload.get("type") or "")
         await _flush_pending_text()
+        await _resolve_unresolved_text(phase="commentary")
         _state["has_tool"] = True
         name = str(
             payload.get("capability_name")
@@ -822,10 +853,10 @@ async def translate_to_v2(
                                 payload={"run_id": str(_state["run_id"] or ""), "delta": text},
                             ).to_sse_line())
                         else:
-                            # Prompt-kontrakten kræver at et tool-assisteret
-                            # svar kalder første tool før prosa. Tekst før et
-                            # eneste tool er derfor den direkte slutfase.
-                            await _ensure_text_block_open(phase="final_answer")
+                            # Første tekst er uafklaret indtil runden enten
+                            # kalder et tool eller afslutter. Den vises stadig
+                            # direkte, men må ikke folde hovedet for tidligt.
+                            await _ensure_text_block_open(phase=None)
                             await queue.put(ContentBlockDelta(
                                 index=int(_state["text_block_index"]),
                                 delta_type="text_delta",
@@ -888,7 +919,11 @@ async def translate_to_v2(
                     _state["saw_done"] = True
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()
-                    await _flush_pending_text(final=str(payload.get("status") or "") == "completed")
+                    _completed = str(payload.get("status") or "") == "completed"
+                    await _resolve_unresolved_text(
+                        phase="final_answer" if _completed and not _state["has_tool"] else "commentary",
+                    )
+                    await _flush_pending_text(final=_completed)
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)

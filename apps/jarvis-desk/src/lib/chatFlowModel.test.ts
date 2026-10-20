@@ -102,6 +102,23 @@ describe('deriveChatFlow', () => {
     expect(model.finalBlocks).toEqual([])
   })
 
+  it('lader eksplicitte tekstfaser overtrumfe timing og blokplacering', () => {
+    const answer: ContentBlock = { type: 'text', text: 'Autoritativt svar.', phase: 'final_answer' }
+    const progress: ContentBlock = {
+      type: 'progress', tool_use_id: 't1', parent_tool_use_id: null,
+      message: 'Færdig', tool: 'bash', hint: '', status: 'done',
+    }
+    const commentary: ContentBlock = { type: 'text', text: 'Arbejdsnote.', phase: 'commentary' }
+    const model = deriveChatFlow({
+      ...base, status: 'done', finalAnswerStarted: false,
+      blocks: [answer, progress, commentary],
+    })
+
+    expect(model.finalBlocks).toEqual([answer])
+    expect(model.workBlocks).toEqual([progress, commentary])
+    expect(model.hasObservableWork).toBe(true)
+  })
+
   it('bevarer runde-metadata i arbejdsblokkene, så den kan kobles ved udfoldning', () => {
     const work: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
     const metadata: ContentBlock = {

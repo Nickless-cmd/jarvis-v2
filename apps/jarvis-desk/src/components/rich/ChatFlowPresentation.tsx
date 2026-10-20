@@ -173,8 +173,6 @@ export function ChatFlowPresentation({
   // arbejde at folde, turen kører, eller vi kender dens varighed.
   const harArbejde = model.hasObservableWork
   const visTurhoved = harArbejde || streaming || sekunder !== null
-  const harSynligTekst = pacedBlocks.some((blok) => blok.type === 'text' && blok.text.trim().length > 0)
-  const visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
@@ -202,7 +200,7 @@ export function ChatFlowPresentation({
             koerer={streaming && !finalAnswerStarted}
             sekunder={sekunder}
             tekst={model.hovedTekst}
-            skillelinje={visSkillelinje}
+            skillelinje
             onToggle={() => {
               const naeste = !aaben
               setAabenManuelt(naeste)

@@ -139,15 +139,18 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
       // Serveren sender `final_answer_start` FØR første synlige slutdelta, så
       // dét signal er grænsen. Et direkte svar uden værktøj kan derimod vises
       // med det samme.
-      const isFinal = lastWorkIndex < 0
-        || (index > lastWorkIndex && (input.finalAnswerStarted || terminalFallback))
+      const isFinal = block.phase === 'final_answer'
+        || (block.phase !== 'commentary' && (lastWorkIndex < 0
+          || (index > lastWorkIndex && (input.finalAnswerStarted || terminalFallback))))
       ;(isFinal ? finalBlocks : workBlocks).push(block)
     } else {
       workBlocks.push(block)
     }
   }
 
-  const hasObservableWork = workBlocks.some((block) => block.type !== 'text') || allSynthesis.length > 0
+  const hasObservableWork = workBlocks.some((block) => (
+    block.type !== 'text' || block.phase === 'commentary'
+  )) || allSynthesis.length > 0
   return {
     allSynthesis,
     visibleSynthesis,

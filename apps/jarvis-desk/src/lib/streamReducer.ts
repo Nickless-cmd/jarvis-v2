@@ -307,7 +307,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const cb = event.content_block
       const blocks = (cb.type === 'tool_result' ? state.blocks : lukTanker(state.blocks, nu, event.index)).slice()
       const forrige = state.blocks[event.index]
-      if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text ?? '' }
+      if (cb.type === 'text') blocks[event.index] = {
+        type: 'text', text: cb.text ?? '', ...(cb.phase ? { phase: cb.phase } : {}),
+      }
       else if (cb.type === 'thinking') blocks[event.index] = {
         type: 'thinking', thinking: cb.thinking ?? '',
         startet: forrige && forrige.type === 'thinking' && forrige.startet != null ? forrige.startet : nu,
@@ -381,6 +383,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       }
       return {
         ...state, blocks,
+        finalAnswerStarted: state.finalAnswerStarted
+          || (cb.type === 'text' && cb.phase === 'final_answer'),
         provisionalBlockIndex: cb.type === 'text' && state.provisionalText
           ? event.index : state.provisionalBlockIndex,
       }
@@ -475,7 +479,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         if (String(event.payload?.run_id ?? '') !== state.activeRunId) return state
         const blocks = state.blocks.slice()
         if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
-          blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+          blocks[state.provisionalMissingBlockIndex] = {
+            type: 'text', text: state.provisionalText, phase: 'commentary',
+          }
         }
         return { ...state, blocks, provisionalText: '', provisionalBlockIndex: null,
           provisionalMissingBlockIndex: null,
@@ -610,7 +616,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const blocks = lukTanker(state.blocks, Date.now()).map((b) =>
         b && b.type === 'tool_use' && (b.status ?? 'running') === 'running' ? { ...b, status: 'done' as const } : b)
       if (state.provisionalMissingBlockIndex != null && state.provisionalText) {
-        blocks[state.provisionalMissingBlockIndex] = { type: 'text', text: state.provisionalText }
+        blocks[state.provisionalMissingBlockIndex] = {
+          type: 'text', text: state.provisionalText,
+          phase: state.finalAnswerStarted ? 'final_answer' : 'commentary',
+        }
       }
       return { ...state, status: 'done', blocks, provisionalText: '',
         // Turens ur skal stå stille fra nu af — og blive stående i hovedet.

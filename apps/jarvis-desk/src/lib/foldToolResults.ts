@@ -48,7 +48,9 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
           ? (b.preceding_tool_use_ids as unknown[]).map(String) : [],
       })
     } else if (b.type === 'text') {
-      out.push({ type: 'text', text: String(b.text ?? '') })
+      const phase = b.phase === 'commentary' || b.phase === 'final_answer'
+        ? b.phase : undefined
+      out.push({ type: 'text', text: String(b.text ?? ''), ...(phase ? { phase } : {}) })
     } else if (b.type === 'thinking') {
       // Gemte tanke-blokke hedder `text`, ikke `thinking` (visible_turn_blocks).
       // Kun `thinking` blev læst, så en tanke var ALTID tom efter reload.

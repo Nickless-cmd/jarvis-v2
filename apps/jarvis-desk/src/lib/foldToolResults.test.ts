@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { foldToolResults } from './foldToolResults'
 
 describe('foldToolResults', () => {
+  it('bevarer tekstfasen fra den gemte besked', () => {
+    expect(foldToolResults([
+      { type: 'text', text: 'Arbejdsnote', phase: 'commentary' },
+      { type: 'text', text: 'Svar', phase: 'final_answer' },
+    ])).toEqual([
+      { type: 'text', text: 'Arbejdsnote', phase: 'commentary' },
+      { type: 'text', text: 'Svar', phase: 'final_answer' },
+    ])
+  })
+
   it('bevarer billedets generation og kald-id til galleriet efter genindlæsning', () => {
     const [image] = foldToolResults([{
       type: 'image', attachment_id: 'att-1', filename: 'a.png',

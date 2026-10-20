@@ -394,6 +394,22 @@ describe('ChatFlowPresentation — turhovedet fra første ord', () => {
     expect(hoved).not.toBeNull()
     expect(hoved).toHaveAttribute('data-koerer')
     expect(hoved).toHaveTextContent('Tænker')
+    expect(hoved).toHaveAttribute('data-skillelinje')
+  })
+
+  it('beholder skillelinjen gennem hele chat-streamen', () => {
+    const view = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} />)
+    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+
+    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+      { type: 'text', text: 'Mellemstatus', phase: 'commentary' },
+    ]} />)
+    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+
+    view.rerender(<ChatFlowPresentation {...common} mode="living" blocks={[
+      { type: 'text', text: 'Svaret', phase: 'final_answer' },
+    ]} finalAnswerStarted />)
+    expect(document.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
   })
 
   it('beholder hovedet og uret på en tur uden værktøjskald', () => {

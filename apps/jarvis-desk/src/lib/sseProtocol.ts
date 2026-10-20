@@ -24,7 +24,7 @@ export interface ContentBlockStartEvent {
   type: 'content_block_start'
   index: number
   content_block:
-    | { type: 'text'; text: string }
+    | { type: 'text'; text: string; phase?: AssistantTextPhase }
     | { type: 'thinking'; thinking: string }
     | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
     | { type: 'tool_result'; tool_use_id: string; status: string; content: string; is_error?: boolean }
@@ -172,8 +172,10 @@ export type StreamEvent =
 
 // ─── Rendret form (ikke wire-form). Bruges af reducer + rich-rendering. ───
 
+export type AssistantTextPhase = 'commentary' | 'final_answer'
+
 export type ContentBlock =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; phase?: AssistantTextPhase }
   /**
    * `seconds`: målt varighed. Gemte beskeder har serverens tal; live sætter
    * reduceren den, når næste blok starter. `startet`: klientens ur da blokken

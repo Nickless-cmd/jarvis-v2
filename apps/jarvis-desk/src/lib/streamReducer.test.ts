@@ -75,6 +75,26 @@ describe('streamReducer', () => {
     expect(streamReducer(after, start('r2')).finalAnswerStarted).toBe(false)
   })
 
+  it('bruger tekstblokkens fase som autoritativ live-grænse', () => {
+    const started = reduce([{
+      type: 'message_start',
+      message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    }])
+    const commentary = streamReducer(started, {
+      type: 'content_block_start', index: 0,
+      content_block: { type: 'text', text: '', phase: 'commentary' },
+    })
+    expect(commentary.blocks[0]).toEqual({ type: 'text', text: '', phase: 'commentary' })
+    expect(commentary.finalAnswerStarted).toBe(false)
+
+    const answer = streamReducer(commentary, {
+      type: 'content_block_start', index: 1,
+      content_block: { type: 'text', text: '', phase: 'final_answer' },
+    })
+    expect(answer.blocks[1]).toEqual({ type: 'text', text: '', phase: 'final_answer' })
+    expect(answer.finalAnswerStarted).toBe(true)
+  })
+
   it('message_start sets working + activeRunId', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'visible-9', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

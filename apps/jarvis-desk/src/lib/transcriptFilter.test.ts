@@ -49,6 +49,34 @@ describe('udenAktivRun', () => {
     expect(udenAktivRun(raekker, 'r1', true, `Arbejde. ${svar}`)).toHaveLength(1)
   })
 
+  // MAALT 20/10-2026 (Bjorn: «dobbelt beskeden er der stadig»). Den gemte
+  // besked har FLERE text-blokke (commentary + final_answer), og
+  // `normaliseretTekst` joiner dem uden separator: «…aaben.Flag-kaldet» mod
+  // den levende «…aaben. Flag-kaldet». Maalt paa besked 210931: de to tekster
+  // deler 1768 tegns suffix, men foerste afvigelse ligger ved tegn 132 — saa
+  // `endsWith` paa hele strengen fejlede, og raekken stod paa skaermen.
+  it('dropper raekken selv naar blokkene er joinet uden mellemrum', () => {
+    const del1 = 'Foerste afsnit af arbejdsteksten.'
+    const svar =
+      'Det endelige svar staar her og er langt nok til at taelle som et rigtigt svar. ' +
+      'Det fortsaetter over flere linjer, praecis som svarene i den virkelige flade, ' +
+      'og slutter med en saetning der kun findes i dette ene svar.'
+    const raekker = [
+      { id: 'u1', role: 'user' },
+      {
+        id: 'message-abc',
+        role: 'assistant',
+        content: [
+          { type: 'text', text: del1 },
+          { type: 'text', text: svar },
+        ],
+      },
+    ]
+    // Den levende tekst kom som EN stroem og har mellemrummet; raekken har
+    // ikke, fordi blokkene blev joinet. Suffixet er identisk.
+    expect(udenAktivRun(raekker, 'r1', true, `Arbejde. ${del1} ${svar}`)).toHaveLength(1)
+  })
+
   it('roerer ikke et aeldre svar — kun den sidste assistent-raekke', () => {
     const svar = 'A'.repeat(600)
     const raekker = [

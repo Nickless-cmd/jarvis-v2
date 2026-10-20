@@ -60,6 +60,31 @@ export function broId(runId: string): string {
 }
 
 /**
+ * Hvor meget afslutning to tekster skal dele for at være samme svar.
+ *
+ * Målt 20/10-2026 (Bjørn: «dobbelt beskeden er der stadig»): den gemte besked
+ * har FLERE text-blokke (`commentary` + `final_answer`), og de joines uden
+ * separator — «…åben.Flag-kaldet» mod den levende «…åben. Flag-kaldet». Målt på
+ * besked 210931 delte de to tekster **1768 tegns** suffix, men den første
+ * afvigelse lå ved tegn 132, så et `endsWith` på hele strengen fejlede 1300
+ * tegn før afslutningen — og rækken stod på skærmen ved siden af pacen.
+ *
+ * Et helt svar deler sin afslutning; to forskellige svar gør ikke. 120 tegn er
+ * rigeligt til at skelne, og kort nok til at et kort svar også fanges.
+ */
+const SUFFIX_LOFT = 120
+const SUFFIX_GULV = 40
+
+function delerSuffix(a: string, b: string): boolean {
+  const n = Math.min(a.length, b.length)
+  if (n < SUFFIX_GULV) return false
+  const krav = Math.min(SUFFIX_LOFT, Math.max(SUFFIX_GULV, Math.floor(n * 0.6)))
+  let i = 0
+  while (i < n && a[a.length - 1 - i] === b[b.length - 1 - i]) i += 1
+  return i >= krav
+}
+
+/**
  * Fjern det aktive runs egne rækker fra transskriptet.
  *
  * @param beskeder     transskriptets rækker, i visningsrækkefølge
@@ -89,7 +114,10 @@ export function udenAktivRun<T extends TransskriptRække>(
     // arbejdsteksten foran — derfor sammenlignes halen, ikke hele strengen.
     if (levende && i === sidsteAssistent) {
       const raekke = normaliseretTekst(m.content)
-      if (raekke.length >= 20 && (levende === raekke || levende.endsWith(raekke))) return false
+      if (
+        raekke.length >= 20 &&
+        (levende === raekke || levende.endsWith(raekke) || delerSuffix(levende, raekke))
+      ) return false
     }
     return true
   })

@@ -1012,3 +1012,40 @@ async def test_slutsvaret_ruller_i_laesbar_hastighed():
     # Den gamle regel gav 30 dele à 100 tegn, altså hele teksten i 30 hug.
     assert len(dele) >= 60, len(dele)
     assert max(len(d) for d in dele) <= 40
+
+
+@pytest.mark.asyncio
+async def test_runde_linje_efter_svaret_maa_ikke_fjerne_fold_signalet():
+    """Bjørn 20/10-2026: «en runde linje der hang så hoved ikk foldet og da
+    runden forsvandt glippede foldet».
+
+    I en code mode-tur med værktøjskald går teksten gennem `_pending_text`.
+    Kommer der en runde-linje EFTER slutsvaret, tømmes køen dér — og ved
+    `done` er den tom. Den gamle kode sendte `final_answer_start` inde i
+    `_flush_pending_text`, som returnerer tidligt på en tom kø, og
+    `_resolve_unresolved_text` sprang den over fordi `has_tool` var sand.
+    Resultatet: intet fold-signal, så hovedet blev stående indtil
+    `message_stop` rev det ned i ét glip.
+
+    Fold-signalet er ikke en transportdetalje — det er beskeden «svaret er
+    begyndt». Det skal ud, uanset om der tilfældigvis lå tekst i køen.
+    """
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash",
+            "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Det endelige svar."})
+        # Runde-linjen kommer EFTER svaret og tømmer køen.
+        yield _legacy_sse("working_step", {"run_id": "v1", "action": "thinking",
+                                           "detail": "Tænker videre · runde 2"})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0)))
+    signaler = [i for i, (kind, data) in enumerate(events)
+                if kind == "system_event" and data.get("kind") == "final_answer_start"]
+    stop_at = next(i for i, (kind, _) in enumerate(events) if kind == "message_stop")
+    assert len(signaler) == 1, f"forventede præcis ét fold-signal, fik {len(signaler)}"
+    assert signaler[0] < stop_at, "fold-signalet skal komme før message_stop"

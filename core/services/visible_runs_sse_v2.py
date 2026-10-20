@@ -366,6 +366,9 @@ async def translate_to_v2(
         "lane": lane,
         "session_id": session_id,
         "has_tool": False,
+        # Er fold-signalet sendt? Det maa ikke afhaenge af, om der
+        # tilfaeldigt laa tekst i koen (se done-grenen).
+        "final_answer_started": False,
     }
 
     # Efter et værktøj kan tekst være både en mellemsyntese og slutsvaret.
@@ -433,6 +436,7 @@ async def translate_to_v2(
             return
         if phase == "final_answer":
             # Gammel klient-kontrakt bevares; nye klienter bruger blokfasen.
+            _state["final_answer_started"] = True
             await queue.put(SystemEvent(
                 kind="final_answer_start",
                 payload={"run_id": str(_state["run_id"] or "")},
@@ -506,6 +510,7 @@ async def translate_to_v2(
         text = "".join(_pending_text)
         _pending_text.clear()
         if final:
+            _state["final_answer_started"] = True
             await queue.put(SystemEvent(
                 kind="final_answer_start",
                 payload={"run_id": str(_state["run_id"] or "")},
@@ -924,6 +929,24 @@ async def translate_to_v2(
                         phase="final_answer" if _completed and not _state["has_tool"] else "commentary",
                     )
                     await _flush_pending_text(final=_completed)
+                    # Bjoern 20/10-2026: «en runde linje der hang saa hoved ikk
+                    # foldet og da runden forsvandt glippede foldet».
+                    #
+                    # Efter et vaerktoejskald gaar teksten gennem
+                    # `_pending_text`, og en runde-linje EFTER slutsvaret
+                    # toemmer den. Ved `done` var koen derfor tom, og begge
+                    # emissionssteder sprang over — derfor kom fold-signalet
+                    # aldrig, og hovedet stod stille indtil `message_stop` rev
+                    # det ned i EET glip.
+                    #
+                    # Signatet er ikke en transportdetalje: det er beskeden
+                    # «svaret er faerdigt». Det skal ud, uanset koen.
+                    if _completed and not _state["final_answer_started"]:
+                        _state["final_answer_started"] = True
+                        await queue.put(SystemEvent(
+                            kind="final_answer_start",
+                            payload={"run_id": str(_state["run_id"] or "")},
+                        ).to_sse_line())
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)

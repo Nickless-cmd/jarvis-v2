@@ -147,16 +147,19 @@ def test_noten_naevner_baade_naeste_skridt_og_spoergsmaal():
     assert "anbefalet" in note
 
 
-def test_kontakten_er_taendt_som_standard():
-    assert suggest_standing_guard_enabled() is True
-
-
-@pytest.mark.parametrize("vaerdi", ["0", "false", "no", "off", "FALSE", " off "])
-def test_kontakten_kan_slaas_fra_uden_genstart(monkeypatch, vaerdi):
-    monkeypatch.setenv("JARVIS_SUGGEST_STANDING_GUARD", vaerdi)
+def test_kontakten_er_slukket_som_standard():
+    """Bjørn 19/10-2026: vagten genstarter turen for at få et forslag, og den
+    ekstra runde skubber `done` — så slutsvaret teleporterer ud af folden mens
+    det streamer. Reglen bor nu i `output_discipline` i stedet."""
     assert suggest_standing_guard_enabled() is False
 
 
-def test_kontakten_forbliver_taendt_ved_enhver_anden_vaerdi(monkeypatch):
-    monkeypatch.setenv("JARVIS_SUGGEST_STANDING_GUARD", "yes")
+@pytest.mark.parametrize("vaerdi", ["1", "true", "yes", "on", "TRUE", " on "])
+def test_kontakten_kan_taendes_uden_genstart(monkeypatch, vaerdi):
+    monkeypatch.setenv("JARVIS_SUGGEST_STANDING_GUARD", vaerdi)
     assert suggest_standing_guard_enabled() is True
+
+
+def test_kontakten_forbliver_slukket_ved_enhver_anden_vaerdi(monkeypatch):
+    monkeypatch.setenv("JARVIS_SUGGEST_STANDING_GUARD", "maybe")
+    assert suggest_standing_guard_enabled() is False

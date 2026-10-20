@@ -485,14 +485,19 @@ function RaekkeTranskriptImpl({
         </>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
-      {svar.length > 0 && (
-        <div className="rv-svar">
-          <BlocksRenderer
-            blocks={svar} density="compact" streaming={streaming}
-            beskedId={beskedId} config={config}
-          />
-        </div>
-      )}
+      {/* Svar-containeren findes fra FØRSTE frame (målt 19/10-2026).
+          FØR: den var betinget af `svar.length > 0`, så den opstod i samme
+          øjeblik grænsen faldt — og slutsvarets node fik dermed både ny
+          container og ny forælder på én gang (målt: `.rv-svar` = 0 før,
+          1 efter). En container der allerede står der kan ikke poppe ind.
+          Den er tom indtil det første svar-delta, og `:not(:empty)` i CSS'en
+          holder marginen væk så længe. */}
+      <div className="rv-svar">
+        <BlocksRenderer
+          blocks={svar} density="compact" streaming={streaming}
+          beskedId={beskedId} config={config}
+        />
+      </div>
     </div>
   )
 }

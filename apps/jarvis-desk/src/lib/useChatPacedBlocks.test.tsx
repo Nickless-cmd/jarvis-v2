@@ -269,6 +269,43 @@ describe('useChatPacedBlocks', () => {
     expect(requestAnimationFrame).not.toHaveBeenCalled()
   })
 
+  it('ruller færdig selv om finalAnswerStarted aldrig blev sat — rå svar må ikke dumpe', () => {
+    // Målt 20/10-2026 (Bjørn: «det rå svar vises over det pacede svar»).
+    //
+    // `active` krævede `textIndices.length > 0`, og `textIndices` var afledt af
+    // `finalAnswerStarted`. Et run hvor fold-signalet aldrig blev sat — netop
+    // det jeg rettede i SSE-relæet samme dag — faldt derfor tilbage til
+    // `return blocks` i det øjeblik `streaming` blev falsk: hele svaret i ÉN
+    // frame, oven på den pacede linje der stadig rullede.
+    //
+    // Kontrakten er at en tekst der ÉN gang er begyndt at rulle, ruller
+    // færdig. Det må ikke afhænge af et signal der kan udeblive.
+    const text = 'Svar '.repeat(100)
+    const blocks: ContentBlock[] = [{ type: 'text', text }]
+    const { result, rerender } = renderHook(
+      ({ live, paceAllText, finalAnswerStarted }: { live: boolean; paceAllText: boolean; finalAnswerStarted: boolean }) =>
+        useChatPacedBlocks(blocks, { live, paceAllText, finalAnswerStarted, runId: 'run-uden-fold' }),
+      { initialProps: { live: true, paceAllText: true, finalAnswerStarted: false } },
+    )
+    const shown = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
+    nextFrame()
+    nextFrame()
+    const efterFoerste = shown()
+    expect(efterFoerste.length).toBeGreaterThan(0)
+    expect(efterFoerste.length).toBeLessThan(text.length)
+
+    // Strømmen slutter, og fold-signalet er stadig ikke sat. Det er fejlen.
+    rerender({ live: false, paceAllText: false, finalAnswerStarted: false })
+    expect(shown()).toBe(efterFoerste)
+
+    let antal = 0
+    while (shown().length < text.length && antal < 1_000) {
+      nextFrame()
+      antal += 1
+    }
+    expect(shown()).toBe(text)
+  })
+
   it('pacer levende Chat-tekst før final_answer_start når hele chatstrømmen er slået til', () => {
     const text = 'Et normalt svar uden værktøj. '.repeat(20)
     const { result } = renderHook(() => useChatPacedBlocks([{ type: 'text', text }], {

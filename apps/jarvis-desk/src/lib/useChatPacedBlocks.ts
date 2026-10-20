@@ -73,7 +73,25 @@ export function useChatPacedBlocks(
   blocks: readonly ContentBlock[],
   options: ChatPacingOptions,
 ): ContentBlock[] {
-  const textIndices = options.finalAnswerStarted || options.paceAllText
+  const key = `${options.runId ?? 'current'}:chat-text`
+  const harTekst = blocks.some((block) => block?.type === 'text' && block.text)
+  const paceNu = options.paceAllText || options.finalAnswerStarted
+
+  // Blev denne tekst faktisk PACET live? — ikke «var komponenten live?».
+  //
+  // Målt 20/10-2026 (Bjørn: «det rå svar vises over det pacede svar»): `active`
+  // krævede `textIndices.length > 0`, og den var afledt af `finalAnswerStarted`.
+  // Et run hvor fold-signalet aldrig blev sat faldt derfor tilbage til
+  // `return blocks` i det øjeblik `streaming` blev falsk — hele svaret i ÉN
+  // frame, oven på den pacede linje der stadig rullede. Samme familie som
+  // tom-tekstkøen i SSE-relæet: et signal der kan udeblive må ikke styre om
+  // noget allerede synligt bliver revet væk.
+  const liveRef = useRef('')
+  if (options.live && paceNu && harTekst) liveRef.current = key
+  const harVaeretLive = liveRef.current === key
+
+  const paceTekst = paceNu || harVaeretLive
+  const textIndices = paceTekst
     ? blocks.flatMap((block, index) => block?.type === 'text' ? [index] : [])
     : []
   // Serveren kan dele ét markdown-svar over flere content blocks. Den gamle
@@ -82,15 +100,9 @@ export function useChatPacedBlocks(
   // én læsekurve hen over samtlige tekstblokke.
   const target = textIndices.map((index) =>
     (blocks[index] as Extract<ContentBlock, { type: 'text' }>).text).join('')
-  const key = `${options.runId ?? 'current'}:chat-text`
   const [cursor, setCursor] = useState<Cursor>({ key: '', shown: '' })
   const cursorRef = useRef(cursor)
   cursorRef.current = cursor
-
-  // Blev denne blok set LIVE? Kun da må pacingen fortsætte efter `message_stop`.
-  const liveRef = useRef('')
-  if (options.live && textIndices.length > 0) liveRef.current = key
-  const harVaeretLive = liveRef.current === key
 
   const active = textIndices.length > 0 && target.length > 0 && (options.live || harVaeretLive)
 

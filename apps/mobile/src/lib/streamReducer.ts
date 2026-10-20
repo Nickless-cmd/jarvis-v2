@@ -229,7 +229,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'content_block_start': {
       const blocks = state.blocks.slice()
       const cb = event.content_block
-      if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text }
+      if (cb.type === 'text') blocks[event.index] = {
+        type: 'text', text: cb.text, ...(cb.phase ? { phase: cb.phase } : {}),
+      }
       else if (cb.type === 'thinking') {
         // Taenketiden maales HER. Serveren sender den ikke, og ThinkingSummary
         // har kunnet vise «Taenkte i X s» hele tiden — feltet blev bare aldrig
@@ -391,6 +393,29 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return rid && rid === state.activeRunId
           ? { ...state, finalAnswerStarted: true }
           : state
+      }
+      // Tekst før første værktøj er uafklaret på første token. Serveren
+      // afgør den senere uden at gensende indholdet: et efterfølgende tool gør
+      // den til commentary, mens en ren teksttur gør den til final_answer.
+      // Desk/PWA håndterer samme event; uden denne gren blev APK'en stående i
+      // den gamle fase og foldede først ved message_stop.
+      if (event.kind === 'text_phase_update') {
+        const runId = String(event.payload.run_id ?? '')
+        const index = Number(event.payload.index)
+        const phase = event.payload.phase
+        if ((runId && state.activeRunId && runId !== state.activeRunId)
+          || !Number.isInteger(index) || index < 0
+          || (phase !== 'commentary' && phase !== 'final_answer')) return state
+        const current = state.blocks[index]
+        if (!current || current.type !== 'text') return state
+        const blocks = state.blocks.slice()
+        blocks[index] = { ...current, phase }
+        return {
+          ...state,
+          blocks,
+          finalAnswerStarted: phase === 'final_answer'
+            || blocks.some((block) => block?.type === 'text' && block.phase === 'final_answer'),
+        }
       }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig

@@ -4,7 +4,7 @@ import { MessageList } from './MessageList'
 import { TopBarMenu } from './TopBarMenu'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
-import type { StreamEvent } from '../lib/sseProtocol'
+import type { ContentBlock, StreamEvent } from '../lib/sseProtocol'
 import type { ChatMessage } from '../lib/types'
 
 /** Claude Desktops tre visninger (cc-desktop-chatview.md §1-2), Bjørn 19/9-2026. */
@@ -39,6 +39,29 @@ describe('visningerne', () => {
     const s = await render(<MessageList messages={[tur]} blocks={[]} visning="verbose" />)
     expect(s.getByTestId('tool-group-details')).toBeTruthy()
     expect(s.getByText('Hvor sidder værnet mon?')).toBeTruthy()
+  })
+
+  it('APK: tidlig syntese er live i folden, som klapper ved slutsvaret', async () => {
+    const arbejde: ContentBlock[] = [
+      { type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary' },
+      { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.ts' }, status: 'done' },
+    ]
+    const s = await render(
+      <MessageList messages={[]} blocks={arbejde} working finalAnswerStarted={false} />,
+    )
+    expect(s.getByTestId('turn-header').props.accessibilityState).toEqual({ expanded: true })
+    expect(s.getByText('God idé — jeg undersøger det.')).toBeTruthy()
+
+    await act(async () => { s.rerender(<MessageList messages={[]} blocks={[
+      ...arbejde,
+      { type: 'text', text: 'Her er resultatet.', phase: 'final_answer' },
+    ]} working finalAnswerStarted />) })
+    expect(s.getByTestId('turn-header').props.accessibilityState).toMatchObject({ expanded: false })
+    expect(s.queryByText('God idé — jeg undersøger det.')).toBeNull()
+    expect(s.getByText('Her er resultatet.')).toBeTruthy()
+
+    await fireEvent.press(s.getByTestId('turn-header'))
+    expect(s.getByText('God idé — jeg undersøger det.')).toBeTruthy()
   })
 
   it('aabner turen UDEN at skaermen rykker sig — offset kompenseres for ny hoejde', async () => {

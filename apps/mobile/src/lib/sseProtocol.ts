@@ -14,7 +14,7 @@ export interface ContentBlockStartEvent {
   type: 'content_block_start'
   index: number
   content_block:
-    | { type: 'text'; text: string }
+    | { type: 'text'; text: string; phase?: AssistantTextPhase }
     | { type: 'thinking'; thinking: string }
     | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
     // Billede UNDER kørslen (27/9-2026). Samme konvolut som tool_result —
@@ -166,8 +166,10 @@ export type StreamEvent =
   | RetryEvent
   | RoundRestartDiscardPartialEvent
 
+export type AssistantTextPhase = 'commentary' | 'final_answer'
+
 export type ContentBlock =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; phase?: AssistantTextPhase }
   | {
       type: 'thinking'
       thinking: string

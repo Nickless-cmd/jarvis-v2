@@ -346,9 +346,10 @@ function toolBody(block: Extract<ContentBlock, { type: 'tool_use' }>): string {
  * blev tool-blokke filtreret væk under streaming → resultater dukkede først op
  * efter app-genstart fra persisterede beskeder).
  */
-function buildStreamingRows(blocks: ContentBlock[]): Row[] {
+function buildStreamingRows(blocks: ContentBlock[], working = false, finalAnswerStarted = false): Row[] {
   const rows: Row[] = []
   let textBuf = ''
+  let textPhase: Extract<ContentBlock, { type: 'text' }>['phase']
   let thinkingBuf = ''
   // Taenketiden for den raekke der bygges nu. Bufferen kan samle flere
   // tanke-blokke, saa start er den foerste og slut den seneste.
@@ -365,9 +366,14 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
           role: 'assistant',
           content: textBuf,
           created_at: new Date().toISOString()
-        }
+        },
+        // En uafklaret tidlig tekst hører til den levende arbejdsstrøm. Når
+        // serveren senere afgør fasen, flytter samme række — uden tekst-dublet.
+        work: textPhase === 'commentary'
+          || (textPhase == null && working && !finalAnswerStarted),
       })
       textBuf = ''
+      textPhase = undefined
     }
   }
   // `live` sættes IKKE her. En tankerække der bliver skyllet ud, bliver det
@@ -408,6 +414,8 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
     if (!b) continue
     if (b.type === 'text') {
       flushThinking()
+      if (textBuf && textPhase !== b.phase) flushText()
+      textPhase = b.phase
       textBuf += b.text
     }
     else if (b.type === 'thinking') {
@@ -551,7 +559,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
     r.turnId = 'stream'
     // Leverancer skal stå ved svaret, også mens arbejdshovedet er foldet.
     r.work = r.kind !== 'msg' && r.kind !== 'attachments'
-      || (r.kind === 'msg' && sidsteArbejde >= 0 && (j !== sidsteTekst || j < sidsteArbejde))
+      || (r.kind === 'msg' && (r.work ?? (sidsteArbejde >= 0 && (j !== sidsteTekst || j < sidsteArbejde))))
   })
   return rows
 }
@@ -796,7 +804,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
   const toggleFor = useRaekkeFn((id) => {
-    const aaben = turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
+    const aaben = turnOverrides[id]
+      ?? (id === 'stream' ? working && !finalAnswerStarted : visning === 'verbose')
     // Skaermen maa IKKE rykke sig naar et tur-hoved foldes (Bjoern 6/10-2026).
     //
     // Listen er inverteret, saa indsatte arbejdsraekker ligger paa HOEJERE
@@ -831,7 +840,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   })
 
   // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
-  const levende = buildStreamingRows(pacedBlocks)
+  const levende = buildStreamingRows(pacedBlocks, working, finalAnswerStarted)
   const flade = skillFlade?.matches?.length && levende.length
     ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches,
         turnId: 'stream', work: true }]
@@ -842,8 +851,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const gemteHoveder = useMemo(() => medTurHoveder(gemteGrupper,
     (id) => turnOverrides[id] ?? visning === 'verbose'), [gemteGrupper, turnOverrides, visning])
   // Tekst-delta skelner ikke syntese fra slutsvar. Fold først ved bekræftet stop.
-  const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' ? working : visning === 'verbose')
+  const erAaben = (id: string) => turnOverrides[id]
+    ?? (id === 'stream' ? working && !finalAnswerStarted : visning === 'verbose')
   const nyeLive = medTurHoveder(groupToolRounds([...flade, ...levende]), erAaben)
+    .map((row) => row.kind === 'turn-header'
+      ? { ...row, live: working && !finalAnswerStarted }
+      : row)
   // Kun turens SIDSTE arbejdsrunde kan stadig være i gang — og kun den bærer
   // shimmeren videre gennem hullet til næste runde (se `InlineToolGroup`).
   //

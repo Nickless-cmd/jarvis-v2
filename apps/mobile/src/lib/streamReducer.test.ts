@@ -56,6 +56,37 @@ it('viser uafklaret syntese løbende og skifter til bekræftet tekst uden dublet
   expect(visibleStreamBlocks(state)).toEqual([{ type: 'text', text: 'Første syntese' }, { type: 'text', text: 'Slutsvar' }])
 })
 
+it('afgør tidlig tekst uden at folde turen før fasen er kendt', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'message_start',
+    message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+  })
+  state = streamReducer(state, {
+    type: 'content_block_start', index: 0,
+    content_block: { type: 'text', text: '' },
+  })
+  state = streamReducer(state, {
+    type: 'content_block_delta', index: 0,
+    delta: { type: 'text_delta', text: 'God idé — jeg undersøger det.' },
+  })
+  expect(state.finalAnswerStarted).toBe(false)
+
+  const commentary = streamReducer(state, {
+    type: 'system_event', kind: 'text_phase_update',
+    payload: { run_id: 'r1', index: 0, phase: 'commentary' },
+  })
+  expect(commentary.blocks[0]).toEqual({
+    type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary',
+  })
+  expect(commentary.finalAnswerStarted).toBe(false)
+
+  const final = streamReducer(state, {
+    type: 'system_event', kind: 'text_phase_update',
+    payload: { run_id: 'r1', index: 0, phase: 'final_answer' },
+  })
+  expect(final.finalAnswerStarted).toBe(true)
+})
+
 it('viser fortsatte synteser når ring-bufferen har mistet message_start og tekstblokkens start', () => {
   let state = streamReducer(initialStreamState(), {
     type: 'system_event', kind: 'relay_gap', payload: { resume_idx: 256 },

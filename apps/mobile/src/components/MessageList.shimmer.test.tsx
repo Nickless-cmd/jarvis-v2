@@ -52,9 +52,10 @@ it('shimmeren lever videre i hullet — værktøjet er færdigt, slutsvaret ikke
   expect(shimmerer(s)).toBe(true)
 })
 
-it('shimmeren slukker når serveren bekræfter at slutsvaret er begyndt', async () => {
+it('turhovedet klapper sammen når serveren bekræfter at slutsvaret er begyndt', async () => {
   const s = await render(
     <MessageList messages={[]} blocks={[værktøj('done')]} working finalAnswerStarted />,
   )
-  expect(shimmerer(s)).toBe(false)
+  expect(s.getByTestId('turn-header').props.accessibilityState).toMatchObject({ expanded: false })
+  expect(s.queryByTestId('tool-group')).toBeNull()
 })

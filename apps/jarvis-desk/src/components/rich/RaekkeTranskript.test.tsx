@@ -376,6 +376,30 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
   })
 
+  it('holder en tidlig syntese i den levende fold og klapper først ved slutsvaret', () => {
+    const arbejde: ContentBlock[] = [
+      { type: 'text', text: 'God idé — jeg undersøger det.', phase: 'commentary' },
+      statusKald('read_file', { path: 'app.ts' }, 'done'),
+    ]
+    const { container, rerender } = render(
+      <RaekkeTranskript blocks={arbejde} streaming finalAnswerStarted={false} />,
+    )
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.rv-gruppe')).toHaveTextContent('God idé — jeg undersøger det.')
+
+    rerender(<RaekkeTranskript blocks={[
+      ...arbejde,
+      { type: 'text', text: 'Her er resultatet.', phase: 'final_answer' },
+    ]} streaming finalAnswerStarted />)
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+    expect(container.querySelector('.rv-gruppe')).toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-svar')).toHaveTextContent('Her er resultatet.')
+
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelector('.rv-gruppe')).not.toHaveAttribute('hidden')
+    expect(container.querySelector('.rv-gruppe')).toHaveTextContent('God idé — jeg undersøger det.')
+  })
+
   it('holder shimmeren i live gennem hullet mellem to runder (3/10-2026)', () => {
     // Bjørn: «i runde linjerne … skal shimmer fortsætte til første tænke i
     // næste runde, ellers opstår der et par sekunders stilhed hvor du tænker».

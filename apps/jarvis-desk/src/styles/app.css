@@ -8,7 +8,8 @@
      tilbage paa sin fallback, og de to tal kunne komme i utakt uden at nogen
      saa det. */
   grid-template-columns: var(--sidebar-bredde) 1fr;
-  height: 100vh;
+  height: 100vh; /* fallback: ældre browsere uden dvh */
+  height: 100dvh; /* den SYNLIGE viewport — 100vh er større når værktøjslinjen er fremme */
   width: 100%;
 }
 
@@ -4454,7 +4455,7 @@ body.egen-ramme .vinduesbjaelke {
 body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
   left: 0; background: var(--bg-0); border-bottom: 1px solid var(--line);
 }
-body.egen-ramme .window { height: 100vh; margin-top: 0; }
+body.egen-ramme .window { height: 100vh; height: 100dvh; margin-top: 0; }
 body.egen-ramme .main { padding-top: 36px; }
 /* Har fladen en header, ER den titellinjen: ingen ekstra bjaelke, intet skub. */
 body.egen-ramme:has(.main .chatview-head) .vinduesbjaelke { display: none; }

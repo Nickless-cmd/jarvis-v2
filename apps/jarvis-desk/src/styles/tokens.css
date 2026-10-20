@@ -233,6 +233,9 @@
 
 html, body, #root {
   height: 100%;
+  /* Én scrollport (målt 20/10-2026): uden dette kan dokumentet selv scrolle,
+     så PWA'en fik TO scrollporte og composeren endte under skærmen. */
+  overflow: hidden;
   background: var(--bg-0);
   color: var(--fg-1);
   font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;

@@ -42,7 +42,7 @@ describe('ChatFlowPresentation', () => {
     expect(hoved).toBeInTheDocument()
     expect(hoved).toHaveAttribute('aria-expanded', 'true')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
-    expect(gruppe).not.toHaveAttribute('hidden')
+    expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(within(gruppe).getByTestId('chat-flow-round-label')).toHaveTextContent('Samler svaret')
     expect(within(hoved).queryByText('Samler svaret')).not.toBeInTheDocument()
   })
@@ -136,7 +136,7 @@ describe('ChatFlowPresentation', () => {
     expect(hoved).toHaveAttribute('data-koerer')
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
     expect(gruppe).not.toBeNull()
-    expect(gruppe).not.toHaveAttribute('hidden')
+    expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     const synteser = within(gruppe).getAllByTestId('chat-flow-round-label')
     expect(synteser).toHaveLength(1)
     expect(synteser[0]).toHaveTextContent('Læste filen')
@@ -227,7 +227,7 @@ describe('ChatFlowPresentation', () => {
     expect(document.querySelector('.chat-flow-work-details')).toHaveTextContent('Jeg læser videre')
 
     fireEvent.click(document.querySelector('.rv-tur') as HTMLElement)
-    expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
+    expect(document.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
     expect(document.querySelector('.chat-flow-work-details')).toBeNull()
   })
 
@@ -280,7 +280,7 @@ describe('ChatFlowPresentation', () => {
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
     expect(hoved).not.toHaveAttribute('data-koerer')
-    expect(document.querySelector('.chat-flow-gruppe')).toHaveAttribute('hidden')
+    expect(document.querySelector('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'false')
   })
 
   it('viser turens ur i hovedet — sekunder, og minutter efter et minut', () => {
@@ -317,7 +317,7 @@ describe('ChatFlowPresentation', () => {
 
     fireEvent.click(hoved)
     const gruppe = document.querySelector('.chat-flow-gruppe') as HTMLElement
-    expect(gruppe).not.toHaveAttribute('hidden')
+    expect(gruppe.closest('.chat-flow-gruppe-ydre')).toHaveAttribute('data-aaben', 'true')
     expect(within(gruppe).queryByTestId('chat-flow-synthesis')).not.toBeInTheDocument()
     expect(gruppe.querySelector('.chat-flow-work-details')).not.toBeNull()
 

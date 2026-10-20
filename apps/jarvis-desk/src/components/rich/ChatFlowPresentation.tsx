@@ -224,7 +224,15 @@ export function ChatFlowPresentation({
               på stedet under turhovedets streg og forsvinder, når svaret
               begynder. De fulde arbejdsdetaljer er fortsat tilgængelige ved
               at folde en afsluttet tur ud. */}
-          <div className="chat-flow-gruppe" hidden={!aaben}>
+          {/* Bjørn 20/10-2026: «synteser og runder forsvinder i et blink».
+              `hidden` er `display: none` i ÉN frame — der er ingen højde at
+              animere fra, så hele billedet rykker sammen med præcis linjernes
+              højde. Gruppen bliver derfor stående i DOM'en, og den ydre ramme
+              glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
+              Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
+              som kun Chromium har). */}
+          <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
+            <div className="chat-flow-gruppe" aria-hidden={!aaben}>
             {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
@@ -278,6 +286,7 @@ export function ChatFlowPresentation({
                   beskedId={beskedId} config={config} />
               </div>
             ) : null}
+            </div>
           </div>
         </>
       ) : null}

@@ -23,7 +23,40 @@
   min-width: 0;
 }
 
-.chat-flow-gruppe[hidden] { display: none; }
+/* 20/10-2026 (Bjørn): «synteser og runder forsvinder i et blink». Gruppen blev
+   fjernet med `hidden`, altså `display: none` i én frame — der var ingen højde
+   at animere fra, og hele billedet rykked sammen med præcis linjernes højde.
+   Nu bliver den i DOM'en, og den ydre ramme glider fra `1fr` til `0fr`.
+   Grid-rækker kan animeres i både Chromium og Safari; `height: auto` ville
+   kræve `interpolate-size`, som kun Chromium har — og så ville PWA'en på
+   telefonen stadig knække. */
+.chat-flow-gruppe-ydre {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 260ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.chat-flow-gruppe-ydre[data-aaben='false'] { grid-template-rows: 0fr; }
+
+.chat-flow-gruppe-ydre > .chat-flow-gruppe {
+  /* Uden `min-height: 0` nægter et grid-barn at krympe under sit indhold, og
+     rækken kan ikke lukkes i det hele taget. */
+  min-height: 0;
+  overflow: clip;
+  /* Målt 20/10-2026: uden denne linje landede den lukkede gruppe på 3,19 px —
+     `overflow: clip` fjerner indholdet, men ikke gruppens egen `padding-top`
+     (0.2rem). Et 3 px-residual er præcis det hop vi er ved at fjerne, så
+     luften skal animeres væk sammen med højden. */
+  transition: padding-top 260ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.chat-flow-gruppe-ydre[data-aaben='false'] > .chat-flow-gruppe { padding-top: 0; }
+
+/* Bevægelsen er kosmetisk — hvem der har slået animationer fra, skal ikke
+   have et 260 ms vindue hvor indholdet er halvt synligt. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-flow-gruppe-ydre { transition: none; }
+}
 
 .chat-flow-synthesis {
   color: var(--text-secondary, #8f98a3);

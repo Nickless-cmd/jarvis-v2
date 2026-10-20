@@ -35,6 +35,10 @@ def _texts(blocks: list[dict]) -> list[str]:
     return [str(b.get("text")) for b in blocks if b.get("type") == "text"]
 
 
+def _text_phases(blocks: list[dict]) -> list[str]:
+    return [str(b.get("phase")) for b in blocks if b.get("type") == "text"]
+
+
 class TestSegmenterGenskaberRækkefølgen:
     def test_fortælling_værktøj_fortælling(self) -> None:
         """Selve fejlen: turen skal kunne læses som den blev til."""
@@ -47,6 +51,7 @@ class TestSegmenterGenskaberRækkefølgen:
         )
         assert _types(blocks) == ["text", "tool_use", "tool_result", "text"]
         assert _texts(blocks) == ["Først kigger jeg.", "Så konkluderer jeg."]
+        assert _text_phases(blocks) == ["commentary", "final_answer"]
 
     def test_flere_runder_bevarer_hver_syntese(self) -> None:
         blocks = _build_turn_blocks(
@@ -123,6 +128,7 @@ class TestRobusthed:
             interleave=["text"], text_segments=["Bare et svar"],
         )
         assert _types(blocks) == ["text"]
+        assert _text_phases(blocks) == ["final_answer"]
 
 
 class TestBatchKaldTællesEnkeltvis:

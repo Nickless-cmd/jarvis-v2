@@ -305,6 +305,9 @@ async def test_text_block_reopens_after_tool():
     ]
     assert len(text_starts) == 2
     assert text_starts[0][1]["index"] != text_starts[1][1]["index"]
+    assert [event[1]["content_block"]["phase"] for event in text_starts] == [
+        "final_answer", "final_answer",
+    ]
 
 
 @pytest.mark.asyncio
@@ -340,6 +343,12 @@ async def test_final_answer_boundary_precedes_replayed_text_without_folding_inte
     assert previews[0][0] < summary_at < commit_at < previews[-1][0] < boundary_at < answer_at < stop_at
     assert sum(kind == "system_event" and data.get("kind") == "final_answer_start"
                for kind, data in events) == 1
+    text_phases = [
+        data["content_block"]["phase"]
+        for kind, data in events
+        if kind == "content_block_start" and data["content_block"]["type"] == "text"
+    ]
+    assert text_phases == ["commentary", "final_answer"]
 
 
 @pytest.mark.asyncio

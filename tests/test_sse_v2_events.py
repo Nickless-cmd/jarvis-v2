@@ -57,6 +57,12 @@ class TestContentBlockStart:
         assert payload["index"] == 0
         assert payload["content_block"]["type"] == "text"
         assert payload["content_block"]["text"] == ""
+        assert "phase" not in payload["content_block"]
+
+    def test_text_block_phase(self):
+        evt = ContentBlockStart(index=0, block_type="text", phase="commentary")
+        _, payload = _parse_sse(evt.to_sse_line())
+        assert payload["content_block"]["phase"] == "commentary"
 
     def test_thinking_block(self):
         evt = ContentBlockStart(index=1, block_type="thinking")

@@ -133,7 +133,8 @@ _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 | function | `_tool_hint` | `(tool_name, arguments=…)` | Emnet alene — «git status», «raekkeModel.ts», uden label foran. | [src](../../../core/services/visible_turn_blocks.py#L42) |
 | function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L54) |
 | function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L108) |
-| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L124) |
+| function | `_mark_text_phases` | `(blocks)` | Gem den autoritative chat-lane på hver tekstblok. | [src](../../../core/services/visible_turn_blocks.py#L124) |
+| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L145) |
 
 ## `core/services/visible_work_surfaces.py`
 _Visible-work-flader: skrivebeskyttede projektioner af hvad den synlige lane laver._

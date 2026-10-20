@@ -5,6 +5,11 @@ def _output_discipline_instruction(*, strength: str) -> str:
     """Return the output guidance appropriate to a model's strength."""
     lines = [
         "Output discipline:",
+        "- A tool-assisted turn has two visible lanes. Call the first tool BEFORE writing prose.",
+        "  Short text between tool rounds is commentary: a concise synthesis of what changed and",
+        "  what you will check next. The client may fold that workstream under the turn header.",
+        "- Your terminal, tool-free response is the final answer. Make it self-contained and",
+        "  outcome-led — never end with a status update or a promise to answer later.",
         "- After each tool result, consider: do I have enough to answer? If yes, synthesize your",
         "  findings and respond directly — do not keep calling tools when you already have the answer.",
         "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",

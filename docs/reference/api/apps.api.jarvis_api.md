@@ -53,19 +53,19 @@ _SSE v2 event-dataclasses — Anthropic-style streaming protocol._
 | class | `MessageStart` | `` | Markerer starten på et nyt assistant-svar. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L34) |
 | method | `MessageStart.to_sse_line` | `(self)` | Returnér message_start SSE-blokken med run-metadata og nul-usage. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L46) |
 | class | `ContentBlockStart` | `` | Markerer start på en content-block (text, thinking, eller tool_use). | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L62) |
-| method | `ContentBlockStart.to_sse_line` | `(self)` | Returnér content_block_start SSE-blokken; content_block afhænger af block_type. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L74) |
-| class | `ContentBlockDelta` | `` | Inkrementelt indhold til en aktiv content-block. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L96) |
-| method | `ContentBlockDelta.to_sse_line` | `(self)` | Returnér content_block_delta SSE-blokken; delta-feltet afhænger af delta_type. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L108) |
-| class | `ContentBlockStop` | `` | Markerer at en bestemt content-block er færdig. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L125) |
-| method | `ContentBlockStop.to_sse_line` | `(self)` | Returnér content_block_stop SSE-blokken for den angivne block-index. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L133) |
-| class | `MessageDelta` | `` | Opdaterer message-level metadata mod slutningen. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L142) |
-| method | `MessageDelta.to_sse_line` | `(self)` | Returnér message_delta SSE-blokken med stop_reason og final usage-tal. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L159) |
-| class | `MessageStop` | `` | Sidste event — assistant-svaret er færdigt. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L178) |
-| method | `MessageStop.to_sse_line` | `(self)` | Returnér den afsluttende message_stop SSE-blok. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L181) |
-| class | `Ping` | `` | Keepalive event hver ~5s under streaming. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L187) |
-| method | `Ping.to_sse_line` | `(self)` | Returnér ping keepalive SSE-blokken. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L194) |
-| class | `SystemEvent` | `` | Jarvis-specifik extension der ikke passer i Anthropic-skema. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L200) |
-| method | `SystemEvent.to_sse_line` | `(self)` | Returnér system_event SSE-blokken med kind og payload. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L214) |
+| method | `ContentBlockStart.to_sse_line` | `(self)` | Returnér content_block_start SSE-blokken; content_block afhænger af block_type. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L75) |
+| class | `ContentBlockDelta` | `` | Inkrementelt indhold til en aktiv content-block. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L99) |
+| method | `ContentBlockDelta.to_sse_line` | `(self)` | Returnér content_block_delta SSE-blokken; delta-feltet afhænger af delta_type. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L111) |
+| class | `ContentBlockStop` | `` | Markerer at en bestemt content-block er færdig. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L128) |
+| method | `ContentBlockStop.to_sse_line` | `(self)` | Returnér content_block_stop SSE-blokken for den angivne block-index. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L136) |
+| class | `MessageDelta` | `` | Opdaterer message-level metadata mod slutningen. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L145) |
+| method | `MessageDelta.to_sse_line` | `(self)` | Returnér message_delta SSE-blokken med stop_reason og final usage-tal. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L162) |
+| class | `MessageStop` | `` | Sidste event — assistant-svaret er færdigt. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L181) |
+| method | `MessageStop.to_sse_line` | `(self)` | Returnér den afsluttende message_stop SSE-blok. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L184) |
+| class | `Ping` | `` | Keepalive event hver ~5s under streaming. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L190) |
+| method | `Ping.to_sse_line` | `(self)` | Returnér ping keepalive SSE-blokken. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L197) |
+| class | `SystemEvent` | `` | Jarvis-specifik extension der ikke passer i Anthropic-skema. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L203) |
+| method | `SystemEvent.to_sse_line` | `(self)` | Returnér system_event SSE-blokken med kind og payload. | [src](../../../apps/api/jarvis_api/sse_v2_events.py#L217) |
 
 ## `apps/api/jarvis_api/ui_static.py`
 _Select the shared Desk web build and serve its static files with safe caching._

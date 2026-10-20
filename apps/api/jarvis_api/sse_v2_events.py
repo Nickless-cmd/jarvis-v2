@@ -70,6 +70,7 @@ class ContentBlockStart:
     block_type: str  # "text" | "thinking" | "tool_use"
     tool_id: str | None = None  # kun for tool_use
     tool_name: str | None = None  # kun for tool_use
+    phase: str | None = None  # kun text: "commentary" | "final_answer"
 
     def to_sse_line(self) -> str:
         """Returnér content_block_start SSE-blokken; content_block afhænger af block_type."""
@@ -85,6 +86,8 @@ class ContentBlockStart:
             content_block = {"type": "thinking", "thinking": ""}
         else:
             content_block = {"type": "text", "text": ""}
+            if self.phase in ("commentary", "final_answer"):
+                content_block["phase"] = self.phase
         return _sse_format("content_block_start", {
             "type": "content_block_start",
             "index": self.index,

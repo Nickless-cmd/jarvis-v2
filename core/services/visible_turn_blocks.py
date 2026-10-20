@@ -121,6 +121,27 @@ def _tanke_blok(par: tuple) -> dict:
     return blok
 
 
+def _mark_text_phases(blocks: list[dict]) -> list[dict]:
+    """Gem den autoritative chat-lane på hver tekstblok.
+
+    Uden tools er tekst et direkte svar. Med tools er tekst før/samme side af
+    sidste kald commentary, mens tekst efter sidste kald er slutsvaret. Den
+    eksisterende rækkefølge-fallback for gamle beskeder kan dermed udfases
+    gradvist uden en DB-migrering: fasen bor i ``content_json``.
+    """
+    last_tool = max(
+        (index for index, block in enumerate(blocks) if block.get("type") == "tool_use"),
+        default=-1,
+    )
+    for index, block in enumerate(blocks):
+        if block.get("type") != "text":
+            continue
+        block["phase"] = (
+            "final_answer" if last_tool < 0 or index > last_tool else "commentary"
+        )
+    return blocks
+
+
 def _build_turn_blocks(
     *, text: str, tool_calls: list[dict], tool_results: list[dict],
     interleave: list[str] | None = None,
@@ -301,6 +322,6 @@ def _build_turn_blocks(
         blocks.extend(_build_progress_blocks(tool_calls, tool_results))
     except Exception:
         pass
-    return blocks
+    return _mark_text_phases(blocks)
 
 

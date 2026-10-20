@@ -382,11 +382,11 @@ async def translate_to_v2(
         _state["next_index"] = idx + 1
         return idx
 
-    async def _open_text_block() -> None:
+    async def _open_text_block(*, phase: str) -> None:
         idx = _alloc_index()
         _state["text_block_index"] = idx
         await queue.put(ContentBlockStart(
-            index=idx, block_type="text",
+            index=idx, block_type="text", phase=phase,
         ).to_sse_line())
         _state["text_block_open"] = True
 
@@ -415,9 +415,9 @@ async def translate_to_v2(
         # Text-block åbnes lazily ved første delta (_ensure_text_block_open) —
         # så en evt. reasoning/thinking-block kan komme FØR svar-teksten.
 
-    async def _ensure_text_block_open() -> None:
+    async def _ensure_text_block_open(*, phase: str) -> None:
         if not _state["text_block_open"]:
-            await _open_text_block()
+            await _open_text_block(phase=phase)
 
     # ── Thinking/reasoning-block (live deepseek-reasoning) ──
     async def _open_thinking_block() -> None:
@@ -481,7 +481,9 @@ async def translate_to_v2(
                 kind="final_answer_start",
                 payload={"run_id": str(_state["run_id"] or "")},
             ).to_sse_line())
-        await _ensure_text_block_open()
+        await _ensure_text_block_open(
+            phase="final_answer" if final else "commentary",
+        )
         # Replay teksten i ~30 små dele — BÅDE slutsvaret og den mellemliggende
         # syntese.
         #
@@ -532,6 +534,10 @@ async def translate_to_v2(
                 kind="provisional_text_commit",
                 payload={"run_id": str(_state["run_id"] or "")},
             ).to_sse_line())
+            # En commentary-blok er en afsluttet arbejdsrunde. Luk den her,
+            # så næste rundes terminale tekst kan åbne sin egen blok med
+            # ``phase=final_answer`` i stedet for at arve commentary-fasen.
+            await _close_text_block_if_open()
 
     #: Hvilke billeder streamen allerede har sendt — nøgle er `attachment_id`.
     #: Uden den ville hvert efterfølgende billedværktøjs-resultat sende turens
@@ -816,7 +822,10 @@ async def translate_to_v2(
                                 payload={"run_id": str(_state["run_id"] or ""), "delta": text},
                             ).to_sse_line())
                         else:
-                            await _ensure_text_block_open()
+                            # Prompt-kontrakten kræver at et tool-assisteret
+                            # svar kalder første tool før prosa. Tekst før et
+                            # eneste tool er derfor den direkte slutfase.
+                            await _ensure_text_block_open(phase="final_answer")
                             await queue.put(ContentBlockDelta(
                                 index=int(_state["text_block_index"]),
                                 delta_type="text_delta",

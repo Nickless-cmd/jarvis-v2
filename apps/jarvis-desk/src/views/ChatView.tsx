@@ -70,6 +70,7 @@ import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
+import { udenAktivRun } from '../lib/transcriptFilter'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
 
@@ -561,10 +562,18 @@ export function ChatView({
   // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
   // levende række melder færdig; ellers står hele svaret ved siden af pacingen
   // og opleves stadig som et dump.
-  const renderedTranscriptMessages = afslutterSvarPacing && stream.activeRunId
-    ? transcriptMessages.filter((m) => m.id !== `a-${stream.activeRunId}`
-        && String(m.run_id ?? '') !== stream.activeRunId)
-    : transcriptMessages
+  //
+  // 20/10-2026 (Bjørn): «det sker kun når hovedet folder … kun når det folder
+  // og resten af streamen». Gaten var `afslutterSvarPacing`, som kræver
+  // `status === 'done'` OG tekst i `finalBlocks`. Går turen tilbage til
+  // værktøjsarbejde efter svaret, ligger den sidste grænse EFTER teksten,
+  // `finalBlocks` er tom, og gaten faldt bort — mens den levende tur stadig
+  // stod på skærmen. Så blev begge rækker tegnet. Reglen følger nu det faktum
+  // der betyder noget: tegnes runnet levende, må dets persisterede række ikke
+  // også tegnes. Se `lib/transcriptFilter.ts` og dens tests.
+  const renderedTranscriptMessages = udenAktivRun(
+    transcriptMessages, stream.activeRunId, visLevendeTur,
+  )
 
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken
   // skrives ved turens SLUTNING og brugertrækken ved dens START, så spændet

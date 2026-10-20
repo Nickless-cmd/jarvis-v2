@@ -545,6 +545,30 @@
    runde-linjernes tal til `--rv-tilf`/`--rv-fjern` gennem tema-skiftet. */
 .raekkevisning .rv-diffstat .git-add { color: var(--rv-tilf); }
 .raekkevisning .rv-diffstat .git-del { color: var(--rv-fjern); }
+/* Bjørn 20/10-2026: «shimmer skal springe diff-tallene over og fortsætte
+   efter, så de beholder den grønne og røde farve».
+
+   `.shimmer` maler gradienten ind i teksten med `-webkit-text-fill-color:
+   transparent` — og den fyldfarve NEDARVES til børnene, så en `color` alene
+   ikke slår igennem. Sætter barnet sin egen fyldfarve, deltager det ikke i
+   masken: tallet står i sin faste grønne/røde mens gradienten fortsætter
+   uændret hen over hullet. Det er ikke to shimmerfelter — det er ét felt med
+   et hul, hvilket er præcis hvad han bad om.
+   Selektoren kræver `.shimmer`, så tallene i en afsluttet runde er urørte. */
+.raekkevisning .shimmer .rv-diffstat .git-add { -webkit-text-fill-color: var(--rv-tilf); }
+.raekkevisning .shimmer .rv-diffstat .git-del { -webkit-text-fill-color: var(--rv-fjern); }
+
+/* Bjørn 20/10-2026: «timeren i rundelinjen — tallene [skal] have samme farve
+   som h/m/s, de bør være lysere».
+
+   Uret er varighed, ikke handling, og inde i shimmeren blev både cifre og
+   `m`/`s` malet i gradientens dæmpede grundtone (`--fg-3`) — cifrene stod
+   derfor mørkere end deres egen tone. Uden for masken får uret sin egen
+   farve tilbage, og `m`/`s` løftes fra `--fg-3` til samme `--fg-2` som
+   cifrene, så hele uret står i én lysere tone. */
+.raekkevisning .shimmer .rv-rundeur .rullende,
+.raekkevisning .shimmer .rv-rundeur .rullende .tegn { -webkit-text-fill-color: currentColor; }
+.raekkevisning .rv-rundeur .rullende .tegn { color: var(--fg-2); }
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 

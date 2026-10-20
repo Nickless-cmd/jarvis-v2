@@ -302,6 +302,48 @@ describe('CodeView', () => {
 
     expect(t.scrollTop).toBe(1800)
   })
+  it('den levende tur bliver staaende til pacen er faerdig — done maa ikke dumpe resten', async () => {
+    // Bjørn 20/10-2026: «hoved folder korrekt, og pacen køre roligt et par
+    // linjer og bang så lander hele svaret».
+    //
+    // Aarsagen er IKKE paceren — den fortsaetter efter `message_stop` via
+    // `harVaeretLive`. Det er CodeView der river den levende raekke ned i
+    // samme frame som `done` (gaten var `status === 'working'`) og samtidig
+    // reconciler den persisterede raekke med HELE teksten ind i transcriptet.
+    // Chat-laget har `afslutterSvarPacing` + `udenAktivRun`; Code mode havde
+    // ingen af dem — derfor gik det kun ud over code-fladen.
+    const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await userEvent.type(screen.getByRole('textbox'), 'skriv et langt svar{Enter}')
+
+    const svar = 'A'.repeat(600)
+    act(() => {
+      handlersRef.current?.onRunId('r1')
+      handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
+      handlersRef.current?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+      handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: svar } })
+    })
+    await act(() => new Promise<void>((r) => setTimeout(r, 150)))
+
+    // Foer `done`: intet er dumpet.
+    const foer = container.querySelector('.transcript')?.textContent ?? ''
+    expect(foer.includes(svar)).toBe(false)
+
+    act(() => {
+      handlersRef.current?.onEvent({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { input_tokens: 0, output_tokens: 150 } })
+      handlersRef.current?.onEvent({ type: 'message_stop' })
+    })
+    await act(() => new Promise<void>((r) => setTimeout(r, 80)))
+
+    // Efter `done` maa resten stadig ikke lande i ét hug: pacen skal rulle
+    // faerdig uanset at serveren allerede har leveret hele svaret. Maalt uden
+    // rettelsen: `reconcile` lagde den persisterede raekke ind med alle 600
+    // tegn i samme frame som den levende raekke forsvandt.
+    const efter = container.querySelector('.transcript')?.textContent ?? ''
+    expect(efter.includes(svar)).toBe(false)
+    // ...og den persisterede kopi af SAMME run maa slet ikke tegnes endnu.
+    expect(container.querySelector('[data-rail-id="a-r1"]')).toBeNull()
+  })
+
 })
 
 /**

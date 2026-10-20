@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BlocksRenderer } from './BlocksRenderer'
 import { MessageActions } from './MessageActions'
@@ -26,7 +26,7 @@ import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
-  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId }: {
+  rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
@@ -41,6 +41,8 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   varighedSekunder?: number | null
   /** Kørslens id — pacing-cursoren nøgles på det, så to beskeder ikke deler ur. */
   runId?: string | null
+  /** Kaldes når pacingen har indhentet hele teksten (se `pacingFaerdig`). */
+  onPaced?: () => void
 }) {
   // ── To ure, ét valg (19/10-2026) ────────────────────────────────────────
   //
@@ -67,6 +69,26 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   })
   const codePaced = usePacedBlocks(blocks, streaming && !jaevn)
   const paced = jaevn ? chatPaced : codePaced
+  // ── Hvornår er pacingen FÆRDIG? (målt 20/10-2026) ────────────────────────
+  //
+  // Code mode holdt før kun den levende række på skærmen mens `status` var
+  // `working`. Ved `done` blev den revet ned, og den persisterede række lagt
+  // ind med HELE svaret i samme frame — så pacen rullede et par linjer og
+  // derefter landede resten i ét hug (Bjørn: «bang så lander hele svaret»).
+  //
+  // Paceren selv er uskyldig: den fortsætter efter `message_stop` via
+  // `harVaeretLive`. Det var VISNINGEN der blev skiftet ud midt i kurven.
+  // Chat-laget har længe haft `onAnswerPaced`; nu melder code-grenen også.
+  const alleTekst = blocks.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
+  const vistTekst = paced.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
+  const pacingFaerdig = alleTekst.length > 0 && vistTekst === alleTekst
+  const onPacedRef = useRef(onPaced)
+  onPacedRef.current = onPaced
+  useEffect(() => {
+    // Kun EFTER strømmen er slut: undervejs indhenter paceren kilden hele
+    // tiden, og et signal dér ville melde «færdig» midt i turen.
+    if (!streaming && pacingFaerdig) onPacedRef.current?.()
+  }, [streaming, pacingFaerdig])
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
         beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
@@ -244,7 +266,7 @@ function MessageRowImpl({
                   runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
                   paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
-              : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming}
+              : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
                   finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
                   runId={runId}

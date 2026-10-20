@@ -13,6 +13,7 @@ import { usePanel } from '../hooks/usePanel'
 import { usePersistedState } from '../hooks/usePersistedState'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
+import { udenAktivRun } from '../lib/transcriptFilter'
 import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
@@ -950,8 +951,36 @@ export function CodeView({
   const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
 
+  // ── Pacing-holderen (maalt 20/10-2026) ────────────────────────────────────
+  //
+  // Bjørn: «hoved folder korrekt, og pacen køre roligt et par linjer og bang
+  // så lander hele svaret». Aarsagen er IKKE paceren — den fortsaetter efter
+  // `message_stop` via `harVaeretLive`. Det er VISNINGEN: ved `done` blev den
+  // levende raekke revet ned (gaten var `status === 'working'`) og den
+  // persisterede raekke lagt ind med HELE svaret i samme frame.
+  //
+  // Chat-laget har haft `afslutterSvarPacing` + `udenAktivRun` siden 20/10;
+  // code-fladen havde ingen af dem — derfor gik det kun ud over Code Mode.
+  // Nu holder den levende raekke skaermen indtil pacingen selv melder faerdig.
+  const [pacedRunId, setPacedRunId] = useState<string | null>(null)
+  const markerSvarPacet = useCallback(() => {
+    if (stream.activeRunId) setPacedRunId(stream.activeRunId)
+  }, [stream.activeRunId])
+  const harPacetekst = stream.blocks.some((b) => b?.type === 'text' && b.text.length > 0)
+  const afslutterSvarPacing = stream.status === 'done'
+    && !!stream.activeRunId
+    && pacedRunId !== stream.activeRunId
+    && harPacetekst
+  const visLevendeTur = stream.status === 'working' || afslutterSvarPacing
+
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  // Mens den levende sluttekst ruller faerdig, findes samme svar allerede som
+  // persisteret serverraekke. Skjul KUN samme run indtil den levende raekke
+  // melder faerdig — ellers staar hele svaret ved siden af pacingen.
+  const renderedTranscriptMessages = udenAktivRun(
+    transcriptMessages, stream.activeRunId, visLevendeTur,
+  )
   const varighedForBesked = useMemo(() => {
     const ud = new Map<string, number>()
     let sidsteBruger: string | null = null
@@ -1239,7 +1268,7 @@ export function CodeView({
         />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
         <div className={`transcript${scroll.atBottom ? ' is-at-bottom' : ''}`} ref={scroll.containerRef} onScroll={scroll.onScroll}>
-          {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
+          {renderedTranscriptMessages.map((m) => m.role === 'compact_marker' ? (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
               <CompactionNotice stats={compactionById.get(m.id)} />
             </div>
@@ -1269,9 +1298,9 @@ export function CodeView({
             </div>
             </Fragment>
           ))}
-          {stream.status === 'working' && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
-              runId={stream.activeRunId}
+          {visLevendeTur && (
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
+              runId={stream.activeRunId} onAnswerPaced={markerSvarPacet}
               elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).

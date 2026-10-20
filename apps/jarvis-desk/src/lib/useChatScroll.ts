@@ -134,6 +134,12 @@ export function useChatScroll(
   const afventendeRef = useRef(false)
   const sampleTimerRef = useRef<number | null>(null)
 
+  // Hvor meget containerens HØJDE er ændret siden læseren sidst rørte ruden
+  // (positiv = den er blevet lavere). Se `afregn`: et krympende viewport hæver
+  // gulvet uden at læseren har flyttet sig, så uden dette tal måler tærsklen
+  // composerens vækst som en læserbevægelse.
+  const viewportDeltaRef = useRef(0)
+
   /** Én geometrilæsning. Gulvet er den største scrollTop browseren tillader. */
   const maal = useCallback(() => {
     const el = ref.current
@@ -157,6 +163,8 @@ export function useChatScroll(
       // læses som en læserbevægelse.
       sampletTopRef.current = m.el.scrollTop
     }
+    // Vi står nu på gulvet — den akkumulerede viewport-ændring er afregnet.
+    viewportDeltaRef.current = 0
   }, [maal])
 
   /** Drop en afventende afregning uden at lade den falde. */
@@ -180,11 +188,22 @@ export function useChatScroll(
     const m = maal()
     if (!m) return
     sampletTopRef.current = m.top
-    const foelger = m.gulv - m.top <= FOELG_TAERSKEL_PX
+    // Tærsklen måles på den geometri der gjaldt da læseren flyttede sig. Er
+    // viewportet krympet siden (composeren voksede), er gulvet hævet med samme
+    // antal px UDEN at læseren har flyttet sig. Uden korrektionen læses den
+    // vækst som «læseren forlod bunden» — og det er præcis den beslutning der
+    // får chatview til at hoppe ved 3. linje i composeren.
+    const foelger = m.gulv - viewportDeltaRef.current - m.top <= FOELG_TAERSKEL_PX
+    viewportDeltaRef.current = 0
     foelgerRef.current = foelger
     setAtBottom(foelger)
-    if (foelger) setUnread(0)
-  }, [afbrydAfventende, maal])
+    if (foelger) {
+      setUnread(0)
+      // Beslutningen skal gælde NU — ikke først når interval-nettet rammer sin
+      // næste tick op til 250 ms senere. Det er den forsinkelse der ses som et hop.
+      skrivTilBund()
+    }
+  }, [afbrydAfventende, maal, skrivTilBund])
 
   /** Bunden er ønsket: følg den, bliv der, og ryd en ældre afventende afregning. */
   const foelgNu = useCallback(() => {
@@ -249,6 +268,9 @@ export function useChatScroll(
       return
     }
 
+    // Læseren har flyttet sig: viewport-ændringer måles herfra, ikke fra før.
+    viewportDeltaRef.current = 0
+
     if (m.top >= m.gulv) {
       // Læseren ramte PRÆCIS gulvet. Ingen tvivl at vente på.
       foelgNu()
@@ -304,7 +326,19 @@ export function useChatScroll(
   // fanger ALLE layout-ændringer generisk og straks, uanset årsag.
   useEffect(() => {
     if (!container || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => melder('resize'))
+    // Første callback er grundlinjen; derefter er hvert hop i højden en
+    // VIEWPORT-ændring — fx composeren der vokser når man skriver. Den hæver
+    // gulvet uden at indholdet er blevet større, så den skal bogføres for sig
+    // (se `afregn`) og ikke blandes sammen med indholdsvækst.
+    let forrigeHoejde: number | undefined
+    const ro = new ResizeObserver(() => {
+      const hoejde = container.clientHeight
+      if (forrigeHoejde !== undefined && hoejde !== forrigeHoejde) {
+        viewportDeltaRef.current += forrigeHoejde - hoejde
+      }
+      forrigeHoejde = hoejde
+      melder('resize')
+    })
     ro.observe(container)
     return () => ro.disconnect()
   }, [container, melder])

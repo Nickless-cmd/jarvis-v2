@@ -367,3 +367,56 @@ describe('useChatScroll — den ene skriver', () => {
     expect(SCROLL_SAMPLE_INTERVAL_MS).toBe(500)
   })
 })
+
+describe('useChatScroll — composerens vækst er ikke en læserbevægelse', () => {
+  it('composerens vækst må ikke akkumulere til at slippe bunden (3.-linje-hoppet)', () => {
+    // Målt 20/10-2026: composeren har `rows={2}` + `min-height: 48px`, så den
+    // vokser FØRST ved 3. linje — og der hoppede chatview, mens 4. linje var rolig.
+    // Forklaringen er akkumulation: 12,5 px (2. linje) + 23,25 px (3. linje)
+    // = 35,75 px > FOELG_TAERSKEL_PX (25). Afregningen konkluderede derfor at
+    // læseren havde forladt bunden; den beslutning flipper `atBottom`, slukker
+    // bund-fade'en og tænder JumpToLatest — dét er hoppet. Ved 4. linje var
+    // tilstanden allerede «sluppet», så intet nyt skete.
+    //
+    // MUTATION: fjern `- viewportDeltaRef.current` i afregn → 36,75 > 25 →
+    // atBottom bliver false → fejler.
+    vi.useFakeTimers()
+    const maal = rude(2000) // gulv = 1500
+    const { hook } = opsæt(maal, { aktiv: false })
+    // Læseren rører hjulet 1 px op: uafregnet, intet afgjort endnu.
+    act(() => { maal.el.scrollTop = 1499; hook.result.current.onScroll() })
+    // Composeren vokser: 2. linje (+12,5) og 3. linje (+23,25).
+    maal.saetHoejde(487.5)
+    act(() => { MockRO.alle.forEach((r) => r.fyr()) })
+    maal.saetHoejde(464.25)
+    act(() => { MockRO.alle.forEach((r) => r.fyr()) })
+    // Afregningen falder: læseren stod 1 px fra gulvet — ikke 36,75 px fra.
+    act(() => { maal.slut() })
+    expect(hook.result.current.atBottom).toBe(true)
+  })
+
+  it('en læser der har scrollet op rykkes ikke af composerens vækst', () => {
+    // Værn mod over-retning: viewport-korrektionen må ikke gøre koordinatoren
+    // til en der stjæler scrollen tilbage fra en der læser længere oppe.
+    const maal = rude(2000)
+    const { hook } = opsæt(maal, { aktiv: false })
+    act(() => { maal.el.scrollTop = 500; hook.result.current.onScroll() })
+    act(() => { maal.slut() })
+    expect(hook.result.current.atBottom).toBe(false)
+    maal.saetHoejde(464.25)
+    act(() => { MockRO.alle.forEach((r) => r.fyr()) })
+    expect(maal.top()).toBe(500)
+    expect(hook.result.current.atBottom).toBe(false)
+  })
+
+  it('når afregningen siger «vi følger», står ruden i bunden med det samme', () => {
+    // MUTATION: fjern `skrivTilBund()` i afregn → ruden bliver 20 px over gulvet
+    // indtil interval-nettet rammer sin næste tick 250 ms senere → fejler.
+    const maal = rude(2000) // gulv = 1500
+    const { hook } = opsæt(maal, { aktiv: false })
+    act(() => { maal.el.scrollTop = 1480; hook.result.current.onScroll() }) // 20 px op
+    act(() => { maal.slut() })
+    expect(hook.result.current.atBottom).toBe(true)
+    expect(maal.top()).toBe(maal.max())
+  })
+})

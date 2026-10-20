@@ -5,11 +5,18 @@ const TICK_MS = 33
 const MIN_CHARS = 5
 const MAX_CHARS = 28
 const SHORT_TEXT = 32
-/** Hvor langt visningen må sakke bagud, før vi springer frem til grænsen.
- *  Loftet på MAX_CHARS pr. tick kan ikke følge en hurtigere kilde alene, og
- *  uden en grænse hober forskellen sig op for evigt — målt 10/10-2026:
- *  679 tegns efterslæb efter 90 frames ved 25 tegn pr. frame. */
-const BACKLOG_MAX = 330
+/** Der er MED VILJE intet backlog-loft længere (målt 20/10-2026).
+ *
+ *  Den gamle regel sprang frem til `target - BACKLOG_MAX` når efterslæbet
+ *  oversteg 330 tegn. Den blev indført 10/10 fordi `MAX_CHARS` pr. tick ikke
+ *  alene kunne følge en hurtigere kilde — men den kurerede symptomet med et
+ *  hak: ved fold lander resten af svaret i ét hop, efterslæbet eksploderer,
+ *  og reglen kastede op til 330+ tegn ind i ÉN tick (målt +545).
+ *
+ *  Et pacing-lag må aldrig springe; det må kun accelerere. Accelerationen
+ *  ligger i `step`-beregningen nedenfor, som glider fra 5 til 28 tegn pr.
+ *  tick — den indhenter 900 tegn på ca. 32 ticks (≈1 s) uden ét eneste hak.
+ */
 
 /**
  * Paces Code-fladens tekst.
@@ -85,10 +92,14 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         if (pending <= 0) return previous
         // Jævn kadence: små trin så længe vi kan følge kilden.
         const step = Math.min(MAX_CHARS, Math.max(MIN_CHARS, Math.ceil(pending / 12)))
-        // …og grænsen der gør at vi ALTID indhenter: er vi mere end
-        // BACKLOG_MAX bagud, springer vi frem til grænsen i stedet.
-        let end = Math.min(current.target.length,
-          Math.max(shown.length + step, current.target.length - BACKLOG_MAX))
+        // INGEN spring (målt 20/10-2026). Den gamle regel sprang frem til
+        // `target - BACKLOG_MAX` når efterslæbet oversteg 330 tegn. Ved fold
+        // lander resten af svaret i ét hop, så efterslæbet eksploderede og
+        // reglen kastede op til 330+ tegn ind i ÉN tick — målt +545 tegn.
+        // Det er «glitch bump»: Bjørn 20/10-2026, «pacen forsætter lige et
+        // sekund eller 2 og går glitch og så er resten af beskeden der».
+        // Et pacing-lag må aldrig springe; det må kun accelerere.
+        let end = Math.min(current.target.length, shown.length + step)
         // Kløv aldrig et surrogate-par: en halv emoji er en ødelagt glyph.
         const code = current.target.charCodeAt(end - 1)
         if (end < current.target.length && code >= 0xD800 && code <= 0xDBFF) end++

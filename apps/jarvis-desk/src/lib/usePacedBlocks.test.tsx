@@ -121,4 +121,43 @@ describe('usePacedBlocks', () => {
     expect(result.current[0]).toEqual(blocks[0])
     expect(result.current[2]).toEqual(blocks[2])
   })
+
+  it('springer ALDRIG — resten af et svar der lander i ét hop må kun accelerere', () => {
+    // Målt 20/10-2026 (Bjørn): «hoved folder som det skal nu, og pacen
+    // forsætter lige et sekund eller 2 og går glitch og så er resten af
+    // beskeden der». Årsagen var backlog-loftet: `target - 330` kastede op
+    // til 330+ tegn ind i ÉN tick — målt +545 tegn i scenariet her.
+    //
+    // Kontrakten: et pacing-lag må accelerere, men aldrig springe. Hvert
+    // tick må højst vise MAX_CHARS (28) nye tegn, uanset hvor stort
+    // efterslæbet er.
+    vi.useFakeTimers()
+    const svar = 'ord '.repeat(200) // 800 tegn
+    const { result, rerender } = renderHook(
+      ({ b }: { b: ContentBlock[] }) => usePacedBlocks(b, true),
+      { initialProps: { b: [{ type: 'text', text: '' }] as ContentBlock[] } },
+    )
+    const vist = () => (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
+
+    // Lidt tekst først, så cursoren står et sted.
+    rerender({ b: [{ type: 'text', text: svar.slice(0, 40) }] })
+    act(() => vi.advanceTimersByTime(33 * 3))
+    const foer = vist()
+    expect(foer).toBeGreaterThan(0)
+
+    // HELE resten lander i ét hop.
+    rerender({ b: [{ type: 'text', text: svar }] })
+
+    let forrige = foer
+    let storste = 0
+    for (let t = 0; t < 120; t += 1) {
+      act(() => vi.advanceTimersByTime(33))
+      const nu = vist()
+      storste = Math.max(storste, nu - forrige)
+      forrige = nu
+    }
+
+    expect(storste).toBeLessThanOrEqual(28)
+    expect(vist()).toBe(svar.length)
+  })
 })

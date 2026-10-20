@@ -214,9 +214,16 @@ export function useChatScroll(
     foelgerRef.current = paaGulvet
     setAtBottom(vedBunden)
     if (vedBunden) setUnread(0)
-    if (vedBunden) {
+    if (paaGulvet) {
       // Beslutningen skal gælde NU — ikke først når interval-nettet rammer sin
       // næste tick op til 250 ms senere. Det er den forsinkelse der ses som et hop.
+      //
+      // Gaten er `paaGulvet`, ikke `vedBunden` (rettet 20/10-2026 efter CI):
+      // skrev vi på tolerancen, blev et hjultrin på 12 px hentet tilbage til
+      // bunden — præcis den snap commit-beskeden lovede var væk. Den ligger
+      // stadig her for composer-tilfældet: krymper viewportet, hæves gulvet
+      // uden at læseren flyttede sig, og `viewportDeltaRef` gør afstanden 0 —
+      // så står vi på gulvet og skal følge det med det samme.
       skrivTilBund()
     }
   }, [afbrydAfventende, maal, skrivTilBund])

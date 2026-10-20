@@ -48,6 +48,11 @@
   --bg-3: #252524;   /* kort inde i et panel */
   --bg-4: #343434;   /* valgt række / hover */
   --line: #292929;
+  /* Skillelinjen i turhovedet: `--line` er #292929 paa en #151515-bund —
+     naesten usynlig. Den maa ikke haeves globalt (`--line` bruges 20+ steder),
+     saa stregen har sin egen vaerdi. Bjoern 20/10-2026: «skill linjen maa
+     gerne vaere lysere». */
+  --rv-skillelinje: #3d3d3d;
   --fg-1: #f0efec;
   --fg-2: #c3c2b7;
   --fg-3: #898781;
@@ -146,6 +151,11 @@
   --bg-3: #e6e6e6;
   --bg-4: #dadada;
   --line: #dcdcdc;
+  /* Skillelinjen i turhovedet: `--line` er #292929 paa en #151515-bund —
+     naesten usynlig. Den maa ikke haeves globalt (`--line` bruges 20+ steder),
+     saa stregen har sin egen vaerdi. Bjoern 20/10-2026: «skill linjen maa
+     gerne vaere lysere». */
+  --rv-skillelinje: #c4c4c4;
   --fg-1: #111111;
   --fg-2: #5a5a5a;
   --fg-3: #8a8a8a;
@@ -198,6 +208,11 @@
   --bg-3: #161616;
   --bg-4: #222222;
   --line: #5a5a5a;
+  /* Skillelinjen i turhovedet: `--line` er #292929 paa en #151515-bund —
+     naesten usynlig. Den maa ikke haeves globalt (`--line` bruges 20+ steder),
+     saa stregen har sin egen vaerdi. Bjoern 20/10-2026: «skill linjen maa
+     gerne vaere lysere». */
+  --rv-skillelinje: #6e6e6e;
   --fg-1: #ffffff;
   --fg-2: #eaeaea;
   --fg-3: #c8c8c8;

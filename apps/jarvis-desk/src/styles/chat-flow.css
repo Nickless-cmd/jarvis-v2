@@ -23,6 +23,17 @@
   min-width: 0;
 }
 
+/* Søsteren til `.chat-flow-gruppe` manglede en regel, og et grid-item uden
+   `min-width` arver `auto` — altså indholdets min-content-bredde som gulv.
+   Kunne indholdet ikke krympe (langt ubrydeligt ord, bred tabel, lang URL),
+   overløb det grid'et, og `.transcript` har `overflow-x: hidden` uden nogen
+   vandret scroll-vej: overskuddet blev KLIPPET, ikke ombrudt.
+   (Målt 20/10-2026 som latent fejl — symptomet blev den gang lukket ad en
+   anden vej med `content-visibility`, så denne regel er den strukturelle.) */
+.chat-flow-answer {
+  min-width: 0;
+}
+
 /* 20/10-2026 (Bjørn): «synteser og runder forsvinder i et blink». Gruppen blev
    fjernet med `hidden`, altså `display: none` i én frame — der var ingen højde
    at animere fra, og hele billedet rykked sammen med præcis linjernes højde.

@@ -70,7 +70,7 @@ import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
-import { udenAktivRun } from '../lib/transcriptFilter'
+import { udenAktivRun, normaliseretTekst } from '../lib/transcriptFilter'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
 
@@ -573,6 +573,8 @@ export function ChatView({
   // også tegnes. Se `lib/transcriptFilter.ts` og dens tests.
   const renderedTranscriptMessages = udenAktivRun(
     transcriptMessages, stream.activeRunId, visLevendeTur,
+    // Samme faldback som CodeView: raekken kan mangle `run_id` et kort vindue.
+    visLevendeTur ? normaliseretTekst(liveChatBlokke(stream)) : '',
   )
 
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken

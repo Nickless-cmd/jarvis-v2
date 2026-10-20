@@ -13,7 +13,7 @@ import { usePanel } from '../hooks/usePanel'
 import { usePersistedState } from '../hooks/usePersistedState'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
-import { udenAktivRun } from '../lib/transcriptFilter'
+import { udenAktivRun, normaliseretTekst } from '../lib/transcriptFilter'
 import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
@@ -980,6 +980,8 @@ export function CodeView({
   // melder faerdig — ellers staar hele svaret ved siden af pacingen.
   const renderedTranscriptMessages = udenAktivRun(
     transcriptMessages, stream.activeRunId, visLevendeTur,
+    // Faldback naar server-raekken endnu ikke baerer `run_id` (maalt 20/10).
+    visLevendeTur ? normaliseretTekst(liveBlokke(stream)) : '',
   )
   const varighedForBesked = useMemo(() => {
     const ud = new Map<string, number>()

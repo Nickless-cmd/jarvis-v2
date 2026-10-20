@@ -58,6 +58,18 @@
   color: var(--rv-tertiary, #a6a59c); white-space: nowrap;
 }
 
+/* Electron kan ikke altid føre en tekstmaske gennem tokenhjulets animerede
+   grid-lag. Den arvede transparente fyldfarve fra turhovedets shimmer gjorde
+   derfor kun cifrene usynlige i Desk, mens samme webbuild så korrekt ud i
+   browseren. Metadata er et stabilt målefelt, ikke en del af verbets sweep:
+   giv hvert lag sin dækkende temafarve, så Desk og PWA tegner det ens. */
+.rv-tur .shimmer .rv-turMeta,
+.rv-tur .shimmer .rv-turMeta .rullende,
+.rv-tur .shimmer .rv-turMeta .hjul-ciffer,
+.rv-tur .shimmer .rv-turMeta .tegn {
+  -webkit-text-fill-color: currentColor;
+}
+
 /* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
    teksten hver gang et sekund skifter (17/10-2026).
 

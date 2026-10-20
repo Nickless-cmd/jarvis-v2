@@ -558,17 +558,13 @@
 .raekkevisning .shimmer .rv-diffstat .git-add { -webkit-text-fill-color: var(--rv-tilf); }
 .raekkevisning .shimmer .rv-diffstat .git-del { -webkit-text-fill-color: var(--rv-fjern); }
 
-/* Bjørn 20/10-2026: «timeren i rundelinjen — tallene [skal] have samme farve
-   som h/m/s, de bør være lysere».
-
-   Uret er varighed, ikke handling, og inde i shimmeren blev både cifre og
-   `m`/`s` malet i gradientens dæmpede grundtone (`--fg-3`) — cifrene stod
-   derfor mørkere end deres egen tone. Uden for masken får uret sin egen
-   farve tilbage, og `m`/`s` løftes fra `--fg-3` til samme `--fg-2` som
-   cifrene, så hele uret står i én lysere tone. */
+/* Rundeurenes cifre er målingen og står i `--fg-2`; tidsleddene `m`/`s` er
+   notation og følger den samme rolige grå som resten af rundelinjen. Begge
+   sættes eksplicit, fordi shimmerens transparente tekstfyld ellers vinder i
+   Electron og gør forskellen mellem cifre og bogstaver tilfældig. */
 .raekkevisning .shimmer .rv-rundeur .rullende,
 .raekkevisning .shimmer .rv-rundeur .rullende .tegn { -webkit-text-fill-color: currentColor; }
-.raekkevisning .rv-rundeur .rullende .tegn { color: var(--fg-2); }
+.raekkevisning .rv-rundeur .rullende .tegn { color: var(--rv-tertiary); }
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { RullendeTokens, RullendeUr } from './RullendeTal'
@@ -50,5 +52,18 @@ describe('RullendeTal', () => {
     // direkte på 1, så format-skiftet ikke starter en falsk ekstra animation.
     expect(container.querySelectorAll('.hjul-ciffer--ind-op')).toHaveLength(1)
     expect(aktuelle(container)).toEqual(['1', '0'])
+  })
+
+  it('giver tokenhjulene dækkende tekstfyld i turhovedets shimmer', () => {
+    const css = readFileSync(join(__dirname, '../../styles/turhoved.css'), 'utf8')
+    expect(css).toMatch(/\.rv-tur \.shimmer \.rv-turMeta \.hjul-ciffer[\s\S]*?-webkit-text-fill-color:\s*currentColor/)
+  })
+
+  it('holder rundeurenes tidsled grå og cifrene et trin lysere', () => {
+    const css = readFileSync(join(__dirname, '../../styles/raekkevisning.css'), 'utf8')
+    expect(css).toMatch(/\.rv-rundeur \.rullende \.tegn\s*\{\s*color:\s*var\(--rv-tertiary\)/)
+    expect(css).toMatch(/\.rv-rundeur\s*\{[\s\S]*?color:\s*var\(--rv-tertiary\)/)
+    expect(readFileSync(join(__dirname, '../../styles/liveness.css'), 'utf8'))
+      .toMatch(/\.rullende\s*\{[\s\S]*?color:\s*var\(--fg-2\)/)
   })
 })

@@ -7,5 +7,5 @@ _Dry-run or apply the fail-closed legacy Routine migration._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/migrate_routines.py#L18) |
+| function | `main` | `()` | — | [src](../../../scripts/migrate_routines.py#L22) |
 

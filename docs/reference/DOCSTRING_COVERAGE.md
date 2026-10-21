@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9137/17375 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9138/17376 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9137/17375 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 833 | 1533 | 54% |
-| `core.services` | 6093 | 11814 | 51% |
+| `core.services` | 6094 | 11815 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 126 | 201 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1786,7 +1786,7 @@ Generated from source. 9137/17375 functions/methods documented (52%). The list b
 - `core/services/routine_inbox.py` :: `project_event_to_inbox` (L82)
 - `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L57)
 - `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L61)
-- `core/services/routine_migration.py` :: `report_path` (L111)
+- `core/services/routine_migration.py` :: `report_path` (L118)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
@@ -2533,7 +2533,7 @@ Generated from source. 9137/17375 functions/methods documented (52%). The list b
 - `scripts/migrate_member_session_titles.py` :: `migrate` (L10)
 - `scripts/migrate_recall_ownership.py` :: `main` (L22)
 - `scripts/migrate_routine_identities.py` :: `main` (L14)
-- `scripts/migrate_routines.py` :: `main` (L18)
+- `scripts/migrate_routines.py` :: `main` (L22)
 - `scripts/migrer_filer_per_bruger.py` :: `migrer` (L62)
 - `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)
 - `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)

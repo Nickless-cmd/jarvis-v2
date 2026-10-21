@@ -69,6 +69,13 @@ class ApplyResult:
     already_applied: int
 
 
+@dataclass(frozen=True)
+class SystemDefinitionReconciliation:
+    discovered: tuple[str, ...]
+    created: tuple[str, ...]
+    existing: tuple[str, ...]
+
+
 def resolve_canonical_identity(value: object) -> str | None:
     """Resolve a structured token to one active canonical database user."""
     token = str(value or "").strip()
@@ -483,3 +490,58 @@ def apply_report(report_id: str) -> ApplyResult:
                  datetime.now(UTC).isoformat()),
             )
     return ApplyResult(created, quarantined, already)
+
+
+def reconcile_system_definitions(*, apply: bool = False) -> SystemDefinitionReconciliation:
+    """Materialize one paused owner Routine per proven legacy system producer.
+
+    The first production migration created one inert definition per historical
+    autonomous session.  Those rows remain immutable migration evidence, but
+    the controllable object is the stable producer definition.  This repair is
+    idempotent, derives no private ownership, and never activates work.
+    """
+    from core.runtime.db_core import connect
+
+    owner = _system_owner()
+    if not owner:
+        raise InvalidMigrationReport("system owner cannot be resolved")
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT source_id FROM routine_legacy_links "
+            "WHERE source_kind='autonomous_session' ORDER BY source_id"
+        ).fetchall()
+    producers = tuple(sorted({
+        producer
+        for row in rows
+        if (producer := _registered_system_producer({"session_id": str(row[0])}))
+    }))
+    created: list[str] = []
+    existing: list[str] = []
+    for producer in producers:
+        routine_id = f"routine_system_{producer}"
+        if db_routines.get_routine(routine_id) is not None:
+            existing.append(producer)
+            continue
+        if not apply:
+            continue
+        db_routines.create_routine(
+            routine_id=routine_id,
+            owner_user_id=owner,
+            access_scope="system_owner",
+            created_by="system",
+            status="paused",
+            name=f"System · {producer}",
+            instruction=b"Execute the bounded system task supplied by this producer.",
+            capability_scope="system",
+            trigger_kind="system",
+            trigger_config={"producer": producer},
+            permission_policy={},
+            delivery_policy={"channel": "desk"},
+            inbox_policy={"failed": True, "delivery_failed": True},
+            retention_policy={"archive_stopped_days": 30},
+            failure_policy={"consecutive_failures": 3},
+        )
+        created.append(producer)
+    return SystemDefinitionReconciliation(
+        discovered=producers, created=tuple(created), existing=tuple(existing),
+    )

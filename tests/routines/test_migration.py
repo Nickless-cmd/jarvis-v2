@@ -309,6 +309,51 @@ def test_legacy_session_projections_do_not_fill_routine_library(
     assert [item["routine_id"] for item in audit] == [old["routine_id"]]
 
 
+def test_reconcile_creates_one_paused_owner_definition_per_system_producer(
+    migration_fixture, monkeypatch
+):
+    from core.runtime import db_routines
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    history: list[tuple[int, str, str]] = []
+    for number, session_id in enumerate((
+        "auto-dream-20261012", "auto-dream-20261013", "auto-wakeup-20261013",
+    )):
+        old = db_routines.create_routine(
+            routine_id=f"routine_migrated_history_{number}",
+            owner_user_id="canonical-owner", access_scope="system_owner",
+            created_by="migration", status="paused", name="history",
+            instruction=b"history", capability_scope="system", trigger_kind="manual",
+            trigger_config={}, permission_policy={}, delivery_policy={},
+            inbox_policy={}, retention_policy={}, failure_policy={},
+        )
+        history.append((number, session_id, old["routine_id"]))
+    for number, session_id, routine_id in history:
+        migration_fixture.conn.execute(
+            "INSERT INTO routine_legacy_links "
+            "(legacy_link_id,routine_id,run_id,source_kind,source_id,source_ref_enc,created_at) "
+            "VALUES (?, ?, NULL, 'autonomous_session', ?, X'00', '')",
+            (f"legacy-{number}", routine_id, session_id),
+        )
+    migration_fixture.conn.commit()
+
+    preview = migration.reconcile_system_definitions(apply=False)
+    applied = migration.reconcile_system_definitions(apply=True)
+    repeated = migration.reconcile_system_definitions(apply=True)
+
+    assert preview.discovered == ("dream", "wakeup")
+    assert preview.created == ()
+    assert applied.created == ("dream", "wakeup")
+    assert repeated.existing == ("dream", "wakeup")
+    visible = db_routines.list_routines(
+        owner_user_id="canonical-owner", decrypt_for="canonical-owner"
+    )
+    assert {(item["name"], item["status"]) for item in visible} == {
+        ("System · dream", "paused"), ("System · wakeup", "paused"),
+    }
+
+
 def test_dry_run_cli_prints_signed_report_id_for_exact_apply(monkeypatch, capsys):
     """Omitting report_id makes the audited report impossible to apply safely."""
     from scripts import migrate_routines as cli

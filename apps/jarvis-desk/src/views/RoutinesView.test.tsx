@@ -45,7 +45,8 @@ describe('RoutinesView', () => {
     render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
     expect((await screen.findAllByText('Min rutine'))[0]).toBeVisible()
     expect(screen.getByText('Systemrutine')).toBeVisible()
-    expect(screen.getByText('System · owner')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Mine rutiner' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'System · owner' })).toBeVisible()
     expect(screen.queryByText('Anden brugers private rutine')).not.toBeInTheDocument()
   })
 

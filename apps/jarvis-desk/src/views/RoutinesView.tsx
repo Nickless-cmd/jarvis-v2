@@ -41,6 +41,8 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
     routine.owner_user_id === currentUserId
       || (role === 'owner' && routine.access_scope === 'system_owner')
   ), [routines, currentUserId, role])
+  const personal = visible.filter((routine) => routine.access_scope !== 'system_owner')
+  const system = visible.filter((routine) => routine.access_scope === 'system_owner')
   const selected = visible.find((routine) => routine.routine_id === selectedId) ?? visible[0] ?? null
 
   useEffect(() => {
@@ -76,6 +78,18 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
     finally { setBusy('') }
   }
 
+  const routineRows = (items: Routine[]) => items.map((routine) => (
+    <button key={routine.routine_id} type="button" role="listitem"
+      aria-label={`${routine.name} · ${statusName[routine.status] ?? routine.status}`}
+      className={`routine-list-row${selected?.routine_id === routine.routine_id ? ' active' : ''}`}
+      onClick={() => { setSelectedId(routine.routine_id); setTab('overview'); setConfirmDelete(false) }}>
+      <span className="routine-list-name">{routine.name}</span>
+      <span className="routine-list-meta">
+        <span className={`routine-dot is-${routine.status}`} />{statusName[routine.status] ?? routine.status}
+      </span>
+    </button>
+  ))
+
   return (
     <section className="routines-view">
       <aside className="routine-library" aria-label="Rutinebibliotek">
@@ -86,18 +100,14 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
         <button type="button" className="routine-new" onClick={() => onEdit(null)}><Plus size={14} /> Ny rutine</button>
         <div className="routine-list" role="list">
           {!routines && !error && <div className="routine-empty"><Loader2 size={14} className="spin" /> Henter…</div>}
-          {visible.map((routine) => (
-            <button key={routine.routine_id} type="button" role="listitem"
-              aria-label={`${routine.name} · ${statusName[routine.status] ?? routine.status}`}
-              className={`routine-list-row${selected?.routine_id === routine.routine_id ? ' active' : ''}`}
-              onClick={() => { setSelectedId(routine.routine_id); setTab('overview'); setConfirmDelete(false) }}>
-              <span className="routine-list-name">{routine.name}</span>
-              <span className="routine-list-meta">
-                <span className={`routine-dot is-${routine.status}`} />{statusName[routine.status] ?? routine.status}
-                {routine.access_scope === 'system_owner' && <span>System · owner</span>}
-              </span>
-            </button>
-          ))}
+          {personal.length > 0 && <section className="routine-list-group" aria-labelledby="routine-personal-heading">
+            <h2 id="routine-personal-heading">Mine rutiner</h2>
+            {routineRows(personal)}
+          </section>}
+          {system.length > 0 && <section className="routine-list-group" aria-labelledby="routine-system-heading">
+            <h2 id="routine-system-heading">System · owner</h2>
+            {routineRows(system)}
+          </section>}
           {routines && visible.length === 0 && <div className="routine-empty">Du har ingen rutiner endnu.</div>}
         </div>
       </aside>

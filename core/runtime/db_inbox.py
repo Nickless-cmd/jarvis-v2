@@ -151,6 +151,21 @@ _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     # `resolve_owner_app_session`, og præcisionen var kun så god som den
     # fallback. Bjørn: «tingene skal vække den aktive session de er bestilt i».
     ("session_id", "TEXT NOT NULL DEFAULT ''"),
+    # ER POSTEN NOGENSINDE BLEVET VIST? (21/10-2026)
+    #
+    # Bjørn: «du kan sku da ikk bare feje dem uden og læse dem! de kunne have
+    # været vigtige … tingene skal ik kunne hobe sig op men det betyder sq ikk
+    # at de bare ubetinget skal ud uden de er læst.»
+    #
+    # Han havde ret, og fejeren jeg havde skrevet var forkert på præcis det
+    # punkt: den målte ALDER, ikke om posten var set. Seks
+    # runtime-inspektioner med rigtige fund («én ting der kræver dig», «tre
+    # ting kræver opmærksomhed») blev fejet ulæste, fordi de var 6 timer
+    # gamle — og prompten viser kun `_PROMPT_LOFT` (6) linjer per sektion, så
+    # en post kunne stå i dagevis uden nogensinde at have været på skærmen.
+    #
+    # Tom streng = aldrig vist. Det er den tilstand fejeren IKKE må røre.
+    ("vist_at", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -202,6 +217,7 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "expires_at": _felt(r, "expires_at"),
         "bloker": _felt(r, "bloker") in ("1", "True", "true"),
         "session_id": _felt(r, "session_id"),
+        "vist_at": _felt(r, "vist_at"),
     }
     # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
     #
@@ -856,31 +872,74 @@ def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
 # der STADIG melder posten aktuel genåbner den ved næste registrering. Fejeren
 # udsætter altså, den sletter ikke — samme semantik som resten af huset.
 
-#: Hvor længe en informerende post må stå åben før fejeren udsætter den.
+#: Hvor længe en VIST informerende post må stå åben før fejeren udsætter den.
 #:
 #: Målt 21/10-2026 (Bjørn: «det er et problem at de hober! Det burde bare
 #: rulle»). De to produktive kilder lægger 26 poster i døgnet: 8 fra
-#: `recurring` (én pr. kørsel, hver ~3. time) og 3-6 fra `dream`. Med den
-#: tidligere syvdages-frist blev steady-state ~180 poster, og de 15 der stod
-#: åbne var op til 2 døgn gamle og ville først blive fejet fem dage senere.
+#: `recurring` (én pr. kørsel, hver ~3. time) og 3-6 fra `dream`.
 #:
-#: Seks timer er valgt på KADENCEN, ikke på tålmodighed: den tætteste kilde
-#: kører hver ~3. time, så den nyeste post altid er synlig mens den forrige
-#: ruller. Det gamle argument — «en uge er nok til at en post man faktisk
-#: skulle handle på er blevet set» — holder ikke for en post der beskriver en
-#: KØRSEL: den er forældet i samme øjeblik den næste kørsel lander.
+#: ⚠️ RETTET SAMME DAG, efter Bjørn: «du kan sku da ikk bare feje dem uden og
+#: læse dem! de kunne have været vigtige». Den første udgave af denne fejer
+#: målte ALDER alene — og fejede seks runtime-inspektioner med rigtige fund
+#: ulæste, fordi de var 6 timer gamle. Alder er ikke det samme som «set».
+#: Fristen tælles derfor nu fra `vist_at`, og en post der ALDRIG har været
+#: vist (`vist_at = ''`) rører fejeren ikke. Den kan hobe — men den kan ikke
+#: forsvinde ulæst.
 _OPRYDNING_TIMER: Final[int] = 6
+
+
+def marker_vist(poster: list[str], *, bruger_id: str = "") -> int:
+    """Stempl «denne post er nu vist til Jarvis». Idempotent.
+
+    Kaldes af prompt-sektionen for præcis de poster den lagde i prompten —
+    ikke for hele visningen. Det er forskellen mellem «findes i databasen» og
+    «har været på skærmen», og det er hele grunden til at fejeren kan være
+    sikker: den rører kun det der faktisk er læst.
+
+    Første stempel vinder: en post der vises igen skal ikke nulstille sin
+    egen frist, ellers kunne en post holdes i live for evigt ved at blive
+    vist. `vist_at = ''` i WHERE gør det atomart.
+    """
+    ids = [str(p) for p in poster if str(p or "").strip()]
+    if not ids:
+        return 0
+    nu = _nu()
+    with connect() as conn:
+        _ensure_skema(conn)
+        n = 0
+        for kilde_id in ids:
+            if bruger_id:
+                cur = conn.execute(
+                    "UPDATE inbox_items SET vist_at = ? "
+                    "WHERE kilde_id = ? AND bruger_id = ? AND vist_at = ''",
+                    (nu, kilde_id, bruger_id))
+            else:
+                cur = conn.execute(
+                    "UPDATE inbox_items SET vist_at = ? "
+                    "WHERE kilde_id = ? AND vist_at = ''",
+                    (nu, kilde_id))
+            n += int(cur.rowcount or 0)
+    return n
 
 
 def luk_forældede_informerende(
     *, timer: int | None = None, dage: int | None = None, maks: int = 500
 ) -> dict[str, Any]:
-    """Udsæt informerende poster der har stået åbne for længe.
+    """Udsæt informerende poster der har været VIST og er blevet forældede.
 
     «Informerende» = `kraever_handling = 0 AND bloker = 0`: en post der
-    hverken kan nægte en mutation eller er flagget af et menneske. Den har
-    ingen frist (se beslutningen ovenfor), så uden denne fejer har den ingen
-    vej ud over et manuelt `inbox_done`.
+    hverken kan nægte en mutation eller er flagget af et menneske.
+
+    ⚠️ TO BETINGELSER, ikke én (21/10-2026). Den første udgave krævede kun
+    alder og fejede derfor poster der aldrig havde været vist — seks
+    runtime-inspektioner med rigtige fund forsvandt ulæste. Nu kræves BÅDE:
+
+      1. `vist_at != ''` — posten har været i prompten, altså er den set
+      2. `vist_at < graense` — den har været set for længe siden
+
+    En post der aldrig er blevet vist bliver stående. Det er med vilje: hellere
+    en hob der kan ses end en tavshed der ikke kan. Hoben løses ved at hæve
+    `_PROMPT_LOFT` eller sænke produktionen — ikke ved at slette ulæst.
 
     `status = 'aaben'` i WHERE gør skrivningen idempotent: kørt to gange
     tæller den ikke samme post to gange.
@@ -894,15 +953,16 @@ def luk_forældede_informerende(
             "UPDATE inbox_items SET status = ?, kraever_handling = 0, "
             "afgjort_at = ?, afgjort_grund = ? "
             "WHERE status = ? AND kraever_handling = 0 AND bloker = 0 "
-            "AND created_at < ? "
+            "AND vist_at != '' AND vist_at < ? "
             "AND id IN (SELECT id FROM inbox_items WHERE status = ? "
             "           AND kraever_handling = 0 AND bloker = 0 "
-            "           AND created_at < ? LIMIT ?)",
-            (STATUS_DROP, _nu(), f"informerende post — udsat efter {timer_n} timer",
+            "           AND vist_at != '' AND vist_at < ? LIMIT ?)",
+            (STATUS_DROP, _nu(),
+             f"informerende post — vist og udsat efter {timer_n} timer",
              STATUS_AABEN, graense, STATUS_AABEN, graense, max(int(maks), 1)))
         n = cur.rowcount
     if n:
-        logger.info("db_inbox: udsatte %d forældet informerende post(er)", n)
+        logger.info("db_inbox: udsatte %d vist informerende post(er)", n)
     return {"status": "ok", "opryddet": int(n or 0)}
 
 

@@ -158,6 +158,7 @@ def inbox_prompt_section() -> str | None:
         return None
 
     linjer: list[str] = []
+    viste_ids: list[str] = []
     gater = 0
     for noegle, titel in _OVERSKRIFTER:
         poster = [p for p in (v.get(noegle) or [])
@@ -176,6 +177,11 @@ def inbox_prompt_section() -> str | None:
         skjult = (i_alt - len(vist)) + int(v.get(f"{noegle}_skjult") or 0)
         linjer.append(f"{titel} ({i_alt})" if i_alt > 1 else titel)
         linjer += [f"  {p.get('linje') or p.get('id')}" for p in vist]
+        # STEMPLET (21/10-2026). Præcis de poster der står i prompten nu er
+        # «set» — ikke hele visningen, ikke hele databasen. Uden dette stempel
+        # kan fejeren ikke skelne en post der har været på skærmen fra en der
+        # har stået ulæst i dagevis, og så fejer den begge. Det gjorde den.
+        viste_ids.extend(str(p.get("id") or "") for p in vist)
         if skjult:
             # Et loft der ikke siger hvad det skjuler er selv en tavshed.
             # Og `inbox` er adressen paa resten — uden den er loftet en
@@ -183,6 +189,17 @@ def inbox_prompt_section() -> str | None:
             linjer.append(f"  +{skjult} mere → kald `inbox`")
     if not linjer:
         return None
+
+    # Stempl FØRST her, hvor vi ved præcis hvad der blev vist. Fejler det,
+    # fortsætter prompten: en manglende stempling betyder kun at posten ikke
+    # må fejes — den sikre side. Det omvendte (at fejle højt) ville fjerne
+    # hele indbakken fra prompten på grund af en bogføringsfejl.
+    if viste_ids:
+        try:
+            from core.runtime.db_inbox import marker_vist
+            marker_vist(viste_ids, bruger_id=bruger)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("inbox_prompt_section: kunne ikke stemple viste poster: %s", exc)
 
     tal = int(v.get("backlog_tal") or 0)
     if tal:

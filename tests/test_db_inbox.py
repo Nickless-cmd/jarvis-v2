@@ -280,8 +280,9 @@ def test_en_foraeldet_informerende_post_udsættes_af_fejeren(db):
     """
     _opret("info-gammel", kildetype="run_closure", kraever_handling=False)
     with db_inbox.connect() as c:
-        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
-                  (_i(-8 * 86400), "info-gammel"))
+        c.execute(
+            "UPDATE inbox_items SET created_at = ?, vist_at = ? WHERE kilde_id = ?",
+            (_i(-8 * 86400), _i(-8 * 86400), "info-gammel"))
     r = db_inbox.luk_forældede_informerende(dage=7)
     assert r["opryddet"] == 1
     p = db_inbox.hent(bruger_id=BRUGER, kilde_id="info-gammel")
@@ -289,6 +290,73 @@ def test_en_foraeldet_informerende_post_udsættes_af_fejeren(db):
     # aktuel. Fejeren udsætter, den sletter ikke.
     assert p["status"] == db_inbox.STATUS_DROP
     assert p["kraever_handling"] is False
+
+
+def test_fejeren_roerer_IKKE_en_ULAEST_post_uanset_alder(db):
+    """DEN FAELDENDE TEST (21/10-2026).
+
+    Bjoern: «du kan sku da ikk bare feje dem uden og laese dem! de kunne have
+    vaeret vigtige ... det betyder sq ikk at de bare ubetinget skal ud uden de
+    er laest.»
+
+    Den foerste udgave af fejeren maalte ALDER alene. Maalt i drift: seks
+    runtime-inspektioner med rigtige fund — «en ting der kraever dig», «tre
+    ting kraever opmaerksomhed» — blev fejet ulaeste, fordi de var 6 timer
+    gamle. Prompten viser kun `_PROMPT_LOFT` linjer per sektion, saa en post
+    kunne staa i dagevis uden nogensinde at have vaeret paa skaermen.
+
+    Alder er ikke det samme som «set». En post der aldrig har vaeret vist maa
+    ikke kunne forsvinde — uanset hvor gammel den er.
+    """
+    _opret("info-ulaest", kildetype="recurring", kraever_handling=False)
+    with db_inbox.connect() as c:
+        # To doegn gammel, men ALDRIG vist: `vist_at` staar tom.
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-48 * 3600), "info-ulaest"))
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 0
+    p = db_inbox.hent(bruger_id=BRUGER, kilde_id="info-ulaest")
+    assert p["status"] == db_inbox.STATUS_AABEN
+    assert p["vist_at"] == ""
+
+
+def test_marker_vist_stempler_posten_og_den_kan_derefter_rulle(db):
+    """Kaeden: visning -> stempel -> fejer. Uden den midterste del ruller intet.
+
+    `marker_vist` er det eneste sted «set» bliver sandt. Kaldes den ikke, staar
+    hver post fast for evigt — og saa har jeg byttet en hob ud med en laas.
+    """
+    _opret("info-set", kildetype="recurring", kraever_handling=False)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-7 * 3600), "info-set"))
+    # Ulaest: fejeren roerer den ikke.
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 0
+    # Nu stemples den som vist — og fristen taelles fra STEMPLET, ikke fra
+    # oprettelsen. Den er derfor frisk igen og maa ikke fejes.
+    assert db_inbox.marker_vist(["info-set"], bruger_id=BRUGER) == 1
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 0
+    # Seks timer efter visningen ruller den.
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET vist_at = ? WHERE kilde_id = ?",
+                  (_i(-7 * 3600), "info-set"))
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 1
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="info-set")["status"] == db_inbox.STATUS_DROP
+
+
+def test_marker_vist_er_idempotent_og_nulstiller_ikke_fristen(db):
+    """Foerste stempel vinder.
+
+    Blev `vist_at` sat igen ved hver visning, kunne en post holdes i live for
+    evigt ved at blive vist — og saa ville fejeren aldrig kunne rulle noget.
+    """
+    _opret("info-igen", kildetype="recurring", kraever_handling=False)
+    assert db_inbox.marker_vist(["info-igen"], bruger_id=BRUGER) == 1
+    foerste = db_inbox.hent(bruger_id=BRUGER, kilde_id="info-igen")["vist_at"]
+    assert foerste != ""
+    # Andet kald roerer ingenting.
+    assert db_inbox.marker_vist(["info-igen"], bruger_id=BRUGER) == 0
+    assert db_inbox.hent(bruger_id=BRUGER, kilde_id="info-igen")["vist_at"] == foerste
 
 
 def test_fejeren_roerer_IKKE_en_FRISK_informerende_post(db):
@@ -313,8 +381,9 @@ def test_fejeren_udsætter_en_SYV_TIMER_gammel_post_med_STANDARDFRISTEN(db):
     """
     _opret("info-7t", kildetype="recurring", kraever_handling=False)
     with db_inbox.connect() as c:
-        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
-                  (_i(-7 * 3600), "info-7t"))
+        c.execute(
+            "UPDATE inbox_items SET created_at = ?, vist_at = ? WHERE kilde_id = ?",
+            (_i(-7 * 3600), _i(-7 * 3600), "info-7t"))
     assert db_inbox.luk_forældede_informerende()["opryddet"] == 1
 
 
@@ -322,8 +391,9 @@ def test_fejeren_roerer_IKKE_en_FEM_TIMER_gammel_post(db):
     """Modprøven. Uden den kunne en frist der ramte ALT bestå testen ovenfor."""
     _opret("info-5t", kildetype="recurring", kraever_handling=False)
     with db_inbox.connect() as c:
-        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
-                  (_i(-5 * 3600), "info-5t"))
+        c.execute(
+            "UPDATE inbox_items SET created_at = ?, vist_at = ? WHERE kilde_id = ?",
+            (_i(-5 * 3600), _i(-5 * 3600), "info-5t"))
     assert db_inbox.luk_forældede_informerende()["opryddet"] == 0
     assert db_inbox.hent(bruger_id=BRUGER,
                          kilde_id="info-5t")["status"] == db_inbox.STATUS_AABEN
@@ -349,8 +419,9 @@ def test_fejeren_er_IDEMPOTENT(db):
     """Kørt to gange må den ikke tælle samme post to gange."""
     _opret("info-2x", kildetype="run_closure", kraever_handling=False)
     with db_inbox.connect() as c:
-        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
-                  (_i(-8 * 86400), "info-2x"))
+        c.execute(
+            "UPDATE inbox_items SET created_at = ?, vist_at = ? WHERE kilde_id = ?",
+            (_i(-8 * 86400), _i(-8 * 86400), "info-2x"))
     assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 1
     assert db_inbox.luk_forældede_informerende(dage=7)["opryddet"] == 0
 

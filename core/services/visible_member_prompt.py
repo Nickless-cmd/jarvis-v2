@@ -33,6 +33,9 @@ def build_member_prompt(*, user_id: str, session_id: str, user_message: str = ""
     from core.runtime.workspace_paths import workspace_dir
     from core.services.chat_sessions import get_session_owner, recent_chat_session_messages
     from core.services.prompt_contract import PromptAssembly
+    from core.services.prompt_sections.transcript_sections import (
+        _prefix_absolute_transcript_time,
+    )
     from core.services.secret_redaction import read_for_prompt, redact
 
     user = find_user_by_discord_id(user_id)
@@ -91,7 +94,12 @@ def build_member_prompt(*, user_id: str, session_id: str, user_message: str = ""
             created = _iso_dt(item.get("created_at"))
             if created is None or created < _MEMBER_TRANSCRIPT_CUTOFF:
                 continue
-        transcript.append({"role": role, "content": redact(content)})
+        transcript.append({
+            "role": role,
+            "content": _prefix_absolute_transcript_time(
+                redact(content), item.get("created_at"),
+            ),
+        })
     return PromptAssembly(
         mode="visible_chat",
         text="\n\n".join(sections),

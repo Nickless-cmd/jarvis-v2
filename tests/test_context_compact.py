@@ -343,7 +343,7 @@ def test_build_transcript_no_marker_no_prepend(monkeypatch):
     result = prompt_contract._build_structured_transcript_messages(
         "session-x", limit=60, include=True
     )
-    assert result[0]["content"] == "hello"
+    assert result[0]["content"] == "[2026-01-01 01:00] hello"
 
 
 # ── Task 9: compact_context tool ──────────────────────────────────────────

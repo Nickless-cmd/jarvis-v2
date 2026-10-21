@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9138/17376 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9139/17377 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -27,7 +27,7 @@ Generated from source. 9138/17376 functions/methods documented (52%). The list b
 | `core.runtime` | 833 | 1533 | 54% |
 | `core.services` | 6094 | 11815 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
-| `core.services.prompt_sections` | 126 | 201 | 62% |
+| `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
 | `core.skills` | 0 | 0 | 0% |
@@ -1660,10 +1660,10 @@ Generated from source. 9138/17376 functions/methods documented (52%). The list b
 - `core/services/prompt_sections/dead_skills.py` :: `dead_skills_section` (L23)
 - `core/services/prompt_sections/learned_about_user.py` :: `selection_counts` (L167)
 - `core/services/prompt_sections/pattern_counterfactuals.py` :: `invalidate_cache` (L94)
-- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L49)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L70)
-- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L75)
-- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L80)
+- `core/services/prompt_sections/transcript_sections.py` :: `chat_session_messages_since_last_compact` (L75)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L96)
+- `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L101)
+- `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L106)
 - `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L147)
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
@@ -2267,10 +2267,10 @@ Generated from source. 9138/17376 functions/methods documented (52%). The list b
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L39)
 - `core/services/visible_member_prompt.py` :: `build_member_prompt` (L30)
-- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L402)
-- `core/services/visible_model.py` :: `available_provider_models` (L175)
-- `core/services/visible_model.py` :: `execute_visible_model` (L267)
-- `core/services/visible_model.py` :: `stream_visible_model` (L328)
+- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L403)
+- `core/services/visible_model.py` :: `available_provider_models` (L176)
+- `core/services/visible_model.py` :: `execute_visible_model` (L268)
+- `core/services/visible_model.py` :: `stream_visible_model` (L329)
 - `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L715)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)

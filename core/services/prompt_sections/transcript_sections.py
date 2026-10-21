@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import contextvars as _contextvars
 import threading as _threading_mod
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from core.services.tool_result_store import render_tool_result_for_prompt
 
@@ -17,6 +19,30 @@ from core.services.tool_result_store import render_tool_result_for_prompt
 # → cache-sikker) og bevidst tydelig: dette er noget der blev GIVET til modellen, ikke
 # noget den selv skrev. Se _tool_results_as_input().
 _TOOL_INPUT_FRAME = "⟦værktøjs-resultat⟧"
+
+
+def _prefix_absolute_transcript_time(content: str, raw_created_at: object) -> str:
+    """Prefix one utterance with its immutable Copenhagen wall-clock time.
+
+    The database timestamp is converted for this specific instant so DST is
+    historical truth, not today's offset. Invalid/missing legacy values are
+    deliberately ignored: transcript assembly must never fail on timestamp
+    metadata. Absolute text is byte-stable between prompt builds; relative
+    age text would invalidate DeepSeek's cached prefix on every turn.
+    """
+    raw = str(raw_created_at or "").strip()
+    if not raw:
+        return content
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        stamp = parsed.astimezone(ZoneInfo("Europe/Copenhagen")).strftime(
+            "%Y-%m-%d %H:%M"
+        )
+    except (TypeError, ValueError, OverflowError, OSError):  # Dårlig legacy-metadata må ikke vælte prompten.
+        return content
+    return f"[{stamp}] {content}"
 
 
 def _tool_results_as_input() -> bool:
@@ -458,7 +484,13 @@ def _build_structured_transcript_messages(
                 speaker = _resolve_speaker_display(uid)
                 if speaker:
                     content = f"{speaker}: {content}"
-            merged.append({"role": "user", "content": content})
+            created_at = str(item.get("created_at") or "")
+            content = _prefix_absolute_transcript_time(content, created_at)
+            if len(content) > 8000:
+                content = content[:7997].rstrip() + "…"
+            merged.append({
+                "role": "user", "content": content, "created_at": created_at,
+            })
         else:
             # assistant — symmetric 8000-char cap (bumped 2026-06-09 fra 2400)
             # så Jarvis' egne tidligere svar ikke truncates mid-sentence i hans
@@ -466,7 +498,13 @@ def _build_structured_transcript_messages(
             # rigelig headroom.
             if len(content) > 8000:
                 content = content[:7997].rstrip() + "…"
-            assistant_msg: dict[str, str] = {"role": "assistant", "content": content}
+            created_at = str(item.get("created_at") or "")
+            content = _prefix_absolute_transcript_time(content, created_at)
+            if len(content) > 8000:
+                content = content[:7997].rstrip() + "…"
+            assistant_msg: dict[str, str] = {
+                "role": "assistant", "content": content, "created_at": created_at,
+            }
             # Thinking-mode replay: Deepseek v4-pro/reasoner kræver at
             # reasoning_content fra prior assistant-turns sendes med tilbage.
             # Vi gemmer det nu pr. message i chat_messages.reasoning_content;

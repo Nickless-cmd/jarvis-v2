@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 from datetime import UTC, datetime
@@ -686,6 +687,13 @@ def _is_current_user_turn(message: dict | None, current_text: str) -> bool:
     if not message or message.get("role") != "user":
         return False
     persisted = " ".join(str(message.get("content") or "").split())
+    # Historical transcript rows now carry an immutable absolute timestamp.
+    # The current user turn is persisted before assembly, so match it after
+    # removing exactly one renderer-owned prefix; otherwise both visible
+    # builders append the same current turn a second time.
+    persisted = re.sub(
+        r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] ", "", persisted, count=1,
+    )
     current = " ".join(str(current_text or "").split())
     if not current:
         return persisted == current

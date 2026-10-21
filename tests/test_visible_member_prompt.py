@@ -104,7 +104,7 @@ def test_member_prompt_drops_pre_fix_assistant_turns(monkeypatch, tmp_path):
     ])
     contents = [m["content"] for m in assembly.transcript_messages]
     assert "Bjørn bor i Svendborg" not in contents       # før fixet → væk
-    assert "Fint" in contents                            # efter fixet → med
+    assert any(content.endswith(" Fint") for content in contents)  # efter fixet → med
     assert [m["role"] for m in assembly.transcript_messages] == ["user", "user", "assistant"]
 
 

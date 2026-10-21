@@ -44,7 +44,7 @@ def test_structured_transcript_user_assistant_roles() -> None:
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
     assert len(result) == 2
     assert result[0]["role"] == "user"
-    assert result[0]["content"] == "Hej Jarvis"
+    assert result[0]["content"] == "[2026-01-01 01:00] Hej Jarvis"
     assert result[1]["role"] == "assistant"
     assert "Hvad kan jeg hjælpe med?" in result[1]["content"]
 

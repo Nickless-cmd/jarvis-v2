@@ -1,6 +1,8 @@
 import { isValidElement, memo, useMemo } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import { stabilizeStreamingMarkdown } from '../../lib/streamingMarkdown'
 import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
@@ -26,7 +28,12 @@ import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
  *  server-side i stedet.) */
 // Stabile referencer: et nyt `components`-objekt eller plugin-array ved hver
 // render ville få react-markdown til at bygge alt om, også uændrede blokke.
-const PLUGINS = [remarkGfm]
+const PLUGINS = [remarkGfm, remarkMath]
+// `throwOnError: false` er ikke kosmetik: en ødelagt formel må ALDRIG vælte
+// hele beskeden. KaTeX tegner så fejlen rødt i stedet, og resten af svaret
+// står uændret. `strict: false` gør det samme for halvfærdige udtryk — mens
+// svaret streames er `$e^{i\pi` en lovlig mellemtilstand.
+const REHYPE_PLUGINS = [[rehypeKatex, { throwOnError: false, strict: false, output: 'html' }]] as const
 const KOMPONENTER: Components = {
   pre: ({ children }) => {
     if (!isValidElement(children)) return <pre>{children}</pre>
@@ -71,7 +78,7 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   const struktureret = useMemo(() => enforceStructure(md), [md])
   return (
     <MermaidStreamingContext.Provider value={streaming}>
-      <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={REHYPE_PLUGINS as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
     </MermaidStreamingContext.Provider>
   )
 })

@@ -62,6 +62,8 @@ import './styles/cowork-categories.css'
 import './styles/desk-settings.css'
 import './styles/raekkevisning.css'
 import './styles/chat-reading.css'
+// 21/10-2026: matematik. KaTeX' egne fonte følger med bundlet via Vite.
+import 'katex/dist/katex.min.css'
 import './styles/web-sidebar.css'
 import './styles/routines.css'
 

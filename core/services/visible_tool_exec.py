@@ -373,7 +373,19 @@ async def run_tool_batch(
                 # En vækning i Bjørns samtale har et menneske der kan svare, så
                 # godkendelses-gaten skal være levende — ellers arvede kørslen
                 # rettighederne uden at arve spørgsmålet.
-                force=run.autonomous and not _tilstede,
+                #
+                # MEN ER SAMTALEN SAT TIL `trust`, ER SPØRGSMÅLET ALLEREDE
+                # BESVARET (21/10-2026, Bjørn: «et wakeup skal fortsætte som det
+                # allerede er sat i sessionen»). Målt samme dag: en vækning i en
+                # trust-samtale rejste et kort som ingen sad og svarede på, og
+                # var derfor tandløs netop dér hvor adgangen var givet. Uden
+                # dette led når godkendelsen ALDRIG `_runtime_trust_all`, fordi
+                # `_prepare_call` kun sætter flaget på `force` eller en
+                # controller — og en vækning har ingen controller. Kommandoen
+                # blev derfor aldrig kørt; den blev godkendt i first-pass uden
+                # at have et resultat. Destruktivt er uændret: `_exec_bash`
+                # springer aldrig den gate over, uanset flaget.
+                force=(run.autonomous and not _tilstede) or bool(getattr(run, "trust_all", False)),
                 run_id=run.run_id,
                 session_id=run.session_id,
                 user_message=run.user_message,

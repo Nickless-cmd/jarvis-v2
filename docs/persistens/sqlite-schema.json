@@ -12337,7 +12337,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "cognitive_experiments": {
@@ -20319,7 +20319,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "f1:2b:87:c5:c4:57:6b:86:d8:e5:7e:44:83:b4:fa:30:c6:c3:c4:09:60:b3:59:81:a4:f2:8e:50:ec:88:cf:52",
+      "digest": "89:64:76:78:2b:9f:58:6f:45:4a:14:d8:48:27:96:44:12:2f:18:d5:e2:40:7c:78:54:45:ab:78:22:4c:60:dc",
       "schema": {
         "columns": [
           {
@@ -20495,6 +20495,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": "'ukendt'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "vist_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           }

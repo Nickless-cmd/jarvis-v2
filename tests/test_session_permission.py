@@ -176,3 +176,22 @@ def test_en_ukendt_NY_samtale_kan_ikke_arve(db):
     ud = sp.arv_permission("findes-heller-ikke", "s1")
     assert ud["arvet"] is False
     assert ud["approval_mode"] == "ask"
+
+
+def test_trust_for_session_foelger_samtalen(db):
+    """Wakeup-arven (21/10-2026): niveauet læses fra SAMTALEN.
+
+    Bjørn: «et wakeup skal fortsætte som det allerede er sat i sessionen.»
+    Standarden er `ask`; kun et eksplicit `trust` giver fuld adgang.
+    """
+    assert sp.trust_for_session("s1") is False      # standarden er ask
+    sp.saet_permission("s1", "trust")
+    assert sp.trust_for_session("s1") is True
+    sp.saet_permission("s1", "ask")
+    assert sp.trust_for_session("s1") is False
+
+
+def test_trust_for_session_ukendt_er_ask(db):
+    """Fail-closed: en samtale vi ikke kender maa ikke aabne for fuld adgang."""
+    assert sp.trust_for_session("findes-ikke") is False
+    assert sp.trust_for_session("") is False

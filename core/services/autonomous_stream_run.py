@@ -6,6 +6,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _trust_for_session(session_id: str) -> bool:
+    """Samtalens tilladelses-niveau — fail-closed til `ask`.
+
+    Kørslen skal fortsætte som samtalen allerede er sat (Bjørn 21/10-2026).
+    Kan niveauet ikke læses, arves intet: en tvivl skal koste et spørgsmål,
+    ikke en mutation.
+    """
+    try:
+        from core.services.session_permission import trust_for_session
+
+        return bool(trust_for_session(session_id))
+    except Exception:  # noqa: BLE001 — en læsefejl må ikke åbne adgang
+        logger.debug("kunne ikke læse permissions for %s", session_id, exc_info=True)
+        return False
+
+
 def start_autonomous_stream_run(
     message: str,
     *,
@@ -91,6 +107,11 @@ def start_autonomous_stream_run(
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=sid,
         autonomous=True,
+        trust_all=_trust_for_session(sid),
+        # PERMISSIONS-ARVEN (21/10-2026, Bjørn: «wakeups skal arve sessions
+        # permissions»). Niveauet læses fra samtalen selv, så en vækning i en
+        # `trust`-samtale fortsætter med fuld adgang i stedet for at rejse et
+        # godkendelses-kort som ingen sad og svarede på. `ask` er uændret.
         # Oprindelsen SKAL med på run-objektet (målt 10/10-2026): uden den læste
         # `set_run_identity` en tom origin, og self-wakeup faldt tilbage til
         # bund-sættet i stedet for sit eget. Samme felt som start_autonomous_run.

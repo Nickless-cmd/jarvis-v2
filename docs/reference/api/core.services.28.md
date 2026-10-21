@@ -546,8 +546,9 @@ _Autonome (heartbeat-startede) synlige runs: starter og observation._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L21) |
-| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L79) |
+| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/visible_autonomous_run.py#L21) |
+| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L36) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L94) |
 
 ## `core/services/visible_first_pass_pump.py`
 _Worker-thread pump for the first visible model stream._

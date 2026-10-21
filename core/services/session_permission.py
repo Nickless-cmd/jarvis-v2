@@ -41,7 +41,10 @@ from core.runtime.db import connect
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["GYLDIGE", "STANDARD", "arv_permission", "hent_permission", "saet_permission"]
+__all__ = [
+    "GYLDIGE", "STANDARD", "arv_permission", "hent_permission", "saet_permission",
+    "trust_for_session",
+]
 
 GYLDIGE: Final[frozenset[str]] = frozenset({"ask", "trust"})
 #: `ask` er standarden overalt: her, i `visible_runs` og i mobilens
@@ -91,6 +94,29 @@ def saet_permission(session_id: str, mode: str) -> dict[str, object]:
         if cur.rowcount != 1:
             return {"status": "error", "error": f"ukendt samtale: {sid}"}
     return {"status": "ok", "id": sid, "approval_mode": m}
+
+
+def trust_for_session(session_id: str) -> bool:
+    """Skal et run der lander i denne samtale arve fuld adgang?
+
+    ## Hvorfor den findes (Bjørn 21/10-2026)
+
+    «et wakeup er et wakeup, det skal hverken ændre på toolbox eller permissions
+    for sessionen, det skal fortsætte som det allerede er sat i sessionen.»
+
+    Målt samme dag: en vækning landede i en samtale sat til `trust` og fik
+    alligevel et godkendelses-kort — fordi `start_autonomous_stream_run`
+    oprettede `VisibleRun(autonomous=True)` uden at læse samtalens niveau.
+    Kørslen arvede altså spørgsmålet men ikke svaret. Sad Bjørn ikke ved
+    skærmen, udløb kortet, og vækningen var tandløs i en samtale hvor han
+    netop havde givet fuld adgang.
+
+    Niveauet læses fra SAMTALEN — ikke fra en parameter og ikke fra klienten.
+    Der er derfor kun ét svar at arve, og det er det samme som desks ikon viser.
+
+    Fail-closed: en ukendt samtale eller en læsefejl giver `ask`.
+    """
+    return hent_permission(session_id) == "trust"
 
 
 def arv_permission(ny_session: str, fra_session: str) -> dict[str, object]:

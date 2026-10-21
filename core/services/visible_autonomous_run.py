@@ -18,6 +18,21 @@ import core.services.visible_runs as _vr  # noqa: E402  (cirkulaer-sikkert: kun 
 logger = logging.getLogger(__name__)
 
 
+def _trust_for_session(session_id: str) -> bool:
+    """Samtalens tilladelses-niveau — fail-closed til `ask`.
+
+    Samme læsning som `autonomous_stream_run._trust_for_session`. To
+    run-oprettelser må ikke kunne svare forskelligt om hvad en vækning arver.
+    """
+    try:
+        from core.services.session_permission import trust_for_session
+
+        return bool(trust_for_session(session_id))
+    except Exception:  # noqa: BLE001 — en læsefejl må ikke åbne adgang
+        logger.debug("kunne ikke læse permissions for %s", session_id, exc_info=True)
+        return False
+
+
 def _observe_autonomous_run(*, run, session_id: str, outcome: str,
                             frames: int = 0, error: str = "") -> None:
     """#10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den
@@ -265,6 +280,10 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=resolved_session,
         autonomous=True,
+        # PERMISSIONS-ARVEN (21/10-2026). Se `autonomous_stream_run`: samme
+        # læsning af samtalens niveau, samme grund. To run-oprettelser må ikke
+        # kunne svare forskelligt om hvad en vækning arver.
+        trust_all=_trust_for_session(resolved_session),
         origin=_origin,
     )
     # KAEDE-STEMPLET (14/10-2026). Foer stemplede kun `detached_run` — og kun

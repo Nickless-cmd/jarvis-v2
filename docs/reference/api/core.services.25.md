@@ -127,10 +127,11 @@ _Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L52) |
-| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L61) |
-| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L79) |
-| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L96) |
+| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L55) |
+| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L64) |
+| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L82) |
+| function | `trust_for_session` | `(session_id)` | Skal et run der lander i denne samtale arve fuld adgang? | [src](../../../core/services/session_permission.py#L99) |
+| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L122) |
 
 ## `core/services/session_persistence_flag.py`
 _Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._

@@ -217,7 +217,11 @@ describe('animationen på skærmen', () => {
 })
 
 describe('billedet under scanneren', () => {
-  const skaerm = { image_path: '/home/bs/.jarvis-v2/uploads/chat-x/skaerm.png' }
+  // 20/10-2026: stien skal ligge UDEN for `uploads/`. Bjørns eget upload står
+  // allerede i tråden ovenover, så dér vises rammen ikke og billedet hentes
+  // ikke — se `erEgenUpload`. Hente-kontrakten gælder stadig for de kald der
+  // peger på noget han ikke har set (Jarvis' egne skærmbilleder i /tmp).
+  const skaerm = { image_path: '/tmp/skaerm.png' }
 
   it('henter det billede der kigges på gennem den hvidlistede rute', async () => {
     const { container } = render(
@@ -225,6 +229,17 @@ describe('billedet under scanneren', () => {
     await waitFor(() => expect(hentede).toHaveLength(1))
     expect(hentede[0]).toBe(`/visning/billede?sti=${encodeURIComponent(skaerm.image_path)}`)
     expect(container.querySelector('img.image-analysis-billede')).not.toBeNull()
+  })
+
+  it('henter IKKE Bjørns eget upload — det står allerede i tråden', async () => {
+    const eget = { image_path: '/home/bs/.jarvis-v2/uploads/chat-x/foto.png' }
+    const { container } = render(
+      <BlocksRenderer blocks={[analyse(eget)]} density="compact" streaming config={config} />)
+    // Rundelinjen skal stadig være der; den bærer beskrivelsen.
+    expect(screen.getByLabelText('Analyserer foto.png')).toBeInTheDocument()
+    // ...men hverken hentning eller ramme.
+    expect(hentede).toHaveLength(0)
+    expect(container.querySelector('.image-analysis-ramme')).toBeNull()
   })
 
   it('en Windows-sti hentes ikke — ruten tager kun absolutte unix-stier', () => {

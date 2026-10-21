@@ -72,6 +72,25 @@ export function billedSti(input: Record<string, unknown> | undefined): string {
 }
 
 
+/**
+ * Er stien et billede Bjørn SELV har uploadet til denne samtale?
+ *
+ * Målt 20/10-2026: 27 af 38 `analyze_image`-kald (71 %) pegede på
+ * `~/.jarvis-v2/uploads/chat-<session>/…`. Det billede står allerede i hans
+ * egen boble ovenover, så analyse-rammen gentog det — først uploadet, så igen
+ * som 148px-poster med en scanner henover. Rammen tilførte ingen information.
+ *
+ * Modsat: et skærmbillede Jarvis selv har taget (`/tmp/ss_mid.png`) har Bjørn
+ * IKKE set, og dér ER rammen ny information. Derfor er det en betingelse på
+ * stien — ikke en variant af animationen.
+ *
+ * Måler på mappen, ikke på ordet: `/tmp/uploads_noter.png` er ikke et upload.
+ */
+export function erEgenUpload(sti: string | undefined): boolean {
+  if (!sti) return false
+  return sti.includes('/.jarvis-v2/uploads/') || sti.startsWith('.jarvis-v2/uploads/')
+}
+
 type LevendeKald = { name: string; status?: string; input?: Record<string, unknown>; partialJson?: string }
 
 function billedArgumenter(kald: LevendeKald): Record<string, unknown> | undefined {
@@ -172,6 +191,9 @@ export function ImageGenerationProgress() {
  */
 export function ImageAnalysisProgress({ kilde, sti, config }: { kilde?: string; sti?: string; config?: ApiConfig }) {
   const navn = (kilde || '').trim()
+  // Bjørns eget upload står allerede i tråden ovenover. Rammen ville gentage
+  // det, så vi viser kun rundelinjen og henter ikke billedet unødigt.
+  const visRamme = !erEgenUpload(sti)
   const [billede, setBillede] = useState<string | null>(null)
 
   // Det billede der bliver kigget på — hentet gennem den SAMME hvidlistede
@@ -179,7 +201,7 @@ export function ImageAnalysisProgress({ kilde, sti, config }: { kilde?: string; 
   // Jarvis' egen, ikke brugerens: et skærmbillede tages på serveren.
   useEffect(() => {
     setBillede(null)
-    if (!config || !sti) return
+    if (!config || !sti || !visRamme) return
     let afbrudt = false
     let objekt: string | null = null
     void (async () => {
@@ -201,14 +223,16 @@ export function ImageAnalysisProgress({ kilde, sti, config }: { kilde?: string; 
     <span className="image-analysis-label">
       Analyserer billede{navn ? <> · <span className="image-analysis-kilde">{navn}</span></> : null}…
     </span>
-    <div className="image-analysis-ramme" aria-hidden="true">
-      {billede ? <img className="image-analysis-billede" src={billede} alt="" /> : null}
-      <span className="image-analysis-scan" />
-      <span className="image-analysis-hjoerne tv" />
-      <span className="image-analysis-hjoerne th" />
-      <span className="image-analysis-hjoerne bv" />
-      <span className="image-analysis-hjoerne bh" />
-    </div>
+    {visRamme ? (
+      <div className="image-analysis-ramme" aria-hidden="true">
+        {billede ? <img className="image-analysis-billede" src={billede} alt="" /> : null}
+        <span className="image-analysis-scan" />
+        <span className="image-analysis-hjoerne tv" />
+        <span className="image-analysis-hjoerne th" />
+        <span className="image-analysis-hjoerne bv" />
+        <span className="image-analysis-hjoerne bh" />
+      </div>
+    ) : null}
   </div>
 }
 

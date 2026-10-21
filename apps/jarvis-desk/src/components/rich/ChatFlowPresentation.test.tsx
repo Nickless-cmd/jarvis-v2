@@ -92,6 +92,17 @@ describe('ChatFlowPresentation', () => {
     expect(onWorkExpanded).toHaveBeenCalledTimes(1)
   })
 
+  it('renders split stream blocks as one markdown answer without breaking a word', () => {
+    render(<ChatFlowPresentation {...common} mode="living" finalAnswerStarted blocks={[
+      { type: 'text', text: 'L', phase: 'final_answer' },
+      { type: 'text', text: 'ukket — du bekræftede selv leveringen.', phase: 'final_answer' },
+    ]} />)
+
+    const answer = document.querySelector('.chat-flow-answer') as HTMLElement
+    expect(answer).toHaveTextContent('Lukket — du bekræftede selv leveringen.')
+    expect(answer.querySelectorAll('p')).toHaveLength(1)
+  })
+
   it('keeps confirmed answer text visible if the run returns to tool work', () => {
     const firstTool: ContentBlock = { type: 'tool_use', id: 't1', name: 'search', input: {}, status: 'done' }
     const firstAnswer: ContentBlock = { type: 'text', text: 'Første bekræftede svar.' }

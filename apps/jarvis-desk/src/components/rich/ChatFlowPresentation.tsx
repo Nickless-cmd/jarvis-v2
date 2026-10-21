@@ -39,6 +39,32 @@ export interface ChatFlowPresentationProps {
   onAnswerPaced?: () => void
 }
 
+/**
+ * Render one logical answer as one Markdown document.
+ *
+ * The stream protocol may split a single word across text blocks when an
+ * autonomous/follow run crosses a round boundary (for example `L` +
+ * `ukket`). The pacing layer already treats all answer text as one continuous
+ * target. Keeping the transport blocks separate here would nevertheless make
+ * BlocksRenderer create one Markdown paragraph per block, inserting a visual
+ * line break that was never present in the text.
+ *
+ * This is deliberately presentation-only: the original blocks still drive
+ * pacing, phases and work/final classification unchanged.
+ */
+function samletSvarMarkdown(blocks: ContentBlock[]): ContentBlock[] {
+  const samlet: ContentBlock[] = []
+  for (const block of blocks) {
+    const previous = samlet.at(-1)
+    if (block.type === 'text' && previous?.type === 'text') {
+      samlet[samlet.length - 1] = { ...previous, text: previous.text + block.text }
+    } else {
+      samlet.push(block)
+    }
+  }
+  return samlet
+}
+
 export function ChatFlowPresentation({
   blocks,
   mode,
@@ -126,7 +152,7 @@ export function ChatFlowPresentation({
           || block.text.startsWith(text)))
     : []
   const answerBlocks = [...restoredText, ...model.finalBlocks]
-  const answer = answerBlocks
+  const answer = samletSvarMarkdown(answerBlocks)
   const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar

@@ -852,6 +852,30 @@ _READ_ONLY_GIT_SUBCOMMANDS = {
 }
 
 
+#: `gh`-underkommandoer der kun LÆSER — samme form som git-sættet ovenfor.
+#:
+#: Målt 21/10-2026 (Bjørn: «wakeups skal forsætte med sessions permissions»):
+#: en vækning skulle verificere en release med `gh release view` og fik
+#: `approval_needed` — selv om kommandoen kun læser. `gh` stod ingen steder i
+#: klassifikatoren, så ALT fra GitHub-CLI'en blev sendt til godkendelse, og en
+#: vækning (hvor ingen kan godkende) måtte falde tilbage til `web_fetch` mod en
+#: HTML-side. Det er en svagere måling: draft-releases er usynlige der, så
+#: «ikke fundet» kan ikke skelnes fra «ikke klar».
+#:
+#: Listen er bevidst KONSERVATIV. `gh api` er udeladt — den kan POST'e.
+#: `release download` og `repo clone` er udeladt, fordi de skriver til disk.
+#: `run watch` er udeladt, fordi den blokerer til runnet slutter.
+_READ_ONLY_GH_SUBCOMMANDS = {
+    "release view", "release list",
+    "pr view", "pr list", "pr diff", "pr checks", "pr status",
+    "issue view", "issue list", "issue status",
+    "run view", "run list",
+    "repo view", "repo list",
+    "workflow view", "workflow list",
+    "auth status", "label list", "status",
+}
+
+
 def _emit_security_check(hit: dict, *, target: str) -> None:
     """Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede
     check-id (spec E) — 'check #14: dd-disk-write' i stedet for bare 'blocked'."""
@@ -902,6 +926,15 @@ def classify_command(command: str) -> str:
     if git_match:
         subcmd = git_match.group(1)
         if any(subcmd.startswith(s) for s in _READ_ONLY_GIT_SUBCOMMANDS):
+            return "auto"
+
+    # `gh` — samme form som git ovenfor. Underkommandoen matches som ET PAR
+    # («release view»), fordi det er parret der afgør om der læses eller
+    # skrives: `gh release view` læser, `gh release create` skriver.
+    gh_match = re.match(r"gh\s+(?:-\S+\s+\S+\s+)*(\S+(?:\s+\S+)?)", normalized)
+    if gh_match:
+        subcmd = gh_match.group(1)
+        if any(subcmd.startswith(s) for s in _READ_ONLY_GH_SUBCOMMANDS):
             return "auto"
 
     # Piped commands (|): check if all segments are read-only

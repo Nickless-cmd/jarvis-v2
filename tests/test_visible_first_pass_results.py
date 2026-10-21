@@ -142,3 +142,67 @@ async def test_app_action_stays_after_result_and_working_step(monkeypatch):
         ("working_step", "working_step"),
         ("app_action_request", "app_action_request"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_vaekning_med_ejer_tilstede_faar_kortet_i_stedet_for_afvisning(monkeypatch):
+    """To steder traf modsatte beslutninger om SAMME tilfælde.
+
+    `visible_tool_exec` sætter `force = run.autonomous and not _tilstede` med
+    begrundelsen: «En vækning i Bjørns samtale har et menneske der kan svare, så
+    godkendelses-gaten skal være levende — ellers arvede kørslen rettighederne
+    uden at arve spørgsmålet.» Kørslen bad altså om et kort.
+
+    Men her afviste `run.autonomous`-grenen kortet ubetinget. Målt 20/10-2026:
+    en vækning i Bjørns egen samtale kunne ikke verificere en release med
+    `gh release view` — den fik «Autonomous run cannot approve tool calls»,
+    selv om han sad ved skærmen og kunne have svaret.
+
+    Reglen er nu: afvisningen gælder kun når der IKKE er nogen i den anden ende.
+    """
+    from core.services import visible_runs
+
+    monkeypatch.setattr(
+        "core.tools.autonomous_tool_policy.presence_for_run", lambda _run: True)
+    monkeypatch.setattr(visible_runs, "saet_godkendelse", lambda *_a, **_k: None)
+    monkeypatch.setattr(visible_runs, "_set_visible_approval_state", lambda *_a, **_k: None)
+    monkeypatch.setattr(visible_runs, "_publicer_approval_requested", lambda **_k: None)
+
+    async def godkend(**kwargs):
+        kwargs["out"]["result_text"] = "executed"
+        if False:
+            yield ""
+
+    monkeypatch.setattr(visible_runs, "wait_for_approval", godkend)
+
+    events, out = await _collect(
+        [_result("approval_needed",
+                 result={"status": "approval_needed", "message": "må jeg?",
+                         "command": "gh release view"})],
+        run=_run(autonomous=True),
+    )
+
+    typer = [p["type"] for _n, p in events]
+    assert "tool_denied" not in typer, "en vækning med ejeren til stede må ikke afvises"
+    assert "approval_request" in typer, "kørslen bad om et kort — det skal vises"
+    assert out["resolved_result_texts"] == {0: "executed"}
+
+
+@pytest.mark.asyncio
+async def test_vaekning_UDEN_ejer_tilstede_afvises_stadig(monkeypatch):
+    """Modstykket: uden nogen i den anden ende er afvisningen stadig terminal.
+
+    Uden dette led ville fixet ovenfor være en åbning for hvert eneste autonomt
+    baggrunds-run til at vente på et kort ingen ser.
+    """
+    monkeypatch.setattr(
+        "core.tools.autonomous_tool_policy.presence_for_run", lambda _run: False)
+
+    events, out = await _collect(
+        [_result("approval_needed",
+                 result={"status": "approval_needed", "result_text": "x"})],
+        run=_run(autonomous=True),
+    )
+
+    assert [p["type"] for _n, p in events] == ["tool_denied"]
+    assert "cannot approve" in out["resolved_result_texts"][0]

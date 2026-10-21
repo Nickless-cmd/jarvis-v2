@@ -39,6 +39,36 @@ def surface_tool_result(sr: dict, status: str | None = None) -> None:
     )
 
 
+def _ejer_kan_svare(run) -> bool:
+    """Er der et menneske i den anden ende af DENNE kørsel?
+
+    To steder traf modsatte beslutninger om samme tilfælde, og det gjorde en
+    vækning tandløs (målt 20/10-2026, Bjørn: «wakeups skal forsætte med sessions
+    permissions»):
+
+    - `visible_tool_exec` sætter `force = run.autonomous and not _tilstede` med
+      begrundelsen «en vækning i Bjørns samtale har et menneske der kan svare,
+      så godkendelses-gaten skal være levende — ellers arvede kørslen
+      rettighederne uden at arve spørgsmålet». Kørslen bad altså om et KORT.
+    - her blev kortet afvist ubetinget på `run.autonomous`, så vækningen fik
+      «Autonomous run cannot approve tool calls» — selv om han sad ved
+      skærmen. En vækning der ville verificere en release med `gh release view`
+      måtte falde tilbage til `web_fetch` mod en HTML-side.
+
+    Spørgsmålet stilles til SESSIONEN, gennem samme definition som
+    værktøjspolitikken bruger (`presence_for_run`), så de tre steder ikke kan
+    svare forskelligt. Den kræver: ikke en system-silo, BEVIST Bjørns egen
+    app-samtale, og en vækning — så et autonomt baggrunds-run arver intet her.
+
+    Fail-closed: enhver fejl → False, og så gælder afvisningen som før.
+    """
+    try:
+        from core.tools.autonomous_tool_policy import presence_for_run
+        return bool(presence_for_run(run))
+    except Exception:  # uden svar kan vi ikke bevise nogen — så afvises den
+        return False
+
+
 async def publish_first_pass_results(
     results: list[dict],
     *,
@@ -56,7 +86,7 @@ async def publish_first_pass_results(
 
     for idx, sr in enumerate(results):
         if sr["status"] == "approval_needed":
-            if run.autonomous:
+            if run.autonomous and not _ejer_kan_svare(run):
                 resolved[idx] = (
                     f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
                 )

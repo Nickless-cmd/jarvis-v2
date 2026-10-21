@@ -857,13 +857,23 @@ def fej_udloebne(*, maks: int = 500) -> dict[str, Any]:
 # udsætter altså, den sletter ikke — samme semantik som resten af huset.
 
 #: Hvor længe en informerende post må stå åben før fejeren udsætter den.
-#: Syv dage: en uge er nok til at en post man faktisk skulle handle på er
-#: blevet set, og kort nok til at tælleren ikke bærer måneders støj.
-_OPRYDNING_DAGE: Final[int] = 7
+#:
+#: Målt 21/10-2026 (Bjørn: «det er et problem at de hober! Det burde bare
+#: rulle»). De to produktive kilder lægger 26 poster i døgnet: 8 fra
+#: `recurring` (én pr. kørsel, hver ~3. time) og 3-6 fra `dream`. Med den
+#: tidligere syvdages-frist blev steady-state ~180 poster, og de 15 der stod
+#: åbne var op til 2 døgn gamle og ville først blive fejet fem dage senere.
+#:
+#: Seks timer er valgt på KADENCEN, ikke på tålmodighed: den tætteste kilde
+#: kører hver ~3. time, så den nyeste post altid er synlig mens den forrige
+#: ruller. Det gamle argument — «en uge er nok til at en post man faktisk
+#: skulle handle på er blevet set» — holder ikke for en post der beskriver en
+#: KØRSEL: den er forældet i samme øjeblik den næste kørsel lander.
+_OPRYDNING_TIMER: Final[int] = 6
 
 
 def luk_forældede_informerende(
-    *, dage: int | None = None, maks: int = 500
+    *, timer: int | None = None, dage: int | None = None, maks: int = 500
 ) -> dict[str, Any]:
     """Udsæt informerende poster der har stået åbne for længe.
 
@@ -875,8 +885,9 @@ def luk_forældede_informerende(
     `status = 'aaben'` i WHERE gør skrivningen idempotent: kørt to gange
     tæller den ikke samme post to gange.
     """
-    dage_n = int(dage if dage is not None else _OPRYDNING_DAGE)
-    graense = (datetime.now(UTC) - timedelta(days=dage_n)).isoformat()
+    timer_n = int(timer) if timer is not None else (
+        int(dage) * 24 if dage is not None else _OPRYDNING_TIMER)
+    graense = (datetime.now(UTC) - timedelta(hours=timer_n)).isoformat()
     with connect() as conn:
         _ensure_skema(conn)
         cur = conn.execute(
@@ -887,7 +898,7 @@ def luk_forældede_informerende(
             "AND id IN (SELECT id FROM inbox_items WHERE status = ? "
             "           AND kraever_handling = 0 AND bloker = 0 "
             "           AND created_at < ? LIMIT ?)",
-            (STATUS_DROP, _nu(), f"informerende post — udsat efter {dage_n} dage",
+            (STATUS_DROP, _nu(), f"informerende post — udsat efter {timer_n} timer",
              STATUS_AABEN, graense, STATUS_AABEN, graense, max(int(maks), 1)))
         n = cur.rowcount
     if n:

@@ -299,6 +299,36 @@ def test_fejeren_roerer_IKKE_en_FRISK_informerende_post(db):
                          kilde_id="info-frisk")["status"] == db_inbox.STATUS_AABEN
 
 
+def test_fejeren_udsætter_en_SYV_TIMER_gammel_post_med_STANDARDFRISTEN(db):
+    """Standardfristen skal følge KADENCEN, ikke en uges tålmodighed.
+
+    Målt 21/10-2026 (Bjørn: «det er et problem at de hober! Det burde bare
+    rulle»): de to produktive kilder lægger 26 poster i døgnet — 8 fra
+    `recurring` (én pr. kørsel, hver ~3. time) og 3-6 fra `dream`. Med
+    syvdages-frist stod 15 poster åbne, op til 2 døgn gamle, og ville først
+    blive fejet fem dage senere. Steady-state var ~180 poster.
+
+    Seks timer er valgt på kadencen: den tætteste kilde kører hver ~3. time,
+    så den nyeste post altid er synlig mens den forrige ruller.
+    """
+    _opret("info-7t", kildetype="recurring", kraever_handling=False)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-7 * 3600), "info-7t"))
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 1
+
+
+def test_fejeren_roerer_IKKE_en_FEM_TIMER_gammel_post(db):
+    """Modprøven. Uden den kunne en frist der ramte ALT bestå testen ovenfor."""
+    _opret("info-5t", kildetype="recurring", kraever_handling=False)
+    with db_inbox.connect() as c:
+        c.execute("UPDATE inbox_items SET created_at = ? WHERE kilde_id = ?",
+                  (_i(-5 * 3600), "info-5t"))
+    assert db_inbox.luk_forældede_informerende()["opryddet"] == 0
+    assert db_inbox.hent(bruger_id=BRUGER,
+                         kilde_id="info-5t")["status"] == db_inbox.STATUS_AABEN
+
+
 def test_fejeren_roerer_IKKE_en_GATENDE_post(db):
     """Frist-mekanismen er urørt.
 

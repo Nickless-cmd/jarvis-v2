@@ -148,6 +148,28 @@ def test_delivery_retry_does_not_create_second_run(delivery_service, successful_
     assert again.lease_generation == 2
 
 
+def test_delivery_worker_settles_private_desk_result_without_session_write(
+    successful_run, monkeypatch
+):
+    from core.services.routine_delivery import RoutineDeliveryService
+    from core.services.routine_run_recorder import RoutineRunRecorder
+
+    monkeypatch.setattr(
+        "core.services.chat_sessions.append_chat_message",
+        lambda **_kw: (_ for _ in ()).throw(AssertionError("session write")),
+    )
+    worker = RoutineDeliveryService(holder="delivery-worker")
+    delivered = worker.deliver_next()
+
+    assert delivered is not None
+    assert delivered.status == "delivered"
+    events = RoutineRunRecorder().list(
+        successful_run.run_id, decrypt_for="member-a"
+    )
+    assert events[-1]["kind"] == "delivery_completed"
+    assert events[-1]["payload"] == {"channel": "desk", "status": "delivered"}
+
+
 def test_wrong_delivery_holder_cannot_settle(delivery_service, successful_run):
     from core.services.routine_delivery import StaleDeliveryLease
 

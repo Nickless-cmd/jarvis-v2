@@ -110,16 +110,16 @@ _Bounded worker and reconciler threads for Routines._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `RoutineRuntime` | `` | — | [src](../../../core/services/routine_runtime.py#L15) |
-| method | `RoutineRuntime.__init__` | `(self, *, runner=…, reconciler=…, poll_seconds=…, reconcile_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L16) |
-| method | `RoutineRuntime._worker_loop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L29) |
-| method | `RoutineRuntime._reconciler_loop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L37) |
-| method | `RoutineRuntime.start` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L49) |
-| method | `RoutineRuntime.stop` | `(self, *, timeout_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L62) |
-| method | `RoutineRuntime.worker_is_alive` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L68) |
-| method | `RoutineRuntime.reconciler_is_alive` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L71) |
-| method | `RoutineRuntime.claim_count_after_stop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L74) |
-| function | `start_routine_runtime` | `()` | — | [src](../../../core/services/routine_runtime.py#L82) |
-| function | `stop_routine_runtime` | `(*, timeout_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L91) |
+| method | `RoutineRuntime.__init__` | `(self, *, runner=…, reconciler=…, delivery=…, poll_seconds=…, reconcile_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L16) |
+| method | `RoutineRuntime._worker_loop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L35) |
+| method | `RoutineRuntime._reconciler_loop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L47) |
+| method | `RoutineRuntime.start` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L59) |
+| method | `RoutineRuntime.stop` | `(self, *, timeout_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L72) |
+| method | `RoutineRuntime.worker_is_alive` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L78) |
+| method | `RoutineRuntime.reconciler_is_alive` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L81) |
+| method | `RoutineRuntime.claim_count_after_stop` | `(self)` | — | [src](../../../core/services/routine_runtime.py#L84) |
+| function | `start_routine_runtime` | `()` | — | [src](../../../core/services/routine_runtime.py#L92) |
+| function | `stop_routine_runtime` | `(*, timeout_seconds=…)` | — | [src](../../../core/services/routine_runtime.py#L101) |
 
 ## `core/services/routine_trigger_adapters.py`
 _Single-path adapters from legacy producers to isolated Routine runs._
@@ -149,5 +149,5 @@ _Single-path adapters from legacy producers to isolated Routine runs._
 | function | `dispatch_recurring` | `(source_id, *, legacy, adapters=…, occurrence_id=…)` | — | [src](../../../core/services/routine_trigger_adapters.py#L192) |
 | function | `dispatch_scheduled` | `(source_id, *, legacy, adapters=…)` | — | [src](../../../core/services/routine_trigger_adapters.py#L205) |
 | function | `dispatch_system` | `(producer, source_id, *, trigger_inputs, legacy, adapters=…)` | — | [src](../../../core/services/routine_trigger_adapters.py#L215) |
-| function | `dispatch_heartbeat_initiative` | `(*, focus, initiative_id, session_id=…)` | Extracted heartbeat execution boundary for the oversized runtime module. | [src](../../../core/services/routine_trigger_adapters.py#L227) |
+| function | `dispatch_heartbeat_initiative` | `(*, focus, initiative_id, session_id=…)` | Extracted heartbeat execution boundary for the oversized runtime module. | [src](../../../core/services/routine_trigger_adapters.py#L230) |
 

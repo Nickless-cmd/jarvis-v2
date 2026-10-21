@@ -164,10 +164,10 @@ def _fire_due_tasks() -> None:
             now_iso = datetime.now(UTC).isoformat()
 
             from core.services.routine_trigger_adapters import (
+                cutover_allows,
                 enqueue_scheduled,
-                routine_cutover_enabled,
             )
-            if routine_cutover_enabled():
+            if cutover_allows("scheduled", task_id):
                 try:
                     enqueue_scheduled(task_id)
                     runtime_db.mark_scheduled_task_fired(

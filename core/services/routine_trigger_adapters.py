@@ -206,7 +206,7 @@ def dispatch_scheduled(
     source_id: str, *, legacy: Callable[[], object],
     adapters: RoutineTriggerAdapters | None = None,
 ) -> TriggerResult | None:
-    if routine_cutover_enabled():
+    if cutover_allows("scheduled", source_id):
         return (adapters or RoutineTriggerAdapters()).enqueue_scheduled(source_id)
     legacy()
     return None
@@ -216,7 +216,10 @@ def dispatch_system(
     producer: str, source_id: str, *, trigger_inputs: Mapping[str, object],
     legacy: Callable[[], object], adapters: RoutineTriggerAdapters | None = None,
 ) -> TriggerResult | None:
-    if routine_cutover_enabled():
+    # Systemproducenter vælges pr. stabil producent, ikke pr. flygtigt
+    # occurrence-id. ``system:heartbeat`` kan derfor piloteres uden samtidig
+    # at flytte dream, wakeup eller alle scheduled jobs.
+    if cutover_allows("system", producer):
         return (adapters or RoutineTriggerAdapters()).enqueue_system(
             producer, source_id, trigger_inputs=trigger_inputs,
         )

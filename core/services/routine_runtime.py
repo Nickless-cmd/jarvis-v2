@@ -15,10 +15,16 @@ logger = logging.getLogger(__name__)
 class RoutineRuntime:
     def __init__(
         self, *, runner: Any | None = None, reconciler: Any | None = None,
+        delivery: Any | None = None,
         poll_seconds: float = 1.0, reconcile_seconds: float = 30.0,
     ):
         self.runner = runner or RoutineRunner()
         self.reconciler = reconciler or RoutineReconciler(repository=self.runner.repository)
+        if delivery is None:
+            from core.services.routine_delivery import RoutineDeliveryService
+
+            delivery = RoutineDeliveryService()
+        self.delivery = delivery
         self.poll_seconds = max(0.001, float(poll_seconds))
         self.reconcile_seconds = max(0.001, float(reconcile_seconds))
         self._stop = threading.Event()
@@ -32,6 +38,10 @@ class RoutineRuntime:
                 self.runner.run_next()
             except Exception as exc:
                 logger.warning("routine worker failed: %s", type(exc).__name__)
+            try:
+                self.delivery.deliver_next()
+            except Exception as exc:
+                logger.warning("routine delivery failed: %s", type(exc).__name__)
             self._stop.wait(self.poll_seconds)
 
     def _reconciler_loop(self) -> None:

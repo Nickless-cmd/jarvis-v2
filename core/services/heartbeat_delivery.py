@@ -58,8 +58,8 @@ def _deliver_heartbeat_proposal(
     summary: str,
     proposed_action: str,
 ) -> dict[str, str]:
-    from core.services.routine_trigger_adapters import routine_cutover_enabled
-    if routine_cutover_enabled():
+    from core.services.routine_trigger_adapters import cutover_allows
+    if cutover_allows("system", "heartbeat"):
         return {
             "status": "blocked",
             "summary": "Routine cutover forbids session delivery.",
@@ -257,8 +257,8 @@ def _deliver_heartbeat_ping_directly(
     actually wrote a ping_text — Jarvis must always be able to deliver an
     asked question whether it came from a thought, curiosity, or boredom.
     """
-    from core.services.routine_trigger_adapters import routine_cutover_enabled
-    if routine_cutover_enabled():
+    from core.services.routine_trigger_adapters import cutover_allows
+    if cutover_allows("system", "heartbeat"):
         return {
             "status": "blocked",
             "summary": "Routine cutover forbids session delivery.",

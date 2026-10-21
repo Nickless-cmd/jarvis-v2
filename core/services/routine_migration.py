@@ -280,6 +280,7 @@ def _classify(row: dict[str, object]) -> tuple[str | None, str, tuple[str, ...]]
 def _definition(row: dict[str, object]) -> dict[str, object]:
     kind = str(row["source_kind"])
     source_id = _source_id(row)
+    system_producer = _registered_system_producer(row)
     if kind == "recurring":
         trigger_kind = "interval"
         trigger_config = {"interval_minutes": int(row.get("interval_minutes") or 60)}
@@ -308,15 +309,16 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
         importance="normal",
     )
     return {
-        "name": f"Migrated {kind}",
+        "name": f"System · {system_producer}" if system_producer else f"Migrated {kind}",
         "instruction": str(row.get("focus") or "Legacy autonomous work"),
-        "capability_scope": "system" if _registered_system_producer(row) else "chat",
+        "capability_scope": "system" if system_producer else "chat",
         "trigger_kind": trigger_kind,
         "trigger_config": trigger_config,
         "delivery_policy": {
             "channel": str(row.get("channel") or "auto"),
             "classification": klassifikation.as_dict(),
         },
+        "system_producer": system_producer,
         "source_id": source_id,
     }
 
@@ -438,7 +440,16 @@ def apply_report(report_id: str) -> ApplyResult:
             quarantined += 1
             continue
         definition = _open_json(owner, str(raw["definition_enc"]))
-        routine_id = f"routine_migrated_{str(raw['source_id_hash'])[:24]}"
+        system_producer = str(definition.get("system_producer") or "").strip()
+        # En session er en historisk kørsel, ikke en definition. Alle
+        # historiske sessioner fra samme registrerede systemproducent peger
+        # derfor på én stabil Routine. Bruger-ejede recurring/scheduled
+        # kilder beholder fortsat deres egen deterministiske definition.
+        routine_id = (
+            f"routine_system_{system_producer}"
+            if kind == "autonomous_session" and system_producer
+            else f"routine_migrated_{str(raw['source_id_hash'])[:24]}"
+        )
         with connect() as conn:
             exists = conn.execute(
                 "SELECT 1 FROM routines WHERE routine_id=?", (routine_id,),
@@ -448,7 +459,7 @@ def apply_report(report_id: str) -> ApplyResult:
                 routine_id=routine_id,
                 owner_user_id=owner,
                 access_scope=str(raw["access_scope"]),
-                created_by="migration",
+                created_by="system" if system_producer else "migration",
                 status="paused",
                 name=str(definition["name"]),
                 instruction=str(definition["instruction"]).encode("utf-8"),

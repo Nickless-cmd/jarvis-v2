@@ -239,6 +239,76 @@ def test_registered_internal_session_origins_become_system_owner(
     assert report.quarantine[0].reason_code == "missing_structured_owner"
 
 
+def test_system_session_history_converges_on_one_stable_routine(
+    migration_fixture, monkeypatch
+):
+    from core.runtime import db_routines
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    migration_fixture.autonomous_session("auto-dream-20261012")
+    migration_fixture.autonomous_session("auto-dream-20261013")
+
+    report = migration.classify_legacy_sources(migration_fixture.conn)
+    result = migration.apply_report(report.report_id)
+
+    assert result.created_routines == 1
+    with migration_fixture.conn:
+        links = migration_fixture.conn.execute(
+            "SELECT DISTINCT routine_id FROM routine_legacy_links "
+            "WHERE source_kind='autonomous_session'"
+        ).fetchall()
+    assert [row[0] for row in links] == ["routine_system_dream"]
+    routine = db_routines.get_routine(
+        "routine_system_dream", decrypt_for="canonical-owner"
+    )
+    assert routine["created_by"] == "system"
+    assert routine["status"] == "paused"
+    assert routine["name"] == "System · dream"
+
+
+def test_legacy_session_projections_do_not_fill_routine_library(
+    migration_fixture, monkeypatch
+):
+    from core.runtime import db_routines
+    import core.services.routine_migration as migration
+
+    monkeypatch.setattr(migration, "_system_owner", lambda: "canonical-owner")
+    # Simulér den allerede udsendte, gamle form: én migreret definition
+    # knyttet direkte til en historisk autonomous_session.
+    old = db_routines.create_routine(
+        routine_id="routine_migrated_old_history",
+        owner_user_id="canonical-owner",
+        access_scope="system_owner",
+        created_by="migration",
+        status="paused",
+        name="Migrated autonomous_session",
+        instruction=b"legacy",
+        capability_scope="system",
+        trigger_kind="manual",
+        trigger_config={}, permission_policy={}, delivery_policy={},
+        inbox_policy={}, retention_policy={}, failure_policy={},
+    )
+    migration_fixture.conn.execute(
+        "INSERT INTO routine_legacy_links "
+        "(legacy_link_id,routine_id,run_id,source_kind,source_id,source_ref_enc,created_at) "
+        "VALUES ('legacy-old', ?, NULL, 'autonomous_session', "
+        "'auto-dream-20261011', X'00', '')",
+        (old["routine_id"],),
+    )
+    migration_fixture.conn.commit()
+
+    visible = db_routines.list_routines(
+        owner_user_id="canonical-owner", decrypt_for="canonical-owner"
+    )
+    audit = db_routines.list_routines(
+        owner_user_id="canonical-owner", include_legacy_history=True,
+        decrypt_for="canonical-owner",
+    )
+    assert visible == []
+    assert [item["routine_id"] for item in audit] == [old["routine_id"]]
+
+
 def test_dry_run_cli_prints_signed_report_id_for_exact_apply(monkeypatch, capsys):
     """Omitting report_id makes the audited report impossible to apply safely."""
     from scripts import migrate_routines as cli

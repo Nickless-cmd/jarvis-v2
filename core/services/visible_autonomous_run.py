@@ -115,18 +115,20 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     from core.services.routine_trigger_adapters import (
         SYSTEM_PRODUCERS,
         UnmigratedRoutineSource,
+        cutover_allows,
         enqueue_system,
-        routine_cutover_enabled,
     )
     managed_origin = str(origin or "").strip()
-    if routine_cutover_enabled() and managed_origin in SYSTEM_PRODUCERS:
+    if managed_origin in SYSTEM_PRODUCERS and cutover_allows("system", managed_origin):
         enqueue_system(
             managed_origin,
             f"legacy-call-{uuid4().hex}",
             trigger_inputs={"prompt": str(message or "")},
         )
         return True
-    if routine_cutover_enabled() and managed_origin in {"scheduled", "recurring"}:
+    if managed_origin in {"scheduled", "recurring"} and (
+        cutover_allows(managed_origin, str(task_id or ""))
+    ):
         raise UnmigratedRoutineSource(
             "scheduled and recurring cutover requires the structured source id"
         )

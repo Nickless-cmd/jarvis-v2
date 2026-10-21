@@ -5,10 +5,10 @@ prøve først». Det var ikke muligt: ``routine_cutover_enabled()`` læste kun
 globale sandheds-ord, så en prøve på én recurring ville flytte alle 13 levende
 recurrings plus alle scheduled jobs på én gang.
 
-``cutover_allows(kind, id)`` er forgreningen. Den globale funktion beholder
-sin betydning, så de seks eksisterende kaldesteder (scheduled_tasks,
-scheduled_task_runner, heartbeat_delivery ×2, dispatch_scheduled,
-dispatch_system) ikke ændrer adfærd.
+``cutover_allows(kind, id)`` er forgreningen. Recurring og scheduled vælges
+per definition; systemarbejde vælges per stabil producent, fx
+``system:heartbeat``. Den globale værdi er kun nødbremsens eksplicitte
+alt-på-én-gang-form.
 """
 from __future__ import annotations
 
@@ -98,3 +98,36 @@ def test_dispatch_recurring_bruger_forgreningen(adapters, monkeypatch):
     )
     assert out is None
     assert calls == ["legacy"]
+
+
+def test_scheduled_og_system_kan_piloteres_uafhaengigt(adapters, monkeypatch):
+    _set(monkeypatch, "scheduled:s-1,system:heartbeat")
+    calls: list[str] = []
+
+    class _FakeAdapters:
+        def enqueue_scheduled(self, source_id):
+            calls.append(f"scheduled:{source_id}")
+            return "scheduled"
+
+        def enqueue_system(self, producer, source_id, *, trigger_inputs=None):
+            calls.append(f"system:{producer}:{source_id}")
+            return "system"
+
+    fake = _FakeAdapters()
+    assert adapters.dispatch_scheduled(
+        "s-1", legacy=lambda: calls.append("legacy-s1"), adapters=fake,
+    ) == "scheduled"
+    assert adapters.dispatch_scheduled(
+        "s-2", legacy=lambda: calls.append("legacy-s2"), adapters=fake,
+    ) is None
+    assert adapters.dispatch_system(
+        "heartbeat", "tick-1", trigger_inputs={},
+        legacy=lambda: calls.append("legacy-heartbeat"), adapters=fake,
+    ) == "system"
+    assert adapters.dispatch_system(
+        "dream", "dream-1", trigger_inputs={},
+        legacy=lambda: calls.append("legacy-dream"), adapters=fake,
+    ) is None
+    assert calls == [
+        "scheduled:s-1", "legacy-s2", "system:heartbeat:tick-1", "legacy-dream",
+    ]

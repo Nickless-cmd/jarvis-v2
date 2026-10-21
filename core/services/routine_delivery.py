@@ -5,6 +5,8 @@ This module has no session or notification-bridge dependency.
 """
 from __future__ import annotations
 
+import json
+import uuid
 from dataclasses import dataclass
 
 from core.runtime import db_routines
@@ -69,12 +71,50 @@ def _view(row: dict) -> DeliveryView:
 
 
 class RoutineDeliveryService:
-    def __init__(self):
+    def __init__(self, *, holder: str | None = None):
         self.repository = _RepositoryView()
+        self.holder = holder or f"routine-delivery-{uuid.uuid4().hex}"
 
     def claim_for_run(self, run_id: str, holder: str) -> DeliveryClaim | None:
         row = db_routines.claim_delivery_for_run(run_id, holder=holder)
         return None if row is None else _claim(row)
+
+    def claim_next(self) -> DeliveryClaim | None:
+        row = db_routines.claim_next_delivery(holder=self.holder)
+        return None if row is None else _claim(row)
+
+    def deliver_next(self) -> DeliveryView | None:
+        """Deliver one due item to its private Routine surface.
+
+        ``desk`` and legacy ``auto`` mean that the encrypted run result is now
+        available through the owner-authorized Routine API.  The receipt is a
+        content-free pointer; result text is never copied to a chat/session or
+        shared inbox. Unknown external channels fail closed until a dedicated
+        owner-scoped adapter exists.
+        """
+        claim = self.claim_next()
+        if claim is None:
+            return None
+        supported = claim.channel in {"desk", "auto"}
+        outcome = "delivered" if supported else "failed"
+        receipt = None
+        if supported:
+            receipt = json.dumps({
+                "surface": "routine_run",
+                "run_id": claim.run_id,
+            }, sort_keys=True).encode("utf-8")
+        view = self.settle(
+            claim.delivery_id, holder=self.holder, outcome=outcome, receipt=receipt,
+        )
+        from core.services.routine_run_recorder import RoutineRunRecorder
+
+        RoutineRunRecorder().append(
+            claim.run_id,
+            event_id=f"{claim.delivery_id}:{outcome}",
+            kind="delivery_completed" if supported else "delivery_failed",
+            payload={"channel": claim.channel, "status": outcome},
+        )
+        return view
 
     def settle(
         self, delivery_id: str, *, holder: str, outcome: str,

@@ -314,12 +314,26 @@ def get_routine(routine_id: str, *, decrypt_for: str | None = None) -> dict[str,
 
 
 def list_routines(
-    *, owner_user_id: str, include_deleted: bool = False, decrypt_for: str | None = None,
+    *, owner_user_id: str, include_deleted: bool = False,
+    include_legacy_history: bool = False, decrypt_for: str | None = None,
 ) -> list[dict[str, Any]]:
     query = "SELECT * FROM routines WHERE owner_user_id=?"
     params: list[object] = [owner_user_id]
     if not include_deleted:
         query += " AND status != 'deleted'"
+    if not include_legacy_history:
+        # De tidlige migrationer lavede én Routine-definition pr. historisk
+        # ``auto-<origin>-<dag>``-session. De rækker er proveniens/historik,
+        # ikke noget brugeren kan eller skal genoptage som 197 særskilte
+        # rutiner. Bevar dem og deres krypterede links i databasen, men vis kun
+        # egentlige definitioner i biblioteket. Nye systemdefinitioner har
+        # ``created_by='system'`` og rammes derfor ikke af filteret.
+        query += (
+            " AND NOT (created_by='migration' AND EXISTS ("
+            "SELECT 1 FROM routine_legacy_links legacy "
+            "WHERE legacy.routine_id=routines.routine_id "
+            "AND legacy.source_kind='autonomous_session'))"
+        )
     query += " ORDER BY updated_at DESC, routine_id"
     with connect() as conn:
         _ensure_tables(conn)
@@ -1112,6 +1126,31 @@ def claim_delivery_for_run(run_id: str, *, holder: str) -> dict[str, Any] | None
         except Exception:
             conn.rollback()
             raise
+
+
+def claim_next_delivery(*, holder: str) -> dict[str, Any] | None:
+    """Claim the oldest due outbox item across all Routine runs.
+
+    The run worker and delivery worker are intentionally separate: retrying a
+    delivery must never execute the Routine again.  This selector only sees
+    durable outbox state and uses the same lease transition as the per-run
+    claim path.
+    """
+    holder = str(holder or "").strip()
+    if not holder:
+        raise ValueError("holder is required")
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT run_id FROM routine_deliveries "
+            "WHERE status IN ('pending','retry') "
+            "AND (next_attempt_at IS NULL OR next_attempt_at='' OR next_attempt_at<=?) "
+            "ORDER BY created_at,delivery_id LIMIT 1",
+            (_now(),),
+        ).fetchone()
+    if row is None:
+        return None
+    return claim_delivery_for_run(str(row["run_id"]), holder=holder)
 
 
 def settle_delivery(

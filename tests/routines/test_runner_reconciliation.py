@@ -239,8 +239,20 @@ def test_runtime_stop_joins_workers_without_claiming_more():
         def sweep_retention(self):
             return {"archived": 0, "deleted": 0}
 
+    class Delivery:
+        def __init__(self):
+            self.claims = 0
+
+        def deliver_next(self):
+            self.claims += 1
+            return None
+
     runner = Runner()
-    runtime = RoutineRuntime(runner=runner, reconciler=Reconciler(), poll_seconds=0.01)
+    delivery = Delivery()
+    runtime = RoutineRuntime(
+        runner=runner, reconciler=Reconciler(), delivery=delivery,
+        poll_seconds=0.01,
+    )
     runtime.start()
     runtime.stop(timeout_seconds=2)
     claims_at_stop = runner.claims
@@ -249,3 +261,4 @@ def test_runtime_stop_joins_workers_without_claiming_more():
     assert runtime.reconciler_is_alive() is False
     assert runtime.claim_count_after_stop() == 0
     assert runner.claims == claims_at_stop
+    assert delivery.claims > 0

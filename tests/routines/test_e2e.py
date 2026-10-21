@@ -76,6 +76,11 @@ def test_user_routine_isolated_run_has_timeline_and_private_delivery(
     assert delivery is not None
     assert delivery["owner_user_id"] == "member-1"
     assert delivery["channel"] == "desk"
+    from core.services.routine_delivery import RoutineDeliveryService
+
+    settled = RoutineDeliveryService(holder="e2e-delivery").deliver_next()
+    assert settled is not None
+    assert settled.status == "delivered"
 
 
 def test_system_owner_routine_and_delivery_are_owner_only(isolated_runtime):

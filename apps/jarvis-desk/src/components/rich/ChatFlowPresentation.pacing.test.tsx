@@ -198,6 +198,35 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     expect(syntese).not.toHaveAttribute('data-pacing-skjult')
   })
 
+  it('beholder begge linjer i pacing-vinduet hvor aktiv er faldet', () => {
+    // `aktiv` kræver `streaming && !finalAnswerStarted`. Naar slutsvaret
+    // begynder, bliver den falsk — og foerste udgave rev hele
+    // `chat-flow-activity` ned, saa syntese OG runde forsvandt samtidig mens
+    // pacen rullede (Bjørn 22/10-2026). Gaten skal baere begge faser.
+    //
+    // Syntesen er en tekstblok med `phase: 'commentary'` — den bliver i
+    // `workBlocks` efter `finalAnswerStarted`. En blok uden phase bliver
+    // slutsvaret og kan derfor ikke bruges som syntese her (målt 22/10-2026).
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const syntese: ContentBlock = { type: 'text', text: 'Læser koden', phase: 'commentary' } as ContentBlock
+    const blokke: ContentBlock[] = [arbejde, syntese, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted runId="run-vindue" />,
+    )
+    frame()
+    // Forudsætning: pacen er ikke i mål, saa vi ER i pacing-vinduet.
+    expect(answerText(view.container).length).toBeLessThan(LANG.length / 4)
+    const gruppe = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    expect(gruppe).toBeInTheDocument()
+    expect(view.container.querySelector('[data-testid="chat-flow-live-synthesis"]')).toBeInTheDocument()
+    expect(view.container.querySelector('[data-testid="chat-flow-round"]')).toBeInTheDocument()
+    // Den ydre ramme maa ikke kollapse til 0fr: den var den TREDJE gate, og
+    // den gjorde skaermen tom selv naar begge linjer var monteret.
+    const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(ydre).toHaveAttribute('data-aaben', 'true')
+  })
+
   it('lader korte synteser passere uden at blinke linjen', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const blokke: ContentBlock[] = [arbejde, { type: 'text', text: 'Kort.' }]

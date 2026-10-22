@@ -196,6 +196,17 @@ export function ChatFlowPresentation({
         return { tekst: blok.text.trim(), noegle: i }
       }
     }
+    // Femte gate, målt 22/10-2026: `model.workBlocks` er PACET. Når slutsvaret
+    // begynder, er de pacede arbejdsblokke tømt — så synteselinjen forsvandt
+    // mens rundelinjen blev. Syntesen skal blive stående gennem
+    // pacing-vinduet, så vi falder tilbage til de RÅ blokke. Kun teksten
+    // bruges til visning; paceren rører ikke denne vej.
+    for (let i = targetModel.workBlocks.length - 1; i >= 0; i--) {
+      const blok = targetModel.workBlocks[i]
+      if (blok && blok.type === 'text' && blok.text.trim()) {
+        return { tekst: blok.text.trim(), noegle: i }
+      }
+    }
     return null
   })()
   const activeSynthesis = levendeSyntese?.tekst ?? null
@@ -229,16 +240,41 @@ export function ChatFlowPresentation({
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
   const rundeTekst = harArbejde ? (activeLine || 'Arbejder…') : null
 
+  // Arbejdslinjen skal blive STÅENDE mens pacen ruller — også efter at
+  // `aktiv` er faldet. `aktiv` kræver `streaming && !finalAnswerStarted`, så
+  // den bliver falsk i præcis det øjeblik slutsvaret begynder og pacen
+  // starter. Uden denne udvidelse rev gaten hele `chat-flow-activity` ned —
+  // syntese OG runde på én gang — og skærmen blev tom, uanset at attributten
+  // sad rigtigt på rundelinjen (Bjørn 22/10-2026, anden runde: «det dit fade
+  // har gjort er syntese linjen forsvinder/fader ud med runde linjen»).
+  //
+  // Code mode har ikke problemet, fordi `Arbejdsrunde` altid er monteret og
+  // kun får attributten. Her er containeren betinget, så betingelsen skal
+  // bære begge faser: arbejdsfasen OG det vindue hvor pacen indhenter.
+  const pacingVindue = targetSvar.length > 0 && !svarFaerdigPacet
+  const visArbejdslinje = aktiv || (pacingVindue && (activeSynthesis || rundeTekst))
+
   // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
   // Bjørn selv har foldet. `null` betyder «følg fasen».
+  //
+  // Tredje gate, målt 22/10-2026: `aaben` var `streaming && !finalAnswerStarted`,
+  // så den ydre ramme kollapsede til `0fr` i PRÆCIS det øjeblik slutsvaret
+  // begyndte — og så var det ligegyldigt at `visArbejdslinje` holdt gruppen
+  // monteret. Skærmen blev tom, fordi højden blev nul. Rammen skal derfor
+  // blive åben så længe pacen indhenter, præcis som rundelinjen.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
+  const aaben = aabenManuelt ?? ((streaming && !finalAnswerStarted) || pacingVindue)
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
-  const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
+  //
+  // Fjerde gate, målt 22/10-2026: da `aaben` blev holdt åben gennem
+  // pacing-vinduet, arvede `arbejdeAabent` den og viste de FULDE detaljer i
+  // stedet for de to linjer. I pacing-vinduet er det rundelinjen der skal
+  // stå — detaljerne hører til når turen er ovre og Bjørn folder ud.
+  const arbejdeAabent = pacingVindue ? aabenManuelt === true : (aktiv ? aabenManuelt === true : aaben)
   const visArbejdsdetaljer = retainedWork.length > 0 && arbejdeAabent
 
   return (
@@ -271,7 +307,7 @@ export function ChatFlowPresentation({
               som kun Chromium har). */}
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
-            {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
+            {visArbejdslinje && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, tankeTekst,

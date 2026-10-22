@@ -240,4 +240,52 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
     expect(linje).not.toHaveAttribute('data-pacing-skjult')
   })
+
+  it('rundelinjens ur overlever faden og nulstilles ikke', () => {
+    // Faden maa kun aendre SYNLIGHED, ikke levetid. `usePacingWorkLine` saetter
+    // en attribut — den unmounter ikke linjen — saa uret skal vaere den SAMME
+    // DOM-node efter faden, med et tal der er steget imens. Code mode har
+    // samme kontrakt: der fader `rv-arbejdsrunde` mens `RullendeUr` tikker
+    // videre (Bjørn 22/10-2026: «den skal overleve fade ind/ud og forsat
+    // tælle? det gør timeren osse i rundelinjen i code mode»).
+    //
+    // En AABEN thinking-blok er noedvendig: `useTankeSekunder` koerer kun sit
+    // interval mens en blok er aaben. Uden den staar uret stille af sig selv,
+    // og testen ville vaere groen uden at bevise noget om faden.
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+    })
+    try {
+      const tænker = { type: 'thinking', startet: Date.now() } as ContentBlock
+      const syntese = { type: 'text', text: 'Læser koden', phase: 'commentary' } as ContentBlock
+      const blokke: ContentBlock[] = [arbejde, syntese, tænker, { type: 'text', text: LANG }]
+      const view = render(
+        <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+          streaming status="working" finalAnswerStarted={false} runId="run-ur" />,
+      )
+      frame()
+      const urFoer = view.container.querySelector(
+        '[data-testid="chat-flow-round"] [role="timer"]',
+      ) as HTMLElement
+      expect(urFoer).toBeInTheDocument()
+      // `textContent` er ubrugelig her: hver ciffer-strimmel baerer alle ti
+      // cifre (0-9), saa den giver altid '0123456789s'. Den flade tekst —
+      // det der faktisk tælles — ligger i `aria-label`.
+      const tekstFoer = urFoer.getAttribute('aria-label')
+      expect(tekstFoer).toBeTruthy()
+      // 420 ms: faden fyrer. 1000 ms: urets interval tikker. Vi tager begge.
+      act(() => { vi.advanceTimersByTime(1500) })
+      const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
+      expect(linje).toHaveAttribute('data-pacing-skjult')
+      const urEfter = view.container.querySelector(
+        '[data-testid="chat-flow-round"] [role="timer"]',
+      ) as HTMLElement
+      // Samme node => faden rev ikke linjen ned og nulstillede derfor ikke uret.
+      expect(urEfter).toBe(urFoer)
+      // Og tallet er steget, saa uret levede videre gennem faden.
+      expect(urEfter.getAttribute('aria-label')).not.toBe(tekstFoer)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

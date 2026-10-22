@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9146/17383 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9147/17384 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9146/17383 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6096 | 11816 | 51% |
+| `core.services` | 6097 | 11817 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1786,7 +1786,7 @@ Generated from source. 9146/17383 functions/methods documented (52%). The list b
 - `core/services/routine_inbox.py` :: `project_event_to_inbox` (L82)
 - `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L57)
 - `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L61)
-- `core/services/routine_migration.py` :: `report_path` (L118)
+- `core/services/routine_migration.py` :: `report_path` (L148)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.reconcile_once` (L18)
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)

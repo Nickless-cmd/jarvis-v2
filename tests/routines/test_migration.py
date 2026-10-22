@@ -110,6 +110,26 @@ def test_measured_dirty_patterns_fail_closed(migration_fixture):
     assert all(item.content is None for item in report.quarantine)
 
 
+def test_canonical_identity_aliases_decrypts_only_current_users_link(monkeypatch):
+    from core.runtime import db
+    from core.services.encryption import encrypt
+    from core.services.routine_migration import canonical_identity_aliases
+
+    key = (b"canonical-owner" + b"x" * 32)[:32]
+    encrypted = encrypt(b"legacy-owner-subject", key)
+    monkeypatch.setattr(
+        db,
+        "get_user_row",
+        lambda user_id: {"user_id": user_id, "discord_id_enc": encrypted, "deleted_at": None},
+    )
+    monkeypatch.setattr(db, "get_runtime_state_value", lambda key, default="": "wrapped-key")
+
+    assert canonical_identity_aliases("canonical-owner") == (
+        "canonical-owner",
+        "legacy-owner-subject",
+    )
+
+
 def test_creator_recipient_disagreement_quarantines(migration_fixture):
     from core.services.routine_migration import classify_legacy_sources
 

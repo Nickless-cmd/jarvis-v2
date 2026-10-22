@@ -133,29 +133,22 @@ def _bm25_to_score(rank: float) -> float:
         return 0.0
 
 
-def _equivalent_principals(conn: sqlite3.Connection, canonical_uid: str) -> tuple[str, ...]:
+def _equivalent_principals(_conn: sqlite3.Connection, canonical_uid: str) -> tuple[str, ...]:
     """Return stored principals that resolve to the current canonical user.
 
     Older chat rows may contain an external login subject while the request
-    context already contains the canonical account id.  Treating those two
-    spellings as different users hides the owner's own history.  Resolution is
-    deliberately fail-closed: an unreadable or ambiguous id is not included.
+    context already contains the canonical account id. Treating those two
+    spellings as different users hides the owner's own history. Resolution is
+    deliberately fail-closed: an unreadable link is not included.
     """
-    aliases = {canonical_uid}
     try:
-        from core.services.routine_migration import resolve_canonical_identity
+        from core.services.routine_migration import canonical_identity_aliases
 
-        rows = conn.execute(
-            "SELECT DISTINCT user_id FROM chat_messages "
-            "WHERE user_id IS NOT NULL AND user_id<>''"
-        ).fetchall()
-        for row in rows:
-            stored = str(row[0] or "").strip()
-            if stored and resolve_canonical_identity(stored) == canonical_uid:
-                aliases.add(stored)
+        aliases = canonical_identity_aliases(canonical_uid)
+        return aliases or (canonical_uid,)
     except Exception:
         logger.debug("db_fts: principal alias resolution failed", exc_info=True)
-    return tuple(sorted(aliases))
+        return (canonical_uid,)
 
 
 def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, Any]]:

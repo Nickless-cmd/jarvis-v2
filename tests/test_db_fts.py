@@ -180,8 +180,8 @@ def test_search_accepts_legacy_principal_resolving_to_current_owner(conn, monkey
     db_fts.ensure_fts_tables(conn)
     monkeypatch.setattr(
         routine_migration,
-        "resolve_canonical_identity",
-        lambda value: "owner-uid" if value in {"owner-uid", "legacy-owner-subject"} else value,
+        "canonical_identity_aliases",
+        lambda value: ("legacy-owner-subject", "owner-uid"),
     )
 
     t = set_context(workspace_name="bjorn", user_id="owner-uid")
@@ -250,8 +250,8 @@ def test_chat_search_accepts_legacy_principal_but_rejects_foreign_mix(conn, monk
     db_fts.ensure_fts_tables(conn)
     monkeypatch.setattr(
         routine_migration,
-        "resolve_canonical_identity",
-        lambda value: "owner-uid" if value in {"owner-uid", "legacy-owner-subject"} else value,
+        "canonical_identity_aliases",
+        lambda value: ("legacy-owner-subject", "owner-uid"),
     )
 
     t = set_context(workspace_name="bjorn", user_id="owner-uid")

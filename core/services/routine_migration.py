@@ -109,6 +109,36 @@ def resolve_canonical_identity(value: object) -> str | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def canonical_identity_aliases(value: object) -> tuple[str, ...]:
+    """Return one canonical user's directly linked stored identity tokens.
+
+    This is the efficient inverse of ``resolve_canonical_identity`` for an
+    already-canonical user id.  It decrypts only that user's external subject,
+    rather than scanning and decrypting every user for every stored token.
+    """
+    canonical = str(value or "").strip()
+    if not canonical:
+        return ()
+    aliases = {canonical}
+    try:
+        from core.runtime import db
+        from core.services.encryption import decrypt
+        from core.services.keyring_store import get_user_key
+
+        row = db.get_user_row(canonical)
+        if not row or row.get("deleted_at"):
+            return tuple(aliases)
+        encrypted = row.get("discord_id_enc")
+        if not encrypted or not db.get_runtime_state_value(f"user_dek:{canonical}", ""):
+            return tuple(aliases)
+        external = decrypt(bytes(encrypted), get_user_key(canonical)).decode("utf-8").strip()
+        if external:
+            aliases.add(external)
+    except Exception:  # Unreadable aliases never broaden private recall scope.
+        pass
+    return tuple(sorted(aliases))
+
+
 def _report_dir() -> Path:
     from core.runtime.config import CACHE_DIR
 

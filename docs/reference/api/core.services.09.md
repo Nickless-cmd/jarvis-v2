@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/communication_guard.py`
+_Communication guard — scanner assistant-output for boundary violations._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_hard` | `(trigger)` | Er denne trigger en HÅRD blok (afvis besked før send) eller blød | [src](../../../core/services/communication_guard.py#L143) |
+| function | `_load` | `()` | — | [src](../../../core/services/communication_guard.py#L160) |
+| function | `_save` | `(triggers)` | — | [src](../../../core/services/communication_guard.py#L172) |
+| function | `add_trigger` | `(phrase, *, kind=…, reason=…, ttl_turns=…, ttl_hours=…)` | Tilfoj en triggerfrase til guarden. | [src](../../../core/services/communication_guard.py#L177) |
+| function | `remove_trigger` | `(phrase)` | Fjern en triggerfrase. Returner True hvis den blev fjernet. | [src](../../../core/services/communication_guard.py#L224) |
+| function | `scan` | `(text)` | Skan en tekst for triggerfraser. | [src](../../../core/services/communication_guard.py#L235) |
+| function | `_trigger_active` | `(t, now)` | Er en trigger aktiv lige nu (permanent, eller TTL ikke udløbet)? | [src](../../../core/services/communication_guard.py#L282) |
+| function | `enforce_outgoing` | `(text)` | Hård-gate for udga°ende assistant-tekst — kaldes FØR afsendelse. | [src](../../../core/services/communication_guard.py#L299) |
+| function | `record_breach` | `(channel, removed, *, original=…)` | Log en boundary-breach (hård frase fanget ved kanal-dispatch). | [src](../../../core/services/communication_guard.py#L350) |
+| function | `guard_channel_text` | `(text, channel)` | Convenience for kanal-dispatch: scrub hård afslutnings-fraser fra | [src](../../../core/services/communication_guard.py#L374) |
+| function | `_active_hard_phrases` | `(now)` | — | [src](../../../core/services/communication_guard.py#L394) |
+| function | `scrub_outgoing` | `(text)` | Kanal-backstop: fjern den SÆTNING/linje der indeholder en hård | [src](../../../core/services/communication_guard.py#L402) |
+| function | `prompt_section` | `()` | Bygger en høj-salient påmindelse til system-prompten med de aktive | [src](../../../core/services/communication_guard.py#L441) |
+| function | `consume_turn` | `()` | Traek en TTL-turn fra alle TTL-baserede triggers. Kald efter hver | [src](../../../core/services/communication_guard.py#L475) |
+| function | `cleanup_expired` | `()` | Rens udloebne TTL-triggers og triggers med ttl_turns <= 0. | [src](../../../core/services/communication_guard.py#L493) |
+| function | `_safe_parse_iso` | `(s, now)` | — | [src](../../../core/services/communication_guard.py#L518) |
+| function | `list_triggers` | `()` | Returner alle aktive triggers. | [src](../../../core/services/communication_guard.py#L527) |
+| function | `active_count` | `()` | Antal aktive triggerfraser (permanente + ikke-udloebne TTL). | [src](../../../core/services/communication_guard.py#L532) |
+
 ## `core/services/communication_guard_daemon.py`
 _Communication guard daemon — vedligeholder TTL-rydning._
 
@@ -550,22 +574,4 @@ _Counterfactual self-simulation for post-run learning._
 | function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
 | function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
 | function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
-
-## `core/services/counterfactual_triggers.py`
-_Trigger detection for counterfactual reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
-| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
-| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
-| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
-| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
-| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
-| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
-| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
-| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
-| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
-| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
-| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
 

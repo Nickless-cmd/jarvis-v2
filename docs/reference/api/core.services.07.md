@@ -494,6 +494,16 @@ _Kanal-plugin inbound-routing (spec §5.2/§5.3, Fase 5 Lag 1)._
 | function | `route_inbound` | `(**kwargs)` | Auth-cluster GENNEM Den Intelligente Central (observe). A2+A4: plugin-hardblock + | [src](../../../core/services/channel_inbound.py#L63) |
 | function | `_route_inbound_impl` | `(*, plugin_id, channel, author_role=…, author_user_id=…, text=…, hour=…, now=…, mode=…, override_active=…)` | Afgør om en indkommende kanal-besked må nå Jarvis (plugin_ruleset hardblock), | [src](../../../core/services/channel_inbound.py#L84) |
 
+## `core/services/chat_conversation_rules.py`
+_Samtale-reglerne for chat mode — med en LIVE killswitch._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `enabled` | `()` | Live switch. Læses pr. prompt-build, ikke ved import. | [src](../../../core/services/chat_conversation_rules.py#L26) |
+| function | `kill` | `(reason=…)` | Slå reglerne fra uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L37) |
+| function | `revive` | `()` | Slå reglerne til igen uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L43) |
+| function | `section` | `(*, compact=…)` | Reglerne som prompt-tekst — eller None når killswitchen er slået fra. | [src](../../../core/services/chat_conversation_rules.py#L49) |
+
 ## `core/services/chat_crypto.py`
 _Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
 
@@ -703,13 +713,4 @@ _Read-only, deterministic diagnostics over Cheap Lane source-of-truth data._
 | function | `unrouted_pool_invocations` | `(rows)` | Find missing route IDs only where a cheap-pool route was expected. | [src](../../../core/services/cheap_lane_diagnostics.py#L150) |
 | function | `health_divergence` | `(slots, *, since)` | Find cooldowns contradicted by a later success for the exact slot. | [src](../../../core/services/cheap_lane_diagnostics.py#L165) |
 | function | `diagnose_cheap_lane` | `(now=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L220) |
-
-## `core/services/cheap_lane_failure_policy.py`
-_Hvor længe skal et cheap-lane-slot i karantæne? Afhænger af HVORFOR det fejlede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify` | `(error_kind, message=…)` | ``'permanent'`` | ``'depleted'`` | ``'transient'``. | [src](../../../core/services/cheap_lane_failure_policy.py#L95) |
-| function | `model_retired` | `(error_kind, message=…)` | Er selve MODELLEN væk — for alle konti? (Til den pr.-model-tilstand.) | [src](../../../core/services/cheap_lane_failure_policy.py#L129) |
-| function | `quarantine_seconds` | `(error_kind, *, retry_after_s=…, message=…)` | Karantæne-længde, eller ``0`` når slottet skal følge den normale breaker-trappe. | [src](../../../core/services/cheap_lane_failure_policy.py#L147) |
 

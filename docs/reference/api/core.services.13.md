@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/events_retention.py`
+_Events-table retention — bound the unbounded ``events`` telemetry table._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_retention_days` | `()` | — | [src](../../../core/services/events_retention.py#L24) |
+| function | `prune_old_events` | `(*, max_age_days=…, max_delete=…, batch_size=…)` | Delete events older than ``max_age_days`` in batches. Returns {"deleted": N}. | [src](../../../core/services/events_retention.py#L33) |
+| function | `prune_table_by_age` | `(table, ts_column, *, max_age_days, max_delete=…, batch_size=…)` | Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped | [src](../../../core/services/events_retention.py#L50) |
+| function | `prune_stale_contract_candidates` | `()` | Type-bevidst alders-pruning af ``runtime_contract_candidates``. | [src](../../../core/services/events_retention.py#L197) |
+| function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L238) |
+| function | `prune_versioned_table` | `(table, version_col, *, keep_latest, max_delete=…, batch_size=…)` | Delete all but the newest ``keep_latest`` versions from a versioned snapshot | [src](../../../core/services/events_retention.py#L281) |
+| function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L327) |
+
 ## `core/services/executive_contradiction_signal_tracking.py`
 _Executive-contradiction signal tracking — migrated onto signal_tracking_framework._
 
@@ -563,19 +576,4 @@ _Per-kald gate-override — Jarvis' eksplicitte, loggede tilsidesættelse af en 
 | function | `_notify_owner` | `(tool_name, feeling, reason, event_id)` | Fortæl Bjørn at en gate blev overstyret. Kører i en daemon-tråd — en HTTP-request | [src](../../../core/services/gate_override.py#L260) |
 | function | `override_state` | `()` | Observabilitet: hvad er armeret lige nu, og hvad er udløbet? Read-only, kaster aldrig. | [src](../../../core/services/gate_override.py#L281) |
 | function | `_reset_for_tests` | `()` | Ryd al armeret tilstand. Kun til tests — den rigtige reset er en genstart. | [src](../../../core/services/gate_override.py#L308) |
-
-## `core/services/gate_pattern_learning.py`
-_Gate-mønster-læring — vane-bryder oven på gate-substratet (2026-07-13)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_hydrated` | `()` | Genindlæs den durable snapshot ÉN gang ved første brug (ikke ved import → tests offline-rene). | [src](../../../core/services/gate_pattern_learning.py#L40) |
-| function | `_normalize_detected` | `(text)` | Normalisér den detekterede substring til en vane-FORM: lowercase, whitespace-kollaps, | [src](../../../core/services/gate_pattern_learning.py#L56) |
-| function | `record_gate_pattern` | `(pattern, detected_text, *, session_id=…, now=…)` | Registrér én gate-fyring for (pattern, detected_text). Self-safe — kaster ALDRIG. | [src](../../../core/services/gate_pattern_learning.py#L67) |
-| function | `repeated_patterns` | `(threshold=…, now=…)` | Overflade vane-kandidaterne: mønstre med count ≥ threshold indenfor alders-vinduet. | [src](../../../core/services/gate_pattern_learning.py#L121) |
-| function | `_evict_oldest_locked` | `()` | Drop den ældste (mindst nyligt sete) nøgle. Kaldes under _LOCK. | [src](../../../core/services/gate_pattern_learning.py#L140) |
-| function | `_emit_repeat_nudge` | `(pattern, sample, count, *, n_sessions)` | Nudge-substratet: fortæl Centralen at et gate-mønster er blevet en VANE. Self-safe. | [src](../../../core/services/gate_pattern_learning.py#L149) |
-| function | `_persist_best_effort` | `(force=…)` | Bedste-indsats durabel snapshot til runtime_state (overlever genstart). Fire-and-forget, | [src](../../../core/services/gate_pattern_learning.py#L167) |
-| function | `hydrate` | `()` | Genindlæs durabel snapshot fra runtime_state ind i in-memory-store. Kaldes eksplicit | [src](../../../core/services/gate_pattern_learning.py#L195) |
-| function | `_reset` | `()` | Test-hook: ryd in-memory-store + durabel snapshot + hydrate-flag (ren slate, så | [src](../../../core/services/gate_pattern_learning.py#L227) |
 

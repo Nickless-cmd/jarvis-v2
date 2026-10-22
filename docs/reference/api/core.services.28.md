@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_outcome_memory.py`
+_Bridge tool execution outcomes into durable runtime action evidence._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_tool_outcome_memory` | `(*, tool_name, arguments, result, mode=…)` | Persist a tool outcome as runtime action evidence. | [src](../../../core/services/tool_outcome_memory.py#L7) |
+| function | `_summary_for_result` | `(tool_name, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L51) |
+| function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L59) |
+| function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L74) |
+| function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L98) |
+
 ## `core/services/tool_pattern_miner.py`
 _Tool pattern miner — discover repeating tool sequences as composite candidates._
 
@@ -567,11 +578,4 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L28) |
-
-## `core/services/visible_first_pass_pump.py`
-_Worker-thread pump for the first visible model stream._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `pump_first_pass` | `(run, *, controller, tool_scope, loop, queue, sentinel, stream_fn=…)` | — | [src](../../../core/services/visible_first_pass_pump.py#L10) |
 

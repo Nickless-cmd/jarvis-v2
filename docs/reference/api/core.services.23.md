@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_autonomy_context.py`
+_Er DEN HER koersel uovervaaget? — run-scopet, ikke gaettet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `set_autonomous` | `(vaerdi)` | Markér koerslen. Returnerer token'et saa kalderen kan nulstille. | [src](../../../core/services/run_autonomy_context.py#L33) |
+| function | `reset_autonomous` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L38) |
+| function | `is_autonomous` | `()` | Kaster aldrig. Ved vi det ikke, er svaret NEJ — og saa opfoerer alt sig | [src](../../../core/services/run_autonomy_context.py#L45) |
+| function | `set_user_present` | `(vaerdi)` | Markér om der er et menneske i den anden ende. Returnerer token'et. | [src](../../../core/services/run_autonomy_context.py#L70) |
+| function | `reset_user_present` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L75) |
+| function | `user_present` | `()` | Er der et menneske i den anden ende af DENNE kørsel? Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L82) |
+| function | `set_run_identity` | `(run_id, origin=…)` | — | [src](../../../core/services/run_autonomy_context.py#L115) |
+| function | `current_run_id` | `()` | "" naar ingen koersel har sat det. Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L120) |
+| function | `current_origin` | `()` | "" for en almindelig brugertur, eller naar vi ikke ved det. | [src](../../../core/services/run_autonomy_context.py#L128) |
+
 ## `core/services/run_closure_gate.py`
 _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs._
 
@@ -728,11 +743,4 @@ _Fail-closed policy and independent kill switches for private recall._
 | function | `set_recall_migration_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L29) |
 | function | `require_private_scope` | `(session_id=…)` | — | [src](../../../core/services/scoped_recall_policy.py#L33) |
 | function | `disabled_result` | `(path)` | Svar fra et recall-vaerktoej naar den private soegning er slaaet fra. | [src](../../../core/services/scoped_recall_policy.py#L51) |
-
-## `core/services/scout_inbox_delivery.py`
-_Deliver terminal scout runs to Jarvis' durable inbox._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
 

@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/counterfactual_triggers.py`
+_Trigger detection for counterfactual reflection._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
+| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
+| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
+| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
+| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
+| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
+| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
+| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
+| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
+| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
+| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
+| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
+
 ## `core/services/cowork_dispatch.py`
 _Cowork dispatch — runtime→app instruktioner (spec §18.5)._
 
@@ -595,10 +613,4 @@ _Decisions-as-signals: per-turn evaluation of behavioral decisions._
 | function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L338) |
 | function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L353) |
 | function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L358) |
-
-## `core/services/decision_weight.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_decision_weight` | `(action_description)` | Score an action description on a 1–4 risk scale. | [src](../../../core/services/decision_weight.py#L35) |
 

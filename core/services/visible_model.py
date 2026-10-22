@@ -479,6 +479,10 @@ def _build_visible_input(
         caller_phase=caller_phase,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
+    from core.services.visible_chat_pragmatics import (
+        apply_chat_mode_conversation_contract,
+    )
+    instruction = apply_chat_mode_conversation_contract(instruction)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:
@@ -597,6 +601,10 @@ def _build_visible_chat_messages_for_github(
         session_id=session_id,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
+    from core.services.visible_chat_pragmatics import (
+        apply_chat_mode_conversation_contract,
+    )
+    instruction = apply_chat_mode_conversation_contract(instruction)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:

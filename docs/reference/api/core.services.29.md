@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_first_pass_text.py`
+_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
+| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
+| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
+| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
+| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
+
 ## `core/services/visible_followup.py`
 _Provider-neutral agentic follow-up dispatcher._
 
@@ -153,15 +164,15 @@ _Bounded, current-source grounding for explicit memory questions._
 | function | `stream_visible_model` | `(*, message, provider, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model.py#L329) |
 | function | `available_ollama_models_for_visible_target` | `()` | — | [src](../../../core/services/visible_model.py#L403) |
 | function | `_build_visible_input` | `(message, *, session_id, provider=…, model=…, caller_phase=…)` | — | [src](../../../core/services/visible_model.py#L459) |
-| function | `_giv_modellen_oejne` | `(messages, *, session_id, model)` | Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret. | [src](../../../core/services/visible_model.py#L550) |
-| function | `_build_visible_chat_messages_for_github` | `(message, *, session_id, provider=…, model=…)` | Build OpenAI chat-completions messages for the visible lane. | [src](../../../core/services/visible_model.py#L578) |
-| function | `_split_dynamic_tail` | `(instruction)` | Separate volatile runtime instructions without changing their role. | [src](../../../core/services/visible_model.py#L671) |
-| function | `_is_current_user_turn` | `(message, current_text)` | Match the persisted current turn, not merely any user-role runtime item. | [src](../../../core/services/visible_model.py#L685) |
-| function | `_insert_system_tail_before_current_user` | `(messages, tail)` | Keep volatile prompt sections cache-late while preserving system attribution. | [src](../../../core/services/visible_model.py#L704) |
-| function | `_insert_typed_system_tail_before_current_user` | `(items, tail)` | — | [src](../../../core/services/visible_model.py#L717) |
-| function | `_visible_system_instruction_for_provider` | `(*, provider, model, user_message, session_id)` | — | [src](../../../core/services/visible_model.py#L731) |
-| function | `_member_context_user_id` | `()` | Known non-owner (or unknown nonempty id): never use the owner prompt. | [src](../../../core/services/visible_model.py#L741) |
-| function | `_build_visible_prompt_assembly` | `(*, provider, model, user_message, session_id, caller_phase=…)` | Return the full PromptAssembly (including structured transcript). | [src](../../../core/services/visible_model.py#L752) |
+| function | `_giv_modellen_oejne` | `(messages, *, session_id, model)` | Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret. | [src](../../../core/services/visible_model.py#L554) |
+| function | `_build_visible_chat_messages_for_github` | `(message, *, session_id, provider=…, model=…)` | Build OpenAI chat-completions messages for the visible lane. | [src](../../../core/services/visible_model.py#L582) |
+| function | `_split_dynamic_tail` | `(instruction)` | Separate volatile runtime instructions without changing their role. | [src](../../../core/services/visible_model.py#L679) |
+| function | `_is_current_user_turn` | `(message, current_text)` | Match the persisted current turn, not merely any user-role runtime item. | [src](../../../core/services/visible_model.py#L693) |
+| function | `_insert_system_tail_before_current_user` | `(messages, tail)` | Keep volatile prompt sections cache-late while preserving system attribution. | [src](../../../core/services/visible_model.py#L712) |
+| function | `_insert_typed_system_tail_before_current_user` | `(items, tail)` | — | [src](../../../core/services/visible_model.py#L725) |
+| function | `_visible_system_instruction_for_provider` | `(*, provider, model, user_message, session_id)` | — | [src](../../../core/services/visible_model.py#L739) |
+| function | `_member_context_user_id` | `()` | Known non-owner (or unknown nonempty id): never use the owner prompt. | [src](../../../core/services/visible_model.py#L749) |
+| function | `_build_visible_prompt_assembly` | `(*, provider, model, user_message, session_id, caller_phase=…)` | Return the full PromptAssembly (including structured transcript). | [src](../../../core/services/visible_model.py#L760) |
 
 ## `core/services/visible_model_adapters.py`
 _Per-provider visible-lane adapters + auth/probe/readiness helpers._
@@ -580,20 +591,4 @@ _Persistence + terminal outcome for visible runs (fail/cancel forbliver i main).
 | function | `stamp_visible_run_interrupted` | `(run_id, *, reason=…)` | Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører. | [src](../../../core/services/visible_runs_outcomes.py#L926) |
 | function | `stamp_visible_run_superseded` | `(run_id, *, reason=…)` | Luk en afløst række hvis genoptagelse skete under et andet run_id. | [src](../../../core/services/visible_runs_outcomes.py#L990) |
 | function | `_persist_visible_run_outcome` | `(run, *, status, finished_at, text_preview=…, error=…)` | — | [src](../../../core/services/visible_runs_outcomes.py#L1063) |
-
-## `core/services/visible_runs_sse_v2.py`
-_Translator: legacy SSE-events → Anthropic-style v2-protokol._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ToolEchoFilter` | `` | Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar. | [src](../../../core/services/visible_runs_sse_v2.py#L81) |
-| method | `ToolEchoFilter.__init__` | `(self, tool_names=…)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L92) |
-| method | `ToolEchoFilter._is_echo_line` | `(self, line)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L104) |
-| method | `ToolEchoFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L108) |
-| method | `ToolEchoFilter.flush` | `(self)` | — | [src](../../../core/services/visible_runs_sse_v2.py#L157) |
-| function | `_parse_legacy_sse` | `(chunk)` | Parse en legacy SSE event-blok til (event_name, payload_dict). | [src](../../../core/services/visible_runs_sse_v2.py#L167) |
-| function | `_live_udgivne_blokke` | `(tool_use_id, allerede_sendt)` | Alt turen har UDGIVET og endnu ikke sendt — klar til den levende stream. | [src](../../../core/services/visible_runs_sse_v2.py#L202) |
-| function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_runs_sse_v2.py#L276) |
-| function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_runs_sse_v2.py#L304) |
-| function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L319) |
 

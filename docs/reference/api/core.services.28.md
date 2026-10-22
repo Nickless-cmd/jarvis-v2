@@ -550,6 +550,13 @@ _Autonome (heartbeat-startede) synlige runs: starter og observation._
 | function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L36) |
 | function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L94) |
 
+## `core/services/visible_chat_pragmatics.py`
+_Pragmatic conversation boundaries for the visible chat-only lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L28) |
+
 ## `core/services/visible_first_pass_pump.py`
 _Worker-thread pump for the first visible model stream._
 
@@ -565,15 +572,4 @@ _Publish first-pass tool outcomes before post-tool prompt assembly._
 | function | `surface_tool_result` | `(sr, status=…)` | Close one measured call immediately before its terminal UI fact. | [src](../../../core/services/visible_first_pass_results.py#L18) |
 | function | `_ejer_kan_svare` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/services/visible_first_pass_results.py#L42) |
 | function | `publish_first_pass_results` | `(results, *, run, step_counter, out)` | Resolve approvals and publish terminal UI facts; do not persist transcript. | [src](../../../core/services/visible_first_pass_results.py#L72) |
-
-## `core/services/visible_first_pass_text.py`
-_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
-| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
-| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
-| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
-| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
 

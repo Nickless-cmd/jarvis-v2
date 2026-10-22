@@ -664,6 +664,31 @@ from core.services.visible_runs_watchdog import (  # noqa: E402
 )
 
 
+def _build_visible_input_with_scope(tool_scope: str, *args, **kwargs):
+    """Byg post-tool-prompten MED runnets tool-scope sat i denne worker-traad.
+
+    Maalt 22/10-2026: ``asyncio.to_thread`` kopierer event-loopets kontekst, og
+    dér stod scopet tomt — ``set_tool_scope`` kaldes inde i pumpe-traaden, ikke
+    i loopet. Resultatet var at FOERSTE bygning i et run fik «CHAT MODE», mens
+    genbygningen 12 sek. senere fik «UDEN mode-signal»: samme run, samme
+    session, samme traad. Prompten tabte altsaa sin egen orientering midt i
+    turen, og det var den variant modellen svarede ud fra.
+
+    Scopet saettes derfor eksplicit her, praecis som ``pump_first_pass`` og
+    ``_pump_agentic`` goer det, og ryddes i ``finally`` saa executor-traaden
+    ikke baerer det videre til en senere koersel.
+    """
+    if not tool_scope:
+        return _build_visible_input(*args, **kwargs)
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    token = set_tool_scope(tool_scope)
+    try:
+        return _build_visible_input(*args, **kwargs)
+    finally:
+        reset_tool_scope(token)
+
+
 def start_visible_run(
     message: str,
     session_id: str | None = None,
@@ -1918,7 +1943,8 @@ async def _stream_visible_run(
                         # pre-result snapshot before the resolver may append
                         # role=tool in another request/thread.
                         _approval_visible_input_pre = await asyncio.to_thread(
-                            _build_visible_input,
+                            _build_visible_input_with_scope,
+                            tool_scope or "",
                             run.user_message,
                             session_id=run.session_id,
                             provider=run.provider,
@@ -1941,7 +1967,8 @@ async def _stream_visible_run(
                 # the five-second heartbeat while that worker is active.
                 if _approval_visible_input_pre is None:
                     _bvi_task = asyncio.ensure_future(asyncio.to_thread(
-                        _build_visible_input,
+                        _build_visible_input_with_scope,
+                        tool_scope or "",
                         run.user_message,
                         session_id=run.session_id,
                         provider=run.provider,

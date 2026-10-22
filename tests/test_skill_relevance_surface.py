@@ -82,6 +82,13 @@ def test_staerkt_match_markeres_som_primaert_format(monkeypatch):
     assert "primære" in ud
 
 
+def test_fravalgt_skill_er_intern_routing_ikke_brugertekst(monkeypatch):
+    _stub(monkeypatch, _traef(("prompt-optimizer", S._PRIMARY_THRESHOLD + 0.01)))
+    ud = S.relevant_skills_section("hvorfor siger din prompt noget andet?")
+    assert "må ikke omtales i det brugervendte svar" in ud
+    assert "skriv kort hvorfor i dit svar" not in ud
+
+
 def test_svagt_match_praesenteres_som_tilbud(monkeypatch):
     _stub(monkeypatch, _traef(("code-review", S._PRIMARY_THRESHOLD - 0.05)))
     ud = S.relevant_skills_section("kig lige på den her funktion for mig")

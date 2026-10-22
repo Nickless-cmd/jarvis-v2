@@ -58,7 +58,7 @@ SAFETY_FLOOR: tuple[str, ...] = (
     # Selvindsigt
     "read_self_state", "read_mood", "read_self_docs", "read_chronicles",
     # Hukommelse
-    "search_memory", "recall_memories", "memory_upsert_section",
+    "recall", "search_memory", "recall_memories", "memory_upsert_section",
     "memory_check_duplicate", "recall_before_act",
     # Filer
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",

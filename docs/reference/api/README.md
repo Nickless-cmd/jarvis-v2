@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17388 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17394 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -58,8 +58,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17388 functions/
 - [`core.services.26`](core.services.26.md) — `silence_listener` … `task_worker`
 - [`core.services.27`](core.services.27.md) — `taste_profile` … `tool_pattern_miner`
 - [`core.services.28`](core.services.28.md) — `tool_result_aging` … `visible_first_pass_text`
-- [`core.services.29`](core.services.29.md) — `visible_followup` … `visible_runs_watchdog`
-- [`core.services.30`](core.services.30.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `visible_followup` … `visible_runs_sse_v2`
+- [`core.services.30`](core.services.30.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

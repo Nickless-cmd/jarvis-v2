@@ -129,6 +129,17 @@ _Bounded visible prompt for a member's own chat session._
 | function | `_iso_dt` | `(value)` | ISO-tidsstempel fra chat_messages → aware datetime. None = ukendt. | [src](../../../core/services/visible_member_prompt.py#L18) |
 | function | `build_member_prompt` | `(*, user_id, session_id, user_message=…)` | — | [src](../../../core/services/visible_member_prompt.py#L30) |
 
+## `core/services/visible_memory_grounding.py`
+_Bounded, current-source grounding for explicit memory questions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `needs_memory_grounding` | `(message)` | Return true only when the user is clearly invoking remembered context. | [src](../../../core/services/visible_memory_grounding.py#L47) |
+| function | `_search_current_workspace` | `(query, *, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L57) |
+| function | `_bounded_search` | `(query, *, limit, timeout_s, search_fn)` | Run the potentially embedding-backed lookup without stalling chat. | [src](../../../core/services/visible_memory_grounding.py#L63) |
+| function | `_clip` | `(value, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L86) |
+| function | `ground_memory_question` | `(message, *, limit=…, timeout_s=…, search_fn=…)` | Append bounded current-workspace evidence to an explicit memory query. | [src](../../../core/services/visible_memory_grounding.py#L91) |
+
 ## `core/services/visible_model.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -584,12 +595,4 @@ _Translator: legacy SSE-events → Anthropic-style v2-protokol._
 | function | `_run_still_active` | `(run_id)` | True hvis dette run stadig kører server-side. Fail-safe: antag AKTIVT ved fejl, | [src](../../../core/services/visible_runs_sse_v2.py#L276) |
 | function | `_laes_tempo` | `(run_id, output_tokens)` | TTFT og tok/s for dette run. Tomt dict ved enhver fejl. | [src](../../../core/services/visible_runs_sse_v2.py#L304) |
 | function | `translate_to_v2` | `(legacy_iter, *, run_id=…, model=…, provider=…, lane=…, session_id=…, ping_interval_s=…)` | Konverter legacy SSE-stream til Anthropic-style v2 protokol. | [src](../../../core/services/visible_runs_sse_v2.py#L319) |
-
-## `core/services/visible_runs_watchdog.py`
-_Agentic-round watchdog — hvornår skal en runde opgives?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `effective_silence_budget_s` | `(max_silence_s, loop_lag_peak_ms)` | Tavsheds-budget justeret for hvor blokeret vores eget loop har været. | [src](../../../core/services/visible_runs_watchdog.py#L34) |
-| function | `agentic_watchdog_timeout_reason` | `(*, started_at, last_progress_at, now, max_total_s, max_silence_s, loop_lag_peak_ms=…)` | Returnér watchdog-timeout-grunden, eller None hvis runden må fortsætte. | [src](../../../core/services/visible_runs_watchdog.py#L47) |
 

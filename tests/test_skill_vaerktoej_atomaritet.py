@@ -429,7 +429,8 @@ def test_et_staerkt_match_er_en_INSTRUKS(monkeypatch):
     ud = s.relevant_skills_section("lav et regneark over noget")
     assert "STÆRKT match" in ud
     assert "Kald skill_invoke" in ud
-    assert "skriv kort hvorfor" in ud, "et fravalg skal begrundes"
+    assert "må ikke omtales i det brugervendte svar" in ud
+    assert "skriv kort hvorfor" not in ud
     assert "lad være" not in ud, "et staerkt match maa ikke lyde som et tilbud"
 
 

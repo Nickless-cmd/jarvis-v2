@@ -162,6 +162,18 @@ def test_hele_sikkerhedsgulvet_naar_arrayet():
     assert not mangler, f"sikkerhedsgulvet naar ikke arrayet: {sorted(mangler)}"
 
 
+def test_canonical_recall_overlever_visible_cap():
+    from core.tools.simple_tools import get_tool_definitions
+
+    valgt = {
+        (d.get("function") or d).get("name")
+        for d in ctp.select_tools_for_visible(
+            get_tool_definitions(), user_message="hvor arbejder jeg?", session_id=None,
+        )
+    }
+    assert "recall" in valgt
+
+
 def test_gulvet_navngiver_kun_vaerktoejer_der_FINDES():
     """`propose_git_commit` stod i gulvet uden at findes i kataloget. Et navn
     ingen kan kalde er ikke et sikkerhedsgulv — det er en stavefejl med

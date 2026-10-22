@@ -881,7 +881,7 @@ Generated from source. 9154/17391 functions/methods documented (52%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L279)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
-- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L359)
+- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L383)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L223)
 - `core/services/behavioral_decisions.py` :: `change_status` (L236)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L97)

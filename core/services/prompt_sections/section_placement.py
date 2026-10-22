@@ -46,10 +46,28 @@ from collections.abc import Mapping, MutableSequence
 #: sektionen tilbage i præfikset i stilhed. Det er præcis den fejlform der
 #: kostede tre flytninger 30/9-2026. `test_praefiks_uden_levende_tal.py` er
 #: vagten mod det.
-PRAEFIKS_SEKTIONER: tuple[str, ...] = (
-    # Først: HVILKET rum jeg er i. Alt nedenfor giver kun mening oven på den
-    # orientering, og rækkefølgen her ER rækkefølgen i præfikset.
+#: Sektioner der lægges FORAN alt andet — også foran de statiske
+#: workspace-filer (SOUL/IDENTITY/USER/QUICK_FACTS), som allerede ligger i
+#: ``parts`` når `placer_sektioner` kaldes.
+#:
+#: Grunden er målt 22/10-2026: `mode_orientation` stod først i
+#: `PRAEFIKS_SEKTIONER`, men de statiske filer samles FØR budget-sektionerne,
+#: så orienteringen landede på tegn 56.024 af 57.407 — **97,6 % inde**, som det
+#: sidste i præfikset. Den var cache-korrekt placeret og læstes reelt set sidst.
+#: En orientering der siger «hvilket rum er du i» har kun værdi hvis den kommer
+#: før det den orienterer om.
+#:
+#: Prisen er en engangs-invalidering af præfikset for alle sessioner. Derefter
+#: er den gratis: mode er stabilt pr. session, så den ændrer sig kun ved
+#: mode-skift — samme afvejning som `USER.md` (se modulets docstring).
+FORREST_SEKTIONER: tuple[str, ...] = (
+    # HVILKET rum jeg er i. Alt nedenfor — identitet, regler, kapabiliteter —
+    # giver kun mening oven på den orientering.
     "mode_orientation",
+)
+
+#: Sektioner der bliver i det cachede præfiks.
+PRAEFIKS_SEKTIONER: tuple[str, ...] = (
     "capability_truth",
     "output_discipline",
     "cognitive_frame",
@@ -95,6 +113,15 @@ def placer_sektioner(
     blev cappet. Gav man halen det uklippede indhold, forsvandt loftet i
     stilhed, uden at noget fejlede.
     """
+    for navn in FORREST_SEKTIONER:
+        indhold = selected.get(navn)
+        if indhold:
+            # ``parts`` er allerede fyldt med de statiske workspace-filer når
+            # denne funktion kaldes — se FORREST_SEKTIONER. Indsæt derfor
+            # forrest, i liste-rækkefølge, så orienteringen er det allerførste
+            # modellen læser.
+            parts.insert(0, indhold)
+            derived_inputs.insert(0, labels.get(navn, navn))
     for navn in PRAEFIKS_SEKTIONER:
         indhold = selected.get(navn)
         if indhold:

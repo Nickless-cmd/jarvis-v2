@@ -524,6 +524,15 @@ def build_visible_stable_prefix(
     workspace_dir = ensure_default_workspace(name=name)
     parts: list[str] = []
 
+    # HVILKET rum prompten bygges i — SKAL stå først, og SKAL være identisk med
+    # live-stien (`build_visible_chat_prompt_assembly`). Målt 22/10-2026:
+    # uden den her divergerer warmer-prefixet fra live ved FØRSTE tegn, og så
+    # rammer en forvarmet cache aldrig den tur den skulle varme op til.
+    # `test_warmer_prefix_is_byte_identical_prefix_of_live` er vagten.
+    _mode_orientation = _visible_mode_orientation_instruction(compact=compact)
+    if _mode_orientation:
+        parts.append(_mode_orientation)
+
     lane = "local" if compact else "visible"
     parts.append(_lane_identity_clause(lane))
 

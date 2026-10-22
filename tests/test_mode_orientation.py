@@ -119,13 +119,18 @@ def test_profilerne_kraever_sektionen():
         assert sb.max_chars >= 400, f"{profil}: for lidt plads til sektionen"
 
 
-def test_placeringen_er_praefiks_og_foerst():
-    assert "mode_orientation" in PRAEFIKS_SEKTIONER
+def test_placeringen_er_forrest_og_praefiks():
+    from core.services.prompt_sections.section_placement import FORREST_SEKTIONER
+
+    assert "mode_orientation" in FORREST_SEKTIONER
     assert "mode_orientation" not in HALE_SEKTIONER
-    assert PRAEFIKS_SEKTIONER[0] == "mode_orientation", (
-        "orienteringen skal stå først — står den sent, drukner den i telemetri"
+    assert "mode_orientation" not in PRAEFIKS_SEKTIONER, (
+        "den skal ligge i FORREST, ikke PRAEFIKS — ellers lander den EFTER "
+        "SOUL/IDENTITY/USER, som allerede ligger i parts (målt 97,6 % inde)"
     )
-    parts: list[str] = []
+    # ``parts`` er IKKE tom når funktionen kaldes: de statiske workspace-filer
+    # ligger der allerede. Det er hele grunden til at FORREST findes.
+    parts: list[str] = ["SOUL", "IDENTITY"]
     hale: list[str] = []
     placer_sektioner(
         selected={"mode_orientation": "MODE", "capability_truth": "CAP"},
@@ -134,7 +139,9 @@ def test_placeringen_er_praefiks_og_foerst():
         dyn_tail=hale,
         derived_inputs=[],
     )
-    assert parts == ["MODE", "CAP"]
+    assert parts == ["MODE", "SOUL", "IDENTITY", "CAP"], (
+        "orienteringen skal stå FORAN de statiske filer"
+    )
     assert hale == []
 
 
@@ -153,3 +160,57 @@ def test_ingen_levende_tal_i_sektionen():
 def test_sektionen_er_ikke_tom_og_under_loftet(scope):
     text = _section(scope)
     assert 100 < len(text) < 900, f"scope={scope!r} gav {len(text)} tegn"
+
+
+def test_warmeren_bygger_samme_orientering_som_live():
+    """REGRESSIONSVAGT (22/10-2026).
+
+    Prompten indledes nu med en mode-orientering. Warmeren bygger sit eget
+    præfiks ad en ANDEN funktion (`build_visible_stable_prefix`), så uden
+    orienteringen dér divergerer varmet og live cache fra FØRSTE tegn — og den
+    varmede cache bliver aldrig ramt. Det er samme fejlform som 22. juni, hvor
+    ærligheds-reglen kun stod i live-stien.
+
+    Testen låser begge halvdele: at orienteringen ER i warmer-præfikset, og at
+    den er byte-identisk med live-prefikset i samme mode.
+    """
+    from core.services.prompt_contract import (
+        DYNAMIC_TAIL_SENTINEL,
+        build_visible_chat_prompt_assembly,
+        build_visible_stable_prefix,
+    )
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    for scope in ("chat", "code"):
+        token = set_tool_scope(scope)
+        try:
+            warm = build_visible_stable_prefix(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                name="bjorn",
+                compact=False,
+            )
+            live = build_visible_chat_prompt_assembly(
+                name="bjorn",
+                user_message="hej",
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                session_id="warmer-vagt",
+            )
+            live = getattr(live, "text", None) or str(live)
+        finally:
+            reset_tool_scope(token)
+
+        assert warm, f"{scope}: warmer-prefiks er tomt"
+        # Orienteringen skal være det ALLERFØRSTE i begge — ikke bare til stede.
+        fornavn = "CHAT MODE" if scope == "chat" else "CODE MODE"
+        assert fornavn in warm[:200], (
+            f"{scope}: warmer-prefikset indledes ikke med orienteringen "
+            f"(fik {warm[:80]!r})"
+        )
+        i = live.find(DYNAMIC_TAIL_SENTINEL)
+        praefiks = live[:i] if i >= 0 else live
+        assert praefiks.startswith(warm), (
+            f"{scope}: warmer-prefikset er IKKE et byte-identisk prefix af "
+            "live-assembly — den varmede cache rammes aldrig"
+        )

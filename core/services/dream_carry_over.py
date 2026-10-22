@@ -157,6 +157,7 @@ def adopt_dream(
         "source_memories": source_memories or [],
         "status": "active",
         "presented": False,
+        "presented_in_session": "",
         "confirmed": False,
         "session_carry_count": 0,
         "confirmed_sessions": 0,
@@ -175,12 +176,45 @@ def adopt_dream(
     return dream
 
 
+def _current_session_key() -> str:
+    """Den session en præsentation hører til.
+
+    Målt 22/10-2026: `presented` var en PERMANENT boolean uden nogen session at
+    nulstille den ved. Efter første præsentation blev drømmen aldrig
+    præsentabel igen, så `mark_dream_presented` — den ENESTE kalder af
+    `_maybe_fade_old_dreams` — blev aldrig kaldt igen. Resultat: 28 aktive
+    drømme, alle `presented=True`, ingen bekræftet, carry 1–3, og arkivet
+    fastfrosset på 7. Fade-mekanikken var ikke død af en enhedsfejl; den blev
+    aldrig nået.
+
+    Nøglen er den kørende sessions id når der er en, ellers en dag-nøgle, så
+    hver ny session (eller hvert nyt døgn for autonome kald uden session) giver
+    drømmen én ny præsentation — og dermed ét nyt carry-trin mod
+    `_FADE_AFTER_SESSIONS`.
+    """
+    try:
+        from core.services.operator_channel import current_session_id
+
+        sid = str(current_session_id() or "").strip()
+        # `_default` er funktionens EGEN fallback når ingen session er bundet
+        # (målt 22/10-2026: den returnerer `_default` uden for en tur). Den må
+        # ikke bruges som nøgle — så ville alle autonome kald dele én
+        # "session" og drømmen aldrig få et nyt carry-trin.
+        if sid and sid != "_default":
+            return sid
+    except Exception as exc:
+        logger.debug("dream_carry_over: current_session_id fejlede: %s", exc)
+    return "day-" + datetime.now(UTC).strftime("%Y-%m-%d")
+
+
 def get_presentable_dream() -> dict[str, object] | None:
-    """Get the highest-confidence un-presented dream for prompt injection."""
+    """Get the highest-confidence dream not yet presented in THIS session."""
     _ensure_loaded()
+    session_key = _current_session_key()
     unpresented = [
         d for d in _ACTIVE_DREAMS
-        if not d.get("presented") and d.get("status") == "active"
+        if d.get("status") == "active"
+        and str(d.get("presented_in_session") or "") != session_key
     ]
     if not unpresented:
         return None
@@ -189,11 +223,18 @@ def get_presentable_dream() -> dict[str, object] | None:
 
 
 def mark_dream_presented(dream_id: str) -> None:
-    """Mark a dream as presented in the current session; track carry depth."""
+    """Mark a dream as presented in the CURRENT session; track carry depth.
+
+    `session_carry_count` tæller nu reelt sessioner (ikke processer): den
+    vokser én gang pr. session, fordi `get_presentable_dream` først udelukker
+    drømmen når `presented_in_session` matcher den aktuelle session.
+    """
     _ensure_loaded()
+    session_key = _current_session_key()
     for d in _ACTIVE_DREAMS:
         if d["dream_id"] == dream_id:
             d["presented"] = True
+            d["presented_in_session"] = session_key
             d["session_carry_count"] = int(d.get("session_carry_count") or 0) + 1
             d["updated_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     _maybe_fade_old_dreams()

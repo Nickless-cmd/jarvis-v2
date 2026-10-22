@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9147/17384 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9148/17385 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9147/17384 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6097 | 11817 | 51% |
+| `core.services` | 6098 | 11818 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1196,7 +1196,7 @@ Generated from source. 9147/17384 functions/methods documented (52%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L291)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L332)
 - `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
 - `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)

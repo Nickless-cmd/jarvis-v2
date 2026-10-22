@@ -51,14 +51,16 @@ _Security-headers + let-vægts rate-limiting middleware (spec §20)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_should_redirect_to_https` | `(*, scheme, x_forwarded_proto, client, path)` | Ren beslutning: skal denne request 301'es til HTTPS? (§20.1) | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L35) |
-| class | `HttpsRedirectMiddleware` | `` | HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn). | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L49) |
-| method | `HttpsRedirectMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L57) |
-| class | `SecurityHeadersMiddleware` | `` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L69) |
-| method | `SecurityHeadersMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L70) |
-| function | `cors_allowed_origins` | `()` | CORS-origins fra env (§20.3). `JARVISX_CORS_ORIGINS` = komma-sepereret | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L79) |
-| function | `_rate_limit_config` | `()` | (enabled, max_requests, window_seconds) fra env. Default FRA. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L89) |
-| class | `SimpleRateLimitMiddleware` | `` | In-memory per-IP sliding-window rate limit. FRA medmindre env slår den til. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L103) |
-| method | `SimpleRateLimitMiddleware.__init__` | `(self, app)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L106) |
-| method | `SimpleRateLimitMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L110) |
+| function | `_should_redirect_to_https` | `(*, scheme, x_forwarded_proto, client, path)` | Ren beslutning: skal denne request 301'es til HTTPS? (§20.1) | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L42) |
+| class | `HttpsRedirectMiddleware` | `` | HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn). | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L56) |
+| method | `HttpsRedirectMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L64) |
+| class | `SecurityHeadersMiddleware` | `` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L76) |
+| method | `SecurityHeadersMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L77) |
+| function | `cors_allowed_origins` | `()` | CORS-origins fra env (§20.3). `JARVISX_CORS_ORIGINS` = komma-sepereret | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L86) |
+| function | `_rate_limit_config` | `()` | (enabled, max_requests, window_seconds) fra env. Default TIL. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L96) |
+| function | `_effektiv_klient_ip` | `(request)` | Den IP der skal tælles på — ikke den socket uvicorn ser. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L116) |
+| function | `_er_lokal_adresse` | `(ip)` | Loopback/privat/link-local = husets egne klienter. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L142) |
+| class | `SimpleRateLimitMiddleware` | `` | In-memory per-IP sliding-window rate limit. TIL som standard. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L156) |
+| method | `SimpleRateLimitMiddleware.__init__` | `(self, app)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L159) |
+| method | `SimpleRateLimitMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L163) |
 

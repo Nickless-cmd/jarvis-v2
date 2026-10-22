@@ -1,13 +1,13 @@
 # Docstring coverage
 
-Generated from source. 9143/17380 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9145/17382 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
 | Package | Documented | Functions | % |
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
-| `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
+| `apps.api.jarvis_api.middleware` | 12 | 23 | 52% |
 | `apps.api.jarvis_api.routes` | 700 | 970 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
@@ -49,9 +49,9 @@ Generated from source. 9143/17380 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
 - `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L282)
-- `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
-- `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
-- `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
+- `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L64)
+- `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L77)
+- `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L163)
 - `apps/api/jarvis_api/routes/agent_approvals.py` :: `decide` (L66)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `acknowledge` (L166)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `agent` (L103)

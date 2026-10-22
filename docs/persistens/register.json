@@ -370,6 +370,11 @@
       "ejer": "core/services/besked_run_kobling.py",
       "beskrivelse": "Hvilket run der skrev en given assistent-besked (message_id -> run_id). Bundet til 512 poster, aeldst falder ud. Deles mellem jarvis-api og jarvis-runtime, fordi autonome runs persisteres i den ene og snapshottet bygges i den anden. Klienten bruger den til at droppe sin bro-kopi praecist i stedet for at sammenligne prosa serveren selv har skrevet om.",
       "registreret": "2026-10-07"
+    },
+    "chat_conversation_rules": {
+      "ejer": "core/services/chat_conversation_rules.py",
+      "beskrivelse": "Live killswitch for samtale-reglerne i chat mode — {\"enabled\": bool} laeses ved hver prompt-build, saa reglerne kan slaaes fra uden genstart.",
+      "registreret": "2026-10-22"
     }
   }
 }

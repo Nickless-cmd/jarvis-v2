@@ -4374,6 +4374,21 @@ def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
     if compact:
         # De fire der bærer mest pr. tegn: rækkefølgen, længden, krogen, ærligheden.
         lines = [lines[0], lines[1], lines[2], lines[4], lines[7]]
+    # Samtale-reglerne med LIVE killswitch (22/10-2026) — se
+    # core/services/chat_conversation_rules.py. De hænges på TONEN og ikke på
+    # prefixet, fordi dette er det eneste sted warmer-prefixet og
+    # live-assembly deler både position og scope-gate. Målt 22/10: indsat i
+    # `build_visible_stable_prefix` alene brød
+    # `test_warmer_prefix_is_byte_identical_prefix_of_live` ved tegn 242 —
+    # live-stien lægger identitets-filerne netop der, så cachen divergerede.
+    try:
+        from core.services.chat_conversation_rules import section as _samtale_regler
+    except Exception:  # reglerne er valgfrie — tonen skal bygges uden dem
+        _samtale_regler = None
+    _sr = _samtale_regler(compact=compact) if _samtale_regler else None
+    if _sr:
+        lines.append("")
+        lines.append(_sr)
     return "\n".join(lines)
 
 

@@ -385,7 +385,7 @@ Generated from source. 9145/17382 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
 - `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L680)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L696)
 - `core/runtime/db_agent_council.py` :: `create` (L62)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L84)

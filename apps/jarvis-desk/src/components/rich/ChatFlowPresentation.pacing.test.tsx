@@ -225,6 +225,14 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     // den gjorde skaermen tom selv naar begge linjer var monteret.
     const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
     expect(ydre).toHaveAttribute('data-aaben', 'true')
+    // MEN hovedet skal folde ved svarets start — ikke vente paa pacen.
+    // Foerste udgave bandt fold og ramme til SAMME gate, saa hovedet blev
+    // staaende til pacen var faerdig (Bjørn 22/10-2026, tredje runde: «nu
+    // folder den foerst ved slutten af pacen, det er ikk meningen»). De to
+    // skal have hver sin gate: rammen foelger pacen, foldet foelger svaret.
+    const hoved = view.container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toBeInTheDocument()
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('lader korte synteser passere uden at blinke linjen', () => {

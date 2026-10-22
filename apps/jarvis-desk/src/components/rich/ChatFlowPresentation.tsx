@@ -257,13 +257,19 @@ export function ChatFlowPresentation({
   // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
   // Bjørn selv har foldet. `null` betyder «følg fasen».
   //
-  // Tredje gate, målt 22/10-2026: `aaben` var `streaming && !finalAnswerStarted`,
-  // så den ydre ramme kollapsede til `0fr` i PRÆCIS det øjeblik slutsvaret
-  // begyndte — og så var det ligegyldigt at `visArbejdslinje` holdt gruppen
-  // monteret. Skærmen blev tom, fordi højden blev nul. Rammen skal derfor
-  // blive åben så længe pacen indhenter, præcis som rundelinjen.
+  // Tredje gate, målt 22/10-2026: den ydre ramme kollapsede til `0fr` i
+  // PRÆCIS det øjeblik slutsvaret begyndte — og så var det ligegyldigt at
+  // `visArbejdslinje` holdt gruppen monteret. Skærmen blev tom, fordi højden
+  // blev nul. Rammen skal derfor blive åben så længe pacen indhenter.
+  //
+  // RETTELSE 22/10-2026, tredje runde (Bjørn): jeg bandt først hovedets fold
+  // til den samme gate, så hovedet blev stående til pacen var færdig —
+  // «nu folder den først ved slutten af pacen, det er ikk meningen». Fold og
+  // ramme er TO ting og skal have hver sin gate: hovedet følger svarets
+  // start (som før), rammen følger pacen. Ellers venter foldet på pacen.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? ((streaming && !finalAnswerStarted) || pacingVindue)
+  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
+  const rammeAaben = aaben || pacingVindue
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
@@ -305,8 +311,8 @@ export function ChatFlowPresentation({
               glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
               Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
               som kun Chromium har). */}
-          <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
-            <div className="chat-flow-gruppe" aria-hidden={!aaben}>
+          <div className="chat-flow-gruppe-ydre" data-aaben={rammeAaben ? 'true' : 'false'}>
+            <div className="chat-flow-gruppe" aria-hidden={!rammeAaben}>
             {visArbejdslinje && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"

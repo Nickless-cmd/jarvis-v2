@@ -102,3 +102,77 @@ def test_ikke_leveret_giver_false(monkeypatch):
         lambda *a, **kw: {"delivered": False, "channel": "queued"})
 
     assert alarm_ud.send_alert(titel="Test", tekst="x") is False
+
+
+# ── Ærlighed om levering (målt 20/10-2026, fixet 22/10-2026) ─────────────────
+# `send_alert` returnerede True for en tidskritisk medicin-påmindelse mens
+# ntfy-cachen havde 0 poster: beskeden var havnet i webchat-FEEDEN, og
+# `delivered=True` betød blot «en kanal accepterede den». For en alarm der skal
+# vække nogen om natten er det en løgn — feeden kvitterer ikke.
+#
+# `require_push=True` kræver derfor en kanal der bekræftet når telefonen.
+# MUTATION: fjern kanal-tjekket i `send_alert_resultat` → begge tests fejler.
+
+
+def _router_svar(monkeypatch, svar):
+    monkeypatch.setattr(
+        "core.identity.owner_resolver.owner_user_id", lambda: "bjorn-1", raising=False)
+    monkeypatch.setattr(
+        "core.services.notification_router.route_proactive_notification",
+        lambda *a, **kw: svar)
+
+
+def test_require_push_afviser_webchat_feeden(monkeypatch):
+    """Feed-levering er IKKE en push — den må ikke tælle som leveret."""
+    _router_svar(monkeypatch, {"delivered": True, "channel": "auto"})
+
+    assert alarm_ud.send_alert(titel="Test", tekst="x", require_push=True) is False
+
+
+def test_require_push_afviser_desktop_koeen(monkeypatch):
+    """Desktop-køen skriver til feeden; ingen telefon kvitterer."""
+    _router_svar(monkeypatch, {"delivered": True, "channel": "desktop"})
+
+    assert alarm_ud.send_alert(titel="Test", tekst="x", require_push=True) is False
+
+
+def test_require_push_accepterer_mobile(monkeypatch):
+    """mobile/push/ntfy er de kanaler der faktisk når telefonen."""
+    _router_svar(monkeypatch, {"delivered": True, "channel": "mobile"})
+
+    assert alarm_ud.send_alert(titel="Test", tekst="x", require_push=True) is True
+
+
+def test_require_push_accepterer_ntfy(monkeypatch):
+    _router_svar(monkeypatch, {"delivered": True, "channel": "ntfy"})
+
+    assert alarm_ud.send_alert(titel="Test", tekst="x", require_push=True) is True
+
+
+def test_uden_require_push_er_feed_levering_stadig_sand(monkeypatch):
+    """Bagudkompatibilitet: 16 kaldere læser bool, og en feed-række ER levering
+    for dem. Kontrakten må ikke ændre sig under dem."""
+    _router_svar(monkeypatch, {"delivered": True, "channel": "auto"})
+
+    assert alarm_ud.send_alert(titel="Test", tekst="x") is True
+
+
+def test_resultatet_navngiver_kanalen_og_siger_om_telefonen_blev_naaet(monkeypatch):
+    """Den ærlige form: hvad skete der, ikke bare om noget skete."""
+    _router_svar(monkeypatch, {"delivered": True, "channel": "auto"})
+
+    r = alarm_ud.send_alert_resultat(titel="Test", tekst="x")
+
+    assert r["kanal"] == "auto"
+    assert r["naaede_telefonen"] is False
+    assert r["leveret"] is True
+    assert "auto" in r["grund"]
+
+
+def test_resultatet_siger_sandt_naar_telefonen_blev_naaet(monkeypatch):
+    _router_svar(monkeypatch, {"delivered": True, "channel": "mobile"})
+
+    r = alarm_ud.send_alert_resultat(titel="Test", tekst="x")
+
+    assert r["naaede_telefonen"] is True
+    assert r["kanal"] == "mobile"

@@ -522,7 +522,8 @@ _Én vej ud for driftsalarmer — gennem routeren, ikke direkte til telefonen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `send_alert` | `(*, titel, tekst, slags=…, importance=…, session_id=…)` | Send en driftsalarm gennem routeren. Returnerer True hvis den blev leveret. | [src](../../../core/services/alarm_ud.py#L42) |
+| function | `send_alert_resultat` | `(*, titel, tekst, slags=…, importance=…, session_id=…, require_push=…)` | Send en driftsalarm og sig hvad der FAKTISK skete. | [src](../../../core/services/alarm_ud.py#L54) |
+| function | `send_alert` | `(*, titel, tekst, slags=…, importance=…, session_id=…, require_push=…)` | Send en driftsalarm gennem routeren. Returnerer True hvis den blev leveret. | [src](../../../core/services/alarm_ud.py#L123) |
 
 ## `core/services/ambient_presence.py`
 _Ambient presence — Jarvis' egen tilstand, synlig for ham selv._

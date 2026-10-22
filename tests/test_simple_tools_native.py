@@ -82,3 +82,43 @@ def test_internal_api_rejects_bad_methods():
     result = _exec_internal_api({"method": "DELETE", "path": "/mc/experiments"})
     assert result.get("status") == "error"
     assert "Unsupported method" in result.get("error", "")
+
+
+# ── send_ntfy må ikke kalde en feed-række «leveret til din enhed» ─────────────
+# Målt 20/10-2026 (QUICK_FACTS): værktøjet svarede «Beskeden er leveret til din
+# enhed», fordi `send_alert` returnerede True for en række i webchat-feeden.
+# ntfy-cachen havde nul poster. Fixet 22/10-2026: svaret navngiver kanalen.
+#
+# MUTATION: skift tilbage til `if ok:` på `send_alert` → test 1 fejler.
+
+
+def test_send_ntfy_navngiver_kanalen_naar_telefonen_ikke_blev_naaet():
+    from core.tools.simple_tools_native import _exec_send_ntfy
+    from core.services import alarm_ud
+
+    with patch.object(alarm_ud, "send_alert_resultat", return_value={
+        "leveret": True, "kanal": "auto", "naaede_telefonen": False,
+        "grund": "leveret til 'auto' — en flade der ikke kvitterer",
+    }):
+        r = _exec_send_ntfy({"message": "medicin", "title": "Test"})
+
+    assert r["status"] == "ok"
+    tekst = r["text"]
+    assert "leveret til din enhed" not in tekst.lower(), (
+        "en feed-række er ikke telefonen — svaret må ikke påstå det")
+    assert "auto" in tekst
+    assert "IKKE" in tekst
+
+
+def test_send_ntfy_siger_leveret_naar_telefonen_blev_naaet():
+    from core.tools.simple_tools_native import _exec_send_ntfy
+    from core.services import alarm_ud
+
+    with patch.object(alarm_ud, "send_alert_resultat", return_value={
+        "leveret": True, "kanal": "mobile", "naaede_telefonen": True,
+        "grund": "leveret til telefonen via 'mobile'",
+    }):
+        r = _exec_send_ntfy({"message": "medicin", "title": "Test"})
+
+    assert r["status"] == "ok"
+    assert "leveret til din enhed" in r["text"].lower()

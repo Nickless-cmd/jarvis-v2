@@ -198,11 +198,13 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     expect(syntese).not.toHaveAttribute('data-pacing-skjult')
   })
 
-  it('beholder begge linjer i pacing-vinduet hvor aktiv er faldet', () => {
-    // `aktiv` kræver `streaming && !finalAnswerStarted`. Naar slutsvaret
-    // begynder, bliver den falsk — og foerste udgave rev hele
-    // `chat-flow-activity` ned, saa syntese OG runde forsvandt samtidig mens
-    // pacen rullede (Bjørn 22/10-2026). Gaten skal baere begge faser.
+  it('folger code mode: gruppen lukkes i samme frame som hovedet folder', () => {
+    // Bjørn 22/10-2026, fjerde runde: «ja gør som i code mode.. det virker».
+    //
+    // Code mode (`RaekkeTranskript.tsx:449/469`) har ÉN gate: `aaben` følger
+    // svarets start, og gruppen skjules i samme frame. Ingen `rammeAaben`, der
+    // holder rammen åben indtil pacen er færdig — det var netop den der fik
+    // foldet til at se ud som om det ventede på pacen.
     //
     // Syntesen er en tekstblok med `phase: 'commentary'` — den bliver i
     // `workBlocks` efter `finalAnswerStarted`. En blok uden phase bliver
@@ -215,24 +217,16 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
         streaming status="working" finalAnswerStarted runId="run-vindue" />,
     )
     frame()
-    // Forudsætning: pacen er ikke i mål, saa vi ER i pacing-vinduet.
-    expect(answerText(view.container).length).toBeLessThan(LANG.length / 4)
-    const gruppe = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
-    expect(gruppe).toBeInTheDocument()
-    expect(view.container.querySelector('[data-testid="chat-flow-live-synthesis"]')).toBeInTheDocument()
-    expect(view.container.querySelector('[data-testid="chat-flow-round"]')).toBeInTheDocument()
-    // Den ydre ramme maa ikke kollapse til 0fr: den var den TREDJE gate, og
-    // den gjorde skaermen tom selv naar begge linjer var monteret.
-    const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
-    expect(ydre).toHaveAttribute('data-aaben', 'true')
-    // MEN hovedet skal folde ved svarets start — ikke vente paa pacen.
-    // Foerste udgave bandt fold og ramme til SAMME gate, saa hovedet blev
-    // staaende til pacen var faerdig (Bjørn 22/10-2026, tredje runde: «nu
-    // folder den foerst ved slutten af pacen, det er ikk meningen»). De to
-    // skal have hver sin gate: rammen foelger pacen, foldet foelger svaret.
+    // Hovedet folder ved svarets start — uafhaengigt af hvor pacen er.
     const hoved = view.container.querySelector('.rv-tur') as HTMLElement
     expect(hoved).toBeInTheDocument()
     expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    // Og rammen foelger hovedet, som i code mode. Ikke pacen.
+    const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(ydre).toHaveAttribute('data-aaben', 'false')
+    // Linjerne er ikke monteret naar gruppen er lukket (code mode:
+    // `{aaben && sektioner.map(...)}`).
+    expect(view.container.querySelector('[data-testid="chat-flow-activity"]')).not.toBeInTheDocument()
   })
 
   it('lader korte synteser passere uden at blinke linjen', () => {

@@ -240,47 +240,28 @@ export function ChatFlowPresentation({
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
   const rundeTekst = harArbejde ? (activeLine || 'Arbejder…') : null
 
-  // Arbejdslinjen skal blive STÅENDE mens pacen ruller — også efter at
-  // `aktiv` er faldet. `aktiv` kræver `streaming && !finalAnswerStarted`, så
-  // den bliver falsk i præcis det øjeblik slutsvaret begynder og pacen
-  // starter. Uden denne udvidelse rev gaten hele `chat-flow-activity` ned —
-  // syntese OG runde på én gang — og skærmen blev tom, uanset at attributten
-  // sad rigtigt på rundelinjen (Bjørn 22/10-2026, anden runde: «det dit fade
-  // har gjort er syntese linjen forsvinder/fader ud med runde linjen»).
+  // ÉN gate — samme form som code mode (`RaekkeTranskript.tsx:434/449/469`).
   //
-  // Code mode har ikke problemet, fordi `Arbejdsrunde` altid er monteret og
-  // kun får attributten. Her er containeren betinget, så betingelsen skal
-  // bære begge faser: arbejdsfasen OG det vindue hvor pacen indhenter.
-  const pacingVindue = targetSvar.length > 0 && !svarFaerdigPacet
-  const visArbejdslinje = aktiv || (pacingVindue && (activeSynthesis || rundeTekst))
-
-  // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
-  // Bjørn selv har foldet. `null` betyder «følg fasen».
+  // Bjørn 22/10-2026, fjerde runde: «ja gør som i code mode.. det virker». Jeg
+  // havde bygget fem gates (`visArbejdslinje`, `aaben`, `rammeAaben`,
+  // `arbejdeAabent`, `levendeSyntese`) for at holde linjerne synlige gennem
+  // pacing-vinduet — og hver rettelse flyttede fejlen til den næste, fordi
+  // `rammeAaben` holdt rammen åben efter at hovedet havde foldet. Resultatet
+  // var at foldet så ud som om det ventede på pacen.
   //
-  // Tredje gate, målt 22/10-2026: den ydre ramme kollapsede til `0fr` i
-  // PRÆCIS det øjeblik slutsvaret begyndte — og så var det ligegyldigt at
-  // `visArbejdslinje` holdt gruppen monteret. Skærmen blev tom, fordi højden
-  // blev nul. Rammen skal derfor blive åben så længe pacen indhenter.
-  //
-  // RETTELSE 22/10-2026, tredje runde (Bjørn): jeg bandt først hovedets fold
-  // til den samme gate, så hovedet blev stående til pacen var færdig —
-  // «nu folder den først ved slutten af pacen, det er ikk meningen». Fold og
-  // ramme er TO ting og skal have hver sin gate: hovedet følger svarets
-  // start (som før), rammen følger pacen. Ellers venter foldet på pacen.
+  // Code mode har ikke det problem, fordi der kun er ÉN gate: `aaben` følger
+  // svarets start, og gruppen skjules i samme frame som hovedet folder. Chat
+  // mode gør nu præcis det samme. Glidningen bliver stående i CSS'en, så
+  // foldet glider frem for at blinke — men det sker ved svarets start, ikke
+  // når pacen er færdig.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
-  const rammeAaben = aaben || pacingVindue
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
-  //
-  // Fjerde gate, målt 22/10-2026: da `aaben` blev holdt åben gennem
-  // pacing-vinduet, arvede `arbejdeAabent` den og viste de FULDE detaljer i
-  // stedet for de to linjer. I pacing-vinduet er det rundelinjen der skal
-  // stå — detaljerne hører til når turen er ovre og Bjørn folder ud.
-  const arbejdeAabent = pacingVindue ? aabenManuelt === true : (aktiv ? aabenManuelt === true : aaben)
+  const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
   const visArbejdsdetaljer = retainedWork.length > 0 && arbejdeAabent
 
   return (
@@ -311,9 +292,9 @@ export function ChatFlowPresentation({
               glider fra `1fr` til `0fr` (grid-rækker kan animeres i både
               Chromium og Safari; `height: auto` ville kræve `interpolate-size`,
               som kun Chromium har). */}
-          <div className="chat-flow-gruppe-ydre" data-aaben={rammeAaben ? 'true' : 'false'}>
-            <div className="chat-flow-gruppe" aria-hidden={!rammeAaben}>
-            {visArbejdslinje && !arbejdeAabent ? (
+          <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
+            <div className="chat-flow-gruppe" aria-hidden={!aaben}>
+            {aaben && harArbejde && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, tankeTekst,

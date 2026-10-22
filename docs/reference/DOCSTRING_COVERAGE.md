@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9142/17379 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9143/17380 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9142/17379 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 10 | 21 | 47% |
-| `apps.api.jarvis_api.routes` | 699 | 969 | 72% |
+| `apps.api.jarvis_api.routes` | 700 | 970 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -48,7 +48,7 @@ Generated from source. 9142/17379 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L274)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L282)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
@@ -65,9 +65,9 @@ Generated from source. 9142/17379 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
 - `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L405)
-- `apps/api/jarvis_api/routes/auth.py` :: `login` (L56)
-- `apps/api/jarvis_api/routes/auth.py` :: `register` (L34)
-- `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L46)
+- `apps/api/jarvis_api/routes/auth.py` :: `login` (L97)
+- `apps/api/jarvis_api/routes/auth.py` :: `register` (L72)
+- `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L87)
 - `apps/api/jarvis_api/routes/central_breakers.py` :: `reset_breaker` (L25)
 - `apps/api/jarvis_api/routes/central_governance.py` :: `get_governance` (L27)
 - `apps/api/jarvis_api/routes/central_governance.py` :: `set_governance` (L34)

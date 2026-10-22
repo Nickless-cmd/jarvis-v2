@@ -48,6 +48,35 @@ _DEFAULT_TAIL_WEIGHTS: dict[tuple[str, str], float] = {
     ("spørgsmål", "room entities"): 0.2,
     ("spørgsmål", "subagent completion digest"): 0.2,
     ("spørgsmål", "self mutation lineage"): 0.2,
+    # Model-pools er live-telemetri om agent- og cheap-lane-kapacitet. Den hører
+    # i maskinrummet, ikke i en samtale — målt 22/10-2026: den var den ENESTE
+    # tunge hale-sektion der stadig kom med i "samtale", fordi den manglede en
+    # vægt og derfor faldt til 1.0.
+    ("samtale", "model pools"): 0.2,
+    ("spørgsmål", "model pools"): 0.2,
+}
+
+#: Konservative standard-vægte for AWARENESS-halen — samme form som tail-tabellen.
+#:
+#: Hvorfor den findes (målt 22/10-2026): `get_weight` læste KUN runtime-kv'en.
+#: Uden en indbagt tabel faldt hver eneste sektion til 1.0, så awareness-gaten
+#: — som ellers er live — inkluderede alt. Bjørn oplevede konsekvensen 20/10:
+#: chat-svar der endte som mødenoter, fordi decision-adherence-gaten,
+#: forward-chaining-konklusionerne og de kausale diagnostik-blokke fyldte
+#: konteksten i en samtale hvor de ikke hører hjemme.
+#:
+#: Vægten er pr. (tur-type, sektion). "kode" og "opgave" er bevidst UDEN
+#: indgange: der ER maskinrummet pointen, og de skal være uændrede.
+#: Ukendte sektioner falder til 1.0 — konservativt, aldrig tavst skjult.
+_DEFAULT_WEIGHTS: dict[tuple[str, str], float] = {
+    ("samtale", "decision adherence gate"): 0.2,
+    ("samtale", "rule engine conclusions"): 0.2,
+    ("samtale", "causal alerts"): 0.2,
+    ("samtale", "causal narrative"): 0.2,
+    ("spørgsmål", "decision adherence gate"): 0.2,
+    ("spørgsmål", "rule engine conclusions"): 0.2,
+    ("spørgsmål", "causal alerts"): 0.2,
+    ("spørgsmål", "causal narrative"): 0.2,
 }
 
 # Tur-type-klassifikation (grov, deterministisk, model-fri). Rækkefølge = prioritet.
@@ -120,14 +149,21 @@ def is_tail_live_enabled() -> bool:
 
 
 def get_weight(turn_type: str, section: str) -> float:
-    """Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe."""
+    """Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe.
+
+    Runtime-kv'en vinder over den indbagte tabel, så en målt kalibrering kan
+    justere uden en deploy. Uden en indbagt tabel faldt ALT til 1.0, og så
+    kunne gaten aldrig skære noget — se `_DEFAULT_WEIGHTS`.
+    """
     try:
         w = _kv_get(_WEIGHTS_KEY, {}) or {}
         if isinstance(w, dict):
-            return float(w.get(f"{turn_type}|{section}", 1.0))
+            key = f"{turn_type}|{section}"
+            if key in w:
+                return float(w[key])
+        return float(_DEFAULT_WEIGHTS.get((str(turn_type or ""), str(section or "")), 1.0))
     except Exception:
-        pass
-    return 1.0
+        return 1.0
 
 
 def get_tail_weight(turn_type: str, section: str) -> float:

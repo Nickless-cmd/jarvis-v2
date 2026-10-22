@@ -476,19 +476,19 @@ _core/services/central_prompt_composer.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_turn_type` | `(user_message)` | Grov tur-type fra brugerbeskeden (kode/hukommelse/opgave/spørgsmål/samtale). Model-fri, self-safe. | [src](../../../core/services/central_prompt_composer.py#L63) |
-| function | `resolve_thinking_mode` | `(user_message, requested=…)` | Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også | [src](../../../core/services/central_prompt_composer.py#L80) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_composer.py#L97) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_composer.py#L106) |
-| function | `is_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L114) |
-| function | `is_tail_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L118) |
-| function | `get_weight` | `(turn_type, section)` | Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L122) |
-| function | `get_tail_weight` | `(turn_type, section)` | Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L133) |
-| function | `should_include` | `(turn_type, section, *, threshold=…)` | DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type? | [src](../../../core/services/central_prompt_composer.py#L146) |
-| function | `should_include_tail` | `(turn_type, section, *, threshold=…)` | Live gate kun for tail-anchored dynamisk kontekst. | [src](../../../core/services/central_prompt_composer.py#L170) |
-| function | `observe_composition` | `(turn_type, *, sections_total, sections_included, outcome=…, included_labels=…)` | Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun | [src](../../../core/services/central_prompt_composer.py#L191) |
-| function | `build_relevance_candidates` | `(*, min_count=…, top=…)` | Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste | [src](../../../core/services/central_prompt_composer.py#L234) |
-| function | `build_central_prompt_composer_surface` | `()` | Mission Control surface — read-only: live-status + relevans-vægte (hvad Centralen VILLE skære). | [src](../../../core/services/central_prompt_composer.py#L255) |
+| function | `classify_turn_type` | `(user_message)` | Grov tur-type fra brugerbeskeden (kode/hukommelse/opgave/spørgsmål/samtale). Model-fri, self-safe. | [src](../../../core/services/central_prompt_composer.py#L92) |
+| function | `resolve_thinking_mode` | `(user_message, requested=…)` | Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også | [src](../../../core/services/central_prompt_composer.py#L109) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_composer.py#L126) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_composer.py#L135) |
+| function | `is_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L143) |
+| function | `is_tail_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L147) |
+| function | `get_weight` | `(turn_type, section)` | Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L151) |
+| function | `get_tail_weight` | `(turn_type, section)` | Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L169) |
+| function | `should_include` | `(turn_type, section, *, threshold=…)` | DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type? | [src](../../../core/services/central_prompt_composer.py#L182) |
+| function | `should_include_tail` | `(turn_type, section, *, threshold=…)` | Live gate kun for tail-anchored dynamisk kontekst. | [src](../../../core/services/central_prompt_composer.py#L206) |
+| function | `observe_composition` | `(turn_type, *, sections_total, sections_included, outcome=…, included_labels=…)` | Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun | [src](../../../core/services/central_prompt_composer.py#L227) |
+| function | `build_relevance_candidates` | `(*, min_count=…, top=…)` | Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste | [src](../../../core/services/central_prompt_composer.py#L270) |
+| function | `build_central_prompt_composer_surface` | `()` | Mission Control surface — read-only: live-status + relevans-vægte (hvad Centralen VILLE skære). | [src](../../../core/services/central_prompt_composer.py#L291) |
 
 ## `core/services/central_prompt_explore.py`
 _core/services/central_prompt_explore.py_

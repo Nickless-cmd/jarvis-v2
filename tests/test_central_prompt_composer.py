@@ -93,3 +93,100 @@ def test_frozen_sections_not_candidates(isolated_runtime):
     cands = pc.build_relevance_candidates(min_count=20)
     # identitet må ALDRIG blive en udeladelses-kandidat
     assert not any("identity" in c["section"].lower() for c in cands)
+
+
+# ── Mode-forskel: samtalen skal ikke bære maskinrummet ──────────────────────
+# Målt 22/10-2026. Bjørn 20/10: chat-svar endte som mødenotater fordi
+# decision-adherence-gaten, forward-chaining-konklusionerne og de kausale
+# diagnostik-blokke fyldte konteksten i en samtale hvor de ikke hører hjemme.
+#
+# `get_weight` læste KUN runtime-kv'en, så uden en indbagt tabel faldt hver
+# sektion til 1.0 og gaten — som ellers ER live — kunne aldrig skære noget.
+#
+# MUTATION: fjern `_DEFAULT_WEIGHTS`-opslaget i `get_weight` → test 1 og 3 fejler.
+
+_TUNGE_AWARENESS = (
+    "decision adherence gate",
+    "rule engine conclusions",
+    "causal alerts",
+    "causal narrative",
+)
+
+
+def _live(monkeypatch):
+    """Gaten skal måles LIVE — i test-DB'en er flaget ikke sat, og så kører den
+    i shadow og inkluderer alt. Produktionen har det tændt (målt 22/10-2026)."""
+    from core.services import central_prompt_composer as c
+
+    monkeypatch.setattr(c, "is_live_enabled", lambda: True)
+    monkeypatch.setattr(c, "is_tail_live_enabled", lambda: True)
+    return c
+
+
+def test_samtalen_skærer_de_tunge_diagnostik_sektioner(monkeypatch):
+    c = _live(monkeypatch)
+
+    for label in _TUNGE_AWARENESS:
+        assert c.should_include("samtale", label) is False, (
+            f"'{label}' hører i maskinrummet, ikke i en samtale")
+
+
+def test_spoergsmaalet_skærer_dem_også(monkeypatch):
+    c = _live(monkeypatch)
+
+    for label in _TUNGE_AWARENESS:
+        assert c.should_include("spørgsmål", label) is False
+
+
+def test_kode_beholder_alt_uaendret(monkeypatch):
+    """Maskinrummet ER pointen i kode-mode. Ingen af de tunge sektioner må skæres."""
+    c = _live(monkeypatch)
+
+    for label in _TUNGE_AWARENESS:
+        assert c.should_include("kode", label) is True, (
+            f"'{label}' må ikke skæres i kode-mode")
+    for label in ("model pools", "causal patterns", "pattern counterfactuals"):
+        assert c.should_include_tail("kode", label) is True
+
+
+def test_opgave_beholder_alt_uaendret(monkeypatch):
+    c = _live(monkeypatch)
+
+    for label in _TUNGE_AWARENESS:
+        assert c.should_include("opgave", label) is True
+
+
+def test_samtalen_skærer_model_pools(monkeypatch):
+    """Model-pools var den ENESTE tunge hale-sektion der stadig kom med i samtale."""
+    c = _live(monkeypatch)
+
+    assert c.should_include_tail("samtale", "model pools") is False
+    assert c.should_include_tail("kode", "model pools") is True
+
+
+def test_frosne_sektioner_skæres_aldrig(monkeypatch):
+    """Identitet og sikkerhed er frossen kerne — gaten må ikke røre dem."""
+    from core.services import central_prompt_composer as c
+
+    for label in ("soul", "identity", "pinned identity context", "security"):
+        assert c.should_include("samtale", label) is True
+        assert c.should_include_tail("samtale", label) is True
+
+
+def test_runtime_kv_vinder_over_den_indbagte_tabel(monkeypatch):
+    """En målt kalibrering skal kunne justere uden en deploy."""
+    from core.services import central_prompt_composer as c
+
+    monkeypatch.setattr(c, "_kv_get", lambda k, d: {"samtale|decision adherence gate": 0.9})
+    assert c.get_weight("samtale", "decision adherence gate") == 0.9
+
+
+def test_shadow_mode_inkluderer_alt(monkeypatch):
+    """Er flaget slået fra, må gaten ikke skære noget — det er dens sikkerhedsnet."""
+    from core.services import central_prompt_composer as c
+
+    monkeypatch.setattr(c, "is_live_enabled", lambda: False)
+    monkeypatch.setattr(c, "is_tail_live_enabled", lambda: False)
+    for label in _TUNGE_AWARENESS:
+        assert c.should_include("samtale", label) is True
+    assert c.should_include_tail("samtale", "model pools") is True

@@ -93,7 +93,7 @@ def _read_last_fired(decision_id: str) -> Optional[str]:
     try:
         with connect() as c:
             row = c.execute(
-                "SELECT value FROM runtime_state_kv WHERE key = ?",
+                "SELECT value_json AS value FROM runtime_state_kv WHERE key = ?",
                 (f"decision_signal_last_fired:{decision_id}",),
             ).fetchone()
         if row is None:
@@ -107,7 +107,7 @@ def _read_last_fired_seq(decision_id: str) -> Optional[int]:
     try:
         with connect() as c:
             row = c.execute(
-                "SELECT value FROM runtime_state_kv WHERE key = ?",
+                "SELECT value_json AS value FROM runtime_state_kv WHERE key = ?",
                 (f"decision_signal_turn_seq:{decision_id}",),
             ).fetchone()
         if row is None or not row["value"]:
@@ -121,9 +121,9 @@ def _write_last_fired(decision_id: str, iso_ts: str) -> None:
     try:
         with connect() as c:
             c.execute(
-                "INSERT INTO runtime_state_kv(key, value, updated_at) "
+                "INSERT INTO runtime_state_kv(key, value_json, updated_at) "
                 "VALUES (?, ?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, "
+                "ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, "
                 "updated_at = excluded.updated_at",
                 (f"decision_signal_last_fired:{decision_id}", iso_ts, iso_ts),
             )
@@ -136,9 +136,9 @@ def _write_last_fired_seq(decision_id: str, seq: int, iso_ts: str) -> None:
     try:
         with connect() as c:
             c.execute(
-                "INSERT INTO runtime_state_kv(key, value, updated_at) "
+                "INSERT INTO runtime_state_kv(key, value_json, updated_at) "
                 "VALUES (?, ?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, "
+                "ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, "
                 "updated_at = excluded.updated_at",
                 (f"decision_signal_turn_seq:{decision_id}", str(seq), iso_ts),
             )

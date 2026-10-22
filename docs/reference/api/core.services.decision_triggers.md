@@ -15,6 +15,15 @@ _Trigger: fire when 3 consecutive Jarvis-backend tool calls happen_
 | function | `_is_jarvis_backend_call` | `(tool_call)` | — | [src](../../../core/services/decision_triggers/backend_unresolved.py#L44) |
 | function | `backend_unresolved_3_calls` | `(ctx)` | — | [src](../../../core/services/decision_triggers/backend_unresolved.py#L67) |
 
+## `core/services/decision_triggers/closeout.py`
+_Triggers: de øjeblikke hvor arbejde lukkes — og hvor disciplinen falder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_call_name_and_args` | `(tool_call)` | Læs navn+argumenter fra både OpenAI- og Ollama-formen. | [src](../../../core/services/decision_triggers/closeout.py#L32) |
+| function | `commit_just_made` | `(ctx)` | Fyr når der lige er lavet en git-commit i denne tur. | [src](../../../core/services/decision_triggers/closeout.py#L53) |
+| function | `closing_round_with_tools` | `(ctx)` | Fyr i sene runder hvor der stadig kaldes værktøjer. | [src](../../../core/services/decision_triggers/closeout.py#L71) |
+
 ## `core/services/decision_triggers/loop_nudge.py`
 _Trigger: fire when Jarvis has had 8 consecutive tool-only rounds._
 

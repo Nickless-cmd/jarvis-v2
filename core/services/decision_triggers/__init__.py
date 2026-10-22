@@ -5,3 +5,4 @@ simply importing the package populates the registry.
 """
 from . import loop_nudge  # noqa: F401
 from . import backend_unresolved  # noqa: F401
+from . import closeout  # noqa: F401

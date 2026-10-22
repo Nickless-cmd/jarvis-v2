@@ -64,3 +64,57 @@ def test_reasoning_replay_cappes_ved_2400():
     replayed = [m for m in out if m.get("reasoning_content")]
     assert replayed, "assistant-turnens reasoning_content skal stadig være der (API-krav)"
     assert len(replayed[0]["reasoning_content"]) <= 2400
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Absolutte tidsstempler i transskriptet (målt udækket 22/10-2026).
+#
+# Funktionen er cache-stabil med vilje: den skriver et FAST klokkeslæt, ikke en
+# relativ alder. En relativ tekst ville ændre sig hver tur og ugyldiggøre
+# DeepSeeks præfiks-cache. Det er hele grunden til at den findes, og det er
+# præcis det en test skal fastholde.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_gyldig_timestamp_prefikses_med_kobenhavnsk_klokkeslaet():
+    ud = ts._prefix_absolute_transcript_time("hej", "2026-07-15T12:00:00+00:00")
+    assert ud == "[2026-07-15 14:00] hej"
+
+
+def test_DST_er_historisk_sandt_ikke_dagens_offset():
+    """Sommer og vinter har forskelligt offset, og det skal følge INSTANTET —
+    ikke den offset der gælder når prompten bygges. Ellers ville en gammel
+    sommertur få vintertid, og tidsstemplet ville lyve om hvornår den skete.
+    """
+    sommer = ts._prefix_absolute_transcript_time("x", "2026-07-15T12:00:00+00:00")
+    vinter = ts._prefix_absolute_transcript_time("x", "2026-01-15T12:00:00+00:00")
+    assert sommer.startswith("[2026-07-15 14:00]"), sommer   # CEST = +02
+    assert vinter.startswith("[2026-01-15 13:00]"), vinter   # CET  = +01
+
+
+def test_naiv_timestamp_laeses_som_UTC():
+    """Legacy-rækker kan mangle tidszone. De må ikke fortolkes som lokal tid —
+    så ville de flytte sig med maskinens zone."""
+    assert ts._prefix_absolute_transcript_time("x", "2026-07-15T12:00:00") == (
+        "[2026-07-15 14:00] x")
+
+
+def test_tom_eller_manglende_timestamp_lader_indholdet_vaere():
+    assert ts._prefix_absolute_transcript_time("hej", None) == "hej"
+    assert ts._prefix_absolute_transcript_time("hej", "") == "hej"
+    assert ts._prefix_absolute_transcript_time("hej", "   ") == "hej"
+
+
+def test_ugyldig_timestamp_vaelter_ikke_prompten():
+    """Transskript-samling må ALDRIG fejle på dårlig legacy-metadata. En
+    exception her ville koste hele turen, ikke bare ét tidsstempel."""
+    for raa in ("i går", "2026-13-45T99:99:99", "0001-01-01T00:00:00+99:00"):
+        assert ts._prefix_absolute_transcript_time("hej", raa) == "hej", raa
+
+
+def test_prefixet_er_BYTE_STABILT_mellem_to_bygninger():
+    """Kernen i hvorfor funktionen bruger et absolut stempel: to bygninger af
+    samme besked skal give identiske bytes, ellers brister cache-præfikset."""
+    a = ts._prefix_absolute_transcript_time("samme", "2026-10-22T05:00:00+00:00")
+    b = ts._prefix_absolute_transcript_time("samme", "2026-10-22T05:00:00+00:00")
+    assert a == b

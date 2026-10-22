@@ -179,8 +179,23 @@ def rapporter_assembly(
     # flere linjer sammen. Nul-dele tages med: en del der altid er tom er lige
     # saa interessant som en der fylder. I ASSEMBLY-RAEKKEFOELGE — se modulets
     # docstring for hvorfor sortering oedelaegger signalet.
+    # Målt 22/10-2026: to builds pr. tur — én med rigtigt tool-scope, én uden —
+    # og det var UMULIGT at se af linjen hvilken der hørte til hvad. Prewarm
+    # bygger også prompts (med tomt scope, i en baggrundstråd), så uden
+    # session og tråd på linjen kan de to ikke skelnes, og jeg jagtede den
+    # forkerte i timevis. Felterne er billige og gør linjen selv-forklarende.
+    try:
+        from core.tools.tool_scoping import current_tool_scope as _cts
+
+        _scope_diag = str(_cts() or "") or "-"
+    except Exception:
+        _scope_diag = "?"
+    import threading as _th
+
     print(
-        "prompt-assembly-parts " + " ".join(
+        "prompt-assembly-parts "
+        f"scope={_scope_diag} thread={_th.current_thread().name} "
+        f"session={session_id or '-'} " + " ".join(
             f"{label_of(part)}={len(part)}" for part in parts if part
         ),
         file=sys.stderr,

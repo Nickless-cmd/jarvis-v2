@@ -43,6 +43,14 @@ class AttentionBudget:
     liveness: SectionBudget
     capability_truth: SectionBudget
     cognitive_state: SectionBudget = SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9)
+    #: Hvilket rum prompten bygges i (chat vs code). Default = slukket, så
+    #: heartbeat- og øvrige profiler er urørte; kun de to visible-profiler
+    #: tænder den. Se `_visible_mode_orientation_instruction`.
+    mode_orientation: SectionBudget = SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9)
+    #: Tonefaldet i chat mode. Default = slukket, så heartbeat- og øvrige
+    #: profiler er urørte; kun de to visible-profiler tænder den. Indholdet
+    #: er tomt uden for scope=chat, så code mode betaler intet for den.
+    chat_tone: SectionBudget = SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9)
 
 
 # Pre-defined budget profiles
@@ -62,6 +70,14 @@ BUDGET_VISIBLE_COMPACT = AttentionBudget(
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     capability_truth=SectionBudget(max_chars=700, max_items=8, must_include=True, priority=2),
     cognitive_state=SectionBudget(max_chars=250, max_items=3, must_include=False, priority=3),
+    # Orienteringen er billig (~400 tegn) og skal ikke kunne fortrænges: uden
+    # den gætter modellen på hvilket rum den er i. Prioritet 0 = først i
+    # budget-rækkefølgen. max_items=8 dækker de 4-6 linjer sektionen har.
+    mode_orientation=SectionBudget(max_chars=700, max_items=8, must_include=True, priority=0),
+    # Tonen er ~900 tegn og kun til stede i chat mode. must_include=False
+    # med vilje: i code mode er indholdet tomt, og en must_include på tom
+    # tekst ville bare fylde budgettet med ingenting.
+    chat_tone=SectionBudget(max_chars=1400, max_items=12, must_include=False, priority=1),
 )
 
 BUDGET_VISIBLE_FULL = AttentionBudget(
@@ -78,6 +94,10 @@ BUDGET_VISIBLE_FULL = AttentionBudget(
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     capability_truth=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=1),
     cognitive_state=SectionBudget(max_chars=500, max_items=6, must_include=False, priority=3),
+    # Se noten i visible_compact: must_include, prioritet 0, rigelig plads.
+    mode_orientation=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=0),
+    # Se noten i visible_compact: kun chat mode har indhold her.
+    chat_tone=SectionBudget(max_chars=1400, max_items=12, must_include=False, priority=1),
 )
 
 BUDGET_HEARTBEAT = AttentionBudget(
@@ -346,6 +366,12 @@ def select_sections_under_budget(
         "liveness": budget.liveness,
         "capability_truth": budget.capability_truth,
         "cognitive_state": budget.cognitive_state,
+        # Uden denne linje ville en sektion i `sections` blive DROPPET i
+        # stilhed: løkken itererer kun over denne dict, ikke over input.
+        "mode_orientation": budget.mode_orientation,
+        # Uden denne linje ville sektionen blive DROPPET i stilhed — samme
+        # fælde som mode_orientation blev fanget i 22/10-2026.
+        "chat_tone": budget.chat_tone,
     }
 
     # Sort by priority (lowest number = highest priority)

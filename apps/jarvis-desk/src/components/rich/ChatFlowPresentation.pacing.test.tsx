@@ -10,7 +10,7 @@
  * deterministisk og hvert step kan måles.
  */
 import { act, render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
@@ -171,5 +171,123 @@ describe('ChatFlowPresentation — rå tekst må ikke dumpe i svar-lanen', () =>
     // Den bekræftede tekst må ikke springe til sin fulde længde: svar-lanen
     // skal stadig kun vise det pacen har nået.
     expect(answerText(view.container).length).toBeLessThan(LANG.length / 2)
+  })
+})
+
+describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('fader den aktive rundelinje ud mens pacen ruller', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="run-fade" />,
+    )
+    frame()
+    const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
+    expect(linje).toBeInTheDocument()
+    // Foer taersklen: linjen staar urørt, saa en kort syntese aldrig blinker.
+    expect(linje).not.toHaveAttribute('data-pacing-skjult')
+
+    act(() => { vi.advanceTimersByTime(420) })
+    expect(linje).toHaveAttribute('data-pacing-skjult')
+    // Synteselinjen maa IKKE fade med: da begge fadede samtidig blev skaermen
+    // tom (Bjørn 22/10-2026).
+    const syntese = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    expect(syntese).not.toHaveAttribute('data-pacing-skjult')
+  })
+
+  it('folger code mode: gruppen lukkes i samme frame som hovedet folder', () => {
+    // Bjørn 22/10-2026, fjerde runde: «ja gør som i code mode.. det virker».
+    //
+    // Code mode (`RaekkeTranskript.tsx:449/469`) har ÉN gate: `aaben` følger
+    // svarets start, og gruppen skjules i samme frame. Ingen `rammeAaben`, der
+    // holder rammen åben indtil pacen er færdig — det var netop den der fik
+    // foldet til at se ud som om det ventede på pacen.
+    //
+    // Syntesen er en tekstblok med `phase: 'commentary'` — den bliver i
+    // `workBlocks` efter `finalAnswerStarted`. En blok uden phase bliver
+    // slutsvaret og kan derfor ikke bruges som syntese her (målt 22/10-2026).
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const syntese: ContentBlock = { type: 'text', text: 'Læser koden', phase: 'commentary' } as ContentBlock
+    const blokke: ContentBlock[] = [arbejde, syntese, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted runId="run-vindue" />,
+    )
+    frame()
+    // Hovedet folder ved svarets start — uafhaengigt af hvor pacen er.
+    const hoved = view.container.querySelector('.rv-tur') as HTMLElement
+    expect(hoved).toBeInTheDocument()
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+    // Og rammen foelger hovedet, som i code mode. Ikke pacen.
+    const ydre = view.container.querySelector('.chat-flow-gruppe-ydre') as HTMLElement
+    expect(ydre).toHaveAttribute('data-aaben', 'false')
+    // Linjerne er ikke monteret naar gruppen er lukket (code mode:
+    // `{aaben && sektioner.map(...)}`).
+    expect(view.container.querySelector('[data-testid="chat-flow-activity"]')).not.toBeInTheDocument()
+  })
+
+  it('lader korte synteser passere uden at blinke linjen', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: 'Kort.' }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="run-kort" />,
+    )
+    // Pacen indhenter fem tegn paa under 420 ms, saa timeren naar aldrig at fyre.
+    for (let i = 0; i < 20; i += 1) frame()
+    act(() => { vi.advanceTimersByTime(420) })
+    const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
+    expect(linje).not.toHaveAttribute('data-pacing-skjult')
+  })
+
+  it('rundelinjens ur overlever faden og nulstilles ikke', () => {
+    // Faden maa kun aendre SYNLIGHED, ikke levetid. `usePacingWorkLine` saetter
+    // en attribut — den unmounter ikke linjen — saa uret skal vaere den SAMME
+    // DOM-node efter faden, med et tal der er steget imens. Code mode har
+    // samme kontrakt: der fader `rv-arbejdsrunde` mens `RullendeUr` tikker
+    // videre (Bjørn 22/10-2026: «den skal overleve fade ind/ud og forsat
+    // tælle? det gør timeren osse i rundelinjen i code mode»).
+    //
+    // En AABEN thinking-blok er noedvendig: `useTankeSekunder` koerer kun sit
+    // interval mens en blok er aaben. Uden den staar uret stille af sig selv,
+    // og testen ville vaere groen uden at bevise noget om faden.
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+    })
+    try {
+      const tænker = { type: 'thinking', startet: Date.now() } as ContentBlock
+      const syntese = { type: 'text', text: 'Læser koden', phase: 'commentary' } as ContentBlock
+      const blokke: ContentBlock[] = [arbejde, syntese, tænker, { type: 'text', text: LANG }]
+      const view = render(
+        <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+          streaming status="working" finalAnswerStarted={false} runId="run-ur" />,
+      )
+      frame()
+      const urFoer = view.container.querySelector(
+        '[data-testid="chat-flow-round"] [role="timer"]',
+      ) as HTMLElement
+      expect(urFoer).toBeInTheDocument()
+      // `textContent` er ubrugelig her: hver ciffer-strimmel baerer alle ti
+      // cifre (0-9), saa den giver altid '0123456789s'. Den flade tekst —
+      // det der faktisk tælles — ligger i `aria-label`.
+      const tekstFoer = urFoer.getAttribute('aria-label')
+      expect(tekstFoer).toBeTruthy()
+      // 420 ms: faden fyrer. 1000 ms: urets interval tikker. Vi tager begge.
+      act(() => { vi.advanceTimersByTime(1500) })
+      const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
+      expect(linje).toHaveAttribute('data-pacing-skjult')
+      const urEfter = view.container.querySelector(
+        '[data-testid="chat-flow-round"] [role="timer"]',
+      ) as HTMLElement
+      // Samme node => faden rev ikke linjen ned og nulstillede derfor ikke uret.
+      expect(urEfter).toBe(urFoer)
+      // Og tallet er steget, saa uret levede videre gennem faden.
+      expect(urEfter.getAttribute('aria-label')).not.toBe(tekstFoer)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

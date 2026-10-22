@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9154/17394 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9160/17400 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6104 | 11826 | 51% |
-| `core.services.decision_triggers` | 0 | 3 | 0% |
+| `core.services` | 6107 | 11829 | 51% |
+| `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
@@ -842,10 +842,10 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
 - `core/services/attachment_topology_signal_tracking.py` :: `track_runtime_attachment_topology_signals_for_visible_turn` (L44)
-- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L140)
-- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L144)
-- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L151)
-- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L148)
+- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L160)
+- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L164)
+- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L171)
+- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L168)
 - `core/services/attention_contour.py` :: `build_attention_contour_surface` (L122)
 - `core/services/attention_contour.py` :: `describe_attention` (L114)
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
@@ -881,7 +881,7 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `core/services/autonomy_proposal_queue.py` :: `reject_proposal` (L279)
 - `core/services/avoidance_detector.py` :: `build_avoidance_surface` (L161)
 - `core/services/background_resume.py` :: `tracked` (L85)
-- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L359)
+- `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L383)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L223)
 - `core/services/behavioral_decisions.py` :: `change_status` (L236)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L97)
@@ -1196,7 +1196,7 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L339)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L356)
 - `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
 - `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)
@@ -1629,13 +1629,13 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3574)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3422)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3711)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3604)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3452)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3741)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4672)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4819)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2288,14 +2288,14 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6739)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6764)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6802)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6798)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6735)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6697)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6819)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6750)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6798)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6823)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6861)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6857)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6794)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6756)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6878)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6809)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
@@ -2576,7 +2576,7 @@ Generated from source. 9154/17394 functions/methods documented (52%). The list b
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `extract_tiktok_cookies` (L39)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
-- `scripts/primary_cache_warmer.py` :: `main` (L657)
+- `scripts/primary_cache_warmer.py` :: `main` (L697)
 - `scripts/prompt_dump_readable.py` :: `build` (L97)
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)

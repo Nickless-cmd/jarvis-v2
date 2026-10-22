@@ -6,6 +6,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { formaterTurTid, useTankeSekunder, useTurSekunder } from '../../lib/turTid'
+import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
@@ -163,6 +164,17 @@ export function ChatFlowPresentation({
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.
   const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
+  // KUN rundelinjen fader — synteselinjen bliver stående. Første udgave satte
+  // attributten på den fælles wrapper `chat-flow-activity`, så både syntese og
+  // runde forsvandt i samme fade og skærmen blev tom (Bjørn 22/10-2026: «det
+  // var kun runde linjen.. ikk syntese linjen»). Rundelinjen bliver i DOM'en
+  // mens pacen ruller, så tur-uret og layoutet ikke hopper, og fader ind igen
+  // når pacen er forbi. Korte synteser når ikke tærsklen (420 ms) og blinker
+  // derfor aldrig.
+  const skjulAktivRunde = usePacingWorkLine(
+    aktiv && targetSvar.length > 0 && !svarFaerdigPacet,
+    runId ?? beskedId ?? null,
+  )
   const activeLine = mode === 'calm'
     ? model.calmStatus
     : model.visibleSynthesis.at(-1)
@@ -180,6 +192,17 @@ export function ChatFlowPresentation({
     if (mode !== 'living') return null
     for (let i = model.workBlocks.length - 1; i >= 0; i--) {
       const blok = model.workBlocks[i]
+      if (blok && blok.type === 'text' && blok.text.trim()) {
+        return { tekst: blok.text.trim(), noegle: i }
+      }
+    }
+    // Femte gate, målt 22/10-2026: `model.workBlocks` er PACET. Når slutsvaret
+    // begynder, er de pacede arbejdsblokke tømt — så synteselinjen forsvandt
+    // mens rundelinjen blev. Syntesen skal blive stående gennem
+    // pacing-vinduet, så vi falder tilbage til de RÅ blokke. Kun teksten
+    // bruges til visning; paceren rører ikke denne vej.
+    for (let i = targetModel.workBlocks.length - 1; i >= 0; i--) {
+      const blok = targetModel.workBlocks[i]
       if (blok && blok.type === 'text' && blok.text.trim()) {
         return { tekst: blok.text.trim(), noegle: i }
       }
@@ -217,8 +240,20 @@ export function ChatFlowPresentation({
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
   const rundeTekst = harArbejde ? (activeLine || 'Arbejder…') : null
 
-  // Åbent mens der arbejdes, sammenklappet når turen er ovre — medmindre
-  // Bjørn selv har foldet. `null` betyder «følg fasen».
+  // ÉN gate — samme form som code mode (`RaekkeTranskript.tsx:434/449/469`).
+  //
+  // Bjørn 22/10-2026, fjerde runde: «ja gør som i code mode.. det virker». Jeg
+  // havde bygget fem gates (`visArbejdslinje`, `aaben`, `rammeAaben`,
+  // `arbejdeAabent`, `levendeSyntese`) for at holde linjerne synlige gennem
+  // pacing-vinduet — og hver rettelse flyttede fejlen til den næste, fordi
+  // `rammeAaben` holdt rammen åben efter at hovedet havde foldet. Resultatet
+  // var at foldet så ud som om det ventede på pacen.
+  //
+  // Code mode har ikke det problem, fordi der kun er ÉN gate: `aaben` følger
+  // svarets start, og gruppen skjules i samme frame som hovedet folder. Chat
+  // mode gør nu præcis det samme. Glidningen bliver stående i CSS'en, så
+  // foldet glider frem for at blinke — men det sker ved svarets start, ikke
+  // når pacen er færdig.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
@@ -259,7 +294,7 @@ export function ChatFlowPresentation({
               som kun Chromium har). */}
           <div className="chat-flow-gruppe-ydre" data-aaben={aaben ? 'true' : 'false'}>
             <div className="chat-flow-gruppe" aria-hidden={!aaben}>
-            {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
+            {aaben && harArbejde && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
                 aria-label={[activeSynthesis, tankeTekst,
@@ -271,7 +306,8 @@ export function ChatFlowPresentation({
                   </div>
                 ) : null}
                 {rundeTekst ? (
-                  <div className="chat-flow-round" data-testid="chat-flow-round">
+                  <div className="chat-flow-round" data-testid="chat-flow-round"
+                    data-pacing-skjult={skjulAktivRunde ? '' : undefined}>
                     <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
                       aria-hidden="true">
                       <Brain className="chat-flow-thinking-icon" data-testid="chat-flow-thinking-icon"

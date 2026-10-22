@@ -118,6 +118,27 @@ def check_decision_gate(
 _HARD_BLOCK_PRIORITY = 50
 _ALLE_AKTIVE = 500
 
+# Adherence-gradering (22/10-2026).
+#
+# Målt i den levende base: 116 aktive beslutninger, 12 under 40 % adherence, 36
+# aldrig målt. Gaten læste ALDRIG `adherence_score` — så en beslutning jeg bryder
+# 88 % af gangene blokerede præcis lige hårdt som en jeg holder 100 %. Værst:
+# den beslutning jeg bryder mest (0,12 — «den afsluttende tekstblok er ALTID
+# sidste handling») har prioritet 92, altså den HÅRDESTE blok. Gaten råbte højest
+# om netop det jeg ikke kunne finde ud af, og det gjorde blokeringen til støj jeg
+# lærte at køre igennem — hvilket er den modsatte af hvad en gate skal gøre.
+#
+# Graderingen vender ikke blokken: en konflikt med en lav-adherence beslutning
+# bliver SOFT (advarsel, kører) i stedet for HARD (blok). Beslutningen er stadig
+# aktiv og stadig synlig — men en forpligtelse jeg ikke kan holde som skrevet skal
+# omformuleres, ikke gennemtvinges. Det er samme bånd som `enforcement_section`
+# beskriver: «navngiv bruddet; omformulér hvis beslutningen ikke kan opfyldes som
+# skrevet».
+#
+# `None` (aldrig målt) graderes som FØR — vi straffer ikke en beslutning for at
+# mangle data. Det er de 36 «aldrig målt» der skal klassificeres, ikke gættes på.
+_LAV_ADHERENCE = 0.4
+
 
 _OVERSTYRING = re.compile(r"(?<!\w)alligevel(?!\w)", re.IGNORECASE)
 
@@ -180,6 +201,10 @@ def evaluate_decision_conflict(
     context = _build_context(tool_name, tool_args, user_message)
     conflicts: list[str] = []
     max_priority = 0
+    # Adherence for de beslutninger der FAKTISK er i konflikt — ikke for alle
+    # aktive. En lav score på en urelateret beslutning må ikke gøre en ægte
+    # konflikt blød. `None` = aldrig målt, og det graderes som før.
+    konflikt_adherence: list[float] = []
     for d in decisions:
         directive = str(d.get("directive") or "").strip()
         if not directive:
@@ -188,23 +213,43 @@ def evaluate_decision_conflict(
             decision_id = str(d.get("decision_id") or "unknown")
             conflicts.append(f"[{decision_id[:8]}] {directive[:60]}")
             max_priority = max(max_priority, int(d.get("priority") or 0))
+            _adh = d.get("adherence_score")
+            if _adh is not None:
+                try:
+                    konflikt_adherence.append(float(_adh))
+                except (TypeError, ValueError):  # ikke et tal = «aldrig målt», graderes som før
+                    pass
 
     if not conflicts:
         return "none", None
 
     severity = "hard" if max_priority >= _HARD_BLOCK_PRIORITY else "soft"
+    # Adherence-gradering: er HVER konflikt-beslutning under tærsklen, er der
+    # ingen reel forpligtelse tilbage at håndhæve — kun en der ikke holder som
+    # skrevet. Den advarer stadig, men blokerer ikke. Se `_LAV_ADHERENCE`.
+    _svag = bool(konflikt_adherence) and all(
+        a < _LAV_ADHERENCE for a in konflikt_adherence
+    )
+    if severity == "hard" and _svag:
+        severity = "soft"
     top = " | ".join(conflicts[:2])
     if severity == "hard":
         reason = (f"DECISION GATE (blok): {len(conflicts)} forpligtelse(r) i konflikt "
                   f"— {top} — Sig 'alligevel' for at gennemtvinge.")
     else:
+        _lav = (
+            f" (lav adherence {min(konflikt_adherence):.0%} — omformulér beslutningen "
+            f"hvis den ikke kan holdes som skrevet)"
+            if _svag else ""
+        )
         reason = (f"DECISION GATE (blød advarsel): tangerer {len(conflicts)} lav-prioritets-"
-                  f"forpligtelse(r) — {top}. Kører, men vær opmærksom.")
+                  f"forpligtelse(r) — {top}. Kører, men vær opmærksom.{_lav}")
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("decision_gate.conflict", {
             "tool_name": tool_name, "severity": severity,
             "conflict_count": len(conflicts), "max_priority": max_priority,
+            "lav_adherence": _svag,
         })
     except Exception:
         pass

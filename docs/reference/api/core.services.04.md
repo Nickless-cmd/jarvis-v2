@@ -30,13 +30,13 @@ _bwrap-indespærring om én bash-kommando. SLUKKET som standard._
 | function | `is_enabled` | `()` | Eksplicit tændt? Usat betyder SLUKKET — modsat central_switches' default. | [src](../../../core/services/bash_sandbox.py#L213) |
 | function | `set_enabled` | `(on)` | — | [src](../../../core/services/bash_sandbox.py#L223) |
 | function | `status` | `()` | Tilstanden — og «findes» holdes adskilt fra «kører». | [src](../../../core/services/bash_sandbox.py#L230) |
-| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L258) |
-| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L284) |
-| class | `ConfinementUnavailable` | `` | Der blev KRÆVET indespærring, og den kunne ikke leveres. | [src](../../../core/services/bash_sandbox.py#L339) |
-| class | `Enforcement` | `` | Hvad der blev bedt om, og hvad der faktisk skete. | [src](../../../core/services/bash_sandbox.py#L344) |
-| method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L355) |
-| method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L359) |
-| function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L365) |
+| function | `wrap_bwrap` | `(command, cwd, *, writable_roots=…, allow_egress=…, egen_workspace=…)` | Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed. | [src](../../../core/services/bash_sandbox.py#L258) |
+| function | `maybe_wrap` | `(command, cwd, *, writable_roots=…, allow_egress=…, egen_workspace=…)` | argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt). | [src](../../../core/services/bash_sandbox.py#L307) |
+| class | `ConfinementUnavailable` | `` | Der blev KRÆVET indespærring, og den kunne ikke leveres. | [src](../../../core/services/bash_sandbox.py#L363) |
+| class | `Enforcement` | `` | Hvad der blev bedt om, og hvad der faktisk skete. | [src](../../../core/services/bash_sandbox.py#L368) |
+| method | `Enforcement.honored` | `(self)` | Fik vi det vi bad om? | [src](../../../core/services/bash_sandbox.py#L379) |
+| method | `Enforcement.as_dict` | `(self)` | — | [src](../../../core/services/bash_sandbox.py#L383) |
+| function | `enforcement` | `(command, cwd, *, writable_roots=…, allow_egress=…, require=…, egen_workspace=…)` | Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat. | [src](../../../core/services/bash_sandbox.py#L389) |
 
 ## `core/services/behavioral_decisions.py`
 _Behavioral decisions — closing the reflection→behavior loop._

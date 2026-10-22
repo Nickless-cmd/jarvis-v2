@@ -52,7 +52,10 @@ def _observe_dream_signal(nerve: str, **meta: object) -> None:
 
 def _persist_file() -> Path:
     return shared_dir() / "DREAM_CARRY.json"
-_LOCK = threading.Lock()
+# Reentrant: `_ensure_loaded` kalder nu `_enforce_active_cap`, som publicerer på
+# eventbussen og observerer i Centralen. En synkron abonnent der læser drømme
+# igen ville med en almindelig Lock dødlåse processen i stedet for at svare.
+_LOCK = threading.RLock()
 _LOADED = False
 
 _ACTIVE_DREAMS: list[dict[str, object]] = []
@@ -78,6 +81,20 @@ def _ensure_loaded() -> None:
         if _LOADED:
             return
         _load()
+        # Loftet håndhæves ved LÆSNING, ikke kun ved næste `adopt_dream`.
+        # Målt 22/10-2026: `_enforce_active_cap` blev kun kaldt fra
+        # `adopt_dream`, så en fil der allerede indeholdt 28 aktive drømme blev
+        # indlæst som 28 — og blev ved med at være 28 indtil producenten
+        # tilfældigvis kaldte adopt igen. Et loft der kun gælder ved skrivning
+        # beskriver ikke tilstanden, kun næste skrivning.
+        # Er der intet at gøre, returnerer cappen straks: en normal load (≤
+        # loftet) koster nul og skriver intet.
+        _foer = len(_ACTIVE_DREAMS)
+        _enforce_active_cap()
+        if len(_ACTIVE_DREAMS) != _foer:
+            # Uden dette er cappen kun i hukommelsen, og den næste proces
+            # indlæser de samme 28 fra disken.
+            _save()
         _LOADED = True
 
 

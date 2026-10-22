@@ -89,6 +89,13 @@ def _konfigureret_model() -> str:
 
 
 DEFAULT_MODEL = _konfigureret_model()
+
+#: De tool-scopes der faktisk forekommer i drift, og som derfor hver især har
+#: sit eget cachede præfiks. Prompten indledes med en mode-orientering der
+#: skifter med scopet, så de to varianter deler IKKE præfiks — hver skal varmes
+#: for sig. ``""`` (ældre klient uden mode-signal) udelades med vilje: desk
+#: sender altid et mode, så den variant koster kun penge at varme.
+_WARM_SCOPES: tuple[str, ...] = ("chat", "code")
 DEFAULT_MAX_TOKENS = 10
 DEFAULT_TEMPERATURE = 0.0
 MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald
@@ -135,7 +142,9 @@ def _discover_active_workspaces() -> list[str]:
         return ["bjorn"]
 
 
-def _fetch_system_prompt(workspace_name: str = "bjorn") -> str | None:
+def _fetch_system_prompt(
+    workspace_name: str = "bjorn", *, tool_scope: str = "chat"
+) -> str | None:
     """Hent primary lane system prompt.
 
     2026-06-10 (Claude): rewritten til at bruge build_visible_stable_prefix()
@@ -143,6 +152,12 @@ def _fetch_system_prompt(workspace_name: str = "bjorn") -> str | None:
     Tidligere snapshot-fil (48K chars) matchede kun 15% af live-prompt.
     Den nye stable-prefix (~4K chars) matcher 100% — DeepSeek cachen
     der varmes op er præcis den cachen Bjørns chat hitter.
+
+    ``tool_scope`` (22/10-2026): prompten indledes nu med en mode-orientering
+    der SKIFTER med scope. Uden at sætte scopet eksplicit ville warmeren bygge
+    ``""``-varianten («ældre klient uden mode-signal») — en variant ingen rigtig
+    desk-tur bruger, så den varmede cache ville aldrig blive ramt. Kalderen
+    varmer derfor de scopes der faktisk forekommer (se ``_WARM_SCOPES``).
 
     Rækkefølge:
       1. build_visible_stable_prefix() — kanonisk live-matching kilde
@@ -161,12 +176,33 @@ def _fetch_system_prompt(workspace_name: str = "bjorn") -> str | None:
         # bruger så hver brugers cache-prefix holdes varm. Tidligere
         # "default" workspace cachede en tom template som ikke matchede
         # nogen ægte bruger.
-        prefix = build_visible_stable_prefix(
-            provider="deepseek",
-            model=DEFAULT_MODEL,
-            name=workspace_name,
-            compact=False,
-        )
+        #
+        # 22/10-2026: scopet SÆTTES eksplicit. Prompten indledes med en
+        # mode-orientering der skifter med scope, så et implicit ""-scope
+        # byggede en variant ingen desk-tur bruger — og den varmede cache
+        # ville aldrig blive ramt. Sæt og nulstil i samme åndedrag.
+        _scope_token = None
+        try:
+            from core.tools.tool_scoping import set_tool_scope
+
+            _scope_token = set_tool_scope(tool_scope)
+        except Exception as exc:  # noqa: BLE001 — en warmer må ikke vælte af det
+            logger.debug("kunne ikke sætte tool-scope %r: %s", tool_scope, exc)
+        try:
+            prefix = build_visible_stable_prefix(
+                provider="deepseek",
+                model=DEFAULT_MODEL,
+                name=workspace_name,
+                compact=False,
+            )
+        finally:
+            if _scope_token is not None:
+                try:
+                    from core.tools.tool_scoping import reset_tool_scope
+
+                    reset_tool_scope(_scope_token)
+                except Exception:  # noqa: BLE001
+                    pass
         if prefix:
             logger.debug(
                 "Stable prefix bygget via build_visible_stable_prefix (%d bytes)",
@@ -586,9 +622,12 @@ def _warm_one_workspace(
     api_key: str,
     base_url: str,
     dry_run: bool,
+    tool_scope: str = "chat",
 ) -> None:
-    """Cache-warm én bestemt workspace. Logger separat per workspace."""
-    system_prompt = _fetch_system_prompt(workspace_name=workspace_name)
+    """Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode)."""
+    system_prompt = _fetch_system_prompt(
+        workspace_name=workspace_name, tool_scope=tool_scope
+    )
     if not system_prompt:
         logger.error("[%s] Kunne ikke hente system prompt — skip", workspace_name)
         return
@@ -600,6 +639,7 @@ def _warm_one_workspace(
         "model": DEFAULT_MODEL,
         "provider": "primary_cache_warmer",
         "workspace": workspace_name,
+        "tool_scope": tool_scope,
         "dry_run": dry_run,
         "system_prompt_length": len(system_prompt),
         "input_tokens": 0,
@@ -683,13 +723,15 @@ def main(argv: list[str] | None = None) -> int:
                 len(workspaces), ", ".join(workspaces))
 
     for ws in workspaces:
-        try:
-            _warm_one_workspace(
-                ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
-            )
-        except Exception as exc:
-            # En enkelt brugers fejl må ikke afbryde de andre.
-            logger.error("[%s] uventet fejl: %s — fortsætter", ws, exc)
+        for _scope in _WARM_SCOPES:
+            try:
+                _warm_one_workspace(
+                    ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
+                    tool_scope=_scope,
+                )
+            except Exception as exc:
+                # En enkelt brugers fejl må ikke afbryde de andre.
+                logger.error("[%s/%s] uventet fejl: %s — fortsætter", ws, _scope, exc)
 
     if not dry_run:
         _touch_last_run()

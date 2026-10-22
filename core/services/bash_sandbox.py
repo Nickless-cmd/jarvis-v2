@@ -256,8 +256,20 @@ def status() -> dict[str, Any]:
 
 
 def wrap_bwrap(command: str, cwd: str, *, writable_roots: list[str] | None = None,
-               allow_egress: bool = True) -> list[str]:
-    """Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed."""
+               allow_egress: bool = True,
+               egen_workspace: str | None = None) -> list[str]:
+    """Byg argv'en. Ren funktion — tjekker hverken flag eller tilgængelighed.
+
+    `egen_workspace` afgør om andre brugeres mapper overhovedet FINDES inde i
+    fængslet. Er den sat (en medlem), bindes runtime-hjemmet READ-ONLY, og
+    `workspaces/` skygges af en tmpfs med kun den ene mappe ovenpå. Er den
+    None (ejeren), er adfærden uændret: hele hjemmet bindes skrivbart.
+
+    Målt 22/10-2026: uden parameteren var `~/.jarvis-v2` — inklusive
+    `workspaces/bjorn/MEMORY.md` og alle andre brugeres mapper — læsbar OG
+    skrivbar for enhver indespærret kommando. Sandkassen beskyttede resten af
+    maskinen og lukkede samtidig hele brugeradskillelsen ind.
+    """
     argv: list[str] = ["bwrap"]
     for ro in list(_RO_ROEDDER) + _python_roedder():
         argv += ["--ro-bind-try", ro, ro]
@@ -268,7 +280,18 @@ def wrap_bwrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
     _bundet = {cwd}
     _hjem = _runtime_hjem()
     if _hjem and _hjem not in _bundet:
-        argv += ["--bind", _hjem, _hjem]
+        if egen_workspace:
+            # Rækkefølgen er hele pointen: hjemmet læses read-only, derefter
+            # SKYGGES workspaces/ af en tom tmpfs, og til sidst lægges kun den
+            # ene brugers mappe ovenpå. Andre brugeres mapper findes dermed
+            # ikke — de er ikke bare beskyttede, de er usynlige.
+            argv += ["--ro-bind", _hjem, _hjem]
+            _ws_rod = str(pathlib.Path(_hjem) / "workspaces")
+            argv += ["--tmpfs", _ws_rod]
+            if pathlib.Path(egen_workspace).is_dir():
+                argv += ["--bind", egen_workspace, egen_workspace]
+        else:
+            argv += ["--bind", _hjem, _hjem]
         _bundet.add(_hjem)
     for rod in (writable_roots or []):
         if rod not in _bundet:
@@ -282,7 +305,8 @@ def wrap_bwrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
 
 
 def maybe_wrap(command: str, cwd: str, *, writable_roots: list[str] | None = None,
-               allow_egress: bool = True) -> list[str] | None:
+               allow_egress: bool = True,
+               egen_workspace: str | None = None) -> list[str] | None:
     """argv hvis sandboxen er tændt OG mulig her — ellers None (kør normalt).
 
     None betyder «ikke min sag». Fail-open er med vilje: en manglende
@@ -313,7 +337,7 @@ def maybe_wrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
                        "kører uindespærret", _grund)
         return None
     return wrap_bwrap(command, cwd, writable_roots=writable_roots,
-                      allow_egress=allow_egress)
+                      allow_egress=allow_egress, egen_workspace=egen_workspace)
 
 
 # ── ønsket vs. FAKTISK indespærring ──────────────────────────────────────
@@ -363,7 +387,8 @@ class Enforcement:
 
 
 def enforcement(command: str, cwd: str, *, writable_roots: list[str] | None = None,
-                allow_egress: bool = True, require: bool = False) -> Enforcement:
+                allow_egress: bool = True, require: bool = False,
+                egen_workspace: str | None = None) -> Enforcement:
     """Afgør indespærringen OG rapportér den. Kaster kun når `require` er sat.
 
     `require=True` er den eneste vej til fail-CLOSED. Standarden er uændret
@@ -390,7 +415,7 @@ def enforcement(command: str, cwd: str, *, writable_roots: list[str] | None = No
                         else f"bwrap kan ikke starte: {brugbar_grund}")
     else:
         argv = wrap_bwrap(command, cwd, writable_roots=writable_roots,
-                          allow_egress=allow_egress)
+                          allow_egress=allow_egress, egen_workspace=egen_workspace)
         e = Enforcement(True, True, True, taendt, argv, "")
 
     if not e.honored:

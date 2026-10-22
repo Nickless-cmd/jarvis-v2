@@ -662,7 +662,36 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         _kraev = False
     try:
         from core.services.bash_sandbox import ConfinementUnavailable, enforcement
-        _e = enforcement(command, str(PROJECT_ROOT), require=_kraev)
+        # BRUGERISOLERING (målt 22/10-2026): uden `egen_workspace` blev HELE
+        # runtime-hjemmet bundet skrivbart, så en medlems kommando kunne læse og
+        # skrive i enhver anden brugers workspace — inklusive ejerens
+        # MEMORY.md. Sandkassen beskyttede resten af maskinen og lukkede
+        # samtidig den grænse ind som multi-bruger-driften hviler på.
+        #
+        # EJERENS STI ER UÆNDRET: er brugeren ejeren (eller kan ejeren ikke
+        # afgøres), sendes None, og `wrap_bwrap` binder hjemmet som før. En
+        # medlem får sin EGEN mappe — og de andres findes ikke i fængslet.
+        _egen_ws = None
+        try:
+            from core.identity.workspace_bootstrap import (
+                ensure_default_workspace as _ws_dir,
+            )
+            from core.identity.workspace_context import (
+                current_user_id as _cuid,
+                current_workspace_name as _cwn,
+            )
+            from core.services.security_guard import is_owner as _er_ejer
+
+            _uid = str(_cuid() or "").strip()
+            if _uid and not _er_ejer(_uid):
+                _egen_ws = str(_ws_dir(name=_cwn() or "default"))
+        except Exception:
+            # Kan brugeren ikke afgøres, bindes som før. Det er den FORKERTE
+            # retning for en sikkerhedsgrænse, men alternativet — at gætte en
+            # mappe — giver en tryghed der ikke svarer til virkeligheden.
+            _egen_ws = None
+        _e = enforcement(command, str(PROJECT_ROOT), require=_kraev,
+                         egen_workspace=_egen_ws)
         _indespaerring = _e.as_dict()
         if _e.argv:
             _argv = _e.argv

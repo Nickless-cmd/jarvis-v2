@@ -47,8 +47,21 @@ def build_with_turn_cache(
 ) -> Any:
     from core.services.prompt_assembly_telemetri import rapporter_cache_lookup
 
+    # Scope hoerer i noeglen: samme besked bygget i chat og i code er to
+    # forskellige prompts. Maalt 22/10-2026 stod scope uden for noeglen, saa en
+    # genbygning efter et rums-skift kunne servere den anden modes assembly —
+    # inkl. den forkerte vaerktoejsoverblik og den forkerte orientering.
+    from core.tools.tool_scoping import current_tool_scope
+
     key = (
-        (str(session_id or ""), latest_message_id, provider, model, name)
+        (
+            str(session_id or ""),
+            latest_message_id,
+            provider,
+            model,
+            name,
+            current_tool_scope(),
+        )
         if latest_message_id > 0 else None
     )
     now = time.monotonic()

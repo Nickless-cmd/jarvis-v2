@@ -10,7 +10,7 @@
  * deterministisk og hvert step kan måles.
  */
 import { act, render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
@@ -171,5 +171,40 @@ describe('ChatFlowPresentation — rå tekst må ikke dumpe i svar-lanen', () =>
     // Den bekræftede tekst må ikke springe til sin fulde længde: svar-lanen
     // skal stadig kun vise det pacen har nået.
     expect(answerText(view.container).length).toBeLessThan(LANG.length / 2)
+  })
+})
+
+describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('fader den aktive rundelinje ud mens pacen ruller', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="run-fade" />,
+    )
+    frame()
+    const linje = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    expect(linje).toBeInTheDocument()
+    // Foer taersklen: linjen staar urørt, saa en kort syntese aldrig blinker.
+    expect(linje).not.toHaveAttribute('data-pacing-skjult')
+
+    act(() => { vi.advanceTimersByTime(420) })
+    expect(linje).toHaveAttribute('data-pacing-skjult')
+  })
+
+  it('lader korte synteser passere uden at blinke linjen', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: 'Kort.' }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="run-kort" />,
+    )
+    // Pacen indhenter fem tegn paa under 420 ms, saa timeren naar aldrig at fyre.
+    for (let i = 0; i < 20; i += 1) frame()
+    act(() => { vi.advanceTimersByTime(420) })
+    const linje = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    expect(linje).not.toHaveAttribute('data-pacing-skjult')
   })
 })

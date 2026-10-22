@@ -6,6 +6,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
 import { formaterTurTid, useTankeSekunder, useTurSekunder } from '../../lib/turTid'
+import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
@@ -163,6 +164,15 @@ export function ChatFlowPresentation({
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.
   const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
+  // Den aktive rundelinje bliver stående i DOM'en mens pacen ruller — så
+  // tur-uret og layoutet ikke hopper — men fader ud, så man kan se at teksten
+  // indhenter. Korte synteser når ikke tærsklen (420 ms) og blinker derfor
+  // aldrig. Samme kontrakt som code mode (Bjørn 22/10-2026: «linjen fortsætter
+  // live i baggrunden og fader ind igen når pacen er forbi»).
+  const skjulAktivRunde = usePacingWorkLine(
+    aktiv && targetSvar.length > 0 && !svarFaerdigPacet,
+    runId ?? beskedId ?? null,
+  )
   const activeLine = mode === 'calm'
     ? model.calmStatus
     : model.visibleSynthesis.at(-1)
@@ -262,6 +272,7 @@ export function ChatFlowPresentation({
             {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
+                data-pacing-skjult={skjulAktivRunde ? '' : undefined}
                 aria-label={[activeSynthesis, tankeTekst,
                   rundeTekst].filter(Boolean).join('. ')}>
                 {levendeSyntese ? (

@@ -8,6 +8,27 @@
   display: block;
   min-height: 1.35rem;
   overflow: hidden;
+  /* Den aktive rundelinje bliver stående, så tur-uret og layoutet ikke
+     hopper. Under reel pacing fader den ud; korte synteser når ikke
+     tærsklen (420 ms i `usePacingWorkLine`) og blinker derfor aldrig.
+     Samme kontrakt som code mode (målt 22/10-2026).
+     `min-height` bevares: vi fjerner synlighed, ikke højde — ellers ville
+     selve faden skabe det hop den skal fjerne. */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+
+.chat-flow-activity[data-pacing-skjult] {
+  opacity: 0;
+  transform: translateY(3px);
+  pointer-events: none;
+  transition-duration: 160ms;
+  transition-timing-function: ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-flow-activity { transition: none; transform: none; }
 }
 
 /* Gruppen under turens hoved: én levende statuslinje under stregen eller

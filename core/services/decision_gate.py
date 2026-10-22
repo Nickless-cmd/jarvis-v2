@@ -139,6 +139,42 @@ _ALLE_AKTIVE = 500
 # mangle data. Det er de 36 «aldrig målt» der skal klassificeres, ikke gættes på.
 _LAV_ADHERENCE = 0.4
 
+# En ALDRIG MÅLT beslutning med et mønster af brud er svag i PRAKSIS (22/10-2026).
+# `adherence_score` kræver en review-dom, og 36 aktive beslutninger har aldrig
+# fået en. Brud-historikken findes derimod: `decision.breach_detected` fyrer og
+# `decision_breach_recent` skrives. Den bruges her som signal — ikke som et
+# opdigtet tal — så de aldrig målte bliver klassificeret i stedet for gættet på.
+_ALDRI_MAALT_BRUD_TAERSKEL = 3
+
+
+def _aldrig_maalt_er_svag(decision_id: str, brud: dict) -> bool:
+    """Har en beslutning uden måling et brud-mønster i vinduet?"""
+    try:
+        from core.services.decision_breach_reader import BRUD_TAERSKEL_LAV as taerskel
+    except Exception:  # læseren er valgfri — den lokale tærskel er identisk
+        taerskel = _ALDRI_MAALT_BRUD_TAERSKEL
+    s = (brud or {}).get(str(decision_id)) or {}
+    return int(s.get("count") or 0) >= taerskel
+
+
+def directive_har_maal(directive: str) -> bool:
+    """Kan `_detect_conflict` overhovedet finde et mål i dette direktiv?
+
+    Bruges af `decision_breach_reader.classify` til at afgøre om en beslutning
+    er EKSEKVERBAR: et direktiv uden et mål gaten kan matche kan ikke håndhæves
+    før eksekvering, uanset hvor vigtigt det lyder. Samme to mønstre og samme
+    andels-krav som matcheren — ellers ville klassifikationen lyve om gaten.
+    """
+    directive_lower = str(directive or "").lower()
+    for mønster in (_AVOID_RE, _ALWAYS_RE):
+        m = mønster.search(directive_lower)
+        if not m:
+            continue
+        target = (m.group(2) or "").strip()
+        if target and len(target) / max(1, len(directive_lower)) >= _MIN_MAAL_ANDEL:
+            return True
+    return False
+
 
 _OVERSTYRING = re.compile(r"(?<!\w)alligevel(?!\w)", re.IGNORECASE)
 
@@ -201,10 +237,24 @@ def evaluate_decision_conflict(
     context = _build_context(tool_name, tool_args, user_message)
     conflicts: list[str] = []
     max_priority = 0
-    # Adherence for de beslutninger der FAKTISK er i konflikt — ikke for alle
-    # aktive. En lav score på en urelateret beslutning må ikke gøre en ægte
-    # konflikt blød. `None` = aldrig målt, og det graderes som før.
+    # Én svagheds-dom pr. konflikt. Før var `None` (aldrig målt) automatisk
+    # «ikke svag» — men en beslutning der aldrig er blevet MÅLT kan godt være
+    # svag i praksis: brud-historikken er et adfærdssignal. Se
+    # `decision_breach_reader` (22/10-2026).
+    konflikt_svag: list[bool] = []
     konflikt_adherence: list[float] = []
+    konflikt_brud: list[int] = []
+    _brud: dict = {}
+    _breach_stats = None
+    try:
+        from core.services.decision_breach_reader import breach_stats as _breach_stats
+    except Exception:  # læseren er valgfri — gaten skal virke uden den
+        _breach_stats = None
+    if _breach_stats is not None:
+        try:
+            _brud = _breach_stats()
+        except Exception:  # korrupt state-fil må ikke gøre gaten tandløs
+            _brud = {}
     for d in decisions:
         directive = str(d.get("directive") or "").strip()
         if not directive:
@@ -216,20 +266,28 @@ def evaluate_decision_conflict(
             _adh = d.get("adherence_score")
             if _adh is not None:
                 try:
-                    konflikt_adherence.append(float(_adh))
-                except (TypeError, ValueError):  # ikke et tal = «aldrig målt», graderes som før
-                    pass
+                    _a = float(_adh)
+                    konflikt_adherence.append(_a)
+                    konflikt_svag.append(_a < _LAV_ADHERENCE)
+                except (TypeError, ValueError):  # ikke et tal = «aldrig målt»
+                    konflikt_svag.append(_aldrig_maalt_er_svag(decision_id, _brud))
+                    konflikt_brud.append(
+                        int((_brud.get(decision_id) or {}).get("count") or 0)
+                    )
+            else:
+                konflikt_svag.append(_aldrig_maalt_er_svag(decision_id, _brud))
+                konflikt_brud.append(
+                    int((_brud.get(decision_id) or {}).get("count") or 0)
+                )
 
     if not conflicts:
         return "none", None
 
     severity = "hard" if max_priority >= _HARD_BLOCK_PRIORITY else "soft"
-    # Adherence-gradering: er HVER konflikt-beslutning under tærsklen, er der
-    # ingen reel forpligtelse tilbage at håndhæve — kun en der ikke holder som
-    # skrevet. Den advarer stadig, men blokerer ikke. Se `_LAV_ADHERENCE`.
-    _svag = bool(konflikt_adherence) and all(
-        a < _LAV_ADHERENCE for a in konflikt_adherence
-    )
+    # Adherence-gradering: er HVER konflikt-beslutning svag, er der ingen reel
+    # forpligtelse tilbage at håndhæve — kun en der ikke holder som skrevet.
+    # Den advarer stadig, men blokerer ikke. Se `_LAV_ADHERENCE`.
+    _svag = bool(konflikt_svag) and all(konflikt_svag)
     if severity == "hard" and _svag:
         severity = "soft"
     top = " | ".join(conflicts[:2])
@@ -237,11 +295,15 @@ def evaluate_decision_conflict(
         reason = (f"DECISION GATE (blok): {len(conflicts)} forpligtelse(r) i konflikt "
                   f"— {top} — Sig 'alligevel' for at gennemtvinge.")
     else:
-        _lav = (
-            f" (lav adherence {min(konflikt_adherence):.0%} — omformulér beslutningen "
-            f"hvis den ikke kan holdes som skrevet)"
-            if _svag else ""
-        )
+        if konflikt_adherence:
+            _lav = (f" (lav adherence {min(konflikt_adherence):.0%} — omformulér "
+                    f"beslutningen hvis den ikke kan holdes som skrevet)")
+        elif _svag:
+            _antal = sum(konflikt_brud)
+            _lav = (f" (aldrig målt, men {_antal} brud i vinduet — omformulér "
+                    f"beslutningen hvis den ikke kan holdes som skrevet)")
+        else:
+            _lav = ""
         reason = (f"DECISION GATE (blød advarsel): tangerer {len(conflicts)} lav-prioritets-"
                   f"forpligtelse(r) — {top}. Kører, men vær opmærksom.{_lav}")
     try:
@@ -288,6 +350,16 @@ def _build_context(
 # inde i et langt direktiv goer ikke («findes» i dec_c428 → 0,012).
 _MIN_MAAL_ANDEL = 0.15
 
+# De to mønstre står som modul-konstanter, fordi `directive_har_maal` skal
+# bruge PRÆCIS de samme som matcheren. Kopierede man dem, ville
+# klassifikationen kunne sige «eksekverbar» om et direktiv gaten ikke fanger.
+_AVOID_RE = re.compile(
+    r"\b(undgå|undlad|ikke|stop|avoid|don'?t|never)\b\s+(?:at\s+|to\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,4})"
+)
+_ALWAYS_RE = re.compile(
+    r"\b(altid|always|skal altid|must always)\b\s+(?:at\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,3})"
+)
+
 
 def _helt_ord(maal: str, tekst: str) -> bool:
     """Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes»."""
@@ -308,10 +380,7 @@ def _detect_conflict(directive: str, context: str, decision: dict) -> str | None
     context_lower = context.lower()
 
     # Pattern: avoidance directive — "undgå X", "ikke X", "stop X"
-    avoid_match = re.search(
-        r"\b(undgå|undlad|ikke|stop|avoid|don'?t|never)\b\s+(?:at\s+|to\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,4})",
-        directive_lower,
-    )
+    avoid_match = _AVOID_RE.search(directive_lower)
     if avoid_match:
         target = avoid_match.group(2).strip()
         if (target
@@ -320,10 +389,7 @@ def _detect_conflict(directive: str, context: str, decision: dict) -> str | None
             return f"handling matcher '{target}' som forpligtelsen siger at undgå"
 
     # Pattern: imperative directive — "altid X" and context suggests skipping
-    always_match = re.search(
-        r"\b(altid|always|skal altid|must always)\b\s+(?:at\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,3})",
-        directive_lower,
-    )
+    always_match = _ALWAYS_RE.search(directive_lower)
     if always_match:
         target = always_match.group(2).strip()
         # Check if the context explicitly skips/avoids the target

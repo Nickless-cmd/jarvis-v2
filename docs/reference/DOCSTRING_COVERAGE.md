@@ -1157,7 +1157,7 @@ Generated from source. 9169/17410 functions/methods documented (52%). The list b
 - `core/services/decision_ghosts.py` :: `reset_decision_ghosts` (L189)
 - `core/services/decision_log.py` :: `build_decision_log_surface` (L50)
 - `core/services/decision_signals.py` :: `register` (L64)
-- `core/services/decision_signals.py` :: `reset_context` (L348)
+- `core/services/decision_signals.py` :: `reset_context` (L358)
 - `core/services/decision_triggers/backend_unresolved.py` :: `backend_unresolved_3_calls` (L67)
 - `core/services/decision_triggers/loop_nudge.py` :: `loop_nudge_5_rounds` (L27)
 - `core/services/deep_reflection_slot.py` :: `build_deep_reflection_surface` (L368)

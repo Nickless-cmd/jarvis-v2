@@ -438,13 +438,13 @@ _Læseren for breach-events — den manglende anden halvdel af sløjfen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_records` | `()` | Læs de rå brud-records. Aldrig en undtagelse — tom liste ved fejl. | [src](../../../core/services/decision_breach_reader.py#L48) |
-| function | `_alder_timer` | `(iso_ts, *, now)` | — | [src](../../../core/services/decision_breach_reader.py#L60) |
-| function | `breach_stats` | `(*, window_days=…, now=…)` | Aggregér brud pr. beslutning inden for vinduet. | [src](../../../core/services/decision_breach_reader.py#L70) |
-| function | `breach_line` | `(decision_id, stats=…)` | Én kort linje til trigger-injektionen, eller ``None`` uden brud. | [src](../../../core/services/decision_breach_reader.py#L103) |
-| function | `_direktiv_har_gate_maal` | `(directive)` | Kan gaten overhovedet matche dette direktiv? | [src](../../../core/services/decision_breach_reader.py#L126) |
-| function | `classify` | `(decision, stats=…)` | Klassificér ÉN beslutning i de tre egenskaber. | [src](../../../core/services/decision_breach_reader.py#L143) |
-| function | `health_report` | `(decisions=…, *, stats=…)` | Aggregat over alle aktive beslutninger — og en ærlig opgørelse af huller. | [src](../../../core/services/decision_breach_reader.py#L193) |
+| function | `_records` | `()` | Læs de rå brud-records. Aldrig en undtagelse — tom liste ved fejl. | [src](../../../core/services/decision_breach_reader.py#L50) |
+| function | `_alder_timer` | `(iso_ts, *, now)` | — | [src](../../../core/services/decision_breach_reader.py#L61) |
+| function | `breach_stats` | `(*, window_days=…, now=…)` | Aggregér brud pr. beslutning inden for vinduet. | [src](../../../core/services/decision_breach_reader.py#L71) |
+| function | `breach_line` | `(decision_id, stats=…)` | Én kort linje til trigger-injektionen, eller ``None`` uden brud. | [src](../../../core/services/decision_breach_reader.py#L104) |
+| function | `_direktiv_har_gate_maal` | `(directive)` | Kan gaten overhovedet matche dette direktiv? | [src](../../../core/services/decision_breach_reader.py#L127) |
+| function | `classify` | `(decision, stats=…)` | Klassificér ÉN beslutning i de tre egenskaber. | [src](../../../core/services/decision_breach_reader.py#L144) |
+| function | `health_report` | `(decisions=…, *, stats=…)` | Aggregat over alle aktive beslutninger — og en ærlig opgørelse af huller. | [src](../../../core/services/decision_breach_reader.py#L194) |
 
 ## `core/services/decision_enforcement.py`
 _Decision enforcement — close the loop between commitment and behavior._
@@ -494,12 +494,12 @@ _Decision gate — pre-execution decision conflict detection._
 |---|---|---|---|---|
 | function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L27) |
 | function | `_aldrig_maalt_er_svag` | `(decision_id, brud)` | Har en beslutning uden måling et brud-mønster i vinduet? | [src](../../../core/services/decision_gate.py#L150) |
-| function | `directive_har_maal` | `(directive)` | Kan `_detect_conflict` overhovedet finde et mål i dette direktiv? | [src](../../../core/services/decision_gate.py#L161) |
-| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L183) |
-| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L199) |
-| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L317) |
-| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L360) |
-| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L365) |
+| function | `directive_har_maal` | `(directive)` | Kan `_detect_conflict` overhovedet finde et mål i dette direktiv? | [src](../../../core/services/decision_gate.py#L160) |
+| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L182) |
+| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L198) |
+| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build a context string for conflict detection. | [src](../../../core/services/decision_gate.py#L321) |
+| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L364) |
+| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L369) |
 
 ## `core/services/decision_ghosts.py`
 _Decision Ghosts — de veje der blev fravalgt, og dem der holdt._
@@ -590,11 +590,11 @@ _Decisions-as-signals: per-turn evaluation of behavioral decisions._
 | function | `_cooldown_active` | `(spec, decision_id, ctx)` | — | [src](../../../core/services/decision_signals.py#L155) |
 | function | `_publish_fired_event` | `(*, decision_id, trigger_name, ctx)` | — | [src](../../../core/services/decision_signals.py#L176) |
 | function | `evaluate_decision_triggers` | `(ctx)` | Evaluate all active decisions with triggers; return those that fire. | [src](../../../core/services/decision_signals.py#L190) |
-| function | `fired_decisions_section` | `(ctx)` | Build the [FIRED_DECISIONS] section text. None if nothing fired. | [src](../../../core/services/decision_signals.py#L279) |
-| function | `build_trigger_context` | `(*, user_message=…, session_id=…, run_id=…, consecutive_tool_only_rounds=…, recent_tool_calls=…, recent_assistant_text=…, agentic_round_seq=…)` | Build a TriggerContext from explicit fields. Used in tests and as | [src](../../../core/services/decision_signals.py#L304) |
-| function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L328) |
-| function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L343) |
-| function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L348) |
+| function | `fired_decisions_section` | `(ctx)` | Build the [FIRED_DECISIONS] section text. None if nothing fired. | [src](../../../core/services/decision_signals.py#L289) |
+| function | `build_trigger_context` | `(*, user_message=…, session_id=…, run_id=…, consecutive_tool_only_rounds=…, recent_tool_calls=…, recent_assistant_text=…, agentic_round_seq=…)` | Build a TriggerContext from explicit fields. Used in tests and as | [src](../../../core/services/decision_signals.py#L314) |
+| function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L338) |
+| function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L353) |
+| function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L358) |
 
 ## `core/services/decision_weight.py`
 

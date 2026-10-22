@@ -47,6 +47,10 @@ class FiredDecision:
     decision_id: str
     trigger_name: str
     context_summary: str = ""
+    # Beslutningens EGEN tilstand, så fyringen ikke er blind (22/10-2026):
+    # før fyrede en beslutning på 0,12 med præcis samme vægt som en på 1,00.
+    adherence_score: float | None = None
+    breach_line: str | None = None
 
 
 _TRIGGER_REGISTRY: dict[str, TriggerSpec] = {}
@@ -79,7 +83,8 @@ def _active_decisions_with_triggers() -> list[dict[str, Any]]:
     try:
         with connect() as c:
             rows = c.execute(
-                "SELECT decision_id, trigger_name FROM behavioral_decisions "
+                "SELECT decision_id, trigger_name, adherence_score "
+                "FROM behavioral_decisions "
                 "WHERE status = 'active' AND trigger_name IS NOT NULL "
                 "AND trigger_name != ''"
             ).fetchall()
@@ -196,6 +201,23 @@ def evaluate_decision_triggers(ctx: TriggerContext) -> list[FiredDecision]:
     fired: list[FiredDecision] = []
     decisions = _active_decisions_with_triggers()
     now_iso = datetime.now(UTC).isoformat()
+    # Brud-tallene hentes ÉN gang pr. evaluering, ikke pr. beslutning.
+    _brud_stats: dict = {}
+    _breach_stats = None
+    try:
+        from core.services.decision_breach_reader import breach_stats as _breach_stats
+    except Exception:  # læseren er valgfri — trigger-injektionen skal virke uden den
+        _breach_stats = None
+    if _breach_stats is not None:
+        try:
+            _brud_stats = _breach_stats()
+        except Exception:  # korrupt state-fil = ingen brud-tal, ikke en væltet tur
+            _brud_stats = {}
+    _breach_line = None
+    try:
+        from core.services.decision_breach_reader import breach_line as _breach_line
+    except Exception:  # læseren er valgfri
+        _breach_line = None
 
     for d in decisions:
         decision_id = str(d.get("decision_id") or "")
@@ -238,10 +260,26 @@ def evaluate_decision_triggers(ctx: TriggerContext) -> list[FiredDecision]:
             _write_last_fired_seq(decision_id, ctx.agentic_round_seq, now_iso)
         _publish_fired_event(decision_id=decision_id, trigger_name=trigger_name, ctx=ctx)
 
+        _adh: float | None = None
+        try:
+            _raw_adh = d.get("adherence_score")
+            if _raw_adh is not None:
+                _adh = round(float(_raw_adh), 3)
+        except (TypeError, ValueError):
+            _adh = None
+        _brud_linje: str | None = None
+        if _breach_line is not None:
+            try:
+                _brud_linje = _breach_line(decision_id, _brud_stats)
+            except Exception:  # en dårlig record må ikke vælte evalueringen
+                _brud_linje = None
+
         fired.append(FiredDecision(
             decision_id=decision_id,
             trigger_name=trigger_name,
             context_summary=summary,
+            adherence_score=_adh,
+            breach_line=_brud_linje,
         ))
         logger.info("decision_signals.fired %s via %s", decision_id, trigger_name)
 
@@ -249,13 +287,27 @@ def evaluate_decision_triggers(ctx: TriggerContext) -> list[FiredDecision]:
 
 
 def fired_decisions_section(ctx: TriggerContext) -> Optional[str]:
-    """Build the [FIRED_DECISIONS] section text. None if nothing fired."""
+    """Build the [FIRED_DECISIONS] section text. None if nothing fired.
+
+    Linjen bærer nu beslutningens EGEN tilstand: målt adherence og brud-tal.
+    Målt 22/10-2026 nævnte sektionen hverken, så en beslutning på 0,12 fyrede
+    med præcis samme vægt som en på 1,00 — og de 1.568 brud-events blev aldrig
+    læst tilbage. Se `decision_breach_reader`.
+    """
     fired = evaluate_decision_triggers(ctx)
     if not fired:
         return None
     lines = ["🔔 fired decisions:"]
     for f in fired:
-        lines.append(f"- decision:{f.decision_id} fired ({f.trigger_name}: {f.context_summary})")
+        linje = f"- decision:{f.decision_id} fired ({f.trigger_name}: {f.context_summary})"
+        dele: list[str] = []
+        if f.adherence_score is not None:
+            dele.append(f"adherence {f.adherence_score:.0%}")
+        if f.breach_line:
+            dele.append(f.breach_line)
+        if dele:
+            linje += " — " + ", ".join(dele)
+        lines.append(linje)
     return "\n".join(lines)
 
 

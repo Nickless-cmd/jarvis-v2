@@ -185,13 +185,17 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
         streaming status="working" finalAnswerStarted={false} runId="run-fade" />,
     )
     frame()
-    const linje = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
     expect(linje).toBeInTheDocument()
     // Foer taersklen: linjen staar urørt, saa en kort syntese aldrig blinker.
     expect(linje).not.toHaveAttribute('data-pacing-skjult')
 
     act(() => { vi.advanceTimersByTime(420) })
     expect(linje).toHaveAttribute('data-pacing-skjult')
+    // Synteselinjen maa IKKE fade med: da begge fadede samtidig blev skaermen
+    // tom (Bjørn 22/10-2026).
+    const syntese = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    expect(syntese).not.toHaveAttribute('data-pacing-skjult')
   })
 
   it('lader korte synteser passere uden at blinke linjen', () => {
@@ -204,7 +208,7 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     // Pacen indhenter fem tegn paa under 420 ms, saa timeren naar aldrig at fyre.
     for (let i = 0; i < 20; i += 1) frame()
     act(() => { vi.advanceTimersByTime(420) })
-    const linje = view.container.querySelector('[data-testid="chat-flow-activity"]') as HTMLElement
+    const linje = view.container.querySelector('[data-testid="chat-flow-round"]') as HTMLElement
     expect(linje).not.toHaveAttribute('data-pacing-skjult')
   })
 })

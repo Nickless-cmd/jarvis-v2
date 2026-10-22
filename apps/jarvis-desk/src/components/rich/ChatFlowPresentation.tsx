@@ -164,11 +164,13 @@ export function ChatFlowPresentation({
   // Uden for den er turen enten afsluttet eller svaret er begyndt — og så
   // klapper hovedet sammen og arbejdet lægger sig som detaljer.
   const aktiv = streaming && !finalAnswerStarted && model.terminalState === 'active'
-  // Den aktive rundelinje bliver stående i DOM'en mens pacen ruller — så
-  // tur-uret og layoutet ikke hopper — men fader ud, så man kan se at teksten
-  // indhenter. Korte synteser når ikke tærsklen (420 ms) og blinker derfor
-  // aldrig. Samme kontrakt som code mode (Bjørn 22/10-2026: «linjen fortsætter
-  // live i baggrunden og fader ind igen når pacen er forbi»).
+  // KUN rundelinjen fader — synteselinjen bliver stående. Første udgave satte
+  // attributten på den fælles wrapper `chat-flow-activity`, så både syntese og
+  // runde forsvandt i samme fade og skærmen blev tom (Bjørn 22/10-2026: «det
+  // var kun runde linjen.. ikk syntese linjen»). Rundelinjen bliver i DOM'en
+  // mens pacen ruller, så tur-uret og layoutet ikke hopper, og fader ind igen
+  // når pacen er forbi. Korte synteser når ikke tærsklen (420 ms) og blinker
+  // derfor aldrig.
   const skjulAktivRunde = usePacingWorkLine(
     aktiv && targetSvar.length > 0 && !svarFaerdigPacet,
     runId ?? beskedId ?? null,
@@ -272,7 +274,6 @@ export function ChatFlowPresentation({
             {aktiv && !arbejdeAabent && (activeSynthesis || rundeTekst) ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                data-pacing-skjult={skjulAktivRunde ? '' : undefined}
                 aria-label={[activeSynthesis, tankeTekst,
                   rundeTekst].filter(Boolean).join('. ')}>
                 {levendeSyntese ? (
@@ -282,7 +283,8 @@ export function ChatFlowPresentation({
                   </div>
                 ) : null}
                 {rundeTekst ? (
-                  <div className="chat-flow-round" data-testid="chat-flow-round">
+                  <div className="chat-flow-round" data-testid="chat-flow-round"
+                    data-pacing-skjult={skjulAktivRunde ? '' : undefined}>
                     <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
                       aria-hidden="true">
                       <Brain className="chat-flow-thinking-icon" data-testid="chat-flow-thinking-icon"

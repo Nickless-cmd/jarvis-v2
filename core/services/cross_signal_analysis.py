@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 from core.runtime.db import (
     list_cognitive_user_emotional_states,
-    list_cognitive_experiential_memories,
     list_cognitive_conversation_signatures,
     list_cognitive_habit_patterns,
     list_cognitive_personality_vectors,
@@ -22,7 +21,11 @@ def analyze_signal_patterns(*, limit_items: int = 20) -> list[dict[str, object]]
     patterns = []
 
     moods = list_cognitive_user_emotional_states(limit=limit_items)
-    memories = list_cognitive_experiential_memories(limit=limit_items)
+    # `list_cognitive_experiential_memories` blev hentet her og brugt NUL
+    # gange nedenfor — men kaldet er bruger-scoped og fail-closed, så uden en
+    # bruger i scope (heartbeat-tick) rejste det MissingRecallScope og blokerede
+    # HELE handlingen. Målt 20/10-2026: 43 forsøg, 0 succes siden 14/10.
+    # Kaldet er derfor fjernet; det målte intet, men kostede alt.
     signatures = list_cognitive_conversation_signatures(limit=10)
     habits = list_cognitive_habit_patterns(limit=10)
     pv_history = list_cognitive_personality_vectors(limit=5)

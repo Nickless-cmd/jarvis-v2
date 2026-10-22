@@ -1134,7 +1134,7 @@ Generated from source. 9139/17377 functions/methods documented (52%). The list b
 - `core/services/cross_session_threads.py` :: `pause_thread` (L83)
 - `core/services/cross_session_threads.py` :: `resume_thread` (L96)
 - `core/services/cross_session_threads.py` :: `update_synopsis` (L125)
-- `core/services/cross_signal_analysis.py` :: `build_cross_signal_analysis_surface` (L84)
+- `core/services/cross_signal_analysis.py` :: `build_cross_signal_analysis_surface` (L87)
 - `core/services/curiosity_budget.py` :: `idle_window_open` (L197)
 - `core/services/curiosity_budget.py` :: `remaining_today` (L121)
 - `core/services/curiosity_consolidation.py` :: `ensure_schema` (L27)

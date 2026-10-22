@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9153/17390 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9154/17391 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9153/17390 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6103 | 11823 | 51% |
+| `core.services` | 6104 | 11824 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -842,10 +842,10 @@ Generated from source. 9153/17390 functions/methods documented (52%). The list b
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
 - `core/services/attachment_topology_signal_tracking.py` :: `track_runtime_attachment_topology_signals_for_visible_turn` (L44)
-- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L150)
-- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L154)
-- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L161)
-- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L158)
+- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L160)
+- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L164)
+- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L171)
+- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L168)
 - `core/services/attention_contour.py` :: `build_attention_contour_surface` (L122)
 - `core/services/attention_contour.py` :: `describe_attention` (L114)
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
@@ -1629,13 +1629,13 @@ Generated from source. 9153/17390 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3589)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3437)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3726)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3604)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3452)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3741)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4745)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4819)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)

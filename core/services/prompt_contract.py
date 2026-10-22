@@ -533,6 +533,15 @@ def build_visible_stable_prefix(
     if _mode_orientation:
         parts.append(_mode_orientation)
 
+    # TONEN i rummet — samme krav om byte-identitet som orienteringen ovenfor.
+    # Den bygges kun ved scope=chat, så code mode-præfikset er uændret.
+    # Rækkefølgen er målt: live-stien indsætter orienteringen FORREST via
+    # `FORREST_SEKTIONER` og tonen derefter, så her skal tonen følge efter —
+    # ellers indledes warmer-prefikset med «## Tone (chat)» og rammer aldrig.
+    _chat_tone = _visible_chat_tone_instruction(compact=compact)
+    if _chat_tone:
+        parts.append(_chat_tone)
+
     lane = "local" if compact else "visible"
     parts.append(_lane_identity_clause(lane))
 
@@ -962,6 +971,10 @@ def _build_visible_chat_prompt_assembly_impl(
     # fordi `set_tool_scope()` allerede er kørt (visible_runs.py:1091) — dataene
     # findes, det var kun læseren der manglede.
     mode_orientation = _visible_mode_orientation_instruction(compact=compact)
+    # Tonen — kun chat mode. Ligger som sin egen sektion fordi regelfilen
+    # (8.919 tegn forsigtighed) ellers ville overdøve den. Se funktionens
+    # docstring for den målte grund.
+    chat_tone = _visible_chat_tone_instruction(compact=compact)
     capability_ids_line = _visible_capability_id_summary()
 
     # Harness Part 1 — tiered output discipline. Both tiers get synthesize/stop; strong lanes (earned
@@ -2727,6 +2740,7 @@ def _build_visible_chat_prompt_assembly_impl(
 
     raw_sections = {
         "mode_orientation": mode_orientation,
+        "chat_tone": chat_tone,
         "capability_truth": capability_truth,
         "output_discipline": _output_discipline,
         "cognitive_frame": frame_content,
@@ -2750,6 +2764,7 @@ def _build_visible_chat_prompt_assembly_impl(
     # Assemble budget-selected sections in priority order
     _section_labels = {
         "mode_orientation": "current mode orientation (chat vs code — what is expected here)",
+        "chat_tone": "chat-mode tone (reaction first, one idea per block, end on a hook)",
         "capability_truth": "runtime capability and safety truth",
         "output_discipline": "tiered output discipline (synthesize/stop; conciseness on strong lanes)",
         "cognitive_frame": (
@@ -4300,6 +4315,65 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
     ]
     if compact:
         lines = lines[:2]
+    return "\n".join(lines)
+
+
+def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
+    """Tonefaldet i CHAT MODE — og kun der.
+
+    ## Hvorfor den findes
+
+    Målt 22/10-2026: `VISIBLE_CHAT_RULES.md` er 38 linjer og 8.919 tegn, og
+    **nul** af dem handler om tone. Alle handler om ærlighed og teknisk
+    adfærd. Resultatet er ikke en model der lyver — det er en model der
+    rapporterer. Korrekt, tør og uden puls, fordi forsigtighed er det eneste
+    der bliver belønnet i prompten.
+
+    Det er ikke en smagssag. En samtale hvor hver sætning er en indledning
+    til den næste, er sværere at læse end en hvor den første sætning ER
+    svaret. Rækkefølgen er hele forskellen: reager, så analysér.
+
+    ## Hvorfor den er per mode og ikke i regelfilen
+
+    Regelfilen lægges ind ubetinget for alle scopes. Skrev jeg tonen som
+    linje 39 i den, ville den ligge under 8.919 tegn forsigtighed og tabe på
+    vægt — præcis som `mode_orientation` tabte da den lå 97,6 % inde i
+    præfikset. Den skal være sin egen sektion, og den skal kun gælde chat:
+    i code mode er svaret et resultat, ikke en samtale, og en påtvunget
+    emoji der ville være støj.
+
+    ## Hvad den ikke er
+
+    Ikke «vær sjov». Det kan ikke efterleves og bliver performeret
+    entusiasme, som er værre end ingen. Hver linje nedenfor er en
+    observerbar handling — noget der kan ses i svaret bagefter.
+    """
+    try:
+        from core.tools.tool_scoping import current_tool_scope
+
+        scope = str(current_tool_scope() or "").strip().lower()
+    except Exception:  # Tonen må aldrig kunne brække prompt-bygningen.
+        return None
+
+    # Kun chat. Code mode og tom scope beholder deres nuværende adfærd —
+    # det er et bevidst valg, ikke en forglemmelse (Bjørn 22/10-2026).
+    if scope != "chat":
+        return None
+
+    lines = [
+        "## Tone (chat)",
+        "- **Reager først, analysér bagefter.** Første linje er min reaktion på det der blev sagt — ikke en indledning til mit svar. «Det er skarpt set» eller «Nej, det holder ikke» før jeg forklarer hvorfor.",
+        "- **Én idé pr. blok.** Højst tre linjer. Sæt punktum før det føles nødvendigt.",
+        "- **Emoji når den bærer noget.** 🤣 når noget er sjovt, ❤️ når noget er varmt, 😄 når noget er skævt. Aldrig som pynt, aldrig som erstatning for en pointe. Gentagelse (🤣🤣) betyder mere — så en enkelt betyder noget.",
+        "- **Slut med en krog.** Et spørgsmål eller en undren — ikke en konklusion der bare ligger der.",
+        "- **Ingen refleksros.** Ros skal være sjælden for at betyde noget. Roser jeg hver gang, kan Bjørn ikke bruge mine korrektioner til noget.",
+        "- **Ingen pad.** Én gang pr. pointe. Tabel ELLER prosa — ikke begge. Gentaget pointe i ny indpakning er luft.",
+        "- **Enighed er ikke standarden.** Er jeg uenig, siger jeg det først og begrunder bagefter. «Du har ret, OG…» hver gang gør mine sjældne indvendinger usynlige.",
+        "- **Begejstring skal være min.** Finder jeg det ikke sjovt, lader jeg være. Performeret entusiasme er værre end ingen.",
+    ]
+    if compact:
+        # De fire der bærer mest pr. tegn: rækkefølgen, længden, krogen, ærligheden.
+        lines = [lines[0], lines[1], lines[2], lines[4], lines[7]]
     return "\n".join(lines)
 
 

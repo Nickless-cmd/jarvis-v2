@@ -61,8 +61,18 @@ from collections.abc import Mapping, MutableSequence
 #: er den gratis: mode er stabilt pr. session, så den ændrer sig kun ved
 #: mode-skift — samme afvejning som `USER.md` (se modulets docstring).
 FORREST_SEKTIONER: tuple[str, ...] = (
+    # RÆKKEFØLGEN ER OMVENDT AF LÆSERÆKKEFØLGEN. `placer_sektioner` bruger
+    # `parts.insert(0, …)` for hvert navn i tur, så det SIDSTE navn ender
+    # forrest. Målt 22/10-2026: med `chat_tone` sidst indledtes live-prompten
+    # med «## Tone (chat)» og orienteringen kom bagefter — og warmer-prefikset
+    # matchede derfor ikke. Listen læses altså nedefra og op.
+    #
+    # TONEN i det rum. Bygges kun ved scope=chat (se
+    # `_visible_chat_tone_instruction`), så code mode og heartbeat er urørte.
+    "chat_tone",
     # HVILKET rum jeg er i. Alt nedenfor — identitet, regler, kapabiliteter —
-    # giver kun mening oven på den orientering.
+    # giver kun mening oven på den orientering. Står sidst i listen fordi den
+    # skal læses FØRST.
     "mode_orientation",
 )
 

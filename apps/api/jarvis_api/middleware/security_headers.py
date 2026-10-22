@@ -6,11 +6,18 @@ er env-gated (`JARVISX_CSP`) fordi en streng `default-src 'none'` ville brække
 evt. HTML/JS som API'et serverer.
 
 `SimpleRateLimitMiddleware` er en in-memory per-IP token-bucket (ingen ekstern
-afhængighed som slowapi). Den er **slået FRA** medmindre `JARVISX_RATE_LIMIT` er
-sat — så et deploy ikke pludselig 429'er live trafik før Bjørn er klar.
+afhængighed som slowapi). Den er **slået TIL** som standard (ændret 22/10-2026)
+og kan slås fra med `JARVISX_RATE_LIMIT=0`.
+
+Hvorfor standarden blev vendt: målt i drift 22/10-2026 svarede det offentlige
+`api.srvlab.dk` (185.107.14.241:443) på `/api/auth/login` og
+`/api/auth/register` uden nogen grænse — `JARVISX_RATE_LIMIT` var ikke sat, så
+der var nul beskyttelse mod brute force. En sikkerhedsgrænse skal være tændt når
+ingen har taget stilling, ikke slukket.
 """
 from __future__ import annotations
 
+import ipaddress
 import os
 import time
 from collections import deque
@@ -87,8 +94,14 @@ def cors_allowed_origins() -> list[str]:
 
 
 def _rate_limit_config() -> tuple[bool, int, float]:
-    """(enabled, max_requests, window_seconds) fra env. Default FRA."""
-    enabled = str(os.environ.get("JARVISX_RATE_LIMIT", "")).strip().lower() in {"1", "true", "yes", "on"}
+    """(enabled, max_requests, window_seconds) fra env. Default TIL.
+
+    Stod som «Default FRA» indtil 22/10-2026. Det betød at en sikkerhedsgrænse
+    var slukket indtil nogen tog stilling — og ingen havde. Kun en eksplicit
+    fra-valg slår den fra nu.
+    """
+    raw = str(os.environ.get("JARVISX_RATE_LIMIT", "")).strip().lower()
+    enabled = raw not in {"0", "false", "no", "off"}
     try:
         max_req = int(os.environ.get("JARVISX_RATE_LIMIT_MAX", "120"))
     except ValueError:
@@ -100,8 +113,48 @@ def _rate_limit_config() -> tuple[bool, int, float]:
     return enabled, max_req, window
 
 
+def _effektiv_klient_ip(request: Request) -> str:
+    """Den IP der skal tælles på — ikke den socket uvicorn ser.
+
+    Caddy ejer :443 og proxyer til `127.0.0.1:8080`, og uvicorn kører UDEN
+    `--proxy-headers` (målt i `/etc/caddy/Caddyfile` og
+    `/etc/systemd/system/jarvis-api.service`, 22/10-2026). Derfor er
+    `request.client.host` **127.0.0.1 for alle kald, også dem fra internettet**.
+
+    Uden denne funktion ville én grænse ramme alle klienter som én IP: den
+    første der hamrede på login ville lukke for alle andre, og angriberen selv
+    ville slippe igen så snart vinduet gled.
+
+    X-Forwarded-For sættes af Caddy. Vi læser det **sidste** håb og ikke det
+    første: Caddy tilføjer den ægte klient-adresse, så uanset om den overskriver
+    eller appender en medbragt liste, er det sidste element den adresse Caddy
+    selv målte. Et spoofet første-håb kan derfor ikke bruges til at vælge sin
+    egen nøgle — eller til at udgive sig for at være på husets net.
+    """
+    xff = (request.headers.get("x-forwarded-for") or "").strip()
+    if xff:
+        sidste = xff.split(",")[-1].strip()
+        if sidste:
+            return sidste
+    return request.client.host if request.client else "unknown"
+
+
+def _er_lokal_adresse(ip: str) -> bool:
+    """Loopback/privat/link-local = husets egne klienter.
+
+    Desk, runtime-processen og Caddy selv kalder API'et indefra. De skal ikke
+    rammes af en grænse der findes for at bremse internettet — ellers ville
+    Bjørns egen klient blive 429'et af sin egen polling.
+    """
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:  # ikke en IP-streng (fx TestClient's "testclient") — kan ikke vaere husets net
+        return False
+    return bool(a.is_loopback or a.is_private or a.is_link_local)
+
+
 class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
-    """In-memory per-IP sliding-window rate limit. FRA medmindre env slår den til."""
+    """In-memory per-IP sliding-window rate limit. TIL som standard."""
 
     def __init__(self, app) -> None:
         super().__init__(app)
@@ -111,7 +164,9 @@ class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
         enabled, max_req, window = _rate_limit_config()
         if not enabled:
             return await call_next(request)
-        ip = request.client.host if request.client else "unknown"
+        ip = _effektiv_klient_ip(request)
+        if _er_lokal_adresse(ip):
+            return await call_next(request)
         now = time.monotonic()
         dq = self._hits.setdefault(ip, deque())
         cutoff = now - window

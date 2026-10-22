@@ -160,17 +160,18 @@ _Auth-routes (spec 2026-06-15 §5): register / verify-email / login._
 | class | `RegisterReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L18) |
 | class | `LoginReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L24) |
 | function | `_base_url` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L29) |
-| function | `register` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L34) |
-| function | `verify_email` | `(token=…)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L46) |
-| function | `login` | `(req)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L56) |
-| function | `google_login_start` | `(app_id=…)` | Returnér Google authorize-URL + nonce. Appen åbner URL'en i browseren og | [src](../../../apps/api/jarvis_api/routes/auth.py#L74) |
-| function | `google_login_result` | `(nonce=…)` | Engangs-hent af login-resultatet. {status: pending|ok|error}. | [src](../../../apps/api/jarvis_api/routes/auth.py#L87) |
-| function | `google_link_start` | `()` | Start Google-linking for den INDLOGGEDE bruger (migration: knyt Gmail til | [src](../../../apps/api/jarvis_api/routes/auth.py#L97) |
-| class | `PairCreateReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L115) |
-| function | `pair_create` | `(req=…)` | Opret en kort-levende pairing-kode for den INDLOGGEDE bruger. Desktop viser | [src](../../../apps/api/jarvis_api/routes/auth.py#L120) |
-| class | `PairRedeemReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L143) |
-| function | `pair_redeem` | `(req)` | Indløs en pairing-kode → friskt Jarvis-token. PUBLIC (mobilen har intet token endnu). | [src](../../../apps/api/jarvis_api/routes/auth.py#L151) |
-| function | `pair_status` | `(code=…)` | Status på en pairing-kode (desktop poller): redeemed=mobil tilsluttet, | [src](../../../apps/api/jarvis_api/routes/auth.py#L161) |
+| function | `_kraev_ejer` | `()` | Selvregistrering er LUKKET for offentligheden (22/10-2026). | [src](../../../apps/api/jarvis_api/routes/auth.py#L33) |
+| function | `register` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L72) |
+| function | `verify_email` | `(token=…)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L87) |
+| function | `login` | `(req)` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L97) |
+| function | `google_login_start` | `(app_id=…)` | Returnér Google authorize-URL + nonce. Appen åbner URL'en i browseren og | [src](../../../apps/api/jarvis_api/routes/auth.py#L115) |
+| function | `google_login_result` | `(nonce=…)` | Engangs-hent af login-resultatet. {status: pending|ok|error}. | [src](../../../apps/api/jarvis_api/routes/auth.py#L128) |
+| function | `google_link_start` | `()` | Start Google-linking for den INDLOGGEDE bruger (migration: knyt Gmail til | [src](../../../apps/api/jarvis_api/routes/auth.py#L138) |
+| class | `PairCreateReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L156) |
+| function | `pair_create` | `(req=…)` | Opret en kort-levende pairing-kode for den INDLOGGEDE bruger. Desktop viser | [src](../../../apps/api/jarvis_api/routes/auth.py#L161) |
+| class | `PairRedeemReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth.py#L184) |
+| function | `pair_redeem` | `(req)` | Indløs en pairing-kode → friskt Jarvis-token. PUBLIC (mobilen har intet token endnu). | [src](../../../apps/api/jarvis_api/routes/auth.py#L192) |
+| function | `pair_status` | `(code=…)` | Status på en pairing-kode (desktop poller): redeemed=mobil tilsluttet, | [src](../../../apps/api/jarvis_api/routes/auth.py#L202) |
 
 ## `apps/api/jarvis_api/routes/auth_enheder.py`
 _Enheder — list, fjern, registrér denne computer, og tænd/sluk reglen._

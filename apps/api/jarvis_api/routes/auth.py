@@ -30,8 +30,49 @@ def _base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
+def _kraev_ejer() -> JSONResponse | None:
+    """Selvregistrering er LUKKET for offentligheden (22/10-2026).
+
+    Baggrund, målt i drift: `api.srvlab.dk` er offentligt tilgængeligt, og
+    `POST /api/auth/register` svarede uden token. Ruten kaldte
+    `user_db.register_user()` direkte — ingen gate, ingen rolle-tjek. En fremmed
+    kunne oprette en konto, få egen workspace og en verifikationsmail til sin
+    egen adresse, og dermed verificere sig selv.
+
+    Middleware-kommentaren påstod at «token issuance itself IS protected
+    (owner-only), via `_require_owner()` inside the route handler». Den funktion
+    fandtes ikke her. Denne er den funktion.
+
+    Fail-closed: kan vi ikke bevise hvem der kalder, oprettes ingen bruger.
+    Returnerer et svar ved afvisning, `None` når kaldet må fortsætte.
+    """
+    from core.identity.workspace_context import current_user_id
+
+    uid = (current_user_id() or "").strip()
+    if not uid:
+        return JSONResponse(
+            status_code=403,
+            content={"ok": False, "error": "owner_required",
+                     "detail": "Registrering kræver ejer-identitet. "
+                               "Kontakt ejeren for at få oprettet en konto."})
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(uid)
+    except Exception:
+        u = None
+    if not u or getattr(u, "role", "") != "owner":
+        return JSONResponse(
+            status_code=403,
+            content={"ok": False, "error": "owner_required",
+                     "detail": "Kun ejeren kan oprette konti."})
+    return None
+
+
 @router.post("/register")
 def register(req: RegisterReq, request: Request) -> JSONResponse:
+    afvist = _kraev_ejer()
+    if afvist is not None:
+        return afvist
     try:
         user, _token = user_db.register_user(
             email=req.email, name=req.name, password=req.password,

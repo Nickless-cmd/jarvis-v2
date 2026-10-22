@@ -39,26 +39,28 @@ _JarvisX user-routing + bearer-token auth middleware._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_log_auth_afvisning` | `(grund, request, raw_auth=…)` | Sig HVORFOR en 401 skete — én gang i minuttet pr. klient og grund. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L50) |
-| function | `_er_lokal_afsender` | `(request)` | Kom kaldet fra loopback eller vores eget net? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L163) |
-| function | `_er_ui_skal` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L187) |
-| function | `_er_offentlig_ui_skal` | `(request)` | Lad en fjern PWA hente HTML, JS og CSS uden at åbne data eller maps. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L191) |
-| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L204) |
-| function | `_er_signeret_filhentning` | `(request)` | Er dette en GET af én fil med en gyldig, levende signatur? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L216) |
-| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L274) |
+| function | `_er_lokal_afsender` | `(request)` | Kom kaldet fra loopback eller vores eget net? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L171) |
+| function | `_er_ui_skal` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L195) |
+| function | `_er_offentlig_ui_skal` | `(request)` | Lad en fjern PWA hente HTML, JS og CSS uden at åbne data eller maps. | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L199) |
+| function | `_is_public_path` | `(path)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L212) |
+| function | `_er_signeret_filhentning` | `(request)` | Er dette en GET af én fil med en gyldig, levende signatur? | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L224) |
+| function | `jarvisx_user_routing_middleware` | `(request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/jarvisx_user_routing.py#L282) |
 
 ## `apps/api/jarvis_api/middleware/security_headers.py`
 _Security-headers + let-vægts rate-limiting middleware (spec §20)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_should_redirect_to_https` | `(*, scheme, x_forwarded_proto, client, path)` | Ren beslutning: skal denne request 301'es til HTTPS? (§20.1) | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L35) |
-| class | `HttpsRedirectMiddleware` | `` | HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn). | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L49) |
-| method | `HttpsRedirectMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L57) |
-| class | `SecurityHeadersMiddleware` | `` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L69) |
-| method | `SecurityHeadersMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L70) |
-| function | `cors_allowed_origins` | `()` | CORS-origins fra env (§20.3). `JARVISX_CORS_ORIGINS` = komma-sepereret | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L79) |
-| function | `_rate_limit_config` | `()` | (enabled, max_requests, window_seconds) fra env. Default FRA. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L89) |
-| class | `SimpleRateLimitMiddleware` | `` | In-memory per-IP sliding-window rate limit. FRA medmindre env slår den til. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L103) |
-| method | `SimpleRateLimitMiddleware.__init__` | `(self, app)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L106) |
-| method | `SimpleRateLimitMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L110) |
+| function | `_should_redirect_to_https` | `(*, scheme, x_forwarded_proto, client, path)` | Ren beslutning: skal denne request 301'es til HTTPS? (§20.1) | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L42) |
+| class | `HttpsRedirectMiddleware` | `` | HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn). | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L56) |
+| method | `HttpsRedirectMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L64) |
+| class | `SecurityHeadersMiddleware` | `` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L76) |
+| method | `SecurityHeadersMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L77) |
+| function | `cors_allowed_origins` | `()` | CORS-origins fra env (§20.3). `JARVISX_CORS_ORIGINS` = komma-sepereret | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L86) |
+| function | `_rate_limit_config` | `()` | (enabled, max_requests, window_seconds) fra env. Default TIL. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L96) |
+| function | `_effektiv_klient_ip` | `(request)` | Den IP der skal tælles på — ikke den socket uvicorn ser. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L116) |
+| function | `_er_lokal_adresse` | `(ip)` | Loopback/privat/link-local = husets egne klienter. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L142) |
+| class | `SimpleRateLimitMiddleware` | `` | In-memory per-IP sliding-window rate limit. TIL som standard. | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L156) |
+| method | `SimpleRateLimitMiddleware.__init__` | `(self, app)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L159) |
+| method | `SimpleRateLimitMiddleware.dispatch` | `(self, request, call_next)` | — | [src](../../../apps/api/jarvis_api/middleware/security_headers.py#L163) |
 

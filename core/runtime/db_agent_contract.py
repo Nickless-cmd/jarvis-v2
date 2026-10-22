@@ -422,6 +422,22 @@ def commit_terminal_outcome(
         ck = _conn()          # ÉN forbindelse: et nyt _conn()-kald ruller en aaben transaktion tilbage
         ck.execute("UPDATE agent_checkpoints SET status='discarded' WHERE assignment_id=? AND status='parked'",
                    (assignment_id,))
+        # Run-raekken maa ikke blive staaende i waiting_for_approval naar
+        # assignmentet er terminalt. Det er den samme zombie som
+        # ``agent_parking.py`` beskriver og loeser for sin vej — men ad DENNE
+        # vej blev checkpointet discarded uden at runnet blev lukket.
+        #
+        # Maalt 22/10-2026: asg-4bea67d6cc004dd4 var 'cancelled', agenten var
+        # 'cancelled', checkpointet var 'discarded' — og runnet stod stadig
+        # 'waiting_for_approval'. Fordi ``decided_parked()`` kun ser checkpoints
+        # der ER 'parked', faldt raekken ud af oprydningen og blev aldrig samlet
+        # op: den holdt kortet i «venter» for evigt. Et run i waiting_for_approval
+        # kan ikke vaere afsluttet paa anden vis, saa 'cancelled' er den aerlige
+        # status her — det er hvad der skete med det.
+        _nu = _now_iso()
+        ck.execute("UPDATE agent_runs SET status='cancelled', finished_at=?, updated_at=? "
+                   "WHERE assignment_id=? AND status='waiting_for_approval'",
+                   (_nu, _nu, assignment_id))
         ck.commit()
     except Exception:
         logger.warning("kunne ikke rydde approvals for %s", assignment_id, exc_info=True)

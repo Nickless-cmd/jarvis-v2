@@ -95,7 +95,15 @@ _PUBLIC_PATHS = (
     # nå den. Ruten verificerer selv signaturen (core.runtime.token_renewal).
     "/api/auth/renew",
     "/api/auth/whoami-token",  # let clients self-check token validity
-    "/api/auth/register",      # selvregistrering (spec 2026-06-15 §5) — public
+    # "/api/auth/register" er FJERNET fra denne liste (22/10-2026). Den stod her
+    # som «selvregistrering (spec 2026-06-15 §5) — public», og det betød at hvem
+    # som helst på internettet kunne oprette en konto på maskinen: ruten havde
+    # ingen gate overhovedet, mens kommentaren ovenfor påstod at token-udstedelse
+    # var «protected (owner-only), via _require_owner() inside the route handler».
+    # Den funktion fandtes ikke i auth.py. Målt i drift 22/10: api.srvlab.dk er
+    # offentligt (185.107.14.241:443) og POST /api/auth/register svarede uden
+    # token. Ruten kræver nu ejer-identitet — se _kraev_ejer_eller_menneskelig_vej
+    # i routes/auth.py.
     "/api/auth/verify-email",  # email-verifikations-link — public
     "/api/auth/login",         # login med email+password → bearer-token — public
     "/api/auth/google/start",  # Google app-login: start (ingen token endnu) — public

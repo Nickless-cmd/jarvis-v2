@@ -88,6 +88,8 @@ interface Props {
    * tilfældet for runder der ikke er turens sidste.
    */
   turStart?: number | null
+  /** Visuel pacing-pause. Komponenten forbliver monteret, så uret fortsætter. */
+  pacingSkjult?: boolean
 }
 
 /**
@@ -128,7 +130,7 @@ export const SVAR_KLIP = 4000
  */
 export const InlineToolGroup = memo(function InlineToolGroup({
   items, etiket, aabenFraStart, tanker, streaming = false, sidste = false, svarBegyndt = false,
-  arbejdslinje = null, turStart = null,
+  arbejdslinje = null, turStart = null, pacingSkjult = false,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -176,6 +178,7 @@ export const InlineToolGroup = memo(function InlineToolGroup({
   // Entréen — kun når linjen BEGYNDER at arbejde; en genindlæst tråd skal
   // ikke sende hver linje gennem den.
   const entre = useRef(new Animated.Value(running && !reduced ? 0 : 1)).current
+  const pacingSynlighed = useRef(new Animated.Value(1)).current
   useEffect(() => {
     if (!running || reduced) return
     Animated.sequence([
@@ -183,6 +186,15 @@ export const InlineToolGroup = memo(function InlineToolGroup({
       Animated.timing(entre, { toValue: 1, duration: 301, easing: Easing.out(Easing.ease), useNativeDriver: true }),
     ]).start()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    Animated.timing(pacingSynlighed, {
+      toValue: pacingSkjult ? 0 : 1,
+      duration: reduced ? 0 : pacingSkjult ? 160 : 220,
+      easing: pacingSkjult ? Easing.in(Easing.ease) : Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start()
+  }, [pacingSkjult, pacingSynlighed, reduced])
 
   // Caret: drejes -90° når foldet, lige når åben (150 ms).
   const drej = useRef(new Animated.Value(0)).current
@@ -210,7 +222,13 @@ export const InlineToolGroup = memo(function InlineToolGroup({
   }
 
   return (
-    <Animated.View style={[styles.wrap, { opacity: entre }]}>
+    <Animated.View
+      style={[styles.wrap, { opacity: Animated.multiply(entre, pacingSynlighed) }]}
+      pointerEvents={pacingSkjult ? 'none' : 'auto'}
+      accessibilityElementsHidden={pacingSkjult}
+      importantForAccessibility={pacingSkjult ? 'no-hide-descendants' : 'auto'}
+      testID={streaming && sidste ? 'active-work-line' : undefined}
+    >
       <Pressable
         accessibilityRole={expandable ? 'button' : 'text'}
         accessibilityLabel={tekst}

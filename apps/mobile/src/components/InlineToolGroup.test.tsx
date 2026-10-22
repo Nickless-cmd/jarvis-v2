@@ -636,6 +636,25 @@ describe('shimmeren lever gennem hullet mellem runder', () => {
   })
 })
 
+it('pacing skjuler hele den aktive linje uden at afmontere ur eller indhold', async () => {
+  const start = Date.now() - 3000
+  const s = await render(
+    <InlineToolGroup items={[item({ running: true })]} streaming sidste
+      turStart={start} pacingSkjult />,
+  )
+  const linje = s.getByTestId('active-work-line', { includeHiddenElements: true })
+  expect(linje.props.accessibilityElementsHidden).toBe(true)
+  expect(linje.props.pointerEvents).toBe('none')
+  expect(s.getByTestId('runde-tid', { includeHiddenElements: true })).toBeTruthy()
+
+  await s.rerender(
+    <InlineToolGroup items={[item({ running: true })]} streaming sidste
+      turStart={start} pacingSkjult={false} />,
+  )
+  expect(s.getByTestId('active-work-line').props.accessibilityElementsHidden).toBe(false)
+  expect(s.getByTestId('runde-tid')).toBeTruthy()
+})
+
 describe('maerket i spidsen lever HELE den aktive linje', () => {
   const pulser = (s: Awaited<ReturnType<typeof render>>) =>
     vejTil(s.toJSON(), 'runde-puls') !== null

@@ -264,6 +264,23 @@ describe('RaekkeTranskript', () => {
     expect(aktivKnap).toHaveTextContent('Redigerer a.ts')
   })
 
+  it('skjuler den aktive linje visuelt uden at afmontere dens ur', () => {
+    const arbejde = [statusKald('read_file', { path: 'a.ts' }, 'running')]
+    const { container, rerender } = render(
+      <RaekkeTranskript blocks={arbejde} streaming elapsedMs={3100} />,
+    )
+    const runde = container.querySelector('[data-aktiv-runde]')
+    const ur = runde?.querySelector('.rv-rundeur')
+    expect(runde).not.toHaveAttribute('data-pacing-skjult')
+    expect(ur).toBeInTheDocument()
+
+    rerender(<RaekkeTranskript blocks={arbejde} streaming elapsedMs={4200} skjulAktivRunde />)
+    expect(container.querySelector('[data-aktiv-runde]')).toBe(runde)
+    expect(runde).toHaveAttribute('data-pacing-skjult')
+    expect(runde).toHaveAttribute('aria-hidden', 'true')
+    expect(runde?.querySelector('.rv-rundeur')).toBe(ur)
+  })
+
   it('folder værktøjsrækkerne ud fra deres egen arbejdsrække', () => {
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
     const arbejdsrunde = container.querySelectorAll('.rv-arbejdsrunde')[1]!

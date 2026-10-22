@@ -24,6 +24,7 @@ import { usePaceMode } from '../../lib/streamPacing'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
+import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 
 function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
   rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced }: {
@@ -82,6 +83,12 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   const alleTekst = blocks.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
   const vistTekst = paced.flatMap((b) => (b?.type === 'text' ? [b.text] : [])).join('')
   const pacingFaerdig = alleTekst.length > 0 && vistTekst === alleTekst
+  // Kun mellemsynteser: slutsvaret har sin egen overgang. En 420 ms tærskel
+  // gør at korte synteser aldrig får arbejdslinjen til at blinke.
+  const skjulAktivRunde = usePacingWorkLine(
+    streaming && !finalAnswerStarted && alleTekst.length > 0 && !pacingFaerdig,
+    runId ?? beskedId ?? null,
+  )
   const onPacedRef = useRef(onPaced)
   onPacedRef.current = onPaced
   useEffect(() => {
@@ -92,7 +99,8 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
         beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
-        elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />
+        elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
+        skjulAktivRunde={skjulAktivRunde} />
     : <BlocksRenderer blocks={paced} density={density} streaming={streaming}
         rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
         beskedId={beskedId} config={config} />

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native'
-import { MessageList } from './MessageList'
+import { laasAktivRundeNederst, MessageList } from './MessageList'
 import type { ChatMessage } from '../lib/types'
 import type { ContentBlock } from '../lib/sseProtocol'
 
@@ -234,6 +234,13 @@ it('holder live arbejde åbent gennem synteser og folder først efter afslutning
   })]} blocks={[]} working={false} />) })
   expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
   expect(s.getByText('Færdig.')).toBeTruthy()
+})
+
+it('låser den aktive code-runde efter syntesen i den kronologiske liste', () => {
+  const rows = [{ kind: 'header' }, { kind: 'tool-group' }, { kind: 'msg' }]
+  laasAktivRundeNederst(rows, 1)
+  // Listen vendes bagefter: sidste kronologiske række bliver visuelt nederst.
+  expect(rows.map((row) => row.kind)).toEqual(['header', 'msg', 'tool-group'])
 })
 
 it('en ny tur starter åben, selv hvis forrige live tur blev lukket', async () => {

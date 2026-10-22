@@ -250,6 +250,25 @@
 }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 
+/* Den aktive slot bliver stående, så tur-uret fortsætter og teksten ovenover
+   ikke hopper. Under reel syntese-pacing forsvinder hele linjen visuelt;
+   korte synteser når ikke hertil (420 ms gate i usePacingWorkLine). */
+.raekkevisning .rv-arbejdsrunde[data-aktiv-runde] {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+.raekkevisning .rv-arbejdsrunde[data-pacing-skjult] {
+  opacity: 0;
+  transform: translateY(3px);
+  pointer-events: none;
+  transition-duration: 160ms;
+  transition-timing-function: ease-in;
+}
+@media (prefers-reduced-motion: reduce) {
+  .raekkevisning .rv-arbejdsrunde[data-aktiv-runde] { transition: none; transform: none; }
+}
+
 .raekkevisning .rv-arbejdsdetaljer {
   display: flex; flex-direction: column; padding: 5px 0 7px 22px;
 }

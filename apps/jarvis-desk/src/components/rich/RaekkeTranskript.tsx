@@ -305,7 +305,7 @@ const Arbejdsdetaljer = memo(function Arbejdsdetaljer({ elementer, aaben, stream
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
 function ArbejdsrundeImpl({
-  elementer, streaming, sidste, config, etiket, beskedId, turSekunder,
+  elementer, streaming, sidste, config, etiket, beskedId, turSekunder, skjult = false,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
@@ -314,6 +314,7 @@ function ArbejdsrundeImpl({
   beskedId?: string
   etiket?: string
   turSekunder?: number | null
+  skjult?: boolean
 }) {
   const [aaben, setAaben] = useState(false)
   const foldRef = useRef<HTMLButtonElement>(null)
@@ -350,7 +351,9 @@ function ArbejdsrundeImpl({
     : etiket || mekanisk
   const Ikon = arbejdsIkon(vaerktoejer)
   return (
-    <div className="rv-arbejdsrunde">
+    <div className="rv-arbejdsrunde"
+      {...(aktivRunde ? { 'data-aktiv-runde': '', 'data-pacing-skjult': skjult ? '' : undefined } : {})}
+      aria-hidden={aktivRunde && skjult ? true : undefined}>
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
         {...(aktivRunde ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
@@ -378,6 +381,7 @@ function ArbejdsrundeImpl({
 const Arbejdsrunde = memo(ArbejdsrundeImpl, (a, b) =>
   a.streaming === b.streaming && a.sidste === b.sidste
   && a.turSekunder === b.turSekunder
+  && a.skjult === b.skjult
   && a.config === b.config && a.beskedId === b.beskedId && a.etiket === b.etiket
   && sammeArbejdsElementer(a.elementer, b.elementer))
 
@@ -392,6 +396,7 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
 function RaekkeTranskriptImpl({
   blocks, streaming, finalAnswerStarted = false, beskedId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
+  skjulAktivRunde = false,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
@@ -402,6 +407,7 @@ function RaekkeTranskriptImpl({
   elapsedMs?: number
   tokens?: number
   varighedSekunder?: number | null
+  skjulAktivRunde?: boolean
 }) {
   const { arbejde, svar, kald } = opdel(blocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
@@ -478,7 +484,7 @@ function RaekkeTranskriptImpl({
                 <Arbejdsrunde key="aktiv-runde" elementer={senesteRunde.elementer}
                   streaming sidste config={config}
                   etiket={etiketFor(senesteRunde.elementer, etiketter)}
-                  beskedId={beskedId} turSekunder={turSekunder} />
+                  beskedId={beskedId} turSekunder={turSekunder} skjult={skjulAktivRunde} />
               ) : null}
             </div>
           )}

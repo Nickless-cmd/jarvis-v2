@@ -35,6 +35,7 @@ import { useChatPacedBlocks } from '../lib/useChatPacedBlocks'
 import { ChatFlowActivity } from './ChatFlowActivity'
 import { CompactMarkerRow, NyeBeskederRow } from './MessageListMarkers'
 import { useReducedMotion } from '../lib/useReducedMotion'
+import { usePacingWorkLine } from '../lib/usePacingWorkLine'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -300,6 +301,13 @@ function groupToolRounds(rows: Row[]): Row[] {
   }
   afslut()
   return out
+}
+
+/** Inverted FlatList har index 0 visuelt nederst; inputtet er stadig kronologisk. */
+export function laasAktivRundeNederst<T>(rows: T[], aktivIndex: number): void {
+  if (aktivIndex < 0 || aktivIndex === rows.length - 1) return
+  const [aktiv] = rows.splice(aktivIndex, 1)
+  if (aktiv != null) rows.push(aktiv)
 }
 
 /** Hold turens arbejde bag én linje, men lad svaret blive i FlatList som sin
@@ -600,6 +608,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     runId,
   })
   const pacedBlocks = presentation === 'chat' ? chatPacedBlocks : codePacedBlocks
+  const rawText = blocks.flatMap((block) => block?.type === 'text' ? [block.text] : []).join('')
+  const pacedText = pacedBlocks.flatMap((block) => block?.type === 'text' ? [block.text] : []).join('')
+  const skjulAktivRunde = usePacingWorkLine(
+    presentation === 'code' && working && !finalAnswerStarted && rawText.length > 0 && rawText !== pacedText,
+    runId,
+  )
   const flatRef = useRef<FlatList>(null)
   const [turnOverrides, setTurnOverrides] = useState<Record<string, boolean>>({})
   const [chatDetailsOpen, setChatDetailsOpen] = useState(false)
@@ -928,6 +942,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     if (sidsteRunde >= 0) {
       const r = nyeLive[sidsteRunde]
       if (r?.kind === 'tool-group') r.sidsteRunde = true
+      // Samme faste slot som Desk: mellemsynteser indsættes oven OVER den
+      // aktive runde; runden selv bliver nederst i den åbne arbejdsfase.
+      if (presentation === 'code' && working && sidsteRunde !== nyeLive.length - 1) {
+        laasAktivRundeNederst(nyeLive, sidsteRunde)
+      }
     }
   }
   // En ny delta ændrer som regel kun den sidste række. Genbrug de øvrige
@@ -1115,6 +1134,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             streaming={working} sidste={item.sidsteRunde} svarBegyndt={finalAnswerStarted}
             arbejdslinje={item.sidsteRunde ? arbejdslinje : null}
             turStart={item.sidsteRunde ? turStart : null}
+            pacingSkjult={Boolean(item.sidsteRunde && skjulAktivRunde)}
           />
           return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }

@@ -35,6 +35,15 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         return {"status": "error", "error": "metadata must be an object"}
 
+    # `source` er en top-level parameter (schema + beskrivelse), men
+    # normaliseringen i sensory_source læser `metadata['source']`. Fold den
+    # ind her, så et top-level source ikke tabes. Målt 17/10-2026: nattens
+    # tre natrutine-poster fik 'ukendt', fordi parameteren ikke fandtes i
+    # schemaet og handleren derfor aldrig så den.
+    source = args.get("source")
+    if source:
+        metadata = {**metadata, "source": source}
+
     # Egress-fri Central-observation (§24.4): Jarvis fanger et SANSE-indtryk. Kun
     # modalitet-label + længde — ALDRIG selve indholdet/sansningen. Self-safe.
     try:
@@ -153,6 +162,15 @@ SENSORY_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "metadata": {
                         "type": "object",
                         "description": "Free-form JSON metadata, optional.",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": (
+                            "Producer of the impression — e.g. 'look_around', "
+                            "'mic_listen', 'natrutine', 'dybdesession'. "
+                            "Normalised to a canonical set; unknown names "
+                            "become 'ukendt' with the raw value in 'source_raw'."
+                        ),
                     },
                 },
                 "required": ["modality", "content"],

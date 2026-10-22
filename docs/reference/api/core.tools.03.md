@@ -56,7 +56,7 @@ _Sensory archive tools — record and recall sensory experiences._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_record_sensory_memory` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L19) |
-| function | `_exec_recall_sensory_memories` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L85) |
+| function | `_exec_recall_sensory_memories` | `(args)` | — | [src](../../../core/tools/sensory_tools.py#L94) |
 
 ## `core/tools/session_search.py`
 _search_sessions tool — cross-channel session search with keyword and semantic modes._

@@ -1196,7 +1196,7 @@ Generated from source. 9154/17391 functions/methods documented (52%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L339)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L356)
 - `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
 - `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)

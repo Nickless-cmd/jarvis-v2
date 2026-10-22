@@ -64,7 +64,8 @@ _`call_loaded_tool` — en transport, ikke en udfører._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L76) |
+| function | `pak_ud` | `(navn, argumenter)` | Oversæt et dispatcher-kald til det ægte kald. Alt andet går uændret igennem. | [src](../../../core/tools/kaldt_vaerktoej.py#L77) |
+| function | `_laes_argumenter` | `(ydre)` | Find det ægte værktøjs argumenter i dispatcher-kaldet. | [src](../../../core/tools/kaldt_vaerktoej.py#L94) |
 
 ## `core/tools/kommando_beskrivelse.py`
 _Jarvis' egen beskrivelse af en kommando — linjen i klienterne._

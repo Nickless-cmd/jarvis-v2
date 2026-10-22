@@ -47,6 +47,9 @@ from collections.abc import Mapping, MutableSequence
 #: kostede tre flytninger 30/9-2026. `test_praefiks_uden_levende_tal.py` er
 #: vagten mod det.
 PRAEFIKS_SEKTIONER: tuple[str, ...] = (
+    # Først: HVILKET rum jeg er i. Alt nedenfor giver kun mening oven på den
+    # orientering, og rækkefølgen her ER rækkefølgen i præfikset.
+    "mode_orientation",
     "capability_truth",
     "output_discipline",
     "cognitive_frame",

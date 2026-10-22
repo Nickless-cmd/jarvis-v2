@@ -329,7 +329,7 @@ _Hvilke budget-valgte sektioner der hører i præfikset, og hvilke i halen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `placer_sektioner` | `(*, selected, labels, parts, dyn_tail, derived_inputs)` | Læg hver budget-valgt sektion i præfikset eller i halen. | [src](../../../core/services/prompt_sections/section_placement.py#L79) |
+| function | `placer_sektioner` | `(*, selected, labels, parts, dyn_tail, derived_inputs)` | Læg hver budget-valgt sektion i præfikset eller i halen. | [src](../../../core/services/prompt_sections/section_placement.py#L82) |
 
 ## `core/services/prompt_sections/support_signals_section.py`
 _Support-signalernes indhold — forbeholdet hoistet, kroppen samlet._

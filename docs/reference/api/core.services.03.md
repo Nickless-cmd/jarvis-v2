@@ -235,17 +235,17 @@ _Adaptive attention economy — bounded context budgeting for prompt assembly._
 |---|---|---|---|---|
 | class | `SectionBudget` | `` | Budget for a single prompt section. | [src](../../../core/services/attention_budget.py#L23) |
 | class | `AttentionBudget` | `` | Complete attention budget for a prompt assembly path. | [src](../../../core/services/attention_budget.py#L32) |
-| function | `get_attention_budget` | `(profile)` | Get a named attention budget profile. | [src](../../../core/services/attention_budget.py#L105) |
-| class | `SectionResult` | `` | Result of attempting to include a section under budget. | [src](../../../core/services/attention_budget.py#L115) |
-| class | `AttentionTrace` | `` | Observable trace of what was included/omitted and why. | [src](../../../core/services/attention_budget.py#L126) |
-| method | `AttentionTrace.included_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L140) |
-| method | `AttentionTrace.omitted_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L144) |
-| method | `AttentionTrace.trimmed_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L148) |
-| method | `AttentionTrace.summary` | `(self)` | — | [src](../../../core/services/attention_budget.py#L151) |
-| function | `apply_section_budget` | `(*, name, content, budget)` | Apply a section budget to content. | [src](../../../core/services/attention_budget.py#L178) |
-| function | `build_micro_cognitive_frame` | `()` | Build a ~150 char micro cognitive frame for compact visible prompts. | [src](../../../core/services/attention_budget.py#L272) |
-| function | `select_sections_under_budget` | `(*, budget, sections)` | Select and trim sections to fit within the attention budget. | [src](../../../core/services/attention_budget.py#L316) |
-| function | `build_attention_budget_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/attention_budget.py#L398) |
+| function | `get_attention_budget` | `(profile)` | Get a named attention budget profile. | [src](../../../core/services/attention_budget.py#L115) |
+| class | `SectionResult` | `` | Result of attempting to include a section under budget. | [src](../../../core/services/attention_budget.py#L125) |
+| class | `AttentionTrace` | `` | Observable trace of what was included/omitted and why. | [src](../../../core/services/attention_budget.py#L136) |
+| method | `AttentionTrace.included_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L150) |
+| method | `AttentionTrace.omitted_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L154) |
+| method | `AttentionTrace.trimmed_sections` | `(self)` | — | [src](../../../core/services/attention_budget.py#L158) |
+| method | `AttentionTrace.summary` | `(self)` | — | [src](../../../core/services/attention_budget.py#L161) |
+| function | `apply_section_budget` | `(*, name, content, budget)` | Apply a section budget to content. | [src](../../../core/services/attention_budget.py#L188) |
+| function | `build_micro_cognitive_frame` | `()` | Build a ~150 char micro cognitive frame for compact visible prompts. | [src](../../../core/services/attention_budget.py#L282) |
+| function | `select_sections_under_budget` | `(*, budget, sections)` | Select and trim sections to fit within the attention budget. | [src](../../../core/services/attention_budget.py#L326) |
+| function | `build_attention_budget_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/attention_budget.py#L411) |
 
 ## `core/services/attention_contour.py`
 _Attention Contour — shape of attention._

@@ -102,3 +102,48 @@ class TestCentralWiring:
         import core.tools.sensory_tools as mod
         src = inspect.getsource(mod)
         assert "record_private" in src
+
+
+class TestSourceParameter:
+    """`source` stod i beskrivelsen, men ikke i schemaet — og handleren læste
+    den aldrig. Målt 17/10-2026: nattens tre natrutine-poster fik 'ukendt'.
+
+    To fejl, to tests: uden schema-parameteren kan kilden ikke SENDES, og uden
+    foldningen i handleren kan den ikke MODTAGES. Den ene alene retter intet.
+    """
+
+    def test_schema_tilbyder_source(self):
+        """Uden parameteren i schemaet afviser runtime et top-level source."""
+        from core.tools.sensory_tools import SENSORY_TOOL_DEFINITIONS
+
+        rec = next(
+            d for d in SENSORY_TOOL_DEFINITIONS
+            if d["function"]["name"] == "record_sensory_memory"
+        )
+        props = rec["function"]["parameters"]["properties"]
+        assert "source" in props, (
+            "beskrivelsen lover `source`, men schemaet tilbyder den ikke — "
+            "så kan den aldrig sendes"
+        )
+
+    def test_top_level_source_naar_metadata(self):
+        """Et top-level source skal foldes ind, dér hvor normaliseringen læser."""
+        from core.tools.sensory_tools import _exec_record_sensory_memory
+        from core.services.memory_write_queue import process_queue
+        from core.services import sensory_archive
+
+        write = _exec_record_sensory_memory({
+            "modality": "atmosphere",
+            "content": "natrutine-test: stille stue, gråt lys",
+            "source": "natrutine",
+        })
+        assert write["status"] == "ok", write
+
+        process_queue(batch_size=10)
+
+        poster = sensory_archive.list_recent(limit=5)
+        assert poster, "skrivningen nåede ikke arkivet"
+        nyeste = poster[0]
+        assert nyeste["metadata"].get("source") == "natrutine", (
+            f"kilden tabtes: {nyeste['metadata']!r}"
+        )

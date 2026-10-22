@@ -19,11 +19,13 @@ import json
 import logging
 import math
 import os
+import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.state_store import med_laas
 from core.runtime.workspace_paths import shared_dir
 
 logger = logging.getLogger(__name__)
@@ -53,13 +55,31 @@ def _load() -> list[dict[str, Any]]:
 
 
 def _save(items: list[dict[str, Any]]) -> None:
+    """Atomisk skrivning med en UNIK temp-fil pr. kald.
+
+    MÅLT 20/10-2026 17:44:31 (side-9b957af2ea): `jarvis-api` og
+    `jarvis-runtime` kører samme kode i hver sin proces og deler filen. Den
+    gamle `path.with_suffix(".tmp")` var ÉN fast sti, så to skrivere trådte i
+    samme temp-fil: den ene `replace()`ede filen væk under den anden, hvilket
+    gav `No such file or directory` — og imellem skrivningerne kunne `.json`
+    få blandet indhold, som læses som `Extra data: line 21434`.
+
+    En unik temp-fil gør `replace()` atomisk: læseren ser enten den gamle
+    eller den nye fil, aldrig en blanding.
+    """
     path = _storage_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(items, f, ensure_ascii=False, indent=2)
-        tmp.replace(path)
+        fd, tmp_navn = tempfile.mkstemp(
+            dir=str(path.parent), prefix=".outcome_learning-", suffix=".tmp")
+        tmp = Path(tmp_navn)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(items, f, ensure_ascii=False, indent=2)
+            tmp.replace(path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
     except Exception as exc:
         logger.warning("outcome_learning: save failed: %s", exc)
 
@@ -74,19 +94,23 @@ def record_outcome(
     """Record a single observation. outcome is free-form ('success', 'error',
     'refused', 'preferred', etc.). weight lets you up/downweight strong signals.
     """
-    items = _load()
-    rid = f"oc-{uuid4().hex[:12]}"
-    items.append({
-        "record_id": rid,
-        "context": str(context)[:200],
-        "outcome": str(outcome)[:80],
-        "weight": float(weight),
-        "metadata": dict(metadata or {}),
-        "recorded_at": datetime.now(UTC).isoformat(),
-    })
-    if len(items) > _MAX_RECORDS:
-        items = items[-_MAX_RECORDS:]
-    _save(items)
+    # Låst læs-ændr-skriv (22/10-2026). Uden låsen læste to processer samme N
+    # poster, tilføjede hver sin og skrev N+1 — den enes post forsvandt
+    # sporløst. `med_laas` er husets mønster (in_flight_runs siden 12/9).
+    with med_laas("outcome_learning"):
+        items = _load()
+        rid = f"oc-{uuid4().hex[:12]}"
+        items.append({
+            "record_id": rid,
+            "context": str(context)[:200],
+            "outcome": str(outcome)[:80],
+            "weight": float(weight),
+            "metadata": dict(metadata or {}),
+            "recorded_at": datetime.now(UTC).isoformat(),
+        })
+        if len(items) > _MAX_RECORDS:
+            items = items[-_MAX_RECORDS:]
+        _save(items)
     return rid
 
 

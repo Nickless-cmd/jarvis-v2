@@ -203,8 +203,8 @@ _Cross-Signal Analysis — find patterns across cognitive signals._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L20) |
-| function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L84) |
+| function | `analyze_signal_patterns` | `(*, limit_items=…)` | Find cross-signal patterns from accumulated cognitive data. | [src](../../../core/services/cross_signal_analysis.py#L19) |
+| function | `build_cross_signal_analysis_surface` | `()` | — | [src](../../../core/services/cross_signal_analysis.py#L87) |
 
 ## `core/services/cross_user_share_guard.py`
 _Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._

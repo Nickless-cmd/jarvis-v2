@@ -30,8 +30,55 @@ def test_dispatcheren_oversaettes_til_det_aegte_kald():
 def test_manglende_argumenter_giver_tomt_objekt_ikke_None():
     """Et vaerktoej uden argumenter skal kaldes med {}, ikke med None."""
     assert pak_ud(KALD_NAVN, {"navn": "todo_list"}) == ("todo_list", {})
+    # En streng der IKKE er JSON forbliver {} — den kan ikke bruges til noget.
     assert pak_ud(KALD_NAVN, {"navn": "todo_list", "argumenter": "ikke-et-objekt"}) == (
         "todo_list", {})
+
+
+def test_argumenter_som_JSON_streng_parses_frem_for_at_forsvinde():
+    """MAALT 22/10-2026 (Bjørn: «db_query afviser sit eget sql-parameter»).
+
+    Modeller sender jaevnligt `argumenter` som en JSON-STRENG i stedet for et
+    objekt. Den gamle kode kastede den vaek (`args = {}`), saa vaerktoejet fik
+    tomt input og svarede «sql is required» — som ser ud som om modellen intet
+    sendte. Fejlen var STILLE og ramte alle ~370 vaerktoejer, ikke kun db_query.
+
+    MUTATION: fjern json.loads-grenen i pak_ud -> denne test fejler.
+    """
+    assert pak_ud(KALD_NAVN, {
+        "navn": "db_query",
+        "argumenter": '{"sql": "SELECT 1"}',
+    }) == ("db_query", {"sql": "SELECT 1"})
+
+    # Ogsaa med mellemrum og indlejrede citationstegn.
+    assert pak_ud(KALD_NAVN, {
+        "navn": "read_file",
+        "argumenter": '{ "path": "/media/projects/x.py" }',
+    }) == ("read_file", {"path": "/media/projects/x.py"})
+
+
+def test_argumenter_sendt_som_top_level_felter_gaar_igennem():
+    """MAALT 22/10-2026. Den anden stille form: argumenterne sendt direkte som
+    soeskendefelter ved siden af `navn`, uden `argumenter`-noeglen. Ogsaa her
+    faldt de i gulvet og blev til {}.
+
+    MUTATION: fjern top-level-grenen i pak_ud -> denne test fejler.
+    """
+    assert pak_ud(KALD_NAVN, {"navn": "db_query", "sql": "SELECT 1"}) == (
+        "db_query", {"sql": "SELECT 1"})
+    assert pak_ud(KALD_NAVN, {"navn": "read_file", "path": "/x"}) == (
+        "read_file", {"path": "/x"})
+
+
+def test_top_level_felter_blandes_IKKE_ind_naar_argumenter_findes():
+    """Vaern mod over-retning: en udfyldt `argumenter` er facit. Loesfelter ved
+    siden af maa ikke blive flettet ind — saa ville et forsoeg paa at rette et
+    felt i stedet aendre argumenterne."""
+    assert pak_ud(KALD_NAVN, {
+        "navn": "read_file",
+        "argumenter": {"path": "/rigtig"},
+        "path": "/forkert",
+    }) == ("read_file", {"path": "/rigtig"})
 
 
 def test_uden_navn_fejler_den_HOEJLYDT():

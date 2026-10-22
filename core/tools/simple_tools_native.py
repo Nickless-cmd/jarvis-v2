@@ -1196,13 +1196,23 @@ def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
     title = str(args.get("title") or "Jarvis").strip()
     priority = str(args.get("priority") or "default").strip()
     try:
-        from core.services.alarm_ud import send_alert
-        ok = send_alert(
+        from core.services.alarm_ud import send_alert_resultat
+        r = send_alert_resultat(
             titel=title, tekst=message, slags="infra_security",
             importance="high" if priority in ("high", "urgent") else "normal",
         )
-        if ok:
+        # ÆRLIGT SVAR (målt 20/10-2026, rettet 22/10-2026). Før sagde dette
+        # «leveret til din enhed» så snart routeren meldte `delivered=True` —
+        # men det ord dækkede også en række i webchat-FEEDEN. En besked der
+        # stod i feeden og aldrig nåede telefonen blev altså rapporteret som
+        # leveret. Nu siges den kanal der faktisk blev brugt.
+        if r["naaede_telefonen"]:
             return {"status": "ok", "text": "Beskeden er leveret til din enhed."}
+        if r["leveret"]:
+            return {"status": "ok",
+                    "text": (f"Beskeden blev leveret til '{r['kanal']}' — "
+                             "en flade der ikke kvitterer. Den er IKKE "
+                             "bekræftet nået telefonen.")}
         return {"status": "error",
                 "text": "Beskeden kunne ikke leveres (kanal utilgængelig eller sat i kø)."}
     except Exception as exc:

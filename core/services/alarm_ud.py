@@ -39,6 +39,87 @@ import logging
 log = logging.getLogger(__name__)
 
 
+#: Kanaler der bekræftet når telefonen.
+#:
+#: `auto` og `desktop` er også levering — men de skriver til en flade der ikke
+#: kvitterer. `auto` kalder `route_device_aware`, som intet returnerer, så
+#: `_deliver_to_channel` melder sandt uanset udfald; `desktop` lægger beskeden
+#: i feeden. Målt 20/10-2026: en `importance="critical"` medicin-påmindelse
+#: returnerede True ad `auto`-kanalen, mens ntfy-cachen havde **nul** poster.
+#:
+#: For en alarm der skal vække nogen er den forskel hele pointen.
+_PUSH_KANALER = frozenset({"mobile", "push", "ntfy"})
+
+
+def send_alert_resultat(
+    *,
+    titel: str,
+    tekst: str,
+    slags: str = "infra_security",
+    importance: str = "high",
+    session_id: str = "",
+    require_push: bool = False,
+) -> dict:
+    """Send en driftsalarm og sig hvad der FAKTISK skete.
+
+    Returnerer `{leveret, kanal, naaede_telefonen, grund}`.
+
+    `leveret` er den boolske kontrakt kalderne kender. Med `require_push=True`
+    tæller kun en kanal der bekræftet når telefonen — en webchat-feed-række er
+    ikke en push, og for en tidskritisk alarm er den ikke levering.
+
+    Uden `require_push` bevares den gamle betydning: en hvilken som helst
+    kanal der accepterede beskeden. Det er med vilje — 16 kaldere læser bool,
+    og en feed-række ER levering for en daemon der bare vil have den væk.
+    """
+    try:
+        from core.identity.owner_resolver import owner_user_id
+        uid = owner_user_id()
+        if not uid:
+            log.warning("alarm uden ejer — kan ikke leveres: %s", titel)
+            return {"leveret": False, "kanal": "ingen_ejer",
+                    "naaede_telefonen": False,
+                    "grund": "ingen ejer at levere til"}
+        from core.services import notification_router
+        result = notification_router.route_proactive_notification(
+            uid,
+            slags,
+            {"title": titel, "preview": tekst, "body": tekst, "kind": slags,
+             "session_id": session_id},
+            importance=importance,
+        )
+        kanal = str(result.get("channel") or "ukendt")
+        accepteret = bool(result.get("delivered"))
+        naaede_telefonen = accepteret and kanal in _PUSH_KANALER
+        leveret = naaede_telefonen if require_push else accepteret
+
+        if require_push and accepteret and not naaede_telefonen:
+            # Den farlige tavse variant: routeren sagde «leveret», men kanalen
+            # (`kanal`) kvitterer ikke. Uden denne linje ville alarmen se ud
+            # som en succes i logen og være usynlig på telefonen.
+            log.warning(
+                "alarm krævede push men nåede kun '%s' (ikke telefonen): %s",
+                kanal, titel)
+        elif not accepteret:
+            # Ikke en fejl i sig selv — quiet hours lægger den i kø, og det er
+            # den rigtige opførsel. Logges så et vedvarende «failed» kan ses.
+            log.warning("alarm ikke leveret (kanal=%s): %s", kanal, titel)
+
+        if naaede_telefonen:
+            grund = f"leveret til telefonen via '{kanal}'"
+        elif accepteret:
+            grund = (f"leveret til '{kanal}' — en flade der ikke kvitterer, "
+                     "ikke telefonen")
+        else:
+            grund = f"ikke leveret (kanal='{kanal}')"
+        return {"leveret": leveret, "kanal": kanal,
+                "naaede_telefonen": naaede_telefonen, "grund": grund}
+    except Exception:
+        log.warning("alarm kunne ikke routes: %s", titel, exc_info=True)
+        return {"leveret": False, "kanal": "fejl", "naaede_telefonen": False,
+                "grund": "routeren kastede — se log"}
+
+
 def send_alert(
     *,
     titel: str,
@@ -46,6 +127,7 @@ def send_alert(
     slags: str = "infra_security",
     importance: str = "high",
     session_id: str = "",
+    require_push: bool = False,
 ) -> bool:
     """Send en driftsalarm gennem routeren. Returnerer True hvis den blev leveret.
 
@@ -57,28 +139,11 @@ def send_alert(
     `importance="critical"` omgår quiet hours. Brug det kun når alarmen ikke
     kan vente til kl. 07 — en CPU-temperatur kan, et kompromitteret system kan
     ikke.
+
+    `require_push=True` for tidskritiske alarmer: så tæller kun en kanal der
+    bekræftet når telefonen. Brug `send_alert_resultat` når du vil se hvilken.
     """
-    try:
-        from core.identity.owner_resolver import owner_user_id
-        uid = owner_user_id()
-        if not uid:
-            log.warning("alarm uden ejer — kan ikke leveres: %s", titel)
-            return False
-        from core.services import notification_router
-        result = notification_router.route_proactive_notification(
-            uid,
-            slags,
-            {"title": titel, "preview": tekst, "body": tekst, "kind": slags,
-             "session_id": session_id},
-            importance=importance,
-        )
-        leveret = bool(result.get("delivered"))
-        if not leveret:
-            # Ikke en fejl i sig selv — quiet hours lægger den i kø, og det er
-            # den rigtige opførsel. Logges så et vedvarende «failed» kan ses.
-            log.warning("alarm ikke leveret (kanal=%s): %s",
-                        result.get("channel"), titel)
-        return leveret
-    except Exception:
-        log.warning("alarm kunne ikke routes: %s", titel, exc_info=True)
-        return False
+    return send_alert_resultat(
+        titel=titel, tekst=tekst, slags=slags, importance=importance,
+        session_id=session_id, require_push=require_push,
+    )["leveret"]

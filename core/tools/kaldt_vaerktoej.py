@@ -37,6 +37,7 @@ modellen kan sende, og den er væk igen før noget bliver kaldt.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 #: Navnet modellen kalder. Skal stå i det faste værktøjsarray.
@@ -86,7 +87,39 @@ def pak_ud(navn: str, argumenter: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     indre = str((argumenter or {}).get("navn") or "").strip()
     if not indre or indre == KALD_NAVN:
         return navn, argumenter
-    args = (argumenter or {}).get("argumenter")
-    if not isinstance(args, dict):
-        args = {}
+    args = _laes_argumenter(argumenter or {})
     return indre, args
+
+
+def _laes_argumenter(ydre: dict[str, Any]) -> dict[str, Any]:
+    """Find det ægte værktøjs argumenter i dispatcher-kaldet.
+
+    To former tabte dem tidligere i STILHED (`args = {}`), og et værktøj der
+    får tomt input svarer «X is required» — hvilket ser ud som om modellen intet
+    sendte. Målt 22/10-2026: `db_query` afviste sit eget `sql`-parameter tre
+    gange, fordi argumenterne var sendt som JSON-streng. Fejlen ramte alle
+    ~370 værktøjer, ikke kun det ene.
+
+    1. `argumenter` som JSON-STRENG parses til et objekt.
+    2. Argumenter sendt som søskendefelter ved siden af `navn` bruges, når
+       `argumenter` slet ikke findes.
+
+    En udfyldt `argumenter` er altid facit: løse felter ved siden af bliver
+    ALDRIG flettet ind, for så kunne et forsøg på at rette ét felt i stedet
+    ændre argumenterne.
+    """
+    if "argumenter" in ydre:
+        raa = ydre.get("argumenter")
+        if isinstance(raa, dict):
+            return raa
+        if isinstance(raa, str) and raa.strip():
+            try:
+                parset = json.loads(raa)
+            except (ValueError, TypeError):  # ikke JSON: strengen kan ikke bruges som argumenter, og et kald uden argumenter er den ærlige form
+                return {}
+            return parset if isinstance(parset, dict) else {}
+        return {}
+
+    # `argumenter` findes ikke: brug de øvrige felter, hvis der er nogen.
+    loese = {k: v for k, v in ydre.items() if k != "navn"}
+    return loese

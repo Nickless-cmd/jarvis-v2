@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9140/17378 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9141/17378 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9140/17378 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 833 | 1533 | 54% |
-| `core.services` | 6094 | 11815 | 51% |
+| `core.services` | 6095 | 11815 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1530,7 +1530,7 @@ Generated from source. 9140/17378 functions/methods documented (52%). The list b
 - `core/services/operator_channel.py` :: `close_channel` (L172)
 - `core/services/operator_channel.py` :: `looks_like_workstation_path` (L285)
 - `core/services/operator_channel.py` :: `open_channel` (L156)
-- `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L189)
+- `core/services/outcome_learning.py` :: `build_outcome_learning_surface` (L213)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L198)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.outcome` (L195)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.record` (L179)

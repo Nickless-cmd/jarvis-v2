@@ -59,6 +59,12 @@ _ACTIVE_DREAMS: list[dict[str, object]] = []
 _DREAM_ARCHIVE: list[dict[str, object]] = []
 
 _FADE_AFTER_SESSIONS = 5  # unconfirmed dreams archived after this many presentations
+# Loft over aktive drømme. Målt 22/10-2026: 28 aktive efter 6 dage (16 på
+# confidence 0,8, nul bekræftet) — producenten i dream_consolidation_daemon
+# kalder adopt_dream ved HVER konsolidering, og det eneste forbrug var
+# fade-vejen, som var blokeret af `presented`-fejlen. Uden et loft vokser
+# listen monotont uanset hvor mange der fades. De svageste arkiveres først.
+_MAX_ACTIVE_DREAMS = 12
 _MAX_CONFIDENCE = 0.98
 _CONFIRM_BOOST = 0.15
 _MULTI_SESSION_CONFIRM_BOOST = 0.08  # additional boost per extra confirmed session
@@ -166,6 +172,7 @@ def adopt_dream(
     }
 
     _ACTIVE_DREAMS.append(dream)
+    _enforce_active_cap()
     _save()
 
     event_bus.publish(
@@ -373,6 +380,52 @@ def maybe_auto_promote_dreams() -> list[str]:
     if promoted:
         _save()
     return promoted
+
+
+def _enforce_active_cap() -> None:
+    """Hold antallet af aktive drømme under `_MAX_ACTIVE_DREAMS`.
+
+    Målt 22/10-2026: 28 aktive efter 6 dage, nul bekræftet. Producenten
+    (`dream_consolidation_daemon`) kalder `adopt_dream` ved hver konsolidering,
+    og fade-vejen var den eneste forbruger — men den var blokeret af
+    `presented`-fejlen. Et loft er nødvendigt uafhængigt af fade, ellers vokser
+    listen monotont når producenten kører hurtigere end sessionerne.
+
+    De svageste arkiveres først (lavest confidence, derefter ældst). Bekræftede
+    drømme røres aldrig — de uddybes, de arkiveres ikke.
+    """
+    if len(_ACTIVE_DREAMS) <= _MAX_ACTIVE_DREAMS:
+        return
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    beskyttet = [d for d in _ACTIVE_DREAMS if d.get("confirmed")]
+    kandidater = [d for d in _ACTIVE_DREAMS if not d.get("confirmed")]
+    # Svageste først: lav confidence, derefter ældst adopted_at.
+    kandidater.sort(
+        key=lambda d: (
+            float(d.get("confidence") or 0),
+            str(d.get("adopted_at") or ""),
+        )
+    )
+    plads = max(0, _MAX_ACTIVE_DREAMS - len(beskyttet))
+    behold = set(id(d) for d in beskyttet)
+    if plads:
+        behold |= set(id(d) for d in kandidater[len(kandidater) - plads:])
+    for d in list(_ACTIVE_DREAMS):
+        if id(d) in behold:
+            continue
+        d["status"] = "capped"
+        d["updated_at"] = now
+        _DREAM_ARCHIVE.append(d)
+        event_bus.publish(
+            "cognitive_state.dream_capped",
+            {"dream_id": d.get("dream_id"), "confidence": d.get("confidence")},
+        )
+        _observe_dream_signal(
+            "dream_capped",
+            dream_id=d.get("dream_id"),
+            confidence=d.get("confidence"),
+        )
+    _ACTIVE_DREAMS[:] = [d for d in _ACTIVE_DREAMS if id(d) in behold]
 
 
 def _maybe_fade_old_dreams() -> None:

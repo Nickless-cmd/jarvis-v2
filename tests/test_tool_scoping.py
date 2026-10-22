@@ -345,6 +345,29 @@ def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_helt_vaek():
     assert "dispatch_code_mode_task" in REQUIRED_LAZY_TOOL_NAMES
 
 
+def test_chat_scope_beholder_find_vejen_til_det_lange_toolkatalog():
+    from core.tools.simple_tools import get_tool_definitions
+
+    navne = {
+        t["function"]["name"]
+        for t in get_tool_definitions(scope="chat")
+    }
+    assert "load_more_tools" in navne
+
+
+def test_chat_visible_pool_beholder_begge_veje_til_det_lange_toolkatalog():
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.tools.simple_tools import get_tool_definitions
+
+    navne = {
+        (t.get("function") or t).get("name")
+        for t in select_tools_for_visible(
+            get_tool_definitions(scope="chat"), user_message="hej", session_id=None,
+        )
+    }
+    assert {"load_more_tools", "call_loaded_tool"} <= navne
+
+
 # ── Computer-use: mus, tastatur, skaermbillede — KUN code mode (21/9-2026) ──
 # Værktøjerne FANDTES, `@nut-tree-fork/nut-js` var installeret, og samtykke-porten
 # var bygget — men de stod i INGEN scope-liste. Målt 21/9: chat 0/17, code 0/17.

@@ -13,7 +13,12 @@ def pump_first_pass(
     from core.services.run_autonomy_context import (
         set_autonomous, set_run_identity, set_user_present,
     )
-    from core.tools.tool_scoping import set_local_exec, set_tool_scope
+    from core.tools.tool_scoping import (
+        reset_local_exec,
+        reset_tool_scope,
+        set_local_exec,
+        set_tool_scope,
+    )
 
     set_run_identity(str(run.run_id or ""), str(getattr(run, "origin", "") or ""))
     set_autonomous(bool(getattr(run, "autonomous", False)))
@@ -25,18 +30,22 @@ def pump_first_pass(
         set_user_present(presence_for_run(run))
     except Exception:
         set_user_present(False)
+    scope_token = None
+    local_exec_token = None
     try:
         if tool_scope:
-            set_tool_scope(tool_scope)
-        set_local_exec(bool(getattr(run, "local_tool_exec", False)))
+            scope_token = set_tool_scope(tool_scope)
+        local_exec_token = set_local_exec(bool(getattr(run, "local_tool_exec", False)))
     except Exception:  # scope propagation is best-effort; the model stream still runs
         pass
 
     if stream_fn is None:
         from core.services.visible_model import stream_visible_model as stream_fn
     try:
+        from core.services.visible_memory_grounding import ground_memory_question
+        grounded_message = ground_memory_question(run.user_message)
         for item in stream_fn(
-            message=run.user_message,
+            message=grounded_message,
             provider=run.provider,
             model=run.model,
             session_id=run.session_id,
@@ -52,4 +61,8 @@ def pump_first_pass(
         set_run_identity("", "")
         set_autonomous(False)
         set_user_present(False)
+        if local_exec_token is not None:
+            reset_local_exec(local_exec_token)
+        if scope_token is not None:
+            reset_tool_scope(scope_token)
         loop.call_soon_threadsafe(queue.put_nowait, sentinel)

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9154/17391 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9157/17397 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9154/17391 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6104 | 11824 | 51% |
+| `core.services` | 6107 | 11829 | 51% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 557 | 1097 | 50% |
+| `core.tools` | 557 | 1098 | 50% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 9154/17391 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2579)
+## Undocumented public functions (2580)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2400,10 +2400,11 @@ Generated from source. 9154/17391 functions/methods documented (52%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L330)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L348)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L326)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L353)
+- `core/tools/tool_scoping.py` :: `reset_local_exec` (L355)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L333)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L351)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L329)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L360)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

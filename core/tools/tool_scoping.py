@@ -105,6 +105,9 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    # Fast escape-hatch til katalogets lange hale. Pruneren pinner den, men
+    # scope-porten skal lade den passere først — ellers er pinningen virkningsløs.
+    "load_more_tools",
     # Self-scoped UI preference; handler derives the verified current principal.
     "set_chat_flow_preference",
     # Owner-only via OWNER_ONLY_TOOLS; kan bruges i både chat og code uden
@@ -347,6 +350,10 @@ def current_local_exec() -> bool:
 
 def set_local_exec(on: bool) -> contextvars.Token:
     return _local_exec_var.set(bool(on))
+
+
+def reset_local_exec(token: contextvars.Token) -> None:
+    _local_exec_var.reset(token)
 
 
 @contextmanager

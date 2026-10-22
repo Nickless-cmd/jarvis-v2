@@ -12,9 +12,13 @@ i tests ikke knækker.
 """
 from __future__ import annotations
 
+import logging
+
 from core.services.chat_sessions import recent_chat_tool_messages
 from core.services.tool_result_store import render_tool_result_for_prompt
 from core.runtime.db import list_runtime_contract_candidates
+
+logger = logging.getLogger(__name__)
 
 # Vage telemetri-fraser (Jarvis-spec #7): kandidater der bare beskriver "der skete noget"
 # uden konkret viden. Substring-match → skip (de brænder tokens uden værdi).
@@ -297,7 +301,24 @@ def _visible_memory_recall_bundle_section(
         return None
 
     lines: list[str] = ["Memory recall bundle:"]
-    for item in list(recalled.get("results") or []):
+    results = list(recalled.get("results") or [])
+    association_ids: set[int] = set()
+    try:
+        from core.services.associative_recall import build_same_turn_association_section
+
+        association_section, associated = build_same_turn_association_section(
+            user_message,
+            results,
+            limit=1 if compact else 2,
+        )
+        if association_section:
+            lines.append(association_section)
+            association_ids = {id(item) for item in associated}
+    except Exception as exc:
+        logger.debug("same-turn associative recall selection failed: %s", exc)
+    for item in results:
+        if id(item) in association_ids:
+            continue
         text = _clip_line(str(item.get("text") or ""), limit=180)
         if text:
             lines.append(f"- [{item.get('source') or 'memory'}] {text}")

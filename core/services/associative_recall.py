@@ -457,6 +457,74 @@ def build_recall_prompt_section(query: str = "") -> str:
     return "\n".join(lines)
 
 
+_SAME_TURN_ASSOCIATIVE_SOURCES = frozenset({
+    "brain", "private_brain", "chronicle", "sensory", "session_summary",
+})
+
+
+def select_same_turn_associations(
+    query: str,
+    recall_results: list[dict[str, Any]],
+    *,
+    limit: int = 2,
+) -> list[dict[str, Any]]:
+    """Select semantic recall results as current-turn associations.
+
+    The authoritative recall bundle has already paid for retrieval and fused
+    ranking.  This selector is deliberately local and deterministic: no DB,
+    embedding, thread, or LLM call is allowed here.  Exact lexical facts stay
+    in the normal memory bundle; high-native, lower-lexical results become the
+    associative bridge for the same user message.
+    """
+    if not str(query or "").strip() or limit <= 0:
+        return []
+    selected: list[tuple[float, dict[str, Any]]] = []
+    for item in recall_results:
+        source = str(item.get("source") or "")
+        text = str(item.get("text") or "").strip()
+        if source not in _SAME_TURN_ASSOCIATIVE_SOURCES or not text:
+            continue
+        try:
+            native = float(item.get("native_score") or 0.0)
+            fused = float(item.get("score") or 0.0)
+            lexical = float(item.get("lexical") or 0.0)
+        except (TypeError, ValueError):  # Malformed optional ranking metadata is not an association.
+            continue
+        # A same-turn association should be a real semantic resonance, not an
+        # exact keyword fact wearing another label.  Native >= .5 matches the
+        # established brain cosine floor; lexical < .65 keeps direct hits in
+        # the ordinary recall bundle.
+        if native < 0.5 or lexical >= 0.65:
+            continue
+        strength = max(native, fused) + (0.65 - lexical) * 0.1
+        selected.append((strength, item))
+    selected.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _strength, item in selected[:limit]]
+
+
+def build_same_turn_association_section(
+    query: str,
+    recall_results: list[dict[str, Any]],
+    *,
+    limit: int = 2,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Render N→N associations from results already retrieved for turn N."""
+    selected = select_same_turn_associations(query, recall_results, limit=limit)
+    if not selected:
+        return "", []
+    lines = ["[ASSOCIATIONER – AKTUEL BESKED]"]
+    for item in selected:
+        text = " ".join(str(item.get("text") or "").split())[:180]
+        source = str(item.get("source") or "memory")
+        strength = max(
+            float(item.get("native_score") or 0.0),
+            float(item.get("score") or 0.0),
+        )
+        lines.append(f"→ [{source}] {text} (styrke: {strength:.2f})")
+    lines.append("Mulig association til den aktuelle besked; brug den kun hvis forbindelsen er meningsfuld.")
+    return "\n".join(lines), selected
+
+
 def apply_weak_recall_to_emotions(memories: list[dict[str, Any]]) -> None:
     """Trigger emotion concepts from weak-scoring memories.
 

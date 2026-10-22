@@ -282,6 +282,39 @@ class TestVisibleMemoryRecallBundleSection:
             assert seen["query"] == "test"
             assert "[brain] current line" in result
 
+    def test_promotes_semantic_result_to_same_turn_association_without_duplication(self) -> None:
+        semantic = {
+            "source": "brain",
+            "text": "En tidligere genstart havde en skjult race",
+            "native_score": 0.84,
+            "score": 0.62,
+            "lexical": 0.12,
+        }
+        direct = {
+            "source": "workspace",
+            "text": "Den direkte deploy-fakta",
+            "native_score": 0.9,
+            "score": 0.9,
+            "lexical": 0.8,
+        }
+        with patch(
+            "core.services.recall.recall",
+            return_value={"delivery_status": "delivered", "results": [semantic, direct]},
+        ), patch(
+            "core.services.prompt_sections.memory_recall._recent_tool_recall_lines",
+            return_value=[],
+        ):
+            result = _module()._visible_memory_recall_bundle_section(
+                session_id="session-1",
+                user_message="deploy genstart",
+                compact=False,
+            )
+
+        assert result is not None
+        assert "[ASSOCIATIONER – AKTUEL BESKED]" in result
+        assert result.count("En tidligere genstart havde en skjult race") == 1
+        assert "- [workspace] Den direkte deploy-fakta" in result
+
     def test_includes_tool_section(self) -> None:
         with patch(
             "core.services.recall.recall",

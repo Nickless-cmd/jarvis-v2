@@ -402,6 +402,52 @@ def test_association_must_match_current_query():
     assert "database migration" in ar.build_recall_prompt_section("database migration")
 
 
+def test_same_turn_association_reuses_semantic_recall_without_new_work():
+    ar = _fresh_ar()
+    results = [
+        {
+            "source": "brain",
+            "text": "Tidligere deployment viste en race under genstart",
+            "native_score": 0.82,
+            "score": 0.61,
+            "lexical": 0.18,
+        },
+        {
+            "source": "workspace",
+            "text": "Direkte fakta om deployment",
+            "native_score": 0.95,
+            "score": 0.90,
+            "lexical": 0.20,
+        },
+        {
+            "source": "session_summary",
+            "text": "deployment deployment deployment",
+            "native_score": 0.90,
+            "score": 0.90,
+            "lexical": 0.90,
+        },
+    ]
+
+    section, selected = ar.build_same_turn_association_section("genstart deploy", results)
+
+    assert [item["source"] for item in selected] == ["brain"]
+    assert "AKTUEL BESKED" in section
+    assert "race under genstart" in section
+
+
+def test_same_turn_association_requires_native_semantic_strength():
+    ar = _fresh_ar()
+    section, selected = ar.build_same_turn_association_section(
+        "deploy",
+        [{
+            "source": "brain", "text": "svagt minde", "native_score": 0.3,
+            "score": 0.8, "lexical": 0.1,
+        }],
+    )
+    assert section == ""
+    assert selected == []
+
+
 def test_observe_assoc_recall_scalar_only(monkeypatch):
     """Fase 3 (§23.3 #4): hot-path recall melder scalar-metadata (aldrig indhold) →
     memory/recall observe + eventbus. private_brain_share korrekt."""

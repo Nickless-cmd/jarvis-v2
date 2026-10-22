@@ -103,3 +103,62 @@ def test_tonen_staar_efter_orienteringen_i_praefikset():
         "mode_orientation skal stå SIDST i FORREST_SEKTIONER — listen indsættes "
         "forrest ét ad gangen, så sidste navn bliver det første modellen læser"
     )
+
+
+def test_tonen_bliver_ikke_klippet_af_budgettet():
+    """Sektionen skal komme HEL igennem — ikke bare komme igennem.
+
+    Målt i drift 22/10-2026 efter samtale-reglerne blev lagt ind: sektionen
+    var 2270 tegn, men `chat_tone` havde `max_chars=1400` og `remaining`
+    kappede den yderligere til 1300. Den kom altså igennem den eksisterende
+    vagt (`selected.get("chat_tone")` var sand) mens de sidste regler blev
+    skåret af midt i en sætning. En grøn vagt der kun spørger «er den der?»
+    kan ikke se det — derfor spørger denne vagt om den er HEL.
+
+    Klippes den, lover overskriften mere end kroppen holder, og det er værre
+    end ingen sektion: modellen læser en halv regel som en hel.
+    """
+    from core.services.attention_budget import BUDGET_VISIBLE_FULL, select_sections_under_budget
+
+    tekst = _tone("chat")
+    assert tekst
+
+    selected, trace = select_sections_under_budget(
+        budget=BUDGET_VISIBLE_FULL,
+        sections={"chat_tone": tekst, "mode_orientation": "Du er i CHAT MODE."},
+    )
+    ud = selected.get("chat_tone") or ""
+    detalje = next((s for s in trace.sections if s.name == "chat_tone"), None)
+
+    assert detalje is not None, "chat_tone optræder slet ikke i budget-tracet"
+    assert not detalje.trimmed, (
+        f"chat_tone blev KLIPPET ({len(tekst)} → {len(ud)} tegn). Hæv "
+        f"`chat_tone.max_chars` OG `total_char_target` i BUDGET_VISIBLE_FULL — "
+        f"`remaining` kapper den også, så loftet alene er ikke nok."
+    )
+    assert ud == tekst, "sektionen kom igennem, men indholdet er ændret undervejs"
+
+
+def test_sidste_samtale_regel_naar_prompten():
+    """Den sidste regel er den der forsvinder først — så den måles eksplicit.
+
+    Klippes sektionen, er det altid halen der forsvinder. Denne vagt kræver
+    at den sidste linje i reglerne står i den FAKTISKE prompt, ikke bare i
+    funktionens returværdi.
+    """
+    from unittest.mock import patch
+
+    from core.services import prompt_contract as pc
+
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="chat"):
+        out = pc.build_visible_chat_prompt_assembly(
+            provider="ollama",
+            model="deepseek-v4.1-flash:cloud",
+            user_message="test",
+            session_id="test-chat-tone-hale",
+        )
+    tekst = out.prompt if hasattr(out, "prompt") else str(out)
+    assert "Begejstring skal" in tekst, (
+        "den sidste samtale-regel nåede ikke den faktiske prompt — sektionen "
+        "bliver klippet et sted mellem funktionen og assembly"
+    )

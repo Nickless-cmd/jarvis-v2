@@ -82,7 +82,12 @@ BUDGET_VISIBLE_COMPACT = AttentionBudget(
 
 BUDGET_VISIBLE_FULL = AttentionBudget(
     profile="visible_full",
-    total_char_target=3500,
+    # 3500 → 4400 (22/10-2026). Målt i drift: `chat_tone` blev klippet fra 2270
+    # til 1300 tegn, fordi loftet var dimensioneret til den gamle tone alene
+    # (~900 tegn) og ikke til tone + samtale-regler (1141 tegn). `remaining`
+    # kappede den også (2121 ved tonens tur), så et højere max_chars alene
+    # havde ikke været nok. De 900 ekstra tegn er ~1 % af en ~90k prompt.
+    total_char_target=4400,
     cognitive_frame=SectionBudget(max_chars=500, max_items=4, must_include=True, priority=2),
     private_brain=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     self_knowledge=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
@@ -97,7 +102,10 @@ BUDGET_VISIBLE_FULL = AttentionBudget(
     # Se noten i visible_compact: must_include, prioritet 0, rigelig plads.
     mode_orientation=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=0),
     # Se noten i visible_compact: kun chat mode har indhold her.
-    chat_tone=SectionBudget(max_chars=1400, max_items=12, must_include=False, priority=1),
+    # 1400 → 2400 (22/10-2026): sektionen er nu tone + samtale-regler = 2270
+    # tegn. Et loft under det klipper reglerne midt i en sætning, og så lover
+    # overskriften mere end kroppen holder — værre end ingen sektion.
+    chat_tone=SectionBudget(max_chars=2400, max_items=12, must_include=False, priority=1),
 )
 
 BUDGET_HEARTBEAT = AttentionBudget(

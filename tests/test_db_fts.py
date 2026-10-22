@@ -134,7 +134,6 @@ def test_search_scopes_to_current_user(conn):
         assert "s-other" not in sids, "en anden brugers private session lækkede ind i søgningen"
     finally:
         reset_context(t)
-
     t = set_context(workspace_name="michelle", user_id="other-uid")
     try:
         sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
@@ -164,6 +163,31 @@ def test_search_hides_unstamped_legacy_until_ownership_migration(conn):
         sids = [h["session_id"] for h in db_fts.search_session_summaries("pfsense noegle", limit=10)]
         assert "s-legacy" not in sids
         assert "s-other" not in sids
+    finally:
+        reset_context(t)
+
+
+def test_search_accepts_legacy_principal_resolving_to_current_owner(conn, monkeypatch):
+    """Canonical scope must include the same owner's stored legacy subject."""
+    from core.identity.workspace_context import reset_context, set_context
+    from core.services import routine_migration
+
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, created_at) "
+        "VALUES ('s-legacy-owner', 'Emne: pfsense noegle fra gammel konto', '2026-09-03T10:00:00')"
+    )
+    _stempel(conn, "s-legacy-owner", "legacy-owner-subject")
+    db_fts.ensure_fts_tables(conn)
+    monkeypatch.setattr(
+        routine_migration,
+        "resolve_canonical_identity",
+        lambda value: "owner-uid" if value in {"owner-uid", "legacy-owner-subject"} else value,
+    )
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        hits = db_fts.search_session_summaries("pfsense noegle", limit=10)
+        assert [hit["session_id"] for hit in hits] == ["s-legacy-owner"]
     finally:
         reset_context(t)
 
@@ -200,5 +224,41 @@ def test_chat_search_scopes_to_current_user(conn):
         mids = [h["message_id"] for h in db_fts.search_chat_messages("pfsense noegle", limit=10)]
         assert "m-other" in mids, "ejeren skal kunne søge sin EGEN chat"
         assert "m-owner" not in mids
+    finally:
+        reset_context(t)
+
+
+def test_chat_search_accepts_legacy_principal_but_rejects_foreign_mix(conn, monkeypatch):
+    from core.identity.workspace_context import reset_context, set_context
+    from core.services import routine_migration
+
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-legacy-owner', 's-legacy-owner', 'user', 'pfsense noeglen min', "
+        "'legacy-owner-subject', '2026-09-03T10:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-mixed-owner', 's-mixed', 'user', 'pfsense noeglen blandet', "
+        "'legacy-owner-subject', '2026-09-03T10:01:00')"
+    )
+    conn.execute(
+        "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+        "VALUES ('m-mixed-other', 's-mixed', 'user', 'pfsense noeglen fremmed', "
+        "'other-uid', '2026-09-03T10:02:00')"
+    )
+    db_fts.ensure_fts_tables(conn)
+    monkeypatch.setattr(
+        routine_migration,
+        "resolve_canonical_identity",
+        lambda value: "owner-uid" if value in {"owner-uid", "legacy-owner-subject"} else value,
+    )
+
+    t = set_context(workspace_name="bjorn", user_id="owner-uid")
+    try:
+        mids = [hit["message_id"] for hit in db_fts.search_chat_messages("pfsense noegle", limit=10)]
+        assert "m-legacy-owner" in mids
+        assert "m-mixed-owner" not in mids
+        assert "m-mixed-other" not in mids
     finally:
         reset_context(t)

@@ -1,32 +1,33 @@
-"""Previous-query background recall is retired."""
+"""Prepared associative recall is query-gated and non-blocking."""
 from __future__ import annotations
 
 
 def test_background_recall_never_serves_previous_query(monkeypatch):
-    from core.services import memory_hierarchy, memory_recall_engine, prompt_memory_recall
+    from core.services import associative_recall, prompt_memory_recall
 
-    monkeypatch.setattr(memory_hierarchy, "recall_before_act_summary", lambda **kw: "rba-result")
-    monkeypatch.setattr(memory_recall_engine, "multi_signal_recall_section", lambda query: "msr-result")
-
-    class ImmediateThread:
-        def __init__(self, *, target, **kwargs):
-            self.target = target
-
-        def start(self):
-            self.target()
-
-    monkeypatch.setattr(prompt_memory_recall.threading, "Thread", ImmediateThread)
-    session_id = "test-background-recall-cache"
-    prompt_memory_recall._RBA_CACHE.pop(session_id, None)
-    prompt_memory_recall._MSR_CACHE.pop(session_id, None)
-    first, first_inputs = [], []
+    monkeypatch.setattr(associative_recall, "build_recall_prompt_section", lambda query: "")
+    first, first_inputs, errors = [], [], []
     prompt_memory_recall.append_background_recall(
-        "Hvad aftalte vi sidst?", session_id, first, first_inputs, lambda *args: None,
+        "Et helt nyt emne", "session", first, first_inputs, lambda *args: errors.append(args),
     )
     assert first == []
-    second, second_inputs = [], []
-    prompt_memory_recall.append_background_recall(
-        "Hvad aftalte vi sidst?", session_id, second, second_inputs, lambda *args: None,
+    assert first_inputs == []
+    assert errors == []
+
+
+def test_background_recall_surfaces_query_matched_prepared_association(monkeypatch):
+    from core.services import associative_recall, prompt_memory_recall
+
+    seen = []
+    monkeypatch.setattr(
+        associative_recall,
+        "build_recall_prompt_section",
+        lambda query: seen.append(query) or "[ASSOCIATIONER]\n→ relevant minde",
     )
-    assert second == []
-    assert second_inputs == []
+    sections, inputs = [], []
+    prompt_memory_recall.append_background_recall(
+        "Fortsæt om deploy", "session", sections, inputs, lambda *args: None,
+    )
+    assert seen == ["Fortsæt om deploy"]
+    assert sections == ["[ASSOCIATIONER]\n→ relevant minde"]
+    assert inputs == ["associative recall (prepared, query-matched)"]

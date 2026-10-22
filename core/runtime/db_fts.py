@@ -133,6 +133,31 @@ def _bm25_to_score(rank: float) -> float:
         return 0.0
 
 
+def _equivalent_principals(conn: sqlite3.Connection, canonical_uid: str) -> tuple[str, ...]:
+    """Return stored principals that resolve to the current canonical user.
+
+    Older chat rows may contain an external login subject while the request
+    context already contains the canonical account id.  Treating those two
+    spellings as different users hides the owner's own history.  Resolution is
+    deliberately fail-closed: an unreadable or ambiguous id is not included.
+    """
+    aliases = {canonical_uid}
+    try:
+        from core.services.routine_migration import resolve_canonical_identity
+
+        rows = conn.execute(
+            "SELECT DISTINCT user_id FROM chat_messages "
+            "WHERE user_id IS NOT NULL AND user_id<>''"
+        ).fetchall()
+        for row in rows:
+            stored = str(row[0] or "").strip()
+            if stored and resolve_canonical_identity(stored) == canonical_uid:
+                aliases.add(stored)
+    except Exception:
+        logger.debug("db_fts: principal alias resolution failed", exc_info=True)
+    return tuple(sorted(aliases))
+
+
 def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, Any]]:
     """Keyword search over session_summaries FOR THIS USER.
 
@@ -169,6 +194,8 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
             else:
                 quarantine_hashes = set()
             if uid:
+                principals = _equivalent_principals(conn, uid)
+                marks = ",".join("?" for _ in principals)
                 # Only sessions proven to belong solely to this principal.
                 rows = conn.execute(
                     "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
@@ -176,13 +203,13 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
                     "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
                     "WHERE session_summaries_fts MATCH ? "
                     "AND EXISTS (SELECT 1 FROM chat_messages own "
-                    "  WHERE own.session_id=s.session_id AND own.user_id=?) "
+                    f"  WHERE own.session_id=s.session_id AND own.user_id IN ({marks})) "
                     "AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
                     "  WHERE foreign_row.session_id=s.session_id "
                     "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
-                    "  AND foreign_row.user_id<>?) "
+                    f"  AND foreign_row.user_id NOT IN ({marks})) "
                     "ORDER BY rank LIMIT ?",
-                    (match, uid, uid, int(limit)),
+                    (match, *principals, *principals, int(limit)),
                 ).fetchall()
             else:
                 rows = conn.execute(
@@ -239,22 +266,25 @@ def search_chat_messages(
     if role:
         sql += " AND m.role = ?"
         params.append(role)
-    if uid:
-        sql += (
-            " AND EXISTS (SELECT 1 FROM chat_messages own "
-            "  WHERE own.session_id=m.session_id AND own.user_id=?)"
-            " AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
-            "  WHERE foreign_row.session_id=m.session_id "
-            "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
-            "  AND foreign_row.user_id<>?)"
-        )
-        params.extend([uid, uid])
-    sql += " ORDER BY rank LIMIT ?"
-    params.append(int(limit))
     try:
         with connect() as conn:
             if "chat_messages_fts" not in ensure_fts_tables(conn):
                 return []
+            if uid:
+                principals = _equivalent_principals(conn, uid)
+                marks = ",".join("?" for _ in principals)
+                sql += (
+                    " AND EXISTS (SELECT 1 FROM chat_messages own "
+                    f"  WHERE own.session_id=m.session_id AND own.user_id IN ({marks}))"
+                    " AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
+                    "  WHERE foreign_row.session_id=m.session_id "
+                    "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
+                    f"  AND foreign_row.user_id NOT IN ({marks}))"
+                )
+                params.extend(principals)
+                params.extend(principals)
+            sql += " ORDER BY rank LIMIT ?"
+            params.append(int(limit))
             if _base_table_exists(conn, "recall_ownership_quarantine"):
                 # Quarantine stores only SHA-256 source hashes; SQLite has no
                 # portable sha256(), so fetch the bounded FTS set then filter

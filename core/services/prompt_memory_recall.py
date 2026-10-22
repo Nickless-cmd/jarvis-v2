@@ -1,9 +1,4 @@
-"""Supplementary non-blocking recall during visible prompt assembly.
-
-Extracted from prompt_contract so the existing one-turn cache and background
-refresh remain unchanged while current-turn decision recall can be added at
-the volatile tail without enlarging the prompt composer.
-"""
+"""Supplementary non-blocking recall during visible prompt assembly."""
 from __future__ import annotations
 
 import threading
@@ -20,10 +15,21 @@ _MSR_INFLIGHT: set = set()
 
 
 def append_background_recall(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err):
-    """Compatibility no-op: previous-query cache delivery is privacy-unsafe.
+    """Surface prepared associations only when they match the current message.
 
-    Current-turn recall is assembled synchronously by the bounded recall bundle.
+    Expensive associative scoring remains post-turn, outside TTFT.  The next
+    turn may use a prepared association only when the current query still
+    matches it; unrelated previous-query results are never injected.
     """
+    try:
+        from core.services.associative_recall import build_recall_prompt_section
+
+        section = build_recall_prompt_section(str(user_message or ""))
+        if section:
+            _dyn_memory_recall.append(section)
+            derived_inputs.append("associative recall (prepared, query-matched)")
+    except Exception as exc:
+        _sec_err("associative recall", exc)
     return None
     # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
     # in heartbeat phases. Surface relevant memories tied to user_message so

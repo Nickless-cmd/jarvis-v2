@@ -52,7 +52,7 @@
      naesten usynlig. Den maa ikke haeves globalt (`--line` bruges 20+ steder),
      saa stregen har sin egen vaerdi. Bjoern 20/10-2026: «skill linjen maa
      gerne vaere lysere». */
-  --rv-skillelinje: #3d3d3d;
+  --rv-skillelinje: #4f4f4f;
   --fg-1: #f0efec;
   --fg-2: #c3c2b7;
   --fg-3: #898781;

@@ -36,7 +36,30 @@
   pointer-events: none;
 }
 
-.rv-tur[data-skillelinje]::after { opacity: 1; transform: scaleX(1); }
+/* Stregen glider ind — den popper ikke.
+ *
+ * MÅLT 22/10-2026: `data-skillelinje` er sand fra FØRSTE render i chat mode
+ * (ChatFlowPresentation sender den som bar prop). Med kun en `transition`
+ * betyder det at `::after` monteres allerede ved slutpositionen
+ * (`scaleX(1)`), så der er intet at animere FRA, og stregen popper.
+ *
+ * En `animation` starter derimod ved mount, uanset hvornår attributten
+ * sættes: keyframes' `from` er den faktiske starttilstand. `both` holder
+ * `from` indtil animationen begynder og sluttilstanden bagefter, så stregen
+ * både glider ind og BLIVER stående (Bjørn 22/10: «det burde komme fra
+ * starten og blive»). Samme regel dækker code mode, hvis gate sætter
+ * attributten senere — der starter animationen når gaten åbner.
+ *
+ * Transitionen bliver stående som fallback for miljøer uden animation. */
+@keyframes rv-skillelinje-ind {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+.rv-tur[data-skillelinje]::after {
+  opacity: 1; transform: scaleX(1);
+  animation: rv-skillelinje-ind 260ms cubic-bezier(.22, .61, .36, 1) both;
+}
 
 .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
 
@@ -125,7 +148,7 @@
 /* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
    hopper i stedet for at rulle. */
 @media (prefers-reduced-motion: reduce) {
-  .rv-tur::after { transition: none; }
+  .rv-tur::after { transition: none; animation: none; }
   .rv-turTidStrimmel { transition: none; }
 }
 

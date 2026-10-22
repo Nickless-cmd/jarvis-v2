@@ -4,8 +4,8 @@ Thin wrapper over core.runtime.db_sensory. Publishes events on writes so
 downstream daemons (inner_voice, reflection) can react to new sensory
 experiences without polling.
 
-Includes auto-mood extraction: if mood_tone is None, uses cheap LLM lane
-to derive a short mood label from content (Danish context-aware).
+Includes auto-mood extraction: if mood_tone is None, derives a short mood
+label from content by Danish keyword matching (no model call).
 """
 from __future__ import annotations
 

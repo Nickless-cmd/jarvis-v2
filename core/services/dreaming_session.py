@@ -142,7 +142,21 @@ def _collect_dream_material() -> dict[str, Any]:
                     "carry_count": d.get("session_carry_count", 0),
                     "status": d.get("status", "active"),
                 }
-                for d in active[:5]
+                # Målt 21/10-2026 02:54Z: `active[:5]` tog rå indeks 0-4, som
+                # alle var fra 16/10. De upræsenterede med høj konfidens stod
+                # på indeks 24-25 — præcis dem get_presentable_dream() ville
+                # vælge først — og var derfor usynlige i prompten. Prioriteringen
+                # findes allerede i dream_carry_over.py; her gentages den, fordi
+                # overfladen returnerer _ACTIVE_DREAMS urørt.
+                for d in sorted(
+                    active,
+                    key=lambda x: (
+                        not x.get("presented", False),
+                        float(x.get("confidence") or 0),
+                        str(x.get("adopted_at") or ""),
+                    ),
+                    reverse=True,
+                )[:5]
             ]
     except Exception as exc:
         material["dream_carry_over_error"] = str(exc)[:100]

@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/run_closure_gate.py`
+_Run-closure gate — fang tomme replies og unstaged changes efter agentic runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git_porcelain_status` | `(*, cwd=…)` | Return the set of path-strings reported by ``git status --porcelain``. | [src](../../../core/services/run_closure_gate.py#L67) |
+| function | `_git_dirty_content_hashes` | `(*, cwd=…)` | Return {path: content_hash} for every file currently dirty in working tree. | [src](../../../core/services/run_closure_gate.py#L86) |
+| function | `_record_pre_run_state` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L165) |
+| function | `_pop_pre_run_state` | `(run_id)` | Return pre-run snapshot, or ``None`` if no snapshot was recorded. | [src](../../../core/services/run_closure_gate.py#L174) |
+| function | `_set_current_run` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L203) |
+| function | `_get_current_run` | `()` | — | [src](../../../core/services/run_closure_gate.py#L209) |
+| function | `_set_current_origin` | `(origin)` | — | [src](../../../core/services/run_closure_gate.py#L217) |
+| function | `aktuel_origin` | `()` | Hvad startede den koersel der er i gang? "" naar vi ikke ved det. | [src](../../../core/services/run_closure_gate.py#L223) |
+| function | `_record_tool_call` | `(run_id, tool_name)` | — | [src](../../../core/services/run_closure_gate.py#L234) |
+| function | `_pop_tool_calls` | `(run_id)` | — | [src](../../../core/services/run_closure_gate.py#L248) |
+| function | `_summarize_unstaged` | `(diff, limit=…)` | Build a structured summary of new unstaged/untracked paths. | [src](../../../core/services/run_closure_gate.py#L256) |
+| function | `_is_auto_commit_excluded` | `(path)` | True hvis en path er et arbejdsartefakt der aldrig skal committes. | [src](../../../core/services/run_closure_gate.py#L293) |
+| function | `_git_staged_paths` | `(*, cwd=…)` | Return paths currently staged in the index. | [src](../../../core/services/run_closure_gate.py#L301) |
+| function | `_try_auto_commit` | `(touched_paths, *, run_id, session_id, focus)` | Commit filer rørt under et autonomt run. Return short-hash eller None. | [src](../../../core/services/run_closure_gate.py#L320) |
+| function | `_registrer_i_indbakken` | `(*, kildetype, kilde_id, beskrivelse, run_id=…, session_id=…, kilde_ejer=…)` | Læg gatens besked i INDBAKKEN i stedet for at sende den til Discord. | [src](../../../core/services/run_closure_gate.py#L424) |
+| function | `_on_run_completed` | `(payload)` | Handle a runtime.autonomous_run_completed event. | [src](../../../core/services/run_closure_gate.py#L477) |
+| function | `_on_run_started` | `(payload)` | Handle runtime.autonomous_run_started — snapshot git state. | [src](../../../core/services/run_closure_gate.py#L790) |
+| function | `_on_tool_used` | `(payload)` | Track tool calls so we can detect silent runs. | [src](../../../core/services/run_closure_gate.py#L805) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/run_closure_gate.py#L821) |
+| function | `start_run_closure_gate` | `()` | Start the eventbus subscriber thread. Safe to call multiple times. | [src](../../../core/services/run_closure_gate.py#L849) |
+| function | `stop_run_closure_gate` | `()` | — | [src](../../../core/services/run_closure_gate.py#L874) |
+
 ## `core/services/run_event_log.py`
 _In-memory, append-only, offset-indekseret event-log PR. RUN._
 
@@ -708,14 +735,4 @@ _Deliver terminal scout runs to Jarvis' durable inbox._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `record_scout_completion` | `(surface)` | Store one non-gating inbox item per finished scout. | [src](../../../core/services/scout_inbox_delivery.py#L11) |
-
-## `core/services/search_quality.py`
-_Kvalitetsdommer for søgeresultater — vælger provider ud fra hvad der FAKTISK kom tilbage._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_domaene` | `(url)` | Værtsnavn uden www, til støj-filteret. | [src](../../../core/services/search_quality.py#L49) |
-| function | `_er_dansk_query` | `(query)` | Sandt hvis queryen ser dansk ud. Bruges til at vægte .dk-domæner. | [src](../../../core/services/search_quality.py#L58) |
-| function | `score_resultater` | `(resultater, *, query, url_felt=…, vaegte=…)` | Ét tal 0..1 for hvor brugbar en resultatliste er for denne query. | [src](../../../core/services/search_quality.py#L95) |
-| function | `bedste_kandidat` | `(kandidater, *, query, vaegte=…)` | Vælg den bedste provider-udfald blandt flere. | [src](../../../core/services/search_quality.py#L190) |
 

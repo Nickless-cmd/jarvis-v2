@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decisions_journal.py`
+_Decisions Journal — moralsk beslutnings-log (extension of decision_log)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/decisions_journal.py#L34) |
+| function | `_fingerprint` | `(title, decision)` | — | [src](../../../core/services/decisions_journal.py#L38) |
+| function | `create_decision_record` | `(*, title, context, options, decision, why, regrets=…, refs=…)` | Journalize a decision. Required: title, decision, why. | [src](../../../core/services/decisions_journal.py#L42) |
+| function | `capture_decision_signal` | `(*, event_type, payload, refs=…, strong_signal=…, user_confirmed=…)` | Capture an automatic decision-signal from runtime events. | [src](../../../core/services/decisions_journal.py#L107) |
+| function | `find_relevant_decisions` | `(query, *, limit=…)` | Token-overlap search: find decisions matching the query. | [src](../../../core/services/decisions_journal.py#L177) |
+| function | `build_decisions_journal_surface` | `()` | MC surface for decisions journal (extension view vs decision_log's basic view). | [src](../../../core/services/decisions_journal.py#L198) |
+
 ## `core/services/deep_analyzer.py`
 _Deep Analyzer — scoped kodebase-introspection._
 
@@ -665,25 +677,4 @@ _Dream Hypothesis Generator — overraskende forbindelser._
 | function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L383) |
 | function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L394) |
 | function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
-
-## `core/services/dream_hypothesis_judge.py`
-_Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Kandidat` | `` | Én ``## sektion`` fra en kandidat-fil. | [src](../../../core/services/dream_hypothesis_judge.py#L73) |
-| method | `Kandidat.__post_init__` | `(self)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L84) |
-| method | `Kandidat.selv_afvist` | `(self)` | Han har allerede dømt den i selve artefaktet. | [src](../../../core/services/dream_hypothesis_judge.py#L104) |
-| function | `_parse_fil` | `(sti)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L114) |
-| function | `laes_kandidater` | `(mappe=…)` | Alle hypotese-kandidater fra drømme-mappen, nyeste fil først. | [src](../../../core/services/dream_hypothesis_judge.py#L134) |
-| function | `siger_hvad_der_ville_modbevise_den` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L167) |
-| function | `er_en_hypotese` | `(k)` | Bjørns krav: «sørg for det er faktisk hypoteser». | [src](../../../core/services/dream_hypothesis_judge.py#L200) |
-| function | `skal_videre` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L213) |
-| function | `doem` | `(k)` | ``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves. | [src](../../../core/services/dream_hypothesis_judge.py#L222) |
-| function | `_afsnit` | `(k)` | Felter fra begge notations-former i korpuset: ``**Navn:**`` og ``### Navn``. | [src](../../../core/services/dream_hypothesis_judge.py#L248) |
-| function | `_foerste` | `(felter, *navne)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L258) |
-| function | `byg_preregistrering` | `(k)` | Markdown → den form ``register_governed_hypothesis`` kræver. | [src](../../../core/services/dream_hypothesis_judge.py#L266) |
-| function | `_allerede_forfremmet` | `(k)` | Er denne kandidat skrevet ind foer? | [src](../../../core/services/dream_hypothesis_judge.py#L297) |
-| function | `forfrem` | `(k)` | Skriv hypotesen ind hvor den kan testes og dø. Self-safe. | [src](../../../core/services/dream_hypothesis_judge.py#L319) |
-| function | `koer_dommer` | `(*, mappe=…)` | Dømm alle kandidater og forfrem dem der har fortjent det. | [src](../../../core/services/dream_hypothesis_judge.py#L331) |
 

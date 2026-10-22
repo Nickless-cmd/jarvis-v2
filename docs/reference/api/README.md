@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17401 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17410 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,27 +39,27 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17401 functions/
 - [`core.services.07`](core.services.07.md) — `central_route_headroom` … `cheap_lane_failure_policy`
 - [`core.services.08`](core.services.08.md) — `cheap_lane_floor` … `communication_guard`
 - [`core.services.09`](core.services.09.md) — `communication_guard_daemon` … `counterfactual_triggers`
-- [`core.services.10`](core.services.10.md) — `cowork_dispatch` … `decisions_journal`
-- [`core.services.11`](core.services.11.md) — `deep_analyzer` … `dream_hypothesis_judge`
-- [`core.services.12`](core.services.12.md) — `dream_hypothesis_signal_tracking` … `executive_contradiction_signal_tracking`
-- [`core.services.13`](core.services.13.md) — `existential_drift` … `gate_privacy`
-- [`core.services.14`](core.services.14.md) — `gate_proactivity` … `heartbeat_runtime_influence`
-- [`core.services.15`](core.services.15.md) — `heartbeat_runtime_providers` … `internal_cadence_inner_life`
-- [`core.services.16`](core.services.16.md) — `internal_cadence_maintenance` … `loyalty_gradient_signal_tracking`
-- [`core.services.17`](core.services.17.md) — `mail_checker_daemon` … `model_catalogue_sweep`
-- [`core.services.18`](core.services.18.md) — `model_context` … `operator_channel`
-- [`core.services.19`](core.services.19.md) — `orb_phase` … `private_state_snapshot_tracking`
-- [`core.services.20`](core.services.20.md) — `private_temporal_curiosity_state_tracking` … `proprioception_metrics`
-- [`core.services.21`](core.services.21.md) — `prose_tool_calls` … `relation_dynamics`
-- [`core.services.22`](core.services.22.md) — `relation_map` … `run_closure_gate`
-- [`core.services.23`](core.services.23.md) — `run_event_log` … `search_quality`
-- [`core.services.24`](core.services.24.md) — `search_quota` … `sensory_perception_bridge`
-- [`core.services.25`](core.services.25.md) — `sensory_source` … `silence_detector`
-- [`core.services.26`](core.services.26.md) — `silence_listener` … `task_worker`
-- [`core.services.27`](core.services.27.md) — `taste_profile` … `tool_pattern_miner`
-- [`core.services.28`](core.services.28.md) — `tool_result_aging` … `visible_first_pass_results`
-- [`core.services.29`](core.services.29.md) — `visible_first_pass_text` … `visible_runs_outcomes`
-- [`core.services.30`](core.services.30.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `cowork_dispatch` … `decision_weight`
+- [`core.services.11`](core.services.11.md) — `decisions_journal` … `dream_hypothesis_generator`
+- [`core.services.12`](core.services.12.md) — `dream_hypothesis_judge` … `events_retention`
+- [`core.services.13`](core.services.13.md) — `executive_contradiction_signal_tracking` … `gate_pattern_learning`
+- [`core.services.14`](core.services.14.md) — `gate_privacy` … `heartbeat_runtime_helpers`
+- [`core.services.15`](core.services.15.md) — `heartbeat_runtime_influence` … `internal_cadence_core`
+- [`core.services.16`](core.services.16.md) — `internal_cadence_inner_life` … `loop_runtime`
+- [`core.services.17`](core.services.17.md) — `loyalty_gradient_signal_tracking` … `model_benchmark`
+- [`core.services.18`](core.services.18.md) — `model_catalogue_sweep` … `operator_allowlist`
+- [`core.services.19`](core.services.19.md) — `operator_channel` … `private_inner_note_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `private_state_snapshot_tracking` … `proposal_classifier`
+- [`core.services.21`](core.services.21.md) — `proprioception_metrics` … `relation_continuity_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `relation_dynamics` … `run_autonomy_context`
+- [`core.services.23`](core.services.23.md) — `run_closure_gate` … `scout_inbox_delivery`
+- [`core.services.24`](core.services.24.md) — `search_quality` … `sensory_archive`
+- [`core.services.25`](core.services.25.md) — `sensory_perception_bridge` … `signal_tracking_framework`
+- [`core.services.26`](core.services.26.md) — `silence_detector` … `tanke_resume`
+- [`core.services.27`](core.services.27.md) — `task_worker` … `tool_outcome_memory`
+- [`core.services.28`](core.services.28.md) — `tool_pattern_miner` … `visible_first_pass_pump`
+- [`core.services.29`](core.services.29.md) — `visible_first_pass_results` … `visible_runs_memory`
+- [`core.services.30`](core.services.30.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

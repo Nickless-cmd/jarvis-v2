@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9161/17401 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9169/17410 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9161/17401 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6108 | 11830 | 51% |
+| `core.services` | 6116 | 11839 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 127 | 202 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1156,8 +1156,8 @@ Generated from source. 9161/17401 functions/methods documented (52%). The list b
 - `core/services/decision_ghosts.py` :: `format_decision_ghost_for_prompt` (L179)
 - `core/services/decision_ghosts.py` :: `reset_decision_ghosts` (L189)
 - `core/services/decision_log.py` :: `build_decision_log_surface` (L50)
-- `core/services/decision_signals.py` :: `register` (L60)
-- `core/services/decision_signals.py` :: `reset_context` (L306)
+- `core/services/decision_signals.py` :: `register` (L64)
+- `core/services/decision_signals.py` :: `reset_context` (L348)
 - `core/services/decision_triggers/backend_unresolved.py` :: `backend_unresolved_3_calls` (L67)
 - `core/services/decision_triggers/loop_nudge.py` :: `loop_nudge_5_rounds` (L27)
 - `core/services/deep_reflection_slot.py` :: `build_deep_reflection_surface` (L368)

@@ -466,7 +466,16 @@ def _deliver(user_id: str, target, notif_id: str, payload: dict) -> None:
             "session_id": payload.get("session_id", ""),
         })
     else:
-        _send_fcm(user_id, target.device_key, {**payload, "notif_id": notif_id})
+        # MOBIL: `device_key` er enhedens ID, ikke et FCM-token — det rigtige
+        # token ligger i `push_token`. Målt 23/10-2026: begge Bjørns og Mikkels
+        # presence-poster bærer syntetiske nøgler («mobile-mtsz1dse-…»), så
+        # denne gren sendte til et id FCM ikke kender, og svaret blev ignoreret
+        # (`_send_fcm` kaster returværdien væk). Bjørn slap fordi hans
+        # kanalvalg er 'mobile' → `_deliver_to_channel` → `_push_to_user`, som
+        # bruger de registrerede tokens. En bruger UDEN kanalvalg (→ 'auto')
+        # faldt herind og fik intet, mens alt så leveret ud.
+        token = getattr(target, "push_token", "") or target.device_key
+        _send_fcm(user_id, token, {**payload, "notif_id": notif_id})
 
 
 def _arm_timer(notif_id: str) -> None:

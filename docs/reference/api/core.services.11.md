@@ -266,12 +266,12 @@ _Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart._
 | function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…, push_token=…, device_name=…, active_session_id=…, battery_saver=…)` | — | [src](../../../core/services/device_presence.py#L144) |
 | function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L205) |
 | class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L223) |
-| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L230) |
-| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L237) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L307) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L320) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L359) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L379) |
+| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L235) |
+| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L242) |
+| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L315) |
+| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L328) |
+| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L367) |
+| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L387) |
 
 ## `core/services/device_tokens.py`
 _Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._

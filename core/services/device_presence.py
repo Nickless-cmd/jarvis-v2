@@ -225,6 +225,11 @@ class RankedDevice:
     platform: str
     score: float
     reachable_via: str   # "desktop_queue" | "fcm"
+    # Mobil: det REGISTREREDE FCM-token. `device_key` er enhedens ID (fx
+    # «mobile-mtsz1dse-…») og kan IKKE bruges som push-adresse. Målt 23/10-2026:
+    # både Bjørns og Mikkels presence-poster havde syntetiske nøgler, så
+    # notification_router._deliver sendte til et id FCM ikke kender.
+    push_token: str = ""
 
 
 def _recency_weight(now: float, last_interaction_at: float) -> float:
@@ -263,7 +268,10 @@ def rank(user_id: str) -> list[RankedDevice]:
                 score += _FOREGROUND_BONUS
             if st.platform == "mobile" and st.network == "away":
                 score += _AWAY_MOBILE_BONUS
-            out.append(RankedDevice(st.device_key, st.platform, score, reachable_via))
+            out.append(RankedDevice(
+                st.device_key, st.platform, score, reachable_via,
+                push_token=(st.push_token or "") if st.platform != "desktop" else "",
+            ))
 
     # Augmentér med REGISTREREDE enheder uden aktivt ping (spec §3.2), så rank()
     # altid har ≥1 nåbar kandidat. Dedup mod allerede-rangerede device_keys (for

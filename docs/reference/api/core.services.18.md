@@ -415,15 +415,15 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L449) |
 | function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L454) |
 | function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L459) |
-| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L472) |
-| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L486) |
-| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L511) |
-| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L537) |
-| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L549) |
-| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L562) |
-| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L570) |
-| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L587) |
-| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L622) |
+| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L481) |
+| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L495) |
+| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L520) |
+| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L546) |
+| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L558) |
+| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L571) |
+| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L579) |
+| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L596) |
+| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L631) |
 
 ## `core/services/notifikationer.py`
 _Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._

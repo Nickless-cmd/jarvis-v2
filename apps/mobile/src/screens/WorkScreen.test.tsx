@@ -49,3 +49,36 @@ describe('fokus-fane fra push', () => {
     expect(skal(2, undefined)).toBe(false)
   })
 })
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Polling-gaten (23/10-2026). Foer rettelsen satte skaermen et setInterval
+// der blev ved med at tikke naar appen laa i lommen — ~75 kald/min fra denne
+// skaerm alene mod et loft paa 120/60 s pr. IP. Maalt: 372 stk 429 fra
+// mobil-IP'en. Testen maaler de to beslutninger der kan maales praecist:
+// hvornaar der maa polles, og hvad kadencen koster i kald pr. minut.
+describe('polling-gaten', () => {
+  const { skalPolle, POLL_MS } = require('./WorkScreen') as typeof import('./WorkScreen')
+
+  it('poller naar appen er synlig', () => {
+    expect(skalPolle('active')).toBe(true)
+  })
+
+  it('poller IKKE naar appen er i baggrunden', () => {
+    expect(skalPolle('background')).toBe(false)
+  })
+
+  // iOS gaar gennem `inactive` under app-skift og kontrolcenter. Pollede vi
+  // der, ville netop de to situationer hvor telefonen ligger i lommen koste.
+  it('poller IKKE i inactive', () => {
+    expect(skalPolle('inactive')).toBe(false)
+  })
+
+  // Kadence-budgettet: skaermen henter 5 endpoints pr. runde. Ved 4 s gav det
+  // 75 kald/min — mere end halvdelen af loftet, fra én skaerm. Kravet er at
+  // den alene bliver under halvdelen, saa resten af appen har plads.
+  it('holder sig under halvdelen af rate-limit-loftet (120/60 s)', () => {
+    const kaldPrMinut = (60000 / POLL_MS) * 5
+    expect(kaldPrMinut).toBeLessThan(60)
+  })
+})

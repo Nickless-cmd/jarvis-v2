@@ -10,6 +10,7 @@ import { useAuthOptional } from '../state/AuthContext'
 import { sendMessageFeedback } from '../lib/apiClient'
 import { Animated, Linking, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
+import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { MessageAttachments } from './MessageAttachments'
 import type { ChatMessage } from '../lib/types'
 import type { PersistedBlock } from '../lib/persistedBlocks'
@@ -30,9 +31,13 @@ const SOURCE_RE = /https?:\/\/([^\s/)\]]+)/gi
 // i stedet for markdown-bibliotekets flade <Text>. Reglerne ligger her frem
 // for i `style`, fordi det ikke er en STIL-forskel men en anden komponent.
 const MARKDOWN_REGLER = {
-  fence: (node: { key: string; content: string; sourceInfo?: string }) => (
-    <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
-  ),
+  fence: (node: { key: string; content: string; sourceInfo?: string }) => {
+    const lang = String(node.sourceInfo ?? '').trim().toLowerCase()
+    if (lang === 'jarvis-ui' && parseNativeRichSpec(node.content)) {
+      return <NativeRichBlock key={node.key} code={node.content} />
+    }
+    return <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+  },
   code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
     <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
   ),

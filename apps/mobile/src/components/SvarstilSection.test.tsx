@@ -33,4 +33,15 @@ describe('SvarstilSection', () => {
     expect(await screen.findByText('HTTP 400: ukendt stil')).toBeTruthy()
     expect(screen.getByLabelText('Svarstil Normal').props.accessibilityState.selected).toBe(true)
   })
+
+  it('gemmer samtaletone uden at oprette et andet endpoint', async () => {
+    mockApiFetch.mockResolvedValueOnce({ output_style: 'balanced', chat_style: { tone: 'warm' } })
+    mockApiFetch.mockResolvedValueOnce({ status: 'ok' })
+    const screen = await render(<SvarstilSection config={cfg} />)
+    await waitFor(() => expect(screen.getByLabelText('Tone Varm').props.accessibilityState.selected).toBe(true))
+    fireEvent.press(screen.getByLabelText('Tone Legende'))
+    await waitFor(() => expect(mockApiFetch).toHaveBeenLastCalledWith(
+      cfg, '/api/preferences', { method: 'POST', body: { chat_style: { tone: 'playful' } } },
+    ))
+  })
 })

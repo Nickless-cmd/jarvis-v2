@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9178/17421 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9182/17428 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9178/17421 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6121 | 11844 | 51% |
+| `core.services` | 6125 | 11851 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 129 | 205 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9178/17421 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2580)
+## Undocumented public functions (2582)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2258,6 +2258,8 @@ Generated from source. 9178/17421 functions/methods documented (52%). The list b
 - `core/services/user_understanding_signal_tracking.py` :: `track_runtime_user_understanding_signals_for_visible_turn` (L33)
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
+- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.feed` (L24)
+- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L27)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
 - `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1471)
@@ -2288,14 +2290,14 @@ Generated from source. 9178/17421 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6798)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6823)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6861)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6857)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6794)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6756)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6878)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6809)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6799)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6824)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6862)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6858)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6795)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6757)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6879)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6810)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

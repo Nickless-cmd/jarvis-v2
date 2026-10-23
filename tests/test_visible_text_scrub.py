@@ -83,6 +83,31 @@ def test_note_alene_giver_tom_streng_ikke_tomrum():
     assert fjern_interne_markoerer("[decision-signal: a (b: c)]") == ""
 
 
+@pytest.mark.parametrize("n", range(1, 46))
+def test_transkript_tider_bliver_interne_selv_nar_streamen_knaekker(n):
+    tekst = (
+        "[2026-10-23 21:59] [2026-10-23 21:59] "
+        "Det her er svaret Bjørn skal se."
+    )
+    assert _stroem(tekst, n) == "Det her er svaret Bjørn skal se."
+
+
+def test_transkript_tid_fjernes_fra_faerdig_synlig_tekst():
+    assert fjern_interne_markoerer(
+        "[2026-10-23 21:59] [2026-10-23 21:59] Svar."
+    ) == "Svar."
+
+
+def test_tid_midti_et_svar_er_indhold_og_bevares():
+    tekst = "Aftalen er [2026-10-23 21:59], og det er vigtigt."
+    assert fjern_interne_markoerer(tekst) == tekst
+    assert _stroem(tekst, 2) == tekst
+
+
+def test_afbrudt_tidsstempel_i_outputstart_er_ogsaa_internt():
+    assert _stroem("[2026-10-", 2) == ""
+
+
 def test_lang_uafsluttet_klamme_spiser_ikke_resten_af_svaret():
     """Holder vagten på ubestemt tid, kan én skæv «[» tie hele svaret ihjel.
     Derfor er tilbageholdelsen loftet — indholdet vejer tungere end formen."""

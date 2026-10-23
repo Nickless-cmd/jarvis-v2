@@ -118,3 +118,26 @@ def test_prefixet_er_BYTE_STABILT_mellem_to_bygninger():
     a = ts._prefix_absolute_transcript_time("samme", "2026-10-22T05:00:00+00:00")
     b = ts._prefix_absolute_transcript_time("samme", "2026-10-22T05:00:00+00:00")
     assert a == b
+
+
+def test_begge_samtaleroller_beholder_tid_i_modellens_transskript():
+    """Outputfilteret må aldrig koste Jarvis den tidsfornemmelse det beskytter."""
+    history = [
+        {
+            "id": 1, "role": "user", "content": "hej", "user_id": "",
+            "reasoning_content": "", "created_at": "2026-10-23T19:58:00+00:00",
+        },
+        {
+            "id": 2, "role": "assistant", "content": "hej igen", "user_id": "",
+            "reasoning_content": "", "created_at": "2026-10-23T19:59:00+00:00",
+        },
+    ]
+    with patch.object(ts, "chat_session_messages_since_last_compact", return_value=history), \
+         patch("core.services.prompt_contract._get_compact_marker_for_transcript",
+               return_value=None), \
+         patch("core.services.prompt_contract._maybe_auto_compact_session"):
+        out = ts._build_structured_transcript_messages(
+            "s-tid", limit=60, include=True,
+        )
+    assert out[0]["content"] == "[2026-10-23 21:58] hej"
+    assert out[1]["content"] == "[2026-10-23 21:59] hej igen"

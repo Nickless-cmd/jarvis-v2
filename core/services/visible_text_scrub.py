@@ -35,6 +35,16 @@ from __future__ import annotations
 
 import re
 
+# Tid er prompt-kontekst, ikke synlig svartekst. Transcript-rendereren sætter
+# bevidst dette præfiks på både user- og assistant-ture, så Jarvis kan mærke
+# rækkefølge og afstand i tid. Modellen kan efterligne formen i sit svar; ved
+# den synlige grænse fjerner vi derfor kun ét eller flere præfikser HELT i
+# starten. Tidsangivelser senere i svaret er almindeligt indhold og bevares.
+_SYNLIGT_TIDSPRAEFIKS = re.compile(
+    r"^\s*\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*"
+)
+_TIDSPRAEFIKS_MASKE = "[dddd-dd-dd dd:dd]"
+
 # Præfikser der markerer en intern note. Alt fra præfikset til dets balancerede
 # slut-klamme fjernes. Holdt som en liste fordi gaterne er flere organer, og
 # den næste der får en stemme skal kunne tilføjes ét sted.
@@ -74,12 +84,45 @@ def _foerste_markoer(tekst: str, fra: int = 0) -> int:
     return min(fund) if fund else -1
 
 
+def _fjern_tidsstempler_fra_start(tekst: str) -> str:
+    """Fjern gentagne transcript-tider, men kun ved outputtets begyndelse."""
+    while True:
+        fund = _SYNLIGT_TIDSPRAEFIKS.match(tekst)
+        if fund is None:
+            return tekst
+        tekst = tekst[fund.end():]
+
+
+def _muligt_tidsstempel_i_start(tekst: str) -> bool:
+    """Sand når ``tekst`` stadig kan være en delt start på tidsformatet."""
+    kandidat = tekst.lstrip()
+    if not kandidat:
+        return True
+    if len(kandidat) > len(_TIDSPRAEFIKS_MASKE):
+        return False
+    for faktisk, forventet in zip(kandidat, _TIDSPRAEFIKS_MASKE):
+        if forventet == "d":
+            if not faktisk.isdigit():
+                return False
+        elif faktisk != forventet:
+            return False
+    return True
+
+
 def fjern_interne_markoerer(tekst: str) -> str:
     """Teksten uden runtime-noter, med tomme linjer ryddet op efter sig.
 
     En uafsluttet markør i halen fjernes OGSÅ: bliver et svar klippet midt i en
     note, er en halv note lige så meget støj som en hel.
     """
+    if not tekst:
+        return tekst
+    tekst = _fjern_tidsstempler_fra_start(tekst)
+    return _fjern_markoerer_faerdig(tekst)
+
+
+def _fjern_markoerer_faerdig(tekst: str) -> str:
+    """Færdigtekst-rensning uden startfilter; bruges efter streamens start."""
     if not tekst:
         return tekst
     # Faerdig tekst er bare en strøm der slutter med det samme. At bygge den
@@ -118,9 +161,31 @@ class StroemSkrubber:
 
     def __init__(self) -> None:
         self._hale = ""
+        self._start_hale = ""
+        self._start_afgjort = False
+        self._fjernede_starttid = False
 
     def foed(self, stykke: str) -> str:
         """Den del af `stykke` der trygt kan sendes videre nu."""
+        if not self._start_afgjort:
+            self._start_hale += stykke or ""
+            foer = self._start_hale
+            self._start_hale = _fjern_tidsstempler_fra_start(self._start_hale)
+            if self._start_hale != foer:
+                self._fjernede_starttid = True
+            if self._fjernede_starttid:
+                # Mellemrummet efter en komplet markør kan ankomme i sit eget
+                # delta. Det hører stadig til præfikset, ikke til svaret.
+                self._start_hale = self._start_hale.lstrip()
+            if _muligt_tidsstempel_i_start(self._start_hale):
+                return ""
+            self._start_afgjort = True
+            stykke = self._start_hale
+            self._start_hale = ""
+        return self._foed_krop(stykke)
+
+    def _foed_krop(self, stykke: str) -> str:
+        """Eksisterende markørfilter efter at outputtets start er afgjort."""
         self._hale += stykke or ""
         klar, self._hale = fjern_interne_markoerer_stroem(self._hale)
         if len(self._hale) > MAKS_NOTE:
@@ -136,9 +201,21 @@ class StroemSkrubber:
 
     def skyl(self) -> str:
         """Resten, når strømmen er slut. Uafsluttede noter ryger."""
-        rest = fjern_interne_markoerer(self._hale)
+        klar = ""
+        if not self._start_afgjort:
+            foer = self._start_hale
+            self._start_hale = _fjern_tidsstempler_fra_start(self._start_hale)
+            if self._start_hale != foer:
+                self._fjernede_starttid = True
+            if self._fjernede_starttid:
+                self._start_hale = self._start_hale.lstrip()
+            if not _muligt_tidsstempel_i_start(self._start_hale):
+                klar = self._foed_krop(self._start_hale)
+            self._start_hale = ""
+            self._start_afgjort = True
+        rest = _fjern_markoerer_faerdig(self._hale)
         self._hale = ""
-        return rest
+        return klar + rest
 
 
 def fjern_interne_markoerer_stroem(buffer: str) -> tuple[str, str]:

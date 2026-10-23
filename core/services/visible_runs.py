@@ -1340,7 +1340,7 @@ async def _stream_visible_run(
     # [CUTOFF-TRACE] Livscyklus-breadcrumb: opdateres ved hver fase så finally-downgrade
     # kan vise HVOR CancelledError ramte (tool-exec / agentic-runde / finalisering).
     _run_stage = "init"
-    markup_buffer = _CapabilityMarkupBuffer()
+    markup_buffer = FirstPassOutputFilter()
     _collected_native_tool_calls: list[dict] = []
     # Tur-niveau blok-akkumulatorer (spec: content_json). _a_tool_calls/_a_parts
     # nulstilles pr. runde → holder kun SIDSTE runde. Disse samler HELE turens
@@ -6329,6 +6329,7 @@ from core.services.prompt_sections.capability_markup import (  # noqa: E402
     _try_match_tool_text_markup,
     _visible_text_without_capability_markup,
 )
+from core.services.visible_first_pass_output import FirstPassOutputFilter  # noqa: E402
 
 
 

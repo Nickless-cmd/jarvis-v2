@@ -26,6 +26,52 @@ def _scope() -> str:
     return scope_uid()
 
 
+def _scope_ids() -> tuple[str, ...]:
+    """Alle user_id-former der hører til den aktuelle bruger.
+
+    Hvorfor ikke bare ``_scope()`` (målt 22/10-2026, uddybet 23/10-2026):
+    ``scope_uid()`` returnerer ``current_user_id()`` når den er sat, ellers
+    ``get_owner_discord_id()`` — altså det RÅ Discord-id. Kø-skrivevejen
+    (``memory_write_queue`` → ``resolve_canonical_identity``) kanoniserer
+    derimod til DB-``user_id``. Tabellen endte derfor med to identiteter for
+    samme person, og en læsning scopet til den ene kunne ikke se den anden:
+    3.156 råt-scopede poster mod 44 kanoniske (alle natrutine 14/10→22/10).
+    ``recall_sensory_memories`` svarede 3.134 mens tabellen havde 3.179.
+
+    Læs derfor på tværs af aliasserne i stedet for at migrere ~324k rækker på
+    ni tabeller: det gør de kanoniske poster læsbare NU uden at gøre de
+    råt-scopede blinde. Migrering er en separat beslutning om datahygiejne,
+    ikke en forudsætning for at arkivet kan læses.
+
+    Rækkefølgen er ikke vilkårlig: ``resolve`` FØRST (rå id → kanonisk),
+    derefter ``aliases`` på det kanoniske — ``aliases()`` på et råt id giver
+    kun sig selv, fordi det ikke står som ``user_id`` i ``users``.
+    """
+    raw = _scope()
+    if not raw:
+        return ()
+    try:
+        from core.services.routine_migration import (
+            canonical_identity_aliases,
+            resolve_canonical_identity,
+        )
+
+        canonical = resolve_canonical_identity(raw) or raw
+        return canonical_identity_aliases(canonical) or (canonical,)
+    except Exception:
+        # En ulæselig alias-kæde må aldrig gøre arkivet tomt — fald tilbage til
+        # den ene identitet vi faktisk har. Snævrere, ikke bredere.
+        return (raw,)
+
+
+def _scope_clause(clauses: list[str], params: list[object]) -> None:
+    """Tilføj ``user_id IN (...)`` for alle brugerens identiteter, hvis nogen."""
+    ids = _scope_ids()
+    if ids:
+        clauses.append(f"user_id IN ({','.join('?' * len(ids))})")
+        params.extend(ids)
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -114,10 +160,7 @@ def list_sensory_memories(
 ) -> list[dict[str, object]]:
     clauses: list[str] = []
     params: list[object] = []
-    _uid = _scope()
-    if _uid:
-        clauses.append("user_id = ?")
-        params.append(_uid)
+    _scope_clause(clauses, params)
     if modality:
         clauses.append("modality = ?")
         params.append(modality)
@@ -151,10 +194,7 @@ def search_sensory_memories(
     like = f"%{query.strip()}%"
     clauses = ["(content LIKE ? OR mood_tone LIKE ?)"]
     params: list[object] = [like, like]
-    _uid = _scope()
-    if _uid:
-        clauses.append("user_id = ?")
-        params.append(_uid)
+    _scope_clause(clauses, params)
     if modality:
         clauses.append("modality = ?")
         params.append(modality)
@@ -172,10 +212,7 @@ def search_sensory_memories(
 def count_sensory_memories(*, modality: str | None = None) -> int:
     clauses: list[str] = []
     params: list[object] = []
-    _uid = _scope()
-    if _uid:
-        clauses.append("user_id = ?")
-        params.append(_uid)
+    _scope_clause(clauses, params)
     if modality:
         clauses.append("modality = ?")
         params.append(modality)
@@ -187,13 +224,14 @@ def count_sensory_memories(*, modality: str | None = None) -> int:
 
 
 def get_sensory_memory(memory_id: str) -> dict[str, object] | None:
-    _uid = _scope()
+    ids = _scope_ids()
     with connect() as conn:
         _ensure_sensory_memories_table(conn)
-        if _uid:
+        if ids:
             row = conn.execute(
-                "SELECT * FROM sensory_memories WHERE id = ? AND user_id = ?",
-                (memory_id, _uid),
+                "SELECT * FROM sensory_memories WHERE id = ? "
+                f"AND user_id IN ({','.join('?' * len(ids))})",
+                (memory_id, *ids),
             ).fetchone()
         else:
             row = conn.execute(

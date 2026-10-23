@@ -231,6 +231,34 @@ def _current_session_key() -> str:
     return "day-" + datetime.now(UTC).strftime("%Y-%m-%d")
 
 
+def dream_prompt_priority(
+    dreams: list[dict[str, object]], limit: int = 5
+) -> list[dict[str, object]]:
+    """De drømme prompten skal se først — i den rækkefølge gaten selv vælger.
+
+    Målt 23/10-2026: `dreaming_session._collect_dream_material` sorterede på
+    ``not d["presented"]`` — den PERMANENTE boolean fra før 485017dbc. Efter
+    den første præsentation er den sand for evigt, så en drøm der allerede
+    havde været vist faldt bagerst i al fremtid, også i en helt ny session hvor
+    ``get_presentable_dream()`` godt ville vælge den igen. Prompten og gaten
+    var altså uenige om hvad "upræsenteret" betyder, og de drømme der faktisk
+    var præsentable kunne ligge på rå indeks 24-25 uden for ``[:5]``.
+
+    Prioriteringen boede allerede her; `dreaming_session` gentog den kun
+    delvist. Nu er der ÉN definition, og den bruger samme nøgle som gaten.
+    """
+    session_key = _current_session_key()
+    return sorted(
+        dreams,
+        key=lambda x: (
+            str(x.get("presented_in_session") or "") != session_key,
+            float(x.get("confidence") or 0),
+            str(x.get("adopted_at") or ""),
+        ),
+        reverse=True,
+    )[:limit]
+
+
 def get_presentable_dream() -> dict[str, object] | None:
     """Get the highest-confidence dream not yet presented in THIS session."""
     _ensure_loaded()

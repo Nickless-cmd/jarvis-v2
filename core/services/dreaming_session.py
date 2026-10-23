@@ -130,7 +130,10 @@ def _collect_dream_material() -> dict[str, Any]:
 
     # 3. Active dream carry-over hypotheses
     try:
-        from core.services.dream_carry_over import build_dream_carry_over_surface
+        from core.services.dream_carry_over import (
+            build_dream_carry_over_surface,
+            dream_prompt_priority,
+        )
         surface = build_dream_carry_over_surface()
         active = surface.get("active_dreams") or []
         if active:
@@ -142,21 +145,13 @@ def _collect_dream_material() -> dict[str, Any]:
                     "carry_count": d.get("session_carry_count", 0),
                     "status": d.get("status", "active"),
                 }
-                # Målt 21/10-2026 02:54Z: `active[:5]` tog rå indeks 0-4, som
-                # alle var fra 16/10. De upræsenterede med høj konfidens stod
-                # på indeks 24-25 — præcis dem get_presentable_dream() ville
-                # vælge først — og var derfor usynlige i prompten. Prioriteringen
-                # findes allerede i dream_carry_over.py; her gentages den, fordi
-                # overfladen returnerer _ACTIVE_DREAMS urørt.
-                for d in sorted(
-                    active,
-                    key=lambda x: (
-                        not x.get("presented", False),
-                        float(x.get("confidence") or 0),
-                        str(x.get("adopted_at") or ""),
-                    ),
-                    reverse=True,
-                )[:5]
+                # Prioriteringen bor i dream_carry_over.py, som gaten selv
+                # bruger. Målt 23/10-2026 sorterede dette sted på den
+                # PERMANENTE `presented`-boolean, mens gaten bruger
+                # `presented_in_session` — så prompten og gaten var uenige om
+                # hvad "upræsenteret" betyder, og præsentable drømme kunne
+                # ligge uden for `[:5]`.
+                for d in dream_prompt_priority(active, limit=5)
             ]
     except Exception as exc:
         material["dream_carry_over_error"] = str(exc)[:100]

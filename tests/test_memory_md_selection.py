@@ -417,3 +417,51 @@ def test_pinnet_fil_bliver_faktisk_soegbar(tmp_path, monkeypatch):
     assert hits, "soegningen gav intet"
     assert any("pin-unik-regel.md" in h["source"] for h in hits), \
         f"pinnet fil blev ikke fundet; fik {[h['source'] for h in hits]}"
+
+
+def test_playbooks_er_i_indekset(tmp_path, monkeypatch):
+    """PLAYBOOKS.md SKAL indekseres — ellers er laeringerne reelt glemt.
+
+    HVORFOR (maalt 23/10-2026): samme dag som opskrifter og faelder blev flyttet
+    UD af QUICK_FACTS og ind i PLAYBOOKS.md, blev filen oprettet paa workspace-
+    roden. `_memory_files()` havde en haardkodet liste af fem filer, og den nye
+    fil stod ikke paa den. Maalt i indekset: 1.225 chunks og NUL fra PLAYBOOKS,
+    saa `recall("mobil-APK byg og udgiv")` svarede kun med MEMORY-sektioner.
+
+    Det er samme fejl som QUICK_FACTS-loftet, bare med omvendt fortegn: foer var
+    indholdet usynligt fordi det blev klippet, nu fordi det aldrig blev
+    indekseret. En on-demand-fil der ikke er soegbar er en fil man skal HUSKE
+    at laese — og det er praecis den slags hukommelse der svigter.
+    """
+    ws = tmp_path / "ws-playbooks"
+    ws.mkdir(parents=True)
+    navne = {f.name for f in memory_search._memory_files(ws)}
+    assert "PLAYBOOKS.md" in memory_search._ROOT_MEMORY_FILES, \
+        "PLAYBOOKS.md er fjernet fra _ROOT_MEMORY_FILES — saa indekseres den ikke"
+    # Filen behoever ikke findes for at staa i listen; men naar den goer, skal
+    # den med — ellers er listen og virkeligheden ude af trit.
+    (ws / "PLAYBOOKS.md").write_text("# PLAYBOOKS\n\n## En opskrift\n", encoding="utf-8")
+    navne = {f.name for f in memory_search._memory_files(ws)}
+    assert "PLAYBOOKS.md" in navne, f"PLAYBOOKS.md kom ikke med i listen: {sorted(navne)}"
+
+
+def test_playbooks_indhold_kan_faktisk_findes(tmp_path, monkeypatch):
+    """Ikke nok at filen er i listen — dens INDHOLD skal kunne soeges op."""
+    ws = tmp_path / "ws-playbooks2"
+    ws.mkdir(parents=True)
+    (ws / "PLAYBOOKS.md").write_text(
+        "# PLAYBOOKS\n\n## Unik opskrift paa kaellingen\n\n"
+        "Byg altid paa brugerens maskine og udgiv via API'et bagefter.\n",
+        encoding="utf-8")
+
+    monkeypatch.setattr(memory_search, "_embed_ollama", lambda texts: np.stack([_bow(t) for t in texts]))
+    monkeypatch.setattr(memory_search, "_embed_single", lambda text: _bow(text))
+    memory_search._MEM_INDEX.clear()
+    files = memory_search._memory_files(ws)
+    mtimes = {str(f): memory_search._file_mtime(f) for f in files}
+    memory_search._build_and_cache_index(files, mtimes, ws)
+
+    hits = memory_search.search_memory("unik opskrift paa kaellingen", limit=5, workspace_dir=ws)
+    assert hits, "soegningen gav intet"
+    assert any("PLAYBOOKS.md" in h["source"] for h in hits), \
+        f"PLAYBOOKS-indhold blev ikke fundet; fik {[h['source'] for h in hits]}"

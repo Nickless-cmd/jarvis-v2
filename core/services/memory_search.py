@@ -126,10 +126,34 @@ _PINNED_PREFIX = "pin-"
 _IMPORTED_SUBDIRS = ["memory/imported"]
 
 
+#: Workspace-filer på roden der SKAL være søgbare via `recall`.
+#:
+#: HVORFOR PLAYBOOKS.md er med (målt 23/10-2026): filen blev oprettet samme dag
+#: som opskrifter og fælder blev flyttet UD af QUICK_FACTS. Målt i indekset:
+#: 1.225 chunks og NUL fra PLAYBOOKS — så `recall("mobil-APK byg og udgiv")`
+#: svarede kun med MEMORY-sektioner. Filen var on-demand og usøgelig, altså
+#: reelt glemt medmindre nogen huskede at læse den. Det er samme fejl som
+#: QUICK_FACTS-loftet, bare med omvendt fortegn: før var indholdet usynligt
+#: fordi det blev klippet, nu fordi det aldrig blev indekseret.
+#:
+#: QUICK_FACTS.md er bevidst IKKE med: den injiceres UBETINGET i prompten hver
+#: tur, så dens chunks ville stjæle plads i recall-resultaterne uden at give
+#: konteksten noget den ikke allerede har. (Er loftet på 20.000 tegn engang
+#: overskredet, skal det valg tages om — så er filen ikke længere altid synlig.)
+_ROOT_MEMORY_FILES = [
+    "MEMORY.md",
+    "USER.md",
+    "SOUL.md",
+    "STANDING_ORDERS.md",
+    "SKILLS.md",
+    "PLAYBOOKS.md",
+]
+
+
 def _memory_files(ws: Path | None = None) -> list[Path]:
     ws = ws or _workspace_dir()
     files: list[Path] = []
-    for name in ["MEMORY.md", "USER.md", "SOUL.md", "STANDING_ORDERS.md", "SKILLS.md"]:
+    for name in _ROOT_MEMORY_FILES:
         p = ws / name
         if p.exists():
             files.append(p)

@@ -3,6 +3,7 @@ import { SettingsState } from './SettingsState'
 import { useState } from 'react'
 import { apiFetch, type ApiConfig } from '../../lib/api'
 import { NotifikationsValg } from './NotifikationsValg'
+import { WebPushControl } from './WebPushControl'
 
 type Channel = 'auto' | 'mobile' | 'desktop' | 'push' | 'discord' | 'telegram'
 interface Prefs {
@@ -58,6 +59,7 @@ export function NotificationsSection({ config }: { config?: ApiConfig }) {
       <div className="settings-section notif-section">
         <h3>Notifikationer</h3>
         <p className="settings-hint">Vælg hvor Jarvis' proaktive beskeder lander. "Standard" gælder alle typer; sæt en specifik kanal per type for at overstyre.</p>
+        {config && <WebPushControl config={config} />}
         {TYPES.map((t) => {
           const isGlobal = t.key === 'global'
           const val = (prefs[t.key] as Channel | null) ?? (isGlobal ? 'auto' : '')

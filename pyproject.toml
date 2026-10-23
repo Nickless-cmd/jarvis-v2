@@ -14,6 +14,7 @@ dependencies = [
   "ollamafreeapi>=0.1.4",
   "bcrypt>=5.0",
   "pypdf>=6.0",
+  "pywebpush==2.0.3",
 ]
 
 [tool.setuptools]

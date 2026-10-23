@@ -85,3 +85,28 @@
   .category-page .notif-quiet { display: flex; align-items: center; gap: 4px; }
   .category-page .notif-quiet input { width: 120px; }
 }
+.notif-web-push {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle, rgb(255 255 255 / 10%));
+  border-radius: 10px;
+}
+
+.notif-web-push .settings-hint {
+  margin: 4px 0 0;
+}
+
+.notif-web-push button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .notif-web-push {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

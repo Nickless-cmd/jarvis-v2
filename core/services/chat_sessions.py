@@ -343,12 +343,24 @@ def list_chat_sessions(
                           AND mu.role = 'user'
                           AND mu.user_id = ?
                     )
+                    -- Ejer-stemplet tæller OGSÅ (23/10-2026). Uden denne gren
+                    -- faldt en samtale oprettet af et AUTONOMT run ud af
+                    -- ejerens liste: runnet skriver ingen brugerbesked, så
+                    -- EXISTS-grenen var falsk — mens adgangsgaten
+                    -- (`maa_tilgaa_session` → `get_session_owner`) læste
+                    -- `chat_sessions.owner_user_id` FØRST og derfor gav lov.
+                    -- Listen tilbød altså ikke det gaten ville åbne, og
+                    -- Mikkels morgenrutine kunne ikke findes i hans app.
+                    -- Reglen er den SAMME som gaten: stemplet først, og
+                    -- `ejerstempel_tilhoerer_bruger` nedenfor afgør
+                    -- arbejdsrums-aliaserne. Denne gren er kun kandidat-filter.
+                    OR COALESCE(s.owner_user_id, '') = ?
                 )
                   AND (? = 1 OR COALESCE(s.archived, 0) = 0)
                   AND (? = '' OR COALESCE(s.kind, 'chat') = ?)
                 ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
                 """,
-                (uid, 1 if inkluder_arkiverede else 0, art, art),
+                (uid, uid, 1 if inkluder_arkiverede else 0, art, art),
             ).fetchall()
         # SQL's EXISTS is an efficient candidate filter, but it is not the
         # ownership rule: a historical row can carry another user's stamp.

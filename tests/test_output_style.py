@@ -79,3 +79,19 @@ def test_tur_uden_ejer_falder_tilbage_til_anmodningens_rum(kv, monkeypatch):
     monkeypatch.setattr("core.services.chat_sessions.get_session_owner", lambda sid: "")
     from core.identity.workspace_context import current_workspace_name
     assert os_.rum_for_tur("sess-x") == current_workspace_name()
+
+
+def test_chat_style_er_pr_bruger_og_fletter_updates(kv):
+    assert os_.hent_chat_style("u-a") == os_.CHAT_STYLE_DEFAULTS
+    profil = os_.saet_chat_style("u-a", {"tone": "playful", "emoji": "expressive"})
+    assert profil["tone"] == "playful"
+    assert profil["emoji"] == "expressive"
+    assert profil["visuals"] == "adaptive"
+    assert os_.hent_chat_style("u-b") == os_.CHAT_STYLE_DEFAULTS
+
+
+def test_chat_style_afviser_ukendte_felter_og_vaerdier(kv):
+    with pytest.raises(ValueError):
+        os_.saet_chat_style("u-a", {"tone": "robot"})
+    with pytest.raises(ValueError):
+        os_.saet_chat_style("u-a", {"hemmelig": "ja"})

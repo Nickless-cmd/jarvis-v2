@@ -577,5 +577,7 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L28) |
+| function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L60) |
+| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append chat-only contracts after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L116) |
+| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L133) |
 

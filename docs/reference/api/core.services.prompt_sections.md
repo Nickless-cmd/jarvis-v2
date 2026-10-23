@@ -78,6 +78,15 @@ _Causal patterns — surface recurring (parent_kind → child_kind) flows._
 | function | `causal_patterns_section` | `()` | Build the recurring-causal-patterns awareness section. ``""`` if none. | [src](../../../core/services/prompt_sections/causal_patterns.py#L141) |
 | function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/prompt_sections/causal_patterns.py#L167) |
 
+## `core/services/prompt_sections/chat_mode.py`
+_Stable, scope-specific orientation and conversational baseline._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L17) |
+| function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L25) |
+| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L55) |
+
 ## `core/services/prompt_sections/cross_session_arc.py`
 _Cross-session arc — surface recent named conversations as a temporal arc._
 

@@ -6,7 +6,9 @@ from types import SimpleNamespace
 from core.services import visible_model
 from core.services.visible_chat_pragmatics import (
     CHAT_MODE_CONVERSATION_CONTRACT,
+    CHAT_MODE_RENDER_CONTRACT,
     apply_chat_mode_conversation_contract,
+    build_chat_mode_dynamic_tail,
 )
 from core.tools.tool_scoping import tool_scope
 
@@ -47,8 +49,17 @@ def test_both_visible_provider_shapes_receive_chat_contract(monkeypatch) -> None
             "Gå væk", session_id="s", provider="deepseek", model="m",
         )
 
-    assert CHAT_MODE_CONVERSATION_CONTRACT in typed[0]["content"][0]["text"]
-    assert CHAT_MODE_CONVERSATION_CONTRACT in plain[0]["content"]
+    assert typed[0]["content"][0]["text"] == "BASE"
+    assert plain[0]["content"] == "BASE"
+    typed_tail = "\n".join(
+        str(part.get("text") or "")
+        for item in typed[1:] for part in item.get("content", [])
+        if isinstance(part, dict)
+    )
+    plain_tail = "\n".join(str(item.get("content") or "") for item in plain[1:])
+    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in typed_tail
+    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in plain_tail
+    assert CHAT_MODE_RENDER_CONTRACT.strip() in plain_tail
 
 
 def test_code_mode_provider_shape_does_not_receive_chat_contract(monkeypatch) -> None:
@@ -63,3 +74,40 @@ def test_code_mode_provider_shape_does_not_receive_chat_contract(monkeypatch) ->
         )
 
     assert plain[0]["content"] == "BASE"
+
+
+def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "core.context.output_style.hent_chat_style",
+        lambda _: {
+            "tone": "playful", "emoji": "expressive", "profanity": "comfortable",
+            "visuals": "rich", "questions": "rare",
+        },
+    )
+    with tool_scope("chat"):
+        tail = build_chat_mode_dynamic_tail("EXISTING", message="Haha, det er fanme fedt 😂", session_id="s")
+    assert tail.startswith("EXISTING")
+    assert "leg, drilleri" in tail
+    assert "Emoji er velkomne" in tail
+    assert "kraftsprog i denne tur" in tail
+    assert "jarvis-ui" in tail
+
+
+def test_deepseek_stable_prefix_is_identical_across_user_tone(monkeypatch) -> None:
+    assembly = SimpleNamespace(text="BYTE-STABLE", transcript_messages=[])
+    monkeypatch.setattr(visible_model, "_build_visible_prompt_assembly", lambda **_: assembly)
+    profiles = iter([
+        {"tone": "warm", "emoji": "rare", "profanity": "avoid", "visuals": "plain", "questions": "rare"},
+        {"tone": "playful", "emoji": "expressive", "profanity": "comfortable", "visuals": "rich", "questions": "curious"},
+    ])
+    monkeypatch.setattr("core.context.output_style.hent_chat_style", lambda _: next(profiles))
+    with tool_scope("chat"):
+        first = visible_model._build_visible_chat_messages_for_github(
+            "hej", session_id="s", provider="deepseek", model="deepseek-chat",
+        )
+        second = visible_model._build_visible_chat_messages_for_github(
+            "hej 😂", session_id="s", provider="deepseek", model="deepseek-chat",
+        )
+    assert first[0] == second[0] == {"role": "system", "content": "BYTE-STABLE"}
+    assert first[-2]["role"] == second[-2]["role"] == "system"
+    assert first[-2]["content"] != second[-2]["content"]

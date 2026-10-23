@@ -479,10 +479,13 @@ def _build_visible_input(
         caller_phase=caller_phase,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
-    from core.services.visible_chat_pragmatics import (
-        apply_chat_mode_conversation_contract,
+    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+    # Brugerprofil, aktuelle tonesignaler og render-affordances er bevidst
+    # cache-sene. DeepSeek skal se samme byte-identiske systempræfiks på tværs
+    # af brugere og ture; kun systemhalen lige før den aktuelle user må ændre sig.
+    dynamic_tail = build_chat_mode_dynamic_tail(
+        dynamic_tail, message=message, session_id=session_id,
     )
-    instruction = apply_chat_mode_conversation_contract(instruction)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:
@@ -601,10 +604,10 @@ def _build_visible_chat_messages_for_github(
         session_id=session_id,
     )
     instruction, dynamic_tail = _split_dynamic_tail(assembly.text)
-    from core.services.visible_chat_pragmatics import (
-        apply_chat_mode_conversation_contract,
+    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+    dynamic_tail = build_chat_mode_dynamic_tail(
+        dynamic_tail, message=message, session_id=session_id,
     )
-    instruction = apply_chat_mode_conversation_contract(instruction)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:

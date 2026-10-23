@@ -26,15 +26,36 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Final
+from typing import Any, Final
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["STILE", "STANDARD", "hent_stil", "saet_stil", "hint_for_bruger",
-           "rum_for_anmodning", "rum_for_tur"]
+__all__ = [
+    "STILE", "STANDARD", "CHAT_STYLE_DEFAULTS", "hent_stil", "saet_stil",
+    "hent_chat_style", "saet_chat_style", "hint_for_bruger",
+    "rum_for_anmodning", "rum_for_tur",
+]
 
 STILE: Final[tuple[str, ...]] = ("balanced", "concise", "detailed", "technical")
 STANDARD: Final[str] = "balanced"
+
+# Samtaletonen er et supplement til output_style, ikke endnu en længdevælger.
+# Hvert felt har en adaptiv standard, så en ny bruger får Jarvis' egen stemme,
+# mens et eksplicit valg følger brugeren på tværs af Desk og mobil.
+CHAT_STYLE_DEFAULTS: Final[dict[str, str]] = {
+    "tone": "adaptive",
+    "emoji": "adaptive",
+    "profanity": "adaptive",
+    "visuals": "adaptive",
+    "questions": "adaptive",
+}
+_CHAT_STYLE_VALUES: Final[dict[str, tuple[str, ...]]] = {
+    "tone": ("adaptive", "warm", "direct", "playful"),
+    "emoji": ("adaptive", "rare", "expressive"),
+    "profanity": ("adaptive", "avoid", "comfortable"),
+    "visuals": ("adaptive", "plain", "rich"),
+    "questions": ("adaptive", "rare", "curious"),
+}
 
 _HINTS: Final[dict[str, str]] = {
     "balanced": "",  # standarden — ingen påmindelse
@@ -49,6 +70,10 @@ _HINTS: Final[dict[str, str]] = {
 
 def _noegle(rum: str) -> str:
     return f"output_style:{rum}"
+
+
+def _chat_style_noegle(rum: str) -> str:
+    return f"chat_style:{rum}"
 
 
 def rum_for_anmodning() -> str:
@@ -110,6 +135,58 @@ def saet_stil(rum: str, stil: str) -> str:
     from core.runtime.db_core import set_runtime_state_value
     set_runtime_state_value(_noegle(u), s)
     return s
+
+
+def hent_chat_style(rum: str) -> dict[str, str]:
+    """Returnér en valideret samtaleprofil for arbejdsrummet.
+
+    Ukendte/fremtidige felter ignoreres, så en ældre runtime kan læse en profil
+    skrevet af en nyere klient uden at gøre hele preference-endpointet dødt.
+    """
+    profil = dict(CHAT_STYLE_DEFAULTS)
+    u = (rum or "").strip()
+    if not u:
+        return profil
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        raw: Any = get_runtime_state_value(_chat_style_noegle(u), {})
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (TypeError, ValueError):
+                raw = {}
+        if isinstance(raw, dict):
+            for felt, gyldige in _CHAT_STYLE_VALUES.items():
+                value = str(raw.get(felt) or "").strip().lower()
+                if value in gyldige:
+                    profil[felt] = value
+    except Exception:
+        logger.debug("chat_style: kunne ikke læse %s", u, exc_info=True)
+    return profil
+
+
+def saet_chat_style(rum: str, updates: dict[str, Any]) -> dict[str, str]:
+    """Flet validerede, eksplicitte tonevalg ind i arbejdsrummets profil."""
+    u = (rum or "").strip()
+    if not u:
+        raise ValueError("intet arbejdsrum")
+    if not isinstance(updates, dict) or not updates:
+        raise ValueError("ingen chat_style-felter")
+    ukendte = sorted(set(updates) - set(_CHAT_STYLE_VALUES))
+    if ukendte:
+        raise ValueError(f"ukendte chat_style-felter: {', '.join(ukendte)}")
+    profil = hent_chat_style(u)
+    for felt, raw in updates.items():
+        value = str(raw or "").strip().lower()
+        gyldige = _CHAT_STYLE_VALUES[felt]
+        if value not in gyldige:
+            raise ValueError(
+                f"ukendt {felt} {value!r} (gyldige: {', '.join(gyldige)})"
+            )
+        profil[felt] = value
+    from core.runtime.db_core import set_runtime_state_value
+    set_runtime_state_value(_chat_style_noegle(u), profil)
+    return profil
 
 
 def hint_for_bruger(rum: str) -> str:

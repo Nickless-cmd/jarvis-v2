@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9174/17415 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9178/17421 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -18,7 +18,7 @@ Generated from source. 9174/17415 functions/methods documented (52%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 74 | 101 | 73% |
+| `core.context` | 76 | 104 | 73% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 78 | 171 | 45% |
@@ -27,7 +27,7 @@ Generated from source. 9174/17415 functions/methods documented (52%). The list b
 | `core.runtime` | 834 | 1534 | 54% |
 | `core.services` | 6121 | 11844 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
-| `core.services.prompt_sections` | 127 | 202 | 62% |
+| `core.services.prompt_sections` | 129 | 205 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 24 | 39 | 61% |
 | `core.skills` | 0 | 0 | 0% |
@@ -100,8 +100,8 @@ Generated from source. 9174/17415 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `serve_ui` (L269)
 - `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L34)
 - `apps/api/jarvis_api/routes/internal_run_stream.py` :: `internal_run_stream` (L22)
-- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L53)
-- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L128)
+- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L57)
+- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L141)
 - `apps/api/jarvis_api/routes/live.py` :: `websocket_stream` (L20)
 - `apps/api/jarvis_api/routes/mission_control_jarvis_state.py` :: `mc_cognitive_frame` (L305)
 - `apps/api/jarvis_api/routes/mission_control_jarvis_state.py` :: `mc_jarvis` (L14)
@@ -288,7 +288,7 @@ Generated from source. 9174/17415 functions/methods documented (52%). The list b
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
 - `core/context/kompaktering.py` :: `log_komprimering` (L225)
 - `core/context/kompaktering.py` :: `seneste_log` (L279)
-- `core/context/output_style.py` :: `saet_stil` (L103)
+- `core/context/output_style.py` :: `saet_stil` (L128)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
 - `core/costing/ledger.py` :: `telemetry_summary` (L118)
@@ -1635,7 +1635,7 @@ Generated from source. 9174/17415 functions/methods documented (52%). The list b
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4834)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4708)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)

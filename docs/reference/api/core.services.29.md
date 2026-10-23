@@ -180,15 +180,15 @@ _Bounded, current-source grounding for explicit memory questions._
 | function | `stream_visible_model` | `(*, message, provider, model, session_id=…, controller=…, thinking_mode=…)` | — | [src](../../../core/services/visible_model.py#L329) |
 | function | `available_ollama_models_for_visible_target` | `()` | — | [src](../../../core/services/visible_model.py#L403) |
 | function | `_build_visible_input` | `(message, *, session_id, provider=…, model=…, caller_phase=…)` | — | [src](../../../core/services/visible_model.py#L459) |
-| function | `_giv_modellen_oejne` | `(messages, *, session_id, model)` | Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret. | [src](../../../core/services/visible_model.py#L554) |
-| function | `_build_visible_chat_messages_for_github` | `(message, *, session_id, provider=…, model=…)` | Build OpenAI chat-completions messages for the visible lane. | [src](../../../core/services/visible_model.py#L582) |
-| function | `_split_dynamic_tail` | `(instruction)` | Separate volatile runtime instructions without changing their role. | [src](../../../core/services/visible_model.py#L679) |
-| function | `_is_current_user_turn` | `(message, current_text)` | Match the persisted current turn, not merely any user-role runtime item. | [src](../../../core/services/visible_model.py#L693) |
-| function | `_insert_system_tail_before_current_user` | `(messages, tail)` | Keep volatile prompt sections cache-late while preserving system attribution. | [src](../../../core/services/visible_model.py#L712) |
-| function | `_insert_typed_system_tail_before_current_user` | `(items, tail)` | — | [src](../../../core/services/visible_model.py#L725) |
-| function | `_visible_system_instruction_for_provider` | `(*, provider, model, user_message, session_id)` | — | [src](../../../core/services/visible_model.py#L739) |
-| function | `_member_context_user_id` | `()` | Known non-owner (or unknown nonempty id): never use the owner prompt. | [src](../../../core/services/visible_model.py#L749) |
-| function | `_build_visible_prompt_assembly` | `(*, provider, model, user_message, session_id, caller_phase=…)` | Return the full PromptAssembly (including structured transcript). | [src](../../../core/services/visible_model.py#L760) |
+| function | `_giv_modellen_oejne` | `(messages, *, session_id, model)` | Sæt billed-blokke på den sidste user-besked. Self-safe: fejl → uændret. | [src](../../../core/services/visible_model.py#L557) |
+| function | `_build_visible_chat_messages_for_github` | `(message, *, session_id, provider=…, model=…)` | Build OpenAI chat-completions messages for the visible lane. | [src](../../../core/services/visible_model.py#L585) |
+| function | `_split_dynamic_tail` | `(instruction)` | Separate volatile runtime instructions without changing their role. | [src](../../../core/services/visible_model.py#L682) |
+| function | `_is_current_user_turn` | `(message, current_text)` | Match the persisted current turn, not merely any user-role runtime item. | [src](../../../core/services/visible_model.py#L696) |
+| function | `_insert_system_tail_before_current_user` | `(messages, tail)` | Keep volatile prompt sections cache-late while preserving system attribution. | [src](../../../core/services/visible_model.py#L715) |
+| function | `_insert_typed_system_tail_before_current_user` | `(items, tail)` | — | [src](../../../core/services/visible_model.py#L728) |
+| function | `_visible_system_instruction_for_provider` | `(*, provider, model, user_message, session_id)` | — | [src](../../../core/services/visible_model.py#L742) |
+| function | `_member_context_user_id` | `()` | Known non-owner (or unknown nonempty id): never use the owner prompt. | [src](../../../core/services/visible_model.py#L752) |
+| function | `_build_visible_prompt_assembly` | `(*, provider, model, user_message, session_id, caller_phase=…)` | Return the full PromptAssembly (including structured transcript). | [src](../../../core/services/visible_model.py#L763) |
 
 ## `core/services/visible_model_adapters.py`
 _Per-provider visible-lane adapters + auth/probe/readiness helpers._

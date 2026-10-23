@@ -27,25 +27,29 @@ def preferences_get() -> dict[str, Any]:
     runtime restarts and apply across sessions.
     """
     # Svarstilen er PR. ARBEJDSRUM (19/9-2026) — se core.context.output_style.
-    from core.context.output_style import hent_stil, rum_for_anmodning
+    from core.context.output_style import hent_chat_style, hent_stil, rum_for_anmodning
     from core.runtime.config import CONFIG_DIR
-    stil = hent_stil(rum_for_anmodning())
+    rum = rum_for_anmodning()
+    stil = hent_stil(rum)
+    chat_style = hent_chat_style(rum)
     p = Path(CONFIG_DIR) / "jarvisx_prefs.json"
     if not p.is_file():
-        return {"output_style": stil, "tool_permissions": {}}
+        return {"output_style": stil, "chat_style": chat_style, "tool_permissions": {}}
     import json as _json
     try:
         data = _json.loads(p.read_text(encoding="utf-8"))
         return {
             "output_style": stil,
+            "chat_style": chat_style,
             "tool_permissions": data.get("tool_permissions") if isinstance(data.get("tool_permissions"), dict) else {},
         }
     except Exception:
-        return {"output_style": stil, "tool_permissions": {}}
+        return {"output_style": stil, "chat_style": chat_style, "tool_permissions": {}}
 
 
 class PreferencesUpdate(BaseModel):
     output_style: str | None = None
+    chat_style: dict[str, str] | None = None
     tool_permissions: dict[str, str] | None = None
 
 
@@ -69,6 +73,13 @@ def preferences_set(payload: PreferencesUpdate) -> dict[str, Any]:
             current["output_style"] = saet_stil(rum_for_anmodning(), payload.output_style)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+    chat_style = None
+    if payload.chat_style is not None:
+        from core.context.output_style import rum_for_anmodning, saet_chat_style
+        try:
+            chat_style = saet_chat_style(rum_for_anmodning(), payload.chat_style)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     if payload.tool_permissions is not None:
         # Validate values
         valid = {}
@@ -80,6 +91,8 @@ def preferences_set(payload: PreferencesUpdate) -> dict[str, Any]:
     p.write_text(_json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
     if stil:
         current["output_style"] = stil
+    if chat_style is not None:
+        current["chat_style"] = chat_style
     return {"status": "ok", "preferences": current}
 
 

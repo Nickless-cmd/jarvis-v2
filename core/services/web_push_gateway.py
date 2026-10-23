@@ -34,6 +34,26 @@ def vapid_public_key() -> str:
     return _key("vapid_public_key")
 
 
+def _der_key(raw: str) -> str:
+    """PEM → base64-DER uden headers.
+
+    ``py_vapid.Vapid.from_string`` fjerner kun newlines, ikke PEM-headerne, og
+    sender derefter HELE strengen gennem ``b64urldecode``. Med en PEM-nøgle
+    bliver ``-----BEGIN…`` dekodet til skrald, og ``load_der_private_key``
+    kaster ``ASN.1 parsing error: invalid length`` (målt 23/10-2026: Apple
+    afviste intet — vi fejlede før requesten blev sendt).
+
+    Derfor: er nøglen PEM, strip header-linjerne og send kun base64-DER.
+    """
+    s = (raw or "").strip()
+    if "-----BEGIN" not in s:
+        return s
+    return "".join(
+        ln.strip() for ln in s.splitlines()
+        if ln.strip() and not ln.strip().startswith("-----")
+    )
+
+
 def send(subscription: dict[str, Any], data: dict[str, Any]) -> tuple[bool, str]:
     """Send én web-push. Returnerer ``(ok, årsag)``.
 
@@ -45,7 +65,7 @@ def send(subscription: dict[str, Any], data: dict[str, Any]) -> tuple[bool, str]
     auth = str((subscription or {}).get("auth") or "").strip()
     if not (endpoint and p256dh and auth):
         return False, "invalid"
-    private_key = _key("vapid_private_key")
+    private_key = _der_key(_key("vapid_private_key"))
     if not private_key:
         return False, "no-vapid"
     try:

@@ -11,6 +11,7 @@ import { safeLinkHref } from '../../lib/sanitize'
 import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
+import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -45,6 +46,7 @@ const KOMPONENTER: Components = {
     // parses, og et forsøg ville skifte blokken fra kode til diagram midt i
     // turen. Alt andet går til ChatCodeBlock som før.
     if (lang === 'mermaid') return <MermaidBlock code={code} />
+    if (lang === 'jarvis-ui' && parseNativeRichSpec(code)) return <NativeRichBlock code={code} />
     return <ChatCodeBlock code={code} lang={lang} className={props.className} />
   },
   a: ({ href, children }) => {

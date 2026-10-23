@@ -32,4 +32,16 @@ describe('SvarstilSection', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Svarstilen kunne ikke gemmes')
     expect((sel as HTMLSelectElement).value).toBe('balanced')
   })
+
+  it('gemmer samtaletone i den eksisterende preference-kanal', async () => {
+    apiFetch.mockResolvedValueOnce({ output_style: 'balanced', chat_style: { tone: 'warm' } })
+    apiFetch.mockResolvedValueOnce({ status: 'ok' })
+    render(<SvarstilSection config={cfg} />)
+    const tone = await screen.findByLabelText('Tone')
+    await waitFor(() => expect((tone as HTMLSelectElement).value).toBe('warm'))
+    fireEvent.change(tone, { target: { value: 'playful' } })
+    await waitFor(() => expect(apiFetch).toHaveBeenLastCalledWith(
+      cfg, '/api/preferences', { method: 'POST', body: { chat_style: { tone: 'playful' } } },
+    ))
+  })
 })

@@ -831,6 +831,45 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jarvis-body hr {
   border: none; border-top: 1px solid var(--line); margin: 0.7em 0;
 }
+
+/* Sikre, native chatflader fra ```jarvis-ui JSON. Ingen model-HTML: React
+ * tegner kun den validerede datastruktur i NativeRichBlock. */
+.native-rich { margin: 10px 0 14px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); color: var(--fg-1); }
+.native-rich-title { margin: 0 0 9px !important; font-size: 14px !important; }
+.native-callout { display: flex; gap: 11px; border-left: 3px solid var(--tint); }
+.native-callout > svg { flex: none; color: var(--tint); margin-top: 1px; }
+.native-callout p, .native-location p, .native-timeline p { margin: 3px 0 0; color: var(--fg-2); }
+.native-callout.tone-success { border-left-color: var(--ok); }
+.native-callout.tone-success > svg { color: var(--ok); }
+.native-callout.tone-warning { border-left-color: var(--warn-fg); }
+.native-callout.tone-warning > svg { color: var(--warn-fg); }
+.native-callout.tone-danger { border-left-color: var(--error-fg); }
+.native-callout.tone-danger > svg { color: var(--error-fg); }
+.native-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px; margin: 0; }
+.native-stats > div { min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-1); }
+.native-stats dt { color: var(--fg-3); font-size: 12px; }
+.native-stats dd { margin: 2px 0; color: var(--fg-0); font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.native-stats small { color: var(--fg-2); }
+.native-timeline { list-style: none !important; margin: 0 !important; padding: 0 !important; }
+.native-timeline li { position: relative; display: grid; grid-template-columns: 15px 1fr; gap: 10px; padding-bottom: 13px; margin: 0 !important; }
+.native-timeline li:not(:last-child)::before { content: ''; position: absolute; left: 6px; top: 14px; bottom: -1px; width: 1px; background: var(--line); }
+.native-timeline-dot { width: 11px; height: 11px; margin-top: 3px; border: 2px solid var(--fg-3); border-radius: 50%; background: var(--bg-2); box-sizing: border-box; z-index: 1; }
+.native-timeline .status-done .native-timeline-dot { border-color: var(--ok); background: var(--ok); }
+.native-timeline .status-current .native-timeline-dot { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.native-timeline time { display: block; color: var(--fg-3); font-size: 11px; }
+.native-timeline strong { display: block; color: var(--fg-1); }
+.native-comparison-scroll { overflow-x: auto; }
+.native-comparison { width: 100%; min-width: 360px; margin: 0 !important; }
+.native-comparison th:first-child { color: var(--fg-2); }
+.native-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.native-choices button, .native-location button { min-height: 44px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-3); color: var(--fg-1); font: inherit; cursor: pointer; }
+.native-choices button:hover:not(:disabled), .native-location button:hover { background: var(--bg-4); }
+.native-choices button:focus-visible, .native-location button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.native-choices button:disabled { opacity: .55; cursor: default; }
+.native-location { display: flex; align-items: flex-start; gap: 11px; }
+.native-location > svg { flex: none; color: var(--accent-text); }
+.native-location button { margin-top: 9px; }
+@media (prefers-reduced-motion: reduce) { .native-rich * { scroll-behavior: auto !important; transition: none !important; } }
 /* inline-kode — em-baseret padding så højden følger line-height.
  * Dæmpet visuel vægt: lavere baggrundskontrast og diskret farve, så mange
  * `code`-spans ikke skaber stribet/larmende rytme i Jarvis' afsnit. */

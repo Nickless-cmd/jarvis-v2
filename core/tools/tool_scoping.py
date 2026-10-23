@@ -183,6 +183,9 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Hukommelse — read (2026-09-04: `recall` = ét tool over alle kilder)
     "recall", "search_memory", "memory_graph_query", "resurface_old_memory",
     "search_jarvis_brain", "read_brain_entry",
+    # Repo-dokumentation — SEPARAT pulje fra hukommelsen (23/10-2026). Eget
+    # indeks, egen rangering; kan ikke fortrænge Jarvis' egne noter.
+    "repo_recall",
     # Hukommelse — write (egen + brugerens)
     "remember_this", "memory_upsert_section", "adjust_mood",
     # Selv-indsigt — read
@@ -246,6 +249,11 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
     # sparer den kontekst en manuel gennemlaesning ville koste.
     "scout_agent",
+    # Repo-dokumentation (23/10-2026). Hoerer netop her: en kode-opgave er dér
+    # man har brug for at laese hvad der ER skrevet om systemet. (Bemaerk at
+    # `recall` selv ikke staar i denne liste — memory-soegning er i dag kun
+    # naaelig i chat-scope. Det er en separat mangel, ikke aendret her.)
+    "repo_recall",
     # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode

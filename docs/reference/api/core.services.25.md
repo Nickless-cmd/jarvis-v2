@@ -2,6 +2,37 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/semantic_memory.py`
+_Semantic memory — unified embedding + cosine search across memory surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_source` | `(table, *, resolver, lister)` | Register a source table so backfill + search can map IDs to rows. | [src](../../../core/services/semantic_memory.py#L57) |
+| function | `_default_sources_registered` | `()` | Register sensory_memories + private_brain_records if not already. | [src](../../../core/services/semantic_memory.py#L68) |
+| function | `embed_base_url` | `()` | Hvor embeddings skal hen. ÉN sandhed for alle embedding-kald. | [src](../../../core/services/semantic_memory.py#L99) |
+| function | `_ollama_base_url` | `()` | — | [src](../../../core/services/semantic_memory.py#L118) |
+| function | `_tt_embed` | `(label, dur_ms)` | — | [src](../../../core/services/semantic_memory.py#L179) |
+| function | `_fastembed_enabled` | `()` | Kill-switch: runtime-key `embed_backend`="ollama" tvinger den gamle HTTP-sti. | [src](../../../core/services/semantic_memory.py#L195) |
+| function | `_get_fastembed` | `()` | Lazy singleton. Returnerer TextEmbedding el. None (aldrig raise) → kaldere | [src](../../../core/services/semantic_memory.py#L204) |
+| function | `_embed_fastembed` | `(texts)` | Embed hele listen in-process. Returnerer None (ikke en liste) hvis backenden | [src](../../../core/services/semantic_memory.py#L237) |
+| function | `_embed_ollama` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L254) |
+| function | `_cache_hent` | `(tekster)` | (resultater_med_huller, indeks_der_mangler) — slår hver tekst op i cachen. | [src](../../../core/services/semantic_memory.py#L302) |
+| function | `_cache_gem` | `(par)` | Læg nye vektorer i cachen. FIFO-halvtøm ved loft, som i `_embed_ollama`. | [src](../../../core/services/semantic_memory.py#L320) |
+| function | `_embed_ollama_http` | `(bid)` | ÉT HTTP-kald til ollamas batch-endpoint. `None` = fejlede → kalderen falder | [src](../../../core/services/semantic_memory.py#L344) |
+| function | `_embed_ollama_batch` | `(texts)` | Batch-embed. Returnerer en liste PARALLEL med `texts` (None pr. fejlet tekst). | [src](../../../core/services/semantic_memory.py#L374) |
+| function | `_encode_vector` | `(vec)` | — | [src](../../../core/services/semantic_memory.py#L460) |
+| function | `_decode_vector` | `(data)` | — | [src](../../../core/services/semantic_memory.py#L464) |
+| function | `_hash_content` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L468) |
+| function | `_prepare_text` | `(text)` | — | [src](../../../core/services/semantic_memory.py#L472) |
+| function | `index_memory` | `(*, source_table, source_id, content, modality)` | Embed content and upsert. Returns True on success, False if embed fails | [src](../../../core/services/semantic_memory.py#L481) |
+| function | `search` | `(query, *, modalities=…, source_tables=…, limit=…, min_score=…)` | Return top-k memories by cosine similarity. | [src](../../../core/services/semantic_memory.py#L516) |
+| function | `_extract_content_for_row` | `(table, row)` | Return (content_text, modality) for a raw row from a known table. | [src](../../../core/services/semantic_memory.py#L585) |
+| function | `_row_id` | `(table, row)` | — | [src](../../../core/services/semantic_memory.py#L600) |
+| function | `backfill_all` | `(*, max_per_table=…)` | Embed every unindexed row across registered source tables. | [src](../../../core/services/semantic_memory.py#L608) |
+| function | `_content_hash_unchanged` | `(table, source_id, new_content)` | — | [src](../../../core/services/semantic_memory.py#L685) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/semantic_memory.py#L694) |
+| function | `build_semantic_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_memory.py#L707) |
+
 ## `core/services/sensory_archive.py`
 _Sansernes Arkiv — service layer for sensory memories._
 
@@ -561,16 +592,4 @@ _Garbage collector for runtime signal-surface trackers._
 |---|---|---|---|---|
 | function | `_force_archive` | `(*, items, id_field, update_fn, label)` | — | [src](../../../core/services/signal_surface_gc.py#L33) |
 | function | `collect` | `()` | Run a full GC pass across the three signal-surface trackers. | [src](../../../core/services/signal_surface_gc.py#L75) |
-
-## `core/services/signal_surface_router.py`
-_Signal Surface Router — maps surface names to build functions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_build_router` | `()` | Build name → function mapping. Local imports stay lazy. | [src](../../../core/services/signal_surface_router.py#L11) |
-| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L261) |
-| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L268) |
-| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L272) |
-| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L276) |
-| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L301) |
 

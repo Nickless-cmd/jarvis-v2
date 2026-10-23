@@ -119,6 +119,7 @@ from core.tools.health_monitor_tools import (HEALTH_MONITOR_TOOL_DEFINITIONS)
 from core.tools.sensory_tools import (SENSORY_TOOL_DEFINITIONS)
 from core.tools.recall_memory_tools import (RECALL_MEMORY_TOOL_DEFINITIONS)
 from core.tools.recall_tool import RECALL_TOOL_DEFINITIONS
+from core.tools.repo_recall_tool import REPO_RECALL_TOOL_DEFINITIONS
 from core.tools.goals_tools import (GOAL_TOOL_DEFINITIONS)
 from core.tools.decisions_tools import (DECISION_TOOL_DEFINITIONS)
 from core.tools.composites_tools import (COMPOSITE_TOOL_DEFINITIONS)
@@ -3502,6 +3503,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *RECALL_MEMORY_TOOL_DEFINITIONS,
     # 2026-09-04 (memory repair, R5): ét recall-tool over alle kilder.
     *RECALL_TOOL_DEFINITIONS,
+    # 2026-10-23: dokumentations-søgning som SEPARAT spor (egen pulje, eget
+    # indeks). Ligger ikke i memory-indekset, så det kan ikke fortrænge
+    # Jarvis' egne noter i auto-recall.
+    *REPO_RECALL_TOOL_DEFINITIONS,
     *GOAL_TOOL_DEFINITIONS,
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,

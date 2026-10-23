@@ -31,6 +31,9 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     # Internal memory: reads and additive or corrective writes only.
     "recall", "recall_memories", "recall_before_act", "recall_context_version",
     "recall_sensory_memories", "recall_reasoning", "search_memory",
+    # Repo-dokumentation: ren læsning mod et lokalt indeks — ingen mutation,
+    # ingen netværkskald. Samme klasse som `search`/`read_file`.
+    "repo_recall",
     "search_jarvis_brain", "read_brain_entry", "read_memory_topic",
     "memory_graph_query", "memory_list_headings", "memory_check_duplicate",
     "memory_usage", "resurface_old_memory", "remember_this",

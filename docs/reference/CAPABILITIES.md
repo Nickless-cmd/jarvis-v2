@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-21 — 505 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-23 — 506 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -329,6 +329,7 @@
 | `remember_this` | native | no |
 | `remove_process_watch` | native | no |
 | `render_mermaid` | native | no |
+| `repo_recall` | native | no |
 | `request_app_action` | native | no |
 | `request_codex_skeleton` | native | no |
 | `resolve_prediction` | native | no |

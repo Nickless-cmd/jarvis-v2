@@ -115,7 +115,9 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     # Eksterne vaerktoejer via MCP — ét vaerktoej, mange servere bagved.
     ("MCP (eksterne værktøjer)", ["mcp"]),
     ("Hukommelse", [
-        "search_memory", "recall_memories", "remember_this",
+        # `recall` stod IKKE her — samme fejlklasse som `explore` og `spawn_agent_task`:
+        # evnen fandtes, var registreret og pinnet, men inventaret nævnte den ikke.
+        "recall", "repo_recall", "search_memory", "recall_memories", "remember_this",
         "read_memory_topic", "write_memory_topic",
     ]),
     ("Selv-styring", [

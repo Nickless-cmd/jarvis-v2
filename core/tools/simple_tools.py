@@ -1533,6 +1533,7 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # Modulet ejer egen state (_DISCORD_*/_SENSITIVE_*). Re-importeret her
 # (dispatch-dict + tests).
 from core.tools.recall_tool import _exec_recall  # noqa: E402
+from core.tools.repo_recall_tool import _exec_repo_recall  # noqa: E402
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
@@ -1730,6 +1731,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
     "recall": _exec_recall,
+    "repo_recall": _exec_repo_recall,
     "memory_graph_query": _exec_memory_graph_query,
     "resurface_old_memory": _exec_resurface_old_memory,
     "propose_source_edit": _exec_propose_source_edit,

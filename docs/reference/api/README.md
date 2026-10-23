@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17434 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17450 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -51,15 +51,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17434 functions/
 - [`core.services.19`](core.services.19.md) — `operator_allowlist` … `private_inner_interplay_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `private_inner_note_signal_tracking` … `prompt_variant_tracker`
 - [`core.services.21`](core.services.21.md) — `proposal_classifier` … `regulation_homeostasis_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `relation_continuity_signal_tracking` … `rule_engine`
-- [`core.services.23`](core.services.23.md) — `run_autonomy_context` … `scoped_recall_policy`
-- [`core.services.24`](core.services.24.md) — `scout_inbox_delivery` … `semantic_memory`
-- [`core.services.25`](core.services.25.md) — `sensory_archive` … `signal_surface_router`
-- [`core.services.26`](core.services.26.md) — `signal_tracking_framework` … `system_cartographer`
-- [`core.services.27`](core.services.27.md) — `tanke_resume` … `tool_observer`
-- [`core.services.28`](core.services.28.md) — `tool_outcome_memory` … `visible_chat_pragmatics`
-- [`core.services.29`](core.services.29.md) — `visible_first_pass_output` … `visible_runs_error_messaging`
-- [`core.services.30`](core.services.30.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `relation_continuity_signal_tracking` … `rule_definitions`
+- [`core.services.23`](core.services.23.md) — `rule_engine` … `scheduled_tasks`
+- [`core.services.24`](core.services.24.md) — `scoped_recall_policy` … `semantic_indexer`
+- [`core.services.25`](core.services.25.md) — `semantic_memory` … `signal_surface_gc`
+- [`core.services.26`](core.services.26.md) — `signal_surface_router` … `svar_tempo`
+- [`core.services.27`](core.services.27.md) — `system_cartographer` … `tool_lexical_match`
+- [`core.services.28`](core.services.28.md) — `tool_observer` … `visible_autonomous_run`
+- [`core.services.29`](core.services.29.md) — `visible_chat_pragmatics` … `visible_runs_cognitive`
+- [`core.services.30`](core.services.30.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -70,8 +70,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17434 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `identity_pin_tools`
 - [`core.tools.02`](core.tools.02.md) — `identity_sketch_tools` … `recurring_scheduler_tools`
-- [`core.tools.03`](core.tools.03.md) — `restart_self_tools` … `voice_journal_tool`
-- [`core.tools.04`](core.tools.04.md) — `wake_word_tool` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `repo_recall_tool` … `visual_memory_tool`
+- [`core.tools.04`](core.tools.04.md) — `voice_journal_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

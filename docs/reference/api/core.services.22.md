@@ -205,6 +205,27 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 | function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L315) |
 | function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L325) |
 
+## `core/services/repo_index.py`
+_Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_repo_root` | `()` | Repoets rod. Kan overstyres med JARVIS_REPO_ROOT (tests, worktrees). | [src](../../../core/services/repo_index.py#L96) |
+| function | `_index_path` | `()` | Global sti — dokumentationen er den samme for alle brugere. | [src](../../../core/services/repo_index.py#L104) |
+| function | `_is_excluded` | `(rel)` | — | [src](../../../core/services/repo_index.py#L109) |
+| function | `repo_files` | `(root=…)` | Alle dokumentationsfiler der skal indekseres, sorteret. | [src](../../../core/services/repo_index.py#L116) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/repo_index.py#L142) |
+| function | `_chunk_files` | `(files, root)` | Læs + chunk. Kun fil-I/O — ingen embedding. | [src](../../../core/services/repo_index.py#L149) |
+| function | `_load_cached_vectors` | `(path)` | chunk-tekst → vektor fra eksisterende cache, til inkrementel reindeksering. | [src](../../../core/services/repo_index.py#L166) |
+| function | `build_index` | `(*, root=…, force=…)` | Byg indekset og skriv cachen. Blokerer indtil embeddings er færdige. | [src](../../../core/services/repo_index.py#L184) |
+| function | `_schedule_background_build` | `()` | Byg i baggrunden (fire-and-forget, kun én ad gangen). | [src](../../../core/services/repo_index.py#L260) |
+| function | `_load_or_build` | `()` | (chunks, embeddings, mtimes). Blokerer aldrig på en fuld embedding. | [src](../../../core/services/repo_index.py#L281) |
+| function | `_path_matches` | `(source, path_prefix)` | — | [src](../../../core/services/repo_index.py#L312) |
+| function | `search_repo` | `(query, *, limit=…, path_prefix=…)` | Semantisk søgning i repoets dokumentation. | [src](../../../core/services/repo_index.py#L318) |
+| function | `get_stats` | `()` | Indeksets tilstand uden at bygge noget. | [src](../../../core/services/repo_index.py#L370) |
+| function | `invalidate` | `()` | Slet cachen, så næste søgning genopbygger. | [src](../../../core/services/repo_index.py#L408) |
+| function | `_main` | `(argv=…)` | — | [src](../../../core/services/repo_index.py#L418) |
+
 ## `core/services/report_claim_guard.py`
 _Efterproev det et barn PAASTAAR — Fase 6._
 
@@ -625,32 +646,4 @@ _Rule definitions — production rules feeding the rule_engine._
 |---|---|---|---|---|
 | function | `_get` | `(s, *keys, default=…)` | Walk a nested dict; return default if any step is missing. | [src](../../../core/services/rule_definitions.py#L25) |
 | function | `_len` | `(s, surface, key=…)` | Count items in a surface list field. | [src](../../../core/services/rule_definitions.py#L38) |
-
-## `core/services/rule_engine.py`
-_Rule Engine — forward-chaining symbolic inference over signal surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuleConclusion` | `` | One conclusion from one rule firing. | [src](../../../core/services/rule_engine.py#L27) |
-| class | `Rule` | `` | One production rule in the engine. | [src](../../../core/services/rule_engine.py#L49) |
-| class | `RuleCycleResult` | `` | Result of one full evaluation cycle. | [src](../../../core/services/rule_engine.py#L61) |
-| class | `RuleEngine` | `` | Forward-chaining rule engine. | [src](../../../core/services/rule_engine.py#L73) |
-| method | `RuleEngine.__init__` | `(self)` | — | [src](../../../core/services/rule_engine.py#L80) |
-| method | `RuleEngine.add_rule` | `(self, rule)` | — | [src](../../../core/services/rule_engine.py#L84) |
-| method | `RuleEngine.register_rules` | `(self, rules)` | — | [src](../../../core/services/rule_engine.py#L88) |
-| method | `RuleEngine.clear_rules` | `(self)` | — | [src](../../../core/services/rule_engine.py#L92) |
-| method | `RuleEngine.rules` | `(self)` | — | [src](../../../core/services/rule_engine.py#L97) |
-| method | `RuleEngine.evaluate` | `(self, signals)` | Evaluate all rules against current signal state. | [src](../../../core/services/rule_engine.py#L103) |
-| method | `RuleEngine.get_rule` | `(self, name)` | — | [src](../../../core/services/rule_engine.py#L136) |
-| method | `RuleEngine.rules_by_domain` | `(self, domain)` | — | [src](../../../core/services/rule_engine.py#L142) |
-| function | `_get` | `(signals, *keys, default=…)` | Safely dig into nested signal dicts. | [src](../../../core/services/rule_engine.py#L149) |
-| function | `signal_value` | `(signals, surface, field, default=…)` | Extract a scalar value from a named surface field. | [src](../../../core/services/rule_engine.py#L160) |
-| function | `surface_has` | `(signals, surface)` | Check if a surface exists and has no error. | [src](../../../core/services/rule_engine.py#L170) |
-| function | `get_engine` | `()` | — | [src](../../../core/services/rule_engine.py#L185) |
-| function | `_load_default_rules` | `(engine)` | Import and register all default rule definitions. | [src](../../../core/services/rule_engine.py#L193) |
-| function | `reset_engine` | `()` | Reset the engine (useful for testing or hot-reload). | [src](../../../core/services/rule_engine.py#L201) |
-| function | `evaluate_rules` | `(signals)` | Convenience: get engine, evaluate, return result. | [src](../../../core/services/rule_engine.py#L207) |
-| function | `get_all_rules` | `()` | Return all registered rules as serializable dicts (for tools). | [src](../../../core/services/rule_engine.py#L212) |
-| function | `build_rule_engine_surface` | `()` | — | [src](../../../core/services/rule_engine.py#L224) |
-| function | `_emit_rule_fired_event` | `(rule_name, urgency)` | — | [src](../../../core/services/rule_engine.py#L239) |
 

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/voice_journal_tool.py`
+_Voice Journal tool — dedicated longer recording → density note._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_voice_journal` | `(args)` | — | [src](../../../core/tools/voice_journal_tool.py#L26) |
+
 ## `core/tools/wake_word_tool.py`
 _Wake-word tool — Jarvis listens for 'Hey Jarvis' in the background._
 

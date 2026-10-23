@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_chat_pragmatics.py`
+_Pragmatic conversation boundaries for the visible chat-only lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L60) |
+| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append chat-only contracts after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L116) |
+| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L133) |
+
 ## `core/services/visible_first_pass_output.py`
 _Én synlig grænse for første modelsvar._
 
@@ -563,11 +572,4 @@ _Per-turn cognitive/candidate tracking-pipeline for visible runs._
 | function | `_legacy_regex_detectors_enabled` | `()` | Er de gamle ordmønster-detektorer stadig tændt? (default: nej) | [src](../../../core/services/visible_runs_cognitive.py#L58) |
 | function | `_track_step_failed` | `()` | En tracker i _track_runtime_candidates fejlede. | [src](../../../core/services/visible_runs_cognitive.py#L73) |
 | function | `_track_runtime_candidates` | `(run, assistant_text)` | — | [src](../../../core/services/visible_runs_cognitive.py#L99) |
-
-## `core/services/visible_runs_error_messaging.py`
-_User-facing error messages for visible runs (Jarvis voice)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `friendly_provider_error_message` | `(exc)` | Return a Jarvis-voice Danish message for a visible-model exception. | [src](../../../core/services/visible_runs_error_messaging.py#L15) |
 

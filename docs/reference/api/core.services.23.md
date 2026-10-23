@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/rule_engine.py`
+_Rule Engine — forward-chaining symbolic inference over signal surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RuleConclusion` | `` | One conclusion from one rule firing. | [src](../../../core/services/rule_engine.py#L27) |
+| class | `Rule` | `` | One production rule in the engine. | [src](../../../core/services/rule_engine.py#L49) |
+| class | `RuleCycleResult` | `` | Result of one full evaluation cycle. | [src](../../../core/services/rule_engine.py#L61) |
+| class | `RuleEngine` | `` | Forward-chaining rule engine. | [src](../../../core/services/rule_engine.py#L73) |
+| method | `RuleEngine.__init__` | `(self)` | — | [src](../../../core/services/rule_engine.py#L80) |
+| method | `RuleEngine.add_rule` | `(self, rule)` | — | [src](../../../core/services/rule_engine.py#L84) |
+| method | `RuleEngine.register_rules` | `(self, rules)` | — | [src](../../../core/services/rule_engine.py#L88) |
+| method | `RuleEngine.clear_rules` | `(self)` | — | [src](../../../core/services/rule_engine.py#L92) |
+| method | `RuleEngine.rules` | `(self)` | — | [src](../../../core/services/rule_engine.py#L97) |
+| method | `RuleEngine.evaluate` | `(self, signals)` | Evaluate all rules against current signal state. | [src](../../../core/services/rule_engine.py#L103) |
+| method | `RuleEngine.get_rule` | `(self, name)` | — | [src](../../../core/services/rule_engine.py#L136) |
+| method | `RuleEngine.rules_by_domain` | `(self, domain)` | — | [src](../../../core/services/rule_engine.py#L142) |
+| function | `_get` | `(signals, *keys, default=…)` | Safely dig into nested signal dicts. | [src](../../../core/services/rule_engine.py#L149) |
+| function | `signal_value` | `(signals, surface, field, default=…)` | Extract a scalar value from a named surface field. | [src](../../../core/services/rule_engine.py#L160) |
+| function | `surface_has` | `(signals, surface)` | Check if a surface exists and has no error. | [src](../../../core/services/rule_engine.py#L170) |
+| function | `get_engine` | `()` | — | [src](../../../core/services/rule_engine.py#L185) |
+| function | `_load_default_rules` | `(engine)` | Import and register all default rule definitions. | [src](../../../core/services/rule_engine.py#L193) |
+| function | `reset_engine` | `()` | Reset the engine (useful for testing or hot-reload). | [src](../../../core/services/rule_engine.py#L201) |
+| function | `evaluate_rules` | `(signals)` | Convenience: get engine, evaluate, return result. | [src](../../../core/services/rule_engine.py#L207) |
+| function | `get_all_rules` | `()` | Return all registered rules as serializable dicts (for tools). | [src](../../../core/services/rule_engine.py#L212) |
+| function | `build_rule_engine_surface` | `()` | — | [src](../../../core/services/rule_engine.py#L224) |
+| function | `_emit_rule_fired_event` | `(rule_name, urgency)` | — | [src](../../../core/services/rule_engine.py#L239) |
+
 ## `core/services/run_autonomy_context.py`
 _Er DEN HER koersel uovervaaget? — run-scopet, ikke gaettet._
 
@@ -730,17 +758,4 @@ _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 | function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L417) |
 | function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L426) |
 | function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L431) |
-
-## `core/services/scoped_recall_policy.py`
-_Fail-closed policy and independent kill switches for private recall._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MissingRecallScope` | `` | A private recall path has no authoritative user principal. | [src](../../../core/services/scoped_recall_policy.py#L13) |
-| function | `recall_enabled` | `()` | — | [src](../../../core/services/scoped_recall_policy.py#L17) |
-| function | `recall_migration_enabled` | `()` | — | [src](../../../core/services/scoped_recall_policy.py#L21) |
-| function | `set_recall_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L25) |
-| function | `set_recall_migration_enabled` | `(enabled)` | — | [src](../../../core/services/scoped_recall_policy.py#L29) |
-| function | `require_private_scope` | `(session_id=…)` | — | [src](../../../core/services/scoped_recall_policy.py#L33) |
-| function | `disabled_result` | `(path)` | Svar fra et recall-vaerktoej naar den private soegning er slaaet fra. | [src](../../../core/services/scoped_recall_policy.py#L51) |
 

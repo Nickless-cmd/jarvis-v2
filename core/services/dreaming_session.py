@@ -211,6 +211,21 @@ def _collect_dream_material() -> dict[str, Any]:
     return material
 
 
+def _conf(value: Any, default: float = 0.0) -> float:
+    """Confidence som float — carry-over bærer historisk BÅDE ``0.8`` og ``"0.8"``.
+
+    Målt 22/10-2026: én post med streng-confidence fik hele drømme-sessionen til
+    at fejle med ``Unknown format code 'f' for object of type 'str'``. Fejlen
+    blev kastet fra ``_build_dream_prompt``, fanget af ``fire``-ens brede
+    ``except`` og logget som «failed to fire» — så drømmen fyrede ALDRIG, så
+    længe posten lå i FIFO-vinduet på fem, uden at nogen enkelt-post så forkert ud.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):  # ikke en fejl: en manglende eller gemt confidence skal bare give default, ikke dræbe drømmen
+        return default
+
+
 def _build_dream_prompt(material: dict[str, Any]) -> str:
     """Build the full dream prompt from collected material."""
     sections: list[str] = []
@@ -263,7 +278,7 @@ def _build_dream_prompt(material: dict[str, Any]) -> str:
             status_mark = "✓" if d.get("confirmed") else "○"
             sec.append(
                 f"- {status_mark} \"{d['content']}\" "
-                f"(conf={d['confidence']:.1f}, carry={d.get('carry_count', 0)})"
+                f"(conf={_conf(d.get('confidence')):.1f}, carry={d.get('carry_count', 0)})"
             )
         sections.append("\n".join(sec))
 
@@ -294,7 +309,7 @@ def _build_dream_prompt(material: dict[str, Any]) -> str:
         for h in hyps:
             sec.append(
                 f"- \"{h.get('hypothesis', '')[:120]}\" "
-                f"(conf={h.get('confidence', 0.0):.1f})"
+                f"(conf={_conf(h.get('confidence')):.1f})"
             )
         sections.append("\n".join(sec))
 

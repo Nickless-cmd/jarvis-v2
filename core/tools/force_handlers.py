@@ -49,9 +49,17 @@ from core.tools.simple_tools_operator import (
 
 
 def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
-    """Sen import: operator_bash_session traekker paa broen, som traekker paa
-    simple_tools. En import paa modulniveau ville lukke en cirkel."""
-    from core.tools.operator_bash_session import _exec_operator_bash as _impl
+    """Sen import: simple_tools_operator traekker paa broen, som traekker paa
+    simple_tools. En import paa modulniveau ville lukke en cirkel.
+
+    RETTET 23/10-2026: facaden pegede paa ``operator_bash_session``, som kun
+    har ``_exec_operator_bash_session_*`` — aldrig ``_exec_operator_bash``.
+    Hvert ``operator_bash``-kald gennem force-stien døde derfor med
+    «cannot import name '_exec_operator_bash'». Funktionen bor i
+    ``simple_tools_operator`` (linje 679), som er det modul der dispatcher
+    til broen.
+    """
+    from core.tools.simple_tools_operator import _exec_operator_bash as _impl
     return _impl(args)
 
 

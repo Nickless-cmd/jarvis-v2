@@ -416,11 +416,13 @@ _Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L126) |
-| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L149) |
-| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L161) |
-| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L187) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L192) |
+| function | `_qf_loft` | `()` | Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden. | [src](../../../scripts/verify_memory_status.py#L149) |
+| function | `quick_facts_brud` | `(sti)` | QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank. | [src](../../../scripts/verify_memory_status.py#L186) |
+| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L225) |
+| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L248) |
+| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L260) |
+| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L286) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L291) |
 
 ## `scripts/verify_notes.py`
 _Vagt: en note skal have en status, en slags, og sine fire overskrifter._

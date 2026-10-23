@@ -122,6 +122,105 @@ _BESKYTTEDE = (
     "VISIBLE_CHAT_RULES.md",
 )
 
+#: Sektions-nøgler der MÅ stå i QUICK_FACTS.md. Listen er bevidst HVID: en ny
+#: sektion kræver at man redigerer den og dermed tager stilling — opslag (her),
+#: fremgangsmåde/fælde (PLAYBOOKS.md) eller hvad-skete-der (MEMORY.md).
+#:
+#: Målt 23/10-2026: filen var 85.742 tegn med 38 sektioner, hvoraf 26 var
+#: opskrifter og fælder. Promptens loft på 20.000 klippede 77 % tavst væk —
+#: inklusive mobil-APK-opskriften og «et fix er ikke levende før genstart».
+#: Det var derfor jeg gentog kendte fejl med opskriften foran mig i min egen fil.
+_QF_SEKTIONER = (
+    "⛔ adgangsregel",
+    "systemer",
+    "netværk",
+    "pfsense",
+    "logins",
+    "hosts",
+    "home assistant",
+    "paths",
+    "værktøjskanaler",
+    "værktøjer",
+    "bruger",
+    "se også",
+)
+
+
+def _qf_loft() -> int:
+    """Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden.
+
+    `_quick_facts_section(max_chars=...)` klipper tavst alt derover. Hardcoder
+    vi tallet her, driver de to fra hinanden den dag nogen hæver loftet, og så
+    vogter vagten en grænse ingen læser. AST i stedet for import: en vagt der
+    importerer det modul den vogter, dør med det.
+    """
+    import ast
+
+    kilde = ROD / "core" / "services" / "prompt_contract.py"
+    try:
+        trae = ast.parse(kilde.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, SyntaxError) as exc:
+        # Kilden kan ikke læses (flyttet fil eller syntaksfejl i prompt_contract).
+        # Vi GÆTTER så på promptens kendte standard — men siger det HØJT: et
+        # gæt der ikke meldes, er en vagt der vogter den forkerte grænse i
+        # stilhed. Vi crasher ikke, for det ville blokere enhver commit.
+        print(f"verify-memory-status: kunne ikke laese loftet fra {kilde.name} ({exc}) — bruger 20000", file=sys.stderr)
+        return 20000
+    for knude in ast.walk(trae):
+        if not (isinstance(knude, ast.FunctionDef) and knude.name == "_quick_facts_section"):
+            continue
+        par = list(zip(knude.args.kwonlyargs, knude.args.kw_defaults))
+        par += list(zip(knude.args.args, knude.args.defaults))
+        for arg, default in par:
+            if arg.arg == "max_chars" and isinstance(default, ast.Constant):
+                try:
+                    return int(default.value)
+                except (TypeError, ValueError) as exc:
+                    # Loftet står som noget andet end et tal (fx et navn).
+                    # Samme valg som ovenfor: gæt på standarden, men sig det.
+                    print(f"verify-memory-status: loftet er ikke et tal ({exc}) — bruger 20000", file=sys.stderr)
+                    return 20000
+    return 20000
+
+
+def quick_facts_brud(sti: Path) -> list[str]:
+    """QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank.
+
+    To krav, begge målt 23/10-2026:
+
+    1. Filen må ikke overstige promptens klip-loft. Alt derover forsvinder
+       TAVST, og det er slutningen — altså det nyeste — der forsvinder.
+    2. Hver `## `-sektion skal være en erklæret opslags-sektion.
+
+    Hvorfor ikke dato-tæthed: målt 23/10-2026 matcher IP-adresser
+    (`10.0.0.36`) dato-mønstret, så en dato-tælling gav 20 «datoer» i en
+    sektion der ikke indeholder én. Længde alene fanger heller ikke en kort
+    fælde-sektion. Hvidlisten er den eneste regel der præcist kræver et VALG.
+    """
+    if sti.name != "QUICK_FACTS.md":
+        return []
+    tekst = sti.read_text(encoding="utf-8", errors="replace")
+    brud: list[str] = []
+    loft = _qf_loft()
+    if len(tekst) > loft:
+        brud.append(
+            f"QUICK_FACTS.md er {len(tekst)} tegn — promptens loft er {loft}. "
+            f"Alt derover klippes tavst væk (slutningen først). Flyt "
+            f"fremgangsmåder til PLAYBOOKS.md og forløb til MEMORY.md."
+        )
+    for nr, linje in enumerate(tekst.splitlines(), 1):
+        if not linje.startswith("## "):
+            continue
+        titel = linje[3:].strip()
+        if not any(titel.lower().startswith(n) for n in _QF_SEKTIONER):
+            brud.append(
+                f"QUICK_FACTS.md:{nr}: «{titel[:60]}» er ikke en erklæret "
+                f"opslags-sektion. Tag stilling: opslag → tilføj nøglen til "
+                f"_QF_SEKTIONER; fremgangsmåde/fælde → PLAYBOOKS.md; "
+                f"hvad skete der → MEMORY.md."
+            )
+    return brud
+
 
 def _filer() -> list[Path]:
     """De vogtede filer — stien løses ved KALDSTID, ikke ved import.
@@ -219,6 +318,10 @@ def main(argv: list[str] | None = None) -> int:
         for nr, linje in bt:
             detaljer.append(f"  broedtekst {_navn(sti)}:{nr}: {linje[:110]}")
 
+    qf_brud: list[str] = []
+    for sti in filer:
+        qf_brud.extend(quick_facts_brud(sti))
+
     i_alt = sum(pr_fil.values())
 
     if a.skriv_grundlinje:
@@ -261,9 +364,16 @@ def main(argv: list[str] | None = None) -> int:
         f"({n_overskrift} overskrift, {n_broedtekst} broedtekst) (grundlinje {tilladt})"
     )
 
+    if qf_brud:
+        print()
+        for b in qf_brud:
+            print(f"FEJL: {b}")
+
     if i_alt > tilladt:
         print(f"\nFEJL: {i_alt - tilladt} NYE statuspaastande uden spor.")
         print("Giv linjen en dato, en lukke-markoer eller en pegning paa sit register.")
+        return 1
+    if qf_brud:
         return 1
     if i_alt < tilladt:
         print("(faerre end grundlinjen — saenk den med --skriv-grundlinje)")

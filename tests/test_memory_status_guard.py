@@ -189,3 +189,67 @@ def test_krypteret_medlemsfil_taelles_ikke(hjem):
     hjem.write_text("# M\n", encoding="utf-8")
     (hjem.parent / "QUICK_FACTS.md.enc").write_bytes(b"\x00\x01krypteret")
     assert [p.name for p in v._filer()] == ["MEMORY.md"]
+
+
+# ── QUICK_FACTS må ikke være en hukommelsesbank (målt 23/10-2026) ──────────
+#
+# Filen var 85.742 tegn med 38 sektioner, hvoraf 26 var opskrifter og fælder.
+# Promptens loft på 20.000 klippede 77 % tavst væk — inklusive mobil-APK-
+# opskriften. Opskrifterne findes altså, men var usynlige i min egen prompt,
+# og jeg gentog kendte fejl med dem foran mig. Reglen nedenfor kræver et VALG
+# pr. sektion: opslag (her), fremgangsmåde (PLAYBOOKS.md) eller forløb (MEMORY).
+
+
+def test_quick_facts_sektion_skal_vaere_erklaeret(hjem, capsys):
+    """En ny sektion i QUICK_FACTS kræver at man tager stilling."""
+    (hjem.parent / "QUICK_FACTS.md").write_text(
+        "# QUICK_FACTS\n\n## Mobil-APK — byg og udgiv\n\nkør gradlew.\n", encoding="utf-8"
+    )
+    assert v.main([]) == 1, "vagten accepterede en uerklæret sektion i QUICK_FACTS"
+    ud = capsys.readouterr().out
+    assert "ikke en erklæret opslags-sektion" in ud
+    assert "PLAYBOOKS.md" in ud, "fejlbeskeden peger ikke på den rigtige destination"
+
+
+def test_quick_facts_erklaeret_sektion_er_groen(hjem):
+    """Et opslag er kort og står på hvidlisten — det skal passere."""
+    (hjem.parent / "QUICK_FACTS.md").write_text(
+        "# QUICK_FACTS\n\n## Systemer & URLs\n\n- api: 10.0.0.39\n"
+        "## Paths\n\n- repo: /media/projects/jarvis-v2\n",
+        encoding="utf-8",
+    )
+    assert v.main([]) == 0
+
+
+def test_quick_facts_over_loftet_afvises(hjem, capsys):
+    """Alt over promptens loft klippes TAVST — det skal være en fejl, ikke stilhed."""
+    loft = v._qf_loft()
+    fyld = "x" * (loft + 10)
+    (hjem.parent / "QUICK_FACTS.md").write_text(
+        f"# QUICK_FACTS\n\n## Systemer\n\n{fyld}\n", encoding="utf-8"
+    )
+    assert v.main([]) == 1, "vagten accepterede en fil prompten klipper"
+    assert "klippes tavst" in capsys.readouterr().out
+
+
+def test_loftet_laeses_fra_prompt_contract():
+    """Loftet må ikke hardcodes — det skal følge promptens faktiske signatur.
+
+    Hardcodede vi 20.000 her, drev de to fra hinanden den dag nogen hævede
+    loftet, og så vogtede vagten en grænse ingen læser.
+    """
+    from core.services.prompt_contract import _quick_facts_section
+
+    faktisk = _quick_facts_section.__kwdefaults__["max_chars"]
+    assert v._qf_loft() == faktisk, (
+        f"vagtens loft ({v._qf_loft()}) driver fra promptens ({faktisk})"
+    )
+
+
+def test_qf_reglen_rammer_kun_quick_facts(hjem):
+    """MEMORY.md må gerne have en «Commit — …»-sektion; QUICK_FACTS må ikke."""
+    hjem.write_text("# Jarvis Memory\n\n## Commit — docs-drift\n\ntekst.\n", encoding="utf-8")
+    (hjem.parent / "QUICK_FACTS.md").write_text(
+        "# QUICK_FACTS\n\n## Systemer\n\n- x\n", encoding="utf-8"
+    )
+    assert v.main([]) == 0, "reglen lækkede over i MEMORY.md"

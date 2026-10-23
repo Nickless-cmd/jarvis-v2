@@ -1,0 +1,120 @@
+name: mobile-apk
+
+# Bygger en installerbar Android-APK af apps/mobile via EAS og lægger den på
+# GitHub-releasen for tagget.
+#
+# HVORFOR DENNE FIL FINDES (23/10-2026): `eas.json` har haft en `preview`-profil
+# der bygger APK hele tiden, men INTET kaldte den. APK'en blev derfor bygget i
+# hånden på Bjørns maskine, og der fandtes ingen APK i repoet eller i nogen
+# release. Det betød at telefonen kunne køre en version som ingen kunne
+# genskabe — og at "er den bygget?" var et spørgsmål om hukommelse.
+#
+# ⚠️ KRÆVER EN HEMMELIGHED: `EXPO_TOKEN` skal ligge i repoets secrets
+# (Settings → Secrets and variables → Actions). Uden den kan EAS ikke
+# autentificere, og jobbet fejler med en klar besked i stedet for at hænge.
+# Token laves på https://expo.dev/settings/access-tokens
+#
+# Byggeriet kører PÅ EAS' servere (cloud), ikke på runneren — derfor er der
+# ingen Android SDK på runneren, og `--non-interactive` er nødvendig for at
+# EAS ikke stopper for at spørge om noget midt i et CI-job.
+
+on:
+  push:
+    tags:
+      - "jarvis-mobile-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Eksisterende tag at bygge APK for (fx jarvis-mobile-v0.2.205)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK (EAS preview)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      # Fejl TIDLIGT og TYDELIGT hvis token mangler. Uden dette trin ville EAS
+      # svare med en interaktiv login-prompt der bare hænger i CI.
+      - name: Verificér EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN mangler i repoets secrets. Lav et token på https://expo.dev/settings/access-tokens og gem det som EXPO_TOKEN under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "EXPO_TOKEN er sat."
+
+      - name: Byg APK (preview-profil)
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --wait \
+            --json > eas-build.json
+          cat eas-build.json
+
+      - name: Hent APK-filen
+        id: hent
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          # EAS' JSON-output bærer artefakt-URL'en. Vi henter den med tokenet,
+          # så filen ligger lokalt og kan uploades til releasen.
+          python3 - <<'PY'
+          import json, os, urllib.request
+          data = json.load(open("eas-build.json"))
+          if isinstance(data, list):
+              data = data[0]
+          url = data.get("artifacts", {}).get("buildUrl") or data.get("artifacts", {}).get("applicationArchiveUrl")
+          if not url:
+              raise SystemExit("Ingen artefakt-URL i EAS-svaret: " + json.dumps(data)[:500])
+          req = urllib.request.Request(url, headers={"User-Agent": "jarvis-ci"})
+          with urllib.request.urlopen(req, timeout=300) as r, open("jarvis-mobile.apk", "wb") as f:
+              f.write(r.read())
+          print("hentet:", os.path.getsize("jarvis-mobile.apk"), "bytes")
+          PY
+
+      - name: Læg APK på releasen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          # Opretter releasen hvis den ikke findes (kladde → publicér først når
+          # filen er oppe), ellers uploader til den eksisterende.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" jarvis-mobile.apk --clobber
+          else
+            gh release create "$TAG" jarvis-mobile.apk \
+              --title "Jarvis mobil $TAG" \
+              --notes "APK bygget af CI fra $GITHUB_SHA." \
+              --draft=false
+          fi
+
+      - name: Gem APK som artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-mobile-apk
+          path: apps/mobile/jarvis-mobile.apk
+          retention-days: 30

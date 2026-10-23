@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import type { AppStateStatus } from 'react-native'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { tokens } from '../theme/tokens'
@@ -42,7 +43,22 @@ interface Props {
   focusSignal?: number
 }
 
-const POLL_MS = 4000
+// 4 s gav ~75 kald/min fra denne skaerm alene (5 endpoints pr. runde) — og
+// API'ets loft er 120/60 s pr. IP. Maalt 23/10-2026: 372 stk 429 fra
+// mobil-IP'en. En arbejdsliste behoever ikke 4 s; 15 s ligger sikkert under
+// loftet og er stadig hurtigt nok til at en godkendelse dukker op.
+export const POLL_MS = 15000
+
+/**
+ * Polling tikker kun naar appen er synlig.
+ *
+ * Egen funktion fordi den er den ene beslutning testen kan maale praecist:
+ * en skjult app skal ikke hente noget som helst. `inactive` taeles som
+ * skjult — det er iOS' tilstand under app-skift og kontrolcenter.
+ */
+export function skalPolle(appState: AppStateStatus): boolean {
+  return appState === 'active'
+}
 
 /**
  * Hvor mange ting venter reelt på et svar.
@@ -96,6 +112,14 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
   const [error, setError] = useState<{ titel: string; detalje: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  // Skærmen maa kun polle naar appen er synlig. Foer 23/10-2026 koerte
+  // setInterval videre i lommen — samme kadence som naar skaermen var aaben.
+  // Lat initializer med vilje: `useState(AppState.currentState)` evaluerer
+  // argumentet ved HVER render, og react-native eksponerer AppState som en
+  // lazy getter der kaster hvis den rammes efter en teardown. Refs initialiseres
+  // fra state, saa getteren kun roeres én gang pr. mount.
+  const [appState, setAppState] = useState<AppStateStatus>(() => AppState.currentState)
+  const appStateRef = useRef<AppStateStatus>(appState)
   const [busyId, setBusyId] = useState<string | null>(null)
   // Jarvis' egne initiativer. Fejler kaldet, står listen tom frem for at vise
   // en fejl — hans tanker er ikke noget rummet KRÆVER for at fungere.
@@ -159,9 +183,23 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
   }, [load, syncSignal, tick])
 
   useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      const prev = appStateRef.current
+      appStateRef.current = next
+      setAppState(next)
+      // Retur til forgrunden: hent straks, saa listen ikke staar POLL_MS bagud.
+      if (/inactive|background/.test(prev) && next === 'active') setTick((t) => t + 1)
+    })
+    return () => sub.remove()
+  }, [])
+
+  useEffect(() => {
+    // Skjult app = ingen kald. Det er denne gren der fjerner 429-floden:
+    // telefonen laa i lommen og pollede som om den var paa skaermen.
+    if (!skalPolle(appState)) return
     const id = setInterval(() => setTick((t) => t + 1), POLL_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [appState])
 
   const pending = pendingApprovals(approvals).filter((a) => !skipped.includes(a.request_id))
 

@@ -176,13 +176,13 @@ _D4 — Dreaming Session: dedicated full-model session during prolonged idle._
 | function | `_save_state` | `(data)` | — | [src](../../../core/services/dreaming_session.py#L51) |
 | function | `_check_triggers` | `()` | Check if the dreaming session should fire. | [src](../../../core/services/dreaming_session.py#L62) |
 | function | `_collect_dream_material` | `()` | Collect all dream infrastructure output for the prompt. | [src](../../../core/services/dreaming_session.py#L101) |
-| function | `_conf` | `(value, default=…)` | Confidence som float — carry-over bærer historisk BÅDE ``0.8`` og ``"0.8"``. | [src](../../../core/services/dreaming_session.py#L214) |
-| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L229) |
-| function | `_registrer_dream_i_indbakken` | `(session_id, content_keys)` | Læg drømmesessionen i indbakken som en SYNLIG, ikke-gatende post. | [src](../../../core/services/dreaming_session.py#L335) |
-| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L371) |
-| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L397) |
-| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L471) |
-| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L477) |
+| function | `_conf` | `(value, default=…)` | Confidence som float — carry-over bærer historisk BÅDE ``0.8`` og ``"0.8"``. | [src](../../../core/services/dreaming_session.py#L209) |
+| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L224) |
+| function | `_registrer_dream_i_indbakken` | `(session_id, content_keys)` | Læg drømmesessionen i indbakken som en SYNLIG, ikke-gatende post. | [src](../../../core/services/dreaming_session.py#L330) |
+| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L366) |
+| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L392) |
+| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L466) |
+| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L472) |
 
 ## `core/services/drive_arbitration_engine.py`
 _Desire/value arbitration as a compact drive system._

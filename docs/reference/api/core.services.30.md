@@ -333,7 +333,8 @@ _Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
 |---|---|---|---|---|
 | function | `_key` | `(name)` | Læs en VAPID-nøgle fra runtime.json. Tom streng hvis den ikke findes. | [src](../../../core/services/web_push_gateway.py#L20) |
 | function | `vapid_public_key` | `()` | Den offentlige VAPID-nøgle — gives til klienten ved abonnement. | [src](../../../core/services/web_push_gateway.py#L32) |
-| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L37) |
+| function | `_der_key` | `(raw)` | PEM → base64-DER uden headers. | [src](../../../core/services/web_push_gateway.py#L37) |
+| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L57) |
 
 ## `core/services/web_push_subscriptions.py`
 _Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._

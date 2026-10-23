@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9182/17428 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9186/17432 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9182/17428 functions/methods documented (52%). The list b
 | `core.identity` | 78 | 171 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 834 | 1534 | 54% |
-| `core.services` | 6125 | 11851 | 51% |
+| `core.runtime` | 836 | 1536 | 54% |
+| `core.services` | 6127 | 11853 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 129 | 205 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -623,10 +623,10 @@ Generated from source. 9182/17428 functions/methods documented (52%). The list b
 - `core/runtime/db_self_repair.py` :: `insert_self_repair_attempt` (L257)
 - `core/runtime/db_self_repair.py` :: `list_recent_self_repair_attempts` (L305)
 - `core/runtime/db_self_repair.py` :: `list_self_repair_patterns` (L183)
-- `core/runtime/db_sensory.py` :: `count_sensory_memories` (L172)
-- `core/runtime/db_sensory.py` :: `get_sensory_memory` (L189)
-- `core/runtime/db_sensory.py` :: `insert_sensory_memory` (L58)
-- `core/runtime/db_sensory.py` :: `list_sensory_memories` (L108)
+- `core/runtime/db_sensory.py` :: `count_sensory_memories` (L212)
+- `core/runtime/db_sensory.py` :: `get_sensory_memory` (L226)
+- `core/runtime/db_sensory.py` :: `insert_sensory_memory` (L104)
+- `core/runtime/db_sensory.py` :: `list_sensory_memories` (L154)
 - `core/runtime/db_users.py` :: `get_google_link` (L106)
 - `core/runtime/db_users.py` :: `get_user_row` (L151)
 - `core/runtime/db_users.py` :: `get_user_row_by_email_hash` (L158)
@@ -1196,7 +1196,7 @@ Generated from source. 9182/17428 functions/methods documented (52%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L356)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L384)
 - `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
 - `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)

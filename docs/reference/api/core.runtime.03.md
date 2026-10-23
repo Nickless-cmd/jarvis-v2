@@ -140,14 +140,16 @@ _Sensory memories — persistent archive of Jarvis's sensory experiences._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/runtime/db_sensory.py#L23) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_sensory.py#L29) |
-| function | `_ensure_sensory_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_sensory.py#L33) |
-| function | `insert_sensory_memory` | `(*, modality, content, mood_tone=…, metadata=…, embedding=…, timestamp=…)` | — | [src](../../../core/runtime/db_sensory.py#L58) |
-| function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_sensory.py#L93) |
-| function | `list_sensory_memories` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/runtime/db_sensory.py#L108) |
-| function | `search_sensory_memories` | `(*, query, modality=…, limit=…)` | Simple LIKE-based substring search over content and mood_tone. | [src](../../../core/runtime/db_sensory.py#L139) |
-| function | `count_sensory_memories` | `(*, modality=…)` | — | [src](../../../core/runtime/db_sensory.py#L172) |
-| function | `get_sensory_memory` | `(memory_id)` | — | [src](../../../core/runtime/db_sensory.py#L189) |
+| function | `_scope_ids` | `()` | Alle user_id-former der hører til den aktuelle bruger. | [src](../../../core/runtime/db_sensory.py#L29) |
+| function | `_scope_clause` | `(clauses, params)` | Tilføj ``user_id IN (...)`` for alle brugerens identiteter, hvis nogen. | [src](../../../core/runtime/db_sensory.py#L67) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_sensory.py#L75) |
+| function | `_ensure_sensory_memories_table` | `(conn)` | — | [src](../../../core/runtime/db_sensory.py#L79) |
+| function | `insert_sensory_memory` | `(*, modality, content, mood_tone=…, metadata=…, embedding=…, timestamp=…)` | — | [src](../../../core/runtime/db_sensory.py#L104) |
+| function | `_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_sensory.py#L139) |
+| function | `list_sensory_memories` | `(*, modality=…, limit=…, offset=…, since=…)` | — | [src](../../../core/runtime/db_sensory.py#L154) |
+| function | `search_sensory_memories` | `(*, query, modality=…, limit=…)` | Simple LIKE-based substring search over content and mood_tone. | [src](../../../core/runtime/db_sensory.py#L182) |
+| function | `count_sensory_memories` | `(*, modality=…)` | — | [src](../../../core/runtime/db_sensory.py#L212) |
+| function | `get_sensory_memory` | `(memory_id)` | — | [src](../../../core/runtime/db_sensory.py#L226) |
 
 ## `core/runtime/db_session_ledger.py`
 _Append-only session-ledger — Fase 1 af DeepSeek-harness-spec'en._

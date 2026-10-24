@@ -1,17 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
-const exportMyData = vi.fn()
-const downloadJson = vi.fn()
+const downloadExportZip = vi.fn()
 vi.mock('../lib/accountApi', () => ({
-  exportMyData: (...a: unknown[]) => exportMyData(...a),
-  downloadJson: (...a: unknown[]) => downloadJson(...a),
+  downloadExportZip: (...a: unknown[]) => downloadExportZip(...a),
 }))
 
 import { DataPrivacyPanel } from './DataPrivacyPanel'
 
 describe('DataPrivacyPanel', () => {
-  beforeEach(() => { exportMyData.mockReset(); downloadJson.mockReset() })
+  beforeEach(() => { downloadExportZip.mockReset() })
 
   it('navngiver data, Google-scopes og GDPR-rettigheder', () => {
     render(<DataPrivacyPanel />)
@@ -26,12 +24,11 @@ describe('DataPrivacyPanel', () => {
     expect(screen.queryByText(/Download mine data/)).not.toBeInTheDocument()
   })
 
-  it('eksport-knap henter data + trigger download', async () => {
-    exportMyData.mockResolvedValue({ profile: { email: 'x' } })
+  it('eksport-knap henter ZIP + trigger download', async () => {
+    downloadExportZip.mockResolvedValue(undefined)
     render(<DataPrivacyPanel config={{ apiBaseUrl: 'http://x', authToken: 't' }} />)
-    fireEvent.click(screen.getByText('Download mine data (JSON)'))
-    await waitFor(() => expect(exportMyData).toHaveBeenCalled())
-    await waitFor(() => expect(downloadJson).toHaveBeenCalledWith({ profile: { email: 'x' } }, 'jarvis-mine-data.json'))
+    fireEvent.click(screen.getByText('Download mine data (ZIP)'))
+    await waitFor(() => expect(downloadExportZip).toHaveBeenCalled())
     expect(await screen.findByText(/blev downloadet/)).toBeInTheDocument()
   })
 })

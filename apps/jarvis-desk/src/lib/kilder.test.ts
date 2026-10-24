@@ -122,11 +122,11 @@ describe('hukommelses-kilder', () => {
     ] as never
     const k = hukommelseskilderFraBlokke(blokke)
     expect(k).toHaveLength(1)
-    expect(k[0].kilde).toBe('MEMORY.md')
+    expect(k[0]?.kilde).toBe('MEMORY.md')
   })
 
   it('ukendt kildenavn vises som sig selv, ikke som tom', () => {
     const k = hukommelseskilderFraResultat(JSON.stringify({ results: [{ source: 'ny_kilde' }] }))
-    expect(k[0].etiket).toBe('ny_kilde')
+    expect(k[0]?.etiket).toBe('ny_kilde')
   })
 })

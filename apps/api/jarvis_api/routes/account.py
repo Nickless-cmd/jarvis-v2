@@ -7,6 +7,7 @@ bruger ser kun sig selv; ingen cross-bruger-opslag her.
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from typing import Any, Callable
 
 from fastapi import APIRouter, Body, HTTPException
@@ -609,6 +610,93 @@ async def account_export() -> dict[str, Any]:
         user_id,
         get_user=user_db.get_user,
         get_tier=quota_store.get_tier,
+    )
+
+
+# ── ZIP-eksport (besluttet 24/10-2026) ──────────────────────────────────────
+#
+# Bjørn valgte ZIP frem for et udløbende link. Grunden står i MEMORY: et link
+# der dør efter 24 timer gør portabilitet til en TIDSBEGRÆNSET rettighed, og
+# GDPR Art. 20 handler om at FÅ sine data — ikke om at få et vindue.
+#
+# Derfor er dette en STREAMET download: arkivet bygges i hukommelsen og sendes
+# med det samme. Ingen fil efterlades på disken, intet link kan rådne i en
+# mail, og der er intet at rydde op bagefter.
+#
+# Indholdet er PRÆCIS det samme bundt som JSON-ruten giver — bygget af
+# `build_data_export`, som allerede går gennem redaktøren. ZIP'en er en anden
+# emballage, ikke en anden eksport: den må ikke kunne omgå redaktionen.
+
+_ZIP_README = """J.A.R.V.I.S. — dine data
+=========================
+
+Dette arkiv indeholder de data systemet har om dig, eksporteret på din
+anmodning (GDPR Art. 20 — dataportabilitet).
+
+Filer:
+  data.json   — hele bundtet som JSON: profil, connectors, noter, samtaler,
+                sansninger, hvidbog og identitet.
+  README.txt  — denne fil.
+
+Om redaktionen
+--------------
+Eksporten går gennem en redaktør FØR den forlader systemet. Nøgler, tokens og
+adgangskoder er fjernet fra DENNE KOPI. De findes stadig i systemet — eksporten
+er en kopi, ikke en flytning. Feltet "redaction" i data.json siger hvor mange
+værdier der blev fjernet, så du kan se hvad der blev gjort.
+
+Arkivet er genereret {tid}.
+"""
+
+
+def build_export_zip(bundle: dict[str, Any], *, now: str | None = None) -> bytes:
+    """Pak eksport-bundtet som et ZIP-arkiv i hukommelsen.
+
+    Ren funktion: tager bundtet ind, giver bytes ud. Ingen disk, ingen
+    tidsstempler fra filsystemet (de ville gøre arkivet ikke-reproducerbart),
+    ingen netværk. Testbar uden HTTP.
+    """
+    import io
+    import json
+    import zipfile
+
+    tid = now or str(bundle.get("exported_at") or "")
+    buf = io.BytesIO()
+    # ZIP_STORED, ikke DEFLATED: JSON komprimerer fint, men arkivet skal kunne
+    # åbnes af alt — og en eksport er ikke et sted at spare bytes.
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        # fast tidsstempel på begge poster, så samme bundt giver samme arkiv
+        info = zipfile.ZipInfo("data.json", date_time=(1980, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        zf.writestr(info, json.dumps(bundle, ensure_ascii=False, indent=2))
+        info2 = zipfile.ZipInfo("README.txt", date_time=(1980, 1, 1, 0, 0, 0))
+        info2.compress_type = zipfile.ZIP_DEFLATED
+        zf.writestr(info2, _ZIP_README.format(tid=tid or "ukendt tidspunkt"))
+    return buf.getvalue()
+
+
+@router.get("/export.zip")
+async def account_export_zip() -> Any:
+    """Samme bundt som /export, pakket som ZIP og streamet. Self-scoped.
+
+    Streamet med vilje: intet link, ingen fil på disken, ingen udløbstid.
+    """
+    from fastapi import Response
+
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    bundle = await asyncio.to_thread(
+        build_data_export,
+        user_id,
+        get_user=user_db.get_user,
+        get_tier=quota_store.get_tier,
+    )
+    arkiv = await asyncio.to_thread(build_export_zip, bundle)
+    navn = f"jarvis-mine-data-{datetime.now(UTC).strftime('%Y%m%d')}.zip"
+    return Response(
+        content=arkiv,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{navn}"'},
     )
 
 

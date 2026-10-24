@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
-import { exportMyData, downloadJson } from '../lib/accountApi'
+import { downloadExportZip } from '../lib/accountApi'
 
 /** Data & privatliv-oplysning (GDPR-transparens + Googles "prominent disclosure").
  *  Navngiver præcist hvilke data appen rører + en data-eksport-knap (Art. 20). */
@@ -51,8 +51,7 @@ export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
     setBusy(true)
     setMsg(null)
     try {
-      const data = await exportMyData(config)
-      downloadJson(data, 'jarvis-mine-data.json')
+      await downloadExportZip(config)
       setMsg('Dine data blev downloadet ✓')
     } catch {
       setMsg('Kunne ikke hente data — prøv igen.')
@@ -165,7 +164,7 @@ export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
       {config && (
         <div className="data-privacy-export">
           <button type="button" onClick={() => void onExport()} disabled={busy}>
-            {busy ? 'Henter…' : 'Download mine data (JSON)'}
+            {busy ? 'Henter…' : 'Download mine data (ZIP)'}
           </button>
           {msg && <span className="data-privacy-export-msg">{msg}</span>}
         </div>

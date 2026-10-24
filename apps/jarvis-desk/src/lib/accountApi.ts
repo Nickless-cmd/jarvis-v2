@@ -1,10 +1,5 @@
 import { apiFetch, type ApiConfig } from './api'
 
-/** GDPR-dataeksport: hent brugerens eget data-bundt (JSON). */
-export async function exportMyData(config: ApiConfig): Promise<unknown> {
-  return apiFetch(config, '/api/account/export')
-}
-
 export interface QuotaItem {
   kind: string
   used: number
@@ -19,15 +14,30 @@ export async function getQuota(config: ApiConfig): Promise<QuotaOverview> {
   return apiFetch<QuotaOverview>(config, '/api/account/quota')
 }
 
-/** Trigger en browser-download af et JSON-objekt. */
-export function downloadJson(data: unknown, filename: string): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
+/**
+ * GDPR-eksport som ZIP — hentet som binær og gemt direkte.
+ *
+ * Hvorfor ikke `apiFetch`: den parser svaret som JSON, og et ZIP-arkiv er
+ * bytes. Hvorfor ikke et udløbende link (besluttet 24/10-2026): et link der
+ * dør efter 24 timer gør portabilitet til en tidsbegrænset rettighed. Serveren
+ * streamer arkivet, klienten gemmer det med det samme — intet efterlades.
+ */
+export async function downloadExportZip(config: ApiConfig): Promise<void> {
+  const url = new URL('/api/account/export.zip', config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(url, { method: 'GET', headers })
+  if (!res.ok) throw new Error(`eksport fejlede: HTTP ${res.status}`)
+  const blob = await res.blob()
+  const navn =
+    res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ??
+    'jarvis-mine-data.zip'
+  const objUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
-  a.download = filename
+  a.href = objUrl
+  a.download = navn
   document.body.appendChild(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
 }

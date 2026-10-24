@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-24 from app.routes (live) — 658 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-24 from app.routes (live) — 659 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -10,6 +10,7 @@
 | DELETE | `/account/data/{layer}` | dict | account |
 | POST | `/account/erase` | dict | account |
 | GET | `/account/export` | dict | account |
+| GET | `/account/export.zip` | Any | account |
 | GET | `/account/jarvis` | dict | account |
 | POST | `/account/jarvis/visible-model` | dict | account |
 | PATCH | `/account/language` | dict | account |

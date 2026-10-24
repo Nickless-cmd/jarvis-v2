@@ -6424,6 +6424,19 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
     # talte som `completed`. Samme princip som PresentationInvariantError — dét
     # værn fanger INTERNE artefakter, dette fanger FREMMED tekst. Fail-open:
     # enhver tvivl eller fejl → uændret adfærd.
+    # JARVIS-UI-NORMALISERING (24/10-2026). Målt tre gange på én aften: en
+    # ``jarvis-ui``-blok fejlede i chatview, og årsagen var MIN tekst, ikke
+    # rendereren. To former: (a) JSON skrevet på samme linje som fence-markøren,
+    # så hele JSON'en bliver en del af info-stringen og sproget ikke genkendes;
+    # (b) en entydig JSON-fejl som ``],"}"``. Begge normaliseres her, FØR teksten
+    # gemmes — en validering der kun kigger på dataene kan ikke se (a), fordi
+    # JSON'en er gyldig. Fail-open: fejler normaliseringen, sendes teksten uændret.
+    try:
+        from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+        if cleaned:
+            cleaned = _normalisér_flader(cleaned, run_id="")
+    except Exception:
+        pass
     try:
         from core.services.provider_error_guard import describe, looks_like_provider_error
         if cleaned and looks_like_provider_error(cleaned):

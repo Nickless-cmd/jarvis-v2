@@ -236,3 +236,44 @@ def test_porten_siger_nej_naar_den_ikke_kan_laeses(monkeypatch):
         raise OSError("runtime.json kunne ikke laeses")
     monkeypatch.setattr("core.runtime.settings.load_settings", sprang)
     assert ms._split_slaaet_til() is False
+
+
+# ── Matematikblokke er beskyttede zoner (24/10-2026) ──────────────────────
+# Målt på Bjørns skærmbillede: en `$$`-blok med ` - ` inde i formlen blev revet
+# i stykker, fordi `_INLINE_BULLET_RE` ikke kan skelne en bullet-markør fra et
+# minus i LaTeX. KaTeX tegnede så fejlen rødt, og den rå LaTeX stod tilbage som
+# tekst i chatten. Reglen er den samme som for kode-fences: indeni rører vi intet.
+
+_FORMEL = r"$$\frac{t_{\text{før}} - t_{\text{efter}}}{t_{\text{før}}} = \frac{472 - 30}{472} \approx 0.936$$"
+
+
+def test_matematikblok_med_minus_rives_ikke_i_stykker():
+    """` - ` inde i en formel er ikke en bullet-markør."""
+    from core.services.markdown_structure import normalize_markdown_structure as n
+    tekst = f"Så en blok:\n\n{_FORMEL}\n\nDet er maskeringen."
+    assert n(tekst) == tekst
+
+
+def test_flerlinjet_matematikblok_beskyttes():
+    from core.services.markdown_structure import normalize_markdown_structure as n
+    tekst = "Tekst.\n\n$$\na - b\nc - d\n$$\n\nEfter."
+    assert n(tekst) == tekst
+
+
+def test_matematikblok_paa_en_linje_beskyttes():
+    from core.services.markdown_structure import normalize_markdown_structure as n
+    tekst = r"Formlen $x$ og blokken $$a - b - c$$ står stille."
+    assert n(tekst) == tekst
+
+
+def test_kodefence_og_matematik_i_samme_svar():
+    from core.services.markdown_structure import normalize_markdown_structure as n
+    tekst = "```\nkode - med - minus\n```\n\n$$\na - b\n$$"
+    assert n(tekst) == tekst
+
+
+def test_bullets_uden_for_matematik_virker_stadig():
+    """Beskyttelsen må ikke slå strukturreglen ihjel uden for formlerne."""
+    from core.services.markdown_structure import normalize_markdown_structure as n
+    ud = n("Indledning - punkt et - punkt to - punkt tre")
+    assert "\n- punkt et" in ud

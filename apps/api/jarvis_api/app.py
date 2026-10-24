@@ -623,6 +623,30 @@ def create_app() -> FastAPI:
         except Exception as _exc:
             logger.warning("assembly prewarm loop dispatch failed: %s", _exc)
 
+        # Erfaring-substratets embedder (24/10-2026). Kold initialisering måler
+        # 153 % CPU i 0,39 s (130 % med threads=4) og efterlader 10-12 tråde —
+        # samme signatur som bygerne på 8011. Uden denne varmning rammer
+        # spidsen den første tur der rører substratet; med den rammer den
+        # opstarten, hvor ingen tur venter. Samme mønster som prewarm ovenfor.
+        try:
+            import threading as _threading
+
+            def _prewarm_experience_embedder() -> None:
+                from core.services.experience_substrate import warm_embedder
+
+                if warm_embedder():
+                    logger.info("experience-substrate embedder prewarm complete")
+                else:
+                    logger.warning("experience-substrate embedder prewarm failed")
+
+            _threading.Thread(
+                target=_prewarm_experience_embedder,
+                name="experience-embedder-prewarm",
+                daemon=True,
+            ).start()
+        except Exception as _exc:
+            logger.warning("experience embedder prewarm dispatch failed: %s", _exc)
+
         # Release-vagten (20/9-2026). GitHub kan ikke skubbe til en klient, saa
         # appen ventede op til 15 min (desktop, electron/main.ts) eller til man
         # gik ind og ud af appen (mobil). Vagten opdager releasen selv og laegger

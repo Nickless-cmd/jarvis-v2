@@ -32,6 +32,26 @@ MAX_RETRIEVAL = 5  # top-K episodes to retrieve for prompt section
 
 _EMBEDDER: Any = None
 
+DEFAULT_FASTEMBED_THREADS = 4
+
+
+def _fastembed_threads() -> int:
+    """Antal ONNX-tråde til embedderen — samme nøgle som `semantic_memory`.
+
+    Læses fra runtime-nøglen `embed_fastembed_threads`; default 4. Uden et
+    eksplicit tal sætter onnxruntime sin egen pulje op, og i denne LXC fejler
+    hver `pthread_setaffinity_np` (containeren blokerer CPU-affinity).
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+
+        raa = str(read_runtime_key("embed_fastembed_threads") or "").strip()
+        if raa.isdigit() and int(raa) > 0:
+            return int(raa)
+    except Exception:  # pragma: no cover — nøglen er valgfri
+        pass
+    return DEFAULT_FASTEMBED_THREADS
+
 
 def _get_chroma_collection():
     """Get or create the ChromaDB collection for experience episodes."""
@@ -63,7 +83,20 @@ class _FastEmbedEmbedder:
     def __init__(self) -> None:
         from fastembed import TextEmbedding
 
-        self._model = TextEmbedding(f"sentence-transformers/{EMBED_MODEL}")
+        # threads eksplicit: LXC-containeren blokerer CPU-affinity, så
+        # onnxruntime ellers spammer `pthread_setaffinity_np failed` for hver
+        # tråd den spawner. MÅLT 24/10-2026 på kold initialisering:
+        #   uden threads=  → 4 fejl, init 0,132 s
+        #   threads=4      → 0 fejl, init 0,135 s
+        #   threads=1      → 0 fejl, init 0,128 s
+        # Altså ingen tidsomkostning — kun færre fejl. Dimensionen er 384 i
+        # alle tre tilfælde, så collection'en forbliver kompatibel.
+        # Samme nøgle som `semantic_memory` læser, så én indstilling styrer
+        # begge embeddere. Default 4 (samme som dér).
+        self._model = TextEmbedding(
+            f"sentence-transformers/{EMBED_MODEL}",
+            threads=_fastembed_threads(),
+        )
 
     def encode(self, text: str | list[str], normalize_embeddings: bool = True) -> _Vec:
         """Encode én streng eller en liste.
@@ -106,6 +139,34 @@ def _get_embedder():
 
         _EMBEDDER = SentenceTransformer(EMBED_MODEL)
         return _EMBEDDER
+
+
+def warm_embedder() -> bool:
+    """Byg embedderen og kør én encode — kaldt fra opstart, ikke fra en tur.
+
+    MÅLT 24/10-2026 på kold initialisering i denne container:
+
+        uden threads=   init 0,132 s · 6 tråde · embed → 12 tråde · 4 affinity-fejl
+        threads=4       init 0,135 s · 4 tråde · embed → 10 tråde · 0 fejl
+
+    CPU-profilen for hele den kolde kæde (import + init + én encode) er
+    **153 % i 0,39 s** (130 % med threads=4) — samme signatur som de byger
+    der måles på 8011. Trådene hænger bagefter (de forsvinder ikke efter 2 s),
+    så prisen betales uanset; det eneste varmning ændrer er *hvornår*.
+
+    Uden varmning rammer spidsen den første tur der rører erfaring-substratet.
+    Med varmning rammer den opstarten, hvor ingen tur venter på svar — samme
+    begrundelse som `prompt-cache-prewarm` i `apps/api/jarvis_api/app.py`.
+
+    Returnerer False hvis embedderen ikke kunne bygges; kalderen logger det.
+    Kaster aldrig.
+    """
+    try:
+        embedder = _get_embedder()
+        embedder.encode("intent: warmup", normalize_embeddings=True)
+        return True
+    except Exception:  # pragma: no cover — kaldes fra en daemon-tråd
+        return False
 
 
 # ── Context encoder ────────────────────────────────────────────────

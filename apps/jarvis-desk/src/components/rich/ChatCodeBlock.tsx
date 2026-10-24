@@ -26,8 +26,13 @@ export const ChatCodeBlock = memo(function ChatCodeBlock({ code, lang, className
   const pending = useRef<Promise<ChatHighlight | null>>(Promise.resolve(null))
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const noegle = String(lang ?? '').trim().toLowerCase()
+
   useEffect(() => {
-    if (!lang || !code) return
+    // 24/10-2026: `!lang` blev fjernet her. En fence uden sprog-tag er 41 % af
+    // alle kodeblokke (1.453 af 3.481), og de faldt tidligere til rå tekst.
+    // Nu går de gennem fallback-scanneren og bliver farvet som på mobilen.
+    if (!code) return
     let alive = true
     const next = pending.current.then((previous) =>
       highlightChatCode(code, lang, previous).catch(() => null))
@@ -49,7 +54,7 @@ export const ChatCodeBlock = memo(function ChatCodeBlock({ code, lang, className
     timer.current = setTimeout(() => setKopieret(false), 1500)
   }, [code])
 
-  const kode = highlighted?.code === code && highlighted.lang === lang
+  const kode = highlighted?.code === code && highlighted.lang === noegle
     ? (
       <pre className="shiki chat-shiki"><code>
         {highlighted.tokens.map((line, lineIndex) => (

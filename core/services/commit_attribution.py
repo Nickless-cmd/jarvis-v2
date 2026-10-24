@@ -22,6 +22,15 @@ MANAGED_TRAILERS = (
 _TRAILER_LINE = re.compile(r"^([A-Za-z0-9-]+):[ \t]*(.*)$")
 _POLICY_ID = re.compile(r"^policy:[a-z0-9][a-z0-9._-]*$")
 _MANUAL_SUFFIX = re.compile(r"^[A-Za-z0-9._-]+$")
+# 24/10-2026: en skabelon-markør er ikke en kørsel. Målt over de sidste 300
+# commits havde 21 en markør i stedet for et id (`RUNIDPLACEHOLDER`,
+# `__RID__`, `__RUN_ID__`, `RUN_IDPLACEHOLDER`, `manual-...-PLACEHOLDER`).
+# De passerede fordi feltet kun skulle være til stede og ikke-tomt. Dette er
+# bevidst en MARKØR-detektor og ikke en format-validering: historikken rummer
+# 3361× `manual-<ts>-<hex8>` plus varianter som `-mobile`, `-merge`,
+# `visible-*`, `tool-discovery-nudge-*` og UUID-formede id'er, og en streng
+# format-regel ville afvise legitime commits.
+_PLACEHOLDER_RUN_ID = re.compile(r"PLACEHOLDER|^__[A-Za-z0-9_]+__$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -131,6 +140,12 @@ def validate_trailers(
         if len(values["Approved-By"]) == 1
         else ""
     )
+    run_id = values["Run-ID"][0] if len(values["Run-ID"]) == 1 else ""
+
+    if run_id and _PLACEHOLDER_RUN_ID.search(run_id):
+        errors.append(
+            f"Run-ID {run_id!r} is a template placeholder, not a run id"
+        )
 
     rule = ACTOR_REGISTRY.get(actor)
     if len(values["Actor"]) > 1:

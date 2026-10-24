@@ -137,3 +137,69 @@ def test_render_tolerates_non_trailer_line_in_existing_block() -> None:
     ):
         with pytest.raises(AttributionError, match="Actor must appear"):
             render_attributed_message("fix: x", _attribution())
+
+
+def _besked_med_run_id(run_id: str) -> str:
+    return f"""fix: x
+
+Actor: jarvis
+Actor-Type: agent
+Run-ID: {run_id}
+Session-ID: none
+Origin: interactive
+Approved-By: bjorn
+"""
+
+
+@pytest.mark.parametrize(
+    "placeholder",
+    [
+        "RUNIDPLACEHOLDER",
+        "manual-RUNIDPLACEHOLDER",
+        "manual-20261024T135845Z-PLACEHOLDER",  # pragma: allowlist secret
+        "RUN_IDPLACEHOLDER",
+        "__RID__",
+        "__RUN_ID__",
+    ],
+)
+def test_skabelon_markør_som_run_id_afvises(placeholder: str) -> None:
+    """En skabelon-markør er ikke en kørsel og må ikke passere som provenance.
+
+    Målt 24/10-2026 over de sidste 300 commits: 21 havde en markør i stedet
+    for et rigtigt id — `RUNIDPLACEHOLDER` (6), `__RID__` (4), `RUN_IDPLACEHOLDER`
+    (1), `manual-...-PLACEHOLDER` (1), `__RUN_ID__` (2), `manual-RUNIDPLACEHOLDER`
+    (1). De gik igennem fordi `validate_trailers` kun krævede at feltet var til
+    stede og ikke-tomt, ikke at det navngav en faktisk kørsel.
+    """
+    errors = validate_commit_message(_besked_med_run_id(placeholder))
+
+    assert any("Run-ID" in error for error in errors), (
+        f"skabelon-markøren {placeholder!r} blev accepteret som Run-ID: {errors}"
+    )
+
+
+@pytest.mark.parametrize(
+    "legitimt",
+    [
+        "manual-20261024T135845Z-dff5f576",
+        "manual-20261024T135845Z-mobile",
+        "manual-20261024T135845Z-merge",
+        "visible-f795573ccd15412298eb8d7d1a2b3c",
+        "tool-discovery-nudge-abc12345",
+        "01a0b937-3129-75a2-9c21-6a6d3f8e2b1c",
+        "autonomous-abc123",
+    ],
+)
+def test_legitime_run_id_formater_afvises_ikke(legitimt: str) -> None:
+    """Vagten må ikke ramme de tusindvis af legitime varianter i historikken.
+
+    Målt i hele historikken: 3361× `manual-<ts>-<hex8>` plus varianter som
+    `-mobile`, `-merge`, `visible-*`, `tool-discovery-nudge-*` og UUID-formede
+    id'er. En streng format-validering ville afvise dem; vagten skal kun ramme
+    skabelon-markørerne.
+    """
+    errors = validate_commit_message(_besked_med_run_id(legitimt))
+
+    assert not any("Run-ID" in error for error in errors), (
+        f"legitimt Run-ID {legitimt!r} blev afvist: {errors}"
+    )

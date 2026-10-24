@@ -148,7 +148,11 @@ def test_skriveformen_naar_halen_i_chat_scope() -> None:
         reset_tool_scope(token)
     assert "## Chatmode: hvordan jeg taler" in tail
     assert "læsehjælp" in tail
-    assert "Hvad jeg især lægger mærke til" in tail
+    assert "uden en fast sektion" in tail
+    # 24/10-2026: kontrakten navngav selv afslutningssektionen som eksempel, og
+    # så blev den en signatur i hvert svar (Bjørn: «du behøver ikke bruge denne
+    # linje i hver besked»). Kontrakten må ikke foreskrive en fast sektion.
+    assert "Hvad jeg især lægger mærke til" not in tail
     assert "Vis beviset" in tail
     assert "kan du huske da vi talte om" in tail
 

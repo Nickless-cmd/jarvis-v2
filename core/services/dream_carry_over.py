@@ -106,8 +106,11 @@ def _load() -> None:
             data = json.loads(pf.read_text(encoding="utf-8"))
             _ACTIVE_DREAMS[:] = list(data.get("active_dreams") or [])
             _DREAM_ARCHIVE[:] = list(data.get("archive") or [])
-    except Exception:
-        pass
+    except Exception as exc:
+        # Tavshed her var problemet (verify-silent-except): en ulaesbar fil
+        # gav en TOM aktiv-liste, og den tomme liste blev derefter skrevet
+        # tilbage over den rigtige fil ved naeste _save(). Fejlen skal ses.
+        logger.warning("dream_carry_over: _load fejlede, listen er tom: %s", exc)
 
 
 def _save() -> None:
@@ -138,6 +141,55 @@ def _save() -> None:
             # disk-fil maa ikke forhindre at hukommelsen skrives. Men tavshed
             # var praecis problemet (verify-silent-except), saa den meldes.
             logger.debug("dream_carry_over: disk-fletning fejlede: %s", exc)
+        # ── Arkivering paa disk vinder over en foraeldet proces' hukommelse ──
+        # Maalt 24/10-2026: proces A indlaeste active=['HC-98']; disken havde
+        # den i arkiv. A's _save() fletter kun IND — den fjerner aldrig — saa
+        # HC-98 blev skrevet tilbage som AKTIV, og arkiv-posten forsvandt i
+        # samme skrivning (active=[] archive=[HC-98] -> active=['HC-98']
+        # archive=[]). En arkivering er en senere, bevidst beslutning end en
+        # proces' indlaeste liste, saa den skal vinde.
+        #
+        # Begraensning: kun de sidste 50 arkiv-poster skrives til disk, saa en
+        # droem der blev arkiveret for laenge siden og senere genaktiveret
+        # bevidst, kan ikke skelnes herfra. Den bliver ikke fjernet — den er
+        # ikke i disk-arkivet at fjerne den med.
+        try:
+            _disk_arkiv = {
+                (x.get("dream_id") or x.get("id")): x
+                for x in (disk.get("archive") or [])
+                if (x.get("dream_id") or x.get("id"))
+            }
+        except Exception:
+            _disk_arkiv = {}
+        if _disk_arkiv:
+            _flyttet = [
+                x
+                for x in _ACTIVE_DREAMS
+                if (x.get("dream_id") or x.get("id")) in _disk_arkiv
+            ]
+            if _flyttet:
+                _ACTIVE_DREAMS[:] = [
+                    x
+                    for x in _ACTIVE_DREAMS
+                    if (x.get("dream_id") or x.get("id")) not in _disk_arkiv
+                ]
+                # Arkiv-posten skal MED over i hukommelsen. Maalt 24/10-2026:
+                # uden dette blev droemmen ganske vist fjernet fra aktiv-listen,
+                # men _save() skrev `_DREAM_ARCHIVE[-50:]` — som stadig var tom —
+                # og slettede dermed arkiv-posten paa disken. Fejlen var den
+                # samme, bare flyttet fra aktiv- til arkiv-siden.
+                for _x in _flyttet:
+                    _did = _x.get("dream_id") or _x.get("id")
+                    if not any(
+                        (a.get("dream_id") or a.get("id")) == _did
+                        for a in _DREAM_ARCHIVE
+                    ):
+                        _DREAM_ARCHIVE.append(_disk_arkiv[_did])
+                logger.info(
+                    "dream_carry_over: %d arkiveret droem(me) flyttet fra aktiv "
+                    "til arkiv — disken vandt over foraeldet hukommelse",
+                    len(_flyttet),
+                )
         pf.write_text(
             json.dumps(
                 {"active_dreams": _ACTIVE_DREAMS, "archive": _DREAM_ARCHIVE[-50:]},

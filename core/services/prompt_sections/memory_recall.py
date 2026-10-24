@@ -97,8 +97,13 @@ def _save_md_vecs_to_disk(vecs: dict, user_id: str = "") -> None:
                 "built_at": datetime.now(UTC).isoformat(),
             }, fh)
         tmp.replace(path)  # atomisk — en halvskrevet fil kan aldrig laeses
-    except Exception:  # disk-cachen er en optimering — fejl maa ikke ramme turen
-        pass
+    except Exception as exc:
+        # Disk-cachen er en optimering — en fejl her maa ikke ramme turen.
+        # Men den skal SES: maalt 24/10-2026 stod pkl'en stille paa 14/10 mens
+        # processen koerte i 52 minutter, og `pass` var grunden til at ingen
+        # opdagede at hver bygning blev kastet vaek. En tavs optimering der
+        # fejler bliver en usynlig omkostning ved HVER tur.
+        logger.warning("memory_recall: kunne ikke gemme md-vecs til disk: %s", exc)
 
 
 def _md_line_vecs(user_id: str = "") -> dict:
@@ -118,6 +123,12 @@ def _md_line_vecs(user_id: str = "") -> dict:
         return {}
     with _MD_VECS_LOCK:
         if _MD_VECS_CACHE.get("mtime") == mtime:
+            return _MD_VECS_CACHE.get("vecs") or {}
+        if _MD_VECS_CACHE.get("failed_mtime") == mtime:
+            # Denne praecise mtime fejlede allerede. Uden dette vaern startede
+            # hvert efterfoelgende kald en ny bygning af de samme linjer —
+            # maalt 24/10-2026: 6.348 linjer = 195 s, forsoegt igen ved hver
+            # tur fordi mtime aldrig blev gemt efter en fejl.
             return _MD_VECS_CACHE.get("vecs") or {}
         if _MD_VECS_CACHE.get("building"):
             return _MD_VECS_CACHE.get("vecs") or {}
@@ -150,9 +161,17 @@ def _md_line_vecs(user_id: str = "") -> dict:
                 _MD_VECS_CACHE.update(mtime=mtime, vecs=vecs, building=False)
             # Skriv til disk EFTER cachen er opdateret — hot-path'en venter ikke.
             _save_md_vecs_to_disk(vecs, user_id)
-        except Exception:
+        except Exception as exc:
             with _MD_VECS_LOCK:
                 _MD_VECS_CACHE["building"] = False
+                # Marker mtime som FEJLET. `building=False` alene betoed at
+                # naeste kald straks forsoegte igen — samme 6.348 linjer,
+                # 195 s, hver gang. Nu proeves der foerst naar filen aendrer
+                # sig igen, og fejlen meldes én gang per mtime.
+                _MD_VECS_CACHE["failed_mtime"] = mtime
+            logger.warning(
+                "memory_recall: md-vecs-bygning fejlede (mtime %s): %s", mtime, exc
+            )
 
     _md_threading.Thread(target=_build, name="md-vecs-embed", daemon=True).start()
     return _MD_VECS_CACHE.get("vecs") or {}

@@ -104,16 +104,157 @@ class _CachedNarrative:
     generated_at: float
 
 
+@dataclass(slots=True)
+class _Job:
+    """Ét ventende genererings-job. ``seq`` afgør hvilken version der vinder."""
+
+    seq: int
+    fingerprint: str
+    system_prompt: str
+    user_message: str
+
+
 # line_key → cached narrative
 _CACHE: dict[str, _CachedNarrative] = {}
+# line_key → seq for det svar der ligger i _CACHE. Et ældre job må ikke
+# overskrive et nyere svar der allerede er skrevet.
+_CACHE_SEQ: dict[str, int] = {}
 _LAST_LLM_CALL_AT: dict[str, float] = {}
 _CACHE_LOCK = threading.Lock()
 _REFRESH_INFLIGHT: set[str] = set()
+
+# Sekventiel worker (24/10-2026).
+#
+# FØR: `_generate_in_background` startede én ny daemon-tråd per kald. Fem
+# linjer der skiftede state i samme tick gav derfor fem samtidige
+# `call_compact_llm`-kæder, som hver byggede hele kandidatlisten (auth-scan +
+# `list_cheap_provider_runtime_states`) og konkurrerede om GIL'en. Målt med
+# py-spy midt i en byge: fem `Thread-N (_worker)` i samme kæde, 6-9 µs
+# CPU-slices, 25.000-30.000 slices pr. tråd, peak 249 %.
+#
+# NU: én delt worker. Køen er coalescing — højst ét ventende job per
+# `line_key`, og det nyeste fingerprint erstatter et ældre ventende job.
+# Workeren er daemon, så en langsom LLM-kørsel kan ikke holde processtop
+# tilbage; `shutdown()` giver alligevel en kontrolleret afslutning.
+_PENDING: dict[str, _Job] = {}
+_RUNNING: dict[str, str] = {}  # line_key → fingerprint der kører nu
+_WAKE = threading.Event()
+_STOP = threading.Event()
+_WORKER: threading.Thread | None = None
 
 
 def _fingerprint(state: dict[str, object]) -> str:
     blob = json.dumps(state, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha1(blob, usedforsecurity=False).hexdigest()[:16]
+
+
+def _run_job(line_key: str, job: _Job) -> None:
+    """Kør ét job: LLM-kaldet sker UDEN lås, cachen skrives under den."""
+    try:
+        text = _call_narrativizer_llm(job.system_prompt, job.user_message)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("cognitive narrativizer LLM call failed: %s", exc)
+        text = None
+    if not text:
+        return
+    cleaned = " ".join(text.strip().split())
+    if len(cleaned) > 240:
+        cleaned = clip_text(cleaned, limit=240)
+    with _CACHE_LOCK:
+        # Et nyere job kan være kørt færdigt mens dette kald var i gang —
+        # så må det gamle svar ikke overskrive det friske.
+        if job.seq < _CACHE_SEQ.get(line_key, 0):
+            return
+        _CACHE_SEQ[line_key] = job.seq
+        _CACHE[line_key] = _CachedNarrative(
+            fingerprint=job.fingerprint,
+            narrative=cleaned,
+            generated_at=time.time(),
+        )
+
+
+def _worker_loop() -> None:
+    """Tag ét job ad gangen. Aldrig to LLM-kald samtidig."""
+    while not _STOP.is_set():
+        line_key = ""
+        job: _Job | None = None
+        with _CACHE_LOCK:
+            if _PENDING:
+                line_key = next(iter(_PENDING))
+                job = _PENDING.pop(line_key)
+                _RUNNING[line_key] = job.fingerprint
+        if job is None:
+            _WAKE.clear()
+            with _CACHE_LOCK:
+                has_work = bool(_PENDING)
+            if not has_work and not _STOP.is_set():
+                _WAKE.wait(timeout=0.5)
+            continue
+        try:
+            _run_job(line_key, job)
+        except Exception:  # pragma: no cover
+            logger.exception(
+                "cognitive narrativizer worker fejlede for %s", line_key
+            )
+        finally:
+            with _CACHE_LOCK:
+                _RUNNING.pop(line_key, None)
+                if line_key not in _PENDING:
+                    _REFRESH_INFLIGHT.discard(line_key)
+
+
+def _ensure_worker_locked() -> None:
+    """Start den delte worker hvis den ikke kører. Kaldes med ``_CACHE_LOCK``."""
+    global _WORKER
+    if _STOP.is_set():
+        return
+    if _WORKER is not None and _WORKER.is_alive():
+        return
+    _WORKER = threading.Thread(
+        target=_worker_loop,
+        name="cognitive-narrativizer",
+        daemon=True,
+    )
+    _WORKER.start()
+
+
+def _enqueue(
+    *,
+    line_key: str,
+    fingerprint: str,
+    system_prompt: str,
+    user_message: str,
+) -> bool:
+    """Læg et job i den delte worker-kø. Seneste fingerprint vinder.
+
+    Returnerer False hvis et nyere job allerede ligger i køen, eller hvis
+    enqueue fejlede — i begge tilfælde ryddes ``_REFRESH_INFLIGHT`` så linjen
+    ikke hænger permanent som "i gang" uden at noget sker.
+    """
+    job = _Job(
+        seq=time.monotonic_ns(),
+        fingerprint=fingerprint,
+        system_prompt=system_prompt,
+        user_message=user_message,
+    )
+    try:
+        with _CACHE_LOCK:
+            current = _PENDING.get(line_key)
+            if current is not None and current.seq > job.seq:
+                return False
+            _PENDING[line_key] = job
+            _REFRESH_INFLIGHT.add(line_key)
+            _ensure_worker_locked()
+        _WAKE.set()
+        return True
+    except Exception as exc:  # pragma: no cover
+        logger.warning(
+            "cognitive narrativizer enqueue failed for %s: %s", line_key, exc
+        )
+        with _CACHE_LOCK:
+            _PENDING.pop(line_key, None)
+            _REFRESH_INFLIGHT.discard(line_key)
+        return False
 
 
 def _generate_in_background(
@@ -123,29 +264,54 @@ def _generate_in_background(
     system_prompt: str,
     user_message: str,
 ) -> None:
-    """Run the LLM call in a background thread and update cache."""
+    """Læg genereringen i den delte sekventielle worker-kø.
 
-    def _worker() -> None:
-        try:
-            text = _call_narrativizer_llm(system_prompt, user_message)
-        except Exception as exc:  # pragma: no cover
-            logger.warning("cognitive narrativizer LLM call failed: %s", exc)
-            text = None
-        with _CACHE_LOCK:
-            _REFRESH_INFLIGHT.discard(line_key)
-            if not text:
-                return
-            cleaned = " ".join(text.strip().split())
-            if len(cleaned) > 240:
-                cleaned = clip_text(cleaned, limit=240)
-            _CACHE[line_key] = _CachedNarrative(
-                fingerprint=fingerprint,
-                narrative=cleaned,
-                generated_at=time.time(),
-            )
+    Navn og signatur er bevaret fra tråd-per-kald-modellen, så eksisterende
+    kald og tests ikke skal ændres — men der startes ikke længere en tråd per
+    kald.
+    """
+    _enqueue(
+        line_key=line_key,
+        fingerprint=fingerprint,
+        system_prompt=system_prompt,
+        user_message=user_message,
+    )
 
-    thread = threading.Thread(target=_worker, daemon=True)
-    thread.start()
+
+def shutdown(timeout: float = 5.0) -> None:
+    """Stop den delte worker kontrolleret.
+
+    Workeren er daemon, så en igangværende LLM-kørsel kan ikke holde
+    processtop tilbage — men vi venter op til ``timeout`` sekunder på at den
+    falder til ro, og tømmer køen så ventende jobs ikke startes bagefter.
+    """
+    global _WORKER
+    with _CACHE_LOCK:
+        worker = _WORKER
+        _PENDING.clear()
+        _REFRESH_INFLIGHT.clear()
+    _STOP.set()
+    _WAKE.set()
+    if worker is not None:
+        worker.join(timeout=timeout)
+    with _CACHE_LOCK:
+        _WORKER = None
+
+
+def _reset_for_tests() -> None:
+    """Nulstil al tilstand inkl. stop-flaget. Kun til tests."""
+    global _WORKER
+    shutdown(timeout=2.0)
+    with _CACHE_LOCK:
+        _CACHE.clear()
+        _CACHE_SEQ.clear()
+        _LAST_LLM_CALL_AT.clear()
+        _PENDING.clear()
+        _RUNNING.clear()
+        _REFRESH_INFLIGHT.clear()
+        _WORKER = None
+        _STOP.clear()
+        _WAKE.clear()
 
 
 def narrativize_line(
@@ -185,18 +351,27 @@ def narrativize_line(
             and (now - cached.generated_at) < _CACHE_TTL_SECONDS
         )
         cooling = (now - last_call) < _PER_LINE_COOLDOWN_SECONDS
-        in_flight = line_key in _REFRESH_INFLIGHT
+        pending = _PENDING.get(line_key)
+        running_fp = _RUNNING.get(line_key)
         if cache_fresh:
             return cached.narrative
 
-        # Need refresh — but rate-limit per line and avoid duplicate
-        # in-flight requests for the same line.
-        if not cooling and not in_flight:
-            _LAST_LLM_CALL_AT[line_key] = now
-            _REFRESH_INFLIGHT.add(line_key)
+        # Coalescing: venter der allerede et job for denne linje med et ANDET
+        # fingerprint, erstatter det nye det — uden at tælle som et nyt
+        # LLM-kald. Fem linjer kan skifte state mens de venter, og kun det
+        # nyeste svar er værd at betale for.
+        coalesce = pending is not None and pending.fingerprint != fingerprint
+        # Kører der et job for linjen med et andet fingerprint, lægges det nye
+        # bagefter i køen i stedet for at gå tabt.
+        supersede_running = running_fp is not None and running_fp != fingerprint
+        should_dispatch = False
+        if coalesce:
             should_dispatch = True
-        else:
-            should_dispatch = False
+        elif not cooling and (
+            supersede_running or (running_fp is None and pending is None)
+        ):
+            _LAST_LLM_CALL_AT[line_key] = now
+            should_dispatch = True
 
     if should_dispatch:
         try:

@@ -701,10 +701,17 @@ _LLM-based narrativizer for cognitive state lines._
 |---|---|---|---|---|
 | function | `_call_narrativizer_llm` | `(system_prompt, user_message)` | Call the compact LLM (heartbeat model) for narrative line generation. | [src](../../../core/services/cognitive_state_narrativizer.py#L44) |
 | class | `_CachedNarrative` | `` | — | [src](../../../core/services/cognitive_state_narrativizer.py#L101) |
-| function | `_fingerprint` | `(state)` | — | [src](../../../core/services/cognitive_state_narrativizer.py#L114) |
-| function | `_generate_in_background` | `(*, line_key, fingerprint, system_prompt, user_message)` | Run the LLM call in a background thread and update cache. | [src](../../../core/services/cognitive_state_narrativizer.py#L119) |
-| function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L151) |
-| function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L228) |
+| class | `_Job` | `` | Ét ventende genererings-job. ``seq`` afgør hvilken version der vinder. | [src](../../../core/services/cognitive_state_narrativizer.py#L108) |
+| function | `_fingerprint` | `(state)` | — | [src](../../../core/services/cognitive_state_narrativizer.py#L146) |
+| function | `_run_job` | `(line_key, job)` | Kør ét job: LLM-kaldet sker UDEN lås, cachen skrives under den. | [src](../../../core/services/cognitive_state_narrativizer.py#L151) |
+| function | `_worker_loop` | `()` | Tag ét job ad gangen. Aldrig to LLM-kald samtidig. | [src](../../../core/services/cognitive_state_narrativizer.py#L176) |
+| function | `_ensure_worker_locked` | `()` | Start den delte worker hvis den ikke kører. Kaldes med ``_CACHE_LOCK``. | [src](../../../core/services/cognitive_state_narrativizer.py#L206) |
+| function | `_enqueue` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg et job i den delte worker-kø. Seneste fingerprint vinder. | [src](../../../core/services/cognitive_state_narrativizer.py#L221) |
+| function | `_generate_in_background` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg genereringen i den delte sekventielle worker-kø. | [src](../../../core/services/cognitive_state_narrativizer.py#L260) |
+| function | `shutdown` | `(timeout=…)` | Stop den delte worker kontrolleret. | [src](../../../core/services/cognitive_state_narrativizer.py#L281) |
+| function | `_reset_for_tests` | `()` | Nulstil al tilstand inkl. stop-flaget. Kun til tests. | [src](../../../core/services/cognitive_state_narrativizer.py#L301) |
+| function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L317) |
+| function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L403) |
 
 ## `core/services/collective_pulse_daemon.py`
 _Collective Pulse — what is the air full of right now?_

@@ -148,7 +148,11 @@ def test_skriveformen_naar_halen_i_chat_scope() -> None:
         reset_tool_scope(token)
     assert "## Chatmode: hvordan jeg taler" in tail
     assert "læsehjælp" in tail
-    assert "Hvad jeg især lægger mærke til" in tail
+    assert "uden en fast sektion" in tail
+    # 24/10-2026: kontrakten navngav selv afslutningssektionen som eksempel, og
+    # så blev den en signatur i hvert svar (Bjørn: «du behøver ikke bruge denne
+    # linje i hver besked»). Kontrakten må ikke foreskrive en fast sektion.
+    assert "Hvad jeg især lægger mærke til" not in tail
     assert "Vis beviset" in tail
     assert "kan du huske da vi talte om" in tail
 
@@ -248,3 +252,28 @@ def test_presence_and_surface_decisions_never_reach_code_mode() -> None:
     assert "Kun leverance" in chat
     assert "Vælg flade efter læseopgaven" not in code
     assert "Kun leverance" not in code
+
+
+def test_niveau_4_er_en_beslutningsregel_ikke_en_skemaliste() -> None:
+    """Fælden (målt 24/10-2026, Bjørns indvending): niveau 4 var en API-reference.
+
+    Den listede seks JSON-skemaer og sagde «kan du skrive» — aldrig HVORNÅR en
+    tanke har den form. Resultatet var at jeg faldt tilbage på prosa hver gang,
+    fordi prosa altid virker og ingen regel gjorde fladen obligatorisk. Vagten
+    kræver at imperativet og koblingen tanke→flade står der, og at den gamle
+    tilladelses-formulering ikke kommer tilbage.
+    """
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+    tekst = CHAT_MODE_HOW_I_TALK
+    # Imperativet — ikke en tilladelse.
+    assert "er fladen ikke valgfri" in tekst
+    # Koblingen: en tankeform peger på en bestemt flade.
+    assert "tanke → flade" in tekst.lower()
+    for flade in ("timeline", "comparison", "stats", "callout", "choices", "location"):
+        assert flade in tekst, flade
+    # Skemaerne skal stadig stå der — en forkert values-længde dropper rækken tavst.
+    assert "præcis samme antal som" in tekst
+    # Den gamle tilladelses-formulering må ikke snige sig ind igen.
+    assert "kan du skrive" not in tekst
+    assert "når én kompakt visuel flade er tydeligere end prosa" not in tekst.lower()

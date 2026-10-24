@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17491 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17494 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -59,7 +59,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17491 functions/
 - [`core.services.27`](core.services.27.md) — `sustained_attention` … `tool_intent_approval_runtime`
 - [`core.services.28`](core.services.28.md) — `tool_intent_runtime` … `versioneret_json_svar`
 - [`core.services.29`](core.services.29.md) — `veto_gate` … `visible_run_trace`
-- [`core.services.30`](core.services.30.md) — `visible_runs` … `world_model_signal_tracking`
+- [`core.services.30`](core.services.30.md) — `visible_runs` … `world_model_auto_extraction`
+- [`core.services.31`](core.services.31.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

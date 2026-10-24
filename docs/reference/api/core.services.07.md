@@ -558,7 +558,7 @@ _One chat-only decision vocabulary for closure and presentation._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L54) |
+| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L55) |
 
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._

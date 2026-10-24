@@ -39,14 +39,12 @@ def analyse_chat_response(text: str, *, wall_chars: int = 600) -> list[dict[str,
 
     prose = _FENCE_RE.sub("", raw).strip()
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", prose) if p.strip()]
-    for index, paragraph in enumerate(paragraphs):
-        lines = paragraph.splitlines()
-        structured = all(
-            _TABLE_ROW_RE.match(line) or re.match(r"^\s*(?:[-*+] |\d+[.)] )", line)
-            for line in lines if line.strip()
-        )
-        if len(paragraph) > wall_chars and not structured:
-            signals.append({"kind": "prose_wall", "paragraph": index, "chars": len(paragraph)})
+    try:
+        from core.services.wall_guard import find_walls
+        for wall in find_walls(prose):
+            signals.append({"kind": "prose_wall", **wall})
+    except Exception:  # kvalitetsmåling må aldrig ændre eller blokere svaret
+        pass
 
     normalized = [re.sub(r"\s+", " ", p).strip().casefold() for p in paragraphs]
     repeated = [p for p, count in Counter(p for p in normalized if len(p) >= 80).items() if count > 1]

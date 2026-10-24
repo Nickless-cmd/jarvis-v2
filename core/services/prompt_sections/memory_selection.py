@@ -74,14 +74,17 @@ def _workspace_memory_section(
     workspace_dir: Path,
     mode: str = "visible_chat",
 ) -> MemorySectionSelection | None:
-    entries = _workspace_memory_entries(path)
-    if not entries:
-        return None
-    # 2026-09-04 (memory repair, R2): vælg SEKTIONER via det eksisterende
-    # memory_search-indeks (overskrift + brødtekst, embedding/tf-idf) før den
-    # gamle linje-heuristik, som kun kender ~10 nøgleord og ellers tager filens
-    # sidste linjer.
+    # 24/10-2026: MEMORY.md-stien brugte `entries` KUN til `len(entries)` og til
+    # at afgøre om filen er tom — indholdet kom fra `select_memory_md_sections`.
+    # Alligevel blev hele filen læst OG hemmeligheds-maskeret først: målt 432 ms
+    # ren CPU for `redact()` over 3,01 MB ved HVER prompt-bygning, og resultatet
+    # blev kasseret. Det var den største enkeltpost i assembly-spidsen.
+    # Nu tælles linjerne billigt, og `entries` bygges kun når fallback'en
+    # faktisk skal bruge dem.
     if path.name == "MEMORY.md":
+        candidate_count = _workspace_memory_line_count(path)
+        if not candidate_count:
+            return None
         try:
             from core.services.prompt_sections.memory_md_selection import (
                 select_memory_md_sections,
@@ -108,8 +111,17 @@ def _workspace_memory_section(
                 backend_status="ok",
                 prompt_file_used=False,
             )
-            _track_memory_selection(selection, mode, len(entries))
+            _track_memory_selection(selection, mode, candidate_count)
             return selection
+        # Fallback: kun HER er indholdet nødvendigt.
+        entries = _workspace_memory_entries(path)
+        if not entries:
+            return None
+    else:
+        entries = _workspace_memory_entries(path)
+        if not entries:
+            return None
+        candidate_count = len(entries)
     selection = _select_relevant_memory_entries(
         entries,
         user_message=user_message,
@@ -120,7 +132,7 @@ def _workspace_memory_section(
     )
     if not selection.lines:
         return None
-    _track_memory_selection(selection, mode, len(entries))
+    _track_memory_selection(selection, mode, candidate_count)
     return selection
 
 
@@ -133,17 +145,42 @@ def _today_daily_memory_lines(*, limit: int = 10) -> list[str]:
     """
     try:
         return read_daily_memory_lines(limit=limit)
-    except Exception:
+    except Exception:  # en manglende dagbogsfil maa ikke vaelte prompten
         return []
 
 
 def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
     try:
         return read_recent_daily_memory_lines(days=days, limit=limit)
-    except Exception:
+    except Exception:  # 7-dages-laesning fejlede — fald tilbage til i dag
         return _today_daily_memory_lines(limit=limit)
 
 
+
+
+def _workspace_memory_line_count(path: Path) -> int:
+    """Antal linjer der VILLE blive entries — uden at maskere hemmeligheder.
+
+    Kun til telemetri og tomheds-tjek. `redact()` koster ~432 ms på en 3 MB
+    MEMORY.md, og resultatet blev kasseret; tællingen behøver ikke indholdet.
+    Læsestien er den samme som `read_for_prompt` bruger, så krypterede
+    workspaces tælles korrekt.
+    """
+    try:
+        from core.services.workspace_crypto import read_text_for_path
+        text = read_text_for_path(path)
+    except Exception:  # ulaeselig fil = 0 linjer; kalderen springer sektionen over
+        return 0
+    if not text:
+        return 0
+    count = 0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if " ".join(line.lstrip("-").split()).strip():
+            count += 1
+    return count
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:

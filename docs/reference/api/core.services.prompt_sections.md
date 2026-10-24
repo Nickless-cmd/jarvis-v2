@@ -255,13 +255,14 @@ _MEMORY.md line/section selection for the visible prompt._
 | class | `MemorySectionSelection` | `` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L46) |
 | function | `_track_memory_selection` | `(selection, mode, candidate_count)` | Telemetry lives in prompt_contract (module-level history); lazy import avoids a cycle. | [src](../../../core/services/prompt_sections/memory_selection.py#L58) |
 | function | `_workspace_memory_section` | `(path, *, label, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L67) |
-| function | `_today_daily_memory_lines` | `(*, limit=…)` | Read today's daily memory lines for injection into visible prompts. | [src](../../../core/services/prompt_sections/memory_selection.py#L127) |
-| function | `_recent_daily_memory_lines` | `(*, limit=…, days=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L140) |
-| function | `_workspace_memory_entries` | `(path)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L149) |
-| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L168) |
-| function | `memory_could_change_answer` | `(user_message, memory_text)` | Cheap gate: inject memory only when it can affect this answer's substance. | [src](../../../core/services/prompt_sections/memory_selection.py#L260) |
-| function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L280) |
-| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L284) |
+| function | `_today_daily_memory_lines` | `(*, limit=…)` | Read today's daily memory lines for injection into visible prompts. | [src](../../../core/services/prompt_sections/memory_selection.py#L139) |
+| function | `_recent_daily_memory_lines` | `(*, limit=…, days=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L152) |
+| function | `_workspace_memory_line_count` | `(path)` | Antal linjer der VILLE blive entries — uden at maskere hemmeligheder. | [src](../../../core/services/prompt_sections/memory_selection.py#L161) |
+| function | `_workspace_memory_entries` | `(path)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L186) |
+| function | `_select_relevant_memory_entries` | `(entries, *, user_message, max_lines, max_chars, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L205) |
+| function | `memory_could_change_answer` | `(user_message, memory_text)` | Cheap gate: inject memory only when it can affect this answer's substance. | [src](../../../core/services/prompt_sections/memory_selection.py#L297) |
+| function | `_filter_answer_changing_memory` | `(user_message, lines)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L317) |
+| function | `_bounded_nl_memory_selection` | `(*, user_message, entries, max_lines, workspace_dir, mode=…)` | — | [src](../../../core/services/prompt_sections/memory_selection.py#L321) |
 
 ## `core/services/prompt_sections/output_discipline.py`
 _Output discipline guidance for visible model prompts._

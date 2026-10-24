@@ -465,3 +465,107 @@ def test_playbooks_indhold_kan_faktisk_findes(tmp_path, monkeypatch):
     assert hits, "soegningen gav intet"
     assert any("PLAYBOOKS.md" in h["source"] for h in hits), \
         f"PLAYBOOKS-indhold blev ikke fundet; fik {[h['source'] for h in hits]}"
+
+
+# --- 24/10-2026: MEMORY.md maa ikke maskeres paa hot path -------------------
+# Maalt: `redact()` over 3,01 MB tog 432-487 ms ren CPU ved HVER prompt-bygning,
+# og resultatet blev kasseret — `entries` blev kun brugt til `len(entries)` og
+# til at afgoere om filen var tom. Det var den stoerste enkeltpost i den spids
+# Bjoern maalte ved hver besked. Vagterne her faelder hvis den dyre vej kommer
+# tilbage.
+
+
+def test_memory_md_taelles_uden_at_maskere_hemmeligheder(tmp_path, monkeypatch):
+    """MEMORY.md-stien maa ikke kalde redact() — kun taelle linjer."""
+    from core.services.prompt_sections import memory_selection as ms
+
+    ws = tmp_path / "ws-count"
+    ws.mkdir(parents=True)
+    (ws / "MEMORY.md").write_text(
+        "# MEMORY\n\n- foerste linje\n- anden linje\n\n## Sektion\n- tredje\n",
+        encoding="utf-8")
+
+    kaldt = {"redact": 0, "read_for_prompt": 0}
+
+    def _taeller_redact(text):
+        kaldt["redact"] += 1
+        return text
+
+    def _taeller_read(path):
+        kaldt["read_for_prompt"] += 1
+        return path.read_text(encoding="utf-8")
+
+    monkeypatch.setattr("core.services.secret_redaction.redact", _taeller_redact)
+    monkeypatch.setattr("core.services.secret_redaction.read_for_prompt", _taeller_read)
+
+    n = ms._workspace_memory_line_count(ws / "MEMORY.md")
+    assert n == 3, f"forventede 3 entries (3 ikke-kommentar-linjer), fik {n}"
+    assert kaldt["redact"] == 0, (
+        f"redact() blev kaldt {kaldt['redact']} gang(e) under taellingen — "
+        "det er den dyre vej tilbage"
+    )
+    assert kaldt["read_for_prompt"] == 0, "read_for_prompt() maskerer; taellingen skal ikke bruge den"
+
+
+def test_memory_md_sektion_springer_entries_over_naar_sektioner_findes(tmp_path, monkeypatch):
+    """Naar sektions-udvaelgelsen leverer linjer, maa entries ALDRIG bygges."""
+    from core.services.prompt_sections import memory_selection as ms
+
+    ws = tmp_path / "ws-skip"
+    ws.mkdir(parents=True)
+    (ws / "MEMORY.md").write_text("# MEMORY\n\n- en linje\n", encoding="utf-8")
+
+    bygget = {"entries": 0}
+    aegte = ms._workspace_memory_entries
+
+    def _taeller_entries(path):
+        bygget["entries"] += 1
+        return aegte(path)
+
+    monkeypatch.setattr(ms, "_workspace_memory_entries", _taeller_entries)
+    monkeypatch.setattr(
+        "core.services.prompt_sections.memory_md_selection.select_memory_md_sections",
+        lambda *a, **k: ["en linje fra sektionen"],
+    )
+    monkeypatch.setattr(ms, "_filter_answer_changing_memory", lambda msg, lines: lines)
+
+    sel = ms._workspace_memory_section(
+        ws / "MEMORY.md",
+        label="MEMORY",
+        user_message="en linje",
+        max_lines=8,
+        max_chars=2000,
+        workspace_dir=ws,
+    )
+    assert sel is not None and sel.lines == ["en linje fra sektionen"]
+    assert bygget["entries"] == 0, (
+        f"_workspace_memory_entries blev kaldt {bygget['entries']} gang(e) selvom "
+        "sektions-udvaelgelsen leverede linjer — den dyre vej er tilbage"
+    )
+
+
+def test_memory_md_fallback_bygger_entries_naar_sektioner_svigter(tmp_path, monkeypatch):
+    """Fallback'en SKAL stadig have rigtigt indhold — besparelsen maa ikke koste kvalitet."""
+    from core.services.prompt_sections import memory_selection as ms
+
+    ws = tmp_path / "ws-fallback"
+    ws.mkdir(parents=True)
+    (ws / "MEMORY.md").write_text(
+        "# MEMORY\n\n- GPU temperatur maalt til 55 grader\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "core.services.prompt_sections.memory_md_selection.select_memory_md_sections",
+        lambda *a, **k: [],
+    )
+    monkeypatch.setattr(ms, "_filter_answer_changing_memory", lambda msg, lines: lines)
+
+    sel = ms._workspace_memory_section(
+        ws / "MEMORY.md",
+        label="MEMORY",
+        user_message="hvad er GPU temperaturen",
+        max_lines=8,
+        max_chars=2000,
+        workspace_dir=ws,
+    )
+    assert sel is not None, "fallback gav ingen sektion"
+    assert any("GPU" in line for line in sel.lines), f"indholdet forsvandt: {sel.lines}"

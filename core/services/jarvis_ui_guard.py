@@ -58,6 +58,12 @@ _REPARATIONER: tuple[tuple[re.Pattern[str], str], ...] = (
 #: flade — men den skal heller ikke ligne en fejl i systemet.
 _DEGRADERET = "*(en flade kunne ikke vises — dataene passede ikke sammen)*"
 
+#: Hvad en manglende celle udfyldes med. Målt 24/10-2026: den var en stille
+#: ``—``, så en tabel med tre kolonner og to values SÅ komplet ud mens tredje
+#: kolonne var tom hele vejen ned. En tavs fejl kan hverken ses eller rettes,
+#: så markøren siger nu hvad den er.
+_MANGLER = "— (mangler)"
+
 
 def _normaliser_form(raw: str) -> str:
     """Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje.
@@ -83,9 +89,11 @@ def _reparer_json(tekst: str) -> str:
 def _ret_laengder(tekst: str) -> str:
     """Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON.
 
-    Målt 24/10-2026 (Bjørn: "]!!!!"): jeg skrev tre kolonner og to values — og
-    gjorde det tre gange på én aften. Det er entydigt rettbart: den manglende
-    celle bliver tom, ikke usynlig. Overskydende værdier trunkeres, fordi en
+    Målt 24/10-2026 (Bjørn: "]!!!!" og derefter "Du gjorde det igen!"): jeg skrev
+    tre kolonner og to values — fire gange på én aften. Den manglende celle
+    udfyldes med en markør der SIGER at den mangler, ikke en stille bindestreg:
+    en tabel der ser komplet ud men har en tom kolonne er en tavs fejl, og tavse
+    fejl kan hverken ses eller rettes. Overskydende værdier trunkeres, fordi en
     tabel med for mange kolonner ikke kan rendres konsistent.
     """
     try:
@@ -105,7 +113,7 @@ def _ret_laengder(tekst: str) -> str:
         if not isinstance(vaerdier, list):
             continue
         if len(vaerdier) < len(kolonner):
-            raekke["values"] = vaerdier + ["—"] * (len(kolonner) - len(vaerdier))
+            raekke["values"] = vaerdier + [_MANGLER] * (len(kolonner) - len(vaerdier))
             aendret = True
         elif len(vaerdier) > len(kolonner):
             raekke["values"] = vaerdier[: len(kolonner)]

@@ -111,3 +111,26 @@ def test_ingen_flader_giver_uændret_tekst() -> None:
 
 def test_fail_open_paa_tom_tekst() -> None:
     assert normalisér("") == ""
+
+
+def test_manglende_celle_siger_at_den_mangler() -> None:
+    """En pad'et celle må ikke se ud som indhold.
+
+    Målt 24/10-2026 (Bjørn: «Du gjorde det igen!»): fjerde gang på én aften
+    skrev jeg en comparison med 3 kolonner og 2 values. Vagten paddede med en
+    stille ``—``, så tabellen SÅ komplet ud mens tredje kolonne var tom hele
+    vejen ned — den tavse version af samme fejl. Markøren skal sige hvad den
+    er, ellers kan fejlen hverken ses eller rettes.
+    """
+    tekst = (
+        'Før.\n\n```jarvis-ui\n'
+        '{"type":"comparison","title":"T","columns":["A","B","C"],'
+        '"rows":[{"label":"x","values":["1","2"]}]}\n```\n\nEfter.'
+    )
+    ny = normalisér(tekst)
+    blok = re.search(r"```jarvis-ui\n(.*?)\n```", ny, re.S)
+    assert blok is not None
+    values = json.loads(blok.group(1))["rows"][0]["values"]
+    assert len(values) == 3
+    assert values[2] == "— (mangler)", "en manglende celle skal navngive sig selv"
+    assert values[2] != "—", "en stille bindestreg ser ud som om der stod noget"

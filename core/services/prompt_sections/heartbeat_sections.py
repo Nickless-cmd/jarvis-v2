@@ -251,7 +251,11 @@ def _heartbeat_living_context_line() -> str:
             format_active_decisions_for_heartbeat,
         )
 
-        decisions_line = format_active_decisions_for_heartbeat(max_items=3)
+        # 24/10-2026: 3 → 5. Efter konsolideringen 135 → 12 er hver beslutning
+        # kort nok (130-179 tegn) til at fem kan staa i samme budget som tre
+        # fyldte foer (477 tegn mod 1102). De to ekstra pladser gaar til de
+        # naeste i prioritets-raekkefoelgen — ikke til nye, lange direktiver.
+        decisions_line = format_active_decisions_for_heartbeat(max_items=5)
         if decisions_line:
             parts.append(f"active_decisions: {decisions_line}")
     except Exception:

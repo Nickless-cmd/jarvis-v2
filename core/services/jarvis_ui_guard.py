@@ -52,6 +52,12 @@ _REPARATIONER: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r",\s*,"), ","),
 )
 
+#: Hvad en uoprettelig blok erstattes med. Målt 24/10-2026: en degraderet blok
+#: blev tidligere dumpet som ` ```text ` med rå JSON, så læseren så `]` og `]}`
+#: uden at vide hvad det var. En flade der ikke kan parses skal ikke ligne en
+#: flade — men den skal heller ikke ligne en fejl i systemet.
+_DEGRADERET = "*(en flade kunne ikke vises — dataene passede ikke sammen)*"
+
 
 def _normaliser_form(raw: str) -> str:
     """Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje.
@@ -74,10 +80,45 @@ def _reparer_json(tekst: str) -> str:
     return ud
 
 
+def _ret_laengder(tekst: str) -> str:
+    """Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON.
+
+    Målt 24/10-2026 (Bjørn: "]!!!!"): jeg skrev tre kolonner og to values — og
+    gjorde det tre gange på én aften. Det er entydigt rettbart: den manglende
+    celle bliver tom, ikke usynlig. Overskydende værdier trunkeres, fordi en
+    tabel med for mange kolonner ikke kan rendres konsistent.
+    """
+    try:
+        data = json.loads(tekst)
+    except Exception:  # ugyldig JSON: der er ingen længder at justere, og teksten gives uændret videre til _validér
+        return tekst
+    if not isinstance(data, dict) or data.get("type") != "comparison":
+        return tekst
+    kolonner = data.get("columns") or []
+    if not isinstance(kolonner, list):
+        return tekst
+    aendret = False
+    for raekke in data.get("rows") or []:
+        if not isinstance(raekke, dict):
+            continue
+        vaerdier = raekke.get("values")
+        if not isinstance(vaerdier, list):
+            continue
+        if len(vaerdier) < len(kolonner):
+            raekke["values"] = vaerdier + ["—"] * (len(kolonner) - len(vaerdier))
+            aendret = True
+        elif len(vaerdier) > len(kolonner):
+            raekke["values"] = vaerdier[: len(kolonner)]
+            aendret = True
+    if not aendret:
+        return tekst
+    return json.dumps(data, ensure_ascii=False)
+
+
 def _validér(tekst: str) -> tuple[bool, str]:
     try:
         data = json.loads(tekst)
-    except Exception as fejl:
+    except Exception as fejl:  # ugyldig JSON er et svar til kalderen, ikke en fejl at skjule: grunden returneres
         return False, str(fejl)
     if not isinstance(data, dict):
         return False, "blokken er ikke et JSON-objekt"
@@ -122,15 +163,23 @@ def _normalisér_indre(text: str, *, run_id: str) -> str:
         gyldig, fejl = _validér(indhold)
         if not gyldig:
             repareret = _reparer_json(indhold)
+            if not _validér(repareret)[0]:
+                # JSON'en kan være syntaktisk gyldig mens data er inkonsistent
+                # (values kortere end columns). Det rettes entydigt.
+                justeret = _ret_laengder(repareret)
+                if justeret != repareret and _validér(justeret)[0]:
+                    repareret = justeret
             gyldig2, fejl2 = _validér(repareret)
             if gyldig2:
                 aendringer.append(f"json repareret: {fejl}")
                 indhold = repareret
             else:
-                # Kan ikke repareres: lad den stå som almindelig kode, så den
-                # ikke ligner en flade der fejlede.
-                aendringer.append(f"json ugyldig, degraderet: {fejl2}")
-                return f"```text\n{indhold}\n```"
+                # Målt 24/10-2026 (Bjørn: "]!!!!"): en degraderet blok blev
+                # dumpet som rå JSON i chatten, så læseren så `]` uden at vide
+                # hvad det var. En flade der ikke kan parses skal forsvinde
+                # som flade — ikke blive en JSON-mur.
+                aendringer.append(f"json ugyldig, fjernet: {fejl2}")
+                return _DEGRADERET
         elif "\n" in match.group(1).strip() or match.group(1).strip() != match.group(1):
             aendringer.append("form normaliseret")
         # Tjek om formen var skæv (JSON på markørens linje).

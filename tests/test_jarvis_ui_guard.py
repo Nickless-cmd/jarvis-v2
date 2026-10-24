@@ -16,6 +16,7 @@ tekst, ikke rendereren — og de to fejl kræver hver sin kontrol:
 from __future__ import annotations
 
 import json
+import re
 
 from core.services.jarvis_ui_guard import normalisér
 
@@ -71,20 +72,36 @@ def test_korrekt_form_beroeres_ikke() -> None:
     assert normalisér(tekst) == tekst
 
 
-def test_syntaksfejlen_repareres_men_skæv_values_degraderes() -> None:
-    """220068 havde to fejl. Syntaksen kan rettes; dataene kan ikke.
+def test_skaev_values_paddes_frem_for_at_blive_raa_json() -> None:
+    """220068 havde to fejl. Syntaksen rettes — og dataene kan også rettes.
 
-    En comparison med 2 values til 3 kolonner ville miste en række i rendereren
-    uden en fejlmeddelelse — derfor degraderes den til almindelig tekst, så
-    svaret stadig er ærligt.
+    Målt 24/10-2026 (Bjørn: "]!!!!"): den gamle adfærd var at degradere til
+    ```` ```text ```` med rå JSON, så læseren så `]` uden at vide hvad det var.
+    En comparison med 2 values til 3 kolonner er entydigt rettbar: den
+    manglende celle bliver «—», ikke usynlig. Tabellen bevares.
     """
     tekst = f"Før.\n\n```jarvis-ui\n{FRA_220068}\n```\n\nEfter."
     ny = normalisér(tekst)
-    assert ny != tekst
-    assert "```jarvis-ui" not in ny, "en flade der ikke kan parses må ikke se ud som en flade"
-    assert "```text" in ny
-    # Indholdet skal stadig være der — degradering, ikke sletning.
+    assert "```jarvis-ui" in ny, "en rettelig flade må ikke degraderes"
+    assert "```text" not in ny, "rå JSON må aldrig havne i chatten"
     assert "Tre veje til svaret" in ny
+    blok = re.search(r"```jarvis-ui\s*\n(.*?)```", ny, re.S)
+    assert blok is not None
+    data = json.loads(blok.group(1))
+    assert len(data["columns"]) == 3
+    for raekke in data["rows"]:
+        assert len(raekke["values"]) == 3, "hver række skal have præcis én værdi pr. kolonne"
+
+
+def test_uoprettelig_blok_fjernes_uden_at_vise_json() -> None:
+    """Kan blokken ikke parses, skal den forsvinde — ikke blive en JSON-mur."""
+    tekst = 'Før.\n\n```jarvis-ui\n{"type":"comparison","columns":["a"\n```\n\nEfter.'
+    ny = normalisér(tekst)
+    assert "```jarvis-ui" not in ny
+    assert "```text" not in ny, "rå JSON i en kodeblok er præcis den mur vi fjerner"
+    assert '"columns"' not in ny
+    assert "kunne ikke vises" in ny
+    assert ny.startswith("Før.") and ny.rstrip().endswith("Efter.")
 
 
 def test_ingen_flader_giver_uændret_tekst() -> None:

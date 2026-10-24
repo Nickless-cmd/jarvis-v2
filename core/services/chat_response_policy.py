@@ -82,3 +82,131 @@ def surface_for_reading_task(
     return None
 
 
+_SURFACE_NAMES_DA: dict[str, str] = {
+    "comparison": "sammenligning",
+    "timeline": "tidslinje",
+    "stats": "nøgletal",
+    "choices": "valgmuligheder",
+    "location": "sted",
+    "callout": "advarsel",
+}
+
+# Tegne-værktøjerne er en ANDEN familie end de native flader: de lægger noget i
+# tråden i stedet for at være en blok i teksten. Porten dækker begge, fordi
+# spørgsmålet «skal dette have en form?» kommer før «hvilken form?».
+_TOOL_SURFACES: dict[str, tuple[str, str]] = {
+    "numbers": (
+        "vis_graf",
+        "tallene skal aflæses som form — en udvikling eller et forløb, ikke en række",
+    ),
+    "flow": (
+        "render_mermaid",
+        "strukturen eller rækkefølgen er pointen — et diagram bærer den bedre end prosa",
+    ),
+    "interactive": (
+        "vis_widget",
+        "brugeren skal kunne trykke, sortere eller regne på indholdet",
+    ),
+}
+
+
+def decide_surface(
+    task: str,
+    *,
+    item_count: int = 0,
+    shared_dimensions: int = 0,
+    already_rendered: bool = False,
+) -> dict[str, object]:
+    """Resolve a reading task to prose, a native surface, or a drawing tool.
+
+    The model names the reader's task; the runtime owns the thresholds.  The
+    answer carries its own reason, so the model can correct its assessment
+    instead of guessing why it was told no.
+    """
+    task = str(task or "").strip().lower()
+
+    if already_rendered:
+        return _prose_choice(
+            "indholdet er allerede vist på en flade",
+            "skriv prosa der læser fladen — ikke en kopi af den",
+        )
+    if not task or task == "none":
+        return _prose_choice(
+            "læseopgaven kræver ingen flade",
+            "skriv prosa; en flade ville være dekoration her",
+        )
+    if task in _TOOL_SURFACES:
+        tool, why = _TOOL_SURFACES[task]
+        return {
+            "flade": None,
+            "vaerktoej": tool,
+            "navn": tool,
+            "reason": why,
+            "next": f"kald {tool} med data — og lad prosaen bære konklusionen",
+        }
+
+    surface = surface_for_reading_task(
+        task,
+        item_count=item_count,
+        shared_dimensions=shared_dimensions,
+        already_rendered=False,
+    )
+    if surface is None:
+        return _prose_choice(
+            _why_prose(task, item_count, shared_dimensions),
+            "skriv prosa; en flade ville være dekoration her",
+        )
+    return {
+        "flade": surface,
+        "vaerktoej": None,
+        "navn": _SURFACE_NAMES_DA.get(surface, surface),
+        "reason": _why_surface(surface, item_count, shared_dimensions),
+        "next": (
+            f"brug en jarvis-ui-blok af typen «{surface}» inline hvor begrebet "
+            "behandles, og lad prosaen bære pointen selv"
+        ),
+    }
+
+
+def _prose_choice(reason: str, next_step: str) -> dict[str, object]:
+    return {
+        "flade": None,
+        "vaerktoej": None,
+        "navn": "prosa",
+        "reason": reason,
+        "next": next_step,
+    }
+
+
+def _why_surface(surface: str, item_count: int, shared_dimensions: int) -> str:
+    if surface == "comparison":
+        return f"{item_count} ting på {shared_dimensions} fælles akser — sammenligning kræver aflæsning"
+    if surface == "timeline":
+        return f"{item_count} led i rækkefølge — rækkefølgen er pointen"
+    if surface == "stats":
+        return f"{item_count} selvstændige nøgletal — de skal aflæses, ikke læses"
+    if surface == "choices":
+        return f"{item_count} handlingsbare muligheder — brugeren skal vælge"
+    if surface == "location":
+        return "et konkret sted er centralt for handlingen"
+    if surface == "callout":
+        return "præcis én risiko eller afgørelse må ikke overses"
+    return "kriterierne er opfyldt"
+
+
+def _why_prose(task: str, item_count: int, shared_dimensions: int) -> str:
+    if task == "compare" and shared_dimensions < 2:
+        return f"sammenligning kræver mindst to fælles akser; her er {shared_dimensions}"
+    if task == "compare" and item_count < 2:
+        return "der er intet at sammenligne"
+    if task == "sequence" and item_count < 3:
+        return f"en rækkefølge kræver mindst tre led; her er {item_count}"
+    if task == "scan_numbers" and not 3 <= item_count <= 8:
+        return f"nøgletal kræver tre til otte; her er {item_count}"
+    if task == "choose" and not 2 <= item_count <= 6:
+        return f"valgmuligheder kræver to til seks; her er {item_count}"
+    if task == "warn" and item_count != 1:
+        return "en advarsel skal være præcis én ting"
+    return "læseopgaven udløser ingen flade"
+
+

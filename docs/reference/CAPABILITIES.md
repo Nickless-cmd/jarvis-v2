@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-23 — 506 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-24 — 507 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -417,6 +417,7 @@
 | `update_identity_sketch` | native | no |
 | `update_project_notes` | native | no |
 | `update_setting` | native | no |
+| `vaelg_flade` | native | no |
 | `variant_performance` | native | no |
 | `verification_status` | native | no |
 | `verify_endpoint_responds` | native | no |

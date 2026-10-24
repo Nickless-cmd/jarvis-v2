@@ -388,3 +388,79 @@ def test_in_memory_forbindelse_caches_bevidst_ikke() -> None:
     assert db_fts._db_key(conn) == "", "in-memory skal ikke give en cache-nøgle"
     db_fts.ensure_fts_tables(conn)
     db_fts.ensure_fts_tables(conn)
+
+
+def test_ejer_filteret_koerer_paa_kandidater_ikke_paa_alle_traef(conn):
+    """24/10-2026: ejer-filteret lå i MATCH-grenen, så EXISTS kørte for HVER
+    FTS-træffer før LIMIT kunne bide. Målt på den levende DB: 13.463 træffer →
+    17.201 ms for ti rækker, og `recall` meldte `partial` i 83 % af alle kald
+    fordi session_summary aldrig nåede deadlinen.
+
+    Vagten inspicerer den SQL der faktisk sendes: ejer-filteret skal stå EFTER
+    et afgrænset kandidatsæt (WITH hits AS … LIMIT), ikke direkte i MATCH-grenen.
+    Flytter nogen det tilbage, bliver testen rød uden at nogen skal huske målingen.
+    """
+    for i in range(300):
+        conn.execute(
+            "INSERT INTO session_summaries (session_id, summary, created_at) "
+            "VALUES (?, 'Emne: pfsense nøgle flyttet. Resultat: fikset.', '2026-09-03T10:00:00')",
+            (f"s{i}",),
+        )
+        conn.execute(
+            "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+            "VALUES (?, ?, 'user', 'hej', 'test-uid', '2026-09-03T10:00:00')",
+            (f"m{i}", f"s{i}"),
+        )
+    db_fts.ensure_fts_tables(conn, force=True)
+
+    fanget: list[str] = []
+    original = conn.execute
+
+    class _Fanger:
+        def __call__(self, sql, *args, **kwargs):
+            if "MATCH ?" in sql:
+                fanget.append(sql)
+            return original(sql, *args, **kwargs)
+
+    # sqlite3.Connection.execute er read-only; vi wrapper forbindelsen i stedet.
+    class _Conn:
+        def __getattr__(self, navn):
+            return getattr(conn, navn)
+
+        def execute(self, sql, *args, **kwargs):
+            if "MATCH ?" in sql:
+                fanget.append(sql)
+            return original(sql, *args, **kwargs)
+
+    import core.runtime.db_fts as _m
+
+    gammel = _m.connect
+    _m.connect = lambda: _Ctx(_Conn())
+    try:
+        rows = db_fts.search_session_summaries("pfsense nøgle", limit=10)
+        db_fts.search_chat_messages("pfsense nøgle", limit=10)
+    finally:
+        _m.connect = gammel
+
+    assert len(rows) == 10, "filtreringen må ikke tømme resultatet"
+    assert fanget, "ingen FTS-SQL blev fanget — vagten måler intet"
+    for sql in fanget:
+        assert "WITH hits AS" in sql, (
+            "ejer-filteret skal køre på et afgrænset kandidatsæt (WITH hits AS …), "
+            "ikke direkte i MATCH-grenen — ellers evalueres det for hver træffer"
+        )
+        foer_filter = sql.split("WHERE EXISTS")[0]
+        assert "LIMIT ?" in foer_filter, (
+            "kandidat-loftet skal stå FØR ejer-filteret"
+        )
+
+
+class _Ctx:
+    def __init__(self, c):
+        self._c = c
+
+    def __enter__(self):
+        return self._c
+
+    def __exit__(self, *a):
+        return False

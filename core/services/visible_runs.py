@@ -5877,6 +5877,19 @@ async def _stream_visible_run(
         # frontend's loadSession() call immediately after done finds the
         # message in the DB (avoids the "message disappears" race condition).
         if visible_output_text:
+            # 24/10-2026 (målt): guarden sad KUN i anden/tredje-pass-grenene
+            # (linje 5583-5600). Førstepas-vejen — den almindelige — gik uden om,
+            # så otte skæve comparison-rækker i besked 220356 og 220381 blev
+            # persisteret uden padding. Målt i DB: 6 blokke siden 20:20, 8
+            # mismatch, 0 normaliseringer. Guarden hører på den FÆLLES udgang,
+            # før teksten både observeres og gemmes — ikke på én gren.
+            try:
+                from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+                visible_output_text = _normalisér_flader(
+                    visible_output_text, run_id=str(run.run_id or ""),
+                )
+            except Exception:  # fail-open: en fejl i normaliseringen må ikke koste svaret — teksten sendes da uændret
+                pass
             try:
                 from core.services.prompt_section_impact import observe_last_prompt_answer_impact
                 observe_last_prompt_answer_impact(

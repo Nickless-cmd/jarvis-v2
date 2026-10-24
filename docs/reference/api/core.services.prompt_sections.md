@@ -216,7 +216,7 @@ _MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04
 | function | `_memory_md_sections` | `(workspace_dir)` | Parse MEMORY.md til (overskrift, tekst) — UDEN at maskere. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L197) |
 | function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L238) |
 | function | `_lexical_candidates` | `(msg, workspace_dir, *, limit, vaegte=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L268) |
-| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L293) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L301) |
 
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._

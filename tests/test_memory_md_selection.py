@@ -656,3 +656,47 @@ def test_maskering_rammer_kun_det_der_naar_prompten(tmp_path, monkeypatch):
         "maskeringen er tilbage paa hele filen"
     )
     assert len(linje) <= 1500
+
+
+def test_focused_excerpt_koeres_kun_paa_de_valgte(tmp_path, monkeypatch):
+    """24/10-2026: excerpten blev kørt på HVER kandidat med dækning > 0 —
+    målt 917 gange pr. kald, hvoraf kun `limit` (12) forlod funktionen.
+    Excerpten påvirker kun `text`-feltet, aldrig `score`, så den skal køre
+    efter sorteringen. Vagten tæller kaldene: flyttes den tilbage i loopet,
+    bliver testen rød, og de ~160 ms pr. prompt-byg er tabt igen.
+    """
+    # VARIEREDE sektioner: ord der staar i ALLE sektioner faar df=1 og dermed
+    # IDF-vaegt ~0, saa de giver nul daekning. Kun de faa GPU-sektioner maa
+    # rammes af forespoergslen.
+    emner = ["Kontrakter", "Postgres", "Svg-filer", "Togtabeller", "Vejret",
+             "Bogholderi", "Grafik", "Netvaerk", "Lydkort", "Tastatur"]
+    dele = []
+    for i in range(240):
+        e = emner[i % len(emner)]
+        if i % 20 == 0:
+            dele.append(f"## GPU emne {i}\n- GPU og hardware og ollama embeddings nummer {i}.")
+        else:
+            dele.append(f"## {e} {i}\n- {e} punkt nummer {i} uden de saerlige ord.")
+    (tmp_path / "MEMORY.md").write_text(
+        "# MEMORY\n\n" + "\n\n".join(dele), encoding="utf-8"
+    )
+
+    kald = {"n": 0}
+    aegte = mms._focused_excerpt
+
+    def _taeller(msg, text, **kw):
+        kald["n"] += 1
+        return aegte(msg, text, **kw)
+
+    monkeypatch.setattr(mms, "_focused_excerpt", _taeller)
+    out = mms._lexical_candidates(
+        "GPU hardware ollama embeddings", tmp_path, limit=12
+    )
+
+    assert len(out) == 12, "udvalget skal stadig være limit"
+    assert all(h.get("text") for h in out), "de valgte skal have en excerpt"
+    assert "_raw" not in out[0], "_raw er intern og maa ikke laekke ud"
+    assert kald["n"] <= 12, (
+        f"_focused_excerpt blev koert {kald['n']} gange for 12 valgte — "
+        "den er tilbage i kandidat-loopet"
+    )

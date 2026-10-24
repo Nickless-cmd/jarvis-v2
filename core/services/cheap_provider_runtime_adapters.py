@@ -24,7 +24,7 @@ import httpx
 # så både den og opencode-oprydningen kan logge i stedet for at sluge.
 logger = logging.getLogger(__name__)
 
-from core.auth.profiles import get_provider_credentials, provider_has_real_credentials
+from core.auth.profiles import credentials_are_real, get_provider_credentials
 from core.services.cheap_provider_reasoning_budget import (
     REASONING_RETRY_BUDGET as _REASONING_RETRY_BUDGET,
     reasoning_exhausted as _reasoning_exhausted,
@@ -181,7 +181,7 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
             str(credentials.get("api_key") or "").strip()
             and str(credentials.get("account_id") or "").strip()
         )
-    return provider_has_real_credentials(profile=profile, provider=normalized_provider)
+    return credentials_are_real(credentials)
 
 
 def list_provider_models(

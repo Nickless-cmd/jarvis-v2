@@ -115,8 +115,11 @@ def test_provider_auth_ready_normalizes_empty_profile_to_default(monkeypatch):
         return {"api_key": "k"} if profile == "default" else None
 
     monkeypatch.setattr(mod, "get_provider_credentials", _fake_get)
-    monkeypatch.setattr(mod, "provider_has_real_credentials",
-                        lambda *, profile, provider: profile == "default")
+    # 24/10-2026: vurderingen er nu en ren dict-funktion (`credentials_are_real`)
+    # kaldt med de credentials adapteren ALLEREDE har hentet — ikke længere
+    # `provider_has_real_credentials`, som hentede dem forfra. Denne test måler
+    # profil-normalisering, så den isolerer vurderingen som før.
+    monkeypatch.setattr(mod, "credentials_are_real", lambda credentials: bool(credentials))
     # cerebras = bearer openai-chat provider i defaults
     assert mod.provider_auth_ready(provider="cerebras", auth_profile="") is True
     assert mod.provider_auth_ready(provider="cerebras", auth_profile="default") is True
@@ -456,3 +459,60 @@ def test_ollama_a2_error_body_raises_not_silent_completion(monkeypatch):
             message="hi", provider="ollama-a2")
     assert ei.value.code == "model-not-found"
     assert ei.value.provider == "ollama-a2"
+
+
+def test_auth_ready_laeser_credentials_en_gang(monkeypatch):
+    """Ét readiness-kald må læse credentials ÉN gang — ikke to.
+
+    MÅLT 24/10-2026: `provider_auth_ready` hentede credentials og kaldte derefter
+    `provider_has_real_credentials(profile=…, provider=…)`, som hentede dem IGEN.
+    Hvert `get_provider_credentials()` læser både state.json og credentials.json,
+    så det var FIRE JSON-læsninger per readiness-kald.
+
+    Fælden: adapteren gør `from core.auth.profiles import get_provider_credentials`
+    — det er en KOPI i adapter-modulet. Patcher man kun `profiles`, måler man kun
+    anden halvdel og testen grønner falsk. Begge steder patches med samme tæller.
+    """
+    from core.services import cheap_provider_runtime_adapters as mod
+    import core.auth.profiles as prof
+
+    kald = {"n": 0}
+
+    def taellende(*, profile, provider):
+        kald["n"] += 1
+        return {"api_key": "rigtig-noegle"}  # pragma: allowlist secret
+
+    monkeypatch.setattr(mod, "get_provider_credentials", taellende)
+    monkeypatch.setattr(prof, "get_provider_credentials", taellende)
+    monkeypatch.setattr(mod, "has_runtime_owner_key", lambda p: False)
+
+    assert mod.provider_auth_ready(provider="groq", auth_profile="default") is True
+    assert kald["n"] == 1, (
+        f"credentials læst {kald['n']} gange — skal være 1 (dobbeltlæsningen er tilbage)"
+    )
+
+
+def test_auth_ready_bevarer_semantikken_for_placeholders(monkeypatch):
+    """Optimeringen må ikke ændre hvilke credentials der tæller som ægte."""
+    from core.services import cheap_provider_runtime_adapters as mod
+    import core.auth.profiles as prof
+
+    tilfaelde = [
+        ({"api_key": "x"}, True),
+        ({"access_token": "tok"}, True),
+        ({"refresh_token": "ref"}, True),
+        ({"api_key": "   "}, False),
+        ({"placeholder": True, "api_key": "x"}, False),
+        ({"real_oauth": False, "api_key": "x"}, False),
+        ({"real_oauth": True}, True),
+        ({}, False),
+    ]
+    monkeypatch.setattr(mod, "has_runtime_owner_key", lambda p: False)
+
+    for creds, forventet in tilfaelde:
+        monkeypatch.setattr(mod, "get_provider_credentials",
+                            lambda *, profile, provider, _c=creds: dict(_c))
+        monkeypatch.setattr(prof, "get_provider_credentials",
+                            lambda *, profile, provider, _c=creds: dict(_c))
+        faktisk = mod.provider_auth_ready(provider="groq", auth_profile="default")
+        assert faktisk is forventet, f"credentials={creds} gav {faktisk}, ventede {forventet}"

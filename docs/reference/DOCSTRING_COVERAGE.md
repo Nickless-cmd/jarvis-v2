@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9216/17471 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9218/17473 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -13,7 +13,7 @@ Generated from source. 9216/17471 functions/methods documented (52%). The list b
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `apps.voice_agent` | 4 | 22 | 18% |
-| `core.auth` | 4 | 49 | 8% |
+| `core.auth` | 5 | 50 | 10% |
 | `core.browser` | 11 | 13 | 84% |
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
@@ -25,7 +25,7 @@ Generated from source. 9216/17471 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 841 | 1542 | 54% |
-| `core.services` | 6146 | 11879 | 51% |
+| `core.services` | 6147 | 11880 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 129 | 205 | 62% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -205,19 +205,19 @@ Generated from source. 9216/17471 functions/methods documented (52%). The list b
 - `core/auth/openai_oauth.py` :: `save_openai_callback` (L202)
 - `core/auth/openai_oauth.py` :: `save_openai_oauth_config` (L111)
 - `core/auth/profiles.py` :: `ensure_auth_profile` (L14)
-- `core/auth/profiles.py` :: `get_provider_auth_material_kind` (L241)
-- `core/auth/profiles.py` :: `get_provider_callback_intent_consistency` (L419)
-- `core/auth/profiles.py` :: `get_provider_callback_validation_state` (L363)
+- `core/auth/profiles.py` :: `get_provider_auth_material_kind` (L254)
+- `core/auth/profiles.py` :: `get_provider_callback_intent_consistency` (L432)
+- `core/auth/profiles.py` :: `get_provider_callback_validation_state` (L376)
 - `core/auth/profiles.py` :: `get_provider_credentials` (L197)
-- `core/auth/profiles.py` :: `get_provider_exchange_readiness` (L388)
-- `core/auth/profiles.py` :: `get_provider_launch_freshness` (L334)
-- `core/auth/profiles.py` :: `get_provider_launch_result_state` (L311)
-- `core/auth/profiles.py` :: `get_provider_oauth_state` (L274)
+- `core/auth/profiles.py` :: `get_provider_exchange_readiness` (L401)
+- `core/auth/profiles.py` :: `get_provider_launch_freshness` (L347)
+- `core/auth/profiles.py` :: `get_provider_launch_result_state` (L324)
+- `core/auth/profiles.py` :: `get_provider_oauth_state` (L287)
 - `core/auth/profiles.py` :: `get_provider_state` (L100)
 - `core/auth/profiles.py` :: `get_provider_state_view` (L108)
 - `core/auth/profiles.py` :: `list_auth_profiles` (L35)
-- `core/auth/profiles.py` :: `provider_has_real_credentials` (L211)
-- `core/auth/profiles.py` :: `revoke_provider` (L457)
+- `core/auth/profiles.py` :: `provider_has_real_credentials` (L248)
+- `core/auth/profiles.py` :: `revoke_provider` (L470)
 - `core/auth/profiles.py` :: `save_provider_credentials` (L67)
 - `core/cli/capability_commands.py` :: `approve_capability_request_truth` (L92)
 - `core/cli/capability_commands.py` :: `cmd_approve_capability_request` (L36)

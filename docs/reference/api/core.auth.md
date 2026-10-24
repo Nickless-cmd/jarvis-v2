@@ -61,18 +61,19 @@ _GitHub Copilot session-token exchange._
 | function | `get_provider_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L100) |
 | function | `get_provider_state_view` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L108) |
 | function | `get_provider_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L197) |
-| function | `provider_has_real_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L211) |
-| function | `get_provider_auth_material_kind` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L241) |
-| function | `get_provider_oauth_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L274) |
-| function | `get_provider_launch_result_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L311) |
-| function | `get_provider_launch_freshness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L334) |
-| function | `get_provider_callback_validation_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L363) |
-| function | `get_provider_exchange_readiness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L388) |
-| function | `get_provider_callback_intent_consistency` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L419) |
-| function | `revoke_provider` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L457) |
-| function | `_profile_dir` | `(profile)` | — | [src](../../../core/auth/profiles.py#L474) |
-| function | `_validate_provider` | `(provider)` | — | [src](../../../core/auth/profiles.py#L480) |
-| function | `_read_json` | `(path)` | — | [src](../../../core/auth/profiles.py#L486) |
-| function | `_existing_or_now` | `(path, key)` | — | [src](../../../core/auth/profiles.py#L490) |
-| function | `_now` | `()` | — | [src](../../../core/auth/profiles.py#L497) |
+| function | `credentials_are_real` | `(credentials)` | Er denne credentials-dict en ægte, brugbar nøgle? Ren funktion — ingen I/O. | [src](../../../core/auth/profiles.py#L211) |
+| function | `provider_has_real_credentials` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L248) |
+| function | `get_provider_auth_material_kind` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L254) |
+| function | `get_provider_oauth_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L287) |
+| function | `get_provider_launch_result_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L324) |
+| function | `get_provider_launch_freshness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L347) |
+| function | `get_provider_callback_validation_state` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L376) |
+| function | `get_provider_exchange_readiness` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L401) |
+| function | `get_provider_callback_intent_consistency` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L432) |
+| function | `revoke_provider` | `(*, profile, provider)` | — | [src](../../../core/auth/profiles.py#L470) |
+| function | `_profile_dir` | `(profile)` | — | [src](../../../core/auth/profiles.py#L487) |
+| function | `_validate_provider` | `(provider)` | — | [src](../../../core/auth/profiles.py#L493) |
+| function | `_read_json` | `(path)` | — | [src](../../../core/auth/profiles.py#L499) |
+| function | `_existing_or_now` | `(path, key)` | — | [src](../../../core/auth/profiles.py#L503) |
+| function | `_now` | `()` | — | [src](../../../core/auth/profiles.py#L510) |
 

@@ -208,8 +208,15 @@ def get_provider_credentials(*, profile: str, provider: str) -> dict[str, Any] |
     return _read_json(credentials_path)
 
 
-def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
-    credentials = get_provider_credentials(profile=profile, provider=provider)
+def credentials_are_real(credentials: dict[str, Any] | None) -> bool:
+    """Er denne credentials-dict en ægte, brugbar nøgle? Ren funktion — ingen I/O.
+
+    Skilt ud 24/10-2026 så `provider_auth_ready` kan vurdere de credentials den
+    ALLEREDE har hentet, i stedet for at hente dem igen gennem
+    `provider_has_real_credentials`. Målt: hvert `get_provider_credentials()`
+    læser både state.json og credentials.json, så dobbeltkaldet var fire
+    JSON-læsninger per readiness-tjek.
+    """
     if not credentials:
         return False
 
@@ -236,6 +243,12 @@ def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
     access_token = str(credentials.get("access_token") or "").strip()
     refresh_token = str(credentials.get("refresh_token") or "").strip()
     return bool(api_key or access_token or refresh_token)
+
+
+def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
+    return credentials_are_real(
+        get_provider_credentials(profile=profile, provider=provider)
+    )
 
 
 def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:

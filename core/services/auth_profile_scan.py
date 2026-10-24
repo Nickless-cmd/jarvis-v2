@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -47,10 +48,37 @@ def _is_account_profile(profile: str) -> bool:
 _CACHE: dict[str, tuple[float, list[str]]] = {}
 _TTL_SECONDS = 60.0
 
+# Single-flight pr. provider (24/10-2026).
+#
+# MÅLT: uden lås kunne fem samtidige cognitive-state-tråde alle se det samme
+# 60-sekunders udløb og køre den samme directory-scan — hver ~235 ms filsystem-
+# arbejde i stedet for ét. Bygerne kom med 70/68/124 sekunders mellemrum, altså
+# cache-expiry efterfulgt af næste request-burst. CPython frigiver GIL omkring
+# blokerende fil-I/O, så GIL'en forhindrede ikke stampeden.
+#
+# Låsen er pr. provider, ikke global: en global refresh-lås ville serialisere
+# uafhængige providers bag hinanden. Kun vinderen af kapløbet scanner; de øvrige
+# venter og læser dens resultat. `_LOCKS` ryddes aldrig — antallet af providers er
+# lille og fast, og en lås der fjernes mens nogen holder den, ville bryde
+# synkroniseringen.
+_LOCKS: dict[str, threading.Lock] = {}
+_LOCKS_GUARD = threading.Lock()
+
+
+def _provider_lock(provider: str) -> threading.Lock:
+    """Returnér den fælles lås for ``provider`` (oprettet atomisk)."""
+    with _LOCKS_GUARD:
+        laas = _LOCKS.get(provider)
+        if laas is None:
+            laas = threading.Lock()
+            _LOCKS[provider] = laas
+        return laas
+
 
 def clear_cache() -> None:
     """Drop all cached scan results (test helper / manual invalidation)."""
-    _CACHE.clear()
+    with _LOCKS_GUARD:
+        _CACHE.clear()
 
 
 def _profiles_root() -> Path:
@@ -96,42 +124,56 @@ def ready_profiles_for(provider: str) -> list[str]:
     if cached is not None and cached[0] > now:
         return list(cached[1])
 
-    if _is_keyless(provider):
-        result = ["default"]
+    # Single-flight: kun én tråd pr. provider scanner; resten venter på dens
+    # resultat. Låsen dækker HELE refreshen — inkl. iterdir() og hvert
+    # provider_auth_ready()-kald — for det er netop det arbejde der blev
+    # mangedoblet før. `with` frigiver også ved exception, så en fejlet scan
+    # ikke efterlader provideren permanent låst.
+    with _provider_lock(provider):
+        # Dobbeltkontrol under låsen: en anden tråd kan have fyldt cachen mens
+        # vi ventede. `now` genberegnes, så vi ikke skriver et allerede udløbet
+        # tidsstempel.
+        now = time.time()
+        cached = _CACHE.get(provider)
+        if cached is not None and cached[0] > now:
+            return list(cached[1])
+
+        if _is_keyless(provider):
+            result = ["default"]
+            _CACHE[provider] = (now + _TTL_SECONDS, result)
+            return list(result)
+
+        ready: list[str] = []
+        root = _profiles_root()
+        try:
+            profile_dirs = [p for p in root.iterdir() if p.is_dir()]
+        except (FileNotFoundError, NotADirectoryError):
+            profile_dirs = []
+
+        for prof_dir in profile_dirs:
+            profile = prof_dir.name
+            if not _is_account_profile(profile):
+                continue  # skip backups, single-provider, and OAuth profile dirs
+            if not (prof_dir / "providers" / provider).is_dir():
+                continue
+            if provider_auth_ready(provider=provider, auth_profile=profile):
+                ready.append(profile)
+
+        # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro): der findes ingen
+        # profil-mappe at scanne, så uden det her returneres [] og udbyderen kommer
+        # ALDRIG i cheap-puljen. Målt 7/9-2026: xkiro var klar
+        # (provider_auth_ready=True) og svarede på et direkte kald, men
+        # `_configured_cheap_candidates` gav nul kandidater, fordi profil-listen var
+        # tom. HuggingFace skjulte hullet, fordi den OGSÅ har profil-nøgler.
+        #
+        # Tredje sted den samme nøgle skal kendes — readiness, dispatch og her.
+        # TILFØJES, erstatter ikke: en kortslutning her ville have fjernet
+        # HuggingFaces `account2`, som findes som rigtig profil.
+        if "default" not in ready:
+            from core.services.cheap_provider_runtime_keys import has_runtime_owner_key
+            if has_runtime_owner_key(provider):
+                ready.append("default")
+
+        result = _sort_default_first(ready)
         _CACHE[provider] = (now + _TTL_SECONDS, result)
         return list(result)
-
-    ready: list[str] = []
-    root = _profiles_root()
-    try:
-        profile_dirs = [p for p in root.iterdir() if p.is_dir()]
-    except (FileNotFoundError, NotADirectoryError):
-        profile_dirs = []
-
-    for prof_dir in profile_dirs:
-        profile = prof_dir.name
-        if not _is_account_profile(profile):
-            continue  # skip backups, single-provider, and OAuth profile dirs
-        if not (prof_dir / "providers" / provider).is_dir():
-            continue
-        if provider_auth_ready(provider=provider, auth_profile=profile):
-            ready.append(profile)
-
-    # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro): der findes ingen
-    # profil-mappe at scanne, så uden det her returneres [] og udbyderen kommer
-    # ALDRIG i cheap-puljen. Målt 7/9-2026: xkiro var klar
-    # (provider_auth_ready=True) og svarede på et direkte kald, men
-    # `_configured_cheap_candidates` gav nul kandidater, fordi profil-listen var
-    # tom. HuggingFace skjulte hullet, fordi den OGSÅ har profil-nøgler.
-    #
-    # Tredje sted den samme nøgle skal kendes — readiness, dispatch og her.
-    # TILFØJES, erstatter ikke: en kortslutning her ville have fjernet
-    # HuggingFaces `account2`, som findes som rigtig profil.
-    if "default" not in ready:
-        from core.services.cheap_provider_runtime_keys import has_runtime_owner_key
-        if has_runtime_owner_key(provider):
-            ready.append("default")
-
-    result = _sort_default_first(ready)
-    _CACHE[provider] = (now + _TTL_SECONDS, result)
-    return list(result)

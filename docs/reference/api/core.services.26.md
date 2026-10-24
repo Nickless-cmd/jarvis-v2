@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_surface_gc.py`
+_Garbage collector for runtime signal-surface trackers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_force_archive` | `(*, items, id_field, update_fn, label)` | — | [src](../../../core/services/signal_surface_gc.py#L33) |
+| function | `collect` | `()` | Run a full GC pass across the three signal-surface trackers. | [src](../../../core/services/signal_surface_gc.py#L75) |
+
 ## `core/services/signal_surface_router.py`
 _Signal Surface Router — maps surface names to build functions._
 
@@ -583,14 +591,4 @@ _Sustained Attention — ongoing projects that survive across ticks._
 | function | `build_sustained_attention_surface` | `()` | — | [src](../../../core/services/sustained_attention.py#L196) |
 | function | `_surface_summary` | `(active, paused, completed)` | — | [src](../../../core/services/sustained_attention.py#L229) |
 | function | `build_sustained_attention_prompt_section` | `()` | — | [src](../../../core/services/sustained_attention.py#L246) |
-
-## `core/services/svar_tempo.py`
-_TTFT og tokens/sekund — målt hos OS, ikke hentet hos udbyderen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start` | `(run_id)` | Uret begynder. Kaldes når turen går mod udbyderen. | [src](../../../core/services/svar_tempo.py#L54) |
-| function | `foerste_token` | `(run_id)` | Det første stykke INDHOLD er på vej ud. Idempotent. | [src](../../../core/services/svar_tempo.py#L69) |
-| function | `afslut` | `(run_id, *, output_tokens=…)` | Luk målingen. `{"ttft_ms": …, "tok_per_sek": …}` — None hvor ukendt. | [src](../../../core/services/svar_tempo.py#L81) |
-| function | `glem` | `(run_id)` | Smid en måling væk uden at aflæse den — fx når et run annulleres. | [src](../../../core/services/svar_tempo.py#L108) |
 

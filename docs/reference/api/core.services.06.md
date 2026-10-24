@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_injection_units.py`
+_Deklarative injektions-enheds-definitioner (adskilt fra mekanismen)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compose_rule_conclusions` | `()` | — | [src](../../../core/services/central_injection_units.py#L13) |
+| function | `_compose_cognitive_state` | `()` | — | [src](../../../core/services/central_injection_units.py#L21) |
+| function | `_compose_tone_guidance` | `()` | Centralens sproglige stil-hint (rådets #5): én kort linje der kan injiceres | [src](../../../core/services/central_injection_units.py#L31) |
+| function | `register_default_units` | `()` | — | [src](../../../core/services/central_injection_units.py#L44) |
+
 ## `core/services/central_inner_life_ablation.py`
 _Inner-life-ablation-kontakt — måling #2 (Bjørn 4. jul)._
 
@@ -595,19 +605,4 @@ _core/services/central_render.py_
 | function | `render_anomaly` | `(name, *, importance=…)` | En anomali = kilden førte til et STØD (overraskelse/afvigelse) → '<term> → stød'. Renderet som | [src](../../../core/services/central_render.py#L42) |
 | function | `render_decision` | `(cluster, *, verdict=…)` | En central-beslutning → notation. deny → 'grænse ! <term>' (grænsen blokerer); allow → | [src](../../../core/services/central_render.py#L50) |
 | function | `render_state_snapshot` | `(*, limit=…)` | Aktuelle central-tilstande renderet til notation (on-read). I dag: uløste anomalier. B2 lader | [src](../../../core/services/central_render.py#L64) |
-
-## `core/services/central_route.py`
-_Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_model_capability` | `(provider, model)` | Capability estimate in [0,1] from the model name. Higher = stronger reasoner. | [src](../../../core/services/central_route.py#L30) |
-| function | `_rank_candidates` | `(lane, task, exclude)` | Rangerede (provider, model) for en lane — tynd wrapper over _scored_candidates. | [src](../../../core/services/central_route.py#L54) |
-| function | `_cheap_latency_metrics` | `()` | Read model latency and sample count in one query for small-task ranking. | [src](../../../core/services/central_route.py#L59) |
-| function | `_scored_candidates` | `(lane, task, exclude)` | (-cap, rank, provider, model) sorteret bedst-først. rank = prio/headroom_weight | [src](../../../core/services/central_route.py#L74) |
-| function | `_flag_cheap_provider_spread` | `()` | Cheap-lane kvote-proportional provider-spredning. Default OFF → uændret | [src](../../../core/services/central_route.py#L133) |
-| function | `_weighted_provider_pick` | `(scored, rng=…)` | Vælg (provider, model) kvote-proportionalt: bedste model pr. provider, vægt = | [src](../../../core/services/central_route.py#L145) |
-| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L178) |
-| function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L208) |
-| function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L218) |
 

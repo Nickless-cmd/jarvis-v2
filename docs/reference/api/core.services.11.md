@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_signals.py`
+_Decisions-as-signals: per-turn evaluation of behavioral decisions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TriggerContext` | `` | Snapshot of state available to a trigger function. | [src](../../../core/services/decision_signals.py#L25) |
+| class | `TriggerSpec` | `` | — | [src](../../../core/services/decision_signals.py#L38) |
+| class | `FiredDecision` | `` | — | [src](../../../core/services/decision_signals.py#L46) |
+| function | `register` | `(name, fire_fn, *, cooldown_seconds=…, cooldown_turns=…)` | — | [src](../../../core/services/decision_signals.py#L64) |
+| function | `_active_decisions_with_triggers` | `()` | Return active decisions that have a trigger_name set. | [src](../../../core/services/decision_signals.py#L81) |
+| function | `_read_last_fired` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L97) |
+| function | `_read_last_fired_seq` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L111) |
+| function | `_write_last_fired` | `(decision_id, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L125) |
+| function | `_write_last_fired_seq` | `(decision_id, seq, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L140) |
+| function | `_cooldown_active` | `(spec, decision_id, ctx)` | — | [src](../../../core/services/decision_signals.py#L155) |
+| function | `_publish_fired_event` | `(*, decision_id, trigger_name, ctx)` | — | [src](../../../core/services/decision_signals.py#L176) |
+| function | `evaluate_decision_triggers` | `(ctx)` | Evaluate all active decisions with triggers; return those that fire. | [src](../../../core/services/decision_signals.py#L190) |
+| function | `fired_decisions_section` | `(ctx)` | Build the [FIRED_DECISIONS] section text. None if nothing fired. | [src](../../../core/services/decision_signals.py#L289) |
+| function | `build_trigger_context` | `(*, user_message=…, session_id=…, run_id=…, consecutive_tool_only_rounds=…, recent_tool_calls=…, recent_assistant_text=…, agentic_round_seq=…)` | Build a TriggerContext from explicit fields. Used in tests and as | [src](../../../core/services/decision_signals.py#L314) |
+| function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L338) |
+| function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L353) |
+| function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L358) |
+
 ## `core/services/decision_weight.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -658,11 +681,4 @@ _Det faelles emne-ordforraad for droemme-kaeden._
 |---|---|---|---|---|
 | function | `domaene_for_tur` | `(tekst, *, timeout_sekunder=…)` | Hvilket staaende domaene roerer turen — eller None. | [src](../../../core/services/dream_domains.py#L90) |
 | function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L119) |
-
-## `core/services/dream_hypothesis_forced.py`
-_Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L30) |
 

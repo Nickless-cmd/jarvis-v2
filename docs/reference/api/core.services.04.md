@@ -193,6 +193,14 @@ _Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
 | function | `koesaet` | `(entry_id, now=…)` | Læg en post i kø til kant-udledning. `False` = køen er fuld. | [src](../../../core/services/brain_edge_worker.py#L74) |
 | function | `venter` | `()` | Hvor mange poster der står i kø. Til test og til at se hvor langt bagud. | [src](../../../core/services/brain_edge_worker.py#L100) |
 
+## `core/services/brain_supersession.py`
+_Modsigelses-detektion — «den nyere vinder»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `find_supersession_candidates` | `(*, new_entry_id, new_text, limit=…, min_cosine=…, now=…)` | Find ældre poster der sandsynligvis er erstattet af `new_entry_id`. | [src](../../../core/services/brain_supersession.py#L53) |
+| function | `supersede_if_confident` | `(*, new_entry_id, new_text, dry_run=…, min_cosine=…)` | Foreslå — eller udfør — supersession af ældre modstridende poster. | [src](../../../core/services/brain_supersession.py#L121) |
+
 ## `core/services/brain_vector_cache.py`
 _Embedding-matricen for `jarvis_brain`, holdt i hukommelsen mellem søgninger._
 
@@ -597,16 +605,4 @@ _The Architect — periodisk selv-arkitekt der foreslår ÉT tungt strukturelt s
 |---|---|---|---|---|
 | function | `assess` | `()` | Se hele systemet → ét prioriteret strukturelt snit-forslag. READ-ONLY. Self-safe. | [src](../../../core/services/central_architect.py#L20) |
 | function | `record_architect` | `()` | Månedlig cadence: observér Arkitektens forslag til nerve system/architect. Metadata-only. | [src](../../../core/services/central_architect.py#L52) |
-
-## `core/services/central_belief_gap.py`
-_temet nosce — The Belief Gap (BONUS)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_believed` | `()` | Hvad han tror om sig selv: self-model-completeness (0-1). | [src](../../../core/services/central_belief_gap.py#L17) |
-| function | `_actual` | `()` | Hvad virkeligheden viser: andel af hans domme/hypoteser der HOLDT. | [src](../../../core/services/central_belief_gap.py#L27) |
-| function | `measure_gap` | `()` | believed − actual → over/under-sikkerhed. READ-ONLY. Self-safe. | [src](../../../core/services/central_belief_gap.py#L52) |
-| function | `_observe` | `(gap, stance)` | — | [src](../../../core/services/central_belief_gap.py#L76) |
-| function | `build_belief_gap_surface` | `()` | — | [src](../../../core/services/central_belief_gap.py#L85) |
-| function | `record_belief_gap` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_belief_gap.py#L89) |
 

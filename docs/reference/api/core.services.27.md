@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/svar_tempo.py`
+_TTFT og tokens/sekund — målt hos OS, ikke hentet hos udbyderen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start` | `(run_id)` | Uret begynder. Kaldes når turen går mod udbyderen. | [src](../../../core/services/svar_tempo.py#L54) |
+| function | `foerste_token` | `(run_id)` | Det første stykke INDHOLD er på vej ud. Idempotent. | [src](../../../core/services/svar_tempo.py#L69) |
+| function | `afslut` | `(run_id, *, output_tokens=…)` | Luk målingen. `{"ttft_ms": …, "tok_per_sek": …}` — None hvor ukendt. | [src](../../../core/services/svar_tempo.py#L81) |
+| function | `glem` | `(run_id)` | Smid en måling væk uden at aflæse den — fx når et run annulleres. | [src](../../../core/services/svar_tempo.py#L108) |
+
 ## `core/services/system_cartographer.py`
 _System Cartographer — broad map of Jarvis' runtime and inner layers._
 
@@ -615,18 +625,4 @@ _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 | function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
 | function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
 | function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
-
-## `core/services/tool_lexical_match.py`
-_Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Traef` | `` | Et bud. ``ord`` er de saerkende ord det byggede paa, mest saerkende foerst. | [src](../../../core/services/tool_lexical_match.py#L78) |
-| function | `ord_i` | `(tekst)` | Saerkende ord i en tekst — smaa bogstaver, stopord ude. | [src](../../../core/services/tool_lexical_match.py#L87) |
-| class | `Korpus` | `` | IDF over vaerktoejskorpuset. Bygges én gang pr. vaerktoejssaet. | [src](../../../core/services/tool_lexical_match.py#L92) |
-| method | `Korpus.__init__` | `(self, tekster, *, tunge=…)` | — | [src](../../../core/services/tool_lexical_match.py#L99) |
-| method | `Korpus.idf` | `(self, ord_)` | Sjaeldne ord vejer tungt, paa en skala der ikke afhaenger af korpus-stoerrelsen. | [src](../../../core/services/tool_lexical_match.py#L121) |
-| method | `Korpus.slaa_op` | `(self, besked, kandidater=…, ekstra_stopord=…)` | Bedste bud, eller ``None`` naar intet staar klart nok over feltet. | [src](../../../core/services/tool_lexical_match.py#L133) |
-| function | `byg_korpus_fra_definitioner` | `(definitioner, *, dansk=…)` | Korpus ud fra ``get_tool_definitions()``-formen (baade rå og indpakket). | [src](../../../core/services/tool_lexical_match.py#L179) |
-| function | `hyppige_ord_hos_brugeren` | `(beskeder, *, graense=…)` | Ord brugeren siger HELE TIDEN — spaerret uanset hvor saerkende de er | [src](../../../core/services/tool_lexical_match.py#L206) |
 

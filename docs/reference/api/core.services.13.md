@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/eventbus_central_bridge.py`
+_core/services/eventbus_central_bridge.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_last_seen` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L571) |
+| function | `_set_last_seen` | `(event_id)` | — | [src](../../../core/services/eventbus_central_bridge.py#L583) |
+| function | `_current_max_id` | `()` | — | [src](../../../core/services/eventbus_central_bridge.py#L590) |
+| function | `_observe_one` | `(cluster, nerve, ev)` | Meld ét event til Centralen (metadata-only) + registrér i per-nerve tidsserie. | [src](../../../core/services/eventbus_central_bridge.py#L600) |
+| function | `_observe_private` | `(cluster, nerve, ev)` | EGRESS-FRI observe af privat inner-life-event (§24.4 keystone) via den KANONISKE sink- | [src](../../../core/services/eventbus_central_bridge.py#L629) |
+| function | `_observe_failure_summary` | `(count)` | Meld observe-fejl som en synlig nerve — ALDRIG stille sluge (§24.3). | [src](../../../core/services/eventbus_central_bridge.py#L642) |
+| function | `_observe_skipped_families` | `(skipped_families)` | Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én | [src](../../../core/services/eventbus_central_bridge.py#L656) |
+| function | `run_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe. | [src](../../../core/services/eventbus_central_bridge.py#L681) |
+| function | `register_bridge_producer` | `()` | Registrér broen som cadence-producer (poll ~hvert 30s). Observe-only → ingen | [src](../../../core/services/eventbus_central_bridge.py#L770) |
+
 ## `core/services/events_retention.py`
 _Events-table retention — bound the unbounded ``events`` telemetry table._
 
@@ -562,18 +577,4 @@ _Mutation-cluster gate 🔒 — én graderet SECURITY-gate + ÉN kanonisk kilde 
 | function | `check_module` | `(target)` | auto_improvement_proposer._is_safe_target — True ⇔ sikkert at foreslå. | [src](../../../core/services/gate_mutation.py#L147) |
 | function | `check_prompt_target` | `(name)` | prompt_mutation_loop._check_target — allowed + besked (kald-stedet raiser). | [src](../../../core/services/gate_mutation.py#L152) |
 | function | `check_record` | `(target_path)` | identity_mutation_log.record_mutation — allowed + blok-grund. | [src](../../../core/services/gate_mutation.py#L158) |
-
-## `core/services/gate_override.py`
-_Per-kald gate-override — Jarvis' eksplicitte, loggede tilsidesættelse af en gate._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_Armed` | `` | Én armeret one-shot. Forbruges ved første kald der matcher nøglen. | [src](../../../core/services/gate_override.py#L69) |
-| function | `_expire_locked` | `(now)` | Fjern udløbne armeringer. Kaldes KUN med ``_LOCK`` taget. Returnerer antal fjernet. | [src](../../../core/services/gate_override.py#L80) |
-| function | `_note_key_miss` | `(tool_name, feeling, armed_keys)` | En armering findes for samme værktøj men en ANDEN feeling. | [src](../../../core/services/gate_override.py#L88) |
-| function | `arm_override` | `(event_id, reason, *, nerve=…, ttl_seconds=…)` | Armér ÉN one-shot for den hændelse ``event_id`` peger på. | [src](../../../core/services/gate_override.py#L107) |
-| function | `consume_override` | `(tool_name, feeling)` | Forbrug en armeret one-shot for (tool_name, feeling). | [src](../../../core/services/gate_override.py#L202) |
-| function | `_notify_owner` | `(tool_name, feeling, reason, event_id)` | Fortæl Bjørn at en gate blev overstyret. Kører i en daemon-tråd — en HTTP-request | [src](../../../core/services/gate_override.py#L260) |
-| function | `override_state` | `()` | Observabilitet: hvad er armeret lige nu, og hvad er udløbet? Read-only, kaster aldrig. | [src](../../../core/services/gate_override.py#L281) |
-| function | `_reset_for_tests` | `()` | Ryd al armeret tilstand. Kun til tests — den rigtige reset er en genstart. | [src](../../../core/services/gate_override.py#L308) |
 

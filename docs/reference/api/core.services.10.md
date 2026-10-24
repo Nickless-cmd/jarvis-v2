@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/counterfactual_self_simulation.py`
+_Counterfactual self-simulation for post-run learning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `simulate_from_latest_episode` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L21) |
+| function | `simulate_from_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L28) |
+| function | `build_counterfactual_surface` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L71) |
+| function | `build_counterfactual_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L84) |
+| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L101) |
+| function | `_actual_action` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L111) |
+| function | `_alternatives_for_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L119) |
+| function | `_preferred_policy` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L157) |
+| function | `_confidence` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L166) |
+| function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
+| function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
+| function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
+
 ## `core/services/counterfactual_triggers.py`
 _Trigger detection for counterfactual reflection._
 
@@ -590,27 +608,4 @@ _Decision-signal telemetry — track whether decision signals get heeded._
 | function | `telemetry_section` | `()` | Render telemetry as awareness section. Only when >= 5 surfaces/24h. | [src](../../../core/services/decision_signal_telemetry.py#L353) |
 | function | `build_decision_signal_telemetry_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/decision_signal_telemetry.py#L370) |
 | function | `_emit_decision_signal_telemetry_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/decision_signal_telemetry.py#L385) |
-
-## `core/services/decision_signals.py`
-_Decisions-as-signals: per-turn evaluation of behavioral decisions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerContext` | `` | Snapshot of state available to a trigger function. | [src](../../../core/services/decision_signals.py#L25) |
-| class | `TriggerSpec` | `` | — | [src](../../../core/services/decision_signals.py#L38) |
-| class | `FiredDecision` | `` | — | [src](../../../core/services/decision_signals.py#L46) |
-| function | `register` | `(name, fire_fn, *, cooldown_seconds=…, cooldown_turns=…)` | — | [src](../../../core/services/decision_signals.py#L64) |
-| function | `_active_decisions_with_triggers` | `()` | Return active decisions that have a trigger_name set. | [src](../../../core/services/decision_signals.py#L81) |
-| function | `_read_last_fired` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L97) |
-| function | `_read_last_fired_seq` | `(decision_id)` | — | [src](../../../core/services/decision_signals.py#L111) |
-| function | `_write_last_fired` | `(decision_id, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L125) |
-| function | `_write_last_fired_seq` | `(decision_id, seq, iso_ts)` | — | [src](../../../core/services/decision_signals.py#L140) |
-| function | `_cooldown_active` | `(spec, decision_id, ctx)` | — | [src](../../../core/services/decision_signals.py#L155) |
-| function | `_publish_fired_event` | `(*, decision_id, trigger_name, ctx)` | — | [src](../../../core/services/decision_signals.py#L176) |
-| function | `evaluate_decision_triggers` | `(ctx)` | Evaluate all active decisions with triggers; return those that fire. | [src](../../../core/services/decision_signals.py#L190) |
-| function | `fired_decisions_section` | `(ctx)` | Build the [FIRED_DECISIONS] section text. None if nothing fired. | [src](../../../core/services/decision_signals.py#L289) |
-| function | `build_trigger_context` | `(*, user_message=…, session_id=…, run_id=…, consecutive_tool_only_rounds=…, recent_tool_calls=…, recent_assistant_text=…, agentic_round_seq=…)` | Build a TriggerContext from explicit fields. Used in tests and as | [src](../../../core/services/decision_signals.py#L314) |
-| function | `get_current_trigger_context_or_build` | `(*, user_message=…, session_id=…)` | Return the bound ContextVar if set, else build a minimal fallback. | [src](../../../core/services/decision_signals.py#L338) |
-| function | `bind_context` | `(ctx)` | Bind the per-run TriggerContext. Caller must reset_token after use. | [src](../../../core/services/decision_signals.py#L353) |
-| function | `reset_context` | `(token)` | — | [src](../../../core/services/decision_signals.py#L358) |
 

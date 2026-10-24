@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-10-19 from app.routes (live) — 656 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-24 from app.routes (live) — 658 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -22,6 +22,8 @@
 | GET | `/account/me` | dict | account |
 | GET | `/account/memory` | dict | account |
 | GET | `/account/memory/search` | dict | account |
+| POST | `/account/memory/suppress` | dict | account |
+| DELETE | `/account/memory/suppress/{suppression_id}` | dict | account |
 | GET | `/account/permissions` | dict | account |
 | GET | `/account/quota` | dict | account |
 | GET | `/account/workspace` | dict | account |

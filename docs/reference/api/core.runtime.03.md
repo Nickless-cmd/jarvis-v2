@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_signals.py`
+_Persistence for the runtime learning/outcome signal tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_runtime_signals_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_signals.py#L17) |
+| function | `_runtime_action_outcome_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_signals.py#L76) |
+| function | `_runtime_learning_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_signals.py#L101) |
+| function | `recent_runtime_action_outcomes` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_signals.py#L122) |
+| function | `recent_runtime_learning_signals` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_signals.py#L146) |
+| function | `record_runtime_action_outcome` | `(*, action_id, decision_mode, decision_reason, decision_score, payload_json, result_status, result_summary, result_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L171) |
+| function | `record_runtime_learning_signal` | `(*, outcome_id, source_action_id, target_action_id, target_family, target_domain, signal_key, signal_weight, signal_count, metadata_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L239) |
+
 ## `core/runtime/db_runtime_tasks.py`
 _Persistence for the `runtime_tasks` table — Jarvis' durable task queue._
 

@@ -22348,6 +22348,109 @@
       },
       "created_at_formats": []
     },
+    "memory_suppressions": {
+      "digest": "24:74:09:73:cd:7b:e0:87:f6:69:97:0c:87:ac:30:d0:38:25:79:33:1d:12:61:04:a8:ce:76:91:22:fe:1d:49",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "emne",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "grund",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "lifted_at",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_memory_suppressions_user",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "lifted_at",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_memory_suppressions_user ON memory_suppressions(user_id, lifted_at)"
+          },
+          {
+            "name": "sqlite_autoindex_memory_suppressions_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
     "memory_write_queue": {
       "digest": "e4:0a:b6:6b:3c:c5:48:1b:56:a6:fd:3b:3b:61:6b:63:3d:83:87:6e:d7:6e:ef:4b:b9:fa:bc:c3:5e:7a:48:44",
       "schema": {

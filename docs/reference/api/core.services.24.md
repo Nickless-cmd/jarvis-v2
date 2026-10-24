@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_tasks.py`
+_Scheduled tasks service — lets Jarvis schedule future reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `push_scheduled_task` | `(*, focus, delay_minutes, source=…, session_id=…)` | Schedule a task to fire after delay_minutes. Returns task info dict. | [src](../../../core/services/scheduled_tasks.py#L23) |
+| function | `cancel_scheduled_task` | `(task_id)` | Cancel a pending task. Returns True if found and cancelled. | [src](../../../core/services/scheduled_tasks.py#L65) |
+| function | `edit_scheduled_task` | `(task_id, *, focus=…, delay_minutes=…)` | Edit an existing pending task. Returns updated task info or error dict. | [src](../../../core/services/scheduled_tasks.py#L76) |
+| function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L102) |
+| function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L132) |
+| function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L153) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L382) |
+| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L417) |
+| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L426) |
+| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L431) |
+
 ## `core/services/scoped_recall_policy.py`
 _Fail-closed policy and independent kill switches for private recall._
 
@@ -761,17 +777,4 @@ _Selvmodellens første lodrette skive: fra hans svar til hans prompt._
 | function | `poll_en_gang` | `(*, limit=…)` | Behandl nye assistant-svar fra eventbussens tabel. Returnerer antal svar set. | [src](../../../core/services/selvmodel_kobling.py#L161) |
 | function | `_loop` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L194) |
 | function | `start_lytter` | `()` | Idempotent. Startes KUN i runtime-processen (én poller, ingen dobbelt-behandling). | [src](../../../core/services/selvmodel_kobling.py#L208) |
-
-## `core/services/semantic_indexer.py`
-_Semantic indexer — auto-embedding of new memory records._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L34) |
-| function | `stop_semantic_indexer` | `()` | — | [src](../../../core/services/semantic_indexer.py#L62) |
-| function | `_sweeper_loop` | `()` | Every N minutes, run backfill_all to catch new rows without events. | [src](../../../core/services/semantic_indexer.py#L81) |
-| function | `_subscriber_loop` | `(*, subscriber)` | — | [src](../../../core/services/semantic_indexer.py#L109) |
-| function | `_handle_sensory` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L140) |
-| function | `_handle_private_brain` | `(payload)` | — | [src](../../../core/services/semantic_indexer.py#L163) |
-| function | `build_semantic_indexer_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/semantic_indexer.py#L193) |
 

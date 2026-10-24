@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_route.py`
+_Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_model_capability` | `(provider, model)` | Capability estimate in [0,1] from the model name. Higher = stronger reasoner. | [src](../../../core/services/central_route.py#L30) |
+| function | `_rank_candidates` | `(lane, task, exclude)` | Rangerede (provider, model) for en lane — tynd wrapper over _scored_candidates. | [src](../../../core/services/central_route.py#L54) |
+| function | `_cheap_latency_metrics` | `()` | Read model latency and sample count in one query for small-task ranking. | [src](../../../core/services/central_route.py#L59) |
+| function | `_scored_candidates` | `(lane, task, exclude)` | (-cap, rank, provider, model) sorteret bedst-først. rank = prio/headroom_weight | [src](../../../core/services/central_route.py#L74) |
+| function | `_flag_cheap_provider_spread` | `()` | Cheap-lane kvote-proportional provider-spredning. Default OFF → uændret | [src](../../../core/services/central_route.py#L133) |
+| function | `_weighted_provider_pick` | `(scored, rng=…)` | Vælg (provider, model) kvote-proportionalt: bedste model pr. provider, vægt = | [src](../../../core/services/central_route.py#L145) |
+| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L178) |
+| function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L208) |
+| function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L218) |
+
 ## `core/services/central_route_headroom.py`
 _Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429._
 
@@ -698,19 +713,4 @@ _Composite, partial-safe snapshot for the Cheap Lane control center._
 | function | `invocation_trends` | `(*, window_hours)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L15) |
 | function | `_section` | `(source, loader)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L28) |
 | function | `build_cheap_lane_dashboard` | `(window_hours=…)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L49) |
-
-## `core/services/cheap_lane_diagnostics.py`
-_Read-only, deterministic diagnostics over Cheap Lane source-of-truth data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_time` | `(value)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L12) |
-| function | `recent_invocations` | `(*, since, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L20) |
-| function | `central_evidence` | `(*, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L36) |
-| function | `route_integrity` | `(*, since)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L49) |
-| function | `_finding` | `(code, severity, now, evidence, *, provider=…, slot_id=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L102) |
-| function | `invocation_health` | `(rows)` | Summarize the full invocation window without merging account outcomes. | [src](../../../core/services/cheap_lane_diagnostics.py#L123) |
-| function | `unrouted_pool_invocations` | `(rows)` | Find missing route IDs only where a cheap-pool route was expected. | [src](../../../core/services/cheap_lane_diagnostics.py#L150) |
-| function | `health_divergence` | `(slots, *, since)` | Find cooldowns contradicted by a later success for the exact slot. | [src](../../../core/services/cheap_lane_diagnostics.py#L165) |
-| function | `diagnose_cheap_lane` | `(now=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L220) |
 

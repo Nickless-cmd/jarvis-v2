@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/commit_gate_arbiter.py`
+_Pre-eksekverings commit-gate arbitrage — udskilt fra visible_runs (Boy Scout, 2026-07-08)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CommitGateOutcome` | `` | Udfald af commit-gate-arbitrage. ``blocked`` → værktøjet må ikke køre; ``soft_warn`` → | [src](../../../core/services/commit_gate_arbiter.py#L21) |
+| function | `evaluate_commit_gates` | `(*, name, arguments, user_message, session_id, run_id, user_present=…)` | Kør veto + decision_gate gennem central().decide, observér arbitrage, og returnér | [src](../../../core/services/commit_gate_arbiter.py#L30) |
+
 ## `core/services/communication_guard.py`
 _Communication guard — scanner assistant-output for boundary violations._
 
@@ -556,22 +564,4 @@ _Counterfactual → world-model prediction binding._
 | function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
 | function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
 | function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
-
-## `core/services/counterfactual_self_simulation.py`
-_Counterfactual self-simulation for post-run learning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `simulate_from_latest_episode` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L21) |
-| function | `simulate_from_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L28) |
-| function | `build_counterfactual_surface` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L71) |
-| function | `build_counterfactual_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L84) |
-| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L101) |
-| function | `_actual_action` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L111) |
-| function | `_alternatives_for_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L119) |
-| function | `_preferred_policy` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L157) |
-| function | `_confidence` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L166) |
-| function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
-| function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
-| function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
 

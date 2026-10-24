@@ -337,6 +337,18 @@ _`lessons` — the one store for what Jarvis learns from mistakes._
 | function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L262) |
 | function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L278) |
 
+## `core/runtime/db_memory_suppressions.py`
+_Undertrykkelse af erindringer — «don't mention this again»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/runtime/db_memory_suppressions.py#L33) |
+| function | `ensure_table` | `()` | Opret tabellen hvis den ikke findes. Idempotent. | [src](../../../core/runtime/db_memory_suppressions.py#L37) |
+| function | `suppress` | `(*, user_id, emne, grund=…)` | Undertryk et emne for en bruger. Returnerer rækken som den blev skrevet. | [src](../../../core/runtime/db_memory_suppressions.py#L56) |
+| function | `lift` | `(*, user_id, suppression_id)` | Ophæv en undertrykkelse. Rækken bevares med `lifted_at` sat. | [src](../../../core/runtime/db_memory_suppressions.py#L73) |
+| function | `list_active` | `(*, user_id)` | Aktive undertrykkelser for brugeren, nyeste først. | [src](../../../core/runtime/db_memory_suppressions.py#L88) |
+| function | `er_undertrykt` | `(*, user_id, tekst)` | Hvilke aktive undertrykkelser rammer `tekst`? Tom liste = ingen. | [src](../../../core/runtime/db_memory_suppressions.py#L103) |
+
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
 
@@ -935,17 +947,4 @@ _Persistence for Jarvis' runtime self-review signal cluster._
 | function | `get_runtime_self_review_cadence_signal` | `(signal_id)` | Return the cadence-signal row dict for `signal_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L1379) |
 | function | `update_runtime_self_review_cadence_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the cadence signal `signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1416) |
 | function | `supersede_runtime_self_review_cadence_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live cadence signals in `domain_key` as 'superseded' except `exclude_signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1453) |
-
-## `core/runtime/db_runtime_signals.py`
-_Persistence for the runtime learning/outcome signal tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_runtime_signals_tables` | `(conn)` | — | [src](../../../core/runtime/db_runtime_signals.py#L17) |
-| function | `_runtime_action_outcome_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_signals.py#L76) |
-| function | `_runtime_learning_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_signals.py#L101) |
-| function | `recent_runtime_action_outcomes` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_signals.py#L122) |
-| function | `recent_runtime_learning_signals` | `(limit=…)` | — | [src](../../../core/runtime/db_runtime_signals.py#L146) |
-| function | `record_runtime_action_outcome` | `(*, action_id, decision_mode, decision_reason, decision_score, payload_json, result_status, result_summary, result_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L171) |
-| function | `record_runtime_learning_signal` | `(*, outcome_id, source_action_id, target_action_id, target_family, target_domain, signal_key, signal_weight, signal_count, metadata_json, recorded_at)` | — | [src](../../../core/runtime/db_runtime_signals.py#L239) |
 

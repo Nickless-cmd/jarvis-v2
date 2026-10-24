@@ -396,3 +396,64 @@ def test_aegte_separatorer_og_redirects_fanges_stadig():
     assert shell_command_is_mutating('echo "a" > fil') is True
     assert shell_command_is_mutating('cat "a b" >> "c d"') is True
     assert shell_command_is_mutating("rm -rf /tmp/x && echo klaret") is True
+
+
+# ── ssh: kontekst-følsom klassificering (24/10-2026) ────────────────────────
+#
+# `ssh` stod hverken i `_RO_CMDS` eller `_RO_SUBCMD`, så enhver
+# værtsinspektion blev talt som mutation og brændte R2.5-loftet midt i en
+# måling. Nu afgøres den som `sed` og `sqlite3`: kun en fjernkommando der selv
+# er ren læsning slipper igennem.
+
+def test_ssh_fjernlaesning_er_ikke_mutation():
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating(
+        "ssh root@10.0.0.36 'grep -n Privileged /etc/pve/lxc/105.conf'") is False
+    assert shell_command_is_mutating(
+        "ssh root@10.0.0.36 'cat /etc/pve/lxc/105.conf'") is False
+    assert shell_command_is_mutating("ssh root@host uptime") is False
+    assert shell_command_is_mutating("ssh -p 2222 root@host 'ls /var/log'") is False
+    assert shell_command_is_mutating("ssh -l root host 'df -h'") is False
+    assert shell_command_is_mutating("ssh -i ~/.ssh/id host 'free -m'") is False
+    assert shell_command_is_mutating("sudo ssh root@host 'uptime'") is False
+
+
+def test_ssh_forwarding_er_altid_mutation():
+    """Forwarding gør kaldet til noget andet end en fjernkommando. Det må ikke
+    kunne snige sig ind bag en læsning — heller ikke som `-o`-direktiv."""
+    from core.services.verification_gate import shell_command_is_mutating
+    for cmd in (
+        "ssh -L 8080:localhost:80 host",
+        "ssh -R 9000:localhost:22 host",
+        "ssh -D 1080 host",
+        "ssh -W host:22 host",
+        "ssh -O check host",
+        "ssh -S /tmp/sock host",
+        "ssh -M host",
+        "ssh -A host",
+        "ssh -f host",
+        "ssh -N host",
+        "ssh -o LocalForward=8080:localhost:80 host",
+        "ssh -o ProxyCommand='nc %h %p' host",
+        "ssh -o ControlMaster=auto host",
+    ):
+        assert shell_command_is_mutating(cmd) is True, cmd
+
+
+def test_ssh_interaktiv_og_sammensat_er_mutation():
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating("ssh root@host") is True
+    assert shell_command_is_mutating("ssh -- host") is True
+    assert shell_command_is_mutating("ssh root@host 'rm -rf /'") is True
+    assert shell_command_is_mutating("ssh root@host 'ls && rm -rf /'") is True
+    assert shell_command_is_mutating("ssh root@host 'echo hej > /tmp/x'") is True
+
+
+def test_ssh_skævt_input_kaster_aldrig():
+    """En exception midt i et bash-kald er værre end en falsk mutation: den
+    vælter kaldet i stedet for at blokere det. Målt 24/10-2026 kastede gaten
+    `NameError` fordi to konstanter manglede — derfor denne vagt."""
+    from core.services.verification_gate import shell_command_is_mutating
+    for cmd in ("ssh", "ssh -", "ssh -o", 'ssh ""', "ssh 'ubalanceret",
+                "ssh -p", "ssh --", "ssh -L", 'ssh -o ""', "ssh @", "ssh -p x"):
+        assert shell_command_is_mutating(cmd) is True, cmd

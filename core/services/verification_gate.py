@@ -227,7 +227,100 @@ def _opdel_segmenter(c: str) -> list[str]:
     return ud
 
 
-def shell_command_is_mutating(command: str) -> bool:
+# ── ssh: hvad er en fjern-læsning? ──────────────────────────────────────────
+#
+# 24/10-2026: `ssh` blev kontekst-følsom som `sed` og `sqlite3`. Før stod den
+# hverken i `_RO_CMDS` eller i `_RO_SUBCMD`, så enhver værtsinspektion
+# (`ssh root@10.0.0.36 'cat /etc/pve/lxc/105.conf'`) blev talt som mutation —
+# og brændte R2.5-loftet midt i en måling, hvorefter bash blev blokeret.
+#
+# Retningen er den samme som de to andre: kun en fjernkommando der SELV er
+# ren læsning slipper igennem. Alt andet er en mutation.
+
+#: Flag der gør kaldet til noget andet end en fjernkommando: port- og
+#: socket-forwarding, agent-forwarding, kontrol-sockets, baggrundskørsel og
+#: spring af fjernkommandoen helt over.
+_SSH_FORBUDTE_FLAG: frozenset[str] = frozenset({
+    "-L", "-R", "-D", "-W", "-O", "-S", "-M", "-A", "-f", "-N",
+})
+
+#: Flag der tager et argument, så argumentet ikke må læses som vært.
+_SSH_FLAG_MED_ARG: frozenset[str] = frozenset({
+    "-b", "-c", "-E", "-e", "-F", "-I", "-i", "-J", "-l", "-m",
+    "-o", "-P", "-p", "-Q", "-w",
+})
+
+
+def _ssh_remote_kommando(seg: str) -> list[str] | None:
+    """Udtræk fjernkommandoen fra et ssh-kald — eller `None` hvis kaldet ikke
+    entydigt er en læsning.
+
+    `None` betyder ALTID «behandl som mutation». Det er den konservative vej:
+    en fjernkommando vi ikke kan læse, en interaktiv shell, eller et
+    forwarding-flag må ikke kunne snige sig ind bag en læsning.
+    """
+    try:
+        stykker = shlex.split(seg)
+    except ValueError:
+        return None  # uafbalancerede anførselstegn → tvivl er en mutation
+    navne = [t.rsplit("/", 1)[-1] for t in stykker]
+    if "ssh" not in navne:
+        return None
+    rest = stykker[navne.index("ssh") + 1:]
+    j = 0
+    vaert_fundet = False
+    while j < len(rest):
+        t = rest[j]
+        if t == "--":
+            # `--` betyder «slut på flag»: næste token er VÆRTEN, ikke en
+            # fjernkommando. Uden dette sprang `ssh -- host` vært-tokenet over
+            # og læste `host` som fjernkommando — og da `host` selv er en
+            # read-only DNS-kommando, blev en interaktiv shell talt som læsning.
+            # Målt 24/10-2026; det er den farlige retning (falsk negativ).
+            j += 1
+            vaert_fundet = j < len(rest)
+            j += 1
+            break
+        if t.startswith("-"):
+            # Forwarding, agent-forwarding, kontrol-sockets og baggrunds-
+            # kørsel gør kaldet til noget andet end en fjernkommando.
+            if any(t == f or t.startswith(f) for f in _SSH_FORBUDTE_FLAG):
+                return None
+            if t in _SSH_FLAG_MED_ARG:
+                # `-o LocalForward=...` bærer forwarding som et direktiv, ikke
+                # som et flag — den skal fanges på værdien.
+                if t == "-o" and j + 1 < len(rest):
+                    opt = rest[j + 1].lower()
+                    if any(k in opt for k in (
+                        "forward", "proxycommand", "localcommand",
+                        "permitlocalcommand", "controlmaster", "controlpath",
+                    )):
+                        return None
+                j += 2
+                continue
+            j += 1
+            continue
+        vaert_fundet = True
+        j += 1
+        break
+    if not vaert_fundet:
+        return None
+    fjern = rest[j:]
+    return fjern or None
+
+
+def _ssh_er_laesning(seg: str, dybde: int) -> bool:
+    """Er ssh-kaldet en ren læsning? Kun hvis fjernkommandoen selv er det."""
+    if dybde >= 4:
+        return False  # for dyb indpakning → konservativt en mutation
+    fjern = _ssh_remote_kommando(seg)
+    if not fjern:
+        # Interaktiv shell eller kun en vært: man kan gøre hvad som helst der.
+        return False
+    return not shell_command_is_mutating(" ".join(fjern), _dybde=dybde + 1)
+
+
+def shell_command_is_mutating(command: str, *, _dybde: int = 0) -> bool:
     """True hvis et shell-kald reelt ændrer state; False for read-only.
 
     Konservativ: ukendt kommando → True (mutation). Skærer kun kendt read-only
@@ -286,6 +379,19 @@ def shell_command_is_mutating(command: str) -> bool:
             argumenter = [a for a in efter if not a.startswith("-")]
             if len(argumenter) > 1 and all(
                     sqlite_kald_er_laesning(a) for a in argumenter[1:]):
+                continue
+            return True
+        if cmd == "ssh":
+            # Kontekst-følsom som `sed` og `sqlite3` (24/10-2026): en LÆSENDE
+            # host-undersøgelse (`ssh host 'grep …'`) tæller ikke som mutation.
+            # Før faldt ssh til «ukendt kommando → mutation», så hver
+            # værtsinspektion brændte R2.5-loftet og blokerede bash midt i en
+            # måling. Forwarding, interaktiv shell og sammensatte
+            # fjernkommandoer er fortsat mutationer — `_ssh_er_laesning`
+            # returnerer kun True når fjernkommandoen selv er ren læsning.
+            #
+            # `seg` gives videre MED citationstegn: shlex skal kunne se dem.
+            if _ssh_er_laesning(seg, _dybde):
                 continue
             return True
         if cmd in _RO_CMDS:

@@ -308,3 +308,27 @@ def test_async_kaster_aldrig_naar_workeren_fejler(monkeypatch):
     _time.sleep(0.3)
     # workeren skal stadig være i live og kunne tage næste opgave
     assert sp._worker_stats()["spawned"] >= 1
+
+
+def test_cooldown_er_laengere_end_cache_udloebet_kan_redde() -> None:
+    """Cooldown skal være lang nok til at være meningsfuld.
+
+    24/10-2026: `_COOLDOWN_S` stod på 45 s. Desk kalder `/chat/warm` på
+    composer-fokus, så den fyrede **140 kald/time = $2,49 i døgnet** — målt i
+    `costs` — på at varme en cache der allerede havde 99,7 % hit (median).
+    Modulets egen begrundelse (og commit `89daf1ed2`) siger at DeepSeeks
+    prefix-cache udløber efter **30-120 min**. Et kald hvert 45. sekund kan
+    derfor pr. definition ikke redde noget, den ikke allerede har.
+
+    Grænsen er sat konservativt: mindst 10 min. Det er stadig under
+    udløbsvinduet, så en ægte pause-prewarm rammer, og dobbelt-fyring
+    (fokus + første tastetryk) bliver stadig slået sammen til ét kald.
+    """
+    import core.services.session_prewarm as sp
+
+    assert sp._COOLDOWN_S >= 600.0, (
+        f"_COOLDOWN_S er {sp._COOLDOWN_S}s — under 10 min. Ved 45 s målte vi "
+        "140 kald/time og $2,49/døgn på en cache med 99,7 % hit. DeepSeeks "
+        "prefix-cache udløber først efter 30-120 min, så et tættere kald "
+        "varme(r) ingenting og koster penge."
+    )

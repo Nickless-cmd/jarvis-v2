@@ -35,7 +35,14 @@ logger = logging.getLogger("session_prewarm")
 
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 _ENABLED_KEY = "session_prewarm_enabled"
-_COOLDOWN_S = 45.0  # pr. session: dræb dobbelt-fyring (fokus + første tastetryk)
+# Pr. session. MÅLT 24/10-2026: 45 s var for kort. Desk kalder /chat/warm på
+# composer-fokus, så den fyrede 140 kald/time — $2,49 i døgnet — på at varme en
+# cache der allerede havde 99,7 % hit (median). Modulets egen begrundelse siger
+# at DeepSeeks prefix-cache udløber efter 30-120 min; at varme hvert 45. sekund
+# kan derfor pr. definition ikke redde noget, den ikke allerede har.
+# 20 min er stadig under udløbsvinduet, så en ægte pause-prewarm rammer, og
+# dobbelt-fyring (fokus + første tastetryk) bliver stadig slået sammen til ét.
+_COOLDOWN_S = 1200.0
 _MAX_TOKENS = 1     # vi vil kun varme prefixen, ikke generere
 
 # Per-session sidste-warm-stempel (in-process throttle).

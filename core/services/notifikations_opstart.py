@@ -12,7 +12,7 @@ _log = logging.getLogger(__name__)
 
 def koer_ved_opstart() -> None:
     from core.services.notifikations_valg import migrer_kolonner
-    from core.services.notifikationer import ryd_gamle
+    from core.services.notifikationer import luk_foraeldede, ryd_gamle
     try:
         flyttet = migrer_kolonner()
     except Exception:
@@ -27,3 +27,14 @@ def koer_ved_opstart() -> None:
     else:
         if fjernet:
             _log.info("notifikationer: %d klarede raekker ryddet", fjernet)
+    # Den AABNE halvdel (maalt 24/10-2026: 3.551 run_done siden 25/9).
+    # `ryd_gamle` rydder kun klarede raekker, saa uden dette kald vokser de
+    # aabne ubegraenset — og hver af dem koster en DB-forbindelse + en
+    # dekryptering pr. feed-poll, synkront i hovedtraaden.
+    try:
+        lukket = luk_foraeldede()
+    except Exception:
+        _log.warning("foraeldede notifikationer kunne ikke lukkes", exc_info=True)
+    else:
+        if lukket:
+            _log.info("notifikationer: %d foraeldede run_done lukket", lukket)

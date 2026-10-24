@@ -221,6 +221,37 @@ def genaabn(slags: str, ref: str) -> bool:
     return bool(markoer.rowcount)
 
 
+def luk_foraeldede(dage: int = 2, *, slags: str = "run_done") -> int:
+    """Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede.
+
+    Maalt 24/10-2026: **3.551 `run_done` stod aabne siden 25/9** — op mod
+    130 i doegnet — fordi INTET lukker dem med mindre brugeren klikker dem
+    vaek. `ryd_gamle` rydder kun KLAREDE raekker (`klaret IS NOT NULL`), saa
+    de aabne voksede ubegraenset. De to funktioner daekkede hver sin halvdel,
+    og den aabne halvdel var den der kostede.
+
+    Det var ikke bare skrald i en liste. `feed()` hydrerer HVER aaben raekke,
+    og for `run_done` betyder det `svar_for_run`, som aabner sin EGEN
+    DB-forbindelse og dekrypterer svaret (`reveal_preview`). 3.551 raekker =
+    3.551 forbindelser + 3.551 dekrypteringer pr. poll, koert SYNKRONT inde
+    i en async-rute — altsaa i hovedtraaden. Maalt som byger paa 213-545 %
+    CPU: `feed` -> `_hydrer` -> `_hydrer_run` -> `svar_for_run`.
+
+    Et svar der er mere end `dage` gammelt er ikke laengere noget nogen
+    laeser — det er historik. Raekken BEVARES (klaret + udfald saettes), saa
+    intet gaar tabt; den flytter bare fra klokken til historikken, hvor
+    `tidligere()` viser den uden at hydrere noget.
+    """
+    graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
+    with connect() as conn:
+        markoer = conn.execute(
+            "UPDATE notifikationer SET klaret=?, udfald='foraeldet'"
+            " WHERE klaret IS NULL AND slags=? AND oprettet < ?",
+            (_nu(), slags, graense))
+        conn.commit()
+        return int(markoer.rowcount or 0)
+
+
 def ryd_gamle(dage: int = 7) -> int:
     """Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede."""
     graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()

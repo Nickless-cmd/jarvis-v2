@@ -457,7 +457,8 @@ _Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
 | function | `opdater` | `(slags, ref, *, titel, tekst=…, data=…)` | Opdater den samme feed-post, fx mens et release gaar gennem CI. | [src](../../../core/services/notifikationer.py#L159) |
 | function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L178) |
 | function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L196) |
-| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L224) |
+| function | `luk_foraeldede` | `(dage=…, *, slags=…)` | Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede. | [src](../../../core/services/notifikationer.py#L224) |
+| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L255) |
 
 ## `core/services/notifikationer_hydrering.py`
 _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._

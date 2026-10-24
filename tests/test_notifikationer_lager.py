@@ -174,3 +174,85 @@ def test_releasepostens_data_kan_opdateres_uden_at_skifte_id(isolated_runtime) -
     assert poster[0]["data"] == {
         "version": "0.6.234", "phase": "ready", "progress": 100,
     }
+
+
+def test_luk_foraeldede_lukker_gammel_aaben_run_done(isolated_runtime) -> None:
+    """Maalt 24/10-2026: 3.551 run_done stod AABNE siden 25/9 fordi intet
+    lukker dem. `ryd_gamle` rydder kun KLAREDE raekker, saa de voksede
+    ubegraenset — og hver af dem kostede en DB-forbindelse + dekryptering
+    pr. feed-poll, synkront i hovedtraaden (byger paa 213-545 % CPU)."""
+    from core.services import notifikationer as n
+    from core.runtime.db import connect
+
+    nid = n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-gammel",
+                  titel="Svar klar")
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET oprettet=? WHERE id=?",
+                     ("2026-09-25T14:31:15.000000+00:00", nid))
+        conn.commit()
+
+    assert n.luk_foraeldede(2) == 1
+    assert n.aabne("bjorn", er_owner=True) == []
+
+
+def test_luk_foraeldede_rorer_ikke_dagens_run_done(isolated_runtime) -> None:
+    """Et svar fra i dag er stadig noget nogen kan laese."""
+    from core.services import notifikationer as n
+
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-ny",
+            titel="Svar klar")
+    assert n.luk_foraeldede(2) == 0
+    assert len(n.aabne("bjorn", er_owner=True)) == 1
+
+
+def test_luk_foraeldede_rorer_kun_run_done(isolated_runtime) -> None:
+    """En gammel GODKENDELSE maa ikke lukkes: den venter paa et svar, og at
+    lukke den ville vaere at afgoere den for brugeren."""
+    from core.services import notifikationer as n
+    from core.runtime.db import connect
+
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval",
+                  ref="a-gammel", titel="Vil du tillade bash?")
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET oprettet=? WHERE id=?",
+                     ("2026-09-25T14:31:15.000000+00:00", nid))
+        conn.commit()
+
+    assert n.luk_foraeldede(2) == 0
+    assert [r["id"] for r in n.aabne("bjorn", er_owner=True)] == [nid]
+
+
+def test_luk_foraeldede_bevarer_raekken_med_udfald(isolated_runtime) -> None:
+    """Lukning er ikke en sletning — raekken skal kunne findes i historikken."""
+    from core.services import notifikationer as n
+    from core.runtime.db import connect
+
+    nid = n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-x",
+                  titel="Svar klar")
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET oprettet=? WHERE id=?",
+                     ("2026-09-25T14:31:15.000000+00:00", nid))
+        conn.commit()
+
+    n.luk_foraeldede(2)
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT klaret, udfald FROM notifikationer WHERE id=?", (nid,)).fetchone()
+    assert raekke is not None, "raekken skal bevares"
+    assert raekke[0] is not None
+    assert raekke[1] == "foraeldet"
+
+
+def test_luk_foraeldede_er_idempotent(isolated_runtime) -> None:
+    from core.services import notifikationer as n
+    from core.runtime.db import connect
+
+    nid = n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-y",
+                  titel="Svar klar")
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET oprettet=? WHERE id=?",
+                     ("2026-09-25T14:31:15.000000+00:00", nid))
+        conn.commit()
+
+    assert n.luk_foraeldede(2) == 1
+    assert n.luk_foraeldede(2) == 0

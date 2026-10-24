@@ -30,6 +30,9 @@ MAX_RETRIEVAL = 5  # top-K episodes to retrieve for prompt section
 
 # ── Lazy singletons ────────────────────────────────────────────────
 
+_EMBEDDER: Any = None
+
+
 def _get_chroma_collection():
     """Get or create the ChromaDB collection for experience episodes."""
     import chromadb
@@ -44,10 +47,65 @@ def _get_chroma_collection():
     return collection
 
 
+class _FastEmbedEmbedder:
+    """ONNX-baseret embedder — samme model, ingen torch.
+
+    MÅLT 24/10-2026: `import torch` fejlede med
+    `undefined symbol: __nvJitLinkCreate_12_8` (cu12/cu13-kollision i
+    site-packages), så `sentence_transformers` kunne ikke importeres og
+    hele erfaring-substratet var dødt: `record_episode` kastede, og
+    `retrieve_similar_episodes` returnerede tavst [].
+
+    fastembed kører all-MiniLM-L6-v2 via onnxruntime på CPU og giver
+    samme 384-dimensionelle vektorer. Den var allerede installeret.
+    """
+
+    def __init__(self) -> None:
+        from fastembed import TextEmbedding
+
+        self._model = TextEmbedding(f"sentence-transformers/{EMBED_MODEL}")
+
+    def encode(self, text: str | list[str], normalize_embeddings: bool = True) -> _Vec:
+        """Encode én streng eller en liste.
+
+        `current_pull.py` sender en liste af tekster og forventer en matrix
+        tilbage (`.tolist()` → liste af vektorer). En enkelt streng giver
+        én vektor. Begge former skal virke, ellers fejler kalderen tavst.
+        """
+        if isinstance(text, str):
+            vec = next(iter(self._model.embed([text])))
+            return _Vec([float(x) for x in vec])
+        return _Vec([[float(x) for x in v] for v in self._model.embed(list(text))])
+
+
+class _Vec:
+    """Minimal vektor-wrapper med samme `.tolist()` som numpy giver."""
+
+    def __init__(self, values: list[float]) -> None:
+        self._values = values
+
+    def tolist(self) -> list[float]:
+        return self._values
+
+
 def _get_embedder():
-    """Get or create the sentence-transformers embedder (lazy load)."""
-    from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODEL)
+    """Get or create the embedder (lazy load).
+
+    Foretrækker fastembed/ONNX — den kræver ikke torch. Falder tilbage til
+    sentence-transformers hvis fastembed mangler, så en maskine med et
+    fungerende torch-miljø ikke mister funktionen.
+    """
+    global _EMBEDDER
+    if _EMBEDDER is not None:
+        return _EMBEDDER
+    try:
+        _EMBEDDER = _FastEmbedEmbedder()
+        return _EMBEDDER
+    except Exception:
+        from sentence_transformers import SentenceTransformer
+
+        _EMBEDDER = SentenceTransformer(EMBED_MODEL)
+        return _EMBEDDER
 
 
 # ── Context encoder ────────────────────────────────────────────────

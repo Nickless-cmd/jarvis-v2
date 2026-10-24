@@ -117,12 +117,18 @@ _Experience substrate — embedding-retrieval learning layer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_get_chroma_collection` | `()` | Get or create the ChromaDB collection for experience episodes. | [src](../../../core/services/experience_substrate.py#L33) |
-| function | `_get_embedder` | `()` | Get or create the sentence-transformers embedder (lazy load). | [src](../../../core/services/experience_substrate.py#L47) |
-| function | `build_context_for_embedding` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…)` | Build a structured context string for embedding similarity. | [src](../../../core/services/experience_substrate.py#L57) |
-| function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L82) |
-| function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L170) |
-| function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L257) |
+| function | `_get_chroma_collection` | `()` | Get or create the ChromaDB collection for experience episodes. | [src](../../../core/services/experience_substrate.py#L36) |
+| class | `_FastEmbedEmbedder` | `` | ONNX-baseret embedder — samme model, ingen torch. | [src](../../../core/services/experience_substrate.py#L50) |
+| method | `_FastEmbedEmbedder.__init__` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L63) |
+| method | `_FastEmbedEmbedder.encode` | `(self, text, normalize_embeddings=…)` | Encode én streng eller en liste. | [src](../../../core/services/experience_substrate.py#L68) |
+| class | `_Vec` | `` | Minimal vektor-wrapper med samme `.tolist()` som numpy giver. | [src](../../../core/services/experience_substrate.py#L81) |
+| method | `_Vec.__init__` | `(self, values)` | — | [src](../../../core/services/experience_substrate.py#L84) |
+| method | `_Vec.tolist` | `(self)` | — | [src](../../../core/services/experience_substrate.py#L87) |
+| function | `_get_embedder` | `()` | Get or create the embedder (lazy load). | [src](../../../core/services/experience_substrate.py#L91) |
+| function | `build_context_for_embedding` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…)` | Build a structured context string for embedding similarity. | [src](../../../core/services/experience_substrate.py#L115) |
+| function | `record_episode` | `(*, session_id, turn_id=…, context_text, context_intent=…, active_loops=…, last_tools=…, session_phase=…, tool_sequence, outcome_signals, user_corrected=…)` | Record a new experience episode: insert to DB + embed to ChromaDB. | [src](../../../core/services/experience_substrate.py#L140) |
+| function | `retrieve_similar_episodes` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, context_text=…, k=…, min_score=…)` | Retrieve top-K similar experience episodes from ChromaDB. | [src](../../../core/services/experience_substrate.py#L228) |
+| function | `build_experience_substrate_section` | `(*, context_intent=…, active_loops=…, last_tools=…, session_phase=…, user_message=…, k=…)` | Build the _experience_substrate prompt section. | [src](../../../core/services/experience_substrate.py#L315) |
 
 ## `core/services/experienced_time_daemon.py`
 _Experienced time daemon — tracks subjective felt duration of the current session._

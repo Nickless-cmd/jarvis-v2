@@ -31,7 +31,8 @@ scipy
 scikit-learn     # import: sklearn
 sympy
 chromadb
-sentence-transformers
+fastembed        # ONNX-embedder — all-MiniLM-L6-v2 uden torch (se experience_substrate)
+sentence-transformers  # reserve hvis fastembed mangler; kræver torch
 faster-whisper   # import: faster_whisper
 openwakeword
 

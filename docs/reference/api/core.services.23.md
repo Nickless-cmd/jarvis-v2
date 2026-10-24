@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/routine_types.py`
+_Value objects shared by the Routine domain._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L13) |
+| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L22) |
+| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L32) |
+| class | `RoutineExecutionMode` | `` | Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter. | [src](../../../core/services/routine_types.py#L37) |
+| class | `RoutineImportance` | `` | Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det. | [src](../../../core/services/routine_types.py#L57) |
+| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L72) |
+| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L78) |
+| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L83) |
+| class | `RoutineClassification` | `` | Den udledte klassifikation — gemt i ``delivery_policy['classification']``. | [src](../../../core/services/routine_types.py#L104) |
+| method | `RoutineClassification.as_dict` | `(self)` | — | [src](../../../core/services/routine_types.py#L120) |
+| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L132) |
+| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L157) |
+| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L173) |
+
 ## `core/services/rule_definitions.py`
 _Rule definitions — production rules feeding the rule_engine._
 
@@ -743,11 +762,4 @@ _Scheduled Job Windows — time-window batch scheduling with provider preference
 | function | `tick` | `(_seconds=…)` | Heartbeat hook — evaluates windows, no-op when not inside any. | [src](../../../core/services/scheduled_job_windows.py#L198) |
 | function | `build_scheduled_job_windows_surface` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L204) |
 | function | `_surface_summary` | `(windows, active_now, history)` | — | [src](../../../core/services/scheduled_job_windows.py#L228) |
-
-## `core/services/scheduled_task_runner.py`
-_Scheduled task dispatcher — binds workspace_context before firing._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
 

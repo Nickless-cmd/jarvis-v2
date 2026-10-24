@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9234/17488 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9237/17491 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -13,7 +13,7 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `apps.voice_agent` | 4 | 22 | 18% |
-| `core.auth` | 6 | 51 | 11% |
+| `core.auth` | 7 | 52 | 13% |
 | `core.browser` | 11 | 13 | 84% |
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
@@ -25,7 +25,7 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 843 | 1544 | 54% |
-| `core.services` | 6157 | 11890 | 51% |
+| `core.services` | 6159 | 11892 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2582)
+## Undocumented public functions (2583)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -192,8 +192,8 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_credentials` (L75)
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_truth` (L22)
 - `core/auth/copilot_oauth.py` :: `save_copilot_oauth_credentials` (L65)
-- `core/auth/copilot_session.py` :: `get_cached_session_endpoints` (L107)
-- `core/auth/copilot_session.py` :: `invalidate_session_cache` (L115)
+- `core/auth/copilot_session.py` :: `get_cached_session_endpoints` (L134)
+- `core/auth/copilot_session.py` :: `invalidate_session_cache` (L142)
 - `core/auth/openai_oauth.py` :: `build_openai_launch_intent` (L147)
 - `core/auth/openai_oauth.py` :: `exchange_openai_callback_code` (L234)
 - `core/auth/openai_oauth.py` :: `get_openai_bearer_token` (L320)
@@ -1023,7 +1023,7 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.create` (L18)
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.next_fallback` (L37)
 - `core/services/cheap_lane_trace_context.py` :: `candidate_slot_id` (L46)
-- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L187)
+- `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L195)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L142)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L109)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L99)
@@ -2273,10 +2273,11 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 - `core/services/visible_model.py` :: `available_provider_models` (L176)
 - `core/services/visible_model.py` :: `execute_visible_model` (L268)
 - `core/services/visible_model.py` :: `stream_visible_model` (L329)
-- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L715)
+- `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L716)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)
 - `core/services/visible_model_prompt.py` :: `visible_session_continuity_summary` (L346)
+- `core/services/visible_outcome_text.py` :: `preview_text` (L5)
 - `core/services/visible_preview_crypto.py` :: `member_for_run` (L7)
 - `core/services/visible_preview_crypto.py` :: `protect_preview` (L19)
 - `core/services/visible_preview_crypto.py` :: `reveal_preview` (L23)
@@ -2299,7 +2300,7 @@ Generated from source. 9234/17488 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6879)
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L6810)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
-- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L770)
+- `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L733)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L108)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L157)

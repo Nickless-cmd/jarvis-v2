@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/counterfactual_predictions.py`
+_Counterfactual → world-model prediction binding._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_confidence_band` | `(numeric)` | Map a 0..1 confidence to the world-model band strings. | [src](../../../core/services/counterfactual_predictions.py#L68) |
+| function | `bind_counterfactual_to_prediction` | `(*, cf_id, trigger_type, anchor=…, confidence=…, source=…, event_kind=…)` | Record a world-model prediction linked to a counterfactual. | [src](../../../core/services/counterfactual_predictions.py#L77) |
+| function | `list_open_counterfactual_predictions` | `()` | Return all open predictions whose source=='counterfactual'. | [src](../../../core/services/counterfactual_predictions.py#L155) |
+| function | `_is_horizon_expired` | `(prediction, now)` | Check if a prediction's horizon has passed (with grace period). | [src](../../../core/services/counterfactual_predictions.py#L173) |
+| function | `_extract_event_kind` | `(prediction)` | Pull the event_kind tag out of a prediction's evidence list. | [src](../../../core/services/counterfactual_predictions.py#L183) |
+| function | `_frequency_verdict` | `(*, event_kind, created_at)` | Compare event_kind frequency before vs after the prediction's birth. | [src](../../../core/services/counterfactual_predictions.py#L192) |
+| function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
+| function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
+| function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
+
 ## `core/services/counterfactual_self_simulation.py`
 _Counterfactual self-simulation for post-run learning._
 
@@ -591,21 +606,4 @@ _Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix).
 | function | `compose_signal_note` | `(decision_id, trigger_name, context_summary)` | Den efemere note modellen ser næste runde (omgivet af blanke linjer). | [src](../../../core/services/decision_signal_staging.py#L22) |
 | function | `stage_signal` | `(active, decision_id, note, *, cap=…)` | Dedup pr. decision-id (erstat, akkumulér ALDRIG) + cap antal distinkte | [src](../../../core/services/decision_signal_staging.py#L30) |
 | function | `compose_exchange_text` | `(base_parts, active)` | Assistant-turen til næste rundes model-input = det ægte svar (`base_parts`) | [src](../../../core/services/decision_signal_staging.py#L46) |
-
-## `core/services/decision_signal_telemetry.py`
-_Decision-signal telemetry — track whether decision signals get heeded._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/decision_signal_telemetry.py#L69) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/decision_signal_telemetry.py#L81) |
-| function | `record_surface` | `(*, decision_id, trigger_name, session_id=…, at=…)` | Record a decision_signal.fired surface for later heed-tracking. | [src](../../../core/services/decision_signal_telemetry.py#L116) |
-| function | `record_heed` | `(*, tool, session_id=…, at=…)` | Mark recent surfaces as heeded if they match the reaction window. | [src](../../../core/services/decision_signal_telemetry.py#L154) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as ignored once they pass window+grace with no heed. | [src](../../../core/services/decision_signal_telemetry.py#L198) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed-rate over the lookback window. | [src](../../../core/services/decision_signal_telemetry.py#L228) |
-| function | `_poll_db_for_events` | `()` | Poll events table for decision_signal.fired and tool.completed. | [src](../../../core/services/decision_signal_telemetry.py#L271) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/decision_signal_telemetry.py#L340) |
-| function | `telemetry_section` | `()` | Render telemetry as awareness section. Only when >= 5 surfaces/24h. | [src](../../../core/services/decision_signal_telemetry.py#L353) |
-| function | `build_decision_signal_telemetry_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/decision_signal_telemetry.py#L370) |
-| function | `_emit_decision_signal_telemetry_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/decision_signal_telemetry.py#L385) |
 

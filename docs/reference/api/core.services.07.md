@@ -553,6 +553,13 @@ _Authenticated per-user presentation preferences for Desk Chat Mode._
 | function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
 | function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
 
+## `core/services/chat_response_policy.py`
+_One chat-only decision vocabulary for closure and presentation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L54) |
+
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._
 
@@ -704,13 +711,4 @@ _Audited operator commands for Cheap Lane._
 | function | `_mutate` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L221) |
 | function | `apply_control` | `(command, actor)` | — | [src](../../../core/services/cheap_lane_control.py#L262) |
 | function | `simulate_route` | `(task_kind, skip_providers)` | — | [src](../../../core/services/cheap_lane_control.py#L313) |
-
-## `core/services/cheap_lane_dashboard.py`
-_Composite, partial-safe snapshot for the Cheap Lane control center._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `invocation_trends` | `(*, window_hours)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L15) |
-| function | `_section` | `(source, loader)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L28) |
-| function | `build_cheap_lane_dashboard` | `(window_hours=…)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L49) |
 

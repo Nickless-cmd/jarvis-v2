@@ -19,11 +19,12 @@ _GitHub Copilot session-token exchange._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load_oauth_access_token` | `(*, profile)` | — | [src](../../../core/auth/copilot_session.py#L33) |
-| function | `_exchange_for_session` | `(oauth_token)` | — | [src](../../../core/auth/copilot_session.py#L47) |
-| function | `get_copilot_session_token` | `(*, profile)` | Return a valid Copilot session bearer token, exchanging & caching as needed. | [src](../../../core/auth/copilot_session.py#L81) |
-| function | `get_cached_session_endpoints` | `(*, profile)` | — | [src](../../../core/auth/copilot_session.py#L107) |
-| function | `invalidate_session_cache` | `(*, profile=…)` | — | [src](../../../core/auth/copilot_session.py#L115) |
+| function | `resolve_copilot_profile` | `(preferred=…)` | Return the auth profile that actually owns GitHub Copilot OAuth state. | [src](../../../core/auth/copilot_session.py#L33) |
+| function | `_load_oauth_access_token` | `(*, profile)` | — | [src](../../../core/auth/copilot_session.py#L60) |
+| function | `_exchange_for_session` | `(oauth_token)` | — | [src](../../../core/auth/copilot_session.py#L74) |
+| function | `get_copilot_session_token` | `(*, profile)` | Return a valid Copilot session bearer token, exchanging & caching as needed. | [src](../../../core/auth/copilot_session.py#L108) |
+| function | `get_cached_session_endpoints` | `(*, profile)` | — | [src](../../../core/auth/copilot_session.py#L134) |
+| function | `invalidate_session_cache` | `(*, profile=…)` | — | [src](../../../core/auth/copilot_session.py#L142) |
 
 ## `core/auth/openai_oauth.py`
 

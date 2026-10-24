@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/selvmodel_kobling.py`
+_Selvmodellens første lodrette skive: fra hans svar til hans prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_taendt` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L51) |
+| function | `selvmodel_sektion` | `()` | Prompt-sektionen — kun når flaget er tændt og kun i ejerens samtaler. | [src](../../../core/services/selvmodel_kobling.py#L59) |
+| function | `_ejer_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L73) |
+| function | `samtalens_kilde` | `(session_id)` | «nominering» for ejerens samtaler, «anden_bruger» for andres, None for autonome. | [src](../../../core/services/selvmodel_kobling.py#L79) |
+| function | `parse_nomineringer` | `(tekst)` | — | [src](../../../core/services/selvmodel_kobling.py#L94) |
+| function | `_maa_kalde` | `(nu)` | — | [src](../../../core/services/selvmodel_kobling.py#L109) |
+| function | `_kald_billig_model` | `(prompt)` | — | [src](../../../core/services/selvmodel_kobling.py#L119) |
+| function | `behandl_svar` | `(session_id, besked)` | Nominér holdninger fra ét af hans svar. Returnerer selvmodellens udfald. | [src](../../../core/services/selvmodel_kobling.py#L124) |
+| function | `_sidste_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L148) |
+| function | `_gem_sidste_id` | `(event_id)` | — | [src](../../../core/services/selvmodel_kobling.py#L156) |
+| function | `poll_en_gang` | `(*, limit=…)` | Behandl nye assistant-svar fra eventbussens tabel. Returnerer antal svar set. | [src](../../../core/services/selvmodel_kobling.py#L161) |
+| function | `_loop` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L194) |
+| function | `start_lytter` | `()` | Idempotent. Startes KUN i runtime-processen (én poller, ingen dobbelt-behandling). | [src](../../../core/services/selvmodel_kobling.py#L208) |
+
 ## `core/services/semantic_indexer.py`
 _Semantic indexer — auto-embedding of new memory records._
 
@@ -582,19 +601,4 @@ _Signal Network Visualizer — Jarvis' self-model as a living network._
 | function | `looks_like_substantive_runtime_topic` | `(text)` | — | [src](../../../core/services/signal_noise_guard.py#L157) |
 | function | `stable_signal_slug` | `(text, *, fallback=…)` | — | [src](../../../core/services/signal_noise_guard.py#L172) |
 | function | `build_bounded_hypothesis_text` | `(topic)` | — | [src](../../../core/services/signal_noise_guard.py#L185) |
-
-## `core/services/signal_pressure_accumulator.py`
-_Signal Pressure Accumulator — generativ autonomi: fra signal til presning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PressureVector` | `` | En akkumuleret presningsvektor — retning + styrke over tid. | [src](../../../core/services/signal_pressure_accumulator.py#L68) |
-| function | `_make_id` | `(direction, topic)` | Stable key for a pressure vector based on direction+topic. | [src](../../../core/services/signal_pressure_accumulator.py#L91) |
-| function | `ingest_signal` | `(signal_family, signal_data)` | Ingest a single signal into the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L100) |
-| function | `decay_all` | `()` | Apply decay to all pressure vectors. Called once per tick. | [src](../../../core/services/signal_pressure_accumulator.py#L161) |
-| function | `get_all_pressures` | `()` | Return all active pressure vectors, sorted by accumulated (strongest first). | [src](../../../core/services/signal_pressure_accumulator.py#L187) |
-| function | `get_pressure` | `(direction, topic)` | Get a specific pressure vector. | [src](../../../core/services/signal_pressure_accumulator.py#L192) |
-| function | `get_dominant_pressures` | `(min_accumulated=…)` | Return pressures above a minimum threshold — these are the ones that matter. | [src](../../../core/services/signal_pressure_accumulator.py#L197) |
-| function | `snapshot` | `()` | Return a serializable snapshot of current pressure state. | [src](../../../core/services/signal_pressure_accumulator.py#L202) |
-| function | `run_pressure_accumulator_tick` | `()` | Run one tick of the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L219) |
 

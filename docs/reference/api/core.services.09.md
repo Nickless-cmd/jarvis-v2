@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/commit_attribution.py`
+_Canonical, audit-only attribution metadata for Git commit messages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ActorRule` | `` | Stable actor type and the origins that actor may claim. | [src](../../../core/services/commit_attribution.py#L54) |
+| class | `CommitAttribution` | `` | The six required audit fields stored in a commit trailer block. | [src](../../../core/services/commit_attribution.py#L62) |
+| method | `CommitAttribution.as_trailers` | `(self)` | — | [src](../../../core/services/commit_attribution.py#L72) |
+| class | `AttributionError` | `` | Raised when attribution cannot satisfy the commit contract. | [src](../../../core/services/commit_attribution.py#L83) |
+| function | `new_manual_run_id` | `(now=…, suffix=…)` | Return a sortable id for a commit without an existing runtime run. | [src](../../../core/services/commit_attribution.py#L95) |
+| function | `parse_git_trailers` | `(message)` | Parse the final trailer block with Git's own trailer semantics. | [src](../../../core/services/commit_attribution.py#L111) |
+| function | `validate_trailers` | `(trailers)` | Validate parsed trailers without reading process or repository state. | [src](../../../core/services/commit_attribution.py#L132) |
+| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L191) |
+| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L197) |
+| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L212) |
+
 ## `core/services/commit_gate_arbiter.py`
 _Pre-eksekverings commit-gate arbitrage — udskilt fra visible_runs (Boy Scout, 2026-07-08)._
 
@@ -549,19 +565,4 @@ _Daemon for periodic counterfactual reflection cycles._
 | function | `_loop` | `()` | — | [src](../../../core/services/counterfactual_engine_runtime.py#L70) |
 | function | `start_counterfactual_runtime` | `()` | Start the periodic-evaluation daemon. Idempotent — safe to call multiple times. | [src](../../../core/services/counterfactual_engine_runtime.py#L80) |
 | function | `stop_counterfactual_runtime` | `()` | Signal the loop to exit. | [src](../../../core/services/counterfactual_engine_runtime.py#L93) |
-
-## `core/services/counterfactual_predictions.py`
-_Counterfactual → world-model prediction binding._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_confidence_band` | `(numeric)` | Map a 0..1 confidence to the world-model band strings. | [src](../../../core/services/counterfactual_predictions.py#L68) |
-| function | `bind_counterfactual_to_prediction` | `(*, cf_id, trigger_type, anchor=…, confidence=…, source=…, event_kind=…)` | Record a world-model prediction linked to a counterfactual. | [src](../../../core/services/counterfactual_predictions.py#L77) |
-| function | `list_open_counterfactual_predictions` | `()` | Return all open predictions whose source=='counterfactual'. | [src](../../../core/services/counterfactual_predictions.py#L155) |
-| function | `_is_horizon_expired` | `(prediction, now)` | Check if a prediction's horizon has passed (with grace period). | [src](../../../core/services/counterfactual_predictions.py#L173) |
-| function | `_extract_event_kind` | `(prediction)` | Pull the event_kind tag out of a prediction's evidence list. | [src](../../../core/services/counterfactual_predictions.py#L183) |
-| function | `_frequency_verdict` | `(*, event_kind, created_at)` | Compare event_kind frequency before vs after the prediction's birth. | [src](../../../core/services/counterfactual_predictions.py#L192) |
-| function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
-| function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
-| function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
 

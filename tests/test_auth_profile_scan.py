@@ -78,7 +78,7 @@ def test_cache_ttl_avoids_rescan(tmp_path, monkeypatch):
 def test_runtime_noegle_giver_default_profil(monkeypatch):
     import core.services.auth_profile_scan as s
     import core.services.cheap_provider_runtime_keys as nk
-    s._CACHE.clear()
+    s.clear_cache()
     monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: p == "xkiro")
     monkeypatch.setattr(s, "_profiles_root", lambda: Path("/findes-ikke"))
     assert s.ready_profiles_for("xkiro") == ["default"]
@@ -87,7 +87,7 @@ def test_runtime_noegle_giver_default_profil(monkeypatch):
 def test_udbyder_uden_runtime_noegle_forbliver_tom(monkeypatch):
     import core.services.auth_profile_scan as s
     import core.services.cheap_provider_runtime_keys as nk
-    s._CACHE.clear()
+    s.clear_cache()
     monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: False)
     monkeypatch.setattr(s, "_profiles_root", lambda: Path("/findes-ikke"))
     assert s.ready_profiles_for("noget-ukendt") == []
@@ -97,7 +97,7 @@ def test_rigtige_profiler_overlever_runtime_noeglen(monkeypatch):
     """Kortslutning her ville have fjernet HuggingFaces `account2`."""
     import core.services.auth_profile_scan as s
     import core.services.cheap_provider_runtime_keys as nk
-    s._CACHE.clear()
+    s.clear_cache()
     monkeypatch.setattr(nk, "has_runtime_owner_key", lambda p: True)
     monkeypatch.setattr(s, "ready_profiles_for", s.ready_profiles_for)
     kaldt = {}
@@ -171,25 +171,42 @@ def test_single_flight_kun_et_scan(tmp_path, monkeypatch):
     assert all(r == ["default"] for r in resultater)
 
 
-def test_exception_frigor_laasen(tmp_path, monkeypatch):
-    """En exception under refresh må ikke efterlade låsen blokeret."""
+def test_exception_frigor_laasen_og_rammer_kun_sin_slot(tmp_path, monkeypatch):
+    """En exception under refresh må hverken efterlade låsen blokeret eller
+    blinde hele auth-laget.
+
+    24/10-2026: batch-scanningen fanger per slot. Før propagererede fejlen, men
+    med ÉT fælles scan ville ét korrupt ``credentials.json`` ellers give nul
+    profiler for ALLE providers — en værre fejl end den den rapporterede.
+    Kontrakten er derfor: den defekte slot udelades, de øvrige svarer, og låsen
+    frigives.
+    """
     import threading
-    import pytest
     from core.services import auth_profile_scan as s
 
-    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    for p in ("groq", "cerebras"):
+        (tmp_path / "default" / "providers" / p).mkdir(parents=True)
     monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
     s.clear_cache()
 
-    def boom(*, provider, auth_profile):
-        raise RuntimeError("scan fejlede")
+    def delvist_boom(*, provider, auth_profile):
+        if provider == "groq":
+            raise RuntimeError("scan fejlede")
+        return True
 
-    monkeypatch.setattr(s, "provider_auth_ready", boom)
-    with pytest.raises(RuntimeError):
-        s.ready_profiles_for("groq")
+    monkeypatch.setattr(s, "provider_auth_ready", delvist_boom)
 
-    monkeypatch.setattr(s, "provider_auth_ready",
-                        lambda *, provider, auth_profile: True)
+    # Den defekte slot udelades — den raske virker stadig i SAMME scan.
+    assert s.ready_profiles_for("groq") == []
+    assert s.ready_profiles_for("cerebras") == ["default"]
+
+    # Låsen blev frigivet af `with` (ellers ville acquire hænge).
+    assert s._SNAPSHOT_LOCK.acquire(timeout=1) is True, "låsen blev ikke frigivet"
+    s._SNAPSHOT_LOCK.release()
+
+    # Og et nyt scan (efter TTL/invalidering) heler den defekte slot.
+    monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
+    s.clear_cache()
 
     svar: dict[str, list[str]] = {}
     faerdig = threading.Event()
@@ -204,44 +221,188 @@ def test_exception_frigor_laasen(tmp_path, monkeypatch):
     assert svar["v"] == ["default"]
 
 
-def test_to_providers_refreshes_uafhaengigt(tmp_path, monkeypatch):
-    """En global refresh-lås ville serialisere forskellige providers.
+def test_et_batch_scan_daekker_alle_providers(tmp_path, monkeypatch):
+    """24/10-2026: låsen flyttede fra per-provider til ÉT batch-snapshot.
 
-    groq holder sin scan åben; cerebras skal kunne fuldføre imens. Er låsen
-    global, venter cerebras til groq's timeout — det måles på væguret.
+    Den erstatter den tidligere ``test_to_providers_refreshes_uafhaengigt``, som
+    bevogtede det modsatte krav (at to providers kunne scannes uafhængigt).
+    Målingen gjorde det krav forkert: 39 ``iterdir()``-kald for den SAMME mappe
+    og 30 readiness-kald per kandidat-bygning, 264,89 ms koldt. Bygerne blev ikke
+    færre af per-provider-låsen, fordi de samtidige tråde ramte HVER SIN provider
+    og derfor aldrig mødtes om den samme lås.
+
+    Ny kontrakt: ét scan besvarer alle providers. Prisen er serialisering — men
+    den betales én gang per 60 s for hele processen, ikke én gang per provider.
     """
-    import threading
-    import time
     from core.services import auth_profile_scan as s
 
-    for p in ("groq", "cerebras"):
+    for p in ("groq", "cerebras", "mistral"):
         (tmp_path / "default" / "providers" / p).mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
+    s.clear_cache()
+
+    assert s.ready_profiles_for("groq") == ["default"]
+    assert s.ready_profiles_for("cerebras") == ["default"]
+    assert s.ready_profiles_for("mistral") == ["default"]
+
+
+def test_iterdir_kaldes_en_gang_for_alle_providers(tmp_path, monkeypatch):
+    """``root.iterdir()`` skal kaldes ÉN gang, ikke én gang per provider.
+
+    Målt før fixet: 39 kald for den samme mappe i ét enkelt
+    ``_configured_cheap_candidates()``. Efter fixet: 1 (roden) + 1 per
+    konto-profil (dens ``providers/``-mappe).
+    """
+    from pathlib import Path as _P
+    from core.services import auth_profile_scan as s
+
+    providere = ("groq", "cerebras", "mistral", "deepseek", "opencode")
+    for prof in ("default", "account2"):
+        for p in providere:
+            (tmp_path / prof / "providers" / p).mkdir(parents=True)
+
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
+    s.clear_cache()
+
+    kald = {"n": 0}
+    aegte = _P.iterdir
+
+    def talt(self, *a, **k):
+        if str(self).startswith(str(tmp_path)):
+            kald["n"] += 1
+        return aegte(self, *a, **k)
+
+    monkeypatch.setattr(_P, "iterdir", talt)
+    for p in providere:
+        s.ready_profiles_for(p)
+
+    # 1 = profiles-roden, 2 = providers/-mappen i hver konto-profil.
+    # FØR fixet: 1 + 5 providere × 2 profiler = 11 (og 39 i produktion).
+    assert kald["n"] <= 3, f"iterdir kaldt {kald['n']} gange — batch-scan mangler"
+
+
+def test_samtidige_provider_kald_giver_et_batch_scan(tmp_path, monkeypatch):
+    """N tråde om HVER SIN provider må ikke give N scans.
+
+    Det var præcis fejlen per-provider-låsen ikke kunne se: trådene ramte
+    forskellige providere, så de mødtes aldrig om samme lås og scannede alle.
+    """
+    import threading
+    from pathlib import Path as _P
+    from core.services import auth_profile_scan as s
+
+    providere = ("groq", "cerebras", "mistral", "deepseek", "opencode", "groq")
+    for p in set(providere):
+        (tmp_path / "default" / "providers" / p).mkdir(parents=True)
+
     monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
     s.clear_cache()
 
-    groq_inde = threading.Event()
-    cerebras_faerdig = threading.Event()
+    gate = threading.Event()
+    foerste = {"sat": False}
+    laas = threading.Lock()
 
-    def ready(*, provider, auth_profile):
-        if provider == "groq":
-            groq_inde.set()
-            cerebras_faerdig.wait(timeout=5)   # lang nok til at måle blokering
-        elif provider == "cerebras":
-            cerebras_faerdig.set()
+    def langsom(*, provider, auth_profile):
+        with laas:
+            if not foerste["sat"]:
+                foerste["sat"] = True
+                holde = True
+            else:
+                holde = False
+        if holde:
+            gate.wait(timeout=5)   # hold batch-scanningen åben
         return True
 
-    monkeypatch.setattr(s, "provider_auth_ready", ready)
+    monkeypatch.setattr(s, "provider_auth_ready", langsom)
 
-    t = threading.Thread(target=lambda: s.ready_profiles_for("groq"), daemon=True)
-    t.start()
-    assert groq_inde.wait(timeout=5), "groq-scan startede ikke"
+    kald = {"n": 0}
+    aegte = _P.iterdir
 
-    t0 = time.monotonic()
-    s.ready_profiles_for("cerebras")
-    ventet = time.monotonic() - t0
+    def talt(self, *a, **k):
+        if str(self).startswith(str(tmp_path)):
+            kald["n"] += 1
+        return aegte(self, *a, **k)
 
-    assert ventet < 1.0, (
-        f"cerebras ventede {ventet:.1f}s bag groq — låsen er global, ikke per-provider"
+    monkeypatch.setattr(_P, "iterdir", talt)
+
+    start = threading.Barrier(len(providere))
+    svar: list[list[str]] = []
+    svar_laas = threading.Lock()
+
+    def arbejder(p):
+        start.wait(timeout=5)
+        r = s.ready_profiles_for(p)
+        with svar_laas:
+            svar.append(r)
+
+    traade = [threading.Thread(target=arbejder, args=(p,)) for p in providere]
+    for t in traade:
+        t.start()
+    gate.set()
+    for t in traade:
+        t.join(timeout=10)
+
+    assert kald["n"] <= 2, f"iterdir kaldt {kald['n']} gange for 6 samtidige tråde"
+    assert len(svar) == len(providere)
+    assert all(r == ["default"] for r in svar)
+
+
+def test_snapshot_returnerer_kopier(tmp_path, monkeypatch):
+    """Kaldere må ikke dele mutérbare cache-objekter."""
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
+    s.clear_cache()
+
+    foerste = s.auth_snapshot()
+    foerste.setdefault("groq", []).append("injiceret")
+    foerste["ny-provider"] = ["default"]
+
+    anden = s.auth_snapshot()
+    assert "injiceret" not in anden.get("groq", [])
+    assert "ny-provider" not in anden
+
+    # ready_profiles_for skal også give en frisk liste hver gang
+    a = s.ready_profiles_for("groq")
+    a.append("injiceret")
+    assert s.ready_profiles_for("groq") == ["default"]
+
+
+def test_save_og_revoke_invaliderer_snapshottet(tmp_path, monkeypatch):
+    """En credential-ændring skal slå igennem straks, ikke efter 60 s TTL."""
+    import core.auth.profiles as prof
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(prof, "AUTH_PROFILES_DIR", tmp_path)
+
+    klar = {"v": False}
+    monkeypatch.setattr(
+        s, "provider_auth_ready", lambda *, provider, auth_profile: klar["v"]
     )
-    t.join(timeout=10)
-    assert not t.is_alive()
+    s.clear_cache()
+
+    assert s.ready_profiles_for("groq") == []
+
+    # Nøglen bliver gyldig på disken — men snapshottet holder i 60 s.
+    klar["v"] = True
+    assert s.ready_profiles_for("groq") == [], "cachen skal stadig holde her"
+
+    prof.save_provider_credentials(
+        profile="default", provider="groq", credentials={"api_key": "x"}  # pragma: allowlist secret
+    )
+    assert s.ready_profiles_for("groq") == ["default"], (
+        "save_provider_credentials invaliderede ikke auth-snapshottet"
+    )
+
+    # ... og revoke skal gøre det modsatte med det samme.
+    klar["v"] = False
+    prof.revoke_provider(profile="default", provider="groq")
+    assert s.ready_profiles_for("groq") == [], (
+        "revoke_provider invaliderede ikke auth-snapshottet"
+    )

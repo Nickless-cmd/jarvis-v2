@@ -64,6 +64,23 @@ def list_auth_profiles() -> list[dict[str, str]]:
     return items
 
 
+def _invalidate_auth_scan() -> None:
+    """Slå auth-snapshottet ihjel efter en credential-ændring (24/10-2026).
+
+    Uden det ville en ny nøgle være usynlig i op til 60 s, og ``revoke_provider``
+    ville efterlade en død nøgle i cheap-puljen indtil TTL'en udløb.
+    Lazy import: ``auth_profile_scan`` importerer ``cheap_provider_runtime_adapters``,
+    som importerer denne modul — en top-level import ville være cirkulær.
+    En import-fejl må ikke blokere en gemning, så den sluges bevidst.
+    """
+    try:
+        from core.services.auth_profile_scan import clear_cache
+
+        clear_cache()
+    except Exception:  # pragma: no cover - import-fejl må ikke blokere en gemning
+        pass
+
+
 def save_provider_credentials(
     *,
     profile: str,
@@ -94,6 +111,7 @@ def save_provider_credentials(
         json.dumps(state, indent=2) + "\n",
         encoding="utf-8",
     )
+    _invalidate_auth_scan()
     return state
 
 
@@ -481,6 +499,7 @@ def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:
 
     state_path = _profile_dir(profile) / "providers" / provider / "state.json"
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    _invalidate_auth_scan()
     return state
 
 

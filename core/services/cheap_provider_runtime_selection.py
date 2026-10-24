@@ -1181,6 +1181,18 @@ def _configured_cheap_candidates(
     if multiprofile:
         from core.services.auth_profile_scan import ready_profiles_for
 
+    # 24/10-2026: memoizér readiness per unik (provider, profile)-slot INDE for
+    # ét kald. Målt før: tre modeller hos samme provider læste de samme
+    # credentials tre gange, og hvert `provider_auth_ready()` læser både
+    # state.json og credentials.json. Ét svar skal ikke koste seks fil-læsninger.
+    _slot_ready: dict[tuple[str, str], bool] = {}
+
+    def _ready_for(prov: str, prof: str) -> bool:
+        key = (prov, prof)
+        if key not in _slot_ready:
+            _slot_ready[key] = provider_auth_ready(provider=prov, auth_profile=prof)
+        return _slot_ready[key]
+
     def _profiles_for(prov: str, fallback_profile: str) -> list[str]:
         if not multiprofile:
             return [fallback_profile]
@@ -1235,10 +1247,7 @@ def _configured_cheap_candidates(
                     "auth_profile": auth_profile,
                     "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
                     "base_url": str(provider_entry.get("base_url") or defaults.get("base_url") or "").strip(),
-                    "credentials_ready": provider_auth_ready(
-                        provider=provider,
-                        auth_profile=auth_profile,
-                    ),
+                    "credentials_ready": _ready_for(provider, auth_profile),
                     "priority": int(defaults.get("priority") or 9999),
                     "rpm_limit": defaults.get("rpm_limit"),
                     "daily_limit": defaults.get("daily_limit"),
@@ -1288,10 +1297,7 @@ def _configured_cheap_candidates(
                             or provider_cfg.get("base_url")
                             or ""
                         ).strip(),
-                        "credentials_ready": provider_auth_ready(
-                            provider=provider_name,
-                            auth_profile=auth_profile,
-                        ),
+                        "credentials_ready": _ready_for(provider_name, auth_profile),
                         "priority": int(provider_cfg.get("priority") or 9999),
                         "rpm_limit": provider_cfg.get("rpm_limit"),
                         "daily_limit": provider_cfg.get("daily_limit"),

@@ -431,3 +431,159 @@ def test_tokenharbor_er_en_mellemhandler():
     from core.services.cheap_provider_runtime_selection import _is_public_proxy
 
     assert _is_public_proxy("tokenharbor")
+
+
+# ---------------------------------------------------------------------------
+# 24/10-2026: batch-auth-snapshot + per-call slot-memoisering
+#
+# Målt før fixet i ét enkelt _configured_cheap_candidates()-kald:
+#   39 × iterdir() for den SAMME mappe, 30 × provider_auth_ready(),
+#   264,89 ms koldt / 30,50 ms varmt, 233 kandidater.
+# Bygerne på 8011 (peak 189 %, 60 s rytme) forsvandt IKKE af per-provider-låsen,
+# fordi de samtidige tråde ramte hver sin provider og aldrig mødtes om en lås.
+# ---------------------------------------------------------------------------
+
+def _stub_en_provider(monkeypatch, sel, modeller=("m1", "m2", "m3")):
+    """Registry med én provider og N modeller — samme auth-slot hver gang."""
+    registry = {
+        "providers": [
+            {"provider": "groq", "enabled": True, "auth_profile": "default"},
+        ],
+        "models": [
+            {"provider": "groq", "model": m, "lane": "cheap", "enabled": True,
+             "updated_at": "2026-07-16"}
+            for m in modeller
+        ],
+    }
+    monkeypatch.setattr(sel, "load_provider_router_registry", lambda: registry)
+    monkeypatch.setattr(sel, "CHEAP_PROVIDER_DEFAULTS", {
+        "groq": {"base_url": "https://groq.example", "priority": 22},
+    })
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    monkeypatch.setattr(sel, "_flag_profile_roundrobin", lambda: False)
+    monkeypatch.setattr(sel, "provider_runtime_defaults",
+                        lambda p: {"base_url": "https://groq.example", "priority": 22})
+
+
+def test_readiness_kaldes_en_gang_per_slot_ikke_per_model(monkeypatch):
+    """Tre modeller hos samme provider+profil = ÉT readiness-kald, ikke tre."""
+    from core.services import cheap_provider_runtime_selection as sel
+
+    _stub_en_provider(monkeypatch, sel, modeller=("m1", "m2", "m3"))
+    monkeypatch.setattr(
+        "core.services.auth_profile_scan.ready_profiles_for",
+        lambda provider: ["default"],
+    )
+
+    kald: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        sel, "provider_auth_ready",
+        lambda *, provider, auth_profile: kald.append((provider, auth_profile)) or True,
+    )
+
+    kandidater = sel._configured_cheap_candidates(include_public_proxy=True)
+    assert len(kandidater) == 3, f"ventede 3 kandidater, fik {len(kandidater)}"
+    assert kald == [("groq", "default")], (
+        f"readiness kaldt {len(kald)} gange for én slot — per-model-læsning er tilbage"
+    )
+
+
+def test_snapshot_fryser_ikke_roundrobin(monkeypatch):
+    """Rotationen skal ligge UDEN for auth-cachen.
+
+    En cache af den færdige profil-liste ville fryse rækkefølgen i 60 s og
+    ødelægge 50/50-splittet mellem kontoerne.
+    """
+    from core.services import cheap_provider_runtime_selection as sel
+
+    _stub_en_provider(monkeypatch, sel, modeller=("m1",))
+    monkeypatch.setattr(
+        "core.services.auth_profile_scan.ready_profiles_for",
+        lambda provider: ["default", "account2"],
+    )
+    monkeypatch.setattr(sel, "_flag_profile_roundrobin", lambda: True)
+    monkeypatch.setattr(sel, "provider_auth_ready", lambda **kw: True)
+    sel._PROFILE_RR.clear()
+
+    def foerste_profil():
+        for c in sel._configured_cheap_candidates(include_public_proxy=True):
+            if c["provider"] == "groq":
+                return c["auth_profile"]
+
+    assert foerste_profil() == "default"
+    sel._advance_profile_rr("groq")
+    assert foerste_profil() == "account2", (
+        "round-robin avancerede ikke — snapshottet fryser profil-rækkefølgen"
+    )
+    sel._advance_profile_rr("groq")
+    assert foerste_profil() == "default"
+
+
+def test_runtime_state_aendring_paavirker_sortering_straks(monkeypatch):
+    """Cooldown skal flytte kandidaten med det samme — ikke efter en TTL."""
+    from core.services import cheap_provider_runtime_selection as sel
+
+    _stub_en_provider(monkeypatch, sel, modeller=("m1", "m2"))
+    monkeypatch.setattr(
+        "core.services.auth_profile_scan.ready_profiles_for",
+        lambda provider: ["default"],
+    )
+    monkeypatch.setattr(sel, "provider_auth_ready", lambda **kw: True)
+
+    def raekkefoelge():
+        return [c["model"] for c in sel._configured_cheap_candidates(include_public_proxy=True)
+                if c["provider"] == "groq"]
+
+    # Ingen states → begge lige, sorteret på updated_at (identisk) → stabil orden.
+    monkeypatch.setattr(sel, "list_cheap_provider_runtime_states", lambda **_kw: [])
+    uden = raekkefoelge()
+    assert set(uden) == {"m1", "m2"}
+
+    # m1 får en dårlig historik → højere adaptive penalty → skal rykke bag m2.
+    # (Cooldown påvirker `status` i status-fladen, ikke sorteringen; det er
+    #  metadata_json der driver effective_priority.)
+    import json as _json
+    monkeypatch.setattr(sel, "list_cheap_provider_runtime_states", lambda **_kw: [
+        {"provider": "groq", "model": "m1", "lane": "cheap",
+         "metadata_json": _json.dumps({
+             "failure_count": 10, "success_count": 0, "avg_latency_ms": 5000,
+         })},
+    ])
+    med = raekkefoelge()
+    assert med[-1] == "m1", f"runtime-state flyttede ikke m1 ned: {med}"
+
+
+def test_include_public_proxy_og_skip_providers(monkeypatch):
+    """De to filtre skal give hver sit korrekte resultat — ikke delt cache."""
+    from core.services import cheap_provider_runtime_selection as sel
+
+    registry = {
+        "providers": [
+            {"provider": "groq", "enabled": True, "auth_profile": "default"},
+            {"provider": "ollamafreeapi", "enabled": True, "auth_profile": "default"},
+            {"provider": "arko", "enabled": True, "auth_profile": "default"},
+        ],
+        "models": [
+            {"provider": "groq", "model": "m1", "lane": "cheap", "enabled": True},
+            {"provider": "ollamafreeapi", "model": "free-1", "lane": "cheap", "enabled": True},
+            {"provider": "arko", "model": "arko-1", "lane": "cheap", "enabled": True},
+        ],
+    }
+    monkeypatch.setattr(sel, "load_provider_router_registry", lambda: registry)
+    monkeypatch.setattr(sel, "CHEAP_PROVIDER_DEFAULTS", {})
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: False)
+    monkeypatch.setattr(sel, "provider_runtime_defaults", lambda p: {"priority": 10})
+    monkeypatch.setattr(sel, "provider_auth_ready", lambda **kw: True)
+    monkeypatch.setattr(sel, "list_cheap_provider_runtime_states", lambda **_kw: [])
+
+    def providere(**kw):
+        return {c["provider"] for c in sel._configured_cheap_candidates(**kw)}
+
+    uden_proxy = providere(include_public_proxy=False)
+    med_proxy = providere(include_public_proxy=True)
+    sprunget = providere(include_public_proxy=True, skip_providers=frozenset({"arko"}))
+
+    assert "ollamafreeapi" not in uden_proxy and "arko" not in uden_proxy
+    assert {"ollamafreeapi", "arko"} <= med_proxy
+    assert "arko" not in sprunget
+    assert "groq" in uden_proxy and "groq" in sprunget

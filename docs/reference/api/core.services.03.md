@@ -276,13 +276,13 @@ _Shared scanner for multi-profile provider auth slots._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_account_profile` | `(profile)` | True only for real account profiles (default, account2, account3, …). | [src](../../../core/services/auth_profile_scan.py#L42) |
-| function | `_provider_lock` | `(provider)` | Returnér den fælles lås for ``provider`` (oprettet atomisk). | [src](../../../core/services/auth_profile_scan.py#L68) |
-| function | `clear_cache` | `()` | Drop all cached scan results (test helper / manual invalidation). | [src](../../../core/services/auth_profile_scan.py#L78) |
-| function | `_profiles_root` | `()` | Return the auth/profiles directory (honoring JARVIS_CONFIG_DIR). | [src](../../../core/services/auth_profile_scan.py#L84) |
-| function | `_is_keyless` | `(provider)` | True if the provider needs no per-profile credentials. | [src](../../../core/services/auth_profile_scan.py#L91) |
-| function | `_sort_default_first` | `(profiles)` | — | [src](../../../core/services/auth_profile_scan.py#L111) |
-| function | `ready_profiles_for` | `(provider)` | Return profiles with ready credentials for ``provider``. | [src](../../../core/services/auth_profile_scan.py#L116) |
+| function | `_is_account_profile` | `(profile)` | True only for real account profiles (default, account2, account3, …). | [src](../../../core/services/auth_profile_scan.py#L45) |
+| function | `clear_cache` | `()` | Drop the auth snapshot (test helper + explicit invalidation). | [src](../../../core/services/auth_profile_scan.py#L70) |
+| function | `auth_snapshot` | `()` | Scan alle auth-profilmapper ÉN gang → ``{provider: [ready profiles]}``. | [src](../../../core/services/auth_profile_scan.py#L83) |
+| function | `_profiles_root` | `()` | Return the auth/profiles directory (honoring JARVIS_CONFIG_DIR). | [src](../../../core/services/auth_profile_scan.py#L148) |
+| function | `_is_keyless` | `(provider)` | True if the provider needs no per-profile credentials. | [src](../../../core/services/auth_profile_scan.py#L155) |
+| function | `_sort_default_first` | `(profiles)` | — | [src](../../../core/services/auth_profile_scan.py#L175) |
+| function | `ready_profiles_for` | `(provider)` | Return profiles with ready credentials for ``provider``. | [src](../../../core/services/auth_profile_scan.py#L180) |
 
 ## `core/services/auto_code_review.py`
 _Auto code-review heuristic for git-commit proposals._

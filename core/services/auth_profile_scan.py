@@ -12,6 +12,7 @@ to authenticate.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import threading
@@ -22,6 +23,8 @@ from core.services.cheap_provider_runtime_adapters import (
     CHEAP_PROVIDER_DEFAULTS,
     provider_auth_ready,
 )
+
+logger = logging.getLogger(__name__)
 
 try:  # public proxies are keyless regardless of CHEAP_PROVIDER_DEFAULTS
     from core.services.cheap_lane_balancer import _PUBLIC_PROXIES
@@ -43,42 +46,103 @@ def _is_account_profile(profile: str) -> bool:
     """True only for real account profiles (default, account2, account3, …)."""
     return bool(_ACCOUNT_PROFILE_RE.match(profile))
 
-# Per-provider cache: {provider: (expiry_epoch, [profiles])}. Populated lazily;
-# time.time() is only ever called inside functions, never at import.
-_CACHE: dict[str, tuple[float, list[str]]] = {}
+# Batch-snapshot af ALLE auth-slots (24/10-2026).
+#
+# MÅLT før dette: ét enkelt `_configured_cheap_candidates()`-kald kaldte
+# `root.iterdir()` 39 gange for den SAMME mappe og `provider_auth_ready()` 30
+# gange — 264,89 ms koldt, 30,50 ms varmt, 233 kandidater. Bygerne på 8011
+# (peak 189 %, 60-sekunders rytme) forsvandt IKKE af en per-provider-lås, fordi
+# de samtidige tråde ramte HVER SIN provider og derfor aldrig mødtes om den
+# samme lås. Låsen var korrekt bygget til det forkerte mønster.
+#
+# Derfor: ÉT scan bygger hele billedet {provider: [profiles]}, og single-flight
+# ligger omkring DET — ikke omkring hver provider. Prisen er serialisering, men
+# den betales én gang per TTL for hele processen, ikke én gang per provider.
+#
+# Bevidst IKKE cached her: round-robin-rotationen og den adaptive sortering.
+# De kører per kald i `cheap_provider_runtime_selection`, så en cache ikke kan
+# fryse profil-rækkefølgen (50/50-splittet) eller forsinke cooldowns.
+_SNAPSHOT: tuple[float, dict[str, list[str]]] | None = None
 _TTL_SECONDS = 60.0
-
-# Single-flight pr. provider (24/10-2026).
-#
-# MÅLT: uden lås kunne fem samtidige cognitive-state-tråde alle se det samme
-# 60-sekunders udløb og køre den samme directory-scan — hver ~235 ms filsystem-
-# arbejde i stedet for ét. Bygerne kom med 70/68/124 sekunders mellemrum, altså
-# cache-expiry efterfulgt af næste request-burst. CPython frigiver GIL omkring
-# blokerende fil-I/O, så GIL'en forhindrede ikke stampeden.
-#
-# Låsen er pr. provider, ikke global: en global refresh-lås ville serialisere
-# uafhængige providers bag hinanden. Kun vinderen af kapløbet scanner; de øvrige
-# venter og læser dens resultat. `_LOCKS` ryddes aldrig — antallet af providers er
-# lille og fast, og en lås der fjernes mens nogen holder den, ville bryde
-# synkroniseringen.
-_LOCKS: dict[str, threading.Lock] = {}
-_LOCKS_GUARD = threading.Lock()
-
-
-def _provider_lock(provider: str) -> threading.Lock:
-    """Returnér den fælles lås for ``provider`` (oprettet atomisk)."""
-    with _LOCKS_GUARD:
-        laas = _LOCKS.get(provider)
-        if laas is None:
-            laas = threading.Lock()
-            _LOCKS[provider] = laas
-        return laas
+_SNAPSHOT_LOCK = threading.Lock()
 
 
 def clear_cache() -> None:
-    """Drop all cached scan results (test helper / manual invalidation)."""
-    with _LOCKS_GUARD:
-        _CACHE.clear()
+    """Drop the auth snapshot (test helper + explicit invalidation).
+
+    Kaldes af ``save_provider_credentials()`` og ``revoke_provider()`` i
+    ``core.auth.profiles``, så en credential-ændring slår igennem straks i
+    stedet for at vente på TTL-udløb — ellers kunne en tilbagekaldt nøgle
+    ligge i cheap-puljen i op til et minut.
+    """
+    global _SNAPSHOT
+    with _SNAPSHOT_LOCK:
+        _SNAPSHOT = None
+
+
+def auth_snapshot() -> dict[str, list[str]]:
+    """Scan alle auth-profilmapper ÉN gang → ``{provider: [ready profiles]}``.
+
+    Single-flight: kun én tråd scanner; de øvrige venter og læser dens
+    resultat. ``with`` frigiver også ved exception, så en fejlet scan ikke
+    efterlader snapshottet permanent låst.
+
+    En enkelt defekt slot (fx korrupt JSON) udelades og logges — den må ikke
+    blinde hele auth-laget for alle andre providers.
+
+    Returnerer KOPIER: kaldere må ikke dele mutérbare cache-objekter.
+    """
+    global _SNAPSHOT
+    now = time.time()
+    snap = _SNAPSHOT
+    if snap is not None and snap[0] > now:
+        return {p: list(v) for p, v in snap[1].items()}
+
+    with _SNAPSHOT_LOCK:
+        # Dobbeltkontrol under låsen: en anden tråd kan have fyldt snapshottet
+        # mens vi ventede. `now` genberegnes, så vi ikke gemmer et allerede
+        # udløbet tidsstempel.
+        now = time.time()
+        snap = _SNAPSHOT
+        if snap is not None and snap[0] > now:
+            return {p: list(v) for p, v in snap[1].items()}
+
+        by_provider: dict[str, list[str]] = {}
+        root = _profiles_root()
+        try:
+            profile_dirs = [p for p in root.iterdir() if p.is_dir()]
+        except (FileNotFoundError, NotADirectoryError):
+            profile_dirs = []
+
+        for prof_dir in profile_dirs:
+            profile = prof_dir.name
+            if not _is_account_profile(profile):
+                continue  # backups, single-provider og OAuth-mapper er ikke konti
+            try:
+                provider_dirs = [
+                    p for p in (prof_dir / "providers").iterdir() if p.is_dir()
+                ]
+            except (FileNotFoundError, NotADirectoryError):  # profil uden providers/-mappe
+                continue
+            for prov_dir in provider_dirs:
+                provider = prov_dir.name
+                if _is_keyless(provider):
+                    continue  # keyless får ["default"] uden fil-I/O
+                try:
+                    klar = provider_auth_ready(provider=provider, auth_profile=profile)
+                except Exception:
+                    logger.warning(
+                        "auth_snapshot: readiness fejlede for %s/%s — slotten udelades",
+                        provider,
+                        profile,
+                        exc_info=True,
+                    )
+                    continue
+                if klar:
+                    by_provider.setdefault(provider, []).append(profile)
+
+        _SNAPSHOT = (now + _TTL_SECONDS, by_provider)
+        return {p: list(v) for p, v in by_provider.items()}
 
 
 def _profiles_root() -> Path:
@@ -116,64 +180,29 @@ def _sort_default_first(profiles: list[str]) -> list[str]:
 def ready_profiles_for(provider: str) -> list[str]:
     """Return profiles with ready credentials for ``provider``.
 
-    Result is sorted with "default" first, then the rest alphabetical. Cached
-    per-provider for 60s. Keyless providers always return exactly ["default"].
+    Result is sorted with "default" first, then the rest alphabetical. Served
+    from the batch snapshot (``auth_snapshot``): one directory scan answers every
+    provider, refreshed every 60 s or immediately after a credential change.
+    Keyless providers always return exactly ["default"].
     """
-    now = time.time()
-    cached = _CACHE.get(provider)
-    if cached is not None and cached[0] > now:
-        return list(cached[1])
+    if _is_keyless(provider):
+        return ["default"]
 
-    # Single-flight: kun én tråd pr. provider scanner; resten venter på dens
-    # resultat. Låsen dækker HELE refreshen — inkl. iterdir() og hvert
-    # provider_auth_ready()-kald — for det er netop det arbejde der blev
-    # mangedoblet før. `with` frigiver også ved exception, så en fejlet scan
-    # ikke efterlader provideren permanent låst.
-    with _provider_lock(provider):
-        # Dobbeltkontrol under låsen: en anden tråd kan have fyldt cachen mens
-        # vi ventede. `now` genberegnes, så vi ikke skriver et allerede udløbet
-        # tidsstempel.
-        now = time.time()
-        cached = _CACHE.get(provider)
-        if cached is not None and cached[0] > now:
-            return list(cached[1])
+    ready = list(auth_snapshot().get(provider) or [])
 
-        if _is_keyless(provider):
-            result = ["default"]
-            _CACHE[provider] = (now + _TTL_SECONDS, result)
-            return list(result)
+    # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro): der findes ingen
+    # profil-mappe at scanne, så uden det her returneres [] og udbyderen kommer
+    # ALDRIG i cheap-puljen. Målt 7/9-2026: xkiro var klar
+    # (provider_auth_ready=True) og svarede på et direkte kald, men
+    # `_configured_cheap_candidates` gav nul kandidater, fordi profil-listen var
+    # tom. HuggingFace skjulte hullet, fordi den OGSÅ har profil-nøgler.
+    #
+    # Tredje sted den samme nøgle skal kendes — readiness, dispatch og her.
+    # TILFØJES, erstatter ikke: en kortslutning her ville have fjernet
+    # HuggingFaces `account2`, som findes som rigtig profil.
+    if "default" not in ready:
+        from core.services.cheap_provider_runtime_keys import has_runtime_owner_key
+        if has_runtime_owner_key(provider):
+            ready.append("default")
 
-        ready: list[str] = []
-        root = _profiles_root()
-        try:
-            profile_dirs = [p for p in root.iterdir() if p.is_dir()]
-        except (FileNotFoundError, NotADirectoryError):
-            profile_dirs = []
-
-        for prof_dir in profile_dirs:
-            profile = prof_dir.name
-            if not _is_account_profile(profile):
-                continue  # skip backups, single-provider, and OAuth profile dirs
-            if not (prof_dir / "providers" / provider).is_dir():
-                continue
-            if provider_auth_ready(provider=provider, auth_profile=profile):
-                ready.append(profile)
-
-        # Delt ejer-nøgle i runtime.json (HuggingFace, xkiro): der findes ingen
-        # profil-mappe at scanne, så uden det her returneres [] og udbyderen kommer
-        # ALDRIG i cheap-puljen. Målt 7/9-2026: xkiro var klar
-        # (provider_auth_ready=True) og svarede på et direkte kald, men
-        # `_configured_cheap_candidates` gav nul kandidater, fordi profil-listen var
-        # tom. HuggingFace skjulte hullet, fordi den OGSÅ har profil-nøgler.
-        #
-        # Tredje sted den samme nøgle skal kendes — readiness, dispatch og her.
-        # TILFØJES, erstatter ikke: en kortslutning her ville have fjernet
-        # HuggingFaces `account2`, som findes som rigtig profil.
-        if "default" not in ready:
-            from core.services.cheap_provider_runtime_keys import has_runtime_owner_key
-            if has_runtime_owner_key(provider):
-                ready.append("default")
-
-        result = _sort_default_first(ready)
-        _CACHE[provider] = (now + _TTL_SECONDS, result)
-        return list(result)
+    return _sort_default_first(ready)

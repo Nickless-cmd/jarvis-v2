@@ -261,6 +261,33 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Adherence-helbred — den manglende læser (24/10-2026).
+    #
+    # `decision_breach_reader.health_report()` kunne svare paa om jeg holder
+    # mine forpligtelser, men havde NUL kaldere i drift. Dommen blev skrevet af
+    # `decision_review_daemon`, scoren dannet ved >=3 domme — og ingen laeste
+    # resultatet. Praecis samme fejlform som `breach_stats` havde indtil
+    # 22/10-2026: uden en laeser er det en log, ikke en laeringssloejfe.
+    #
+    # Linjen er TAVS naar alt er sundt. Den fyrer kun naar en beslutning er
+    # svag: maalt under 0,4, eller aldrig maalt med gentagne brud.
+    try:
+        from core.services.decision_breach_reader import health_report
+
+        _hr = health_report()
+        _svage = [r for r in (_hr.get("rows") or []) if r.get("weak")]
+        if _svage:
+            _dele = [
+                f"{str(r.get('decision_id'))[:14]} {r.get('why_weak') or 'svag'}"
+                for r in _svage[:3]
+            ]
+            parts.append(
+                f"decision_health: {len(_svage)} svage af {_hr.get('total')} — "
+                + "; ".join(_dele)
+            )
+    except Exception:  # helbred er observability — maa ikke koste cyklussen
+        pass
+
     # Automation-suggestions — lærings-sløjfen, fase 2 (2026-10-01).
     # Forslagene blev skrevet i 5½ måned uden en læser. Nu ligger de foran dig
     # hver cyklus med deres id, så du kan LUKKE dem: accept_suggestion(id) hvis

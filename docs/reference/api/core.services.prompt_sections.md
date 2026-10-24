@@ -207,15 +207,16 @@ _MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L39) |
-| function | `_terms` | `(text)` | Termsaettet for en tekst — CACHET (12/10-2026). | [src](../../../core/services/prompt_sections/memory_md_selection.py#L49) |
-| function | `_sektioner_og_vaegte` | `(workspace_dir)` | Sektionerne og deres idf-vaegte, cachet paa filens (mtime, stoerrelse). | [src](../../../core/services/prompt_sections/memory_md_selection.py#L79) |
-| function | `_idf_vaegte` | `(sektioner)` | log(N/df) pr. term over sektionerne. Tom dict naar der er for lidt data. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L102) |
-| function | `_lexical_coverage` | `(query, section, text, *, vaegte=…)` | Hvor meget af forespoergslen daekker denne sektion, 0..1. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L134) |
-| function | `_memory_md_sections` | `(workspace_dir)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L164) |
-| function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L197) |
-| function | `_lexical_candidates` | `(msg, workspace_dir, *, limit, vaegte=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L227) |
-| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L252) |
+| function | `_mask` | `(text)` | Maskér hemmeligheder i den tekst der FAKTISK naar prompten. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L39) |
+| function | `_render` | `(section, text, *, max_chars)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L69) |
+| function | `_terms` | `(text)` | Termsaettet for en tekst — CACHET (12/10-2026). | [src](../../../core/services/prompt_sections/memory_md_selection.py#L82) |
+| function | `_sektioner_og_vaegte` | `(workspace_dir)` | Sektionerne og deres idf-vaegte, cachet paa filens (mtime, stoerrelse). | [src](../../../core/services/prompt_sections/memory_md_selection.py#L112) |
+| function | `_idf_vaegte` | `(sektioner)` | log(N/df) pr. term over sektionerne. Tom dict naar der er for lidt data. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L135) |
+| function | `_lexical_coverage` | `(query, section, text, *, vaegte=…)` | Hvor meget af forespoergslen daekker denne sektion, 0..1. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L167) |
+| function | `_memory_md_sections` | `(workspace_dir)` | Parse MEMORY.md til (overskrift, tekst) — UDEN at maskere. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L197) |
+| function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L238) |
+| function | `_lexical_candidates` | `(msg, workspace_dir, *, limit, vaegte=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L268) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L293) |
 
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._

@@ -36,13 +36,46 @@ _STOP_TERMS = frozenset({
 })
 
 
+def _mask(text: str) -> str:
+    """Maskér hemmeligheder i den tekst der FAKTISK naar prompten.
+
+    ## Hvorfor her og ikke i parse-vejen (maalt 24/10-2026)
+
+    `_memory_md_sections` laeste MEMORY.md gennem `read_for_prompt`, som kalder
+    `redact()` over HELE filen. Maalt: 3,10 MB → **434 ms ren CPU**, og det
+    skete ved hver cache-invalidering — dvs. hver gang MEMORY.md var skrevet
+    til siden sidste tur. Da jeg skriver i den ved naesten hver afsluttet tur,
+    var cachen kold hver gang Bjørn skrev: `select_memory_md_sections` maalte
+    **1003 ms kold mod 414 ms varm**.
+
+    Resultatet af de 434 ms blev brugt til at vaelge 3 sektioner paa tilsammen
+    hoejst 1500 tegn. Alt der naar prompten gaar gennem denne funktion, saa
+    maskeringen hoerer her: samme sikkerhed, 3,10 MB → ≤1500 tegn arbejde.
+    """
+    if not text:
+        return text
+    try:
+        from core.services.secret_redaction import redact
+
+        return redact(text)
+    except Exception:  # kan ikke maskere = sektionen maa IKKE i prompten
+        logger.warning(
+            "memory_md_selection: maskering fejlede — sektionen udelades "
+            "frem for at gaa umasket i prompten", exc_info=True,
+        )
+        return ""
+
+
 def _render(section: str, text: str, *, max_chars: int) -> str:
     heading = " ".join((section or "").split()).strip()
     body = " ".join((text or "").split()).strip()
     line = f"§ {heading}: {body}" if heading else body
     if len(line) > max_chars:
         line = line[: max_chars - 1].rstrip() + "…"
-    return line
+    # Maskering EFTER klipning: teksten er allerede begraenset af
+    # `_focused_excerpt` (900 tegn) og `max_chars`, saa der maskeres aldrig
+    # mere end det der kan naa prompten.
+    return _mask(line)
 
 
 @functools.lru_cache(maxsize=8192)
@@ -162,12 +195,20 @@ def _lexical_coverage(
 
 
 def _memory_md_sections(workspace_dir: Path) -> list[tuple[str, str]]:
+    """Parse MEMORY.md til (overskrift, tekst) — UDEN at maskere.
+
+    24/10-2026: her stod `read_for_prompt`, som maskerer hele filen (maalt
+    434 ms paa 3,10 MB). Resultatet af det arbejde er en kandidatliste til
+    scoring; kun de 3 valgte sektioner naar prompten, og de maskeres nu i
+    `_render` i stedet. `read_text_for_path` bevarer krypterings-stien, saa
+    medlems-workspaces laeses praecis som foer.
+    """
     path = workspace_dir / "MEMORY.md"
     try:
-        from core.services.secret_redaction import read_for_prompt
+        from core.services.workspace_crypto import read_text_for_path
 
-        raw = read_for_prompt(path)
-    except Exception:
+        raw = read_text_for_path(path)
+    except Exception:  # ulaeselig fil = ingen sektioner; kalderen falder tilbage
         raw = path.read_text(encoding="utf-8") if path.exists() else ""
     if not raw:
         return []

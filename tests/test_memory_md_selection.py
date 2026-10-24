@@ -569,3 +569,90 @@ def test_memory_md_fallback_bygger_entries_naar_sektioner_svigter(tmp_path, monk
     )
     assert sel is not None, "fallback gav ingen sektion"
     assert any("GPU" in line for line in sel.lines), f"indholdet forsvandt: {sel.lines}"
+
+
+# --- 24/10-2026: maskering flyttet fra parse-vej til render-vej ---------------
+# `_memory_md_sections` laeste MEMORY.md gennem `read_for_prompt` og maskerede
+# hele filen (maalt 434 ms paa 3,10 MB) for at vaelge 3 sektioner paa <=1500
+# tegn. Efter flytningen: parse 472 -> 30 ms, kold select 1003 -> 642 ms.
+# Vagterne her holder BEGGE sider fast: parse-vejen maa ikke maskere igen, og
+# render-vejen SKAL maskere.
+
+
+def test_parse_vejen_maskerer_ikke_hele_filen(tmp_path, monkeypatch):
+    """`_memory_md_sections` maa ikke kalde redact()/read_for_prompt()."""
+    from core.services.prompt_sections import memory_md_selection as M
+
+    ws = tmp_path / "ws-parse"
+    ws.mkdir(parents=True)
+    (ws / "MEMORY.md").write_text(
+        "# MEMORY\n\n## Sektion\n- en linje\n", encoding="utf-8")
+
+    kaldt = {"redact": 0, "read_for_prompt": 0}
+
+    def _taeller_redact(text):
+        kaldt["redact"] += 1
+        return text
+
+    def _taeller_read(path):
+        kaldt["read_for_prompt"] += 1
+        return path.read_text(encoding="utf-8")
+
+    monkeypatch.setattr("core.services.secret_redaction.redact", _taeller_redact)
+    monkeypatch.setattr("core.services.secret_redaction.read_for_prompt", _taeller_read)
+    M._IDF_CACHE.clear()
+
+    sektioner = M._memory_md_sections(ws)
+    assert sektioner, "parse-vejen skal stadig give sektioner"
+    assert kaldt["redact"] == 0, (
+        f"redact() blev kaldt {kaldt['redact']} gang(e) i parse-vejen — "
+        "det er de 434 ms tilbage"
+    )
+    assert kaldt["read_for_prompt"] == 0, (
+        "read_for_prompt() maskerer hele filen; parse-vejen skal laese raat"
+    )
+
+
+def test_render_vejen_maskerer_sektionen(tmp_path, monkeypatch):
+    """SIKKERHED: en hemmelighed i en valgt sektion maa ALDRIG gaa umasket i prompten."""
+    from core.services.prompt_sections import memory_md_selection as M
+
+    hemmelighed = "sk-" + "a1b2c3d4e5f6g7h8i9j0k1l2"  # pragma: allowlist secret
+    renset = M._render("Noegle", f"min noegle er {hemmelighed} og den virker", max_chars=1500)
+    assert hemmelighed not in renset, (
+        "hemmeligheden gik UMASKET gennem _render — det er et laek"
+    )
+    assert renset.startswith("§ Noegle:"), "overskriften skal bevares"
+
+
+def test_render_udelader_sektionen_naar_maskering_fejler(monkeypatch):
+    """Kan der ikke maskeres, maa sektionen IKKE i prompten (fald mod at standse)."""
+    from core.services.prompt_sections import memory_md_selection as M
+
+    def _braekker(text):
+        raise RuntimeError("redact nede")
+
+    monkeypatch.setattr("core.services.secret_redaction.redact", _braekker)
+    assert M._render("Sektion", "noget tekst", max_chars=1500) == "", (
+        "ved maskerings-fejl skal sektionen udelades, ikke gaa umasket igennem"
+    )
+
+
+def test_maskering_rammer_kun_det_der_naar_prompten(tmp_path, monkeypatch):
+    """Maalt: der maa hoegst maskeres det der faktisk kan naa prompten."""
+    from core.services.prompt_sections import memory_md_selection as M
+
+    maalt = {"tegn": 0}
+    aegte = M._mask
+
+    def _taeller(text):
+        maalt["tegn"] += len(text or "")
+        return aegte(text)
+
+    monkeypatch.setattr(M, "_mask", _taeller)
+    linje = M._render("Stor", "x" * 5000, max_chars=1500)
+    assert maalt["tegn"] <= 1500, (
+        f"der blev maskeret {maalt['tegn']} tegn for en linje paa 1500 — "
+        "maskeringen er tilbage paa hele filen"
+    )
+    assert len(linje) <= 1500

@@ -42,6 +42,24 @@ def test_anchor_prefix_is_registered():
     assert any(p.startswith("⚖️ Before you answer") for p in vl._LEAN_KEEP_ROW_PREFIXES)
 
 
+def test_lean_keeps_user_chat_style_but_drops_heavy_tail():
+    style = "\n".join([
+        "## Chatmode: denne brugers samtalestil",
+        "De eksplicitte valg nedenfor er aktive adfærdsstandarder.",
+        "Gør svaret mærkbart legende.",
+        "Brug normalt en eller to naturlige emoji/emotikoner.",
+    ])
+    text = "Original task" + "\n\n" + _tail() + "\n\n" + style
+
+    lean, changed, dropped = vl._lean_strip_user_message(text)
+
+    assert changed is True
+    assert dropped > 0
+    assert "[SELF-MONITOR]" not in lean
+    assert _ANCHOR in lean
+    assert style in lean
+
+
 def test_no_heavy_marker_is_noop():
     text = "Just a plain message, no heavy tail."
     lean, changed, dropped = vl._lean_strip_user_message(text)

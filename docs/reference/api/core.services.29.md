@@ -16,9 +16,9 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L60) |
-| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append chat-only contracts after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L116) |
-| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L133) |
+| function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L61) |
+| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append chat-only contracts after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L118) |
+| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the contract only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L135) |
 
 ## `core/services/visible_first_pass_output.py`
 _Én synlig grænse for første modelsvar._
@@ -125,10 +125,10 @@ _Lean agentic-round-prompt transform + kill-switch (split from_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_split_on_double_newline` | `(text)` | Split en sammensat besked i blokke på ``\n\n`` (assembly-join-grænsen). | [src](../../../core/services/visible_followup_lean.py#L66) |
-| function | `_lean_strip_user_message` | `(text)` | Skær den tunge per-turn-hale af ÉN bruger-besked, men bevar de load-bearing | [src](../../../core/services/visible_followup_lean.py#L71) |
-| function | `build_lean_base_messages` | `(base_messages)` | Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2. | [src](../../../core/services/visible_followup_lean.py#L113) |
-| function | `agentic_lean_prompt_enabled` | `()` | Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True. | [src](../../../core/services/visible_followup_lean.py#L224) |
+| function | `_split_on_double_newline` | `(text)` | Split en sammensat besked i blokke på ``\n\n`` (assembly-join-grænsen). | [src](../../../core/services/visible_followup_lean.py#L71) |
+| function | `_lean_strip_user_message` | `(text)` | Skær den tunge per-turn-hale af ÉN bruger-besked, men bevar de load-bearing | [src](../../../core/services/visible_followup_lean.py#L76) |
+| function | `build_lean_base_messages` | `(base_messages)` | Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2. | [src](../../../core/services/visible_followup_lean.py#L118) |
+| function | `agentic_lean_prompt_enabled` | `()` | Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True. | [src](../../../core/services/visible_followup_lean.py#L230) |
 
 ## `core/services/visible_followup_results.py`
 _Runde-resultater → `ToolResult` til modellens naeste runde og til den gemte tur._

@@ -28,7 +28,8 @@ import os
 #   BEHOLD:  system-beskeden (identitet-kerne + tool-katalog-linje + tool-output-
 #            hygiejne — Jarvis' STEMME), HELE samtale-historikken, den oprindelige
 #            bruger-opgave, ALLE tool-exchanges (de ligger i ``exchanges``, røres
-#            ALDRIG her), og de 2 load-bearing anti-løgn-rækker.
+#            ALDRIG her), de 2 load-bearing anti-løgn-rækker og den kompakte,
+#            bruger-specifikke chat-stil.
 #   DROP:    den per-turn-dynamiske hale (alt fra det første heavy-marker og frem).
 #
 # De 2 load-bearing anti-løgn-rækker (spec §4.7) BEVARES eksplicit:
@@ -55,11 +56,15 @@ _LEAN_TAIL_START_MARKERS: tuple[str, ...] = (
     "[AWARENESS]",
 )
 
-# De 2 load-bearing anti-løgn-rækker — bevares ALTID i lean-prompten.
-# Behavioral anchor (anti-fabrikation) ligger i halen → extraheres + re-appendes.
-# Match på prefiks (teksten efter kan variere let på tværs af versioner).
+# Load-bearing blokke bevares ALTID i lean-prompten. Behavioral anchor
+# (anti-fabrikation) og den kompakte, bruger-specifikke samtalestil ligger i
+# halen → extraheres + re-appendes. Den sidste skal overleve, fordi modellen
+# ofte formulerer det bruger-synlige svar EFTER et tool-kald; uden den skifter
+# stemmen netop i afslutningsrunden. Match på prefiks, så indholdet kan udvikle
+# sig uden at lean-transformen skal kende alle profilværdier.
 _LEAN_KEEP_ROW_PREFIXES: tuple[str, ...] = (
     "⚖️ Before you answer",   # behavioral anchor (audit #3, 2026-07-22; was "⚖️ FØR DU SVARER")
+    "## Chatmode: denne brugers samtalestil",
 )
 
 
@@ -117,7 +122,8 @@ def build_lean_base_messages(
 
     Drop den tunge per-turn-hale fra beskeden lige før den aktuelle user-turn
     (eller fra selve user-turnen for legacy payloads); behold system-
-    beskeden (identitet/tools/stemme), historikken, opgaven og de 2 anti-løgn-rækker.
+    beskeden (identitet/tools/stemme), historikken, opgaven, de 2 anti-løgn-rækker
+    og brugerens kompakte chat-stil.
     ``exchanges`` (tool-resultater) ligger UDENFOR ``base_messages`` og røres ALDRIG.
 
     Returnerer ``(lean_messages, metrics)``. ``metrics`` bærer char-reduktionen

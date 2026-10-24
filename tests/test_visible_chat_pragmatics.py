@@ -74,6 +74,10 @@ def test_code_mode_provider_shape_does_not_receive_chat_contract(monkeypatch) ->
         )
 
     assert plain[0]["content"] == "BASE"
+    assert not any(
+        "Chatmode: denne brugers samtalestil" in str(item.get("content") or "")
+        for item in plain
+    )
 
 
 def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) -> None:
@@ -87,10 +91,29 @@ def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) ->
     with tool_scope("chat"):
         tail = build_chat_mode_dynamic_tail("EXISTING", message="Haha, det er fanme fedt 😂", session_id="s")
     assert tail.startswith("EXISTING")
-    assert "leg, drilleri" in tail
-    assert "Emoji er velkomne" in tail
+    assert "mærkbart legende" in tail
+    assert "Brug normalt en eller to" in tail
     assert "kraftsprog i denne tur" in tail
     assert "jarvis-ui" in tail
+
+
+def test_explicit_profile_is_an_active_default_and_recognizes_text_emoticon(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "core.context.output_style.hent_chat_style",
+        lambda _: {
+            "tone": "playful", "emoji": "expressive", "profanity": "comfortable",
+            "visuals": "rich", "questions": "curious",
+        },
+    )
+
+    with tool_scope("chat"):
+        tail = build_chat_mode_dynamic_tail("", message="Det er jo komisk :'D", session_id="s")
+
+    assert "aktive adfærdsstandarder, ikke blot tilladelser" in tail
+    assert "mærkbart legende" in tail
+    assert "Brug normalt en eller to" in tail
+    assert "emoji/emotikon i denne tur" in tail
+    assert "legende/latterfuld" in tail
 
 
 def test_deepseek_stable_prefix_is_identical_across_user_tone(monkeypatch) -> None:

@@ -52,6 +52,7 @@ _PROFANITY_RE = re.compile(
     r"\b(?:fuck|fucking|shit|damn|helvede|fanden|fanme|sgu|sku)\b", re.IGNORECASE,
 )
 _LAUGHTER_RE = re.compile(r"(?:\b(?:haha+|hehe+|lol)\b|😂|🤣|😅)", re.IGNORECASE)
+_TEXT_EMOTICON_RE = re.compile(r"(?<!\w)(?:[:;=xX]['’-]?[dDpP)]|[dD]['’-]?:)(?!\w)")
 _EMOJI_RE = re.compile(
     "[\U0001F300-\U0001FAFF\u2600-\u27BF]", flags=re.UNICODE,
 )
@@ -69,42 +70,43 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
     questions = profile["questions"]
     current = str(message or "")
     signals: list[str] = []
-    if _EMOJI_RE.search(current):
-        signals.append("brugeren bruger emoji i denne tur")
+    if _EMOJI_RE.search(current) or _TEXT_EMOTICON_RE.search(current):
+        signals.append("brugeren bruger emoji/emotikon i denne tur")
     if _PROFANITY_RE.search(current):
         signals.append("brugeren bruger uformelt kraftsprog i denne tur")
-    if _LAUGHTER_RE.search(current):
+    if _LAUGHTER_RE.search(current) or _TEXT_EMOTICON_RE.search(current):
         signals.append("tonen i denne tur er legende/latterfuld")
 
     tone_text = {
         "adaptive": "Tilpas varme, tempo og formalitet til brugerens aktuelle tone uden at efterabe mekanisk.",
         "warm": "Svar varmt, menneskeligt og nærværende; undgå terapeutisk eller sukkersød overdrivelse.",
         "direct": "Svar ligefremt og klart; behold menneskelig varme, men skær ceremonien væk.",
-        "playful": "Der må gerne være leg, drilleri og personlighed, når situationen tåler det.",
+        "playful": "Gør svaret mærkbart legende og personligt i lette eller uformelle samtaler; brug gerne mildt drilleri, men aldrig når emnet kræver alvor eller ro.",
     }[tone]
     emoji_text = {
         "adaptive": "Match emoji-niveauet let; brug dem kun når de føles naturlige i netop denne udveksling.",
         "rare": "Brug som udgangspunkt ingen emoji; højst én når den bærer reel tone.",
-        "expressive": "Emoji er velkomne og må gerne bære tone, men de må ikke overdøve svaret.",
+        "expressive": "Brug normalt en eller to naturlige emoji/emotikoner i lette eller uformelle svar, så tonen faktisk kan mærkes; undlad dem når emnet kræver alvor eller ro.",
     }[emoji]
     profanity_text = {
         "adaptive": "Kraftsprog må spejles let, når brugeren selv etablerer det; eskalér ikke og brug det aldrig imod brugeren.",
         "avoid": "Undgå bandeord og kraftsprog, også når brugeren bruger dem.",
-        "comfortable": "Naturlige bandeord som 'sgu', 'fanden' eller 'helvede' er tilladt, når de passer; brug dem aldrig som staffage eller imod brugeren.",
+        "comfortable": "Spejl gerne ét naturligt bandeord som 'sgu', 'fanden' eller 'helvede', når brugeren selv etablerer kraftsprog og det passer i rytmen; brug det aldrig som staffage eller imod brugeren.",
     }[profanity]
     visuals_text = {
         "adaptive": "Vælg visuelle/native flader kun når de gør relationer eller valg mærkbart lettere at forstå.",
         "plain": "Foretræk ren tekst og enkel Markdown; brug kun en native flade når prosa reelt er dårligere.",
-        "rich": "Brug gerne den bedst egnede native flade, tabel, graf eller diagram når indholdet egner sig til det—men højst det nødvendige.",
+        "rich": "Når indholdet reelt har struktur, sammenligninger, forløb eller tal, så vælg aktivt den bedst egnede native flade, tabel, graf eller diagram; brug ikke en visuel flade til et enkelt prosasvar.",
     }[visuals]
     questions_text = {
         "adaptive": "Stil kun et opfølgende spørgsmål, når det åbner noget reelt; slut ikke mekanisk hvert svar med et spørgsmål.",
         "rare": "Hold opfølgende spørgsmål sjældne; giv oftest et afrundet svar og plads.",
-        "curious": "Vær gerne nysgerrig og spørg ind, når det inviterer samtalen videre—men respekter stop- og afstandssignaler straks.",
+        "curious": "Stil et konkret, oprigtigt opfølgende spørgsmål, når det kan åbne samtalen meningsfuldt; lad være når svaret allerede er afrundet, eller brugeren signalerer stop eller afstand.",
     }[questions]
     signal_text = f" Aktuelle signaler: {'; '.join(signals)}." if signals else ""
     return "\n".join([
         "## Chatmode: denne brugers samtalestil",
+        "De eksplicitte valg nedenfor er aktive adfærdsstandarder, ikke blot tilladelser. Gør dem mærkbare i svaret, når situationen passer, uden at omtale indstillingerne.",
         tone_text,
         emoji_text,
         profanity_text,

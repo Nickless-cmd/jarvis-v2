@@ -323,6 +323,32 @@ def remember_this(
             koesaet(new_id, now)
         except Exception:
             pass    # time-passet tager den
+        # Modsigelses-tjek (24/10-2026): indtil i dag fandtes `supersede()` men
+        # blev aldrig kaldt af nogen producent — så «jeg træner til maraton» og
+        # «jeg har forstuvet anklen» blev begge hentet som sandhed længe efter
+        # at den ene var forældet. Kørt i en tråd fordi det er en søgning, og
+        # svaret ikke skal vente på den. STANDARD ER DRY RUN: kandidaterne
+        # rapporteres, intet markeres, før nogen beslutter det.
+        try:
+            import threading
+
+            from core.services.brain_supersession import supersede_if_confident
+
+            def _tjek_modsigelse() -> None:
+                try:
+                    supersede_if_confident(
+                        new_entry_id=new_id,
+                        new_text=f"{title}\n{content}",
+                        dry_run=True,
+                    )
+                except Exception:  # detektion er valgfri — posten er allerede skrevet
+                    pass
+
+            threading.Thread(
+                target=_tjek_modsigelse, name="brain-supersession", daemon=True
+            ).start()
+        except Exception:
+            pass    # import/tråd utilgængelig — skrivningen står ved magt
     except Exception as exc:
         return {"status": "error", "error": "disk_write_failed",
                 "details": str(exc)}

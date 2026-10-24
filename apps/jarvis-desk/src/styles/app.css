@@ -4101,6 +4101,11 @@ p.central-flag { margin: 0 0 6px; }
 }
 .msg-kilde:hover { color: var(--fg-1); border-color: var(--fg-3); }
 .msg-kilde:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Hukommelses-kilder er ikke links — de er et svar på «hvor ved du det fra?».
+   Derfor ingen hover-farve og ingen pointer; kun en svagere ramme end web. */
+.msg-kilde-hukommelse {
+  color: var(--fg-3); border-style: dashed; cursor: default;
+}
 
 .runtl { margin: 6px 0 2px; }
 .runtl-head {

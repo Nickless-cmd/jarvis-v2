@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { kilderFraBlokke, kilderPrDomaene } from './kilder'
+import { kilderFraBlokke, kilderPrDomaene, hukommelseskilderFraResultat, hukommelseskilderFraBlokke } from './kilder'
 import type { ContentBlock } from './sseProtocol'
 
 const brug = (input: Record<string, unknown>, result?: string, name = 'web_fetch'): ContentBlock =>
@@ -89,5 +89,44 @@ describe('kun det han SLOG OP er en kilde (26/9-2026)', () => {
   it('hele 127-blokken er loopback', () => {
     expect(kilderFraBlokke([brug({}, 'http://127.0.0.1:8080 http://127.1.2.3 https://ude.dk')])
       .map((k) => k.domaene)).toEqual(['ude.dk'])
+  })
+})
+
+describe('hukommelses-kilder', () => {
+  it('læser kilder ud af et recall-resultat', () => {
+    const raa = JSON.stringify({
+      status: 'ok',
+      results: [
+        { text: 'a', source: 'MEMORY.md' },
+        { text: 'b', source: 'MEMORY.md' },
+        { text: 'c', source: 'brain' },
+      ],
+    })
+    const k = hukommelseskilderFraResultat(raa)
+    expect(k).toHaveLength(2)
+    expect(k[0]).toEqual({ kilde: 'MEMORY.md', etiket: 'Langtidshukommelse', antal: 2 })
+    expect(k[1]).toEqual({ kilde: 'brain', etiket: 'Hjernen', antal: 1 })
+  })
+
+  it('giver tom liste på ikke-JSON og på resultater uden source', () => {
+    expect(hukommelseskilderFraResultat('ikke json')).toEqual([])
+    expect(hukommelseskilderFraResultat(JSON.stringify({ results: [{ text: 'x' }] }))).toEqual([])
+    expect(hukommelseskilderFraResultat(null)).toEqual([])
+  })
+
+  it('samler kun fra hukommelses-værktøjer — ikke fra web eller fil-læsning', () => {
+    const blokke = [
+      { type: 'tool_use', name: 'recall', input: {}, result: JSON.stringify({ results: [{ source: 'MEMORY.md' }] }) },
+      { type: 'tool_use', name: 'web_search', input: {}, result: 'https://dr.dk' },
+      { type: 'tool_use', name: 'read_file', input: {}, result: 'MEMORY.md staar i denne fil' },
+    ] as never
+    const k = hukommelseskilderFraBlokke(blokke)
+    expect(k).toHaveLength(1)
+    expect(k[0].kilde).toBe('MEMORY.md')
+  })
+
+  it('ukendt kildenavn vises som sig selv, ikke som tom', () => {
+    const k = hukommelseskilderFraResultat(JSON.stringify({ results: [{ source: 'ny_kilde' }] }))
+    expect(k[0].etiket).toBe('ny_kilde')
   })
 })

@@ -211,11 +211,33 @@ def build_memory_overview(
     """Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste
     sansninger + brain-antal. Privatliv: alt scopet til den aktuelle bruger."""
     d = ws_dir(user_id)
+    memory_md = read_text(d / "MEMORY.md") or ""
+    user_md = read_text(d / "USER.md") or ""
+    # Tidsstempel (24/10-2026): fladen kunne vise INDHOLDET men ikke sige hvor
+    # gammelt det var — så en note fra juli så lige så aktuel ud som en fra i går.
+    # Vi rapporterer filens mtime, som er det tidspunkt indholdet sidst blev rørt.
+    def _mtime(p: Any) -> str | None:
+        try:
+            import datetime as _dt
+            return _dt.datetime.fromtimestamp(
+                p.stat().st_mtime, _dt.UTC
+            ).isoformat().replace("+00:00", "Z")
+        except Exception:  # filen kan mangle — så er der intet tidsstempel
+            return None
+
+    try:
+        from core.runtime.db_memory_suppressions import list_active
+        undertrykt = list_active(user_id=user_id)
+    except Exception:  # tabellen kan mangle foer foerste brug
+        undertrykt = []
     return {
-        "memory_md": (read_text(d / "MEMORY.md") or "")[:8000],
-        "user_md": (read_text(d / "USER.md") or "")[:8000],
+        "memory_md": memory_md[:8000],
+        "user_md": user_md[:8000],
         "recent_sensory": recent_sensory(),
         "brain_count": brain_count(),
+        "memory_updated_at": _mtime(d / "MEMORY.md"),
+        "user_updated_at": _mtime(d / "USER.md"),
+        "suppressions": undertrykt,
     }
 
 
@@ -240,6 +262,37 @@ async def account_memory() -> dict[str, Any]:
         )
 
     return await asyncio.to_thread(_assemble)
+
+
+@router.post("/memory/suppress")
+async def account_memory_suppress(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """«Don't mention this again» — undertryk et emne for den aktuelle bruger.
+
+    Det er en FILTER, ikke en sletning: intet gaar tabt, og den kan ophaeves.
+    """
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    emne = str(body.get("emne") or "").strip()
+    if not emne:
+        raise HTTPException(status_code=400, detail="emne er paakraevet")
+    from core.runtime.db_memory_suppressions import suppress
+
+    return await asyncio.to_thread(
+        suppress, user_id=user_id, emne=emne, grund=str(body.get("grund") or "")
+    )
+
+
+@router.delete("/memory/suppress/{suppression_id}")
+async def account_memory_unsuppress(suppression_id: str) -> dict[str, Any]:
+    """Ophaeve en undertrykkelse. Raekken bevares med `lifted_at` sat."""
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.runtime.db_memory_suppressions import lift
+
+    r = await asyncio.to_thread(lift, user_id=user_id, suppression_id=suppression_id)
+    if r.get("status") == "error":
+        raise HTTPException(status_code=404, detail=r.get("error") or "ikke fundet")
+    return r
 
 
 @router.get("/memory/search")

@@ -20,6 +20,88 @@ export interface Kilde {
 }
 
 /**
+ * En HUKOMMELSES-kilde — hvor et svar fik sin viden fra, når det ikke kom fra nettet.
+ *
+ * Målt 24/10-2026: `recall` returnerer allerede `source` per hit (fx
+ * `MEMORY.md`, `brain`, `chronicle`, `session_summary`), men den information
+ * blev kun brugt internt i prompt-teksten og nåede aldrig klienten. Derfor
+ * kunne kilder-ikonet kun vise webdomæner — hukommelsen var usynlig som kilde.
+ *
+ * Vi læser den nu ud af `recall`-værktøjets RESULTAT (JSON med `results[]`),
+ * ikke af dets input: det er resultatet der bærer hvad der faktisk blev brugt.
+ */
+export interface HukommelsesKilde {
+  /** Kildenavn som recall rapporterer det: MEMORY.md, brain, chronicle, … */
+  kilde: string
+  /** Menneske-læsbar etiket til rækken under svaret. */
+  etiket: string
+  /** Antal hits fra denne kilde i turen. */
+  antal: number
+}
+
+/** Værktøjer hvis RESULTAT bærer hukommelses-kilder. */
+export const HUKOMMELSE_TOOLS: ReadonlySet<string> = new Set([
+  'recall', 'repo_recall', 'search_memory', 'recall_memories',
+])
+
+const KILDE_ETIKET: Record<string, string> = {
+  'MEMORY.md': 'Langtidshukommelse',
+  'USER.md': 'Om dig',
+  'SOUL.md': 'Identitet',
+  'PLAYBOOKS.md': 'Opskrifter',
+  'STANDING_ORDERS.md': 'Stående ordrer',
+  'SKILLS.md': 'Færdigheder',
+  brain: 'Hjernen',
+  private_brain: 'Indre liv',
+  session_summary: 'Tidligere samtaler',
+  chronicle: 'Kronik',
+  chat: 'Chat-historik',
+  sensory: 'Sanserne',
+  workspace: 'Arbejdsfiler',
+}
+
+function etiketFor(kilde: string): string {
+  const ren = kilde.replace(/\\/g, '/').split('/').pop() || kilde
+  return KILDE_ETIKET[kilde] || KILDE_ETIKET[ren] || ren
+}
+
+/** Læs hukommelses-kilder ud af et `recall`-resultat. Robust mod ikke-JSON. */
+export function hukommelseskilderFraResultat(raa: unknown): HukommelsesKilde[] {
+  let data: unknown = raa
+  if (typeof raa === 'string') {
+    try { data = JSON.parse(raa) } catch { return [] }
+  }
+  const results = (data as { results?: unknown })?.results
+  if (!Array.isArray(results)) return []
+  const taeller = new Map<string, number>()
+  for (const r of results) {
+    const kilde = String((r as { source?: unknown })?.source || '').trim()
+    if (!kilde) continue
+    taeller.set(kilde, (taeller.get(kilde) || 0) + 1)
+  }
+  return [...taeller.entries()]
+    .map(([kilde, antal]) => ({ kilde, etiket: etiketFor(kilde), antal }))
+    .sort((a, b) => b.antal - a.antal)
+}
+
+/** Alle hukommelses-kilder i en tur, samlet pr. kilde. */
+export function hukommelseskilderFraBlokke(
+  blokke: ContentBlock[] | null | undefined,
+): HukommelsesKilde[] {
+  const taeller = new Map<string, number>()
+  for (const b of blokke ?? []) {
+    if (b?.type !== 'tool_use' || !HUKOMMELSE_TOOLS.has(b.name)) continue
+    if (typeof b.result !== 'string') continue
+    for (const k of hukommelseskilderFraResultat(b.result)) {
+      taeller.set(k.kilde, (taeller.get(k.kilde) || 0) + k.antal)
+    }
+  }
+  return [...taeller.entries()]
+    .map(([kilde, antal]) => ({ kilde, etiket: etiketFor(kilde), antal }))
+    .sort((a, b) => b.antal - a.antal)
+}
+
+/**
  * KUN de værktøjer der slår op på nettet giver kilder (Bjørn 26/9-2026).
  *
  * Før scannede vi ALLE tool-inputs og -resultater for URL'er. Det var

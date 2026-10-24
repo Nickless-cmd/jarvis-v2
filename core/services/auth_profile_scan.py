@@ -64,7 +64,37 @@ def _is_account_profile(profile: str) -> bool:
 # fryse profil-rækkefølgen (50/50-splittet) eller forsinke cooldowns.
 _SNAPSHOT: tuple[float, dict[str, list[str]]] | None = None
 _TTL_SECONDS = 60.0
-_SNAPSHOT_LOCK = threading.Lock()
+
+# Låsen holdes ALDRIG under I/O (24/10-2026).
+#
+# MÅLT: den første version holdt en almindelig `threading.Lock` gennem hele
+# scanningen. `provider_auth_ready()` kan for `openai-codex` kalde
+# `get_openai_bearer_token()` → `refresh_openai_access_token()` →
+# `save_provider_credentials()` → `clear_cache()` → forsøge SAMME lås. En
+# vellykket token-refresh ville derfor hænge permanent inde i scanningen.
+# Reproduceret: `deadlock_reproduceret = True`. `openai-codex` er i
+# CHEAP_PROVIDER_DEFAULTS med `auth_kind=oauth`, så stien er aktiv produktion.
+#
+# Løsningen er ikke en reentrant lås — den ville stadig holde låsen gennem
+# netværks-I/O og stadig lade et igangværende scan overskrive en frisk
+# invalidering med sit forældede resultat. I stedet:
+#
+#   * `_LOCK` holdes kun til at vælge en leder og til at publicere resultatet.
+#   * Selve scanningen kører UDEN lås (I/O må aldrig serialiseres af den).
+#   * `_GENERATION` tælles op ved hver invalidering; et scan publicerer kun
+#     hvis generationen er uændret, ellers kasseres resultatet.
+#   * `clear_cache()` tager aldrig `_LOCK` under I/O og kan derfor kaldes fra
+#     en readiness-sti inde i et igangværende scan.
+_LOCK = threading.Lock()
+_GENERATION = 0
+_SCAN_ACTIVE = False
+_SCAN_DONE = threading.Event()
+_WAIT_SECONDS = 30.0
+
+
+def _copy(snapshot: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Returnér en frisk kopi — kaldere må ikke dele mutérbare cache-objekter."""
+    return {p: list(v) for p, v in snapshot.items()}
 
 
 def clear_cache() -> None:
@@ -74,75 +104,106 @@ def clear_cache() -> None:
     ``core.auth.profiles``, så en credential-ændring slår igennem straks i
     stedet for at vente på TTL-udløb — ellers kunne en tilbagekaldt nøgle
     ligge i cheap-puljen i op til et minut.
+
+    Tager ALDRIG ``_LOCK``: denne funktion kaldes fra ``provider_auth_ready()``,
+    som selv kaldes inde i et igangværende scan. En lås her ville låse hele
+    auth-laget permanent (målt 24/10-2026). ``_GENERATION`` er nok — det
+    igangværende scan ser den og undlader at publicere sit forældede resultat.
     """
-    global _SNAPSHOT
-    with _SNAPSHOT_LOCK:
-        _SNAPSHOT = None
+    global _SNAPSHOT, _GENERATION
+    _SNAPSHOT = None
+    _GENERATION += 1
+
+
+def _do_scan() -> dict[str, list[str]]:
+    """Byg ``{provider: [ready profiles]}`` med ÉT mappe-scan. Ingen lås her.
+
+    En enkelt defekt slot (fx korrupt JSON) udelades og logges — den må ikke
+    blinde hele auth-laget for alle andre providers.
+    """
+    by_provider: dict[str, list[str]] = {}
+    root = _profiles_root()
+    try:
+        profile_dirs = [p for p in root.iterdir() if p.is_dir()]
+    except (FileNotFoundError, NotADirectoryError):
+        profile_dirs = []
+
+    for prof_dir in profile_dirs:
+        profile = prof_dir.name
+        if not _is_account_profile(profile):
+            continue  # backups, single-provider og OAuth-mapper er ikke konti
+        try:
+            provider_dirs = [
+                p for p in (prof_dir / "providers").iterdir() if p.is_dir()
+            ]
+        except (FileNotFoundError, NotADirectoryError):  # profil uden providers/-mappe
+            continue
+        for prov_dir in provider_dirs:
+            provider = prov_dir.name
+            if _is_keyless(provider):
+                continue  # keyless får ["default"] uden fil-I/O
+            try:
+                klar = provider_auth_ready(provider=provider, auth_profile=profile)
+            except Exception:
+                logger.warning(
+                    "auth_snapshot: readiness fejlede for %s/%s — slotten udelades",
+                    provider,
+                    profile,
+                    exc_info=True,
+                )
+                continue
+            if klar:
+                by_provider.setdefault(provider, []).append(profile)
+    return by_provider
 
 
 def auth_snapshot() -> dict[str, list[str]]:
     """Scan alle auth-profilmapper ÉN gang → ``{provider: [ready profiles]}``.
 
     Single-flight: kun én tråd scanner; de øvrige venter og læser dens
-    resultat. ``with`` frigiver også ved exception, så en fejlet scan ikke
-    efterlader snapshottet permanent låst.
-
-    En enkelt defekt slot (fx korrupt JSON) udelades og logges — den må ikke
-    blinde hele auth-laget for alle andre providers.
+    resultat. Låsen dækker kun leder-valget og publiceringen — aldrig I/O, så
+    en credential-refresh inde i scanningen kan ikke låse auth-laget.
 
     Returnerer KOPIER: kaldere må ikke dele mutérbare cache-objekter.
     """
-    global _SNAPSHOT
-    now = time.time()
+    global _SNAPSHOT, _SCAN_ACTIVE
+
     snap = _SNAPSHOT
-    if snap is not None and snap[0] > now:
-        return {p: list(v) for p, v in snap[1].items()}
+    if snap is not None and snap[0] > time.time():
+        return _copy(snap[1])
 
-    with _SNAPSHOT_LOCK:
-        # Dobbeltkontrol under låsen: en anden tråd kan have fyldt snapshottet
-        # mens vi ventede. `now` genberegnes, så vi ikke gemmer et allerede
-        # udløbet tidsstempel.
-        now = time.time()
-        snap = _SNAPSHOT
-        if snap is not None and snap[0] > now:
-            return {p: list(v) for p, v in snap[1].items()}
+    while True:
+        with _LOCK:
+            snap = _SNAPSHOT
+            if snap is not None and snap[0] > time.time():
+                return _copy(snap[1])
+            if not _SCAN_ACTIVE:
+                _SCAN_ACTIVE = True
+                _SCAN_DONE.clear()
+                generation = _GENERATION
+                leader = True
+            else:
+                leader = False
 
-        by_provider: dict[str, list[str]] = {}
-        root = _profiles_root()
-        try:
-            profile_dirs = [p for p in root.iterdir() if p.is_dir()]
-        except (FileNotFoundError, NotADirectoryError):
-            profile_dirs = []
+        if leader:
+            break
+        # En anden tråd scanner. Vent på den — med timeout, så en død leder
+        # ikke hænger os permanent. Løkken samler op: enten er der nu et hit,
+        # eller også bliver vi selv leder.
+        _SCAN_DONE.wait(timeout=_WAIT_SECONDS)
 
-        for prof_dir in profile_dirs:
-            profile = prof_dir.name
-            if not _is_account_profile(profile):
-                continue  # backups, single-provider og OAuth-mapper er ikke konti
-            try:
-                provider_dirs = [
-                    p for p in (prof_dir / "providers").iterdir() if p.is_dir()
-                ]
-            except (FileNotFoundError, NotADirectoryError):  # profil uden providers/-mappe
-                continue
-            for prov_dir in provider_dirs:
-                provider = prov_dir.name
-                if _is_keyless(provider):
-                    continue  # keyless får ["default"] uden fil-I/O
-                try:
-                    klar = provider_auth_ready(provider=provider, auth_profile=profile)
-                except Exception:
-                    logger.warning(
-                        "auth_snapshot: readiness fejlede for %s/%s — slotten udelades",
-                        provider,
-                        profile,
-                        exc_info=True,
-                    )
-                    continue
-                if klar:
-                    by_provider.setdefault(provider, []).append(profile)
-
-        _SNAPSHOT = (now + _TTL_SECONDS, by_provider)
-        return {p: list(v) for p, v in by_provider.items()}
+    try:
+        result = _do_scan()
+        with _LOCK:
+            # Publicér KUN hvis ingen invalidering skete undervejs. Ellers ville
+            # vi overskrive et friskere billede med et forældet.
+            if _GENERATION == generation:
+                _SNAPSHOT = (time.time() + _TTL_SECONDS, result)
+        return _copy(result)
+    finally:
+        with _LOCK:
+            _SCAN_ACTIVE = False
+        _SCAN_DONE.set()
 
 
 def _profiles_root() -> Path:

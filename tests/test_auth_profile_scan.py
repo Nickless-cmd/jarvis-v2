@@ -200,9 +200,9 @@ def test_exception_frigor_laasen_og_rammer_kun_sin_slot(tmp_path, monkeypatch):
     assert s.ready_profiles_for("groq") == []
     assert s.ready_profiles_for("cerebras") == ["default"]
 
-    # Låsen blev frigivet af `with` (ellers ville acquire hænge).
-    assert s._SNAPSHOT_LOCK.acquire(timeout=1) is True, "låsen blev ikke frigivet"
-    s._SNAPSHOT_LOCK.release()
+    # Leder-flaget blev nulstillet i `finally` (ellers ville næste scan hænge).
+    assert s._SCAN_ACTIVE is False, "scan-flaget blev ikke nulstillet"
+    assert s.auth_snapshot() is not None
 
     # Og et nyt scan (efter TTL/invalidering) heler den defekte slot.
     monkeypatch.setattr(s, "provider_auth_ready", lambda *, provider, auth_profile: True)
@@ -327,9 +327,22 @@ def test_samtidige_provider_kald_giver_et_batch_scan(tmp_path, monkeypatch):
 
     monkeypatch.setattr(_P, "iterdir", talt)
 
+    # Deterministisk: `Barrier` sikrer at alle N kalder SAMTIDIG, og lederens
+    # readiness holder scanningen ÅBEN indtil `release` — så de øvrige kan
+    # hverken nå at se et hit eller selv blive ledere. Uden den holder havde
+    # testen kun bevist at tråde der tilfældigvis overlappede delte et scan.
     start = threading.Barrier(len(providere))
+    scan_aabnet = threading.Event()
+    release = threading.Event()
     svar: list[list[str]] = []
     svar_laas = threading.Lock()
+
+    def hold_scan_aaben(*, provider, auth_profile):
+        scan_aabnet.set()
+        assert release.wait(timeout=10), "release blev aldrig sat"
+        return True
+
+    monkeypatch.setattr(s, "provider_auth_ready", hold_scan_aaben)
 
     def arbejder(p):
         start.wait(timeout=5)
@@ -340,7 +353,8 @@ def test_samtidige_provider_kald_giver_et_batch_scan(tmp_path, monkeypatch):
     traade = [threading.Thread(target=arbejder, args=(p,)) for p in providere]
     for t in traade:
         t.start()
-    gate.set()
+    assert scan_aabnet.wait(timeout=10), "ingen tråd startede scanningen"
+    release.set()
     for t in traade:
         t.join(timeout=10)
 
@@ -406,3 +420,77 @@ def test_save_og_revoke_invaliderer_snapshottet(tmp_path, monkeypatch):
     assert s.ready_profiles_for("groq") == [], (
         "revoke_provider invaliderede ikke auth-snapshottet"
     )
+
+
+def test_credential_gemning_under_aktivt_scan_laaser_ikke(tmp_path, monkeypatch):
+    """Regression: en credential-skrivning inde i scanningen må ikke låse auth-laget.
+
+    MÅLT 24/10-2026: `provider_auth_ready()` for `openai-codex` kalder
+    `get_openai_bearer_token()` → `refresh_openai_access_token()` →
+    `save_provider_credentials()` → `clear_cache()`. Den første udgave af
+    batch-snapshottet holdt en almindelig `threading.Lock` gennem hele
+    scanningen, så en vellykket token-refresh låste hele auth-laget permanent.
+    Reproduceret: `deadlock_reproduceret = True`.
+
+    Kontrakten: scanningen må ikke holde låsen under I/O, så en invalidering
+    inde fra readiness-stien skal gå igennem — og scanningen må ikke publicere
+    sit nu forældede resultat.
+    """
+    import threading
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    s.clear_cache()
+
+    invalideret = threading.Event()
+
+    def readiness_der_skriver(*, provider, auth_profile):
+        # Præcis den sti der låste før: skrivning midt i scanningen.
+        s.clear_cache()
+        invalideret.set()
+        return True
+
+    monkeypatch.setattr(s, "provider_auth_ready", readiness_der_skriver)
+
+    resultat: dict[str, dict[str, list[str]]] = {}
+    traad = threading.Thread(
+        target=lambda: resultat.setdefault("snap", s.auth_snapshot()), daemon=True
+    )
+    traad.start()
+    traad.join(timeout=5)
+
+    assert not traad.is_alive(), "scanningen låste — clear_cache() må ikke tage scan-låsen"
+    assert invalideret.is_set(), "readiness blev aldrig kørt"
+    # Scanningen startede med generation G og blev invalideret undervejs, så
+    # dens resultat blev KASSERET — ikke publiceret som friskt.
+    assert s._SNAPSHOT is None, "et invalideret scan publicerede sit forældede resultat"
+
+
+def test_invalidering_undervejs_kasserer_resultatet(tmp_path, monkeypatch):
+    """Et scan der invalideres undervejs må ikke overskrive det friske billede."""
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    s.clear_cache()
+
+    kald = {"n": 0}
+
+    def readiness(*, provider, auth_profile):
+        kald["n"] += 1
+        if kald["n"] == 1:
+            s.clear_cache()  # invaliderer FØRSTE scan
+            return True
+        return False  # anden scan: ikke klar
+
+    monkeypatch.setattr(s, "provider_auth_ready", readiness)
+
+    # Kaldet får sit eget scan-svar (det var sandt da det blev målt), men det
+    # må IKKE lægges i cachen — næste kald skal se den nye sandhed.
+    s.auth_snapshot()
+    assert s._SNAPSHOT is None, (
+        "det invaliderede scan publicerede alligevel — generationstjekket virker ikke"
+    )
+    # Næste kald scanner igen og ser den NYE sandhed (ikke klar).
+    assert s.ready_profiles_for("groq") == []

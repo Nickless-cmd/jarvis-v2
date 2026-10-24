@@ -55,6 +55,39 @@ def test_compute_landscape_returns_mean_when_enough_items(monkeypatch):
     assert all(isinstance(x, float) for x in landscape)
 
 
+def test_rigtig_embedder_ikke_smocket_giver_landskab(monkeypatch):
+    """USMOCKET: den ægte embedder må ikke fejle tavst.
+
+    MÅLT 24/10-2026: de øvrige tests her monkeypatcher `_get_embedder` med en
+    FakeEmbedder — med begrundelsen «avoid torch/CUDA env brittleness». Derfor
+    kunne de ikke se at `_get_embedder()` i månedsvis kastede ImportError
+    (`undefined symbol: __nvJitLinkCreate_12_8`), at
+    `_compute_landscape_embedding` derfor altid ramte `except: return None`,
+    og at `_pull_is_stale` altid svarede `(False, 0.0)`.
+
+    En mock på den brækkede søm kan ikke se fejlen. Denne test rører sømmens
+    rigtige side: ingen patch af embedderen, kun tekstkilderne.
+    """
+    from core.services import current_pull
+
+    monkeypatch.setattr(current_pull, "_collect_appetite_texts",
+                        lambda *, days_back: ["lyst til lyd under vand"])
+    monkeypatch.setattr(current_pull, "_collect_chronicle_texts",
+                        lambda *, days_back: ["uge med fokus på lyd og resonans"])
+    monkeypatch.setattr(current_pull, "_collect_journal_texts", lambda *, days_back: [])
+
+    landscape = current_pull._compute_landscape_embedding()
+
+    assert landscape is not None, (
+        "landskabet er None — embedderen fejlede. Tjek at _get_embedder() kan "
+        "bygge en embedder uden torch (fastembed/onnxruntime)."
+    )
+    assert len(landscape) > 0
+    assert all(isinstance(x, float) for x in landscape)
+    # Normaliserede gennemsnitsvektorer ligger i [-1, 1]; nul-vektor = tavs fiasko
+    assert any(abs(x) > 0.0 for x in landscape), "landskabet er en nul-vektor"
+
+
 def test_collect_appetite_texts_filters_low_intensity(monkeypatch):
     from core.services import current_pull
 

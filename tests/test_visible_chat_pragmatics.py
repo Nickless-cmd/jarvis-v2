@@ -218,3 +218,28 @@ def test_blanklinje_reglen_staar_i_kontrakten_og_i_halen() -> None:
     finally:
         reset_tool_scope(token)
     assert "Afsnit adskilles af en blank linje" not in code_tail
+
+
+def test_niveau_4_er_en_beslutningsregel_ikke_en_skemaliste() -> None:
+    """Fælden (målt 24/10-2026, Bjørns indvending): niveau 4 var en API-reference.
+
+    Den listede seks JSON-skemaer og sagde «kan du skrive» — aldrig HVORNÅR en
+    tanke har den form. Resultatet var at jeg faldt tilbage på prosa hver gang,
+    fordi prosa altid virker og ingen regel gjorde fladen obligatorisk. Vagten
+    kræver at imperativet og koblingen tanke→flade står der, og at den gamle
+    tilladelses-formulering ikke kommer tilbage.
+    """
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+    tekst = CHAT_MODE_HOW_I_TALK
+    # Imperativet — ikke en tilladelse.
+    assert "er fladen ikke valgfri" in tekst
+    # Koblingen: en tankeform peger på en bestemt flade.
+    assert "Tanke → flade" in tekst
+    for flade in ("timeline", "comparison", "stats", "callout", "choices", "location"):
+        assert flade in tekst, flade
+    # Skemaerne skal stadig stå der — en forkert values-længde dropper rækken tavst.
+    assert "præcis samme antal som" in tekst
+    # Den gamle tilladelses-formulering må ikke snige sig ind igen.
+    assert "kan du skrive" not in tekst
+    assert "når én kompakt visuel flade er tydeligere end prosa" not in tekst.lower()

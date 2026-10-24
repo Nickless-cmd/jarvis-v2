@@ -87,6 +87,15 @@ _TTL_SECONDS = 60.0
 #     en readiness-sti inde i et igangværende scan.
 _LOCK = threading.Lock()
 _GENERATION = 0
+# Leder-lease (24/10-2026). MÅLT: uden den gik en ventetråd i ring — 20
+# timeouts i træk uden at overtage, fordi løkken blot ventede igen på en leder
+# der aldrig blev færdig. `_LEADER_TOKEN` tælles op hver gang nogen bliver
+# leder (også ved overtagelse), så en gammel leder ikke kan publicere bagefter.
+# `_LEADER_STARTED_AT` er monotont: kun en leder der HAR kørt længere end
+# `_WAIT_SECONDS` må overtages, så to ventere der timer ud samtidig ikke begge
+# bliver ledere.
+_LEADER_TOKEN = 0
+_LEADER_STARTED_AT = 0.0
 _SCAN_ACTIVE = False
 _SCAN_DONE = threading.Event()
 _WAIT_SECONDS = 30.0
@@ -105,14 +114,20 @@ def clear_cache() -> None:
     stedet for at vente på TTL-udløb — ellers kunne en tilbagekaldt nøgle
     ligge i cheap-puljen i op til et minut.
 
-    Tager ALDRIG ``_LOCK``: denne funktion kaldes fra ``provider_auth_ready()``,
-    som selv kaldes inde i et igangværende scan. En lås her ville låse hele
-    auth-laget permanent (målt 24/10-2026). ``_GENERATION`` er nok — det
-    igangværende scan ser den og undlader at publicere sit forældede resultat.
+    Tager ``_LOCK`` (24/10-2026). Det er sikkert, fordi ``_do_scan()`` ikke
+    længere holder låsen under I/O — den oprindelige deadlock opstod netop ved
+    at en readiness-sti kaldte denne funktion inde i en holdt lås.
+
+    Uden låsen her var generationstjekket og publiceringen ikke atomiske:
+    MÅLT blev generation 1→2, men det forældede resultat blev alligevel cached,
+    fordi ``clear_cache()`` muterede begge variable mellem tjekket og
+    ``_SNAPSHOT``-assignment. Med låsen kan invalideringen ikke længere falde
+    ind i det vindue.
     """
     global _SNAPSHOT, _GENERATION
-    _SNAPSHOT = None
-    _GENERATION += 1
+    with _LOCK:
+        _SNAPSHOT = None
+        _GENERATION += 1
 
 
 def _do_scan() -> dict[str, list[str]]:
@@ -166,7 +181,7 @@ def auth_snapshot() -> dict[str, list[str]]:
 
     Returnerer KOPIER: kaldere må ikke dele mutérbare cache-objekter.
     """
-    global _SNAPSHOT, _SCAN_ACTIVE
+    global _SNAPSHOT, _SCAN_ACTIVE, _LEADER_TOKEN, _LEADER_STARTED_AT
 
     snap = _SNAPSHOT
     if snap is not None and snap[0] > time.time():
@@ -179,6 +194,9 @@ def auth_snapshot() -> dict[str, list[str]]:
                 return _copy(snap[1])
             if not _SCAN_ACTIVE:
                 _SCAN_ACTIVE = True
+                _LEADER_TOKEN += 1
+                my_token = _LEADER_TOKEN
+                _LEADER_STARTED_AT = time.monotonic()
                 _SCAN_DONE.clear()
                 generation = _GENERATION
                 leader = True
@@ -187,23 +205,48 @@ def auth_snapshot() -> dict[str, list[str]]:
 
         if leader:
             break
-        # En anden tråd scanner. Vent på den — med timeout, så en død leder
-        # ikke hænger os permanent. Løkken samler op: enten er der nu et hit,
-        # eller også bliver vi selv leder.
-        _SCAN_DONE.wait(timeout=_WAIT_SECONDS)
+        # En anden tråd scanner. Bliver den færdig, samler løkken op — enten
+        # er der nu et hit, eller også bliver vi selv leder.
+        if _SCAN_DONE.wait(timeout=_WAIT_SECONDS):
+            continue
+        # Timeout. En leder der har kørt længere end _WAIT_SECONDS kan være død
+        # (eller hængt i netværks-I/O), og så må vi ikke vente i det uendelige.
+        # MÅLT 24/10-2026: uden denne gren stod ventetråden stadig efter tyve
+        # timeouts — løkken ventede blot igen. Vi OVERTAGER derfor, og
+        # `_LEADER_TOKEN` sikrer at den gamle leder ikke publicerer bagefter.
+        with _LOCK:
+            if not _SCAN_ACTIVE:
+                continue  # lederen blev færdig lige før timeout
+            if time.monotonic() - _LEADER_STARTED_AT < _WAIT_SECONDS:
+                continue  # en anden venter har netop overtaget — vent på den
+            _LEADER_TOKEN += 1
+            my_token = _LEADER_TOKEN
+            _LEADER_STARTED_AT = time.monotonic()
+            _SCAN_DONE.clear()
+            generation = _GENERATION
+            logger.warning(
+                "auth_snapshot: leder overskred %.0f s — overtager scanningen",
+                _WAIT_SECONDS,
+            )
+        break
 
     try:
         result = _do_scan()
+        nu = time.time()
         with _LOCK:
-            # Publicér KUN hvis ingen invalidering skete undervejs. Ellers ville
-            # vi overskrive et friskere billede med et forældet.
-            if _GENERATION == generation:
-                _SNAPSHOT = (time.time() + _TTL_SECONDS, result)
+            # Publicér KUN hvis ingen invalidering skete undervejs (ellers ville
+            # vi overskrive et friskere billede med et forældet) OG vi stadig er
+            # leder (ellers ville vi overskrive den der overtog os).
+            if _GENERATION == generation and _LEADER_TOKEN == my_token:
+                _SNAPSHOT = (nu + _TTL_SECONDS, result)
         return _copy(result)
     finally:
         with _LOCK:
-            _SCAN_ACTIVE = False
-        _SCAN_DONE.set()
+            # Kun lederen selv må frigive flaget. Er vi blevet overtaget, ejer
+            # den nye leder det, og vores `finally` må ikke åbne for en tredje.
+            if _LEADER_TOKEN == my_token:
+                _SCAN_ACTIVE = False
+                _SCAN_DONE.set()
 
 
 def _profiles_root() -> Path:

@@ -494,3 +494,124 @@ def test_invalidering_undervejs_kasserer_resultatet(tmp_path, monkeypatch):
     )
     # Næste kald scanner igen og ser den NYE sandhed (ikke klar).
     assert s.ready_profiles_for("groq") == []
+
+
+def test_clear_cache_er_atomisk_med_publiceringen(tmp_path, monkeypatch):
+    """`clear_cache()` skal tage `_LOCK`, så en invalidering ikke kan falde ind
+    mellem generationstjekket og `_SNAPSHOT`-assignment.
+
+    MÅLT 24/10-2026 (før fixet): generation gik 1→2, men det forældede resultat
+    blev alligevel cached — `PUBLIKEREDE_FORÆLDET = True`. Vinduet er kun to
+    bytecodes bredt, men reelt, og uacceptabelt mod 3.14t.
+
+    Testen er strukturel og deterministisk med vilje: den måler mutual
+    exclusion i stedet for at fremtvinge et bestemt interleaving. Et fremtvunget
+    interleaving ville skulle gå uden om den lås der netop er fixet — og ville
+    derfor bevise noget andet end det den påstod.
+    """
+    import threading
+
+    from core.services import auth_profile_scan as s
+
+    s.clear_cache()
+    with s._LOCK:
+        traad = threading.Thread(target=s.clear_cache, daemon=True)
+        traad.start()
+        traad.join(timeout=0.3)
+        assert traad.is_alive(), (
+            "clear_cache() tog ikke _LOCK — den kan mutere _SNAPSHOT midt i "
+            "publiceringen og cache et forældet resultat"
+        )
+    traad.join(timeout=5)
+    assert not traad.is_alive(), "clear_cache() blev aldrig færdig efter låsen blev frigivet"
+
+
+def test_venter_overtager_efter_timeout(tmp_path, monkeypatch):
+    """En ventetråd skal OVERTAGE når lederen overskrider timeout.
+
+    MÅLT 24/10-2026 (før fixet): ventetråden stod stadig efter tyve timeouts —
+    løkken kaldte blot `wait()` igen. Timeoutet forhindrede derfor ikke
+    permanent venten, som kommentaren ellers påstod.
+    """
+    import time
+
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        s, "provider_auth_ready", lambda *, provider, auth_profile: True
+    )
+    monkeypatch.setattr(s, "_WAIT_SECONDS", 0.05)
+    s.clear_cache()
+
+    # Simulér en leder der aldrig bliver færdig: flaget er sat, tokenet findes,
+    # men starttidspunktet ligger langt tilbage.
+    with s._LOCK:
+        s._SCAN_ACTIVE = True
+        s._LEADER_TOKEN += 1
+        s._LEADER_STARTED_AT = time.monotonic() - 10.0
+        s._SCAN_DONE.clear()
+
+    try:
+        resultat = s.auth_snapshot()
+        assert resultat.get("groq") == ["default"], "venteren overtog ikke scanningen"
+        assert s._SCAN_ACTIVE is False, "den overtagne scanning frigav ikke flaget"
+    finally:
+        with s._LOCK:
+            s._SCAN_ACTIVE = False
+            s._SCAN_DONE.set()
+        s.clear_cache()
+
+
+def test_overtaget_leder_publicerer_ikke(tmp_path, monkeypatch):
+    """Når en venter har overtaget, må den gamle leder ikke publicere bagefter.
+
+    `_LEADER_TOKEN` tælles op ved overtagelse, og publiceringen kræver at
+    tokenet stadig er ens. Uden det kunne en langsom — men levende — leder
+    overskrive den nye leders friskere resultat.
+    """
+    import threading
+
+    from core.services import auth_profile_scan as s
+
+    (tmp_path / "default" / "providers" / "groq").mkdir(parents=True)
+    monkeypatch.setattr(s, "_profiles_root", lambda: tmp_path)
+    monkeypatch.setattr(s, "_WAIT_SECONDS", 0.02)
+    s.clear_cache()
+
+    gammel_i_scan = threading.Event()
+    slip_gammel = threading.Event()
+
+    def readiness(*, provider, auth_profile):
+        if threading.current_thread().name == "gammel-leder":
+            gammel_i_scan.set()
+            slip_gammel.wait(timeout=5)
+            return False  # gammel leder: ingen klar profil
+        return True  # ny leder: groq er klar
+
+    monkeypatch.setattr(s, "provider_auth_ready", readiness)
+
+    gammel = threading.Thread(target=s.auth_snapshot, name="gammel-leder", daemon=True)
+    gammel.start()
+    assert gammel_i_scan.wait(timeout=5), "den gamle leder nåede aldrig scanningen"
+
+    try:
+        # Hovedtråden venter, timer ud og overtager scanningen.
+        assert s.auth_snapshot().get("groq") == ["default"]
+
+        # Slip den gamle leder: dens forældede resultat må IKKE overskrive.
+        slip_gammel.set()
+        gammel.join(timeout=5)
+        assert not gammel.is_alive(), "den gamle leder blev aldrig færdig"
+
+        assert s._SNAPSHOT is not None, "den nye leders resultat blev aldrig publiceret"
+        assert s._SNAPSHOT[1].get("groq") == ["default"], (
+            "den overtagne leder overskrev den nye leders resultat"
+        )
+    finally:
+        slip_gammel.set()
+        with s._LOCK:
+            s._SCAN_ACTIVE = False
+            s._SCAN_DONE.set()
+        s.clear_cache()

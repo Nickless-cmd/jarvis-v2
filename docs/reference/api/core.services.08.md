@@ -738,14 +738,14 @@ _Canonical, audit-only attribution metadata for Git commit messages._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ActorRule` | `` | Stable actor type and the origins that actor may claim. | [src](../../../core/services/commit_attribution.py#L52) |
-| class | `CommitAttribution` | `` | The six required audit fields stored in a commit trailer block. | [src](../../../core/services/commit_attribution.py#L60) |
-| method | `CommitAttribution.as_trailers` | `(self)` | — | [src](../../../core/services/commit_attribution.py#L70) |
-| class | `AttributionError` | `` | Raised when attribution cannot satisfy the commit contract. | [src](../../../core/services/commit_attribution.py#L81) |
-| function | `new_manual_run_id` | `(now=…, suffix=…)` | Return a sortable id for a commit without an existing runtime run. | [src](../../../core/services/commit_attribution.py#L93) |
-| function | `parse_git_trailers` | `(message)` | Parse the final trailer block with Git's own trailer semantics. | [src](../../../core/services/commit_attribution.py#L109) |
-| function | `validate_trailers` | `(trailers)` | Validate parsed trailers without reading process or repository state. | [src](../../../core/services/commit_attribution.py#L130) |
-| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L189) |
-| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L195) |
-| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L210) |
+| class | `ActorRule` | `` | Stable actor type and the origins that actor may claim. | [src](../../../core/services/commit_attribution.py#L54) |
+| class | `CommitAttribution` | `` | The six required audit fields stored in a commit trailer block. | [src](../../../core/services/commit_attribution.py#L62) |
+| method | `CommitAttribution.as_trailers` | `(self)` | — | [src](../../../core/services/commit_attribution.py#L72) |
+| class | `AttributionError` | `` | Raised when attribution cannot satisfy the commit contract. | [src](../../../core/services/commit_attribution.py#L83) |
+| function | `new_manual_run_id` | `(now=…, suffix=…)` | Return a sortable id for a commit without an existing runtime run. | [src](../../../core/services/commit_attribution.py#L95) |
+| function | `parse_git_trailers` | `(message)` | Parse the final trailer block with Git's own trailer semantics. | [src](../../../core/services/commit_attribution.py#L111) |
+| function | `validate_trailers` | `(trailers)` | Validate parsed trailers without reading process or repository state. | [src](../../../core/services/commit_attribution.py#L132) |
+| function | `validate_commit_message` | `(message)` | Return every attribution error in a complete commit message. | [src](../../../core/services/commit_attribution.py#L191) |
+| function | `_split_final_trailer_block` | `(message)` | — | [src](../../../core/services/commit_attribution.py#L197) |
+| function | `render_attributed_message` | `(message, attribution)` | Replace managed trailers and return a deterministic commit message. | [src](../../../core/services/commit_attribution.py#L212) |
 

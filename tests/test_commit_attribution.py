@@ -214,9 +214,10 @@ def test_skabelon_markør_som_run_id_afvises(placeholder: str) -> None:
 def test_legitime_run_id_formater_afvises_ikke(legitimt: str) -> None:
     """Vagten må ikke ramme de tusindvis af legitime varianter i historikken.
 
-    Målt i hele historikken: 3361× `manual-<ts>-<hex8>` plus varianter som
-    `-mobile`, `-merge`, `visible-*`, `tool-discovery-nudge-*` og UUID-formede
-    id'er. En streng format-validering ville afvise dem; vagten skal kun ramme
+    Målt i hele historikken (rå `%B` ved ba2109749): 3363× `manual-<ts>-<hex8>`
+    plus varianter som `-mobile`, `-merge`, `visible-*`,
+    `tool-discovery-nudge-*` og UUID-formede id'er. En streng
+    format-validering ville afvise dem; vagten skal kun ramme
     skabelon-markørerne.
     """
     errors = validate_commit_message(_besked_med_run_id(legitimt))

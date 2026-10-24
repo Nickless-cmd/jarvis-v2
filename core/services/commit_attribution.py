@@ -37,8 +37,10 @@ _MANUAL_SUFFIX = re.compile(r"^[A-Za-z0-9._-]+$")
 #
 # Hele historikken rummer 18 (de tidligere 17 plus COMMITHEX). De passerede
 # fordi feltet kun skulle være til stede og ikke-tomt. Dette er bevidst en
-# MARKØR-detektor og ikke en format-validering: historikken rummer 3362×
-# `manual-<ts>-<hex8>` plus varianter som `-mobile`, `-merge`, `visible-*`,
+# MARKØR-detektor og ikke en format-validering: historikken rummer 3363×
+# `manual-<ts>-<hex8>` (målt på rå `%B` ved ba2109749 — trailer-projektionen
+# giver 3362, fordi den taber én commit hvis besked er trailerlinjer alene),
+# plus varianter som `-mobile`, `-merge`, `visible-*`,
 # `tool-discovery-nudge-*`, `-fletning`, `-droemme` og UUID-formede id'er —
 # og en streng format-regel ville afvise legitime commits. Suffiks-ord som
 # `merge`/`billed`/`fletning` er menneskelige labels, ikke skabeloner, og må

@@ -1065,7 +1065,7 @@ Generated from source. 9227/17482 functions/methods documented (52%). The list b
 - `core/services/collective_pulse_daemon.py` :: `build_collective_pulse_surface` (L246)
 - `core/services/collective_pulse_daemon.py` :: `run_pulse` (L192)
 - `core/services/collective_pulse_daemon.py` :: `tick` (L233)
-- `core/services/commit_attribution.py` :: `CommitAttribution.as_trailers` (L70)
+- `core/services/commit_attribution.py` :: `CommitAttribution.as_trailers` (L72)
 - `core/services/companion_initiative.py` :: `Offer.as_dict` (L49)
 - `core/services/compass_engine.py` :: `build_compass_surface` (L65)
 - `core/services/completion_satisfaction.py` :: `build_completion_satisfaction_surface` (L45)

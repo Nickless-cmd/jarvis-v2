@@ -102,6 +102,28 @@ def test_dispatch_skips_already_dispatched():
     fake_send.assert_not_called()
 
 
+def test_dispatch_skips_already_skipped_without_repeating_side_effects():
+    """Et skip ligger i den durable indbakke og må ikke slå hjertet hvert minut."""
+    state = [{
+        "wakeup_id": "w1",
+        "prompt": "p",
+        "reason": "r",
+        "status": "fired",
+        "dispatch_skipped": True,
+        "dispatch_skipped_reason": "session_har_levende_run",
+    }]
+    with patch("core.services.self_wakeup.due_wakeups", return_value=state), \
+         patch("core.services.outbound_nudges.push_nudge") as fake_push, \
+         patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick, \
+         patch("core.services.autonomous_stream_run.start_autonomous_stream_run") as fake_start:
+        result = dispatch_due_wakeups()
+
+    assert result["dispatched"] == 0
+    fake_push.assert_not_called()
+    fake_tick.assert_not_called()
+    fake_start.assert_not_called()
+
+
 def test_dispatch_continues_if_webchat_fails():
     state = [{"wakeup_id": "w1", "prompt": "p", "reason": "r", "status": "fired"}]
     fired = state

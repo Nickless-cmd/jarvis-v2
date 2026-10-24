@@ -258,11 +258,14 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             wid = record.get("wakeup_id")
             if record.get("dispatched"):
                 continue
-            # 12/9-2026: en wakeup der blev afvist fordi en tur VAR aktiv, prøves
-            # ikke igen. Awareness bærer den (status forbliver 'fired' indtil
-            # mark_wakeup_consumed), så instruktionerne går ikke tabt — og vi
-            # undgår at dispatche et autonomt run oveni en tur der er i gang.
-            if str(record.get("dispatch_skipped_reason") or "").startswith("user_active"):
+            # En allerede sprunget vækning tilhører nu den durable indbakkevej
+            # (`self_wakeup.ventende_efter_skip`) og må ikke dispatches igen her.
+            # Før blev kun den gamle årsag ``user_active`` filtreret. De nyere
+            # vagter skriver bl.a. ``session_har_levende_run`` og
+            # ``bruger_skrev_for_nylig``; derfor udløste samme vækning nudge +
+            # heartbeat igen ved hvert 60-sekunders poll. Selve flaget er den
+            # stabile kontrakt — årsagsteksterne er diagnostik.
+            if record.get("dispatch_skipped"):
                 continue
             prompt = str(record.get("prompt", ""))
             reason = str(record.get("reason", ""))

@@ -6439,6 +6439,17 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
             return fallback
     except Exception:
         pass
+    # MUR-VAGT (24/10-2026). Observerende: måler om svaret indeholder en
+    # prosablok uden luft — flere pointer i én ordstrøm, som CommonMark ikke
+    # deler. Den RETTER IKKE teksten; tærsklen er ikke kalibreret godt nok
+    # (målt: 4 fund / 400 beskeder, hvoraf nogle er velskrevet prosa).
+    # Fail-open: en fejl her må aldrig påvirke svaret.
+    try:
+        from core.services import wall_guard
+
+        wall_guard.observe(cleaned or fallback)
+    except Exception:
+        pass
     if cleaned:
         return cleaned
     return fallback

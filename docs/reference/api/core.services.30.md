@@ -343,6 +343,15 @@ _Wakeup dispatcher — autonomous fire of self-wakeups._
 | function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L240) |
 | function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L417) |
 
+## `core/services/wall_guard.py`
+_Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_prosablokke` | `(text)` | Del teksten i blokke og kast kode, tabeller, lister og native-JSON væk. | [src](../../../core/services/wall_guard.py#L42) |
+| function | `find_walls` | `(text)` | Returnér de prosablokke der ser ud som en mur. Tom liste = intet fundet. | [src](../../../core/services/wall_guard.py#L65) |
+| function | `observe` | `(text, *, run_id=…)` | Mål uden at røre teksten. Skriver en central-hændelse ved fund. | [src](../../../core/services/wall_guard.py#L86) |
+
 ## `core/services/web_push_gateway.py`
 _Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
 

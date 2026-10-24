@@ -224,11 +224,35 @@ def warm_session_prefix(
         # Regnskab: eget provider-label så det er adskilt fra ægte trafik + fra
         # primary_cache_warmer (system-only). lane=primary så det tælles i den
         # synlige cache-metrik.
+        # 24/10-2026: labelen ``session_cache_warmer`` findes IKKE som nøgle i
+        # PRICING-tabellen, og ``record_cost`` beregner selv prisen på
+        # ``(provider, model)`` når kalderen ikke giver en. Resultatet var 0,0:
+        # målt over alle 25 kald 21.-22. juli blev 431.187 input-tokens bogført
+        # som $0,00 — en udgift der fandtes men var usynlig i regnskabet.
+        # Prisen beregnes derfor på DeepSeeks eget (provider, model) og sendes
+        # med, mens labelen bevares så warmer-forbruget kan skelnes fra ægte
+        # trafik. ``primary_cache_warmer`` gør det samme i sit script.
         try:
             from core.costing.ledger import record_cost
+            from core.services.llm_pricing import compute_cost_usd
+
+            _cost = compute_cost_usd(
+                "deepseek", model,
+                cache_hit_tokens=hit, cache_miss_tokens=miss,
+                output_tokens=outp, input_tokens=inp,
+            )
+            if _cost <= 0.0 and (hit + miss) > 0:
+                # Ukendt model-streng → compute_cost_usd giver 0,0, og udgiften
+                # forsvinder tavst igen (målt 24/10: 'visible-placeholder' i
+                # test-settings gav præcis det). Hellere en støjende linje end
+                # et regnskab der ser gratis ud.
+                logger.warning(
+                    "session prewarm: kunne ikke prise model=%r (%d tokens) — "
+                    "udgiften bogføres som 0,0", model, hit + miss,
+                )
             record_cost(
                 lane="primary", provider="session_cache_warmer", model=model,
-                input_tokens=inp, output_tokens=outp,
+                input_tokens=inp, output_tokens=outp, cost_usd=_cost,
                 cache_hit_tokens=hit, cache_miss_tokens=miss,
                 user_id=str(user_id or ""),
             )

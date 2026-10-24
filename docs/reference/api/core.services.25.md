@@ -245,12 +245,12 @@ _Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
 | function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L71) |
 | function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L80) |
 | function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L99) |
-| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en GENBRUGT daemon-tråd. | [src](../../../core/services/session_prewarm.py#L253) |
-| function | `_worker_loop` | `(task_q)` | Kør opgaver fra egen kø indtil TTL udløber uden nyt arbejde. | [src](../../../core/services/session_prewarm.py#L313) |
-| function | `_dispatch` | `(job)` | Giv opgaven til den ledige worker — eller føds en frisk. | [src](../../../core/services/session_prewarm.py#L340) |
-| function | `_wrap` | `(job, t, q)` | Pak opgaven ind med tilbagelægning til puljen — også når den fejler. | [src](../../../core/services/session_prewarm.py#L371) |
-| function | `_release_worker` | `(t, q)` | Læg tråden tilbage i puljen, så næste kald kan genbruge den. | [src](../../../core/services/session_prewarm.py#L381) |
-| function | `_worker_stats` | `()` | Observability: hvor mange tråde er født vs. genbrugt. Self-safe. | [src](../../../core/services/session_prewarm.py#L387) |
+| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en GENBRUGT daemon-tråd. | [src](../../../core/services/session_prewarm.py#L277) |
+| function | `_worker_loop` | `(task_q)` | Kør opgaver fra egen kø indtil TTL udløber uden nyt arbejde. | [src](../../../core/services/session_prewarm.py#L337) |
+| function | `_dispatch` | `(job)` | Giv opgaven til den ledige worker — eller føds en frisk. | [src](../../../core/services/session_prewarm.py#L364) |
+| function | `_wrap` | `(job, t, q)` | Pak opgaven ind med tilbagelægning til puljen — også når den fejler. | [src](../../../core/services/session_prewarm.py#L395) |
+| function | `_release_worker` | `(t, q)` | Læg tråden tilbage i puljen, så næste kald kan genbruge den. | [src](../../../core/services/session_prewarm.py#L405) |
+| function | `_worker_stats` | `()` | Observability: hvor mange tråde er født vs. genbrugt. Self-safe. | [src](../../../core/services/session_prewarm.py#L411) |
 
 ## `core/services/session_spawn.py`
 _start_session — Jarvis starter selv et run i en session der er Bjørns._

@@ -79,6 +79,66 @@ def test_successful_warm_records_stats(monkeypatch):
     assert recorded.get("cache_hit_tokens") == 900
 
 
+def test_warm_bogfoerer_en_beregnet_pris_ikke_nul(monkeypatch):
+    """Warmer-forbruget må ikke bogføres som $0,00.
+
+    MÅLT 24/10-2026: ``session_cache_warmer`` findes ikke som nøgle i
+    PRICING-tabellen, og ``record_cost`` beregner selv prisen på
+    ``(provider, model)`` når kalderen ikke giver en. Derfor blev alle 25 kald
+    21.-22. juli — 431.187 input-tokens — bogført som **$0,00**: en udgift der
+    fandtes, men var usynlig i regnskabet. Prisen skal derfor beregnes på
+    DeepSeeks eget (provider, model) og sendes med, mens labelen bevares.
+
+    Uden fixet er ``recorded["cost_usd"]`` 0,0 (eller feltet mangler helt).
+    """
+    _reset_throttle()
+    monkeypatch.setattr(sp, "session_prewarm_enabled", lambda: True, raising=True)
+    monkeypatch.setattr(sp, "_deepseek_key", lambda: "key", raising=True)
+
+    import core.services.visible_model as vm
+    monkeypatch.setattr(
+        vm, "_build_visible_chat_messages_for_github",
+        lambda *a, **k: [{"role": "system", "content": "sys"}, {"role": "user", "content": "(prewarm)"}],
+        raising=True,
+    )
+    monkeypatch.setattr(
+        sp, "_post_deepseek",
+        lambda *a, **k: {"usage": {"prompt_cache_hit_tokens": 900,
+                                   "prompt_cache_miss_tokens": 100,
+                                   "prompt_tokens": 1000, "completion_tokens": 1}},
+        raising=True,
+    )
+    recorded: dict = {}
+    import core.costing.ledger as ledger
+    monkeypatch.setattr(ledger, "record_cost", lambda **kw: recorded.update(kw), raising=True)
+
+    r = sp.warm_session_prefix(
+        "chat-pris", user_id="u1", model="deepseek-v4-flash", force=True,
+    )
+    assert r["status"] == "ok"
+
+    # Selve grunden til fixet: labelen alene prises til nul.
+    from core.services.llm_pricing import compute_cost_usd
+    assert compute_cost_usd(
+        "session_cache_warmer", "deepseek-v4-flash",
+        cache_hit_tokens=900, cache_miss_tokens=100,
+    ) == 0.0, "labelen skulle være uprisbar — ellers beviser testen intet"
+
+    # …men den pris der SENDES med, er beregnet og større end nul.
+    sendt = recorded.get("cost_usd")
+    assert sendt is not None, "record_cost fik ingen cost_usd — udgiften er usynlig"
+    assert sendt > 0.0, f"warmer-forbruget blev bogført som {sendt}, ikke en ægte pris"
+    # og den er beregnet på DeepSeeks priser for de faktiske tokens
+    forventet = compute_cost_usd(
+        "deepseek", "deepseek-v4-flash",
+        cache_hit_tokens=900, cache_miss_tokens=100,
+        output_tokens=1, input_tokens=1000,
+    )
+    assert abs(sendt - forventet) < 1e-12, (
+        f"prisen {sendt} matcher ikke DeepSeeks tabel {forventet}"
+    )
+
+
 def test_warm_kanoniserer_flash_alias_foer_baade_builder_og_api(monkeypatch):
     """Warmer og live-lane skal bruge samme model-id, ellers deler de ikke prefix."""
     _reset_throttle()

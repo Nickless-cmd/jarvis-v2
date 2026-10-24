@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { WidgetPrompt } from './WidgetFlade'
 
@@ -31,5 +32,21 @@ describe('NativeRichBlock', () => {
     })} /></WidgetPrompt.Provider>)
     fireEvent.press(screen.getByLabelText('Fortsæt'))
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
+  })
+
+  // Målt 24/10-2026: boksen fik alle seks flader til at skære sig ud af
+  // brødteksten. Data (comparison/timeline/stats) skal ligge i tekstens
+  // materiale; kun objekter (callout/choices/location) skal skille sig ud.
+  it.each([
+    [{ type: 'callout', body: 'B' }, 'Bemærkning', true],
+    [{ type: 'choices', options: [{ label: 'A', prompt: 'a' }] }, 'Valgmuligheder', true],
+    [{ type: 'location', address: 'K' }, 'Lokation', true],
+    [{ type: 'stats', items: [{ label: 'L', value: 'V' }] }, 'Nøgletal', false],
+    [{ type: 'timeline', items: [{ title: 'X' }] }, 'Tidslinje', false],
+    [{ type: 'comparison', columns: ['A', 'B'], rows: [{ label: 'R', values: ['1', '2'] }] }, 'Sammenligning', false],
+  ])('boks kun på objekter: %s', async (spec, label, boxed) => {
+    const screen = await render(<NativeRichBlock code={JSON.stringify(spec)} />)
+    const flat = StyleSheet.flatten(screen.getByLabelText(label).props.style) ?? {}
+    expect(Boolean(flat.borderWidth)).toBe(boxed)
   })
 })

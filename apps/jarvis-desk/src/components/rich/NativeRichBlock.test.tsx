@@ -33,4 +33,21 @@ describe('NativeRichBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fortsæt' }))
     expect(send).toHaveBeenCalledWith('[fra valgkort] gør det')
   })
+
+  // Målt 24/10-2026: boksen fik alle seks flader til at skære sig ud af
+  // brødteksten. Data (comparison/timeline/stats) skal ligge i tekstens
+  // materiale; kun objekter (callout/choices/location) skal skille sig ud.
+  it.each([
+    [{ type: 'callout', title: 'T', body: 'B' }, true],
+    [{ type: 'choices', title: 'T', options: [{ label: 'A', prompt: 'a' }] }, true],
+    [{ type: 'location', title: 'T', address: 'K' }, true],
+    [{ type: 'stats', title: 'T', items: [{ label: 'L', value: 'V' }] }, false],
+    [{ type: 'timeline', title: 'T', items: [{ title: 'X' }] }, false],
+    [{ type: 'comparison', title: 'T', columns: ['A', 'B'], rows: [{ label: 'R', values: ['1', '2'] }] }, false],
+  ])('boks kun på objekter: %s', (spec, boxed) => {
+    const { container } = render(<NativeRichBlock code={JSON.stringify(spec)} />)
+    const el = container.querySelector('.native-rich')
+    expect(el).toBeInTheDocument()
+    expect(el!.classList.contains('native-card')).toBe(boxed)
+  })
 })

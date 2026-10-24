@@ -834,7 +834,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* Sikre, native chatflader fra ```jarvis-ui JSON. Ingen model-HTML: React
  * tegner kun den validerede datastruktur i NativeRichBlock. */
-.native-rich { margin: 10px 0 14px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); color: var(--fg-1); }
+/* Boksen er for OBJEKTER — ikke for data.
+ * Målt 24/10-2026 mod DSH's tabel: en flade med egen ramme og baggrund
+ * skærer sig ud af brødteksten, mens den samme tabel i tekstens materiale
+ * læses som en del af svaret. `comparison`, `timeline` og `stats` ER data og
+ * skal derfor ikke have boks; `callout`, `choices` og `location` er objekter
+ * der netop skal skille sig ud, og beholder den. */
+.native-rich { margin: 10px 0 14px; color: var(--fg-1); }
+.native-card { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-2); }
 .native-rich-title { margin: 0 0 9px !important; font-size: 14px !important; }
 .native-callout { display: flex; gap: 11px; border-left: 3px solid var(--tint); }
 .native-callout > svg { flex: none; color: var(--tint); margin-top: 1px; }
@@ -853,7 +860,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .native-timeline { list-style: none !important; margin: 0 !important; padding: 0 !important; }
 .native-timeline li { position: relative; display: grid; grid-template-columns: 15px 1fr; gap: 10px; padding-bottom: 13px; margin: 0 !important; }
 .native-timeline li:not(:last-child)::before { content: ''; position: absolute; left: 6px; top: 14px; bottom: -1px; width: 1px; background: var(--line); }
-.native-timeline-dot { width: 11px; height: 11px; margin-top: 3px; border: 2px solid var(--fg-3); border-radius: 50%; background: var(--bg-2); box-sizing: border-box; z-index: 1; }
+/* Prikken har ingen fyld-baggrund: tidslinjelinjen starter hvor prikken
+ * slutter (top: 14px mod prikkens 3+11px), så den skal ikke maskere noget —
+ * og uden boks ville `--bg-2` stå på en anden baggrund end teksten. */
+.native-timeline-dot { width: 11px; height: 11px; margin-top: 3px; border: 2px solid var(--fg-3); border-radius: 50%; background: transparent; box-sizing: border-box; z-index: 1; }
 .native-timeline .status-done .native-timeline-dot { border-color: var(--ok); background: var(--ok); }
 .native-timeline .status-current .native-timeline-dot { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .native-timeline time { display: block; color: var(--fg-3); font-size: 11px; }

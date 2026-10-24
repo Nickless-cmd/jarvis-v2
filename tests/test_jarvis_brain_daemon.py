@@ -60,6 +60,57 @@ def test_reindex_embeds_pending(isolated, monkeypatch):
     conn.close()
 
 
+def test_b4_catchup_husker_tomt_resultat_indtil_filen_aendres(isolated, monkeypatch):
+    """En kantløs post må ikke infereres hver time med identisk indhold."""
+    from core.services.jarvis_brain_daemon import b4_catchup_infer_once
+
+    eid = isolated.write_entry(
+        kind="fakta", title="Isoleret", content="ingen match",
+        visibility="personal", domain="d", skip_temporal=True,
+    )
+    kaldt: list[str] = []
+    monkeypatch.setattr(
+        isolated, "infer_temporal_edges",
+        lambda entry_id: kaldt.append(entry_id) or 0,
+    )
+
+    assert b4_catchup_infer_once() == 1
+    assert b4_catchup_infer_once() == 0
+    assert kaldt == [eid]
+
+    # Reindex ændrer file_hash ved en reel filændring. Hash-mismatch gør posten
+    # valgbar igen, så attempt-markøren kan ikke skjule ændret indhold.
+    conn = isolated.connect_index()
+    try:
+        conn.execute("UPDATE brain_index SET file_hash = 'ændret' WHERE id = ?", (eid,))
+        conn.commit()
+    finally:
+        conn.close()
+    assert b4_catchup_infer_once() == 1
+    assert kaldt == [eid, eid]
+
+
+def test_b4_catchup_husker_ikke_fejlet_inferens(isolated, monkeypatch):
+    """Kun fuldførte forsøg må undertrykke næste times retry."""
+    from core.services.jarvis_brain_daemon import b4_catchup_infer_once
+
+    eid = isolated.write_entry(
+        kind="fakta", title="Retry", content="krop",
+        visibility="personal", domain="d", skip_temporal=True,
+    )
+    kald = 0
+
+    def _fejl(_entry_id):
+        nonlocal kald
+        kald += 1
+        raise RuntimeError("midlertidig fejl")
+
+    monkeypatch.setattr(isolated, "infer_temporal_edges", _fejl)
+    assert b4_catchup_infer_once() == 0
+    assert b4_catchup_infer_once() == 0
+    assert kald == 2
+
+
 # --- Task 12: duplicate detection (consolidation phase 1) ---
 
 

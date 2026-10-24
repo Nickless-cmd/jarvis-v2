@@ -253,6 +253,9 @@ CREATE TABLE IF NOT EXISTS brain_index (
     status          TEXT NOT NULL DEFAULT 'active',
     superseded_by   TEXT,
     file_hash       TEXT NOT NULL,
+    file_mtime_ns   INTEGER,
+    file_size       INTEGER,
+    temporal_attempt_file_hash TEXT,
     embedding       BLOB,
     embedding_dim   INTEGER,
     indexed_at      TEXT NOT NULL
@@ -458,6 +461,14 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
             # brain_relations may not exist yet on a fresh DB — leave
             # default '[]' and let write_entry populate it going forward.
             pass
+    if "file_mtime_ns" not in cols:
+        conn.execute("ALTER TABLE brain_index ADD COLUMN file_mtime_ns INTEGER")
+    if "file_size" not in cols:
+        conn.execute("ALTER TABLE brain_index ADD COLUMN file_size INTEGER")
+    if "temporal_attempt_file_hash" not in cols:
+        conn.execute(
+            "ALTER TABLE brain_index ADD COLUMN temporal_attempt_file_hash TEXT"
+        )
 
     # 2026-09-27: de to dækkende indeks på `brain_temporal_edges` fandtes KUN i
     # produktionen — de var lavet i hånden på CT105 og stod ingen steder i
@@ -541,6 +552,7 @@ def write_entry(
 
     rel_path = str(fpath.relative_to(_workspace_root()))
     fhash = _file_hash(md)
+    file_stat = fpath.stat()
 
     conn = connect_index()
     try:
@@ -548,12 +560,14 @@ def write_entry(
             """INSERT INTO brain_index
                (id, path, kind, visibility, domain, title, created_at, updated_at,
                 last_used_at, salience_base, salience_bumps, recall_count, importance,
-                tags, related, status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+                tags, related, status, superseded_by, file_hash,
+                file_mtime_ns, file_size, embedding, embedding_dim, indexed_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, ?, ?,
-                       'active', NULL, ?, NULL, NULL, ?)""",
+                       'active', NULL, ?, ?, ?, NULL, NULL, ?)""",
             (new_id, rel_path, kind, visibility, domain, title,
              _iso(now), _iso(now), salience_base, importance,
-             json.dumps(tags), json.dumps(related), fhash, _iso(now)),
+             json.dumps(tags), json.dumps(related), fhash,
+             file_stat.st_mtime_ns, file_stat.st_size, _iso(now)),
         )
         for to_id in related:
             conn.execute(
@@ -1184,17 +1198,34 @@ def rebuild_index_from_files() -> int:
             if kind not in _VALID_KINDS:
                 continue
             for md_path in kind_dir.glob("*.md"):
+                rel = str(md_path.relative_to(_workspace_root()))
+                try:
+                    file_stat = md_path.stat()
+                except OSError:  # Filen kan forsvinde mellem glob og stat; næste pass tager den.
+                    continue
+                row = conn.execute(
+                    """SELECT id, file_hash, file_mtime_ns, file_size
+                       FROM brain_index WHERE path = ?""",
+                    (rel,),
+                ).fetchone()
+                if (
+                    row is not None
+                    and row[2] == file_stat.st_mtime_ns
+                    and row[3] == file_stat.st_size
+                ):
+                    continue
                 try:
                     fm, _body = parse_frontmatter(md_path)
                 except Exception:
                     continue
                 text = md_path.read_text(encoding="utf-8")
                 fhash = _file_hash(text)
-                row = conn.execute(
-                    "SELECT file_hash FROM brain_index WHERE id = ?",
-                    (fm["id"],),
-                ).fetchone()
-                rel = str(md_path.relative_to(_workspace_root()))
+                if row is None or row[0] != fm["id"]:
+                    row = conn.execute(
+                        """SELECT id, file_hash, file_mtime_ns, file_size
+                           FROM brain_index WHERE id = ?""",
+                        (fm["id"],),
+                    ).fetchone()
                 if row is None:
                     conn.execute(
                         """INSERT INTO brain_index
@@ -1202,8 +1233,9 @@ def rebuild_index_from_files() -> int:
                             created_at, updated_at, last_used_at,
                             salience_base, salience_bumps, recall_count,
                             importance, tags, related, status, superseded_by,
-                            file_hash, embedding, embedding_dim, indexed_at)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                            file_hash, file_mtime_ns, file_size,
+                            embedding, embedding_dim, indexed_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
                         (
                             fm["id"], rel, kind, fm["visibility"], fm["domain"],
                             fm["title"], fm["created_at"],
@@ -1218,18 +1250,21 @@ def rebuild_index_from_files() -> int:
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,
+                            file_stat.st_mtime_ns,
+                            file_stat.st_size,
                             _iso(now),
                         ),
                     )
                     changes += 1
-                elif row[0] != fhash:
+                elif row[1] != fhash:
                     conn.execute(
                         """UPDATE brain_index
                            SET path=?, kind=?, visibility=?, domain=?, title=?,
                                updated_at=?, last_used_at=?, salience_base=?,
                                salience_bumps=?, recall_count=?, importance=?,
                                tags=?, related=?, status=?, superseded_by=?,
-                               file_hash=?, embedding=NULL, embedding_dim=NULL,
+                               file_hash=?, file_mtime_ns=?, file_size=?,
+                               embedding=NULL, embedding_dim=NULL,
                                indexed_at=?
                            WHERE id=?""",
                         (
@@ -1252,11 +1287,23 @@ def rebuild_index_from_files() -> int:
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,
+                            file_stat.st_mtime_ns,
+                            file_stat.st_size,
                             _iso(now),
                             fm["id"],
                         ),
                     )
                     changes += 1
+                else:
+                    # Første pass efter migrationen udfylder kun stat-cachen.
+                    # Det er ikke en indholdsændring og skal derfor ikke nulstille
+                    # embedding eller tælle som en ændret brain-post.
+                    conn.execute(
+                        """UPDATE brain_index
+                           SET file_mtime_ns = ?, file_size = ?
+                           WHERE id = ?""",
+                        (file_stat.st_mtime_ns, file_stat.st_size, fm["id"]),
+                    )
         conn.commit()
     finally:
         conn.close()

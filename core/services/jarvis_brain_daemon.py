@@ -571,12 +571,16 @@ def b4_catchup_infer_once(*, batch_size: int = None) -> int:
     conn = jarvis_brain.connect_index()
     try:
         rows = conn.execute(
-            """SELECT id FROM brain_index
+            """SELECT id, file_hash, path FROM brain_index
                WHERE status = 'active'
                  AND id NOT IN (
                    SELECT from_id FROM brain_temporal_edges
                    UNION
                    SELECT to_id FROM brain_temporal_edges
+                 )
+                 AND (
+                   temporal_attempt_file_hash IS NULL
+                   OR temporal_attempt_file_hash != file_hash
                  )
                LIMIT ?""",
             (batch_size,),
@@ -584,19 +588,37 @@ def b4_catchup_infer_once(*, batch_size: int = None) -> int:
     finally:
         conn.close()
 
-    entry_ids = [r[0] for r in rows]
-    if not entry_ids:
+    if not rows:
         return 0
 
     processed = 0
-    for eid in entry_ids:
+    completed: list[tuple[str, str, str]] = []
+    for eid, file_hash, rel_path in rows:
+        # infer_temporal_edges() behandler en manglende fil som et tomt resultat.
+        # Det må ikke blive et permanent "forsøgt"-mærke ved et midlertidigt
+        # mount-problem; orphan-oprydningen tager den reelle slette-sag.
+        if not (jarvis_brain._workspace_root() / rel_path).exists():
+            continue
         try:
             jarvis_brain.infer_temporal_edges(eid)
             processed += 1
+            completed.append((file_hash, eid, file_hash))
         except Exception as exc:
             logger.warning("b4_catchup_infer: inference failed for %s: %s", eid, exc)
+    if completed:
+        conn = jarvis_brain.connect_index()
+        try:
+            conn.executemany(
+                """UPDATE brain_index
+                   SET temporal_attempt_file_hash = ?
+                   WHERE id = ? AND file_hash = ?""",
+                completed,
+            )
+            conn.commit()
+        finally:
+            conn.close()
     if processed:
-        logger.info("b4_catchup_infer: processed %s / %s entries", processed, len(entry_ids))
+        logger.info("b4_catchup_infer: processed %s / %s entries", processed, len(rows))
     return processed
 
 

@@ -447,6 +447,23 @@ def test_rebuild_index_idempotent(tmp_path, monkeypatch):
     assert n2 == 0
 
 
+def test_rebuild_index_skips_yaml_for_unchanged_files(tmp_path, monkeypatch):
+    """Fem-minutters-passet må ikke parse hele brain når intet er ændret."""
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    jarvis_brain.write_entry(
+        kind="fakta", title="Uændret", content="krop",
+        visibility="personal", domain="d", skip_temporal=True,
+    )
+
+    def _maa_ikke_parse(_path):
+        raise AssertionError("uændret fil blev YAML-parset")
+
+    monkeypatch.setattr(jarvis_brain, "parse_frontmatter", _maa_ikke_parse)
+    assert jarvis_brain.rebuild_index_from_files() == 0
+
+
 def test_rebuild_index_picks_up_manual_file(tmp_path, monkeypatch):
     from core.services import jarvis_brain
     monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")

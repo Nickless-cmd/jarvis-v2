@@ -159,17 +159,26 @@ Approved-By: bjorn
         "manual-20261024T135845Z-PLACEHOLDER",  # pragma: allowlist secret
         "RUN_IDPLACEHOLDER",
         "__RID__",
-        "__RUN_ID__",
+        "__RUNID__",  # den faktisk observerede historiske værdi
+        "__RUN_ID__",  # variant der også findes i historikken
+        "manual-20261019T154210Z-COMMITHEX",
     ],
 )
 def test_skabelon_markør_som_run_id_afvises(placeholder: str) -> None:
     """En skabelon-markør er ikke en kørsel og må ikke passere som provenance.
 
-    Målt 24/10-2026 over de sidste 300 commits: 21 havde en markør i stedet
-    for et rigtigt id — `RUNIDPLACEHOLDER` (6), `__RID__` (4), `RUN_IDPLACEHOLDER`
-    (1), `manual-...-PLACEHOLDER` (1), `__RUN_ID__` (2), `manual-RUNIDPLACEHOLDER`
-    (1). De gik igennem fordi `validate_trailers` kun krævede at feltet var til
-    stede og ikke-tomt, ikke at det navngav en faktisk kørsel.
+    Målt 24/10-2026 på Run-ID-traileren over de sidste 300 commits: 14 havde
+    en markør i stedet for et rigtigt id — `RUNIDPLACEHOLDER` (6), `__RID__`
+    (4), `RUN_IDPLACEHOLDER` (1), `manual-...-PLACEHOLDER` (1), `__RUNID__`
+    (1), `manual-RUNIDPLACEHOLDER` (1). Hele historikken rummer 17. Hertil
+    `manual-<ts>-COMMITHEX` (1), som `COMMITHEX`-alternativet dækker. De gik
+    igennem fordi `validate_trailers` kun krævede at feltet var til stede og
+    ikke-tomt, ikke at det navngav en faktisk kørsel.
+
+    Ret 24/10-2026: den første udgave af denne test hævdede 21 og brugte
+    `__RUN_ID__` som den observerede værdi. Begge var forkerte — 21 var en
+    sum af markører PLUS fem legitime id'er uden `manual-`-præfiks, og den
+    faktiske historiske værdi er `__RUNID__`.
     """
     errors = validate_commit_message(_besked_med_run_id(placeholder))
 

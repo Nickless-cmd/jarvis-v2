@@ -22,15 +22,21 @@ MANAGED_TRAILERS = (
 _TRAILER_LINE = re.compile(r"^([A-Za-z0-9-]+):[ \t]*(.*)$")
 _POLICY_ID = re.compile(r"^policy:[a-z0-9][a-z0-9._-]*$")
 _MANUAL_SUFFIX = re.compile(r"^[A-Za-z0-9._-]+$")
-# 24/10-2026: en skabelon-markør er ikke en kørsel. Målt over de sidste 300
-# commits havde 21 en markør i stedet for et id (`RUNIDPLACEHOLDER`,
-# `__RID__`, `__RUN_ID__`, `RUN_IDPLACEHOLDER`, `manual-...-PLACEHOLDER`).
-# De passerede fordi feltet kun skulle være til stede og ikke-tomt. Dette er
-# bevidst en MARKØR-detektor og ikke en format-validering: historikken rummer
-# 3361× `manual-<ts>-<hex8>` plus varianter som `-mobile`, `-merge`,
-# `visible-*`, `tool-discovery-nudge-*` og UUID-formede id'er, og en streng
-# format-regel ville afvise legitime commits.
-_PLACEHOLDER_RUN_ID = re.compile(r"PLACEHOLDER|^__[A-Za-z0-9_]+__$", re.IGNORECASE)
+# 24/10-2026: en skabelon-markør er ikke en kørsel. Målt på Run-ID-traileren
+# over de sidste 300 commits havde 14 en markør i stedet for et id (6×
+# `RUNIDPLACEHOLDER`, 4× `__RID__`, 1× `RUN_IDPLACEHOLDER`, 1×
+# `manual-...-PLACEHOLDER`, 1× `__RUNID__`, 1× `manual-RUNIDPLACEHOLDER`),
+# og hele historikken rummer 17. Hertil `manual-<ts>-COMMITHEX` (1), som
+# `COMMITHEX`-alternativet dækker. De passerede fordi feltet kun skulle være
+# til stede og ikke-tomt. Dette er bevidst en MARKØR-detektor og ikke en
+# format-validering: historikken rummer 3362× `manual-<ts>-<hex8>` plus
+# varianter som `-mobile`, `-merge`, `visible-*`, `tool-discovery-nudge-*`,
+# `-fletning`, `-droemme` og UUID-formede id'er — og en streng format-regel
+# ville afvise legitime commits. Suffiks-ord som `merge`/`billed`/`fletning`
+# er menneskelige labels, ikke skabeloner, og må passere.
+_PLACEHOLDER_RUN_ID = re.compile(
+    r"PLACEHOLDER|COMMITHEX|^__[A-Za-z0-9_]+__$", re.IGNORECASE
+)
 
 
 @dataclass(frozen=True)

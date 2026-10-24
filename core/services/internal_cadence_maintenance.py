@@ -65,16 +65,15 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
             out["cognitive_frame"] = "warmed"
         except Exception as exc:
             out["cognitive_frame"] = f"error: {exc}"
-        # cognitive_state (~5,5s, SQLite-cachet, TTL 120s) blev IKKE varmet før
-        # — den var den dominerende kolde-cache-omkostning i den visible assembly
-        # (Bjørn 2026-06-17). Varm den med compact=False (= visible owner-chat-nøglen)
-        # så ingen tur betaler kold pris. Friskhed = warmer-kadence (~2 min), uændret.
+        # Hold visible_full varm. Cache-opslaget er tilstands-bevidst og fornyer
+        # TTL ved uændret state; det bygger kun ved reel state-ændring. Før blev
+        # cachen eksplicit slettet her hvert andet minut, samtidig med at
+        # cognitive_state_warm tvangsbyggede den hvert tredje minut.
         try:
             from core.services.cognitive_state_assembly import (
-                invalidate_cognitive_state_cache, build_cognitive_state_for_prompt,
+                build_cognitive_state_for_prompt,
             )
-            invalidate_cognitive_state_cache()
-            _ = build_cognitive_state_for_prompt(compact=False)  # rebuild + cache
+            _ = build_cognitive_state_for_prompt(compact=False)
             out["cognitive_state"] = "warmed"
         except Exception as exc:
             out["cognitive_state"] = f"error: {exc}"

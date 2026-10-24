@@ -80,8 +80,8 @@ class RuntimeSettings:
     # snapshot sammenlignes ved hvert hit i cognitive_state_assembly) — så en
     # ægte mood/bearing/chronicle/rhythm-ændring invaliderer STRAKS uanset TTL.
     # Derfor er en høj TTL sikker: den beskytter kun STABILE perioder (0 LLM-kald),
-    # mens ægte indre-liv-skift stadig fanges øjeblikkeligt. Heartbeat re-varmer
-    # hvert ~3 min (cognitive_state_warm-producer), så hit-raten er ~konstant.
+    # mens ægte indre-liv-skift stadig fanges øjeblikkeligt. Warmerne validerer
+    # snapshotten og fornyer TTL; de tvangsbygger ikke stabil state periodisk.
     cognitive_state_cache_ttl: int = 600
     # Cognitive state cache on/off toggle (independent of TTL).
     cognitive_state_cache_enabled: bool = True

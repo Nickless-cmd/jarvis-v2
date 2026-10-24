@@ -25,6 +25,12 @@ def test_incident_retention_er_registreret_som_producer():
     assert "central_incident_retention" in _registered()
 
 
+def test_prompt_warmer_sletter_ikke_gyldig_cognitive_cache():
+    src = inspect.getsource(_registered()["prompt_assembly_cache_warmer"].run_fn)
+    assert "build_cognitive_state_for_prompt" in src
+    assert "invalidate_cognitive_state_cache" not in src
+
+
 def test_incident_retention_koerer_hver_time():
     assert _registered()["central_incident_retention"].cooldown_minutes == 60
 

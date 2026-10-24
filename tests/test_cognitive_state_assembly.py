@@ -18,8 +18,10 @@ class _FakeCache:
         import json
         self._json = json
         self.store: dict[str, str] = {}
+        self.set_calls: list[tuple[str, float]] = []
 
     def set(self, key, value, ttl_seconds=0):
+        self.set_calls.append((key, ttl_seconds))
         self.store[key] = self._json.dumps(value, default=str)
 
     def get(self, key):
@@ -56,6 +58,20 @@ def test_hit_when_state_unchanged_with_tuple_fingerprint(monkeypatch):
     _patch(monkeypatch, snap)
     cs._set_cached_state("visible_full", "indre tilstand A", ["self"])
     assert cs._get_cached_state("visible_full") == "indre tilstand A"
+
+
+def test_validated_hit_renews_ttl_without_rebuild(monkeypatch):
+    snap = {"pv_version": 5, "rhythm_phase": "wake"}
+    fake = _patch(monkeypatch, snap)
+    cs._set_cached_state("visible_full", "stabil", ["self"])
+    writes_before = len(fake.set_calls)
+
+    assert cs._get_cached_state("visible_full") == "stabil"
+    assert len(fake.set_calls) == writes_before + 1
+    assert fake.set_calls[-1] == (
+        "cognitive_state:visible_full",
+        cs._cache_ttl_seconds(),
+    )
 
 
 def test_stale_when_state_changed(monkeypatch):

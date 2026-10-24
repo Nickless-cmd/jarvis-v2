@@ -37,16 +37,16 @@ def register_core_producers(register_producer: Callable[[ProducerSpec], None]) -
     # Cognitive-state warmer (#2, 2026-06-30): pre-byg cognitive_state-cachen i
     # baggrunden hvert ~3 min, så den ENE dominante blokerende LLM-omkostning
     # (recall_for_message) betales HER i stedet for synkront under prompt assembly.
-    # force=True → bygger frisk uden cache-gap (gammel cache serveres til ny er sat).
-    # Visible-turen rammer så altid en varm cache (0 blokerende LLM). Den tilstands-
-    # bevidste invalidering sikrer at den fanger ægte indre-liv-skift uafhængigt.
+    # Cache-opslaget fornyer TTL når tilstanden er uændret og bygger kun ved en
+    # ægte snapshot-ændring. Tidligere brugte denne producer force=True og lavede
+    # derfor full+compact fra bunden hvert tredje minut, også i helt stabil idle.
     def _run_cognitive_state_warm(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         warmed = 0
         try:
             from core.services.cognitive_state_assembly import build_cognitive_state_for_prompt
             for _compact in (False, True):
                 try:
-                    if build_cognitive_state_for_prompt(compact=_compact, force=True) is not None:
+                    if build_cognitive_state_for_prompt(compact=_compact) is not None:
                         warmed += 1
                 except Exception:
                     pass

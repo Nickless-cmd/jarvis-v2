@@ -12,6 +12,27 @@ import inspect
 import core.services.internal_cadence_core as C
 
 
+def _registered() -> dict:
+    seen: dict = {}
+    C.register_core_producers(lambda spec: seen.__setitem__(spec.name, spec))
+    return seen
+
+
+def test_cognitive_state_warmer_genbruger_gyldig_cache(monkeypatch):
+    from core.services import cognitive_state_assembly as state
+
+    calls: list[tuple[bool, bool]] = []
+
+    def _build(*, compact=False, force=False):
+        calls.append((compact, force))
+        return "varm"
+
+    monkeypatch.setattr(state, "build_cognitive_state_for_prompt", _build)
+    out = _registered()["cognitive_state_warm"].run_fn(trigger="test")
+    assert out == {"warmed": 2}
+    assert calls == [(False, False), (True, False)]
+
+
 def test_keymaker_produceren_optjener_BEGGE_slags_noegler():
     """Gate-nøgler måler gates; adfærds-nøglen måler ham. Uden begge kald ville
     den ene halvdel af sløjfen være bygget og aldrig kørt."""

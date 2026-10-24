@@ -199,7 +199,11 @@ def _get_cached_state(cache_key: str) -> str | None:
                     return None
     except Exception:
         pass
-    # Frisk (TTL OK + tilstand uændret) — returnér med det samme
+    # Frisk (TTL OK + tilstand uændret): forny lejen. Warmerne slår cachen op
+    # oftere end TTL'en, så stabil tilstand kan blive varm uden en periodisk,
+    # dyr rebuild. `cached_at` bevares som indholdets reelle alder; kun cache-
+    # TTL'en flyttes. Ændrer snapshotten sig, returnerede vi allerede None.
+    _sc.set(full_key, entry, ttl_seconds=_cache_ttl_seconds())
     text = str(entry.get("text") or "")
     logger.debug("cognitive_state_cache: HIT for %s", cache_key)
     return text

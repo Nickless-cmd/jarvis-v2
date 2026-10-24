@@ -208,6 +208,41 @@ def test_tick_dispatches_in_priority_order(isolated_runtime) -> None:
     assert set(result["ran"]) == {"high_priority", "mid_priority", "low_priority"}
 
 
+def test_tick_budget_udsaetter_overskud_uden_at_tabe_det(isolated_runtime) -> None:
+    """Synkroniserede producenter fordeles over minutter, ikke droppes."""
+    cadence = isolated_runtime.internal_cadence
+    kaldt: list[str] = []
+    total = cadence._MAX_DISPATCHES_PER_TICK + 3
+
+    for i in range(total):
+        navn = f"samlet-{i:02d}"
+
+        def run_fn(*, trigger, last_visible_at="", _navn=navn):
+            kaldt.append(_navn)
+            return {"ran": True}
+
+        cadence.register_producer(ProducerSpec(
+            name=navn,
+            cooldown_minutes=60,
+            visible_grace_minutes=0,
+            run_fn=run_fn,
+            priority=5,
+        ))
+
+    first = cadence.run_cadence_tick(trigger="samlet-1")
+    assert len(first["ran"]) == cadence._MAX_DISPATCHES_PER_TICK
+    assert first["deferred"] == [
+        f"samlet-{i:02d}"
+        for i in range(cadence._MAX_DISPATCHES_PER_TICK, total)
+    ]
+    assert len(kaldt) == cadence._MAX_DISPATCHES_PER_TICK
+
+    second = cadence.run_cadence_tick(trigger="samlet-2")
+    assert second["ran"] == first["deferred"]
+    assert second["deferred"] == []
+    assert len(kaldt) == total
+
+
 # ---------------------------------------------------------------------------
 # 7. Tick dispatch: due vs cooling_down observable
 # ---------------------------------------------------------------------------

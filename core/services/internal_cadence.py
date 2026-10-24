@@ -48,6 +48,12 @@ _SCHEDULER_THREAD: Optional[threading.Thread] = None
 _SCHEDULER_STOP = threading.Event()
 _SCHEDULER_INTERVAL_S = 60  # tick once per minute; producers self-cool
 
+# 120 producenter deler samme minuttik, og 19 af dem har præcis 10 minutters
+# cooldown. Uden et loft synkroniseres de efter opstart og lander i samme sekund
+# igen hvert tiende minut. Loftet udsætter kun resten til næste tick; de stemples
+# ikke som kørt og kan derfor ikke gå tabt.
+_MAX_DISPATCHES_PER_TICK = 12
+
 
 # ---------------------------------------------------------------------------
 # Producer registration
@@ -66,7 +72,7 @@ class ProducerSpec:
 @dataclass(slots=True)
 class ProducerTickResult:
     name: str
-    status: str  # "ran" | "cooling_down" | "visible_grace" | "blocked" | "error" | "skipped"
+    status: str  # ran | deferred | cooling_down | visible_grace | blocked | error | skipped
     reason: str
     result: dict[str, object] | None = None
 
@@ -445,6 +451,8 @@ def run_cadence_tick(
     grace_names: list[str] = []
     ran_names: list[str] = []
     error_names: list[str] = []
+    deferred_names: list[str] = []
+    dispatches = 0
 
     for spec in ordered:
         status, reason = _evaluate_producer(
@@ -457,6 +465,15 @@ def run_cadence_tick(
 
         if status == "due":
             due_names.append(spec.name)
+            if dispatches >= _MAX_DISPATCHES_PER_TICK:
+                deferred_names.append(spec.name)
+                results.append(ProducerTickResult(
+                    name=spec.name,
+                    status="deferred",
+                    reason="tick-dispatch-budget",
+                ))
+                continue
+            dispatches += 1
             # Dispatch — tidsbundet, så én hængende producer ikke fryser cadencen.
             try:
                 _prod_t0 = time.monotonic()
@@ -566,6 +583,7 @@ def run_cadence_tick(
             "blocked": blocked_names,
             "errors": error_names,
             "i_flugt": i_flugt_names,
+            "deferred": deferred_names,
         },
     )
 
@@ -592,6 +610,7 @@ def run_cadence_tick(
         "blocked": blocked_names,
         "errors": error_names,
         "i_flugt": i_flugt_names,
+            "deferred": deferred_names,
         "results": [
             {
                 "name": r.name,
@@ -638,6 +657,7 @@ def get_cadence_state() -> dict[str, object]:
             "visible_grace": [r.name for r in _last_tick_results if r.status == "visible_grace"],
             "blocked": [r.name for r in _last_tick_results if r.status == "blocked"],
             "errors": [r.name for r in _last_tick_results if r.status == "error"],
+            "deferred": [r.name for r in _last_tick_results if r.status == "deferred"],
         },
     }
 

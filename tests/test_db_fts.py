@@ -262,3 +262,129 @@ def test_chat_search_accepts_legacy_principal_but_rejects_foreign_mix(conn, monk
         assert "m-mixed-other" not in mids
     finally:
         reset_context(t)
+
+
+
+# ── 24/10-2026: ensure_fts_tables må ikke åbne en skrivetransaktion per søgning ──
+#
+# Målt med py-spy over 135 spidser: `search_session_summaries` stod 10+ sekunder
+# i recall-stien ved hver besked, mens det isolerede kald var 13-117 ms.
+# `ensure_fts_tables` slutter med `conn.commit()`, så HVER søgning tog
+# skrivelåsen — delt med 30+ skrivende tråde, med `busy_timeout` 5 s.
+# Fixet er en cache nøglet på databasefilen: tabellerne forsvinder ikke midt i
+# en kørsel, og in-memory-forbindelser caches bevidst ikke (ingen fil = ingen nøgle).
+
+
+def _file_db(path) -> sqlite3.Connection:
+    c = sqlite3.connect(str(path))
+    c.execute(
+        "CREATE TABLE session_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, "
+        "run_id TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL, key_topics TEXT NOT NULL DEFAULT '', "
+        "decisions_made TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL)"
+    )
+    c.execute(
+        "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL UNIQUE, "
+        "session_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, user_id TEXT NOT NULL DEFAULT '', "
+        "workspace_name TEXT NOT NULL DEFAULT '', reasoning_content TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL)"
+    )
+    c.commit()
+    return c
+
+
+class _CountingConn:
+    """Wrapper der tæller DB-arbejdet, så vagten kan se om søgestien rører basen.
+
+    ``PRAGMA``-kald tælles for sig: ``_db_key`` bruger ``PRAGMA database_list``
+    (~2 µs, ingen lås), og det er ikke det vagten værner om. Det er
+    ``commit()`` — skrivelåsen — og de egentlige CREATE/INSERT der kostede
+    sekunder i recall-stien.
+    """
+
+    def __init__(self, inner: sqlite3.Connection) -> None:
+        self._inner = inner
+        self.executes = 0
+        self.commits = 0
+
+    def execute(self, *args, **kwargs):
+        sql = str(args[0]).lstrip().upper() if args else ""
+        if not sql.startswith("PRAGMA"):
+            self.executes += 1
+        return self._inner.execute(*args, **kwargs)
+
+    def commit(self) -> None:
+        self.commits += 1
+        self._inner.commit()
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+
+def test_ensure_fts_tables_gentager_ikke_skrivearbejdet(tmp_path) -> None:
+    """Andet kald må ikke røre DB'en: cachen skal fjerne commit fra søgestien."""
+    db_fts.reset_fts_ready_cache()
+    conn = _CountingConn(_file_db(tmp_path / "fts.db"))
+
+    first = db_fts.ensure_fts_tables(conn)
+    assert set(first) == {"session_summaries_fts", "chat_messages_fts"}
+    assert conn.executes > 0, "første kald skal oprette tabellerne"
+    assert conn.commits == 1, "første kald må committe én gang (den ægte oprettelse)"
+
+    before_exec, before_commit = conn.executes, conn.commits
+    second = db_fts.ensure_fts_tables(conn)
+
+    assert set(second) == set(first)
+    assert conn.executes == before_exec, (
+        f"andet kald lavede {conn.executes - before_exec} DB-kald — "
+        "cachen virker ikke, og hver søgning tager stadig skrivelåsen"
+    )
+    assert conn.commits == before_commit, "andet kald må ikke committe — det er hele pointen"
+    db_fts.reset_fts_ready_cache()
+
+
+def test_ensure_fts_tables_force_omgaar_cachen(tmp_path) -> None:
+    """``force=True`` skal køre den ægte vej (brugt af rebuild_fts)."""
+    db_fts.reset_fts_ready_cache()
+    conn = _CountingConn(_file_db(tmp_path / "fts.db"))
+
+    db_fts.ensure_fts_tables(conn)
+    before = conn.executes
+    db_fts.ensure_fts_tables(conn, force=True)
+
+    assert conn.executes > before, "force=True blev besvaret ud fra cachen i stedet for at køre"
+    db_fts.reset_fts_ready_cache()
+
+
+def test_ensure_fts_tables_cacher_ikke_en_ufuldstaendig_tilstand(tmp_path) -> None:
+    """Mangler base-tabellen, må cachen ikke huske det som 'alt er klar'."""
+    db_fts.reset_fts_ready_cache()
+    conn = sqlite3.connect(str(tmp_path / "fts.db"))
+    conn.execute(
+        "CREATE TABLE session_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, "
+        "run_id TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL, key_topics TEXT NOT NULL DEFAULT '', "
+        "decisions_made TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL)"
+    )
+    conn.commit()
+    # chat_messages findes IKKE endnu
+    partial = db_fts.ensure_fts_tables(conn)
+    assert partial == ["session_summaries_fts"]
+
+    # Migrationen opretter nu chat_messages → næste kald skal samle den op
+    conn.execute(
+        "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL UNIQUE, "
+        "session_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL)"
+    )
+    conn.commit()
+    complete = db_fts.ensure_fts_tables(conn)
+    assert set(complete) == {"session_summaries_fts", "chat_messages_fts"}, (
+        "cachen huskede en ufuldstændig tilstand — chat_messages_fts blev aldrig oprettet"
+    )
+    db_fts.reset_fts_ready_cache()
+
+
+def test_in_memory_forbindelse_caches_bevidst_ikke() -> None:
+    """Uden databasefil er der ingen nøgle — så den ægte vej kører hver gang."""
+    db_fts.reset_fts_ready_cache()
+    conn = _mem_db()
+    assert db_fts._db_key(conn) == "", "in-memory skal ikke give en cache-nøgle"
+    db_fts.ensure_fts_tables(conn)
+    db_fts.ensure_fts_tables(conn)

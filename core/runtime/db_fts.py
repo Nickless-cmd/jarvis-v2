@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import sqlite3
+import threading
 from typing import Any
 
 from core.runtime.db import connect
@@ -27,6 +28,45 @@ _FTS_SPECS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     ("session_summaries_fts", "session_summaries", "id", ("summary", "key_topics", "decisions_made")),
     ("chat_messages_fts", "chat_messages", "id", ("content",)),
 )
+
+# 24/10-2026: ``ensure_fts_tables`` slutter med ``conn.commit()``, så HVER
+# søgning åbnede en skrivetransaktion for at committe ingenting. Målt med
+# py-spy over 135 spidser: `search_session_summaries` stod 10+ sekunder i
+# recall-stien, mens det isolerede kald var 13–117 ms — forskellen var
+# ventetid på skrivelåsen (``busy_timeout`` 5 s) delt med 30+ skrivende tråde.
+#
+# Tabellerne og triggerne forsvinder ikke midt i en kørsel, så resultatet
+# caches per proces. Cachen fyldes KUN med det der faktisk blev klar: mangler
+# en base-tabel (fx ved første opstart før migrationen), kører den igen næste
+# gang i stedet for at huske en ufuldstændig tilstand.
+_READY_LOCK = threading.Lock()
+_READY: dict[str, set[str]] = {}
+
+
+def _db_key(conn: sqlite3.Connection) -> str:
+    """Identiteten på den database forbindelsen peger på.
+
+    Cachen MÅ ikke være proces-global alene: to forbindelser kan pege på hver
+    sin database (tests bruger ``:memory:``), og så ville den ene arve den
+    andens «tabellerne findes». Målt 24/10-2026: uden denne nøgle faldt syv
+    FTS-tests, fordi cachen huskede tabeller fra en anden in-memory-base.
+
+    Tom streng = ingen fil (in-memory) → cachen bruges ikke, den ægte vej
+    kører hver gang. Det er billigt og altid korrekt.
+    """
+    try:
+        for _seq, name, path in conn.execute("PRAGMA database_list").fetchall():
+            if name == "main":
+                return str(path or "")
+    except Exception:  # En forbindelse uden database_list er ikke cache-bar.
+        return ""
+    return ""
+
+
+def reset_fts_ready_cache() -> None:
+    """Glem den proces-lokale 'tabellerne findes'-cache (til tests / efter rebuild)."""
+    with _READY_LOCK:
+        _READY.clear()
 
 _TOKEN_RE = re.compile(r"[0-9A-Za-zÆØÅæøå_\-.]{2,}")
 
@@ -47,18 +87,35 @@ def _base_table_exists(conn: sqlite3.Connection, table: str) -> bool:
     return row is not None
 
 
-def ensure_fts_tables(conn: sqlite3.Connection) -> list[str]:
+def ensure_fts_tables(conn: sqlite3.Connection, *, force: bool = False) -> list[str]:
     """Create the FTS tables + sync triggers for every base table that exists.
 
     Returns the names of FTS tables that are ready. Safe to call repeatedly.
-    A freshly created FTS table is populated with a one-off rebuild so
-    existing rows become searchable immediately.
+
+    24/10-2026: resultatet caches per proces. Uden cachen åbnede hver søgning
+    en skrivetransaktion (funktionen slutter med ``conn.commit()``), og i
+    recall-stien ventede den op til ``busy_timeout`` på skrivelåsen. Kald med
+    ``force=True`` når tilstanden bevidst ændres (fx ``rebuild_fts``).
     """
+    key = _db_key(conn)
+    if not force and key:
+        with _READY_LOCK:
+            cached = _READY.get(key)
+            # Svar KUN når cachen er komplet. En delvis cache (fx fordi
+            # chat_messages endnu ikke fandtes) må ikke blokere den ægte vej —
+            # målt 24/10-2026 faldt en vagt på præcis det: cachen huskede
+            # «session_summaries_fts findes» og opdagede aldrig den nye tabel.
+            if cached and len(cached) == len(_FTS_SPECS):
+                return [fts for fts, _b, _r, _c in _FTS_SPECS if fts in cached]
     ready: list[str] = []
     # Read-only probes (scripts/memory_probe.py mod en live DB) må ikke oprette
     # tabeller/triggere: JARVIS_FTS_READONLY=1 → brug kun det der allerede findes.
     if os.environ.get("JARVIS_FTS_READONLY") == "1":
-        return [fts for fts, _b, _r, _c in _FTS_SPECS if _base_table_exists(conn, fts)]
+        found = [fts for fts, _b, _r, _c in _FTS_SPECS if _base_table_exists(conn, fts)]
+        if key:
+            with _READY_LOCK:
+                _READY.setdefault(key, set()).update(found)
+        return found
     if not fts5_available(conn):
         logger.warning("db_fts: FTS5 not available in this SQLite build")
         return ready
@@ -90,6 +147,9 @@ def ensure_fts_tables(conn: sqlite3.Connection) -> list[str]:
             conn.execute(f"INSERT INTO {fts}({fts}) VALUES ('rebuild')")
         ready.append(fts)
     conn.commit()
+    if ready and key:
+        with _READY_LOCK:
+            _READY.setdefault(key, set()).update(ready)
     return ready
 
 
@@ -97,7 +157,9 @@ def rebuild_fts() -> dict[str, int]:
     """Rebuild every FTS table from its base table. Returns row counts."""
     out: dict[str, int] = {}
     with connect() as conn:
-        ready = ensure_fts_tables(conn)
+        # force=True: et rebuild er en bevidst tilstandsændring og må ikke
+        # besvares ud fra den proces-lokale cache.
+        ready = ensure_fts_tables(conn, force=True)
         for fts in ready:
             conn.execute(f"INSERT INTO {fts}({fts}) VALUES ('rebuild')")
             row = conn.execute(f"SELECT count(*) FROM {fts}").fetchone()

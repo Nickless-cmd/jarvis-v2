@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9229/17484 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9231/17486 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 9229/17484 functions/methods documented (52%). The list b
 | `core.identity` | 78 | 171 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 841 | 1542 | 54% |
+| `core.runtime` | 843 | 1544 | 54% |
 | `core.services` | 6157 | 11890 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 129 | 205 | 62% |
@@ -486,7 +486,7 @@ Generated from source. 9229/17484 functions/methods documented (52%). The list b
 - `core/runtime/db_experiential_memory.py` :: `insert_cognitive_experiential_memory` (L46)
 - `core/runtime/db_experiential_memory.py` :: `list_cognitive_experiential_memories` (L75)
 - `core/runtime/db_experiential_memory.py` :: `reinforce_experiential_memory` (L66)
-- `core/runtime/db_fts.py` :: `fts5_available` (L34)
+- `core/runtime/db_fts.py` :: `fts5_available` (L74)
 - `core/runtime/db_goals.py` :: `count_goals` (L281)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
 - `core/runtime/db_goals.py` :: `delete_goal` (L268)

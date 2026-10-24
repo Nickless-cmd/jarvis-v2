@@ -516,3 +516,68 @@ def test_auth_ready_bevarer_semantikken_for_placeholders(monkeypatch):
                             lambda *, profile, provider, _c=creds: dict(_c))
         faktisk = mod.provider_auth_ready(provider="groq", auth_profile="default")
         assert faktisk is forventet, f"credentials={creds} gav {faktisk}, ventede {forventet}"
+
+
+# ── credentials_are_real: semantikken skal bevares af optimeringen ────────
+# 24/10-2026: vurderingen blev skilt ud som ren dict-funktion så
+# `provider_auth_ready` kan bruge de credentials den ALLEREDE har hentet.
+# Disse tests låser regelsættet, så en fremtidig "optimering" ikke stille
+# ændrer hvad der tælles som en ægte nøgle.
+
+
+def test_credentials_are_real_tom_eller_none_er_falsk():
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real(None) is False
+    assert credentials_are_real({}) is False
+
+
+def test_credentials_are_real_real_oauth_false_vinder_over_api_key():
+    """real_oauth=False betyder "vi VED den ikke er ægte" — den skal slå en
+    api_key, ellers ville en stub med en placeholder-streng passere."""
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real({"real_oauth": False, "api_key": "noegle-vaerdi"}) is False  # pragma: allowlist secret
+
+
+def test_credentials_are_real_real_oauth_true_vinder_over_alt():
+    """real_oauth=True er den stærkeste erklæring: OAuth-flowet er gennemført.
+    Den skal overrule både placeholder-flags og tomme tokens."""
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real({"real_oauth": True}) is True
+    assert credentials_are_real({"real_oauth": True, "placeholder": True}) is True
+    assert credentials_are_real({"real_oauth": True, "api_key": ""}) is True
+
+
+@pytest.mark.parametrize(
+    "flag",
+    [
+        "placeholder",
+        "oauth_stub",
+        "oauth_launch_stub",
+        "oauth_launch_intent",
+        "oauth_callback_stub",
+        "device_flow_started",
+    ],
+)
+def test_credentials_are_real_placeholder_flags_er_falske(flag):
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real({flag: True, "api_key": "noegle-vaerdi"}) is False  # pragma: allowlist secret
+
+
+def test_credentials_are_real_kraever_et_ikke_tomt_token():
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real({"api_key": ""}) is False
+    assert credentials_are_real({"access_token": "   "}) is False
+    assert credentials_are_real({"refresh_token": ""}) is False
+
+
+def test_credentials_are_real_accepterer_hvert_af_de_tre_tokens():
+    from core.auth.profiles import credentials_are_real
+
+    assert credentials_are_real({"api_key": "noegle-vaerdi"}) is True  # pragma: allowlist secret
+    assert credentials_are_real({"access_token": "tok"}) is True
+    assert credentials_are_real({"refresh_token": "ref"}) is True

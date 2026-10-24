@@ -248,3 +248,97 @@ def test_enqueue_efter_shutdown_efterlader_ikke_et_spoegelsesjob() -> None:
         )
     finally:
         n._reset_for_tests()
+
+
+def test_shutdown_og_enqueue_er_atomiske(monkeypatch) -> None:
+    """Stop-flaget SKAL være sat når shutdown() tømmer køen.
+
+    24/10-2026 (Codex): testen ovenfor kalder ``shutdown()`` HELT færdig og
+    derefter ``_enqueue()``. Den beviser derfor kun den sekventielle orden —
+    ikke atomiciteten. ``_STOP.set()`` stod uden for ``_CACHE_LOCK``, så en
+    samtidig enqueue kunne få låsen i vinduet mellem kø-tømningen og
+    stop-flaget, se ``_STOP=False`` og lægge et job som ingen worker tager.
+
+    Vagtens kerne er deterministisk: vi fanger øjeblikket hvor shutdown tømmer
+    køen — det sker INDE i låsen — og kræver at ``_STOP`` allerede er sat der.
+    Er den ikke det, kan enhver enqueue der venter på samme lås komme ind
+    bagefter og acceptere et spøgelsesjob. En samtidig enqueue-tråd køres
+    oveni som supplerende bevis.
+    """
+    import threading
+
+    from core.services import cognitive_state_narrativizer as n
+
+    n._reset_for_tests()
+
+    inde_i_laasen = threading.Event()
+    forlad_laasen = threading.Event()
+    stop_sat_ved_clear: list[bool] = []
+
+    class _SignalPending(dict):
+        """Fanger tilstanden i det øjeblik shutdown tømmer køen."""
+
+        def clear(self) -> None:
+            # Her holder shutdown _CACHE_LOCK. Er _STOP ikke sat endnu, kan
+            # en ventende enqueue slippe ind bagefter og se False.
+            stop_sat_ved_clear.append(n._STOP.is_set())
+            super().clear()
+            inde_i_laasen.set()
+            forlad_laasen.wait(timeout=5)
+
+    monkeypatch.setattr(n, "_PENDING", _SignalPending())
+
+    accepteret: list[bool] = []
+    fejl: list[BaseException] = []
+
+    def kalder_shutdown() -> None:
+        try:
+            n.shutdown(timeout=0.1)
+        except BaseException as exc:  # pragma: no cover
+            fejl.append(exc)
+
+    def kalder_enqueue() -> None:
+        try:
+            accepteret.append(
+                n._enqueue(
+                    line_key="body",
+                    fingerprint="fp-race",
+                    system_prompt="sys",
+                    user_message="msg",
+                )
+            )
+        except BaseException as exc:  # pragma: no cover
+            fejl.append(exc)
+
+    t_shutdown = threading.Thread(target=kalder_shutdown, name="t-shutdown")
+    t_shutdown.start()
+    try:
+        assert inde_i_laasen.wait(timeout=5), "shutdown nåede aldrig låseblokken"
+
+        t_enqueue = threading.Thread(target=kalder_enqueue, name="t-enqueue")
+        t_enqueue.start()
+        # Lad enqueue-tråden nå frem til låsen, slip så shutdown.
+        t_enqueue.join(timeout=0.15)
+        forlad_laasen.set()
+
+        t_shutdown.join(timeout=5)
+        t_enqueue.join(timeout=5)
+
+        assert stop_sat_ved_clear == [True], (
+            "_STOP var ikke sat da shutdown tømte køen — en samtidig enqueue "
+            "kan derfor slippe ind og acceptere et spøgelsesjob"
+        )
+        assert not t_shutdown.is_alive(), "shutdown hang"
+        assert not t_enqueue.is_alive(), "enqueue hang"
+        assert not fejl, f"uventet fejl i trådene: {fejl!r}"
+        assert accepteret == [False], (
+            "enqueue blev accepteret samtidig med shutdown"
+        )
+        assert dict(n._PENDING) == {}, (
+            f"spøgelsesjob efterladt i køen: {dict(n._PENDING)}"
+        )
+    finally:
+        forlad_laasen.set()
+        monkeypatch.undo()
+        n._STOP.clear()
+        n._reset_for_tests()

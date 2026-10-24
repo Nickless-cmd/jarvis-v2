@@ -709,9 +709,9 @@ _LLM-based narrativizer for cognitive state lines._
 | function | `_enqueue` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg et job i den delte worker-kø. Seneste fingerprint vinder. | [src](../../../core/services/cognitive_state_narrativizer.py#L221) |
 | function | `_generate_in_background` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg genereringen i den delte sekventielle worker-kø. | [src](../../../core/services/cognitive_state_narrativizer.py#L272) |
 | function | `shutdown` | `(timeout=…)` | Stop den delte worker kontrolleret. | [src](../../../core/services/cognitive_state_narrativizer.py#L293) |
-| function | `_reset_for_tests` | `()` | Nulstil al tilstand inkl. stop-flaget. Kun til tests. | [src](../../../core/services/cognitive_state_narrativizer.py#L313) |
-| function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L329) |
-| function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L415) |
+| function | `_reset_for_tests` | `()` | Nulstil al tilstand inkl. stop-flaget. Kun til tests. | [src](../../../core/services/cognitive_state_narrativizer.py#L319) |
+| function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L335) |
+| function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L421) |
 
 ## `core/services/collective_pulse_daemon.py`
 _Collective Pulse — what is the air full of right now?_

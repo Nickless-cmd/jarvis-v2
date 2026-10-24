@@ -300,9 +300,15 @@ def shutdown(timeout: float = 5.0) -> None:
     global _WORKER
     with _CACHE_LOCK:
         worker = _WORKER
+        # 24/10-2026: `_STOP.set()` SKAL ligge inde i låsen — ikke efter den.
+        # Før stod den uden for, så en samtidig `_enqueue()` kunne få låsen i
+        # vinduet mellem `_REFRESH_INFLIGHT.clear()` og `_STOP.set()`, se
+        # `_STOP=False` og lægge et job i køen efter shutdown var begyndt.
+        # `_enqueue()` tjekker flaget under samme lås, så placeringen her er
+        # det der gør de to atomiske i forhold til hinanden.
+        _STOP.set()
         _PENDING.clear()
         _REFRESH_INFLIGHT.clear()
-    _STOP.set()
     _WAKE.set()
     if worker is not None:
         worker.join(timeout=timeout)

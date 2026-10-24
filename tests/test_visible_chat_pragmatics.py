@@ -146,7 +146,7 @@ def test_skriveformen_naar_halen_i_chat_scope() -> None:
         tail = build_chat_mode_dynamic_tail("", message="hvad lavede du i git-loggen?", session_id=None)
     finally:
         reset_tool_scope(token)
-    assert "## Chatmode: skriveformen" in tail
+    assert "## Chatmode: hvordan jeg taler" in tail
     assert "læsehjælp" in tail
     assert "Hvad jeg især lægger mærke til" in tail
     assert "Vis beviset" in tail
@@ -170,7 +170,7 @@ def test_skriveformen_overlever_lean_runder() -> None:
     den runde hvor svaret formuleres. Prefikset skal stå i keep-listen."""
     from core.services import visible_followup_lean as vl
 
-    assert "## Chatmode: skriveformen" in vl._LEAN_KEEP_ROW_PREFIXES
+    assert "## Chatmode: hvordan jeg taler" in vl._LEAN_KEEP_ROW_PREFIXES
 
 
 def test_lean_bevarer_skriveformen_i_teksten() -> None:
@@ -179,9 +179,9 @@ def test_lean_bevarer_skriveformen_i_teksten() -> None:
     tekst = (
         "## Arbejde\nnoget tungt\n\n"
         "[OPERATIONAL] baggrund\n\n"
-        "## Chatmode: skriveformen\nVis beviset, opsummer det ikke."
+        "## Chatmode: hvordan jeg taler\nVis beviset, opsummer det ikke."
     )
     lean, changed, _ = vl._lean_strip_user_message(tekst)
     assert changed is True
-    assert "## Chatmode: skriveformen" in lean
+    assert "## Chatmode: hvordan jeg taler" in lean
     assert "Vis beviset" in lean

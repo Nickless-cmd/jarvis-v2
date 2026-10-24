@@ -65,10 +65,12 @@ _LEAN_TAIL_START_MARKERS: tuple[str, ...] = (
 _LEAN_KEEP_ROW_PREFIXES: tuple[str, ...] = (
     "⚖️ Before you answer",   # behavioral anchor (audit #3, 2026-07-22; was "⚖️ FØR DU SVARER")
     "## Chatmode: denne brugers samtalestil",
-    # 24/10-2026: skriveformen er den blok der bærer hele oplevelsen (Bjørns
-    # videoanalyse). Uden den i listen skiftede stemmen netop i den runde hvor
-    # svaret formuleres — efter det sidste værktøjskald.
-    "## Chatmode: skriveformen",
+    # 24/10-2026: chat-reglerne er samlet til ÉT hierarki (niveau 1-5) i stedet
+    # for fire løse blokke. Hele hierarkiet er bevidst én blok uden tomme linjer
+    # internt, så dette ene præfiks bevarer det SAMLET gennem lean-runder — uden
+    # det skiftede stemmen netop i den runde hvor svaret formuleres, efter det
+    # sidste værktøjskald.
+    "## Chatmode: hvordan jeg taler",
 )
 
 

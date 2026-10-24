@@ -23,17 +23,26 @@ _TRAILER_LINE = re.compile(r"^([A-Za-z0-9-]+):[ \t]*(.*)$")
 _POLICY_ID = re.compile(r"^policy:[a-z0-9][a-z0-9._-]*$")
 _MANUAL_SUFFIX = re.compile(r"^[A-Za-z0-9._-]+$")
 # 24/10-2026: en skabelon-markør er ikke en kørsel. Målt på Run-ID-traileren
-# over de sidste 300 commits havde 14 en markør i stedet for et id (6×
-# `RUNIDPLACEHOLDER`, 4× `__RID__`, 1× `RUN_IDPLACEHOLDER`, 1×
-# `manual-...-PLACEHOLDER`, 1× `__RUNID__`, 1× `manual-RUNIDPLACEHOLDER`),
-# og hele historikken rummer 17. Hertil `manual-<ts>-COMMITHEX` (1), som
-# `COMMITHEX`-alternativet dækker. De passerede fordi feltet kun skulle være
-# til stede og ikke-tomt. Dette er bevidst en MARKØR-detektor og ikke en
-# format-validering: historikken rummer 3362× `manual-<ts>-<hex8>` plus
-# varianter som `-mobile`, `-merge`, `visible-*`, `tool-discovery-nudge-*`,
-# `-fletning`, `-droemme` og UUID-formede id'er — og en streng format-regel
-# ville afvise legitime commits. Suffiks-ord som `merge`/`billed`/`fletning`
-# er menneskelige labels, ikke skabeloner, og må passere.
+# over de sidste 300 commits (populationen ved `ba2109749`, læst fra RÅ
+# committekst — ikke fra `%(trailers:...)`, som falder ud for den ene commit
+# hvis besked består af trailerlinjer uden subject/body-adskillelse):
+#
+#   280  kanoniske `manual-<ts>-<hex8>`
+#    14  skabelonmarkører fundet af den oprindelige regex
+#     1  `manual-<ts>-COMMITHEX` — også en skabelon, men usynlig for den
+#    ---- så 15 skabelonmarkører i alt
+#     5  øvrige legitime formater (fx `20261023T035234Z-fd99fcb9`)
+#   ---
+#   300
+#
+# Hele historikken rummer 18 (de tidligere 17 plus COMMITHEX). De passerede
+# fordi feltet kun skulle være til stede og ikke-tomt. Dette er bevidst en
+# MARKØR-detektor og ikke en format-validering: historikken rummer 3362×
+# `manual-<ts>-<hex8>` plus varianter som `-mobile`, `-merge`, `visible-*`,
+# `tool-discovery-nudge-*`, `-fletning`, `-droemme` og UUID-formede id'er —
+# og en streng format-regel ville afvise legitime commits. Suffiks-ord som
+# `merge`/`billed`/`fletning` er menneskelige labels, ikke skabeloner, og må
+# passere.
 _PLACEHOLDER_RUN_ID = re.compile(
     r"PLACEHOLDER|COMMITHEX|^__[A-Za-z0-9_]+__$", re.IGNORECASE
 )

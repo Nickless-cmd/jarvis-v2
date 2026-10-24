@@ -167,18 +167,30 @@ Approved-By: bjorn
 def test_skabelon_markør_som_run_id_afvises(placeholder: str) -> None:
     """En skabelon-markør er ikke en kørsel og må ikke passere som provenance.
 
-    Målt 24/10-2026 på Run-ID-traileren over de sidste 300 commits: 14 havde
-    en markør i stedet for et rigtigt id — `RUNIDPLACEHOLDER` (6), `__RID__`
-    (4), `RUN_IDPLACEHOLDER` (1), `manual-...-PLACEHOLDER` (1), `__RUNID__`
-    (1), `manual-RUNIDPLACEHOLDER` (1). Hele historikken rummer 17. Hertil
-    `manual-<ts>-COMMITHEX` (1), som `COMMITHEX`-alternativet dækker. De gik
-    igennem fordi `validate_trailers` kun krævede at feltet var til stede og
-    ikke-tomt, ikke at det navngav en faktisk kørsel.
+    Målt 24/10-2026 på Run-ID-traileren over de sidste 300 commits
+    (populationen ved `ba2109749`, læst fra RÅ committekst — `%(trailers:...)`
+    falder ud for den ene commit hvis besked består af trailerlinjer uden
+    subject/body-adskillelse):
 
-    Ret 24/10-2026: den første udgave af denne test hævdede 21 og brugte
-    `__RUN_ID__` som den observerede værdi. Begge var forkerte — 21 var en
-    sum af markører PLUS fem legitime id'er uden `manual-`-præfiks, og den
-    faktiske historiske værdi er `__RUNID__`.
+        280  kanoniske `manual-<ts>-<hex8>`
+         14  skabelonmarkører fundet af den oprindelige regex
+          1  `manual-<ts>-COMMITHEX` — også en skabelon, men usynlig for den
+         ---- så 15 skabelonmarkører i alt
+          5  øvrige legitime formater
+        ---
+        300
+
+    De 14 fordelte sig som `RUNIDPLACEHOLDER` (6), `__RID__` (4),
+    `RUN_IDPLACEHOLDER` (1), `manual-...-PLACEHOLDER` (1), `__RUNID__` (1) og
+    `manual-RUNIDPLACEHOLDER` (1). Hele historikken rummer 18. De gik igennem
+    fordi `validate_trailers` kun krævede at feltet var til stede og ikke-tomt,
+    ikke at det navngav en faktisk kørsel.
+
+    Rettelser 24/10-2026: den første udgave hævdede 21 — en sum af markører
+    PLUS fem legitime id'er uden `manual-`-præfiks. Den brugte også
+    `__RUN_ID__` som den observerede værdi; den faktiske historiske er
+    `__RUNID__` (begge er nu testtilfælde). Og den regnede `COMMITHEX` med i
+    "14", selvom den oprindelige regex ikke fandt den.
     """
     errors = validate_commit_message(_besked_med_run_id(placeholder))
 

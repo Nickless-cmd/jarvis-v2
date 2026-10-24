@@ -174,3 +174,85 @@ def test_build_non_streaming_response_with_tool_use():
         "input": {"command": "ls"},
     }
     assert final["stop_reason"] == "tool_use"
+
+
+def test_image_block_becomes_visible_marker_not_silent_drop():
+    """An image the backend cannot read must leave a trace in the message.
+
+    Silently dropping it makes the model answer as if the user sent text
+    only — it would guess at, or deny, a picture it never saw.
+    """
+    body = {
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "hvad er på dette billede?"},
+                {"type": "image", "source": {
+                    "type": "base64", "media_type": "image/png",
+                    "data": "A" * 4096,
+                }},
+            ],
+        }],
+    }
+    out = at.translate_request_to_ollama(body, identity_prefix="", backend_model="m")
+    user_msg = next(m for m in out["messages"] if m["role"] == "user")
+    assert "hvad er på dette billede?" in user_msg["content"]
+    assert "image/png" in user_msg["content"]
+    assert "kan ikke se billeder" in user_msg["content"]
+
+
+def test_image_block_in_assistant_message_keeps_marker():
+    body = {
+        "messages": [{
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "her er den"},
+                {"type": "image", "source": {
+                    "type": "base64", "media_type": "image/jpeg",
+                    "data": "B" * 2048,
+                }},
+            ],
+        }],
+    }
+    out = at.translate_request_to_ollama(body, identity_prefix="", backend_model="m")
+    assistant_msg = next(m for m in out["messages"] if m["role"] == "assistant")
+    assert "her er den" in assistant_msg["content"]
+    assert "image/jpeg" in assistant_msg["content"]
+    assert "kan ikke se billeder" in assistant_msg["content"]
+
+
+def test_image_block_in_tool_result_keeps_marker():
+    body = {
+        "messages": [{
+            "role": "user",
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "toolu_1",
+                "content": [
+                    {"type": "text", "text": "skærmbillede taget"},
+                    {"type": "image", "source": {
+                        "type": "base64", "media_type": "image/png",
+                        "data": "C" * 1024,
+                    }},
+                ],
+            }],
+        }],
+    }
+    out = at.translate_request_to_ollama(body, identity_prefix="", backend_model="m")
+    tool_msg = next(m for m in out["messages"] if m["role"] == "tool")
+    assert "skærmbillede taget" in tool_msg["content"]
+    assert "image/png" in tool_msg["content"]
+    assert "kan ikke se billeder" in tool_msg["content"]
+
+
+def test_image_marker_reports_unknown_source_without_crashing():
+    """A malformed image block must not break the request."""
+    body = {
+        "messages": [{
+            "role": "user",
+            "content": [{"type": "image"}],
+        }],
+    }
+    out = at.translate_request_to_ollama(body, identity_prefix="", backend_model="m")
+    user_msg = next(m for m in out["messages"] if m["role"] == "user")
+    assert "kan ikke se billeder" in user_msg["content"]

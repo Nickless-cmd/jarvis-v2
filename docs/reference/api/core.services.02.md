@@ -592,11 +592,12 @@ _Translate between Anthropic Messages API format and Ollama /api/chat format._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `translate_request_to_ollama` | `(anthropic_body, *, identity_prefix, backend_model)` | Build an Ollama /api/chat payload from an Anthropic Messages request. | [src](../../../core/services/anthropic_translator.py#L13) |
-| function | `_translate_message` | `(msg)` | Translate a single Anthropic message into 1-N Ollama messages. | [src](../../../core/services/anthropic_translator.py#L61) |
-| function | `_stringify_tool_result_content` | `(content)` | Anthropic tool_result content can be string or list of blocks. | [src](../../../core/services/anthropic_translator.py#L130) |
-| function | `drive_emitter_from_ollama_chunks` | `(emitter, chunks)` | Drive an AnthropicSSEEmitter from a stream of Ollama chat chunks. | [src](../../../core/services/anthropic_translator.py#L153) |
-| function | `build_non_streaming_response` | `(*, message_id, model, text, tool_calls)` | Build the final Anthropic Messages response (non-streaming). | [src](../../../core/services/anthropic_translator.py#L200) |
+| function | `translate_request_to_ollama` | `(anthropic_body, *, identity_prefix, backend_model)` | Build an Ollama /api/chat payload from an Anthropic Messages request. | [src](../../../core/services/anthropic_translator.py#L16) |
+| function | `_translate_message` | `(msg)` | Translate a single Anthropic message into 1-N Ollama messages. | [src](../../../core/services/anthropic_translator.py#L64) |
+| function | `_image_marker` | `(block)` | A visible stand-in for an image this backend cannot read. | [src](../../../core/services/anthropic_translator.py#L138) |
+| function | `_stringify_tool_result_content` | `(content)` | Anthropic tool_result content can be string or list of blocks. | [src](../../../core/services/anthropic_translator.py#L168) |
+| function | `drive_emitter_from_ollama_chunks` | `(emitter, chunks)` | Drive an AnthropicSSEEmitter from a stream of Ollama chat chunks. | [src](../../../core/services/anthropic_translator.py#L193) |
+| function | `build_non_streaming_response` | `(*, message_id, model, text, tool_calls)` | Build the final Anthropic Messages response (non-streaming). | [src](../../../core/services/anthropic_translator.py#L240) |
 
 ## `core/services/anticipatory_action_daemon.py`
 _Anticipatory Action Daemon — predict + pre-act._

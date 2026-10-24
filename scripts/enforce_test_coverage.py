@@ -30,6 +30,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/tool_result_store.py": "tests/services/test_tool_result_store.py",
     "core/services/events_retention.py": "tests/services/test_events_retention.py",
     "core/services/cache_maintenance_daemon.py": "tests/services/test_cache_maintenance_daemon.py",
+    # Anthropic-compat oversætteren testes efter modulstien (tests/services/),
+    # samme mønster som tool_router og tool_result_store ovenfor.
+    "core/services/anthropic_translator.py": "tests/services/test_anthropic_translator.py",
     # Cold-tier stub rendering in the structured transcript builder.
     "core/services/prompt_sections/transcript_sections.py": "tests/services/test_transcript_sections_cold.py",
     "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",

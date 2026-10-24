@@ -7,7 +7,10 @@ separate `tool` role messages for results) and `tools` with `parameters`.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def translate_request_to_ollama(
@@ -85,7 +88,10 @@ def _translate_message(msg: dict[str, Any]) -> list[dict[str, Any]]:
                 text_parts.append(str(block.get("text") or ""))
             elif btype == "tool_result":
                 tool_results.append(block)
-            # Other types (image) ignored in Mode 2
+            elif btype == "image":
+                # Never dropped silently: the model is told a picture was
+                # attached and that this backend could not read it.
+                text_parts.append(_image_marker(block))
 
         out_msgs = []
         if text_parts:
@@ -114,6 +120,8 @@ def _translate_message(msg: dict[str, Any]) -> list[dict[str, Any]]:
                         "arguments": block.get("input") or {},
                     },
                 })
+            elif btype == "image":
+                text_parts.append(_image_marker(block))
 
         out: dict[str, Any] = {
             "role": "assistant",
@@ -127,6 +135,36 @@ def _translate_message(msg: dict[str, Any]) -> list[dict[str, Any]]:
     return [{"role": role, "content": str(content)}]
 
 
+def _image_marker(block: dict[str, Any]) -> str:
+    """A visible stand-in for an image this backend cannot read.
+
+    Dropping an image block silently makes the model answer as if the user
+    sent text only — it will guess at, or deny, a picture it never saw. The
+    marker keeps the turn honest: a picture was attached, and it was not
+    readable here.
+    """
+    source = block.get("source")
+    media_type = "ukendt format"
+    size = "størrelse ukendt"
+    if isinstance(source, dict):
+        media_type = str(
+            source.get("media_type") or source.get("type") or media_type
+        )
+        data = source.get("data")
+        if isinstance(data, str) and data:
+            approx_kb = max(1, (len(data) * 3) // 4 // 1024)
+            size = f"~{approx_kb} KB"
+    logger.warning(
+        "anthropic_translator: image block (%s) cannot be read by the Ollama "
+        "backend — replaced with a visible marker instead of being dropped",
+        media_type,
+    )
+    return (
+        f"[billede vedhæftet: {media_type}, {size} — "
+        "denne model kan ikke se billeder]"
+    )
+
+
 def _stringify_tool_result_content(content: Any) -> str:
     """Anthropic tool_result content can be string or list of blocks."""
     if isinstance(content, str):
@@ -136,6 +174,8 @@ def _stringify_tool_result_content(content: Any) -> str:
         for block in content:
             if isinstance(block, dict) and block.get("type") == "text":
                 parts.append(str(block.get("text") or ""))
+            elif isinstance(block, dict) and block.get("type") == "image":
+                parts.append(_image_marker(block))
             elif isinstance(block, str):
                 parts.append(block)
         return "\n".join(parts)

@@ -893,12 +893,21 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   max-width: 100%;
 }
 .jarvis-body th, .jarvis-body td {
-  border: 1px solid var(--line);
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   padding: 4px 9px;
   text-align: left;
   vertical-align: top;
 }
-.jarvis-body th { background: var(--bg-2); color: var(--fg-0, #f0f2f7); font-weight: 600; }
+/* 24/10-2026 (Bjørns videoanalyse): rammer og fed header signalerer «rapport»
+ * og beder læseren skifte gear. Samme rækker læses lettere når kun en svag
+ * linje skiller dem, og header-cellen blot er dæmpet tekst. Struktur som
+ * læsehjælp, ikke som præsentation. */
+.jarvis-body th {
+  background: none;
+  color: var(--fg-2, var(--fg-1));
+  font-weight: 500;
+}
 /* 20/10-2026: en tabel kan IKKE begrænses med `max-width` alene — dens
    minimumsbredde er summen af cellernes indhold, så på en smal skærm bliver
    den bredere end kolonnen og bliver klippet af `.transcript { overflow-x:

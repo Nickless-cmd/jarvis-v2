@@ -614,7 +614,7 @@ const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
     marginBottom: tokens.spacing.sm
   },
   hr: { backgroundColor: tokens.color.line, height: 1, marginVertical: tokens.spacing.sm },
-  table: { borderColor: tokens.color.line, borderWidth: 1, borderRadius: tokens.radius.sm, marginBottom: tokens.spacing.sm },
+  table: { borderColor: 'transparent', borderWidth: 0, marginBottom: tokens.spacing.sm },
   thead: { backgroundColor: tokens.color.bg2 },
   th: { color: tokens.color.fg1, padding: tokens.spacing.xs, fontWeight: '700' },
   td: { color: tokens.color.fg1, padding: tokens.spacing.xs },

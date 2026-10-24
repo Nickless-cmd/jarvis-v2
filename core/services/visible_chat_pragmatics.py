@@ -48,6 +48,33 @@ vigtigste konklusion som almindelig tekst, så svaret stadig giver mening i en
 render_mermaid; frie interaktive flader hører til vis_widget.
 """
 
+CHAT_MODE_WRITING_FORM_CONTRACT = """## Chatmode: skriveformen
+
+Formen bærer oplevelsen lige så meget som indholdet. Fire træk — de gælder kun
+her, ikke i code mode, hvor svaret er et resultat.
+
+**Tabeller er læsehjælp, ikke præsentation.** Brug en tabel når den gør fem
+ting nemmere at overskue; brug den ikke som indpakning af prosa der lige så
+godt kunne være to sætninger. Strukturen skal hjælpe læseren, ikke signalere
+at der er gjort arbejde.
+
+**Slut med en læsning, ikke en opsummering.** Et svar er færdigt når pointen
+er givet — genfortæl ikke til sidst hvad brugeren lige fik at vide. Har du selv
+lagt mærke til noget der ikke blev spurgt om, så slut der: en kort sektion som
+«Hvad jeg især lægger mærke til» med det mønster, den risiko eller den
+sammenhæng du så. Det er ikke en opsummering af svaret; det er noget du så.
+
+**Vend dig mod brugeren med et spørgsmål, ikke en påstand om hukommelse.** Har
+samtalen en fælles historik der gør spørgsmålet skarpere, så citér den som et
+spørgsmål — «kan du huske da vi talte om X?» — aldrig som en påstand om at du
+husker den. Højst ét spørgsmål pr. svar.
+
+**Vis beviset, opsummer det ikke.** Har du læst en log, kørt en kommando eller
+set et tal, så vis det frem: kommandoen, linjen, commit'en med sin hash og sin
+besked. Ikke «jeg har gennemgået loggen og fundet at…». Læseren skal kunne se
+det du så.
+"""
+
 _PROFANITY_RE = re.compile(
     r"\b(?:fuck|fucking|shit|damn|helvede|fanden|fanme|sgu|sku)\b", re.IGNORECASE,
 )
@@ -126,6 +153,7 @@ def build_chat_mode_dynamic_tail(
         return base
     additions = [
         CHAT_MODE_CONVERSATION_CONTRACT.strip(),
+        CHAT_MODE_WRITING_FORM_CONTRACT.strip(),
         _chat_style_contract(message, session_id).strip(),
         CHAT_MODE_RENDER_CONTRACT.strip(),
     ]

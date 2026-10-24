@@ -65,6 +65,10 @@ _LEAN_TAIL_START_MARKERS: tuple[str, ...] = (
 _LEAN_KEEP_ROW_PREFIXES: tuple[str, ...] = (
     "⚖️ Before you answer",   # behavioral anchor (audit #3, 2026-07-22; was "⚖️ FØR DU SVARER")
     "## Chatmode: denne brugers samtalestil",
+    # 24/10-2026: skriveformen er den blok der bærer hele oplevelsen (Bjørns
+    # videoanalyse). Uden den i listen skiftede stemmen netop i den runde hvor
+    # svaret formuleres — efter det sidste værktøjskald.
+    "## Chatmode: skriveformen",
 )
 
 

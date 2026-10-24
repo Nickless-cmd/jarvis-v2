@@ -134,3 +134,54 @@ def test_deepseek_stable_prefix_is_identical_across_user_tone(monkeypatch) -> No
     assert first[0] == second[0] == {"role": "system", "content": "BYTE-STABLE"}
     assert first[-2]["role"] == second[-2]["role"] == "system"
     assert first[-2]["content"] != second[-2]["content"]
+
+
+def test_skriveformen_naar_halen_i_chat_scope() -> None:
+    """Skriveformen skal med i halen — de fire træk fra Bjørns videoanalyse."""
+    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    token = set_tool_scope("chat")
+    try:
+        tail = build_chat_mode_dynamic_tail("", message="hvad lavede du i git-loggen?", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "## Chatmode: skriveformen" in tail
+    assert "læsehjælp" in tail
+    assert "Hvad jeg især lægger mærke til" in tail
+    assert "Vis beviset" in tail
+    assert "kan du huske da vi talte om" in tail
+
+
+def test_skriveformen_er_ikke_i_code_mode() -> None:
+    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    token = set_tool_scope("code")
+    try:
+        tail = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "skriveformen" not in tail
+
+
+def test_skriveformen_overlever_lean_runder() -> None:
+    """Fælden: lean-prompten droppede hele halen, så stilen forsvandt netop i
+    den runde hvor svaret formuleres. Prefikset skal stå i keep-listen."""
+    from core.services import visible_followup_lean as vl
+
+    assert "## Chatmode: skriveformen" in vl._LEAN_KEEP_ROW_PREFIXES
+
+
+def test_lean_bevarer_skriveformen_i_teksten() -> None:
+    from core.services import visible_followup_lean as vl
+
+    tekst = (
+        "## Arbejde\nnoget tungt\n\n"
+        "[OPERATIONAL] baggrund\n\n"
+        "## Chatmode: skriveformen\nVis beviset, opsummer det ikke."
+    )
+    lean, changed, _ = vl._lean_strip_user_message(tekst)
+    assert changed is True
+    assert "## Chatmode: skriveformen" in lean
+    assert "Vis beviset" in lean

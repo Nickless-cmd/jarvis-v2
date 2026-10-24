@@ -83,8 +83,12 @@ _TTL_SECONDS = 60.0
 #   * Selve scanningen kører UDEN lås (I/O må aldrig serialiseres af den).
 #   * `_GENERATION` tælles op ved hver invalidering; et scan publicerer kun
 #     hvis generationen er uændret, ellers kasseres resultatet.
-#   * `clear_cache()` tager aldrig `_LOCK` under I/O og kan derfor kaldes fra
-#     en readiness-sti inde i et igangværende scan.
+#   * `clear_cache()` tager `_LOCK` (rettet 24/10-2026 — uden den kunne den
+#     mutere `_SNAPSHOT` mellem generationstjekket og publiceringen, målt som
+#     `PUBLIKEREDE_FORÆLDET = True`). Det er sikkert netop fordi `_do_scan()`
+#     ikke holder låsen: readiness-stien må gerne tage den indefra.
+#   * Intet log-kald sker inde i `_LOCK`. En logging-handler kan i princippet
+#     ramme auth-laget, og så ville låsen være re-entrant-fælden igen.
 _LOCK = threading.Lock()
 _GENERATION = 0
 # Leder-lease (24/10-2026). MÅLT: uden den gik en ventetråd i ring — 20
@@ -224,10 +228,12 @@ def auth_snapshot() -> dict[str, list[str]]:
             _LEADER_STARTED_AT = time.monotonic()
             _SCAN_DONE.clear()
             generation = _GENERATION
-            logger.warning(
-                "auth_snapshot: leder overskred %.0f s — overtager scanningen",
-                _WAIT_SECONDS,
-            )
+        # Logningen ligger UDEN for låsen: en logging-handler kan i princippet
+        # ramme auth-laget, og så ville vi være tilbage i re-entrant-fælden.
+        logger.warning(
+            "auth_snapshot: leder overskred %.0f s — overtager scanningen",
+            _WAIT_SECONDS,
+        )
         break
 
     try:

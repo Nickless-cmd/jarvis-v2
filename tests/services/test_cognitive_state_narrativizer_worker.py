@@ -218,3 +218,33 @@ def test_enqueue_fejl_rydder_inflight(monkeypatch) -> None:
         )
         assert "body" not in narr._PENDING
     narr._reset_for_tests()
+
+
+def test_enqueue_efter_shutdown_efterlader_ikke_et_spoegelsesjob() -> None:
+    """Efter ``shutdown()`` må ``_enqueue`` ikke gemme et job som ingen tager.
+
+    24/10-2026 (Codex): ``_ensure_worker_locked`` returnerer stille når
+    ``_STOP`` er sat, men ``_enqueue`` tjekkede ikke flaget. Et job lagt i
+    køen efter stop blev derfor stående for evigt, og ``_REFRESH_INFLIGHT``
+    holdt linjen som "i gang" — så den aldrig kunne genereres igen.
+    """
+    from core.services import cognitive_state_narrativizer as n
+
+    n._reset_for_tests()
+    try:
+        n.shutdown(timeout=2.0)
+
+        accepteret = n._enqueue(
+            line_key="body",
+            fingerprint="efter-stop",
+            system_prompt="sys",
+            user_message="msg",
+        )
+
+        assert accepteret is False, "enqueue accepterede et job efter shutdown"
+        assert n._PENDING == {}, f"spøgelsesjob efterladt: {n._PENDING}"
+        assert "body" not in n._REFRESH_INFLIGHT, (
+            "_REFRESH_INFLIGHT blev ikke ryddet — linjen kan aldrig genereres igen"
+        )
+    finally:
+        n._reset_for_tests()

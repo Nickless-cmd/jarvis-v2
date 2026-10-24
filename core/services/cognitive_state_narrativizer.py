@@ -227,9 +227,16 @@ def _enqueue(
 ) -> bool:
     """Læg et job i den delte worker-kø. Seneste fingerprint vinder.
 
-    Returnerer False hvis et nyere job allerede ligger i køen, eller hvis
-    enqueue fejlede — i begge tilfælde ryddes ``_REFRESH_INFLIGHT`` så linjen
-    ikke hænger permanent som "i gang" uden at noget sker.
+    Returnerer False hvis et nyere job allerede ligger i køen, hvis workeren
+    er stoppet, eller hvis enqueue fejlede — i alle tilfælde ryddes
+    ``_REFRESH_INFLIGHT`` så linjen ikke hænger permanent som "i gang" uden at
+    noget sker.
+
+    24/10-2026: ``_STOP``-tjekket ligger INDE i låsen. Før kunne et job lægges
+    i køen efter ``shutdown()``: ``_ensure_worker_locked`` returnerer stille når
+    flaget er sat, så jobbet blev stående for evigt og ``_REFRESH_INFLIGHT``
+    holdt linjen låst. Tjekket skal være atomisk med ``shutdown()``, som sætter
+    flaget under samme lås.
     """
     job = _Job(
         seq=time.monotonic_ns(),
@@ -239,6 +246,11 @@ def _enqueue(
     )
     try:
         with _CACHE_LOCK:
+            if _STOP.is_set():
+                # Workeren er stoppet — intet ville nogensinde tage jobbet.
+                # Afvis før det lægges i køen, så der ikke opstår et
+                # spøgelsesjob eller en permanent _REFRESH_INFLIGHT-lås.
+                return False
             current = _PENDING.get(line_key)
             if current is not None and current.seq > job.seq:
                 return False

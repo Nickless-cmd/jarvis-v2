@@ -185,3 +185,36 @@ def test_lean_bevarer_skriveformen_i_teksten() -> None:
     assert changed is True
     assert "## Chatmode: hvordan jeg taler" in lean
     assert "Vis beviset" in lean
+
+
+def test_blanklinje_reglen_staar_i_kontrakten_og_i_halen() -> None:
+    """Fælden: fire afsnit uden newlines renderer som én mur (målt 24/10-2026).
+
+    Besked 219188 i chat-3a8aebc9a0eb4c9f83a0581fba614c88 havde fire
+    selvstændige afsnit på ÉN linje. CommonMark gør et enkelt linjeskift til et
+    mellemrum, og `enforceStructure` reparerer kun på eksplicitte markører — så
+    prosa uden blanklinjer blev aldrig delt. Reglen skal derfor stå i kontrakten
+    OG overleve lean-transformen, ellers forsvinder den netop i den runde hvor
+    svaret formuleres.
+    """
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+    assert "Afsnit adskilles af en blank linje" in CHAT_MODE_HOW_I_TALK
+    # Lean-transformen splitter på tomme linjer — kontrakten skal være én blok.
+    assert "\n\n" not in CHAT_MODE_HOW_I_TALK
+
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    token = set_tool_scope("chat")
+    try:
+        tail = build_chat_mode_dynamic_tail("", message="hvorfor blev den rodet?", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "Afsnit adskilles af en blank linje" in tail
+
+    token = set_tool_scope("code")
+    try:
+        code_tail = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "Afsnit adskilles af en blank linje" not in code_tail

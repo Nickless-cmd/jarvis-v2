@@ -26,63 +26,13 @@ from core.eventbus.bus import event_bus
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.runtime.db import connect
 from core.services.markdown_structure import normalize_markdown_structure
+from core.services.visible_outcome_text import (
+    mark_mid_word_truncation as _mark_mid_word_truncation,
+    origin_of_session as _origin_of_session,
+    preview_text as _preview_text,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _preview_text(text: str, limit: int = 320) -> str:
-    normalized = " ".join((text or "").split())
-    if len(normalized) <= limit:
-        return normalized
-    return normalized[: limit - 1].rstrip() + "…"
-
-
-def _mark_mid_word_truncation(text: str) -> str:
-    """Append "…" if the assistant text ends abruptly mid-word.
-
-    Reasoning models (deepseek-v4-flash et al.) sometimes interleave text
-    and tool_calls — emitting a tool_call mid-sentence and then never
-    resuming the prose after the tool result lands. The user is left
-    staring at half a word ("Jeg skrev et journa"). Detecting this in
-    a robust way is hard, but the cheap heuristic of "ends with an
-    alphanumeric character and is long enough to not be a single-word
-    reply" catches the common case and gives the user a visible signal
-    that something cut off, instead of silently lying about completeness.
-    """
-    if not text:
-        return text
-    stripped = text.rstrip()
-    if not stripped:
-        return text
-    # Look at the LAST line only — multi-paragraph replies often end with
-    # a short final sentence, but if that sentence itself is mid-word we
-    # still want to flag it.
-    last_line = stripped.splitlines()[-1].strip()
-    if not last_line:
-        return text
-    # Short terse replies ("ja", "nej", "okay", "Done", "OK") are legit
-    # without punctuation. Use word-count, not char-count: 3+ words ending
-    # alphanumerically is almost always a cut-off sentence.
-    if len(last_line.split()) < 3:
-        return text
-    last = last_line[-1]
-    # Anything terminal-like is fine: punctuation, brackets, quotes,
-    # emoji ranges, code-block fences, list-item dashes ending a line.
-    if not last.isalnum():
-        return text
-    # Mid-word — annotate. The "…" stays inside the chat-display invariant
-    # (no internal markers) and looks natural to the reader.
-    return stripped + "…"
-
-
-
-def _origin_of_session(session_id: str) -> str:
-    """«auto-dream-20260902» → «dream». Tom for almindelige samtaler."""
-    s = str(session_id or "")
-    if not s.startswith("auto-"):
-        return ""
-    dele = s.split("-")
-    return dele[1] if len(dele) >= 2 else ""
 
 
 def _normaliser_tekstblokke(blocks: list[dict]) -> list[dict]:
@@ -440,6 +390,19 @@ def _persist_session_assistant_message(
     # dette gør beskeden konsistent renderbar på ALLE kanaler + i gemt historik.
     # Ren CPU-funktion → ingen --workers 1 frys-risiko. Se markdown_structure.py.
     normalized = normalize_markdown_structure(normalized)
+
+    # Chat-kvalitet er observation, aldrig auto-redigering. Scope-vagten bor
+    # ogsaa i observeren; dobbelt afgraensning beskytter code/cowork hvis denne
+    # persistensfunktion senere kaldes fra en anden kontekst.
+    try:
+        from core.services.visible_chat_quality import observe_chat_response
+        observe_chat_response(
+            normalized, run_id=str(run.run_id or ""),
+            session_id=str(run.session_id or ""), provider=str(run.provider or ""),
+            model=str(run.model or ""),
+        )
+    except Exception:  # chat-kvalitetsmåling er best-effort og må ikke blokere persistens
+        pass
 
     # Cross-user deling-guard (§4.4, TOTP Fase 4.2): hvis det udgående svar nævner
     # en ANDEN bruger end samtalepartneren, flag det. Detektion + eventbus-signal

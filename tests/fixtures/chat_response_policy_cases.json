@@ -1,0 +1,14 @@
+[
+  {"name":"two products across price and battery","task":"compare","items":2,"dimensions":2,"surface":"comparison","closure":"answer"},
+  {"name":"one difference only","task":"compare","items":2,"dimensions":1,"surface":null,"closure":"answer"},
+  {"name":"three dated events","task":"sequence","items":3,"dimensions":0,"surface":"timeline","closure":"answer"},
+  {"name":"two dated events","task":"sequence","items":2,"dimensions":0,"surface":null,"closure":"answer"},
+  {"name":"four key metrics","task":"scan_numbers","items":4,"dimensions":0,"surface":"stats","closure":"delivery"},
+  {"name":"numeric series already charted","task":"scan_numbers","items":5,"dimensions":0,"rendered":true,"surface":null,"closure":"delivery"},
+  {"name":"three real next actions","task":"choose","items":3,"dimensions":0,"surface":"choices","closure":"awaiting_user"},
+  {"name":"single recommendation","task":"choose","items":1,"dimensions":0,"surface":null,"closure":"conversation"},
+  {"name":"address needed for action","task":"locate","items":1,"dimensions":0,"surface":"location","closure":"answer"},
+  {"name":"one critical warning","task":"warn","items":1,"dimensions":0,"surface":"callout","closure":"answer"},
+  {"name":"several warnings","task":"warn","items":3,"dimensions":0,"surface":null,"closure":"answer"},
+  {"name":"ordinary opinion","task":"explain","items":4,"dimensions":0,"surface":null,"closure":"conversation"}
+]

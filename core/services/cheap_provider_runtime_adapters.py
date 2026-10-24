@@ -173,6 +173,14 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
             return bool(token)
         except Exception:
             return False
+    if normalized_provider in {"copilot-free", "copilot-premium"}:
+        from core.auth.copilot_session import resolve_copilot_profile
+        from core.auth.profiles import get_provider_state
+
+        copilot_profile = resolve_copilot_profile(profile)
+        return get_provider_state(
+            profile=copilot_profile, provider="github-copilot"
+        ) is not None
     credentials = get_provider_credentials(profile=profile, provider=normalized_provider)
     if not credentials:
         return False
@@ -1255,6 +1263,21 @@ def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:
     # give tom auth_profile for keyless providers (kilo/pollinations) — normalisering
     # her gør at en evt. gemt token (kilo's JWT under "default") stadig hentes.
     profile = (str(profile or "").strip()) or "default"
+    if provider in {"copilot-free", "copilot-premium"}:
+        from core.auth.copilot_session import (
+            get_copilot_session_token,
+            resolve_copilot_profile,
+        )
+
+        copilot_profile = resolve_copilot_profile(profile)
+        try:
+            return {"api_key": get_copilot_session_token(profile=copilot_profile)}
+        except Exception as exc:
+            raise CheapProviderError(
+                provider=provider,
+                code="auth-not-ready",
+                message=f"{provider} Copilot session unavailable: {exc}",
+            ) from exc
     # auth_kind=none (Pollinations/OVHcloud/kilo anon) kræver INGEN credential-entry —
     # returnér tom dict så adapteren udelader Authorization-headeren (linje ~650).
     # try/except: enhver profil-fejl → {} (kør anonymt), aldrig crash i cheap-lane.

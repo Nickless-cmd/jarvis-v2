@@ -889,6 +889,35 @@ def test_final_synthesis_instruction_is_system_not_user(
     assert "ikke en besked fra brugeren" in seen["base_messages"][-1]["content"]
 
 
+def test_final_synthesis_is_conversational_only_in_chat_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.tools.tool_scoping import tool_scope
+
+    instructions: list[str] = []
+
+    def _fake_stream(**kwargs):
+        instructions.append(str(kwargs["base_messages"][-1]["content"]))
+        yield vf.FollowupDone(text="svar", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    with tool_scope("chat"):
+        vf.synthesize_final_answer(
+            provider="deepseek", model="deepseek-v4-flash",
+            base_messages=[], exchanges=[],
+        )
+    with tool_scope("code"):
+        vf.synthesize_final_answer(
+            provider="deepseek", model="deepseek-v4-flash",
+            base_messages=[], exchanges=[],
+        )
+
+    assert "ikke lyde som en rapportfinale" in instructions[0]
+    assert "næste synlige chattekst" in instructions[0]
+    assert "dit endelige svar" in instructions[1]
+    assert "rapportfinale" not in instructions[1]
+
+
 def test_continuation_swaps_reasoner_to_flash(monkeypatch: pytest.MonkeyPatch) -> None:
     """#1453-beskyttelse: deepseek-reasoner (thinking-lane) swappes til flash
     (non-thinking chat-alias) i continuation-runden."""

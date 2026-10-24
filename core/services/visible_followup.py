@@ -347,10 +347,26 @@ def synthesize_final_answer(
         except Exception:
             pass
         # Eksplicit finalize-instruktion (append-only → cache-prefix urørt).
-        _finalize_msgs = list(base_messages) + [runtime_instruction_message(
+        # Chat er en samtale, ikke en arbejdsrapport. Den tekniske synthese skal
+        # stadig levere tekst, men maa ikke genindfoere den terminale stemme som
+        # chat-kontrakten netop fjerner. Code/cowork beholder den gamle ordlyd.
+        try:
+            from core.tools.tool_scoping import current_tool_scope
+            _chat_finalize = current_tool_scope() == "chat"
+        except Exception:
+            _chat_finalize = False
+        _finalize_instruction = (
+            "Skriv nu den næste synlige chattekst til brugeren, baseret på "
+            "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer. Svar direkte "
+            "med din egen læsning; teksten afslutter denne tekniske tur, men den "
+            "skal ikke lyde som en rapportfinale eller mekanisk opsummering."
+            if _chat_finalize else
             "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
             "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
-            "hvad du fandt og svar direkte.")]
+            "hvad du fandt og svar direkte."
+        )
+        _finalize_msgs = list(base_messages) + [runtime_instruction_message(
+            _finalize_instruction)]
         _delta_parts: list[str] = []
         _done_text = ""
         for _ev in stream_visible_followup(

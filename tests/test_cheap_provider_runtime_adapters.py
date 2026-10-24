@@ -368,6 +368,30 @@ def test_copilot_cost_classes():
     assert "gpt-4o" in CHEAP_PROVIDER_DEFAULTS["copilot-free"]["static_models"]
 
 
+def test_copilot_pool_aliases_share_github_oauth_profile(monkeypatch):
+    """The pool's price-class ids authenticate through one GitHub OAuth state."""
+    import core.auth.copilot_session as session
+    import core.services.cheap_provider_runtime_adapters as mod
+
+    monkeypatch.setattr(session, "resolve_copilot_profile", lambda preferred: "copilot")
+    monkeypatch.setattr(
+        session, "get_copilot_session_token", lambda *, profile: "fake-value"
+    )
+    monkeypatch.setattr(
+        "core.auth.profiles.get_provider_state",
+        lambda *, profile, provider: {
+            "profile": profile,
+            "provider": provider,
+            "status": "active",
+        },
+    )
+
+    assert mod.provider_auth_ready(provider="copilot-premium", auth_profile="")
+    assert mod._require_credentials(
+        profile="", provider="copilot-premium"
+    ) == {"api_key": "fake-value"}  # pragma: allowlist secret
+
+
 def test_openai_compatible_set_derived_from_protocol():
     """15. jul: _OPENAI_COMPATIBLE_PROVIDERS udledes fra protocol → auto-inkluderer alle
     openai-chat (nye + gemini/cloudflare). Fikser balancer 'unsupported-provider' +

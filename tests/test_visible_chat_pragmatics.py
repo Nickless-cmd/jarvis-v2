@@ -218,3 +218,33 @@ def test_blanklinje_reglen_staar_i_kontrakten_og_i_halen() -> None:
     finally:
         reset_tool_scope(token)
     assert "Afsnit adskilles af en blank linje" not in code_tail
+
+
+def test_chat_chooses_presence_closure_and_surface_by_reading_task() -> None:
+    from core.services.chat_response_policy import SURFACE_READING_TASKS
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+    assert {"compare", "sequence", "scan_numbers", "choose", "locate", "warn"} == set(
+        SURFACE_READING_TASKS.values()
+    )
+    assert "hvad du selv mener" in CHAT_MODE_HOW_I_TALK
+    assert "samtale (en levende reaktion" in CHAT_MODE_HOW_I_TALK
+    assert "Kun leverance" in CHAT_MODE_HOW_I_TALK
+    assert "Vælg flade efter læseopgaven" in CHAT_MODE_HOW_I_TALK
+    assert "ikke blot fordi der er mange" in CHAT_MODE_HOW_I_TALK
+    assert "Placér fladen inline" in CHAT_MODE_HOW_I_TALK
+    assert "nævn aldrig tilstandene" in CHAT_MODE_HOW_I_TALK
+
+
+def test_presence_and_surface_decisions_never_reach_code_mode() -> None:
+    from core.tools.tool_scoping import tool_scope
+
+    with tool_scope("chat"):
+        chat = build_chat_mode_dynamic_tail("", message="sammenlign dem", session_id="s")
+    with tool_scope("code"):
+        code = build_chat_mode_dynamic_tail("", message="sammenlign dem", session_id="s")
+
+    assert "Vælg flade efter læseopgaven" in chat
+    assert "Kun leverance" in chat
+    assert "Vælg flade efter læseopgaven" not in code
+    assert "Kun leverance" not in code

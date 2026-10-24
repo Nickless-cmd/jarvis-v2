@@ -20,7 +20,7 @@ from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-from core.auth.profiles import get_provider_state
+from core.auth.profiles import get_provider_state, list_auth_profiles
 
 _PROVIDER = "github-copilot"
 _EXCHANGE_URL = "https://api.github.com/copilot_internal/v2/token"
@@ -28,6 +28,33 @@ _EXPIRY_SAFETY_SECONDS = 60
 
 _cache_lock = threading.Lock()
 _cache: dict[str, dict[str, Any]] = {}
+
+
+def resolve_copilot_profile(preferred: str = "default") -> str:
+    """Return the auth profile that actually owns GitHub Copilot OAuth state.
+
+    Agent-pool providers use the logical ids ``copilot-free`` and
+    ``copilot-premium``, but both authenticate through the single
+    ``github-copilot`` OAuth account.  That account is commonly stored under
+    the dedicated ``copilot`` profile rather than the caller's default
+    profile.
+    """
+    preferred = str(preferred or "").strip() or "default"
+    try:
+        if get_provider_state(profile=preferred, provider=_PROVIDER) is not None:
+            return preferred
+        candidates = [
+            "copilot",
+            *[str(item.get("profile") or "") for item in list_auth_profiles()],
+        ]
+        for candidate in candidates:
+            if candidate and get_provider_state(
+                profile=candidate, provider=_PROVIDER
+            ) is not None:
+                return candidate
+    except Exception:  # auth-discovery må falde tilbage til den ønskede profil
+        pass
+    return preferred
 
 
 def _load_oauth_access_token(*, profile: str) -> str:

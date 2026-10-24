@@ -894,19 +894,38 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .jarvis-body th, .jarvis-body td {
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-  padding: 4px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, var(--fg-3) 15%);
+  padding: 14px 14px;
   text-align: left;
   vertical-align: top;
 }
 /* 24/10-2026 (Bjørns videoanalyse): rammer og fed header signalerer «rapport»
  * og beder læseren skifte gear. Samme rækker læses lettere når kun en svag
- * linje skiller dem, og header-cellen blot er dæmpet tekst. Struktur som
- * læsehjælp, ikke som præsentation. */
+ * linje skiller dem, og header-cellen blot er normalvægtig tekst. Struktur som
+ * læsehjælp, ikke som præsentation.
+ *
+ * 24/10-2026 (Bjørns referencebillede): rækkehøjden blev målt til 48 px i
+ * referencen mod 28 px her — 17 px tekst med 16 px luft over og under. Padding
+ * er derfor 14 px lodret (14+20+14 = 48), og linjen er hævet fra en 55 %-
+ * blanding (målte 30 i lysstyrke) til 85 % (måler ~51, som referencens 51).
+ * Headeren er LYSERE end cellerne i referencen, ikke dæmpet — derfor `--fg-1`
+ * og ikke `--fg-2`. Code-chips i celler får samme baggrund som referencens
+ * (RGB 30 på #111), dvs. hvid ved 12 % — den globale inline-code er 4 %, og
+ * den er dæmpet med vilje i løbende prosa. */
 .jarvis-body th {
   background: none;
-  color: var(--fg-2, var(--fg-1));
+  color: var(--fg-1, var(--fg-0));
   font-weight: 500;
+}
+.jarvis-body td code,
+.jarvis-body th code {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+[data-theme="light"] .jarvis-body td code,
+[data-theme="light"] .jarvis-body th code {
+  background: rgba(0, 0, 0, 0.07);
 }
 /* 20/10-2026: en tabel kan IKKE begrænses med `max-width` alene — dens
    minimumsbredde er summen af cellernes indhold, så på en smal skærm bliver

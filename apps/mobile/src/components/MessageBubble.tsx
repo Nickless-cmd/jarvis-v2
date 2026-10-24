@@ -615,8 +615,23 @@ const makemarkdownStyles = (tokens: Theme) => StyleSheet.create({
   },
   hr: { backgroundColor: tokens.color.line, height: 1, marginVertical: tokens.spacing.sm },
   table: { borderColor: 'transparent', borderWidth: 0, marginBottom: tokens.spacing.sm },
-  thead: { backgroundColor: tokens.color.bg2 },
-  th: { color: tokens.color.fg1, padding: tokens.spacing.xs, fontWeight: '700' },
-  td: { color: tokens.color.fg1, padding: tokens.spacing.xs },
+  // 24/10-2026 (Bjørns referencebillede): samme tabel-sprog som desk — ingen
+  // rammer, ingen baggrund bag headeren, normalvægtig header og luft i
+  // rækkerne. Desk måler 48 px rækkehøjde; her giver 12+20+12 = 44 px, som er
+  // skalaens nærmeste trin (xs=4, sm=8, md=12, lg=16) og passer på en smal
+  // skærm. Headeren er lys som cellerne, ikke fed — fed tekst fik tabellen til
+  // at signalere «rapport».
+  thead: { backgroundColor: 'transparent' },
+  th: {
+    color: tokens.color.fg1,
+    paddingVertical: tokens.spacing.md,
+    paddingHorizontal: tokens.spacing.md,
+    fontWeight: '500'
+  },
+  td: {
+    color: tokens.color.fg1,
+    paddingVertical: tokens.spacing.md,
+    paddingHorizontal: tokens.spacing.md
+  },
   tr: { borderColor: tokens.color.line, borderBottomWidth: 1 }
 })

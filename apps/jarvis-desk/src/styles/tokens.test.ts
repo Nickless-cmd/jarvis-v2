@@ -6,6 +6,7 @@ const læs = (n: string) => readFileSync(join(__dirname, n), 'utf8')
 const tokens = læs('tokens.css')
 const app = læs('app.css')
 const rail = læs('message-rail.css')
+const chatReading = læs('chat-reading.css')
 
 const brugte = (css: string) =>
   new Set([...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]))
@@ -13,6 +14,12 @@ const definerede = (css: string) =>
   new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
 
 describe('design-tokens', () => {
+  it('giver kun chat-mode den rolige 16/24-læserytme', () => {
+    expect(chatReading).toMatch(/\.chatview \.jarvis-body,[\s\S]*font-size:\s*16px;[\s\S]*line-height:\s*1\.5;/)
+    expect(chatReading).not.toMatch(/\.codeview \.jarvis-body/)
+    expect(chatReading).toMatch(/\.chatview \.jarvis-body h2\s*\{\s*font-size:\s*1\.3em;/)
+  })
+
   it('holder miljø- og inspector-stil ude af den store app.css', () => {
     const miljø = læs('environment-inspector.css')
     expect(app).not.toMatch(/\.env-panel\s*\{/)

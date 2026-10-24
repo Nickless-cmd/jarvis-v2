@@ -3,9 +3,15 @@
 .chatview .raekkevisning {
   color: var(--fg-1);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.5;
 }
+
+.chatview .jarvis-body p { margin-bottom: 0.85em; }
+.chatview .jarvis-body h1 { font-size: 1.5em; }
+.chatview .jarvis-body h2 { font-size: 1.3em; }
+.chatview .jarvis-body h3 { font-size: 1.15em; }
+.chatview .native-rich { margin-block: 1.1em 1.35em; }
 
 /* Bevar mørkt tema, men gør sessionsnavne og navigation lettere at læse. */
 .sidebar .session-item { color: var(--fg-1); }

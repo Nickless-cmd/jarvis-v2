@@ -51,6 +51,7 @@ from __future__ import annotations
 import logging
 import os
 import pickle
+import re
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -315,6 +316,73 @@ def _path_matches(source: str, path_prefix: str | None) -> bool:
     return source.replace("\\", "/").startswith(path_prefix.strip("/"))
 
 
+#: Område-vægte — ganget på cosinus-scoren, ikke et filter.
+#:
+#: HVORFOR (målt 24/10-2026): indekset havde 18.204 chunks, hvoraf
+#: `docs/superpowers` var 13.415 = 73,7 %, mens `docs/notes` var 1,6 %.
+#: Cosine er upartisk, så mængde vandt over relevans: på «desk release CI
+#: tag» kom `docs/mobile/signering.md` og en marketplace-plan øverst, mens
+#: `docs/notes/2026-10-04-desk-udgivelser.md` — det rigtige svar, som ER i
+#: indekset — slet ikke blev ramt. Fire af seks kontrolspørgsmål ramte
+#: forkert. Det er samme fejlklasse som QUICK_FACTS-loftet: indholdet var
+#: der, balancen var forkert.
+#:
+#: Vægten er en MENING om hvad et svar er værd, ikke en måling — derfor
+#: står tallene her og ikke spredt i koden, så de kan diskuteres og ændres.
+#: `docs/superpowers/specs` er urørt (1,0): specs beskriver hvordan tingene
+#: ER, og de var allerede de bedste svar på «recall arkitektur».
+_AREA_WEIGHTS: tuple[tuple[str, float], ...] = (
+    # Udførte planer: mest historik, mindst svar. Stadig søgbare — de kan
+    # svare på «hvordan blev X bygget» — men de skal ikke vinde i kraft af
+    # at være 146 filer.
+    ("docs/superpowers/plans/", 0.72),
+    # Levende specs: urørt. Det er den bedste kilde til «hvordan hænger det sammen».
+    ("docs/superpowers/specs/", 1.0),
+    # Håndskrevet reference og driftsdokumentation: høj værdi, lav mængde.
+    ("docs/reference/", 1.12),
+    ("docs/runbooks/", 1.12),
+    ("docs/notes/", 1.10),
+    ("docs/specs/", 1.08),
+    ("docs/", 1.05),
+    # Rod-Markdown (AGENTS.md, CONTRIBUTING.md …): gældende regler.
+    ("", 1.10),
+)
+
+
+def _area_weight(source: str) -> float:
+    """Vægt for en chunk-kilde. Første match vinder, mest specifikke først."""
+    src = source.replace("\\", "/")
+    for prefix, weight in _AREA_WEIGHTS:
+        if prefix and src.startswith(prefix):
+            return weight
+    return 1.0
+
+
+#: Vægt mellem semantik og leksik i hybrids-scoren.
+#:
+#: HVORFOR (målt 24/10-2026): område-vægten alene flyttede rangeringen, men
+#: kunne ikke redde «desk release CI tag». Det rigtige hit —
+#: `docs/notes/2026-10-04-desk-udgivelser.md` — lå på **rank 224** med rå
+#: cosine 0,548, mens det forkerte topsvar lå på 0,620. Embeddingen kunne
+#: ikke skelne dem; nomic giver flade cosinus på dansk. Vægtning kan ikke
+#: løfte et hit der ligger 224 pladser nede.
+#:
+#: Målt over otte kontrolspørgsmål: 0,25 leksik flyttede det rigtige hit til
+#: top-1 på «desk release» (0,715) og forbedrede eller bevarede de øvrige.
+#: 0,35 gav marginalt højere score på det rigtige hit, men begyndte at
+#: rangere på ord-overlap alene. 0,25 er valgt som den mindste vægt der
+#: løser problemet.
+_LEXICAL_WEIGHT = 0.25
+
+
+def _lexical_score(query_terms: list[str], chunk: "Chunk") -> float:
+    """Andel af query-termer der optræder i chunk, sektion eller sti."""
+    if not query_terms:
+        return 0.0
+    hay = f"{chunk.text} {chunk.source} {chunk.section or ''}".lower()
+    return sum(1 for t in query_terms if t in hay) / len(query_terms)
+
+
 def search_repo(
     query: str,
     *,
@@ -348,16 +416,34 @@ def search_repo(
         q_emb = _embed_single(query)
         if q_emb is not None:
             scores = _cosine_sim(q_emb, embeddings)
-            top_idx = np.argsort(scores)[::-1][: limit * 3]
+            # Hybrid: semantik + leksik, derefter område-vægt. Rækkefølgen er
+            # ikke ligegyldig — vægten ganges på FØR udvælgelsen, ellers ville
+            # top-N være valgt på den rå cosine og kun blive omrokeret bagefter.
+            # Målt 24/10-2026: det rigtige hit lå på rank 224 og kom derfor
+            # aldrig i betragtning uanset hvordan man vejede de øverste.
+            terms = [t for t in re.findall(r"[a-z0-9]+", query.lower()) if len(t) > 2]
+            lexical = np.array([_lexical_score(terms, c) for c in chunks], dtype=np.float32)
+            combined = scores * (1.0 - _LEXICAL_WEIGHT) + lexical * _LEXICAL_WEIGHT
+            weights = np.array([_area_weight(c.source) for c in chunks], dtype=np.float32)
+            weighted = combined * weights
+            top_idx = np.argsort(weighted)[::-1][: limit * 3]
             results = []
             for i in top_idx:
-                if scores[i] <= 0.1:
+                # Gulvet maaler den SAMLEDE relevans, ikke raa cosine.
+                # Foer (maalt 24/10-2026) stod der `scores[i] <= 0.1`, og det
+                # kasserede praecis de hits hybrid-scoren findes for: en chunk
+                # der deler alle query-ord men ligger semantisk fjernt (dansk
+                # tekst giver flad cosine) blev filtreret vaek FOER den blev
+                # bedoemt. Testen `test_hybrid_loefter_leksikalsk_hit_som_
+                # embedding_missede` fangede det.
+                if combined[i] <= 0.1:
                     continue
                 results.append({
                     "text": chunks[i].text,
                     "source": chunks[i].source,
                     "section": chunks[i].section,
-                    "score": float(scores[i]),
+                    "score": float(weighted[i]),
+                    "raw_score": float(scores[i]),
                     "method": "embedding",
                 })
                 if len(results) >= limit:

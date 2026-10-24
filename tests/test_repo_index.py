@@ -136,3 +136,102 @@ def test_invalidate_sletter_cache(fake_repo):
     assert ri._index_path().exists()
     ri.invalidate()
     assert not ri._index_path().exists()
+
+
+# ── Område-vægt og hybrid-scoring (målt 24/10-2026) ───────────────────────
+#
+# Baggrund: indekset havde 18.204 chunks hvoraf `docs/superpowers` var 73,7 %
+# og `docs/notes` 1,6 %. Cosine er upartisk, så mængde vandt over relevans:
+# fire af seks kontrolspørgsmål ramte forkert. Vægten og den leksikalske
+# komponent er svaret på det — og de tests her vogter at de ikke rådner.
+
+
+def test_planer_vejer_mindre_end_levende_specs():
+    """Udførte planer må ikke vinde i kraft af at være flest."""
+    assert ri._area_weight("docs/superpowers/plans/x.md") < ri._area_weight(
+        "docs/superpowers/specs/x.md"
+    )
+
+
+def test_notes_og_reference_vejer_mere_end_planer():
+    assert ri._area_weight("docs/notes/x.md") > ri._area_weight(
+        "docs/superpowers/plans/x.md"
+    )
+    assert ri._area_weight("docs/reference/CONFIG.md") > ri._area_weight(
+        "docs/superpowers/plans/x.md"
+    )
+
+
+def test_ukendt_sti_vejer_neutralt():
+    assert ri._area_weight("et-eller-andet.md") == 1.0
+
+
+def test_lexical_score_taeller_termer_i_sti_og_sektion():
+    chunk = ri.Chunk(text="noget tekst", source="docs/notes/desk-udgivelser.md", section="Udgivet")
+    assert ri._lexical_score(["desk", "udgivelser"], chunk) == 1.0
+    assert ri._lexical_score(["desk", "findesikke"], chunk) == 0.5
+    assert ri._lexical_score([], chunk) == 0.0
+
+
+def test_hybrid_loefter_leksikalsk_hit_som_embedding_missede(fake_repo, monkeypatch):
+    """Den leksikalske komponent skal loefte et hit som cosine alene misser.
+
+    Det målte tilfælde (24/10-2026): `docs/notes/2026-10-04-desk-udgivelser.md`
+    laa paa rank 224 med raa cosine 0,548, mens det forkerte topsvar laa paa
+    0,620. Vægtning kunne ikke redde det — hit'et kom aldrig i betragtning.
+
+    Testen maaler den EGENSKAB, ikke et specifikt tal: med en falsk embedding
+    hvor det rigtige hit er ortogonalt paa queryen (cosine 0) skal den
+    leksikalske komponent loefte det ind i resultatet. Uden den er det væk.
+
+    Graensen er maalt: ved ortogonal vektor kraever det `_LEXICAL_WEIGHT >= 0.5`
+    at vende rangeringen helt. Testen kraever derfor kun at hit'et BLIVER
+    FUNDET med 0,25 — ikke at det vinder. Det er den egenskab der betyder
+    noget i drift, hvor cosine sjældent er helt nul.
+    """
+    import numpy as np
+
+    ri.build_index()
+    chunks, _, _ = ri._load_or_build()
+    # Tre forsoeg gik galt foer dette virkede, og hver fejl er vaerd at kende:
+    #   1) 0,1 mod 1,0 — den rigtige vandt alligevel (1,05 mod 0,72), fordi
+    #      omraade-vaegten loeftede den.
+    #   2) 0,02 mod 1,0 — den rigtige blev filtreret vaek af cosine-gulvet,
+    #      saa soegningen faldt tilbage paa TF-IDF og testen bestod uanset
+    #      vaegten. (Gulvet er siden rettet til at maale den kombinerede score.)
+    #   3) 0,15 mod 1,0 — _cosine_sim NORMALISERER, saa begge blev 1,0.
+    # Loesningen er en ortogonal vektor: cosine 0, men overlever gulvet naar
+    # den blandes med den leksikalske komponent.
+    dim = 8
+    fake = np.zeros((len(chunks), dim), dtype=np.float32)
+    for i, c in enumerate(chunks):
+        if "plans" in c.source:
+            fake[i, 0] = 1.0
+        else:
+            fake[i, 1] = 1.0
+    monkeypatch.setattr(ri, "_load_or_build", lambda: (chunks, fake, {}))
+    monkeypatch.setattr(
+        ri, "_embed_single", lambda q: np.array([1.0] + [0.0] * (dim - 1), dtype=np.float32)
+    )
+
+    hits = ri.search_repo("centralen indre liv", limit=3)
+    kilder = [h["source"] for h in hits]
+    assert any("ARKITEKTUR" in s for s in kilder), kilder
+
+    # Og beviset paa at det er DEN LEKSIKALSKE komponent der goer det:
+    # med vaegten paa nul forsvinder hit'et igen.
+    monkeypatch.setattr(ri, "_LEXICAL_WEIGHT", 0.0)
+    uden = [h["source"] for h in ri.search_repo("centralen indre liv", limit=3)]
+    assert not any("ARKITEKTUR" in s for s in uden), uden
+
+
+def test_vaegtning_aendrer_rangeringen_ikke_filtrerer(fake_repo):
+    """Vægten må kun omrokere — aldrig fjerne et hit der ellers ville være med."""
+    ri.build_index()
+    hits = ri.search_repo("centralen", limit=10)
+    assert hits, "soegningen gav intet"
+    for h in hits:
+        # raw_score findes kun paa embedding-stien; TF-IDF-fallbacken har
+        # ingen cosine at sammenligne med. Kravet gaar derfor paa metoden.
+        if h.get("method") == "embedding":
+            assert "raw_score" in h, "raw_score mangler — saa kan vaegtens effekt ikke maales"

@@ -210,21 +210,23 @@ _Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_repo_root` | `()` | Repoets rod. Kan overstyres med JARVIS_REPO_ROOT (tests, worktrees). | [src](../../../core/services/repo_index.py#L96) |
-| function | `_index_path` | `()` | Global sti — dokumentationen er den samme for alle brugere. | [src](../../../core/services/repo_index.py#L104) |
-| function | `_is_excluded` | `(rel)` | — | [src](../../../core/services/repo_index.py#L109) |
-| function | `repo_files` | `(root=…)` | Alle dokumentationsfiler der skal indekseres, sorteret. | [src](../../../core/services/repo_index.py#L116) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/repo_index.py#L142) |
-| function | `_chunk_files` | `(files, root)` | Læs + chunk. Kun fil-I/O — ingen embedding. | [src](../../../core/services/repo_index.py#L149) |
-| function | `_load_cached_vectors` | `(path)` | chunk-tekst → vektor fra eksisterende cache, til inkrementel reindeksering. | [src](../../../core/services/repo_index.py#L166) |
-| function | `build_index` | `(*, root=…, force=…)` | Byg indekset og skriv cachen. Blokerer indtil embeddings er færdige. | [src](../../../core/services/repo_index.py#L184) |
-| function | `_schedule_background_build` | `()` | Byg i baggrunden (fire-and-forget, kun én ad gangen). | [src](../../../core/services/repo_index.py#L260) |
-| function | `_load_or_build` | `()` | (chunks, embeddings, mtimes). Blokerer aldrig på en fuld embedding. | [src](../../../core/services/repo_index.py#L281) |
-| function | `_path_matches` | `(source, path_prefix)` | — | [src](../../../core/services/repo_index.py#L312) |
-| function | `search_repo` | `(query, *, limit=…, path_prefix=…)` | Semantisk søgning i repoets dokumentation. | [src](../../../core/services/repo_index.py#L318) |
-| function | `get_stats` | `()` | Indeksets tilstand uden at bygge noget. | [src](../../../core/services/repo_index.py#L370) |
-| function | `invalidate` | `()` | Slet cachen, så næste søgning genopbygger. | [src](../../../core/services/repo_index.py#L408) |
-| function | `_main` | `(argv=…)` | — | [src](../../../core/services/repo_index.py#L418) |
+| function | `_repo_root` | `()` | Repoets rod. Kan overstyres med JARVIS_REPO_ROOT (tests, worktrees). | [src](../../../core/services/repo_index.py#L97) |
+| function | `_index_path` | `()` | Global sti — dokumentationen er den samme for alle brugere. | [src](../../../core/services/repo_index.py#L105) |
+| function | `_is_excluded` | `(rel)` | — | [src](../../../core/services/repo_index.py#L110) |
+| function | `repo_files` | `(root=…)` | Alle dokumentationsfiler der skal indekseres, sorteret. | [src](../../../core/services/repo_index.py#L117) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/repo_index.py#L143) |
+| function | `_chunk_files` | `(files, root)` | Læs + chunk. Kun fil-I/O — ingen embedding. | [src](../../../core/services/repo_index.py#L150) |
+| function | `_load_cached_vectors` | `(path)` | chunk-tekst → vektor fra eksisterende cache, til inkrementel reindeksering. | [src](../../../core/services/repo_index.py#L167) |
+| function | `build_index` | `(*, root=…, force=…)` | Byg indekset og skriv cachen. Blokerer indtil embeddings er færdige. | [src](../../../core/services/repo_index.py#L185) |
+| function | `_schedule_background_build` | `()` | Byg i baggrunden (fire-and-forget, kun én ad gangen). | [src](../../../core/services/repo_index.py#L261) |
+| function | `_load_or_build` | `()` | (chunks, embeddings, mtimes). Blokerer aldrig på en fuld embedding. | [src](../../../core/services/repo_index.py#L282) |
+| function | `_path_matches` | `(source, path_prefix)` | — | [src](../../../core/services/repo_index.py#L313) |
+| function | `_area_weight` | `(source)` | Vægt for en chunk-kilde. Første match vinder, mest specifikke først. | [src](../../../core/services/repo_index.py#L352) |
+| function | `_lexical_score` | `(query_terms, chunk)` | Andel af query-termer der optræder i chunk, sektion eller sti. | [src](../../../core/services/repo_index.py#L378) |
+| function | `search_repo` | `(query, *, limit=…, path_prefix=…)` | Semantisk søgning i repoets dokumentation. | [src](../../../core/services/repo_index.py#L386) |
+| function | `get_stats` | `()` | Indeksets tilstand uden at bygge noget. | [src](../../../core/services/repo_index.py#L456) |
+| function | `invalidate` | `()` | Slet cachen, så næste søgning genopbygger. | [src](../../../core/services/repo_index.py#L494) |
+| function | `_main` | `(argv=…)` | — | [src](../../../core/services/repo_index.py#L504) |
 
 ## `core/services/report_claim_guard.py`
 _Efterproev det et barn PAASTAAR — Fase 6._

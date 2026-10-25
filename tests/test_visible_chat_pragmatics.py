@@ -93,6 +93,10 @@ def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) ->
     assert tail.startswith("EXISTING")
     assert "mærkbart legende" in tail
     assert "hver overskrift i et flerleddet svar bærer en relevant emoji" in tail
+    # 25/10-2026 (Bjørn): ikonet skal stå FØR overskriftsteksten, ikke efter.
+    # Reglen sagde før kun «i overskriften», og det var tvetydigt nok til at
+    # placeringen kunne drive mellem modes.
+    assert "FØRST i linjen, før overskriftsteksten" in tail
     assert "kraftsprog i denne tur" in tail
     assert "jarvis-ui" in tail
 
@@ -180,6 +184,11 @@ def test_chatkernen_baerer_de_fem_formgreb_uden_at_tvinge_dem_ind() -> None:
     # Formen skal kunne SPEJLES, ikke kun beskrives — derfor konkrete eksempler.
     assert "lille, én pointe uden struktur" in tekst
     assert "større, tre dele" in tekst
+    # 25/10-2026 (Bjørn): «emoji i overskriften» var tvetydigt — ikonet drev
+    # mellem at stå før og efter overskriftsteksten. Placeringen er nu fast.
+    assert "emoji først i overskriften, før selve teksten" in tekst
+    assert "aldrig efter overskriftsteksten" in tekst
+    assert "emoji i overskriften" not in tekst
     assert "som et svar til en kollega, ikke som en rapport" in tekst
 
 

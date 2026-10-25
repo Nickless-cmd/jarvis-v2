@@ -92,7 +92,8 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
         "rare": "Brug som udgangspunkt ingen emoji; højst én når den bærer reel tone.",
         "expressive": (
             "Emoji er en FAST del af formen, ikke en undtagelse: hver overskrift i et "
-            "flerleddet svar bærer en relevant emoji, og brødteksten må gerne have "
+            "flerleddet svar bærer en relevant emoji FØRST i linjen, før "
+            "overskriftsteksten — aldrig efter den, og brødteksten må gerne have "
             "naturlige emoji, så tonen kan mærkes. Det er standarden — ikke noget du "
             "kun gør når brugeren beder om det. Undlad dem kun når emnet er alvorligt, "
             "sorgfuldt eller teknisk følsomt."
@@ -108,7 +109,7 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
         "plain": "Skru ned for overskrifter, fremhævelse og visuelle flader, men behold dem når de er det der gør et flerleddet svar læsbart; enkel er en intensitet, ikke et forbud.",
         "rich": (
             "Et svar med tre eller flere reelle dele SKAL have hierarki: overskrift med "
-            "emoji, korte afsnit, og en liste når punkterne er parallelle. Rummer "
+            "emoji først i linjen, korte afsnit, og en liste når punkterne er parallelle. Rummer "
             "indholdet sammenligninger, forløb eller tal, vælg da aktivt en native "
             "flade, tabel, graf eller diagram frem for at beskrive det i prosa — det er "
             "standardvalget, ikke noget du kun gør når brugeren spørger efter det. Et "

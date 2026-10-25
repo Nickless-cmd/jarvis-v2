@@ -58,8 +58,8 @@ _Pragmatic conversation boundaries for the visible chat-only lane._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_chat_style_contract` | `(message, session_id)` | Build a short, per-user/current-turn style contract for the cache tail. | [src](../../../core/services/visible_chat_pragmatics.py#L65) |
-| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append the chat-only hierarchy after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L135) |
-| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the hierarchy only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L151) |
+| function | `build_chat_mode_dynamic_tail` | `(tail, *, message, session_id)` | Append the chat-only hierarchy after the prompt cache boundary. | [src](../../../core/services/visible_chat_pragmatics.py#L136) |
+| function | `apply_chat_mode_conversation_contract` | `(instruction)` | Append the hierarchy only when the effective runtime scope is ``chat``. | [src](../../../core/services/visible_chat_pragmatics.py#L152) |
 
 ## `core/services/visible_chat_quality.py`
 _Observe chat-response quality without rewriting the user's text._

@@ -1,4 +1,5 @@
 import { isValidElement, memo, useMemo } from 'react'
+import { Globe } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -8,6 +9,7 @@ import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
+import { linkifyRefs } from '../../lib/linkifyRefs'
 import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
@@ -29,7 +31,7 @@ import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
  *  server-side i stedet.) */
 // Stabile referencer: et nyt `components`-objekt eller plugin-array ved hver
 // render ville få react-markdown til at bygge alt om, også uændrede blokke.
-const PLUGINS = [remarkGfm, remarkMath]
+const PLUGINS = [remarkGfm, remarkMath, linkifyRefs]
 // `throwOnError: false` er ikke kosmetik: en ødelagt formel må ALDRIG vælte
 // hele beskeden. KaTeX tegner så fejlen rødt i stedet, og resten af svaret
 // står uændret. `strict: false` gør det samme for halvfærdige udtryk — mens
@@ -52,6 +54,11 @@ const KOMPONENTER: Components = {
   a: ({ href, children }) => {
     const safe = href ? safeLinkHref(href) : null
     if (!safe) return <span>{children}</span>
+    // 25/10-2026 (Bjørn): et link skal kunne SES, ikke kun rammes. Et lille
+    // globus-ikon foran gør eksterne links genkendelige på et blik — også når
+    // de står som en grå kode-badge midt i en sætning, hvor blå farve ikke
+    // bærer alene.
+    const ekstern = /^https?:/i.test(safe)
     return (
       <a
         href={safe}
@@ -61,6 +68,14 @@ const KOMPONENTER: Components = {
           openExternal(safe)
         }}
       >
+        {ekstern ? (
+          <Globe
+            size="0.85em"
+            aria-hidden="true"
+            className="link-globe"
+            style={{ verticalAlign: '-0.1em', marginRight: '0.28em', opacity: 0.65 }}
+          />
+        ) : null}
         {children}
       </a>
     )

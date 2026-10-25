@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import { enforceStructure } from '../lib/enforceStructure'
+import { linkifyRefsRule } from '../lib/linkifyRefs'
 import { delIBlokke } from '../lib/markdownBlokke'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
@@ -21,6 +22,10 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 // breaks:true → enkelt \n bliver et linjeskift (Jarvis emitterer inkonsistente
 // newlines; uden dette kollapser markdown dem til mellemrum = én lang smøre).
 const markdownItInstance = MarkdownIt({ typographer: true, linkify: true, breaks: true })
+// 25/10-2026 (Bjørn): linkify:true autolinker kun prosa — en hash eller URL i
+// backticks blev `code_inline` uden link. Reglen konverterer referencen til et
+// rigtigt link efter inline-parsingen, så kodeblokke forbliver kode.
+markdownItInstance.core.ruler.after('inline', 'linkify_refs', linkifyRefsRule as never)
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 const SOURCE_RE = /https?:\/\/([^\s/)\]]+)/gi

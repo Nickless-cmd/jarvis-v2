@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import remarkGfm from 'remark-gfm'
+import { KODE_REPO, commitUrl, linkifyRefs, referenceUrl } from './linkifyRefs'
+
+/** Kør den ægte kæde (parse + gfm + vores plugin) og returnér alle links.
+ *  `parse()` kører KUN parseren — transformere skal køres med `runSync`,
+ *  ellers tester man parseren og ikke pluginnet. */
+function trae(md: string) {
+  const processor = unified().use(remarkParse).use(remarkGfm).use(linkifyRefs)
+  return processor.runSync(processor.parse(md))
+}
+
+function links(md: string): string[] {
+  const fundet: string[] = []
+  const gaa = (n: { type?: string; url?: string; children?: unknown[] }): void => {
+    if (n.type === 'link' && n.url) fundet.push(n.url)
+    ;(n.children ?? []).forEach((b) => gaa(b as never))
+  }
+  gaa(trae(md) as never)
+  return fundet
+}
+
+describe('linkifyRefs — referencer bliver klikbare', () => {
+  it('gør en commit-hash i backticks til et GitHub-commit-link', () => {
+    expect(links('Commit `442b3bc85` er inde.')).toEqual([
+      `https://github.com/${KODE_REPO}/commit/442b3bc85`,
+    ])
+  })
+
+  it('gør en URL i backticks til et link — remark-gfm autolinker kun prosa', () => {
+    // Målt 25/10-2026: `https://srvlab.dk` blev inlineCode UDEN link, mens
+    // den samme URL i prosa blev autolinked. Det var hele forskellen.
+    expect(links('Se `https://srvlab.dk` her.')).toEqual(['https://srvlab.dk'])
+  })
+
+  it('bevarer badge-formen: linket bærer stadig inlineCode indeni', () => {
+    const tree = trae('`442b3bc85`')
+    const p = tree.children[0] as unknown as {
+      children: Array<{ type: string; children?: Array<{ type: string }> }>
+    }
+    const a = p.children[0]
+    expect(a?.type).toBe('link')
+    expect(a?.children?.[0]?.type).toBe('inlineCode')
+  })
+
+  it('rører ikke en hash der ikke er en hash', () => {
+    expect(links('Brug `deadbeefzz` og `min-variabel` som navne.')).toEqual([])
+  })
+
+  it('rører ikke kodeblokke, hvor en hash kan være en del af en kommando', () => {
+    const md = '```bash\ngit show 442b3bc85\n```'
+    expect(links(md)).toEqual([])
+  })
+
+  it('rører ikke prosa-links den allerede har fanget', () => {
+    // Ingen dubletter: gfm laver linket, vores plugin skal ikke lave et mere.
+    expect(links('Se https://srvlab.dk nu.')).toEqual(['https://srvlab.dk'])
+  })
+
+  it('referenceUrl afviser tomt og mellemrum', () => {
+    expect(referenceUrl('')).toBeNull()
+    expect(referenceUrl('  ')).toBeNull()
+    expect(referenceUrl('to ord')).toBeNull()
+  })
+
+  it('commitUrl peger på det repo git selv peger på', () => {
+    expect(commitUrl('abc1234')).toBe(`https://github.com/${KODE_REPO}/commit/abc1234`)
+  })
+})

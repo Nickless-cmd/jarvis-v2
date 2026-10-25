@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/routine_identity_migration.py`
+_Explicit users.json -> canonical account cutover for Routine ownership._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `IdentitySourceChanged` | `` | The source registry changed since the reviewed dry-run. | [src](../../../core/services/routine_identity_migration.py#L25) |
+| class | `IdentityMigrationConflict` | `` | At least one legacy identity cannot be linked without guessing. | [src](../../../core/services/routine_identity_migration.py#L29) |
+| class | `IdentityCutoverItem` | `` | — | [src](../../../core/services/routine_identity_migration.py#L34) |
+| class | `IdentityCutoverReport` | `` | — | [src](../../../core/services/routine_identity_migration.py#L44) |
+| method | `IdentityCutoverReport.create_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L49) |
+| method | `IdentityCutoverReport.linked_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L53) |
+| method | `IdentityCutoverReport.conflict_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L57) |
+| class | `IdentityCutoverResult` | `` | — | [src](../../../core/services/routine_identity_migration.py#L62) |
+| function | `_canonical_id` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L67) |
+| function | `_fingerprint` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L73) |
+| function | `_source_payload` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L77) |
+| function | `_watermark` | `(source)` | — | [src](../../../core/services/routine_identity_migration.py#L89) |
+| function | `_expected_target_matches` | `(external_id, row)` | Verify our deterministic target without treating its ID as proof. | [src](../../../core/services/routine_identity_migration.py#L106) |
+| function | `plan_legacy_identity_cutover` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L124) |
+| function | `apply_legacy_identity_cutover` | `(*, expected_watermark)` | — | [src](../../../core/services/routine_identity_migration.py#L165) |
+
 ## `core/services/routine_inbox.py`
 _User-controlled projections of Routine lifecycle events into durable inbox._
 
@@ -764,16 +785,4 @@ _Runtime self-model — small producer/subsystem surfaces + role helpers._
 | function | `peek_cached_runtime_surface` | `(key)` | — | [src](../../../core/services/runtime_surface_cache.py#L44) |
 | function | `get_timed_runtime_surface` | `(key, ttl_seconds, builder)` | — | [src](../../../core/services/runtime_surface_cache.py#L51) |
 | function | `invalidate_timed_runtime_surface` | `(*keys_or_prefixes)` | Drop matchende entries fra den KRYDS-TUR TIMED-cache (2026-06-30). | [src](../../../core/services/runtime_surface_cache.py#L86) |
-
-## `core/services/runtime_tasks.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `create_task` | `(*, kind, goal, origin, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…)` | — | [src](../../../core/services/runtime_tasks.py#L20) |
-| function | `list_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/services/runtime_tasks.py#L62) |
-| function | `get_task` | `(task_id)` | — | [src](../../../core/services/runtime_tasks.py#L81) |
-| function | `update_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…)` | — | [src](../../../core/services/runtime_tasks.py#L85) |
-| function | `_luk_flowet` | `(opgave, status)` | Afslut opgavens flow med samme udfald. Selv-sikker. | [src](../../../core/services/runtime_tasks.py#L128) |
-| function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L156) |
-| function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L166) |
 

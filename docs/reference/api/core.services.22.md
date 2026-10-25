@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reflection_cycle_daemon.py`
+_Reflection cycle daemon — pure experience without action, every 10 minutes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/reflection_cycle_daemon.py#L19) |
+| function | `tick_reflection_cycle_daemon` | `(snapshot, *, skip_event_gate=…)` | Generate a pure experience reflection if cadence allows. | [src](../../../core/services/reflection_cycle_daemon.py#L27) |
+| function | `_generate_reflection` | `(snapshot)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L71) |
+| function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
+| function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
+| function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
+
 ## `core/services/reflection_signal_tracking.py`
 _Reflection signal tracking — migrated onto signal_tracking_framework._
 
@@ -647,25 +659,4 @@ _Canonical, fail-closed identity resolution for Routine entry points._
 |---|---|---|---|---|
 | class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L8) |
 | function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L12) |
-
-## `core/services/routine_identity_migration.py`
-_Explicit users.json -> canonical account cutover for Routine ownership._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `IdentitySourceChanged` | `` | The source registry changed since the reviewed dry-run. | [src](../../../core/services/routine_identity_migration.py#L25) |
-| class | `IdentityMigrationConflict` | `` | At least one legacy identity cannot be linked without guessing. | [src](../../../core/services/routine_identity_migration.py#L29) |
-| class | `IdentityCutoverItem` | `` | — | [src](../../../core/services/routine_identity_migration.py#L34) |
-| class | `IdentityCutoverReport` | `` | — | [src](../../../core/services/routine_identity_migration.py#L44) |
-| method | `IdentityCutoverReport.create_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L49) |
-| method | `IdentityCutoverReport.linked_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L53) |
-| method | `IdentityCutoverReport.conflict_count` | `(self)` | — | [src](../../../core/services/routine_identity_migration.py#L57) |
-| class | `IdentityCutoverResult` | `` | — | [src](../../../core/services/routine_identity_migration.py#L62) |
-| function | `_canonical_id` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L67) |
-| function | `_fingerprint` | `(discord_id)` | — | [src](../../../core/services/routine_identity_migration.py#L73) |
-| function | `_source_payload` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L77) |
-| function | `_watermark` | `(source)` | — | [src](../../../core/services/routine_identity_migration.py#L89) |
-| function | `_expected_target_matches` | `(external_id, row)` | Verify our deterministic target without treating its ID as proof. | [src](../../../core/services/routine_identity_migration.py#L106) |
-| function | `plan_legacy_identity_cutover` | `()` | — | [src](../../../core/services/routine_identity_migration.py#L124) |
-| function | `apply_legacy_identity_cutover` | `(*, expected_watermark)` | — | [src](../../../core/services/routine_identity_migration.py#L165) |
 

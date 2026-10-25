@@ -6492,20 +6492,48 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
     # det mekanisk. KUN som observation: en heuristik der gætter på struktur må
     # ikke afvise et svar der flyder rigtigt, så den flagger og rører intet.
     # Fail-open — fejler den, sendes teksten uændret.
+    # 25/10-2026 (Bjørn, anden gang om samme svar): «en prosa med en linje til
+    # Commit e4036a383 … er rodet». Guarden SÅ fejlen, men skrev den kun i
+    # central_incidents — et flag ingen læser er ikke en kontrol, det er en log.
+    # Nu rettes afsnittene FØR de vises, med samme kontrakt som flade-
+    # korrektionen: én runde, kun de ramte afsnit, fail-open.
     try:
         from core.services.prosa_struktur_guard import fejl_i_prosa as _fejl_i_prosa
         _prosa_fejl = _fejl_i_prosa(cleaned) if cleaned else []
         if _prosa_fejl:
-            from core.runtime.db_central_incidents import record_central_incident
-            record_central_incident(
-                cluster="runtime",
-                nerve="chat_format",
-                kind="prosa_opremsning",
-                severity="info",
-                message="; ".join(_prosa_fejl)[:400],
-                dedup=True,
+            from core.services.prosa_korrektion import (
+                korriger_prosa as _korriger_prosa,
             )
-    except Exception:  # fail-open: prosa-kontrollen må aldrig blokere et svar
+            from core.services.visible_followup import (
+                stream_visible_followup as _stream_followup_prosa,
+            )
+            _prosa_rettet = _korriger_prosa(
+                cleaned,
+                _prosa_fejl,
+                stream_followup=_stream_followup_prosa,
+                provider=str(run.provider or ""),
+                model=str(run.model or ""),
+                base_messages=locals().get("base_messages") or [],
+                run_id=str(run.run_id or ""),
+                session_id=str(run.session_id or ""),
+            )
+            if _prosa_rettet != cleaned:
+                cleaned = _prosa_rettet
+            # Mål efter korrektionen: bliver der noget tilbage, er det et
+            # signal om at modellen ikke kunne rette det — ikke om at vi ikke
+            # forsøgte.
+            _prosa_tilbage = _fejl_i_prosa(cleaned) if cleaned else []
+            if _prosa_tilbage:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="runtime",
+                    nerve="chat_format",
+                    kind="prosa_opremsning",
+                    severity="info",
+                    message="; ".join(_prosa_tilbage)[:400],
+                    dedup=True,
+                )
+    except Exception:  # fail-open: prosa-korrektionen må aldrig blokere et svar
         pass
     try:
         from core.services.provider_error_guard import describe, looks_like_provider_error

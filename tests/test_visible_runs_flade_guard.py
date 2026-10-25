@@ -59,23 +59,43 @@ def test_korrekt_blok_roeres_ikke() -> None:
 
 
 def test_guarden_er_koblet_paa_den_faelles_udgang() -> None:
-    """Strukturel vagt: kaldet skal stå i persisterings-blokken, ikke kun i
+    """Strukturel vagt: kaldet skal stå i den fælles udgang, ikke kun i
     andenpas-grenen. Læser kilden — en grøn funktionstest alene kan ikke se
-    om nogen faktisk kalder den."""
+    om nogen faktisk kalder den.
+
+    Rettet 25/10-2026: vagten pegede på ``_stream_visible_run``, men guarden
+    flyttede til ``_finalize_second_pass_visible_text`` — den funktion der
+    normaliserer teksten FØR den både observeres og gemmes. Vagten blev derfor
+    falsk-rød: den ledte et sted hvor guarden ikke længere hører hjemme, og
+    kunne hverken se koblingen eller mangle den. Nu måler den funktionen.
+    """
     import inspect
 
     from core.services import visible_runs
 
     kilde = inspect.getsource(visible_runs)
-    # Persisterings-blokken er den fælles udgang.
-    i_persist = kilde.find("_persist_session_assistant_message(\n                    run, visible_output_text")
-    assert i_persist > 0, "persisterings-kaldet blev ikke fundet"
-    # Guarden skal stå FØR persisteringen i samme blok.
-    i_guard = kilde.rfind("jarvis_ui_guard import normalisér", 0, i_persist)
-    assert i_guard > 0, (
+    i_funktion = kilde.find("def _finalize_second_pass_visible_text(")
+    assert i_funktion > 0, "_finalize_second_pass_visible_text blev ikke fundet"
+    # Funktionens krop slutter ved næste top-level def.
+    i_slut = kilde.find("\ndef ", i_funktion + 10)
+    krop = kilde[i_funktion:i_slut if i_slut > 0 else len(kilde)]
+
+    # Flade-guarden: normaliserer jarvis-ui-blokke.
+    assert "jarvis_ui_guard import normalisér" in krop, (
         "jarvis-ui-guarden kaldes ikke på den fælles udgang — kun i "
         "andenpas-grenen. Det var præcis fejlen 24/10-2026."
     )
-    # Og den skal være tæt på: inden for samme blok, ikke hundrede linjer væk.
-    afstand = kilde[i_guard:i_persist].count("\n")
-    assert afstand < 40, f"guarden står {afstand} linjer før persisteringen — for langt væk"
+    # Prosa-korrektionen: retter smøre-afsnit FØR de vises (25/10-2026).
+    # Målt 25/10-2026: navnet står også i import-linjen, så en vagt der blot
+    # leder efter «korriger_prosa» er grøn selv når kaldet er væk. Den kræver
+    # kalde-formen — navnet efterfulgt af en parentes.
+    assert "_korriger_prosa(" in krop, (
+        "prosa-korrektionen kaldes ikke på den fælles udgang — så er guarden "
+        "igen kun en log, ikke en kontrol."
+    )
+    # Og den skal køre FØR teksten returneres.
+    i_prosa = krop.find("_korriger_prosa(")
+    i_return = krop.rfind("return cleaned")
+    assert i_return > i_prosa > 0, (
+        "prosa-korrektionen står efter return — den kan ikke påvirke svaret."
+    )

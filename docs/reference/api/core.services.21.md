@@ -86,6 +86,16 @@ _Proprioception Metrics — process-level body sense._
 | function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
 | function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
 
+## `core/services/prosa_korrektion.py`
+_Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L70) |
+| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L93) |
+| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L112) |
+| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L130) |
+
 ## `core/services/prosa_struktur_guard.py`
 _Mekanisk kontrol: et afsnit under en overskrift der opremser tre eller flere_
 
@@ -619,16 +629,4 @@ _Recursion guard for autonomous agent dispatch._
 | function | `exit` | `(now_ts=…)` | Release one concurrency slot (also reclaims stale entries). | [src](../../../core/services/recursion_guard.py#L142) |
 | function | `effective_max_fanout` | `()` | The live fan-out ceiling (runtime-state override or default). Callers use it | [src](../../../core/services/recursion_guard.py#L154) |
 | function | `active_count` | `(now_ts=…)` | Number of live (non-stale) concurrency slots currently held. | [src](../../../core/services/recursion_guard.py#L160) |
-
-## `core/services/reflection_cycle_daemon.py`
-_Reflection cycle daemon — pure experience without action, every 10 minutes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/reflection_cycle_daemon.py#L19) |
-| function | `tick_reflection_cycle_daemon` | `(snapshot, *, skip_event_gate=…)` | Generate a pure experience reflection if cadence allows. | [src](../../../core/services/reflection_cycle_daemon.py#L27) |
-| function | `_generate_reflection` | `(snapshot)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L71) |
-| function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
-| function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
-| function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
 

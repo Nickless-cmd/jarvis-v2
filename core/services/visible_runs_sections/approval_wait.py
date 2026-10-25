@@ -146,6 +146,31 @@ async def wait_for_approval(
     ``None`` ved afvisning/udløb. Kalderen afgør hvad der så skal ske — denne
     enhed tager ikke stilling til afvisningens ordlyd.
 
+    ## ``out["outcome"]`` — nej og udløb er IKKE det samme (25/10-2026)
+
+    Før denne nøgle fandtes, fik begge kaldesteder kun ``result_text = None``
+    og skrev derfor **«Tool call denied by user»** — også når ingen havde svaret
+    og fristen blot løb ud. Målt i koden: `visible_first_pass_results.py:190`
+    og `visible_runs.py:4585` gør præcis det samme, og begge steder er ordet
+    «user» en påstand om et menneske der aldrig var der.
+
+    Bjørn 25/10-2026: «approval cards må ikk kunne dø et run, der skal være en
+    timer på og har du ikk fået approval godkendt, for du en besked og afslutter
+    selv runnet og afventer næste træk.»
+
+    Derfor bærer ``out["outcome"]`` nu én af fire værdier, og kalderen SKAL
+    skelne dem:
+
+    ``approved``   — et menneske sagde ja; ``result_text`` er svaret.
+    ``denied``     — et menneske sagde nej.
+    ``expired``    — fristen løb ud uden svar. Runnet skal afslutte sig selv
+                     pænt og vente på næste træk, ikke fortsætte som om nogen
+                     sagde nej.
+    ``timeout``    — venteløkkens eget vindue løb ud før tilstanden blev sat
+                     (kan ske hvis fejeren i den anden proces ikke har nået
+                     posten endnu). Behandles som ``expired``, men siges højt,
+                     fordi det er en anden fejl.
+
     Frames der yieldes er heartbeats i samme form som ``run_tool_batch``s, så
     klienten ikke skal kende to formater for "jeg arbejder stadig".
     """
@@ -161,6 +186,9 @@ async def wait_for_approval(
     beats = 0
     started = loop.time()
     resolved: str | None = None
+    # Sættes i hver udgang nedenfor. `timeout` er udgangspunktet, så en vej der
+    # glemmer at sætte den, ikke kan se ud som et svar fra et menneske.
+    outcome = "timeout"
 
     logger.info(
         "approval-wait-start run_id=%s round=%d approval_id=%s tool=%s window_s=%.0f",
@@ -174,12 +202,14 @@ async def wait_for_approval(
         status = str(state.get("status") or "")
         if status == "approved":
             resolved = str(state.get("result_text") or "")
+            outcome = "approved"
             logger.info(
                 "approval-resolved run_id=%s approval_id=%s result_chars=%d waited_s=%.0f",
                 run_id, approval_id, len(resolved), loop.time() - started,
             )
             break
         if status in {"denied", "expired"}:
+            outcome = status
             logger.info(
                 "approval-rejected run_id=%s approval_id=%s status=%s waited_s=%.0f",
                 run_id, approval_id, status, loop.time() - started,
@@ -216,3 +246,55 @@ async def wait_for_approval(
     for payload in _drain_live_frames(approval_id):
         yield _sse("tool_output_delta", payload)
     out["result_text"] = resolved
+    out["outcome"] = outcome
+
+    # ── Fristen løb ud: sig det, og lad runnet afslutte sig selv ────────────
+    #
+    # Bjørn 25/10-2026: «har du ikk fået approval godkendt, for du en besked og
+    # afslutter selv runnet og afventer næste træk.»
+    #
+    # Beskeden sendes HER og ikke i kalderen, fordi der er TO kaldesteder der
+    # ellers skulle huske den hver for sig — og det er præcis den duplikering
+    # denne fil blev udtrukket for at fjerne. Fejler notifikationen, må det
+    # ikke vælte venteløkken: runnet skal stadig kunne afslutte pænt.
+    if outcome in {"expired", "timeout"}:
+        _varsko_om_udloeb(
+            approval_id=approval_id, tool_name=tool_name, run_id=run_id,
+            waited_s=loop.time() - started, outcome=outcome,
+        )
+
+
+def _varsko_om_udloeb(*, approval_id: str, tool_name: str, run_id: str,
+                      waited_s: float, outcome: str) -> None:
+    """Fortæl ejeren at et godkendelses-kort faldt på gulvet. Kaster aldrig.
+
+    ## Hvorfor den findes (25/10-2026)
+
+    Et kort der udløber er en tavs begivenhed: runnet fortsatte som om nogen
+    havde sagt nej, og Bjørn fik aldrig at vide at der havde ligget noget og
+    ventet på ham. Målt i koden før dette: nul notifikationer ved udløb —
+    `approval_expiry_daemon` loggede kun til logfilen.
+
+    `outcome` er med i teksten, fordi `timeout` og `expired` er to forskellige
+    fejl: den ene er «du svarede ikke», den anden er «fejeren nåede ikke
+    posten». At skrive det samme for begge ville skjule den anden.
+    """
+    try:
+        from core.services import notifikations_emittere
+
+        grund = ("fristen løb ud" if outcome == "expired"
+                 else "ventevinduet løb ud før posten blev markeret")
+        notifikations_emittere.system(
+            "approval_expired",
+            f"Godkendelsen af {tool_name} udløb",
+            f"Ingen svarede inden for {int(waited_s)}s ({grund}). "
+            "Runnet afsluttede sig selv og venter på næste træk.",
+            ref=approval_id,
+            data={"approval_id": approval_id, "run_id": run_id,
+                  "tool": tool_name, "outcome": outcome},
+        )
+    except Exception:
+        logger.warning(
+            "approval-expiry-notify fejlede approval_id=%s", approval_id,
+            exc_info=True,
+        )

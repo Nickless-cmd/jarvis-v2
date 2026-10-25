@@ -188,14 +188,30 @@ async def publish_first_pass_results(
                     )
                     unregister_live_approval(approval_id)
             approved_text = approval_out["result_text"]
+            # `outcome` skelner et menneskes nej fra en frist der løb ud
+            # (25/10-2026). Før skrev begge grene «denied by user», også når
+            # ingen havde svaret — en påstand om et menneske der ikke var der.
+            _udfald = str(approval_out.get("outcome") or "denied")
             if approved_text is None:
-                resolved[idx] = f"[{sr['tool_name']}]: Tool call denied by user."
-                surface_tool_result(sr, "denied")
-                yield _vr._sse("capability", {
-                    "type": "tool_denied",
-                    "tool": sr["tool_name"],
-                    "capability_id": str(sr.get("call_id") or ""),
-                })
+                if _udfald in {"expired", "timeout"}:
+                    resolved[idx] = (
+                        f"[{sr['tool_name']}]: Godkendelsen udløb uden svar — "
+                        "kaldet blev ikke udført."
+                    )
+                    surface_tool_result(sr, "expired")
+                    yield _vr._sse("capability", {
+                        "type": "tool_expired",
+                        "tool": sr["tool_name"],
+                        "capability_id": str(sr.get("call_id") or ""),
+                    })
+                else:
+                    resolved[idx] = f"[{sr['tool_name']}]: Tool call denied by user."
+                    surface_tool_result(sr, "denied")
+                    yield _vr._sse("capability", {
+                        "type": "tool_denied",
+                        "tool": sr["tool_name"],
+                        "capability_id": str(sr.get("call_id") or ""),
+                    })
             else:
                 resolved[idx] = approved_text
                 surface_tool_result(sr, "ok")

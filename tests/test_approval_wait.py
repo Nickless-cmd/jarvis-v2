@@ -222,3 +222,85 @@ class TestKaldesteder:
         src = inspect.getsource(visible_runs)
         assert "approval-wait-start" not in src, (
             "en ventelokke er tilbage i visible_runs — den yielder næppe frames")
+
+
+class TestUdfald:
+    """Nej og udløb er IKKE det samme (25/10-2026).
+
+    Bjørn: «approval cards må ikk kunne dø et run, der skal være en timer på og
+    har du ikk fået approval godkendt, for du en besked og afslutter selv runnet
+    og afventer næste træk.»
+
+    Før denne klasse fandtes, fik begge kaldesteder kun `result_text = None` og
+    skrev «Tool call denied by user» — også når fristen blot løb ud. Ordene
+    «by user» var en påstand om et menneske der aldrig svarede.
+    """
+
+    def test_godkendt_melder_approved(self):
+        _, out = _drive([{"status": "approved", "result_text": "kørt"}])
+        assert out["outcome"] == "approved"
+
+    def test_afvist_melder_denied(self):
+        _, out = _drive([{"status": "denied"}])
+        assert out["outcome"] == "denied"
+
+    def test_udloeb_melder_expired_ikke_denied(self):
+        """Kernen: et udløb må ikke kunne læses som et menneskes nej."""
+        _, out = _drive([{"status": "expired"}])
+        assert out["outcome"] == "expired"
+        assert out["outcome"] != "denied"
+
+    def test_vindue_der_loeb_ud_melder_timeout(self):
+        """Fejeren i den anden proces kan nå at sætte `expired` — eller ikke.
+        Løber vinduet ud først, er udfaldet `timeout`, ikke `denied`."""
+        _, out = _drive([{"status": "pending"}], window_s=30.0, tick_s=5.0)
+        assert out["outcome"] == "timeout"
+
+    def test_outcome_saettes_altid(self):
+        """Kalderen læser `outcome` ubetinget — en manglende nøgle ville give
+        KeyError midt i et run, præcis når noget allerede er galt."""
+        for state in ({"status": "approved", "result_text": ""},
+                      {"status": "denied"}, {"status": "expired"}):
+            _, out = _drive([state])
+            assert "outcome" in out
+            assert out["outcome"] in {"approved", "denied", "expired", "timeout"}
+
+    def test_udloeb_sender_besked_til_ejeren(self, monkeypatch):
+        """Bjørn skal have besked når kortet faldt på gulvet — ellers er
+        udløbet en tavs begivenhed han aldrig ser."""
+        sendt: list[tuple] = []
+        from core.services import notifikations_emittere
+        monkeypatch.setattr(
+            notifikations_emittere, "system",
+            lambda slags, titel, tekst="", **kw: sendt.append((slags, titel, tekst, kw)),
+        )
+        _drive([{"status": "expired"}])
+        assert sendt, "udløbet sendte INGEN besked"
+        slags, titel, tekst, kw = sendt[0]
+        assert slags == "approval_expired"
+        assert "bash" in titel
+        assert kw.get("ref") == "approval-test"
+
+    def test_afvisning_sender_ikke_udloebsbesked(self, monkeypatch):
+        """Et nej er et svar. Det skal ikke give en «du svarede ikke»-besked."""
+        sendt: list[tuple] = []
+        from core.services import notifikations_emittere
+        monkeypatch.setattr(
+            notifikations_emittere, "system",
+            lambda *a, **kw: sendt.append((a, kw)),
+        )
+        _drive([{"status": "denied"}])
+        assert not sendt, "et menneskes nej blev rapporteret som et udløb"
+
+    def test_besked_fejl_vaelter_ikke_venteloekken(self, monkeypatch):
+        """Notifikationen er vigtig, men runnet er vigtigere: kan beskeden ikke
+        sendes, skal venteløkken stadig afslutte pænt med sit udfald."""
+        from core.services import notifikations_emittere
+
+        def _braender(*_a, **_kw):
+            raise RuntimeError("notifikationslaget er nede")
+
+        monkeypatch.setattr(notifikations_emittere, "system", _braender)
+        _, out = _drive([{"status": "expired"}])
+        assert out["outcome"] == "expired"
+        assert out["result_text"] is None

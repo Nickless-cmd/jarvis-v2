@@ -4583,14 +4583,28 @@ async def _stream_visible_run(
                                     from core.services.visible_runs_sections.approval_wait import unregister_live_approval
                                     unregister_live_approval(_a_apid)
                             _a_res = _a_appr_out["result_text"]
+                            # Samme skelnen som den simple gren (25/10-2026):
+                            # et udløb er ikke et nej fra et menneske.
+                            _a_udfald = str(_a_appr_out.get("outcome") or "denied")
                             if _a_res is None:
-                                _a_resolved[_a_idx] = (
-                                    f"[{_a_sr['tool_name']}]: Tool call denied by user."
-                                )
-                                surface_tool_result(_a_sr, "denied")
-                                yield _sse("capability", {
-                                    "type": "tool_denied", "tool": _a_sr["tool_name"]
-                                })
+                                if _a_udfald in {"expired", "timeout"}:
+                                    _a_resolved[_a_idx] = (
+                                        f"[{_a_sr['tool_name']}]: Godkendelsen udløb "
+                                        "uden svar — kaldet blev ikke udført."
+                                    )
+                                    surface_tool_result(_a_sr, "expired")
+                                    yield _sse("capability", {
+                                        "type": "tool_expired",
+                                        "tool": _a_sr["tool_name"],
+                                    })
+                                else:
+                                    _a_resolved[_a_idx] = (
+                                        f"[{_a_sr['tool_name']}]: Tool call denied by user."
+                                    )
+                                    surface_tool_result(_a_sr, "denied")
+                                    yield _sse("capability", {
+                                        "type": "tool_denied", "tool": _a_sr["tool_name"]
+                                    })
                             else:
                                 _a_resolved[_a_idx] = _a_res
                                 surface_tool_result(_a_sr, "ok")

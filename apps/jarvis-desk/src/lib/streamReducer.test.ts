@@ -589,4 +589,70 @@ describe('udgivet fil i den levende strøm (7/10-2026)', () => {
     expect(blokke.map((b) => b.type)).toEqual(['skill_surface', 'text'])
     for (const b of blokke) expect(b).toBeDefined()
   })
+
+  // ── Tekst-korrektion (25/10-2026) ────────────────────────────────────────
+  //
+  // Backend retter svaret EFTER streaming og sender `scan_correction`. Målt
+  // 25/10: Bjørn så en rå `jarvis-ui`-blok kl. 13:17, mens det gemte svar
+  // havde korrekte hegn — eventen blev kastet væk i reduceren, fordi kind'en
+  // var ukendt. Disse tests værner at rettelsen når skærmen.
+  describe('scan_correction — den rettede tekst skal nå skærmen', () => {
+    const start = (): StreamEvent => ({
+      type: 'message_start',
+      message: { id: 'r1', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } },
+    })
+    const korrektion = (corrected: unknown): StreamEvent =>
+      ({ type: 'system_event', kind: 'scan_correction', payload: { run_id: 'r1', corrected } })
+
+    const medSvar = (tekst: string) => {
+      let s = reduce([start()])
+      s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
+      s = streamReducer(s, { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: tekst } })
+      return s
+    }
+
+    it('erstatter den viste tekst med den korrigerede', () => {
+      // MUTATION: fjern `scan_correction`-grenen → teksten bliver den rå → fejler.
+      const raa = 'Se her:\njarvis-ui {"type":"callout","tone":"info","title":"T","body":"B"}'
+      const rettet = 'Se her:\n```jarvis-ui\n{"type":"callout","tone":"info","title":"T","body":"B"}\n```'
+      const s = streamReducer(medSvar(raa), korrektion(rettet))
+      expect(liveBlokke(s).filter((b) => b.type === 'text')).toEqual([
+        { type: 'text', text: rettet, phase: undefined },
+      ])
+    })
+
+    it('rører ikke blokke før den sidste — kun svaret rettes', () => {
+      // MUTATION: erstat blok 0 i stedet for den sidste → commentary ødelagt → fejler.
+      let s = reduce([start()])
+      s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'commentary' } })
+      s = streamReducer(s, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: 'rå svar' } })
+      s = streamReducer(s, korrektion('rettet svar'))
+      const tekster = liveBlokke(s).filter((b) => b.type === 'text')
+      expect(tekster[0]).toEqual({ type: 'text', text: 'commentary', phase: undefined })
+      expect(tekster[1]).toEqual({ type: 'text', text: 'rettet svar', phase: undefined })
+    })
+
+    it('ignorerer tom og ugyldig korrektion', () => {
+      const raa = 'uændret svar'
+      const før = medSvar(raa)
+      for (const vaerdi of ['', undefined, null, 42]) {
+        expect(streamReducer(før, korrektion(vaerdi))).toBe(før)
+      }
+    })
+
+    it('er en no-op når teksten allerede er den korrigerede', () => {
+      const før = medSvar('allerede korrekt')
+      expect(streamReducer(før, korrektion('allerede korrekt'))).toBe(før)
+    })
+
+    it('uden en text-blok bliver den korrigerede tekst den levende tekst', () => {
+      // MUTATION: returnér `state` uændret når der ingen text-blok findes
+      // → en sen-tilkoblet klient beholder den rå tekst → fejler.
+      let s = reduce([start()])
+      s = streamReducer(s, { type: 'system_event', kind: 'provisional_text_delta', payload: { run_id: 'r1', delta: 'rå rest' } })
+      expect(s.provisionalText).toBe('rå rest')
+      s = streamReducer(s, korrektion('rettet svar'))
+      expect(s.provisionalText).toBe('rettet svar')
+    })
+  })
 })

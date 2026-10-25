@@ -511,6 +511,51 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             || blocks.some((block) => block?.type === 'text' && block.phase === 'final_answer'),
         }
       }
+      // ── TEKST-KORREKTION (25/10-2026) ──────────────────────────────────────
+      //
+      // Backend retter svaret EFTER det er streamet: flade-guarden sætter hegn
+      // på en bar `jarvis-ui`-blok, prosa-korrektionen gør et smøre-afsnit til
+      // punkter. Den rettede tekst gemmes korrekt — og blev SENDT som
+      // `scan_correction` (SSE-v1). Men translatoren pakker ukendte navne som
+      // `system_event(kind = event_name)`, og reduceren ignorerede ukendte
+      // kinds. Så korrektionen nåede aldrig skærmen.
+      //
+      // Målt 25/10-2026: Bjørn så en rå `jarvis-ui`-blok kl. 13:17, mens det
+      // gemte svar i DB'en havde korrekte hegn. Backend og frontend var enige
+      // om teksten — kun skærmen var uenig, fordi eventen blev kastet væk her.
+      //
+      // `corrected` er HELE svaret, ikke en delta. Vi erstatter derfor den
+      // sidste text-blok — det er den brugeren læser som svaret. Blokke før
+      // den (commentary, værktøj) står urørt.
+      if (event.kind === 'scan_correction') {
+        const raa = (event.payload as { corrected?: unknown })?.corrected
+        // Kun en ægte streng er en korrektion. Et tal (`42`) blev tidligere
+        // kastet til `"42"` og overskrev hele svaret — målt i test 25/10.
+        if (typeof raa !== 'string' || !raa) return state
+        const corrected = raa
+        let sidste = -1
+        for (let i = state.blocks.length - 1; i >= 0; i -= 1) {
+          const b = state.blocks[i]
+          if (b && b.type === 'text') { sidste = i; break }
+        }
+        if (sidste < 0) {
+          // Ingen text-blok endnu (kan ske ved sen tilkobling): den korrigerede
+          // tekst ER svaret, så den bliver den levende tekst.
+          return { ...state, provisionalText: corrected }
+        }
+        const current = state.blocks[sidste]
+        if (!current || current.type !== 'text' || current.text === corrected) return state
+        const blocks = state.blocks.slice()
+        blocks[sidste] = { ...current, text: corrected }
+        return {
+          ...state,
+          blocks,
+          // Pacingen skriver stadig til den gamle tekst; den korrigerede er
+          // facit, så den levende rest må ikke overskrive den bagefter.
+          provisionalText: '',
+          usage: { ...state.usage, output: estimateOutputTokens(blocks) },
+        }
+      }
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.

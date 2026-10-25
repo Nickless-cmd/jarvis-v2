@@ -13,6 +13,8 @@ from collections import Counter
 _FENCE_RE = re.compile(r"```(?P<lang>[^\n`]*)\n(?P<body>.*?)```", re.DOTALL)
 _TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
 _HEADING_RE = re.compile(r"^#{1,6}\s+\S", re.MULTILINE)
+_HEADING_LINE_RE = re.compile(r"^#{1,6}\s+(?P<tekst>.+)$", re.MULTILINE)
+_EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF]", flags=re.UNICODE)
 _BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\S", re.MULTILINE)
 
 #: Et svar med så mange afsnit og nul hierarki er ikke "roligt" — det er en mur
@@ -40,6 +42,28 @@ def _hierarchy_signals(prose: str, paragraphs: list[str]) -> list[dict[str, obje
     return [{"kind": "missing_hierarchy", "paragraphs": len(paragraphs)}]
 
 
+def _emoji_heading_signals(prose: str) -> list[dict[str, object]]:
+    """Mål om overskrifterne bærer emoji — den form Bjørn bad om 25/10-2026.
+
+    Målt på 150 svar med profilens emoji-knap på max: kun 1 % af svarene havde
+    en emoji i overskriften. Det var ikke manglende vilje — profilteksten var
+    skrevet som et loft («højst en eller to»), så der var intet at skrue op til.
+    Signalet tæller hvor ofte formen faktisk er der, så en ændring i teksten kan
+    efterprøves i stedet for at blive diskuteret. Det rører aldrig teksten.
+    """
+    overskrifter = _HEADING_LINE_RE.findall(prose)
+    if not overskrifter:
+        return []
+    uden = [h for h in overskrifter if not _EMOJI_RE.search(h)]
+    if not uden:
+        return []
+    return [{
+        "kind": "heading_without_emoji",
+        "headings": len(overskrifter),
+        "without_emoji": len(uden),
+    }]
+
+
 def analyse_chat_response(text: str, *, wall_chars: int = 600) -> list[dict[str, object]]:
     """Return measurable quality signals for a final chat response."""
     raw = str(text or "").strip()
@@ -62,6 +86,8 @@ def analyse_chat_response(text: str, *, wall_chars: int = 600) -> list[dict[str,
     prose = _FENCE_RE.sub("", raw).strip()
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", prose) if p.strip()]
     for signal in _hierarchy_signals(prose, paragraphs):
+        signals.append(signal)
+    for signal in _emoji_heading_signals(prose):
         signals.append(signal)
     try:
         from core.services.wall_guard import find_walls

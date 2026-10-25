@@ -65,3 +65,27 @@ def test_kvalitetsvagten_ser_manglende_hierarki() -> None:
     # Et kort svar må ikke tvinges til at have hierarki.
     kort = "Ja, den er rettet.\n\nFejlen sad i guarden."
     assert "missing_hierarchy" not in {s["kind"] for s in analyse_chat_response(kort)}
+
+
+def test_emoji_i_overskriften_maales_men_aendrer_aldrig_teksten() -> None:
+    """Bjørn 25/10-2026: «hvis jeg ikk beder dig om det så går du det ikk».
+
+    Målt på 150 svar med emoji-knappen på max: kun 1 % havde en emoji i
+    overskriften. Signalet gør forskellen målbar, så teksten kan efterprøves
+    i stedet for at blive diskuteret — og det må ALDRIG røre svaret.
+    """
+    from core.services.visible_chat_quality import analyse_chat_response
+
+    def emoji_signal(text: str) -> list[dict[str, object]]:
+        return [s for s in analyse_chat_response(text) if s["kind"] == "heading_without_emoji"]
+
+    med = "## 💬 Chat-fladen\n\nA.\n\n## 🧠 Hukommelse\n\nB."
+    uden = "## Chat-fladen\n\nA.\n\n## Hukommelse\n\nB."
+    blandet = "## 💬 Chat-fladen\n\nA.\n\n## Hukommelse\n\nB."
+
+    assert emoji_signal(med) == []
+    assert emoji_signal(uden) == [{"kind": "heading_without_emoji", "headings": 2, "without_emoji": 2}]
+    assert emoji_signal(blandet) == [{"kind": "heading_without_emoji", "headings": 2, "without_emoji": 1}]
+
+    # Diagnostik, ikke en rettelse: teksten skal komme uændret ud.
+    assert analyse_chat_response(uden) is not None

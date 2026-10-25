@@ -186,6 +186,145 @@ def oversaet_til_dansk(tekst: str, *, kontekst: str = "opskrift") -> tuple[str, 
     return rent, False
 
 
+# ── Ullas Opskrifter — PRIMÆR dansk kilde ────────────────────────────────
+# Målt live 25/10-2026: 1.263 ægte danske opskrifter, nøglefri, read-only.
+# Bjørn: «synes der er underligt hvis der ikke findes en eneste dansk
+# database» — han havde ret, og den oprindelige konklusion («ingen dansk
+# API findes») var forkert. Ullas er en MCP-server, ikke et REST-endpoint,
+# og det var derfor den ikke blev fundet: jeg søgte efter et API.
+#
+# Derfor er rækkefølgen vendt om: dansk søgeord går UÆNDRET til Ullas, og
+# oversættelseslaget bruges kun hvis Ullas giver nul. Det er hele pointen —
+# en oversat søgning mod en engelsk base kan aldrig give en ægte dansk
+# opskrift, kun en oversat en.
+_ULLAS = "ullas-opskrifter"
+
+
+def _ullas_kald(vaerktoej: str, argumenter: dict[str, Any]) -> Any:
+    """Kald Ullas-MCP og returnér den parsede JSON-payload.
+
+    Svarformen er ``{"content": [{"type": "text", "text": "<json>"}]}`` —
+    opskriften ligger som en JSON-STRENG i ``text``, ikke som et objekt.
+    Fejl returneres som ``None``; kalderen falder så tilbage til de
+    engelske kilder i stedet for at vælte.
+    """
+    try:
+        from core.services import mcp_manager
+
+        svar = mcp_manager.call(_ULLAS, vaerktoej, argumenter)
+    except Exception as exc:  # noqa: BLE001 — en død MCP må ikke dræbe opslaget
+        logger.info("madopskrift: Ullas utilgængelig (%s): %s", vaerktoej, exc)
+        return None
+    if not isinstance(svar, dict) or svar.get("status") == "error":
+        logger.info("madopskrift: Ullas svarede fejl: %s", str(svar)[:200])
+        return None
+    indhold = svar.get("content") or []
+    if not indhold:
+        return None
+    tekst = str((indhold[0] or {}).get("text") or "").strip()
+    # MCP-laget pakker svaret ind i en «[UTROET kilde=…]» … «[/UTROET]»-ramme.
+    # Den er en sikkerhedsmarkering, ikke data. Målt 25/10-2026: JSON'en står
+    # mellem de to mærker, så et rent ``json.loads`` på hele strengen fejler
+    # med «Extra data: line 2 column 1» — halen efter objektet er ikke JSON.
+    start = tekst.find("{")
+    if start < 0:
+        return None
+    slut = tekst.rfind("}")
+    if slut < start:
+        return None
+    try:
+        return json.loads(tekst[start:slut + 1])
+    except json.JSONDecodeError as exc:  # forklaret: en MCP kan svare ikke-JSON
+        # En MCP-server er ekstern og kan svare HTML, en fejlside eller en
+        # tom streng. Det er ikke en fejl i vores kode, og opslaget skal
+        # falde tilbage til de engelske kilder i stedet for at vælte — men
+        # det skal kunne ses i loggen at svaret ikke var JSON.
+        logger.info("madopskrift: Ullas svarede ikke-JSON (%s): %s", vaerktoej, exc)
+        return None
+
+
+def _ullas_soeg(dansk: str, *, limit: int = 8) -> list[dict[str, Any]]:
+    """Søg i Ullas med det DANSKE ord, uændret.
+
+    Fælde målt 25/10-2026: parameteren hedder ``q``, ikke ``query``.
+    ``query`` giver ``MCP error -32602: expected string, received undefined``.
+    """
+    data = _ullas_kald("search_recipes", {"q": dansk})
+    if not isinstance(data, dict):
+        return []
+    ud: list[dict[str, Any]] = []
+    for r in (data.get("recipes") or [])[:limit]:
+        ud.append({
+            "id": f"ullas:{r.get('slug') or r.get('id')}",
+            "navn": r.get("title") or "",
+            "kategori": "",
+            "omraade": "Dansk",
+            "billede": r.get("imageUrl") or "",
+            "portioner": r.get("servings") or "",
+            "kilde": "Ullas Opskrifter",
+        })
+    return ud
+
+
+def _ullas_hent(ident: str) -> dict[str, Any] | None:
+    """Hent én Ullas-opskrift. ``ident`` er slug eller numerisk id."""
+    data = _ullas_kald("recipes_get", {"id_or_slug": ident})
+    if not isinstance(data, dict):
+        return None
+    opskrift = data.get("recipe") if isinstance(data.get("recipe"), dict) else data
+    if not isinstance(opskrift, dict) or not opskrift.get("title"):
+        return None
+
+    # Fælde målt 25/10-2026: ``ingredients`` er ÉN streng med linjeskift,
+    # ikke en liste. Naiv iteration giver tegn-for-tegn («p», «k», «.»).
+    raa_ing = opskrift.get("ingredients")
+    if isinstance(raa_ing, str):
+        ingredienser = [linje.strip() for linje in raa_ing.split("\n") if linje.strip()]
+    elif isinstance(raa_ing, list):
+        ingredienser = [str(i).strip() for i in raa_ing if str(i).strip()]
+    else:
+        ingredienser = []
+
+    kategorier = opskrift.get("categories") or []
+    kategori = ""
+    if isinstance(kategorier, list) and kategorier and isinstance(kategorier[0], dict):
+        kategori = str(kategorier[0].get("name") or "")
+
+    return {
+        "navn": opskrift.get("title") or "",
+        "kategori": kategori,
+        "omraade": "Dansk",
+        "billede": opskrift.get("imageUrl") or "",
+        "portioner": opskrift.get("servings") or "",
+        "ingredienser": ingredienser,
+        "fremgangsmaade": str(opskrift.get("instructions") or "").strip(),
+        "noter": str(opskrift.get("notes") or "").strip(),
+        "kilde": "Ullas Opskrifter",
+        "url": opskrift.get("pageUrl") or "",
+    }
+
+
+def _ullas_koleskab(ingredienser: list[str], *, limit: int = 8) -> list[dict[str, Any]]:
+    """Find danske retter ud fra råvarer. Ét opslag pr. ingrediens, flettet."""
+    set_ = []
+    for ing in ingredienser[:4]:
+        data = _ullas_kald("ingredients_search_recipes", {"ingredient": ing})
+        if not isinstance(data, dict):
+            continue
+        for r in data.get("recipes") or []:
+            set_.append({
+                "id": f"ullas:{r.get('slug') or r.get('id')}",
+                "navn": r.get("title") or "",
+                "kategori": "",
+                "omraade": "Dansk",
+                "billede": r.get("imageUrl") or "",
+                "portioner": r.get("servings") or "",
+                "kilde": "Ullas Opskrifter",
+            })
+    set_ = [r for r in set_ if r["navn"]]
+    return set_[:limit]
+
+
 # ── Kilder ───────────────────────────────────────────────────────────────
 
 def _themealdb_soeg(engelsk: str, *, limit: int = 8) -> list[dict[str, Any]]:
@@ -324,6 +463,22 @@ def _soeg(args: dict[str, Any]) -> dict[str, Any]:
     if not raa:
         return {"status": "error", "error": "soegning mangler — skriv et dansk mad-ord"}
 
+    # 1) ULLAS FØRST — dansk ord, uændret, ingen oversættelse.
+    # Målt 25/10-2026: 1.263 ægte danske opskrifter. En oversat søgning mod
+    # en engelsk base kan per definition ikke give en dansk opskrift.
+    ullas = _ullas_soeg(raa)
+    if ullas:
+        return {
+            "status": "ok",
+            "dansk_term": raa,
+            "antal": len(ullas),
+            "resultater": ullas,
+            "kilde": "Ullas Opskrifter (dansk)",
+            "oversat": False,
+            "naeste_skridt": "Kald handling='hent' med et id for den fulde opskrift på dansk.",
+        }
+
+    # 2) Fallback: de engelske kilder med oversættelseslaget.
     engelsk, kilde = oversaet_ord_til_engelsk(raa)
 
     resultater: list[dict[str, Any]] = []
@@ -406,12 +561,34 @@ def _soeg(args: dict[str, Any]) -> dict[str, Any]:
 def _hent(args: dict[str, Any]) -> dict[str, Any]:
     raa_id = str(args.get("id") or "").strip()
     if not raa_id:
-        return {"status": "error", "error": "id mangler (fx 'themealdb:52965')"}
+        return {"status": "error", "error": "id mangler (fx 'ullas:boller' eller 'themealdb:52965')"}
 
     if ":" in raa_id:
         kilde, _, ident = raa_id.partition(":")
     else:
         kilde, ident = "themealdb", raa_id
+
+    # Ullas-opskrifter er ALLEREDE på dansk — de skal ikke oversættes.
+    # Det er forskellen der gør kilden værd at have: oversættelseslaget
+    # kan fejle, og en dansk opskrift der er «oversat» til dansk er støj.
+    if kilde == "ullas":
+        opskrift = _ullas_hent(ident)
+        if not opskrift:
+            return {"status": "error", "error": f"fandt ingen Ullas-opskrift med id «{raa_id}»"}
+        return {
+            "status": "ok",
+            "id": raa_id,
+            "navn": opskrift["navn"],
+            "portioner": opskrift["portioner"],
+            "ingredienser": opskrift["ingredienser"],
+            "fremgangsmaade": opskrift["fremgangsmaade"],
+            "noter": opskrift.get("noter") or "",
+            "kategori": opskrift.get("kategori") or "",
+            "billede": opskrift.get("billede") or "",
+            "url": opskrift.get("url") or "",
+            "kilde": "Ullas Opskrifter",
+            "oversat": False,
+        }
 
     if kilde == "myplate":
         opskrift = _myplate_hent(ident)
@@ -469,6 +646,20 @@ def _koleskab(args: dict[str, Any]) -> dict[str, Any]:
     if not dele:
         return {"status": "error", "error": "ingredienser mangler — fx 'kylling, ris, løg'"}
 
+    # 1) ULLAS FØRST — råvarerne er allerede danske, så de sendes uændret.
+    ullas = _ullas_koleskab(dele)
+    if ullas:
+        return {
+            "status": "ok",
+            "ingredienser": dele,
+            "antal": len(ullas),
+            "resultater": ullas,
+            "kilde": "Ullas Opskrifter (dansk)",
+            "oversat": False,
+            "naeste_skridt": "Kald handling='hent' med et id for den fulde opskrift på dansk.",
+        }
+
+    # 2) Fallback: oversæt og spørg MyPlate.
     oversatte: list[str] = []
     kilder: dict[str, str] = {}
     for d in dele:

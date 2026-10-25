@@ -5253,6 +5253,18 @@ async def _stream_visible_run(
                     _flade_normaliseret = _normalisér_flader(
                         followup_text, run_id=str(run.run_id or ""),
                     )
+                    # 25/10-2026 (Bjørn): en bar `jarvis-ui {…}` uden hegn slap
+                    # igennem til klienten og fejlede i renderen. Hegn-guarden
+                    # fandtes, men blev kun kaldt i first-pass-grenen — samme
+                    # fejlform som normaliseringen ovenfor: et værn på én gren
+                    # er ikke et værn. `_mekanisk_reparation` er deterministisk
+                    # og koster intet modelkald, så den hører på den fælles
+                    # udgang, før teksten både vises og gemmes.
+                    from core.services.flade_korrektion import (
+                        _mekanisk_reparation as _hegn_mekanisk,
+                    )
+                    _flade_normaliseret = _hegn_mekanisk(_flade_normaliseret)
+                    pass  # MUTATION A
                     if _flade_normaliseret != followup_text:
                         followup_text = _flade_normaliseret
                         yield _sse("scan_correction", {
@@ -5962,6 +5974,15 @@ async def _stream_visible_run(
                 visible_output_text = _normalisér_flader(
                     visible_output_text, run_id=str(run.run_id or ""),
                 )
+                # 25/10-2026: samme hegn-reparation som den agentiske gren.
+                # Den kørte først kun når `fejl_i_flader` havde fundet en fejl —
+                # men en bar `jarvis-ui {…}` uden hegn er ikke en JSON-fejl, så
+                # den blev aldrig set her. Mekanisk og gratis: sæt hegnet.
+                from core.services.flade_korrektion import (
+                    _mekanisk_reparation as _hegn_mekanisk,
+                )
+                visible_output_text = _hegn_mekanisk(visible_output_text)
+                pass  # MUTATION B
                 if visible_output_text != _flade_foer:
                     yield _sse("scan_correction", {
                         "type": "scan_correction",

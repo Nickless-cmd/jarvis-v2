@@ -7,20 +7,21 @@ _Fenced delivery outbox for Routine results._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L15) |
-| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L20) |
-| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L31) |
-| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L42) |
-| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L44) |
-| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L48) |
-| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L60) |
-| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L73) |
-| method | `RoutineDeliveryService.__init__` | `(self, *, holder=…)` | — | [src](../../../core/services/routine_delivery.py#L74) |
-| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L78) |
-| method | `RoutineDeliveryService.claim_next` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L82) |
-| method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L86) |
-| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L119) |
-| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L148) |
+| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L25) |
+| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L30) |
+| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L41) |
+| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L52) |
+| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L54) |
+| function | `_push_owner` | `(claim)` | Giv ejeren et push naar resultatet ligger klar paa rutinens egen flade. | [src](../../../core/services/routine_delivery.py#L58) |
+| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L113) |
+| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L125) |
+| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L138) |
+| method | `RoutineDeliveryService.__init__` | `(self, *, holder=…)` | — | [src](../../../core/services/routine_delivery.py#L139) |
+| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L143) |
+| method | `RoutineDeliveryService.claim_next` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L147) |
+| method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L151) |
+| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L186) |
+| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L215) |
 
 ## `core/services/routine_diagnostics.py`
 _Content-free operational failure projections for owner and Jarvis._

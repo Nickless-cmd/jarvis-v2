@@ -664,6 +664,20 @@ def byg_indbakke(
     planlagte: list[dict[str, Any]] = []
     venter_paa_bjorn: list[dict[str, Any]] = []
     sideopgaver: list[dict[str, Any]] = []
+    # Genstarter har deres EGEN sektion (25/10-2026).
+    #
+    # Målt: 15 `genstart`-poster lå `aaben` i `inbox_items`, de ældste siden
+    # 18/10 — skrevet korrekt under Bjørns id, men `genstart` blev nævnt NUL
+    # gange i denne fil. Kilden skrev, visningen læste ikke: samme form som
+    # de tre foregående fejl i dette spor. Prisen var at jeg efter en genstart
+    # startede i en ny samtale uden at vide at genstarten var sket — Bjørn
+    # 25/10: «bekræftelse af genstart i prompten efter genstart».
+    #
+    # De hører IKKE i «VENTER PÅ DIG»: en genstart er noget jeg skal VIDE,
+    # ikke noget nogen skal svare på. Uden denne gren faldt de i den sektion
+    # fordi `verificeret_ejer` er `ukendt` — genstarten har intet levende run
+    # at verificere imod.
+    genstarter: list[dict[str, Any]] = []
 
     turens_wake = str(k.turens_wakeup_id() or "").strip()
 
@@ -763,6 +777,11 @@ def byg_indbakke(
         if (str(p.get("kildetype") or "") == "wakeup"
                 and str(p.get("kilde_id") or "") in planlagte_vaek_ids):
             paa_vej.append(post)
+        elif str(p.get("kildetype") or "") == "genstart":
+            # Egen sektion — se `genstarter` ovenfor. `kraever_handling` er
+            # allerede falsk: `genstart` står i `IKKE_GATENDE_KILDETYPER`, så
+            # posten kan aldrig nægte en mutation. Den skal bare SES.
+            genstarter.append(post)
         elif str(p.get("kildetype") or "") == "decision":
             # Beslutnings-posterne har deres EGEN sektion (5/10-2026).
             #
@@ -927,6 +946,7 @@ def byg_indbakke(
     for navn, poster in (("venter_paa_dig", venter_paa_dig), ("i_gang", i_gang),
                          ("paa_vej", paa_vej), ("planlagte", planlagte),
                          ("beslutninger", beslutninger),
+                         ("genstarter", genstarter),
                          ("venter_paa_bjorn", venter_paa_bjorn)):
         # Dubletter FOERST, saa loftet taeller grupper og ikke raa poster —
         # ellers kunne tre bookinger af samme vaekning spise tre af de otte

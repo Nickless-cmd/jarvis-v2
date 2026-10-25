@@ -478,8 +478,8 @@ _Indbakken i prompten — læseren hele kæden manglede._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L92) |
-| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L112) |
+| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L97) |
+| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L117) |
 
 ## `core/services/inbox_state.py`
 _Proveniens og bogføring for indbakken._

@@ -83,6 +83,11 @@ _OVERSKRIFTER: tuple[tuple[str, str], ...] = (
     # udelukkelsen skal ske på KILDETYPEN, ikke ved at sektionen mangler.
     # `tests/test_inbox_prompt_section.py` måler begge veje.
     ("beslutninger", "BESLUTNINGER (gater ikke)"),
+    # Genstarter (25/10-2026). Bjørn: «bekræftelse af genstart i prompten efter
+    # genstart». Posten blev skrevet korrekt til `inbox_items` men projiceres
+    # nu — uden den startede jeg i en ny samtale uden at vide at genstarten
+    # var sket. Den gater ikke: den er til ORIENTERING.
+    ("genstarter", "GENSTARTET (til orientering)"),
     ("paa_vej", "PÅ VEJ"),
     ("planlagte", "PLANLAGTE (gentager sig)"),
     ("venter_paa_bjorn", "VENTER PÅ BJØRN (gater ikke)"),

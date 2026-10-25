@@ -44,10 +44,11 @@ INBOX_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "inbox",
             "description": (
-                "Din indbakke: alt der venter paa dig, samlet. Otte sektioner "
+                "Din indbakke: alt der venter paa dig, samlet. Ni sektioner "
                 "— hvad der vakte dig denne tur, hvad der VENTER PAA DIG (kun "
                 "den kan blokere mutationer), hvad der er i gang, dine "
-                "sideopgaver, dine egne beslutninger, hvad der er paa vej, "
+                "sideopgaver, dine egne beslutninger, hvad der er genstartet "
+                "(til orientering), hvad der er paa vej, "
                 "hvad der er planlagt, og hvad der venter paa Bjoern. "
                 "Én linje per post med id, status, alder og en henvisning — "
                 "aldrig filindhold, og intet raat payload. Erstatter i "
@@ -144,6 +145,9 @@ _SEKTIONER: tuple[tuple[str, str], ...] = (
     # fordi sektionen er det eneste sted alle beslutnings-id'er står
     # (gaten navngiver kun de 12 værste). Se `inbox_view._UDEN_LOFT`.
     ("BESLUTNINGER", "beslutninger"),
+    # Genstarter (25/10-2026) — se `inbox_view.genstarter`. De gater ikke;
+    # de er det eneste sted jeg kan se at en genstart faktisk skete.
+    ("GENSTARTET", "genstarter"),
     ("PAA VEJ", "paa_vej"),
     ("PLANLAGTE", "planlagte"),
     ("VENTER PAA BJOERN", "venter_paa_bjorn"),

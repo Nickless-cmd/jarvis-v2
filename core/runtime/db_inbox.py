@@ -1063,6 +1063,16 @@ def liste_aktiv(*, bruger_id: str, maks: int = 500) -> list[dict[str, Any]]:
             f"  status = ?"
             f"  OR afgjort_at = ''"
             f"  OR afgjort_at >= strftime('%Y-%m-%dT%H:%M:%S','now','-{_RETENTION_DAGE} days')"
-            f") ORDER BY id ASC LIMIT ?",
-            (bruger_id, STATUS_AABEN, max(int(maks), 1))).fetchall()
+            f")"
+            # ÅBNE FØRST (25/10-2026). Uden dette led tog `ORDER BY id ASC`
+            # de ÆLDSTE 500 — og med 600 rækker i tabellen faldt de NYESTE
+            # åbne poster ud, mens gamle `done`/`drop` fyldte vinduet. Målt:
+            # 5 åbne `genstart`-poster var usynlige for visningen, fordi 343
+            # `done` + 157 `drop` kom før dem i id-rækkefølgen.
+            #
+            # Det er samme form som resten af dette spor: en læser der ikke
+            # kan se det skriveren skrev. En åben post må aldrig forsvinde
+            # fordi noget gammelt og AFGJORT kom først.
+            f" ORDER BY (status = ?) DESC, id ASC LIMIT ?",
+            (bruger_id, STATUS_AABEN, STATUS_AABEN, max(int(maks), 1))).fetchall()
     return [_post_fra_raekke(r) for r in rows]

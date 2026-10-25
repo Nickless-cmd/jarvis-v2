@@ -18510,6 +18510,128 @@
       },
       "created_at_formats": []
     },
+    "enheds_anmodninger": {
+      "digest": "e8:0f:5c:fc:a3:d0:17:dd:7f:10:8d:42:b9:07:1d:09:93:85:d6:ce:d9:12:55:d2:a6:30:84:83:41:43:8e:56",
+      "schema": {
+        "columns": [
+          {
+            "name": "afgjort",
+            "type": "REAL",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "app_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "navn",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "oprettet",
+            "type": "REAL",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'pending'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "udloeber",
+            "type": "REAL",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_enheds_anmodninger_bruger",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "status",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "oprettet",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_enheds_anmodninger_bruger ON enheds_anmodninger(user_id, status, oprettet)"
+          },
+          {
+            "name": "sqlite_autoindex_enheds_anmodninger_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "events": {
       "digest": "7a:81:29:68:0c:f7:33:04:16:2f:88:d8:1a:93:5d:ef:5b:c4:52:82:fd:b3:70:b4:a8:98:46:0d:33:28:e2:9c",
       "schema": {

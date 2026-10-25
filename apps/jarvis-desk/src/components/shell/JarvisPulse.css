@@ -1,4 +1,10 @@
-.jarvis-pulse { display: inline-flex; align-items: center; line-height: 0; flex: none; color: #49c9b8; }
+/* Bjørn 25/10-2026: «animationen i header bør skifte farve til den valgte
+   farve-palette brugeren har valgt … det gør alt andet». Farven var hardkodet
+   teal (#49c9b8), mens resten af fladen læser `--accent` fra tokens.css' seks
+   accentfamilier. Mærket var altså det ENESTE i headeren der ikke fulgte
+   paletten. Fallback'en er den gamle teal, så et tema uden `--accent` ser ud
+   som før. `.is-error` nedenfor beholder sin egen semantiske farve. */
+.jarvis-pulse { display: inline-flex; align-items: center; line-height: 0; flex: none; color: var(--accent, #49c9b8); }
 .jarvis-pulse svg { display: block; }
 .jarvis-pulse rect { transform-box: view-box; transform-origin: 50px 50px; }
 /* 1,6s, ikke 4s (Bjørn 20/9-2026: «bevæger sig meget langsomt»). Forskydningen

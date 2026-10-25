@@ -17,6 +17,7 @@ import {
   PIN_INTERVAL_MS,
   FOELG_TAERSKEL_PX,
   SCROLL_SAMPLE_INTERVAL_MS,
+  EFTERSLAEB_MS,
 } from './useChatScroll'
 
 interface Maal {
@@ -312,14 +313,22 @@ describe('useChatScroll — den ene skriver', () => {
 
   it('stopper intervallet når arbejdet slutter', () => {
     // MUTATION: fjern `if (!aktiv) return` → intervallet fortsætter efter
-    // rerender → fejler.
+    // rerender → ruden følger vækst EFTER efterslæbs-vinduet → fejler.
+    //
+    // 25/10-2026: efterslæbet (tre tidspunkter, maks 350 ms) følger den
+    // afsluttende vækst med vilje — det er en ANDEN mekanisme og er testet for
+    // sig. Her måles intervallet: efter vinduet skal ruden stå stille, uanset
+    // hvor meget der vokser bagefter. Ellers ville et svar holde rullen fanget
+    // i al evighed.
     vi.useFakeTimers()
     const maal = rude(1000)
     const { hook } = opsæt(maal, { aktiv: true })
     act(() => { hook.rerender({ arbejder: false, aktiv: false }) })
+    act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+    const stille = maal.top()
     maal.voksTil(1800)
     act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS * 4) })
-    expect(maal.top()).toBe(500)
+    expect(maal.top()).toBe(stille)
   })
 
   it('stopper intervallet når hooken afmonteres', () => {
@@ -441,5 +450,84 @@ describe('useChatScroll — composerens vækst er ikke en læserbevægelse', () 
     act(() => { maal.el.scrollTop = 1488; hook.result.current.onScroll() }) // 12 px op
     act(() => { maal.slut() })
     expect(maal.top()).toBe(1488)
+  })
+
+  // ── Efterslæbet: den sidste vækst efter arbejdet slutter ──────────────────
+  // Bjørn 25/10-2026 (målt i den kørende PWA): svaret sluttede under folden og
+  // måtte hentes med hånden. Årsagen er at bund-forankringen (`overflow-anchor`)
+  // kun findes i Chromium — desk ER Chromium, PWA'en er det ikke.
+  describe('efterslæb efter arbejdet slutter', () => {
+    it('følger den afsluttende vækst når læseren stod i bunden', () => {
+      // MUTATION: fjern efterslæbs-effekten → ruden bliver stående 500 → fejler.
+      vi.useFakeTimers()
+      const maal = rude(1000) // gulv = 500
+      const { hook } = opsæt(maal, { arbejder: true, aktiv: true })
+      expect(maal.top()).toBe(maal.max())
+
+      act(() => { hook.rerender({ arbejder: false, aktiv: false }) })
+      // Pacingen færdiggør svaret, kilder og knapper dukker op — EFTER `aktiv`
+      // blev false, så interval-nettet er allerede stoppet her.
+      maal.voksTil(1400)
+      act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+
+      expect(maal.top()).toBe(maal.max())
+    })
+
+    it('rører IKKE ruden når læseren havde rullet op', () => {
+      // MUTATION: lad efterslæbet skrive direkte (`skrivTilBund()`) i stedet for
+      // at melde `indhold` → en læsende bruger rives ned i bunden → fejler.
+      vi.useFakeTimers()
+      const maal = rude(2000) // gulv = 1500
+      const { hook } = opsæt(maal, { arbejder: true, aktiv: true })
+      act(() => { maal.el.scrollTop = 1200; hook.result.current.onScroll() })
+      act(() => { vi.advanceTimersByTime(SCROLL_SAMPLE_INTERVAL_MS) })
+      const skrivninger = maal.antalSkrivninger()
+
+      act(() => { hook.rerender({ arbejder: false, aktiv: false }) })
+      maal.voksTil(2400)
+      act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+
+      expect(maal.top()).toBe(1200)
+      // Ingen skrivning overhovedet: ikke bare «endte samme sted».
+      expect(maal.antalSkrivninger()).toBe(skrivninger)
+    })
+
+    it('følger også når væksten kom EFTER sidste pin men før afslutningen', () => {
+      // Dette er fejlen der startede det hele. Interval-nettets kadence er
+      // 250 ms, så ved overgangen kan der være vokset indhold siden sidste pin
+      // — læseren har ikke rørt hjulet, og i en browser uden `overflow-anchor`
+      // flytter væksten ikke ruden. Ejerskabet er stadig «følg».
+      //
+      // MUTATION: gate efterslæbet på `gulv - top` → læseren står 200 px over
+      // gulvet → efterslæbet nægter → ruden bliver stående → fejler.
+      vi.useFakeTimers()
+      const maal = rude(1000) // gulv = 500, læseren står i bunden
+      const { hook } = opsæt(maal, { arbejder: true, aktiv: true })
+      maal.voksTil(1200) // vokser uden at nogen melder noget
+      expect(maal.top()).toBe(500)
+
+      act(() => { hook.rerender({ arbejder: false, aktiv: false }) })
+      act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+
+      expect(maal.top()).toBe(maal.max())
+    })
+
+    it('er afgrænset — vækst efter sidste prøve følges ikke', () => {
+      // MUTATION: gør efterslæbet til et interval i stedet for tre tidspunkter
+      // → ruden holdes fanget i bunden i al evighed → fejler.
+      vi.useFakeTimers()
+      const maal = rude(1000)
+      const { hook } = opsæt(maal, { arbejder: true, aktiv: true })
+      act(() => { hook.rerender({ arbejder: false, aktiv: false }) })
+      maal.voksTil(1400)
+      act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+      const efterEfterslaeb = maal.top()
+      expect(efterEfterslaeb).toBe(maal.max())
+
+      // Nu er der ikke mere at følge — ruden skal stå stille.
+      maal.voksTil(2000)
+      act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS * 4) })
+      expect(maal.top()).toBe(efterEfterslaeb)
+    })
   })
 })

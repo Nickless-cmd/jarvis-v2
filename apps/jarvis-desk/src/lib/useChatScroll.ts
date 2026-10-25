@@ -4,6 +4,17 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 export const PIN_INTERVAL_MS = 250
 
 /**
+ * Hvornår efterslæbet kigger forbi, efter arbejdet er slut (ms fra overgangen).
+ *
+ * Tre tidspunkter, ikke et interval: det første fanger den vækst der allerede
+ * står i DOM'en, de to næste fanger pacingen og de kilder/knapper der dukker op
+ * et øjeblik senere. Målt 25/10-2026: den afsluttende pacing sker over ~300 ms,
+ * så 350 ms er den sidste relevante prøve — derefter er der intet tilbage at
+ * følge, og ruden skal ikke røres igen.
+ */
+export const EFTERSLAEB_MS: readonly number[] = [0, 120, 350]
+
+/**
  * Hvor langt fra gulvet der stadig tæller som «på gulvet», i px.
  *
  * 25 er DSH's eget tal, læst i kilden — `useScrollFollow(state.followingTail, 25)`
@@ -319,6 +330,8 @@ export function useChatScroll(
   // Kun ved OVERGANGEN — ikke hver gang der kommer indhold. Har man scrollet op
   // mens svaret kører, respekteres det (nettet nedenfor holder kun når man ER i bund).
   const foerArbejdede = useRef(arbejder)
+  // Overgangen aktiv → ikke-aktiv. Bruges af efterslæbet nedenfor.
+  const foerAktiv = useRef(aktiv)
   useEffect(() => {
     const startede = arbejder && !foerArbejdede.current
     foerArbejdede.current = arbejder
@@ -340,6 +353,42 @@ export function useChatScroll(
     melder('indhold')
     const id = setInterval(() => melder('indhold'), PIN_INTERVAL_MS)
     return () => clearInterval(id)
+  }, [aktiv, melder])
+
+  // ── Efterslæb: den sidste vækst EFTER arbejdet slutter ────────────────────
+  // Bjørn 25/10-2026: «i web buildt … køre streamen ned bag composer og slutter,
+  // så skal man selv scrolle ned for at se svaret. I desk sker det ikke.»
+  //
+  // Årsagen er ikke layoutet. Begge builds deler CSS og DOM, og højde-kæden er
+  // intakt i begge (.chatview → .transcript-wrap → .transcript, alle med
+  // `min-height: 0`). Forskellen er HVEM der holder bunden efter kørslen:
+  //
+  // Interval-nettet ovenfor stopper i samme øjeblik `aktiv` bliver false — det
+  // er kontrakten, og den er testet. Derefter er bund-forankringen det eneste
+  // der holder ruden nede: `overflow-anchor: auto` på `.bund-anker`. Den
+  // egenskab findes KUN i Chromium. Desk ER Chromium (Electron); PWA'en kører i
+  // Safari eller Firefox, hvor reglen ignoreres. Dér flytter den afsluttende
+  // vækst — pacingen der færdiggør svaret, kilder og knapper der dukker op, den
+  // gemte besked der erstatter den levende række — ruden op, og bunden bliver
+  // stående under folden.
+  //
+  // Rettelsen er IKKE at lade intervallet køre videre: så ville et svar holde
+  // rullen fanget i al evighed. Det er et afgrænset efterslæb på tre
+  // tidspunkter — nok til at pacing og efterfølgende layout har sat sig, kort
+  // nok til ikke at føles som en låst rude.
+  //
+  // Gaten er EJERSKABET, ikke geometrien: `melder('indhold')` skriver kun når
+  // `foelgerRef` er sand, og den ref sættes af `onScroll`/`afregn` — dvs. af
+  // læseren selv. En målt gulv-afstand her ville være både overflødig og
+  // forkert: er der gået 240 ms siden sidste pin (interval-nettets kadence), står
+  // læseren teknisk set over gulvet uden at have rørt hjulet, og så ville
+  // efterslæbet nægte at følge præcis den afslutning vi retter.
+  useEffect(() => {
+    const sluttede = foerAktiv.current && !aktiv
+    foerAktiv.current = aktiv
+    if (!sluttede) return
+    const ids = EFTERSLAEB_MS.map((ms) => window.setTimeout(() => melder('indhold'), ms))
+    return () => { for (const id of ids) clearTimeout(id) }
   }, [aktiv, melder])
 
   // ── Afregning ved browserens scrollend ────────────────────────────────────

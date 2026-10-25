@@ -36,8 +36,8 @@ describe('linkifyRefs — referencer bliver klikbare', () => {
   })
 
   it('bevarer badge-formen: linket bærer stadig inlineCode indeni', () => {
-    const tree = trae('`442b3bc85`')
-    const p = tree.children[0] as unknown as {
+    const tree = trae('`442b3bc85`') as unknown as { children: unknown[] }
+    const p = tree.children[0] as {
       children: Array<{ type: string; children?: Array<{ type: string }> }>
     }
     const a = p.children[0]

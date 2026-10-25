@@ -21,6 +21,8 @@ import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
+import { saetFladeLogSender } from '../lib/fladeLog'
+import { apiFetch } from '../lib/api'
 import { usePanel } from '../hooks/usePanel'
 import { usePersistedState } from '../hooks/usePersistedState'
 import { MessageRow } from '../components/rich/MessageRow'
@@ -88,6 +90,20 @@ export function ChatView({
   const sessions = useSessions()
   const stream = useStream()
   const { settings, auth } = useSettings()
+
+  // Klientlog ved renderbeslutningen (25/10-2026, side-155f2dc398).
+  // MarkdownRenderer ligger dybt i træet og kender hverken API-base eller
+  // token. Her er begge kendt, så senderen sættes ét sted og rendereren
+  // kalder en funktion der ikke kender transporten. Fail-open: en log der
+  // fejler må aldrig koste en rendering.
+  useEffect(() => {
+    if (!settings) { saetFladeLogSender(null); return }
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    saetFladeLogSender((snapshot) => {
+      void apiFetch(cfg, '/flade-log', { method: 'POST', body: snapshot }).catch(() => {})
+    })
+    return () => saetFladeLogSender(null)
+  }, [settings])
   const { permission } = usePermission()
   const panel = usePanel()
   const chatFlow = useChatFlow()

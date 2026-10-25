@@ -976,6 +976,12 @@ def create_app() -> FastAPI:
     app.include_router(auth_enheder_router)
     app.include_router(files_router)
     app.include_router(visning_router)
+    # Klientlog ved renderbeslutningen (25/10-2026, side-155f2dc398). Bærer et
+    # øjebliksbillede af hvad browseren så da en jarvis-ui-blok IKKE blev en
+    # flade. `POST /internal-errors/report` kunne ikke bruges: den er
+    # loopback-only og afviser proxy-forwarded, og desk'en taler gennem Caddy.
+    from apps.api.jarvis_api.routes.flade_log import router as flade_log_router
+    app.include_router(flade_log_router)
     app.include_router(chat_router)
     app.include_router(chat_run_streams_router)
     # Boy-scout split 3/10-2026: samme /chat-praefiks, egne tillids-ruter.

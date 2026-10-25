@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py`
+_Mission Control routes: skills, memory, hardening, lab_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mc_skills` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L14) |
+| function | `mc_memory` | `(q=…, limit=…, scope=…)` | Search/list private retained memory records. | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L40) |
+| function | `mc_hardening` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L119) |
+| function | `mc_lab` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L133) |
+
 ## `apps/api/jarvis_api/routes/mobile_memory.py`
 _«Brug denne besked som hukommelse» — fra telefonen ind i hans hjerne._
 

@@ -41,3 +41,7 @@ scripts/judge_run_q4*.log
 
 # Serena MCP arbejdsmappe (genereres lokalt, ikke vaerd at versionsstyre)
 .serena/
+
+# Personlig brugerprofil — indeholder navn/by og hoerer i workspaces/, ikke i et offentligt repo
+# Fjernet fra GitHub 2026-10-25 (repoet er public siden 20/3-2026)
+/USER.md

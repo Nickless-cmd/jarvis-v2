@@ -408,3 +408,23 @@ def test_max_profil_er_et_gulv_ikke_et_loft(monkeypatch) -> None:
     # Det gamle loft må ikke snige sig ind igen.
     assert "en eller to" not in tail
     assert "gerne med en relevant emoji når" not in tail
+
+
+def test_kernen_kan_ikke_ophaeve_profilens_gulv() -> None:
+    """Niveau 3 må ikke længere sige at grebene «ikke er obligatoriske».
+
+    Målt 25/10-2026: niveau 3 sagde «de gør ikke grebene enten forbudte eller
+    obligatoriske», mens niveau 5 sagde «SKAL have hierarki». To niveauer pegede
+    hver sin vej, og i tvivl faldt jeg tilbage til prosa — 9 % overskrifter og
+    1 % emoji i overskriften med alle fem knapper på maks. Kernen skal skrue OP,
+    aldrig ned, og et loft må ikke kunne læses som et valg.
+    """
+    from core.services.chat_response_policy import CHAT_FORMAT_CORE
+
+    tekst = CHAT_FORMAT_CORE.lower()
+    assert "skruer op for denne kerne" in tekst
+    assert "aldrig sjældnere end kernen kræver" in tekst
+    assert "et loft er ikke et valg" in tekst
+    # Den gamle dobbelthed må ikke snige sig ind igen.
+    assert "forbudte eller obligatoriske" not in tekst
+    assert "regulerer hyppighed og styrke" not in tekst

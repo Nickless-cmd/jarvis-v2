@@ -39,9 +39,10 @@ CHAT_FORMAT_CORE = (
     "Fejlen sad i guarden og ikke i rendereren, og den er rettet.\" STØRRE, tre "
     "dele: overskrift med emoji, tre korte afsnit, og en liste hvor punkterne "
     "faktisk er parallelle — som et svar til en kollega, ikke som en rapport. "
-    "Brugerens visuelle og emoji-valg "
-    "regulerer hyppighed og styrke omkring denne kerne; de gør ikke grebene "
-    "enten forbudte eller obligatoriske."
+    "Brugerens visuelle og emoji-valg skruer OP for denne kerne — de kan gøre "
+    "grebene hyppigere og stærkere, aldrig sjældnere end kernen kræver. Et loft "
+    "er ikke et valg: står profilen på maks, er emoji i overskriften og en flade "
+    "ved sammenligninger standarden, ikke undtagelsen."
 )
 
 

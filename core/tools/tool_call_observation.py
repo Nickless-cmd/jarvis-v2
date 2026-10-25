@@ -65,8 +65,23 @@ def observe_tool_call(name: str, arguments: dict[str, Any],
                     if _pc_status == "approval_needed" and _pc_approval_id:
                         _pc.stash_prediction(_pc_approval_id, name, pred.verdict)
                     else:
-                        _actual = ("approve" if _pc_status == "ok"
-                                   else ("deny" if _pc_status in ("blocked", "gate_blocked") else ""))
+                        # `blocked` og `gate_blocked` er SYSTEMETS egne beslutninger —
+                        # R2.5, inbox_gate, exec_command, autonomous_tool_policy,
+                        # «Write blocked for safety». De er IKKE et ejer-signal: ingen
+                        # har set kortet, og ingen har klikket nej.
+                        #
+                        # Maalt 25/10-2026: de blev mappet til `deny`, altsaa «ejeren
+                        # afviste». Det laerte klassificeren at Bjoern afviser handlinger
+                        # hun aldrig blev spurgt om. `operator_bash` stod med 154.670
+                        # forsoeg og 43.909 korrekte — 28,4 % praecision mod et krav paa
+                        # 95 %, altsaa permanent untrusted. Samme forveksling fodrede
+                        # Agent Smith med «Bruger afviste tool-call til bash», som blev
+                        # en blokerende indbakke-post (id 7985, 2 paamindelser).
+                        #
+                        # Et aegte nej maales KUN gennem gold-vejen: mennesket klikker
+                        # Nej paa kortet, og `resolve_pending_approval` kalder
+                        # `record_prediction_outcome(actual="deny", is_owner_gold=True)`.
+                        _actual = "approve" if _pc_status == "ok" else ""
                         if _actual:
                             _pc.record_prediction_outcome(name, predicted=pred.verdict,
                                                           actual=_actual, is_owner_gold=False)

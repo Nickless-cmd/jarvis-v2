@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/verify_notes.py`
+_Vagt: en note skal have en status, en slags, og sine fire overskrifter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `noter` | `()` | Kun noter i den NYE form. Den flade bunke er frosset og røres ikke. | [src](../../../scripts/verify_notes.py#L39) |
+| function | `fejl_i` | `(sti)` | — | [src](../../../scripts/verify_notes.py#L50) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_notes.py#L67) |
+
 ## `scripts/verify_persistens.py`
 _Vagt: et nyt varigt format skal skrives ind i registret med en dato._
 

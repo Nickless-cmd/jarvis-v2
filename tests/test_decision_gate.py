@@ -186,3 +186,66 @@ def test_alle_aktive_beslutninger_tjekkes_ikke_kun_de_foerste_ti(monkeypatch):
     evaluate_decision_conflict("skriv", {}, "")
     assert set_limits == [_ALLE_AKTIVE]
     assert _ALLE_AKTIVE >= 45
+
+
+# ── 24/10-2026: «aldrig»-hullet og den tandløse frase ───────────────────────
+#
+# To fejl maalt samme dag, med samme rod: gaten kunne ikke se de forpligtelser
+# den skulle haandhaeve.
+#
+# 1. `_AVOID_RE` havde «ikke/undgaa/stop/avoid/never» — men IKKE «aldrig»,
+#    mens `_ALWAYS_RE` havde «altid». Asymmetrien var utilsigtet, og et dansk
+#    forbud skrives naturligt med ALDRIG. Maalt: 8 af 135 aktive beslutninger
+#    var gatebare; resten var ren prompt-tekst.
+# 2. Selv de gatebare var tandloese i praksis: «Brug ALDRIG bash til
+#    filredigering» udtrak frasen «bash til filredigering», og den staar aldrig
+#    ordret i et vaerktoejskald. Maalt: 9 blokeringer i hele gatens levetid.
+
+
+def test_aldrig_er_et_forbud_paa_linje_med_ikke():
+    """«aldrig» manglede i forbuds-moenstret mens «altid» var med i det
+    paabydende. Samme forpligtelse skrevet med ALDRIG var usynlig for gaten."""
+    from core.services.decision_gate import _detect_conflict, directive_har_maal
+
+    for d in ("Brug ALDRIG bash til filredigering",
+              "Brug ikke bash til filredigering"):
+        assert directive_har_maal(d) is True, d
+        ctx = "bash sed -i s/x/y/ fil.py"
+        assert _detect_conflict(d, ctx, {}) is not None, d
+
+
+def test_et_baerende_ord_er_nok_naar_frasen_aldrig_staar_ordret():
+    """Frase-kravet alene gjorde gaten tandloes: «bash til filredigering» staar
+    aldrig i et vaerktoejskald. Det baerende ord alene skal derfor proeves."""
+    from core.services.decision_gate import _build_context, _detect_conflict
+
+    ctx = _build_context("bash", {"command": "sed -i s/x/y/ fil.py"}, "")
+    assert _detect_conflict("Brug ALDRIG bash til filredigering", ctx, {}) is not None
+
+
+def test_ord_alene_maa_ikke_aabne_for_falske_positive():
+    """Prisen for at proeve ordet alene er flere falske positive. Den pris maa
+    ikke betales: et tilfaeldigt ord inde i et langt direktiv er ikke et forbud,
+    og en irrelevant handling maa ikke blokeres."""
+    from core.services.decision_gate import _detect_conflict
+
+    _DEC_C428 = (
+        "Før jeg konkluderer at noget er dødt, aldrig kaldes, eller ikke findes — "
+        "verificér at jeg har dækket HELE systemet: søg også uden for core/ "
+        "(fx app.py, scripts/, entrypoints), tjek begge processer (jarvis-api vs "
+        "jarvis-runtime — de har forskellige runtime_services_enabled), og spørg "
+        "\"hvad ville jeg misse hvis jeg kun ser det halve?\"."
+    )
+    assert _detect_conflict(_DEC_C428, "der findes en god kagegrimasse i køkkenet", {}) is None
+    assert _detect_conflict("Brug ALDRIG bash til filredigering", "jeg laver kaffe", {}) is None
+
+
+def test_heartbeat_viser_mindst_fem_beslutninger():
+    """3 pladser var for faa efter konsolideringen 135 → 12: hver beslutning er
+    nu 130-179 tegn, saa fem kan staa i samme budget som tre fyldte foer."""
+    import inspect
+
+    from core.services.prompt_sections import heartbeat_sections
+
+    src = inspect.getsource(heartbeat_sections)
+    assert "format_active_decisions_for_heartbeat(max_items=5)" in src

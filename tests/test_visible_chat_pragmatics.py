@@ -277,3 +277,33 @@ def test_niveau_4_er_en_beslutningsregel_ikke_en_skemaliste() -> None:
     # Den gamle tilladelses-formulering må ikke snige sig ind igen.
     assert "kan du skrive" not in tekst
     assert "når én kompakt visuel flade er tydeligere end prosa" not in tekst.lower()
+
+
+def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
+    """Fælden: niveau 3 sagde hvordan afsnit bygges, men intet om hvor langt et svar
+    må være — så «vær grundig» vandt over «vær læsbar». Målt 24/10-2026: Bjørn pegede
+    på tekstdisciplin som det sidste der manglede, efter at fladerne var på plads.
+    """
+    from core.services.visible_chat_pragmatics import (
+        CHAT_MODE_HOW_I_TALK,
+        build_chat_mode_dynamic_tail,
+    )
+    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+
+    assert "Tekstdisciplin" in CHAT_MODE_HOW_I_TALK
+    # lean-vagtens forudsætning: kontrakten skal være ÉN blok uden tomme linjer internt.
+    assert "\n\n" not in CHAT_MODE_HOW_I_TALK
+
+    token = set_tool_scope("chat")
+    try:
+        tail = build_chat_mode_dynamic_tail("", message="hvad lavede du i git-loggen?", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "Tekstdisciplin" in tail
+
+    token = set_tool_scope("code")
+    try:
+        tail_code = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
+    finally:
+        reset_tool_scope(token)
+    assert "Tekstdisciplin" not in tail_code

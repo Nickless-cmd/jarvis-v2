@@ -144,13 +144,13 @@ _Heartbeat + future-agent + epistemic prompt sections._
 | function | `_future_agent_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L61) |
 | function | `_heartbeat_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L75) |
 | function | `_heartbeat_living_context_line` | `()` | Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L209) |
-| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L526) |
-| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L549) |
-| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L567) |
-| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L595) |
-| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L614) |
-| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L627) |
-| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L662) |
+| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L557) |
+| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L580) |
+| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L598) |
+| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L626) |
+| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L645) |
+| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L658) |
+| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L693) |
 
 ## `core/services/prompt_sections/jarvis_brain.py`
 _Always-on Jarvis Brain summary injection for prompt_contract._
@@ -216,7 +216,7 @@ _MEMORY.md selection by SECTION for the visible prompt (memory repair 2026-09-04
 | function | `_memory_md_sections` | `(workspace_dir)` | Parse MEMORY.md til (overskrift, tekst) — UDEN at maskere. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L197) |
 | function | `_focused_excerpt` | `(msg, text, *, max_chars=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L238) |
 | function | `_lexical_candidates` | `(msg, workspace_dir, *, limit, vaegte=…)` | — | [src](../../../core/services/prompt_sections/memory_md_selection.py#L268) |
-| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L293) |
+| function | `select_memory_md_sections` | `(user_message, *, workspace_dir, max_sections=…, max_chars=…, min_score=…)` | Return up to ``max_sections`` rendered MEMORY.md sections, most relevant first. | [src](../../../core/services/prompt_sections/memory_md_selection.py#L301) |
 
 ## `core/services/prompt_sections/memory_recall.py`
 _Memory recall section builder — udskilt fra prompt_contract.py (Boy Scout)._

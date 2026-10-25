@@ -1289,8 +1289,25 @@ def execute_tool_force(
 
     if owner_approved:
         with ejer_godkendt_kald():
-            return _execute_tool_force_impl(name, arguments)
-    return _execute_tool_force_impl(name, arguments)
+            result = _execute_tool_force_impl(name, arguments)
+    else:
+        result = _execute_tool_force_impl(name, arguments)
+
+    # 24/10-2026: force-vejen sprang observationen over — `observe_tool_call`
+    # laa KUN i `execute_tool`. MAALT: render_mermaid blev kaldt kl. 22:41 og
+    # `tool_usage` stod stille paa call_count=9 / last_used_at=17:54. Synlige
+    # og autonome koersler gaar gennem HER (`simple_tool_executor`, force=True),
+    # saa deres forbrug var usynligt for Centralen — praecis den sloejfe
+    # `tool_usage` findes for at lukke (mest-brugt foerst, doede sidst).
+    # Samme vagt som den normale vej: systemets EGNE kald (job-pollen) er
+    # panelets puls, ikke model-kald, og skal ikke taelles.
+    try:
+        if not er_internt_kald():
+            from core.tools.tool_call_observation import observe_tool_call
+            observe_tool_call(name, arguments, result)
+    except Exception:
+        pass  # en maaling maa aldrig kunne vaelte kaldet den maaler
+    return result
 
 
 # Emotional gate actions that may STOP a tool call. Everything else

@@ -251,20 +251,38 @@ def search_session_summaries(query: str, *, limit: int = 8) -> list[dict[str, An
             if uid:
                 principals = _equivalent_principals(conn, uid)
                 marks = ",".join("?" for _ in principals)
-                # Only sessions proven to belong solely to this principal.
+                # 24/10-2026: ejer-filteret lå som EXISTS direkte i MATCH-grenen,
+                # så det kørte for HVER FTS-træffer før LIMIT kunne bide. Målt på
+                # den levende DB: 13.463 træffer, 6.432 med ejer-række → 17.201 ms
+                # for at returnere 10 rækker. Det var grunden til at `recall` meldte
+                # `partial` i 83 % af alle kald (median 3.692 ms mod en deadline på
+                # 3.500): session_summary nåede aldrig frem.
+                #
+                # Nu tages kandidaterne FØRST (rangeret af bm25), og ejer-filteret
+                # kører kun på dem. Samme svar, 37 ms. Kandidatloftet er limit × 20
+                # så filtreringen ikke kan tømme resultatet; det er stadig en
+                # brøkdel af de 13.463, og en session der ejes af brugeren ligger
+                # i toppen af sin egen rangering.
+                kandidater = max(int(limit) * 20, 200)
                 rows = conn.execute(
-                    "SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
-                    "s.decisions_made, s.created_at, bm25(session_summaries_fts) AS rank "
-                    "FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
-                    "WHERE session_summaries_fts MATCH ? "
-                    "AND EXISTS (SELECT 1 FROM chat_messages own "
-                    f"  WHERE own.session_id=s.session_id AND own.user_id IN ({marks})) "
+                    "WITH hits AS ("
+                    "  SELECT s.id, s.session_id, s.run_id, s.summary, s.key_topics, "
+                    "         s.decisions_made, s.created_at, "
+                    "         bm25(session_summaries_fts) AS rank "
+                    "  FROM session_summaries_fts f JOIN session_summaries s ON s.id = f.rowid "
+                    "  WHERE session_summaries_fts MATCH ? "
+                    "  ORDER BY rank LIMIT ?"
+                    ") "
+                    "SELECT h.id, h.session_id, h.run_id, h.summary, h.key_topics, "
+                    "       h.decisions_made, h.created_at, h.rank FROM hits h "
+                    "WHERE EXISTS (SELECT 1 FROM chat_messages own "
+                    f"  WHERE own.session_id=h.session_id AND own.user_id IN ({marks})) "
                     "AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
-                    "  WHERE foreign_row.session_id=s.session_id "
+                    "  WHERE foreign_row.session_id=h.session_id "
                     "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
                     f"  AND foreign_row.user_id NOT IN ({marks})) "
-                    "ORDER BY rank LIMIT ?",
-                    (match, *principals, *principals, int(limit)),
+                    "ORDER BY h.rank LIMIT ?",
+                    (match, kandidater, *principals, *principals, int(limit)),
                 ).fetchall()
             else:
                 rows = conn.execute(
@@ -328,18 +346,42 @@ def search_chat_messages(
             if uid:
                 principals = _equivalent_principals(conn, uid)
                 marks = ",".join("?" for _ in principals)
+                # 24/10-2026: samme fejl som i `search_session_summaries` — ejer-
+                # filteret lå i MATCH-grenen, så EXISTS kørte for hver træffer før
+                # LIMIT. Målt: 31.677 ms for ti rækker. Nu tages kandidaterne først
+                # (rangeret af bm25), og filteret kører kun på dem.
+                kandidater = max(int(limit) * 20, 200)
+                sql = (
+                    "WITH hits AS ("
+                    "  SELECT m.id, m.message_id, m.session_id, m.role, m.content, "
+                    "         m.created_at, bm25(chat_messages_fts) AS rank "
+                    "  FROM chat_messages_fts f JOIN chat_messages m ON m.id = f.rowid "
+                    "  WHERE chat_messages_fts MATCH ?"
+                )
+                hit_params: list[Any] = [match]
+                if session_id:
+                    sql += " AND m.session_id = ?"
+                    hit_params.append(session_id)
+                if role:
+                    sql += " AND m.role = ?"
+                    hit_params.append(role)
                 sql += (
-                    " AND EXISTS (SELECT 1 FROM chat_messages own "
-                    f"  WHERE own.session_id=m.session_id AND own.user_id IN ({marks}))"
+                    "  ORDER BY rank LIMIT ?"
+                    ") "
+                    "SELECT h.id, h.message_id, h.session_id, h.role, h.content, "
+                    "       h.created_at, h.rank FROM hits h "
+                    "WHERE EXISTS (SELECT 1 FROM chat_messages own "
+                    f"  WHERE own.session_id=h.session_id AND own.user_id IN ({marks}))"
                     " AND NOT EXISTS (SELECT 1 FROM chat_messages foreign_row "
-                    "  WHERE foreign_row.session_id=m.session_id "
+                    "  WHERE foreign_row.session_id=h.session_id "
                     "  AND foreign_row.user_id IS NOT NULL AND foreign_row.user_id<>'' "
                     f"  AND foreign_row.user_id NOT IN ({marks}))"
+                    " ORDER BY h.rank LIMIT ?"
                 )
-                params.extend(principals)
-                params.extend(principals)
-            sql += " ORDER BY rank LIMIT ?"
-            params.append(int(limit))
+                params = [*hit_params, kandidater, *principals, *principals, int(limit)]
+            else:
+                sql += " ORDER BY rank LIMIT ?"
+                params.append(int(limit))
             if _base_table_exists(conn, "recall_ownership_quarantine"):
                 # Quarantine stores only SHA-256 source hashes; SQLite has no
                 # portable sha256(), so fetch the bounded FTS set then filter

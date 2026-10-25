@@ -235,6 +235,19 @@ _Privacy-gate for Jarvis Brain recall._
 | function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L30) |
 | function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L35) |
 
+## `core/services/jarvis_ui_guard.py`
+_Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L68) |
+| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L81) |
+| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L89) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L126) |
+| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L148) |
+| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L164) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L205) |
+
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._
 
@@ -621,21 +634,4 @@ _Local-tool broker (Path B — server-owned transcript, client-local execution).
 | function | `resolve` | `(call_id, content, *, is_error=…)` | Called by POST /chat/tool_results. Deliver the client's result to the waiting run. | [src](../../../core/services/local_tool_broker.py#L84) |
 | function | `pending_call_ids` | `(session_id)` | The call_ids currently awaiting a client result for a session (diagnostics). | [src](../../../core/services/local_tool_broker.py#L97) |
 | function | `cancel_session` | `(session_id)` | Fail all pending calls for a session (e.g. client disconnected). Returns count. | [src](../../../core/services/local_tool_broker.py#L104) |
-
-## `core/services/long_arc_synthesizer.py`
-_Long-arc synthesizer — monthly / quarterly / annual narrative integration._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_arcs_dir` | `()` | — | [src](../../../core/services/long_arc_synthesizer.py#L37) |
-| function | `_existing_arcs` | `(period)` | — | [src](../../../core/services/long_arc_synthesizer.py#L43) |
-| function | `_gather_weekly_manifests` | `(weeks_back)` | Read recent WEEKLY_MANIFEST.md files (only one exists; we read its current content). | [src](../../../core/services/long_arc_synthesizer.py#L47) |
-| function | `_gather_crisis_markers` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L59) |
-| function | `_gather_drift` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L67) |
-| function | `_gather_closed_goals` | `(days)` | — | [src](../../../core/services/long_arc_synthesizer.py#L75) |
-| function | `_build_synthesis_prompt` | `(*, period, days, weekly, crises, drift, goals)` | — | [src](../../../core/services/long_arc_synthesizer.py#L89) |
-| function | `synthesize_arc` | `(*, period)` | Generate a single arc (monthly/quarterly/annual). Skips if recent one exists. | [src](../../../core/services/long_arc_synthesizer.py#L133) |
-| function | `list_arcs` | `(*, period=…)` | — | [src](../../../core/services/long_arc_synthesizer.py#L208) |
-| function | `_exec_synthesize_arc` | `(args)` | — | [src](../../../core/services/long_arc_synthesizer.py#L228) |
-| function | `_exec_list_arcs` | `(args)` | — | [src](../../../core/services/long_arc_synthesizer.py#L232) |
 

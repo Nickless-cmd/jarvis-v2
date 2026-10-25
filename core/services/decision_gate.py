@@ -350,11 +350,27 @@ def _build_context(
 # inde i et langt direktiv goer ikke («findes» i dec_c428 → 0,012).
 _MIN_MAAL_ANDEL = 0.15
 
+# 24/10-2026: samme princip, men maalt paa det ENKELTE ord i maalet. En frase
+# som «bash til filredigering» staar aldrig ordret i et vaerktoejskald, saa
+# frase-kravet alene gjorde gaten tandloes. Ord-kravet er lavere end
+# frase-kravet, fordi et ord paa 4+ tegn i et kort direktiv ER baerende
+# («bash» i «brug aldrig bash til filredigering» → 0,10). Til gengaeld kraeves
+# mindst 4 tegn, saa «til», «jeg» og «det» aldrig bliver et maal.
+_MIN_ORD_ANDEL = 0.08
+
 # De to mønstre står som modul-konstanter, fordi `directive_har_maal` skal
 # bruge PRÆCIS de samme som matcheren. Kopierede man dem, ville
 # klassifikationen kunne sige «eksekverbar» om et direktiv gaten ikke fanger.
+# 24/10-2026: «aldrig» manglede i forbuds-mønstret, mens «altid» var med i det
+# paabydende. Asymmetrien var utilsigtet og kostede maalt: af 135 aktive
+# beslutninger kunne gaten haandhaeve 8 — resten var ren prompt-tekst. Et forbud
+# skrevet paa dansk skrives naturligt med ALDRIG («skriv aldrig til repo-roden»),
+# saa det var praecis den formulering gaten var blind for. Maalt direkte:
+# «Skriv ALDRIG til repo-roden» → tandloes, «Skriv ikke til repo-roden» → gatebar.
+# Andels-kravet nedenfor er uaendret og holder stadig falske positive ude: et
+# tilfaeldigt «aldrig» inde i et langt direktiv fylder under 15 % og afvises.
 _AVOID_RE = re.compile(
-    r"\b(undgå|undlad|ikke|stop|avoid|don'?t|never)\b\s+(?:at\s+|to\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,4})"
+    r"\b(undgå|undlad|ikke|aldrig|stop|avoid|don'?t|never)\b\s+(?:at\s+|to\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,4})"
 )
 _ALWAYS_RE = re.compile(
     r"\b(altid|always|skal altid|must always)\b\s+(?:at\s+)?([a-zæøå]+(?:\s+[a-zæøå]+){0,3})"
@@ -387,6 +403,19 @@ def _detect_conflict(directive: str, context: str, decision: dict) -> str | None
                 and len(target) / max(1, len(directive_lower)) >= _MIN_MAAL_ANDEL
                 and _helt_ord(target, context_lower)):
             return f"handling matcher '{target}' som forpligtelsen siger at undgå"
+        # 24/10-2026: frasen alene var for streng. «Brug ALDRIG bash til
+        # filredigering» udtraekker «bash til filredigering», og den frase staar
+        # aldrig ordret i et vaerktoejskald — saa gaten var tandloes i praksis
+        # (maalt: 9 blokeringer i hele sin levetid). Nu proeves OGSAA det
+        # baerende ord alene, men kun naar det fylder nok til at vaere et reelt
+        # maal og ikke en tilfaeldig vending. Det er samme andels-krav, bare
+        # maalt paa ordet i stedet for frasen.
+        if target:
+            for ord_ in target.split():
+                if (len(ord_) >= 4
+                        and len(ord_) / max(1, len(directive_lower)) >= _MIN_ORD_ANDEL
+                        and _helt_ord(ord_, context_lower)):
+                    return f"handling matcher '{ord_}' som forpligtelsen siger at undgå"
 
     # Pattern: imperative directive — "altid X" and context suggests skipping
     always_match = _ALWAYS_RE.search(directive_lower)

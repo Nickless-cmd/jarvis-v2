@@ -170,6 +170,13 @@ _jarvis_bare practice runner — stripped-bare interlanguage expression generato
 | function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
 | function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
 
+## `scripts/konsolider_beslutninger.py`
+_Konsolidér de aktive beslutninger: 135 spredte -> 12 bærende._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/konsolider_beslutninger.py#L250) |
+
 ## `scripts/krypter_medlems_chat.py`
 _Krypter de medlems-chatbeskeder der allerede ligger i klartekst (task 3.3)._
 
@@ -433,13 +440,4 @@ _Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
-
-## `scripts/normalize_sensory_sources.py`
-_Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel først._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_laes_alle` | `(conn)` | — | [src](../../../scripts/normalize_sensory_sources.py#L30) |
-| function | `_plan` | `(rows)` | Returnér (id, gammel_json, ny_json, nye_metadata) for rækker der ændres. | [src](../../../scripts/normalize_sensory_sources.py#L35) |
-| function | `main` | `()` | — | [src](../../../scripts/normalize_sensory_sources.py#L59) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/normalize_sensory_sources.py`
+_Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel først._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes_alle` | `(conn)` | — | [src](../../../scripts/normalize_sensory_sources.py#L30) |
+| function | `_plan` | `(rows)` | Returnér (id, gammel_json, ny_json, nye_metadata) for rækker der ændres. | [src](../../../scripts/normalize_sensory_sources.py#L35) |
+| function | `main` | `()` | — | [src](../../../scripts/normalize_sensory_sources.py#L59) |
+
 ## `scripts/nudge_well_cleanup.py`
 _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 
@@ -423,13 +432,4 @@ _Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
 | function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L260) |
 | function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L286) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L291) |
-
-## `scripts/verify_notes.py`
-_Vagt: en note skal have en status, en slags, og sine fire overskrifter._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `noter` | `()` | Kun noter i den NYE form. Den flade bunke er frosset og røres ikke. | [src](../../../scripts/verify_notes.py#L39) |
-| function | `fejl_i` | `(sti)` | — | [src](../../../scripts/verify_notes.py#L50) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_notes.py#L67) |
 

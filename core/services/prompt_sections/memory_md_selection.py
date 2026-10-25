@@ -280,14 +280,22 @@ def _lexical_candidates(
         coverage = _lexical_coverage(msg, section, text, vaegte=vaegte)
         if coverage <= 0.0:
             continue
+        # 24/10-2026: `_focused_excerpt` blev kørt her — på HVER kandidat med
+        # dækning > 0, målt 917 gange pr. kald, hvoraf kun `limit` (12) forlod
+        # funktionen. Excerpten påvirker kun `text`-feltet, aldrig `score`, så
+        # den flyttes efter sorteringen nedenfor: samme udvalg, samme tekster,
+        # 905 færre kald. `_raw` bærer den fulde tekst indtil da.
         out.append({
             "section": section,
-            "text": _focused_excerpt(msg, text),
+            "_raw": text,
             "score": min(1.0, 0.30 + 0.70 * coverage),
             "_lexical_fallback": True,
         })
     out.sort(key=lambda h: float(h.get("score") or 0.0), reverse=True)
-    return out[:limit]
+    out = out[:limit]
+    for h in out:
+        h["text"] = _focused_excerpt(msg, str(h.pop("_raw", "") or ""))
+    return out
 
 
 def select_memory_md_sections(

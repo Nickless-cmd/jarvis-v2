@@ -251,10 +251,41 @@ def _heartbeat_living_context_line() -> str:
             format_active_decisions_for_heartbeat,
         )
 
-        decisions_line = format_active_decisions_for_heartbeat(max_items=3)
+        # 24/10-2026: 3 → 5. Efter konsolideringen 135 → 12 er hver beslutning
+        # kort nok (130-179 tegn) til at fem kan staa i samme budget som tre
+        # fyldte foer (477 tegn mod 1102). De to ekstra pladser gaar til de
+        # naeste i prioritets-raekkefoelgen — ikke til nye, lange direktiver.
+        decisions_line = format_active_decisions_for_heartbeat(max_items=5)
         if decisions_line:
             parts.append(f"active_decisions: {decisions_line}")
     except Exception:
+        pass
+
+    # Adherence-helbred — den manglende læser (24/10-2026).
+    #
+    # `decision_breach_reader.health_report()` kunne svare paa om jeg holder
+    # mine forpligtelser, men havde NUL kaldere i drift. Dommen blev skrevet af
+    # `decision_review_daemon`, scoren dannet ved >=3 domme — og ingen laeste
+    # resultatet. Praecis samme fejlform som `breach_stats` havde indtil
+    # 22/10-2026: uden en laeser er det en log, ikke en laeringssloejfe.
+    #
+    # Linjen er TAVS naar alt er sundt. Den fyrer kun naar en beslutning er
+    # svag: maalt under 0,4, eller aldrig maalt med gentagne brud.
+    try:
+        from core.services.decision_breach_reader import health_report
+
+        _hr = health_report()
+        _svage = [r for r in (_hr.get("rows") or []) if r.get("weak")]
+        if _svage:
+            _dele = [
+                f"{str(r.get('decision_id'))[:14]} {r.get('why_weak') or 'svag'}"
+                for r in _svage[:3]
+            ]
+            parts.append(
+                f"decision_health: {len(_svage)} svage af {_hr.get('total')} — "
+                + "; ".join(_dele)
+            )
+    except Exception:  # helbred er observability — maa ikke koste cyklussen
         pass
 
     # Automation-suggestions — lærings-sløjfen, fase 2 (2026-10-01).

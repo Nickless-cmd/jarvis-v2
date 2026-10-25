@@ -5877,6 +5877,19 @@ async def _stream_visible_run(
         # frontend's loadSession() call immediately after done finds the
         # message in the DB (avoids the "message disappears" race condition).
         if visible_output_text:
+            # 24/10-2026 (målt): guarden sad KUN i anden/tredje-pass-grenene
+            # (linje 5583-5600). Førstepas-vejen — den almindelige — gik uden om,
+            # så otte skæve comparison-rækker i besked 220356 og 220381 blev
+            # persisteret uden padding. Målt i DB: 6 blokke siden 20:20, 8
+            # mismatch, 0 normaliseringer. Guarden hører på den FÆLLES udgang,
+            # før teksten både observeres og gemmes — ikke på én gren.
+            try:
+                from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+                visible_output_text = _normalisér_flader(
+                    visible_output_text, run_id=str(run.run_id or ""),
+                )
+            except Exception:  # fail-open: en fejl i normaliseringen må ikke koste svaret — teksten sendes da uændret
+                pass
             try:
                 from core.services.prompt_section_impact import observe_last_prompt_answer_impact
                 observe_last_prompt_answer_impact(
@@ -6424,6 +6437,19 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
     # talte som `completed`. Samme princip som PresentationInvariantError — dét
     # værn fanger INTERNE artefakter, dette fanger FREMMED tekst. Fail-open:
     # enhver tvivl eller fejl → uændret adfærd.
+    # JARVIS-UI-NORMALISERING (24/10-2026). Målt tre gange på én aften: en
+    # ``jarvis-ui``-blok fejlede i chatview, og årsagen var MIN tekst, ikke
+    # rendereren. To former: (a) JSON skrevet på samme linje som fence-markøren,
+    # så hele JSON'en bliver en del af info-stringen og sproget ikke genkendes;
+    # (b) en entydig JSON-fejl som ``],"}"``. Begge normaliseres her, FØR teksten
+    # gemmes — en validering der kun kigger på dataene kan ikke se (a), fordi
+    # JSON'en er gyldig. Fail-open: fejler normaliseringen, sendes teksten uændret.
+    try:
+        from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+        if cleaned:
+            cleaned = _normalisér_flader(cleaned, run_id="")
+    except Exception:
+        pass
     try:
         from core.services.provider_error_guard import describe, looks_like_provider_error
         if cleaned and looks_like_provider_error(cleaned):

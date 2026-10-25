@@ -44,6 +44,18 @@ def test_mange_filer_i_ET_domaene_er_ikke_en_koekkenvask(monkeypatch):
     assert h.main() == 0
 
 
+def test_genererede_api_sider_taeller_ikke_som_selvstaendig_scope(monkeypatch):
+    """Docs-drift kræver siderne sammen med koden; vagterne må ikke deadlocke."""
+    _filer(
+        monkeypatch,
+        [f"core/services/f{i}.py" for i in range(15)]
+        + ["apps/api/route.py", "tests/test_route.py"]
+        + [f"docs/reference/api/core.services.{i:02d}.md" for i in range(30)]
+        + ["docs/reference/DOCSTRING_COVERAGE.md"],
+    )
+    assert h.main() == 0
+
+
 def test_merge_springer_stoerrelsen_over(monkeypatch, capsys):
     """Begge sider er allerede gået gennem porten hver for sig."""
     monkeypatch.setattr(h, "_staged_files", lambda: [Path(f"core/f{i}.py") for i in range(50)]

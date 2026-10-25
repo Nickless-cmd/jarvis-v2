@@ -50,6 +50,15 @@ _SOFT_THRESHOLD = 6
 _MAX_UNRELATED_DOMAINS_AT_SOFT = 2
 
 
+def _is_generated_reference(path: Path) -> bool:
+    """Generated API pages are build output, not an independent scope domain."""
+    value = path.as_posix()
+    return (
+        value == "docs/reference/DOCSTRING_COVERAGE.md"
+        or value.startswith("docs/reference/api/")
+    )
+
+
 def _staged_files() -> list[Path]:
     result = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
@@ -85,9 +94,14 @@ def main() -> int:
         print("commit-hygiene: merge commit — size gate skipped (both sides already gated).")
         return 0
 
-    domains = Counter(_classify(f) for f in files)
+    # API docs must be committed together with the source that generated them
+    # (docs-drift-check enforces that). Excluding only those deterministic
+    # outputs avoids a deadlock where one hook demands the files and this hook
+    # rejects the otherwise focused source change because of them.
+    scoped_files = [f for f in files if not _is_generated_reference(f)]
+    domains = Counter(_classify(f) for f in scoped_files)
     distinct = set(domains.keys())
-    total = len(files)
+    total = len(scoped_files)
 
     # Always-block: code + scaffolding in same commit
     code_present = bool(distinct & _CODE_DOMAINS)

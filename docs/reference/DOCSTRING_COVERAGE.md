@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9287/17557 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9288/17558 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 9287/17557 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 294 | 628 | 46% |
+| `scripts` | 295 | 629 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2464,7 +2464,7 @@ Generated from source. 9287/17557 functions/methods documented (52%). The list b
 - `scripts/dispatcher_adoption.py` :: `main` (L63)
 - `scripts/e2e_indbakke.py` :: `Led.bestod` (L64)
 - `scripts/e2e_indbakke.py` :: `main` (L408)
-- `scripts/enforce_commit_hygiene.py` :: `main` (L80)
+- `scripts/enforce_commit_hygiene.py` :: `main` (L89)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/find_tidsbomber.py` :: `main` (L54)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)

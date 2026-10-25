@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/web_push_subscriptions.py`
+_Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/web_push_subscriptions.py#L18) |
+| function | `save` | `(user_id, endpoint, p256dh, auth)` | — | [src](../../../core/services/web_push_subscriptions.py#L38) |
+| function | `list_for_user` | `(user_id)` | Alle abonnementer for brugeren som ``[{endpoint, p256dh, auth}]``. | [src](../../../core/services/web_push_subscriptions.py#L57) |
+| function | `delete` | `(endpoint)` | — | [src](../../../core/services/web_push_subscriptions.py#L72) |
+
 ## `core/services/weekly_manifest.py`
 _Weekly manifest — Jarvis' running self-reflection._
 

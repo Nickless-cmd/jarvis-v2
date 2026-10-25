@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Callable
@@ -86,6 +87,118 @@ def _state(row: dict) -> RunState:
 
 def _stale(exc: ValueError) -> StaleRoutineLease:
     return StaleRoutineLease("routine lease is no longer current")
+
+
+# ── Værktøjsadgang for en rutine ─────────────────────────────────────────────
+#
+# Målt 25/10-2026: et rutine-run svarede «jeg har ikke adgang til et
+# madopskrift-værktøj» med ``input_tokens=0``. Årsagen var ikke modellen men
+# TRE led der alle manglede: ``RoutineRuntime`` byggede ``RoutineRunner()``
+# uden executor, ``_ProviderDriver`` sendte ``requires_tools=False`` og læste
+# aldrig ``tool_calls`` tilbage, og en rutine havde ingen oprindelse i
+# værktøjspolitikken. De tre er rettet hver for sig; her bindes de sammen.
+#
+# Executoren er bundet til rutinens EJER, ikke til processen der kører den.
+# Uden det ville Michelles rutine læse i Bjørns workspace — samme lækage som
+# ``fire_session_id`` havde, blot i værktøjsvejen.
+
+
+def _rutine_tools_payload(context: RoutineExecutionContext) -> list[dict]:
+    """Værktøjsskemaet denne rutine må byde modellen. Tom = værktøjs-fri."""
+    if str(getattr(context, "capability_scope", "") or "") == "system":
+        # Systemrutiner (heartbeat/dream) er rammer, ikke opgaver: de skal ikke
+        # kunne nå ud i verden. De beholder den værktøjs-fri adfærd.
+        return []
+    try:
+        from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+        from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
+    except Exception:  # noqa: BLE001 — et manglende skema må ikke vælte kørslen
+        _log.warning("rutine: kunne ikke indlæse værktøjsskemaet", exc_info=True)
+        return []
+    tilladte = allowed_tools_for_origin("routine")
+    return [
+        definition for definition in TOOL_DEFINITIONS
+        if str((definition.get("function") or {}).get("name") or "") in tilladte
+    ]
+
+
+@contextmanager
+def _ejer_kontekst(owner_user_id: str, *, run_id: str = ""):
+    """Kør blokken som rutinens ejer: workspace, oprindelse og autonomi.
+
+    Workspacet slås op på det KANONISKE id via ``get_user``. ``workspace_dir``
+    kan ikke bruges her — den kræver et Discord-id og nægter ellers (målt
+    25/10-2026), så et rutine-run ville fejle på kontekst frem for på arbejde.
+    """
+    from core.services import run_autonomy_context as autonomy
+    from core.identity.workspace_context import reset_context, set_context
+
+    workspace = ""
+    try:
+        from core.identity.user_db import get_user
+
+        bruger = get_user(owner_user_id) or {}
+        workspace = str(bruger.get("workspace") or "").strip()
+    except Exception:  # noqa: BLE001 — kontekst er et gode, ikke en forudsætning
+        _log.warning("rutine: kunne ikke slå workspace op for ejeren", exc_info=True)
+
+    ws_token = None
+    if workspace:
+        ws_token = set_context(workspace_name=workspace, user_id=owner_user_id)
+    aut_token = autonomy.set_autonomous(True)
+    autonomy.set_run_identity(run_id or "routine", origin="routine")
+    presence_token = autonomy.set_user_present(False)
+    try:
+        yield
+    finally:
+        try:
+            autonomy.reset_user_present(presence_token)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            autonomy.reset_autonomous(aut_token)
+        except Exception:  # noqa: BLE001
+            pass
+        if ws_token is not None:
+            try:
+                reset_context(ws_token)
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def build_tool_executor(owner_user_id: str, *, run_id: str = "") -> Callable[[ToolCall], object]:
+    """Executor for ét rutine-run, scopet til rutinens ejer.
+
+    ``execute_tool_force`` bruges fordi et rutine-run er forhåndsgodkendt af
+    sin ejer: der findes ingen dialog at parkere i. Politikken håndhæves
+    stadig — ``is_allowed`` siger nej til alt uden for rutinens sæt, og et
+    destruktivt kald rammer fortsat sin egen gate.
+    """
+
+    def _executér(call: ToolCall) -> object:
+        from core.tools.simple_tools import execute_tool_force
+        from core.tools.tool_result_format import format_tool_result_for_model
+
+        with _ejer_kontekst(owner_user_id, run_id=run_id):
+            from core.tools.autonomous_tool_policy import is_allowed
+
+            if not is_allowed(call.name):
+                return (
+                    f"[Tool {call.name} error: ikke tilladt i en rutine-kørsel]"
+                )
+            try:
+                raw = execute_tool_force(call.name, dict(call.arguments or {}))
+            except Exception as exc:  # noqa: BLE001 — fejlen skal til MODELLEN
+                return f"[Tool {call.name} error: {type(exc).__name__}: {exc}]"
+        if not isinstance(raw, dict):
+            raw = {"status": "ok", "text": str(raw)}
+        if str(raw.get("status") or "") == "approval_needed":
+            # En rutine har ingen at spørge. At parkere kørslen ville efterlade
+            # den halvt udført uden nogen der kan frigive den.
+            return f"[Tool {call.name} kræver godkendelse — ikke muligt i en rutine]"
+        return format_tool_result_for_model(call.name, raw)
+
+    return _executér
 
 
 class RoutineRunRepository:
@@ -277,16 +390,20 @@ class RoutineRunner:
         self.repository = RoutineRunRepository()
         self.recorder = _FencedRecorder(RoutineRunRecorder())
 
-    def dispatch_tool(self, run_id: str, *, generation: int, call: ToolCall) -> object:
+    def dispatch_tool(
+        self, run_id: str, *, generation: int, call: ToolCall,
+        raw_executor: Callable[[ToolCall], object] | None = None,
+    ) -> object:
         self.repository.assert_current(run_id, generation=generation, holder=self.holder)
         self.repository.record_tool_dispatch_started(
             run_id, generation=generation, call=call, holder=self.holder,
         )
         succeeded = False
         try:
-            if self.tool_executor is None:
+            executor = raw_executor or self.tool_executor
+            if executor is None:
                 raise RuntimeError(f"no executor configured for tool {call.name}")
-            output = self.tool_executor(call)
+            output = executor(call)
             succeeded = True
             return output
         finally:
@@ -327,13 +444,22 @@ class RoutineRunner:
         row = self.repository.get_run(run_id, decrypt_for=claim.owner_user_id)
         context = self._context(row, claim.lease_generation)
         instruction = bytes(row["definition_snapshot"]["instruction"])
+        tools_payload = _rutine_tools_payload(context)
+        # Den RÅ executor (ejer-scopet) leveres ind til ``dispatch_tool``, som
+        # stadig ejer lease-tjekket og værktøjs-events. Uden den omvej ville et
+        # værktøjskald kunne køre efter at leasen var udløbet.
+        raw_executor = self.tool_executor
+        if raw_executor is None and tools_payload:
+            raw_executor = build_tool_executor(claim.owner_user_id, run_id=run_id)
         adapter = RoutineExecutionAdapter(
             context,
             instruction=instruction,
             driver=self.driver,
             tool_executor=lambda call: self.dispatch_tool(
                 run_id, generation=claim.lease_generation, call=call,
+                raw_executor=raw_executor,
             ),
+            tools_payload=tools_payload,
         )
         result = execute_agentic(
             adapter,

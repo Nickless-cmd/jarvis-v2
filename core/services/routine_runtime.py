@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from core.services.routine_reconciler import RoutineReconciler
@@ -17,6 +18,7 @@ class RoutineRuntime:
         self, *, runner: Any | None = None, reconciler: Any | None = None,
         delivery: Any | None = None,
         poll_seconds: float = 1.0, reconcile_seconds: float = 30.0,
+        scheduler_seconds: float = 60.0,
     ):
         self.runner = runner or RoutineRunner()
         self.reconciler = reconciler or RoutineReconciler(repository=self.runner.repository)
@@ -27,6 +29,8 @@ class RoutineRuntime:
         self.delivery = delivery
         self.poll_seconds = max(0.001, float(poll_seconds))
         self.reconcile_seconds = max(0.001, float(reconcile_seconds))
+        self.scheduler_seconds = max(1.0, float(scheduler_seconds))
+        self._sidste_scheduler = 0.0
         self._stop = threading.Event()
         self._worker: threading.Thread | None = None
         self._reconciler: threading.Thread | None = None
@@ -42,6 +46,22 @@ class RoutineRuntime:
                 self.delivery.deliver_next()
             except Exception as exc:
                 logger.warning("routine delivery failed: %s", type(exc).__name__)
+            # Tids-triggere (25/10-2026): uden dette led havde en rutine med
+            # ``trigger_kind='schedule'`` ingen eksekvering bag sig — den var
+            # synlig og manuelt kørbar, men fyrede aldrig af sig selv.
+            # Idempotency-nøglen pr. forekomst gør det sikkert at gentage
+            # forsøget hvert minut.
+            nu_mono = time.monotonic()
+            if nu_mono - self._sidste_scheduler >= self.scheduler_seconds:
+                self._sidste_scheduler = nu_mono
+                try:
+                    from core.services.routine_scheduler import fire_due
+
+                    fire_due()
+                except Exception as exc:
+                    logger.warning(
+                        "routine scheduler failed: %s", type(exc).__name__,
+                    )
             self._stop.wait(self.poll_seconds)
 
     def _reconciler_loop(self) -> None:

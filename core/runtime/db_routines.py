@@ -341,6 +341,47 @@ def list_routines(
     return [_routine_values(row, decrypt_for=decrypt_for) for row in rows]
 
 
+def routine_has_legacy_link(routine_id: str) -> bool:
+    """Har rutinen en oprindelig (legacy) kilde der selv styrer dens tidsplan?
+
+    Sandt betyder: ``recurring_tasks``/``scheduled_tasks`` fyrer den allerede
+    gennem ``RoutineTriggerAdapters``. Scheduleren skal derfor holde sig væk —
+    ellers får brugeren to runs af samme opgave. Målt 25/10-2026 havde 198
+    rutiner et sådant link, og cutover var slukket, så legacy-vejen var den
+    aktive for dem alle.
+    """
+    with connect() as conn:
+        _ensure_tables(conn)
+        row = conn.execute(
+            "SELECT 1 FROM routine_legacy_links WHERE routine_id=? LIMIT 1",
+            (routine_id,),
+        ).fetchone()
+    return row is not None
+
+
+def list_schedulable_routines() -> list[dict[str, Any]]:
+    """Alle AKTIVE rutiner med en tids-trigger — på tværs af ALLE ejere.
+
+    Returnerer kun de felter scheduleren må se: id, ejer og tidsanker. Selve
+    ``trigger_config`` er krypteret og dekrypteres af kalderen med EJERENS
+    nøgle (``get_routine(decrypt_for=...)``) — en scheduler må ikke kunne læse
+    indhold den ikke ejer.
+
+    Målt 25/10-2026: præcis to rækker kvalificerede (én ``interval`` for
+    ejeren, én ``schedule`` for en partner), så en scheduler kan tændes uden
+    at 201 migrerede rutiner pludselig fyrer.
+    """
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT routine_id, owner_user_id, trigger_kind, created_at "
+            "FROM routines WHERE status='active' "
+            "AND trigger_kind IN ('schedule','interval') "
+            "ORDER BY created_at"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def transition_routine(
     routine_id: str, *, to_status: str, expected_version: int | None = None,
 ) -> dict[str, Any]:

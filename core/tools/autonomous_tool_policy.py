@@ -116,6 +116,19 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
         "madopskrift",
         "bash",
     }),
+    # En RUTINE er en planlagt opgave brugeren selv har oprettet og aktiveret —
+    # samme tillidsniveau som en recurring-opgave, som den afløser. Uden denne
+    # nøgle faldt en rutine til BUND-sættet: den kunne læse og huske, men ikke
+    # slå noget op i verden eller fortælle nogen svaret. Målt 25/10-2026:
+    # Michelles ugentlige madopskrift-rutine svarede «jeg har ikke adgang til
+    # et madopskrift-værktøj» — den havde hverken `madopskrift` eller
+    # `web_search`, så resultatet blev opdigtet i stedet for slået op.
+    "routine": frozenset({
+        "send_ntfy", "notify_user", "send_discord_dm", "send_discord_channel",
+        "discord_channel", "send_webchat_message",
+        "web_search", "web_fetch", "get_weather", "get_news", "madopskrift",
+        "bash",
+    }),
     # Drømmen skal sanse og arkivere sit indtryk — ikke tale med verden.
     "dream": frozenset({"look_around", "mic_listen"}),
     # Heartbeat er motoren selv: den observerer og holder planer, og kan give

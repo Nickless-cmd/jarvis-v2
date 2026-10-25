@@ -59,6 +59,13 @@ class AgenticRequest:
     model: str
     round_number: int
     prior_results: tuple[ToolResult, ...]
+    #: Værktøjsskemaer kørslen må bruge. Tom = kørslen er værktøjs-fri (den
+    #: gamle adfærd). Uden dette felt kunne en Routine aldrig bede om et
+    #: værktøj: ``_ProviderDriver`` sendte ``requires_tools=False`` og læste
+    #: aldrig ``tool_calls`` tilbage — målt 25/10-2026, hvor et rutine-run
+    #: svarede «jeg har ikke adgang til et madopskrift-værktøj» med
+    #: ``input_tokens=0``.
+    tools: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -94,7 +101,44 @@ class ExecutionContext(Protocol):
     model: str
     driver: ModelDriver
     tool_executor: Callable[[ToolCall], object]
+    tools_payload: list[dict[str, object]]
     max_rounds: int
+
+
+def _normalisér_tool_calls(raw: object) -> tuple[ToolCall, ...]:
+    """Provider-svarets ``tool_calls`` → ``ToolCall``.
+
+    Formen er OpenAI-agtig: ``{"id", "function": {"name", "arguments"}}`` hvor
+    ``arguments`` er en JSON-streng. Vi accepterer også en allerede-parset
+    dict, fordi providers ikke er enige, og et forkert-typet argument må ikke
+    koste hele runden: en ubrugelig post springes over frem for at kaste.
+    """
+    import json
+
+    ud: list[ToolCall] = []
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    for post in raw:
+        if not isinstance(post, dict):
+            continue
+        funktion = post.get("function") if isinstance(post.get("function"), dict) else post
+        navn = str(funktion.get("name") or "").strip()
+        if not navn:
+            continue
+        argumenter = funktion.get("arguments")
+        if isinstance(argumenter, str):
+            try:
+                argumenter = json.loads(argumenter) if argumenter.strip() else {}
+            except (ValueError, TypeError):
+                argumenter = {"_raw": argumenter}
+        if not isinstance(argumenter, dict):
+            argumenter = {}
+        ud.append(ToolCall(
+            call_id=str(post.get("id") or funktion.get("id") or f"call-{len(ud)}"),
+            name=navn,
+            arguments=argumenter,
+        ))
+    return tuple(ud)
 
 
 class _ProviderDriver:
@@ -103,6 +147,7 @@ class _ProviderDriver:
     def complete(self, request: AgenticRequest) -> AgenticTurn:
         from core.services.non_visible_lane_execution import execute_with_role_or_fallback
 
+        tools = [dict(t) for t in (request.tools or ())]
         messages: list[dict[str, object]] = [
             {"role": "user", "content": request.prompt},
         ]
@@ -118,7 +163,10 @@ class _ProviderDriver:
             model=request.model,
             message=request.prompt,
             messages=messages,
-            requires_tools=False,
+            # Værktøjer KUN når kørslen faktisk har et skema at byde på. Den
+            # gamle vej (tom liste) er byte-identisk: requires_tools=False.
+            requires_tools=bool(tools),
+            tools=tools or None,
         )
         usage_raw = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
         usage = UsageRecord(
@@ -128,6 +176,7 @@ class _ProviderDriver:
         )
         return AgenticTurn(
             text=str(raw.get("output") or raw.get("text") or ""),
+            tool_calls=_normalisér_tool_calls(raw.get("tool_calls")),
             usage=usage,
             provider=str(raw.get("provider") or request.provider),
             model=str(raw.get("model") or request.model),
@@ -156,6 +205,7 @@ class RoutineExecutionAdapter:
         instruction: bytes,
         driver: ModelDriver | None = None,
         tool_executor: Callable[[ToolCall], object] | None = None,
+        tools_payload: list[dict[str, object]] | None = None,
         max_rounds: int = 8,
     ):
         self.context = context
@@ -164,6 +214,8 @@ class RoutineExecutionAdapter:
         self.model = context.model
         self.driver = driver or _ProviderDriver()
         self.tool_executor = tool_executor or _no_tool_executor
+        #: Skemaet rutinen må bruge. Tom = værktøjs-fri kørsel (uændret).
+        self.tools_payload = list(tools_payload or [])
         self.max_rounds = max(1, int(max_rounds))
 
 
@@ -200,6 +252,7 @@ def execute_agentic(
                 model=context.model,
                 round_number=round_number,
                 prior_results=tuple(prior_results),
+                tools=tuple(getattr(context, "tools_payload", ()) or ()),
             ))
         except Exception:  # Provider details stay private; caller receives a typed terminal result.
             return _emit_terminal(sink, ExecutionResult(

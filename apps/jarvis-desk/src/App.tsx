@@ -33,6 +33,8 @@ import { BugRapport } from './components/BugRapport'
 import { CoworkView } from './views/CoworkView'
 import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
+import { BrowserCodeGate } from './components/code/BrowserCodeGate'
+import { BrowserDeviceApprovalHost } from './components/BrowserDeviceApprovalHost'
 import { ChatFlowProvider } from './contexts/ChatFlowContext'
 import { appGate } from './lib/appGate'
 import { MemoryView } from './views/MemoryView'
@@ -309,6 +311,7 @@ function Shell({
           }}
         />
         <ApprovalNotifierHost />
+        {!__WEB_BUILD__ && <BrowserDeviceApprovalHost config={cfg} />}
         <GenoptagelsesVarselHost sessionId={activeId} />
         <AppActionHost setSurface={setSurface} />
         <TakeoverHost surface={surface} setSurface={setSurface} />
@@ -322,12 +325,23 @@ function Shell({
           )}
           {surface === 'cowork' && <CoworkView role={role} sessionId={activeId} />}
           {surface === 'code' && (
-            <CodeView
-              sessionId={activeId}
-              userName={userName}
-              role={role}
-              onOpenPrivacy={() => setPrivacyOpen(true)}
-            />
+            __WEB_BUILD__ ? (
+              <BrowserCodeGate config={cfg!}>
+                <CodeView
+                  sessionId={activeId}
+                  userName={userName}
+                  role={role}
+                  onOpenPrivacy={() => setPrivacyOpen(true)}
+                />
+              </BrowserCodeGate>
+            ) : (
+              <CodeView
+                sessionId={activeId}
+                userName={userName}
+                role={role}
+                onOpenPrivacy={() => setPrivacyOpen(true)}
+              />
+            )
           )}
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}

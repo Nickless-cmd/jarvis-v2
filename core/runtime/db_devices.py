@@ -31,13 +31,16 @@ from __future__ import annotations
 
 import time
 import uuid
+import secrets
 from typing import Any
 
 from core.runtime.db import connect
 
 __all__ = [
     "registrer_telefon", "registrer_computer", "liste", "fjern", "telefon_status",
-    "maa_bruge_kode", "kraev_aktivt", "saet_kraev", "TELEFON_APP_ID",
+    "maa_bruge_kode", "er_betroet_desk", "opret_browser_anmodning",
+    "browser_anmodning", "ventende_browser_anmodninger", "afgoer_browser_anmodning",
+    "kraev_aktivt", "saet_kraev", "TELEFON_APP_ID",
 ]
 
 TELEFON_APP_ID = "jarvis-mobile"
@@ -54,6 +57,16 @@ def _sikr(conn) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_enheder_bruger ON enheder(user_id, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_enheder_noegle ON enheder(noegle)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS enheds_anmodninger ("
+        "id TEXT PRIMARY KEY, user_id TEXT NOT NULL, app_id TEXT NOT NULL, "
+        "navn TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', "
+        "oprettet REAL NOT NULL, udloeber REAL NOT NULL, afgjort REAL NOT NULL DEFAULT 0)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_enheds_anmodninger_bruger "
+        "ON enheds_anmodninger(user_id, status, oprettet)"
+    )
 
 
 def _raekke(r) -> dict[str, Any]:
@@ -78,7 +91,9 @@ def registrer_telefon(user_id: str, *, navn: str = "", platform: str = "") -> di
     return {"id": eid, "type": "telefon", "navn": (navn or "Telefon")[:80]}
 
 
-def registrer_computer(user_id: str, app_id: str, *, navn: str = "") -> dict[str, Any]:
+def registrer_computer(
+    user_id: str, app_id: str, *, navn: str = "", platform: str = "desk",
+) -> dict[str, Any]:
     """En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet)."""
     uid = (user_id or "").strip()
     aid = (app_id or "").strip()
@@ -98,8 +113,8 @@ def registrer_computer(user_id: str, app_id: str, *, navn: str = "") -> dict[str
         eid = f"enh-{uuid.uuid4().hex[:16]}"
         conn.execute(
             "INSERT INTO enheder (id, user_id, type, noegle, navn, platform, oprettet, sidst_set) "
-            "VALUES (?, ?, 'computer', ?, ?, 'desk', ?, ?)",
-            (eid, uid, aid, (navn or "Computer")[:80], nu, nu),
+            "VALUES (?, ?, 'computer', ?, ?, ?, ?, ?)",
+            (eid, uid, aid, (navn or "Computer")[:80], (platform or "desk")[:40], nu, nu),
         )
     return {"id": eid, "type": "computer", "navn": (navn or "Computer")[:80]}
 
@@ -164,6 +179,142 @@ def maa_bruge_kode(user_id: str, *, enhed: str = "", app_id: str = "") -> bool:
                 conn.execute("UPDATE enheder SET sidst_set = ? WHERE id = ?", (time.time(), r[0]))
                 return True
     return False
+
+
+def er_betroet_desk(user_id: str, app_id: str) -> bool:
+    """Kun en aktiv Electron-installation må godkende en browser."""
+    uid, aid = (user_id or "").strip(), (app_id or "").strip()
+    if not uid or not aid:
+        return False
+    with connect() as conn:
+        _sikr(conn)
+        row = conn.execute(
+            "SELECT 1 FROM enheder WHERE user_id = ? AND noegle = ? "
+            "AND type = 'computer' AND platform = 'desk' AND status = 'aktiv'",
+            (uid, aid),
+        ).fetchone()
+    return bool(row)
+
+
+def _browser_request_row(row) -> dict[str, Any] | None:
+    if not row:
+        return None
+    status = str(row[4])
+    if status in {"pending", "approved"} and float(row[6]) < time.time():
+        status = "expired"
+    return {
+        "id": str(row[0]), "user_id": str(row[1]), "app_id": str(row[2]),
+        "navn": str(row[3]), "status": status, "oprettet": float(row[5]),
+        "udloeber": float(row[6]), "afgjort": float(row[7]),
+    }
+
+
+def opret_browser_anmodning(
+    user_id: str, app_id: str, *, navn: str = "Browser", ttl_seconds: int = 300,
+) -> dict[str, Any]:
+    """Opret eller genbrug en kortlivet pending anmodning for samme browser."""
+    uid, aid = (user_id or "").strip(), (app_id or "").strip()
+    if not uid:
+        raise ValueError("user_id mangler")
+    if not aid.startswith("web-") or len(aid) > 100:
+        raise ValueError("ugyldigt browser-id")
+    now = time.time()
+    expires = now + max(60, min(int(ttl_seconds), 600))
+    with connect() as conn:
+        _sikr(conn)
+        row = conn.execute(
+            "SELECT id, user_id, app_id, navn, status, oprettet, udloeber, afgjort "
+            "FROM enheds_anmodninger WHERE user_id = ? AND app_id = ? "
+            "AND status = 'pending' AND udloeber >= ? ORDER BY oprettet DESC LIMIT 1",
+            (uid, aid, now),
+        ).fetchone()
+        if row:
+            return _browser_request_row(row) or {}
+        request_id = f"req-{secrets.token_urlsafe(18)}"
+        conn.execute(
+            "INSERT INTO enheds_anmodninger "
+            "(id, user_id, app_id, navn, status, oprettet, udloeber) "
+            "VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+            (request_id, uid, aid, (navn or "Browser")[:80], now, expires),
+        )
+    return {
+        "id": request_id, "user_id": uid, "app_id": aid,
+        "navn": (navn or "Browser")[:80], "status": "pending",
+        "oprettet": now, "udloeber": expires, "afgjort": 0.0,
+    }
+
+
+def browser_anmodning(request_id: str, user_id: str) -> dict[str, Any] | None:
+    with connect() as conn:
+        _sikr(conn)
+        row = conn.execute(
+            "SELECT id, user_id, app_id, navn, status, oprettet, udloeber, afgjort "
+            "FROM enheds_anmodninger WHERE id = ? AND user_id = ?",
+            ((request_id or "").strip(), (user_id or "").strip()),
+        ).fetchone()
+    return _browser_request_row(row)
+
+
+def ventende_browser_anmodninger(user_id: str) -> list[dict[str, Any]]:
+    now = time.time()
+    with connect() as conn:
+        _sikr(conn)
+        conn.execute(
+            "UPDATE enheds_anmodninger SET status = 'expired' "
+            "WHERE user_id = ? AND status = 'pending' AND udloeber < ?",
+            ((user_id or "").strip(), now),
+        )
+        rows = conn.execute(
+            "SELECT id, user_id, app_id, navn, status, oprettet, udloeber, afgjort "
+            "FROM enheds_anmodninger WHERE user_id = ? AND status = 'pending' "
+            "ORDER BY oprettet ASC",
+            ((user_id or "").strip(),),
+        ).fetchall()
+    return [r for row in rows if (r := _browser_request_row(row)) is not None]
+
+
+def afgoer_browser_anmodning(request_id: str, user_id: str, *, godkend: bool) -> dict[str, Any] | None:
+    """Afgør kun en stadig-gyldig pending anmodning; beslutningen er endelig."""
+    rid, uid, now = (request_id or "").strip(), (user_id or "").strip(), time.time()
+    with connect() as conn:
+        _sikr(conn)
+        row = conn.execute(
+            "SELECT id, user_id, app_id, navn, status, oprettet, udloeber, afgjort "
+            "FROM enheds_anmodninger WHERE id = ? AND user_id = ?",
+            (rid, uid),
+        ).fetchone()
+        current = _browser_request_row(row)
+        if not current or current["status"] != "pending":
+            return current
+        status = "approved" if godkend else "denied"
+        if godkend:
+            existing = conn.execute(
+                "SELECT id FROM enheder WHERE user_id = ? AND type = 'computer' AND noegle = ?",
+                (uid, current["app_id"]),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE enheder SET status = 'aktiv', navn = ?, platform = 'browser', "
+                    "sidst_set = ? WHERE id = ?",
+                    ((current["navn"] or "Browser")[:80], now, existing[0]),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO enheder "
+                    "(id, user_id, type, noegle, navn, platform, oprettet, sidst_set) "
+                    "VALUES (?, ?, 'computer', ?, ?, 'browser', ?, ?)",
+                    (
+                        f"enh-{uuid.uuid4().hex[:16]}", uid, current["app_id"],
+                        (current["navn"] or "Browser")[:80], now, now,
+                    ),
+                )
+        conn.execute(
+            "UPDATE enheds_anmodninger SET status = ?, afgjort = ? "
+            "WHERE id = ? AND user_id = ? AND status = 'pending' AND udloeber >= ?",
+            (status, now, rid, uid, now),
+        )
+    current["status"], current["afgjort"] = status, now
+    return current
 
 
 def kraev_aktivt() -> bool:

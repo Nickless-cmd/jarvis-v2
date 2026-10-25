@@ -70,6 +70,53 @@ export const fjernEnhed = (c: ApiConfig, id: string) => kald<{ ok: boolean }>(c,
  *  Feltet er valgfrit: en ældre server svarer uden, og så er alt som før. */
 export interface MedNytToken { token?: string; expires_at?: string }
 
+export interface BrowserAnmodning {
+  id: string
+  app_id: string
+  navn: string
+  status: 'pending' | 'approved' | 'denied' | 'expired'
+  oprettet: number
+  udloeber: number
+}
+
+const BROWSER_DEVICE_KEY = 'jarvis-desk:browser-device-id'
+
+/** Stabil, lokal browser-identitet. Den giver ingen adgang i sig selv; Desk
+ * skal godkende den, før serveren binder den til et token. */
+export function browserDeviceId(): string {
+  try {
+    const existing = localStorage.getItem(BROWSER_DEVICE_KEY)
+    if (existing?.startsWith('web-')) return existing
+    const random = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    const id = `web-${random}`
+    localStorage.setItem(BROWSER_DEVICE_KEY, id)
+    return id
+  } catch {
+    return `web-ephemeral-${Date.now().toString(36)}`
+  }
+}
+
+export const anmodOmBrowserAdgang = (c: ApiConfig, navn: string) =>
+  kald<{ request_id: string; state: string; expires_in: number }>(
+    c, '/api/auth/enheder/browser-anmodning',
+    { method: 'POST', body: { app_id: browserDeviceId(), navn } },
+  )
+
+export const hentBrowserAnmodningStatus = (c: ApiConfig, requestId: string) =>
+  kald<{ state: string } & MedNytToken>(
+    c, `/api/auth/enheder/browser-anmodning/${encodeURIComponent(requestId)}`,
+  )
+
+export const hentBrowserAnmodninger = (c: ApiConfig) =>
+  kald<{ anmodninger: BrowserAnmodning[] }>(c, '/api/auth/enheder/browser-anmodninger')
+
+export const afgoerBrowserAnmodning = (c: ApiConfig, requestId: string, godkend: boolean) =>
+  kald<{ ok: boolean; state: string }>(
+    c, `/api/auth/enheder/browser-anmodning/${encodeURIComponent(requestId)}/beslutning`,
+    { method: 'POST', body: { godkend } },
+  )
+
 export const tilfoejDenneComputer = async (c: ApiConfig, totp: string, navn: string) =>
   kald<Enhed & MedNytToken>(c, '/api/auth/enheder/denne-computer',
     { method: 'POST', body: { totp, navn, app_id: await appId() } })

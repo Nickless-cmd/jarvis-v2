@@ -253,3 +253,45 @@ def test_en_fejlet_token_udstedelse_vaelter_ikke_registreringen(ejer, monkeypatc
         ae.TotpReq(totp=tv.generate_code(seed), navn="C", app_id="desk-z"))
     assert "token" not in svar
     assert [e["navn"] for e in ae.enheder()["enheder"]] == ["C"]
+
+
+def test_browser_code_mode_godkendes_i_betroet_desk_uden_totp(ejer):
+    """Browseren kan ikke godkende sig selv; en aktiv Desk er anden faktor."""
+    _, som = ejer
+    dd.registrer_computer("u1", "desk-uuid-1", navn="Jarvis Desk")
+    som(app_id="")
+    request = ae.anmod_om_browser(
+        ae.BrowserAnmodningReq(app_id="web-browser-abc", navn="Firefox på Linux"),
+    )
+    assert request["state"] == "pending"
+
+    with pytest.raises(HTTPException) as denied:
+        ae.browser_anmodninger()
+    assert denied.value.status_code == 403
+
+    som(app_id="desk-uuid-1")
+    pending = ae.browser_anmodninger()["anmodninger"]
+    assert [item["navn"] for item in pending] == ["Firefox på Linux"]
+    assert ae.afgoer_browser(
+        request["request_id"], ae.BrowserBeslutningReq(godkend=True),
+    )["state"] == "approved"
+
+    som(app_id="")
+    status = ae.browser_anmodning_status(request["request_id"])
+    assert status["state"] == "approved"
+    assert _claims(status["token"])["app_id"] == "web-browser-abc"
+    assert any(e["platform"] == "browser" for e in dd.liste("u1"))
+
+
+def test_browser_anmodning_kan_afvises_uden_at_registrere_enheden(ejer):
+    _, som = ejer
+    dd.registrer_computer("u1", "desk-uuid-1", navn="Jarvis Desk")
+    som(app_id="")
+    request = ae.anmod_om_browser(
+        ae.BrowserAnmodningReq(app_id="web-browser-no", navn="Ukendt browser"),
+    )
+    som(app_id="desk-uuid-1")
+    ae.afgoer_browser(request["request_id"], ae.BrowserBeslutningReq(godkend=False))
+    som(app_id="")
+    assert ae.browser_anmodning_status(request["request_id"]) == {"state": "denied"}
+    assert not any(e["navn"] == "Ukendt browser" for e in dd.liste("u1"))

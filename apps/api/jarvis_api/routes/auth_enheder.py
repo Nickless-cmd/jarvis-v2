@@ -11,6 +11,7 @@ dér adgangen til code mode bliver givet.
 from __future__ import annotations
 
 import logging
+import time
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -160,6 +161,80 @@ class TotpReq(BaseModel):
     #: Desk sender sit eget app-id her når tokenet ikke bærer claim'en.
     #: Se `_app_id_for_registrering` for hvorfor det er sikkert.
     app_id: str = ""
+
+
+class BrowserAnmodningReq(BaseModel):
+    app_id: str
+    navn: str = "Browser"
+
+
+class BrowserBeslutningReq(BaseModel):
+    godkend: bool
+
+
+def _kraev_betroet_desk(uid: str) -> str:
+    from core.identity.workspace_context import current_token_enhed
+    from core.runtime.db_devices import er_betroet_desk
+
+    enhed, app_id = current_token_enhed()
+    if enhed or not er_betroet_desk(uid, app_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Denne handling skal godkendes fra en allerede tilføjet Jarvis Desk.",
+        )
+    return app_id
+
+
+@router.post("/enheder/browser-anmodning")
+def anmod_om_browser(req: BrowserAnmodningReq) -> dict:
+    """Browseren beder om Code Mode; en betroet Desk skal afgøre anmodningen."""
+    from core.runtime.db_devices import opret_browser_anmodning
+
+    try:
+        item = opret_browser_anmodning(_bruger(), req.app_id, navn=req.navn)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "request_id": item["id"], "state": item["status"],
+        "expires_in": max(0, int(float(item["udloeber"]) - time.time())),
+    }
+
+
+@router.get("/enheder/browser-anmodning/{request_id}")
+def browser_anmodning_status(request_id: str) -> dict:
+    """Browserens poll; et godkendt svar bærer et nyt browser-bundet token."""
+    from core.runtime.db_devices import browser_anmodning
+
+    item = browser_anmodning(request_id, _bruger())
+    if not item:
+        raise HTTPException(status_code=404, detail="Anmodningen findes ikke")
+    svar = {"state": item["status"]}
+    if item["status"] == "approved":
+        svar.update(_token_med_app_id(item["user_id"], item["app_id"]))
+    return svar
+
+
+@router.get("/enheder/browser-anmodninger")
+def browser_anmodninger() -> dict:
+    """Pending browser-anmodninger, kun synlige fra en betroet Desk."""
+    from core.runtime.db_devices import ventende_browser_anmodninger
+
+    uid = _bruger()
+    _kraev_betroet_desk(uid)
+    return {"anmodninger": ventende_browser_anmodninger(uid)}
+
+
+@router.post("/enheder/browser-anmodning/{request_id}/beslutning")
+def afgoer_browser(request_id: str, req: BrowserBeslutningReq) -> dict:
+    """Desk-godkendelse erstatter TOTP for denne konkrete browser-challenge."""
+    from core.runtime.db_devices import afgoer_browser_anmodning
+
+    uid = _bruger()
+    _kraev_betroet_desk(uid)
+    item = afgoer_browser_anmodning(request_id, uid, godkend=req.godkend)
+    if not item:
+        raise HTTPException(status_code=404, detail="Anmodningen findes ikke")
+    return {"ok": True, "state": item["status"]}
 
 
 @router.post("/enheder/denne-computer")

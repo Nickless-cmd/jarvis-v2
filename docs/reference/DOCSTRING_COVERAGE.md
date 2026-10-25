@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9299/17585 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9306/17596 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9299/17585 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 12 | 23 | 52% |
-| `apps.api.jarvis_api.routes` | 704 | 974 | 72% |
+| `apps.api.jarvis_api.routes` | 708 | 979 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 9299/17585 functions/methods documented (52%). The list b
 | `core.identity` | 78 | 171 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 843 | 1544 | 54% |
+| `core.runtime` | 846 | 1550 | 54% |
 | `core.services` | 6218 | 11982 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
@@ -42,7 +42,7 @@ Generated from source. 9299/17585 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2589)
+## Undocumented public functions (2591)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -475,8 +475,10 @@ Generated from source. 9299/17585 functions/methods documented (52%). The list b
 - `core/runtime/db_decisions.py` :: `get_decision` (L311)
 - `core/runtime/db_decisions.py` :: `list_reviews` (L354)
 - `core/runtime/db_decisions.py` :: `set_status` (L294)
-- `core/runtime/db_devices.py` :: `kraev_aktivt` (L169)
-- `core/runtime/db_devices.py` :: `saet_kraev` (L178)
+- `core/runtime/db_devices.py` :: `browser_anmodning` (L247)
+- `core/runtime/db_devices.py` :: `kraev_aktivt` (L320)
+- `core/runtime/db_devices.py` :: `saet_kraev` (L329)
+- `core/runtime/db_devices.py` :: `ventende_browser_anmodninger` (L258)
 - `core/runtime/db_embeddings.py` :: `count_embeddings` (L157)
 - `core/runtime/db_embeddings.py` :: `delete_embedding` (L93)
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)

@@ -182,17 +182,24 @@ _Enheder — list, fjern, registrér denne computer, og tænd/sluk reglen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L23) |
-| function | `_totp` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L31) |
-| function | `_app_id_for_registrering` | `(fra_kroppen)` | Desk-installationens id — fra tokenets claim, ellers fra kroppen. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L39) |
-| function | `_denne` | `()` | Er klienten der spørger, selv en tilføjet enhed? | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L70) |
-| function | `enheder` | `()` | Mine enheder, om reglen er tændt, og om DENNE klient er tilføjet. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L86) |
-| function | `fjern_enhed` | `(enheds_id)` | Fjern én af mine enheder. En telefon mister al adgang med det samme. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L94) |
-| function | `_token_med_app_id` | `(uid, app_id)` | Udsted et friskt token der BAERER `app_id` — og giv det til klienten. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L102) |
-| class | `TotpReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L157) |
-| function | `registrer_denne_computer` | `(req)` | Tilføj den desk-installation der spørger (dens app_id) — med totrinskode. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L166) |
-| class | `KravReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L181) |
-| function | `saet_enheds_krav` | `(req)` | Tænd/sluk reglen «code mode kræver en tilføjet enhed». Kun ejeren. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L190) |
+| function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L24) |
+| function | `_totp` | `(uid, kode)` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L32) |
+| function | `_app_id_for_registrering` | `(fra_kroppen)` | Desk-installationens id — fra tokenets claim, ellers fra kroppen. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L40) |
+| function | `_denne` | `()` | Er klienten der spørger, selv en tilføjet enhed? | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L71) |
+| function | `enheder` | `()` | Mine enheder, om reglen er tændt, og om DENNE klient er tilføjet. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L87) |
+| function | `fjern_enhed` | `(enheds_id)` | Fjern én af mine enheder. En telefon mister al adgang med det samme. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L95) |
+| function | `_token_med_app_id` | `(uid, app_id)` | Udsted et friskt token der BAERER `app_id` — og giv det til klienten. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L103) |
+| class | `TotpReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L158) |
+| class | `BrowserAnmodningReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L166) |
+| class | `BrowserBeslutningReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L171) |
+| function | `_kraev_betroet_desk` | `(uid)` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L175) |
+| function | `anmod_om_browser` | `(req)` | Browseren beder om Code Mode; en betroet Desk skal afgøre anmodningen. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L189) |
+| function | `browser_anmodning_status` | `(request_id)` | Browserens poll; et godkendt svar bærer et nyt browser-bundet token. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L204) |
+| function | `browser_anmodninger` | `()` | Pending browser-anmodninger, kun synlige fra en betroet Desk. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L218) |
+| function | `afgoer_browser` | `(request_id, req)` | Desk-godkendelse erstatter TOTP for denne konkrete browser-challenge. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L228) |
+| function | `registrer_denne_computer` | `(req)` | Tilføj den desk-installation der spørger (dens app_id) — med totrinskode. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L241) |
+| class | `KravReq` | `` | — | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L256) |
+| function | `saet_enheds_krav` | `(req)` | Tænd/sluk reglen «code mode kræver en tilføjet enhed». Kun ejeren. | [src](../../../apps/api/jarvis_api/routes/auth_enheder.py#L265) |
 
 ## `apps/api/jarvis_api/routes/billing.py`
 _Billing / Stripe-integration (spec §21.6) — SKELET._

@@ -107,16 +107,22 @@ _Enheder — hvem må styre denne computer, og hvem må bruge code mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L47) |
-| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L59) |
-| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L64) |
-| function | `registrer_computer` | `(user_id, app_id, *, navn=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L81) |
-| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L107) |
-| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L119) |
-| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L130) |
-| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
-| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
-| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
+| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L50) |
+| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L72) |
+| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L77) |
+| function | `registrer_computer` | `(user_id, app_id, *, navn=…, platform=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L94) |
+| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L122) |
+| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L134) |
+| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L145) |
+| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L158) |
+| function | `er_betroet_desk` | `(user_id, app_id)` | Kun en aktiv Electron-installation må godkende en browser. | [src](../../../core/runtime/db_devices.py#L184) |
+| function | `_browser_request_row` | `(row)` | — | [src](../../../core/runtime/db_devices.py#L199) |
+| function | `opret_browser_anmodning` | `(user_id, app_id, *, navn=…, ttl_seconds=…)` | Opret eller genbrug en kortlivet pending anmodning for samme browser. | [src](../../../core/runtime/db_devices.py#L212) |
+| function | `browser_anmodning` | `(request_id, user_id)` | — | [src](../../../core/runtime/db_devices.py#L247) |
+| function | `ventende_browser_anmodninger` | `(user_id)` | — | [src](../../../core/runtime/db_devices.py#L258) |
+| function | `afgoer_browser_anmodning` | `(request_id, user_id, *, godkend)` | Afgør kun en stadig-gyldig pending anmodning; beslutningen er endelig. | [src](../../../core/runtime/db_devices.py#L276) |
+| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L320) |
+| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L329) |
 
 ## `core/runtime/db_dream_bias.py`
 _DB helpers for dream_bias_active (Lag 2 dream-bias)._

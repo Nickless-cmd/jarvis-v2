@@ -44,6 +44,25 @@ def test_maa_bruge_kode_kun_for_aktiv_post_og_samme_bruger(reg):
     assert dd.maa_bruge_kode("u1", enhed=t["id"]) is False
 
 
+def test_kun_desk_ikke_en_godkendt_browser_kan_godkende_nye_browsere(reg):
+    dd.registrer_computer("u1", "desk-1", platform="desk")
+    dd.registrer_computer("u1", "web-allerede", platform="browser")
+    assert dd.er_betroet_desk("u1", "desk-1") is True
+    assert dd.er_betroet_desk("u1", "web-allerede") is False
+
+
+def test_browser_anmodning_er_deduplikeret_og_godkendelse_registrerer_atomisk(reg):
+    first = dd.opret_browser_anmodning("u1", "web-abc", navn="Firefox")
+    second = dd.opret_browser_anmodning("u1", "web-abc", navn="Firefox")
+    assert first["id"] == second["id"]
+    assert len(dd.ventende_browser_anmodninger("u1")) == 1
+
+    decided = dd.afgoer_browser_anmodning(first["id"], "u1", godkend=True)
+    assert decided and decided["status"] == "approved"
+    assert dd.maa_bruge_kode("u1", app_id="web-abc") is True
+    assert dd.er_betroet_desk("u1", "web-abc") is False
+
+
 def _som(monkeypatch, uid, enhed="", app_id=""):
     monkeypatch.setattr(wc, "current_user_id", lambda: uid)
     monkeypatch.setattr(wc, "current_token_enhed", lambda: (enhed, app_id))

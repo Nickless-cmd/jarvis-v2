@@ -391,8 +391,9 @@ _Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L67) |
-| function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L86) |
+| function | `_mekanisk_reparation` | `(tekst)` | Ret det der kan rettes uden at spørge en model. | [src](../../../core/services/flade_korrektion.py#L72) |
+| function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L110) |
+| function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L129) |
 
 ## `core/services/flow_state_detection.py`
 _Flow State Detection — when everything clicks._

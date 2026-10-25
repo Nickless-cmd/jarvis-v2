@@ -64,6 +64,49 @@ prosaen stå. Opfind aldrig et tal, en titel eller en række der ikke var der.
 """
 
 
+#: En bar ``jarvis-ui {...}`` uden ```-hegn. Målt 25/10-2026: dette er den
+#: form der oftest rammer brugeren, og den var usynlig for guarden indtil da.
+_BAR_BLOK = re.compile(r"(?m)^[ \t]*jarvis-ui[ \t]*(\{.*)$")
+
+
+def _mekanisk_reparation(tekst: str) -> str:
+    """Ret det der kan rettes uden at spørge en model.
+
+    At sætte et ```-hegn om en bar ``jarvis-ui``-blok er en mekanisk operation.
+    Den kostede tidligere et helt model-kald — og blev forkastet, fordi modellen
+    returnerede den samme bare form. Det er den slags fejl der skal rettes
+    deterministisk: den er gratis, øjeblikkelig og kan ikke fejle.
+
+    Kun hegn og form røres. Indholdet i JSON'en står urørt, så en blok der
+    fejler på data stadig sendes videre til modellen bagefter.
+    """
+    if not tekst or "jarvis-ui" not in tekst:
+        return tekst
+
+    def _hegn(match: re.Match[str]) -> str:
+        raa = match.group(1).strip()
+        # Kun hvis der faktisk står JSON. En prosa-omtale af `jarvis-ui {…}`
+        # midt i en sætning skal ikke forvandles til en flade.
+        if not raa.startswith("{"):
+            return match.group(0)
+        return f"```jarvis-ui\n{raa}\n```"
+
+    # Kør kun på linjer der ikke allerede står inde i et hegn.
+    dele: list[str] = []
+    inde_i_hegn = False
+    for linje in tekst.split("\n"):
+        if linje.lstrip().startswith("```"):
+            inde_i_hegn = not inde_i_hegn
+            dele.append(linje)
+            continue
+        if inde_i_hegn:
+            dele.append(linje)
+            continue
+        ny = _BAR_BLOK.sub(_hegn, linje)
+        dele.append(ny)
+    return "\n".join(dele)
+
+
 def _blok_vinduer(tekst: str) -> str:
     """Uddrag af teksten omkring hver ``jarvis-ui``-blok.
 
@@ -102,6 +145,22 @@ def korriger_flader(
     """
     if not tekst or not fejl:
         return tekst
+
+    # Trin 1 — mekanisk. En bar blok mangler kun sit hegn; det koster intet at
+    # sætte det, og det var netop den reparation der fejlede da den blev sendt
+    # til en model (målt 25/10-2026: modellen returnerede samme bare form, og
+    # spærringen forkastede svaret). Kan det løse sagen alene, er vi færdige
+    # uden et model-kald.
+    tekst = _mekanisk_reparation(tekst)
+    try:
+        from core.services.jarvis_ui_guard import fejl_i_flader as _fejl_mek
+        fejl = _fejl_mek(tekst)
+    except Exception:
+        logger.debug("flade_korrektion: kunne ikke genvalidere efter hegn", exc_info=True)
+    if not fejl:
+        logger.debug("flade_korrektion: løst mekanisk, intet model-kald")
+        return tekst
+
     try:
         from core.services.visible_followup_events import (
             FollowupDelta,
@@ -150,7 +209,7 @@ def korriger_flader(
         logger.debug("flade_korrektion: kaldet fejlede", exc_info=True)
         return tekst
 
-    nyt = "".join(dele).strip()
+    nyt = _mekanisk_reparation("".join(dele).strip())
     if not nyt:
         return tekst
 

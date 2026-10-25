@@ -191,3 +191,81 @@ def test_langt_svar_sendes_som_vindue() -> None:
     vindue = _blok_vinduer(lang)
     assert len(vindue) <= 6000
     assert "```jarvis-ui" in vindue
+
+
+# ── 6. Mekanisk reparation: hegn koster intet model-kald ────────────────────
+# Målt 25/10-2026 (Bjørn: «disse fejler stadig»): den bar form — `jarvis-ui {…}`
+# uden ```-hegn — er den der oftest rammer brugeren. Den blev sendt til
+# modellen, som returnerede den SAMME bare form, og spærringen forkastede
+# svaret. En hegn-fejl er mekanisk: den skal rettes deterministisk, ikke
+# forklares for en model.
+
+def test_bar_blok_faar_hegn_uden_model_kald() -> None:
+    """Den form der oftest rammer brugeren, løses uden et model-kald."""
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    defekt = (
+        'jarvis-ui {"type":"timeline","title":"T","items":'
+        '[{"time":"09:21","title":"A","detail":"x","status":"done"}]}'
+    )
+    fejl = fejl_i_flader(defekt)
+    assert fejl, "testens forudsætning: den bare form skal være en fejl"
+
+    kaldt: list[int] = []
+
+    def _stream(**_kwargs):
+        kaldt.append(1)
+        yield FollowupDone(text="")
+
+    ud = korriger_flader(
+        defekt, fejl,
+        stream_followup=_stream,
+        provider="test", model="test", base_messages=[],
+    )
+    assert kaldt == [], "en hegn-fejl må ikke koste et model-kald"
+    assert "```jarvis-ui" in ud
+    assert fejl_i_flader(ud) == []
+
+
+def test_mekanisk_reparation_roerer_ikke_korrekt_eller_prosa() -> None:
+    """En vagt der retter for meget ødelægger svar der var i orden."""
+    from core.services.flade_korrektion import _mekanisk_reparation
+
+    korrekt = (
+        'Se her.\n\n```jarvis-ui\n'
+        '{"type":"callout","tone":"info","title":"T","body":"B"}\n```'
+    )
+    assert _mekanisk_reparation(korrekt) == korrekt
+
+    # Prosa der blot NÆVNER formen er ikke en flade.
+    omtale = 'Jeg skrev jarvis-ui {"type":"callout"} i mit svar.'
+    assert _mekanisk_reparation(omtale) == omtale
+
+    # En kodeblok er ikke en flade.
+    kode = '```bash\ngit show 442b3bc85\n```'
+    assert _mekanisk_reparation(kode) == kode
+
+
+def test_bar_blok_med_datfejl_sendes_videre_til_modellen() -> None:
+    """Hegnet sættes mekanisk — men en manglende title kræver stadig en model."""
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    defekt = (
+        'jarvis-ui {"type":"timeline","title":"T","items":'
+        '[{"time":"09:21","detail":"x","status":"done"}]}'
+    )
+    fejl = fejl_i_flader(defekt)
+    assert fejl
+
+    kaldt: list[int] = []
+
+    def _stream(**_kwargs):
+        kaldt.append(1)
+        yield FollowupDone(text="")
+
+    korriger_flader(
+        defekt, fejl,
+        stream_followup=_stream,
+        provider="test", model="test", base_messages=[],
+    )
+    assert kaldt == [1], "en datfejl skal stadig nå modellen"

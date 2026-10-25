@@ -84,6 +84,30 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             "result_text": f"[autonomous_tool_policy] {reason}",
             "status": "gate_blocked",
         })
+    # Runtime-enforced per-run budget.  This lives at the EXECUTION boundary,
+    # not in autonomous_tool_policy.is_allowed: the latter is also used while
+    # building the advertised tool catalogue, where counting would spend the
+    # whole budget before the model made its first call.
+    try:
+        from core.services.run_autonomy_context import consume_autonomous_tool_budget
+        _budget_ok = consume_autonomous_tool_budget()
+    except Exception:  # unavailable budget state must fail closed
+        _budget_ok = False
+    if not _budget_ok:
+        reason = "Den autonome kørsels værktøjs- eller tidsbudget er opbrugt."
+        try:
+            event_bus.publish("autonomous_budget.blocked", {
+                "tool_name": name, "run_id": run_id,
+            })
+        except Exception:  # budget telemetry must not bypass the enforcement result
+            pass
+        return ("result", {
+            "tool_name": name, "arguments": arguments,
+            "result": {"status": "gate_blocked", "gate_type": "autonomous_budget",
+                       "message": reason},
+            "result_text": f"[autonomous_budget] {reason}",
+            "status": "gate_blocked",
+        })
     try:
         from core.services.in_flight_runs import mark_tool
         mark_tool(run_id or "", name)

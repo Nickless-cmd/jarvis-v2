@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cognitive_state_narrativizer.py`
+_LLM-based narrativizer for cognitive state lines._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_call_narrativizer_llm` | `(system_prompt, user_message)` | Call the compact LLM (heartbeat model) for narrative line generation. | [src](../../../core/services/cognitive_state_narrativizer.py#L44) |
+| class | `_CachedNarrative` | `` | — | [src](../../../core/services/cognitive_state_narrativizer.py#L101) |
+| class | `_Job` | `` | Ét ventende genererings-job. ``seq`` afgør hvilken version der vinder. | [src](../../../core/services/cognitive_state_narrativizer.py#L108) |
+| function | `_fingerprint` | `(state)` | — | [src](../../../core/services/cognitive_state_narrativizer.py#L146) |
+| function | `_run_job` | `(line_key, job)` | Kør ét job: LLM-kaldet sker UDEN lås, cachen skrives under den. | [src](../../../core/services/cognitive_state_narrativizer.py#L151) |
+| function | `_worker_loop` | `()` | Tag ét job ad gangen. Aldrig to LLM-kald samtidig. | [src](../../../core/services/cognitive_state_narrativizer.py#L176) |
+| function | `_ensure_worker_locked` | `()` | Start den delte worker hvis den ikke kører. Kaldes med ``_CACHE_LOCK``. | [src](../../../core/services/cognitive_state_narrativizer.py#L206) |
+| function | `_enqueue` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg et job i den delte worker-kø. Seneste fingerprint vinder. | [src](../../../core/services/cognitive_state_narrativizer.py#L221) |
+| function | `_generate_in_background` | `(*, line_key, fingerprint, system_prompt, user_message)` | Læg genereringen i den delte sekventielle worker-kø. | [src](../../../core/services/cognitive_state_narrativizer.py#L272) |
+| function | `shutdown` | `(timeout=…)` | Stop den delte worker kontrolleret. | [src](../../../core/services/cognitive_state_narrativizer.py#L293) |
+| function | `_reset_for_tests` | `()` | Nulstil al tilstand inkl. stop-flaget. Kun til tests. | [src](../../../core/services/cognitive_state_narrativizer.py#L319) |
+| function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L335) |
+| function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L421) |
+
+## `core/services/collective_pulse_daemon.py`
+_Collective Pulse — what is the air full of right now?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L43) |
+| function | `_collective_dir` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L47) |
+| function | `_load` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L51) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/collective_pulse_daemon.py#L67) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/collective_pulse_daemon.py#L79) |
+| function | `_gather_week_text` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L86) |
+| function | `_week_mood_trajectory` | `()` | Average mood over the week, if mood samples are available. | [src](../../../core/services/collective_pulse_daemon.py#L123) |
+| function | `_describe_zeitgeist` | `(top_terms, mood_info)` | — | [src](../../../core/services/collective_pulse_daemon.py#L142) |
+| function | `_write_weekly_note` | `(pulse)` | — | [src](../../../core/services/collective_pulse_daemon.py#L156) |
+| function | `run_pulse` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L192) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/collective_pulse_daemon.py#L233) |
+| function | `build_collective_pulse_surface` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L246) |
+| function | `_surface_summary` | `(latest)` | — | [src](../../../core/services/collective_pulse_daemon.py#L259) |
+| function | `build_collective_pulse_prompt_section` | `()` | Surface the week's zeitgeist while it's still current (within 7 days). | [src](../../../core/services/collective_pulse_daemon.py#L266) |
+
 ## `core/services/commit_attribution.py`
 _Canonical, audit-only attribution metadata for Git commit messages._
 
@@ -528,41 +567,4 @@ _Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
 | function | `settle_interrupted_councils` | `()` | Afregn raad hvis proces beviseligt er vaek. Kaster aldrig. | [src](../../../core/services/council_settlement.py#L40) |
 | function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L99) |
 | function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L129) |
-
-## `core/services/counterfactual_engine.py`
-_Counterfactual reflection orchestrator._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run` | `(*, workspace_id=…, dry_run=…)` | One full pipeline cycle. Always returns a summary dict, never raises. | [src](../../../core/services/counterfactual_engine.py#L41) |
-| function | `_dry_run_placeholder` | `(trigger)` | Phase 1: every unique trigger becomes a TODO counterfactual. | [src](../../../core/services/counterfactual_engine.py#L245) |
-| function | `_failed_generation_placeholder` | `(trigger)` | Phase 2+: when LLM call fails, store with a marker so we can see frequency. | [src](../../../core/services/counterfactual_engine.py#L262) |
-| function | `_dedup_filter` | `(triggers)` | Remove triggers whose cf_key is already stored in the DB. | [src](../../../core/services/counterfactual_engine.py#L279) |
-| function | `_extract_json_from_llm` | `(text)` | Strip markdown fences and trim to outermost JSON object. | [src](../../../core/services/counterfactual_engine.py#L322) |
-| function | `_generate_one_via_llm` | `(trigger)` | Single cheap-lane call to produce structured CF fields for one trigger. | [src](../../../core/services/counterfactual_engine.py#L335) |
-| function | `_generate_counterfactuals_via_llm` | `(triggers)` | Phase 2 (2026-05-14): one cheap-lane LLM call per unique trigger. | [src](../../../core/services/counterfactual_engine.py#L389) |
-| function | `_count_similar_trigger_events` | `(event_kind, *, window_days=…)` | Count eventbus rows of ``event_kind`` in the last ``window_days``. | [src](../../../core/services/counterfactual_engine.py#L439) |
-| function | `_modulate_with_apophenia` | `(counterfactuals)` | Phase 3 (2026-05-14): rate each counterfactual via apophenia_guard. | [src](../../../core/services/counterfactual_engine.py#L461) |
-| function | `_store_counterfactual` | `(*, workspace_id, **cf)` | INSERT OR IGNORE — UNIQUE(cf_key) makes this idempotent. | [src](../../../core/services/counterfactual_engine.py#L514) |
-| function | `_publish_event` | `(*, cf_id, workspace_id, cluster_size, final_confidence, status, caused_by_trigger_id=…)` | Publish counterfactual event. If caused_by_trigger_id is given, | [src](../../../core/services/counterfactual_engine.py#L540) |
-| function | `_publish_cycle_complete` | `(summary)` | — | [src](../../../core/services/counterfactual_engine.py#L571) |
-| function | `classify_event_to_counterfactual` | `(event_kind, payload)` | Classify an event into a specific counterfactual, or None if no match. | [src](../../../core/services/counterfactual_engine.py#L637) |
-| function | `generate_classified_counterfactual` | `(event_kind, payload)` | Convenience: classify event → persist counterfactual if matched. | [src](../../../core/services/counterfactual_engine.py#L699) |
-| function | `generate_counterfactual` | `(*, trigger_type, anchor, source=…, confidence=…, cf_question=…, event_kind=…)` | Generate a counterfactual question from a trigger event. | [src](../../../core/services/counterfactual_engine.py#L719) |
-| function | `generate_dream_counterfactual` | `(*, recent_decisions=…)` | Generate a speculative counterfactual during idle time. | [src](../../../core/services/counterfactual_engine.py#L787) |
-| function | `narrativize_regret` | `(*, trigger_type, anchor, actual_outcome=…, time_cost=…)` | Turn a regret into a felt narrative, not just data. | [src](../../../core/services/counterfactual_engine.py#L810) |
-| function | `narrativize_aspiration` | `(*, trigger_type, anchor, actual_outcome=…, positive_effect=…)` | Turn a success/kept-decision into an aspiration narrative. | [src](../../../core/services/counterfactual_engine.py#L834) |
-| function | `build_counterfactual_surface` | `()` | — | [src](../../../core/services/counterfactual_engine.py#L867) |
-
-## `core/services/counterfactual_engine_runtime.py`
-_Daemon for periodic counterfactual reflection cycles._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_workspace_lock` | `(workspace_id)` | Lazy per-workspace lock. Same workspace_id always returns same Lock. | [src](../../../core/services/counterfactual_engine_runtime.py#L23) |
-| function | `_run_one_cycle` | `(workspace_id)` | Acquire workspace lock, run engine, release. Never raises. | [src](../../../core/services/counterfactual_engine_runtime.py#L33) |
-| function | `_list_active_workspaces` | `()` | Phase 1: only the default workspace. | [src](../../../core/services/counterfactual_engine_runtime.py#L62) |
-| function | `_loop` | `()` | — | [src](../../../core/services/counterfactual_engine_runtime.py#L70) |
-| function | `start_counterfactual_runtime` | `()` | Start the periodic-evaluation daemon. Idempotent — safe to call multiple times. | [src](../../../core/services/counterfactual_engine_runtime.py#L80) |
-| function | `stop_counterfactual_runtime` | `()` | Signal the loop to exit. | [src](../../../core/services/counterfactual_engine_runtime.py#L93) |
 

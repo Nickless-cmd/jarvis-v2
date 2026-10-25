@@ -25,6 +25,10 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     "list_prompt_experiments", "list_identity_pins", "list_proposals",
     "list_process_watches", "list_scheduled_tasks", "list_recurring",
     "list_self_wakeups", "list_initiatives", "list_plans", "list_side_tasks",
+    # Every unattended run may account for a concrete finding.  Creating a
+    # side task grants no execution rights by itself: autonomy_mode defaults
+    # to `none`, and the idle dispatcher only claims an explicit mode.
+    "flag_side_task",
     "monitor_list", "verification_status", "decision_adherence_summary",
     "detect_stale_goals", "read_attachment", "verify_file_contains",
     "verify_service_active",
@@ -118,6 +122,16 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
     # Den skal kunne undersøge og fortælle — ikke begynde nyt arbejde.
     # Nøglen er «wakeup»: det er hvad wakeup_dispatcher sender.
     "wakeup": frozenset({"bash", "send_webchat_message", "send_ntfy"}),
+    # The idle side-task worker has two deliberately different envelopes.
+    # `inspect` can gather local evidence and close its own bookkeeping; only
+    # an explicitly selected `local_write` task receives local file mutation.
+    "side-task-inspect": frozenset({
+        "bash", "activate_side_task", "dismiss_side_task",
+    }),
+    "side-task-local_write": frozenset({
+        "bash", "write_file", "edit_file", "activate_side_task",
+        "dismiss_side_task",
+    }),
 }
 
 
@@ -218,9 +232,7 @@ def presence_for_run(run) -> bool:
 
 def is_allowed(name: str) -> bool:
     """Fail closed for autonomous calls; visible runs use their normal policy."""
-    from core.services.run_autonomy_context import (
-        current_origin, is_autonomous, user_present,
-    )
+    from core.services.run_autonomy_context import current_origin, is_autonomous, user_present
 
     if not is_autonomous():
         return True

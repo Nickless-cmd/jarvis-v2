@@ -2,6 +2,37 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_kernel.py`
+_GateKernel — central orchestrator for alle gates (spec 2026-06-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Decision` | `` | — | [src](../../../core/services/gate_kernel.py#L24) |
+| class | `GateClass` | `` | — | [src](../../../core/services/gate_kernel.py#L31) |
+| class | `Verdict` | `` | — | [src](../../../core/services/gate_kernel.py#L40) |
+| method | `Verdict.is_blocking` | `(self)` | — | [src](../../../core/services/gate_kernel.py#L59) |
+| function | `worst` | `(verdicts)` | Aggregeret beslutning efter præcedens RED>YELLOW>GREEN>SKIP. | [src](../../../core/services/gate_kernel.py#L63) |
+| class | `_Gate` | `` | — | [src](../../../core/services/gate_kernel.py#L71) |
+| function | `_source_loc` | `(fn)` | Gatens egen registrerings-placering (fil + firstlineno) via inspect. Self-safe: | [src](../../../core/services/gate_kernel.py#L82) |
+| class | `GateKernel` | `` | — | [src](../../../core/services/gate_kernel.py#L103) |
+| method | `GateKernel.__init__` | `(self, *, flag_reader=…, emit=…)` | — | [src](../../../core/services/gate_kernel.py#L104) |
+| method | `GateKernel.register` | `(self, name, phase, fn, *, klass=…, timeout_ms=…, flag_key=…)` | — | [src](../../../core/services/gate_kernel.py#L112) |
+| method | `GateKernel.gates_for` | `(self, phase)` | — | [src](../../../core/services/gate_kernel.py#L120) |
+| method | `GateKernel._fail_verdict` | `(self, g, reason)` | — | [src](../../../core/services/gate_kernel.py#L124) |
+| method | `GateKernel._run_one` | `(self, g, ctx)` | — | [src](../../../core/services/gate_kernel.py#L130) |
+| method | `GateKernel.run_phase` | `(self, phase, ctx)` | Kør alle gates i en fase isoleret; emit ÉT event; returnér verdicts. | [src](../../../core/services/gate_kernel.py#L173) |
+| function | `_normalize` | `(g, raw)` | Tillad gates at returnere en færdig Verdict, et dict, eller None (=GREEN). | [src](../../../core/services/gate_kernel.py#L204) |
+| function | `_default_flag_reader` | `(flag_key)` | Returnér True/False hvis flag'et er EKSPLICIT sat i shared_cache, ellers None | [src](../../../core/services/gate_kernel.py#L223) |
+| function | `_default_emit` | `(kind, payload)` | — | [src](../../../core/services/gate_kernel.py#L238) |
+| function | `kernel` | `()` | — | [src](../../../core/services/gate_kernel.py#L250) |
+
+## `core/services/gate_loop.py`
+_Loop-cluster gate — agentisk loop-kontrol, GRADERET._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `loop_gate` | `(ctx)` | ctx: {round, max_rounds, consecutive_empty, max_empty, consecutive_tool_only, | [src](../../../core/services/gate_loop.py#L25) |
+
 ## `core/services/gate_memory.py`
 _Memory-cluster gate — promotion til identitets-filer, GRADERET._
 
@@ -498,20 +529,4 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 | function | `_forloebet_sekunder` | `()` | Sekunder siden forrige tik — maalt, ikke antaget. | [src](../../../core/services/heartbeat_daemon_ticks.py#L66) |
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L100) |
 | function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L429) |
-
-## `core/services/heartbeat_delivery.py`
-_Heartbeat-levering: de to veje et hjerteslag naar webchatten ad._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_ping_history` | `(*, limit=…)` | Slaa op i `heartbeat_runtime` ved kaldetid — en modul-import ville vaere | [src](../../../core/services/heartbeat_delivery.py#L39) |
-| function | `_deliver_heartbeat_proposal` | `(*, policy, tick_id, summary, proposed_action)` | — | [src](../../../core/services/heartbeat_delivery.py#L54) |
-| function | `_deliver_heartbeat_ping_directly` | `(*, policy, tick_id, ping_text, summary)` | Deliver an LLM-authored ping straight to webchat. | [src](../../../core/services/heartbeat_delivery.py#L247) |
-
-## `core/services/heartbeat_manage_runtime_work.py`
-_Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `execute_manage_runtime_work` | `(*, tick_id, workspace_dir)` | — | [src](../../../core/services/heartbeat_manage_runtime_work.py#L18) |
 

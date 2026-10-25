@@ -24,7 +24,7 @@ om den var droppet — og en ``activated`` forsvandt fra prompten i samme
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 from uuid import uuid4
 
@@ -37,6 +37,8 @@ _VALID_STATUSES = ("pending", "queued", "activated", "completed", "dismissed")
 _AABNE = frozenset({"pending", "queued", "activated"})
 _TERMINALE = frozenset({"completed", "dismissed"})
 _MAX_SHOWN = 6
+_AUTONOMY_MODES: Final[frozenset[str]] = frozenset({"none", "inspect", "local_write"})
+_AUTONOMY_MAX_ATTEMPTS: Final[int] = 3
 
 #: Et bevis skal sige HVAD der blev gjort — ikke blot at noget blev gjort.
 #: Grænsen er lav (et par ord), men ikke nul: «ok» og «done» er påstande uden
@@ -278,13 +280,22 @@ def _ventende_vaekning_ids() -> set[str] | None:
 
 def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = None,
          finding_key: str = "", source_run_id: str = "", evidence: str = "",
-         not_before: str = "") -> dict[str, Any]:
+         not_before: str = "", autonomy_mode: str = "none",
+         max_minutes: int = 20, max_tool_calls: int = 12) -> dict[str, Any]:
     """Rejs et flag. `not_before` (16/10-2026) gør det til en TIDSINDSTILLET
     opgave: den står åben og synlig, men må ikke tages op før tidspunktet."""
     title = (title or "").strip()
     prompt = (prompt or "").strip()
     if not title or not prompt:
         return {"status": "error", "error": "title and prompt are required"}
+    autonomy = str(autonomy_mode or "none").strip().lower()
+    if autonomy not in _AUTONOMY_MODES:
+        return {"status": "error", "error": "unknown autonomy_mode"}
+    try:
+        minutes = max(5, min(int(max_minutes), 60))
+        tool_calls = max(3, min(int(max_tool_calls), 40))
+    except (TypeError, ValueError):  # invalid caller budgets are returned as validation errors
+        return {"status": "error", "error": "invalid autonomous budget"}
     nb = ""
     if str(not_before or "").strip():
         ts = _fremtid(not_before)
@@ -313,6 +324,12 @@ def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = No
             "status": "pending",
             "session_id": str(session_id or "_default"),
             "created_at": datetime.now(UTC).isoformat(),
+            # Default `none` preserves the old contract: a side task is a
+            # reminder, never an implicit autonomous work order.  Only an
+            # explicit mode makes it claimable by the idle dispatcher.
+            "autonomy_mode": autonomy,
+            "max_minutes": minutes,
+            "max_tool_calls": tool_calls,
         }
         if key:
             record["finding_key"] = key
@@ -472,6 +489,134 @@ def list_open_synlige() -> list[dict[str, Any]]:
     return [r for r in list_open() if not r.get("skjult_i_chat")]
 
 
+def _iso(value: object) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+    except (TypeError, ValueError):  # an unreadable lease timestamp is treated as absent
+        return None
+
+
+def claim_autonomous(*, worker_id: str, lease_minutes: int = 30,
+                     now: datetime | None = None) -> dict[str, Any] | None:
+    """Atomically lease one explicitly eligible side task.
+
+    Ordinary side tasks have ``autonomy_mode='none'`` and can never enter this
+    path.  A manually activated task is also untouched: only an activated task
+    carrying an expired autonomous lease may be reclaimed.
+    """
+    worker = str(worker_id or "").strip()
+    if not worker:
+        return None
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    lease_for = max(5, min(int(lease_minutes), 120))
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        candidates: list[dict[str, Any]] = []
+        for item in items:
+            mode = str(item.get("autonomy_mode") or "none").strip().lower()
+            if mode not in {"inspect", "local_write"} or sovende(item, nu=moment):
+                continue
+            if int(item.get("autonomy_attempts") or 0) >= _AUTONOMY_MAX_ATTEMPTS:
+                continue
+            retry_at = _iso(item.get("autonomy_retry_after"))
+            if retry_at is not None and retry_at > moment:
+                continue
+            status = str(item.get("status") or "")
+            if status in {"pending", "queued"}:
+                candidates.append(item)
+                continue
+            lease_until = _iso(item.get("autonomy_lease_until"))
+            if (status == "activated" and item.get("autonomy_lease_owner")
+                    and lease_until is not None and lease_until <= moment):
+                candidates.append(item)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda row: str(row.get("created_at") or ""))
+        found = candidates[0]
+        found["autonomy_previous_status"] = str(found.get("status") or "pending")
+        found["status"] = "activated"
+        found["activated_at"] = moment.isoformat()
+        found["autonomy_lease_owner"] = worker[:160]
+        found["autonomy_lease_until"] = (moment + timedelta(minutes=lease_for)).isoformat()
+        found["autonomy_attempts"] = int(found.get("autonomy_attempts") or 0) + 1
+        found["updated_at"] = moment.isoformat()
+        _save_all(items)
+        return dict(found)
+
+
+def attach_autonomous_session(side_task_id: str, *, worker_id: str,
+                              session_id: str) -> bool:
+    """Bind a successfully started autonomous task to its visible session."""
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
+        if (found is None
+                or str(found.get("autonomy_lease_owner") or "") != str(worker_id or "")):
+            return False
+        found["arbejds_session"] = str(session_id or "")[:160]
+        found["autonomy_started_at"] = datetime.now(UTC).isoformat()
+        found["updated_at"] = found["autonomy_started_at"]
+        _save_all(items)
+        return True
+
+
+def release_autonomous_claim(side_task_id: str, *, worker_id: str,
+                             reason: str = "", retry_minutes: int = 10) -> bool:
+    """Release a lease when no run was born; the task stays durable and open."""
+    now = datetime.now(UTC)
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
+        if (found is None
+                or str(found.get("autonomy_lease_owner") or "") != str(worker_id or "")
+                or str(found.get("status") or "") in _TERMINALE):
+            return False
+        found["status"] = "queued"
+        found.pop("autonomy_lease_owner", None)
+        found.pop("autonomy_lease_until", None)
+        found["autonomy_retry_after"] = (
+            now + timedelta(minutes=max(1, min(int(retry_minutes), 120)))
+        ).isoformat()
+        if reason:
+            found["autonomy_last_blocked_reason"] = str(reason)[:500]
+        found["updated_at"] = now.isoformat()
+        _save_all(items)
+        return True
+
+
+def unreported_exhausted_autonomy(*, now: datetime | None = None) -> list[dict[str, Any]]:
+    """Tasks whose bounded retries ended without a terminal decision."""
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    exhausted: list[dict[str, Any]] = []
+    for item in _load_all():
+        if str(item.get("status") or "") not in _AABNE:
+            continue
+        if str(item.get("autonomy_mode") or "none") == "none":
+            continue
+        if int(item.get("autonomy_attempts") or 0) < _AUTONOMY_MAX_ATTEMPTS:
+            continue
+        lease_until = _iso(item.get("autonomy_lease_until"))
+        if lease_until is not None and lease_until > moment:
+            continue
+        if item.get("autonomy_exhausted_reported_at"):
+            continue
+        exhausted.append(dict(item))
+    return exhausted
+
+
+def mark_autonomy_exhausted_reported(side_task_id: str) -> bool:
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
+        if found is None or str(found.get("status") or "") not in _AABNE:
+            return False
+        found["autonomy_exhausted_reported_at"] = datetime.now(UTC).isoformat()
+        found["updated_at"] = found["autonomy_exhausted_reported_at"]
+        _save_all(items)
+        return True
+
+
 def get(side_task_id: str) -> dict[str, Any] | None:
     return next((r for r in _load_all() if r.get("side_task_id") == side_task_id), None)
 
@@ -570,6 +715,9 @@ def resolve(side_task_id: str, *, decision: str,
             gammel_vaekning = str(found.get("vaekning_id") or "")
             found.pop("not_before", None)
             found.pop("vaekning_id", None)
+            found.pop("autonomy_lease_owner", None)
+            found.pop("autonomy_lease_until", None)
+            found.pop("autonomy_retry_after", None)
         _save_all(items)
     if gammel_vaekning:
         _annuller_vaekning_id(gammel_vaekning)
@@ -735,6 +883,9 @@ def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
         finding_key=str(args.get("finding_key") or ""),
         evidence=str(args.get("evidence") or ""),
         not_before=str(args.get("not_before") or ""),
+        autonomy_mode=str(args.get("autonomy_mode") or "none"),
+        max_minutes=args.get("max_minutes") or 20,
+        max_tool_calls=args.get("max_tool_calls") or 12,
     )
 
 
@@ -821,6 +972,15 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "existing_side_task_id": {"type": "string"},
                     "not_before": {"type": "string",
                                    "description": "Optional ISO 8601 timestamp: the task sleeps until then and a self-wakeup is booked for that moment."},
+                    "autonomy_mode": {
+                        "type": "string", "enum": ["none", "inspect", "local_write"],
+                        "description": (
+                            "Explicit autonomous eligibility. Default none keeps this a reminder. "
+                            "inspect may gather evidence; local_write may use already-approved local write tools."
+                        ),
+                    },
+                    "max_minutes": {"type": "integer", "minimum": 5, "maximum": 60},
+                    "max_tool_calls": {"type": "integer", "minimum": 3, "maximum": 40},
                 },
                 "required": ["title", "prompt"],
             },

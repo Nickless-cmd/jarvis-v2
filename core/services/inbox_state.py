@@ -90,7 +90,7 @@ IKKE_GATENDE_KILDETYPER: Final[frozenset[str]] = frozenset({
     # forpligtelse. Den maa oprette, aldrig naegte en mutation. Uden dette
     # ville hver fyret `schedule_task` laegge en blokerende post i indbakken
     # — og en planlagt efterkontrol ville gate det naeste vaerktoejskald.
-    "scheduled", "routine_event",
+    "scheduled", "routine_event", "background_attention",
     # `run_closure` (13/10-2026): run-closure-gatens beskeder (tavst run,
     # ucommittede ændringer) flyttede fra Discord til indbakken efter Bjørns
     # ønske — «den bør lande i din inbox i dine og mine sessioner». De er

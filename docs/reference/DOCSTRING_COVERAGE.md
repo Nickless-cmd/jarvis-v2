@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9288/17558 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9297/17583 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 843 | 1544 | 54% |
-| `core.services` | 6207 | 11955 | 51% |
+| `core.services` | 6216 | 11980 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2586)
+## Undocumented public functions (2589)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -863,7 +863,7 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 - `core/services/autonomous_run_failures.py` :: `clear` (L149)
 - `core/services/autonomous_run_failures.py` :: `mark_retried` (L141)
 - `core/services/autonomous_run_failures.py` :: `pending_retries` (L137)
-- `core/services/autonomous_sessions.py` :: `normalize_origin` (L35)
+- `core/services/autonomous_sessions.py` :: `normalize_origin` (L38)
 - `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_prompt_section` (L318)
 - `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_surface` (L291)
 - `core/services/autonomous_work_daemon.py` :: `list_proposals` (L268)
@@ -1859,9 +1859,11 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 - `core/services/rule_engine.py` :: `RuleEngine.rules_by_domain` (L142)
 - `core/services/rule_engine.py` :: `build_rule_engine_surface` (L224)
 - `core/services/rule_engine.py` :: `get_engine` (L185)
-- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
-- `core/services/run_autonomy_context.py` :: `reset_user_present` (L75)
-- `core/services/run_autonomy_context.py` :: `set_run_identity` (L115)
+- `core/services/run_autonomy_context.py` :: `autonomous_budget_state` (L103)
+- `core/services/run_autonomy_context.py` :: `reset_autonomous` (L39)
+- `core/services/run_autonomy_context.py` :: `reset_user_present` (L134)
+- `core/services/run_autonomy_context.py` :: `set_autonomous_budget` (L79)
+- `core/services/run_autonomy_context.py` :: `set_run_identity` (L174)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L874)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L370)
 - `core/services/run_event_log.py` :: `append` (L239)
@@ -1973,8 +1975,8 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L417)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L426)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L442)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L451)
 - `core/services/scoped_recall_policy.py` :: `recall_enabled` (L17)
 - `core/services/scoped_recall_policy.py` :: `recall_migration_enabled` (L21)
 - `core/services/scoped_recall_policy.py` :: `require_private_scope` (L33)
@@ -2071,8 +2073,9 @@ Generated from source. 9288/17558 functions/methods documented (52%). The list b
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `get` (L475)
-- `core/services/side_tasks.py` :: `list_pending` (L450)
+- `core/services/side_tasks.py` :: `get` (L620)
+- `core/services/side_tasks.py` :: `list_pending` (L467)
+- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L608)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)

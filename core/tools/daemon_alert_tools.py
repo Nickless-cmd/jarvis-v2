@@ -37,13 +37,24 @@ def _hours_since(iso_str: str) -> float | None:
 
 def _exec_daemon_health_alert(args: dict[str, Any]) -> dict[str, Any]:
     threshold_multiplier = float(args.get("threshold_multiplier") or _DEFAULT_THRESHOLD)
-    notify = bool(args.get("notify", True))
+    notify = bool(args["notify"]) if "notify" in args else True
     channels = args.get("channels") or ["ntfy"]
 
     try:
         from core.services.daemon_manager import get_all_daemon_states
         daemons = get_all_daemon_states()
     except Exception as e:
+        try:
+            from core.services.background_attention import report_background_outcome
+            report_background_outcome(
+                source_kind="daemon-watch", source_id="state-read",
+                status="failed", severity="high",
+                summary=f"Daemon-vagten kunne ikke læse daemon-tilstand ({type(e).__name__}).",
+                suggested_next_step="Kontrollér daemon-managerens tilstand og log.",
+                requires_attention=True, safe_to_continue=False,
+            )
+        except Exception:  # durable attention is retried by later daemon checks
+            pass
         return {"status": "error", "error": f"Could not get daemon states: {e}"}
 
     alert_state = _load_alert_state()
@@ -81,22 +92,55 @@ def _exec_daemon_health_alert(args: dict[str, Any]) -> dict[str, Any]:
                 "description": d.get("description", ""),
             })
 
-    if overdue and notify:
-        names = ", ".join(d["name"] for d in overdue)
-        message = f"⚠️ Inaktive daemons: {names}\n" + "\n".join(
-            f"  • {d['name']}: {d['hours_since_last_run']}h siden sidst (forventet <{d['threshold_hours']:.1f}h)"
-            for d in overdue
-        )
+    if overdue:
+        if notify:
+            names = ", ".join(d["name"] for d in overdue)
+            message = f"⚠️ Inaktive daemons: {names}\n" + "\n".join(
+                f"  • {d['name']}: {d['hours_since_last_run']}h siden sidst (forventet <{d['threshold_hours']:.1f}h)"
+                for d in overdue
+            )
+            try:
+                from core.tools.notify_out_tools import _exec_notify_out
+                _exec_notify_out({
+                    "message": message,
+                    "title": "Jarvis Daemon Alert",
+                    "priority": "high",
+                    "channels": channels,
+                })
+            except Exception as e:
+                # Best-effort notification remains non-fatal, but the delivery
+                # failure itself must no longer disappear in a swallowed except.
+                try:
+                    from core.services.background_attention import report_background_outcome
+                    report_background_outcome(
+                        source_kind="daemon-watch", source_id="notification-delivery",
+                        status="failed", severity="high",
+                        summary=f"Daemon-alarmen kunne ikke leveres ({type(e).__name__}).",
+                        suggested_next_step="Kontrollér notifikationskanalen; selve daemon-fundene står i indbakken.",
+                        requires_attention=True, safe_to_continue=True,
+                    )
+                except Exception:  # notification failure reporting is best-effort
+                    pass
+
+        # The inbox is the durable control surface; ntfy is only immediate
+        # delivery.  Stable source ids update one item per daemon instead of
+        # producing a fresh alert every poll.
         try:
-            from core.tools.notify_out_tools import _exec_notify_out
-            _exec_notify_out({
-                "message": message,
-                "title": "Jarvis Daemon Alert",
-                "priority": "high",
-                "channels": channels,
-            })
-        except Exception as e:
-            pass  # best-effort — don't fail the check itself
+            from core.services.background_attention import report_background_outcome
+            for daemon in overdue:
+                report_background_outcome(
+                    source_kind="daemon-watch", source_id=str(daemon["name"]),
+                    status="blocked", severity="high",
+                    summary=(
+                        f"Daemon {daemon['name']} er forsinket: "
+                        f"{daemon['hours_since_last_run']} timer siden sidst."
+                    ),
+                    suggested_next_step="Undersøg daemonens health/log før en eventuel genstart.",
+                    requires_attention=True, create_side_task=True,
+                    autonomy_mode="inspect", safe_to_continue=True,
+                )
+        except Exception:  # durable attention is retried by later daemon checks
+            pass
 
         # Record alert times
         for d in overdue:

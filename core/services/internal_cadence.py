@@ -537,6 +537,28 @@ def run_cadence_tick(
                     _cpo.observe_cadence_liveness(spec.name, "error", None)
                 except Exception:
                     pass
+                # Den fælles afslutningskontrakt: en producer-fejl må ikke kun
+                # leve i cadence-loggen/Centralens tæller. Stabilt source_id
+                # betyder at gentagelser opdaterer samme indbakke-sag.
+                try:
+                    from core.services.background_attention import report_background_outcome
+
+                    report_background_outcome(
+                        source_kind="cadence-producer",
+                        source_id=spec.name,
+                        status="blocked" if isinstance(exc, TimeoutError) else "failed",
+                        severity="high",
+                        summary=(
+                            f"Cadence-producer {spec.name} "
+                            f"{'overskred tidsgrænsen' if isinstance(exc, TimeoutError) else 'fejlede'} "
+                            f"({type(exc).__name__})."
+                        ),
+                        suggested_next_step="Undersøg producerens seneste log og health før genforsøg.",
+                        requires_attention=True,
+                        safe_to_continue=not isinstance(exc, TimeoutError),
+                    )
+                except Exception:  # attention reporting must not mask the producer failure
+                    logger.warning("cadence-fejl kunne ikke projiceres til indbakken", exc_info=True)
         elif status == "cooling_down":
             cooling_names.append(spec.name)
             results.append(ProducerTickResult(
@@ -832,6 +854,18 @@ def _scheduler_loop() -> None:
             )
         except Exception as exc:
             logger.warning("cadence scheduler loop error: %s", exc)
+            try:
+                from core.services.background_attention import report_background_outcome
+
+                report_background_outcome(
+                    source_kind="cadence-scheduler", source_id="main-loop",
+                    status="failed", severity="critical",
+                    summary=f"Cadence-schedulerens hovedloop fejlede ({type(exc).__name__}).",
+                    suggested_next_step="Undersøg scheduler-loggen; interne producers kan være forsinkede.",
+                    requires_attention=True, safe_to_continue=False,
+                )
+            except Exception:  # attention reporting must not mask the scheduler failure
+                logger.warning("scheduler-fejl kunne ikke projiceres til indbakken", exc_info=True)
         _SCHEDULER_STOP.wait(_SCHEDULER_INTERVAL_S)
     logger.info("cadence scheduler loop exited")
 

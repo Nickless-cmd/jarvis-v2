@@ -92,7 +92,8 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
 
 
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
-                         origin: str | None = None, task_id: str = "") -> bool:
+                         origin: str | None = None, task_id: str = "",
+                         max_tool_calls: int = 0, max_seconds: float = 0.0) -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
@@ -137,14 +138,14 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     # lander IKKE længere i den ene udødelige "Autonomous"-silo (8373 beskeder, kontekst-
     # fejl, usynlig), men i en afgrænset, kategoriseret `auto-{origin}-{dato}`-session.
     # Eksplicit session_id (discord/telegram/continuation) vinder altid — uændret.
-    _origin = None
+    try:
+        from core.services.autonomous_sessions import normalize_origin
+        _origin = normalize_origin(origin)
+    except Exception:
+        _origin = "autonomous"
     if not (session_id or "").strip():
         try:
-            from core.services.autonomous_sessions import (
-                normalize_origin,
-                resolve_autonomous_session,
-            )
-            _origin = normalize_origin(origin)
+            from core.services.autonomous_sessions import resolve_autonomous_session
             resolved_session = resolve_autonomous_session(_origin)
         except Exception:
             # fail-safe: hvis rotationen svigter, brug et dato-stemplet fallback frem for
@@ -349,6 +350,14 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         import asyncio as _asyncio
 
         loop = _asyncio.new_event_loop()
+        try:
+            from core.services.run_autonomy_context import set_autonomous_budget
+            set_autonomous_budget(
+                max_tool_calls=max_tool_calls,
+                max_seconds=max_seconds,
+            )
+        except Exception:  # budget setup failure is logged and the run still reports its outcome
+            logger.warning("autonomt run-budget kunne ikke saettes", exc_info=True)
         consumed_frames = 0
         failed = False
         try:
@@ -387,6 +396,31 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     "consumed_frames": consumed_frames,
                 },
             )
+            # Every unattended run failure gets a durable attention address.
+            # The summary is intentionally content-free: provider/tool errors
+            # can contain paths, prompts or credentials.  Detailed evidence
+            # remains in the run record referenced by run_id.
+            try:
+                from core.services.background_attention import report_background_outcome
+
+                report_background_outcome(
+                    source_kind=_origin or "autonomous-run",
+                    source_id=task_id or run.run_id,
+                    run_id=run.run_id,
+                    session_id=resolved_session,
+                    status="failed",
+                    severity="high",
+                    summary=(
+                        f"Autonom kørsel {run.run_id[:12]} fejlede "
+                        f"({type(exc).__name__})."
+                    ),
+                    evidence_ref=f"run:{run.run_id}",
+                    suggested_next_step="Læs run-sporet og afgør om opgaven skal genforsøges.",
+                    requires_attention=True,
+                    safe_to_continue=False,
+                )
+            except Exception:  # attention reporting must not mask the original run failure
+                logger.warning("autonom fejl kunne ikke projiceres til indbakken", exc_info=True)
             _observe_autonomous_run(run=run, session_id=resolved_session,
                                     outcome="failed", frames=consumed_frames, error=str(exc))
         finally:

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_surprise_detection.py`
+_Self-Surprise Detection — "Huh, det havde jeg ikke forventet af mig selv."_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_self_surprise` | `(*, actual_outcome, expected_confidence=…, model=…, domain=…, run_id=…)` | Registrér en overraskelse — eller ``None``, hvilket er det normale. | [src](../../../core/services/self_surprise_detection.py#L35) |
+| function | `build_self_surprise_surface` | `()` | Overfladen Jarvis faktisk kan se. | [src](../../../core/services/self_surprise_detection.py#L77) |
+
+## `core/services/self_surprise_expectation.py`
+_Kalibreret forventning til selv-overraskelse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_outcome` | `(outcome)` | ``'success'`` | ``'failure'`` | ``'indecisive'``. | [src](../../../core/services/self_surprise_expectation.py#L42) |
+| function | `_recent_outcomes` | `(model, *, lookback)` | ``(successes, decisive_total)`` fra modellens egne seneste runs. | [src](../../../core/services/self_surprise_expectation.py#L56) |
+| function | `expected_success_rate` | `(model, *, lookback=…)` | Empirisk P(succes) for DENNE model, glattet mod en styrke-baseret prior. | [src](../../../core/services/self_surprise_expectation.py#L91) |
+| function | `expectation_verdict` | `(expected, outcome_kind)` | ``'positive'`` | ``'negative'`` | ``None`` (død zone / uafgjort udfald). | [src](../../../core/services/self_surprise_expectation.py#L110) |
+| function | `is_legacy_degenerate` | `(expected_confidence)` | Sand for de 19.731 rækker fra den defekte detektor. | [src](../../../core/services/self_surprise_expectation.py#L125) |
+
 ## `core/services/self_system_code_awareness.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -600,58 +619,4 @@ _Shutdown Window daemon — unannounced pauses to practice finitude._
 | function | `_experiment_enabled` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L180) |
 | function | `_days_in_month` | `(dt)` | — | [src](../../../core/services/shutdown_window_daemon.py#L189) |
 | function | `_state` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L194) |
-
-## `core/services/side_tasks.py`
-_Side-task flag — keep the main thread focused._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kort` | `(tekst, maks)` | Afkort ved en ORD-grænse, så en halv sætning ikke læses som en hel. | [src](../../../core/services/side_tasks.py#L50) |
-| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L63) |
-| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L70) |
-| function | `_age_label` | `(created_at)` | Kort alders-tag, fx ``3 dage`` eller ``5t`` — eller None hvis ukendt. | [src](../../../core/services/side_tasks.py#L79) |
-| function | `_fremtid` | `(tidsstempel)` | Et ISO-tidsstempel som tz-bevidst datetime — ``None`` hvis ulaeseligt. | [src](../../../core/services/side_tasks.py#L126) |
-| function | `_vaek_loft_sekunder` | `()` | Vækningens eget loft — HENTET fra `self_wakeup`, ikke kopieret. | [src](../../../core/services/side_tasks.py#L141) |
-| function | `_kort_tid` | `(tidsstempel)` | Kort LOKAL tid, fx ``17/10 09:00``. Tom streng hvis ulaeselig. | [src](../../../core/services/side_tasks.py#L159) |
-| function | `sovende` | `(record, *, nu=…)` | SOVER denne opgave — ligger dens `not_before` stadig i fremtiden? | [src](../../../core/services/side_tasks.py#L167) |
-| function | `sove_tekst` | `(record, *, nu=…)` | ``sover til 17/10 09:00`` — eller ``""`` hvis opgaven ikke sover. | [src](../../../core/services/side_tasks.py#L183) |
-| function | `_annuller_vaekning_id` | `(vaekning_id)` | Annullér én booket vækning. Kaster aldrig. | [src](../../../core/services/side_tasks.py#L196) |
-| function | `_annuller_vaekning` | `(record)` | — | [src](../../../core/services/side_tasks.py#L213) |
-| function | `_book_vaekning` | `(record, *, nu=…)` | Book ÉN vækning til opgavens `not_before`. Id, eller ``""``. | [src](../../../core/services/side_tasks.py#L217) |
-| function | `_ventende_vaekning_ids` | `()` | Id'er på vækninger der stadig venter. ``None`` = kunne IKKE læses. | [src](../../../core/services/side_tasks.py#L263) |
-| function | `flag` | `(*, title, prompt, tldr=…, session_id=…, finding_key=…, source_run_id=…, evidence=…, not_before=…)` | Rejs et flag. `not_before` (16/10-2026) gør det til en TIDSINDSTILLET | [src](../../../core/services/side_tasks.py#L279) |
-| function | `snooze` | `(side_task_id, *, until, reason=…)` | Udskyd en sideopgave: den må ikke tages op før `until`. | [src](../../../core/services/side_tasks.py#L346) |
-| function | `vaagn` | `(side_task_id, *, reason=…)` | Væk en sovende opgave FØR tid: ryd `not_before`, annullér vækningen. | [src](../../../core/services/side_tasks.py#L421) |
-| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L450) |
-| function | `list_open` | `()` | Alle åbne — ventende, køede og igangværende. | [src](../../../core/services/side_tasks.py#L454) |
-| function | `list_open_synlige` | `()` | De åbne der IKKE er skjult i chatten — præcis dem kortet viser. | [src](../../../core/services/side_tasks.py#L459) |
-| function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L475) |
-| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L479) |
-| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L497) |
-| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L579) |
-| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L607) |
-| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L639) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L711) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L741) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L746) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L758) |
-| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L770) |
-| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L784) |
-| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L933) |
-| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L955) |
-| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L979) |
-| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L990) |
-
-## `core/services/signal_baseline.py`
-_Persisted signal-baseline with cold-start guard (Task C1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store_key` | `(scope)` | Durable KV key for ``scope``. None/empty → the global key, unchanged. | [src](../../../core/services/signal_baseline.py#L47) |
-| function | `_load` | `(scope=…)` | Read the whole baseline dict for ``scope``. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L55) |
-| function | `_save` | `(baselines, scope=…)` | — | [src](../../../core/services/signal_baseline.py#L74) |
-| function | `get_baseline` | `(signal, scope=…)` | Last recorded value for ``signal`` in ``scope``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L84) |
-| function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
-| function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
-| function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
 

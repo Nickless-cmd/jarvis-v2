@@ -20,13 +20,16 @@ from typing import Any
 # Kanoniske oprindelser. Ny oprindelse? Tilføj her (fallback = "autonomous").
 ORIGINS: tuple[str, ...] = (
     "dream", "council", "work", "outreach",
-    "recurring", "heartbeat", "scheduled", "wakeup", "autonomous",
+    "recurring", "heartbeat", "scheduled", "wakeup",
+    "side-task-inspect", "side-task-local_write", "autonomous",
 )
 
 _LABELS = {
     "dream": "Drømme", "council": "Råd", "work": "Arbejde", "outreach": "Outreach",
     "recurring": "Tilbagevendende", "heartbeat": "Hjerteslag", "scheduled": "Planlagt",
     "wakeup": "Vækning", "autonomous": "Autonom",
+    "side-task-inspect": "Sideopgave · undersøg",
+    "side-task-local_write": "Sideopgave · lokal ændring",
 }
 
 _SESSION_PREFIX = "auto-"

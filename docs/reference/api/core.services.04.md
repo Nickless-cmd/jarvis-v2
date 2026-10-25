@@ -2,6 +2,45 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/background_jobs.py`
+_Alle kørende baggrundsopgaver — uanset hvor de kører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L100) |
+| function | `glem_bro_cache` | `(uid=…)` | Glem det cachede bro-svar — kaldes efter en MUTATION. | [src](../../../core/services/background_jobs.py#L130) |
+| function | `_bro_svar` | `(uid, exec_fn)` | Bro-svaret, cachet i `_CACHE_TTL_S`. Kun SUCCES caches. | [src](../../../core/services/background_jobs.py#L148) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L175) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L218) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L222) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L229) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L243) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L278) |
+| function | `_scout_jobs` | `(session_id=…)` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L285) |
+| function | `_scout_session` | `(agent_id)` | Samtalen en scout blev startet fra — "" når den ikke kan afgøres. | [src](../../../core/services/background_jobs.py#L337) |
+| function | `_tool_jobs` | `(session_id=…)` | Værktøjskald fra et model-run — dem der kører lige nu. | [src](../../../core/services/background_jobs.py#L376) |
+| function | `_default_bash_sid` | `()` | Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger. | [src](../../../core/services/background_jobs.py#L515) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…, arbejds_shell=…, koerer=…, titel=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L538) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L594) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L655) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L686) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…, session_id=…)` | Alle jobs fra alle kilder. | [src](../../../core/services/background_jobs.py#L699) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L764) |
+
+## `core/services/background_resume.py`
+_Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/background_resume.py#L43) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/background_resume.py#L52) |
+| function | `note_started` | `(session_id, shell_id)` | Husk at DENNE session har startet den shell. Self-safe. | [src](../../../core/services/background_resume.py#L60) |
+| function | `forget_session` | `(session_id)` | Ryd op naar en session er faerdig, saa staten ikke vokser uendeligt. | [src](../../../core/services/background_resume.py#L75) |
+| function | `tracked` | `(session_id)` | — | [src](../../../core/services/background_resume.py#L85) |
+| function | `build_note` | `(deltas)` | Systemnoten der faar Jarvis til at forholde sig til det nye output. Ren. | [src](../../../core/services/background_resume.py#L89) |
+| function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
+| function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L137) |
+
 ## `core/services/baggrundsjob_vagt.py`
 _Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
 
@@ -588,21 +627,4 @@ _Anomali-detektor — fanger de fejl Centralen IKKE selv har en nerve til endnu.
 | function | `install_hooks` | `()` | Installér globale fang-hooks (idempotent). Kaldes ved proces-start. | [src](../../../core/services/central_anomaly.py#L233) |
 | function | `install_asyncio_hook` | `(loop)` | Installér asyncio-exception-handler på en kørende event-loop (self-safe). | [src](../../../core/services/central_anomaly.py#L290) |
 | function | `anomaly_summary` | `(*, limit=…)` | Til realtime-panelet: tæller pr. importance + de seneste/vigtigste anomalier. | [src](../../../core/services/central_anomaly.py#L318) |
-
-## `core/services/central_arbitration.py`
-_§4 cluster-arbitrage — deterministisk afgørelse når flere clusters' verdicts konflikter_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `arbitrate` | `(verdicts)` | Kombinér flere verdicts til ÉT deterministisk udfald. Tom liste → GREEN. | [src](../../../core/services/central_arbitration.py#L21) |
-| function | `observe_shadow` | `(verdicts, *, enforced_blocked, run_id=…, where=…)` | §11 Trin 1 (SHADOW, 0-risiko): sammenlign den DEKLAREREDE arbitrage mod det faktisk | [src](../../../core/services/central_arbitration.py#L40) |
-| function | `explain` | `(verdicts)` | Read-only forklaring af en arbitrage (til debug/MC): hvem vandt og hvorfor. | [src](../../../core/services/central_arbitration.py#L65) |
-
-## `core/services/central_architect.py`
-_The Architect — periodisk selv-arkitekt der foreslår ÉT tungt strukturelt snit._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `assess` | `()` | Se hele systemet → ét prioriteret strukturelt snit-forslag. READ-ONLY. Self-safe. | [src](../../../core/services/central_architect.py#L20) |
-| function | `record_architect` | `()` | Månedlig cadence: observér Arkitektens forslag til nerve system/architect. Metadata-only. | [src](../../../core/services/central_architect.py#L52) |
 

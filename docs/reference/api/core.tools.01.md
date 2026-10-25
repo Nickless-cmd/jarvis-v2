@@ -98,9 +98,9 @@ _Explicit tool permissions for runs without a user present._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `allowed_tools_for_origin` | `(origin)` | Bund-sættet plus det kørslens oprindelse har fået delegeret. | [src](../../../core/tools/autonomous_tool_policy.py#L124) |
-| function | `presence_for_run` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/tools/autonomous_tool_policy.py#L130) |
-| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L219) |
+| function | `allowed_tools_for_origin` | `(origin)` | Bund-sættet plus det kørslens oprindelse har fået delegeret. | [src](../../../core/tools/autonomous_tool_policy.py#L138) |
+| function | `presence_for_run` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/tools/autonomous_tool_policy.py#L144) |
+| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L233) |
 
 ## `core/tools/bash_session.py`
 _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
@@ -303,8 +303,8 @@ _Daemon health alert — detects inactive/crashed daemons and sends notification
 | function | `_save_alert_state` | `(data)` | — | [src](../../../core/tools/daemon_alert_tools.py#L21) |
 | function | `_hours_since` | `(iso_str)` | — | [src](../../../core/tools/daemon_alert_tools.py#L26) |
 | function | `_exec_daemon_health_alert` | `(args)` | — | [src](../../../core/tools/daemon_alert_tools.py#L38) |
-| function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L118) |
-| function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L133) |
+| function | `_exec_daemon_alert_status` | `(args)` | Show when each daemon was last alerted. | [src](../../../core/tools/daemon_alert_tools.py#L162) |
+| function | `_exec_restart_overdue_daemons` | `(args)` | Restart daemons that have been overdue for more than threshold_minutes. | [src](../../../core/tools/daemon_alert_tools.py#L177) |
 
 ## `core/tools/db_query_tool.py`
 _`db_query` — laeseadgang til Jarvis' database, med skemaet i fejlen._

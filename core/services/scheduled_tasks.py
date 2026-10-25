@@ -411,6 +411,31 @@ def _poller_loop() -> None:
                 bruger_id=bruger_for_workspace(current_workspace_name() or "bjorn"))
         except Exception as exc:
             logger.debug("scheduled_tasks: inbox-vaekker fejlede: %s", exc)
+        # SIDE-OPGAVER I IDLE-VINDUET. Kun poster der ved oprettelsen fik en
+        # eksplicit autonomy_mode kan vælges; almindelige side-opgaver er
+        # fortsat en huskeliste. Dispatcheren starter højst én og kræver både
+        # 15 minutters tomgang, en ejer-session og nul aktive runs.
+        try:
+            from core.services.autonomous_side_task_dispatcher import dispatch_one
+
+            dispatch_one()
+        except Exception as exc:
+            logger.warning("scheduled_tasks: autonom side-opgave-dispatch fejlede: %s", exc)
+            try:
+                from core.services.background_attention import report_background_outcome
+
+                report_background_outcome(
+                    source_kind="side-task-dispatcher", source_id="poll",
+                    status="failed", severity="high",
+                    summary=(
+                        "Den autonome side-opgave-dispatcher fejlede "
+                        f"({type(exc).__name__})."
+                    ),
+                    suggested_next_step="Undersøg dispatcher-loggen; ingen ny side-opgave blev startet.",
+                    requires_attention=True, safe_to_continue=False,
+                )
+            except Exception:  # the scheduler loop retries durable reporting
+                pass
         _poller_stop.wait(_POLL_INTERVAL_SECONDS)
 
 

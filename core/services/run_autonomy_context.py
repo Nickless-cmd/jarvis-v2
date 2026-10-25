@@ -24,6 +24,7 @@ til at se hvad der sker.
 from __future__ import annotations
 
 import contextvars
+import time
 
 _autonom: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "jarvis_run_autonom", default=False,
@@ -40,6 +41,15 @@ def reset_autonomous(token) -> None:
         _autonom.reset(token)
     except Exception:
         pass
+    # A bounded autonomous run must not leave its counters in a reused
+    # context (notably tests and worker pools).  Ordinary runs use zero = no
+    # extra ceiling.
+    try:
+        _max_tool_calls.set(0)
+        _tool_calls_used.set(0)
+        _deadline_monotonic.set(0.0)
+    except Exception:  # context cleanup is best-effort after run completion
+        pass
 
 
 def is_autonomous() -> bool:
@@ -49,6 +59,55 @@ def is_autonomous() -> bool:
         return bool(_autonom.get())
     except Exception:
         return False
+
+
+# ── Mekanisk budget for uovervågede side-opgaver ──────────────────────────
+# Nul betyder «ingen ekstra per-run-grænse» og bevarer alle eksisterende runs.
+# Idle-dispatcheren sætter begge værdier eksplicit; promptens ord er dermed en
+# forklaring af en runtime-regel, ikke selve håndhævelsen.
+_max_tool_calls: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "jarvis_autonomous_max_tool_calls", default=0,
+)
+_tool_calls_used: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "jarvis_autonomous_tool_calls_used", default=0,
+)
+_deadline_monotonic: contextvars.ContextVar[float] = contextvars.ContextVar(
+    "jarvis_autonomous_deadline_monotonic", default=0.0,
+)
+
+
+def set_autonomous_budget(*, max_tool_calls: int = 0, max_seconds: float = 0.0) -> None:
+    _max_tool_calls.set(max(0, int(max_tool_calls or 0)))
+    _tool_calls_used.set(0)
+    _deadline_monotonic.set(
+        time.monotonic() + max(0.0, float(max_seconds or 0.0))
+        if max_seconds else 0.0
+    )
+
+
+def consume_autonomous_tool_budget() -> bool:
+    """Reserve one tool call, or refuse it after the deadline/ceiling."""
+    if not is_autonomous():
+        return True
+    deadline = float(_deadline_monotonic.get() or 0.0)
+    if deadline and time.monotonic() >= deadline:
+        return False
+    ceiling = int(_max_tool_calls.get() or 0)
+    used = int(_tool_calls_used.get() or 0)
+    if ceiling and used >= ceiling:
+        return False
+    _tool_calls_used.set(used + 1)
+    return True
+
+
+def autonomous_budget_state() -> dict[str, int | float | bool]:
+    deadline = float(_deadline_monotonic.get() or 0.0)
+    return {
+        "max_tool_calls": int(_max_tool_calls.get() or 0),
+        "tool_calls_used": int(_tool_calls_used.get() or 0),
+        "deadline_set": bool(deadline),
+        "seconds_remaining": max(0.0, deadline - time.monotonic()) if deadline else 0.0,
+    }
 
 
 # ── Tilstedeværelse: er der et menneske i den anden ende? (19/10-2026) ──────

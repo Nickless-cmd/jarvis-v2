@@ -2,6 +2,66 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/side_tasks.py`
+_Side-task flag — keep the main thread focused._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kort` | `(tekst, maks)` | Afkort ved en ORD-grænse, så en halv sætning ikke læses som en hel. | [src](../../../core/services/side_tasks.py#L52) |
+| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L65) |
+| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L72) |
+| function | `_age_label` | `(created_at)` | Kort alders-tag, fx ``3 dage`` eller ``5t`` — eller None hvis ukendt. | [src](../../../core/services/side_tasks.py#L81) |
+| function | `_fremtid` | `(tidsstempel)` | Et ISO-tidsstempel som tz-bevidst datetime — ``None`` hvis ulaeseligt. | [src](../../../core/services/side_tasks.py#L128) |
+| function | `_vaek_loft_sekunder` | `()` | Vækningens eget loft — HENTET fra `self_wakeup`, ikke kopieret. | [src](../../../core/services/side_tasks.py#L143) |
+| function | `_kort_tid` | `(tidsstempel)` | Kort LOKAL tid, fx ``17/10 09:00``. Tom streng hvis ulaeselig. | [src](../../../core/services/side_tasks.py#L161) |
+| function | `sovende` | `(record, *, nu=…)` | SOVER denne opgave — ligger dens `not_before` stadig i fremtiden? | [src](../../../core/services/side_tasks.py#L169) |
+| function | `sove_tekst` | `(record, *, nu=…)` | ``sover til 17/10 09:00`` — eller ``""`` hvis opgaven ikke sover. | [src](../../../core/services/side_tasks.py#L185) |
+| function | `_annuller_vaekning_id` | `(vaekning_id)` | Annullér én booket vækning. Kaster aldrig. | [src](../../../core/services/side_tasks.py#L198) |
+| function | `_annuller_vaekning` | `(record)` | — | [src](../../../core/services/side_tasks.py#L215) |
+| function | `_book_vaekning` | `(record, *, nu=…)` | Book ÉN vækning til opgavens `not_before`. Id, eller ``""``. | [src](../../../core/services/side_tasks.py#L219) |
+| function | `_ventende_vaekning_ids` | `()` | Id'er på vækninger der stadig venter. ``None`` = kunne IKKE læses. | [src](../../../core/services/side_tasks.py#L265) |
+| function | `flag` | `(*, title, prompt, tldr=…, session_id=…, finding_key=…, source_run_id=…, evidence=…, not_before=…, autonomy_mode=…, max_minutes=…, max_tool_calls=…)` | Rejs et flag. `not_before` (16/10-2026) gør det til en TIDSINDSTILLET | [src](../../../core/services/side_tasks.py#L281) |
+| function | `snooze` | `(side_task_id, *, until, reason=…)` | Udskyd en sideopgave: den må ikke tages op før `until`. | [src](../../../core/services/side_tasks.py#L363) |
+| function | `vaagn` | `(side_task_id, *, reason=…)` | Væk en sovende opgave FØR tid: ryd `not_before`, annullér vækningen. | [src](../../../core/services/side_tasks.py#L438) |
+| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L467) |
+| function | `list_open` | `()` | Alle åbne — ventende, køede og igangværende. | [src](../../../core/services/side_tasks.py#L471) |
+| function | `list_open_synlige` | `()` | De åbne der IKKE er skjult i chatten — præcis dem kortet viser. | [src](../../../core/services/side_tasks.py#L476) |
+| function | `_iso` | `(value)` | — | [src](../../../core/services/side_tasks.py#L492) |
+| function | `claim_autonomous` | `(*, worker_id, lease_minutes=…, now=…)` | Atomically lease one explicitly eligible side task. | [src](../../../core/services/side_tasks.py#L500) |
+| function | `attach_autonomous_session` | `(side_task_id, *, worker_id, session_id)` | Bind a successfully started autonomous task to its visible session. | [src](../../../core/services/side_tasks.py#L548) |
+| function | `release_autonomous_claim` | `(side_task_id, *, worker_id, reason=…, retry_minutes=…)` | Release a lease when no run was born; the task stays durable and open. | [src](../../../core/services/side_tasks.py#L564) |
+| function | `unreported_exhausted_autonomy` | `(*, now=…)` | Tasks whose bounded retries ended without a terminal decision. | [src](../../../core/services/side_tasks.py#L588) |
+| function | `mark_autonomy_exhausted_reported` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L608) |
+| function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L620) |
+| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L624) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L642) |
+| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L727) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L755) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L787) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L859) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L892) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L897) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L909) |
+| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L921) |
+| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L935) |
+| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L1093) |
+| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1115) |
+| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1139) |
+| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1150) |
+
+## `core/services/signal_baseline.py`
+_Persisted signal-baseline with cold-start guard (Task C1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_store_key` | `(scope)` | Durable KV key for ``scope``. None/empty → the global key, unchanged. | [src](../../../core/services/signal_baseline.py#L47) |
+| function | `_load` | `(scope=…)` | Read the whole baseline dict for ``scope``. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L55) |
+| function | `_save` | `(baselines, scope=…)` | — | [src](../../../core/services/signal_baseline.py#L74) |
+| function | `get_baseline` | `(signal, scope=…)` | Last recorded value for ``signal`` in ``scope``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L84) |
+| function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
+| function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
+| function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
+
 ## `core/services/signal_decay_daemon.py`
 _Signal decay daemon — archive and delete stale signals across all signal tables._
 
@@ -164,10 +224,10 @@ _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-0
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen, user_present=…)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
-| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L216) |
-| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L341) |
-| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L359) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L511) |
+| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L240) |
+| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L365) |
+| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L383) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L535) |
 
 ## `core/services/skill_autosurface.py`
 _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
@@ -552,37 +612,4 @@ _Governed kill-switch for struktureret content-persist + wire. Default ON._
 |---|---|---|---|---|
 | function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
 | function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
-
-## `core/services/subagent_digest.py`
-_Surface recently-completed subagents into the visible prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L30) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L37) |
-| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L41) |
-| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L45) |
-| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L52) |
-
-## `core/services/subagent_ecology.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_subagent_ecology_surface` | `()` | — | [src](../../../core/services/subagent_ecology.py#L13) |
-| function | `_build_subagent_ecology_surface_uncached` | `()` | — | [src](../../../core/services/subagent_ecology.py#L21) |
-| function | `build_subagent_ecology_from_sources` | `(*, affective_meta_state, epistemic_runtime_state, conflict_trace, loop_runtime, prompt_evolution, quiet_initiative)` | — | [src](../../../core/services/subagent_ecology.py#L32) |
-| function | `build_subagent_ecology_prompt_section` | `(surface=…)` | — | [src](../../../core/services/subagent_ecology.py#L119) |
-| function | `_build_critic_role` | `(*, epistemic, conflict, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L153) |
-| function | `_build_witness_helper_role` | `(*, affective, quiet, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L182) |
-| function | `_build_planner_helper_role` | `(*, loop_summary, prompt_summary, latest_prompt, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L212) |
-| function | `_role` | `(*, role_name, role_kind, current_status, activation_reason, last_activation_at)` | — | [src](../../../core/services/subagent_ecology.py#L246) |
-| function | `_source_contributors` | `(*, affective, epistemic, conflict, loop_summary, prompt_summary, quiet)` | — | [src](../../../core/services/subagent_ecology.py#L266) |
-| function | `_summary_text` | `(active_roles, cooling_roles, blocked_roles)` | — | [src](../../../core/services/subagent_ecology.py#L338) |
-| function | `_guidance_for_ecology` | `(*, active_roles, roles)` | — | [src](../../../core/services/subagent_ecology.py#L352) |
-| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L371) |
-| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L381) |
-| function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/subagent_ecology.py#L391) |
-| function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/subagent_ecology.py#L401) |
-| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/subagent_ecology.py#L411) |
-| function | `_safe_quiet_initiative` | `()` | — | [src](../../../core/services/subagent_ecology.py#L421) |
 

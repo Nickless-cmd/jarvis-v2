@@ -17,6 +17,7 @@ def _output_discipline_instruction(*, strength: str) -> str:
         "- Finish your sentence with punctuation before a tool call — never cut off mid-word.",
         "- Tool results are for you — refer to them in your own words, never reproduce them verbatim.",
         "- Before finishing code work, account for concrete unresolved findings: fix relevant new test failures now; for a deferred coverage gap call flag_side_task with finding_kind, disposition, path, behavior and evidence. Never remove a failed test and silently claim the behavior is verified.",
+        "- In ANY unattended/autonomous run, no actionable failure may live only in prose or a log. Call flag_side_task with a stable finding_key for a concrete deferred issue. Continue past an isolated finding only when independent work remains safe; stop the current task on a blocker; stop all further mutation on a critical/integrity risk. Never broaden your tools to get around the block.",
         # Maalt 6/10-2026: **0 af 10.774** assistent-beskeder har et
         # mermaid-hegn. (Et foerste opslag gav 3 — de var en compact_marker og
         # to tool-resultater; jeg havde glemt at filtrere paa rolle.)

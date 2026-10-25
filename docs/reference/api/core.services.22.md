@@ -2,6 +2,61 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recurring_tasks.py`
+_Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/recurring_tasks.py#L34) |
+| function | `set_execution_mode` | `(task_id, mode)` | Sæt hvor opgaven udføres: ``background`` eller ``session``. | [src](../../../core/services/recurring_tasks.py#L122) |
+| function | `set_verified_owner` | `(task_id, user_id)` | Saet det efterproevede ejerbevis paa en recurring task. | [src](../../../core/services/recurring_tasks.py#L145) |
+| function | `set_channel` | `(task_id, channel)` | Sæt leverings-kanal på en recurring task. Returnerer True hvis opdateret. | [src](../../../core/services/recurring_tasks.py#L167) |
+| function | `set_weekdays` | `(task_id, weekdays)` | Sæt hvilke ugedage en task må fyre på. ``''`` = alle dage (uændret). | [src](../../../core/services/recurring_tasks.py#L183) |
+| function | `set_inbox_on_complete` | `(task_id, flag)` | Sæt om opgavens resultat skal lægges i indbakken når den fyrer. | [src](../../../core/services/recurring_tasks.py#L205) |
+| function | `skal_i_indbakken` | `(task_id)` | Skal DETTE runs resultat i indbakken? Slås op på opgaven, ikke på teksten. | [src](../../../core/services/recurring_tasks.py#L225) |
+| function | `rutine_session_id` | `(task_id)` | Hvilken SAMTALE hører opgaven til? Tom streng = ingen. | [src](../../../core/services/recurring_tasks.py#L261) |
+| function | `fire_session_id` | `(task_id)` | Hvor skal runnet faktisk LAND? Tom streng = baggrunds-siloen. | [src](../../../core/services/recurring_tasks.py#L310) |
+| function | `er_session_rutine` | `(task_id)` | Skal DENNE opgave udføres hvor brugeren er — eller i baggrunden? | [src](../../../core/services/recurring_tasks.py#L361) |
+| function | `_row_to_dict` | `(row)` | — | [src](../../../core/services/recurring_tasks.py#L452) |
+| function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/services/recurring_tasks.py#L476) |
+| function | `_create` | `(*, task_id, focus, source, interval_minutes, next_fire_at, now, weekdays=…, session_id=…, inbox_on_complete=…)` | — | [src](../../../core/services/recurring_tasks.py#L482) |
+| function | `_get_due` | `(now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L498) |
+| function | `parse_weekdays` | `(raw)` | Normalisér ugedage til ``'1,2,3,4,5'`` (ISO: mandag = 1). ``''`` = alle. | [src](../../../core/services/recurring_tasks.py#L522) |
+| function | `_ugedage` | `(raw)` | Ugedagene som et sæt ISO-tal (mandag = 1). Tomt sæt = alle dage. | [src](../../../core/services/recurring_tasks.py#L563) |
+| function | `_ryk_til_ugedag` | `(tid, trin, ugedage)` | Ryk frem i hele INTERVALLER til en dag brugeren har valgt. | [src](../../../core/services/recurring_tasks.py#L583) |
+| function | `_naeste_tid` | `(planlagt_iso, interval_minutes, now, ugedage=…)` | Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske. | [src](../../../core/services/recurring_tasks.py#L599) |
+| function | `_advance` | `(task_id, interval_minutes, now, planlagt_iso=…, ugedage=…)` | — | [src](../../../core/services/recurring_tasks.py#L639) |
+| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L655) |
+| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L675) |
+| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L691) |
+| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…, weekdays=…, session_id=…, inbox_on_complete=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L708) |
+| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L802) |
+| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L810) |
+| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L815) |
+| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L835) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L915) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L929) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L939) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L958) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L967) |
+
+## `core/services/recursion_guard.py`
+_Recursion guard for autonomous agent dispatch._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tunable_int` | `(key, default)` | Read an int threshold from runtime-state; fall back to ``default``. | [src](../../../core/services/recursion_guard.py#L43) |
+| function | `_tunable_float` | `(key, default)` | — | [src](../../../core/services/recursion_guard.py#L53) |
+| function | `can_spawn` | `(current_depth, max_depth=…)` | True while a spawn chain still has depth budget. | [src](../../../core/services/recursion_guard.py#L63) |
+| function | `fanout_allowed` | `(requested, max_fanout=…)` | True when a single dispatch's requested child count is within budget. | [src](../../../core/services/recursion_guard.py#L77) |
+| function | `_load_entries` | `()` | — | [src](../../../core/services/recursion_guard.py#L91) |
+| function | `_save_entries` | `(entries)` | — | [src](../../../core/services/recursion_guard.py#L107) |
+| function | `_fresh_entries` | `(entries, now_ts, ttl)` | Drop entries older than ``ttl`` — reclaims slots left by crashed runs. | [src](../../../core/services/recursion_guard.py#L114) |
+| function | `try_enter` | `(now_ts=…)` | Claim a concurrency slot. | [src](../../../core/services/recursion_guard.py#L119) |
+| function | `exit` | `(now_ts=…)` | Release one concurrency slot (also reclaims stale entries). | [src](../../../core/services/recursion_guard.py#L142) |
+| function | `effective_max_fanout` | `()` | The live fan-out ceiling (runtime-state override or default). Callers use it | [src](../../../core/services/recursion_guard.py#L154) |
+| function | `active_count` | `(now_ts=…)` | Number of live (non-stale) concurrency slots currently held. | [src](../../../core/services/recursion_guard.py#L160) |
+
 ## `core/services/reflection_cycle_daemon.py`
 _Reflection cycle daemon — pure experience without action, every 10 minutes._
 
@@ -639,24 +694,4 @@ _Fenced delivery outbox for Routine results._
 | method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L86) |
 | method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L119) |
 | method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L148) |
-
-## `core/services/routine_diagnostics.py`
-_Content-free operational failure projections for owner and Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `OperationalFailure` | `` | — | [src](../../../core/services/routine_diagnostics.py#L11) |
-| function | `_opaque` | `(prefix, value)` | — | [src](../../../core/services/routine_diagnostics.py#L27) |
-| function | `_bounded_count` | `(value)` | — | [src](../../../core/services/routine_diagnostics.py#L32) |
-| function | `project_failure` | `(exc, metadata)` | — | [src](../../../core/services/routine_diagnostics.py#L39) |
-| function | `render_projection` | `(projection)` | — | [src](../../../core/services/routine_diagnostics.py#L62) |
-| function | `publish_failure` | `(projection)` | Publish the same fixed-schema projection to operational inbox and app chat. | [src](../../../core/services/routine_diagnostics.py#L72) |
-
-## `core/services/routine_identity.py`
-_Canonical, fail-closed identity resolution for Routine entry points._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `UnresolvedRoutinePrincipal` | `` | No active canonical account owns the supplied identity token. | [src](../../../core/services/routine_identity.py#L8) |
-| function | `resolve_principal` | `(raw_user_id, role_hint=…)` | Resolve a canonical user ID first, then an encrypted Discord mapping. | [src](../../../core/services/routine_identity.py#L12) |
 

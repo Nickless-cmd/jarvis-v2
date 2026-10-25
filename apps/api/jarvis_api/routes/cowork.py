@@ -153,6 +153,9 @@ async def cowork_side_task_opret(payload: dict = Body(default={})) -> dict:
         prompt=prompt,
         tldr=str((payload or {}).get("tldr") or ""),
         session_id=str((payload or {}).get("session") or "").strip() or None,
+        autonomy_mode=str((payload or {}).get("autonomy_mode") or "none"),
+        max_minutes=(payload or {}).get("max_minutes") or 20,
+        max_tool_calls=(payload or {}).get("max_tool_calls") or 12,
     )
     if str(res.get("status") or "") != "ok":
         raise HTTPException(status_code=400, detail=str(res.get("error") or "kunne ikke oprette sideopgaven"))

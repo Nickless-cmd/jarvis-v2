@@ -105,6 +105,17 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
         from core.services.jobs_engine import all_jobs, enqueue_job
     except Exception as exc:
         logger.debug("periodic_jobs_scheduler: jobs_engine import failed: %s", exc)
+        try:
+            from core.services.background_attention import report_background_outcome
+            report_background_outcome(
+                source_kind="periodic-scheduler", source_id="jobs-engine-import",
+                status="failed", severity="high",
+                summary=f"Periodic scheduler kunne ikke indlæse jobs engine ({type(exc).__name__}).",
+                suggested_next_step="Kontrollér jobs-engine import og runtime-log.",
+                requires_attention=True, safe_to_continue=False,
+            )
+        except Exception:  # the next scheduler tick retries durable reporting
+            pass
         return {"enqueued": [], "skipped": [], "error": str(exc)}
 
     # Load ONE gang — herfra arbejder vi på in-memory data
@@ -115,6 +126,17 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
         all_items = all_jobs()
     except Exception as exc:
         logger.warning("periodic_jobs_scheduler: kunne ikke laese jobs: %s", exc)
+        try:
+            from core.services.background_attention import report_background_outcome
+            report_background_outcome(
+                source_kind="periodic-scheduler", source_id="job-list-read",
+                status="failed", severity="high",
+                summary=f"Periodic scheduler kunne ikke læse joblisten ({type(exc).__name__}).",
+                suggested_next_step="Kontrollér joblageret før næste scheduler-runde.",
+                requires_attention=True, safe_to_continue=False,
+            )
+        except Exception:  # the next scheduler tick retries durable reporting
+            pass
         all_items = []
 
     # Byg pending-set + last-time map i én pass
@@ -151,5 +173,19 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
                         job_type, jid, last.isoformat() if last else "never")
         except Exception as exc:
             logger.warning("periodic_jobs_scheduler: enqueue %s failed: %s", job_type, exc)
+            try:
+                from core.services.background_attention import report_background_outcome
+                report_background_outcome(
+                    source_kind="periodic-scheduler", source_id=job_type,
+                    status="failed", severity="high",
+                    summary=(
+                        f"Periodic scheduler kunne ikke køsætte {job_type} "
+                        f"({type(exc).__name__})."
+                    ),
+                    suggested_next_step="Undersøg jobtypen og jobs-engine før genforsøg.",
+                    requires_attention=True, safe_to_continue=True,
+                )
+            except Exception:  # the next scheduler tick retries durable reporting
+                pass
 
     return {"enqueued": enqueued, "skipped": skipped}

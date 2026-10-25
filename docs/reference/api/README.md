@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17558 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17583 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -32,35 +32,35 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17558 functions/
 - [`core.runtime.03`](core.runtime.03.md) — `db_runtime_signals` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
 - [`core.services.02`](core.services.02.md) — `agent_pool_router` … `apophenia_guard`
-- [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `background_resume`
-- [`core.services.04`](core.services.04.md) — `baggrundsjob_vagt` … `central_architect`
-- [`core.services.05`](core.services.05.md) — `central_belief_gap` … `central_injection_registry`
-- [`core.services.06`](core.services.06.md) — `central_injection_units` … `central_render`
-- [`core.services.07`](core.services.07.md) — `central_route` … `cheap_lane_control`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_dashboard` … `collective_pulse_daemon`
-- [`core.services.09`](core.services.09.md) — `commit_attribution` … `counterfactual_engine_runtime`
-- [`core.services.10`](core.services.10.md) — `counterfactual_predictions` … `decision_signal_staging`
-- [`core.services.11`](core.services.11.md) — `decision_signal_telemetry` … `dream_distillation_daemon`
-- [`core.services.12`](core.services.12.md) — `dream_domains` … `event_gate`
-- [`core.services.13`](core.services.13.md) — `event_trigger_shadow` … `gate_loop`
-- [`core.services.14`](core.services.14.md) — `gate_memory` … `heartbeat_manage_runtime_work`
-- [`core.services.15`](core.services.15.md) — `heartbeat_phases` … `inner_voice_shadow`
-- [`core.services.16`](core.services.16.md) — `interlanguage_practice` … `local_small_model`
-- [`core.services.17`](core.services.17.md) — `local_tool_broker` … `metabolism_state_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `metacognition_signal_tracker` … `offline_recomposition_engine`
-- [`core.services.19`](core.services.19.md) — `ollama_model_names` … `prepared_request`
-- [`core.services.20`](core.services.20.md) — `pressure_threshold_gate` … `prompt_section_impact`
-- [`core.services.21`](core.services.21.md) — `prompt_section_reevaluation` … `recursion_guard`
-- [`core.services.22`](core.services.22.md) — `reflection_cycle_daemon` … `routine_identity`
-- [`core.services.23`](core.services.23.md) — `routine_identity_migration` … `runtime_surface_cache`
-- [`core.services.24`](core.services.24.md) — `runtime_tasks` … `self_surprise_expectation`
-- [`core.services.25`](core.services.25.md) — `self_system_code_awareness` … `signal_baseline`
-- [`core.services.26`](core.services.26.md) — `signal_decay_daemon` … `subagent_ecology`
-- [`core.services.27`](core.services.27.md) — `subjective_time` … `tool_embeddings`
-- [`core.services.28`](core.services.28.md) — `tool_execution_trace` … `user_understanding_signal_tracking`
-- [`core.services.29`](core.services.29.md) — `valence_trajectory` … `visible_run_recovery_dispatcher`
-- [`core.services.30`](core.services.30.md) — `visible_run_segment_exit` … `widget_dokument`
-- [`core.services.31`](core.services.31.md) — `witness_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `background_job_watch`
+- [`core.services.04`](core.services.04.md) — `background_jobs` … `central_anomaly`
+- [`core.services.05`](core.services.05.md) — `central_arbitration` … `central_hypothesis_sampler`
+- [`core.services.06`](core.services.06.md) — `central_initiative_ladder` … `central_redpill`
+- [`core.services.07`](core.services.07.md) — `central_relational` … `cheap_lane_admission`
+- [`core.services.08`](core.services.08.md) — `cheap_lane_balancer` … `cognitive_state_assembly`
+- [`core.services.09`](core.services.09.md) — `cognitive_state_narrativizer` … `council_settlement`
+- [`core.services.10`](core.services.10.md) — `counterfactual_engine` … `decision_review_daemon`
+- [`core.services.11`](core.services.11.md) — `decision_review_prompter` … `dream_consolidation_daemon`
+- [`core.services.12`](core.services.12.md) — `dream_continuum` … `epistemics`
+- [`core.services.13`](core.services.13.md) — `error_healers` … `gate_execution`
+- [`core.services.14`](core.services.14.md) — `gate_kernel` … `heartbeat_daemon_ticks`
+- [`core.services.15`](core.services.15.md) — `heartbeat_delivery` … `inner_voice_daemon`
+- [`core.services.16`](core.services.16.md) — `inner_voice_notifier` … `llm_pricing`
+- [`core.services.17`](core.services.17.md) — `local_intent_gate` … `meta_learning_retrospective`
+- [`core.services.18`](core.services.18.md) — `meta_reflection_daemon` … `oauth_flow`
+- [`core.services.19`](core.services.19.md) — `oauth_store` … `post_tool_answer_guard`
+- [`core.services.20`](core.services.20.md) — `precision_bias` … `prompt_observer`
+- [`core.services.21`](core.services.21.md) — `prompt_relevance_backend` … `recurrence_loop_daemon`
+- [`core.services.22`](core.services.22.md) — `recurring_tasks` … `routine_delivery`
+- [`core.services.23`](core.services.23.md) — `routine_diagnostics` … `runtime_self_model_state`
+- [`core.services.24`](core.services.24.md) — `runtime_self_model_surfaces` … `self_review_unified`
+- [`core.services.25`](core.services.25.md) — `self_surprise_detection` … `shutdown_window_daemon`
+- [`core.services.26`](core.services.26.md) — `side_tasks` … `structured_content_flag`
+- [`core.services.27`](core.services.27.md) — `subagent_digest` … `tool_contract_shadow`
+- [`core.services.28`](core.services.28.md) — `tool_dansk_bro` … `user_temperature_runtime`
+- [`core.services.29`](core.services.29.md) — `user_theory_of_mind` … `visible_run_outcome_state`
+- [`core.services.30`](core.services.30.md) — `visible_run_recovery_coordinator` … `weekly_manifest`
+- [`core.services.31`](core.services.31.md) — `weighted_slot_health` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

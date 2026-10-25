@@ -56,6 +56,7 @@ from core.tools.comfyui_tools import (
     _exec_comfyui_objects,
 )
 from core.tools.graf_tools import _exec_vis_graf
+from core.tools.madopskrift_tools import _exec_madopskrift
 from core.tools.surface_tools import _exec_vaelg_flade
 from core.tools.widget_tools import _exec_vis_widget
 from core.tools.pollinations_tools import (
@@ -1740,6 +1741,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "route_directions": _geo_tools.exec_route_directions,
     "nearby_search": _geo_tools.exec_nearby_search,
     "get_exchange_rate": _exec_get_exchange_rate,
+    "madopskrift": _exec_madopskrift,
     "get_news": _exec_get_news,
     "wolfram_query": _exec_wolfram_query,
     "list_initiatives": _exec_list_initiatives,

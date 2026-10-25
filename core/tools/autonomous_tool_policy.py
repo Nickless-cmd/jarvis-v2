@@ -111,6 +111,9 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
         "send_ntfy", "notify_user", "send_discord_dm", "send_discord_channel",
         "discord_channel", "send_webchat_message",
         "web_search", "web_fetch", "get_weather", "get_news",
+        # Madopskrifter (25/10-2026): vej 3 i side-opgaven er ugentlige
+        # forslag, og en recurring-koersel maa derfor kunne slaa op.
+        "madopskrift",
         "bash",
     }),
     # Drømmen skal sanse og arkivere sit indtryk — ikke tale med verden.
@@ -121,16 +124,17 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
     # En self-wakeup er Jarvis der genoptager sit EGET arbejde i en session.
     # Den skal kunne undersøge og fortælle — ikke begynde nyt arbejde.
     # Nøglen er «wakeup»: det er hvad wakeup_dispatcher sender.
-    "wakeup": frozenset({"bash", "send_webchat_message", "send_ntfy"}),
+    "wakeup": frozenset({"bash", "send_webchat_message", "send_ntfy",
+                        "web_search", "madopskrift"}),
     # The idle side-task worker has two deliberately different envelopes.
     # `inspect` can gather local evidence and close its own bookkeeping; only
     # an explicitly selected `local_write` task receives local file mutation.
     "side-task-inspect": frozenset({
-        "bash", "activate_side_task", "dismiss_side_task",
+        "bash", "activate_side_task", "dismiss_side_task", "madopskrift",
     }),
     "side-task-local_write": frozenset({
         "bash", "write_file", "edit_file", "activate_side_task",
-        "dismiss_side_task",
+        "dismiss_side_task", "madopskrift",
     }),
 }
 

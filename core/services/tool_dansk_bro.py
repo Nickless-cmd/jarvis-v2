@@ -58,6 +58,7 @@ DANSKE_UDTRYK: dict[str, str] = {
     "get_news": "nyheder, find nyheder, hvad sker der i verden, seneste nyt, dagens nyheder, nyheder i dag, hvad er der sket, seneste nyheder, nyheder om, hvad skriver aviserne",
     "get_exchange_rate": "valutakurs, vekselkurs, hvad koster en dollar, kursen, omregn, konverter, hvor mange dollar, hvor mange euro, hvor meget er, pund, dollar, euro, valuta",
     "wolfram_query": "beregn, regn ud, matematik, hvad er resultatet, omregn enheder, hvor mange meter, hvor mange kilo, videnskabeligt, statistik, præcist tal, befolkningstal, hvor mange indbyggere",
+    "madopskrift": "opskrift, opskrifter, madopskrift, madopskrifter, opskrift på, find opskrift, hvad skal vi spise, hvad skal vi have at spise, aftensmad, madlavning, hvad kan jeg lave af, hvad kan jeg lave med, hvad kan jeg lave, ingredienser, madidé, madidéer, vegetarisk opskrift, hvad er i køleskabet, brug mine rester, ret med kylling, ret med kartofler, ret med fisk, suppe opskrift, bag opskrift",
     # ── Kommunikation ────────────────────────────────────────────────────
     "send_discord_dm": "send en besked, skriv til, discord besked, skriv til mig på discord, dm",
     "send_telegram_message": "telegram besked, skriv på telegram, send på telegram",

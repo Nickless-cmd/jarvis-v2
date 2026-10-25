@@ -170,6 +170,11 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "web_search", "web_fetch", "web_scrape", "get_news",
     # Data
     "get_weather", "get_exchange_rate", "wolfram_query",
+    # Madopskrifter (25/10-2026, Bjørn). Michelle spurgte, og svaret fandtes
+    # ikke i nogen scope: kilderne er nøglefri og read-only, og oversættelsen
+    # ligger inde i værktøjet selv. Derfor hører det i KERNEN for alle roller
+    # — ikke i CHAT_MODE_OWNER_EXTRA, som kun er owner.
+    "madopskrift",
     # Geolocation (read-only eksterne opslag)
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
     # Vision — at SE et billede
@@ -256,6 +261,10 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "repo_recall",
     # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
+    # Madopskrifter (25/10-2026): nøglefri, read-only eksterne opslag. Samme
+    # familie som vejr — og et værktøj der kun findes i chat findes reelt
+    # ikke for den der arbejder i code.
+    "madopskrift",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
     # Billeder. Ogsaa i kode-mode: et diagram, en mockup eller en illustration

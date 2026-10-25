@@ -29,6 +29,7 @@ _PARALLEL_SAFE: frozenset[str] = frozenset({
     "operator_browser_get_links", "operator_browser_status",
     "operator_clipboard_read", "operator_find_image", "web_fetch", "web_search",
     "operator_webfetch", "get_weather", "get_exchange_rate", "get_news",
+    "madopskrift",
     "github_list_issues", "github_list_prs", "gmail_search", "gmail_list",
     "calendar_list_events", "drive_search", "docs_read", "sheets_read",
     "slides_read", "pdf_read", "note_list", "note_search", "hf_search_models",

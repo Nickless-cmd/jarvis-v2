@@ -41,6 +41,10 @@ ALL_TOOLS = _AllTools()
 _MEMBER_CHAT_WEB = frozenset({
     "web_search", "web_scrape", "web_fetch", "get_news", "get_weather",
     "get_exchange_rate", "wolfram_query", "analyze_image",
+    # Madopskrifter (25/10-2026). Nøglefri, read-only eksterne opslag — samme
+    # familie som vejr og nyheder, og Michelle er præcis den bruger der
+    # spurgte efter det.
+    "madopskrift",
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
 })
 _MEMBER_CHAT_UTIL = frozenset({
@@ -89,7 +93,7 @@ _MEMBER_CODE_OPERATOR = frozenset({
     "operator_watch_events", "operator_watch_folder", "operator_webfetch",
     "operator_write_file",
 })
-_MEMBER_CODE_WEB = frozenset({"web_search", "web_scrape", "web_fetch", "analyze_image"})
+_MEMBER_CODE_WEB = frozenset({"web_search", "web_scrape", "web_fetch", "analyze_image", "madopskrift"})
 # 🔒 path-jailed til eget workspace (server-side, IKKE Jarvis' repo)
 _MEMBER_CODE_FILE = frozenset({"read_file", "write_file", "edit_file", "find_files"})
 # 🔒 connector-tools: bruger member'ens EGEN OAuth-token (per-bruger krypteret).
@@ -106,6 +110,9 @@ _MEMBER_COWORK = frozenset({
     "propose_plan", "revise_plan", "list_plans", "dismiss_plan",
     "todo_add", "todo_list", "todo_set", "todo_update_status", "todo_remove",
     "list_proposals", "discord_channel",
+    # Madopskrifter (25/10-2026): read-only eksternt opslag, ingen skrivning
+    # og ingen adgang til andres data — derfor også i cowork.
+    "madopskrift",
 })
 
 

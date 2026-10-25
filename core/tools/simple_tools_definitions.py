@@ -1735,6 +1735,59 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "madopskrift",
+            "description": (
+                "Slå madopskrifter op på DANSK. Kilderne er engelsksprogede "
+                "(TheMealDB + MyPlate.food, begge nøglefri), så værktøjet "
+                "oversætter både søgeordet og svaret. Der findes ingen dansk "
+                "opskrift-API — dette er vejen til danske opskrifter. "
+                "handling='soeg' finder retter på et dansk ord; 'hent' giver "
+                "den fulde opskrift med ingredienser og fremgangsmåde på "
+                "dansk; 'koleskab' tager en ingrediensliste og finder retter "
+                "der bruger dem."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handling": {
+                        "type": "string",
+                        "enum": ["soeg", "hent", "koleskab"],
+                        "description": (
+                            "'soeg' (standard) = find retter på et dansk ord. "
+                            "'hent' = fuld opskrift fra et id. "
+                            "'koleskab' = retter ud fra en ingrediensliste."
+                        ),
+                    },
+                    "soegning": {
+                        "type": "string",
+                        "description": (
+                            "Dansk mad-ord, fx 'kartoffel', 'kylling', "
+                            "'blomkålssuppe'. Sammensatte ord håndteres."
+                        ),
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": (
+                            "Id fra et søgeresultat, fx 'themealdb:52965' "
+                            "eller 'myplate:chicken-soup-soul'. Kræves ved "
+                            "handling='hent'."
+                        ),
+                    },
+                    "ingredienser": {
+                        "type": "string",
+                        "description": (
+                            "Kommasepareret liste til handling='koleskab', "
+                            "fx 'kylling, ris, løg'."
+                        ),
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_exchange_rate",
             "description": (
                 "Valutakurser og konvertering. Giver kurser fra base til alle andre "

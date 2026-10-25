@@ -349,6 +349,7 @@ _SKRIVE_VERBER: Final[frozenset[str]] = frozenset({
 _KUN_LAESENDE: Final[frozenset[str]] = frozenset({
     "read_file", "list_dir", "grep", "glob", "search", "find_files",
     "web_search", "web_fetch", "get_weather", "daemon_status",
+    "madopskrift",
     "read_model_config", "recall", "memory_search", "search_memory",
     "verify_file_contains", "central_query", "bash_output", "search_sessions",
     "analyze_image", "scout_agent",

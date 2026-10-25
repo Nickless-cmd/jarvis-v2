@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/verify_tools.py`
+_Verification tools — wrap "do then check" into one call._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_verify_file_contains` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L32) |
+| function | `_exec_verify_service_active` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L98) |
+| function | `_exec_verify_endpoint_responds` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L121) |
+
 ## `core/tools/visual_memory_tool.py`
 _Visual memory tool — Jarvis kan læse sine egne visuelle minder._
 

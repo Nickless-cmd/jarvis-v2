@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T05:51:43.459443+00:00",
+  "generated_at": "2026-10-25T17:38:00.269302+00:00",
   "hard": [],
   "soft": [
     {
@@ -85,10 +85,6 @@
     {
       "kind": "requirement_missing",
       "module": "edge_tts"
-    },
-    {
-      "kind": "requirement_missing",
-      "module": "fastembed"
     },
     {
       "kind": "requirement_missing",
@@ -189,6 +185,6 @@
   ],
   "counts": {
     "hard": 0,
-    "soft": 46
+    "soft": 45
   }
 }

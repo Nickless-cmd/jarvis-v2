@@ -27,6 +27,7 @@ _TOOL_LABELS: dict[str, str] = {
     "web_scrape": "Skraber webside",
     "web_search": "Søger på nettet",
     "get_weather": "Henter vejr",
+    "madopskrift": "Slår opskrift op",
     "geolocation_lookup": "Finder lokation",
     "geocode": "Slår adresse op",
     "reverse_geocode": "Slår koordinater op",

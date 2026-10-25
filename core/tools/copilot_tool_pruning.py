@@ -222,6 +222,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "deep_analyze", "discord_channel", "discord_status", "edit_file",
     "edit_task", "eventbus_recent", "find_files", "get_news",
     "get_weather",
+    "madopskrift",
     "route_directions",
     "git_diff", "git_log", "git_status",
     "goal_create", "goal_list", "heartbeat_status", "hf_vision_analyze",

@@ -83,6 +83,26 @@ _Lazy tool schema loader for visible-lane tool pruning._
 | function | `_tool_name` | `(tool_def)` | — | [src](../../../core/tools/load_more_tools.py#L10) |
 | function | `_tool_load_more_tools` | `(arguments)` | Resolve tools to add to the next round and return their full schemas. | [src](../../../core/tools/load_more_tools.py#L15) |
 
+## `core/tools/madopskrift_tools.py`
+_Madopskrifter på dansk — TheMealDB + MyPlate.food med oversættelseslag._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_http_get_json` | `(url, *, timeout=…)` | GET JSON med Jarvis User-Agent. Kaster ved netværks-/parse-fejl. | [src](../../../core/tools/madopskrift_tools.py#L86) |
+| function | `_cheap_lane` | `(prompt)` | Ét kald til cheap-lane. Returnerer tom streng hvis den ikke kan. | [src](../../../core/tools/madopskrift_tools.py#L95) |
+| function | `_split_sammensat` | `(ord)` | Del et dansk sammensat ord i to kendte ordbogsord. | [src](../../../core/tools/madopskrift_tools.py#L109) |
+| function | `oversaet_ord_til_engelsk` | `(ord)` | Dansk mad-ord → engelsk søgeord. Returnerer (engelsk, kilde). | [src](../../../core/tools/madopskrift_tools.py#L130) |
+| function | `oversaet_til_dansk` | `(tekst, *, kontekst=…)` | Engelsk tekst → dansk. Returnerer (tekst, blev_oversat). | [src](../../../core/tools/madopskrift_tools.py#L170) |
+| function | `_themealdb_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L191) |
+| function | `_themealdb_hent` | `(meal_id)` | — | [src](../../../core/tools/madopskrift_tools.py#L207) |
+| function | `_myplate_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L232) |
+| function | `_myplate_hent` | `(slug)` | — | [src](../../../core/tools/madopskrift_tools.py#L249) |
+| function | `_myplate_koleskab` | `(ingredienser, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L272) |
+| function | `_exec_madopskrift` | `(args)` | Slå opskrifter op på dansk. Se ``madopskrift``-definitionen. | [src](../../../core/tools/madopskrift_tools.py#L292) |
+| function | `_soeg` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L316) |
+| function | `_hent` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L400) |
+| function | `_koleskab` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L457) |
+
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_
 
@@ -519,16 +539,4 @@ _`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_recall` | `(args)` | — | [src](../../../core/tools/recall_tool.py#L52) |
-
-## `core/tools/recurring_scheduler_tools.py`
-_Recurring scheduler tools — Jarvis can schedule repeating tasks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_interval` | `(interval, unit)` | Return interval in minutes, or None on bad input. | [src](../../../core/tools/recurring_scheduler_tools.py#L13) |
-| function | `_exec_schedule_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L27) |
-| function | `_exec_list_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L82) |
-| function | `_exec_cancel_recurring` | `(args)` | — | [src](../../../core/tools/recurring_scheduler_tools.py#L102) |
-| function | `_exec_set_recurring_channel` | `(args)` | Sæt leverings-kanal på en recurring task (notif-routing spec §3.5). | [src](../../../core/tools/recurring_scheduler_tools.py#L240) |
-| function | `_exec_set_recurring_weekdays` | `(args)` | Begræns en recurring task til bestemte ugedage. | [src](../../../core/tools/recurring_scheduler_tools.py#L260) |
 

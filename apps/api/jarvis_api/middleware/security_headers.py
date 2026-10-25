@@ -5,9 +5,11 @@ De fleste er sikre at sætte ubetinget på et JSON/SSE-API; Content-Security-Pol
 er env-gated (`JARVISX_CSP`) fordi en streng `default-src 'none'` ville brække
 evt. HTML/JS som API'et serverer.
 
-`SimpleRateLimitMiddleware` er en in-memory per-IP token-bucket (ingen ekstern
-afhængighed som slowapi). Den er **slået TIL** som standard (ændret 22/10-2026)
-og kan slås fra med `JARVISX_RATE_LIMIT=0`.
+`SimpleRateLimitMiddleware` er en in-memory sliding-window-grænse (ingen ekstern
+afhængighed som slowapi): offentlig trafik tælles pr. IP, mens verificerede
+app-klienter tælles pr. bruger+IP med et højere polling-loft. Den er **slået
+TIL** som standard (ændret 22/10-2026) og kan slås fra med
+`JARVISX_RATE_LIMIT=0`.
 
 Hvorfor standarden blev vendt: målt i drift 22/10-2026 svarede det offentlige
 `api.srvlab.dk` (185.107.14.241:443) på `/api/auth/login` og
@@ -113,6 +115,37 @@ def _rate_limit_config() -> tuple[bool, int, float]:
     return enabled, max_req, window
 
 
+def _authenticated_rate_limit_max() -> int:
+    """Loft for en gyldigt autentificeret app-klient.
+
+    Desk/PWA holder flere lette statusflader levende samtidig. Det er legitim
+    trafik, men overstiger let den offentlige brute-force-grænse på 120/min.
+    """
+    try:
+        return int(os.environ.get("JARVISX_AUTH_RATE_LIMIT_MAX", "600"))
+    except ValueError:  # Fejlkonfiguration falder sikkert tilbage til standardloftet.
+        return 600
+
+
+def _authenticated_subject(request: Request) -> str:
+    """Verificeret token-subjekt, ellers tom streng (aldrig header-tillid)."""
+    raw = str(request.headers.get("authorization") or "").strip()
+    if not raw.lower().startswith("bearer "):
+        return ""
+    token = raw.split(None, 1)[1].strip()
+    if not token:
+        return ""
+    try:
+        from core.runtime.jarvisx_auth import verify_token
+    except Exception:  # Manglende auth-runtime må aldrig åbne det højere loft.
+        return ""
+    try:
+        claims = verify_token(token)
+    except Exception:  # Ugyldigt/udløbet token skal blive på det stramme offentlige loft.
+        return ""
+    return str((claims or {}).get("sub") or "").strip()
+
+
 def _effektiv_klient_ip(request: Request) -> str:
     """Den IP der skal tælles på — ikke den socket uvicorn ser.
 
@@ -154,7 +187,7 @@ def _er_lokal_adresse(ip: str) -> bool:
 
 
 class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
-    """In-memory per-IP sliding-window rate limit. TIL som standard."""
+    """In-memory sliding-window limit for public IPs and verified app users."""
 
     def __init__(self, app) -> None:
         super().__init__(app)
@@ -167,12 +200,15 @@ class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
         ip = _effektiv_klient_ip(request)
         if _er_lokal_adresse(ip):
             return await call_next(request)
+        subject = _authenticated_subject(request)
+        limit = _authenticated_rate_limit_max() if subject else max_req
+        bucket = f"user:{subject}:{ip}" if subject else f"ip:{ip}"
         now = time.monotonic()
-        dq = self._hits.setdefault(ip, deque())
+        dq = self._hits.setdefault(bucket, deque())
         cutoff = now - window
         while dq and dq[0] < cutoff:
             dq.popleft()
-        if len(dq) >= max_req:
+        if len(dq) >= limit:
             return JSONResponse(
                 {"detail": "rate limit exceeded", "error": "too_many_requests"},
                 status_code=429,

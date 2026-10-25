@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.middleware.security_headers import (
     SimpleRateLimitMiddleware,
+    _authenticated_rate_limit_max,
     _effektiv_klient_ip,
     _er_lokal_adresse,
     _rate_limit_config,
@@ -56,6 +57,41 @@ def test_offentlig_klient_rammes(monkeypatch):
     r = c.get("/ping", headers=h)
     assert r.status_code == 429
     assert r.json()["error"] == "too_many_requests"
+
+
+def test_autentificeret_app_har_sit_eget_hoejere_loft(monkeypatch):
+    """Normal PWA-polling må ikke dele brute-force-loftet for loginfladen."""
+    from core.runtime import jarvisx_auth
+
+    monkeypatch.setenv("JARVISX_RATE_LIMIT_MAX", "2")
+    monkeypatch.setenv("JARVISX_AUTH_RATE_LIMIT_MAX", "5")
+    monkeypatch.setattr(
+        jarvisx_auth, "verify_token",
+        lambda token: {"sub": "michelle"} if token == "valid" else None,
+    )
+    c = TestClient(_app())
+    h = {"X-Forwarded-For": "8.8.8.8", "Authorization": "Bearer valid"}
+    for _ in range(5):
+        assert c.get("/ping", headers=h).status_code == 200
+    assert c.get("/ping", headers=h).status_code == 429
+
+
+def test_ugyldigt_bearer_token_faar_ikke_app_loftet(monkeypatch):
+    from core.runtime import jarvisx_auth
+
+    monkeypatch.setenv("JARVISX_RATE_LIMIT_MAX", "2")
+    monkeypatch.setenv("JARVISX_AUTH_RATE_LIMIT_MAX", "5")
+    monkeypatch.setattr(jarvisx_auth, "verify_token", lambda _token: None)
+    c = TestClient(_app())
+    h = {"X-Forwarded-For": "8.8.4.4", "Authorization": "Bearer forged"}
+    assert c.get("/ping", headers=h).status_code == 200
+    assert c.get("/ping", headers=h).status_code == 200
+    assert c.get("/ping", headers=h).status_code == 429
+
+
+def test_autentificeret_standardloft_er_til_pwa_polling(monkeypatch):
+    monkeypatch.delenv("JARVISX_AUTH_RATE_LIMIT_MAX", raising=False)
+    assert _authenticated_rate_limit_max() == 600
 
 
 def test_privat_klient_slipper_igennem(monkeypatch):

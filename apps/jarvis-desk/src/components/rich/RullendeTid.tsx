@@ -1,10 +1,9 @@
 /**
  * Rullende tal — turens ur som mekanik, ikke som tekst.
  *
- * Bjørn 17/10-2026: «tallende skal rulle nedfra og op». Hvert ciffer er sin
- * egen lodrette strimmel med 0-9 stablet, og det aktive ciffer skubbes ind i
- * viewporten. Når 9 → 0 ruller det NEDAD (fremad), aldrig tilbage — derfor
- * `translateY(-ciffer * 1em)` og ikke en rotation.
+ * Bjørn 17/10-2026 og 25/10-2026: «tallende skal rulle nedfra og op».
+ * Turhovedet deler nu hjulmekanik med rundetimeren: det gamle ciffer glider
+ * op og ud, mens det nye kommer ind nedefra. Det gælder også 9 → 0.
  *
  * ## Hvorfor ikke bare animere hele strengen
  *
@@ -14,33 +13,12 @@
  *
  * ## Bredden
  *
- * Hver strimmel er `1ch` bred med `tabular-nums`, så de enkelte cifre ikke
- * ændrer bredde. Tidsled har ingen indledende nuller (`1m 5s`).
+ * Hvert hjul er breddefast med `tabular-nums`, så de enkelte cifre ikke
+ * ændrer bredde. Tidsled har ingen indledende nuller (`1m 5s`). Den delte
+ * mekanik holder desuden cifrene på fontens ægte baseline.
  */
 import { memo } from 'react'
-
-/** Ét ciffer som lodret strimmel. `key` på værdien får React til at genstarte
- *  transitionen, så samme ciffer to gange i træk ikke animerer forgæves. */
-const Ciffer = memo(function Ciffer({ tegn }: { tegn: string }) {
-  // Kun et ÆGTE ciffer ruller. `Number.isInteger(Number(' '))` er `true` —
-  // `Number(' ')` er 0 — så mellemrummet i «1m 51s» blev til et rullende nul
-  // og uret stod som «1m051s» (målt 17/10-2026). Testen er derfor på TEGNET,
-  // ikke på om det kan læses som et tal.
-  if (!/^[0-9]$/.test(tegn)) {
-    // `m`, `s`, `t` og mellemrum ruller ikke — de står stille.
-    return <span className="rv-turTidFast">{tegn}</span>
-  }
-  const tal = Number(tegn)
-  return (
-    <span className="rv-turTidCiffer" aria-hidden="true">
-      <span className="rv-turTidStrimmel" style={{ transform: `translateY(${-tal}em)` }}>
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <span key={n}>{n}</span>
-        ))}
-      </span>
-    </span>
-  )
-})
+import { RullendeCifre } from '../feedback/RullendeTal'
 
 /** Hele tidsstrengen, ciffer for ciffer. Skærmlæsere får den flade tekst. */
 export const RullendeTid = memo(function RullendeTid({
@@ -51,11 +29,9 @@ export const RullendeTid = memo(function RullendeTid({
   className?: string
 }) {
   return (
-    <span className={`rv-turTid${className ? ` ${className}` : ''}`} role="timer" aria-label={tekst}>
-      <span aria-hidden="true">
-        {[...tekst].map((tegn, i) => (
-          <Ciffer key={`${i}-${tegn}`} tegn={tegn} />
-        ))}
+    <span className={`rv-turTid rullende${className ? ` ${className}` : ''}`} role="timer" aria-label={tekst}>
+      <span className="rv-turTidHjul" aria-hidden="true">
+        <RullendeCifre tekst={tekst} retning="op" />
       </span>
     </span>
   )

@@ -54,9 +54,9 @@ describe('RullendeTal', () => {
     expect(aktuelle(container)).toEqual(['1', '0'])
   })
 
-  it('giver tokenhjulene dækkende tekstfyld i turhovedets shimmer', () => {
+  it('turhovedet starter ikke et ekstra shimmerfelt omkring tokenhjulene', () => {
     const css = readFileSync(join(__dirname, '../../styles/turhoved.css'), 'utf8')
-    expect(css).toMatch(/\.rv-tur \.shimmer \.rv-turMeta \.hjul-ciffer[\s\S]*?-webkit-text-fill-color:\s*currentColor/)
+    expect(css).not.toMatch(/\.rv-tur[^\n{]*\.shimmer/)
   })
 
   it('holder rundeurenes tidsled grå og cifrene et trin lysere', () => {

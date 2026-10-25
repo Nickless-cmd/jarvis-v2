@@ -12,8 +12,8 @@
  * ## Kontrakten
  *
  * Højde 33px, en reserveret 1px skillelinje, tekst i `--rv-tertiary` og
- * fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer` plus
- * det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
+ * fold-pilen i `--fg-3`. Hovedet er bevidst roligt: den levende animation bor
+ * i den aktive rundelinje, så to samtidige shimmerfelter ikke konkurrerer.
  */
 import type { ReactNode, Ref } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -38,7 +38,7 @@ export interface TurHovedProps {
   tekst: string
   aaben: boolean
   onToggle: () => void
-  /** Tænder shimmer i tekst og pil. Kalderen bestemmer hvornår. */
+  /** Markerer at turen kører. Giver ingen shimmer; den bor i rundelinjen. */
   koerer?: boolean
   /** Turens forløbne sekunder. Vises som `42s` / `1m 5s`; `null` = intet ur. */
   sekunder?: number | null
@@ -64,9 +64,7 @@ export function TurHoved({
   }
   const indhold = (
     <>
-      {/* ÉT shimmerfelt over tekst + metadata + ur. Tre `.shimmer`-børn gav
-          tre samtidige lysbånd; nu fortsætter det samme bånd gennem linjen. */}
-      <span className={`rv-turIndhold${koerer ? ' shimmer' : ''}`}>
+      <span className="rv-turIndhold">
         <span className="rv-turTekst">{tekst}</span>
         {meta}
         {typeof sekunder === 'number' ? (
@@ -76,7 +74,6 @@ export function TurHoved({
       {foldbar ? (
         <span className="rv-turC" aria-hidden="true">
           <FoldPil aaben={aaben} />
-          <FoldPil aaben={aaben} className="rv-ikon-glimt" />
         </span>
       ) : null}
     </>

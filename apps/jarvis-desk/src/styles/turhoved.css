@@ -9,8 +9,8 @@
  * «scoper ALT under .raekkevisning»). Chat-visningen ligger uden for den
  * container, så de delte regler flyttede herud i stedet.
  *
- * Reglerne er scopet til `.rv-tur` og `.rv-tur[data-koerer]` — ikke globalt —
- * så de ikke kan ramme andre `.shimmer`- eller `.rv-ikon-glimt`-elementer.
+ * Reglerne er scopet til `.rv-tur`, så de ikke kan ramme andre tur- eller
+ * rundelinjer.
  */
 
 .rv-tur {
@@ -81,25 +81,12 @@
   color: var(--rv-tertiary, #a6a59c); white-space: nowrap;
 }
 
-/* Electron kan ikke altid føre en tekstmaske gennem tokenhjulets animerede
-   grid-lag. Den arvede transparente fyldfarve fra turhovedets shimmer gjorde
-   derfor kun cifrene usynlige i Desk, mens samme webbuild så korrekt ud i
-   browseren. Metadata er et stabilt målefelt, ikke en del af verbets sweep:
-   giv hvert lag sin dækkende temafarve, så Desk og PWA tegner det ens. */
-.rv-tur .shimmer .rv-turMeta,
-.rv-tur .shimmer .rv-turMeta .rullende,
-.rv-tur .shimmer .rv-turMeta .hjul-ciffer,
-.rv-tur .shimmer .rv-turMeta .tegn {
-  -webkit-text-fill-color: currentColor;
-}
-
 /* Turens ur. `tabular-nums` holder bredden fast, så tallet ikke skubber
    teksten hver gang et sekund skifter (17/10-2026).
 
    Cifrene ruller lodret (Bjørn 17/10-2026: «tallende skal rulle nedfra og op»):
-   hvert ciffer er en 1em høj viewport med 0-9 stablet under sig, og det aktive
-   ciffer skubbes ind. `overflow: hidden` gør strimmelen til et vindue i
-   stedet for en liste. */
+   det gamle ciffer forlader viewporten opad, og det nye kommer ind nedefra.
+   Hjul og keyframes deles med rundetimeren i `liveness.css`. */
 .rv-turTid {
   flex: none;
   display: inline-flex;
@@ -111,45 +98,12 @@
   opacity: .8;
 }
 
-.rv-turTidCiffer {
-  display: inline-block;
-  position: relative;
-  width: 1ch;
-  height: 1em;
-  overflow: hidden;
-  vertical-align: bottom;
-}
-
-.rv-turTidStrimmel {
-  display: flex;
-  flex-direction: column;
-  /* Rulningen er en transition på transform — ikke en keyframe — så et ciffer
-     der skifter to gange i træk glider videre fra hvor det stod. */
-  transition: transform 260ms cubic-bezier(.22, .61, .36, 1);
-  will-change: transform;
-}
-
-.rv-turTidStrimmel > span {
-  height: 1em;
-  line-height: 1em;
-  text-align: center;
-}
-
-.rv-turTidFast {
-  display: inline-block;
-  height: 1em;
-  line-height: 1em;
-  /* Mellemrummet i «1m 51s» er et inline-block hvis ENESTE indhold er luft.
-     Uden `pre` kollapser browseren det til nul bredde, og uret stod som
-     «1m51s» (målt 17/10-2026: «der mangler mellemrum mellem Xm og Xs»). */
-  white-space: pre;
-}
+.rv-turTidHjul { display: inline-flex; align-items: baseline; }
 
 /* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
    hopper i stedet for at rulle. */
 @media (prefers-reduced-motion: reduce) {
   .rv-tur::after { transition: none; animation: none; }
-  .rv-turTidStrimmel { transition: none; }
 }
 
 .rv-turC {
@@ -157,25 +111,4 @@
   flex: none; display: flex; width: 16px; height: 16px; align-items: center; justify-content: center;
   position: relative;
   color: var(--fg-3, #8f98a3);
-}
-
-/* Ét sweep gennem fold-pilen. Det lyse SVG-lag er klippet til stregen i selve
-   ikonet, så der ikke tegnes en flade hen over rækken. */
-.rv-tur .rv-ikon-glimt {
-  position: absolute; inset: 0; margin: auto;
-  color: #eafff3; opacity: 0; pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
-  -webkit-mask-size: 50% 100%; mask-size: 50% 100%;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-}
-
-.rv-tur[data-koerer] .rv-ikon-glimt { opacity: 1; }
-
-.rv-tur[data-koerer] .rv-turC .rv-ikon-glimt {
-  animation: rv-glimt-hoejre 1.8s linear infinite 300ms;
-}
-
-.rv-tur[data-koerer] .shimmer {
-  animation: rv-glimt-tekst 1.8s linear infinite 300ms;
 }

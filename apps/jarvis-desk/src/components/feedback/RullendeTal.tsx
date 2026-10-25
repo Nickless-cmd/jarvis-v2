@@ -51,7 +51,7 @@ function CifferHjul({
 }
 
 /** Ruller hvert CIFER i `tekst`. Ikke-cifre (':', '.', 'k') står stille. */
-function Ruller({
+export function RullendeCifre({
   tekst,
   retning,
   cyklusser,
@@ -156,7 +156,7 @@ export function RullendeUr({ sek }: { sek: number }) {
   const label = varighed(sek)
   return (
     <span className="rullende" role="timer" aria-label={label}>
-      <Ruller tekst={label} retning="op" />
+      <RullendeCifre tekst={label} retning="op" />
     </span>
   )
 }
@@ -173,7 +173,7 @@ export function RullendeTokens({ tokens }: { tokens: number }) {
   const tekst = dampet >= 1000 ? `${(dampet / 1000).toFixed(1)}k` : String(dampet)
   return (
     <span className="rullende" aria-label={tekst}>
-      <Ruller tekst={tekst} retning={retning} hurtig />
+      <RullendeCifre tekst={tekst} retning={retning} hurtig />
     </span>
   )
 }

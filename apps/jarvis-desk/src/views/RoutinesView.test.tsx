@@ -50,6 +50,17 @@ describe('RoutinesView', () => {
     expect(screen.queryByText('Anden brugers private rutine')).not.toBeInTheDocument()
   })
 
+  it('matches private routines by the canonical id returned by whoami', async () => {
+    listRoutines.mockResolvedValue([
+      routine({ owner_user_id: 'canonical-bjorn' }),
+      routine({ routine_id: 'r-other', owner_user_id: 'canonical-lotte', name: 'Anden rutine' }),
+    ])
+    render(<RoutinesView config={config} currentUserId="canonical-bjorn" role="owner" onClose={() => {}} onEdit={() => {}} />)
+
+    expect((await screen.findAllByText('Min rutine'))[0]).toBeVisible()
+    expect(screen.queryByText('Anden rutine')).not.toBeInTheDocument()
+  })
+
   it('opens create and edit in the dedicated editor surface', async () => {
     const onEdit = vi.fn()
     render(<RoutinesView config={config} currentUserId="bjorn" role="owner" onClose={() => {}} onEdit={onEdit} />)

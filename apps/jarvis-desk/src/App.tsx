@@ -131,7 +131,7 @@ export function App() {
               surface={surface}
               setSurface={setSurface}
               role={auth?.role ?? 'guest'}
-              currentUserId={auth?.user_id ?? ''}
+              currentUserId={auth?.canonical_user_id || auth?.user_id || ''}
               userName={auth?.display_name ?? 'Bruger'}
               model={settings.defaultModel}
             />

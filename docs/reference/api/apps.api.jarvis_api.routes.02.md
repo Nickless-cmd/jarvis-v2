@@ -385,15 +385,15 @@ _JarvisX workspace + identity/mind route group._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `whoami` | `()` | Return the resolved identity for the current request. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L37) |
-| function | `list_workspaces` | `()` | List every directory under workspaces/ with the user (if any) | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L70) |
-| function | `workspace_tree` | `(workspace=…)` | List canonical files + dreams + daily notes for the workspace. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L92) |
-| function | `workspace_read` | `(path=…, workspace=…)` | Read a markdown / text file from the workspace. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L142) |
-| function | `mind_snapshot` | `()` | One-shot summary of Jarvis's inner state for the Mind view. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L176) |
-| class | `_PinPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L311) |
-| function | `add_identity_pin` | `(payload)` | Pin a piece of text as permanent awareness. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L318) |
-| function | `remove_identity_pin` | `(pin_id)` | Unpin by pin_id. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L339) |
-| class | `_ChroniclePayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L349) |
-| function | `write_chronicle_entry` | `(payload)` | Append a new chronicle entry to the workspace's chronicle/ dir. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L356) |
+| function | `list_workspaces` | `()` | List every directory under workspaces/ with the user (if any) | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L75) |
+| function | `workspace_tree` | `(workspace=…)` | List canonical files + dreams + daily notes for the workspace. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L97) |
+| function | `workspace_read` | `(path=…, workspace=…)` | Read a markdown / text file from the workspace. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L147) |
+| function | `mind_snapshot` | `()` | One-shot summary of Jarvis's inner state for the Mind view. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L181) |
+| class | `_PinPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L316) |
+| function | `add_identity_pin` | `(payload)` | Pin a piece of text as permanent awareness. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L323) |
+| function | `remove_identity_pin` | `(pin_id)` | Unpin by pin_id. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L344) |
+| class | `_ChroniclePayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L354) |
+| function | `write_chronicle_entry` | `(payload)` | Append a new chronicle entry to the workspace's chronicle/ dir. | [src](../../../apps/api/jarvis_api/routes/jarvisx_workspace.py#L361) |
 
 ## `apps/api/jarvis_api/routes/live.py`
 

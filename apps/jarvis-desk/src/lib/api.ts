@@ -60,6 +60,8 @@ export interface CompactionStats {
 
 export interface WhoAmI {
   user_id: string
+  /** Stabilt database-id. `user_id` kan stadig være et eksternt Discord-id. */
+  canonical_user_id?: string
   display_name: string
   /** Rollerne fra `users.json` (samme opslag som `/api/whoami` bruger).
    *  `partner` er husstanden — Bjørn er `owner`, Michelle er `partner`,
@@ -1280,9 +1282,10 @@ export async function steerRun(config: ApiConfig, runId: string, content: string
 /** Hent authentificeret bruger + rolle. Serveren returnerer felterne
  *  user_id / user_display_name / role — normaliseres her til WhoAmI. */
 export async function whoami(config: ApiConfig): Promise<WhoAmI> {
-  const raw = await apiFetch<{ user_id?: string; user_display_name?: string; role?: string }>(config, '/api/whoami')
+  const raw = await apiFetch<{ user_id?: string; canonical_user_id?: string; user_display_name?: string; role?: string }>(config, '/api/whoami')
   return {
     user_id: raw.user_id ?? '',
+    canonical_user_id: raw.canonical_user_id ?? '',
     display_name: raw.user_display_name ?? '',
     role: (raw.role as WhoAmI['role']) ?? 'guest',
   }

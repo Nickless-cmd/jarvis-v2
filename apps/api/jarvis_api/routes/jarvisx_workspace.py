@@ -49,16 +49,21 @@ def whoami() -> dict[str, str | bool]:
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     role = "guest"
+    canonical_user_id = ""
     if user_id:
         try:
             u = find_user_by_discord_id(user_id)
             if u:
                 role = u.role  # "owner" | "member"
-        except Exception:
+            from core.services.routine_identity import resolve_principal
+
+            canonical_user_id = resolve_principal(user_id, role_hint=role).canonical_user_id
+        except Exception:  # Whoami skal stadig virke for legacy/guest-identiteter.
             pass
     return {
         "workspace": snap.get("workspace") or "default",
         "user_id": user_id,
+        "canonical_user_id": canonical_user_id,
         "user_display_name": snap.get("user_display_name") or "",
         "header_resolved": bool(user_id),
         "role": role,

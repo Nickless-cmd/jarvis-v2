@@ -123,6 +123,124 @@ def _ret_laengder(tekst: str) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
+def _tekst(vaerdi: object) -> str:
+    """Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk."""
+    return vaerdi.strip() if isinstance(vaerdi, str) else ""
+
+
+def _liste(vaerdi: object, maks: int) -> list[dict]:
+    """Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``."""
+    if not isinstance(vaerdi, list):
+        return []
+    return [x for x in vaerdi if isinstance(x, dict) and not isinstance(x, list)][:maks]
+
+
+def _diagnosticér(data: dict) -> tuple[str, list[str]]:
+    """Afgør om rendereren viser blokken. Returnerer (niveau, fejl).
+
+    Niveau er ``"ok"``, ``"delvis"`` (nogle elementer filtreres væk, resten
+    vises) eller ``"død"`` (rendereren returnerer ``null`` — intet vises).
+
+    Skemaet er læst fra ``parseNativeRichSpec`` i både desk og mobil
+    (identiske, verificeret 25/10-2026). Grænsen mellem ``delvis`` og ``død``
+    er vigtig: en død blok skal degraderes, fordi brugeren ellers ser
+    ingenting; en delvis blok skal BEVARES, fordi resten faktisk er læsbar —
+    men tabet skal logges, så det kan rettes.
+    """
+    typ = _tekst(data.get("type"))
+    fejl: list[str] = []
+
+    if typ == "callout":
+        if not (_tekst(data.get("title")) or _tekst(data.get("body"))):
+            return "død", ["callout mangler både title og body"]
+        return "ok", fejl
+
+    if typ == "stats":
+        alle = data.get("items") if isinstance(data.get("items"), list) else []
+        brugbare = [x for x in alle if _tekst(x.get("label")) and _tekst(x.get("value"))]
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"stats item {i} er ikke et objekt")
+            elif not _tekst(x.get("label")):
+                fejl.append(f"stats item {i} mangler label")
+            elif not _tekst(x.get("value")):
+                fejl.append(f"stats item {i} mangler value")
+        if not brugbare:
+            return "død", fejl or ["stats har ingen brugbare items"]
+        if len(alle) > 8:
+            fejl.append(f"stats har {len(alle)} items, kun 8 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "timeline":
+        alle = data.get("items") if isinstance(data.get("items"), list) else []
+        brugbare = [x for x in alle if _tekst(x.get("title"))]
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"timeline item {i} er ikke et objekt")
+            elif not _tekst(x.get("title")):
+                fejl.append(f"timeline item {i} mangler title")
+        if not brugbare:
+            return "død", fejl or ["timeline har ingen brugbare items"]
+        if len(alle) > 12:
+            fejl.append(f"timeline har {len(alle)} items, kun 12 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "comparison":
+        raa_kolonner = data.get("columns") if isinstance(data.get("columns"), list) else []
+        kolonner = [k for k in (_tekst(k) for k in raa_kolonner) if k]
+        alle = data.get("rows") if isinstance(data.get("rows"), list) else []
+        if len(kolonner) < 2:
+            return "død", [f"comparison har {len(kolonner)} brugbare kolonner, mindst 2 kræves"]
+        brugbare = 0
+        for i, r in enumerate(alle):
+            if not isinstance(r, dict):
+                fejl.append(f"række {i} er ikke et objekt")
+                continue
+            vaerdier = r.get("values") if isinstance(r.get("values"), list) else []
+            if not _tekst(r.get("label")):
+                fejl.append(f"række {i} mangler label")
+            elif len(vaerdier) != len(kolonner):
+                fejl.append(
+                    f"række {i} har {len(vaerdier)} values til {len(kolonner)} kolonner"
+                )
+            else:
+                brugbare += 1
+        if not brugbare:
+            return "død", fejl or ["comparison har ingen brugbare rækker"]
+        if len(kolonner) > 4:
+            fejl.append(f"comparison har {len(kolonner)} kolonner, kun 4 vises")
+        if len(alle) > 12:
+            fejl.append(f"comparison har {len(alle)} rækker, kun 12 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "choices":
+        alle = data.get("options") if isinstance(data.get("options"), list) else []
+        brugbare = [x for x in alle if _tekst(x.get("label")) and _tekst(x.get("prompt"))]
+        for i, x in enumerate(alle):
+            if not isinstance(x, dict):
+                fejl.append(f"choices option {i} er ikke et objekt")
+            elif not _tekst(x.get("label")):
+                fejl.append(f"choices option {i} mangler label")
+            elif not _tekst(x.get("prompt")):
+                fejl.append(f"choices option {i} mangler prompt")
+        if not brugbare:
+            return "død", fejl or ["choices har ingen brugbare options"]
+        if len(alle) > 6:
+            fejl.append(f"choices har {len(alle)} options, kun 6 vises")
+        return ("delvis" if fejl else "ok"), fejl
+
+    if typ == "location":
+        adresse = _tekst(data.get("address"))
+        lat, lon = data.get("latitude"), data.get("longitude")
+        gyldig_lat = isinstance(lat, (int, float)) and not isinstance(lat, bool) and -90 <= lat <= 90
+        gyldig_lon = isinstance(lon, (int, float)) and not isinstance(lon, bool) and -180 <= lon <= 180
+        if not adresse and not (gyldig_lat and gyldig_lon):
+            return "død", ["location mangler address og gyldige koordinater"]
+        return "ok", fejl
+
+    return "død", [f"ukendt flade-type: {typ or '(mangler)'}"]
+
+
 def _validér(tekst: str) -> tuple[bool, str]:
     try:
         data = json.loads(tekst)
@@ -132,16 +250,14 @@ def _validér(tekst: str) -> tuple[bool, str]:
         return False, "blokken er ikke et JSON-objekt"
     if not data.get("type"):
         return False, "blokken mangler 'type'"
-    # comparison er den eneste type med en strukturel længdekrav.
-    if data.get("type") == "comparison":
-        kolonner = data.get("columns") or []
-        for i, raekke in enumerate(data.get("rows") or []):
-            vaerdier = raekke.get("values") or []
-            if len(vaerdier) != len(kolonner):
-                return False, (
-                    f"række {i} har {len(vaerdier)} values, "
-                    f"men der er {len(kolonner)} kolonner"
-                )
+    # 25/10-2026 (målt): her stod KUN en comparison-længdekontrol. Rendereren
+    # kræver felter for alle seks typer, og en blok der ikke opfylder dem
+    # returnerer `null` — den forsvinder sporløst i UI. Guarden sagde «OK» på
+    # en stats-blok uden `value` og en choices-blok uden `prompt`, og brugeren
+    # så ingenting. Nu spejles rendererens skema.
+    niveau, fejl = _diagnosticér(data)
+    if niveau == "død":
+        return False, "; ".join(fejl)[:300]
     return True, ""
 
 
@@ -186,10 +302,25 @@ def _normalisér_indre(text: str, *, run_id: str) -> str:
                 # dumpet som rå JSON i chatten, så læseren så `]` uden at vide
                 # hvad det var. En flade der ikke kan parses skal forsvinde
                 # som flade — ikke blive en JSON-mur.
-                aendringer.append(f"json ugyldig, fjernet: {fejl2}")
+                aendringer.append(f"død blok fjernet: {fejl2}")
                 return _DEGRADERET
         elif "\n" in match.group(1).strip() or match.group(1).strip() != match.group(1):
             aendringer.append("form normaliseret")
+        # 25/10-2026: en blok kan være gyldig nok til at rendres, men stadig
+        # tabe elementer (en stats-item uden `value` filtreres væk af
+        # rendereren). Det er et TAVST tab: brugeren ser en kortere flade end
+        # jeg skrev, og ingen ser forskellen. Blokken bevares — resten er
+        # læsbar — men tabet logges, så det kan rettes.
+        if gyldig:
+            try:
+                _data = json.loads(indhold)
+                _niveau, _skema_fejl = _diagnosticér(_data)
+                if _niveau == "delvis":
+                    aendringer.append(
+                        f"delvist tab i {_data.get('type')}: {'; '.join(_skema_fejl)[:200]}"
+                    )
+            except Exception:  # diagnosen er telemetri: kan den ikke køre, må den ikke røre teksten
+                pass
         # Tjek om formen var skæv (JSON på markørens linje).
         raa = match.group(1)
         if raa and not raa.startswith("\n"):
@@ -197,7 +328,10 @@ def _normalisér_indre(text: str, *, run_id: str) -> str:
         return _normaliser_form(indhold)
 
     ny = _FENCE_BLOK.sub(_erstat, text)
-    if aendringer and ny != text:
+    # 25/10-2026 (målt): registreringen krævede at teksten ÆNDREDE sig. Et
+    # delvist tab ændrer ikke teksten, så det blev aldrig logget — og et tab
+    # ingen kan se, kan ingen rette. Nu logges hvert fund.
+    if aendringer:
         _registrér(aendringer, run_id=run_id)
     return ny
 

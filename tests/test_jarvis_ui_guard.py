@@ -134,3 +134,113 @@ def test_manglende_celle_siger_at_den_mangler() -> None:
     assert len(values) == 3
     assert values[2] == "— (mangler)", "en manglende celle skal navngive sig selv"
     assert values[2] != "—", "en stille bindestreg ser ud som om der stod noget"
+
+
+# ── Skema-vagten (25/10-2026) ───────────────────────────────────────────────
+# Målt: guarden validerede KUN comparison-længder. Rendereren kræver felter
+# for alle seks typer og returnerer `null` når de mangler — blokken forsvandt
+# sporløst, mens guarden sagde «OK». Disse tests låser hver sådan fejl.
+
+from core.services.jarvis_ui_guard import _DEGRADERET, _diagnosticér  # noqa: E402
+
+
+def _niveau(spec: dict) -> str:
+    return _diagnosticér(spec)[0]
+
+
+def test_stats_uden_value_ville_forsvinde_stille() -> None:
+    """Rendereren filtrerer items uden `value` væk og viser intet."""
+    tekst = (
+        '```jarvis-ui\n'
+        '{"type":"stats","title":"Tal","items":[{"label":"a","value":"1"},'
+        '{"label":"b"}]}\n```'
+    )
+    ny = normalisér(tekst)
+    assert _DEGRADERET not in ny, "ét brugbart item er nok til at fladen vises"
+    assert '"b"' in ny
+
+
+def test_stats_helt_uden_brugbare_items_degraderes() -> None:
+    tekst = (
+        '```jarvis-ui\n'
+        '{"type":"stats","title":"Tal","items":[{"label":"a"}]}\n```'
+    )
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_choices_uden_prompt_degraderes() -> None:
+    """Uden `prompt` kan knappen ikke sende noget — rendereren dropper den."""
+    tekst = (
+        '```jarvis-ui\n'
+        '{"type":"choices","title":"Vælg","options":[{"label":"A"}]}\n```'
+    )
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_location_uden_adresse_og_koordinater_degraderes() -> None:
+    tekst = '```jarvis-ui\n{"type":"location","title":"Her"}\n```'
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_location_med_adresse_bevares() -> None:
+    tekst = '```jarvis-ui\n{"type":"location","address":"Svendborg"}\n```'
+    assert _DEGRADERET not in normalisér(tekst)
+
+
+def test_callout_uden_indhold_degraderes() -> None:
+    tekst = '```jarvis-ui\n{"type":"callout","tone":"info"}\n```'
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_timeline_uden_title_degraderes() -> None:
+    tekst = (
+        '```jarvis-ui\n'
+        '{"type":"timeline","title":"T","items":[{"time":"09:00"}]}\n```'
+    )
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_comparison_med_en_kolonne_degraderes() -> None:
+    tekst = (
+        '```jarvis-ui\n'
+        '{"type":"comparison","title":"T","columns":["A"],'
+        '"rows":[{"label":"x","values":["1"]}]}\n```'
+    )
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_ukendt_type_degraderes() -> None:
+    tekst = '```jarvis-ui\n{"type":"diagram","title":"T"}\n```'
+    assert _DEGRADERET in normalisér(tekst)
+
+
+def test_delvist_tab_bevarer_blokken_men_siger_det() -> None:
+    """Et dårligt item af tre må ikke koste hele fladen — men tabet skal ses."""
+    spec = {
+        "type": "stats",
+        "title": "Tal",
+        "items": [{"label": "a", "value": "1"}, {"label": "b"}, {"label": "c", "value": "3"}],
+    }
+    niveau, fejl = _diagnosticér(spec)
+    assert niveau == "delvis", "to gode items er stadig en læsbar flade"
+    assert any("item 1" in f for f in fejl), "tabet skal navngives præcist"
+
+
+def test_korrekt_blok_af_hver_type_beroeres_ikke() -> None:
+    """Den negative kontrol: en gyldig flade må aldrig degraderes."""
+    specifikationer = [
+        {"type": "callout", "title": "T", "body": "B"},
+        {"type": "stats", "title": "T", "items": [{"label": "a", "value": "1"}]},
+        {"type": "timeline", "title": "T", "items": [{"title": "a", "status": "done"}]},
+        {
+            "type": "comparison", "title": "T", "columns": ["A", "B"],
+            "rows": [{"label": "x", "values": ["1", "2"]}],
+        },
+        {"type": "choices", "title": "T", "options": [{"label": "a", "prompt": "p"}]},
+        {"type": "location", "title": "T", "address": "Svendborg"},
+    ]
+    for spec in specifikationer:
+        tekst = "```jarvis-ui\n" + json.dumps(spec, ensure_ascii=False) + "\n```"
+        ny = normalisér(tekst)
+        assert _DEGRADERET not in ny, f"{spec['type']} blev fejlagtigt degraderet"
+        assert _niveau(spec) == "ok", f"{spec['type']} blev fejlagtigt markeret"

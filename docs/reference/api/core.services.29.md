@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/verification_gate_telemetry.py`
+_R2 verification gate telemetry — track whether warnings get heeded._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L52) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L64) |
+| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L97) |
+| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L134) |
+| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L180) |
+| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L211) |
+| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L266) |
+| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L304) |
+| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L384) |
+
 ## `core/services/versioneret_json_svar.py`
 _Et færdigt HTTP-svar pr. version — serialiseret og komprimeret ÉN gang._
 
@@ -531,13 +546,4 @@ _Keep real mid-flight user steers distinct from runtime turn notices._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `append_real_user_steers` | `(exchanges, steers)` | Læg ægte klient-styringer i HISTORIKKEN — ikke i halen. | [src](../../../core/services/visible_run_steers.py#L12) |
-
-## `core/services/visible_run_terminal_recovery.py`
-_Resolve whether an agentic run segment completed or needs recovery._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `has_incompletion_evidence` | `(text)` | Explicit unfinished work; absence of a completion keyword is not proof. | [src](../../../core/services/visible_run_terminal_recovery.py#L32) |
-| class | `AgenticExitResolution` | `` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L44) |
-| function | `resolve_agentic_exit` | `(*, exit_reason, final_text, finish_reason=…, forced_finalize=…, pending_tool_intent=…, recovery_attempt=…, recovery_limit=…)` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L51) |
 

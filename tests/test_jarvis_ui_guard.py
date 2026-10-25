@@ -244,3 +244,54 @@ def test_korrekt_blok_af_hver_type_beroeres_ikke() -> None:
         ny = normalisér(tekst)
         assert _DEGRADERET not in ny, f"{spec['type']} blev fejlagtigt degraderet"
         assert _niveau(spec) == "ok", f"{spec['type']} blev fejlagtigt markeret"
+
+
+# ── Bar blok uden fence (målt 25/10-2026) ───────────────────────────────────
+# Bjørn pastede en ``jarvis-ui {…}`` UDEN ```-hegn tilbage til mig og skrev
+# «disse fejler stadig». Formen renderes som rå tekst, og ``normalisér`` ser
+# den slet ikke — den leder efter fence-markøren. Det er den fejl brugeren
+# faktisk ser, så den skal kunne opdages.
+
+_GOD_BLOK = (
+    '{"type":"timeline","title":"T","items":'
+    '[{"time":"09:21","title":"A","detail":"d","status":"done"}]}'
+)
+
+
+def test_bar_blok_uden_fence_opdages() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    fejl = fejl_i_flader("Prosa her.\n\njarvis-ui " + _GOD_BLOK)
+    assert fejl, "en bar jarvis-ui-blok skal opdages — den vises som rå tekst"
+    assert "uden ```-hegn" in fejl[0]
+
+
+def test_bar_blok_med_defekt_json_opdages() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    fejl = fejl_i_flader('Prosa.\n\njarvis-ui {"type":"timeline",,}')
+    assert fejl
+    assert "kan ikke parses" in fejl[0]
+
+
+def test_korrekt_fence_giver_ingen_fejl() -> None:
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    assert fejl_i_flader("Prosa.\n\n```jarvis-ui\n" + _GOD_BLOK + "\n```\n") == []
+
+
+def test_omtale_af_jarvis_ui_i_prosa_giver_ingen_fejl() -> None:
+    """En vagt der fælder sin egen omtale er værre end ingen vagt."""
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    assert fejl_i_flader("Jeg skrev en jarvis-ui-blok i svaret.") == []
+    assert fejl_i_flader("Blokken hedder ```jarvis-ui og den virker.") == []
+
+
+def test_doed_blok_giver_fejl_med_feltnavn() -> None:
+    """Diagnosen skal navngive feltet — ellers kan den ikke rettes."""
+    from core.services.jarvis_ui_guard import fejl_i_flader
+
+    fejl = fejl_i_flader('Prosa.\n\n```jarvis-ui\n{"type":"timeline","title":"T","items":[]}\n```\n')
+    assert fejl
+    assert "timeline" in fejl[0]

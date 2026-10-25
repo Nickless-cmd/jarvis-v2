@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/surprise_daemon.py`
+_Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/surprise_daemon.py#L29) |
+| function | `_surprise_type_to_concept` | `(surprise_type)` | Map surprise classification to primary emotion concept. | [src](../../../core/services/surprise_daemon.py#L37) |
+| function | `_afterimage_concept` | `(surprise_type)` | Map surprise classification to afterimage emotion concept. | [src](../../../core/services/surprise_daemon.py#L45) |
+| function | `_process_pending_afterimages` | `()` | Trigger afterimage emotion concepts whose delay has elapsed. | [src](../../../core/services/surprise_daemon.py#L50) |
+| function | `tick_surprise_daemon` | `(inner_voice_mode=…, somatic_energy=…, skip_event_gate=…)` | — | [src](../../../core/services/surprise_daemon.py#L73) |
+| function | `_raw_signal_mode` | `()` | Self-safe læsning af runtime-state-flaget `raw_signal_mode` (default off). | [src](../../../core/services/surprise_daemon.py#L123) |
+| function | `_render_raw_divergence` | `(divergence)` | Byg rå kategorisk divergens-streng (ingen LLM, ingen prosa). | [src](../../../core/services/surprise_daemon.py#L132) |
+| function | `get_latest_surprise` | `()` | — | [src](../../../core/services/surprise_daemon.py#L146) |
+| function | `build_surprise_surface` | `()` | — | [src](../../../core/services/surprise_daemon.py#L150) |
+| function | `_record_snapshot` | `(mode, energy)` | — | [src](../../../core/services/surprise_daemon.py#L175) |
+| function | `_compute_divergence` | `(current_mode, current_energy)` | — | [src](../../../core/services/surprise_daemon.py#L187) |
+| function | `_generate_surprise` | `(mode, energy, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L209) |
+| function | `_store_surprise` | `(phrase, divergence)` | — | [src](../../../core/services/surprise_daemon.py#L238) |
+| function | `_classify_surprise` | `(phrase)` | — | [src](../../../core/services/surprise_daemon.py#L293) |
+
 ## `core/services/surprise_detector.py`
 _Surprise detector — anomaly signals for the proactive/autonomous lane._
 
@@ -602,27 +622,4 @@ _Turn raw tool failures into short, actionable text for visible surfaces._
 |---|---|---|---|---|
 | function | `_field` | `(raw_result, name)` | — | [src](../../../core/services/tool_failure_surface.py#L7) |
 | function | `normalise_tool_failure` | `(status, result_text, raw_result, *, timeout_s=…)` | Keep existing detail, otherwise derive a concrete cause from raw output. | [src](../../../core/services/tool_failure_surface.py#L11) |
-
-## `core/services/tool_hunt_nudge.py`
-_Han leder efter et værktøj med bash — og værktøjet findes allerede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_i_kodetraeet` | `(sti)` | Ligger stien i kodetræet? Både «docs/x.md» og «/media/.../docs/x.md». | [src](../../../core/services/tool_hunt_nudge.py#L267) |
-| function | `_leverbar_fil` | `(navn, argumenter)` | Filen han lige skrev, hvis den ligner noget Bjørn skal kunne åbne. | [src](../../../core/services/tool_hunt_nudge.py#L283) |
-| function | `_aftryk` | `(navn, argumenter)` | Identiteten af ét kald: værktøj + argumenter, uanset nøglerækkefølge. | [src](../../../core/services/tool_hunt_nudge.py#L310) |
-| function | `_noter_gentagelse` | `(noegle, navn, argumenter)` | Hvor mange gange i træk er PRÆCIS dette kald nu set? 1 = nyt. | [src](../../../core/services/tool_hunt_nudge.py#L324) |
-| function | `_gentagelses_note` | `(noegle, navn, argumenter, antal)` | Påmindelsen for denne stime, eller "". Hver tærskel fyrer én gang. | [src](../../../core/services/tool_hunt_nudge.py#L339) |
-| function | `_taeller` | `(noegle, hvad)` | Tæl én forekomst af `hvad` i turen og giv det nye tal. | [src](../../../core/services/tool_hunt_nudge.py#L361) |
-| function | `_taendt` | `()` | — | [src](../../../core/services/tool_hunt_nudge.py#L387) |
-| function | `_afgoer_udestaaende` | `(noegle, navn)` | Kaldte han det værktøj noten pegede på? Eller gav han op på at svare? | [src](../../../core/services/tool_hunt_nudge.py#L395) |
-| function | `_husk_udestaaende` | `(noegle, vaerktoej, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L409) |
-| function | `_log_svar` | `(udfald, noegle, sag)` | — | [src](../../../core/services/tool_hunt_nudge.py#L415) |
-| function | `rapport` | `(*, limit=…)` | Blev noterne fulgt? Tallet bag «fortjener den her at eskalere». | [src](../../../core/services/tool_hunt_nudge.py#L428) |
-| function | `_maa_sige` | `(noegle, slags)` | — | [src](../../../core/services/tool_hunt_nudge.py#L457) |
-| function | `ryd_tur` | `(run_id)` | Turen er slut. Self-safe. Et ubesvaret nudge tælles som et nej. | [src](../../../core/services/tool_hunt_nudge.py#L465) |
-| function | `note` | `(*, navn, argumenter, run_id=…, resultat_tekst=…)` | Noten der skal hæftes på resultatet, eller `""`. | [src](../../../core/services/tool_hunt_nudge.py#L476) |
-| function | `_foerste_ukendte` | `(argumenter, svar)` | Det navn han bad om, som ikke findes. Fra argumenterne, ikke fra svaret. | [src](../../../core/services/tool_hunt_nudge.py#L588) |
-| function | `_naermeste_navne` | `(gaettet, antal=…)` | De nærmeste rigtige navne — leksikalsk, ingen model. | [src](../../../core/services/tool_hunt_nudge.py#L607) |
-| function | `_log` | `(vaerktoej, run_id, score, tekst)` | — | [src](../../../core/services/tool_hunt_nudge.py#L619) |
 

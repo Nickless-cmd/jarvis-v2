@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/routine_run_recorder.py`
+_Session-neutral append-only recorder for observable Routine run events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RoutineRunRecorder` | `` | — | [src](../../../core/services/routine_run_recorder.py#L9) |
+| method | `RoutineRunRecorder.append` | `(self, run_id, *, kind, payload, terminal=…, event_id=…, generation=…)` | — | [src](../../../core/services/routine_run_recorder.py#L10) |
+| method | `RoutineRunRecorder.list` | `(self, run_id, *, decrypt_for=…)` | — | [src](../../../core/services/routine_run_recorder.py#L24) |
+
 ## `core/services/routine_service.py`
 _Authorized lifecycle service for versioned Routine definitions and runs._
 
@@ -778,11 +787,4 @@ _Rupture & Repair — relationel tension-tracking._
 | function | `list_repairs` | `(*, rupture_id=…, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L540) |
 | function | `summarize_ruptures` | `()` | — | [src](../../../core/services/rupture_repair.py#L570) |
 | function | `build_rupture_repair_surface` | `()` | MC surface for Rupture & Repair. | [src](../../../core/services/rupture_repair.py#L607) |
-
-## `core/services/scheduled_inbox.py`
-_En fyret `schedule_task` skal efterlade en varig række i indbakken._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `registrer_fyret_opgave` | `(*, bruger_id, task_id, focus)` | Skriv en durabel indbakke-post for en netop fyret planlagt opgave. | [src](../../../core/services/scheduled_inbox.py#L39) |
 

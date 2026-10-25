@@ -386,6 +386,14 @@ _Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
 | function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
 | function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
 
+## `core/services/flade_korrektion.py`
+_Ret en ødelagt ``jarvis-ui``-blok FØR svaret vises — ikke efter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_blok_vinduer` | `(tekst)` | Uddrag af teksten omkring hver ``jarvis-ui``-blok. | [src](../../../core/services/flade_korrektion.py#L67) |
+| function | `korriger_flader` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette defekte ``jarvis-ui``-blokke. Returnerer ny tekst. | [src](../../../core/services/flade_korrektion.py#L86) |
+
 ## `core/services/flow_state_detection.py`
 _Flow State Detection — when everything clicks._
 
@@ -577,12 +585,4 @@ _Loop-cluster gate — agentisk loop-kontrol, GRADERET._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `loop_gate` | `(ctx)` | ctx: {round, max_rounds, consecutive_empty, max_empty, consecutive_tool_only, | [src](../../../core/services/gate_loop.py#L25) |
-
-## `core/services/gate_memory.py`
-_Memory-cluster gate — promotion til identitets-filer, GRADERET._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_candidate_text` | `(candidate)` | — | [src](../../../core/services/gate_memory.py#L25) |
-| function | `memory_promotion_gate` | `(ctx)` | ctx: {candidate, kind: 'user_md'|'memory_md'}. Returnér ét GRADERET Verdict. | [src](../../../core/services/gate_memory.py#L32) |
 

@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/interlanguage_practice.py`
+_Inter-sprog practice engine — internaliseret protokol på tværs af modeller._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_interlanguage_practice_table` | `(conn)` | Idempotently create interlanguage_practice table + index. | [src](../../../core/services/interlanguage_practice.py#L127) |
+| function | `ensure_schema` | `()` | Bagudkompat: åbner en conn og kalder _ensure_interlanguage_practice_table. | [src](../../../core/services/interlanguage_practice.py#L173) |
+| function | `_pick_term` | `(domain_filter=…)` | Pick a random core term, optionally filtered by domain. | [src](../../../core/services/interlanguage_practice.py#L187) |
+| function | `_build_clause` | `()` | Build a single clause: <term> <primitive> <term> or !<term>. | [src](../../../core/services/interlanguage_practice.py#L196) |
+| function | `generate_state_expression` | `(*, num_clauses=…, mood_override=…)` | Generate a state-expression from current mood and random composition. | [src](../../../core/services/interlanguage_practice.py#L212) |
+| function | `record_expression` | `(expression_text, *, session_id=…, tick_id=…, trigger=…, peer_id=…)` | Record a state-expression in the practice log. | [src](../../../core/services/interlanguage_practice.py#L265) |
+| function | `get_recent_expressions` | `(*, days=…, limit=…)` | Get recent state-expressions from the practice log. | [src](../../../core/services/interlanguage_practice.py#L298) |
+| function | `get_expression_count` | `(*, since_hours=…)` | Count expressions recorded in the last N hours. | [src](../../../core/services/interlanguage_practice.py#L326) |
+| function | `export_protocol` | `(*, recent_days=…, max_expressions=…)` | Eksportér hele inter-sprog-protokollen til model-skift. | [src](../../../core/services/interlanguage_practice.py#L342) |
+| function | `practice_tick` | `(*, session_id=…, tick_id=…, mood=…)` | Kaldes fra heartbeat tick — generér og gem én state-expression. | [src](../../../core/services/interlanguage_practice.py#L390) |
+| function | `export_mood_trace_for_period` | `(start, end)` | Eksportér Jarvis' mood-historie over en periode som (timestamp, mood) pairs. | [src](../../../core/services/interlanguage_practice.py#L430) |
+| function | `interpolate_mood_at` | `(trace, target_iso)` | Linear-interpolér mellem nærmeste to mood-samples til target timestamp. | [src](../../../core/services/interlanguage_practice.py#L470) |
+| function | `build_interlanguage_practice_surface` | `()` | Surface for Mission Control — 3 vital signs + dummy state ved ingen data. | [src](../../../core/services/interlanguage_practice.py#L516) |
+
 ## `core/services/internal_cadence.py`
 _Internal cadence layer for non-visible inner producers._
 
@@ -240,16 +259,17 @@ _Normaliserer og validerer ``jarvis-ui``-blokke FØR de når chatten._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L68) |
-| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L81) |
-| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L89) |
-| function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L126) |
-| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L131) |
-| function | `_diagnosticér` | `(data)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L138) |
-| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L244) |
-| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L264) |
-| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L280) |
-| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L339) |
+| function | `_normaliser_form` | `(raw)` | Flyt JSON'en ned på sin egen linje og lukke-fencen på sin egen linje. | [src](../../../core/services/jarvis_ui_guard.py#L73) |
+| function | `_reparer_json` | `(tekst)` | Ret de entydige JSON-fejl. Rører intet der allerede er gyldigt. | [src](../../../core/services/jarvis_ui_guard.py#L86) |
+| function | `_ret_laengder` | `(tekst)` | Juster ``comparison``-values op til kolonneantallet. Returnerer ny JSON. | [src](../../../core/services/jarvis_ui_guard.py#L94) |
+| function | `_tekst` | `(vaerdi)` | Spejl rendererens ``text()``: kun strenge, trimmet, tom = falsk. | [src](../../../core/services/jarvis_ui_guard.py#L131) |
+| function | `_liste` | `(vaerdi, maks)` | Spejl rendererens ``list()``: kun objekter, afkortet til ``maks``. | [src](../../../core/services/jarvis_ui_guard.py#L136) |
+| function | `_diagnosticér` | `(data)` | Afgør om rendereren viser blokken. Returnerer (niveau, fejl). | [src](../../../core/services/jarvis_ui_guard.py#L143) |
+| function | `_validér` | `(tekst)` | — | [src](../../../core/services/jarvis_ui_guard.py#L249) |
+| function | `normalisér` | `(text, *, run_id=…)` | Normalisér alle ``jarvis-ui``-blokke i teksten. Returnerer ny tekst. | [src](../../../core/services/jarvis_ui_guard.py#L269) |
+| function | `_normalisér_indre` | `(text, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L285) |
+| function | `_registrér` | `(aendringer, *, run_id)` | — | [src](../../../core/services/jarvis_ui_guard.py#L344) |
+| function | `fejl_i_flader` | `(text)` | Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig. | [src](../../../core/services/jarvis_ui_guard.py#L364) |
 
 ## `core/services/jarvisx_bridge.py`
 _JarvisX tool-bridge — bidirectional dispatch over WebSocket._
@@ -624,17 +644,4 @@ _Ét-ords-spoergsmaal til den lille lokale model paa Jarvis' eget kort._
 |---|---|---|---|---|
 | function | `base_url` | `()` | CHAT-ollamaens adresse — ikke embeddings'. | [src](../../../core/services/local_small_model.py#L39) |
 | function | `spoerg_et_ord` | `(system, bruger, *, timeout_s=…)` | Foerste HELE ord af modellens svar, med STORE bogstaver. ``None`` = intet svar. | [src](../../../core/services/local_small_model.py#L64) |
-
-## `core/services/local_tool_broker.py`
-_Local-tool broker (Path B — server-owned transcript, client-local execution)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_Pending` | `` | — | [src](../../../core/services/local_tool_broker.py#L33) |
-| function | `register` | `(call_id, *, session_id, name=…)` | Register a tool_call the server is about to hand to the local client. | [src](../../../core/services/local_tool_broker.py#L47) |
-| function | `wait` | `(call_id, timeout=…)` | Block until the client resolves ``call_id`` (must be register()'d first) or | [src](../../../core/services/local_tool_broker.py#L56) |
-| function | `collect_results` | `(call_ids, timeout=…)` | Wait on several already-register()'d call_ids (one client turn's tool batch) and | [src](../../../core/services/local_tool_broker.py#L73) |
-| function | `resolve` | `(call_id, content, *, is_error=…)` | Called by POST /chat/tool_results. Deliver the client's result to the waiting run. | [src](../../../core/services/local_tool_broker.py#L84) |
-| function | `pending_call_ids` | `(session_id)` | The call_ids currently awaiting a client result for a session (diagnostics). | [src](../../../core/services/local_tool_broker.py#L97) |
-| function | `cancel_session` | `(session_id)` | Fail all pending calls for a session (e.g. client disconnected). Returns count. | [src](../../../core/services/local_tool_broker.py#L104) |
 

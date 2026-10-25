@@ -5883,8 +5883,43 @@ async def _stream_visible_run(
             # persisteret uden padding. Målt i DB: 6 blokke siden 20:20, 8
             # mismatch, 0 normaliseringer. Guarden hører på den FÆLLES udgang,
             # før teksten både observeres og gemmes — ikke på én gren.
+            #
+            # 25/10-2026 (Bjørn): «hvis formatet ikke er korrekt, afvises den
+            # inden den vises og du kan korrigere … det er præcis sådan nogen
+            # fejl en bruger ikke må opleve.» Rækkefølgen var forkert: guarden
+            # kunne kun degradere, fordi den kørte efter svaret var formuleret.
+            # Nu spørges den FØRST hvad der er galt, og modellen får ÉN runde
+            # til at rette fladen. Kan den ikke, degraderes den som før.
             try:
-                from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+                from core.services.jarvis_ui_guard import (
+                    fejl_i_flader as _fejl_i_flader,
+                    normalisér as _normalisér_flader,
+                )
+                _flade_fejl = _fejl_i_flader(visible_output_text)
+                if _flade_fejl:
+                    from core.services.flade_korrektion import (
+                        korriger_flader as _korriger_flader,
+                    )
+                    from core.services.visible_followup import (
+                        stream_visible_followup as _stream_followup,
+                    )
+                    _rettet = _korriger_flader(
+                        visible_output_text,
+                        _flade_fejl,
+                        stream_followup=_stream_followup,
+                        provider=str(run.provider or ""),
+                        model=str(run.model or ""),
+                        base_messages=locals().get("base_messages") or [],
+                        run_id=str(run.run_id or ""),
+                        session_id=str(run.session_id or ""),
+                    )
+                    if _rettet != visible_output_text:
+                        visible_output_text = _rettet
+                        yield _sse("scan_correction", {
+                            "type": "scan_correction",
+                            "run_id": run.run_id,
+                            "corrected": _rettet,
+                        })
                 visible_output_text = _normalisér_flader(
                     visible_output_text, run_id=str(run.run_id or ""),
                 )

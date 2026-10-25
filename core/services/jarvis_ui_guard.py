@@ -38,6 +38,11 @@ logger = logging.getLogger(__name__)
 _FENCE_OPEN = re.compile(r"```jarvis-ui[ \t]*")
 #: Et helt fence-område, uanset om JSON'en står på markørens linje.
 _FENCE_BLOK = re.compile(r"```jarvis-ui[ \t]*(.*?)```", re.S)
+#: En bar ``jarvis-ui {…}`` UDEN fence. Målt 25/10-2026: den form renderes som
+#: rå tekst, og ``normalisér`` ser den slet ikke — den leder efter fence-markøren.
+#: Mønstret er grådigt frem til den sidste ``}`` på linjen, fordi JSON'en kan
+#: indeholde ``}`` i sine egne objekter.
+_BAR_BLOK = re.compile(r"(?<!`)jarvis-ui[ \t]*(\{.*\})[ \t]*$", re.M)
 
 #: Mønstre der aldrig kan være gyldig JSON. Hver reparation er smal og entydig.
 _REPARATIONER: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -354,3 +359,78 @@ def _registrér(aendringer: list[str], *, run_id: str) -> None:
         )
     except Exception:
         logger.debug("jarvis_ui_guard: kunne ikke registrere hændelse", exc_info=True)
+
+
+def fejl_i_flader(text: str) -> list[str]:
+    """Returnér de fejl der gør en ``jarvis-ui``-blok død eller ufuldstændig.
+
+    Baggrund (målt 25/10-2026, Bjørn): «disse fejler stadig … kan vi ikke
+    sørge for hvis formatet ikke er korrekt, afvises den inden den vises og du
+    kan korrigere?» — og han har ret i at det er den rigtige rækkefølge.
+
+    ``normalisér`` reparerer og degraderer, men den kaster diagnosen væk: den
+    ved PRÆCIS hvad der er galt (``_diagnosticér`` returnerer feltniveau), og
+    alligevel ender brugeren med en degraderet linje eller en tom flade. Denne
+    funktion er den samme viden, givet videre — så kalderen kan spørge modellen
+    ÉN gang i stedet for at lade runden slutte med en fejl.
+
+    To former tjekkes, og den anden er den der reelt rammer brugeren:
+
+    1. En korrekt fence med defekt indhold.
+    2. En bar ``jarvis-ui {…}`` UDEN fence. Den renderes som rå tekst, og
+       ``normalisér`` ser den slet ikke — den leder efter ```` ```jarvis-ui ````.
+       Målt 25/10-2026: Bjørn pastede præcis denne form tilbage til mig.
+
+    Returnerer en liste af læsbare fejl. Tom liste = intet at rette.
+    """
+    if not text or "jarvis-ui" not in text:
+        return []
+    fejl: list[str] = []
+    try:
+        for match in _FENCE_BLOK.finditer(text):
+            indhold = (match.group(1) or "").strip()
+            if not indhold:
+                fejl.append("en jarvis-ui-blok er tom")
+                continue
+            gyldig, grund = _validér(indhold)
+            if not gyldig:
+                # Kan den repareres, er der intet at spørge om — normalisér klarer den.
+                repareret = _reparer_json(indhold)
+                if not _validér(repareret)[0]:
+                    justeret = _ret_laengder(repareret)
+                    if justeret != repareret and _validér(justeret)[0]:
+                        repareret = justeret
+                if _validér(repareret)[0]:
+                    continue
+                fejl.append(f"blokken kan ikke parses: {grund}")
+                continue
+            try:
+                data = json.loads(indhold)
+            except Exception:  # allerede valideret ovenfor; dette er kun for at hente typen
+                continue
+            niveau, skema_fejl = _diagnosticér(data)
+            if niveau != "ok" and skema_fejl:
+                typ = _tekst(data.get("type")) or "ukendt"
+                fejl.append(f"{typ}: {'; '.join(skema_fejl)[:300]}")
+
+        # Form 2: bar ``jarvis-ui {…}`` uden fence. ``normalisér`` ser den ikke,
+        # så den når chatten som rå tekst. Det er den fejl brugeren faktisk ser.
+        for raa in _BAR_BLOK.finditer(text):
+            indhold = (raa.group(1) or "").strip()
+            if not indhold:
+                continue
+            gyldig, grund = _validér(indhold)
+            if not gyldig:
+                fejl.append(
+                    "en jarvis-ui-blok står uden ```-hegn og kan ikke parses: "
+                    + grund
+                )
+                continue
+            fejl.append(
+                "en jarvis-ui-blok står uden ```-hegn — den vises som rå tekst "
+                "i stedet for en flade"
+            )
+    except Exception:  # fail-open: en fejl her må aldrig koste et svar
+        logger.debug("jarvis_ui_guard: fejl_i_flader fejlede", exc_info=True)
+        return []
+    return fejl

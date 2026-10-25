@@ -49,6 +49,31 @@ describe('ChatFlowPresentation', () => {
     expect(within(hoved).queryByText('Samler svaret')).not.toBeInTheDocument()
   })
 
+  it.each(['Arbejder', 'Arbejder…', 'Arbejder...'])(
+    'viser Tænker i rundelinjen ved den generiske mellemtilstand %s',
+    (workingStep) => {
+      render(<ChatFlowPresentation {...common} mode="living"
+        blocks={[{ type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }]}
+        workingStep={workingStep} />)
+
+      const hoved = document.querySelector('.rv-tur') as HTMLElement
+      const runde = screen.getByTestId('chat-flow-round-line')
+      expect(hoved).toHaveTextContent('Arbejder')
+      expect(within(runde).getByText('Tænker')).toBeInTheDocument()
+      expect(within(runde).queryByText(/^Arbejder/)).not.toBeInTheDocument()
+    },
+  )
+
+  it('bevarer konkrete faseforklaringer i rundelinjen', () => {
+    render(<ChatFlowPresentation {...common} mode="living"
+      blocks={[{ type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }]}
+      workingStep="Læser konfigurationen" />)
+
+    const runde = screen.getByTestId('chat-flow-round-line')
+    expect(within(runde).getByText('Læser konfigurationen')).toBeInTheDocument()
+    expect(within(runde).queryByText('Tænker')).not.toBeInTheDocument()
+  })
+
   it('renders only the latest Calm status and a truthful neutral fallback', () => {
     const { rerender } = render(<ChatFlowPresentation {...common} mode="calm"
       blocks={['Et', 'To', 'Tre'].map(summary)} />)

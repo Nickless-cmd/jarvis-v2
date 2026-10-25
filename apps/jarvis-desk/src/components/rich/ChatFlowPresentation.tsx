@@ -232,7 +232,15 @@ export function ChatFlowPresentation({
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.
-  const rundeTekst = harArbejde ? (activeLine || 'Arbejder…') : null
+  //
+  // Turhovedet ejer allerede den overordnede tilstand «Arbejder». Backendens
+  // generiske working_step med samme ord er derfor ikke en ny oplysning i
+  // rundelinjen. Mellem de konkrete forklaringer («Læser filen», «Tester …»)
+  // viser den i stedet den aktuelle indre fase: «Tænker».
+  const generiskArbejde = /^arbejder(?:\s*(?:…|\.\.\.))?$/i.test(activeLine?.trim() ?? '')
+  const rundeTekst = harArbejde
+    ? (!activeLine || generiskArbejde ? 'Tænker' : activeLine)
+    : null
 
   // ÉN gate — samme form som code mode (`RaekkeTranskript.tsx:434/449/469`).
   //

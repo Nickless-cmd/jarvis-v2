@@ -312,6 +312,12 @@ def _exec_madopskrift(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("madopskrift: uventet fejl: %s", exc)
         return {"status": "error", "error": f"uventet fejl: {exc}"}
 
+    # Målt 25/10-2026: denne linje manglede, og funktionen faldt derfor igennem
+    # til None. Alle 16 tests var grønne, fordi de kaldte `_soeg`/`_hent`/
+    # `_koleskab` direkte — aldrig den funktion dispatch-laget kalder. Et
+    # værktøj der svarer None er usynligt for modellen, ikke blot tomt.
+    return svar
+
 
 def _soeg(args: dict[str, Any]) -> dict[str, Any]:
     raa = str(args.get("soegning") or args.get("query") or "").strip()

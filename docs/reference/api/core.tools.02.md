@@ -99,9 +99,9 @@ _Madopskrifter på dansk — TheMealDB + MyPlate.food med oversættelseslag._
 | function | `_myplate_hent` | `(slug)` | — | [src](../../../core/tools/madopskrift_tools.py#L249) |
 | function | `_myplate_koleskab` | `(ingredienser, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L272) |
 | function | `_exec_madopskrift` | `(args)` | Slå opskrifter op på dansk. Se ``madopskrift``-definitionen. | [src](../../../core/tools/madopskrift_tools.py#L292) |
-| function | `_soeg` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L316) |
-| function | `_hent` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L400) |
-| function | `_koleskab` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L457) |
+| function | `_soeg` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L322) |
+| function | `_hent` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L406) |
+| function | `_koleskab` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L463) |
 
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_

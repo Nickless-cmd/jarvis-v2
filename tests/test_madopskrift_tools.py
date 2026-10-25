@@ -195,6 +195,30 @@ def test_koleskab_uden_ingredienser_giver_fejl() -> None:
     assert r["status"] == "error"
 
 
+def test_exec_returnerer_svar_og_ikke_none(monkeypatch) -> None:
+    """KERNEN I INDGANGEN. Målt 25/10-2026: ``_exec_madopskrift`` manglede
+    ``return svar`` og faldt igennem til ``None``. Alle 16 tests var grønne,
+    fordi de kaldte ``_soeg``/``_hent``/``_koleskab`` direkte — aldrig den
+    funktion dispatch-laget kalder. Et værktøj der svarer ``None`` findes
+    reelt ikke for modellen, uanset hvor grøn testen ved siden af er.
+
+    Testen kalder derfor den ÆGTE indgang, ikke delene under den.
+    """
+    monkeypatch.setattr(
+        M,
+        "_soeg",
+        lambda a: {"status": "ok", "antal": 1, "resultater": [{"navn": "Kage"}]},
+    )
+    monkeypatch.setattr(M, "_hent", lambda a: {"status": "ok", "navn": "Kage"})
+    monkeypatch.setattr(M, "_koleskab", lambda a: {"status": "ok", "antal": 0})
+
+    for handling in ("soeg", "hent", "koleskab"):
+        r = M._exec_madopskrift({"handling": handling})
+        assert r is not None, f"handling={handling} faldt igennem til None"
+        assert isinstance(r, dict)
+        assert r.get("status") == "ok"
+
+
 # ── Registrering: værktøjet skal faktisk kunne kaldes ──────────────────────
 
 

@@ -51,3 +51,71 @@ def test_execute_tool_kalder_den(isolated_runtime, monkeypatch):
                         lambda n, a, r: set_af.append((n, r)))
     ST.execute_tool("write_file", {"path": "/a", "content": "x"})
     assert set_af == [("write_file", {"status": "ok"})]
+
+
+# ── Gaten maa ikke taelles som et ejer-nej (25/10-2026) ────────────────────
+#
+# `gate_blocked` og `blocked` er SYSTEMETS egne beslutninger: R2.5, inbox_gate,
+# exec_command, autonomous_tool_policy, «Write blocked for safety». Ingen har
+# set kortet, og ingen har klikket nej.
+#
+# Maalt 25/10-2026: begge blev mappet til `deny` — altsaa «ejeren afviste».
+# Det laerte klassificeren at Bjoern afviser handlinger hun aldrig blev spurgt
+# om: `operator_bash` stod med 154.670 forsoeg og 43.909 korrekte (28,4 %
+# praecision mod et krav paa 95 %). Samme forveksling fodrede Agent Smith med
+# «Bruger afviste tool-call til bash», som blev en BLOKERENDE indbakke-post
+# (id 7985, 2 paamindelser) for et bash-kald Bjoern aldrig afviste.
+#
+# Et aegte nej maales KUN gennem gold-vejen: mennesket klikker Nej paa kortet,
+# og `resolve_pending_approval` kalder `record_prediction_outcome` selv.
+
+
+def _fang_klassificer_udfald(monkeypatch, resultat):
+    """Kør observe_tool_call og returnér hvad klassificeren blev fortalt.
+
+    Skyggen koerer i en daemon-traad, saa vi venter paa den i stedet for at
+    sove et fast antal millisekunder — en sove-pause er en gaettekonkurrence.
+    """
+    import threading
+    import core.services.permission_classifier as PC
+
+    set_udfald = []
+    faerdig = threading.Event()
+
+    monkeypatch.setattr(PC, "permission_classifier_mode", lambda: "shadow")
+    monkeypatch.setattr(PC, "is_mutating", lambda navn: True)
+    monkeypatch.setattr(PC, "classify_action",
+                        lambda *a, **k: PC.PermissionPrediction("approve", 0.9, "test"))
+
+    def _fang(navn, *, predicted, actual, is_owner_gold):
+        set_udfald.append({"tool": navn, "predicted": predicted,
+                           "actual": actual, "gold": is_owner_gold})
+        faerdig.set()
+
+    monkeypatch.setattr(PC, "record_prediction_outcome", _fang)
+    monkeypatch.setattr(PC, "stash_prediction", lambda *a, **k: None)
+
+    observe_tool_call("bash", {"command": "ls"}, resultat)
+    faerdig.wait(timeout=2.0)
+    return set_udfald
+
+
+@pytest.mark.parametrize("gate_status", ["gate_blocked", "blocked"])
+def test_en_gate_blokering_er_ikke_et_ejer_nej(isolated_runtime, monkeypatch, gate_status):
+    """Gatens egen blokering maa ALDRIG blive et `deny` — det er ikke et klik."""
+    udfald = _fang_klassificer_udfald(
+        monkeypatch, {"status": gate_status, "message": "blokeret af gaten"})
+
+    assert all(u["actual"] != "deny" for u in udfald), (
+        f"status={gate_status!r} blev talt som et ejer-nej. Gaten blokerede selv — "
+        "ingen har set kortet. Et aegte nej kommer gennem gold-vejen."
+    )
+
+
+def test_et_gennemfoert_kald_taeller_stadig_som_ejer_godkendelse(isolated_runtime, monkeypatch):
+    """Modproeven: fjerner vi ALT, bliver vagten groen af den forkerte grund."""
+    udfald = _fang_klassificer_udfald(monkeypatch, {"status": "ok"})
+
+    assert udfald, "et gennemfoert kald skal stadig give klassificeren et udfald"
+    assert udfald[0]["actual"] == "approve"
+    assert udfald[0]["gold"] is False

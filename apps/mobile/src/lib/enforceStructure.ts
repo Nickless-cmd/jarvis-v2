@@ -1,4 +1,5 @@
-// Spejl af apps/jarvis-desk/src/lib/enforceStructure.ts (1:1, 19/9-2026) — ret begge.
+import { scanFences } from './fenceScanner'
+
 /** Strukturel håndhævelse af Jarvis' output-format.
  *
  *  Baggrund: Jarvis følger ikke konsekvent markdown-konventioner — han skriver
@@ -12,31 +13,15 @@
 /** Split tekst i prosa og beskyttede code-fences, også når den sidste er åben. */
 function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: string }> {
   const out: Array<{ kind: 'text' | 'fence'; body: string }> = []
-  let body = ''
-  let fence: { marker: string; length: number } | null = null
-  const flush = (kind: 'text' | 'fence') => {
-    if (body) out.push({ kind, body })
-    body = ''
+  let last = 0
+  // 29/9-2026: regexen kendte kun lukkede ```-par; åbne og ~~~-fences
+  // blev derfor omskrevet som prosa midt i en kodeblok.
+  for (const span of scanFences(md)) {
+    if (span.start > last) out.push({ kind: 'text', body: md.slice(last, span.start) })
+    out.push({ kind: 'fence', body: md.slice(span.start, span.end) })
+    last = span.end
   }
-  for (const line of md.match(/[^\n]*(?:\n|$)/g)?.filter(Boolean) ?? []) {
-    const content = line.replace(/\r?\n$/, '')
-    if (!fence) {
-      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(content)
-      if (opening) {
-        flush('text')
-        fence = { marker: opening[1]![0]!, length: opening[1]!.length }
-      }
-      body += line
-    } else {
-      body += line
-      const closing = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(content)
-      if (closing && closing[1]![0] === fence.marker && closing[1]!.length >= fence.length) {
-        flush('fence')
-        fence = null
-      }
-    }
-  }
-  flush(fence ? 'fence' : 'text')
+  if (last < md.length) out.push({ kind: 'text', body: md.slice(last) })
   return out
 }
 
@@ -169,9 +154,57 @@ function reflowCrammedTables(text: string): string {
     .join('\n')
 }
 
+/** Sæt JSON'en ned på sin egen linje når den står på fence-markørens linje.
+ *
+ *  MÅLT 25/10-2026 (side-2430432a89): 58 af 59 `wrong-lang`-poster i
+ *  `state/flade_log.jsonl` havde formen ` ```jarvis-ui {"type":… ` — JSON'en
+ *  stod på markørens linje. I CommonMark bliver hele resten af linjen en del af
+ *  info-stringen, så `lang` bliver `jarvis-ui` men `code` bliver TOM, og
+ *  `parseNativeRichSpec('')` returnerer null. Fladen falder tilbage til en tom
+ *  kodeblok.
+ *
+ *  Målt i rendereren: mast form → 0 `.native-rich`, 1 `.chat-codeblock`.
+ *  Korrekt form → 1 `.native-rich`, 0 `.chat-codeblock`.
+ *
+ *  Serveren normaliserer det samme (`jarvis_ui_guard.normalisér`) og sender
+ *  `scan_correction`. Men den korrektion ankommer EFTER deltaerne er streamet,
+ *  så klienten rendrer den maste form i mellemtiden — og hvis korrektionen
+ *  falder bort (fail-open, afbrudt strøm, genindlæst historik) står fejlen
+ *  permanent. Derfor rettes formen også HER: det er den eneste vej der virker
+ *  uanset om korrektionen når frem.
+ *
+ *  Reparationen er smal og deterministisk: kun når der står noget efter
+ *  ` ```jarvis-ui ` på SAMME linje, og det starter med `{`. Alt andet lades urørt
+ *  — en form der allerede er korrekt må ikke kunne ændres af dette.
+ */
+function unfoldJarvisUiFence(text: string): string {
+  if (!text.includes('jarvis-ui')) return text
+  // Lukke-fencen SKAL sluges med i samme greb når den står på næste linje.
+  // Målt 25/10-2026: uden det blev der to lukke-fences, og alt prosaen efter
+  // blokken blev spist ind i en kodeblok — en reparation der ødelagde mere end
+  // den rettede. `(?:\n[ \t]*(`{3,}|~{3,})[ \t]*)?` tager den KUN hvis den står
+  // umiddelbart efter, og den skrives tilbage som én.
+  // To former, målt i `state/flade_log.jsonl` 25/10-2026:
+  //
+  //   A. ` ```jarvis-ui {json} `            — JSON på markørens linje, ingen lukke-fence
+  //   B. ` ```jarvis-ui {json} ``` `        — samme, men lukke-fencen står på SAMME linje
+  //
+  // Form B fandtes i de poster min første udgave ikke rettede: regex'en krævede
+  // at JSON'en sluttede linjen, så `}]} ``` ` faldt uden for. Den fanges nu ved
+  // at tillade en valgfri lukke-fence som hale på samme linje.
+  return text.replace(
+    /^([ \t]{0,3})(`{3,}|~{3,})jarvis-ui[ \t]+(\{.*?\})[ \t]*(`{3,}|~{3,})?[ \t]*(?:\n[ \t]*(`{3,}|~{3,})[ \t]*)?$/gm,
+    (_m, indent: string, fence: string, json: string, hale?: string, naeste?: string) =>
+      `${indent}${fence}jarvis-ui\n${json}\n${indent}${hale ?? naeste ?? fence}`,
+  )
+}
+
 /** Hovedfunktion: kør hele kæden over hver text-segment. */
 export function enforceStructure(md: string): string {
-  const segs = splitProtected(md)
+  // Fence-formen rettes FØRST: `splitProtected` bruger `scanFences`, og en mast
+  // fence er teknisk set en gyldig åbning — den ville blive beskyttet som en
+  // fence og aldrig nå prosa-reglerne. Rækkefølgen er ikke kosmetisk.
+  const segs = splitProtected(unfoldJarvisUiFence(md))
   return segs
     .map((s) => {
       if (s.kind === 'fence') return s.body

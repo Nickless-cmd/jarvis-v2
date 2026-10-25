@@ -143,3 +143,33 @@ describe('tabel med hele rækker uden linjeskift (19/9-2026)', () => {
     expect(ud).toContain('| Værktøj | Udfald |\n| --- | --- |\n| `bash` | skrev filen |\n| `search` | fundet |')
   })
 })
+
+describe('mast jarvis-ui-fence (25/10-2026, spejlet fra desk)', () => {
+  // Mobilen har sin EGEN kopi af denne fil. Uden disse tests er 1:1-kopien kun
+  // en påstand: fixet kan forsvinde ved næste synkronisering uden at nogen ser det.
+  const SPEC = '{"type":"comparison","title":"Test","columns":["A","B"],"rows":[{"label":"x","values":["1","2"]}]}'
+
+  it('form A — JSON på markørens linje sættes ned på sin egen linje', () => {
+    const ud = enforceStructure('Her:\n\n```jarvis-ui ' + SPEC + '\n```\n\nBagefter.')
+    expect(ud).toContain('```jarvis-ui\n' + SPEC)
+    // Netop ÉN åbning og ÉN lukning — ikke to lukke-fences, som en for grov
+    // reparation gav (den spiste prosaen efter blokken).
+    expect(ud.match(/```/g)!.length).toBe(2)
+    expect(ud).toContain('Bagefter.')
+  })
+
+  it('form B — lukke-fence på SAMME linje som JSON-slutningen', () => {
+    const ud = enforceStructure('```jarvis-ui ' + SPEC + ' ```')
+    expect(ud).toContain('```jarvis-ui\n' + SPEC + '\n```')
+  })
+
+  it('en allerede korrekt form røres IKKE', () => {
+    const korrekt = '```jarvis-ui\n' + SPEC + '\n```'
+    expect(enforceStructure(korrekt)).toBe(korrekt)
+  })
+
+  it('jarvis-ui som almindelig prosa røres ikke', () => {
+    const prosa = 'Jeg bruger ```jarvis-ui til flader.'
+    expect(enforceStructure(prosa)).toBe(prosa)
+  })
+})

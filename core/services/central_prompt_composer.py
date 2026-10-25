@@ -79,6 +79,94 @@ _DEFAULT_WEIGHTS: dict[tuple[str, str], float] = {
     ("spørgsmål", "causal narrative"): 0.2,
 }
 
+#: SCOPE-gaten — rummet, ikke beskeden (25/10-2026, Bjørns opgave 20/10).
+#:
+#: ## Hvad der var galt
+#:
+#: Begge hale-gates (`should_include`, `should_include_tail`) vægtede kun
+#: ``(turn_type, sektion)``, og ``turn_type`` kommer fra
+#: ``classify_turn_type(user_message)`` — altså fra BRUGERBESKEDEN. Rummet var
+#: usynligt for gaten: en chat-tur hvor Bjørn skrev om kode fik
+#: ``turn_type="kode"`` og beholdt HELE maskinrummet, mens en code-tur med en
+#: kort hilsen fik ``turn_type="samtale"`` og mistede den kontekst den faktisk
+#: skulle bruge. Målt 25/10: ``current_tool_scope()`` blev læst nul steder i
+#: composer'en — scope fandtes, blev sat korrekt i pumpe-tråden, og blev aldrig
+#: spurgt.
+#:
+#: ## Hvad tabellerne gør
+#:
+#: Når ``scope == "chat"`` slås sektionen op HER, og den effektive vægt er
+#: ``min(eksisterende vægt, chat-vægt)``. Tabellen kan altså kun SÆNKE — en
+#: sektion der er vigtig i samtalen bliver aldrig løftet ind af et uheld.
+#:
+#: ``scope == "code"`` og tom scope rammer ALDRIG tabellerne: maskinrummet er
+#: pointen i code mode, og en klient uden mode-signal skal have den gamle
+#: adfærd uændret (fail-open).
+#:
+#: Værdier under ``_INCLUDE_THRESHOLD`` (0.3) betyder «ude i chat».
+_CHAT_SCOPE_TAIL_WEIGHTS: dict[str, float] = {
+    # Live-telemetri om agenter, pools og kausal-diagnostik. Det er maskinrum.
+    "agent status": 0.1,
+    "causal patterns": 0.1,
+    "model pools": 0.1,
+    "pattern counterfactuals": 0.1,
+    "subagent completion digest": 0.1,
+    "self mutation lineage": 0.1,
+}
+
+_CHAT_SCOPE_WEIGHTS: dict[str, float] = {
+    # Indre liv, selvmodel og Centralens egen tilstand — det er mig der kigger
+    # på mig, ikke en samtale med Bjørn.
+    "indre liv": 0.1,
+    "levende selvmodel": 0.2,
+    "kerne-selv (Centralens midte)": 0.2,
+    "matrix ensemble voices": 0.1,
+    "central notices": 0.2,
+    "loop-compliance self-check": 0.2,
+    "formative state": 0.2,
+    # Diagnostik og telemetri.
+    "R2 gate telemetry": 0.1,
+    "metacognition signals": 0.1,
+    "self-monitor warnings": 0.2,
+    "communication ledger": 0.2,
+    "decision adherence gate": 0.2,
+    "rule engine conclusions": 0.2,
+    "causal alerts": 0.2,
+    "causal narrative": 0.2,
+    # Indbakken er min arbejdsstak, ikke samtalens indhold. Bjørn ser den i
+    # desk; prompten behøver den ikke hver tur i chat.
+    "indbakke": 0.2,
+}
+
+
+def _chat_scope_weight(section: str, tabel: dict[str, float]) -> float | None:
+    """Sektionens chat-vægt, eller None hvis rummet ikke er chat.
+
+    Labels er FRASER, ikke id'er ("indbakke", "decision adherence gate"), så
+    opslaget prøver præcist først og derefter «indeholder». Rækkefølgen er
+    vigtig: et præcist hit må ikke overskrives af en bredere delstreng.
+    """
+    try:
+        from core.tools import tool_scoping
+        if str(tool_scoping.current_tool_scope() or "").strip().lower() != "chat":
+            return None
+    except Exception:
+        return None                     # kan scopet ikke læses, gælder den gamle adfærd
+    sl = str(section or "").lower()
+    if not sl:
+        return None
+    # Nøglerne normaliseres ved opslag. Målt 25/10: «kerne-selv (Centralens
+    # midte)» havde stort C i tabellen mens opslaget var lowercase, så netop
+    # den sektion slap igennem gaten. Testen fangede det — men kun fordi den
+    # prøvede hver enkelt nøgle. Normaliseringen gør fejlen umulig.
+    for navn, vaegt in tabel.items():
+        if str(navn).lower() == sl:
+            return vaegt
+    for navn, vaegt in tabel.items():
+        if str(navn).lower() in sl:
+            return vaegt
+    return None
+
 # Tur-type-klassifikation (grov, deterministisk, model-fri). Rækkefølge = prioritet.
 _TURN_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("kode", ("kode", "bug", "traceback", "funktion", "python", "import ", "def ", "class ",
@@ -182,7 +270,11 @@ def get_tail_weight(turn_type: str, section: str) -> float:
 def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_THRESHOLD) -> bool:
     """DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type?
     Shadow (default): ALTID True — intet skæres. Frosne sektioner: ALTID True. Live + lav vægt: udelad.
-    Konservativ ved tvivl. Self-safe → True (inkludér)."""
+    Konservativ ved tvivl. Self-safe → True (inkludér).
+
+    I CHAT-MODE gælder ``_CHAT_SCOPE_WEIGHTS`` oveni (25/10-2026): rummet vægter
+    over beskeden, og tabellen kan kun sænke vægten — se dens docstring.
+    """
     try:
         sl = str(section or "").lower()
         # frossen hvis label INDEHOLDER et frossent nøgleord (labels er fraser: "pinned identity context")
@@ -198,7 +290,11 @@ def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_
             pass
         if not is_live_enabled():
             return True                         # shadow: intet skæres endnu
-        return get_weight(turn_type, section) >= float(threshold)
+        vaegt = get_weight(turn_type, section)
+        _chat = _chat_scope_weight(section, _CHAT_SCOPE_WEIGHTS)
+        if _chat is not None:
+            vaegt = min(vaegt, _chat)
+        return vaegt >= float(threshold)
     except Exception:
         return True                             # fail-open på inklusion (aldrig skjul ved fejl)
 
@@ -208,6 +304,9 @@ def should_include_tail(turn_type: str, section: str, *, threshold: float = _INC
 
     Den brede should_include-switch forbliver shadow-default. Tail-gaten er live som default,
     fordi den kun rammer kendte variable hale-sektioner og failer åbent på ukendte/frosne labels.
+
+    I CHAT-MODE gælder ``_CHAT_SCOPE_TAIL_WEIGHTS`` oveni, med samme min()-regel
+    som `should_include` — se den tabels docstring.
     """
     try:
         sl = str(section or "").lower()
@@ -215,7 +314,11 @@ def should_include_tail(turn_type: str, section: str, *, threshold: float = _INC
             return True
         if not is_tail_live_enabled():
             return True
-        return get_tail_weight(str(turn_type or ""), str(section or "")) >= float(threshold)
+        vaegt = get_tail_weight(str(turn_type or ""), str(section or ""))
+        _chat = _chat_scope_weight(section, _CHAT_SCOPE_TAIL_WEIGHTS)
+        if _chat is not None:
+            vaegt = min(vaegt, _chat)
+        return vaegt >= float(threshold)
     except Exception:
         return True
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9289/17559 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9290/17560 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9289/17559 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 843 | 1544 | 54% |
-| `core.services` | 6207 | 11955 | 51% |
+| `core.services` | 6208 | 11956 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -958,8 +958,8 @@ Generated from source. 9289/17559 functions/methods documented (52%). The list b
 - `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
 - `core/services/central_merovingian.py` :: `list_challenges` (L331)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
-- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L143)
-- `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L147)
+- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L231)
+- `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L235)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L54)
 - `core/services/central_rca.py` :: `list_rca` (L117)
 - `core/services/central_red_dress.py` :: `build_red_dress_surface` (L67)

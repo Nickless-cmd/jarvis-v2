@@ -35,6 +35,20 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
 
   useEffect(() => { void load() }, [load])
 
+  // Rutiner kan ændre status i baggrunden (migration, auto-pause og runner).
+  // En allerede åben flade må derfor ikke fastholde et gammelt "Pauset"-snapshot.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void load() }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const timer = window.setInterval(refresh, 30_000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      window.clearInterval(timer)
+    }
+  }, [load])
+
   // API'et er den egentlige privacy-grænse. Dette forsvar gør også klienten
   // fail-closed, hvis en fremtidig server ved en fejl sender en for bred liste.
   const visible = useMemo(() => (routines ?? []).filter((routine) =>

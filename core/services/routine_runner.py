@@ -201,6 +201,19 @@ def _rutine_tools_payload(context: RoutineExecutionContext) -> list[dict]:
     ]
 
 
+def _rutine_max_rounds(context: RoutineExecutionContext) -> int:
+    """Læs et afgrænset rundebudget fra rutinens egen policy."""
+    policy = getattr(context, "permission_policy", None) or {}
+    raw = policy.get("max_rounds", 8) if isinstance(policy, dict) else 8
+    if isinstance(raw, bool):
+        return 8
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):  # Ugyldig brugerpolicy falder sikkert til standarden.
+        return 8
+    return max(2, min(value, 64))
+
+
 @contextmanager
 def _ejer_kontekst(owner_user_id: str, *, run_id: str = ""):
     """Kør blokken som rutinens ejer: workspace, oprindelse og autonomi.
@@ -539,6 +552,7 @@ class RoutineRunner:
                 raw_executor=raw_executor,
             ),
             tools_payload=tools_payload,
+            max_rounds=_rutine_max_rounds(context),
         )
         result = execute_agentic(
             adapter,

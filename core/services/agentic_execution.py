@@ -227,7 +227,9 @@ class _ProviderDriver:
             # den tager ikke imod ``tools``, så et failover ville give et
             # svar UDEN værktøjer — præcis den tavse degradering der gav
             # «jeg har ikke adgang». Primær-lanen har tool-kapable udbydere.
-            lane="primary" if tools else "cheap",
+            # Et afsluttende svar efter værktøjskald skal blive på primary-
+            # lanen, selv om sidste runde bevidst ikke tilbyder nye tools.
+            lane="primary" if tools or request.prior_results else "cheap",
         )
         usage_raw = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
         usage = UsageRecord(
@@ -306,14 +308,32 @@ def execute_agentic(
     model = context.model
 
     for round_number in range(1, context.max_rounds + 1):
+        from core.services.round_budget_notice import round_budget_notice
+
+        notice = round_budget_notice(
+            round_index=round_number - 1, max_rounds=context.max_rounds,
+        )
+        final_round = round_number == context.max_rounds
+        if final_round:
+            notice = (
+                "Dette er afslutningsrunden. Brug de allerede indsamlede "
+                "resultater, kald ingen flere værktøjer, og skriv et kort, "
+                "konkret slutsvar nu."
+            )
+        prompt = context.prompt if not notice else f"{context.prompt}\n\n{notice}"
         try:
             turn = context.driver.complete(AgenticRequest(
-                prompt=context.prompt,
+                prompt=prompt,
                 provider=context.provider,
                 model=context.model,
                 round_number=round_number,
                 prior_results=tuple(prior_results),
-                tools=tuple(getattr(context, "tools_payload", ()) or ()),
+                # Sidste runde er reserveret til syntese. I den gamle løkke
+                # kunne modellen bruge også runde 8 på nye værktøjskald og
+                # blev derefter afbrudt med ``round_limit`` uden konklusion.
+                tools=() if final_round else tuple(
+                    getattr(context, "tools_payload", ()) or ()
+                ),
             ))
         except Exception:  # Provider details stay private; caller receives a typed terminal result.
             return _emit_terminal(sink, ExecutionResult(

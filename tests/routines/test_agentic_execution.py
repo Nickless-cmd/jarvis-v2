@@ -218,6 +218,45 @@ def test_round_limit_fails_with_one_terminal(routine_execution_context):
     assert sink.terminal_count == 1
 
 
+def test_last_round_is_reserved_for_synthesis(routine_execution_context):
+    from core.services.agentic_execution import (
+        AgenticTurn,
+        RoutineExecutionAdapter,
+        ToolCall,
+        execute_agentic,
+    )
+
+    class Driver:
+        def __init__(self):
+            self.requests = []
+
+        def complete(self, request):
+            self.requests.append(request)
+            if request.tools:
+                return AgenticTurn(tool_calls=(ToolCall("lookup", "clock", {}),))
+            return AgenticTurn(text="Samlet konklusion.")
+
+    driver = Driver()
+    result = execute_agentic(
+        RoutineExecutionAdapter(
+            routine_execution_context,
+            instruction="Undersøg og konkludér".encode("utf-8"),
+            driver=driver,
+            tool_executor=lambda _call: {"ok": True},
+            tools_payload=[{"type": "function", "function": {"name": "clock"}}],
+            max_rounds=2,
+        ),
+        RecordingSink(),
+        AlwaysCurrent(),
+    )
+
+    assert result.status == "succeeded"
+    assert result.text == "Samlet konklusion."
+    assert driver.requests[0].tools
+    assert driver.requests[1].tools == ()
+    assert "afslutningsrunden" in driver.requests[1].prompt
+
+
 def test_routine_prompt_has_no_visible_session_builder():
     import core.services.routine_prompt as routine_prompt
 

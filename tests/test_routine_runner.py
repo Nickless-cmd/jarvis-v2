@@ -123,3 +123,12 @@ def test_tom_politik_giver_kerne_saettet_ikke_tomt_saet():
 
     kerne = _navne(_rutine_tools_payload(_kontekst(permission_policy={})))
     assert "madopskrift" in kerne
+
+
+def test_rundebudget_laeses_fra_policy_og_afgraenses():
+    from core.services.routine_runner import _rutine_max_rounds
+
+    assert _rutine_max_rounds(_kontekst()) == 8
+    assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": 20})) == 20
+    assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": 1000})) == 64
+    assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": True})) == 8

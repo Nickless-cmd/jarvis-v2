@@ -345,9 +345,12 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
         execution_mode="session" if str(row.get("session_id") or "").strip() else "background",
         importance="normal",
     )
+    instruction = str(row.get("focus") or "Legacy autonomous work").strip()
+    first_line = next((line.strip() for line in instruction.splitlines() if line.strip()), "")
+    migrated_name = first_line[:80] or f"Migrated {kind}"
     return {
-        "name": f"System · {system_producer}" if system_producer else f"Migrated {kind}",
-        "instruction": str(row.get("focus") or "Legacy autonomous work"),
+        "name": f"System · {system_producer}" if system_producer else migrated_name,
+        "instruction": instruction,
         "capability_scope": "system" if system_producer else "chat",
         "trigger_kind": trigger_kind,
         "trigger_config": trigger_config,
@@ -357,6 +360,9 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
         },
         "system_producer": system_producer,
         "source_id": source_id,
+        # Recurring-opgaver kan være brede inspektions-/briefingjobs. Otte
+        # runder var et hårdt globalt loft og gav round_limit før syntesen.
+        "permission_policy": {"max_rounds": 20} if kind == "recurring" else {},
     }
 
 
@@ -503,7 +509,7 @@ def apply_report(report_id: str) -> ApplyResult:
                 capability_scope=str(definition["capability_scope"]),
                 trigger_kind=str(definition["trigger_kind"]),
                 trigger_config=dict(definition.get("trigger_config") or {}),
-                permission_policy={},
+                permission_policy=dict(definition.get("permission_policy") or {}),
                 delivery_policy=dict(definition.get("delivery_policy") or {}),
                 inbox_policy={},
                 retention_policy={"archive_stopped_days": 30},

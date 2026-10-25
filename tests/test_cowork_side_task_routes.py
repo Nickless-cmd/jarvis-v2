@@ -206,3 +206,58 @@ def test_en_opgave_kan_udskydes_og_vaagnes_fra_desk(monkeypatch, lager):
     with pytest.raises(HTTPException) as ei2:
         asyncio.run(cw.cowork_side_task_snooze(a, {"not_before": til}))
     assert ei2.value.status_code == 403
+
+
+# ── redigering (25/10-2026) ──────────────────────────────────────────────
+# Bjørn: «jeg har ikke mulighed for at redigere en eksisterende opgave eller
+# saette regler eller autonomi». Ruten er den fjerde mutation paa samme post,
+# og den skal svare forskelligt paa «daarlig anmodning» og «laast af et run».
+
+def test_owner_redigerer_opgave(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    res = asyncio.run(cw.cowork_side_task_rediger(
+        a, {"title": "B", "autonomy_mode": "inspect", "max_minutes": 30}))
+    assert res["status"] == "ok"
+    post = side_tasks.get(a)
+    assert post["title"] == "B" and post["autonomy_mode"] == "inspect"
+    assert post["max_minutes"] == 30
+
+
+def test_rediger_uden_felter_afvises_som_daarlig_anmodning(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_rediger(a, {}))
+    assert ei.value.status_code == 400
+
+
+def test_rediger_ukendt_felt_afvises_ikke_tavst_ignoreret(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_rediger(a, {"status": "completed"}))
+    assert ei.value.status_code == 400
+    assert side_tasks.get(a)["status"] == "pending"
+
+
+def test_rediger_opgave_i_gang_giver_409_ikke_400(monkeypatch, lager):
+    """En laast post er en TILSTANDSKONFLIKT — klienten skal kunne se forskel."""
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    side_tasks.resolve(a, decision="activated", arbejds_session="chat-7",
+                       arbejds_run_id="run-8")
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_rediger(a, {"prompt": "ny"}))
+    assert ei.value.status_code == 409
+    assert side_tasks.get(a)["prompt"] == "gør A"
+
+
+def test_kun_owner_kan_redigere(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    monkeypatch.setattr(cw, "_role_owner", lambda: (False, "u_m"))
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(cw.cowork_side_task_rediger(a, {"title": "B"}))
+    assert ei.value.status_code == 403
+    assert side_tasks.get(a)["title"] == "A"

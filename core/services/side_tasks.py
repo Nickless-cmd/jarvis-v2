@@ -639,6 +639,105 @@ def list_alle(*, maks: int = 50) -> list[dict[str, Any]]:
     return poster[:max(1, int(maks))]
 
 
+_REDIGERBARE_FELTER: Final[frozenset[str]] = frozenset(
+    {"title", "prompt", "tldr", "autonomy_mode", "max_minutes", "max_tool_calls",
+     "not_before"}
+)
+
+
+def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
+    """Redigér en sideopgave der endnu ikke er taget op.
+
+    ## Hvorfor ikke bare overskrive posten
+
+    En opgave der er ``activated`` har et run der læser dens ``prompt`` lige nu.
+    Ændrer vi teksten under fødderne på det, ved hverken runnet eller Bjørn
+    hvad der faktisk blev kørt — og beviset ved lukning ville pege på en
+    instruks der ikke længere findes. Derfor er redigering gated til de
+    statusser hvor ingen læser posten endnu: ``pending`` og ``queued``.
+
+    ``queued`` er med vilje inkluderet: den betyder «klar til at blive taget»,
+    ikke «taget». Det er præcis det vindue hvor en rettelse stadig er gratis.
+
+    Ukendte feltnavne afvises frem for at blive ignoreret — ellers ville en
+    tastefejl se ud som en gemt ændring.
+
+    Returnerer ``status: error`` med en brugbar tekst; kalderen (ruten) løfter
+    den til en HTTP-fejl, så Desk kan vise hvorfor.
+    """
+    ukendte = sorted(set(aendringer) - _REDIGERBARE_FELTER)
+    if ukendte:
+        return {"status": "error",
+                "error": f"kan ikke redigere {', '.join(ukendte)}"}
+
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
+        if found is None:
+            return {"status": "error", "error": f"unknown side_task_id {side_task_id}"}
+        status_nu = str(found.get("status") or "")
+        if status_nu in _TERMINALE:
+            return {"status": "error",
+                    "error": f"sideopgaven er allerede {status_nu} og kan ikke redigeres"}
+        if status_nu not in ("pending", "queued"):
+            return {"status": "error",
+                    "error": ("sideopgaven er i gang og kan ikke redigeres — "
+                              "et run læser den lige nu")}
+
+        # Samme validering som `flag`. En redigering må ikke kunne omgå en
+        # grænse som oprettelsen håndhæver.
+        if "title" in aendringer:
+            title = str(aendringer["title"] or "").strip()
+            if not title:
+                return {"status": "error", "error": "title kan ikke være tom"}
+            found["title"] = title[:200]
+        if "prompt" in aendringer:
+            prompt = str(aendringer["prompt"] or "").strip()
+            if not prompt:
+                return {"status": "error", "error": "prompt kan ikke være tom"}
+            found["prompt"] = prompt[:12000]
+        if "tldr" in aendringer:
+            found["tldr"] = str(aendringer["tldr"] or "")[:600]
+        if "autonomy_mode" in aendringer:
+            autonomy = str(aendringer["autonomy_mode"] or "none").strip().lower()
+            if autonomy not in _AUTONOMY_MODES:
+                return {"status": "error", "error": "unknown autonomy_mode"}
+            found["autonomy_mode"] = autonomy
+        if "max_minutes" in aendringer or "max_tool_calls" in aendringer:
+            try:
+                minutes = max(5, min(int(aendringer.get(
+                    "max_minutes", found.get("max_minutes", 20))), 60))
+                tool_calls = max(3, min(int(aendringer.get(
+                    "max_tool_calls", found.get("max_tool_calls", 12))), 40))
+            except (TypeError, ValueError):  # ugyldigt budget er en klientfejl, ikke en krasch
+                return {"status": "error", "error": "invalid autonomous budget"}
+            found["max_minutes"] = minutes
+            found["max_tool_calls"] = tool_calls
+        if "not_before" in aendringer:
+            raa = str(aendringer["not_before"] or "").strip()
+            if not raa:
+                found.pop("not_before", None)
+            else:
+                ts = _fremtid(raa)
+                if ts is None:
+                    return {"status": "error",
+                            "error": ("not_before skal vaere et ISO-tidsstempel, "
+                                      "fx 2026-10-20T09:00:00+02:00")}
+                # En tid der allerede er passeret udskyder ingenting — samme
+                # regel som i `flag`: vi gemmer den ikke som en indstilling
+                # der ser ud til at virke uden at gøre noget.
+                if ts > datetime.now(UTC):
+                    found["not_before"] = ts.astimezone(UTC).isoformat()
+                else:
+                    found.pop("not_before", None)
+
+        found["redigeret_at"] = datetime.now(UTC).isoformat()
+        _save_all(items)
+    return {"status": "ok", "side_task_id": side_task_id,
+            "title": found.get("title", ""),
+            "autonomy_mode": found.get("autonomy_mode", "none")}
+
+
 def resolve(side_task_id: str, *, decision: str,
             arbejds_session: str | None = None,
             arbejds_run_id: str | None = None,

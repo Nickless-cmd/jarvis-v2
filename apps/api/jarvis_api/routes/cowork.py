@@ -162,6 +162,51 @@ async def cowork_side_task_opret(payload: dict = Body(default={})) -> dict:
     return res
 
 
+@router.post("/side-tasks/{side_task_id}/rediger")
+async def cowork_side_task_rediger(side_task_id: str, payload: dict = Body(default={})) -> dict:
+    """Redigér en sideopgave der endnu ikke er taget op.
+
+    Bjørn 25/10-2026: «jeg har ikke mulighed for at redigere en eksisterende
+    opgave eller sætte regler eller autonomi». Oprettelse kunne kun ske med
+    titel og beskrivelse, og bagefter var posten urørlig — en tastefejl eller
+    et forkert budget kostede en ny opgave og en gammel der skulle ryddes op.
+
+    ## Hvorfor POST og ikke PATCH
+
+    Huset bruger POST til alle sideopgave-mutationer (`/status`, `/snooze`,
+    `/skjul`). Én ny metode ville være en undtagelse nogen skulle huske; det
+    her er den fjerde af samme slags.
+
+    ## Hvornår den afviser
+
+    Kun ``pending`` og ``queued`` kan redigeres. Er opgaven ``activated``,
+    læser et run dens prompt lige nu — og så ville beviset ved lukning pege på
+    en instruks der ikke længere findes. Terminale opgaver kan ikke genåbnes.
+
+    Ukendte feltnavne afvises (400) frem for at blive ignoreret: en tastefejl
+    der ser ud som en gemt ændring er værre end en synlig fejl.
+    """
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan redigere sideopgaver")
+    aendringer = {
+        k: v for k, v in dict(payload or {}).items()
+        if k in ("title", "prompt", "tldr", "autonomy_mode",
+                 "max_minutes", "max_tool_calls", "not_before")
+    }
+    if not aendringer:
+        raise HTTPException(status_code=400, detail="ingen felter at redigere")
+    from core.services.side_tasks import opdater
+    res = await asyncio.to_thread(opdater, side_task_id, **aendringer)
+    if str(res.get("status") or "") != "ok":
+        # 409 naar opgaven er laast af et run — det er en tilstandskonflikt,
+        # ikke en darlig anmodning. Klienten kan vise forskellen.
+        fejl = str(res.get("error") or "kunne ikke redigere sideopgaven")
+        kode = 409 if ("i gang" in fejl or "allerede" in fejl) else 400
+        raise HTTPException(status_code=kode, detail=fejl)
+    return res
+
+
 @router.post("/side-tasks/{side_task_id}/status")
 async def cowork_side_task_status(side_task_id: str, payload: dict = Body(default={})) -> dict:
     """Skift en sideopgaves status fra Desk: `activated` (startet fra kortet —

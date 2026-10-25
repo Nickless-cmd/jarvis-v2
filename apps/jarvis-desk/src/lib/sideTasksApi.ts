@@ -32,9 +32,39 @@ export interface SideTask {
   arbejds_run_id?: string
   finding_key?: string
   evidence?: string
+  /** Hvor meget opgaven må gøre af sig selv (25/10-2026). `none` = påmindelse. */
+  autonomy_mode?: AutonomiMode
+  /** 5–60 minutter — kun brugt når autonomi er slået til. */
+  max_minutes?: number
+  /** 3–40 værktøjskald — kun brugt når autonomi er slået til. */
+  max_tool_calls?: number
+  /** Sat når opgaven er redigeret efter oprettelsen. */
+  redigeret_at?: string
 }
 
 export type SideTaskAfslutning = 'queued' | 'activated' | 'completed' | 'dismissed'
+
+/**
+ * Hvor meget opgaven må gøre af sig selv — hvis nogen giver den lov.
+ *
+ * `none` er en PÅMINDELSE: den står i køen og i Jarvis' prompt, men den kan
+ * ikke starte et run. `inspect` må læse og måle. `local_write` må skrive
+ * filer. Sidstnævnte er en autorisation, ikke en indstilling — derfor står
+ * betydningen i UI'et og ikke kun værdien.
+ */
+export type AutonomiMode = 'none' | 'inspect' | 'local_write'
+
+/** Felterne en sideopgave kan bære ud over titel og beskrivelse. */
+export interface SideTaskRegler {
+  tldr?: string
+  autonomy_mode?: AutonomiMode
+  /** 5–60 minutter. Serveren klemmer til grænsen. */
+  max_minutes?: number
+  /** 3–40 værktøjskald. Serveren klemmer til grænsen. */
+  max_tool_calls?: number
+  /** ISO-tidsstempel: opgaven må ikke tages op før da. Tom = straks. */
+  not_before?: string
+}
 
 export async function getSideTasks(config: ApiConfig): Promise<SideTask[]> {
   const d = await apiFetch<{ side_tasks?: SideTask[] }>(config, '/cowork/side-tasks', { retries: 0 })
@@ -116,13 +146,44 @@ export async function setSideTaskSkjult(
  */
 export async function opretSideTask(
   config: ApiConfig, title: string, prompt: string, tldr = '',
+  regler: SideTaskRegler = {},
 ): Promise<string> {
+  const body: Record<string, unknown> = { title, prompt, ...regler }
+  if (tldr) body.tldr = tldr
+  // `none` er default i serveren — vi sender den ikke, saa en oprettelse uden
+  // regler er byte-identisk med den gamle anmodning.
+  if (regler.autonomy_mode === 'none') delete body.autonomy_mode
   const r = await apiFetch<{ status?: string; side_task_id?: string; error?: string }>(
     config, '/cowork/side-tasks',
-    { method: 'POST', body: { title, prompt, ...(tldr ? { tldr } : {}) } },
+    { method: 'POST', body: body as Record<string, string> },
   )
   if (r?.status !== 'ok' || !r.side_task_id) {
     throw new Error(r?.error || 'Kunne ikke oprette sideopgaven')
   }
   return r.side_task_id
+}
+
+/**
+ * Redigér en sideopgave der endnu ikke er taget op.
+ *
+ * Bjørn 25/10-2026: «jeg har ikke mulighed for at redigere en eksisterende
+ * opgave eller sætte regler eller autonomi». Foer denne fandtes kun opret og
+ * luk — en tastefejl kostede en ny opgave og en gammel der skulle ryddes op.
+ *
+ * Serveren afviser med 409 naar opgaven er `activated` (et run laeser den lige
+ * nu) og med 400 for ukendte felter. Begge bliver til en synlig fejl her; en
+ * redigering der tavst ikke skete er vaerre end en der siger hvorfor.
+ */
+export async function opdaterSideTask(
+  config: ApiConfig, id: string, aendringer: Partial<SideTaskRegler & {
+    title: string; prompt: string;
+  }>,
+): Promise<void> {
+  const r = await apiFetch<{ status?: string; error?: string }>(
+    config, `/cowork/side-tasks/${encodeURIComponent(id)}/rediger`,
+    { method: 'POST', body: aendringer as Record<string, string> },
+  )
+  if (r?.status !== 'ok') {
+    throw new Error(r?.error || 'Kunne ikke redigere sideopgaven')
+  }
 }

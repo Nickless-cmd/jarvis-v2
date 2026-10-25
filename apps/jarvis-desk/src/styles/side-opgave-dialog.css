@@ -88,3 +88,39 @@
 .sod-primaer:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 
 @media (max-width: 600px) { .sod-indi { padding: 20px; } }
+
+/* ── regler: autonomi og budget (25/10-2026) ──────────────────────────────
+   Autonomi er en AUTORISATION, ikke en indstilling. Derfor staar betydningen
+   under valget i klartekst — `local_write` betyder at opgaven maa skrive filer
+   i Bjørns navn uden at spoerge igen, og det skal ikke se ud som en farve. */
+.sod-felt select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  font: inherit;
+}
+.sod-felt select:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+.sod-forklaring {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.sod-budget { display: flex; gap: 10px; }
+.sod-felt--lille { flex: 1; }
+
+/* Scrollbaren i boksen. Uden regler arver den Electron/Chromiums standard, som
+   er lys og fremmed i det moerke tema — samme problem som panelet havde. */
+.sod { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.sod::-webkit-scrollbar { width: 8px; }
+.sod::-webkit-scrollbar-track { background: transparent; }
+.sod::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+.sod::-webkit-scrollbar-thumb:hover { background: var(--bg-4); }

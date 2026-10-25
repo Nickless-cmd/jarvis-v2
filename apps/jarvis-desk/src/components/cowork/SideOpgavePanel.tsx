@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getAlleSideTasks, setSideTaskStatus, type SideTask } from '../../lib/sideTasksApi'
+import { SideOpgaveDialog } from '../SideOpgaveDialog'
 import type { ApiConfig } from '../../lib/api'
 
 /**
@@ -39,6 +40,10 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
   // afviser ellers — se `bekraeft`.
   const [lukker, setLukker] = useState<{ id: string; beslutning: 'completed' | 'dismissed' } | null>(null)
   const [tekst, setTekst] = useState('')
+  // Redigering (25/10-2026): Bjørn kunne ikke rette en opgave efter den var
+  // oprettet — en tastefejl kostede en ny opgave og en gammel der skulle ryddes
+  // op. Boksen er den samme som ved oprettelse; her bærer den bare en post.
+  const [redigerer, setRedigerer] = useState<SideTask | null>(null)
 
   const hent = useCallback(async () => {
     if (!config) return
@@ -145,6 +150,16 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
                 </div>
               ) : (
                 <div className="sop-knapper">
+                  {/* Redigering er kun mulig mens ingen læser posten. Er den i
+                      gang, læser et run dens prompt lige nu — knappen bliver
+                      stående men deaktiveret, så det ses HVORFOR den ikke kan
+                      bruges i stedet for at funktionen ser ud til at mangle. */}
+                  <button type="button" className="sop-rediger"
+                          disabled={travl === t.side_task_id || t.status === 'activated'}
+                          title={t.status === 'activated'
+                            ? 'Et run læser opgaven lige nu — den kan ikke ændres under det'
+                            : 'Ret titel, beskrivelse, autonomi eller budget'}
+                          onClick={() => setRedigerer(t)}>Redigér</button>
                   <button type="button" disabled={travl === t.side_task_id}
                           onClick={() => aabnLuk(t, 'completed')}>Markér færdig</button>
                   <button type="button" disabled={travl === t.side_task_id}
@@ -155,6 +170,16 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
           </li>
         ))}
       </ul>
+      {/* Boksen er den samme som ved oprettelse. Efter en redigering hentes
+          listen igen — ellers ville posten stå med de gamle ord indtil næste
+          poll, og en gemt ændring ville se ud som om den ikke skete. */}
+      {redigerer ? (
+        <SideOpgaveDialog
+          config={config}
+          opgave={redigerer}
+          onClose={() => { setRedigerer(null); void hent() }}
+        />
+      ) : null}
     </div>
   )
 }

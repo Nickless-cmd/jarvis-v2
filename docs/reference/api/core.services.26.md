@@ -48,20 +48,21 @@ _Side-task flag — keep the main thread focused._
 | function | `mark_autonomy_exhausted_reported` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L608) |
 | function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L620) |
 | function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L624) |
-| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L642) |
-| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L727) |
-| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L755) |
-| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L787) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L859) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L892) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L897) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L909) |
-| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L921) |
-| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L935) |
-| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L1093) |
-| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1115) |
-| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1139) |
-| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1150) |
+| function | `opdater` | `(side_task_id, **aendringer)` | Redigér en sideopgave der endnu ikke er taget op. | [src](../../../core/services/side_tasks.py#L648) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L741) |
+| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L826) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L854) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L886) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L958) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L991) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L996) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1008) |
+| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L1020) |
+| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L1034) |
+| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L1192) |
+| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1214) |
+| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1238) |
+| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1249) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._

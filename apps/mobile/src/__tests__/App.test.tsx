@@ -200,3 +200,13 @@ it('shows login again when the user signs out', async () => {
   await waitFor(() => expect(screen.queryByText('session-provider-1')).toBeNull())
   expect(screen.getByText('Login screen')).toBeTruthy()
 })
+
+// Broen er en NETVÆRKSFORBINDELSE, ikke session-state. Testene her måler
+// hvilken session-provider der monteres — ikke om en socket kan åbnes.
+// Uden denne mock startede den ægte `startBro`, som falder tilbage på den
+// globale `WebSocket`. Den findes i Node 22 men IKKE i Node 20, som CI kører,
+// så tre tests var grønne lokalt og røde i CI (målt 25/10-2026).
+jest.mock('../lib/broOpstart', () => ({
+  startBro: jest.fn(() => () => undefined),
+  klientId: jest.fn(async () => 'test-klient'),
+}))

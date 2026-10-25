@@ -4,8 +4,10 @@ og BLOKERENDE arbejde offloades til asyncio.to_thread (jarvis-api --workers 1, s
 from __future__ import annotations
 
 import asyncio
+import json
 
 from fastapi import APIRouter, Body, HTTPException
+from fastapi.responses import StreamingResponse
 
 from core.services import cowork_feed
 
@@ -119,6 +121,76 @@ async def cowork_side_tasks(scope: str = "open") -> dict:
     items = await asyncio.to_thread(list_open_synlige)
     items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
     return {"side_tasks": items, "count": len(items), "scope": "open"}
+
+
+@router.get("/side-tasks/stream")
+async def cowork_side_tasks_stream() -> StreamingResponse:
+    """SSE: ét signal når sideopgave-listen ændrer sig — i stedet for tre pollere.
+
+    ## Hvorfor (25/10-2026)
+
+    Desk havde tre uafhængige læsere af samme data: panelet hentede kun ved
+    mount, listen hvert 8. sekund, kortet i chatten hvert 6. Tre forbindelser
+    for data der ændrer sig få gange i timen — og panelet opdagede slet ikke
+    at Jarvis oprettede eller lukkede en opgave i baggrunden.
+
+    ## Hvorfor det virker på tværs af processer
+
+    Dispatcheren kører i `jarvis-runtime`, ruterne her i `jarvis-api`. En
+    process-lokal kanal ville kun se halvdelen. `event_bus` skriver til
+    `events`-tabellen, og relæet (`core/eventbus/krydsproces.py`) leverer den
+    anden proces' rækker til lokale abonnenter — så denne strøm ser BEGGE.
+
+    ## Signal, ikke delta
+
+    Strømmen sender ikke indholdet, kun «hent igen». Lageret forbliver eneste
+    sandhed, så listen kan ikke komme i utakt med det der faktisk står gemt.
+    """
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan se sideopgaverne")
+
+    from core.eventbus.bus import event_bus
+    from core.services import side_tasks
+
+    async def _gen():
+        q = event_bus.subscribe()
+        try:
+            # Snapshot først: klienten skal kunne tegne listen med det samme i
+            # stedet for at vente på en ændring der måske først kommer om en time.
+            # `list_alle` læser fil — den må ikke køre på event-loopet
+            # (jarvis-api --workers 1, se modulets docstring).
+            opgaver = await asyncio.to_thread(side_tasks.list_alle)
+            yield "data: " + json.dumps(
+                {"type": "snapshot", "opgaver": opgaver}, ensure_ascii=False
+            ) + "\n\n"
+            while True:
+                try:
+                    rec = await asyncio.to_thread(q.get, True, 15)
+                except Exception:  # noqa: BLE001 — timeout er normalgang, ikke en fejl
+                    yield ": ping\n\n"  # keepalive
+                    continue
+                if rec is None:
+                    # `unsubscribe` lægger None i køen som afslutning.
+                    return
+                if str(rec.get("kind") or "") != "runtime.side_tasks_changed":
+                    continue
+                # Listen sendes MED — ikke bare et «hent igen». Ellers skulle
+                # hver af de tre visninger lave sit eget fetch ved hver
+                # ændring, og så var tre pollere blot blevet til tre fetches.
+                opgaver = await asyncio.to_thread(side_tasks.list_alle)
+                yield "data: " + json.dumps(
+                    {"type": "snapshot", "opgaver": opgaver, "event_id": rec.get("id")},
+                    ensure_ascii=False,
+                ) + "\n\n"
+        finally:
+            event_bus.unsubscribe(q)
+
+    return StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/side-tasks")

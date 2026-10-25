@@ -6,9 +6,18 @@ const setSideTaskStatus = vi.fn()
 const setSideTaskSkjult = vi.fn()
 vi.mock('../../lib/sideTasksApi', () => ({
   getSideTasks: (...a: unknown[]) => getSideTasks(...a),
+  // Kortet får nu ALLE opgaver fra strømmen og filtrerer selv de åbne ud,
+  // men henter sin første visning gennem `getAlleSideTasks`. Den delegerer
+  // til samme spy, så testene ser ét datasæt uanset hvilken vej der læses.
+  getAlleSideTasks: (...a: unknown[]) => getSideTasks(...a),
   setSideTaskStatus: (...a: unknown[]) => setSideTaskStatus(...a),
   setSideTaskSkjult: (...a: unknown[]) => setSideTaskSkjult(...a),
 }))
+
+vi.mock('../../lib/sideTasksStream', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/sideTasksStream')>()
+  return { ...actual, startSideTasksStream: () => ({ abort: () => {} }) }
+})
 
 import { SideOpgaveKort, type SideOpgaveHandlinger } from './SideOpgaveKort'
 

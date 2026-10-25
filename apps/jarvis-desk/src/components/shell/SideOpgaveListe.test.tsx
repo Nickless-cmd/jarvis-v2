@@ -10,6 +10,15 @@ vi.mock('../../lib/sideTasksApi', () => ({
   setSideTaskStatus: (...a: unknown[]) => setSideTaskStatus(...a),
 }))
 
+// Strømmen er transport, ikke komponent-adfærd. Testen her måler hvordan
+// listen RENDERES af det den får — SSE-forbindelsen har sin egen test i
+// sideTasksStream.test.ts. Uden denne mock ville jsdom forsøge et fetch der
+// ikke findes, og backoff-loopet ville hænge testen i 30 sekunder.
+vi.mock('../../lib/sideTasksStream', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/sideTasksStream')>()
+  return { ...actual, startSideTasksStream: () => ({ abort: () => {} }) }
+})
+
 import { SideOpgaveListe } from './SideOpgaveListe'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }

@@ -125,33 +125,34 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_role_owner` | `()` | (is_owner, user_id) for den indloggede bruger. Owner afgøres af bruger- | [src](../../../apps/api/jarvis_api/routes/cowork.py#L15) |
-| function | `_resolve_item` | `(item_id, decision)` | Router en godkendelses-beslutning til den rette eksisterende resolver. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L31) |
-| function | `cowork_queue` | `()` | Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L67) |
-| function | `cowork_opmaerksomhed` | `()` | Tilstands-hjernen: ÉN samlet tilstand for den indloggede brugers | [src](../../../apps/api/jarvis_api/routes/cowork.py#L76) |
-| function | `cowork_opmaerksomhed_set` | `(session_id)` | Brugeren har åbnet samtalen — dens «færdig»/«fejlede» forsvinder. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L86) |
-| function | `cowork_side_tasks` | `(scope=…)` | Jarvis' flaggede sideopgaver. `scope=open` (standard) er de åbne; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L97) |
-| function | `cowork_side_task_opret` | `(payload=…)` | Opret en sideopgave fra Desk — den flade Bjørn bad om 15/10-2026. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L125) |
-| function | `cowork_side_task_rediger` | `(side_task_id, payload=…)` | Redigér en sideopgave der endnu ikke er taget op. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L166) |
-| function | `cowork_side_task_status` | `(side_task_id, payload=…)` | Skift en sideopgaves status fra Desk: `activated` (startet fra kortet — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L211) |
-| function | `cowork_side_task_snooze` | `(side_task_id, payload=…)` | Udskyd en sideopgave til et tidspunkt — eller væk den før tid. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L242) |
-| function | `cowork_side_task_skjul` | `(side_task_id, payload=…)` | Skjul eller vis en sideopgave i chatkortet — uden at lukke den. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L270) |
-| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L294) |
-| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L303) |
-| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L315) |
-| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L329) |
-| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L343) |
-| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L353) |
-| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L366) |
-| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L377) |
-| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L387) |
-| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L393) |
-| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L402) |
-| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L414) |
-| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L430) |
-| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L439) |
-| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L452) |
-| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L461) |
+| function | `_role_owner` | `()` | (is_owner, user_id) for den indloggede bruger. Owner afgøres af bruger- | [src](../../../apps/api/jarvis_api/routes/cowork.py#L17) |
+| function | `_resolve_item` | `(item_id, decision)` | Router en godkendelses-beslutning til den rette eksisterende resolver. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L33) |
+| function | `cowork_queue` | `()` | Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L69) |
+| function | `cowork_opmaerksomhed` | `()` | Tilstands-hjernen: ÉN samlet tilstand for den indloggede brugers | [src](../../../apps/api/jarvis_api/routes/cowork.py#L78) |
+| function | `cowork_opmaerksomhed_set` | `(session_id)` | Brugeren har åbnet samtalen — dens «færdig»/«fejlede» forsvinder. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L88) |
+| function | `cowork_side_tasks` | `(scope=…)` | Jarvis' flaggede sideopgaver. `scope=open` (standard) er de åbne; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L99) |
+| function | `cowork_side_tasks_stream` | `()` | SSE: ét signal når sideopgave-listen ændrer sig — i stedet for tre pollere. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L127) |
+| function | `cowork_side_task_opret` | `(payload=…)` | Opret en sideopgave fra Desk — den flade Bjørn bad om 15/10-2026. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L197) |
+| function | `cowork_side_task_rediger` | `(side_task_id, payload=…)` | Redigér en sideopgave der endnu ikke er taget op. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L238) |
+| function | `cowork_side_task_status` | `(side_task_id, payload=…)` | Skift en sideopgaves status fra Desk: `activated` (startet fra kortet — | [src](../../../apps/api/jarvis_api/routes/cowork.py#L283) |
+| function | `cowork_side_task_snooze` | `(side_task_id, payload=…)` | Udskyd en sideopgave til et tidspunkt — eller væk den før tid. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L314) |
+| function | `cowork_side_task_skjul` | `(side_task_id, payload=…)` | Skjul eller vis en sideopgave i chatkortet — uden at lukke den. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L342) |
+| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L366) |
+| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L375) |
+| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L387) |
+| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L401) |
+| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L415) |
+| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L425) |
+| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L438) |
+| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L449) |
+| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L459) |
+| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L465) |
+| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L474) |
+| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L486) |
+| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L502) |
+| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L511) |
+| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L524) |
+| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L533) |
 
 ## `apps/api/jarvis_api/routes/files.py`
 _Udgivne filer — per bruger._

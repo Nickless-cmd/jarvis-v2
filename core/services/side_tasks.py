@@ -69,6 +69,34 @@ def _load_all() -> list[dict[str, Any]]:
     return [r for r in raw if isinstance(r, dict)]
 
 
+def _publicer_aendring() -> None:
+    """Fortæl Desk at listen er ændret — ét invaliderings-signal, ikke et delta.
+
+    ## Hvorfor et signal og ikke deltaer (25/10-2026)
+
+    Desk havde TRE uafhængige pollere af samme data: panelet hentede kun ved
+    mount, listen hvert 8. sekund, kortet i chatten hvert 6. Målt: tre
+    forbindelser for data der ændrer sig nogle få gange i timen, og et panel
+    der slet ikke opdagede at Jarvis oprettede en opgave i baggrunden.
+
+    Signaler sender ikke indholdet, kun «hent igen». Det kan ikke komme i
+    utakt med lageret, fordi lageret forbliver eneste sandhed — og det virker
+    på tværs af processer, fordi `event_bus` skriver til DB'en og relæet
+    (`core/eventbus/krydsproces.py`) leverer den anden proces' events lokalt.
+    Dispatcheren kører i runtime, ruterne i API; en process-lokal kanal ville
+    kun se halvdelen.
+
+    En manglende bus må ALDRIG vælte en gemt opgave: opgaven er allerede
+    persisteret og verificeret ved read-back når vi når hertil.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+
+        event_bus.publish("runtime.side_tasks_changed", {})
+    except Exception:  # noqa: BLE001 — se docstring: signalet er sekundært
+        logger.debug("side_tasks: kunne ikke publicere ændringssignal", exc_info=True)
+
+
 def _save_all(items: list[dict[str, Any]]) -> None:
     save_json(_STATE_KEY, items)
     # state_store.save_json is deliberately best-effort for optional daemons.
@@ -76,6 +104,9 @@ def _save_all(items: list[dict[str, Any]]) -> None:
     # swallowed write error. Mutations hold med_laas, so read-back is stable.
     if _load_all() != items:
         raise OSError("side tasks could not persist")
+    # Efter den verificerede skrivning — aldrig før. Et signal om en ændring
+    # der ikke blev gemt ville få Desk til at hente det gamle svar igen.
+    _publicer_aendring()
 
 
 def _age_label(created_at: Any) -> str | None:

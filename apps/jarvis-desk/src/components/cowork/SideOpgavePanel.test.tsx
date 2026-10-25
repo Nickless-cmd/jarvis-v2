@@ -6,6 +6,12 @@ vi.mock('../../lib/sideTasksApi', () => ({
   getAlleSideTasks: vi.fn(),
   setSideTaskStatus: vi.fn(),
 }))
+
+// Se SideOpgaveListe.test.tsx: strømmen er transport, ikke komponent-adfærd.
+vi.mock('../../lib/sideTasksStream', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/sideTasksStream')>()
+  return { ...actual, startSideTasksStream: () => ({ abort: () => {} }) }
+})
 import { getAlleSideTasks, setSideTaskStatus } from '../../lib/sideTasksApi'
 import { SideOpgavePanel } from './SideOpgavePanel'
 

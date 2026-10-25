@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
-import { getSideTasks, setSideTaskStatus, setSideTaskSkjult, type SideTask } from '../../lib/sideTasksApi'
+import { setSideTaskStatus, setSideTaskSkjult, type SideTask } from '../../lib/sideTasksApi'
+import { useSideTasks } from '../../lib/sideTasksStream'
 import '../../styles/side-tasks.css'
 
 export const POLL_MS = 6000
@@ -51,7 +52,14 @@ const NAVN: Record<Valg, string> = {
  * spørger ikke igen.
  */
 export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | null; handlinger: SideOpgaveHandlinger }) {
-  const [opgaver, setOpgaver] = useState<SideTask[]>([])
+  // Strømmen bærer ALLE opgaver (25/10-2026) — kortet filtrerer selv de åbne
+  // og ikke-skjulte ud. Før gjorde serverens `scope=open` det, og kortet
+  // pollede hvert 6. sekund for at opdage at noget havde ændret sig.
+  const { opgaver: alle, hent } = useSideTasks(config ?? undefined)
+  const opgaver = (alle ?? []).filter(
+    (t) => (t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
+      && !t.skjult_i_chat,
+  )
   const [i, setI] = useState(0)
   const [menu, setMenu] = useState(false)
   const [travl, setTravl] = useState(false)
@@ -61,25 +69,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
   // kald ikke ser ud som om knappen ikke virkede.
   const [lukker, setLukker] = useState(false)
   const [bevis, setBevis] = useState('')
-  const forbudt = useRef(false)
   const rod = useRef<HTMLDivElement>(null)
-
-  const hent = async (cfg: ApiConfig) => {
-    if (forbudt.current) return
-    try {
-      setOpgaver(await getSideTasks(cfg))
-    } catch (e) {
-      if (/\b403\b/.test(e instanceof Error ? e.message : '')) { forbudt.current = true; setOpgaver([]) }
-    }
-  }
-
-  useEffect(() => {
-    if (!config) return
-    forbudt.current = false
-    void hent(config)
-    const id = setInterval(() => void hent(config), POLL_MS)
-    return () => clearInterval(id)
-  }, [config?.apiBaseUrl, config?.authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!menu) return
@@ -110,7 +100,6 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
       }
       if (v === 'koe') {
         if (t.status !== 'queued') await setSideTaskStatus(config, t.side_task_id, 'queued')
-        setOpgaver((l) => l.map((x) => x.side_task_id === t.side_task_id ? { ...x, status: 'queued' } : x))
       } else {
         let arbejds: ArbejdsSession
         if (v === 'worktree') arbejds = await handlinger.worktree!(t)
@@ -121,10 +110,9 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
         // lukke-instruksen kan stå netop dér.
         if (t.status !== 'activated' || arbejds) {
           await setSideTaskStatus(config, t.side_task_id, 'activated', { session: arbejds })
-          setOpgaver((l) => l.map((x) => (x.side_task_id === t.side_task_id ? { ...x, status: 'activated' } : x)))
         }
       }
-      void hent(config)
+      void hent()
     } catch (e) {
       setFejl(e instanceof Error ? e.message : 'Det lykkedes ikke')
     } finally {
@@ -150,9 +138,8 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
     setTravl(true); setFejl('')
     try {
       await setSideTaskStatus(config, t.side_task_id, 'completed', { bevis: ord })
-      setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
       setLukker(false); setBevis('')
-      void hent(config)
+      void hent()
     } catch (e) {
       setFejl(e instanceof Error ? e.message : 'Det lykkedes ikke')
     } finally {
@@ -170,8 +157,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
       // genåbnings-rute. Fire klik i et hjørne afskrev fire opgaver for altid.
       // Opgaven er stadig ÅBEN nu; den er bare ikke i vejen her.
       await setSideTaskSkjult(config, t.side_task_id, true)
-      setOpgaver((l) => l.filter((x) => x.side_task_id !== t.side_task_id))
-      void hent(config)
+      void hent()
     } catch (e) {
       setFejl(e instanceof Error ? e.message : 'Kunne ikke skjule opgaven')
     } finally {

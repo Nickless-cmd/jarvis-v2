@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getAlleSideTasks, setSideTaskStatus, type SideTask } from '../../lib/sideTasksApi'
+import { useState } from 'react'
+import { setSideTaskStatus, type SideTask } from '../../lib/sideTasksApi'
+import { useSideTasks } from '../../lib/sideTasksStream'
 import { SideOpgaveDialog } from '../SideOpgaveDialog'
 import type { ApiConfig } from '../../lib/api'
 
@@ -32,7 +33,13 @@ function naar(iso?: string): string {
 }
 
 export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
-  const [opgaver, setOpgaver] = useState<SideTask[] | null>(null)
+  // Strømmen bærer listen (25/10-2026). Panelet hentede før KUN ved mount, så
+  // en opgave Jarvis oprettede eller lukkede i baggrunden var usynlig indtil
+  // man skiftede fane — og det var den dyreste af de tre pollere, fordi den
+  // slet ikke pollede.
+  const { opgaver, fejl: henteFejl, hent } = useSideTasks(config)
+  // Handlings-fejl (afvist lukning, netværk) holdes adskilt fra hente-fejl:
+  // de skal vises på samme sted, men kun handlingen må rydde sin egen.
   const [fejl, setFejl] = useState('')
   const [travl, setTravl] = useState('')
   // Lukningen skal bære sin egen begrundelse (16/10-2026): `completed` kræver
@@ -44,19 +51,6 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
   // oprettet — en tastefejl kostede en ny opgave og en gammel der skulle ryddes
   // op. Boksen er den samme som ved oprettelse; her bærer den bare en post.
   const [redigerer, setRedigerer] = useState<SideTask | null>(null)
-
-  const hent = useCallback(async () => {
-    if (!config) return
-    try {
-      setOpgaver(await getAlleSideTasks(config))
-      setFejl('')
-    } catch (e) {
-      // Tom liste og en fejl er ikke det samme — og det var hele problemet.
-      setFejl(e instanceof Error ? e.message : 'Kunne ikke hente sideopgaverne')
-    }
-  }, [config])
-
-  useEffect(() => { void hent() }, [hent])
 
   /** Åbn lukke-formen. Den lukker IKKE selv — se `bekraeft`. */
   const aabnLuk = (t: SideTask, beslutning: 'completed' | 'dismissed') => {
@@ -94,18 +88,18 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
     }
   }
 
-  if (opgaver === null && !fejl) return <p className="settings-hint">Henter…</p>
+  if (opgaver === null && !fejl && !henteFejl) return <p className="settings-hint">Henter…</p>
   const aabne = (opgaver ?? []).filter((t) => t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
   const lukkede = (opgaver ?? []).filter((t) => t.status === 'completed' || t.status === 'dismissed')
 
   return (
     <div className="sop" data-testid="side-opgave-panel">
-      {fejl ? <p className="sop-fejl" role="alert">{fejl}</p> : null}
+      {(fejl || henteFejl) ? <p className="sop-fejl" role="alert">{fejl || henteFejl}</p> : null}
       <p className="settings-hint">
         {aabne.length} åbne · {lukkede.length} lukkede. En lukket opgave kan ikke genåbnes —
         den står her som spor.
       </p>
-      {(opgaver ?? []).length === 0 && !fejl ? (
+      {(opgaver ?? []).length === 0 && !fejl && !henteFejl ? (
         <p className="settings-hint">Jarvis har ikke flagget nogen opgaver endnu.</p>
       ) : null}
       <ul className="sop-liste">

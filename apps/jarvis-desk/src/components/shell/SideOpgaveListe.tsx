@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Check, ChevronDown, ChevronRight, Eye, EyeOff, Maximize2, Minimize2, Trash2, X,
 } from 'lucide-react'
 import {
-  getAlleSideTasks, setSideTaskSkjult, setSideTaskStatus, type SideTask,
+  setSideTaskSkjult, setSideTaskStatus, type SideTask,
 } from '../../lib/sideTasksApi'
+import { useSideTasks } from '../../lib/sideTasksStream'
 import type { ApiConfig } from '../../lib/api'
 import '../../styles/side-tasks.css'
 
@@ -62,30 +63,19 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refresh
    *  med det samme i stedet for at vente paa sin 8-sekunders poll. */
   refreshKey?: number
 }) {
-  const [opgaver, setOpgaver] = useState<SideTask[] | null>(null)
+  // Strømmen bærer listen (25/10-2026) — før pollede denne hvert 8. sekund,
+  // mens panelet slet ikke pollede. To kadence for samme data.
+  const { opgaver, fejl: henteFejl, hent } = useSideTasks(config)
   const [fejl, setFejl] = useState('')
   const [travl, setTravl] = useState('')
   const [lukkedeAabne, setLukkedeAabne] = useState(false)
   // Hvilken række der venter på bekræftelse på «Fjern for altid».
   const [bekraeft, setBekraeft] = useState('')
 
-  const hent = useCallback(async () => {
-    if (!config) return
-    try {
-      setOpgaver(await getAlleSideTasks(config))
-      setFejl('')
-    } catch (e) {
-      // Tom liste og en fejl er IKKE det samme — og det var hele problemet
-      // panelet blev bygget for at løse.
-      setFejl(e instanceof Error ? e.message : 'Kunne ikke hente sideopgaverne')
-    }
-  }, [config])
-
-  useEffect(() => {
-    void hent()
-    const id = setInterval(() => { if (!document.hidden) void hent() }, 8000)
-    return () => clearInterval(id)
-  }, [hent, refreshKey])
+  // `refreshKey` bumpes når en opgave oprettes andetsteds. Strømmen fanger
+  // ændringen selv, men et eksplicit bump skal virke med det samme i stedet
+  // for at vente på næste signal.
+  useEffect(() => { void hent() }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handling = async (t: SideTask, fn: () => Promise<void>) => {
     if (!config || travl) return
@@ -183,8 +173,8 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refresh
         </button>
       </div>
 
-      {fejl ? <div className="jobs-fejl" role="alert">{fejl}</div> : null}
-      {opgaver === null && !fejl ? <div className="jobs-tom">Henter…</div> : null}
+      {(fejl || henteFejl) ? <div className="jobs-fejl" role="alert">{fejl || henteFejl}</div> : null}
+      {opgaver === null && !fejl && !henteFejl ? <div className="jobs-tom">Henter…</div> : null}
 
       {opgaver !== null && (
         <>

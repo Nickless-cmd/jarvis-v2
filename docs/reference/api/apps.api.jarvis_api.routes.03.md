@@ -211,14 +211,15 @@ _Sansernes Arkiv HTTP endpoints._
 | function | `record_memory` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L67) |
 
 ## `apps/api/jarvis_api/routes/status.py`
-_Public-safe /status endpoint._
+_Status-endpoints til forsiden — én rig og én offentlig._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_format_uptime` | `(seconds)` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L22) |
-| function | `_daemon_count` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L36) |
-| function | `_visible_model_label` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L44) |
-| function | `status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L54) |
+| function | `_format_uptime` | `(seconds)` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L33) |
+| function | `_daemon_count` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L47) |
+| function | `_visible_model_label` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L55) |
+| function | `status` | `()` | Den RIGE status. Kræver token — bærer model og daemons. | [src](../../../apps/api/jarvis_api/routes/status.py#L65) |
+| function | `status_public` | `()` | Den OFFENTLIGE status: online + uptime, intet andet. | [src](../../../apps/api/jarvis_api/routes/status.py#L79) |
 
 ## `apps/api/jarvis_api/routes/system_health.py`
 

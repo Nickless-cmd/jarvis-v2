@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9290/17560 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9292/17561 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9290/17560 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 12 | 23 | 52% |
-| `apps.api.jarvis_api.routes` | 706 | 976 | 72% |
+| `apps.api.jarvis_api.routes` | 708 | 977 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -42,13 +42,13 @@ Generated from source. 9290/17560 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2586)
+## Undocumented public functions (2585)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L282)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L289)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L64)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L77)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L163)
@@ -145,7 +145,6 @@ Generated from source. 9290/17560 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/sensory.py` :: `record_memory` (L67)
 - `apps/api/jarvis_api/routes/sensory.py` :: `search_memories` (L44)
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
-- `apps/api/jarvis_api/routes/status.py` :: `status` (L54)
 - `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L30)

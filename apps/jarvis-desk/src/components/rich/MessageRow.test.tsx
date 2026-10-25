@@ -214,4 +214,39 @@ describe('MessageRow', () => {
     expect(screen.queryByRole('button', { name: /åbn/i })).toBeNull()
     expect(container.querySelector('.artifact-affordance')).toBeNull()
   })
+
+describe('artifact-badge hører til code mode, ikke samtalen', () => {
+  // Bjørn 25/10-2026: «Åbn visible_runs.py» stod under hvert svar i chat mode.
+  // Detektionen er korrekt (artifacts.ts regel 3 bygger file-artifacts af
+  // FAKTISKE tool_use-kald) — men i en samtale står svaret lige der, og knappen
+  // hører til maskinrummet. `presentation` fandtes allerede og blev brugt til
+  // transskriptet; badgen var det eneste sted den ikke blev brugt.
+  const FIL_BLOK: ContentBlock[] = [
+    { type: 'tool_use', id: 't1', name: 'read_file',
+      input: { target_path: 'core/services/visible_runs.py' }, status: 'done' },
+    { type: 'text', text: 'Jeg læste filen.' },
+  ]
+
+  it('viser INGEN badge i chat mode', () => {
+    const { container } = render(
+      <PanelProvider defaultWidth={400}>
+        <MessageRow presentation="chat" chatMode="living" status="done" role="assistant"
+          blocks={FIL_BLOK} density="compact" streaming={false} />
+      </PanelProvider>,
+    )
+    expect(container.querySelector('.artifact-affordance')).toBeNull()
+  })
+
+  it('BEHOLDER badgen i code mode', () => {
+    // Fælden: `presentation` default'er til 'code', så en test UDEN proppen
+    // består uanset fixet. Denne sender den eksplicit.
+    const { container } = render(
+      <PanelProvider defaultWidth={400}>
+        <MessageRow presentation="code" role="assistant"
+          blocks={FIL_BLOK} density="compact" streaming={false} />
+      </PanelProvider>,
+    )
+    expect(container.querySelector('.artifact-affordance')).not.toBeNull()
+  })
+})
 })

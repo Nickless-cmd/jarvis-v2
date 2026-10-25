@@ -279,7 +279,13 @@ function MessageRowImpl({
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
                   runId={runId}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
-            {!streaming && detectArtifacts(blocks).map((a, i) => (
+            {/* 25/10-2026 (Bjørn): «Åbn visible_runs.py» stod under hvert svar i
+                chat mode. Detektionen er rigtig — artifacts.ts regel 3 bygger
+                file-artifacts af FAKTISKE tool_use-kald — men i en samtale står
+                svaret lige der, og knappen hører til maskinrummet. `presentation`
+                fandtes allerede og blev brugt til transskriptet ovenfor; badgen
+                var det eneste sted den ikke blev brugt. */}
+            {!streaming && presentation !== 'chat' && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}
           </InlineErrorBoundary>

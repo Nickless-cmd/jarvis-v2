@@ -33,9 +33,29 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "maa_tilgaa_session",
     "arbejdsrum_for",
+    "identitetsaliaser_for_bruger",
     "ejerstempel_tilhoerer_bruger",
     "session_tilhoerer_bruger",
 ]
+
+
+def identitetsaliaser_for_bruger(uid: str) -> tuple[str, ...]:
+    """Rå og kanoniske id'er der beviseligt tilhører samme bruger."""
+    token = (uid or "").strip()
+    if not token:
+        return ()
+    aliases = {token}
+    try:
+        from core.services.routine_migration import (
+            canonical_identity_aliases,
+            resolve_canonical_identity,
+        )
+        canonical = resolve_canonical_identity(token)
+        if canonical:
+            aliases.update(canonical_identity_aliases(canonical))
+    except Exception:
+        logger.debug("session_access: aliasopslag af %s fejlede", token, exc_info=True)
+    return tuple(sorted(aliases))
 
 
 def arbejdsrum_for(uid: str) -> str:
@@ -55,6 +75,15 @@ def arbejdsrum_for(uid: str) -> str:
             return str(bruger.workspace)
     except Exception:
         logger.debug("session_access: opslag af %s fejlede", u, exc_info=True)
+    try:
+        from core.runtime import db
+        from core.services.routine_migration import resolve_canonical_identity
+        canonical = resolve_canonical_identity(u)
+        row = db.get_user_row(canonical) if canonical else None
+        if row and row.get("workspace"):
+            return str(row["workspace"])
+    except Exception:
+        logger.debug("session_access: kanonisk opslag af %s fejlede", u, exc_info=True)
     return u
 
 

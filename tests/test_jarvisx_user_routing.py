@@ -58,6 +58,51 @@ async def test_medlemschat_slippes_igennem(monkeypatch, path):
     assert response.status_code == 200
 
 
+@pytest.mark.asyncio
+async def test_kanonisk_login_bindes_til_medlemmets_discord_historik(monkeypatch):
+    """Email-loginets konto-id må ikke sende Michelle i public-workspace."""
+    from core.identity import user_db, users
+    from core.identity.workspace_context import current_context_snapshot
+    from core.runtime import jarvisx_auth
+
+    monkeypatch.setattr(
+        jarvisx_auth, "verify_token",
+        lambda _token: {"sub": "canonical-michelle", "role": "partner"},
+    )
+    legacy = SimpleNamespace(
+        discord_id="discord-michelle", workspace="michelle",
+        name="Michelle", role="partner",
+    )
+    monkeypatch.setattr(
+        users, "find_user_by_discord_id",
+        lambda uid: legacy if uid == "discord-michelle" else None,
+    )
+    monkeypatch.setattr(
+        user_db, "get_user",
+        lambda uid: {
+            "user_id": uid, "discord_id": "discord-michelle",
+            "workspace": "michelle", "name": "Michelle", "deleted_at": None,
+        },
+    )
+    req = Mock()
+    req.method = "GET"
+    req.url = Mock(path="/chat/sessions")
+    req.headers = {"authorization": "Bearer valid-test-token"}
+    req.client = Mock(host="8.8.8.8")
+    req.state = Mock()
+    seen = {}
+
+    async def _next(_req):
+        seen.update(current_context_snapshot())
+        return Mock(status_code=200)
+
+    response = await M.jarvisx_user_routing_middleware(req, _next)
+
+    assert response.status_code == 200
+    assert seen["workspace"] == "michelle"
+    assert seen["user_id"] == "discord-michelle"
+
+
 def _request(host="1.2.3.4", path="/presence/ping"):
     r = Mock()
     r.client = Mock(host=host)

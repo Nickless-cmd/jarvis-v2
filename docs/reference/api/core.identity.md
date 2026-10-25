@@ -146,10 +146,11 @@ _Må den der spørger, røre DENNE samtale?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `arbejdsrum_for` | `(uid)` | Det arbejdsrum et bruger-stempel hører til. | [src](../../../core/identity/session_access.py#L41) |
-| function | `ejerstempel_tilhoerer_bruger` | `(owner_user_id, user_id)` | Har et ejer-stempel samme arbejdsrum som brugeren? | [src](../../../core/identity/session_access.py#L61) |
-| function | `session_tilhoerer_bruger` | `(session_id, user_id)` | Har seneste stemplede brugerbesked samme arbejdsrum som brugeren? | [src](../../../core/identity/session_access.py#L70) |
-| function | `maa_tilgaa_session` | `(session_id)` | Må den nuværende bruger læse eller ændre samtalen? | [src](../../../core/identity/session_access.py#L85) |
+| function | `identitetsaliaser_for_bruger` | `(uid)` | Rå og kanoniske id'er der beviseligt tilhører samme bruger. | [src](../../../core/identity/session_access.py#L42) |
+| function | `arbejdsrum_for` | `(uid)` | Det arbejdsrum et bruger-stempel hører til. | [src](../../../core/identity/session_access.py#L61) |
+| function | `ejerstempel_tilhoerer_bruger` | `(owner_user_id, user_id)` | Har et ejer-stempel samme arbejdsrum som brugeren? | [src](../../../core/identity/session_access.py#L90) |
+| function | `session_tilhoerer_bruger` | `(session_id, user_id)` | Har seneste stemplede brugerbesked samme arbejdsrum som brugeren? | [src](../../../core/identity/session_access.py#L99) |
+| function | `maa_tilgaa_session` | `(session_id)` | Må den nuværende bruger læse eller ændre samtalen? | [src](../../../core/identity/session_access.py#L114) |
 
 ## `core/identity/user_attribution_migrations.py`
 _User attribution migrations — add user_id/workspace_name columns._

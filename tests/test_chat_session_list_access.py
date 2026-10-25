@@ -71,6 +71,29 @@ def test_listen_beholder_brugerens_egen_samtale(isolated_runtime) -> None:
     assert egen in ids
 
 
+def test_kanonisk_login_ser_historik_stemplet_med_discord_id(isolated_runtime) -> None:
+    """Desk-login bruger konto-id; ældre samtaler bruger Discord-id."""
+    from core.identity import user_db
+    from core.runtime import db
+
+    konto = user_db.create_user(
+        email="michelle@example.test", name="Michelle",
+        password="password", role="member", workspace="michelle",  # pragma: allowlist secret
+    )
+    db.update_user_row(
+        konto["user_id"],
+        {"discord_id_enc": user_db._enc(konto["user_id"], MICHELLE)},
+    )
+    egen = _session("discord-historik")
+    append_chat_message(
+        session_id=egen, role="user", content="hej", user_id=MICHELLE,
+    )
+
+    ids = {str(row["id"]) for row in list_chat_sessions(user_id=konto["user_id"])}
+
+    assert egen in ids
+
+
 def test_ejer_stemplet_er_nok_til_at_samtalen_vises(isolated_runtime) -> None:
     """En samtale oprettet af et AUTONOMT run har ingen brugerbesked.
 

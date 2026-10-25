@@ -296,10 +296,13 @@ def list_chat_sessions(
     art = (kind or "").strip().lower()
     art = art if art in ("chat", "code") else ""
     if uid:
+        from core.identity.session_access import identitetsaliaser_for_bruger
+        aliases = identitetsaliaser_for_bruger(uid) or (uid,)
+        alias_marks = ", ".join("?" for _ in aliases)
         with connect() as conn:
             _sikr_flag_kolonner(conn)
             rows = conn.execute(
-                """
+                f"""
                 SELECT
                     s.session_id,
                     s.title,
@@ -341,7 +344,7 @@ def list_chat_sessions(
                         SELECT 1 FROM chat_messages mu
                         WHERE mu.session_id = s.session_id
                           AND mu.role = 'user'
-                          AND mu.user_id = ?
+                          AND mu.user_id IN ({alias_marks})
                     )
                     -- Ejer-stemplet tæller OGSÅ (23/10-2026). Uden denne gren
                     -- faldt en samtale oprettet af et AUTONOMT run ud af
@@ -354,13 +357,13 @@ def list_chat_sessions(
                     -- Reglen er den SAMME som gaten: stemplet først, og
                     -- `ejerstempel_tilhoerer_bruger` nedenfor afgør
                     -- arbejdsrums-aliaserne. Denne gren er kun kandidat-filter.
-                    OR COALESCE(s.owner_user_id, '') = ?
+                    OR COALESCE(s.owner_user_id, '') IN ({alias_marks})
                 )
                   AND (? = 1 OR COALESCE(s.archived, 0) = 0)
                   AND (? = '' OR COALESCE(s.kind, 'chat') = ?)
                 ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
                 """,
-                (uid, uid, 1 if inkluder_arkiverede else 0, art, art),
+                (*aliases, *aliases, 1 if inkluder_arkiverede else 0, art, art),
             ).fetchall()
         # SQL's EXISTS is an efficient candidate filter, but it is not the
         # ownership rule: a historical row can carry another user's stamp.

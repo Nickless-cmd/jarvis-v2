@@ -67,6 +67,23 @@ def test_arbejdsrum_sammenlignes_ikke_raa_id(verden):
     assert arbejdsrum_for("ukendt-42") == "ukendt-42"
 
 
+def test_kanonisk_id_og_discord_id_har_samme_arbejdsrum(isolated_runtime):
+    from core.identity import user_db
+    from core.runtime import db
+
+    konto = user_db.create_user(
+        email="alias@example.test", name="Alias",
+        password="password", role="member", workspace="michelle",  # pragma: allowlist secret
+    )
+    db.update_user_row(
+        konto["user_id"],
+        {"discord_id_enc": user_db._enc(konto["user_id"], "discord-michelle")},
+    )
+
+    assert arbejdsrum_for(konto["user_id"]) == "michelle"
+    assert arbejdsrum_for("discord-michelle") == "michelle"
+
+
 def test_ruten_afviser_at_slette_en_andens_samtale(verden, monkeypatch):
     from fastapi import HTTPException
     from apps.api.jarvis_api.routes import chat as rute

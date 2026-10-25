@@ -381,12 +381,31 @@ async def jarvisx_user_routing_middleware(
         logger.warning("jarvisx middleware: identity import failed: %s", exc)
         return await call_next(request)
 
+    canonical_user = None
     if user_id:
         try:
             user = find_user_by_discord_id(user_id)
         except Exception as exc:
             logger.warning("jarvisx middleware: user lookup failed for %s: %s", user_id, exc)
             user = None
+        if user is None and token_claims:
+            # Login-tokenets ``sub`` er kontoens kanoniske users.user_id,
+            # mens users.json og den ældre chat-historik bruger Discord-id.
+            # Bind den autoritative konto til dens gamle arbejdsrum/id, ellers
+            # bliver en helt legitim member behandlet som ukendt → ``public``.
+            try:
+                from core.identity import user_db
+                candidate = user_db.get_user(user_id)
+                if candidate and not candidate.get("deleted_at"):
+                    canonical_user = candidate
+                    external_id = str(candidate.get("discord_id") or "").strip()
+                    if external_id:
+                        user = find_user_by_discord_id(external_id)
+            except Exception as exc:
+                logger.warning(
+                    "jarvisx middleware: canonical user lookup failed for %s: %s",
+                    user_id, exc,
+                )
     else:
         # Project-only request (no user header) — keep workspace default,
         # but still bind the project anchor below.
@@ -412,7 +431,7 @@ async def jarvisx_user_routing_middleware(
     # route-blokade kunne ikke se forskel på en læk og et rent medlemskald.
     # Den slags hører ved kilden, ikke ved døren.
 
-    if user_id and user is None:
+    if user_id and user is None and canonical_user is None:
         # Unknown discord_id — same fallback as discord_gateway / user_context.
         # We bind to "public" workspace so memory writes can't accidentally
         # land in an owner's workspace via a forged header.
@@ -430,6 +449,12 @@ async def jarvisx_user_routing_middleware(
         workspace_name = user.workspace
         display = user.name
         bound_user_id = user.discord_id
+    elif canonical_user is not None:
+        workspace_name = str(canonical_user.get("workspace") or "public")
+        display = str(canonical_user.get("name") or "")
+        bound_user_id = str(
+            canonical_user.get("discord_id") or canonical_user.get("user_id") or user_id
+        )
     else:
         # No user header at all (project-only request) — keep defaults.
         workspace_name = ""

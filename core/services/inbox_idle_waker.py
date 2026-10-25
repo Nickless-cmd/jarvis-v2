@@ -261,9 +261,21 @@ def _start_run(tekst: str, *, session_id: str) -> bool | None:
     tests der bytter funktionen ud uden at returnere noget — tvivlen skal falde
     ud til fordel for at have startet, ikke til at rulle et rigtigt run tilbage.
     """
+    from core.services.background_start_reservation import reserve_background_start
     from core.services.visible_autonomous_run import start_autonomous_run
 
-    return start_autonomous_run(tekst, session_id=session_id, origin="inbox")
+    # Hold den fælles cross-process reservation gennem både det sidste
+    # active-run-tjek og den synkrone registrering i starteren. Dermed kan
+    # side-opgave-vækkeren ikke passere samme vindue samtidig. Sensorfejl er
+    # en afvisning her; posten får sit vækkespor rullet tilbage af kalderen.
+    with reserve_background_start(session_id) as reservation:
+        if not reservation.acquired:
+            logger.info(
+                "inbox_idle_waker: start afvist for %s: %s",
+                session_id[:28], reservation.reason,
+            )
+            return False
+        return start_autonomous_run(tekst, session_id=session_id, origin="inbox")
 
 
 def _direktiv(post: dict[str, Any]) -> str:

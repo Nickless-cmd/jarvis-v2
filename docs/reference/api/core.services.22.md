@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recurrence_loop_daemon.py`
+_Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_recurrence_loop_daemon` | `()` | Run one recurrence iteration. Returns dict with generated/reason/stability. | [src](../../../core/services/recurrence_loop_daemon.py#L23) |
+| function | `build_recurrence_surface` | `()` | MC surface for recurrence loop experiment. | [src](../../../core/services/recurrence_loop_daemon.py#L94) |
+| function | `_call_recurrence_llm` | `(content)` | Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s. | [src](../../../core/services/recurrence_loop_daemon.py#L135) |
+| function | `_extract_keywords` | `(text)` | Extract meaningful keywords from text (words >= 4 chars, deduped, max 20). | [src](../../../core/services/recurrence_loop_daemon.py#L195) |
+| function | `_jaccard_similarity` | `(a, b)` | Jaccard similarity between two keyword sets. Returns 1.0 if both empty. | [src](../../../core/services/recurrence_loop_daemon.py#L201) |
+
 ## `core/services/recurring_tasks.py`
 _Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
 
@@ -674,24 +685,4 @@ _Owner-bound authenticated encryption for Routine content._
 | function | `_owner_key` | `(owner_user_id)` | — | [src](../../../core/services/routine_crypto.py#L7) |
 | function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
 | function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
-
-## `core/services/routine_delivery.py`
-_Fenced delivery outbox for Routine results._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `StaleDeliveryLease` | `` | A worker attempted to settle a delivery it no longer owns. | [src](../../../core/services/routine_delivery.py#L15) |
-| class | `DeliveryClaim` | `` | — | [src](../../../core/services/routine_delivery.py#L20) |
-| class | `DeliveryView` | `` | — | [src](../../../core/services/routine_delivery.py#L31) |
-| class | `_RepositoryView` | `` | — | [src](../../../core/services/routine_delivery.py#L42) |
-| method | `_RepositoryView.count_runs` | `(routine_id)` | — | [src](../../../core/services/routine_delivery.py#L44) |
-| function | `_claim` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L48) |
-| function | `_view` | `(row)` | — | [src](../../../core/services/routine_delivery.py#L60) |
-| class | `RoutineDeliveryService` | `` | — | [src](../../../core/services/routine_delivery.py#L73) |
-| method | `RoutineDeliveryService.__init__` | `(self, *, holder=…)` | — | [src](../../../core/services/routine_delivery.py#L74) |
-| method | `RoutineDeliveryService.claim_for_run` | `(self, run_id, holder)` | — | [src](../../../core/services/routine_delivery.py#L78) |
-| method | `RoutineDeliveryService.claim_next` | `(self)` | — | [src](../../../core/services/routine_delivery.py#L82) |
-| method | `RoutineDeliveryService.deliver_next` | `(self)` | Deliver one due item to its private Routine surface. | [src](../../../core/services/routine_delivery.py#L86) |
-| method | `RoutineDeliveryService.settle` | `(self, delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/services/routine_delivery.py#L119) |
-| method | `RoutineDeliveryService.record_terminal_failure` | `(self, *, run_id)` | Record no execution failure state; delivery owns its retry budget. | [src](../../../core/services/routine_delivery.py#L148) |
 

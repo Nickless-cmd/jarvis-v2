@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shutdown_window_daemon.py`
+_Shutdown Window daemon — unannounced pauses to practice finitude._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_paused` | `()` | Return True if we are currently inside a shutdown window. | [src](../../../core/services/shutdown_window_daemon.py#L40) |
+| function | `tick_shutdown_window_daemon` | `()` | Called every heartbeat tick. Decides if a shutdown window should start. | [src](../../../core/services/shutdown_window_daemon.py#L51) |
+| function | `_trigger_shutdown_window` | `(*, now, pause_until, pause_minutes)` | Set the module-level pause flag and emit events. | [src](../../../core/services/shutdown_window_daemon.py#L111) |
+| function | `_finitude_note` | `()` | Short note about impermanence — chosen at random, no LLM call. | [src](../../../core/services/shutdown_window_daemon.py#L153) |
+| function | `build_shutdown_window_surface` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L168) |
+| function | `_experiment_enabled` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L180) |
+| function | `_days_in_month` | `(dt)` | — | [src](../../../core/services/shutdown_window_daemon.py#L189) |
+| function | `_state` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L194) |
+
 ## `core/services/side_tasks.py`
 _Side-task flag — keep the main thread focused._
 
@@ -604,12 +618,4 @@ _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 | method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
 | method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
 | method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
-
-## `core/services/structured_content_flag.py`
-_Governed kill-switch for struktureret content-persist + wire. Default ON._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
-| function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
 

@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_contract_shadow.py`
+_Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L37) |
+| function | `pr_vaerktoej` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L41) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L45) |
+| function | `taellere_fra_cache` | `()` | — | [src](../../../core/services/tool_contract_shadow.py#L57) |
+| function | `_gem` | `()` | Deltaer, ikke totaler — se `shadow_counters` for hvorfor. | [src](../../../core/services/tool_contract_shadow.py#L69) |
+| function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
+| function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
+| function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
+
 ## `core/services/tool_dansk_bro.py`
 _Danske udtryk for værktøjer der kun beskriver sig selv på engelsk._
 
@@ -578,17 +592,4 @@ _User temperature field engine — Lag 10 two-stream pipeline._
 | function | `_get_or_build_baseline` | `(*, prior, settings, workspace=…)` | Return cached baseline if fresh, else rebuild. | [src](../../../core/services/user_temperature_engine.py#L667) |
 | function | `_has_pending_trigger` | `(*, workspace_id)` | Read trigger flag without consuming. | [src](../../../core/services/user_temperature_engine.py#L723) |
 | function | `run_llm_stream` | `(*, workspace_id=…, force=…)` | Run LLM-based pipeline (4h cadence or on trigger). | [src](../../../core/services/user_temperature_engine.py#L729) |
-
-## `core/services/user_temperature_runtime.py`
-_Daemon for the user-temperature LLM stream (Lag 10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_workspace_lock` | `(workspace_id)` | — | [src](../../../core/services/user_temperature_runtime.py#L26) |
-| function | `_run_one_cycle` | `(workspace_id, *, force=…)` | Acquire workspace lock, run LLM stream. Never raises. | [src](../../../core/services/user_temperature_runtime.py#L35) |
-| function | `_list_active_workspaces` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L52) |
-| function | `_resolve_periodic_interval_seconds` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L56) |
-| function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
-| function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
-| function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
 

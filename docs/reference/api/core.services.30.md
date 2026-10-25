@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_outcome_state.py`
+_Et synligt runs terminale beslutning — og vagten mod en optimistisk standard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RunOutcomeState` | `` | Holder beslutningen og beskytter den mod at blive arvet ved et uheld. | [src](../../../core/services/visible_run_outcome_state.py#L45) |
+| method | `RunOutcomeState.__init__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L50) |
+| method | `RunOutcomeState.status` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L57) |
+| method | `RunOutcomeState.error` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L61) |
+| method | `RunOutcomeState.finalized` | `(self)` | Nåede runnet et eksplicit terminalt punkt? | [src](../../../core/services/visible_run_outcome_state.py#L65) |
+| method | `RunOutcomeState.is_default` | `(self)` | Står beslutningen stadig på den optimistiske standard? | [src](../../../core/services/visible_run_outcome_state.py#L70) |
+| method | `RunOutcomeState.mark` | `(self, status, *, error=…, finalized=…)` | Træf den terminale beslutning. | [src](../../../core/services/visible_run_outcome_state.py#L75) |
+| method | `RunOutcomeState.reach_finalization` | `(self)` | Marker at runnet nåede sit done-yield uden at ændre status. | [src](../../../core/services/visible_run_outcome_state.py#L89) |
+| method | `RunOutcomeState.set_error` | `(self, error)` | — | [src](../../../core/services/visible_run_outcome_state.py#L93) |
+| method | `RunOutcomeState.downgrade_if_abandoned` | `(self, abort_kind=…)` | Nedgradér en aldrig-nået standard til `interrupted`. Returnerer om | [src](../../../core/services/visible_run_outcome_state.py#L98) |
+| method | `RunOutcomeState.__repr__` | `(self)` | — | [src](../../../core/services/visible_run_outcome_state.py#L113) |
+
 ## `core/services/visible_run_recovery_coordinator.py`
 _Durable, idempotent settlement for every visible-run segment ending._
 
@@ -520,14 +537,4 @@ _Per-bruger web-push-abonnementer (VAPID). Egen tabel — rører ikke db.py._
 | function | `save` | `(user_id, endpoint, p256dh, auth)` | — | [src](../../../core/services/web_push_subscriptions.py#L38) |
 | function | `list_for_user` | `(user_id)` | Alle abonnementer for brugeren som ``[{endpoint, p256dh, auth}]``. | [src](../../../core/services/web_push_subscriptions.py#L57) |
 | function | `delete` | `(endpoint)` | — | [src](../../../core/services/web_push_subscriptions.py#L72) |
-
-## `core/services/weekly_manifest.py`
-_Weekly manifest — Jarvis' running self-reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_weekly_manifest_path` | `()` | — | [src](../../../core/services/weekly_manifest.py#L32) |
-| function | `_gather_context` | `()` | Pull recent self-state to ground the reflection. | [src](../../../core/services/weekly_manifest.py#L36) |
-| function | `_build_prompt` | `(ctx)` | — | [src](../../../core/services/weekly_manifest.py#L58) |
-| function | `build_weekly_manifest` | `()` | Generate weekly manifest, write to WEEKLY_MANIFEST.md, return summary. | [src](../../../core/services/weekly_manifest.py#L73) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/council_settlement.py`
+_Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `settle_interrupted_councils` | `()` | Afregn raad hvis proces beviseligt er vaek. Kaster aldrig. | [src](../../../core/services/council_settlement.py#L40) |
+| function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L99) |
+| function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L129) |
+
 ## `core/services/counterfactual_engine.py`
 _Counterfactual reflection orchestrator._
 
@@ -615,12 +624,4 @@ _Decision Log — records high-stakes decisions with context, options, and ratio
 |---|---|---|---|---|
 | function | `record_decision` | `(*, title, context=…, options=…, decision=…, why=…, refs=…)` | Record a decision in the log. | [src](../../../core/services/decision_log.py#L20) |
 | function | `build_decision_log_surface` | `()` | — | [src](../../../core/services/decision_log.py#L50) |
-
-## `core/services/decision_review_daemon.py`
-_Decision review daemon — closes the adherence loop automatically._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_record_own_state` | `(result)` | Skriv tick'ets eget spor til DAEMON_STATE — uafhængigt af returvejen. | [src](../../../core/services/decision_review_daemon.py#L34) |
-| function | `tick_decision_review_daemon` | `()` | Daemon tick: review overdue behavioral decisions. | [src](../../../core/services/decision_review_daemon.py#L55) |
 

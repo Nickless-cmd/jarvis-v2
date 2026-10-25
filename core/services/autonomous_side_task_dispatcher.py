@@ -77,12 +77,20 @@ def _target_session() -> str:
 
 def _start(text: str, *, session_id: str, origin: str, task_id: str,
            max_tool_calls: int, max_seconds: float) -> bool:
+    from core.services.background_start_reservation import reserve_background_start
     from core.services.visible_autonomous_run import start_autonomous_run
 
-    return bool(start_autonomous_run(
-        text, session_id=session_id, origin=origin, task_id=task_id,
-        max_tool_calls=max_tool_calls, max_seconds=max_seconds,
-    ))
+    with reserve_background_start(session_id) as reservation:
+        if not reservation.acquired:
+            logger.info(
+                "autonomous_side_task: start afvist for %s: %s",
+                session_id[:28], reservation.reason,
+            )
+            return False
+        return bool(start_autonomous_run(
+            text, session_id=session_id, origin=origin, task_id=task_id,
+            max_tool_calls=max_tool_calls, max_seconds=max_seconds,
+        ))
 
 
 def _directive(task: dict[str, Any]) -> str:

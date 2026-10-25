@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_redpill.py`
+_Red Pill — dagens ubehagelige sandhed._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_redpill.py#L20) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_redpill.py#L29) |
+| function | `_candidates` | `()` | Saml de undgåede sandheder med en avoidance-score (jo højere, jo mere undgået). Self-safe. | [src](../../../core/services/central_redpill.py#L37) |
+| function | `todays_truth` | `()` | Vælg den ÉNE mest-undgåede sandhed + opdatér blå-pille-stribe. Self-safe. | [src](../../../core/services/central_redpill.py#L86) |
+| function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L107) |
+| function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L116) |
+| function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_redpill.py#L120) |
+
 ## `core/services/central_relational.py`
 _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
 
@@ -646,20 +659,4 @@ _Encrypt message-derived session metadata for registered non-owner users._
 | function | `parse_channel_from_session_title` | `(title)` | Parse channel type and detail from a session title. | [src](../../../core/services/chat_sessions.py#L1787) |
 | function | `get_session_owner` | `(session_id)` | Hvem ejer samtalen? STEMPLET ved oprettelsen først, afledning som faldback. | [src](../../../core/services/chat_sessions.py#L1817) |
 | function | `latest_user_content_json` | `(session_id)` | `content_json` for sessionens SENESTE brugerbesked. | [src](../../../core/services/chat_sessions.py#L1859) |
-
-## `core/services/cheap_lane_admission.py`
-_Cross-process pause, drain, and active-call leases for Cheap Lane._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `AdmissionRejected` | `` | — | [src](../../../core/services/cheap_lane_admission.py#L15) |
-| method | `AdmissionRejected.__init__` | `(self, *, scope, target, mode)` | — | [src](../../../core/services/cheap_lane_admission.py#L16) |
-| class | `AdmissionRevisionConflict` | `` | — | [src](../../../core/services/cheap_lane_admission.py#L23) |
-| class | `AdmissionLease` | `` | — | [src](../../../core/services/cheap_lane_admission.py#L28) |
-| function | `_prune_expired` | `(conn, now)` | — | [src](../../../core/services/cheap_lane_admission.py#L36) |
-| function | `_active_count` | `(conn, *, scope, target)` | — | [src](../../../core/services/cheap_lane_admission.py#L44) |
-| function | `set_admission_mode` | `(*, scope, target, mode, expected_revision=…)` | — | [src](../../../core/services/cheap_lane_admission.py#L60) |
-| function | `admission_snapshot` | `(*, scope, target)` | — | [src](../../../core/services/cheap_lane_admission.py#L102) |
-| function | `acquire_admission` | `(*, correlation_id, provider, slot_id, lease_seconds=…)` | — | [src](../../../core/services/cheap_lane_admission.py#L123) |
-| function | `release_admission` | `(lease_id)` | — | [src](../../../core/services/cheap_lane_admission.py#L155) |
 

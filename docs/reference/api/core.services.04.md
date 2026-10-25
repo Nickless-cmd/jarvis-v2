@@ -41,6 +41,15 @@ _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 | function | `_sig_til_hvis_lang` | `(shell, sidste_output)` | Push besked hvis shellen koerte >= 30 s. Self-safe: fejl → tavshed. | [src](../../../core/services/background_resume.py#L116) |
 | function | `poll_async` | `(session_id, user_id)` | Er der nyt fra sessionens baggrunds-shells? Returnerer en note, ellers "". | [src](../../../core/services/background_resume.py#L137) |
 
+## `core/services/background_start_reservation.py`
+_Cross-process reservation for unattended run starts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `StartReservation` | `` | — | [src](../../../core/services/background_start_reservation.py#L24) |
+| function | `_active_reason` | `(session_id)` | Return an active-run reason; raise when a sensor cannot be trusted. | [src](../../../core/services/background_start_reservation.py#L29) |
+| function | `reserve_background_start` | `(session_id)` | Reserve the shared check/start section, or yield a refusal reason. | [src](../../../core/services/background_start_reservation.py#L44) |
+
 ## `core/services/baggrundsjob_vagt.py`
 _Et faerdigt baggrundsjob melder sig selv — i inboxen, eller med en vaekning._
 
@@ -611,20 +620,4 @@ _The Analyst — observatør-effekten._
 | function | `_observe` | `(div)` | — | [src](../../../core/services/central_analyst.py#L63) |
 | function | `build_analyst_surface` | `()` | — | [src](../../../core/services/central_analyst.py#L72) |
 | function | `record_analyst` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_analyst.py#L76) |
-
-## `core/services/central_anomaly.py`
-_Anomali-detektor — fanger de fejl Centralen IKKE selv har en nerve til endnu._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_signature` | `(category, message)` | Stabil signatur: kategori + normaliseret besked (strip id'er/tal/stier/adresser). | [src](../../../core/services/central_anomaly.py#L51) |
-| function | `_classify` | `(exc_type, message, source)` | → (kategori, importance). Deterministisk. | [src](../../../core/services/central_anomaly.py#L61) |
-| function | `_tb_location` | `(tb)` | Sidste frame i et traceback → 'fil:linje in funktion' (HVOR fejlede den). Self-safe. | [src](../../../core/services/central_anomaly.py#L79) |
-| function | `_full_trace` | `(tb)` | Fuld stack trace (sidste 15 frames) som formateret streng, max 2000 tegn. Self-safe. | [src](../../../core/services/central_anomaly.py#L96) |
-| function | `record_anomaly` | `(*, source, exc_type, message, module=…, location=…, trace=…)` | Klassificér + registrér én udefineret fejl + HVOR (lokation) + fuld trace. Self-safe + | [src](../../../core/services/central_anomaly.py#L110) |
-| class | `_AnomalyLogHandler` | `` | Fanger ERROR/CRITICAL-logs ingen nerve dækker → record_anomaly. | [src](../../../core/services/central_anomaly.py#L204) |
-| method | `_AnomalyLogHandler.emit` | `(self, record)` | — | [src](../../../core/services/central_anomaly.py#L207) |
-| function | `install_hooks` | `()` | Installér globale fang-hooks (idempotent). Kaldes ved proces-start. | [src](../../../core/services/central_anomaly.py#L233) |
-| function | `install_asyncio_hook` | `(loop)` | Installér asyncio-exception-handler på en kørende event-loop (self-safe). | [src](../../../core/services/central_anomaly.py#L290) |
-| function | `anomaly_summary` | `(*, limit=…)` | Til realtime-panelet: tæller pr. importance + de seneste/vigtigste anomalier. | [src](../../../core/services/central_anomaly.py#L318) |
 

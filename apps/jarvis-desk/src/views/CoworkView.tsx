@@ -34,6 +34,7 @@ import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
 import { AboutPanel } from '../components/AboutPanel'
 import { SideOpgavePanel } from '../components/cowork/SideOpgavePanel'
+import { NotifikationerPanel } from '../components/cowork/NotifikationerPanel'
 
 /** Arbejde pages reuse the existing feature components and their backend truth.
  * Zone aliases keep older open_ui_panel and command-palette calls working. */
@@ -59,6 +60,18 @@ export function CoworkView({
   const page = (zone: Zone): ReactNode => {
     switch (normalizeZone(zone)) {
       case 'mc': return missionControl
+
+      case 'notifikationer': return (
+        <CategoryPage
+          title="Notifikationer"
+          description="Alt hvad Jarvis har givet dig besked om — de nyeste øverst, med søgning og filter."
+          wide
+        >
+          <CategorySection title="Historik">
+            {config && <NotifikationerPanel config={config} />}
+          </CategorySection>
+        </CategoryPage>
+      )
 
       case 'agentPool': return isOwner ? (
         <CategoryPage title="Agent pool" description="Se hvilke agenter der findes, hvad de arbejder på, og hvad deres kørsler koster." wide>

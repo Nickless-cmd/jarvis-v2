@@ -3,8 +3,12 @@ import { COWORK_ZONES, emitZone, normalizeZone, onZone } from './coworkZone'
 
 describe('coworkZone', () => {
   it('viser samlede destinationer uden enkeltsider for indstillinger', () => {
+    // `notifikationer` (25/10-2026) er ikke en indstillings-side men et
+    // ARKIV: feedet i sidebaren viser kun de nyeste 12, og uden denne flade
+    // var historikken utilgaengelig fra det sted hvor man opdager at man
+    // mangler den. Den ligger derfor som sin egen destination.
     expect(COWORK_ZONES.map((z) => z.id)).toEqual([
-      'mc', 'agentPool', 'capacity', 'integrations',
+      'mc', 'notifikationer', 'agentPool', 'capacity', 'integrations',
       'general', 'account', 'workspace', 'jarvis', 'system', 'about',
     ])
     expect(COWORK_ZONES.filter((z) => z.group === 'Indstillinger')).toHaveLength(4)

@@ -251,6 +251,16 @@ export function Sidebar({
           <NotifikationsFeed
             config={apiConfig}
             onLuk={() => setFeedAaben(false)}
+            // Historikken er ikke en fane i denne rude længere (25/10-2026) —
+            // den er en flade i Arbejde. Ruden er 380 px bred, og arkivet er
+            // målt til flere tusinde rækker. Knappen lukker feedet, skifter
+            // mode og åbner zonen, så man ikke står i chat og kigger på noget
+            // der hører til Arbejde.
+            onSeAlle={() => {
+              setFeedAaben(false)
+              onSurface('cowork')
+              emitZone('notifikationer')
+            }}
             onAabnSession={(id) => { setNotifikationSession(id); setFeedAaben(false) }}
             // Et agentkort åbner ALTID den oprindelige session (i sit eget sidepanel — aldrig i den åbne samtale)
             // og den rigtige inspector, også når brugeren nu står i en anden session.

@@ -85,19 +85,17 @@ beforeEach(() => {
 })
 
 describe('NotifikationsFeed — agentkort', () => {
-  it('fejl, ukendt udfald og approval står under «Venter på dig»; succes under «Svar»', async () => {
+  it('alle agentkort står i ÉN tidslinje — ingen faner at vælge imellem', async () => {
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
     expect(await screen.findByTestId('notif-agent-asg-fejl')).toBeInTheDocument()
+    // Fejl, ukendt udfald, approval, succes OG «i gang» er alle synlige samtidig.
+    // Foer kraevede de to sidste et klik paa en fane; nu er tiden den eneste akse.
     expect(screen.getByTestId('notif-agent-asg-ukendt')).toBeInTheDocument()
     expect(screen.getByTestId('notif-agent-appr-1')).toBeInTheDocument()
-    expect(screen.queryByTestId('notif-agent-asg-ok')).toBeNull()                       // succes er ikke «venter»
-    expect(screen.getByRole('tab', { name: /Venter på dig/ })).toHaveTextContent('3')
-    expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')            // kun succes tæller; «i gang» er ikke et svar
-    fireEvent.click(screen.getByRole('tab', { name: /^Svar/ }))
-    expect(await screen.findByTestId('notif-agent-asg-ok')).toBeInTheDocument()
-    expect(screen.getByText('Agenter i gang (1)')).toBeInTheDocument()
+    expect(screen.getByTestId('notif-agent-asg-ok')).toBeInTheDocument()
     expect(screen.getByTestId('notif-agent-asg-go')).toBeInTheDocument()
-    expect(screen.queryByTestId('notif-agent-asg-fejl')).toBeNull()
+    // Ingen faner tilbage — de ville vaere en anden akse end tiden.
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
   })
 
   it('kortet viser årsag, fejlkode og et begrænset resumé — ikke agentens fulde output', async () => {
@@ -105,7 +103,6 @@ describe('NotifikationsFeed — agentkort', () => {
     await screen.findByTestId('notif-agent-asg-fejl')
     expect(screen.getByText(/Fejlårsag: fase model · AGENT_FAILED · udbyder nede/)).toBeInTheDocument()
     expect(screen.getByTestId('ac-aarsag-asg-ukendt')).toHaveTextContent('Udfaldet er ukendt')
-    fireEvent.click(screen.getByRole('tab', { name: /^Svar/ }))
     expect(await screen.findByTestId('ac-resume-asg-ok')).toHaveTextContent('Tre kilder fundet i docs/')
   })
 
@@ -115,7 +112,6 @@ describe('NotifikationsFeed — agentkort', () => {
     expect(screen.getByTestId('ac-tilstande-asg-fejl')).toHaveTextContent('Fejlet · ulæst · ikke kvitteret · modellen: ikke set af modellen endnu')
     expect(screen.getByTestId('ac-tilstande-asg-ukendt')).toHaveTextContent('Udfald ukendt · læst')
     expect(screen.getByTestId('ac-tilstande-asg-ukendt')).not.toHaveTextContent('kvitteret')
-    fireEvent.click(screen.getByRole('tab', { name: /^Svar/ }))
     expect(await screen.findByTestId('ac-tilstande-asg-ok')).toHaveTextContent('Færdig · ulæst · ikke kvitteret · modellen: set af modellen')
   })
 

@@ -1,7 +1,7 @@
 /** Navigation for Arbejde. Old zone names remain accepted because Jarvis,
  * command search and older clients can still open a specific panel. */
 export type Zone =
-  | 'mc' | 'agentPool' | 'capacity' | 'integrations'
+  | 'mc' | 'agentPool' | 'capacity' | 'integrations' | 'notifikationer'
   | 'general' | 'account' | 'workspace' | 'jarvis' | 'system' | 'about'
   | 'marketplace' | 'cheapLane' | 'providers'
   | 'konto' | 'privacy' | 'notifications' | 'appearance' | 'sprog'
@@ -12,6 +12,13 @@ export const COWORK_ZONES: ReadonlyArray<{
   id: Zone; label: string; icon: string; group: string; ownerOnly?: boolean
 }> = [
   { id: 'mc', label: 'Mission Control', icon: 'LayoutDashboard', group: 'Arbejde' },
+  // «Notifikationer» (25/10-2026) er HISTORIKKEN — hele listen, søgbar og
+  // pagineret. Den er ikke det samme som `notifications`-aliaset nedenfor,
+  // der peger på indstillings-sektionen hvor man vælger kanal pr. slags.
+  // De to navne ligger tæt på hinanden med vilje: den danske er fladen, den
+  // engelske er den gamle indstillings-zone som `open_ui_panel` stadig kan
+  // kalde. Normaliseringen nedenfor må ikke slå dem sammen.
+  { id: 'notifikationer', label: 'Notifikationer', icon: 'Bell', group: 'Arbejde' },
   { id: 'agentPool', label: 'Agent pool', icon: 'Users', group: 'Arbejde', ownerOnly: true },
   { id: 'capacity', label: 'Modeller og kapacitet', icon: 'Gauge', group: 'Arbejde', ownerOnly: true },
   { id: 'integrations', label: 'Værktøjer og forbindelser', icon: 'Blocks', group: 'Arbejde' },

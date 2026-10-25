@@ -113,3 +113,20 @@
   .klokke-attention svg, .klokke-attention::before, .notif-liste .notif-item, .notif-session-panel { animation: none; }
   .notif-swipe-content { transition: none; }
 }
+
+/* Fodenden i popoveren: vejen til historikken (25/10-2026). Feedet viser
+   kun de nyeste; uden denne knap ville arkivet vaere usynligt fra netop det
+   sted hvor man opdager at man mangler det. */
+.notif-alle {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.notif-alle:hover { background: var(--bg-3); color: var(--fg-1); border-color: var(--fg-3); }

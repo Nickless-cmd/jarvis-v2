@@ -57,14 +57,18 @@ describe('godkendelses-udvalget bor ét sted', () => {
     expect(toast).not.toContain("k.section === 'venter' && k.approval")
   })
 
-  it('feedet filtrerer ikke sine sektioner selv længere', () => {
-    expect(feed).toContain("kortISektion(kortListe, 'venter')")
-    expect(feed).toContain("kortISektion(kortListe, 'svar')")
-    expect(feed).toContain("kortISektion(kortListe, 'aktiv')")
-    // Kom et inline-filter tilbage her, var der igen fire steder at rette.
+  it('feedet viser alle sektioner i én tidslinje — udvalget bor stadig ét sted', () => {
+    // 25/10-2026: feedet blev ét rent feed uden faner. Det filtrerer derfor
+    // ikke længere paa sektion — men det maa heller ikke begynde at goere det
+    // selv igen. Udvalget (hvad der ER en godkendelse) bor fortsat i API-laget.
+    expect(feed).not.toContain("kortISektion(kortListe, 'venter')")
+    expect(feed).not.toContain("kortISektion(kortListe, 'svar')")
+    expect(feed).not.toContain("kortISektion(kortListe, 'aktiv')")
     // Kun FILTER-formen rammes: `k.section === 'svar'` bruges stadig legitimt
     // til at vælge CSS-klassen `er-svar` — det er tegning, ikke udvalg.
     expect(feed).not.toContain('.filter((k) => k.section ===')
+    // Tidslinjen sorterer paa tid, nyeste først — det er den ene akse nu.
+    expect(feed).toContain('elementer.sort((a, b) => b.tid - a.tid)')
   })
 
   it('kortet spørger ikke længere approvals-ruten selv om udvalget', () => {

@@ -1,0 +1,174 @@
+/* Historik-fladen i Arbejde — alle notifikationer, søgbare og paginerede.
+   (25/10-2026, Bjørn: «så skal vi lave en side i arbejds mode hvor man kan
+   hente og se alle tidligere notifikationer».)
+
+   Egen fil frem for et afsnit i notification-feed.css: den fil indlæses af
+   Sidebar for popoverens skyld, og den er 380 px bred. Denne flade er en
+   side i Arbejde med plads til søgefelt, filter og flere kolonner i rækken.
+   At lægge dem sammen ville gøre popoverens mål til sidens mål. */
+
+.notifside { display: flex; flex-direction: column; gap: 10px; }
+
+.notifside-vaerktoej {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 0;
+  background: var(--bg);
+}
+
+.notifside-soeg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--fg-3);
+}
+
+.notifside-soeg input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font-size: 13px;
+  outline: none;
+}
+
+.notifside-filter {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--fg-1);
+  font-size: 12.5px;
+}
+
+.notifside-tal { color: var(--fg-3); font-size: 12px; white-space: nowrap; }
+
+.notifside-opdater {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.notifside-opdater:hover { background: var(--bg-3); color: var(--fg-1); }
+
+.notifside-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notifside-post {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  padding: 9px 11px;
+}
+
+/* En åben post er en opgave; en afgjort er et spor. Kanten siger hvilken. */
+.notifside-post.er-aaben { border-left-color: var(--warn-fg); }
+
+.notifside-hoved {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.notifside-hoved[role='button'] { cursor: pointer; }
+.notifside-hoved[role='button']:hover .notifside-titel { text-decoration: underline; }
+
+.notifside-ikon { color: var(--fg-3); display: inline-flex; align-self: center; }
+
+.notifside-titel {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--fg-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notifside-tid { color: var(--fg-3); font-size: 11.5px; white-space: nowrap; }
+
+.notifside-tekst {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: var(--fg-2);
+  overflow-wrap: anywhere;
+}
+
+.notifside-udfald {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--fg-3);
+  font-style: italic;
+}
+
+.notifside-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+.notifside-slags {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--fg-3);
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.notifside-handlinger { display: inline-flex; gap: 6px; }
+
+.notifside-handlinger button,
+.notifside-klar {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--fg-1);
+  font-size: 12px;
+  cursor: pointer;
+}
+.notifside-handlinger button:hover,
+.notifside-klar:hover { border-color: var(--fg-3); }
+.notifside-handlinger button:disabled,
+.notifside-klar:disabled { opacity: 0.5; cursor: default; }
+
+.notifside-mere {
+  align-self: center;
+  margin-top: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.notifside-mere:hover { background: var(--bg-3); color: var(--fg-1); }

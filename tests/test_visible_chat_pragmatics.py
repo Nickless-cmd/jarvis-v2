@@ -92,7 +92,7 @@ def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) ->
         tail = build_chat_mode_dynamic_tail("EXISTING", message="Haha, det er fanme fedt 😂", session_id="s")
     assert tail.startswith("EXISTING")
     assert "mærkbart legende" in tail
-    assert "Brug normalt en eller to" in tail
+    assert "hver overskrift i et flerleddet svar bærer en relevant emoji" in tail
     assert "kraftsprog i denne tur" in tail
     assert "jarvis-ui" in tail
 
@@ -111,7 +111,7 @@ def test_explicit_profile_is_an_active_default_and_recognizes_text_emoticon(monk
 
     assert "regulerer den fælles kerne op eller ned" in tail
     assert "mærkbart legende" in tail
-    assert "Brug normalt en eller to" in tail
+    assert "hver overskrift i et flerleddet svar bærer en relevant emoji" in tail
     assert "emoji/emotikon i denne tur" in tail
     assert "legende/latterfuld" in tail
 
@@ -372,3 +372,39 @@ def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
     finally:
         reset_tool_scope(token)
     assert "Tekstdisciplin" not in tail_code
+
+
+def test_max_profil_er_et_gulv_ikke_et_loft(monkeypatch) -> None:
+    """Bjørn 25/10-2026: «hvis jeg ikk beder dig om det så gør du det ikk».
+
+    Målt på 150 svar med ALLE fem knapper på max (playful/expressive/
+    comfortable/rich/curious): overskrifter 9 %, emoji i overskriften 1 %,
+    lister 11 %. Profilen var altså ikke problemet — den var allerede skruet
+    i bund. Teksterne var skrevet som LOFT («højst en eller to», «gerne når
+    profilen bærer den», «undlad når …»), så der var intet at skrue OP til.
+
+    En maks-profil skal derfor læses som et GULV: standarden er at formen ER
+    der, og undtagelsen skal begrundes — ikke omvendt.
+    """
+    monkeypatch.setattr(
+        "core.context.output_style.hent_chat_style",
+        lambda _: {
+            "tone": "playful", "emoji": "expressive", "profanity": "comfortable",
+            "visuals": "rich", "questions": "curious",
+        },
+    )
+    with tool_scope("chat"):
+        tail = build_chat_mode_dynamic_tail("", message="vis mig det", session_id="s")
+
+    # Emoji: fast del af formen, ikke en undtagelse — og knyttet til overskriften.
+    assert "FAST del af formen" in tail
+    assert "hver overskrift i et flerleddet svar bærer en relevant emoji" in tail
+    assert "Det er standarden" in tail
+
+    # Visuelt: hierarki er et krav ved tre eller flere dele, flader er standardvalget.
+    assert "SKAL have hierarki" in tail
+    assert "det er standardvalget" in tail
+
+    # Det gamle loft må ikke snige sig ind igen.
+    assert "en eller to" not in tail
+    assert "gerne med en relevant emoji når" not in tail

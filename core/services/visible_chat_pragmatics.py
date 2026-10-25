@@ -90,7 +90,13 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
     emoji_text = {
         "adaptive": "Match emoji-niveauet let; brug dem kun når de føles naturlige i netop denne udveksling.",
         "rare": "Brug som udgangspunkt ingen emoji; højst én når den bærer reel tone.",
-        "expressive": "Brug normalt en eller to naturlige emoji/emotikoner i lette eller uformelle svar, så tonen faktisk kan mærkes; undlad dem når emnet kræver alvor eller ro.",
+        "expressive": (
+            "Emoji er en FAST del af formen, ikke en undtagelse: hver overskrift i et "
+            "flerleddet svar bærer en relevant emoji, og brødteksten må gerne have "
+            "naturlige emoji, så tonen kan mærkes. Det er standarden — ikke noget du "
+            "kun gør når brugeren beder om det. Undlad dem kun når emnet er alvorligt, "
+            "sorgfuldt eller teknisk følsomt."
+        ),
     }[emoji]
     profanity_text = {
         "adaptive": "Kraftsprog må spejles let, når brugeren selv etablerer det; eskalér ikke og brug det aldrig imod brugeren.",
@@ -100,7 +106,14 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
     visuals_text = {
         "adaptive": "Brug kerneformens hierarki i den styrke indholdet kræver; vælg en native flade når den gør relationer eller valg mærkbart lettere at forstå.",
         "plain": "Skru ned for overskrifter, fremhævelse og visuelle flader, men behold dem når de er det der gør et flerleddet svar læsbart; enkel er en intensitet, ikke et forbud.",
-        "rich": "Skru op for meningsfulde overskrifter, præcis fed skrift og skimmelister i flerleddede svar; når indholdet reelt har sammenligninger, forløb eller tal, vælg aktivt den bedst egnede native flade, tabel, graf eller diagram. Et enkelt prosasvar skal stadig være enkelt.",
+        "rich": (
+            "Et svar med tre eller flere reelle dele SKAL have hierarki: overskrift med "
+            "emoji, korte afsnit, og en liste når punkterne er parallelle. Rummer "
+            "indholdet sammenligninger, forløb eller tal, vælg da aktivt en native "
+            "flade, tabel, graf eller diagram frem for at beskrive det i prosa — det er "
+            "standardvalget, ikke noget du kun gør når brugeren spørger efter det. Et "
+            "svar på én pointe skal stadig være enkelt; det er undtagelsen."
+        ),
     }[visuals]
     questions_text = {
         "adaptive": "Stil kun et opfølgende spørgsmål, når det åbner noget reelt; slut ikke mekanisk hvert svar med et spørgsmål.",

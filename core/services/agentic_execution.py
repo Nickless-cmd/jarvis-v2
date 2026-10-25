@@ -27,6 +27,11 @@ class ToolResult:
     name: str
     output: object
     succeeded: bool = True
+    #: Argumenterne kaldet blev lavet med. Ollama kræver dem ECHOET tilbage i
+    #: assistant-beskeden — uden dem ser modellen ikke hvad den selv spurgte
+    #: om, og kalder værktøjet igen i stedet for at bruge resultatet (målt
+    #: 25/10-2026: tomt ``arguments`` gav tre nye kald i runde 2).
+    arguments: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -157,32 +162,58 @@ class _ProviderDriver:
         # MÅLT 25/10-2026: uden dette kaldte rutinen `madopskrift` rigtigt
         # (16 kyllinge-opskrifter kom tilbage), men runde 2 svarede «jeg har
         # ikke adgang til et madopskrift-værktøj» — den så aldrig resultatet.
+        # To wire-formater, ikke ét: Ollama og OpenAI er IKKE enige om
+        # ``arguments``. OpenAI vil have en JSON-STRENG; Ollama vil have det
+        # OBJEKT den selv gav. MÅLT 25/10-2026 direkte mod 127.0.0.1:11434:
+        # OpenAI-formen gav ``HTTP 400 — Value looks like object, but can't
+        # find closing '}' symbol``, og routningen faldt derefter tilbage til
+        # en udbyder UDEN værktøjer. Rutinen kaldte altså værktøjet rigtigt,
+        # fik 16 opskrifter tilbage, og svarede «jeg har ikke adgang» — fordi
+        # transkriptet aldrig nåede frem. Med Ollama-formen læser modellen
+        # resultatet og konkluderer på det.
+        ollama_wire = str(request.provider or "").strip().lower().startswith("ollama")
         if request.prior_results:
-            messages.append({
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {
-                        "id": result.call_id,
-                        "type": "function",
-                        # ``arguments`` skal vaere en JSON-STRENG, ikke et
-                        # objekt: baade Ollama og OpenAI-formatet parser den.
-                        # Et dict blev sendt ustraffet til nogle udbydere, men
-                        # er uden for kontrakten (rettet 25/10-2026).
-                        "function": {"name": result.name, "arguments": "{}"},
-                    }
-                    for result in request.prior_results
-                ],
-            })
+            if ollama_wire:
+                messages.append({
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "function": {
+                                "name": result.name,
+                                "arguments": dict(result.arguments or {}),
+                            },
+                        }
+                        for result in request.prior_results
+                    ],
+                })
+            else:
+                messages.append({
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": result.call_id,
+                            "type": "function",
+                            "function": {
+                                "name": result.name,
+                                "arguments": "{}",
+                            },
+                        }
+                        for result in request.prior_results
+                    ],
+                })
         for result in request.prior_results:
-            messages.append({
-                "role": "tool",
-                # Ollama læser `tool_name`, OpenAI læser `name` — begge med.
-                "tool_name": result.name,
-                "name": result.name,
-                "tool_call_id": result.call_id,
-                "content": str(result.output),
-            })
+            if ollama_wire:
+                # Ollama matcher ikke på id — kun rollen og indholdet.
+                messages.append({"role": "tool", "content": str(result.output)})
+            else:
+                messages.append({
+                    "role": "tool",
+                    "name": result.name,
+                    "tool_call_id": result.call_id,
+                    "content": str(result.output),
+                })
         raw = execute_with_role_or_fallback(
             provider=request.provider,
             model=request.model,
@@ -315,13 +346,16 @@ def execute_agentic(
             cancellation.check_before_effect()
             try:
                 output = context.tool_executor(call)
-                tool_result = ToolResult(call.call_id, call.name, output)
+                tool_result = ToolResult(
+                    call.call_id, call.name, output, arguments=dict(call.arguments or {}),
+                )
             except Exception as exc:  # Tool failure is observable data for the next model round.
                 tool_result = ToolResult(
                     call.call_id,
                     call.name,
                     {"error_class": type(exc).__name__},
                     succeeded=False,
+                    arguments=dict(call.arguments or {}),
                 )
             prior_results.append(tool_result)
             sink.tool_result(tool_result)

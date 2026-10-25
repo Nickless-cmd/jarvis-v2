@@ -9,32 +9,32 @@ _A transport-neutral, fenced model/tool execution loop._
 |---|---|---|---|---|
 | class | `ToolCall` | `` | — | [src](../../../core/services/agentic_execution.py#L17) |
 | class | `ToolResult` | `` | — | [src](../../../core/services/agentic_execution.py#L25) |
-| class | `UsageRecord` | `` | — | [src](../../../core/services/agentic_execution.py#L33) |
-| method | `UsageRecord.plus` | `(self, other)` | — | [src](../../../core/services/agentic_execution.py#L38) |
-| class | `AgenticTurn` | `` | — | [src](../../../core/services/agentic_execution.py#L47) |
-| class | `AgenticRequest` | `` | — | [src](../../../core/services/agentic_execution.py#L56) |
-| class | `ExecutionResult` | `` | — | [src](../../../core/services/agentic_execution.py#L72) |
-| class | `ModelDriver` | `` | — | [src](../../../core/services/agentic_execution.py#L82) |
-| method | `ModelDriver.complete` | `(self, request)` | — | [src](../../../core/services/agentic_execution.py#L83) |
-| class | `ExecutionSink` | `` | — | [src](../../../core/services/agentic_execution.py#L86) |
-| method | `ExecutionSink.model_fragment` | `(self, text)` | — | [src](../../../core/services/agentic_execution.py#L87) |
-| method | `ExecutionSink.tool_requested` | `(self, call)` | — | [src](../../../core/services/agentic_execution.py#L88) |
-| method | `ExecutionSink.tool_result` | `(self, result)` | — | [src](../../../core/services/agentic_execution.py#L89) |
-| method | `ExecutionSink.usage` | `(self, usage)` | — | [src](../../../core/services/agentic_execution.py#L90) |
-| class | `CancellationProbe` | `` | — | [src](../../../core/services/agentic_execution.py#L93) |
-| method | `CancellationProbe.check_before_effect` | `(self)` | — | [src](../../../core/services/agentic_execution.py#L94) |
-| method | `CancellationProbe.check_between_rounds` | `(self)` | — | [src](../../../core/services/agentic_execution.py#L95) |
-| class | `ExecutionContext` | `` | — | [src](../../../core/services/agentic_execution.py#L98) |
-| function | `_normalisér_tool_calls` | `(raw)` | Provider-svarets ``tool_calls`` → ``ToolCall``. | [src](../../../core/services/agentic_execution.py#L108) |
-| class | `_ProviderDriver` | `` | Production bridge to the existing provider router without UI state. | [src](../../../core/services/agentic_execution.py#L144) |
-| method | `_ProviderDriver.complete` | `(self, request)` | — | [src](../../../core/services/agentic_execution.py#L147) |
-| function | `_no_tool_executor` | `(call)` | — | [src](../../../core/services/agentic_execution.py#L216) |
-| class | `VisibleExecutionAdapter` | `` | — | [src](../../../core/services/agentic_execution.py#L221) |
-| class | `RoutineExecutionAdapter` | `` | — | [src](../../../core/services/agentic_execution.py#L230) |
-| method | `RoutineExecutionAdapter.__init__` | `(self, context, *, instruction, driver=…, tool_executor=…, tools_payload=…, max_rounds=…)` | — | [src](../../../core/services/agentic_execution.py#L231) |
-| function | `_emit_terminal` | `(sink, result)` | — | [src](../../../core/services/agentic_execution.py#L252) |
-| function | `_approval` | `(sink, call)` | — | [src](../../../core/services/agentic_execution.py#L259) |
-| function | `execute_agentic` | `(context, sink, cancellation)` | Run bounded model/tool rounds and emit exactly one terminal result. | [src](../../../core/services/agentic_execution.py#L265) |
+| class | `UsageRecord` | `` | — | [src](../../../core/services/agentic_execution.py#L38) |
+| method | `UsageRecord.plus` | `(self, other)` | — | [src](../../../core/services/agentic_execution.py#L43) |
+| class | `AgenticTurn` | `` | — | [src](../../../core/services/agentic_execution.py#L52) |
+| class | `AgenticRequest` | `` | — | [src](../../../core/services/agentic_execution.py#L61) |
+| class | `ExecutionResult` | `` | — | [src](../../../core/services/agentic_execution.py#L77) |
+| class | `ModelDriver` | `` | — | [src](../../../core/services/agentic_execution.py#L87) |
+| method | `ModelDriver.complete` | `(self, request)` | — | [src](../../../core/services/agentic_execution.py#L88) |
+| class | `ExecutionSink` | `` | — | [src](../../../core/services/agentic_execution.py#L91) |
+| method | `ExecutionSink.model_fragment` | `(self, text)` | — | [src](../../../core/services/agentic_execution.py#L92) |
+| method | `ExecutionSink.tool_requested` | `(self, call)` | — | [src](../../../core/services/agentic_execution.py#L93) |
+| method | `ExecutionSink.tool_result` | `(self, result)` | — | [src](../../../core/services/agentic_execution.py#L94) |
+| method | `ExecutionSink.usage` | `(self, usage)` | — | [src](../../../core/services/agentic_execution.py#L95) |
+| class | `CancellationProbe` | `` | — | [src](../../../core/services/agentic_execution.py#L98) |
+| method | `CancellationProbe.check_before_effect` | `(self)` | — | [src](../../../core/services/agentic_execution.py#L99) |
+| method | `CancellationProbe.check_between_rounds` | `(self)` | — | [src](../../../core/services/agentic_execution.py#L100) |
+| class | `ExecutionContext` | `` | — | [src](../../../core/services/agentic_execution.py#L103) |
+| function | `_normalisér_tool_calls` | `(raw)` | Provider-svarets ``tool_calls`` → ``ToolCall``. | [src](../../../core/services/agentic_execution.py#L113) |
+| class | `_ProviderDriver` | `` | Production bridge to the existing provider router without UI state. | [src](../../../core/services/agentic_execution.py#L149) |
+| method | `_ProviderDriver.complete` | `(self, request)` | — | [src](../../../core/services/agentic_execution.py#L152) |
+| function | `_no_tool_executor` | `(call)` | — | [src](../../../core/services/agentic_execution.py#L247) |
+| class | `VisibleExecutionAdapter` | `` | — | [src](../../../core/services/agentic_execution.py#L252) |
+| class | `RoutineExecutionAdapter` | `` | — | [src](../../../core/services/agentic_execution.py#L261) |
+| method | `RoutineExecutionAdapter.__init__` | `(self, context, *, instruction, driver=…, tool_executor=…, tools_payload=…, max_rounds=…)` | — | [src](../../../core/services/agentic_execution.py#L262) |
+| function | `_emit_terminal` | `(sink, result)` | — | [src](../../../core/services/agentic_execution.py#L283) |
+| function | `_approval` | `(sink, call)` | — | [src](../../../core/services/agentic_execution.py#L290) |
+| function | `execute_agentic` | `(context, sink, cancellation)` | Run bounded model/tool rounds and emit exactly one terminal result. | [src](../../../core/services/agentic_execution.py#L296) |
 
 ## `core/services/routine_prompt.py`
 _Build a bounded Routine prompt directly from its immutable execution context._

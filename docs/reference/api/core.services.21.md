@@ -92,9 +92,11 @@ _Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L70) |
-| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L93) |
-| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L112) |
-| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L130) |
+| function | `_led_i_afsnit` | `(samlet)` | Del et afsnit i de led der hver især bærer én selvstændig oplysning. | [src](../../../core/services/prosa_korrektion.py#L101) |
+| function | `_mekanisk_opstil` | `(tekst, punkter)` | Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model. | [src](../../../core/services/prosa_korrektion.py#L126) |
+| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L177) |
+| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L196) |
+| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L214) |
 
 ## `core/services/prosa_struktur_guard.py`
 _Mekanisk kontrol: et afsnit under en overskrift der opremser tre eller flere_

@@ -90,6 +90,90 @@ def _baerende_tokens(tekst: str) -> list[str]:
     return tokens
 
 
+#: Kun et punktum der efterfølges af et STORT bogstav er en sætningsgrænse.
+#: Målt 25/10-2026: med `(?<=[.!?])\s+` blev «kl. 12:38:27» klippet midt over, så
+#: Bjørns eget eksempel kom ud som «Commit e4036a383 kl.» / «12:38:27, pushet.».
+#: En forkortelse er ikke en sætning, og et tal efter punktum er ikke et nyt led.
+_SAETNING_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-ZÆØÅ])")
+_KOMMA_SPLIT = re.compile(r"[,;]")
+
+
+def _led_i_afsnit(samlet: str) -> list[str]:
+    """Del et afsnit i de led der hver især bærer én selvstændig oplysning.
+
+    To niveauer, og det er ikke tilfældigt: Bjørns eksempel fra 25/10-2026 har
+    kun **to** sætninger, men **fem** fakta — «Commit e4036a383 kl. 12:38:27,
+    pushet. Filen er …, koblet i …, 11 tests grønne, og runtime genstartede
+    12:40:50». At måle på sætninger alene ville ikke se den.
+
+    En sætning deles derfor kun på komma når den **selv** er en opremsning:
+    mindst tre dele, og mindst to af dem bærer konkrete data. Ellers er kommaet
+    en naturlig læsepause i almindelig prosa, og så skal der ikke klippes.
+    """
+    led: list[str] = []
+    for saetning in _SAETNING_SPLIT.split(samlet):
+        saetning = saetning.strip()
+        if not saetning:
+            continue
+        dele = [d.strip() for d in _KOMMA_SPLIT.split(saetning) if d.strip()]
+        if len(dele) >= 3 and sum(1 for d in dele if _baerende_tokens(d)) >= 2:
+            led.extend(dele)
+        else:
+            led.append(saetning)
+    return led
+
+
+def _mekanisk_opstil(tekst: str, punkter: list) -> tuple[str, list]:
+    """Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model.
+
+    Baggrund (målt 25/10-2026, Bjørn): «en prosa med en linje til Commit
+    e4036a383 kl. 12:38:27, pushet. Filen er core/services/… er rodet». Han
+    bad om at det blev «den rigtige opstilling», og han sagde at det gælder
+    andet end git.
+
+    At sætte hvert led på sin egen linje er **mekanisk**: intet ord ændres,
+    intet tal opfindes, intet fortabes — kun linjeskiftet tilføjes. Det var
+    forkert at sende den slags til en model (målt samme dag: modellen
+    returnerede den samme smøre, så korrektionen blev forkastet).
+
+    Kriteriet er bevidst snævert, så almindelig prosa ikke røres:
+
+    * mindst **tre** led i afsnittet — to er et afsnit, ikke en opremsning
+    * mindst **to** af dem skal bære konkrete data (tal, hash, sti) — ellers er
+      det fortællende prosa, og den skal netop flyde
+    * etiketter opfindes ikke. Formen er `- led`, ikke `- Label — værdi`;
+      at gætte etiketten er fortolkning, og det hører i model-runder, ikke her.
+
+    Returnerer ``(ny_tekst, punkter_der_ikke_kunne_løses)``. Den anden liste
+    sendes videre til modellen — en mekanisk reparation må ikke blokere for en
+    korrektion der faktisk kan lykkes.
+    """
+    nyt = tekst
+    uloeste: list = []
+    for punkt in punkter:
+        original = _afsnit_tekst(nyt, punkt).strip("\n")
+        if not original:
+            uloeste.append(punkt)
+            continue
+        samlet = " ".join(original.split())
+        led = _led_i_afsnit(samlet)
+        if len(led) < 3:
+            uloeste.append(punkt)
+            continue
+        if sum(1 for d in led if _baerende_tokens(d)) < 2:
+            uloeste.append(punkt)
+            continue
+        # Listen skal stå som sit eget afsnit: ellers lægger markdown den ind i
+        # den omgivende tekst og linjeskiftene forsvinder igen. Der tilføjes kun
+        # en blank linje hvis der ikke allerede er en — ellers blev resultatet
+        # tre linjeskift, som er død plads i markdown.
+        idx = nyt.find(original)
+        forside = "" if nyt[:idx].endswith("\n\n") else "\n\n"
+        erstatning = forside + "\n".join(f"- {d}" for d in led)
+        nyt = nyt.replace(original, erstatning, 1)
+    return nyt, uloeste
+
+
 def _afsnit_tekst(tekst: str, punkt) -> str:
     """Find det rå afsnit i teksten som ``punkt`` peger på.
 
@@ -156,6 +240,15 @@ def korriger_prosa(
     punkter = find_prosa_punkter(tekst)[:_MAX_AFSNIT]
     if not punkter:
         return tekst
+
+    # MEKANISK FØRST (25/10-2026). At sætte hvert led på sin egen linje er
+    # deterministisk — det kan ikke fejle, og det koster intet kald. Er alt
+    # løst, bliver `punkter` tom, `par` tom, og funktionen returnerer nedenfor
+    # uden at røre modellen. Der står bevidst INGEN separat gate her: målt
+    # 25/10-2026 kunne en sådan fjernes uden at en enkelt test faldt, fordi
+    # `if not par` allerede dækkede den. To værn for samme fejl er ét for
+    # meget — det ene ser ud som beskyttelse uden at være det.
+    tekst, punkter = _mekanisk_opstil(tekst, punkter)
 
     par: list[tuple[str, str]] = []
     for punkt in punkter:

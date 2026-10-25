@@ -371,11 +371,16 @@ def _execute_provider_chat(
     if provider in ("ollama", "ollama-a2"):
         # ollama-a2 = account2's separate ollama-cloud-konto på 10.0.0.45; samme
         # native /api/chat-sti, men base_url + provider-label kommer fra slot'et.
+        # `messages`/`tools` sendes med: Ollamas /api/chat kan værktøjer, og
+        # grenen her fladede tidligere transkriptet til én streng FØR kaldet,
+        # så et rutine-run mistede sit skema og sit værktøjsresultat.
         return _with_quota_observation(provider, auth_profile, _f._execute_local_ollama_chat(
             model=model,
             base_url=base_url,
             message=message,
             provider=provider,
+            messages=messages,
+            tools=tools,
         ))
     if provider == "arko":
         return _with_quota_observation(
@@ -1155,7 +1160,10 @@ _OLLAMA_LOCAL_TIMEOUT_SECONDS = 120
 
 
 def _execute_local_ollama_chat(
-    *, model: str, base_url: str, message: str, provider: str = "ollama"
+    *, model: str, base_url: str, message: str | None = None,
+    provider: str = "ollama",
+    messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
 ) -> dict[str, object]:
     """Call an Ollama instance with a specific model.
 
@@ -1172,11 +1180,23 @@ def _execute_local_ollama_chat(
     counterfactual prompts are longer than the typical heartbeat probe.
     """
     url = str(base_url or "http://127.0.0.1:11434").rstrip("/")
-    payload = {
+    # Værktøjer: Ollama's native /api/chat tager et `tools`-array og svarer med
+    # `message.tool_calls` — MÅLT 25/10-2026 direkte mod 127.0.0.1:11434, hvor
+    # deepseek-v4.1-flash:cloud svarede med tre rigtige madopskrift-kald.
+    # Grenen her sendte tidligere hverken `messages` eller `tools`, så et
+    # rutine-run faldt tilbage til ren tekst og svarede «jeg har ikke adgang
+    # til et madopskrift-værktøj». Transkriptet foretrækkes når det findes —
+    # en værktøjs-løkke kan ikke udtrykkes i én streng.
+    samtale = [dict(m) for m in (messages or ())] or [
+        {"role": "user", "content": str(message or "")}
+    ]
+    payload: dict[str, object] = {
         "model": str(model or "").strip(),
-        "messages": [{"role": "user", "content": message}],
+        "messages": samtale,
         "stream": False,
     }
+    if tools:
+        payload["tools"] = [dict(t) for t in tools]
     try:
         # Use urllib directly with extended timeout — _http_json is locked
         # to _DEFAULT_TIMEOUT_SECONDS and shared by many providers.
@@ -1212,6 +1232,9 @@ def _execute_local_ollama_chat(
             code = "provider-error"
         raise CheapProviderError(provider=provider, code=code, message=err)
     text = str((data.get("message") or {}).get("content") or "").strip()
+    # Ollamas tool_calls har `function.arguments` som et OBJEKT (ikke en
+    # JSON-streng som OpenAI). _normalisér_tool_calls accepterer begge.
+    tool_calls = (data.get("message") or {}).get("tool_calls") or []
     return {
         "lane": "cheap",
         "provider": provider,
@@ -1220,7 +1243,8 @@ def _execute_local_ollama_chat(
         "execution_mode": "public-safe-local-ollama",
         "source": "cheap-provider-runtime",
         "text": text,
-        "input_tokens": _estimate_tokens(message),
+        "tool_calls": list(tool_calls) if isinstance(tool_calls, list) else [],
+        "input_tokens": _estimate_tokens(str(message or "")),
         "output_tokens": _estimate_tokens(text),
         "cost_usd": 0.0,
     }

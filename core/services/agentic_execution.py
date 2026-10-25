@@ -151,9 +151,34 @@ class _ProviderDriver:
         messages: list[dict[str, object]] = [
             {"role": "user", "content": request.prompt},
         ]
+        # Transkriptet skal være KOMPLET: en `role: tool`-besked uden den
+        # `assistant`-besked der ejer `tool_calls` er forældreløs, og både
+        # Ollama og OpenAI-agtige udbydere afviser eller degraderer den.
+        # MÅLT 25/10-2026: uden dette kaldte rutinen `madopskrift` rigtigt
+        # (16 kyllinge-opskrifter kom tilbage), men runde 2 svarede «jeg har
+        # ikke adgang til et madopskrift-værktøj» — den så aldrig resultatet.
+        if request.prior_results:
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": result.call_id,
+                        "type": "function",
+                        # ``arguments`` skal vaere en JSON-STRENG, ikke et
+                        # objekt: baade Ollama og OpenAI-formatet parser den.
+                        # Et dict blev sendt ustraffet til nogle udbydere, men
+                        # er uden for kontrakten (rettet 25/10-2026).
+                        "function": {"name": result.name, "arguments": "{}"},
+                    }
+                    for result in request.prior_results
+                ],
+            })
         for result in request.prior_results:
             messages.append({
                 "role": "tool",
+                # Ollama læser `tool_name`, OpenAI læser `name` — begge med.
+                "tool_name": result.name,
                 "name": result.name,
                 "tool_call_id": result.call_id,
                 "content": str(result.output),
@@ -167,6 +192,11 @@ class _ProviderDriver:
             # gamle vej (tom liste) er byte-identisk: requires_tools=False.
             requires_tools=bool(tools),
             tools=tools or None,
+            # En værktøjs-kørsel må ikke falde tilbage til cheap-lane-puljen:
+            # den tager ikke imod ``tools``, så et failover ville give et
+            # svar UDEN værktøjer — præcis den tavse degradering der gav
+            # «jeg har ikke adgang». Primær-lanen har tool-kapable udbydere.
+            lane="primary" if tools else "cheap",
         )
         usage_raw = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
         usage = UsageRecord(

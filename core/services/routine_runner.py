@@ -103,6 +103,74 @@ def _stale(exc: ValueError) -> StaleRoutineLease:
 # ``fire_session_id`` havde, blot i værktøjsvejen.
 
 
+def _standard_provider() -> str:
+    """Modellen et rutine-run bruger når rutinen ikke selv peger på én.
+
+    Bjørn 25/10-2026: «Brug ollama lane». Det er også den rigtige kobling —
+    ollama-lanen er husets autonome model (heartbeat/dream), og den kan
+    værktøjer via sin native /api/chat (målt samme dag: tre rigtige
+    madopskrift-kald). Cheap-lane-puljen kunne ALDRIG bruge værktøjer: den
+    tager slet ikke imod et ``tools``-argument, og valgte
+    ``chinaapi/agnes-3.0-flash`` som svarede «jeg er en tekstbaseret
+    AI-model» med ``input_tokens=0``.
+    """
+    try:
+        from core.runtime.settings import load_settings
+
+        indstillinger = load_settings()
+        return (
+            str(getattr(indstillinger, "heartbeat_model_provider", "") or "").strip()
+            or str(getattr(indstillinger, "visible_model_provider", "") or "").strip()
+        )
+    except Exception:  # noqa: BLE001 — et manglende opslag må ikke vælte kørslen
+        _log.warning("rutine: kunne ikke slå standard-udbyder op", exc_info=True)
+        return ""
+
+
+def _standard_model() -> str:
+    """Se :func:`_standard_provider` — samme måling, samme grund."""
+    try:
+        from core.runtime.settings import load_settings
+
+        indstillinger = load_settings()
+        return (
+            str(getattr(indstillinger, "heartbeat_model_name", "") or "").strip()
+            or str(getattr(indstillinger, "visible_model_name", "") or "").strip()
+        )
+    except Exception:  # noqa: BLE001 — et manglende opslag må ikke vælte kørslen
+        _log.warning("rutine: kunne ikke slå standard-model op", exc_info=True)
+        return ""
+
+
+#: Det kuraterede kerne-sæt en rutine får når den ikke selv peger på værktøjer.
+#:
+#: MÅLT 25/10-2026: med alle 111 tilladte værktøjer valgte ollama-modellen
+#: ``recall`` og ``note_list`` — men ALDRIG ``madopskrift`` — og svarede
+#: derefter «jeg har ikke adgang til et madopskrift-værktøj». Med det samme
+#: værktøj i et sæt på 1–2 kaldte den det tre gange med rigtige danske
+#: søgeord. Bredden var problemet, ikke værktøjet: et skema på 111 funktioner
+#: drukner det relevante. Sættet her er de opgaver en rutine faktisk løser —
+#: læse, søge, huske, hente data, handle og skrive.
+#:
+#: En rutine kan pege på sit eget sæt med ``permission_policy["tools"]``
+#: (liste af navne). Det krydses ALTID med det tilladte sæt, så en politik
+#: aldrig kan udvide adgangen — kun indsnævre den.
+_RUTINE_KERNE_TOOLS: frozenset[str] = frozenset({
+    # Læse og søge
+    "read_file", "find_files", "search", "read_tool_result",
+    "web_search", "web_fetch",
+    # Hukommelse
+    "recall", "search_memory", "remember_this", "read_memory_topic",
+    # Data og handling
+    "madopskrift", "get_weather", "home_assistant",
+    "notify_user", "send_push_notification",
+    # Skrive og notere
+    "write_file", "edit_file", "note_add", "note_list",
+    # Planer
+    "goal_list", "todo_add", "todo_list",
+})
+
+
 def _rutine_tools_payload(context: RoutineExecutionContext) -> list[dict]:
     """Værktøjsskemaet denne rutine må byde modellen. Tom = værktøjs-fri."""
     if str(getattr(context, "capability_scope", "") or "") == "system":
@@ -116,9 +184,20 @@ def _rutine_tools_payload(context: RoutineExecutionContext) -> list[dict]:
         _log.warning("rutine: kunne ikke indlæse værktøjsskemaet", exc_info=True)
         return []
     tilladte = allowed_tools_for_origin("routine")
+
+    politik = getattr(context, "permission_policy", None) or {}
+    eget = politik.get("tools") if isinstance(politik, dict) else None
+    if isinstance(eget, (list, tuple, set, frozenset)):
+        ønsket = {str(n).strip() for n in eget if str(n).strip()}
+        # Krydses med det tilladte sæt: en rutine-politik kan indsnævre, aldrig
+        # udvide. Ukendte navne ignoreres stille — de findes ikke i skemaet.
+        valgte = ønsket & tilladte
+    else:
+        valgte = _RUTINE_KERNE_TOOLS & tilladte
+
     return [
         definition for definition in TOOL_DEFINITIONS
-        if str((definition.get("function") or {}).get("name") or "") in tilladte
+        if str((definition.get("function") or {}).get("name") or "") in valgte
     ]
 
 
@@ -432,8 +511,8 @@ class RoutineRunner:
             capability_scope=str(definition["capability_scope"]),
             permission_policy=dict(definition.get("permission_policy") or {}),
             approval_policy=dict(execution.get("approval_policy") or {}),
-            provider=str(execution.get("provider") or ""),
-            model=str(execution.get("model") or ""),
+            provider=str(execution.get("provider") or "") or _standard_provider(),
+            model=str(execution.get("model") or "") or _standard_model(),
             lease_generation=generation,
         )
 

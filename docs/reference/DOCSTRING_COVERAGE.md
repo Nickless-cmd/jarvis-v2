@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9332/17631 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9334/17633 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9332/17631 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 848 | 1552 | 54% |
-| `core.services` | 6229 | 11995 | 51% |
+| `core.services` | 6231 | 11997 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1792,24 +1792,24 @@ Generated from source. 9332/17631 functions/methods documented (52%). The list b
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.list` (L24)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L223)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.claim` (L205)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.complete_success` (L290)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.get_failure_count` (L302)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.get_run` (L241)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.list_open_tool_effects` (L275)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.next_queued_run` (L247)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.reclaim` (L211)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.record_tool_dispatch_started` (L251)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L233)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L263)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L278)
-- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L514)
-- `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L393)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L520)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L517)
-- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L510)
-- `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L440)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L302)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.claim` (L284)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.complete_success` (L369)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_failure_count` (L381)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_run` (L320)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.list_open_tool_effects` (L354)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.next_queued_run` (L326)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.reclaim` (L290)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.record_tool_dispatch_started` (L330)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L312)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L342)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L357)
+- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L593)
+- `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L472)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L599)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L596)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L589)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L519)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.claim_count_after_stop` (L104)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.reconciler_is_alive` (L101)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.start` (L79)

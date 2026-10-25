@@ -392,8 +392,8 @@ _Hvem faar at vide at en approval venter, og hvornaar Jarvis vaekkes (agent-cont
 | function | `_session_busy` | `(session_id)` | — | [src](../../../core/services/agent_approval_notify.py#L41) |
 | function | `stage` | `(approval)` | Planlaeg vaekningen for en approval (idempotent: ét wake-task-id pr. approval). Returnerer task-id eller "". | [src](../../../core/services/agent_approval_notify.py#L50) |
 | function | `on_requested` | `(approval)` | Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent. | [src](../../../core/services/agent_approval_notify.py#L66) |
-| function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L73) |
-| function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L91) |
+| function | `ensure_wakes` | `(*, now=…)` | Supervisor-tik: ventende approvals uden vaekning, ældre end GRACE, hvis session er inaktiv og som ikke er | [src](../../../core/services/agent_approval_notify.py#L93) |
+| function | `cancel_wake` | `(approval, reason)` | Aflys en endnu ikke startet vaekning (approvalen er afgjort/annulleret). | [src](../../../core/services/agent_approval_notify.py#L111) |
 
 ## `core/services/agent_bridge.py`
 _Agenter paa et klient-target: bro-invocations med ukendt udfald (agent-contract-v1 E, spec 8 + 8.1)._

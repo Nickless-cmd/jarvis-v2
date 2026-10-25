@@ -65,6 +65,26 @@ def stage(approval: dict[str, Any]) -> str:
 
 def on_requested(approval: dict[str, Any]) -> str:
     """Kaldt naar en approval er oprettet/genfundet som ventende. Vaekker kun en INAKTIV, ikke-stoppet parent."""
+    # FØD EN NOTIFIKATION (25/10-2026). Uden dette har et agent-approval-kort
+    # INTET live-signal: `notifikation.ny` udsendes naar en notifikations-raekke
+    # foedes, og denne vej foedte ingen. Maalt: toasten faldt derfor tilbage paa
+    # 8-sekunders-polling, og testen skrev det selv — «Der findes intet
+    # WS-signal for agent-approvals».
+    #
+    # Raekken er ikke pynt: den ER baade signalet (bussen) og den durable post
+    # Bjørn kan se i feeden. Fejler den, maa vaekningen stadig planlaegges —
+    # derfor kun log, ingen raise.
+    try:
+        from core.services import notifikations_emittere
+        notifikations_emittere.paa_godkendelse(
+            str(approval["approval_id"]),
+            user_id=str(approval.get("owner_user_id") or ""),
+            session_id=str(approval.get("origin_session_id") or ""),
+            vaerktoej=str(approval.get("safe_view") or "et vaerktoej"),
+        )
+    except Exception:
+        logger.warning("agent-approval: kunne ikke foede notifikationen",
+                       exc_info=True)
     if _session_busy(approval["origin_session_id"]):
         return ""
     return stage(approval)

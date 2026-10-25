@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Brain, Code2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
-import { formaterTurTid, useTankeSekunder, useTurSekunder } from '../../lib/turTid'
+import { useTurSekunder } from '../../lib/turTid'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
 import { BlocksRenderer } from './BlocksRenderer'
+import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
-import { RullendeTid } from './RullendeTid'
 import { FoldPil, TurHoved } from './TurHoved'
 
 export interface ChatFlowPresentationProps {
@@ -168,9 +167,9 @@ export function ChatFlowPresentation({
   // attributten på den fælles wrapper `chat-flow-activity`, så både syntese og
   // runde forsvandt i samme fade og skærmen blev tom (Bjørn 22/10-2026: «det
   // var kun runde linjen.. ikk syntese linjen»). Rundelinjen bliver i DOM'en
-  // mens pacen ruller, så tur-uret og layoutet ikke hopper, og fader ind igen
-  // når pacen er forbi. Korte synteser når ikke tærsklen (420 ms) og blinker
-  // derfor aldrig.
+  // mens pacen ruller, så Jarvis-markørens animation og layoutet ikke hopper,
+  // og fader ind igen når pacen er forbi. Korte synteser når ikke tærsklen
+  // (420 ms) og blinker derfor aldrig.
   const skjulAktivRunde = usePacingWorkLine(
     aktiv && targetSvar.length > 0 && !svarFaerdigPacet,
     runId ?? beskedId ?? null,
@@ -224,11 +223,6 @@ export function ChatFlowPresentation({
   // Persisterede ture har ingen stream-tilstand tilbage. Deres varighed er
   // udledt af transskriptet, så uret også står der (17/10-2026).
   const sekunder = useTurSekunder(turStart, turSlut) ?? varighedSekunder ?? null
-  const tankeSekunder = useTankeSekunder(blocks)
-  const tankeTekst = typeof tankeSekunder === 'number'
-    ? `Tænker ${formaterTurTid(tankeSekunder)}`
-    : 'Tænker'
-
   // Hovedet er turens skillestreg — ikke en overskrift for værktøjskald.
   // (Bjørn 17/10-2026: «tur hoved vises ikke hvis han ikk kalder tools… det
   // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
@@ -297,8 +291,7 @@ export function ChatFlowPresentation({
             {aaben && harArbejde && !arbejdeAabent ? (
               <div className={`chat-flow-activity chat-flow-activity--${mode} chat-flow-activity--motion-safe`}
                 data-testid="chat-flow-activity" role="status" aria-live="polite" aria-atomic="true"
-                aria-label={[activeSynthesis, tankeTekst,
-                  rundeTekst].filter(Boolean).join('. ')}>
+                aria-label={[activeSynthesis, rundeTekst].filter(Boolean).join('. ')}>
                 {levendeSyntese ? (
                   <div className="chat-flow-live-synthesis" data-testid="chat-flow-live-synthesis"
                     aria-hidden="true">
@@ -310,15 +303,9 @@ export function ChatFlowPresentation({
                     data-pacing-skjult={skjulAktivRunde ? '' : undefined}>
                     <div className="chat-flow-round-line" data-testid="chat-flow-round-line"
                       aria-hidden="true">
-                      <Brain className="chat-flow-thinking-icon" data-testid="chat-flow-thinking-icon"
-                        size={15} strokeWidth={1.8} />
-                      <span className="chat-flow-thinking-label">Tænker</span>
-                      {typeof tankeSekunder === 'number' ? (
-                        <RullendeTid tekst={formaterTurTid(tankeSekunder)} />
-                      ) : null}
-                      <span className="chat-flow-round-divider">|</span>
-                      <Code2 className="chat-flow-round-icon" data-testid="chat-flow-round-icon"
-                        size={15} strokeWidth={1.8} />
+                      <span className="chat-flow-presence" data-testid="chat-flow-presence">
+                        <JarvisRing size={15} spinning tone="working" />
+                      </span>
                       <span className="chat-flow-round-label" data-testid="chat-flow-round-label">
                         <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
                       </span>

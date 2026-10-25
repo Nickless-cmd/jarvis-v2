@@ -56,18 +56,13 @@
   --fg-1: #f0efec;
   --fg-2: #c3c2b7;
   --fg-3: #898781;
-  /* TEAL, ikke Claudes ler-orange (Bjørn 16/9-2026: «kan du smide samme teal
-     farve ind som i mobil appen … teal skal være der der er orange nu»).
-     #3FC7B4 er teal-posten i mobil-appens egen palet (apps/mobile/src/theme/
-     palettes.ts). Bemærk: mobilens AKTIVE accent er den neongrønne #6EE7A8 —
-     teal er én af de seks valgbare. Han bad om teal, så det er teal.
-
-     Her behøver flade og tekst ikke være to forskellige farver: #3FC7B4 giver
-     8,7:1 mod panelfarven, hvor ler-orangen kun gav 4,3 og derfor måtte have
-     en lysere tvilling til tekst. */
-  --accent: #3fc7b4;
-  --accent-text: #3fc7b4;
-  --user-bubble: #202020;   /* målt: CC's boble er NEUTRAL, ikke tonet */
+  /* Samme standardaccent og boble som APK'en. De fem andre accentfamilier
+     står nedenfor som data-accent-overrides; lys/mørk og accent er to
+     uafhængige valg, præcis som på mobilen. */
+  --accent: #6ee7a8;
+  --accent-text: #6ee7a8;
+  --on-accent: #111111;
+  --user-bubble: #14402f;
   --field-bg: #20201f;      /* inputfeltet — ét trin over panelet */
   /* Svævende flader (menuer, dialoger) er IKKE almindelige kort. Målt i CC:
      en popup ligger på #20201F med en lysere kant #363635 — den løfter sig
@@ -126,6 +121,15 @@
 
 }
 
+/* APK'ens seks accentfamilier. Mørkt tema bruger den lysende accent som
+   tekst; boblen er familiens dybe tone. */
+:root[data-accent="gron"]  { --accent: #6ee7a8; --accent-text: #6ee7a8; --on-accent: #111111; --user-bubble: #14402f; }
+:root[data-accent="teal"]  { --accent: #3fc7b4; --accent-text: #3fc7b4; --on-accent: #111111; --user-bubble: #10403a; }
+:root[data-accent="lilla"] { --accent: #a07feb; --accent-text: #a07feb; --on-accent: #111111; --user-bubble: #382462; }
+:root[data-accent="rav"]   { --accent: #e8a33d; --accent-text: #e8a33d; --on-accent: #111111; --user-bubble: #4a3316; }
+:root[data-accent="bla"]   { --accent: #5b8def; --accent-text: #5b8def; --on-accent: #ffffff; --user-bubble: #1e2c52; }
+:root[data-accent="rose"]  { --accent: #f4849b; --accent-text: #f4849b; --on-accent: #111111; --user-bubble: #4a1f2a; }
+
 /* Lyst tema — 1:1 med mobil-appens lyse palet (Bjørn 8/9-2026: «det samme
    hvide tema som er i mobil appen … det findes allerede i desk appen, det skal
    bare opdateres»). Tallene er mobilens LIGHT_BASE, ikke nye:
@@ -162,6 +166,7 @@
   --accent: #6ee7a8;
   /* darken(#6EE7A8, 0.45) — mobilens egen udregning, ikke et skøn. */
   --accent-text: #3d7f5c;
+  --on-accent: #111111;
   --user-bubble: #cff3e0;
   --code-bg: #f2f2f2;
   /* Inputfeltet. `--field-bg` blev DEFINERET i det mørke tema alene, så det
@@ -198,6 +203,15 @@
   --overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
   --modal-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
 }
+
+/* På lys flade mørknes kun accentTEKSTEN; knapper og markeringer beholder
+   den valgte kulør. Værdierne og boblerne er APK'ens paletteFor(). */
+:root[data-theme="light"][data-accent="gron"]  { --accent: #6ee7a8; --accent-text: #3d7f5c; --on-accent: #111111; --user-bubble: #cff3e0; }
+:root[data-theme="light"][data-accent="teal"]  { --accent: #3fc7b4; --accent-text: #236d63; --on-accent: #111111; --user-bubble: #c8efea; }
+:root[data-theme="light"][data-accent="lilla"] { --accent: #a07feb; --accent-text: #584681; --on-accent: #111111; --user-bubble: #e2d8fa; }
+:root[data-theme="light"][data-accent="rav"]   { --accent: #e8a33d; --accent-text: #805a22; --on-accent: #111111; --user-bubble: #f8e4c4; }
+:root[data-theme="light"][data-accent="bla"]   { --accent: #5b8def; --accent-text: #324e83; --on-accent: #ffffff; --user-bubble: #d6e2fb; }
+:root[data-theme="light"][data-accent="rose"]  { --accent: #f4849b; --accent-text: #864955; --on-accent: #111111; --user-bubble: #fbd9e0; }
 
 /* Høj kontrast — maksimal læsbarhed. */
 :root[data-theme="contrast"] {

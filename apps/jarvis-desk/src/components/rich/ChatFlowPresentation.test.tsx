@@ -1,4 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import type { ContentBlock } from '../../lib/sseProtocol'
@@ -168,17 +170,15 @@ describe('ChatFlowPresentation', () => {
     const syntese = within(live).getByTestId('chat-flow-live-synthesis')
     const runde = within(live).getByTestId('chat-flow-round-line')
     expect(syntese).toHaveTextContent('Jeg fandt årsagen og undersøger næste led.')
-    expect(within(runde).getByText('Tænker')).toBeInTheDocument()
-    expect(runde.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '3s')
-    expect(within(runde).getByText('|')).toBeInTheDocument()
     expect(within(runde).getByText('Læste konfigurationen')).toBeInTheDocument()
-    expect(runde.querySelector('[data-testid="chat-flow-thinking-icon"]')).toBeInTheDocument()
+    expect(runde.querySelector('[data-testid="chat-flow-presence"] .jarvis-pulse.is-working')).toBeInTheDocument()
+    expect(within(runde).queryByText('Tænker')).not.toBeInTheDocument()
+    expect(within(runde).queryByText('|')).not.toBeInTheDocument()
     expect(syntese.compareDocumentPosition(runde) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const hoved = document.querySelector('.rv-tur') as HTMLElement
     expect(hoved.querySelector('.rv-turTid')).toHaveAttribute('aria-label', '7s')
     expect(hoved.querySelector('.rv-turIndhold')).toHaveClass('shimmer')
     expect(hoved.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
-    expect(runde.querySelector('.rv-turTid')).not.toHaveClass('shimmer')
     expect(within(hoved).queryByText('Læste konfigurationen')).not.toBeInTheDocument()
     expect(document.querySelector('.chat-flow-answer')).toBeNull()
   })
@@ -193,7 +193,7 @@ describe('ChatFlowPresentation', () => {
 
     const synteseFoer = screen.getByTestId('chat-flow-live-synthesis')
     const runde = screen.getByTestId('chat-flow-round-line')
-    expect(runde.querySelector('[data-testid="chat-flow-round-icon"]')).toBeInTheDocument()
+    expect(runde.querySelector('[data-testid="chat-flow-presence"] .jarvis-pulse.is-working')).toBeInTheDocument()
     expect(runde.querySelector('.linje-titel')).toHaveClass('shimmer')
     // Syntesen er indhold, ikke aktivitet: intet shimmer på den (Bjørn
     // 17/10-2026). Shimmeret maler gradient ind i teksten og gjorde den grå.
@@ -213,6 +213,19 @@ describe('ChatFlowPresentation', () => {
     const nytLabel = within(screen.getByTestId('chat-flow-round-line')).getByText('Tester løsningen')
     expect(nytLabel).toHaveClass('ls-ind')
     expect(nytLabel.closest('.linje-titel')).toHaveClass('shimmer')
+  })
+
+  it('viser hele den levende syntese uden et trelinjers loft', () => {
+    const lang = 'En lang syntese '.repeat(40)
+    render(<ChatFlowPresentation {...common} mode="living" blocks={[
+      { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' },
+      { type: 'text', text: lang },
+    ]} />)
+    expect(screen.getByTestId('chat-flow-live-synthesis')).toHaveTextContent(lang.trim())
+    const css = readFileSync(resolve(__dirname, '../../styles/chat-flow.css'), 'utf8')
+    const live = css.match(/\.chat-flow-live-synthesis\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(live).not.toMatch(/max-height|overflow:\s*hidden/)
+    expect(css).not.toMatch(/\.chat-flow-live-synthesis \.ls-tekst\s*\{[^}]*line-clamp/s)
   })
 
   it('rundelinjen har en fold-pil der folder arbejdet ud UNDER streaming', () => {

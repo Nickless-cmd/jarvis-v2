@@ -104,8 +104,7 @@
    lag-animationen indeni (17/10-2026). */
 .chat-flow-live-synthesis {
   min-height: 1.35em;
-  max-height: 4.05em;
-  overflow: hidden;
+  overflow: visible;
   /* Syntesen er indhold og skal læses som primær tekst — hvid i mørkt tema,
      sort i lyst. `--fg-1` er temaets primære forgrund; den tidligere
      `--text-primary` findes ikke i tokens, så den faldt tilbage til en fast
@@ -117,7 +116,8 @@
 }
 
 /* De generelle LabelSkift-regler er med vilje énlinjede til tool-labels.
-   En syntese er derimod indhold: den må bruge op til tre rolige linjer. */
+   En syntese er derimod indhold og er kortlivet: netop derfor skal hele den
+   kunne læses, før den afløses af næste syntese. */
 .chat-flow-live-synthesis .ls-grid,
 .chat-flow-live-synthesis .ls-lag,
 .chat-flow-live-synthesis .ls-tekst {
@@ -130,11 +130,8 @@
 .chat-flow-live-synthesis .ls-lag { align-items: start; }
 
 .chat-flow-live-synthesis .ls-tekst {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
 }
 
 /* Status + rundelinje ligger som linje to DIREKTE under syntesen. Den vokser
@@ -152,23 +149,19 @@
   flex: 0 1 auto;
   min-width: 0;
   min-height: 1.35em;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
+  align-items: flex-start;
+  gap: 7px;
+  overflow: visible;
+  padding-block: 2px;
   color: var(--fg-2, #aeb6bf);
 }
 
-.chat-flow-thinking-icon,
-.chat-flow-round-icon,
-.chat-flow-round-divider {
+.chat-flow-presence {
   flex: none;
-}
-
-.chat-flow-thinking-label { white-space: nowrap; }
-
-.chat-flow-round-divider {
-  color: var(--fg-3, #8f98a3);
-  opacity: .55;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35em;
+  color: var(--accent);
 }
 
 .chat-flow-round-fold {
@@ -192,16 +185,16 @@
   border-radius: 3px;
 }
 
-.chat-flow-round-icon {
-  color: var(--fg-2, #aeb6bf);
-}
-
 .chat-flow-round-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
+
+.chat-flow-round-label .ls-grid,
+.chat-flow-round-label .ls-lag,
+.chat-flow-round-label .ls-tekst { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
 .chat-flow-activity--calm .chat-flow-synthesis {
   animation: none;

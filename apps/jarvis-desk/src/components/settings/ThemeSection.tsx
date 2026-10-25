@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { loadTheme, saveTheme, applyTheme, type Theme } from '../../lib/themeStore'
+import { Check } from 'lucide-react'
+import {
+  ACCENTS, applyTheme, loadAccent, loadTheme, saveAccent, saveTheme,
+  type AccentName, type Theme,
+} from '../../lib/themeStore'
 import { useFigurVist } from '../../lib/figurVist'
 import { useFigurSkin, SKIN_VALG } from '../../lib/figurSkin'
 import { useRaekkevisning, writeRaekkevisning } from '../../lib/visningsPref'
@@ -10,16 +14,22 @@ import type { ChatFlowPreference } from '../../lib/chatFlowApi'
 const OPTIONS: { key: Theme; label: string }[] = [
   { key: 'dark', label: 'Mørkt' },
   { key: 'light', label: 'Lyst' },
-  { key: 'contrast', label: 'Høj kontrast' },
+  { key: 'auto', label: 'Automatisk' },
 ]
 
 /** Tema-sektion (§4.11). Ren klient — persisteres i localStorage og anvendes
  *  via data-theme på document-root. */
 export function ThemeSection() {
   const [theme, setTheme] = useState<Theme>(loadTheme())
+  const [accent, setAccent] = useState<AccentName>(loadAccent())
   const raekker = useRaekkevisning()
   const jaevn = usePaceMode() === 'chat'
-  const pick = (t: Theme) => { setTheme(t); saveTheme(t); applyTheme(t) }
+  const pick = (t: Theme) => { setTheme(t); saveTheme(t); applyTheme(t, accent) }
+  const pickAccent = (next: AccentName) => {
+    setAccent(next)
+    saveAccent(next)
+    applyTheme(theme, next)
+  }
   const [figur, saetFigur] = useFigurVist()
   // Skinnet bor samme sted som til/fra (figur.json i main-processen), så
   // indstillingerne og figur-vinduet altid ser det samme.
@@ -42,6 +52,24 @@ export function ThemeSection() {
             className={theme === o.key ? 'theme-btn active' : 'theme-btn'}
             onClick={() => pick(o.key)}
           >{o.label}</button>
+        ))}
+      </div>
+      <h4>Farve</h4>
+      <div className="accent-options" role="group" aria-label="Accentfarve">
+        {ACCENTS.map((option) => (
+          <button
+            key={option.name}
+            type="button"
+            className={accent === option.name ? 'accent-btn active' : 'accent-btn'}
+            aria-label={option.label}
+            aria-pressed={accent === option.name}
+            onClick={() => pickAccent(option.name)}
+          >
+            <span className="accent-swatch" style={{ backgroundColor: option.color }}>
+              {accent === option.name ? <Check size={16} strokeWidth={3} /> : null}
+            </span>
+            <span>{option.label}</span>
+          </button>
         ))}
       </div>
       {/* Jarvis-figuren (electron/figur.ts). Kun i desk — i en browser-fane

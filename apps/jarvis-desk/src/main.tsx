@@ -4,10 +4,10 @@ import { App } from './App'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Vinduesknapper } from './components/shell/Vinduesknapper'
-import { loadTheme, applyTheme } from './lib/themeStore'
+import { loadAccent, loadTheme, applyTheme } from './lib/themeStore'
 
 // Anvend gemt tema før render — undgår flash af forkert tema (§4.11).
-applyTheme(loadTheme())
+applyTheme(loadTheme(), loadAccent())
 
 // Globale fejl-fangere (ikke-React-throws + unhandled promise-rejections) —
 // logges så en evt. crash-kilde uden for render kan aflæses.

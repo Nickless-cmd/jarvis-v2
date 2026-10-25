@@ -65,9 +65,9 @@ describe('design-tokens', () => {
 
   // Hvert tema skal kunne stå alene: arver et tema en farve fra det mørke
   // :root, ender fx gul #ffd166 som tekst på hvid baggrund.
-  it('definerer de semantiske farver i alle tre temaer', () => {
+  it('definerer de semantiske farver i det lyse tema', () => {
     const semantiske = ['--accent', '--error-fg', '--warn-fg', '--ok', '--tint', '--fg-0']
-    for (const tema of ['light', 'contrast']) {
+    for (const tema of ['light']) {
       const blok = tokens.match(
         new RegExp(`:root\\[data-theme="${tema}"\\]\\s*\\{([\\s\\S]*?)\\n\\}`),
       )
@@ -90,7 +90,7 @@ describe('design-tokens', () => {
     '--bg-3': '#252524',   // kort i panelet
     '--bg-4': '#343434',   // valgt række
     '--line': '#292929',
-    '--user-bubble': '#202020',
+    '--user-bubble': '#14402f',
     '--field-bg': '#20201f',
   }
 

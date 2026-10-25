@@ -10,9 +10,20 @@ vi.mock('../../hooks/useChatFlow', () => ({
 }))
 
 const saveTheme = vi.fn()
+const saveAccent = vi.fn()
 const applyTheme = vi.fn()
 vi.mock('../../lib/themeStore', () => ({
+  ACCENTS: [
+    { name: 'gron', label: 'Grøn', color: '#6EE7A8' },
+    { name: 'teal', label: 'Teal', color: '#3FC7B4' },
+    { name: 'lilla', label: 'Lilla', color: '#A07FEB' },
+    { name: 'rav', label: 'Rav', color: '#E8A33D' },
+    { name: 'bla', label: 'Blå', color: '#5B8DEF' },
+    { name: 'rose', label: 'Rosa', color: '#F4849B' },
+  ],
+  loadAccent: () => 'gron',
   loadTheme: () => 'dark',
+  saveAccent: (...a: unknown[]) => saveAccent(...a),
   saveTheme: (...a: unknown[]) => saveTheme(...a),
   applyTheme: (...a: unknown[]) => applyTheme(...a),
 }))
@@ -20,13 +31,23 @@ vi.mock('../../lib/themeStore', () => ({
 import { ThemeSection } from './ThemeSection'
 
 describe('ThemeSection', () => {
-  beforeEach(() => { saveTheme.mockClear(); applyTheme.mockClear(); setPreference.mockClear() })
+  beforeEach(() => {
+    saveTheme.mockClear(); saveAccent.mockClear(); applyTheme.mockClear(); setPreference.mockClear()
+  })
 
   it('valg af Lyst gemmer og anvender temaet', () => {
     render(<ThemeSection />)
     fireEvent.click(screen.getByRole('button', { name: /lyst/i }))
     expect(saveTheme).toHaveBeenCalledWith('light')
-    expect(applyTheme).toHaveBeenCalledWith('light')
+    expect(applyTheme).toHaveBeenCalledWith('light', 'gron')
+  })
+
+  it('viser APKens seks accentfamilier og anvender dem uafhængigt af lys/mørk', () => {
+    render(<ThemeSection />)
+    expect(screen.getByRole('group', { name: 'Accentfarve' }).querySelectorAll('.accent-btn')).toHaveLength(6)
+    fireEvent.click(screen.getByRole('button', { name: 'Lilla' }))
+    expect(saveAccent).toHaveBeenCalledWith('lilla')
+    expect(applyTheme).toHaveBeenCalledWith('dark', 'lilla')
   })
 
   it('markerer det aktive tema', () => {

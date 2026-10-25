@@ -3,6 +3,18 @@
 .category-page .settings-hint, .category-section-head p { color: var(--fg-2); font-size: 13px; line-height: 1.55; }
 .category-page h3 { font-size: 15px; line-height: 1.4; }
 .category-page h4 { margin: 22px 0 8px; font-size: 14px; }
+.accent-options { display: flex; flex-wrap: wrap; gap: 12px; }
+.category-page .accent-btn {
+  display: grid; justify-items: center; gap: 5px; min-width: 58px; padding: 5px;
+  border-color: transparent; background: transparent; color: var(--fg-3); font-size: 12px;
+}
+.category-page .accent-btn:hover:not(:disabled) { background: var(--bg-2); color: var(--fg-1); }
+.category-page .accent-btn.active { color: var(--fg-1); font-weight: 600; }
+.accent-swatch {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  color: var(--on-accent); outline: 2px solid transparent; outline-offset: 2px;
+}
+.accent-btn.active .accent-swatch { outline-color: var(--accent); }
 .category-page button, .settings-feedback button, .desk-introduction button {
   min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--bg-3); color: var(--fg-1); font: inherit; cursor: pointer;

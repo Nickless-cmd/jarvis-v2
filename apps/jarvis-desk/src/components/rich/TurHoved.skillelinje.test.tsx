@@ -42,6 +42,12 @@ describe('TurHoved — skillelinjens livscyklus', () => {
     expect(blok).toMatch(/\bboth\b/)
   })
 
+  it('bruger en hel CSS-pixel, så Firefox og Electron rasteriserer den ens', () => {
+    const blok = regel('.rv-tur::after')
+    expect(blok).toMatch(/height:\s*1px/)
+    expect(blok).toMatch(/bottom:\s*-1px/)
+  })
+
   it('reduced motion slår animationen fra, så stregen ikke glider', () => {
     const m = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*?)\n\}/.exec(css)
     expect(m, 'reduced-motion-blokken mangler').not.toBeNull()

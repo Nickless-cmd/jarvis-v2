@@ -17,7 +17,7 @@
   display: flex; align-items: center; gap: 8px; width: 100%;
   height: 33px; padding: 0 0 8px; margin: 0;
   position: relative;
-  border: 0; border-bottom: .5px solid transparent;
+  border: 0; border-bottom: 1px solid transparent;
   background: none; text-align: left;
   font-family: inherit;
   font-size: 14px; line-height: 1.3; font-weight: 400;
@@ -29,8 +29,8 @@
    lander; turhovedet og alt under det flytter sig derfor ikke. */
 .rv-tur::after {
   content: "";
-  position: absolute; left: 0; right: 0; bottom: -.5px;
-  height: .5px; background: var(--rv-skillelinje, var(--line, rgb(255 255 255 / 12%)));
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px; background: var(--rv-skillelinje, var(--line, rgb(255 255 255 / 12%)));
   opacity: 0; transform: scaleX(0); transform-origin: left center;
   transition: transform 260ms cubic-bezier(.22, .61, .36, 1), opacity 120ms ease-out;
   pointer-events: none;

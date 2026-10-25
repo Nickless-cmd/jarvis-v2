@@ -7,8 +7,9 @@ const laes = (fil: string) => readFileSync(join(__dirname, fil), 'utf8')
 describe('Chat/Code — fælles gulv mod composeren', () => {
   const css = laes('chat-viewport.css')
 
-  it('halverer den samlede tomme afstand til 8px', () => {
-    expect(css).toMatch(/\.transcript\s*\{[\s\S]*?padding:\s*32px 24px 4px/)
+  it('holder toppen tæt og den samlede bundafstand på 8px', () => {
+    expect(css).toMatch(/\.transcript\s*\{[\s\S]*?padding:\s*12px 24px 4px/)
+    expect(css).toMatch(/linear-gradient\(to bottom, transparent 0, #000 16px/)
     expect(css).toMatch(/\.chatview \.composer,\s*\.codeview \.composer\s*\{[\s\S]*?margin:\s*4px auto 14px/)
   })
 

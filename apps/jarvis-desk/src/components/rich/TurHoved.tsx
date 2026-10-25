@@ -11,7 +11,7 @@
  *
  * ## Kontrakten
  *
- * Højde 33px, en reserveret .5px skillelinje, tekst i `--rv-tertiary` og
+ * Højde 33px, en reserveret 1px skillelinje, tekst i `--rv-tertiary` og
  * fold-pilen i `--fg-3`. Shimmeren er `rv-glimt-tekst` gennem `.shimmer` plus
  * det lyse SVG-lag i pilen, styret af `data-koerer` — præcis som før.
  */

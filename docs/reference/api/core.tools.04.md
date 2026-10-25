@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/visual_memory_tool.py`
+_Visual memory tool — Jarvis kan læse sine egne visuelle minder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_read_visual_memory` | `(args)` | Read recent visual memories (webcam room descriptions). | [src](../../../core/tools/visual_memory_tool.py#L23) |
+
 ## `core/tools/voice_journal_tool.py`
 _Voice Journal tool — dedicated longer recording → density note._
 

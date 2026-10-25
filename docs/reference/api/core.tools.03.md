@@ -85,18 +85,18 @@ _Simple, general-purpose tools for Jarvis visible lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L708) |
-| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L737) |
-| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L879) |
-| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L893) |
-| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1000) |
-| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1022) |
-| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1061) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1273) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1306) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1396) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2121) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2207) |
+| function | `canonical_identity_file_path` | `(name)` | Den ENE fil `name` bor i — samme opslag som prompten bruger til at LÆSE. | [src](../../../core/tools/simple_tools.py#L709) |
+| function | `_canonicalize_workspace_target` | `(target)` | If target's basename is a canonical workspace file, force it to the | [src](../../../core/tools/simple_tools.py#L738) |
+| function | `_emit_security_check` | `(hit, *, target)` | Self-safe audit-emit: et deny/destructive bæres nu med sit nummererede | [src](../../../core/tools/simple_tools.py#L880) |
+| function | `classify_command` | `(command)` | Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L894) |
+| function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1001) |
+| function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1023) |
+| function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1062) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1274) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1307) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1397) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2123) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2209) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -111,8 +111,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3636) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3653) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3638) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3655) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -501,6 +501,14 @@ _Stripe integration tools — balance, transactions, and Issuing virtual cards._
 | function | `_exec_stripe_payouts` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L150) |
 | function | `_exec_stripe_create_issuing_card` | `(args)` | — | [src](../../../core/tools/stripe_tools.py#L181) |
 
+## `core/tools/surface_tools.py`
+_`vaelg_flade` — fladebeslutningen, truffet før formuleringen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_as_int` | `(value)` | Negative og ikke-numeriske tal betyder «ved det ikke», ikke en fejl. | [src](../../../core/tools/surface_tools.py#L26) |
+| function | `_exec_vaelg_flade` | `(args)` | Afgør fladen. Kaster aldrig — en fejl her må ikke vælte turen. | [src](../../../core/tools/surface_tools.py#L34) |
+
 ## `core/tools/think_language_tools.py`
 _Værktøj: skift tænke-sprog uden genstart (killswitch, 30/9-2026)._
 
@@ -636,11 +644,4 @@ _Verification tools — wrap "do then check" into one call._
 | function | `_exec_verify_file_contains` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L32) |
 | function | `_exec_verify_service_active` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L98) |
 | function | `_exec_verify_endpoint_responds` | `(args)` | — | [src](../../../core/tools/verify_tools.py#L121) |
-
-## `core/tools/visual_memory_tool.py`
-_Visual memory tool — Jarvis kan læse sine egne visuelle minder._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_read_visual_memory` | `(args)` | Read recent visual memories (webcam room descriptions). | [src](../../../core/tools/visual_memory_tool.py#L23) |
 

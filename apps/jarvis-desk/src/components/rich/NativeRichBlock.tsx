@@ -71,7 +71,7 @@ export function NativeRichBlock({ code }: { code: string }) {
   if (!spec) return null
   if (spec.type === 'callout') {
     const Icon = spec.tone === 'success' ? CheckCircle2 : spec.tone === 'warning' ? AlertTriangle : spec.tone === 'danger' ? CircleAlert : Info
-    return <aside className={`native-rich native-callout tone-${spec.tone}`} aria-label={spec.title || 'Bemærkning'}>
+    return <aside className={`native-rich native-card native-callout tone-${spec.tone}`} aria-label={spec.title || 'Bemærkning'}>
       <Icon size={20} aria-hidden="true" /><div><Heading title={spec.title} />{spec.body && <p>{spec.body}</p>}</div>
     </aside>
   }
@@ -84,12 +84,12 @@ export function NativeRichBlock({ code }: { code: string }) {
   if (spec.type === 'comparison') return <section className="native-rich" aria-label={spec.title || 'Sammenligning'}>
     <Heading title={spec.title} /><div className="native-comparison-scroll"><table className="native-comparison"><thead><tr><th scope="col">Punkt</th>{spec.columns.map((x) => <th scope="col" key={x}>{x}</th>)}</tr></thead><tbody>{spec.rows.map((r, i) => <tr key={`${r.label}-${i}`}><th scope="row">{r.label}</th>{r.values.map((v, j) => <td key={j}>{v}</td>)}</tr>)}</tbody></table></div>
   </section>
-  if (spec.type === 'choices') return <section className="native-rich" aria-label={spec.title || 'Valgmuligheder'}>
+  if (spec.type === 'choices') return <section className="native-rich native-card" aria-label={spec.title || 'Valgmuligheder'}>
     <Heading title={spec.title} /><div className="native-choices">{spec.options.map((x, i) => <button type="button" key={`${x.label}-${i}`} disabled={!send} onClick={() => send?.(`[fra valgkort] ${x.prompt}`)}>{x.label}</button>)}</div>
   </section>
   const q = spec.latitude !== undefined && spec.longitude !== undefined ? `${spec.latitude},${spec.longitude}` : spec.address
   const href = `https://www.openstreetmap.org/search?query=${encodeURIComponent(q)}`
-  return <section className="native-rich native-location" aria-label={spec.title || 'Lokation'}>
+  return <section className="native-rich native-card native-location" aria-label={spec.title || 'Lokation'}>
     <MapPin size={22} aria-hidden="true" /><div><Heading title={spec.title} />{spec.address && <p>{spec.address}</p>}<button type="button" onClick={() => openExternalUrl(href)}>Åbn kort</button></div>
   </section>
 }

@@ -26,6 +26,16 @@ __all__ = ["normalize_markdown_structure"]
 # Fences identificeres på hele linjer, inkl. ~~~ og længere backtick-runs.
 _OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
+# `$$`-matematikblokke er beskyttede zoner på linje med kode-fences. Målt
+# 24/10-2026: `\frac{t_{\text{før}} - t_{\text{efter}}}{t_{\text{før}}}`
+# blev revet i stykker af `_INLINE_BULLET_RE`, fordi ` - ` midt i formlen er
+# præcis samme tegnsekvens som en bullet-markør. Resultatet var en KaTeX-
+# fejl tegnet rødt i chatten — den rå LaTeX stod tilbage som tekst.
+_OPEN_MATH_RE = re.compile(r"^ {0,3}\$\$")
+# `$$...$$` der står MIDT i en linje (`blokken $$a - b$$ står stille`) er ikke
+# en blok for `_split_protected`, men ` - ` inde i den er lige så farlig.
+# Den skjules med samme pladsholder som inline-kode i `_normalize_segment`.
+_INLINE_MATH_BLOCK_RE = re.compile(r"\$\$.+?\$\$")
 _INLINE_CODE_RE = re.compile(r"(?<!`)(`{1,2})(?!`).*?\1(?!`)", re.DOTALL)
 _BOLD_NUMBER_RE = re.compile(r"^([ \t]{0,3})\*\*(\d{1,3})[ \t]*·[ \t]+([^*\n]+)\*\*", re.MULTILINE)
 
@@ -34,26 +44,55 @@ def _split_protected(text: str) -> list[tuple[bool, str]]:
     parts: list[tuple[bool, str]] = []
     buffer: list[str] = []
     fence: tuple[str, int] | None = None
+    in_math = False
+
+    def _flush(protected: bool) -> None:
+        nonlocal buffer
+        if buffer:
+            parts.append((protected, "".join(buffer)))
+            buffer = []
+
     for line in text.splitlines(keepends=True):
         content = line.rstrip("\r\n")
-        if fence is None:
-            opening = _OPEN_FENCE_RE.match(content)
-            if opening:
-                if buffer:
-                    parts.append((False, "".join(buffer)))
-                    buffer = []
-                marker = opening.group(1)
-                fence = (marker[0], len(marker))
-            buffer.append(line)
-        else:
+
+        if fence is not None:
             buffer.append(line)
             closing = _CLOSE_FENCE_RE.match(content)
             if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= fence[1]:
-                parts.append((True, "".join(buffer)))
-                buffer = []
+                _flush(True)
                 fence = None
+            continue
+
+        if in_math:
+            buffer.append(line)
+            if "$$" in content:
+                _flush(True)
+                in_math = False
+            continue
+
+        opening = _OPEN_FENCE_RE.match(content)
+        if opening:
+            _flush(False)
+            marker = opening.group(1)
+            fence = (marker[0], len(marker))
+            buffer.append(line)
+            continue
+
+        stripped = content.strip()
+        if _OPEN_MATH_RE.match(content):
+            _flush(False)
+            # `$$x$$` på én linje er en komplet blok — beskyttes som en enhed.
+            if len(stripped) >= 4 and stripped.endswith("$$"):
+                parts.append((True, line))
+                continue
+            in_math = True
+            buffer.append(line)
+            continue
+
+        buffer.append(line)
+
     if buffer:
-        parts.append((fence is not None, "".join(buffer)))
+        parts.append((fence is not None or in_math, "".join(buffer)))
     return parts
 
 # Flerords-bold der ender på sætningstegn (`**Det er chat + permissions.**`) =
@@ -279,6 +318,9 @@ def _normalize_segment(text: str) -> str:
         return "\x00" + "0" * pad + idx + "\x00"
 
     text = _INLINE_CODE_RE.sub(_hide_code, text)
+    # Samme skjul for `$$...$$` midt i en linje: minus i en formel er ikke en
+    # bullet. Deler liste med kode-spans — restaureringen er identisk.
+    text = _INLINE_MATH_BLOCK_RE.sub(_hide_code, text)
     # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
     #    så cellerne ligger på egne linjer før bullet/header-logikken.
     text = _reflow_crammed_tables(text)

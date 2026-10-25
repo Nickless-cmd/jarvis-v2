@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatCodeBlock } from './ChatCodeBlock'
 
@@ -22,6 +22,23 @@ describe('ChatCodeBlock', () => {
   it('falder tilbage til "text" naar sproget er tomt', () => {
     render(<ChatCodeBlock code={'los tekst'} lang="" />)
     expect(screen.getByText('text')).toBeInTheDocument()
+  })
+
+  it('farver kode UDEN sprog-tag — tom fence er ikke rå tekst', async () => {
+    // 24/10-2026 (Bjørn: «uden sprog tag er den vi har nu og det er lort»):
+    // `if (!lang || !code) return` sendte 41 % af alle kodeblokke til rå tekst.
+    // Denne vagt kræver FARVEDE spans, ikke bare at etiketten siger «text».
+    const { container } = render(<ChatCodeBlock code={'const x = 1 // note'} lang="" />)
+    await waitFor(
+      () => expect(container.querySelector('pre.chat-shiki')).not.toBeNull(),
+      { timeout: 5000 },
+    )
+    const spans = Array.from(container.querySelectorAll('pre.chat-shiki span span'))
+    const farver = new Set(
+      spans.map((s) => (s as HTMLElement).style.getPropertyValue('--shiki-dark')).filter(Boolean),
+    )
+    expect(spans.length).toBeGreaterThan(1)
+    expect(farver.size).toBeGreaterThan(1)
   })
 
   it('viser koden uanset highlight-status', () => {

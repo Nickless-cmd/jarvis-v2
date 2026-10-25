@@ -1,4 +1,5 @@
 import { getSingletonHighlighter, type BundledLanguage, type Highlighter } from 'shiki'
+import { fallbackTokens } from './kodeFallback'
 
 const THEMES = { light: 'github-light', dark: 'github-dark' } as const
 type TokenResult = ReturnType<Highlighter['codeToTokens']>
@@ -48,14 +49,67 @@ export function tokenizeChatCode(
   }
 }
 
+/** Sprognavne der optræder i praksis men ikke findes som grammatik i bundlen.
+ *  MÅLT 24/10-2026 over 3.481 kodeblokke: `cron` 95, `jarvis-ui` 34, `|` 17,
+ *  `conf`, `shell`, `git`. Uden denne tabel kastede shiki og blokken blev rå
+ *  tekst — med den rammer de en grammatik der ligner. */
+const ALIAS: Record<string, string> = {
+  sh: 'shellscript',
+  shell: 'shellscript',
+  bash: 'shellscript',
+  zsh: 'shellscript',
+  cron: 'shellscript',
+  crontab: 'shellscript',
+  git: 'shellscript',
+  console: 'shellscript',
+  conf: 'ini',
+  cfg: 'ini',
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  plaintext: 'text',
+  plain: 'text',
+}
+
+/** Sprog hvor shiki ikke kan give farve: tomt (41 % af alle blokke), `text`
+ *  (gyldigt men ensfarvet) og de navne der kun findes som alias til `text`.
+ *  De går gennem scanneren i kodeFallback.ts, så en blok uden sprog-tag også
+ *  bliver farvet — præcis som mobilen altid har gjort. */
+const UDEN_GRAMMATIK = new Set(['', 'text', 'txt', 'plain', 'plaintext', 'output'])
+
 export async function highlightChatCode(
   code: string,
   lang: string,
   previous: ChatHighlight | null,
 ): Promise<ChatHighlight> {
-  const highlighter = await getSingletonHighlighter({
-    themes: ['github-light', 'github-dark'],
-    langs: [lang as BundledLanguage],
-  })
-  return tokenizeChatCode(highlighter, code, lang, previous)
+  const raw = String(lang ?? '').trim().toLowerCase()
+  const effective = ALIAS[raw] ?? raw
+
+  if (UDEN_GRAMMATIK.has(raw) || UDEN_GRAMMATIK.has(effective)) {
+    return {
+      code,
+      lang: raw,
+      tokens: fallbackTokens(code) as unknown as TokenResult['tokens'],
+      grammarState: undefined,
+    }
+  }
+
+  try {
+    const highlighter = await getSingletonHighlighter({
+      themes: ['github-light', 'github-dark'],
+      langs: [effective as BundledLanguage],
+    })
+    // `tokenizeChatCode` får det oversatte sprog, men resultatet bærer det
+    // ORIGINALE navn: ChatCodeBlock sammenligner `highlighted.lang` med den
+    // `lang` den fik i props, og et mismatch ville sende os tilbage til rå tekst.
+    const result = tokenizeChatCode(highlighter, code, effective, previous)
+    return { ...result, lang: raw }
+  } catch {
+    return {
+      code,
+      lang: raw,
+      tokens: fallbackTokens(code) as unknown as TokenResult['tokens'],
+      grammarState: undefined,
+    }
+  }
 }

@@ -357,7 +357,7 @@ describe('StreamContext · opsamling af ventende godkendelse', () => {
   it('bevarer sessions-id fra en godkendelse hentet paa tvaers af sessioner', async () => {
     const { hentVentendeGodkendelseOveralt } = await import('../lib/api')
     vi.mocked(hentVentendeGodkendelseOveralt).mockResolvedValueOnce({
-      approvalId: 'approval-b', tool: 'bash', action: 'pwd', sessionId: 'session-b',
+      approvalId: 'approval-b', tool: 'bash', action: 'pwd', sessionId: 'session-b', expiresAt: '',
     })
     const { result } = renderHook(() => useStream(), { wrapper })
     await act(async () => { await new Promise((r) => setTimeout(r, 50)) })

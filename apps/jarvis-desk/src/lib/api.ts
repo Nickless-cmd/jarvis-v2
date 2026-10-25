@@ -1343,9 +1343,9 @@ export interface PendingNotification {
  */
 export async function hentVentendeGodkendelseOveralt(
   config: ApiConfig,
-): Promise<{ approvalId: string; tool: string; action: string; sessionId: string } | null> {
+): Promise<{ approvalId: string; tool: string; action: string; sessionId: string; expiresAt: string } | null> {
   try {
-    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string } | null }>(
+    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string; expires_at?: string } | null }>(
       config, '/chat/approvals/pending', { retries: 0 },
     )
     const a = r?.approval
@@ -1355,6 +1355,10 @@ export async function hentVentendeGodkendelseOveralt(
     return {
       approvalId: a.approval_id, tool: a.tool || 'tool', action: linje,
       sessionId: String(a.session_id || ''),
+      // Fristen regnes på SERVEREN (`udloeb_tid`) — samme grænse som
+      // `_er_udloebet` håndhæver. Klienten må ikke have sin egen idé om
+      // hvornår kortet dør; så ville de to kunne blive uenige.
+      expiresAt: String(a.expires_at || ''),
     }
   } catch {
     return null   // intet kort er et gyldigt svar; en fejl må ikke vise et falsk kort

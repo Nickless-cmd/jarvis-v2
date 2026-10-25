@@ -495,7 +495,7 @@ def chat_pending_approval_any() -> dict:
     """
     from core.identity.workspace_context import current_user_id
     try:
-        from core.services.approval_runtime import pending_for_owner
+        from core.services.approval_runtime import pending_for_owner, udloeb_tid
         kort = pending_for_owner(current_user_id() or "")
     except Exception:
         # chat.py har ingen modul-logger; en opsamling der fejler skal svare
@@ -510,6 +510,11 @@ def chat_pending_approval_any() -> dict:
         "run_id": str(kort.get("run_id") or ""),
         "session_id": str(kort.get("session_id") or ""),
         "created_at": str(kort.get("created_at") or ""),
+        # Fristen følger med (25/10-2026): klienten skal kunne vise en
+        # nedtælling OG rydde kortet når det udløber. Uden den stoppede
+        # desk med at spørge så snart den HAVDE et kort, og et server-side
+        # udløb blev aldrig opdaget — kortet hang til evig tid.
+        "expires_at": udloeb_tid(kort),
     }}
 
 

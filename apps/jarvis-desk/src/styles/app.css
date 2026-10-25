@@ -2289,7 +2289,20 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: var(--radius-sm); padding: 10px; margin: 8px 0; background: var(--bg-2);
 }
 .approvalcard.risk-destructive { border-left-color: var(--error-fg); }
-.approvalcard-head { font-size: 12px; color: var(--fg-3); margin-bottom: 6px; }
+.approvalcard-head {
+  font-size: 12px; color: var(--fg-3); margin-bottom: 6px;
+  /* Værktøj til venstre, frist til højre (25/10-2026): nedtællingen skal
+   * kunne læses uden at lede, og den skal ikke skubbe værktøjsnavnet. */
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.approvalcard-frist {
+  font-variant-numeric: tabular-nums; color: var(--fg-2); white-space: nowrap;
+}
+/* Fristen løb ud: kortet træder tilbage, men bliver stående kortvarigt så
+ * Bjørn SER hvad der skete i stedet for at kortet forsvinder sporløst.
+ * (`StreamContext` rydder det 6s efter udløb.) */
+.approvalcard-udloebet { border-left-color: var(--fg-3); opacity: 0.75; }
+.approvalcard-udloebet .approvalcard-frist { color: var(--warn-fg); }
 .approvalcard-action {
   font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--fg-1);
   white-space: pre-wrap; word-break: break-word; margin-bottom: 8px;

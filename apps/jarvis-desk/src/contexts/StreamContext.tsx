@@ -139,6 +139,18 @@ export interface PendingApproval {
    *  serveren svaret og kræver et nyt kort — så et gammelt kort kan ikke
    *  godkende en handling nogen har ændret undervejs. */
   digest?: string
+  /** Hvornår kortet ikke længere må bruges (ISO-tid, 25/10-2026).
+   *
+   *  Kommer fra serveren (`udloeb_tid`), som regner den af `created_at` +
+   *  `DEFAULT_TTL_S` — samme grænse som `_er_udloebet` håndhæver. Kortet
+   *  SKAL vise en nedtælling og rydde sig selv ved udløb: uden fristen blev
+   *  et server-side udløb aldrig opdaget her, fordi effekten nedenfor holder
+   *  op med at spørge så snart den HAR et kort. Resultatet var et kort Bjørn
+   *  ikke kunne gøre noget ved — begge knapper ville fejle.
+   *
+   *  Tom/mangelful = ukendt alder. Kortet vises stadig, men uden nedtælling:
+   *  en opdigtet frist ville være værre end ingen. */
+  expiresAt?: string
 }
 
 export interface PendingAppAction {
@@ -577,7 +589,7 @@ export function StreamProvider({
       void hentVentendeGodkendelseOveralt(cfg).then((k) => {
         if (!levende) return
         if (k) {
-          setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId, kind: 'tool' })
+          setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action, sessionId: k.sessionId, kind: 'tool', expiresAt: k.expiresAt })
           return
         }
         // Den gamle vej svarede intet. Spørg AGENT-vejen (14/10-2026): en
@@ -593,6 +605,31 @@ export function StreamProvider({
     spoerg()
     return () => { levende = false; window.clearInterval(id) }
   }, [pendingApproval, config.apiBaseUrl, config.authToken])
+
+  // Et kort må ikke kunne hænge (25/10-2026).
+  //
+  // Effekten ovenfor holder op med at spørge så snart den HAR et kort — det er
+  // med vilje (ellers ville den banke på hvert 2. sekund for et kort den godt
+  // kender). Prisen var at et udløb der skete på SERVEREN aldrig blev opdaget
+  // her: `pendingApproval` blev stående, og Bjørn sad med et kort hvor BÅDE
+  // «Godkend» og «Afvis» ville fejle, fordi posten for længst var for gammel.
+  //
+  // Fristen kommer fra serveren (`expires_at`), så vi gætter ikke. Løber den
+  // ud, rydder vi kortet — og så begynder effekten ovenfor at spørge igen,
+  // hvilket er præcis hvad vi vil: der kan ligge et NYT kort bag det gamle.
+  //
+  // `+6s` så «fristen løb ud» kan SES: kortet viser tilstanden og forsvinder
+  // derefter. Et kort der bare forsvandt ville være lige så uigennemsigtigt
+  // som et kort der hang.
+  useEffect(() => {
+    const frist = pendingApproval?.expiresAt
+    if (!frist) return
+    const ms = Date.parse(frist) - Date.now()
+    if (!Number.isFinite(ms)) return
+    if (ms <= 0) { setPendingApproval(null); return }
+    const id = window.setTimeout(() => setPendingApproval(null), ms + 6000)
+    return () => window.clearTimeout(id)
+  }, [pendingApproval])
 
   useEffect(() => {
     setStreamActive(status === 'working')

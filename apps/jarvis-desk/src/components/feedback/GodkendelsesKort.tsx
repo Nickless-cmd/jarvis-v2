@@ -33,6 +33,7 @@ export function GodkendelsesKort({ sessionId }: { sessionId: string | null }) {
       action={p.action}
       risk="medium"
       canApprove={auth?.role === 'owner'}
+      expiresAt={p.expiresAt}
       onApprove={(id) => stream.approve(id)}
       onDeny={(id) => stream.deny(id)}
     />

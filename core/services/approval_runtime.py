@@ -134,6 +134,46 @@ def pending_for_owner(user_id: str) -> dict[str, Any] | None:
     return kandidater[0]
 
 
+def udloeb_tid(kort: dict[str, Any]) -> str:
+    """Hvornår kortet ikke længere må bruges — ISO-tid, eller ``""`` hvis ukendt.
+
+    ## Hvorfor den findes (25/10-2026)
+
+    Et kort kunne hænge i Desk **for evigt**. Klienten holder nemlig op med at
+    spørge når den først HAR et kort (``StreamContext``: ``if (pendingApproval)
+    return``), så et udløb der skete på serveren blev aldrig opdaget i UI'et.
+    Bjørn sad med et kort han ikke kunne gøre noget ved: både «Godkend» og
+    «Afvis» ville fejle, fordi posten for længst var for gammel. Opgaven siger
+    det direkte: et kort skal blive **afvist eller godkendt** — ikke hænge.
+
+    Fristen er ``created_at + DEFAULT_TTL_S``: præcis den samme grænse som
+    ``_er_udloebet`` håndhæver. Klienten regner ikke sin egen frist — den får
+    serverens, så de to ikke kan blive uenige om hvornår kortet døde.
+
+    Kan alderen ikke afgøres (manglende eller urykkelig ``created_at``), siges
+    det med en tom streng frem for en gættet tid: et kort uden frist skal
+    stadig kunne vises, og en opdigtet nedtælling ville være værre end ingen.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_approval_bridge import DEFAULT_TTL_S
+
+    raa = str(kort.get("created_at") or "").strip()
+    if not raa:
+        return ""
+    try:
+        t = datetime.fromisoformat(raa)
+    except ValueError:
+        # Et urykkeligt tidsstempel er husets egen fejl, ikke brugerens.
+        # Kortet skal stadig kunne VISES — men uden nedtælling, for en
+        # opdigtet frist ville vaere vaerre end ingen.
+        logger.warning("udloeb_tid: urykkelig created_at %r", raa)
+        return ""
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=UTC)
+    return (t + timedelta(seconds=DEFAULT_TTL_S)).isoformat()
+
+
 def alle_pending_for_owner(user_id: str) -> list[dict[str, Any]]:
     """ALLE ventende kort for en EJER — ikke kun det nyeste.
 

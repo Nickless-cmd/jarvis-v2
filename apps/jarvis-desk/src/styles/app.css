@@ -3179,6 +3179,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jarvis-lane { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
 .jarvis-lane-name { min-width: 130px; color: var(--fg-2); }
 .jarvis-lane-model { flex: 1; color: var(--fg-1); }
+.jarvis-build { margin: 14px 0 0; font-size: 11.5px; color: var(--fg-3); }
+.jarvis-build code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; }
 .apps-row, .mcp-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 4px 0; }
 .apps-name, .mcp-name { min-width: 120px; color: var(--fg-1); }
 .mcp-url { flex: 1; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

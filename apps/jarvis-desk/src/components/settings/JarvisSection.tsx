@@ -2,6 +2,7 @@ import { useSettingsResource } from '../../hooks/useSettingsResource'
 import { SettingsState, SettingsActionError } from './SettingsState'
 import { useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
+import { klientBuildId } from '../../lib/api'
 import { getJarvisOverview, setVisibleModel } from '../../lib/coworkApi'
 
 /** Jarvis-sektion (§4.2, owner-only). Model pr. lane (read) + valg af synlig-lane-
@@ -55,6 +56,21 @@ export function JarvisSection({ config }: { config: ApiConfig | undefined }) {
           </div>
         ))}
       </div>
+
+      <BuildLinje />
     </div>
+  )
+}
+
+/** Hvilket build klienten kører. Målt 25/10-2026: et spørgsmål om «gammel cache
+ *  eller ny fejl?» kunne ikke besvares fra skærmen — versionsnummeret var det
+ *  samme i begge builds. Git-sha'en er forskellig, så den siger sandheden. */
+function BuildLinje() {
+  const byg = klientBuildId()
+  if (!byg) return null
+  return (
+    <p className="jarvis-build" title="Build-id for den klient du ser lige nu">
+      Kører build <code>{byg}</code>
+    </p>
   )
 }

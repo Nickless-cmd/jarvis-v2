@@ -119,6 +119,23 @@ export async function serverForklaring(res: Response): Promise<string> {
 }
 
 declare const __DESK_VERSION__: string | undefined
+declare const __BUILD_ID__: string | undefined
+
+/**
+ * Build-id bagt ind ved build (git-sha). Adskiller sig fra versionsnummeret,
+ * som ikke ændrer sig mellem to builds af samme udgivelse.
+ *
+ * 25/10-2026 (målt): `__DESK_VERSION__` var 0.6.263 i både det gamle og det nye
+ * build, så den kunne ikke afgøre om en klient kørte den nye kode. Det kunne
+ * git-sha'en. Kaster aldrig — i test findes konstanten ikke.
+ */
+export function klientBuildId(): string {
+  try {
+    return typeof __BUILD_ID__ === 'string' ? __BUILD_ID__.trim() : ''
+  } catch {
+    return ''
+  }
+}
 
 /**
  * Fortæl serveren hvilken udgave der kører.
@@ -134,7 +151,14 @@ declare const __DESK_VERSION__: string | undefined
 export function klientHoveder(): Record<string, string> {
   try {
     const v = typeof __DESK_VERSION__ === 'string' ? __DESK_VERSION__.trim() : ''
-    return v ? { 'X-Jarvis-Klient': (window as Window & { jarvisDesk?: unknown }).jarvisDesk ? 'desk' : 'web', 'X-Jarvis-Klientversion': v } : {}
+    if (!v) return {}
+    const hoveder: Record<string, string> = {
+      'X-Jarvis-Klient': (window as Window & { jarvisDesk?: unknown }).jarvisDesk ? 'desk' : 'web',
+      'X-Jarvis-Klientversion': v,
+    }
+    const byg = klientBuildId()
+    if (byg) hoveder['X-Jarvis-Build'] = byg
+    return hoveder
   } catch {
     return {}
   }

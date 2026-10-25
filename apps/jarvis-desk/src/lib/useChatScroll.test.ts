@@ -83,11 +83,11 @@ beforeEach(() => {
 })
 afterEach(() => { vi.useRealTimers() })
 
-function opsæt(maal: Maal, props: { arbejder?: boolean; aktiv?: boolean } = {}) {
+function opsæt(maal: Maal, props: { arbejder?: boolean; aktiv?: boolean; pacer?: boolean } = {}) {
   const ref = { current: null as HTMLElement | null }
   const hook = renderHook(
-    (p: { arbejder: boolean; aktiv: boolean }) => useChatScroll(ref, p),
-    { initialProps: { arbejder: false, aktiv: false, ...props } },
+    (p: { arbejder: boolean; aktiv: boolean; pacer?: boolean }) => useChatScroll(ref, p),
+    { initialProps: { arbejder: false, aktiv: false, pacer: false, ...props } as { arbejder: boolean; aktiv: boolean; pacer?: boolean } },
   )
   act(() => { hook.result.current.containerRef(maal.el) })
   return { hook, ref }
@@ -529,5 +529,49 @@ describe('useChatScroll — composerens vækst er ikke en læserbevægelse', () 
       act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS * 4) })
       expect(maal.top()).toBe(efterEfterslaeb)
     })
+  })
+})
+
+describe('useChatScroll — pacing-fasen holder nettet', () => {
+  /**
+   * Bjørn 25/10-2026: «det ruller stadig ned bag composer?»
+   *
+   * Fejlen var ikke efterslæbet — det var gaten. Nettet stoppede da serveren
+   * meldte `done`, men paceren skriver svaret ud i flere sekunder EFTER det.
+   * I den fase voksede indholdet mens intet holdt bunden, og i PWA'en (uden
+   * `overflow-anchor`) rullede svaret ned bag composeren.
+   */
+  it('følger indhold der vokser efter arbejdet er slut, når paceren skriver', () => {
+    // MUTATION: fjern `|| pacer` fra `aktivNu` → ruden bliver stående på 500
+    // mens max er 1800 → fejler.
+    //
+    // Væksten lægges BEVIDST efter efterslæbet (0/120/350 ms). Ellers redder
+    // efterslæbet testen, og den ville være grøn uden `pacer` — målt 25/10:
+    // første udgave af denne test kørte kun 250 ms og fangede intet.
+    vi.useFakeTimers()
+    const maal = rude(1000)
+    const { hook } = opsæt(maal, { arbejder: true, aktiv: true })
+    act(() => { hook.rerender({ arbejder: false, aktiv: false, pacer: true }) })
+    act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+    maal.voksTil(1800)
+    act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS) })
+    expect(maal.top()).toBe(maal.max())
+  })
+
+  it('slipper ruden når paceren melder færdig', () => {
+    // MUTATION: ignorér `pacer` i oprydningen (lad nettet køre videre) →
+    // ruden følger vækst der aldrig kommer → fejler.
+    vi.useFakeTimers()
+    const maal = rude(1000)
+    const { hook } = opsæt(maal, { arbejder: false, aktiv: false, pacer: true })
+    act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS) })
+    act(() => { hook.rerender({ arbejder: false, aktiv: false, pacer: false }) })
+    act(() => { vi.advanceTimersByTime(EFTERSLAEB_MS[EFTERSLAEB_MS.length - 1]!) })
+    const efterPacing = maal.top()
+    expect(efterPacing).toBe(maal.max())
+
+    maal.voksTil(2400)
+    act(() => { vi.advanceTimersByTime(PIN_INTERVAL_MS * 4) })
+    expect(maal.top()).toBe(efterPacing)
   })
 })

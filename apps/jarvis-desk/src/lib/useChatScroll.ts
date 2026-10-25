@@ -124,7 +124,7 @@ export interface ChatScroll {
  */
 export function useChatScroll(
   ref: RefObject<HTMLElement | null>,
-  { arbejder, aktiv }: { arbejder: boolean; aktiv: boolean },
+  { arbejder, aktiv, pacer = false }: { arbejder: boolean; aktiv: boolean; pacer?: boolean },
 ): ChatScroll {
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
@@ -344,8 +344,16 @@ export function useChatScroll(
   // scroll-events; uden anker gav fallbacken 4 skrivninger/4 events på 1,4 s.
   // At fjerne intervallet sparer altså ingen skrivninger når CSS virker, men
   // mister dækningen for erstattede beskeder og autonome refreshes ovenfor.
+  // `pacer` er den fase hvor svaret er FÆRDIG-genereret men stadig skrives ud
+  // på skærmen. Den ligger efter `aktiv` er blevet false, og det var fejlen
+  // målt 25/10-2026: nettet stoppede i samme øjeblik serveren meldte `done`,
+  // mens paceren fortsatte med at tilføje tekst i flere sekunder. I desk holdt
+  // `overflow-anchor` bunden alligevel; i PWA'en gjorde den ikke, og teksten
+  // rullede ned bag composeren. Netttet skal holde så længe INDHOLDET kan
+  // vokse — ikke så længe serveren arbejder.
+  const aktivNu = aktiv || pacer
   useEffect(() => {
-    if (!aktiv) return
+    if (!aktivNu) return
     // Beslutningen om der MÅ følges ligger i `melder` — ikke her. Intervallet
     // melder bare; kører det mens man er scrollet op, sker der ingenting. To
     // værn om samme sag ville gøre det umuligt at mutationsprøve hvilket af dem
@@ -353,7 +361,7 @@ export function useChatScroll(
     melder('indhold')
     const id = setInterval(() => melder('indhold'), PIN_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [aktiv, melder])
+  }, [aktivNu, melder])
 
   // ── Efterslæb: den sidste vækst EFTER arbejdet slutter ────────────────────
   // Bjørn 25/10-2026: «i web buildt … køre streamen ned bag composer og slutter,
@@ -384,12 +392,12 @@ export function useChatScroll(
   // læseren teknisk set over gulvet uden at have rørt hjulet, og så ville
   // efterslæbet nægte at følge præcis den afslutning vi retter.
   useEffect(() => {
-    const sluttede = foerAktiv.current && !aktiv
-    foerAktiv.current = aktiv
+    const sluttede = foerAktiv.current && !aktivNu
+    foerAktiv.current = aktivNu
     if (!sluttede) return
     const ids = EFTERSLAEB_MS.map((ms) => window.setTimeout(() => melder('indhold'), ms))
     return () => { for (const id of ids) clearTimeout(id) }
-  }, [aktiv, melder])
+  }, [aktivNu, melder])
 
   // ── Afregning ved browserens scrollend ────────────────────────────────────
   // Uden den ville et lille hjul-trin først blive afregnet efter op til 500 ms.

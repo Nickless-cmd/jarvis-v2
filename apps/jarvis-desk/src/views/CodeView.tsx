@@ -654,9 +654,23 @@ export function CodeView({
   // fordi den kigger på containeren og ikke indholdet — havde INTET net i
   // code-mode. Det er den bug Bjørn mærkede i chat 17/9-2026, og den stod stadig
   // åben her. Koordinatoren bærer nettet for begge views.
+  // 25/10-2026: pacing-flaget skal beregnes FØR scroll-hooken — paceren skriver
+  // svaret ud efter `status` bliver `done`, og i den fase voksede indholdet uden
+  // at nettet kørte (samme fejl som ChatView havde i PWA'en).
+  const [pacedRunId, setPacedRunId] = useState<string | null>(null)
+  const markerSvarPacet = useCallback(() => {
+    if (stream.activeRunId) setPacedRunId(stream.activeRunId)
+  }, [stream.activeRunId])
+  const harPacetekst = stream.blocks.some((b) => b?.type === 'text' && b.text.length > 0)
+  const afslutterSvarPacing = stream.status === 'done'
+    && !!stream.activeRunId
+    && pacedRunId !== stream.activeRunId
+    && harPacetekst
+
   const scroll = useChatScroll(transcriptRef, {
     arbejder: stream.status === 'working',
     aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+    pacer: afslutterSvarPacing,
   })
   const { melder } = scroll
 
@@ -962,15 +976,7 @@ export function CodeView({
   // Chat-laget har haft `afslutterSvarPacing` + `udenAktivRun` siden 20/10;
   // code-fladen havde ingen af dem — derfor gik det kun ud over Code Mode.
   // Nu holder den levende raekke skaermen indtil pacingen selv melder faerdig.
-  const [pacedRunId, setPacedRunId] = useState<string | null>(null)
-  const markerSvarPacet = useCallback(() => {
-    if (stream.activeRunId) setPacedRunId(stream.activeRunId)
-  }, [stream.activeRunId])
-  const harPacetekst = stream.blocks.some((b) => b?.type === 'text' && b.text.length > 0)
-  const afslutterSvarPacing = stream.status === 'done'
-    && !!stream.activeRunId
-    && pacedRunId !== stream.activeRunId
-    && harPacetekst
+  // (Beregningen selv står nu FØR scroll-hooken — se linje ~660.)
   const visLevendeTur = stream.status === 'working' || afslutterSvarPacing
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')

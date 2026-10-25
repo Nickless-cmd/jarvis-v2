@@ -362,9 +362,26 @@ export function ChatView({
   // og ResizeObserveren. Nu melder de alle intent, og koordinatorens `melder`
   // afgør om der må skrives. `arbejder` er dit EGET svar (pin-ved-start); `aktiv`
   // er alt arbejde, også et cross-device run (interval-nettet).
+  // 25/10-2026: pacing-flaget skal beregnes FØR scroll-hooken. Paceren skriver
+  // svaret ud over flere sekunder EFTER `status` bliver `done`, og i den fase
+  // voksede indholdet uden at nettet kørte — det var fejlen Bjørn så i PWA'en.
+  const primaryChatModel = useMemo(() => deriveChatFlow({
+    blocks: liveChatBlokke(stream),
+    workingStep: stream.workingStep,
+    rundeEtiketter: stream.rundeEtiketter,
+    tankeResumeer: stream.tankeResumeer,
+    finalAnswerStarted: stream.finalAnswerStarted,
+    status: stream.status,
+  }), [stream])
+  const afslutterSvarPacing = stream.status === 'done'
+    && !!stream.activeRunId
+    && pacedAnswerRunId !== stream.activeRunId
+    && primaryChatModel.finalBlocks.some((block) => block.type === 'text' && block.text.length > 0)
+
   const scroll = useChatScroll(transcriptRef, {
     arbejder: stream.status === 'working',
     aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+    pacer: afslutterSvarPacing,
   })
   const { melder } = scroll
 
@@ -484,18 +501,6 @@ export function ChatView({
   const followedChatMode = followedRunId
     ? chatFlow.activeModeForRun(followedRunId)
     : historicalChatMode
-  const primaryChatModel = useMemo(() => deriveChatFlow({
-    blocks: liveChatBlokke(stream),
-    workingStep: stream.workingStep,
-    rundeEtiketter: stream.rundeEtiketter,
-    tankeResumeer: stream.tankeResumeer,
-    finalAnswerStarted: stream.finalAnswerStarted,
-    status: stream.status,
-  }), [stream])
-  const afslutterSvarPacing = stream.status === 'done'
-    && !!stream.activeRunId
-    && pacedAnswerRunId !== stream.activeRunId
-    && primaryChatModel.finalBlocks.some((block) => block.type === 'text' && block.text.length > 0)
   const visLevendeTur = streaming || afslutterSvarPacing
   const markerSvarPacet = useCallback(() => {
     if (stream.activeRunId) setPacedAnswerRunId(stream.activeRunId)

@@ -109,7 +109,7 @@ def test_explicit_profile_is_an_active_default_and_recognizes_text_emoticon(monk
     with tool_scope("chat"):
         tail = build_chat_mode_dynamic_tail("", message="Det er jo komisk :'D", session_id="s")
 
-    assert "aktive adfærdsstandarder, ikke blot tilladelser" in tail
+    assert "regulerer den fælles kerne op eller ned" in tail
     assert "mærkbart legende" in tail
     assert "Brug normalt en eller to" in tail
     assert "emoji/emotikon i denne tur" in tail
@@ -137,7 +137,7 @@ def test_deepseek_stable_prefix_is_identical_across_user_tone(monkeypatch) -> No
 
 
 def test_skriveformen_naar_halen_i_chat_scope() -> None:
-    """Skriveformen skal med i halen — de fire træk fra Bjørns videoanalyse."""
+    """Den levende, skimmelige kerne skal med i halen i chat mode."""
     from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
     from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
 
@@ -148,13 +148,67 @@ def test_skriveformen_naar_halen_i_chat_scope() -> None:
         reset_tool_scope(token)
     assert "## Chatmode: hvordan jeg taler" in tail
     assert "læsehjælp" in tail
-    assert "uden en fast sektion" in tail
+    assert "fast konklusionssektion" in tail
     # 24/10-2026: kontrakten navngav selv afslutningssektionen som eksempel, og
     # så blev den en signatur i hvert svar (Bjørn: «du behøver ikke bruge denne
     # linje i hver besked»). Kontrakten må ikke foreskrive en fast sektion.
     assert "Hvad jeg især lægger mærke til" not in tail
     assert "Vis beviset" in tail
-    assert "kan du huske da vi talte om" in tail
+    assert "Grundniveauet i chat er mærkbart engagement" in tail
+
+
+def test_chatkernen_baerer_de_fem_formgreb_uden_at_tvinge_dem_ind() -> None:
+    """Bjørn 25/10-2026: GPT-formen er en styrke, ikke en uvane.
+
+    De fem greb skal være chatkernens fælles repertoire. Samtidig må de ikke
+    blive en mekanisk tjekliste, for et kort svar skal fortsat kunne være kort.
+    """
+    from core.services.chat_response_policy import CHAT_FORMAT_CORE
+
+    tekst = CHAT_FORMAT_CORE.lower()
+    for greb in ("korte afsnit", "overskrifter", "punktopstilling", "fed skrift", "emoji"):
+        assert greb in tekst, greb
+    assert "værktøjer, ikke en tjekliste" in tekst
+    assert "et kort, enkelt svar skal ikke have en overskrift" in tekst
+
+
+def test_chatkernen_gider_kan_toer_og_goer() -> None:
+    """Engagement skal være baseline; brugerknapperne regulerer intensiteten."""
+    from core.services.chat_response_policy import CHAT_ENGAGEMENT_CORE
+
+    tekst = CHAT_ENGAGEMENT_CORE
+    for traek in ("GID:", "KAN:", "TØR:", "GØR:"):
+        assert traek in tekst
+    assert "skruer op og ned" in tekst
+    assert "slukker aldrig dette grundniveau" in tekst
+
+
+def test_injicerede_chatregler_modsiger_ikke_formkernen() -> None:
+    """De gamle regler gjorde prosa moralsk rigtig og struktur mistænkelig.
+
+    Saml de to chat-specifikke promptlag, modellen faktisk ser, og hold de
+    kendte modsigelser ude. Det er adfærd ved prompt-sømmen, ikke et grep i en
+    tilfældig workspace-fil.
+    """
+    from core.services.chat_conversation_rules import section
+    from core.services.prompt_sections.chat_mode import _visible_chat_tone_instruction
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+    from core.tools.tool_scoping import tool_scope
+
+    with tool_scope("chat"):
+        samlet = "\n".join(filter(None, [
+            _visible_chat_tone_instruction(compact=False),
+            section(compact=False),
+            CHAT_MODE_HOW_I_TALK,
+        ]))
+
+    assert "Prosa er standard" not in samlet
+    assert "Hver ny tanke får sin egen blok" not in samlet
+    assert "typisk to til fire afsnit" not in samlet
+    assert "Form følger læseopgaven" in samlet
+    assert "Knapperne skruer op og ned" in samlet
+    assert "afsluttende autoritet for synlig samtaleadfærd og form" in samlet
+    assert "workspace-filer" in samlet and "må ikke ophæve det" in samlet
 
 
 def test_skriveformen_er_ikke_i_code_mode() -> None:

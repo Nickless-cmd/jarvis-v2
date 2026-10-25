@@ -14,7 +14,8 @@ def test_chat_tone_is_flexible_and_not_a_mechanical_hook():
         text = _visible_chat_tone_instruction(compact=False) or ""
 
     assert "Reager først" in text
-    assert "Der er intet fast antal linjer" in text
+    assert "Formen er en del af nærværet" in text
+    assert "overskrifter, fremhævelse eller lister" in text
     assert "Slut med en krog" not in text
     assert "Højst tre linjer" not in text
     assert "Bjørns nuværende besked" in text

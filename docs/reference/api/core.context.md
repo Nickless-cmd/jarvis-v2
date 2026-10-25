@@ -123,16 +123,16 @@ _Svarstil pr. bruger — og påmindelsen der følger med hver tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_noegle` | `(rum)` | — | [src](../../../core/context/output_style.py#L71) |
-| function | `_chat_style_noegle` | `(rum)` | — | [src](../../../core/context/output_style.py#L75) |
-| function | `rum_for_anmodning` | `()` | Arbejdsrummet for den der kalder API'et. | [src](../../../core/context/output_style.py#L79) |
-| function | `rum_for_tur` | `(session_id=…)` | Arbejdsrummet for den tur der bygges: samtalens ejer først. | [src](../../../core/context/output_style.py#L85) |
-| function | `_gammel_fil` | `()` | Den globale fil fra den pensionerede jarvisx-app — kun som faldback. | [src](../../../core/context/output_style.py#L100) |
-| function | `hent_stil` | `(rum)` | Arbejdsrummets stil; standarden hvis intet er valgt. | [src](../../../core/context/output_style.py#L114) |
-| function | `saet_stil` | `(rum, stil)` | — | [src](../../../core/context/output_style.py#L128) |
-| function | `hent_chat_style` | `(rum)` | Returnér en valideret samtaleprofil for arbejdsrummet. | [src](../../../core/context/output_style.py#L140) |
-| function | `saet_chat_style` | `(rum, updates)` | Flet validerede, eksplicitte tonevalg ind i arbejdsrummets profil. | [src](../../../core/context/output_style.py#L168) |
-| function | `hint_for_bruger` | `(rum)` | Påmindelsen til denne tur — tom for standarden. | [src](../../../core/context/output_style.py#L192) |
+| function | `_noegle` | `(rum)` | — | [src](../../../core/context/output_style.py#L72) |
+| function | `_chat_style_noegle` | `(rum)` | — | [src](../../../core/context/output_style.py#L76) |
+| function | `rum_for_anmodning` | `()` | Arbejdsrummet for den der kalder API'et. | [src](../../../core/context/output_style.py#L80) |
+| function | `rum_for_tur` | `(session_id=…)` | Arbejdsrummet for den tur der bygges: samtalens ejer først. | [src](../../../core/context/output_style.py#L86) |
+| function | `_gammel_fil` | `()` | Den globale fil fra den pensionerede jarvisx-app — kun som faldback. | [src](../../../core/context/output_style.py#L101) |
+| function | `hent_stil` | `(rum)` | Arbejdsrummets stil; standarden hvis intet er valgt. | [src](../../../core/context/output_style.py#L115) |
+| function | `saet_stil` | `(rum, stil)` | — | [src](../../../core/context/output_style.py#L129) |
+| function | `hent_chat_style` | `(rum)` | Returnér en valideret samtaleprofil for arbejdsrummet. | [src](../../../core/context/output_style.py#L141) |
+| function | `saet_chat_style` | `(rum, updates)` | Flet validerede, eksplicitte tonevalg ind i arbejdsrummets profil. | [src](../../../core/context/output_style.py#L169) |
+| function | `hint_for_bruger` | `(rum)` | Påmindelsen til denne tur — tom for standarden. | [src](../../../core/context/output_style.py#L193) |
 
 ## `core/context/session_compact.py`
 _Session-level context compaction._

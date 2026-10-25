@@ -59,10 +59,11 @@ _CHAT_STYLE_VALUES: Final[dict[str, tuple[str, ...]]] = {
 
 _HINTS: Final[dict[str, str]] = {
     "balanced": "",  # standarden — ingen påmindelse
-    "concise": ("Output style: CONCISE. The user prefers short, dense answers right now. "
-                "Skip preamble. One paragraph max where possible. Code blocks fine, prose around them minimal."),
+    "concise": ("Output style: CONCISE. Turn the shared chat core down in length, not in presence. "
+                "Skip preamble; use one compact paragraph when the answer has one point, but preserve useful "
+                "headings or bullets when several parts genuinely need scanning."),
     "detailed": ("Output style: DETAILED. The user wants thorough explanations. Walk through the "
-                 "reasoning, mention edge cases, give examples."),
+                 "reasoning, mention edge cases, give examples, and shape the extra material with readable hierarchy."),
     "technical": ("Output style: TECHNICAL. Lean into code, types, exact paths, file:line references. "
                   "Less narrative prose, more concrete artifacts."),
 }

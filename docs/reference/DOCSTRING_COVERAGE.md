@@ -288,7 +288,7 @@ Generated from source. 9248/17509 functions/methods documented (52%). The list b
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
 - `core/context/kompaktering.py` :: `log_komprimering` (L225)
 - `core/context/kompaktering.py` :: `seneste_log` (L279)
-- `core/context/output_style.py` :: `saet_stil` (L128)
+- `core/context/output_style.py` :: `saet_stil` (L129)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
 - `core/costing/ledger.py` :: `telemetry_summary` (L118)

@@ -39,6 +39,16 @@ def test_hint_naevner_ingen_navn(kv):
         assert "Bjørn" not in h
 
 
+def test_laengdevalg_regulerer_kernen_uden_at_slukke_hierarki(kv):
+    os_.saet_stil("u-a", "concise")
+    kort = os_.hint_for_bruger("u-a")
+    assert "shared chat core down in length, not in presence" in kort
+    assert "preserve useful headings or bullets" in kort
+
+    os_.saet_stil("u-a", "detailed")
+    assert "readable hierarchy" in os_.hint_for_bruger("u-a")
+
+
 def test_ukendt_stil_og_ingen_bruger_afvises(kv):
     with pytest.raises(ValueError):
         os_.saet_stil("u-a", "poetisk")

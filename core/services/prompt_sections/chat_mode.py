@@ -59,7 +59,7 @@ def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
     lines = [
         "## Tone (chat)",
         "- **Vær i samtalen.** Reager først, når en reaktion giver mening, og gå så til pointen. Tving ikke en ros, vittighed eller indledning ind for formens skyld.",
-        "- **Tilpas formen.** En kort besked må få én levende sætning; et svært emne må få ro, afsnit og struktur. Der er intet fast antal linjer pr. blok.",
+        "- **Tilpas formen.** En kort besked må få én levende sætning; et flerleddet eller svært emne får læsbart hierarki med korte afsnit, overskrifter, fremhævelse eller lister når de hjælper øjet. Formen er en del af nærværet, ikke pynt.",
         "- **Tal som et menneske.** Hverdagsdansk, humor, emoji og kraftsprog kan være rigtige, når relationen og situationen har etableret dem. Den aktuelle brugerprofil i halen sætter grænserne.",
         "- **Ingen refleksros.** Enighed er ikke standarden; sig tydeligt til og begrund bagefter, når noget ikke holder.",
         "- **Begejstring skal være din.** Performér den ikke. Vælg tabel, graf eller prosa efter hvad der gør indholdet tydeligst — ikke flere gengivelser af det samme.",

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9269/17531 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9287/17557 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9269/17531 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 843 | 1544 | 54% |
-| `core.services` | 6189 | 11929 | 51% |
+| `core.services` | 6207 | 11955 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9269/17531 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2584)
+## Undocumented public functions (2586)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1144,8 +1144,8 @@ Generated from source. 9269/17531 functions/methods documented (52%). The list b
 - `core/services/curiosity_hypothesis_debt.py` :: `build_curiosity_debt_surface` (L100)
 - `core/services/curiosity_hypothesis_debt.py` :: `register_hypothesis_debt` (L16)
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
-- `core/services/daemon_manager.py` :: `get_daemon_names` (L793)
-- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L840)
+- `core/services/daemon_manager.py` :: `get_daemon_names` (L806)
+- `core/services/daemon_manager.py` :: `set_daemon_enabled` (L853)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L308)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
@@ -1629,13 +1629,13 @@ Generated from source. 9269/17531 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3604)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3452)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3741)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3620)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3468)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3757)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4708)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4724)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2246,6 +2246,8 @@ Generated from source. 9269/17531 functions/methods documented (52%). The list b
 - `core/services/turn_tail_timing.py` :: `start` (L42)
 - `core/services/turn_trace.py` :: `active` (L36)
 - `core/services/upload_sandbox.py` :: `ExtractResult.as_dict` (L55)
+- `core/services/user_hensyn.py` :: `Hensyn.from_dict` (L189)
+- `core/services/user_hensyn.py` :: `Hensyn.to_dict` (L185)
 - `core/services/user_md_update_proposal_tracking.py` :: `build_runtime_user_md_update_proposal_surface` (L73)
 - `core/services/user_md_update_proposal_tracking.py` :: `refresh_runtime_user_md_update_proposal_statuses` (L42)
 - `core/services/user_md_update_proposal_tracking.py` :: `track_runtime_user_md_update_proposals_for_visible_turn` (L20)

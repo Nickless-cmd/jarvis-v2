@@ -445,6 +445,39 @@ _User Emotional Resonance — detect and respond to the user's mood._
 | function | `get_current_user_mood` | `()` | Get the latest detected user mood. | [src](../../../core/services/user_emotional_resonance.py#L139) |
 | function | `build_user_emotional_resonance_surface` | `()` | MC surface for user emotional resonance. | [src](../../../core/services/user_emotional_resonance.py#L147) |
 
+## `core/services/user_hensyn.py`
+_Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Hensyn` | `` | Ét handlingsrelevant hensyn med levetid, grænse og effekt-tælling. | [src](../../../core/services/user_hensyn.py#L161) |
+| method | `Hensyn.to_dict` | `(self)` | — | [src](../../../core/services/user_hensyn.py#L185) |
+| method | `Hensyn.from_dict` | `(cls, data)` | — | [src](../../../core/services/user_hensyn.py#L189) |
+| function | `_load` | `()` | Læs de gemte hensyn. Tom liste hvis intet er gemt — aldrig en fejl. | [src](../../../core/services/user_hensyn.py#L199) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/user_hensyn.py#L212) |
+| function | `_normaliser` | `(tekst)` | — | [src](../../../core/services/user_hensyn.py#L224) |
+| function | `_nøgle` | `(regel)` | Sammenligningsnøgle for to formuleringer af samme hensyn. | [src](../../../core/services/user_hensyn.py#L228) |
+| function | `kandidat_kategori` | `(linje)` | Kategori for en kandidatlinje — ``None`` når linjen ikke er en kandidat. | [src](../../../core/services/user_hensyn.py#L235) |
+| function | `kandidater` | `(linjer)` | (kategori, linje) for de linjer der kan bære et hensyn. Rækkefølgen bevares. | [src](../../../core/services/user_hensyn.py#L255) |
+| function | `_formuler` | `(linje, kategori, llm)` | Formulér (regel, grænse) for én kandidat — ``None`` når den forkastes. | [src](../../../core/services/user_hensyn.py#L286) |
+| function | `_nu` | `()` | — | [src](../../../core/services/user_hensyn.py#L337) |
+| function | `_alder_dage` | `(hensyn, nu)` | — | [src](../../../core/services/user_hensyn.py#L341) |
+| function | `vaegt` | `(hensyn, nu=…)` | Hensynets aktuelle vægt 0-1. Varige er altid 1.0. | [src](../../../core/services/user_hensyn.py#L351) |
+| function | `forfrem` | `(hensyn, nu=…)` | Situationel → varig når den er set nok gange eller kilden er eksplicit varig. | [src](../../../core/services/user_hensyn.py#L360) |
+| function | `opdater` | `(hensyn, nu=…)` | Anvend levetidsreglerne: forfrem, falm, og erklær støj. | [src](../../../core/services/user_hensyn.py#L372) |
+| function | `aktive` | `(hensyns, nu=…)` | De hensyn der må bruge plads i prompten, stærkeste først. | [src](../../../core/services/user_hensyn.py#L395) |
+| function | `marker_injiceret` | `(hensyns, ids)` | Tæl at disse hensyn blev injiceret i en tur. Kaldes af læsesiden. | [src](../../../core/services/user_hensyn.py#L407) |
+| function | `marker_ramte` | `(hensyns, hensyn_id)` | Registrér at hensynet faktisk påvirkede et svar. Nulstiller støj-tællingen. | [src](../../../core/services/user_hensyn.py#L416) |
+| function | `tjek_brud` | `(hensyn, svar)` | Deterministisk brud-detektor for de kategorier hvor det er entydigt. | [src](../../../core/services/user_hensyn.py#L426) |
+| function | `registrer_svar` | `(hensyns, svar)` | Kør brud-detektoren på et færdigt svar. Returnerer den opdaterede liste. | [src](../../../core/services/user_hensyn.py#L450) |
+| function | `_linje_hash` | `(linje)` | — | [src](../../../core/services/user_hensyn.py#L464) |
+| function | `_behandlede` | `()` | Kildelinjer der allerede er vurderet — så et modelkald ikke gentages. | [src](../../../core/services/user_hensyn.py#L470) |
+| function | `_gem_behandlede` | `(hashes)` | — | [src](../../../core/services/user_hensyn.py#L487) |
+| function | `udled` | `(linjer, *, kilde, llm=…, eksisterende=…)` | Udled hensyn fra profil-linjer. Eksisterende hensyn genkendes og tælles. | [src](../../../core/services/user_hensyn.py#L498) |
+| function | `_profil_linjer` | `(workspace_dir)` | (sektion, linje) fra de dele af USER.md der kan bære hensyn. | [src](../../../core/services/user_hensyn.py#L561) |
+| function | `tick_user_hensyn` | `(*, workspace_dir=…, llm=…, skip_cadence=…)` | Baggrunds-udledning: læs profilen, udled hensyn, anvend levetiderne. | [src](../../../core/services/user_hensyn.py#L579) |
+| function | `byg_hensyn_sektion` | `(*, max_chars=…, nu=…, taeller_injektion=…)` | Prompt-sektionen — "" når intet hensyn er aktivt. | [src](../../../core/services/user_hensyn.py#L654) |
+
 ## `core/services/user_md_update_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -576,24 +609,4 @@ _User-understanding signal tracking — migrated onto signal_tracking_framework.
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L401) |
 | function | `_contains_any` | `(text, needles)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L413) |
 | function | `_rank_confidence` | `(confidence)` | — | [src](../../../core/services/user_understanding_signal_tracking.py#L417) |
-
-## `core/services/valence_trajectory.py`
-_Valence Trajectory — long-term flourishing/withering signal._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_persisted_samples` | `()` | — | [src](../../../core/services/valence_trajectory.py#L35) |
-| function | `_persist_samples` | `()` | — | [src](../../../core/services/valence_trajectory.py#L52) |
-| function | `_clamp` | `(x, lo=…, hi=…)` | — | [src](../../../core/services/valence_trajectory.py#L68) |
-| function | `_sample_current_valence` | `()` | Compute a single instantaneous valence score in [-1, 1] from runtime signals. | [src](../../../core/services/valence_trajectory.py#L72) |
-| function | `tick` | `(_seconds=…)` | Sample current valence and append to rolling window. | [src](../../../core/services/valence_trajectory.py#L127) |
-| function | `_trajectory_from_window` | `()` | Compute trajectory statistics from current window. | [src](../../../core/services/valence_trajectory.py#L138) |
-| function | `_infer_dominant_driver` | `(current_score)` | Heuristic: which single signal is pushing hardest right now? | [src](../../../core/services/valence_trajectory.py#L180) |
-| function | `get_trajectory` | `()` | Return cached trajectory, recomputing only periodically. | [src](../../../core/services/valence_trajectory.py#L208) |
-| function | `current_instant` | `()` | Freshest instantaneous valence — the latest window sample (reactive, present-moment), | [src](../../../core/services/valence_trajectory.py#L218) |
-| function | `build_valence_trajectory_surface` | `()` | Mission Control surface for valence trajectory. | [src](../../../core/services/valence_trajectory.py#L231) |
-| function | `_summary_line` | `(traj)` | — | [src](../../../core/services/valence_trajectory.py#L246) |
-| function | `build_valence_trajectory_prompt_section` | `()` | Return a single prompt line when trajectory is notable. | [src](../../../core/services/valence_trajectory.py#L262) |
-| function | `reset_valence_trajectory` | `()` | Reset state (for testing). | [src](../../../core/services/valence_trajectory.py#L274) |
-| function | `_publish_valence_trajectory_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/valence_trajectory.py#L285) |
 

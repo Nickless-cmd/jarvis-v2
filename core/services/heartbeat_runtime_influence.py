@@ -531,6 +531,21 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Bruger-HENSYN (25/10-2026) — handlingsrelevante hensyn med varig/situationel
+    # levetid. Egen cadence på 60 min, og dedup gør anden kørsel gratis: målt
+    # 25/10 gav første kørsel mod 477 Lært-linjer 60 modelkald, anden gav 0.
+    if _dm.is_enabled("user_hensyn"):
+        try:
+            from core.services.user_hensyn import tick_user_hensyn
+            _uh_result = _hb._daemon_tick_with_deadline(
+                "user_hensyn",
+                tick_user_hensyn,
+                deadline_seconds=25.0,
+            )
+            _dm.record_daemon_tick("user_hensyn", _uh_result or {})
+        except Exception:  # en hensyns-kørsel må aldrig vælte heartbeat-tikket
+            pass
+
     # Emotion Repair Bridge daemon — tovejskobling emotion↔selvreparation
     if _dm.is_enabled("emotion_repair_bridge"):
         try:

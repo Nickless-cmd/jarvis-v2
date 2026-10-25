@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17531 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17557 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -57,10 +57,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17531 functions/
 - [`core.services.25`](core.services.25.md) — `self_system_code_awareness` … `signal_baseline`
 - [`core.services.26`](core.services.26.md) — `signal_decay_daemon` … `subagent_ecology`
 - [`core.services.27`](core.services.27.md) — `subjective_time` … `tool_embeddings`
-- [`core.services.28`](core.services.28.md) — `tool_execution_trace` … `valence_trajectory`
-- [`core.services.29`](core.services.29.md) — `value_formation` … `visible_run_segment_exit`
-- [`core.services.30`](core.services.30.md) — `visible_run_segment_settlement` … `witness_signal_tracking`
-- [`core.services.31`](core.services.31.md) — `workspace_crypto` … `world_model_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `tool_execution_trace` … `user_understanding_signal_tracking`
+- [`core.services.29`](core.services.29.md) — `valence_trajectory` … `visible_run_recovery_dispatcher`
+- [`core.services.30`](core.services.30.md) — `visible_run_segment_exit` … `widget_dokument`
+- [`core.services.31`](core.services.31.md) — `witness_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

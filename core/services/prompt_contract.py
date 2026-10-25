@@ -3156,6 +3156,22 @@ def _build_visible_chat_prompt_assembly_impl(
             derived_inputs.append("user model (memory group)")
     except Exception as _e:
         _sec_err("user model", _e)
+    # ── BRUGER-HENSYN (25/10-2026) ──────────────────────────────────────────
+    # `## Kerne` injiceres fast og `## Lært` relevans-udvalgt, men et HENSYN som
+    # «foreslå ikke kød — medmindre han selv spørger om madvaner» findes ikke som
+    # kategori nogen af stederne: det er en handling, ikke en biografisk note.
+    # `user_model_daemon` måler kun stil. Sektionen har varig/situationel levetid
+    # og bærer sin egen grænse, så den ikke bliver et absolut forbud.
+    # Denne fil er FÆLLES for chat og code — derfor virker hensynene i begge
+    # laner uden en særskilt kobling pr. mode.
+    try:
+        from core.services.user_hensyn import byg_hensyn_sektion as _bhs
+        _hensyn_text = _bhs()
+        if _hensyn_text:
+            _dyn_memory_recall.append(_hensyn_text)
+            derived_inputs.append("user hensyn (memory group)")
+    except Exception as _e:
+        _sec_err("user hensyn", _e)
     # Redesign 4/9: én "Siden sidst"-linje når en proaktiv kandidat er relevant.
     try:
         from core.services.proactive_candidates import build_since_last_line as _bsl

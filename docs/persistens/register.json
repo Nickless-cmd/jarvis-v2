@@ -61,6 +61,11 @@
       "beskrivelse": "Hvilke afsluttede baggrundsjob der ER meldt, saa det samme job ikke meldes to gange. {initialiseret: bool, meldt: {job_id: iso}}. `initialiseret` baerer koldstart-reglen: er den falsk, skrives alle nuvaerende faerdige jobs ind UDEN at melde, saa featuren ikke leverer en byge af gamle jobs naar den gaar live.",
       "registreret": "2026-10-06"
     },
+    "besked_run_kobling": {
+      "ejer": "core/services/besked_run_kobling.py",
+      "beskrivelse": "Hvilket run der skrev en given assistent-besked (message_id -> run_id). Bundet til 512 poster, aeldst falder ud. Deles mellem jarvis-api og jarvis-runtime, fordi autonome runs persisteres i den ene og snapshottet bygges i den anden. Klienten bruger den til at droppe sin bro-kopi praecist i stedet for at sammenligne prosa serveren selv har skrevet om.",
+      "registreret": "2026-10-07"
+    },
     "bg_jobs_grundlinje": {
       "ejer": "core/services/background_job_watch.py",
       "beskrivelse": "Tidsstemplet for hvornaar baggrundsjob-vagtposten vaagnede. Alt stoppet foer den er historik (supervisor-registret rydder sig ikke).",
@@ -90,6 +95,11 @@
       "ejer": "core/services/candidate_review_digest.py",
       "beskrivelse": "Ugentlig digest over kandidat-review-køen — så køen ikke hober op i tavshed.",
       "registreret": "2026-10-02"
+    },
+    "chat_conversation_rules": {
+      "ejer": "core/services/chat_conversation_rules.py",
+      "beskrivelse": "Live killswitch for samtale-reglerne i chat mode — {\"enabled\": bool} laeses ved hver prompt-build, saa reglerne kan slaaes fra uden genstart.",
+      "registreret": "2026-10-22"
     },
     "ci_watch_grundlinje": {
       "ejer": "core/services/ci_status_watch.py",
@@ -366,15 +376,15 @@
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
     },
-    "besked_run_kobling": {
-      "ejer": "core/services/besked_run_kobling.py",
-      "beskrivelse": "Hvilket run der skrev en given assistent-besked (message_id -> run_id). Bundet til 512 poster, aeldst falder ud. Deles mellem jarvis-api og jarvis-runtime, fordi autonome runs persisteres i den ene og snapshottet bygges i den anden. Klienten bruger den til at droppe sin bro-kopi praecist i stedet for at sammenligne prosa serveren selv har skrevet om.",
-      "registreret": "2026-10-07"
+    "user_hensyn": {
+      "ejer": "core/services/user_hensyn.py",
+      "beskrivelse": "Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid.",
+      "registreret": "2026-10-25"
     },
-    "chat_conversation_rules": {
-      "ejer": "core/services/chat_conversation_rules.py",
-      "beskrivelse": "Live killswitch for samtale-reglerne i chat mode — {\"enabled\": bool} laeses ved hver prompt-build, saa reglerne kan slaaes fra uden genstart.",
-      "registreret": "2026-10-22"
+    "user_hensyn.behandlet": {
+      "ejer": "core/services/user_hensyn.py",
+      "beskrivelse": "Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid.",
+      "registreret": "2026-10-25"
     }
   }
 }

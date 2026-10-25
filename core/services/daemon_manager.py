@@ -265,6 +265,19 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_relation] Theory of mind — models user preferences and patterns",
     },
+    "user_hensyn": {
+        "module": "core.services.user_hensyn",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "default_enabled": True,
+        "description": (
+            "Handlingsrelevante HENSYN om brugeren med varig/situationel levetid. "
+            "Måler indhold, ikke stil (det gør user_model). Hver linje bærer sin "
+            "egen grænse, og et hensyn der ikke rammer et svar i N_TURE_UDEN_EFFEKT "
+            "ture erklæres støj og fjernes."
+        ),
+    },
     "desire": {
         "module": "core.services.desire_daemon",
         "reset_var": "_last_generated_at",

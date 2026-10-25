@@ -298,6 +298,19 @@ ALLOWED_EVENT_FAMILIES = {
     # når en autonom kørsel blokeres fra at bruge et værktøj (agent-dispatch etc.).
     # Governance-telemetri, ikke privat indre liv → kun her, ikke i PRIVATE-ruter.
     "autonomous_tool_policy",
+    # ── 25. okt 2026: SYVENDE gang samme mønster (prompt 4/9, tool_discovery 6/9,
+    #    r2_5_gate 19/9, app 20/9, central_instrument 29/9, mobile 3/10).
+    #    Codex' autonomi-arbejde landede med to nye familier der aldrig blev
+    #    registreret: `background.attention` (inbox_idle_waker → background_attention.py:46)
+    #    og `autonomous_budget.blocked` (simple_tool_executor.py:99). Begge kald
+    #    ligger i `try/except: pass`, så hvert eneste event kastede ValueError og
+    #    forsvandt i tavshed — PRÆCIS den fejlklasse filens egne kommentarer
+    #    advarer om seks gange ovenfor. Fandt vagten i CI (main rød siden 14:08).
+    #    Det gør den autonome del usynlig netop når den skal kunne ses: uden
+    #    `background` kunne ingen idle-vækning spores, og uden `autonomous_budget`
+    #    ville et opbrugt budget se ud som en kørsel der bare ikke gjorde noget.
+    "background",          # inbox_idle_waker — baggrundsstart/attention-beslutninger
+    "autonomous_budget",   # simple_tool_executor — budget-håndhævelse ved autonom kørsel
 }
 
 

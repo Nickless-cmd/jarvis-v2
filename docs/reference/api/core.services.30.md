@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_steers.py`
+_Keep real mid-flight user steers distinct from runtime turn notices._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `append_real_user_steers` | `(exchanges, steers)` | Læg ægte klient-styringer i HISTORIKKEN — ikke i halen. | [src](../../../core/services/visible_run_steers.py#L12) |
+
 ## `core/services/visible_run_terminal_recovery.py`
 _Resolve whether an agentic run segment completed or needs recovery._
 
@@ -56,24 +63,24 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…, recovery_task_id=…)` | — | [src](../../../core/services/visible_runs.py#L1066) |
 | function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6387) |
 | function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6463) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6509) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6516) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6520) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6546) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6577) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6589) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6633) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6691) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6765) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6818) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6856) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6860) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6871) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6885) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L6919) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L6923) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L6940) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L6990) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6531) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6538) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6542) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6568) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6599) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6611) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6655) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6713) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6787) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6840) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6878) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6882) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L6893) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L6907) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L6941) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L6945) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L6962) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7012) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -562,20 +569,4 @@ _Krypteret workspace-fil-I/O (spec §16, Lag 3)._
 | function | `read_text_for_path` | `(path, *, encoding=…)` | Læs workspace-fil-tekst sti-nøglet. Returnerer None hvis hverken plaintext | [src](../../../core/services/workspace_crypto.py#L154) |
 | function | `write_text_for_path` | `(path, content)` | Skriv workspace-fil-tekst sti-nøglet. Mens ENCRYPT_ON_WRITE er FRA skrives | [src](../../../core/services/workspace_crypto.py#L172) |
 | function | `atomic_write_text_for_path` | `(path, content)` | Som `write_text_for_path`, men atomisk (temp-fil + os.replace). | [src](../../../core/services/workspace_crypto.py#L196) |
-
-## `core/services/workspace_trust.py`
-_Trusted-folder gate for code/cowork workspaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/workspace_trust.py#L30) |
-| function | `_opløst` | `(sti)` | Stien med symlinks fulgt — tom streng hvis den ikke kan opløses. | [src](../../../core/services/workspace_trust.py#L44) |
-| function | `er_under` | `(sti, rod)` | Ligger `sti` i eller under `rod`? | [src](../../../core/services/workspace_trust.py#L64) |
-| function | `is_trusted` | `(user_id, kind, root)` | True hvis (user_id, kind, root) er betroet — direkte ELLER som undermappe. | [src](../../../core/services/workspace_trust.py#L100) |
-| function | `list_trusted` | `(user_id, kind=…)` | De mapper brugeren har betroet — nyeste foerst. | [src](../../../core/services/workspace_trust.py#L137) |
-| function | `set_trusted` | `(user_id, kind, root, trusted)` | Markér/afmarkér et workspace som betroet. Returnerer den nye trust-tilstand. | [src](../../../core/services/workspace_trust.py#L167) |
-| function | `set_trust_context` | `(*, kind, root, trusted)` | — | [src](../../../core/services/workspace_trust.py#L190) |
-| function | `clear_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L194) |
-| function | `current_trust_context` | `()` | — | [src](../../../core/services/workspace_trust.py#L198) |
-| function | `guard_code_write` | `(tool_name)` | Returnér en fejl-besked hvis ``tool_name`` er en skrive-/exec-handling i et | [src](../../../core/services/workspace_trust.py#L202) |
 

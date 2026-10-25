@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/verification_gate.py`
+_Verification gate — advisory check on destructive/mutation actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
+| function | `_uden_anfoersel` | `(tekst)` | Erstat hvert anførselstegns-span med `Q`. | [src](../../../core/services/verification_gate.py#L148) |
+| function | `_opdel_segmenter` | `(c)` | Opdel på shell-separatorer UDEN FOR anførselstegn. | [src](../../../core/services/verification_gate.py#L181) |
+| function | `_ssh_remote_kommando` | `(seg)` | Udtræk fjernkommandoen fra et ssh-kald — eller `None` hvis kaldet ikke | [src](../../../core/services/verification_gate.py#L254) |
+| function | `_ssh_er_laesning` | `(seg, dybde)` | Er ssh-kaldet en ren læsning? Kun hvis fjernkommandoen selv er det. | [src](../../../core/services/verification_gate.py#L312) |
+| function | `shell_command_is_mutating` | `(command, *, _dybde=…)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L323) |
+| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L473) |
+| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L481) |
+| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L495) |
+| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L559) |
+| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L611) |
+| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L637) |
+| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L719) |
+
 ## `core/services/verification_gate_telemetry.py`
 _R2 verification gate telemetry — track whether warnings get heeded._
 
@@ -539,11 +558,4 @@ _Ét sted hvor et unormalt segment-ophør bliver durabelt — før noget lukkes.
 | class | `SegmentUdfald` | `` | Dommen, den durable post, og hvad kalderen skal sende ud. | [src](../../../core/services/visible_run_segment_settlement.py#L90) |
 | function | `settle_user_stop` | `(*, run_id, session_id=…, task_id=…, reason=…)` | Brugeren trykkede stop. Det er endeligt — og skal skrives ned FØRST. | [src](../../../core/services/visible_run_segment_settlement.py#L106) |
 | function | `settle_segment_exit` | `(*, run_id, session_id, exit_reason, final_text=…, finish_reason=…, forced_finalize=…, pending_tool_intent=…, explicit_user_cancel=…, waiting_for_user=…, recovery_attempt=…, recovery_limit=…, task_id=…, summary=…, checkpoint_ref=…, generation=…, owner=…, final_synthesis_attempted=…, failure_class=…)` | Gør segmentets ophør durabelt og sig hvad der skal sendes. | [src](../../../core/services/visible_run_segment_settlement.py#L132) |
-
-## `core/services/visible_run_steers.py`
-_Keep real mid-flight user steers distinct from runtime turn notices._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `append_real_user_steers` | `(exchanges, steers)` | Læg ægte klient-styringer i HISTORIKKEN — ikke i halen. | [src](../../../core/services/visible_run_steers.py#L12) |
 

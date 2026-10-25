@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_failure_surface.py`
+_Turn raw tool failures into short, actionable text for visible surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_field` | `(raw_result, name)` | — | [src](../../../core/services/tool_failure_surface.py#L7) |
+| function | `normalise_tool_failure` | `(status, result_text, raw_result, *, timeout_s=…)` | Keep existing detail, otherwise derive a concrete cause from raw output. | [src](../../../core/services/tool_failure_surface.py#L11) |
+
 ## `core/services/tool_hunt_nudge.py`
 _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 
@@ -570,23 +578,4 @@ _Value Formation — emergent ethics from experience._
 | function | `detect_value_from_outcome` | `(*, action_type, outcome_status, user_mood)` | Detect potential value-forming experiences. | [src](../../../core/services/value_formation.py#L32) |
 | function | `get_crystallized_values` | `(conviction_threshold=…)` | Return values with conviction above threshold — these have become commitments. | [src](../../../core/services/value_formation.py#L54) |
 | function | `build_formed_values_surface` | `()` | — | [src](../../../core/services/value_formation.py#L60) |
-
-## `core/services/verification_gate.py`
-_Verification gate — advisory check on destructive/mutation actions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `sqlite_kald_er_laesning` | `(sql)` | Er hele `sqlite3`-kaldets SQL en ren læsning? | [src](../../../core/services/verification_gate.py#L117) |
-| function | `_uden_anfoersel` | `(tekst)` | Erstat hvert anførselstegns-span med `Q`. | [src](../../../core/services/verification_gate.py#L148) |
-| function | `_opdel_segmenter` | `(c)` | Opdel på shell-separatorer UDEN FOR anførselstegn. | [src](../../../core/services/verification_gate.py#L181) |
-| function | `_ssh_remote_kommando` | `(seg)` | Udtræk fjernkommandoen fra et ssh-kald — eller `None` hvis kaldet ikke | [src](../../../core/services/verification_gate.py#L254) |
-| function | `_ssh_er_laesning` | `(seg, dybde)` | Er ssh-kaldet en ren læsning? Kun hvis fjernkommandoen selv er det. | [src](../../../core/services/verification_gate.py#L312) |
-| function | `shell_command_is_mutating` | `(command, *, _dybde=…)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L323) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L473) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L481) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L495) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L559) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L611) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L637) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L719) |
 

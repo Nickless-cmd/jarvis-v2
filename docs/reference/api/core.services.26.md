@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_delta_trigger.py`
+_Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_scoped_key` | `(base, scope)` | Namespace a durable key by ``scope``. None → the global key, unchanged. | [src](../../../core/services/signal_delta_trigger.py#L43) |
+| function | `_db` | `()` | Lazy import so this module is importable/pure without a live DB, and so | [src](../../../core/services/signal_delta_trigger.py#L57) |
+| function | `_baseline` | `()` | Lazy import of C1's baseline module (built in parallel). | [src](../../../core/services/signal_delta_trigger.py#L65) |
+| function | `_bl_is_cold_start` | `(baseline, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L76) |
+| function | `_bl_get` | `(baseline, name, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L82) |
+| function | `_bl_set` | `(baseline, name, val, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L88) |
+| function | `_cfg_float` | `(db, name, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L95) |
+| function | `_load_float` | `(db, key, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L102) |
+| function | `_store_float` | `(db, key, value)` | — | [src](../../../core/services/signal_delta_trigger.py#L109) |
+| function | `_load_hot` | `(db, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L116) |
+| function | `_store_hot` | `(db, hot, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L126) |
+| function | `_reason` | `(crossed, movements, theta_abs)` | — | [src](../../../core/services/signal_delta_trigger.py#L133) |
+| function | `evaluate` | `(signals, scope=…)` | Decide whether a real change warrants a dispatch. | [src](../../../core/services/signal_delta_trigger.py#L141) |
+
 ## `core/services/signal_network_visualizer.py`
 _Signal Network Visualizer — Jarvis' self-model as a living network._
 
@@ -565,13 +584,4 @@ _Subjective Time — how time FEELS, not just passes._
 |---|---|---|---|---|
 | function | `build_subjective_time_perception` | `(*, tick_count_last_hour=…, conversation_intensity=…, novelty_score=…, idle_hours=…)` | — | [src](../../../core/services/subjective_time.py#L9) |
 | function | `build_subjective_time_surface` | `()` | — | [src](../../../core/services/subjective_time.py#L29) |
-
-## `core/services/suggest_standing_guard.py`
-_Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `suggest_standing_guard_enabled` | `()` | Default FALSE (Bjørn 19/10-2026). Env kan tænde den igen. | [src](../../../core/services/suggest_standing_guard.py#L84) |
-| function | `mangler_stilling` | `(*, called_tool_names, nudged_already=…, final_text=…, is_last_round=…, er_autonom=…)` | True når turen udførte arbejde og intet forslag blev lagt. | [src](../../../core/services/suggest_standing_guard.py#L118) |
-| function | `build_nudge` | `()` | Beskeden der lægges i turen. Bedømmer, opfordrer ikke til gentagelse. | [src](../../../core/services/suggest_standing_guard.py#L169) |
 

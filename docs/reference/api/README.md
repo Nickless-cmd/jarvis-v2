@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17518 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17525 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,17 +50,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17518 functions/
 - [`core.services.18`](core.services.18.md) — `metacognition_signal_tracker` … `offline_recomposition_engine`
 - [`core.services.19`](core.services.19.md) — `ollama_model_names` … `prepared_request`
 - [`core.services.20`](core.services.20.md) — `pressure_threshold_gate` … `prompt_section_impact`
-- [`core.services.21`](core.services.21.md) — `prompt_section_reevaluation` … `reflection_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `reflection_to_plan` … `routine_inbox`
-- [`core.services.23`](core.services.23.md) — `routine_run_recorder` … `rupture_repair`
-- [`core.services.24`](core.services.24.md) — `scheduled_inbox` … `self_wakeup`
-- [`core.services.25`](core.services.25.md) — `selfhood_proposal_tracking` … `signal_delta_trigger`
-- [`core.services.26`](core.services.26.md) — `signal_network_visualizer` … `suggest_standing_guard`
-- [`core.services.27`](core.services.27.md) — `surprise_daemon` … `tool_failure_surface`
-- [`core.services.28`](core.services.28.md) — `tool_hunt_nudge` … `verification_gate`
-- [`core.services.29`](core.services.29.md) — `verification_gate_telemetry` … `visible_run_steers`
-- [`core.services.30`](core.services.30.md) — `visible_run_terminal_recovery` … `workspace_trust`
-- [`core.services.31`](core.services.31.md) — `world_facts` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `prompt_section_reevaluation` … `reflection_cycle_daemon`
+- [`core.services.22`](core.services.22.md) — `reflection_signal_tracking` … `routine_identity_migration`
+- [`core.services.23`](core.services.23.md) — `routine_inbox` … `runtime_tasks`
+- [`core.services.24`](core.services.24.md) — `rupture_repair` … `self_system_code_awareness`
+- [`core.services.25`](core.services.25.md) — `self_wakeup` … `signal_decay_daemon`
+- [`core.services.26`](core.services.26.md) — `signal_delta_trigger` … `subjective_time`
+- [`core.services.27`](core.services.27.md) — `suggest_standing_guard` … `tool_execution_trace`
+- [`core.services.28`](core.services.28.md) — `tool_failure_surface` … `value_formation`
+- [`core.services.29`](core.services.29.md) — `verification_gate` … `visible_run_segment_settlement`
+- [`core.services.30`](core.services.30.md) — `visible_run_steers` … `workspace_crypto`
+- [`core.services.31`](core.services.31.md) — `workspace_trust` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

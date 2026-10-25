@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/suggest_standing_guard.py`
+_Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `suggest_standing_guard_enabled` | `()` | Default FALSE (Bjørn 19/10-2026). Env kan tænde den igen. | [src](../../../core/services/suggest_standing_guard.py#L84) |
+| function | `mangler_stilling` | `(*, called_tool_names, nudged_already=…, final_text=…, is_last_round=…, er_autonom=…)` | True når turen udførte arbejde og intet forslag blev lagt. | [src](../../../core/services/suggest_standing_guard.py#L118) |
+| function | `build_nudge` | `()` | Beskeden der lægges i turen. Bedømmer, opfordrer ikke til gentagelse. | [src](../../../core/services/suggest_standing_guard.py#L169) |
+
 ## `core/services/surprise_daemon.py`
 _Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
 
@@ -614,12 +623,4 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L304) |
 | function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L309) |
 | function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L332) |
-
-## `core/services/tool_failure_surface.py`
-_Turn raw tool failures into short, actionable text for visible surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_field` | `(raw_result, name)` | — | [src](../../../core/services/tool_failure_surface.py#L7) |
-| function | `normalise_tool_failure` | `(status, result_text, raw_result, *, timeout_s=…)` | Keep existing detail, otherwise derive a concrete cause from raw output. | [src](../../../core/services/tool_failure_surface.py#L11) |
 

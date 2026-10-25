@@ -6485,6 +6485,28 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
             cleaned = _normalisér_flader(cleaned, run_id="")
     except Exception:
         pass
+    # PROSA-STRUKTUR (25/10-2026, Bjørn): «på teksten under overskifterne.. du
+    # bruger ikk - osv. istedet bliver en lang smøre til næste section». Reglen
+    # står i CHAT_FORMAT_CORE og blev brudt i samme svar hvor den blev citeret;
+    # en model-baseret korrektur gav nul effekt (commit 4b473aecd). Derfor måles
+    # det mekanisk. KUN som observation: en heuristik der gætter på struktur må
+    # ikke afvise et svar der flyder rigtigt, så den flagger og rører intet.
+    # Fail-open — fejler den, sendes teksten uændret.
+    try:
+        from core.services.prosa_struktur_guard import fejl_i_prosa as _fejl_i_prosa
+        _prosa_fejl = _fejl_i_prosa(cleaned) if cleaned else []
+        if _prosa_fejl:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="runtime",
+                nerve="chat_format",
+                kind="prosa_opremsning",
+                severity="info",
+                message="; ".join(_prosa_fejl)[:400],
+                dedup=True,
+            )
+    except Exception:  # fail-open: prosa-kontrollen må aldrig blokere et svar
+        pass
     try:
         from core.services.provider_error_guard import describe, looks_like_provider_error
         if cleaned and looks_like_provider_error(cleaned):

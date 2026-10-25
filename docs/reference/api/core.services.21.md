@@ -86,6 +86,20 @@ _Proprioception Metrics — process-level body sense._
 | function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
 | function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
 
+## `core/services/prosa_struktur_guard.py`
+_Mekanisk kontrol: et afsnit under en overskrift der opremser tre eller flere_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ProsaPunkt` | `` | Ét afsnit der bærer en opremsning som prosa i stedet for en liste. | [src](../../../core/services/prosa_struktur_guard.py#L63) |
+| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L71) |
+| function | `_sektioner` | `(text)` | Del teksten i (overskrift, linjer) — kun sektioner der HAR en overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L80) |
+| function | `_blokke` | `(linjer)` | Del en sektion i afsnit (blank-linje-adskilte) og fjern strukturerede blokke. | [src](../../../core/services/prosa_struktur_guard.py#L112) |
+| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L141) |
+| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L147) |
+| function | `find_prosa_punkter` | `(text)` | Find afsnit under en overskrift der opremser parallelle led som prosa. | [src](../../../core/services/prosa_struktur_guard.py#L163) |
+| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for prosa-opremsninger — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L202) |
+
 ## `core/services/prose_tool_calls.py`
 _Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
 
@@ -617,24 +631,4 @@ _Reflection cycle daemon — pure experience without action, every 10 minutes._
 | function | `_store_reflection` | `(reflection)` | — | [src](../../../core/services/reflection_cycle_daemon.py#L107) |
 | function | `get_latest_reflection` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L139) |
 | function | `build_reflection_surface` | `()` | — | [src](../../../core/services/reflection_cycle_daemon.py#L143) |
-
-## `core/services/reflection_signal_tracking.py`
-_Reflection signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_reflection_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L36) |
-| function | `refresh_runtime_reflection_signal_statuses` | `()` | — | [src](../../../core/services/reflection_signal_tracking.py#L47) |
-| function | `build_runtime_reflection_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflection_signal_tracking.py#L51) |
-| function | `_extract_reflection_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/reflection_signal_tracking.py#L56) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/reflection_signal_tracking.py#L157) |
-| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L186) |
-| function | `_reflection_early_retire` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L205) |
-| function | `_reflection_track_summary` | `(items, message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L213) |
-| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L254) |
-| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L278) |
-| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L303) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L312) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L316) |
-| function | `_history_transition_label` | `(*, signal_type, status)` | — | [src](../../../core/services/reflection_signal_tracking.py#L324) |
 

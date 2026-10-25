@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_wakeup.py`
+_Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_StateUnreadable` | `` | Lageret findes, men kan ikke laeses. Vi naegter at skrive over det. | [src](../../../core/services/self_wakeup.py#L42) |
+| function | `_sikker_skrivning` | `()` | Kast hvis lageret er korrupt — FOER nogen skriver en tom liste tilbage. | [src](../../../core/services/self_wakeup.py#L46) |
+| function | `_load` | `()` | Laes lageret. Dette er den ENESTE laese-søm — ogsaa for skrive-stierne. | [src](../../../core/services/self_wakeup.py#L89) |
+| function | `_save` | `(records)` | — | [src](../../../core/services/self_wakeup.py#L105) |
+| function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…, task_id=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L109) |
+| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L262) |
+| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L307) |
+| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L381) |
+| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L414) |
+| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L455) |
+| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L510) |
+| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L547) |
+| function | `marker_dispatch` | `(wakeup_id, *, dispatched, skip_reason=…)` | Skriv dispatch-markøren på ÉN vækning — under lås, med det samme. | [src](../../../core/services/self_wakeup.py#L574) |
+| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L625) |
+| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L633) |
+| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L701) |
+| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L710) |
+| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L747) |
+| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L808) |
+| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L837) |
+| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L847) |
+| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L851) |
+| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L855) |
+
 ## `core/services/selfhood_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -617,23 +646,4 @@ _Signal decay daemon — archive and delete stale signals across all signal tabl
 | function | `tick_signal_decay_daemon` | `()` | Run signal decay if cadence elapsed. Returns stats dict. | [src](../../../core/services/signal_decay_daemon.py#L35) |
 | function | `get_signal_decay_stats` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L91) |
 | function | `build_signal_decay_surface` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L98) |
-
-## `core/services/signal_delta_trigger.py`
-_Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_scoped_key` | `(base, scope)` | Namespace a durable key by ``scope``. None → the global key, unchanged. | [src](../../../core/services/signal_delta_trigger.py#L43) |
-| function | `_db` | `()` | Lazy import so this module is importable/pure without a live DB, and so | [src](../../../core/services/signal_delta_trigger.py#L57) |
-| function | `_baseline` | `()` | Lazy import of C1's baseline module (built in parallel). | [src](../../../core/services/signal_delta_trigger.py#L65) |
-| function | `_bl_is_cold_start` | `(baseline, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L76) |
-| function | `_bl_get` | `(baseline, name, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L82) |
-| function | `_bl_set` | `(baseline, name, val, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L88) |
-| function | `_cfg_float` | `(db, name, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L95) |
-| function | `_load_float` | `(db, key, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L102) |
-| function | `_store_float` | `(db, key, value)` | — | [src](../../../core/services/signal_delta_trigger.py#L109) |
-| function | `_load_hot` | `(db, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L116) |
-| function | `_store_hot` | `(db, hot, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L126) |
-| function | `_reason` | `(crossed, movements, theta_abs)` | — | [src](../../../core/services/signal_delta_trigger.py#L133) |
-| function | `evaluate` | `(signals, scope=…)` | Decide whether a real change warrants a dispatch. | [src](../../../core/services/signal_delta_trigger.py#L141) |
 

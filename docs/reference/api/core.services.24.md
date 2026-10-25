@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/rupture_repair.py`
+_Rupture & Repair — relationel tension-tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/rupture_repair.py#L86) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/rupture_repair.py#L90) |
+| function | `_ensure_tables` | `()` | — | [src](../../../core/services/rupture_repair.py#L103) |
+| function | `_rupture_key` | `(*, source_kind, topic)` | — | [src](../../../core/services/rupture_repair.py#L154) |
+| function | `_normalize_topic` | `(payload, *, event_kind)` | — | [src](../../../core/services/rupture_repair.py#L159) |
+| function | `_classify_rupture` | `(event_kind, payload)` | Returns (is_rupture, source_kind, tension_level ∈ [0,1]). | [src](../../../core/services/rupture_repair.py#L170) |
+| function | `_is_repair_attempt` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L202) |
+| function | `_is_repair_complete` | `(event_kind, payload)` | — | [src](../../../core/services/rupture_repair.py#L212) |
+| function | `_row_to_rupture` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L232) |
+| function | `_row_to_repair` | `(row)` | — | [src](../../../core/services/rupture_repair.py#L243) |
+| function | `_upsert_rupture` | `(conn, *, rupture_key, topic, source_kind, reason, evidence, tension_level, linked_run_id, linked_session_id, linked_incident_id, status, last_seen_at)` | Insert or update a rupture by rupture_key. Returns (row_dict, mutation). | [src](../../../core/services/rupture_repair.py#L254) |
+| function | `_create_repair` | `(conn, *, rupture_id, repair_kind, repair_note, change_summary, evidence, status, linked_run_id, linked_session_id)` | — | [src](../../../core/services/rupture_repair.py#L338) |
+| function | `evaluate_ruptures` | `(*, lookback_hours=…, event_limit=…)` | Scan recent events and detect/update ruptures and repairs. | [src](../../../core/services/rupture_repair.py#L372) |
+| function | `list_ruptures` | `(*, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L517) |
+| function | `list_repairs` | `(*, rupture_id=…, status=…, limit=…)` | — | [src](../../../core/services/rupture_repair.py#L540) |
+| function | `summarize_ruptures` | `()` | — | [src](../../../core/services/rupture_repair.py#L570) |
+| function | `build_rupture_repair_surface` | `()` | MC surface for Rupture & Repair. | [src](../../../core/services/rupture_repair.py#L607) |
+
 ## `core/services/scheduled_inbox.py`
 _En fyret `schedule_task` skal efterlade en varig række i indbakken._
 
@@ -704,33 +727,4 @@ _Kalibreret forventning til selv-overraskelse._
 | function | `_append_bounded_path` | `(paths, value, *, limit=…)` | — | [src](../../../core/services/self_system_code_awareness.py#L319) |
 | function | `_approval_required_mutation_classes` | `(capabilities)` | — | [src](../../../core/services/self_system_code_awareness.py#L326) |
 | function | `_emit_self_system_code_awareness_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/self_system_code_awareness.py#L341) |
-
-## `core/services/self_wakeup.py`
-_Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_StateUnreadable` | `` | Lageret findes, men kan ikke laeses. Vi naegter at skrive over det. | [src](../../../core/services/self_wakeup.py#L42) |
-| function | `_sikker_skrivning` | `()` | Kast hvis lageret er korrupt — FOER nogen skriver en tom liste tilbage. | [src](../../../core/services/self_wakeup.py#L46) |
-| function | `_load` | `()` | Laes lageret. Dette er den ENESTE laese-søm — ogsaa for skrive-stierne. | [src](../../../core/services/self_wakeup.py#L89) |
-| function | `_save` | `(records)` | — | [src](../../../core/services/self_wakeup.py#L105) |
-| function | `schedule_self_wakeup` | `(*, delay_seconds, prompt, reason=…, extra=…, channel=…, session_id=…, user_id=…, workspace_name=…, user_display_name=…, role=…, context_channel=…, task_id=…)` | Queue a self-wakeup. Returns the wakeup record. | [src](../../../core/services/self_wakeup.py#L109) |
-| function | `bookinger_seneste_doegn` | `(records, session_id, *, nu=…)` | Hvor mange vaekninger er booket fra DENNE samtale det seneste doegn. | [src](../../../core/services/self_wakeup.py#L262) |
-| function | `due_wakeups` | `(*, include_fired_unconsumed=…)` | Return wakeups whose fire_at has passed and not yet consumed. | [src](../../../core/services/self_wakeup.py#L307) |
-| function | `ventende_efter_skip` | `()` | Fyrede vækninger som dispatcheren sprang over — klar til indbakken. | [src](../../../core/services/self_wakeup.py#L381) |
-| function | `direktiv_for` | `(record)` | Run-direktivet for ÉN fyret vækning — ÉN definition (13/10-2026). | [src](../../../core/services/self_wakeup.py#L414) |
-| function | `mark_wakeup_consumed` | `(wakeup_id)` | Clear a fired wakeup once Jarvis has acted on it. | [src](../../../core/services/self_wakeup.py#L455) |
-| function | `add_wakeup_extra` | `(wakeup_id, extra)` | Læg en tilføjelse på en booket wakeup — så den følger med i noten. | [src](../../../core/services/self_wakeup.py#L510) |
-| function | `cancel_wakeup` | `(wakeup_id)` | Cancel a pending wakeup before it fires. | [src](../../../core/services/self_wakeup.py#L547) |
-| function | `marker_dispatch` | `(wakeup_id, *, dispatched, skip_reason=…)` | Skriv dispatch-markøren på ÉN vækning — under lås, med det samme. | [src](../../../core/services/self_wakeup.py#L574) |
-| function | `list_wakeups` | `(*, status=…, limit=…)` | — | [src](../../../core/services/self_wakeup.py#L625) |
-| function | `cleanup_old_wakeups` | `(*, consumed_age_hours=…, cancelled_age_hours=…, stale_fired_age_hours=…)` | Ryd op i gamle consumed/cancelled/stale-fired wakeups. | [src](../../../core/services/self_wakeup.py#L633) |
-| function | `tick_wakeup_cleanup` | `()` | Daemon tick — ryd op i gamle wakeups. | [src](../../../core/services/self_wakeup.py#L701) |
-| function | `_kun_denne_samtale` | `(records)` | De fyrede vækninger der hører til den AKTUELLE samtale — eller til ingen. | [src](../../../core/services/self_wakeup.py#L710) |
-| function | `self_wakeup_section` | `()` | Awareness section showing fired-but-not-consumed wakeups. | [src](../../../core/services/self_wakeup.py#L747) |
-| function | `_exec_schedule_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L808) |
-| function | `_exec_list_self_wakeups` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L837) |
-| function | `_exec_cancel_self_wakeup` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L847) |
-| function | `_exec_mark_wakeup_consumed` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L851) |
-| function | `_exec_add_wakeup_extra` | `(args)` | — | [src](../../../core/services/self_wakeup.py#L855) |
 

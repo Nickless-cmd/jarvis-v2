@@ -30,14 +30,20 @@ describe('klientlog ved renderbeslutningen', () => {
     expect(udfald()).toContain('native')
   })
 
-  it('logger wrong-lang for den maste form — den fejlform der ellers er usynlig', () => {
-    // Det vigtigste tilfælde. Uden denne log er der INTET spor: kodeblokken
-    // bliver tom, og hverken teksten eller DB'en viser hvorfor.
+  it('den maste form når ikke længere loggen — den reddes før render', () => {
+    // HISTORIK (25/10-2026): denne test hed før «logger wrong-lang for den
+    // maste form» og krævede at fejlformen blev LOGGET. Loggen var det eneste
+    // spor, fordi kodeblokken blev tom og hverken teksten eller DB'en viste
+    // hvorfor.
+    //
+    // Nu reddes formen i `enforceStructure.unfoldJarvisUiFence`, FØR
+    // `pre`-grenen ser den. Så der er intet at logge — og det er pointen:
+    // en log der stadig fyrer her ville betyde at reparationen ikke virkede.
+    //
+    // Kravet er bevaret i skarpere form: formen må hverken give en tom
+    // kodeblok eller et `wrong-lang`-snapshot.
     render(<MarkdownRenderer text={MAST} streaming={false} />)
-    expect(udfald()).toContain('wrong-lang')
-    const snap = fanget.find((s) => s.udfald === 'wrong-lang')!
-    expect(snap.blok).toContain('jarvis-ui')
-    expect(snap.efter).toContain('jarvis-ui')
+    expect(udfald()).not.toContain('wrong-lang')
   })
 
   it('logger no-pre-node når blokken aldrig bliver et <pre>', () => {

@@ -175,22 +175,26 @@ describe('jarvis-ui-flade gennem en ægte stream', () => {
     }
   })
 
-  it('den maste form mister INDHOLDET — ikke bare fladen', () => {
-    // Negativ kontrol, målt 25/10-2026. Min første udgave påstod at «parseren
-    // afviser den maste form». Det er ikke hvad der sker: `lang` bliver
-    // faktisk `jarvis-ui` (regex'en stopper ved mellemrummet), men JSON'en
-    // lægges i info-stringen og forsvinder. Kodeblokken er TOM.
+  it('den maste form REDDES nu — klienten flytter JSON ned på egen linje', () => {
+    // HISTORIK (25/10-2026): denne test hed før «den maste form mister
+    // INDHOLDET» og hævdede at rendereren ikke kunne redde den — kun
+    // backend-normaliseringen kunne. Det var sandt, indtil reparationen blev
+    // flyttet ind i `enforceStructure.unfoldJarvisUiFence`.
     //
-    // Det er vigtigere end en grim gengivelse: brugeren ser en tom kodeblok,
-    // og der er intet i DOM'en at diagnosticere på. Derfor er
-    // backend-normaliseringen nødvendig — rendereren kan ikke redde den.
+    // Grunden til at den skulle flyttes: `scan_correction` ankommer EFTER
+    // deltaerne er streamet, så klienten rendrede den maste form i mellemtiden.
+    // Faldt korrektionen bort (fail-open, afbrudt strøm, genindlæst historik),
+    // stod fejlen permanent. Målt i loggen: 59 `wrong-lang`-poster.
+    //
+    // Kravet er det samme som før — at formen ikke må give en TOM kodeblok.
+    // Det er stadig den skarpe måling; svaret er bare et andet nu.
     const { container, unmount } = streamInd(MAST, false)
-    expect(container.querySelector('table.native-comparison')).toBeNull()
+    expect(container.querySelector('table.native-comparison')).not.toBeNull()
     const pre = container.querySelector('pre')
-    expect(pre).not.toBeNull()
-    expect(pre!.querySelector('code')?.className).toBe('language-jarvis-ui')
-    // Indholdet er væk. Det er den skarpe måling.
-    expect(pre!.querySelector('code')?.textContent).toBe('')
+    expect(pre).toBeNull()
+    // Indholdet må ikke være væk — det var den oprindelige fejl.
+    expect(container.textContent).toContain('Test')
+    expect(container.textContent).toContain('x')
     unmount()
     cleanup()
   })

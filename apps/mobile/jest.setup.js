@@ -203,3 +203,25 @@ jest.mock('react-native-webview', () => {
     WebView: (props) => React.createElement('WebViewMock', props),
   }
 })
+
+// WebSocket findes som GLOBAL i Node 22, men ikke i Node 20 — og CI kører 20.
+// (målt 25/10-2026: `node -e "typeof WebSocket"` → "function" på v22.23.4,
+// "undefined" på v20.20.2.) `broKlient.ts` falder tilbage på den globale når
+// testen ikke giver sin egen `lavSocket`, så tre App-tests kastede
+// «ReferenceError: WebSocket is not defined» i CI men var grønne lokalt.
+//
+// Det er et forhold ved MILJØET, ikke ved den enkelte test — derfor hører den
+// her og ikke i testfilerne. Stubben kaster hvis nogen faktisk prøver at
+// forbinde: en test der vil have en socket skal give sin egen `lavSocket`
+// (se `broKlient.test.ts`), og en tavs no-op-stub ville gøre en glemt
+// injektion til en grøn test af ingenting.
+if (typeof global.WebSocket === 'undefined') {
+  global.WebSocket = class WebSocketStub {
+    constructor(url) {
+      throw new Error(
+        `WebSocket blev brugt i en test uden en fake socket (url: ${url}). ` +
+        'Giv `lavSocket` i opsætningen — se broKlient.test.ts.',
+      )
+    }
+  }
+}

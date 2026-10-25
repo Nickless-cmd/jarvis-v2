@@ -1,4 +1,4 @@
-import { isValidElement, memo, useMemo } from 'react'
+import { isValidElement, memo, useEffect, useMemo } from 'react'
 import { Globe } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -14,6 +14,7 @@ import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
+import { logFlade } from '../../lib/fladeLog'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -48,7 +49,25 @@ const KOMPONENTER: Components = {
     // parses, og et forsøg ville skifte blokken fra kode til diagram midt i
     // turen. Alt andet går til ChatCodeBlock som før.
     if (lang === 'mermaid') return <MermaidBlock code={code} />
-    if (lang === 'jarvis-ui' && parseNativeRichSpec(code)) return <NativeRichBlock code={code} />
+    if (lang === 'jarvis-ui') {
+      // Klientlog (25/10-2026, side-155f2dc398): her træffes beslutningen, og
+      // før blev den truffet lydløst. Fire diagnoser i træk pegede forkert,
+      // fordi der ikke var ét eneste spor af hvad grenen faktisk så.
+      //
+      // Der logges KUN her hvor grenen faktisk blev kørt. En fejl der betyder
+      // at grenen aldrig nås (`no-pre-node`) kan denne log pr. definition ikke
+      // se — den fanges i MarkdownBlok nedenfor.
+      const spec = parseNativeRichSpec(code)
+      logFlade({
+        udfald: spec ? 'native' : 'parse-null',
+        foer: '', efter: '',
+        blok: code,
+        className: props.className ?? '',
+        lang,
+        kode: code,
+      })
+      if (spec) return <NativeRichBlock code={code} />
+    }
     return <ChatCodeBlock code={code} lang={lang} className={props.className} />
   },
   a: ({ href, children }) => {
@@ -93,6 +112,29 @@ export const MarkdownBlok = memo(function MarkdownBlok({
   // 29/9-2026: en frossen blok har stabil tekst, så strukturarbejdet skal
   // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
   const struktureret = useMemo(() => enforceStructure(md), [md])
+  // De to udfald `pre`-grenen ALDRIG kan se (25/10-2026, side-155f2dc398):
+  //
+  //   wrong-lang  — blokken HAR en fence med jarvis-ui, men linjen er ikke
+  //                 præcis «```jarvis-ui». Det er den maste form
+  //                 («```jarvis-ui {json}»), hvor JSON'en lægges i
+  //                 info-stringen og forsvinder — kodeblokken bliver TOM.
+  //   no-pre-node — «jarvis-ui» står i teksten uden nogen fence. Blokken
+  //                 bliver aldrig et <pre>, så `pre`-grenen ser den ikke.
+  useEffect(() => {
+    if (!struktureret.includes('jarvis-ui')) return
+    const fence = struktureret
+      .split('\n')
+      .find((l) => l.trimStart().startsWith('```') && l.includes('jarvis-ui'))
+    if (!fence) {
+      logFlade({ udfald: 'no-pre-node', foer: '', efter: struktureret,
+        blok: struktureret, className: '', lang: '', kode: '' })
+      return
+    }
+    if (fence.trim() !== '```jarvis-ui') {
+      logFlade({ udfald: 'wrong-lang', foer: '', efter: struktureret,
+        blok: struktureret, className: '', lang: '', kode: '' })
+    }
+  }, [struktureret])
   return (
     <MermaidStreamingContext.Provider value={streaming}>
       <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={REHYPE_PLUGINS as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
@@ -104,6 +146,26 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
   const md = useMemo(() => {
     const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
     return stripToolEchoes(stabilized)
+  }, [text, streaming])
+
+  // Målepunkt 1 — «teksten før og efter stabilizeStreamingMarkdown».
+  //
+  // Den hører HER og ikke i den enkelte blok: `foer` er hele den rå tekst, og
+  // at sende den ned som prop brød `memo` på MarkdownBlok, så frosne blokke
+  // blev re-parset ved hver delta. Det blev målt som en regression af de to
+  // performance-vagter i MarkdownRenderer.streaming.test.tsx — 60 grønne blev
+  // 58. Effekten her kører kun når stabiliseringen FAKTISK ændrede noget i en
+  // jarvis-ui-blok, så den koster intet i den normale vej.
+  useEffect(() => {
+    if (!streaming) return
+    const stabilized = stabilizeStreamingMarkdown(text)
+    if (stabilized === text) return
+    if (!text.includes('jarvis-ui') && !stabilized.includes('jarvis-ui')) return
+    logFlade({
+      udfald: 'wrong-lang',
+      foer: text.slice(-2000), efter: stabilized.slice(-2000),
+      blok: '', className: '', lang: '', kode: '',
+    })
   }, [text, streaming])
   // Under streaming: blokke, så kun den sidste (levende) parses ved hver
   // delta (lib/markdownBlokke). Færdig tekst: ét samlet parse — det er den

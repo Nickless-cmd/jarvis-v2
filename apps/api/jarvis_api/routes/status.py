@@ -1,12 +1,23 @@
-"""Public-safe /status endpoint.
+"""Status-endpoints til forsiden — én rig og én offentlig.
 
-Designed for external consumers (the Jarvis home site at 192.168.50.32) to
-poll without exposing the full API surface. Returns only the minimum needed
-to render an 'online + uptime' badge. No app_name, no environment, no
-provider info, no secrets.
+## To ruter, to målgrupper (25/10-2026)
 
-Reverse-proxied via nginx on the home site; clients never talk to the
-Jarvis API directly.
+``/status`` er den RIGE status: den bærer ``model`` og ``daemons``. Den kræver
+token (den står ikke i ``_PUBLIC_PATHS``), fordi modelnavnet og antallet af
+aktive daemons er intern drift-information.
+
+Docstringen her påstod indtil 25/10 at ``/status`` var «public-safe» og «kun
+online + uptime». Det passede ikke: ruten returnerede både ``model`` og
+``daemons``, mens vhosten på forsiden proxyede ``/api/status`` dertil uden
+token — og fik 401. Kommentaren og koden var uenige, og kommentaren var den
+der blev læst.
+
+``/status/public`` er den offentlige: kun ``online`` og uptime. Den står i
+``_PUBLIC_PATHS`` og proxies af forsiden. Den bærer intet der fortæller
+noget om hvad der kører — kun at noget kører, og hvor længe.
+
+Reverse-proxied via Apache på webserveren; klienter taler aldrig direkte med
+Jarvis-API'et (det lytter kun på loopback).
 """
 from __future__ import annotations
 
@@ -52,6 +63,7 @@ def _visible_model_label() -> str:
 
 @router.get("/status")
 def status() -> dict:
+    """Den RIGE status. Kræver token — bærer model og daemons."""
     uptime_seconds = max(0.0, time.time() - _STARTED_AT)
     return {
         "online": True,
@@ -60,4 +72,21 @@ def status() -> dict:
         "uptime": _format_uptime(uptime_seconds),
         "daemons": _daemon_count(),
         "model": _visible_model_label(),
+    }
+
+
+@router.get("/status/public")
+def status_public() -> dict:
+    """Den OFFENTLIGE status: online + uptime, intet andet.
+
+    Bevidst smallere end ``/status``. Feltlisten er en kontrakt: tilføjer
+    nogen ``model``, ``daemons`` eller et versionstal her, bliver det
+    læsbart for alle på internettet uden token — det er hele grunden til at
+    ruten findes separat i stedet for at nogen bare lemper på ``/status``.
+    """
+    uptime_seconds = max(0.0, time.time() - _STARTED_AT)
+    return {
+        "online": True,
+        "uptime_seconds": int(uptime_seconds),
+        "uptime_human": _format_uptime(uptime_seconds),
     }

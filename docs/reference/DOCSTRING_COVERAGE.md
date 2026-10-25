@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9306/17596 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9311/17600 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 12 | 23 | 52% |
-| `apps.api.jarvis_api.routes` | 708 | 979 | 72% |
+| `apps.api.jarvis_api.routes` | 712 | 982 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 846 | 1550 | 54% |
-| `core.services` | 6218 | 11982 | 51% |
+| `core.services` | 6219 | 11983 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,13 +42,13 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2591)
+## Undocumented public functions (2590)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L282)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L289)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L64)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L77)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L163)
@@ -145,7 +145,6 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/sensory.py` :: `record_memory` (L67)
 - `apps/api/jarvis_api/routes/sensory.py` :: `search_memories` (L44)
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
-- `apps/api/jarvis_api/routes/status.py` :: `status` (L54)
 - `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
 - `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L30)
@@ -960,8 +959,8 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 - `core/services/central_matrix_ensemble.py` :: `reset_unaddressed` (L54)
 - `core/services/central_merovingian.py` :: `list_challenges` (L331)
 - `core/services/central_mourning.py` :: `list_epitaphs` (L131)
-- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L143)
-- `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L147)
+- `core/services/central_prompt_composer.py` :: `is_live_enabled` (L231)
+- `core/services/central_prompt_composer.py` :: `is_tail_live_enabled` (L235)
 - `core/services/central_prompt_explore.py` :: `is_explore_live` (L54)
 - `core/services/central_rca.py` :: `list_rca` (L117)
 - `core/services/central_red_dress.py` :: `build_red_dress_surface` (L67)
@@ -2298,14 +2297,14 @@ Generated from source. 9306/17596 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L552)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L562)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6910)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6935)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L6973)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L6969)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6906)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6868)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L6990)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6921)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6987)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7012)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7050)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7046)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6983)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6945)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7067)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6998)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L733)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

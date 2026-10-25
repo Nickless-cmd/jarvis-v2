@@ -164,6 +164,15 @@ _Udgivne filer — per bruger._
 | function | `download_file` | `(filename, ws=…)` | Hent én fil — min egen, eller en andens via et gyldigt signeret link. | [src](../../../apps/api/jarvis_api/routes/files.py#L124) |
 | function | `list_files` | `()` | MINE filer. Aldrig nogen andens, og aldrig de gamle faelles. | [src](../../../apps/api/jarvis_api/routes/files.py#L173) |
 
+## `apps/api/jarvis_api/routes/flade_log.py`
+_Klientlog ved renderbeslutningen — fire målepunkter, ingen guard._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FladeSnapshot` | `` | Ét øjebliksbillede af en renderbeslutning. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L63) |
+| function | `_antal_i_dag` | `()` | Antal linjer skrevet i dag. Læses kun når filen findes. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L77) |
+| function | `flade_log` | `(snapshot)` | Modtag ét snapshot og skriv det. Svarer altid 202. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L91) |
+
 ## `apps/api/jarvis_api/routes/health.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -735,14 +744,4 @@ _Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visi
 | function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L506) |
 | function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L538) |
 | function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L593) |
-
-## `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py`
-_Mission Control routes: skills, memory, hardening, lab_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `mc_skills` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L14) |
-| function | `mc_memory` | `(q=…, limit=…, scope=…)` | Search/list private retained memory records. | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L40) |
-| function | `mc_hardening` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L119) |
-| function | `mc_lab` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py#L133) |
 

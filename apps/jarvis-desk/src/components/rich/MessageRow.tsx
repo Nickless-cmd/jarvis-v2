@@ -279,23 +279,40 @@ function MessageRowImpl({
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
                   runId={runId}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}
-            {!streaming && detectArtifacts(blocks).map((a, i) => (
+            {/* 25/10-2026 (Bjørn): «Åbn visible_runs.py» stod under hvert svar i
+                chat mode. Detektionen er rigtig — artifacts.ts regel 3 bygger
+                file-artifacts af FAKTISKE tool_use-kald — men i en samtale står
+                svaret lige der, og knappen hører til maskinrummet. `presentation`
+                fandtes allerede og blev brugt til transskriptet ovenfor; badgen
+                var det eneste sted den ikke blev brugt. */}
+            {!streaming && presentation !== 'chat' && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}
           </InlineErrorBoundary>
         </div>
       </article>
-      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)}
-        diffs={redigeredeDiffPar(blocks)} onAabn={visAendring}
-        onFortryd={canUndo && config && sessionId && beskedId
-          ? () => apiFetch<{ status: string; files?: number; error?: string }>(config,
-              `/workbench/messages/${encodeURIComponent(beskedId)}/undo`,
-              { method: 'POST', body: { session_id: sessionId }, retries: 0 })
-          : undefined} />}
+      {/* 25/10-2026 (Bjørn), to ting med samme rod:
+          1. «Redigerede N filer» hører til maskinrummet — i en samtale står
+             svaret lige der, og filkortet er arbejde, ikke svar. Gated på
+             `presentation`, som artifact-badgen ovenfor.
+          2. Begge felter blev vist FØR pacen var færdig. Gaten var `!streaming`,
+             men `streaming` bliver falsk når SSE'en er done — ikke når teksten
+             er rullet ind. Mellem de to tidspunkter stod felterne færdige under
+             en tekst der stadig skrev sig. `paceFinalAnswer` er sand mens
+             pacingen kører og falsk når `onAnswerPaced` har meldt færdig, så
+             den er den rigtige betingelse: de ruller ind MED pacen. */}
+      {!streaming && !paceFinalAnswer && presentation !== 'chat'
+        && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)}
+          diffs={redigeredeDiffPar(blocks)} onAabn={visAendring}
+          onFortryd={canUndo && config && sessionId && beskedId
+            ? () => apiFetch<{ status: string; files?: number; error?: string }>(config,
+                `/workbench/messages/${encodeURIComponent(beskedId)}/undo`,
+                { method: 'POST', body: { session_id: sessionId }, retries: 0 })
+            : undefined} />}
       {/* Kilderne står tættest på teksten: «hvor ved du det fra?».
           «Forløb»-linjen under dem er slået fra (Bjørn 17/9-2026) — runde-,
           tanke- og skill-linjerne i selve beskeden siger det samme. */}
-      {!streaming && <Kilder blocks={blocks} />}
+      {!streaming && !paceFinalAnswer && <Kilder blocks={blocks} />}
       {!streaming && (
         <MessageActions
           text={blocksToPlainText(blocks)}

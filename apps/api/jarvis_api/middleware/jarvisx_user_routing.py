@@ -89,6 +89,13 @@ AUTH_HEADER = "authorization"
 # inside the route handler.
 _PUBLIC_PATHS = (
     "/health",
+    # Forsidens statusprik (25/10-2026). Kun ``online`` + uptime — se
+    # ``routes/status.py``. Den RIGE ``/status`` står bevidst IKKE her: den
+    # bærer modelnavn og daemontal, og vhosten på forsiden proxyede indtil
+    # 25/10 til den og fik 401, fordi nogen antog at den var public.
+    # Tilføjer nogen et følsomt felt til ``/status/public``, gør det ondt
+    # her — derfor er de to ruter adskilt i stedet for at dele én.
+    "/status/public",
     "/api/auth/refresh",       # §22.6: refresh udløbet access-token (bærer egen refresh-token)
     # Fornyelse SKAL være public: hele pointen er at et udløbet token kan
     # veksles. Kræver den auth, kan netop den klient der har brug for den ikke

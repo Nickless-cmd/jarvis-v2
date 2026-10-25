@@ -132,3 +132,77 @@ describe('MarkdownRenderer under streaming', () => {
     expect(slut / start).toBeLessThan(3)
   }, 120000)
 })
+
+// ── jarvis-ui gennem en ÆGTE stream (25/10-2026) ────────────────────────────
+//
+// Side-opgave side-c37e3114f5. Beviskravet var eksplicit: testen skal starte
+// fra en DELVIST streamet tekst og ende med den fulde blok — en test på den
+// fulde tekst kan pr. definition ikke finde en fejl der opstår undervejs.
+//
+// Målt 25/10: alle `jarvis-ui`-blokke i DB'en havde JSON på markørens EGEN
+// linje (15/15), fordi normaliseringen kun kørte i first-pass-grenen. Det er
+// fixet i backend (af4371ba5/8a184664f). Denne test værner den anden ende:
+// at en KORREKT fence faktisk bliver en flade når den ankommer i stykker.
+describe('jarvis-ui-flade gennem en ægte stream', () => {
+  const SPEC = '{"type":"comparison","title":"Test","columns":["A","B"],"rows":[{"label":"x","values":["1","2"]}]}'
+  const KORREKT = `Her er fladen:\n\n\`\`\`jarvis-ui\n${SPEC}\n\`\`\`\n\nOg lidt prosa efter.`
+  // Fejlformen: JSON på markørens egen linje. Resten af linjen bliver
+  // info-string, så blokken er ikke en gyldig fenced kodeblok.
+  const MAST = `Her er fladen:\n\n\`\`\`jarvis-ui ${SPEC}\n\`\`\`\n\nOg lidt prosa efter.`
+
+  /** Stream teksten ind tegn for tegn — samme vej som SSE-deltaerne. */
+  const streamInd = (tekst: string, slutStreaming: boolean) => {
+    const { container, rerender, unmount } = render(<MarkdownRenderer text="" streaming />)
+    for (let n = 1; n <= tekst.length; n++) {
+      rerender(<MarkdownRenderer text={tekst.slice(0, n)} streaming />)
+    }
+    if (slutStreaming) rerender(<MarkdownRenderer text={tekst} streaming={false} />)
+    return { container, unmount }
+  }
+
+  it('en korrekt fence der streames i stykker ender som en flade — ikke kode', () => {
+    for (const slutStreaming of [false, true]) {
+      const { container, unmount } = streamInd(KORREKT, slutStreaming)
+      const tabel = container.querySelector('table.native-comparison')
+      expect(tabel, `slutStreaming=${slutStreaming}: fladen blev ikke til en flade`).not.toBeNull()
+      // 2 kolonner + «Punkt»-kolonnen, og én datarække.
+      expect(tabel!.querySelectorAll('thead th')).toHaveLength(3)
+      expect(tabel!.querySelectorAll('tbody tr')).toHaveLength(1)
+      // Ingen rå JSON tilbage i kodeblokke.
+      expect(container.querySelector('pre')).toBeNull()
+      unmount()
+      cleanup()
+    }
+  })
+
+  it('den maste form mister INDHOLDET — ikke bare fladen', () => {
+    // Negativ kontrol, målt 25/10-2026. Min første udgave påstod at «parseren
+    // afviser den maste form». Det er ikke hvad der sker: `lang` bliver
+    // faktisk `jarvis-ui` (regex'en stopper ved mellemrummet), men JSON'en
+    // lægges i info-stringen og forsvinder. Kodeblokken er TOM.
+    //
+    // Det er vigtigere end en grim gengivelse: brugeren ser en tom kodeblok,
+    // og der er intet i DOM'en at diagnosticere på. Derfor er
+    // backend-normaliseringen nødvendig — rendereren kan ikke redde den.
+    const { container, unmount } = streamInd(MAST, false)
+    expect(container.querySelector('table.native-comparison')).toBeNull()
+    const pre = container.querySelector('pre')
+    expect(pre).not.toBeNull()
+    expect(pre!.querySelector('code')?.className).toBe('language-jarvis-ui')
+    // Indholdet er væk. Det er den skarpe måling.
+    expect(pre!.querySelector('code')?.textContent).toBe('')
+    unmount()
+    cleanup()
+  })
+
+  it('en afbrudt stream midt i fencen viser kode, ikke en halv flade', () => {
+    // Mens fencen er åben er der ingen flade at tegne — stabilizeStreamingMarkdown
+    // lukker den midlertidigt. Det er korrekt, men det betyder at et svar der
+    // ALDRIG færdiggøres bliver stående som kode. Målt, ikke antaget.
+    const afbrudt = KORREKT.slice(0, KORREKT.indexOf(SPEC) + 20)
+    const { container, unmount } = render(<MarkdownRenderer text={afbrudt} streaming />)
+    expect(container.querySelector('table.native-comparison')).toBeNull()
+    unmount()
+    cleanup()
+  })
+})

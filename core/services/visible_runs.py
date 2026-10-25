@@ -5230,6 +5230,51 @@ async def _stream_visible_run(
                 except Exception:
                     logger.debug("sidste runde-etiket fejlede", exc_info=True)
 
+                # FLADE-NORMALISERING (25/10-2026) — denne gren normaliserede
+                # slet ikke. Målt i DB: 15 af 15 `jarvis-ui`-blokke stod med
+                # JSON på markørens EGEN linje (` ```jarvis-ui {"type":… `). I
+                # CommonMark bliver hele resten af linjen en del af
+                # info-stringen, så rendereren ser ikke sproget `jarvis-ui` —
+                # og blokken falder tilbage til rå kode. Det er ikke en
+                # render-fejl: `jarvis_ui_guard.normalisér` retter formen
+                # deterministisk (målt: mast → tre linjer, JSON byte-identisk).
+                #
+                # First-pass-grenen normaliserede ved ~5923, men DENNE gren gik
+                # uden om — samme fejlform som comparison-guarden 24/10: et værn
+                # på én gren er ikke et værn. `followup_text` er allerede
+                # streamet til skærmen, så rettelsen sendes som
+                # `scan_correction` (samme kontrakt som claim-scanneren), så
+                # skærmen patcher den tekst brugeren ser. Fail-open: en fejl her
+                # må aldrig koste svaret.
+                try:
+                    from core.services.jarvis_ui_guard import (
+                        normalisér as _normalisér_flader,
+                    )
+                    _flade_normaliseret = _normalisér_flader(
+                        followup_text, run_id=str(run.run_id or ""),
+                    )
+                    # 25/10-2026 (Bjørn): en bar `jarvis-ui {…}` uden hegn slap
+                    # igennem til klienten og fejlede i renderen. Hegn-guarden
+                    # fandtes, men blev kun kaldt i first-pass-grenen — samme
+                    # fejlform som normaliseringen ovenfor: et værn på én gren
+                    # er ikke et værn. `_mekanisk_reparation` er deterministisk
+                    # og koster intet modelkald, så den hører på den fælles
+                    # udgang, før teksten både vises og gemmes.
+                    from core.services.flade_korrektion import (
+                        _mekanisk_reparation as _hegn_mekanisk,
+                    )
+                    _flade_normaliseret = _hegn_mekanisk(_flade_normaliseret)
+                    pass  # MUTATION A
+                    if _flade_normaliseret != followup_text:
+                        followup_text = _flade_normaliseret
+                        yield _sse("scan_correction", {
+                            "type": "scan_correction",
+                            "run_id": run.run_id,
+                            "corrected": _flade_normaliseret,
+                        })
+                except Exception:  # fail-open: en form-fejl må aldrig koste svaret
+                    pass
+
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
                 # reasoning_content threaded through so thinking-mode-models
@@ -5920,9 +5965,30 @@ async def _stream_visible_run(
                             "run_id": run.run_id,
                             "corrected": _rettet,
                         })
+                # 25/10-2026: normaliseringen rettede teksten og gemte den —
+                # men sendte INTET til skærmen. Målt: DB'en kunne være korrekt
+                # mens brugeren så rå kode, fordi deltas allerede var streamet.
+                # Rettes der noget her, skal skærmen have besked, ellers er
+                # reparationen kun halv.
+                _flade_foer = visible_output_text
                 visible_output_text = _normalisér_flader(
                     visible_output_text, run_id=str(run.run_id or ""),
                 )
+                # 25/10-2026: samme hegn-reparation som den agentiske gren.
+                # Den kørte først kun når `fejl_i_flader` havde fundet en fejl —
+                # men en bar `jarvis-ui {…}` uden hegn er ikke en JSON-fejl, så
+                # den blev aldrig set her. Mekanisk og gratis: sæt hegnet.
+                from core.services.flade_korrektion import (
+                    _mekanisk_reparation as _hegn_mekanisk,
+                )
+                visible_output_text = _hegn_mekanisk(visible_output_text)
+                pass  # MUTATION B
+                if visible_output_text != _flade_foer:
+                    yield _sse("scan_correction", {
+                        "type": "scan_correction",
+                        "run_id": run.run_id,
+                        "corrected": visible_output_text,
+                    })
             except Exception:  # fail-open: en fejl i normaliseringen må ikke koste svaret — teksten sendes da uændret
                 pass
             try:
@@ -6691,6 +6757,17 @@ def _complete_visible_run_from_fallback(
     controller = get_visible_run_controller(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
     text = str(fallback.get("text") or "")
+    # 25/10-2026: samme normalisering som de to synlige grene. Her sendes
+    # teksten som ÉT delta længere nede, så en rettelse kan følge med ind i
+    # selve deltaet — ingen `scan_correction` er nødvendig bagefter. Uden den
+    # her stod et autonomt svar med en mast `jarvis-ui`-blok i historikken på
+    # præcis samme måde som de synlige gjorde (målt: 15/15 maste).
+    try:
+        from core.services.jarvis_ui_guard import normalisér as _normalisér_flader
+        if text:
+            text = _normalisér_flader(text, run_id=str(run.run_id or ""))
+    except Exception:  # fail-open: en form-fejl må aldrig koste det autonome svar
+        pass
     lane = str(fallback.get("lane") or "")
     provider = str(fallback.get("provider") or "")
     _update_visible_execution_trace(

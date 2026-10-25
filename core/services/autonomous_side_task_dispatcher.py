@@ -75,6 +75,52 @@ def _target_session() -> str:
         return ""
 
 
+def _session_for_task(task: dict[str, Any]) -> str:
+    """Hvilken SAMTALE hører denne opgave til?
+
+    MÅLT 25/10-2026: her stod kun `_target_session()`, og den blev kaldt FØR
+    opgaven var claimet. Dispatcheren kunne derfor per konstruktion ikke svare
+    på «hvor hører DETTE arbejde til» — kun «hvad er ejerens app-samtale».
+    Målt i drift pegede svaret på Bjørns igangværende samtale, så et autonomt
+    run ville skrive sig ind midt i en snak han sad i.
+
+    Rækkefølgen er den SAMME som de tre andre vække-veje bruger
+    (`inbox_idle_waker._maal_session`, `scheduled_tasks`, `wakeup_dispatcher`)
+    — ikke en kopi af den. To definitioner af «hvor skal dette lande» driver
+    fra hinanden, og så bliver den ene stille virkningsløs:
+
+      1. Opgavens egen samtale (`arbejds_session`, ellers `session_id`) — den
+         mest præcise adresse der findes: opgaven blev flagget i en bestemt
+         samtale, og en ekstern kanal afvises af guarden.
+      2. Ejerens app-samtale (`_target_session`, som allerede springer
+         Discord/Telegram over).
+      3. Tom streng ⇒ INGEN start. Et run uden en samtale er den silo vi
+         fjerner; opgaven venter hellere i køen til næste runde.
+    """
+    from core.identity.owner_resolver import (
+        resolve_owner_target_session,
+        session_is_external_channel,
+    )
+    from core.services.wakeup_dispatcher import pick_wakeup_run_target
+
+    egen = str(task.get("arbejds_session") or task.get("session_id") or "").strip()
+    # `flag()` skriver `session_id="_default"` når ingen gives (side_tasks.py:325).
+    # Det er en PLADSHOLDER, ikke en adresse — og der findes ingen session med
+    # det id (målt 25/10-2026: 0 rækker i `chat_sessions`). Uden dette led ville
+    # et run lande i en samtale der ikke eksisterer, hvilket er den samme silo
+    # som et tomt svar. Huset kender allerede konventionen: `side_tasks.py:252`
+    # behandler `_default` som «ingen session».
+    if egen in {"_default", "default", "legacy_unscoped"}:
+        egen = ""
+    return pick_wakeup_run_target(
+        channel="app",
+        record_session=egen,
+        app_resolver=_target_session,
+        owner_resolver=resolve_owner_target_session,
+        is_external=session_is_external_channel,
+    ) or ""
+
+
 def _start(text: str, *, session_id: str, origin: str, task_id: str,
            max_tool_calls: int, max_seconds: float) -> bool:
     from core.services.background_start_reservation import reserve_background_start
@@ -146,9 +192,6 @@ def dispatch_one() -> dict[str, Any]:
         return {"status": "ok", "started": 0, "reason": "active-run"}
     if not _daily_budget_allows():
         return {"status": "ok", "started": 0, "reason": "daily-budget"}
-    session_id = _target_session()
-    if not session_id:
-        return {"status": "ok", "started": 0, "reason": "no-session"}
 
     from core.services import side_tasks
 
@@ -161,6 +204,21 @@ def dispatch_one() -> dict[str, Any]:
 
     task_id = str(task.get("side_task_id") or "")
     mode = str(task.get("autonomy_mode") or "inspect")
+
+    # 25/10-2026: sessionen bestemmes EFTER claim, aldrig før. Før stod
+    # `_target_session()` øverst, før vi vidste hvilken opgave der var tale om —
+    # så svaret var «ejerens aktive samtale» uanset hvilket arbejde der skulle
+    # udføres, og et autonomt run kunne lande midt i en igangværende snak.
+    # Nu bærer opgaven sin egen adresse ind i valget. Er der ingen samtale at
+    # lande i, frigives leasen og opgaven bliver i køen — et run uden en
+    # samtale er præcis den silo vække-vejene findes for at undgå.
+    session_id = _session_for_task(task)
+    if not session_id:
+        side_tasks.release_autonomous_claim(
+            task_id, worker_id=worker_id, reason="ingen samtale at lande i",
+        )
+        return {"status": "ok", "started": 0, "reason": "no-session"}
+
     try:
         started = _start(
             _directive(task), session_id=session_id,

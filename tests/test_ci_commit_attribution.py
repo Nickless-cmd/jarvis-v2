@@ -10,4 +10,6 @@ def test_ci_validates_commit_attribution_for_push_and_pull_request():
     assert "fetch-depth: 0" in workflow
     assert "github.event.pull_request.base.sha" in workflow
     assert "github.event.before" in workflow
+    assert "PRE_COMMIT_REF_TYPE: ${{ github.ref_type }}" in workflow
+    assert 'PRE_COMMIT_FROM_REF="${PRE_COMMIT_TO_REF}^"' in workflow
     assert "scripts/validate_commit_attribution.py --pre-push" in workflow

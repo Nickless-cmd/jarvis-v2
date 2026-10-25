@@ -18,8 +18,14 @@ jobs:
         env:
           PRE_COMMIT_FROM_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
           PRE_COMMIT_TO_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          PRE_COMMIT_REF_TYPE: ${{ github.ref_type }}
         run: |
-          if [[ "$PRE_COMMIT_FROM_REF" =~ ^0+$ ]]; then
+          # Et tag-push har altid nul-SHA i event.before. Tom from-ref betyder
+          # ellers "hele historikken siden baseline" og genvaliderer gamle,
+          # allerede accepterede commits. Validér selve tag-målet i stedet.
+          if [[ "$PRE_COMMIT_REF_TYPE" == "tag" ]]; then
+            export PRE_COMMIT_FROM_REF="${PRE_COMMIT_TO_REF}^"
+          elif [[ "$PRE_COMMIT_FROM_REF" =~ ^0+$ ]]; then
             export PRE_COMMIT_FROM_REF=""
           fi
           python scripts/validate_commit_attribution.py --pre-push

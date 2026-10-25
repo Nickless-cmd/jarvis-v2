@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from core.identity.users import load_users
 from core.runtime import db
 from core.services.encryption import decrypt, encrypt
-from core.services.keyring_store import get_user_key
+from core.services import keyring_store
 from core.services.routine_migration import resolve_canonical_identity
 
 
@@ -180,7 +180,7 @@ def apply_legacy_identity_cutover(*, expected_watermark: str) -> IdentityCutover
         user_id = item.canonical_user_id
         now = datetime.now(UTC).isoformat()
         discord_blob = encrypt(
-            legacy["discord_id"].encode("utf-8"), get_user_key(user_id)
+            legacy["discord_id"].encode("utf-8"), keyring_store.get_user_key(user_id)
         )
         db.insert_user_row(
             user_id=user_id,

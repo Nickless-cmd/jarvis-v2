@@ -998,12 +998,17 @@ async def translate_to_v2(
                     # steer_received, turn_changelog, eller ukendt →
                     # wrap som system_event med kind = event_name
                     await _emit_message_start_if_needed()
+                    # 25/10-2026: her stod en gren der gjorde ingenting —
+                    # ``if kind not in _KNOWN_SYSTEM_EVENT_KINDS: pass``. Den
+                    # lignede en beslutning om at ukendte kinds blev behandlet
+                    # særskilt, men både den kendte og den ukendte vej endte i
+                    # det samme ``queue.put``. Fjernet, så der ikke står en
+                    # forgrening der ser ud som om den vælger noget.
+                    #
+                    # ``_KNOWN_SYSTEM_EVENT_KINDS`` bliver stående som
+                    # dokumentation af hvilke legacy-navne vi kender — den
+                    # beskriver navnene, den styrer ikke længere et valg.
                     kind = event_name
-                    if kind not in _KNOWN_SYSTEM_EVENT_KINDS:
-                        # Ukendt legacy event-type: stadig pass through
-                        # som system_event så klienten kan ignorere det
-                        # eller logge til debug.
-                        pass
                     await queue.put(SystemEvent(
                         kind=kind, payload=payload,
                     ).to_sse_line())

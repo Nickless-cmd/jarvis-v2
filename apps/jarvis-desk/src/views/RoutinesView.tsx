@@ -53,6 +53,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
   // fail-closed, hvis en fremtidig server ved en fejl sender en for bred liste.
   const visible = useMemo(() => (routines ?? []).filter((routine) =>
     routine.owner_user_id === currentUserId
+      || routine.canonical_owner_user_id === currentUserId
       || (role === 'owner' && routine.access_scope === 'system_owner')
   ), [routines, currentUserId, role])
   const personal = visible.filter((routine) => routine.access_scope !== 'system_owner')

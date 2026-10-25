@@ -8,6 +8,7 @@ export type RoutineCapabilityScope = 'chat' | 'code' | 'system'
 export interface Routine {
   routine_id: string
   owner_user_id: string
+  canonical_owner_user_id?: string
   access_scope: RoutineAccessScope
   name: string
   instruction: string

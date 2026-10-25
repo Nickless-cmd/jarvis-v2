@@ -130,6 +130,32 @@ def test_principal_resolves_legacy_token_to_canonical_account(
     assert principal.canonical_user_id == "canonical-owner"
 
 
+def test_private_routine_response_keeps_legacy_owner_alias(
+    isolated_runtime, client, identity, monkeypatch,
+):
+    from core.services.routine_service import RoutineService
+
+    routine = RoutineService(
+        RoutinePrincipal("canonical-owner", role="owner")
+    ).create_and_activate(RoutineCreate(
+        name="Canonical private",
+        instruction=b"private",
+        capability_scope="chat",
+        trigger_kind="manual",
+    ))
+    identity.update(uid="legacy-discord", role="owner")
+    monkeypatch.setattr(
+        "core.services.routine_identity.resolve_principal",
+        lambda raw, role_hint="": RoutinePrincipal("canonical-owner", role="owner"),
+    )
+
+    response = client.get("/api/routines")
+    assert response.status_code == 200
+    item = response.json()[0]
+    assert item["owner_user_id"] == "legacy-discord"
+    assert item["canonical_owner_user_id"] == "canonical-owner"
+
+
 def test_unresolved_principal_is_unauthorized(isolated_runtime, monkeypatch):
     from apps.api.jarvis_api.routes import routines
     from core.services.routine_identity import UnresolvedRoutinePrincipal

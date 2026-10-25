@@ -112,8 +112,16 @@ def _service() -> RoutineService:
 
 
 def _routine(value) -> dict[str, Any]:
+    from core.identity.workspace_context import current_user_id
+
     data = asdict(value)
     data["instruction"] = value.instruction.decode("utf-8", errors="replace")
+    data["canonical_owner_user_id"] = data["owner_user_id"]
+    if data["access_scope"] == "user_private":
+        # Ældre desktop-builds sammenligner med login-tokenet (fx Discord-id),
+        # mens Routine-laget gemmer et kanonisk database-id. Listen er allerede
+        # owner-scopet af servicen, så kompatibilitets-aliaset udvider ikke adgang.
+        data["owner_user_id"] = str(current_user_id() or data["owner_user_id"])
     return data
 
 

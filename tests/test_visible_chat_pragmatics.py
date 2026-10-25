@@ -162,14 +162,25 @@ def test_chatkernen_baerer_de_fem_formgreb_uden_at_tvinge_dem_ind() -> None:
 
     De fem greb skal være chatkernens fælles repertoire. Samtidig må de ikke
     blive en mekanisk tjekliste, for et kort svar skal fortsat kunne være kort.
+
+    25/10-2026 (målt): 120 svar havde 5 % overskrifter og 5 % lister, mens 90 %
+    af prosa-afsnittene var på ≤3 sætninger. Reglen var symmetrisk formuleret
+    («værktøjer, ikke en tjekliste»), og symmetri betød at tvivlen altid faldt
+    ud til prosaens fordel. Kontrakten er derfor asymmetrisk nu: ved tvivl
+    vælger modellen strukturen, men et svar på én pointe skal stadig være kort.
     """
     from core.services.chat_response_policy import CHAT_FORMAT_CORE
 
     tekst = CHAT_FORMAT_CORE.lower()
     for greb in ("korte afsnit", "overskrifter", "punktopstilling", "fed skrift", "emoji"):
         assert greb in tekst, greb
-    assert "værktøjer, ikke en tjekliste" in tekst
-    assert "et kort, enkelt svar skal ikke have en overskrift" in tekst
+    # Asymmetrien: standardvalget ved tvivl er struktur, ikke prosa.
+    assert "er du i tvivl, så strukturér" in tekst
+    assert "et svar på én pointe skal ikke" in tekst
+    # Formen skal kunne SPEJLES, ikke kun beskrives — derfor konkrete eksempler.
+    assert "lille, én pointe uden struktur" in tekst
+    assert "større, tre dele" in tekst
+    assert "som et svar til en kollega, ikke som en rapport" in tekst
 
 
 def test_chatkernen_gider_kan_toer_og_goer() -> None:

@@ -12,10 +12,32 @@ from collections import Counter
 
 _FENCE_RE = re.compile(r"```(?P<lang>[^\n`]*)\n(?P<body>.*?)```", re.DOTALL)
 _TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+_HEADING_RE = re.compile(r"^#{1,6}\s+\S", re.MULTILINE)
+_BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\S", re.MULTILINE)
+
+#: Et svar med så mange afsnit og nul hierarki er ikke "roligt" — det er en mur
+#: af tekstøer uden landkort. Målt 25/10-2026: 90 % af mine prosa-afsnit var på
+#: ≤3 sætninger, mens kun 5 % af svarene havde en overskrift og 5 % en liste.
+#: Signalet er diagnostik, ikke en rettelse — det må aldrig ændre teksten.
+_HIERARCHY_PARAGRAPH_FLOOR = 5
 _MECHANICAL_CLOSE_RE = re.compile(
     r"^(?:sammenfattende|opsummeret|opsummering|afslutningsvis|(?:min\s+)?konklusion)\b",
     re.IGNORECASE,
 )
+
+
+def _hierarchy_signals(prose: str, paragraphs: list[str]) -> list[dict[str, object]]:
+    """Mål om et langt svar har hierarki — ikke om det er pænt.
+
+    Et svar med mange afsnit og hverken overskrift eller liste er svært at
+    skimme, uanset hvor korte afsnittene er. Signalet peger på den mangel;
+    det siger intet om hvorvidt strukturen burde have været der.
+    """
+    if len(paragraphs) < _HIERARCHY_PARAGRAPH_FLOOR:
+        return []
+    if _HEADING_RE.search(prose) or _BULLET_RE.search(prose):
+        return []
+    return [{"kind": "missing_hierarchy", "paragraphs": len(paragraphs)}]
 
 
 def analyse_chat_response(text: str, *, wall_chars: int = 600) -> list[dict[str, object]]:
@@ -39,6 +61,8 @@ def analyse_chat_response(text: str, *, wall_chars: int = 600) -> list[dict[str,
 
     prose = _FENCE_RE.sub("", raw).strip()
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", prose) if p.strip()]
+    for signal in _hierarchy_signals(prose, paragraphs):
+        signals.append(signal)
     try:
         from core.services.wall_guard import find_walls
         for wall in find_walls(prose):

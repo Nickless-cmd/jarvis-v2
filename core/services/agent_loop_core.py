@@ -11,6 +11,7 @@ en sandbox hvor intet andet er monteret.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any, Protocol
 
@@ -75,6 +76,35 @@ def _promises_action(text: str) -> bool:
     if any(f"jeg {v}" in low or f"{v} jeg" in low for v in _PROMISE_VERBS):
         return True
     return any(m in low for m in _PROMISE_EN) or any(m in low for m in _PROMISE_DA)
+
+
+#: 26/10-2026: en tekstheuristik kan ikke afgoere om et svar er FULDSTAENDIGT — den kan
+#: kun se om det LYDER som et loefte. Maalt samme dag paa en rigtig Task-agent: den svarede
+#: paa 1 af 3 nummererede spoergsmaal og sluttede med "Nu spoergsmaal 2 og 3." Hverken
+#: `_PROGRESS_PREFIXES` eller `_PROMISE_DA` fangede den form, saa agenten blev meldt
+#: `completed` med `partial: false` — og Jarvis fik intet signal om at halvdelen manglede.
+#:
+#: Denne vagt gaar den anden vej: den TAELLER i stedet for at gaette. Antallet af
+#: nummererede spoergsmaal i opgaven holdes op mod antallet af nummererede svar i
+#: resultatet. Er der faerre svar end spoergsmaal, er leverancen ufuldstaendig — uanset
+#: hvordan den afsluttende saetning lyder. Den fyrer kun naar opgaven FAKTISK stiller
+#: flere spoergsmaal (maalt: 1 af 60 historiske agent-opgaver), saa den er tavs for
+#: enkeltspoergsmaal-opgaver og koster intet der.
+_QUESTION_RE = re.compile(r"(?mi)^\s*(?:spørgsmål|spoergsmaal|question)\s*(\d+)\b")
+_ANSWER_RE = re.compile(r"(?m)^\s*(\d+)\s*[.):]")
+
+
+def _unanswered_questions(prompt: str, final_text: str) -> int:
+    """Antal nummererede spoergsmaal i opgaven som resultatet ikke daekker. 0 = alt besvaret.
+
+    Mekanisk taelling, ikke en vurdering af teksten: spoergsmaalene identificeres ved deres
+    nummer i opgaven, svarene ved deres nummer i resultatet. En agent der svarer paa 1 af 3
+    giver 2 — ogsaa naar dens afsluttende saetning lyder faerdig."""
+    qs = {int(m.group(1)) for m in _QUESTION_RE.finditer(prompt or "")}
+    if len(qs) < 2:
+        return 0
+    answered = {int(m.group(1)) for m in _ANSWER_RE.finditer(final_text or "")}
+    return len(qs - answered)
 
 
 class ApprovalPending(Exception):
@@ -179,14 +209,15 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             tool_calls = list(result.get("tool_calls") or [])
             if not tool_calls:
                 promised = _promises_action(final_text)
-                if scout and scout_retries < 1 and (total_tool_calls == 0 or promised):
+                unanswered = _unanswered_questions(prompt, final_text)
+                if scout and scout_retries < 1 and (total_tool_calls == 0 or promised or unanswered):
                     scout_retries += 1
                     messages.append({"role": "assistant", "content": final_text})
                     messages.append({"role": "user", "content": _SCOUT_NUDGE})
                     continue
                 # Samme vaern for en SKRIVENDE agent (8/10-2026). Én afgraenset nudge - ikke et
                 # krav om succes: naeste runde maa gerne vaere "det kan jeg ikke, fordi ...".
-                if not scout and action_retries < 1 and (promised or (write_capable and write_calls == 0)):
+                if not scout and action_retries < 1 and (promised or unanswered or (write_capable and write_calls == 0)):
                     action_retries += 1
                     messages.append({"role": "assistant", "content": final_text})
                     messages.append({"role": "user", "content": _ACTION_NUDGE})
@@ -194,6 +225,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # Nudgen blev givet, og svaret er STADIG et loefte uden en eneste skrivning.
                 # Det er ikke en fuldfoert opgave - kalderen skal kunne se forskel.
                 if promised and write_capable and write_calls == 0:
+                    incomplete = True
+                # 26/10-2026: ubesvarede nummererede spoergsmaal er et MAALELIGT faktum, ikke
+                # en vurdering af teksten. Staar der stadig huller efter nudgen, er leverancen
+                # ufuldstaendig — ogsaa for en laese-agent, og ogsaa naar teksten lyder faerdig.
+                if unanswered:
                     incomplete = True
                 break
             messages.append({"role": "assistant", "content": final_text, "tool_calls": tool_calls})

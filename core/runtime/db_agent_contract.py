@@ -607,6 +607,28 @@ def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str
     return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
 
 
+def latest_agent_reply(conn: Any, agent_id: str) -> str:
+    """Agentens seneste leverance til Jarvis — markeringen foretraekkes (26/10-2026).
+
+    MAALT 26/10-2026 paa `asg-bcbee979ef364037`: spawn bevarede den delvise
+    leverance som `kind='result'` (22:21:50.931) og skrev 1 ms senere
+    `kind='failure'` (22:21:50.932). Det gamle opslag tog den NYESTE besked inden
+    for `('result','')`, ramte `failure`-beskeden — som laa uden for filteret — og
+    fik `None`. `full` blev tom, `partial_delivery_error` faldt tilbage paa
+    `AGENT_FAILED`/`model`, og markeringen blev aldrig laest.
+
+    `failure` foretraekkes: den baerer markeringen OG hele agentens tekst
+    ("UFULDSTÆNDIG (N …) — agentens tekst: …"), mens `result` kun baerer den raa
+    tekst uden markering.
+    """
+    row = conn.execute(
+        "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
+        "AND kind IN ('result','failure','') "
+        "ORDER BY CASE WHEN kind='failure' THEN 0 ELSE 1 END, created_at DESC LIMIT 1",
+        (agent_id,)).fetchone()
+    return str(row["content"] or "") if row else ""
+
+
 def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any] | None:
     """Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne
     assignments udfald og den ene terminalbesked. `None` når intet skal ske."""
@@ -644,10 +666,7 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
                      (agent_id,)).fetchone()
     if a is None:
         return None
-    reply = conn.execute(
-        "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
-        "AND kind IN ('result','') ORDER BY created_at DESC LIMIT 1", (agent_id,)).fetchone()
-    full = reply["content"] if reply else ""
+    full = latest_agent_reply(conn, agent_id)
     # 26/10-2026: en DELVIS leverance er ikke en model-fejl.
     #
     # Maalt paa `asg-4a79ab1ca3094db2`: agenten svarede paa 1 af 3 spoergsmaal, og

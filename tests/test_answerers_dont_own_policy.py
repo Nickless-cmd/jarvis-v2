@@ -48,9 +48,21 @@ def test_svarerne_kalder_den_FAELLES_afgoerelse():
 
 def test_CLI_en_LAESER_klassifikationen_frem_for_at_doemme():
     """`destructive` kommer fra serverens data. Regnede CLI'en den ud selv,
-    kunne de to vaere uenige om samme kommando."""
-    from apps.central_cli.central_cli import hud_populate
-    kilde = _kilde(hud_populate)
+    kunne de to vaere uenige om samme kommando.
+
+    Laest fra filen i stedet for `inspect.getsource` (26/10-2026): modulet goer
+    `from central_cli import datasource`, saa en import kraever at
+    `apps/central_cli` staar paa sys.path — og uden den fejlede testen paa en
+    import-sti, ikke paa det den maaler. Indholdet der maales er det samme:
+    hele modulfilen, praecis som `inspect.getsource(modul)` gav.
+    """
+    import pathlib
+
+    # `hud_populate` er MODULET, ikke en funktion — `inspect.getsource` gav
+    # derfor hele filen, og det goer denne laesning ogsaa.
+    kilde = pathlib.Path(
+        "apps/central_cli/central_cli/hud_populate.py"
+    ).read_text(encoding="utf-8")
     assert 'h.get("destructive")' in kilde
     assert not _POLITIK.findall(kilde)
 

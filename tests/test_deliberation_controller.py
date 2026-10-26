@@ -3,6 +3,28 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _ingen_rekrutterings_llm(monkeypatch):
+    """`DeliberationController.run` spoerger en LLM om deliberationen mangler et
+    perspektiv (`_analyze_recruitment_need` → `_call_recruitment_llm` →
+    `execute_cheap_lane`).
+
+    Maalt 26/10-2026: de fire `test_controller_*` patcher `_run_round` og
+    `_synthesize`, men ikke rekrutteringen — saa de ramte en rigtig provider og
+    timede ud efter 45 s i `_execute_opencode_chat`s poll-loekke. Test-vagten
+    stoppede netvaerket, men ikke poll-loekken.
+
+    Standarden er «nej» (ingen rekruttering). De tre `test_recruitment_*` patcher
+    selv `_call_recruitment_llm` inderst og er upaavirkede.
+    """
+    monkeypatch.setattr(
+        "core.services.council_deliberation_controller._call_recruitment_llm",
+        lambda **k: "nej",
+    )
+
 
 def _similarity(a: str, b: str) -> float:
     from core.services.council_deliberation_controller import _cosine_similarity

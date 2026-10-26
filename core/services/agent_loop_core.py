@@ -55,6 +55,25 @@ _ACTION_NUDGE = (
     "Skal opgaven løses, så udfør den nu med et skriveværktøj. Kan du ikke, så sig det "
     "eksplicit med grunden — afslut ikke med et løfte om noget du ikke gjorde.")
 
+
+def _answers_directive(unanswered: int) -> str:
+    """Ordre om at svare NU ud fra det agenten allerede har fundet (26/10-2026).
+
+    MAALT 26/10-2026 paa `asg-b0e20bf925564962` (researcher, run-2d564e05a1f14ef5):
+    agenten kaldte tre laesvaerktoejer, svarede korrekt paa spoergsmaal 1 og stoppede
+    med "Nu har jeg bekræftet 5 felter. Lad mig se de resterende properties ...".
+    Stoffet var der — den fik aldrig ordre til at svare. Scout-nudgen var brugt
+    (``scout_retries < 1``), loekken faldt til ``break``, og leverancen blev afvist
+    som UFULDSTÆNDIG med tre ubesvarede spoergsmaal. En agent der HAR svaret skal
+    ikke doemmes for et spoergsmaal den aldrig fik lov at besvare.
+    """
+    return (
+        f"Du har stadig {unanswered} ubesvarede spørgsmål. Svar på ALLE spørgsmålene NU, "
+        "nummereret præcis som de står i opgaven (1), 2), 3) …), ud fra det du allerede "
+        "har fundet. Kald INGEN værktøjer — der er ingen runder tilbage. Kan du ikke "
+        "svare på et spørgsmål, så skriv det eksplicit med grunden; afslut ikke med et "
+        "løfte om at undersøge det senere.")
+
 #: Skrivevaerktoejerne i kataloget. Bruges til at afgoere om agenten overhovedet KAN udfoere
 #: en handling: en agent der ikke kan skrive skal ikke nudges for ikke at have skrevet.
 _WRITE_TOOL_NAMES = frozenset({
@@ -176,6 +195,9 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     tool_calls: list = []         # sidste runde: sandt <=> opbrugt midt i vaerktoejsbrug
     scout_retries = 0
     action_retries = 0
+    #: 26/10-2026: ét afsluttende svar-kald uden vaerktoejer, naar spoergsmaal staar
+    #: ubesvarede efter nudgen. Uden den gik loekken hjem med stoffet i haanden.
+    forced_answers = False
     write_calls = 0
     incomplete = False
     # 26/10-2026: antallet af ubesvarede nummererede spoergsmaal. Baeres med ud til
@@ -280,6 +302,36 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 if unanswered:
                     incomplete = True
                     unanswered_total = unanswered
+                    # 26/10-2026 (nat): nudgen er brugt, men spoergsmaalene staar stadig aabne.
+                    # Loekken maa ikke gaa hjem her — den skal give agenten ÉT afsluttende kald
+                    # UDEN vaerktoejer, hvor den svarer paa alle spoergsmaal ud fra det den
+                    # allerede har fundet. Maalt paa `asg-b0e20bf925564962`: tre vaerktoejskald,
+                    # derefter "Lad mig se de resterende properties" — stoffet var der, ordren
+                    # manglede. En agent der HAR svaret skal ikke doemmes for et spoergsmaal den
+                    # aldrig fik lov at besvare.
+                    if not forced_answers and not error_str:
+                        forced_answers = True
+                        try:
+                            messages.append({"role": "assistant", "content": final_text})
+                            messages.append({"role": "user", "content": _answers_directive(unanswered)})
+                            svar = io.model(messages=messages, tools=[], requires_tools=False,
+                                            provider=provider, model=model)
+                            total_input += int(svar.get("input_tokens") or 0)
+                            total_output += int(svar.get("output_tokens") or 0)
+                            total_cost += float(svar.get("cost_usd") or 0.0)
+                            svar_text = str(svar.get("text") or "").strip()
+                            if svar_text:
+                                final_text = svar_text
+                                # Svaret er NYT: antallet skal maales paa det, ikke paa runden foer.
+                                unanswered_total = _unanswered_questions(prompt, final_text)
+                                incomplete = bool(unanswered_total)
+                                stop_reason = (
+                                    f"{unanswered_total} spørgsmål stadig ubesvarede efter "
+                                    "afsluttende svar" if unanswered_total else "")
+                        except Exception:
+                            logger.warning(
+                                "afsluttende svar fejlede - beholder teksten fra sidste runde",
+                                exc_info=True)
                 break
             messages.append({"role": "assistant", "content": final_text, "tool_calls": tool_calls})
             if run_calls(tool_calls, tool_calls):

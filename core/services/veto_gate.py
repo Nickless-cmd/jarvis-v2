@@ -588,6 +588,18 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     # Samme klasse som gatens egen svarkanal ovenfor — en gate der blokerer
     # «her er næste skridt» presser mod tavshed, ikke mod forsigtighed.
     "suggest_next_task",
+    # ── Værktøjsopdagelse (26/10-2026, Bjørns regel) ───────────────────────
+    # `load_more_tools` henter KUN et skema — den udfører intet. Uden den
+    # kan `override_gate` ikke nås når den ikke allerede er i værktøjslisten,
+    # og så blokerer gaten sin egen udvej: målt 26/10, hvor både en
+    # MEMORY-rettelse og `override_gate`s eget skema blev afvist i samme tur
+    # (event-ids veto-063b9826d64d, veto-1d70ccac3b60).
+    # Samme klasse som gatens svarkanal ovenfor.
+    #
+    # `call_loaded_tool` er BEVIDST ikke her: den UDFØRER det loadede
+    # værktøj, så en undtagelse ville lade ethvert loadet værktøj — også
+    # `bash` — passere veto'et. Skema-adgang er undtagelsen, ikke udførelse.
+    "load_more_tools",
 })
 
 

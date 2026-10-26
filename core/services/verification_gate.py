@@ -320,6 +320,66 @@ def _ssh_er_laesning(seg: str, dybde: int) -> bool:
     return not shell_command_is_mutating(" ".join(fjern), _dybde=dybde + 1)
 
 
+# ── python / pytest / curl: læsning eller mutation? ─────────────────────────
+#
+# 26/10-2026. Målt mod de faktiske kommandoer fra en arbejdsrunde: FEM slags
+# beviseligt læsende arbejde blev talt som mutation og brændte R2.5-loftet —
+# så `bash` blev blokeret midt i en måling, netop fordi jeg verificerede.
+#
+#   python3 - <<'PY' … SELECT … PY     → MUT   (ren DB-læsning)
+#   python3 -c "…print(1)"             → MUT   (ren læsning)
+#   pytest tests/ -q                   → MUT   (den ULTIMATIVE verifikation!)
+#   python3 -m pytest …                → MUT
+#   curl -s http://localhost/health    → MUT   (GET)
+#
+# Retningen er den samme som for `sed`, `sqlite3` og `ssh`: kun det der SELV er
+# beviseligt læsning slipper igennem. Alt andet er fortsat en mutation.
+_PY_SKRIVE_RE = re.compile(
+    r"\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|TRUNCATE|VACUUM|ATTACH)\b"
+    r"|\bcommit\s*\(\s*\)"
+    r"|\.write\s*\(|\bos\.remove\b|\bos\.unlink\b|\bshutil\.\w+"
+    r"|\bopen\s*\([^)]*['\"][wa]\+?['\"]"
+    r"|\bsubprocess\b|\bgit\s+(?:commit|push|reset|checkout|add)\b"
+    r"|\bshutil\.rmtree\b|\bPath\([^)]*\)\.write_text\b",
+    re.IGNORECASE,
+)
+
+
+def _python_er_laesning(args: list[str], hel_segment: str) -> bool:
+    """Er dette python-kald beviseligt en læsning?
+
+    `-m pytest` er en testkørsel og tæller ALTID som læsning — den er selve
+    verifikationen. Alt andet (`-c`, heredoc, script-sti) kræver at indholdet
+    er fri for skrive-mønstre; i tvivl er svaret nej.
+    """
+    if "-m" in args:
+        i = args.index("-m")
+        modul = args[i + 1] if i + 1 < len(args) else ""
+        return modul in {"pytest", "unittest", "py.test"}
+    if "-c" in args or "<<" in hel_segment or "-" in args:
+        return not _PY_SKRIVE_RE.search(hel_segment)
+    # `python3 script.py` — scriptet kan gøre hvad som helst. Konservativt nej.
+    return False
+
+
+def _curl_er_laesning(args: list[str]) -> bool:
+    """Kun en ren GET uden data-, upload- eller output-flag er en læsning."""
+    skrivende = {"-d", "--data", "--data-raw", "--data-binary", "--data-urlencode",
+                 "-F", "--form", "-T", "--upload-file", "-o", "--output",
+                 "-X", "--request", "-O", "--remote-name"}
+    for i, a in enumerate(args):
+        if a in skrivende:
+            # -X GET er stadig en læsning; -X POST er ikke.
+            if a in {"-X", "--request"}:
+                metode = args[i + 1].upper() if i + 1 < len(args) else ""
+                if metode in {"GET", "HEAD", "OPTIONS"}:
+                    continue
+            return False
+        if a.startswith("-d") or a.startswith("--data"):
+            return False
+    return True
+
+
 def shell_command_is_mutating(command: str, *, _dybde: int = 0) -> bool:
     """True hvis et shell-kald reelt ændrer state; False for read-only.
 
@@ -392,6 +452,18 @@ def shell_command_is_mutating(command: str, *, _dybde: int = 0) -> bool:
             #
             # `seg` gives videre MED citationstegn: shlex skal kunne se dem.
             if _ssh_er_laesning(seg, _dybde):
+                continue
+            return True
+        if cmd in {"pytest", "py.test"}:
+            # En testkørsel ER verifikationen. At tælle den som mutation gjorde
+            # det umuligt at verificere uden at brænde loftet (målt 26/10-2026).
+            continue
+        if cmd in {"python", "python3"}:
+            if _python_er_laesning(toks[i + 1:], seg):
+                continue
+            return True
+        if cmd == "curl":
+            if _curl_er_laesning(toks[i + 1:]):
                 continue
             return True
         if cmd in _RO_CMDS:

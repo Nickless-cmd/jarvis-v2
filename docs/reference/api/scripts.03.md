@@ -144,18 +144,22 @@ _phone_home_auto — hold phone_adb_address i runtime.json opdateret._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L51) |
-| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L55) |
-| function | `_skriv_state` | `(**felter)` | — | [src](../../../scripts/phone_home_auto.py#L66) |
-| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L79) |
-| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L89) |
-| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L111) |
-| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L119) |
-| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L130) |
-| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L138) |
-| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L143) |
-| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L156) |
-| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L190) |
+| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L58) |
+| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L62) |
+| function | `_skriv_state` | `(**felter)` | Merge felter ind i state-filen — slet ikke dem der ikke sendes med. | [src](../../../scripts/phone_home_auto.py#L73) |
+| function | `_startlinje` | `()` | Skriv én linje hvis loggen er tom eller mangler. | [src](../../../scripts/phone_home_auto.py#L98) |
+| function | `_log_hvis_nyt` | `(besked)` | Log kun naar beskeden aendrer sig — ellers tavst. | [src](../../../scripts/phone_home_auto.py#L114) |
+| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L135) |
+| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L145) |
+| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L167) |
+| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L175) |
+| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L186) |
+| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L194) |
+| function | `_tcp_aaben` | `(ip, port, timeout_s=…)` | True hvis der sidder noget og lytter paa ip:port. | [src](../../../scripts/phone_home_auto.py#L199) |
+| function | `_svarer` | `(ip, porte)` | Er telefonen til stede? TCP foerst (virker), ping som reserve. | [src](../../../scripts/phone_home_auto.py#L219) |
+| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L226) |
+| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L239) |
+| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L273) |
 
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._

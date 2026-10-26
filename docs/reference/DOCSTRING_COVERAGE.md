@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9346/17645 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9351/17649 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 9346/17645 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 295 | 629 | 46% |
+| `scripts` | 300 | 633 | 47% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2579,7 +2579,7 @@ Generated from source. 9346/17645 functions/methods documented (52%). The list b
 - `scripts/phase7_judge.py` :: `key` (L99)
 - `scripts/phase7_judge.py` :: `main` (L103)
 - `scripts/phase7_judge.py` :: `parse_verdict` (L80)
-- `scripts/phone_home_auto.py` :: `main` (L190)
+- `scripts/phone_home_auto.py` :: `main` (L273)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)
 - `scripts/pipelines/tiktok_analytics.py` :: `run` (L181)

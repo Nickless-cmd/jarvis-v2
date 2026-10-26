@@ -36,8 +36,19 @@ _SCOUT_NUDGE = (
 #: To signaler i stedet for ét: et loefte HVOR som helst i teksten, og - staerkere - at en
 #: agent der HAR skrivevaerktoejer slutter uden at have skrevet noget.
 _PROMISE_VERBS = ("tilføjer", "tilføje", "retter", "opdaterer", "skriver", "ændrer",
-                  "fjerner", "implementerer", "indsætter", "bygger", "laver")
+                  "fjerner", "implementerer", "indsætter", "bygger", "laver",
+                  # 26/10-2026: LÆSE-løfter. En read-only agent lover at UNDERSØGE, ikke at
+                  # skrive — og gik hjem uden at gøre det. Målt på en rigtig researcher:
+                  # "Task schema har kun 5 felter … Lad mig verificere required-listen."
+                  # Den svarede på 1 af 3 spørgsmål og kaldte intet værktøj bagefter.
+                  "verificerer", "verificere", "tjekker", "tjekke")
 _PROMISE_EN = ("i'll ", "i will ", "let me ", "now i'll", "now i will")
+#: 26/10-2026: `let me ` stod i listen — `lad mig ` gjorde ikke. Præcis den engelske form
+#: var dækket og den danske manglede, så en dansk cliffhanger slap gennem vagten og
+#: agenten blev meldt ``completed`` midt i en sætning. Samme fejlklasse som MEMORY-
+#: påstanden tidligere samme dag: jeg greppede på ét sprog og konkluderede om begge.
+#: Fraserne er signalet — ikke verbet der følger, for det skifter med opgaven.
+_PROMISE_DA = ("lad mig ", "lad os ")
 _ACTION_NUDGE = (
     "Du har ikke kaldt et værktøj i denne runde, og du har ikke udført nogen ændring. "
     "Skal opgaven løses, så udfør den nu med et skriveværktøj. Kan du ikke, så sig det "
@@ -63,7 +74,7 @@ def _promises_action(text: str) -> bool:
         return True
     if any(f"jeg {v}" in low or f"{v} jeg" in low for v in _PROMISE_VERBS):
         return True
-    return any(m in low for m in _PROMISE_EN)
+    return any(m in low for m in _PROMISE_EN) or any(m in low for m in _PROMISE_DA)
 
 
 class ApprovalPending(Exception):

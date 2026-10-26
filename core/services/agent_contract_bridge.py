@@ -34,7 +34,7 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
                    max_turns: int = 0, result_contract: dict[str, Any] | None = None,
                    idempotency_key: str = "", request_digest: str = "",
                    target: str = "runtime-container", operation: str = "dispatch",
-                   expected_result: str = "") -> dict[str, Any]:
+                   expected_result: str = "", deadline_at: str = "") -> dict[str, Any]:
     """Opret agentens første assignment. Kaster aldrig: dispatch må ikke dø af bindingen."""
     owner, session = resolve_owner_and_session(context)
     if persistent:
@@ -51,6 +51,7 @@ def bind_new_agent(*, agent_id: str, parent_agent_id: str, goal: str, persistent
             parent_run_id=str((context or {}).get("parent_run_id") or ""),
             expected_result=expected_result or ",".join(sorted((result_contract or {}).keys())),
             budget={"tokens": budget_tokens, "max_turns": max_turns}, target=target,
+            deadline_at=deadline_at,
             created_by=parent_agent_id, operation=operation,
             idempotency_key=idempotency_key or agent_id, request_digest=request_digest,
         )

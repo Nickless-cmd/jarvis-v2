@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall_scheduler.py`
+_core/services/recall_scheduler.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L41) |
+| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L51) |
+| function | `_run_recall` | `(user_id, message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L64) |
+| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L75) |
+
 ## `core/services/recurrence_loop_daemon.py`
 _Recurrence Loop — feeds inner voice output back as context input (Experiment 1: IIT/Φ)._
 
@@ -676,13 +686,4 @@ _Klassifikation af en rutine ved oprettelsen — valget, ikke gættet._
 | function | `_parse_execution_mode` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L57) |
 | function | `_parse_importance` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L72) |
 | function | `classify_routine` | `(*, execution_mode=…, importance=…)` | Validér valget og udled de felter indbakken og runneren læser. | [src](../../../core/services/routine_classification.py#L85) |
-
-## `core/services/routine_crypto.py`
-_Owner-bound authenticated encryption for Routine content._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner_key` | `(owner_user_id)` | — | [src](../../../core/services/routine_crypto.py#L7) |
-| function | `seal` | `(owner_user_id, payload)` | — | [src](../../../core/services/routine_crypto.py#L17) |
-| function | `open_sealed` | `(owner_user_id, blob)` | — | [src](../../../core/services/routine_crypto.py#L23) |
 

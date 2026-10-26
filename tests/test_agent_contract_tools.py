@@ -8,13 +8,13 @@ import pytest
 #: Rettet 16/10-2026: `decide_agent_approval` manglede her. Den har — som de otte andre —
 #: ingen egen definition uden for kontrakten, men stod alligevel synlig naar motoren var
 #: slukket. Reglen udledes nu i `test_contract_only_tools_are_the_hidden_set`.
-NEW = ("dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
+NEW = ("Task", "followup_agent", "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
        "convene_agent_council", "review_agent_work", "decide_agent_approval")
 #: ALLE definitioner i `AGENT_CONTRACT_TOOL_DEFINITIONS` (ni). Sammenfalder i dag med `NEW`,
 #: men maaler noget andet: hvilke definitioner der FINDES, ikke hvilke der SKJULES.
 DEFS = NEW
 #: Den FASTGJORTE flade naar motoren er taendt (kildens `CONTRACT_TOOL_NAMES`, elleve).
-PINNED = ("dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
+PINNED = ("Task", "send_message_to_agent", "followup_agent", "list_agents",
           "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
           "convene_agent_council", "review_agent_work", "decide_agent_approval")
 
@@ -73,19 +73,14 @@ def test_definitions_are_wellformed_and_required_fields_exist():
         assert d["type"] == "function" and d["function"]["description"]
         assert set(p["required"]) <= set(p["properties"])
     by = {d["function"]["name"]: d["function"]["parameters"] for d in defs}
-    # 26/10-2026: fladen er skaaret fra 17 til 6 felter. Maalt paa 66 koersler i
-    # oktober: 38 returnerede under 60 tegn, snit 20.924 tokens ind for 875 ud.
-    # Aarsagen var at 17 beslutninger skulle traeffes foer ÉN agent kunne sendes.
-    # `expected_result` er nu REQUIRED med vilje: uden et resultatkrav rapporterer
-    # agenten sin proces ("Mange kandidater. Laes kerne.") i stedet for sit fund.
-    # Fjerner nogen det krav igen, skal denne test faelde dem.
-    assert by["dispatch_agent"]["required"] == ["goal", "expected_result"]
-    assert len(by["dispatch_agent"]["properties"]) == 6
-    # De brede knapper er ikke laengere en del af fladen — men maskinen kan dem
-    # stadig, saa et programmatisk kald (legacy-adapteren, agent_council) virker.
+    # Task er den ENESTE modelvendte dispatch-flade og har Claudes fem felter.
+    assert by["Task"]["required"] == ["description", "prompt", "subagent_type"]
+    assert len(by["Task"]["properties"]) == 5
+    # Alle autoritetsbaerende valg udledes af runtimen.
     for fjernet in ("target", "tool_policy", "writes", "budget_tokens", "max_turns",
+                    "workspace", "idempotency_key", "expected_result", "role", "goal",
                     "context_mode", "accept_fork_switch", "reasoning_effort"):
-        assert fjernet not in by["dispatch_agent"]["properties"], f"{fjernet} er tilbage paa fladen"
+        assert fjernet not in by["Task"]["properties"], f"{fjernet} er tilbage paa fladen"
     assert by["wait_agents"]["properties"]["condition"]["enum"] == ["first_terminal", "all_terminal"]
 
 
@@ -142,6 +137,85 @@ def test_handlers_are_registered_for_all_tools():
     from core.tools.simple_tools import _TOOL_HANDLERS
 
     assert all(n in _TOOL_HANDLERS for n in PINNED)
+
+
+def test_task_facade_derives_and_persists_the_mandate(tl, tmp_path):
+    from core.runtime import db_agent_mandate
+    from core.services.chat_sessions import create_chat_session
+
+    tl.on()
+    (tmp_path / ".git").mkdir()
+    session = create_chat_session(title="Task contract", workspace_kind="container",
+                                  workspace_root=str(tmp_path))
+    out = tl.t_._exec_task({
+        "_runtime_session_id": session["id"], "_runtime_turn_id": "visible-task",
+        "description": "A source-backed answer", "prompt": "Read the relevant source and answer.",
+        "subagent_type": "researcher", "model": "", "run_in_background": True,
+        # Model-supplied authority fields must be ignored because they are not facade fields.
+        "target": "client:evil", "allowed_tools": ["write_file"], "budget_tokens": 999999,
+    })
+    assert out["status"] == "accepted"
+    mandate = db_agent_mandate.get(assignment_id=out["assignment_id"])
+    assert mandate is not None
+    assert mandate["owner_user_id"] == "bjorn"
+    assert mandate["origin_session_id"] == session["id"]
+    assert mandate["target"] == "runtime-container"
+    assert mandate["granted_side_effect"] == "read"
+    assert mandate["original_side_effect"] == "worktree-write"
+    assert "write_file" not in mandate["allowed_tools"] and "bash" not in mandate["allowed_tools"]
+    assert mandate["budget_tokens"] == 8000 and mandate["max_turns"] == 8
+    assert mandate["expected_result"] == "A source-backed answer"
+    assert mandate["return_address"].startswith("agent-inbox:bjorn:")
+
+
+def test_mandate_gate_is_mechanical_and_only_original_exceedance_reaches_bjorn(tl, tmp_path):
+    import json
+    from core.services.agent_approval_gate import gate
+    from core.services.agent_loop_core import ApprovalPending
+    from core.services.agent_runtime_spawn import get_agent_registry_entry
+    from core.services.chat_sessions import create_chat_session
+
+    tl.on()
+    (tmp_path / ".git").mkdir()
+    inside = tmp_path / "inside.py"
+    inside.write_text("x = 1\n")
+    session = create_chat_session(title="Mandate gate", workspace_kind="container",
+                                  workspace_root=str(tmp_path))
+    out = tl.t_._exec_task({
+        "_runtime_session_id": session["id"], "_runtime_turn_id": "visible-gate",
+        "description": "Inspect one file", "prompt": "Read the file and report what it contains.",
+        "subagent_type": "researcher", "model": "", "run_in_background": True,
+    })
+    agent = get_agent_registry_entry(out["agent_id"])
+    assert agent is not None
+
+    def tc(name, args):
+        return {"id": "call-1", "function": {"name": name, "arguments": json.dumps(args)}}
+
+    # Exact allowlist + path root: free, no approval.
+    assert gate(agent=agent, run_id=out["run_id"],
+                tc=tc("read_file", {"path": str(inside)})) is None
+    outside = json.loads(gate(agent=agent, run_id=out["run_id"],
+                              tc=tc("read_file", {"path": "/etc/passwd"})) or "{}")
+    assert outside["code"] == "MANDATE_DENIED"
+    relative = json.loads(gate(agent=agent, run_id=out["run_id"],
+                               tc=tc("read_file", {"path": "inside.py"})) or "{}")
+    assert relative["code"] == "MANDATE_DENIED"
+    # Worktree write is above this child's read mandate but still inside the
+    # origin session's mechanically derived workspace authority: reject to Jarvis.
+    denied = json.loads(gate(agent=agent, run_id=out["run_id"],
+                             tc=tc("wt_write_file", {"path": "x.py", "content": "x"})) or "{}")
+    assert denied["code"] == "MANDATE_DENIED"
+    # External write exceeds the ORIGINAL mandate and is the only branch that
+    # may create a human approval.
+    with pytest.raises(ApprovalPending):
+        gate(agent=agent, run_id=out["run_id"],
+             tc=tc("gmail_send", {"to": "nobody@example.invalid", "body": "x"}))
+    pending = tl.svc_.c._conn().execute(
+        "SELECT tool_name, status FROM agent_approvals WHERE assignment_id=?",
+        (out["assignment_id"],),
+    ).fetchall()
+    assert [(r["tool_name"], r["status"]) for r in pending] == [("gmail_send", "pending")]
 
 
 # --- fast flade -----------------------------------------------------------------------

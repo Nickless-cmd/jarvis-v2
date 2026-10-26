@@ -27,7 +27,7 @@ from core.runtime.db_agent_contract import ASSIGNMENT_TERMINAL, CONTRACT_VERSION
 logger = logging.getLogger(__name__)
 
 CAPABILITY_FLAG = "agent_contract.enabled"
-PROMPT_VERSION = "orchestrator-v1"
+PROMPT_VERSION = "orchestrator-v2"
 
 # Startprofilen, §12.3.
 MAX_ACTIVE_GLOBAL = 12
@@ -226,6 +226,7 @@ def dispatch_agent(
     context_mode: str = "fresh", context_excerpt: str = "", accept_fork_switch: bool = False,
     reasoning_effort: str = "",
     wake_parent: bool = True,
+    deadline_at: str = "", mandate: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Accepter en afgraenset opgave til en ny agent og returner id'er STRAKS.
 
@@ -246,12 +247,28 @@ def dispatch_agent(
     goal = (goal or "").strip()
     if not goal:
         return _err("INVALID_SCOPE", "goal mangler")
+    if mandate is not None:
+        if str(mandate.get("owner_user_id") or "") != owner_user_id \
+                or str(mandate.get("origin_session_id") or "") != origin_session_id:
+            return _err("INVALID_SCOPE", "mandatets ejer/session matcher ikke den autentificerede principal")
+        if str(mandate.get("target") or "") != target:
+            return _err("INVALID_SCOPE", "mandatets target matcher ikke dispatch")
+        if sorted(mandate.get("allowed_tools") or []) != sorted(allowed_tools or []):
+            return _err("INVALID_SCOPE", "mandatets tool-whitelist matcher ikke dispatch")
+        if int(mandate.get("budget_tokens") or -1) != int(budget_tokens) \
+                or int(mandate.get("max_turns") or -1) != int(max_turns):
+            return _err("INVALID_SCOPE", "mandatets budget matcher ikke dispatch")
+        if str(mandate.get("deadline_at") or "") != str(deadline_at or ""):
+            return _err("INVALID_SCOPE", "mandatets deadline matcher ikke dispatch")
     wt_tools = tool_policy == "worktree-write" or any(str(t).startswith("wt_") for t in (allowed_tools or []))
     if writes:
         if not (workspace or "").strip():
             return _err("INVALID_SCOPE", "writes kraever et workspace (repo-sti)")
-        if allowed_tools or (tool_policy and tool_policy != "worktree-write"):
+        if (allowed_tools and mandate is None) or (tool_policy and tool_policy != "worktree-write"):
             return _err("INVALID_SCOPE", "en kodeagent har den faste politik worktree-write")
+        if mandate is not None and any(t not in {"wt_bash", "wt_write_file", "agent_note"}
+                                       for t in (allowed_tools or [])):
+            return _err("INVALID_SCOPE", "Task-executoren maa kun bruge worktree-vaerktoejer")
         tool_policy = "worktree-write"
     elif wt_tools or (workspace or "").strip():
         return _err("INVALID_SCOPE", "worktree-vaerktoejer og workspace kraever writes=true")
@@ -322,7 +339,8 @@ def dispatch_agent(
             context={"user_id": owner_user_id, "parent_session_id": origin_session_id,
                      "parent_run_id": parent_run_id},
             contract={"idempotency_key": idempotency_key, "request_digest": digest,
-                       "target": target, "expected_result": expected_result},
+                       "target": target, "expected_result": expected_result,
+                       "deadline_at": deadline_at},
         )
     except Exception as exc:
         logger.warning("dispatch_agent: spawn fejlede", exc_info=True)
@@ -363,6 +381,15 @@ def dispatch_agent(
             logger.warning("worktree kunne ikke reserveres", exc_info=True)
             c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
             return _err("INVALID_SCOPE", f"worktree: {type(exc).__name__}"[:120])
+    if mandate is not None:
+        try:
+            from core.runtime import db_agent_mandate
+
+            db_agent_mandate.record(assignment_id=a["assignment_id"], mandate=mandate)
+        except Exception as exc:
+            logger.warning("mandatet kunne ikke gemmes - agenten afvises", exc_info=True)
+            c.discard_unstarted_assignment(agent_id=agent_id, owner_user_id=owner_user_id)
+            return _err("INVALID_SCOPE", f"mandat kunne ikke gemmes: {type(exc).__name__}"[:120])
     from core.runtime.db_agent_capacity import mark_ready
     if not mark_ready(assignment_id=a["assignment_id"]):
         return _err("INVALID_TRANSITION", "assignmentet kunne ikke frigives til koeen")

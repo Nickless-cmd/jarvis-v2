@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_log.py`
+_Decision Log — records high-stakes decisions with context, options, and rationale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_decision` | `(*, title, context=…, options=…, decision=…, why=…, refs=…)` | Record a decision in the log. | [src](../../../core/services/decision_log.py#L20) |
+| function | `build_decision_log_surface` | `()` | — | [src](../../../core/services/decision_log.py#L50) |
+
 ## `core/services/decision_review_daemon.py`
 _Decision review daemon — closes the adherence loop automatically._
 
@@ -624,28 +632,4 @@ _Dream bias engine — Lag 2 distillation + bias state._
 | function | `_fetch_aspiration_corpus` | `(*, since_iso, limit=…)` | Pull positive/aspiration events — kept decisions, goal progress, etc. | [src](../../../core/services/dream_bias_engine.py#L418) |
 | function | `_call_llm_for_bias` | `(*, events, max_tokens)` | Call quality-lane LLM with both regret and aspiration events. | [src](../../../core/services/dream_bias_engine.py#L501) |
 | function | `_upsert_dream_bias` | `(*, workspace_id, validated, source_events, ttl_hours)` | INSERT new or accumulate into existing row. | [src](../../../core/services/dream_bias_engine.py#L567) |
-
-## `core/services/dream_carry_over.py`
-_Dream Carry-Over — hypotheses that survive across sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe_dream_signal` | `(nerve, **meta)` | Giv drømme-tilstandsovergangene en FORBRUGER (punkt 3, 15/10-2026). | [src](../../../core/services/dream_carry_over.py#L26) |
-| function | `_persist_file` | `()` | — | [src](../../../core/services/dream_carry_over.py#L53) |
-| function | `_ensure_loaded` | `()` | — | [src](../../../core/services/dream_carry_over.py#L76) |
-| function | `_load` | `()` | — | [src](../../../core/services/dream_carry_over.py#L101) |
-| function | `_save` | `()` | — | [src](../../../core/services/dream_carry_over.py#L116) |
-| function | `adopt_dream` | `(*, dream_id, content, confidence=…, source_memories=…)` | Adopt a dream hypothesis for carry-over to next session. | [src](../../../core/services/dream_carry_over.py#L205) |
-| function | `_current_session_key` | `()` | Den session en præsentation hører til. | [src](../../../core/services/dream_carry_over.py#L255) |
-| function | `dream_prompt_priority` | `(dreams, limit=…)` | De drømme prompten skal se først — i den rækkefølge gaten selv vælger. | [src](../../../core/services/dream_carry_over.py#L286) |
-| function | `get_presentable_dream` | `()` | Get the highest-confidence dream not yet presented in THIS session. | [src](../../../core/services/dream_carry_over.py#L314) |
-| function | `mark_dream_presented` | `(dream_id)` | Mark a dream as presented in the CURRENT session; track carry depth. | [src](../../../core/services/dream_carry_over.py#L329) |
-| function | `confirm_dream` | `(dream_id)` | Confirm a dream hypothesis — boost confidence, track confirmed sessions. | [src](../../../core/services/dream_carry_over.py#L348) |
-| function | `reject_dream` | `(dream_id)` | Reject a dream hypothesis — archive with 'was_wrong'. | [src](../../../core/services/dream_carry_over.py#L385) |
-| function | `promote_confirmed_dream_to_identity` | `(dream_id)` | Promote a high-confidence confirmed dream to identity evolution proposal. | [src](../../../core/services/dream_carry_over.py#L402) |
-| function | `format_dream_for_prompt` | `(dream)` | Format a dream for injection into the visible prompt. | [src](../../../core/services/dream_carry_over.py#L422) |
-| function | `build_dream_carry_over_surface` | `()` | — | [src](../../../core/services/dream_carry_over.py#L436) |
-| function | `maybe_auto_promote_dreams` | `()` | Promote high-confidence confirmed dreams to identity proposals. Returns promoted IDs. | [src](../../../core/services/dream_carry_over.py#L461) |
-| function | `_enforce_active_cap` | `()` | Hold antallet af aktive drømme under `_MAX_ACTIVE_DREAMS`. | [src](../../../core/services/dream_carry_over.py#L482) |
-| function | `_maybe_fade_old_dreams` | `()` | Archive unconfirmed dreams that have been presented too many times. | [src](../../../core/services/dream_carry_over.py#L528) |
 

@@ -6,18 +6,24 @@
 
 _(no top-level classes or functions)_
 
+## `core/tools/agent_contract_handlers.py`
+_Handler registry for the cohesive agent-contract tool family._
+
+_(no top-level classes or functions)_
+
 ## `core/tools/agent_contract_tools.py`
 _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_fn` | `(name, description, properties, required)` | — | [src](../../../core/tools/agent_contract_tools.py#L43) |
-| function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L155) |
-| function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L166) |
-| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L174) |
-| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L192) |
-| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L214) |
-| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L219) |
+| function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L140) |
+| function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L151) |
+| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L159) |
+| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L177) |
+| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L199) |
+| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L204) |
+| function | `_exec_task` | `(args)` | Five model fields in; all authority-bearing fields come from runtime state. | [src](../../../core/tools/agent_contract_tools.py#L238) |
 | function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L253) |
 | function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L263) |
 | function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L276) |
@@ -520,23 +526,4 @@ _Hugging Face Inference API tools — free-tier text-to-video + fallback image g
 | function | `_image_to_data_url` | `(source)` | Convert file path / URL / raw-bytes path to a data URL for VLM input. | [src](../../../core/tools/hf_inference_tools.py#L652) |
 | function | `vision_analyze` | `(*, image_source, prompt=…, model=…, max_tokens=…)` | Analyze an image via a vision-language model. image_source = path or URL. | [src](../../../core/tools/hf_inference_tools.py#L666) |
 | function | `_exec_hf_vision_analyze` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L729) |
-
-## `core/tools/identity_pin_tools.py`
-_Identity-pinning — pin a snippet from chronicle/MILESTONES/letters as_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L39) |
-| class | `IdentityPin` | `` | — | [src](../../../core/tools/identity_pin_tools.py#L44) |
-| class | `IdentityPinsState` | `` | — | [src](../../../core/tools/identity_pin_tools.py#L54) |
-| method | `IdentityPinsState.to_dict` | `(self)` | — | [src](../../../core/tools/identity_pin_tools.py#L58) |
-| function | `_load` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L65) |
-| function | `_save` | `(state)` | — | [src](../../../core/tools/identity_pin_tools.py#L78) |
-| function | `list_pins` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L87) |
-| function | `add_pin` | `(*, title, content, source=…, pinned_by=…)` | — | [src](../../../core/tools/identity_pin_tools.py#L92) |
-| function | `remove_pin` | `(pin_id)` | — | [src](../../../core/tools/identity_pin_tools.py#L118) |
-| function | `awareness_section` | `()` | Render the pin store as a prompt-awareness block. Used by | [src](../../../core/tools/identity_pin_tools.py#L129) |
-| function | `_exec_pin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L145) |
-| function | `_exec_list_identity_pins` | `(_args)` | — | [src](../../../core/tools/identity_pin_tools.py#L154) |
-| function | `_exec_unpin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L158) |
 

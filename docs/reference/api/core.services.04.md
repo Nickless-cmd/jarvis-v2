@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/background_job_watch.py`
+_Færdige baggrunds-shells — set, ikke gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L76) |
+| function | `_laes_tid` | `(vaerdi)` | ISO-tidsstempel fra state eller registry — eller None. | [src](../../../core/services/background_job_watch.py#L80) |
+| function | `_grundlinje` | `()` | Tidsstemplet for hvornår vagtposten vågnede. Sættes én gang. | [src](../../../core/services/background_job_watch.py#L94) |
+| function | `_rapporterede` | `()` | {noegle: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L114) |
+| function | `_husk` | `(noegler)` | Skriv noeglerne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L136) |
+| function | `_noegle` | `(job)` | Stabil identitet for et job. | [src](../../../core/services/background_job_watch.py#L153) |
+| function | `scan_finished` | `(*, uid)` | Nye fuldførte jobs siden sidst, plus om operator-siden var laesbar. | [src](../../../core/services/background_job_watch.py#L167) |
+| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L211) |
+| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L222) |
+| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L237) |
+| function | `tik` | `(*, uid=…)` | Tjek for færdige jobs og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L247) |
+
 ## `core/services/background_jobs.py`
 _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
@@ -609,15 +626,4 @@ _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/counc
 | function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
 | function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
 | function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
-
-## `core/services/central_analyst.py`
-_The Analyst — observatør-effekten._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_texts` | `(*, autonomous, limit=…)` | — | [src](../../../core/services/central_analyst.py#L18) |
-| function | `measure_observer_effect` | `()` | Sammenlign klang når han bliver set vs når han er alene. READ-ONLY. Self-safe. | [src](../../../core/services/central_analyst.py#L32) |
-| function | `_observe` | `(div)` | — | [src](../../../core/services/central_analyst.py#L63) |
-| function | `build_analyst_surface` | `()` | — | [src](../../../core/services/central_analyst.py#L72) |
-| function | `record_analyst` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_analyst.py#L76) |
 

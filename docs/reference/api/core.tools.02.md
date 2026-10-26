@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/identity_pin_tools.py`
+_Identity-pinning — pin a snippet from chronicle/MILESTONES/letters as_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L39) |
+| class | `IdentityPin` | `` | — | [src](../../../core/tools/identity_pin_tools.py#L44) |
+| class | `IdentityPinsState` | `` | — | [src](../../../core/tools/identity_pin_tools.py#L54) |
+| method | `IdentityPinsState.to_dict` | `(self)` | — | [src](../../../core/tools/identity_pin_tools.py#L58) |
+| function | `_load` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L65) |
+| function | `_save` | `(state)` | — | [src](../../../core/tools/identity_pin_tools.py#L78) |
+| function | `list_pins` | `()` | — | [src](../../../core/tools/identity_pin_tools.py#L87) |
+| function | `add_pin` | `(*, title, content, source=…, pinned_by=…)` | — | [src](../../../core/tools/identity_pin_tools.py#L92) |
+| function | `remove_pin` | `(pin_id)` | — | [src](../../../core/tools/identity_pin_tools.py#L118) |
+| function | `awareness_section` | `()` | Render the pin store as a prompt-awareness block. Used by | [src](../../../core/tools/identity_pin_tools.py#L129) |
+| function | `_exec_pin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L145) |
+| function | `_exec_list_identity_pins` | `(_args)` | — | [src](../../../core/tools/identity_pin_tools.py#L154) |
+| function | `_exec_unpin_identity` | `(args)` | — | [src](../../../core/tools/identity_pin_tools.py#L158) |
+
 ## `core/tools/identity_sketch_tools.py`
 _Tools for Persistent Identity Sketch — read and update._
 
@@ -536,11 +555,4 @@ _Semantic recall tools — Jarvis-facing recall across all memory surfaces._
 | function | `_excerpt_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L30) |
 | function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L44) |
 | function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L54) |
-
-## `core/tools/recall_tool.py`
-_`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_recall` | `(args)` | — | [src](../../../core/tools/recall_tool.py#L52) |
 

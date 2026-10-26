@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9358/17660 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9361/17674 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,15 +24,15 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 849 | 1553 | 54% |
-| `core.services` | 6242 | 12012 | 51% |
+| `core.runtime` | 850 | 1559 | 54% |
+| `core.services` | 6243 | 12019 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 569 | 1119 | 50% |
+| `core.tools` | 570 | 1120 | 50% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2590)
+## Undocumented public functions (2595)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L224)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -384,7 +384,7 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_bridge.py` :: `unknown_for_assignment` (L163)
 - `core/runtime/db_agent_bridge.py` :: `unresolved_for_client` (L156)
 - `core/runtime/db_agent_capacity.py` :: `ensure_capacity_columns` (L22)
-- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L696)
+- `core/runtime/db_agent_contract.py` :: `open_assignment_for_agent` (L699)
 - `core/runtime/db_agent_council.py` :: `create` (L62)
 - `core/runtime/db_agent_council.py` :: `ensure_council_tables` (L27)
 - `core/runtime/db_agent_council.py` :: `find_by_key` (L84)
@@ -401,6 +401,9 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 - `core/runtime/db_agent_lease.py` :: `holder_identity` (L62)
 - `core/runtime/db_agent_lease.py` :: `is_current` (L107)
 - `core/runtime/db_agent_lease.py` :: `release` (L115)
+- `core/runtime/db_agent_mandate.py` :: `ensure_mandate_tables` (L26)
+- `core/runtime/db_agent_mandate.py` :: `get` (L127)
+- `core/runtime/db_agent_mandate.py` :: `side_effect_exceeds` (L134)
 - `core/runtime/db_agent_memory.py` :: `ensure_memory_tables` (L39)
 - `core/runtime/db_agent_outcome_unknown.py` :: `ensure_outcome_unknown_columns` (L34)
 - `core/runtime/db_agent_route.py` :: `attempts_for_assignment` (L80)
@@ -725,7 +728,7 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
 - `core/services/agent_contract_projection.py` :: `mark_read` (L486)
-- `core/services/agent_contract_service.py` :: `list_approvals` (L687)
+- `core/services/agent_contract_service.py` :: `list_approvals` (L714)
 - `core/services/agent_council.py` :: `synthesis_goal` (L151)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_round` (L86)
 - `core/services/agent_loop_core.py` :: `LoopIO.after_tool` (L84)
@@ -759,6 +762,8 @@ Generated from source. 9358/17660 functions/methods documented (52%). The list b
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
+- `core/services/agent_task_facade.py` :: `derive` (L50)
+- `core/services/agent_task_facade.py` :: `execute` (L112)
 - `core/services/agent_todos.py` :: `add_todo` (L196)
 - `core/services/agent_todos.py` :: `clear_session_todos` (L379)
 - `core/services/agent_todos.py` :: `list_todos` (L68)

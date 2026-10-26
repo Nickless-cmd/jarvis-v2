@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17660 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17674 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,40 +27,40 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17660 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_composer_jarvis`
-- [`core.runtime.02`](core.runtime.02.md) — `db_composites` … `db_runtime_self_review`
-- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_signals` … `ws_auth`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_composer_choice`
+- [`core.runtime.02`](core.runtime.02.md) — `db_composer_jarvis` … `db_runtime_self`
+- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_self_review` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
-- [`core.services.02`](core.services.02.md) — `agent_pool_router` … `apophenia_guard`
-- [`core.services.03`](core.services.03.md) — `app_dispatch_store` … `background_job_watch`
-- [`core.services.04`](core.services.04.md) — `background_jobs` … `central_analyst`
-- [`core.services.05`](core.services.05.md) — `central_anomaly` … `central_hypothesis_governance`
-- [`core.services.06`](core.services.06.md) — `central_hypothesis_sampler` … `central_red_dress`
-- [`core.services.07`](core.services.07.md) — `central_redpill` … `chat_sessions`
-- [`core.services.08`](core.services.08.md) — `cheap_lane_admission` … `cognitive_episodes`
-- [`core.services.09`](core.services.09.md) — `cognitive_state_assembly` … `council_runtime`
-- [`core.services.10`](core.services.10.md) — `council_settlement` … `decision_log`
-- [`core.services.11`](core.services.11.md) — `decision_review_daemon` … `dream_carry_over`
-- [`core.services.12`](core.services.12.md) — `dream_consolidation_daemon` … `epistemic_runtime_state`
-- [`core.services.13`](core.services.13.md) — `epistemics` … `gate_eval`
-- [`core.services.14`](core.services.14.md) — `gate_execution` … `heartbeat_action_hints`
-- [`core.services.15`](core.services.15.md) — `heartbeat_daemon_ticks` … `inner_visible_support_signal_tracking`
-- [`core.services.16`](core.services.16.md) — `inner_voice_daemon` … `llm_json`
-- [`core.services.17`](core.services.17.md) — `llm_pricing` … `meta_learning_hypotheses`
-- [`core.services.18`](core.services.18.md) — `meta_learning_retrospective` … `nudge_broend`
-- [`core.services.19`](core.services.19.md) — `oauth_flow` … `policy_abstraction`
-- [`core.services.20`](core.services.20.md) — `post_tool_answer_guard` … `prompt_mutation_loop`
-- [`core.services.21`](core.services.21.md) — `prompt_observer` … `recall_scheduler`
-- [`core.services.22`](core.services.22.md) — `recurrence_loop_daemon` … `routine_crypto`
-- [`core.services.23`](core.services.23.md) — `routine_delivery` … `runtime_self_model_boundary`
-- [`core.services.24`](core.services.24.md) — `runtime_self_model_builder` … `self_review_record_tracking`
-- [`core.services.25`](core.services.25.md) — `self_review_run_tracking` … `shared_language`
-- [`core.services.26`](core.services.26.md) — `shared_language_extended` … `stream_failure_kind`
-- [`core.services.27`](core.services.27.md) — `stream_sentinel` … `tool_catalog`
-- [`core.services.28`](core.services.28.md) — `tool_chip_payload` … `user_model_daemon`
-- [`core.services.29`](core.services.29.md) — `user_scope` … `visible_run_guard_notices`
-- [`core.services.30`](core.services.30.md) — `visible_run_interruption` … `wall_guard`
-- [`core.services.31`](core.services.31.md) — `web_push_gateway` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agent_pool_router` … `api_connection_nerve`
+- [`core.services.03`](core.services.03.md) — `apophenia_guard` … `background_attention`
+- [`core.services.04`](core.services.04.md) — `background_job_watch` … `central_agents_surface`
+- [`core.services.05`](core.services.05.md) — `central_analyst` … `central_hypothesis_generator`
+- [`core.services.06`](core.services.06.md) — `central_hypothesis_governance` … `central_realtime`
+- [`core.services.07`](core.services.07.md) — `central_red_dress` … `chat_session_private_metadata`
+- [`core.services.08`](core.services.08.md) — `chat_sessions` … `cognitive_core_experiments`
+- [`core.services.09`](core.services.09.md) — `cognitive_episodes` … `council_memory_service`
+- [`core.services.10`](core.services.10.md) — `council_runtime` … `decision_ghosts`
+- [`core.services.11`](core.services.11.md) — `decision_log` … `dream_bias_engine`
+- [`core.services.12`](core.services.12.md) — `dream_carry_over` … `epistemic_pragmatic`
+- [`core.services.13`](core.services.13.md) — `epistemic_runtime_state` … `gate_enforcement`
+- [`core.services.14`](core.services.14.md) — `gate_eval` … `hardware_body`
+- [`core.services.15`](core.services.15.md) — `heartbeat_action_hints` … `inner_dialectic_engine`
+- [`core.services.16`](core.services.16.md) — `inner_visible_support_signal_tracking` … `living_heartbeat_cycle`
+- [`core.services.17`](core.services.17.md) — `llm_json` … `meta_learning_aggregator`
+- [`core.services.18`](core.services.18.md) — `meta_learning_hypotheses` … `ntfy_gateway`
+- [`core.services.19`](core.services.19.md) — `nudge_broend` … `plugin_ruleset_store`
+- [`core.services.20`](core.services.20.md) — `policy_abstraction` … `prompt_memory_recall`
+- [`core.services.21`](core.services.21.md) — `prompt_mutation_loop` … `recall_ownership_migration`
+- [`core.services.22`](core.services.22.md) — `recall_scheduler` … `routine_classification`
+- [`core.services.23`](core.services.23.md) — `routine_crypto` … `runtime_self_model_affect`
+- [`core.services.24`](core.services.24.md) — `runtime_self_model_boundary` … `self_review_outcome_tracking`
+- [`core.services.25`](core.services.25.md) — `self_review_record_tracking` … `shared_cache`
+- [`core.services.26`](core.services.26.md) — `shared_language` … `stream_degeneration`
+- [`core.services.27`](core.services.27.md) — `stream_failure_kind` … `tool_calling_evidence`
+- [`core.services.28`](core.services.28.md) — `tool_catalog` … `user_md_update_proposal_tracking`
+- [`core.services.29`](core.services.29.md) — `user_model_daemon` … `visible_run_firstpass`
+- [`core.services.30`](core.services.30.md) — `visible_run_guard_notices` … `wakeup_dispatcher`
+- [`core.services.31`](core.services.31.md) — `wall_guard` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -69,10 +69,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17660 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `identity_pin_tools`
-- [`core.tools.02`](core.tools.02.md) — `identity_sketch_tools` … `recall_tool`
-- [`core.tools.03`](core.tools.03.md) — `recurring_scheduler_tools` … `ui_panel_tools`
-- [`core.tools.04`](core.tools.04.md) — `verify_tools` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `hf_inference_tools`
+- [`core.tools.02`](core.tools.02.md) — `identity_pin_tools` … `recall_memory_tools`
+- [`core.tools.03`](core.tools.03.md) — `recall_tool` … `tool_text_render`
+- [`core.tools.04`](core.tools.04.md) — `ui_panel_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

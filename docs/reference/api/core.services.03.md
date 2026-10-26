@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/apophenia_guard.py`
+_Apophenia Guard — pattern skeptic that validates before elevation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_generate_assessment_rationale` | `(*, status, observation_count, adjusted_confidence, competitor_count, confounder_count)` | Generate a brief Danish explanation of the assessment. Falls back to empty string. | [src](../../../core/services/apophenia_guard.py#L21) |
+| function | `assess_pattern` | `(*, observation_count, base_confidence, competing_explanations=…, confounders=…, include_rationale=…)` | Assess whether a pattern should be elevated or rejected. | [src](../../../core/services/apophenia_guard.py#L48) |
+| function | `build_apophenia_guard_surface` | `()` | — | [src](../../../core/services/apophenia_guard.py#L120) |
+
 ## `core/services/app_dispatch_store.py`
 _Pending runtime→app instruktioner (spec §18.5, Fase 2)._
 
@@ -617,21 +626,4 @@ _One durable exit path for findings from unattended runtime work._
 | function | `_existing_inbox` | `(*, owner, inbox_id)` | — | [src](../../../core/services/background_attention.py#L58) |
 | function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L67) |
 | function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L73) |
-
-## `core/services/background_job_watch.py`
-_Færdige baggrunds-shells — set, ikke gættet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_job_watch.py#L76) |
-| function | `_laes_tid` | `(vaerdi)` | ISO-tidsstempel fra state eller registry — eller None. | [src](../../../core/services/background_job_watch.py#L80) |
-| function | `_grundlinje` | `()` | Tidsstemplet for hvornår vagtposten vågnede. Sættes én gang. | [src](../../../core/services/background_job_watch.py#L94) |
-| function | `_rapporterede` | `()` | {noegle: iso-tidsstempel} for det vi allerede har sagt. | [src](../../../core/services/background_job_watch.py#L114) |
-| function | `_husk` | `(noegler)` | Skriv noeglerne som rapporterede — atomisk, så api og runtime ikke | [src](../../../core/services/background_job_watch.py#L136) |
-| function | `_noegle` | `(job)` | Stabil identitet for et job. | [src](../../../core/services/background_job_watch.py#L153) |
-| function | `scan_finished` | `(*, uid)` | Nye fuldførte jobs siden sidst, plus om operator-siden var laesbar. | [src](../../../core/services/background_job_watch.py#L167) |
-| function | `_beskriv` | `(job)` | — | [src](../../../core/services/background_job_watch.py#L211) |
-| function | `_bruger_id` | `()` | Brugeren der ejer baggrunds-shellene. Tom streng når konteksten ikke | [src](../../../core/services/background_job_watch.py#L222) |
-| function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/background_job_watch.py#L237) |
-| function | `tik` | `(*, uid=…)` | Tjek for færdige jobs og læg én followup. Kaster aldrig. | [src](../../../core/services/background_job_watch.py#L247) |
 

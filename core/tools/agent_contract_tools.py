@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 #: De navne der er fast i Jarvis' standardflade naar motoren er aktiv (spec'ens syv + integration, F4d).
 CONTRACT_TOOL_NAMES: tuple[str, ...] = (
-    "dispatch_agent", "send_message_to_agent", "followup_agent", "list_agents",
+    "Task", "send_message_to_agent", "followup_agent", "list_agents",
     "wait_agents", "interrupt_agent", "close_agent", "integrate_agent_work",
     "convene_agent_council", "review_agent_work", "decide_agent_approval",
 )
@@ -35,7 +35,7 @@ CONTRACT_TOOL_NAMES: tuple[str, ...] = (
 #: at fjerne et menneske fra godkendelses-loopet; den hoerer ikke i den tilstand.
 #: ``test_contract_only_tools_are_the_hidden_set`` udleder reglen og fanger naeste.
 _NEW_ONLY: frozenset[str] = frozenset(
-    {"dispatch_agent", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
+    {"Task", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
      "integrate_agent_work", "convene_agent_council", "review_agent_work",
      "decide_agent_approval"})
 
@@ -46,41 +46,26 @@ def _fn(name: str, description: str, properties: dict[str, Any], required: list[
         "parameters": {"type": "object", "properties": properties, "required": required}}}
 
 
-_ID = {"type": "string", "description": "agent_id returned by dispatch_agent."}
+_ID = {"type": "string", "description": "agent_id returned by Task."}
 _KEY = {"type": "string", "description": "Optional idempotency key: the same key with the same "
                                           "arguments returns the same accepted result."}
 
 AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
-    _fn("dispatch_agent",
-        "Hand a bounded, independently checkable piece of work to a new agent and get its ids "
-        "back immediately. The agent works in the background; acceptance is NOT a result. "
-        "Use it when a sub-task can run in parallel, needs separate focus or large sources, "
-        "benefits from an independent reviewer, or must be monitored over time. Do not use it "
-        "for a short step you can finish directly.",
-        # 26/10-2026: skaaret fra 17 felter til 6. Maalt samme dag paa 66 koersler i
-        # oktober: 38 returnerede under 60 tegn, og snittet var 20.924 tokens ind for
-        # 875 ud. Aarsagen var ikke modellen — den var at fladen kraevede 17 beslutninger
-        # foer ÉN agent kunne sendes, saa jeg valgte bash i stedet. Resten er defaults i
-        # _exec_dispatch_agent (den laeser alt med .get()), saa servicen og
-        # agent_council.py er uaendrede. Claudes Task-vaerktoej har 5 felter.
-        {"goal": {"type": "string",
-                  "description": "Opgaven, formuleret saa den kan verificeres."},
-         "expected_result": {"type": "string",
-                             "description": "HVAD der skal komme retur for at svaret er brugbart — "
-                             "ikke processen, men fundet. Agenten faar dette som sit eneste "
-                             "resultatkrav: svar paa opgaven, eller sig at den ikke kunne og hvorfor."},
-         "role": {"type": "string",
-                  "description": "researcher (laeser, aendrer intet) · critic · planner · "
-                  "executor · watcher. Default: researcher."},
+    _fn("Task",
+        "Delegate one bounded task. Runtime derives owner, parent, mandate, tools, target, "
+        "workspace/sandbox, limits, idempotency, delivery contract and return address. The "
+        "agent works freely inside that mechanical mandate. Use a writing subagent_type only "
+        "when the origin session has a repository workspace.",
+        {"description": {"type": "string",
+                         "description": "Short description of the usable deliverable."},
+         "prompt": {"type": "string", "description": "Complete task instructions."},
+         "subagent_type": {"type": "string",
+                           "enum": ["researcher", "critic", "planner", "watcher", "executor"]},
          "model": {"type": "string",
-                   "description": "Valgfri model-praeference (provider/model). Ruten valideres mod "
-                   "ejerens tilladte ruter; den kan ikke laase en provider op."},
-         "workspace": {"type": "string",
-                       "description": "Repo-sti. Saetter du den, bliver det en KODEAGENT: den faar sit "
-                       "eget git-worktree og kan kun skrive dér. Resultatet er en diff; intet "
-                       "merges. Udelad for en laesende agent."},
-         "idempotency_key": _KEY},
-        ["goal", "expected_result"]),
+                   "description": "Optional model preference; runtime validates allowed routes."},
+         "run_in_background": {"type": "boolean",
+                               "description": "True returns after acceptance; false waits up to 120 seconds."}},
+        ["description", "prompt", "subagent_type"]),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
         "while it still has an active task or after close_agent.",
@@ -248,6 +233,21 @@ def _exec_dispatch_agent(args: dict[str, Any]) -> dict[str, Any]:
         context_excerpt=str(args.get("context_excerpt") or ""),
         accept_fork_switch=bool(args.get("accept_fork_switch")),
         reasoning_effort=str(args.get("reasoning_effort") or ""))
+
+
+def _exec_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Five model fields in; all authority-bearing fields come from runtime state."""
+    owner, session, run = _principal(args)
+    scoped = _scoped_parent(args)
+    from core.services.agent_task_facade import execute
+
+    return execute(
+        owner_user_id=owner, origin_session_id=session, parent_run_id=run,
+        parent_agent_id=scoped[0] if scoped else "jarvis",
+        description=str(args.get("description") or ""), prompt=str(args.get("prompt") or ""),
+        subagent_type=str(args.get("subagent_type") or ""), model=str(args.get("model") or ""),
+        run_in_background=bool(args.get("run_in_background", True)),
+    )
 
 
 def _exec_followup_agent(args: dict[str, Any]) -> dict[str, Any]:

@@ -108,19 +108,7 @@ from core.tools.restart_self_tools import (
 )
 from core.tools.agent_memory_tools import _exec_agent_note  # C: agentens egen hukommelse
 from core.tools.agent_worktree_tools import _exec_wt_bash, _exec_wt_write_file  # C5b
-from core.tools.agent_contract_tools import (  # agent-contract-v1 (F2)
-    _exec_close_agent,
-    _exec_convene_agent_council,
-    _exec_decide_agent_approval,
-    _exec_dispatch_agent,
-    _exec_followup_agent,
-    _exec_integrate_agent_work,
-    _exec_interrupt_agent,
-    _exec_review_agent_work,
-    _exec_list_agents as _contract_exec_list_agents,
-    _exec_send_message_to_agent as _contract_exec_send_message_to_agent,
-    _exec_wait_agents,
-)
+from core.tools.agent_contract_handlers import AGENT_CONTRACT_HANDLERS
 from core.tools.mail_tools import (
     MAIL_TOOL_DEFINITIONS,
     _exec_send_mail,
@@ -1790,21 +1778,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # alligevel ikke kalde, så det var kun død vægt der lod et afskaffet
     # værktøj se levende ud for enhver der læste handler-kortet. Undersøgelse
     # sker nu via `scout_agent` og `dispatch_agent`.
-    "send_message_to_agent": _contract_exec_send_message_to_agent,
     "relay_to_agent": _exec_relay_to_agent,
-    "list_agents": _contract_exec_list_agents,
     "wt_bash": _exec_wt_bash,
     "wt_write_file": _exec_wt_write_file,
     "agent_note": _exec_agent_note,
-    "dispatch_agent": _exec_dispatch_agent,
-    "followup_agent": _exec_followup_agent,
-    "wait_agents": _exec_wait_agents,
-    "interrupt_agent": _exec_interrupt_agent,
-    "integrate_agent_work": _exec_integrate_agent_work,
-    "convene_agent_council": _exec_convene_agent_council,
-    "review_agent_work": _exec_review_agent_work,
-    "decide_agent_approval": _exec_decide_agent_approval,
-    "close_agent": _exec_close_agent,
+    **AGENT_CONTRACT_HANDLERS,
     "cancel_agent": _exec_cancel_agent,
     "daemon_status": _exec_daemon_status,
     "control_daemon": _exec_control_daemon,

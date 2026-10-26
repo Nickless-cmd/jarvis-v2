@@ -2,6 +2,47 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_self_review.py`
+_Persistence for Jarvis' runtime self-review signal cluster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_runtime_self_review_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L22) |
+| function | `_ensure_runtime_self_review_record_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L63) |
+| function | `_ensure_runtime_self_review_run_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L104) |
+| function | `_ensure_runtime_self_review_outcome_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L145) |
+| function | `_ensure_runtime_self_review_cadence_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L186) |
+| function | `_runtime_self_review_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L227) |
+| function | `_runtime_self_review_record_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L251) |
+| function | `_runtime_self_review_run_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L275) |
+| function | `_runtime_self_review_outcome_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L299) |
+| function | `_runtime_self_review_cadence_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self_review.py#L323) |
+| function | `upsert_runtime_self_review_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime self-review signal into runtime_self_review_signals. | [src](../../../core/runtime/db_runtime_self_review.py#L347) |
+| function | `list_runtime_self_review_signals` | `(*, status=…, limit=…)` | Return up to `limit` runtime self-review signals, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_self_review.py#L418) |
+| function | `get_runtime_self_review_signal` | `(signal_id)` | Return the runtime self-review signal row dict for `signal_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L467) |
+| function | `update_runtime_self_review_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the signal `signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L504) |
+| function | `supersede_runtime_self_review_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live signals in `domain_key` as 'superseded' except `exclude_signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L541) |
+| function | `upsert_runtime_self_review_record` | `(*, record_id, record_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime self-review record into runtime_self_review_records. | [src](../../../core/runtime/db_runtime_self_review.py#L576) |
+| function | `list_runtime_self_review_records` | `(*, status=…, limit=…)` | Return up to `limit` runtime self-review records, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_self_review.py#L646) |
+| function | `get_runtime_self_review_record` | `(record_id)` | Return the runtime self-review record row dict for `record_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L695) |
+| function | `update_runtime_self_review_record_status` | `(record_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the record `record_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L732) |
+| function | `supersede_runtime_self_review_records_for_domain` | `(*, domain_key, exclude_record_id, updated_at, status_reason)` | Mark all still-live records in `domain_key` as 'superseded' except `exclude_record_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L769) |
+| function | `upsert_runtime_self_review_run` | `(*, run_id, run_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, record_run_id=…, session_id=…)` | Insert or merge a runtime self-review run into runtime_self_review_runs. | [src](../../../core/runtime/db_runtime_self_review.py#L804) |
+| function | `list_runtime_self_review_runs` | `(*, status=…, limit=…)` | Return up to `limit` runtime self-review runs, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_self_review.py#L874) |
+| function | `get_runtime_self_review_run` | `(run_id)` | Return the runtime self-review run row dict for `run_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L923) |
+| function | `update_runtime_self_review_run_status` | `(run_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the run `run_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L960) |
+| function | `supersede_runtime_self_review_runs_for_domain` | `(*, domain_key, exclude_run_id, updated_at, status_reason)` | Mark all still-live runs in `domain_key` as 'superseded' except `exclude_run_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L997) |
+| function | `upsert_runtime_self_review_outcome` | `(*, outcome_id, outcome_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, review_run_id=…, session_id=…)` | Insert or merge a runtime self-review outcome into runtime_self_review_outcomes. | [src](../../../core/runtime/db_runtime_self_review.py#L1032) |
+| function | `list_runtime_self_review_outcomes` | `(*, status=…, limit=…)` | Return up to `limit` runtime self-review outcomes, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_self_review.py#L1102) |
+| function | `get_runtime_self_review_outcome` | `(outcome_id)` | Return the runtime self-review outcome row dict for `outcome_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L1151) |
+| function | `update_runtime_self_review_outcome_status` | `(outcome_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the outcome `outcome_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1188) |
+| function | `supersede_runtime_self_review_outcomes_for_domain` | `(*, domain_key, exclude_outcome_id, updated_at, status_reason)` | Mark all still-live outcomes in `domain_key` as 'superseded' except `exclude_outcome_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1225) |
+| function | `upsert_runtime_self_review_cadence_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a cadence signal into runtime_self_review_cadence_signals. | [src](../../../core/runtime/db_runtime_self_review.py#L1260) |
+| function | `list_runtime_self_review_cadence_signals` | `(*, status=…, limit=…)` | Return up to `limit` cadence signals, newest first (ORDER BY id DESC). | [src](../../../core/runtime/db_runtime_self_review.py#L1330) |
+| function | `get_runtime_self_review_cadence_signal` | `(signal_id)` | Return the cadence-signal row dict for `signal_id`, or None if absent. | [src](../../../core/runtime/db_runtime_self_review.py#L1379) |
+| function | `update_runtime_self_review_cadence_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Set status/status_reason/updated_at on the cadence signal `signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1416) |
+| function | `supersede_runtime_self_review_cadence_signals_for_domain` | `(*, domain_key, exclude_signal_id, updated_at, status_reason)` | Mark all still-live cadence signals in `domain_key` as 'superseded' except `exclude_signal_id`. | [src](../../../core/runtime/db_runtime_self_review.py#L1453) |
+
 ## `core/runtime/db_runtime_signals.py`
 _Persistence for the runtime learning/outcome signal tables._
 

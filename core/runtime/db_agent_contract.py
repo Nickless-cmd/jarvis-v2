@@ -178,6 +178,9 @@ def ensure_agent_contract_tables(conn: sqlite3.Connection) -> None:
     from core.runtime.db_agent_outcome_unknown import ensure_outcome_unknown_columns
 
     ensure_outcome_unknown_columns(conn)
+    from core.runtime.db_agent_mandate import ensure_mandate_tables
+
+    ensure_mandate_tables(conn)
 
     from core.runtime.db_agent_feed import ensure_feed_tables
 
@@ -772,6 +775,7 @@ def discard_unstarted_assignment(*, agent_id: str, owner_user_id: str) -> bool:
                                                      (aid,)).fetchall()]
         for rid in run_ids:
             conn.execute("DELETE FROM agent_artifacts WHERE run_id=?", (rid,))
+        conn.execute("DELETE FROM agent_assignment_mandates WHERE assignment_id=?", (aid,))
         conn.execute("DELETE FROM agent_runs WHERE assignment_id=?", (aid,))
         conn.execute("DELETE FROM agent_leases WHERE assignment_id=?", (aid,))
         conn.execute("DELETE FROM agent_assignments WHERE assignment_id=?", (aid,))

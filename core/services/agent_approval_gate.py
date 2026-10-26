@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime import db_agent_approvals as appr
@@ -100,6 +102,79 @@ def _denied(reason: str, approval_id: str = "") -> str:
                       ensure_ascii=False)
 
 
+def _mandate_denied(reason: str, *, name: str, assignment_id: str) -> str:
+    logger.info("mandat afviste %s for %s: %s", name, assignment_id, reason)
+    return json.dumps({
+        "status": "denied", "code": "MANDATE_DENIED", "tool": name,
+        "assignment_id": assignment_id,
+        "error": "Handlingen blev mekanisk afvist af dit mandat: " + reason
+                 + ". Den er ikke udført. Rapportér begrænsningen til Jarvis i dit resultat.",
+    }, ensure_ascii=False)
+
+
+_PATH_KEYS = frozenset({"path", "file_path", "directory", "root", "cwd", "repo_path", "workspace"})
+_KNOWN_READ_TOOLS = frozenset({
+    "read_file", "find_files", "search", "semantic_search_code", "find_symbol", "find_usages",
+    "read_tool_result", "web_search", "web_fetch", "agent_note",
+})
+_EXTERNAL_WRITE_TOOLS = frozenset({"gmail_send", "calendar_create_event", "docs_append", "sheets_write"})
+
+
+def _effect_class(name: str, arguments: dict[str, Any]) -> str:
+    if name in {"wt_bash", "wt_write_file"}:
+        return "worktree-write"
+    if name in _KNOWN_READ_TOOLS:
+        return "read"
+    if name in _EXTERNAL_WRITE_TOOLS:
+        return "external-write"
+    needed, risk = requires_approval(name, arguments)
+    if needed:
+        return "destructive" if risk == "destructive" else "host-write"
+    # An unknown name is never assumed harmless.
+    return "destructive"
+
+
+def _path_inside_roots(value: str, roots: list[str]) -> bool:
+    if not value:
+        return True
+    if not os.path.isabs(value):
+        return False
+    real = os.path.realpath(value)
+    return any(real == os.path.realpath(root) or real.startswith(os.path.realpath(root) + os.sep)
+               for root in roots)
+
+
+def _mandate_verdict(*, mandate: dict[str, Any], assignment: dict[str, Any],
+                      name: str, arguments: dict[str, Any]) -> tuple[str, str]:
+    """Return (inside|child_exceeded|original_exceeded, mechanical reason)."""
+    from core.runtime.db_agent_mandate import side_effect_exceeds
+
+    if str(assignment.get("target") or "") != str(mandate.get("target") or ""):
+        return "original_exceeded", "assignmentets target matcher ikke mandatet"
+    if name == "Task" and int(mandate.get("max_fanout") or 0) <= 0:
+        return "child_exceeded", "fanout-loftet er 0"
+    try:
+        deadline = datetime.fromisoformat(str(mandate["deadline_at"]).replace("Z", "+00:00"))
+        if deadline.tzinfo is None or datetime.now(UTC) > deadline:
+            return "child_exceeded", "deadline er overskredet"
+    except (KeyError, ValueError):  # corrupt durable mandate must fail closed into the human gate
+        return "original_exceeded", "deadline kan ikke verificeres"
+    effect = _effect_class(name, arguments)
+    exceeds_original = side_effect_exceeds(effect, str(mandate.get("original_side_effect") or ""))
+    if name not in set(mandate.get("allowed_tools") or []):
+        return ("original_exceeded" if exceeds_original else "child_exceeded",
+                f"{name} er ikke i tool-whitelisten")
+    if side_effect_exceeds(effect, str(mandate.get("granted_side_effect") or "")):
+        return ("original_exceeded" if exceeds_original else "child_exceeded",
+                f"side-effect {effect} overstiger {mandate.get('granted_side_effect')}")
+    roots = [str(r) for r in mandate.get("workspace_roots") or []]
+    for key, value in arguments.items():
+        if effect != "worktree-write" and key in _PATH_KEYS and isinstance(value, str) \
+                and not _path_inside_roots(value, roots):
+            return "child_exceeded", f"stien i {key} ligger uden for workspace-roden"
+    return "inside", ""
+
+
 def _parse(tc: dict) -> tuple[str, dict[str, Any]]:
     fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
     name = str(fn.get("name") or tc.get("name") or "")
@@ -115,17 +190,32 @@ def _parse(tc: dict) -> tuple[str, dict[str, Any]]:
 def gate(*, agent: dict[str, Any], run_id: str, tc: dict[str, Any], resume_approval_id: str = "") -> str | None:
     """Se modulbeskrivelsen. ``resume_approval_id`` er den approval det parkerede kald venter paa."""
     name, args = _parse(tc)
-    needed, risk = requires_approval(name, args)
-    if not needed:
-        return None
     agent_id = str(agent.get("agent_id") or "")
     a = open_assignment_for_agent(agent_id)
     if a is None:
+        needed, _ = requires_approval(name, args)
+        if not needed:
+            return None
         if str(agent.get("owner_user_id") or "") not in ("", "legacy_unscoped"):
             # En BUNDET agent hvis assignment er afsluttet (f.eks. annulleret mens tråden stadig koerer) maa
             # ALDRIG udfoere en godkendelseskraevende handling uden vagt.
             return _denied("assignmentet er afsluttet")
         return None                                         # legacy-agent: uaendret adfaerd
+    from core.runtime import db_agent_mandate
+
+    mandate = db_agent_mandate.get(assignment_id=a["assignment_id"])
+    if mandate is not None:
+        verdict, reason = _mandate_verdict(mandate=mandate, assignment=a, name=name, arguments=args)
+        if verdict == "inside":
+            return None
+        if verdict == "child_exceeded":
+            return _mandate_denied(reason, name=name, assignment_id=a["assignment_id"])
+        # Only an ORIGINAL-mandate exceedance is allowed to reach Bjørn below.
+        needed, risk = True, _effect_class(name, args)
+    else:
+        needed, risk = requires_approval(name, args)
+        if not needed:
+            return None
     digest = appr.invocation_digest(tool_name=name, arguments=args, target=a["target"],
                                     assignment_id=a["assignment_id"])
     tc_id = str(tc.get("id") or "")

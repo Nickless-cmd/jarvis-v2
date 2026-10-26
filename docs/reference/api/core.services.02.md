@@ -245,6 +245,15 @@ _Agent Skill Library — per-role learned patterns + workflows._
 | function | `_exec_list_skill_mutations` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L272) |
 | function | `_exec_list_known_roles` | `(args)` | — | [src](../../../core/services/agent_skill_library.py#L282) |
 
+## `core/services/agent_task_facade.py`
+_The five-field model-facing Task facade over agent-contract-v1._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L28) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L50) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L112) |
+
 ## `core/services/agent_todos.py`
 _Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._
 
@@ -639,13 +648,4 @@ _API-forbindelses-nerve — Jarvis mærker hvem/hvad der forbinder til hans API.
 | function | `flush` | `()` | Batch-flush presence + log til DB (cadence). Self-safe. | [src](../../../core/services/api_connection_nerve.py#L147) |
 | function | `retention_sweep` | `()` | GDPR-retention (cadence): anonymisér IP > 48t → /24, slet gammel log, prune presence. | [src](../../../core/services/api_connection_nerve.py#L158) |
 | function | `presence_view` | `(*, active_within_s=…, limit=…)` | Hvem er forbundet til API'et? Fletter live in-memory + persistent DB. Self-safe. | [src](../../../core/services/api_connection_nerve.py#L166) |
-
-## `core/services/apophenia_guard.py`
-_Apophenia Guard — pattern skeptic that validates before elevation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_generate_assessment_rationale` | `(*, status, observation_count, adjusted_confidence, competitor_count, confounder_count)` | Generate a brief Danish explanation of the assessment. Falls back to empty string. | [src](../../../core/services/apophenia_guard.py#L21) |
-| function | `assess_pattern` | `(*, observation_count, base_confidence, competing_explanations=…, confounders=…, include_rationale=…)` | Assess whether a pattern should be elevated or rejected. | [src](../../../core/services/apophenia_guard.py#L48) |
-| function | `build_apophenia_guard_surface` | `()` | — | [src](../../../core/services/apophenia_guard.py#L120) |
 

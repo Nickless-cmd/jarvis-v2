@@ -1,9 +1,10 @@
 # CAPABILITIES
 
-> Generated 2026-10-25 — 508 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-26 — 509 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
+| `Task` | native | no |
 | `activate_side_task` | native | no |
 | `add_process_watch` | native | no |
 | `add_wakeup_extra` | native | no |

@@ -139,6 +139,25 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
     # Nøglen er «wakeup»: det er hvad wakeup_dispatcher sender.
     "wakeup": frozenset({"bash", "send_webchat_message", "send_ntfy",
                         "web_search", "madopskrift"}),
+    # Indbakke-vækkeren (26/10-2026). Nøglen MANGLEDE, og det gjorde vækkeren
+    # tandløs: `_WAKE_ORIGINS` klassificerer allerede «inbox» som en VÆKNING,
+    # men uden en nøgle her faldt den til bund-sættet — målt 106 værktøjer og
+    # hverken `bash`, `web_search` eller `notify_user`, mens `wakeup` gav 111.
+    #
+    # Konsekvensen var ikke teoretisk. 26/10-2026 kl. 17:32 blev en vækning
+    # sprunget over fordi en tur var aktiv (`jarvis_skrev_for_nylig`);
+    # `inbox_idle_waker` løftede den som `origin="inbox"` — og runnet svarede
+    # «jeg har ikke adgang til tools, systemer eller kommandoer», fordi dets
+    # direktiv bad om `ps -eo pid,lstart,cmd` uden at `bash` var bundet.
+    # Direktivet i `inbox_idle_waker._direktiv` siger ordret «UDFØR den nu med
+    # dine tools»; politikken skal ikke forbyde hvad direktivet påbyder.
+    #
+    # Sættet er vækningens, ikke rutinens: en løftet post skal undersøge og
+    # fortælle i den samtale den hører til — ikke sende til nogen på egen hånd.
+    # `inbox_done`/`inbox_drop` ligger allerede i bund-sættet, så posten kan
+    # lukke sig selv.
+    "inbox": frozenset({"bash", "send_webchat_message", "send_ntfy",
+                        "web_search", "madopskrift"}),
     # The idle side-task worker has two deliberately different envelopes.
     # `inspect` can gather local evidence and close its own bookkeeping; only
     # an explicitly selected `local_write` task receives local file mutation.

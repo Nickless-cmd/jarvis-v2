@@ -159,6 +159,45 @@ def test_wakeup_may_resume_work_but_not_send_mail():
         _clear_origin()
 
 
+def test_indbakke_vaekkeren_har_de_vaerktoejer_dens_direktiv_kraever():
+    """26/10-2026: `inbox` var klassificeret som vækning, men uden værktøjer.
+
+    `_WAKE_ORIGINS` indeholder «inbox», så politikken REGNEDE den for en
+    vækning — men `ORIGIN_TOOLS` havde ingen nøgle, og den faldt derfor til
+    bund-sættet: 106 værktøjer og hverken `bash` eller `web_search`.
+
+    Det kostede et rigtigt run. Kl. 17:32 blev en vækning sprunget over fordi
+    en tur var aktiv; `inbox_idle_waker` løftede den, og runnet svarede «jeg
+    har ikke adgang til tools, systemer eller kommandoer» — fordi dets
+    direktiv bad om `ps -eo pid,lstart,cmd` uden at `bash` var bundet.
+
+    Uden denne test kan nøglen forsvinde igen uden at nogen opdager det:
+    bund-sættet er stort nok til at se komplet ud.
+    """
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    vaekning = allowed_tools_for_origin("wakeup")
+    indbakke = allowed_tools_for_origin("inbox")
+
+    assert "bash" in indbakke, (
+        "inbox mangler bash — dens eget direktiv siger «UDFØR den nu med dine "
+        "tools», så politikken forbyder hvad direktivet påbyder"
+    )
+    assert "web_search" in indbakke
+    assert "inbox_done" in indbakke, "posten skal kunne lukke sig selv"
+    # De to må ikke drive fra hinanden: begge ER vækninger, og en løftet post
+    # skal have præcis samme råderum som den vækning den blev løftet fra.
+    assert indbakke == vaekning, (
+        f"inbox og wakeup er ikke længere samme sæt: "
+        f"inbox-wakeup={sorted(indbakke - vaekning)}, "
+        f"wakeup-inbox={sorted(vaekning - indbakke)}"
+    )
+    # Og den må ikke blive BREDERE end en vækning: en løftet post undersøger og
+    # fortæller i sin egen samtale — den skriver ikke filer og sender ikke DM'er.
+    assert "write_file" not in indbakke
+    assert "send_discord_dm" not in indbakke
+
+
 def test_visible_run_ignores_origin_grants():
     from core.tools.autonomous_tool_policy import is_allowed
 

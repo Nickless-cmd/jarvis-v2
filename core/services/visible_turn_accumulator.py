@@ -230,7 +230,10 @@ class TurnAccumulator:
     # ── udtag ────────────────────────────────────────────────────────────
     def build_blocks(self, text: str) -> list[dict]:
         """Den kanoniske blok-liste for turen."""
-        from core.services.visible_turn_blocks import _build_turn_blocks
+        from core.services.visible_turn_blocks import (
+            _build_turn_blocks,
+            _mark_text_phases,
+        )
         blokke = _build_turn_blocks(
             text=text,
             tool_calls=self.tool_calls,
@@ -266,6 +269,20 @@ class TurnAccumulator:
         # værktøjskald; uden dette bliver et internt kald EFTER beskeden til
         # «svaret», og beskeden selv til et mellemsvar (målt 8/10-2026).
         krop = _med_interne_kald_foer_svaret(krop, forced_ids=self.forced_tool_ids)
+        # Fasen sættes EFTER omorganiseringen — ikke før.
+        #
+        # ``_build_turn_blocks`` markerer fasen mens blokkene endnu står i den
+        # rækkefølge de blev streamet. Flytter ``_med_interne_kald_foer_svaret``
+        # bagefter et fremtvunget kald op foran svaret, beskriver fasen en
+        # rækkefølge der ikke findes længere: svaret stod efter kaldet da den
+        # blev sat, men står nu før det — og desk lægger alt med
+        # ``phase === 'commentary'`` i arbejdsblokken (``chatFlowModel.ts``).
+        # Resultatet var præcis den foldning Bjørn så: svaret forsvandt ind i
+        # arbejdet, og kvitteringen blev det synlige svar.
+        #
+        # Målt 26/10-2026: formen «svar skrevet, så tvunget kald» gav
+        # ``phase=commentary`` på det der var turens eneste svar.
+        krop = _mark_text_phases(krop)
         if self.skill_surface:
             return [dict(self.skill_surface), *krop]
         return krop

@@ -542,11 +542,21 @@ def update_agent_run(
     cost_usd: float | None = None,
     provider_status: str | None = None,
     failure_reason: str | None = None,
+    error_code: str | None = None,
+    error_phase: str | None = None,
 ) -> dict[str, object] | None:
     """Patch selected columns of one agent_runs row and return the updated dict.
 
     Only the non-None keyword args are written (updated_at is always bumped).
     Returns the re-read row dict, or None if run_id does not exist.
+
+    26/10-2026: `error_code` og `error_phase` tilfoejet. Maalt paa
+    `asg-b0e20bf925564962`: outbox'en fik `AGENT_INCOMPLETE`/`delivery` af
+    `settle_agent_status`, men `agent_runs`-raekken blev skrevet af spawn'ens
+    exception-handler, som hverken kendte eller kunne skrive de to felter. Samme
+    koersel stod derfor med to sandheder: outbox'en sagde "leverance", raekken
+    sagde ingenting. Fasen er det spor den naeste mig soeger i — den skal staa
+    samme sted som fejlen.
     """
     fields = ["updated_at = ?"]
     values: list[object] = [_now_iso()]
@@ -561,6 +571,8 @@ def update_agent_run(
         ("cost_usd", cost_usd),
         ("provider_status", provider_status),
         ("failure_reason", failure_reason),
+        ("error_code", error_code),
+        ("error_phase", error_phase),
     ):
         if value is None:
             continue

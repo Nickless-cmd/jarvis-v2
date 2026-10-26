@@ -1021,12 +1021,27 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             write_lifecycle(agent_id, "failed", note=message[:200])
         except Exception:
             pass
+        # 26/10-2026: raekken skal baere samme udfald som outbox'en.
+        #
+        # Maalt paa `asg-b0e20bf925564962`: `settle_agent_status` skrev
+        # `AGENT_INCOMPLETE`/`delivery` til outbox'en, men DENNE handler skrev
+        # `agent_runs`-raekken uden de to felter. Samme koersel stod derfor med to
+        # sandheder — og den raekke jeg selv slaar op i foerst, sagde ingenting.
+        # En delvis leverance er ikke en model-fejl; fasen skal sige det den ved.
+        _err_code, _err_phase = "", ""
+        try:
+            from core.runtime.db_agent_contract import partial_delivery_error
+            _err_code, _err_phase = partial_delivery_error(full=message, registry_status="failed")
+        except Exception:
+            logger.warning("partial_delivery_error fejlede for %s", run_id, exc_info=True)
         update_agent_run(
             run_id,
             status="failed",
             finished_at=_now_iso(),
             failure_reason=message,
             provider_status="failed",
+            error_code=_err_code,
+            error_phase=_err_phase,
         )
         # A4b: no cost log at the dispatch seam — the execution chokepoint owns
         # cost logging now (lane threaded). On a failure that reached a provider,

@@ -271,6 +271,66 @@ def test_de_tre_sidste_autonome_origin_har_de_vaerktoejer_deres_direktiv_kraever
         assert "operator_bash" not in saet, f"{navn} må ikke nå Bjørns maskine"
 
 
+def test_tilstedevaerelse_aabner_for_ALT_uanset_origin():
+    """Origin-saettet er STANDARDEN, ikke en garanti (maalt 26/10-2026).
+
+    Bjoern: «autonomous_tool_policy.py har stadig denne regel: if user_present():
+    return True ... hans nye test beviser ikke, at de tre origins aldrig kan faa
+    skriveadgang. Den beviser alene, hvad deres autonome standardsaet
+    indeholder.»
+
+    Han har ret, og testen ovenfor blev laest som mere end den er. `is_allowed`
+    spoerger til tilstedevaerelse FOER den ser paa oprindelsen, saa snart et run
+    lander i Bjoerns egen app-samtale mens han er der. Det er et selvstaendigt
+    lag bygget 19/10 med hans egne ord («det er en vaekning, ikke et autonomt
+    baggrunds-run») - ikke en forglemmelse i origin-tabellen.
+
+    Maalt: presence vender `write_file`, `edit_file`, `operator_bash` og
+    `send_discord_dm` fra False til True for ALLE origins. Graensen for HVEM der
+    faar saettet ligger altsaa i `presence_for_run` (system-silo? ejerens
+    app-kanal? talt for nylig?), ikke her.
+
+    Testen pinner den faktiske adfaerd, saa de to paastande ikke smelter sammen:
+    «origin X's standardsaet indeholder ikke write_file» og «origin X kan ikke
+    skrive» er IKKE det samme, og kun den foerste er bevist ovenfor.
+    """
+    from core.services.run_autonomy_context import (
+        reset_autonomous, reset_user_present, set_user_present,
+    )
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    # De to der rammer verden uden for samtalen. `send_discord_dm` er ikke med:
+    # den ER i `scheduled`s saet med vilje (den arver `recurring`), saa den kan
+    # ikke bruges som bevis paa en graense der ikke findes.
+    skrive_og_fjern = ("write_file", "edit_file", "operator_bash")
+    alle_fire = (*skrive_og_fjern, "send_discord_dm")
+
+    for origin in ("scheduled", "continuation", "agent-completion"):
+        token = _as_origin(origin)
+        try:
+            tok_p = set_user_present(False)
+            try:
+                for navn in skrive_og_fjern:
+                    assert is_allowed(navn) is False, (
+                        f"{origin} slap {navn} igennem UDEN tilstedevaerelse"
+                    )
+            finally:
+                reset_user_present(tok_p)
+
+            tok_p = set_user_present(True)
+            try:
+                for navn in alle_fire:
+                    assert is_allowed(navn) is True, (
+                        f"{origin} blev naegtet {navn} MED tilstedevaerelse - "
+                        "saa har reglen aendret sig, og skelnen her er foraeldet"
+                    )
+            finally:
+                reset_user_present(tok_p)
+        finally:
+            reset_autonomous(token)
+            _clear_origin()
+
+
 def test_visible_run_ignores_origin_grants():
     from core.tools.autonomous_tool_policy import is_allowed
 

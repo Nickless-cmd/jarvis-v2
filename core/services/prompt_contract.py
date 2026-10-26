@@ -3349,7 +3349,9 @@ def _build_visible_chat_prompt_assembly_impl(
         pass
     # Myldretids-badge (30/9-2026, på Bjørns opfordring): DeepSeek koster det
     # DOBBELTE i myldretiden (UTC 01-04 + 06-10, man-fre). Badgen er TAVS i
-    # off-peak, varsler 30 min før vinduet, og er stor mens det står åbent.
+    # off-peak, varsler VARSEL_MINUTTER (15) før vinduet, og er stor mens det
+    # står åbent. 26/10-2026: her stod «30 min» — det var den gamle værdi fra
+    # før 1/10, hvor de to konstanter blev slået sammen til én.
     # Den blokerer intet — se core/services/peak_hours.py for hvorfor.
     # Ligger lige før time-pin'en, så de to tids-blokke læses sammen.
     try:

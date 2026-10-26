@@ -47,3 +47,14 @@
 .routine-form label { display: grid; gap: 6px; color: var(--fg-2); font-size: 12px; font-weight: 550; }.routine-form input, .routine-form textarea, .routine-form select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); outline: none; background: var(--field-bg); color: var(--fg-1); font: inherit; font-size: 13px; }.routine-form textarea { resize: vertical; line-height: 1.55; }.routine-form input:focus, .routine-form textarea:focus, .routine-form select:focus { border-color: var(--accent); }
 .routine-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }.routine-form .routine-check { display: flex; align-items: center; gap: 8px; font-weight: 400; }.routine-form .routine-check input { width: auto; accent-color: var(--accent); }.routine-inbox-options { padding: 15px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); }.routine-inbox-options legend { padding: 0 6px; color: var(--fg-2); font-size: 12px; font-weight: 600; }.routine-inbox-options > p { margin-bottom: 12px; color: var(--fg-3); font-size: 12px; }.routine-inbox-options > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }.routine-state-note { color: var(--warn-fg); font-size: 12px; }.routine-form-actions { justify-content: flex-end; padding-top: 5px; }
 @media (max-width: 760px) { .routines-view { grid-template-columns: 1fr; }.routine-library:has(.routine-list-row.active) { display: none; }.routine-facts { grid-template-columns: 1fr 1fr; }.routine-detail-head { align-items: flex-start; flex-direction: column; }.routine-form-grid { grid-template-columns: 1fr; } }
+
+/* Resultatet er det mennesket kom for — det skal læses som prosa, ikke som log.
+   Målt 26/10-2026: fladen viste kun routine_run_events (rå værktøjskald), mens
+   det samlede svar lå i routine_runs.result_enc og aldrig blev hentet. */
+.routine-run-detail { padding: 0 5px 12px 21px; }
+.routine-result { margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2); }
+.routine-result h4 { margin: 0 0 8px; color: var(--fg-3); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.routine-result-text { color: var(--fg-1); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.routine-events { margin-top: 4px; }
+.routine-events > summary { padding: 6px 0; color: var(--fg-3); font-size: 11.5px; cursor: pointer; }
+.routine-events > summary:hover { color: var(--fg-2); }

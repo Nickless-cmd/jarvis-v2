@@ -111,6 +111,19 @@ def _dansk(ts: datetime) -> str:
     return ts.astimezone(_DANSK).strftime("%H:%M")
 
 
+def _utc(ts: datetime) -> str:
+    """Vinduets egen UTC-tid — til visning ved siden af den danske.
+
+    26/10-2026 (vintertid): badgen hardcodede «06–10 UTC» og satte den ved siden
+    af den udledte danske tid. I nat-vinduet (01–04 UTC) stod der derfor
+    «Vindue: 06–10 UTC = 02:00–05:00 dansk» — to tal der modsagde hinanden i
+    samme linje. Den danske side var rigtig, fordi den blev regnet; UTC-siden løj,
+    fordi den var skrevet ind. Samme fejlform som '08:00'-hardcodningen modulet
+    selv advarer om: en visning der kun er rigtig for ét af de to vinduer.
+    """
+    return ts.astimezone(UTC).strftime("%H:%M")
+
+
 def peak_state(now: datetime | str | None = None) -> dict[str, object]:
     """Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger."""
     nu = _som_utc(now)
@@ -123,6 +136,8 @@ def peak_state(now: datetime | str | None = None) -> dict[str, object]:
         "in_peak": i_myldre,
         "now_utc": nu.isoformat(),
         "now_danish": _dansk(nu),
+        "peak_starts_utc": _utc(start) if start else None,
+        "peak_ends_utc": _utc(slut) if slut else None,
         "peak_starts_danish": _dansk(start) if start else None,
         "peak_ends_danish": _dansk(slut) if slut else None,
         "minutes_left": int((slut - nu).total_seconds() // 60) if slut else None,
@@ -156,7 +171,8 @@ def peak_badge(now: datetime | str | None = None) -> str | None:
             "🔥═══════════════════════════════════════🔥\n"
             "🔥 MYLDRETID — DeepSeek koster 2× lige nu 🔥\n"
             "🔥═══════════════════════════════════════🔥\n"
-            f"Vindue: 06–10 UTC = {st['peak_starts_danish']}–"
+            f"Vindue: {st['peak_starts_utc']}–{st['peak_ends_utc']} UTC = "
+            f"{st['peak_starts_danish']}–"
             f"{st['peak_ends_danish']} dansk · {rest}\n"
             "Hver krone brugt nu kunne have været halvt så dyr.\n"
             "\n"

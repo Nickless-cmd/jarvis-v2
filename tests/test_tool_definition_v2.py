@@ -33,10 +33,22 @@ def test_ingen_uenighed_mellem_de_tre_sandheder():
     assert V.inconsistencies() == []
 
 
-def test_de_to_der_var_doede_svarer_nu():
-    from core.tools.simple_tools import execute_tool
+def test_de_to_der_var_doede_svarer_nu(monkeypatch):
+    """De to vaerktoejer var annonceret uden executor — spoergsmaalet er om
+    dispatch-dicten kender dem, ikke hvad de svarer.
+
+    Maalt 26/10-2026: `update_identity_sketch` genererer en ny skitse via
+    `compact_llm` → en rigtig provider. Testen timede ud efter 45 s i
+    `_execute_opencode_chat`s poll-loekke, saa den maalte netvaerket i stedet
+    for koblingen. Executoren mockes derfor; kun dispatch-opslaget efterproeves.
+    """
+    from core.tools import simple_tools
+    monkeypatch.setattr(
+        "core.services.identity_sketch.update_identity_sketch",
+        lambda **k: {"version": 1, "content": "test", "trigger": "manual"},
+    )
     for navn in ("read_identity_sketch", "update_identity_sketch"):
-        r = execute_tool(navn, {})
+        r = simple_tools.execute_tool(navn, {})
         assert not str(r.get("error", "")).startswith("Unknown tool"), navn
 
 

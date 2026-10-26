@@ -26,6 +26,8 @@ Brug:
 
 Afhængigheder: ingen ud over stdlib + core (valgfri til prompt-hentning).
 """
+# STARTLINJE: skriv ALTID en linje ved opstart, saa en tom log betyder praecis én ting —
+# aldrig startet. Uden den kan 0 bytes ikke skelnes fra «draebt undervejs» eller «venter stadig».
 from __future__ import annotations
 
 import json

@@ -8,8 +8,11 @@ adressen fra runtime.json (nøgle: ``phone_adb_address``). Det her script
 lukker hullet, så forbindelsen er der automatisk når telefonen er hjemme:
 
   1. Er telefonen allerede forbundet i adb på den gemte adresse? -> færdig.
-  2. Svarer dens sidst-kendte IP på ping? -> adb connect -> opdater runtime.json.
+  2. Svarer dens sidst-kendte IP på TCP (adb-porten)? -> adb connect -> opdater runtime.json.
   3. Nej? -> ARP-scan LAN'et efter telefonens MAC -> ny IP -> connect -> opdater.
+
+  ICMP er blokeret ud af containeren, så trin 2 måler med TCP. ``ping`` er
+  kun reserve — se ``_tcp_aaben``.
 
 Designhensyn
 ------------
@@ -27,16 +30,23 @@ sikkerhedskontrollen, så den automatiseres aldrig):
   kan ikke gætte porten, og det skal det ikke kunne.
 """
 
+# STARTLINJE: skriv ALTID en linje ved opstart, saa en tom log betyder praecis én ting —
+# aldrig startet. Uden den kan 0 bytes ikke skelnes fra «draebt undervejs» eller «venter stadig».
 from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import time
 
 TELEFON_MAC = "4e:3f:58:26:c4:cd"  # Galaxy S25 (SM-S921B) wlan0 — randomiseret, men stabil pr. netværk
 NAVN = "SM-S921B"
-DEFAULT_PORT = "40539"             # sidst kendte forbindelses-port fra Trådløs fejlfinding
+# Sidst kendte forbindelses-port. Den er et GÆT, ikke en sandhed: Android skifter
+# port hver gang Trådløs fejlfinding slås til (fx efter en genstart), og et gæt
+# der aldrig udløber fik scriptet til at hamre den samme døde port i syv uger.
+# Porten der faktisk virker gemmes i runtime.json og prøves FØRST.
+DEFAULT_PORT = "43267"
 
 _HOME = os.path.expanduser("~")
 RUNTIME_STI = os.path.join(_HOME, ".jarvis-v2", "config", "runtime.json")
@@ -64,13 +74,66 @@ def _log(besked: str) -> None:
 
 
 def _skriv_state(**felter) -> None:
+    """Merge felter ind i state-filen — slet ikke dem der ikke sendes med.
+
+    Maalt 26/10-2026: den skrev hele filen fra bunden, saa ``sidste_scan_ts``
+    faldt ud hver gang en gren ikke sendte den med. Resultatet var at
+    SCAN_INTERVAL_S aldrig blev respekteret: den ARP-scannede /24 hvert minut
+    i stedet for hvert femte.
+    """
+    gammel: dict = {}
+    try:
+        with open(STATE_STI) as f:
+            gammel = json.load(f)
+        if not isinstance(gammel, dict):
+            gammel = {}
+    except (OSError, ValueError):  # ingen eller ugyldig state-fil = start fra tom; der er intet at bevare
+        gammel = {}
     try:
         os.makedirs(os.path.dirname(STATE_STI), exist_ok=True)
         with open(STATE_STI, "w") as f:
-            json.dump({"sidst_opdateret": _ts(), **felter}, f,
+            # Raekkefoelgen er ikke kosmetisk: ``**gammel`` baerer den FORRIGE
+            # ``sidst_opdateret`` og vandt over den friske tid som ordene stod
+            # foer 26/10-2026 — tidsstemplet frøs, mens resten af filen blev
+            # opdateret. Ny tid skal staa SIDST.
+            json.dump({**gammel, **felter, "sidst_opdateret": _ts()}, f,
                       ensure_ascii=False, indent=2)
-    except OSError:
+    except OSError:  # kan ikke skrive state — det skal ikke draebe vagten; naeste koersel proever igen
         pass
+
+
+def _startlinje() -> None:
+    """Skriv én linje hvis loggen er tom eller mangler.
+
+    Scriptet kører hvert minut fra cron, saa en linje pr. kørsel ville drukne
+    signalet. Kravet er kun at en TOM log skal betyde «aldrig startet» — det
+    løses ved at sikre at der altid er mindst én linje naar scriptet har kørt.
+    """
+    try:
+        if os.path.getsize(LOG_STI) > 0:
+            return
+    except OSError:  # filen findes ikke — saa ER loggen tom, og det er praecis det vi skal rette
+        pass
+    _log(f"START {NAVN}-vagt (pid {os.getpid()}) — loggen var tom; "
+         f"herefter betyder en tom log at scriptet aldrig er startet")
+
+
+def _log_hvis_nyt(besked: str) -> None:
+    """Log kun naar beskeden aendrer sig — ellers tavst.
+
+    Maalt 26/10-2026: samme fejl stod 1.500+ gange fra 8. september til
+    26. oktober, hvert andet minut. En log der gentager sig selv er ikke et
+    signal; den er en mur der skjuler hvilke linjer der var nye.
+    """
+    try:
+        with open(STATE_STI) as f:
+            sidste = str(json.load(f).get("sidste_besked") or "")
+    except (OSError, ValueError):  # ingen state endnu = der er ingen sidste besked at sammenligne med
+        sidste = ""
+    if sidste == besked:
+        return
+    _log(besked)
+    _skriv_state(sidste_besked=besked)
 
 
 # ── runtime.json ────────────────────────────────────────────────────────
@@ -140,6 +203,33 @@ def _ping(ip: str) -> bool:
     return rc == 0
 
 
+def _tcp_aaben(ip: str, port: str, timeout_s: float = 3.0) -> bool:
+    """True hvis der sidder noget og lytter paa ip:port.
+
+    ICMP er blokeret ud af containeren — maalt 26/10-2026: baade pfsense
+    (10.0.0.1) og WiFi-AP'en (10.0.0.60) er u-pingbare herfra, mens deres
+    TCP-porte svarer fint. ``_ping`` var derfor død kode der ALTID svarede nej,
+    og scriptet faldt hver gang tilbage til en ARP-scan. TCP er den probe der
+    faktisk maaler det vi vil vide: lytter telefonen.
+    """
+    s = socket.socket()
+    s.settimeout(timeout_s)
+    try:
+        s.connect((ip, int(port)))
+        return True
+    except (OSError, ValueError):
+        return False
+    finally:
+        s.close()
+
+
+def _svarer(ip: str, porte: list[str]) -> bool:
+    """Er telefonen til stede? TCP foerst (virker), ping som reserve."""
+    if any(_tcp_aaben(ip, p) for p in porte):
+        return True
+    return _ping(ip)
+
+
 def _ip_fra_neigh() -> str:
     """Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set."""
     rc, out = _koer(["ip", "neigh", "show"])
@@ -188,11 +278,16 @@ def _scan_lan() -> str:
 
 
 def main() -> int:
+    _startlinje()
     gemt = _laes_adresse()
 
     # Allerede forbundet på den gemte adresse? Så er der intet at gøre.
     if gemt and _forbundet(gemt):
-        _skriv_state(adresse=gemt, forbundet=True, handling="allerede-forbundet")
+        # ``sidste_besked=""`` rydder den gamle fejl: uden det stod en forlaengst
+        # loest fejl som «sidste besked» i al evighed, og en fejl der vender
+        # tilbage efter en vellykket periode ER ny information der skal logges.
+        _skriv_state(adresse=gemt, forbundet=True, handling="allerede-forbundet",
+                     sidste_besked="")
         return 0
 
     # Udled sidst-kendte host:port fra den gemte adresse.
@@ -209,8 +304,8 @@ def main() -> int:
     if DEFAULT_PORT not in porte:
         porte.append(DEFAULT_PORT)
 
-    # 1) Svarer sidst-kendte IP? (billigt — 1 ping)
-    fundet_ip = host if (host and _ping(host)) else ""
+    # 1) Svarer sidst-kendte IP? TCP-probe — ping er blokeret i containeren.
+    fundet_ip = host if (host and _svarer(host, porte)) else ""
 
     # 2) Ellers: scan LAN'et — men maks hvert SCAN_INTERVAL_S.
     if not fundet_ip:
@@ -241,15 +336,36 @@ def main() -> int:
                  f"({'adresse-opdateret' if aendret else 'allerede-gemt'})")
             _skriv_state(adresse=adresse, forbundet=True,
                          handling="adresse-opdateret" if aendret else "connectet",
-                         sidste_scan_ts=str(time.time()))
+                         sidste_scan_ts=str(time.time()), sidste_besked="")
             return 0
 
-    _log(f"{NAVN} fundet på {fundet_ip}, men adb-connect fejlede på "
-         + " og ".join(f"port {p}" for p in porte) + ". "
-         "Er Trådløs fejlfinding tændt på telefonen? Er porten skiftet efter en "
-         "genstart? Så kør phone_adb_pair for at få den nye port.")
+    # Ingen port gav forbindelse. HVORFOR afgoer hvad naeste skridt er, og de
+    # to aarsager kraever hver sin handling: en aaben TCP-port der afviser adb
+    # betyder at telefonen ER der men ikke kender vaar noegle (parring mangler),
+    # mens en doed port betyder at Traadloes fejlfinding er slukket eller er
+    # flyttet. At skrive «porten er skiftet?» til begge var et gaet der sendte
+    # Bjoern det forkerte sted hen i syv uger.
+    lytter = [p for p in porte if _tcp_aaben(fundet_ip, p)]
+    if lytter:
+        besked = (
+            f"{NAVN} svarer paa {fundet_ip}:{', '.join(lytter)} (TCP aabent), men "
+            f"adb afviste forbindelsen. Det betyder at telefonen ikke kender "
+            f"CT105's noegle: parringen mangler eller er ryddet. Koer "
+            f"phone_adb_pair med den 6-cifrede kode fra Traadloes fejlfinding."
+        )
+        handling = "parring-mangler"
+    else:
+        besked = (
+            f"{NAVN} er paa {fundet_ip}, men ingen port lytter "
+            f"({', '.join(porte)}). Traadloes fejlfinding er slukket, eller "
+            f"porten er skiftet efter en genstart — se telefonens Indstillinger "
+            f"-> Udvikler -> Traadloes fejlfinding for den aktuelle port."
+        )
+        handling = "ingen-lyttende-port"
+
+    _log_hvis_nyt(besked)
     _skriv_state(adresse=f"{fundet_ip}:{porte[0]}", forbundet=False,
-                 handling="connect-fejlede", sidste_scan_ts=str(time.time()))
+                 handling=handling)
     return 1
 
 

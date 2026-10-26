@@ -144,42 +144,46 @@ _phone_home_auto — hold phone_adb_address i runtime.json opdateret._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L51) |
-| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L55) |
-| function | `_skriv_state` | `(**felter)` | — | [src](../../../scripts/phone_home_auto.py#L66) |
-| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L79) |
-| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L89) |
-| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L111) |
-| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L119) |
-| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L130) |
-| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L138) |
-| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L143) |
-| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L156) |
-| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L190) |
+| function | `_ts` | `()` | — | [src](../../../scripts/phone_home_auto.py#L61) |
+| function | `_log` | `(besked)` | — | [src](../../../scripts/phone_home_auto.py#L65) |
+| function | `_skriv_state` | `(**felter)` | Merge felter ind i state-filen — slet ikke dem der ikke sendes med. | [src](../../../scripts/phone_home_auto.py#L76) |
+| function | `_startlinje` | `()` | Skriv én linje hvis loggen er tom eller mangler. | [src](../../../scripts/phone_home_auto.py#L105) |
+| function | `_log_hvis_nyt` | `(besked)` | Log kun naar beskeden aendrer sig — ellers tavst. | [src](../../../scripts/phone_home_auto.py#L121) |
+| function | `_laes_adresse` | `()` | Gemt host:port fra runtime.json ('' hvis ikke sat). | [src](../../../scripts/phone_home_auto.py#L142) |
+| function | `_skriv_adresse` | `(adresse)` | Merge phone_adb_address ind i runtime.json. True hvis ændret. | [src](../../../scripts/phone_home_auto.py#L152) |
+| function | `_koer` | `(argv, timeout_s=…)` | — | [src](../../../scripts/phone_home_auto.py#L174) |
+| function | `_forbundet` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L182) |
+| function | `_connect` | `(adresse)` | — | [src](../../../scripts/phone_home_auto.py#L193) |
+| function | `_ping` | `(ip)` | — | [src](../../../scripts/phone_home_auto.py#L201) |
+| function | `_tcp_aaben` | `(ip, port, timeout_s=…)` | True hvis der sidder noget og lytter paa ip:port. | [src](../../../scripts/phone_home_auto.py#L206) |
+| function | `_svarer` | `(ip, porte)` | Er telefonen til stede? TCP foerst (virker), ping som reserve. | [src](../../../scripts/phone_home_auto.py#L226) |
+| function | `_ip_fra_neigh` | `()` | Match TELEFON_MAC i serverens ARP-tabel (ip neigh). '' hvis ikke set. | [src](../../../scripts/phone_home_auto.py#L233) |
+| function | `_scan_lan` | `()` | Fyld ARP-tabellen via parallel ping-scan af 10.0.0.0/24, returnér IP. | [src](../../../scripts/phone_home_auto.py#L246) |
+| function | `main` | `()` | — | [src](../../../scripts/phone_home_auto.py#L280) |
 
 ## `scripts/primary_cache_warmer.py`
 _Primary lane cache warmer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_konfigureret_model` | `()` | Den model den SYNLIGE lane bruger lige nu. | [src](../../../scripts/primary_cache_warmer.py#L63) |
-| function | `_discover_active_workspaces` | `()` | Find aktive bruger-workspaces der skal cache-warmes. | [src](../../../scripts/primary_cache_warmer.py#L108) |
-| function | `_fetch_system_prompt` | `(workspace_name=…, *, tool_scope=…)` | Hent primary lane system prompt. | [src](../../../scripts/primary_cache_warmer.py#L145) |
-| function | `_save_prompt_to_file` | `(content)` | Gem prompt til fil så standalone kald kan bruge det senere. | [src](../../../scripts/primary_cache_warmer.py#L235) |
-| function | `_check_dedup` | `(*, force=…)` | Tjek om et kald er for nyligt. | [src](../../../scripts/primary_cache_warmer.py#L248) |
-| function | `_touch_last_run` | `()` | — | [src](../../../scripts/primary_cache_warmer.py#L272) |
-| function | `_fetch_warmer_tools` | `()` | Hent samme pruned tools-array som visible-chats sender. | [src](../../../scripts/primary_cache_warmer.py#L282) |
-| function | `_build_payload` | `(system_prompt)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L320) |
-| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L344) |
-| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L351) |
-| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L423) |
-| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L477) |
-| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L496) |
-| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L512) |
-| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L522) |
-| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L539) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L619) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L697) |
+| function | `_konfigureret_model` | `()` | Den model den SYNLIGE lane bruger lige nu. | [src](../../../scripts/primary_cache_warmer.py#L65) |
+| function | `_discover_active_workspaces` | `()` | Find aktive bruger-workspaces der skal cache-warmes. | [src](../../../scripts/primary_cache_warmer.py#L110) |
+| function | `_fetch_system_prompt` | `(workspace_name=…, *, tool_scope=…)` | Hent primary lane system prompt. | [src](../../../scripts/primary_cache_warmer.py#L147) |
+| function | `_save_prompt_to_file` | `(content)` | Gem prompt til fil så standalone kald kan bruge det senere. | [src](../../../scripts/primary_cache_warmer.py#L237) |
+| function | `_check_dedup` | `(*, force=…)` | Tjek om et kald er for nyligt. | [src](../../../scripts/primary_cache_warmer.py#L250) |
+| function | `_touch_last_run` | `()` | — | [src](../../../scripts/primary_cache_warmer.py#L274) |
+| function | `_fetch_warmer_tools` | `()` | Hent samme pruned tools-array som visible-chats sender. | [src](../../../scripts/primary_cache_warmer.py#L284) |
+| function | `_build_payload` | `(system_prompt)` | Byg request body til DeepSeek chat completions. | [src](../../../scripts/primary_cache_warmer.py#L322) |
+| function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L346) |
+| function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L353) |
+| function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L425) |
+| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L479) |
+| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L498) |
+| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L514) |
+| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L524) |
+| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L541) |
+| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run, tool_scope=…)` | Cache-warm én bestemt workspace i ÉN mode. Logger separat per (workspace, mode). | [src](../../../scripts/primary_cache_warmer.py#L621) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L699) |
 
 ## `scripts/prompt_dump_readable.py`
 _Læsbar version af et prompt-dump (30/9-2026)._
@@ -425,11 +429,11 @@ _Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_qf_loft` | `()` | Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden. | [src](../../../scripts/verify_memory_status.py#L149) |
-| function | `quick_facts_brud` | `(sti)` | QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank. | [src](../../../scripts/verify_memory_status.py#L186) |
-| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L225) |
-| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L248) |
-| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L260) |
-| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L286) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L291) |
+| function | `_qf_loft` | `()` | Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden. | [src](../../../scripts/verify_memory_status.py#L150) |
+| function | `quick_facts_brud` | `(sti)` | QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank. | [src](../../../scripts/verify_memory_status.py#L187) |
+| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L226) |
+| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L249) |
+| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L261) |
+| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L287) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L292) |
 

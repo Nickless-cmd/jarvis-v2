@@ -20,6 +20,8 @@ JSONL output schema per linje:
   {"ts": "2026-06-09T19:30:00Z", "window_30m": {...}, "window_6h": {...},
    "window_24h": {...}, "by_lane": {...}, "n_total_events": N}
 """
+# STARTLINJE: skriv ALTID en linje ved opstart, saa en tom log betyder praecis én ting —
+# aldrig startet. Uden den kan 0 bytes ikke skelnes fra «draebt undervejs» eller «venter stadig».
 from __future__ import annotations
 
 import json

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9345/17648 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9358/17660 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,19 +25,19 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 849 | 1553 | 54% |
-| `core.services` | 6238 | 12008 | 51% |
+| `core.services` | 6242 | 12012 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 565 | 1115 | 50% |
+| `core.tools` | 569 | 1119 | 50% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 295 | 629 | 46% |
+| `scripts` | 300 | 633 | 47% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1001,12 +1001,12 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L904)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L943)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1721)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1352)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1673)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1705)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1760)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1391)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1712)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1744)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1630,13 +1630,13 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3620)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3468)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3757)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3622)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3470)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3759)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4724)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4726)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -1669,9 +1669,9 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
 - `core/services/proprioception_metrics.py` :: `tick` (L100)
-- `core/services/push_dispatcher.py` :: `on_approval_requested` (L172)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L160)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L166)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L193)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L181)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L187)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L232)
@@ -2291,7 +2291,7 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.error` (L61)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.set_error` (L93)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
-- `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L51)
+- `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L65)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
 - `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L549)
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)
@@ -2425,7 +2425,7 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)
 - `scripts/api_reference_gen.py` :: `main` (L74)
 - `scripts/api_reference_gen.py` :: `render_md` (L63)
-- `scripts/batch_maaling_monitor.py` :: `main` (L204)
+- `scripts/batch_maaling_monitor.py` :: `main` (L206)
 - `scripts/beacon_rapport.py` :: `main` (L207)
 - `scripts/beacon_rapport.py` :: `opgoer` (L144)
 - `scripts/beacon_rapport.py` :: `skriv` (L181)
@@ -2436,8 +2436,8 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `scripts/block_unattributed_ref_rewrite.py` :: `main` (L24)
 - `scripts/brain_salience_reset.py` :: `main` (L65)
 - `scripts/cache_break_report.py` :: `main` (L88)
-- `scripts/cache_rate_monitor.py` :: `append_log` (L118)
-- `scripts/cache_rate_monitor.py` :: `main` (L124)
+- `scripts/cache_rate_monitor.py` :: `append_log` (L120)
+- `scripts/cache_rate_monitor.py` :: `main` (L126)
 - `scripts/capabilities_gen.py` :: `collect` (L35)
 - `scripts/capabilities_gen.py` :: `main` (L44)
 - `scripts/capabilities_gen.py` :: `render_md` (L24)
@@ -2579,14 +2579,14 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `scripts/phase7_judge.py` :: `key` (L99)
 - `scripts/phase7_judge.py` :: `main` (L103)
 - `scripts/phase7_judge.py` :: `parse_verdict` (L80)
-- `scripts/phone_home_auto.py` :: `main` (L190)
+- `scripts/phone_home_auto.py` :: `main` (L280)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)
 - `scripts/pipelines/tiktok_analytics.py` :: `run` (L181)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `extract_tiktok_cookies` (L39)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
-- `scripts/primary_cache_warmer.py` :: `main` (L697)
+- `scripts/primary_cache_warmer.py` :: `main` (L699)
 - `scripts/prompt_dump_readable.py` :: `build` (L97)
 - `scripts/prompt_dump_readable.py` :: `main` (L253)
 - `scripts/prompt_dump_split.py` :: `build_markdown` (L51)
@@ -2622,7 +2622,7 @@ Generated from source. 9345/17648 functions/methods documented (52%). The list b
 - `scripts/verify_guard_tests.py` :: `main` (L69)
 - `scripts/verify_history_reads.py` :: `fund_i_fil` (L54)
 - `scripts/verify_history_reads.py` :: `main` (L92)
-- `scripts/verify_memory_status.py` :: `main` (L291)
+- `scripts/verify_memory_status.py` :: `main` (L292)
 - `scripts/verify_notes.py` :: `fejl_i` (L50)
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)

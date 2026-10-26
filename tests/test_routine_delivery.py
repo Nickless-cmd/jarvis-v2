@@ -1,7 +1,12 @@
 def test_delivery_service_has_no_session_surface():
+    from core.services import routine_delivery
     from core.services.routine_delivery import RoutineDeliveryService
 
     assert not hasattr(RoutineDeliveryService(), "session_id")
+    # Background delivery exposes the result on the Routine surface and may
+    # push a content-free pointer.  A session wakeup is an execution path, not
+    # a place to copy an already-produced isolated result.
+    assert not hasattr(routine_delivery, "_deliver_to_session")
 
 
 # ── Push til ejeren (25/10-2026) ────────────────────────────────────────────
@@ -20,8 +25,13 @@ def _claim(owner=KANONISK, run_id="run_test"):  # pragma: allowlist secret
     from core.services.routine_delivery import DeliveryClaim
 
     return DeliveryClaim(
-        delivery_id="delivery_test", run_id=run_id, owner_user_id=owner,
-        channel="desk", status="delivered", retry_count=0, lease_generation=1,
+        delivery_id="delivery_test",
+        run_id=run_id,
+        owner_user_id=owner,
+        channel="desk",
+        status="delivered",
+        retry_count=0,
+        lease_generation=1,
     )
 
 
@@ -32,16 +42,21 @@ def _opsæt(monkeypatch, *, routine=None, account=None):
 
     kald: list[tuple[str, dict]] = []
     monkeypatch.setattr(
-        db_routines, "get_run",
+        db_routines,
+        "get_run",
         lambda run_id: {"run_id": run_id, "routine_id": "routine_test"},
     )
     monkeypatch.setattr(
-        db_routines, "get_routine",
+        db_routines,
+        "get_routine",
         lambda routine_id, decrypt_for=None: routine,
     )
-    monkeypatch.setattr(pd, "_push_to_web", lambda uid, data: kald.append((uid, data)) or True)
+    monkeypatch.setattr(
+        pd, "_push_to_web", lambda uid, data: kald.append((uid, data)) or True
+    )
     if account is not None:
         from core.identity import user_db
+
         monkeypatch.setattr(user_db, "get_user", lambda uid: account)
     return kald
 
@@ -50,10 +65,12 @@ def test_push_gaar_til_discord_id_ikke_kanonisk(monkeypatch):
     """De to lag bruger forskellige noegler — den fejl kostede en hel dag."""
     kald = _opsæt(
         monkeypatch,
-        routine={"name": "Ugentlige madopskrifter", "access_scope": "user_private",
-                 "delivery_policy": {"channel": "desk"}},
-        account={"user_id": KANONISK,
-                 "discord_id": DISCORD},
+        routine={
+            "name": "Ugentlige madopskrifter",
+            "access_scope": "user_private",
+            "delivery_policy": {"channel": "desk"},
+        },
+        account={"user_id": KANONISK, "discord_id": DISCORD},
     )
     from core.services.routine_delivery import _push_owner
 
@@ -68,8 +85,11 @@ def test_push_baerer_navn_ikke_resultat(monkeypatch):
     """Resultatet lever paa rutinens flade — pushen maa ikke kopiere det."""
     kald = _opsæt(
         monkeypatch,
-        routine={"name": "Ugentlige madopskrifter", "access_scope": "user_private",
-                 "delivery_policy": {"channel": "desk"}},
+        routine={
+            "name": "Ugentlige madopskrifter",
+            "access_scope": "user_private",
+            "delivery_policy": {"channel": "desk"},
+        },
         account={"discord_id": DISCORD},
     )
     from core.services.routine_delivery import _push_owner
@@ -86,8 +106,11 @@ def test_system_rutine_pusher_ikke(monkeypatch):
     """Heartbeat/dream er rammer, ikke opgaver — de skal ikke vaekke en telefon."""
     kald = _opsæt(
         monkeypatch,
-        routine={"name": "heartbeat", "access_scope": "system_owner",
-                 "delivery_policy": {}},
+        routine={
+            "name": "heartbeat",
+            "access_scope": "system_owner",
+            "delivery_policy": {},
+        },
         account={"discord_id": DISCORD},
     )
     from core.services.routine_delivery import _push_owner
@@ -100,8 +123,11 @@ def test_system_rutine_pusher_ikke(monkeypatch):
 def test_push_false_i_policy_slaar_fra(monkeypatch):
     kald = _opsæt(
         monkeypatch,
-        routine={"name": "Stille rutine", "access_scope": "user_private",
-                 "delivery_policy": {"channel": "desk", "push": False}},
+        routine={
+            "name": "Stille rutine",
+            "access_scope": "user_private",
+            "delivery_policy": {"channel": "desk", "push": False},
+        },
         account={"discord_id": DISCORD},
     )
     from core.services.routine_delivery import _push_owner
@@ -115,8 +141,11 @@ def test_uden_discord_mapping_pusher_ikke(monkeypatch):
     """En konto uden Discord-id har intet abonnement at sende til."""
     kald = _opsæt(
         monkeypatch,
-        routine={"name": "Rutine", "access_scope": "user_private",
-                 "delivery_policy": {}},
+        routine={
+            "name": "Rutine",
+            "access_scope": "user_private",
+            "delivery_policy": {},
+        },
         account={"user_id": KANONISK, "discord_id": ""},
     )
     from core.services.routine_delivery import _push_owner
@@ -133,18 +162,25 @@ def test_push_fejl_vaelter_ikke_leveringen(monkeypatch):
     from core.services.routine_delivery import _push_owner
 
     monkeypatch.setattr(
-        db_routines, "get_run",
+        db_routines,
+        "get_run",
         lambda run_id: {"run_id": run_id, "routine_id": "routine_test"},
     )
     monkeypatch.setattr(
-        db_routines, "get_routine",
+        db_routines,
+        "get_routine",
         lambda routine_id, decrypt_for=None: {
-            "name": "Rutine", "access_scope": "user_private", "delivery_policy": {},
+            "name": "Rutine",
+            "access_scope": "user_private",
+            "delivery_policy": {},
         },
     )
     from core.identity import user_db
+
     monkeypatch.setattr(
-        user_db, "get_user", lambda uid: {"discord_id": DISCORD},
+        user_db,
+        "get_user",
+        lambda uid: {"discord_id": DISCORD},
     )
 
     def boom(uid, data):
@@ -153,3 +189,6 @@ def test_push_fejl_vaelter_ikke_leveringen(monkeypatch):
     monkeypatch.setattr(pd, "_push_to_web", boom)
 
     _push_owner(_claim())  # maa ikke kaste
+
+
+# End of delivery guards.

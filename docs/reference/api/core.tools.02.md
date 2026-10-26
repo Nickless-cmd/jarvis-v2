@@ -93,15 +93,19 @@ _Madopskrifter på dansk — TheMealDB + MyPlate.food med oversættelseslag._
 | function | `_split_sammensat` | `(ord)` | Del et dansk sammensat ord i to kendte ordbogsord. | [src](../../../core/tools/madopskrift_tools.py#L109) |
 | function | `oversaet_ord_til_engelsk` | `(ord)` | Dansk mad-ord → engelsk søgeord. Returnerer (engelsk, kilde). | [src](../../../core/tools/madopskrift_tools.py#L130) |
 | function | `oversaet_til_dansk` | `(tekst, *, kontekst=…)` | Engelsk tekst → dansk. Returnerer (tekst, blev_oversat). | [src](../../../core/tools/madopskrift_tools.py#L170) |
-| function | `_themealdb_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L191) |
-| function | `_themealdb_hent` | `(meal_id)` | — | [src](../../../core/tools/madopskrift_tools.py#L207) |
-| function | `_myplate_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L232) |
-| function | `_myplate_hent` | `(slug)` | — | [src](../../../core/tools/madopskrift_tools.py#L249) |
-| function | `_myplate_koleskab` | `(ingredienser, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L272) |
-| function | `_exec_madopskrift` | `(args)` | Slå opskrifter op på dansk. Se ``madopskrift``-definitionen. | [src](../../../core/tools/madopskrift_tools.py#L292) |
-| function | `_soeg` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L322) |
-| function | `_hent` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L406) |
-| function | `_koleskab` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L463) |
+| function | `_ullas_kald` | `(vaerktoej, argumenter)` | Kald Ullas-MCP og returnér den parsede JSON-payload. | [src](../../../core/tools/madopskrift_tools.py#L203) |
+| function | `_ullas_soeg` | `(dansk, *, limit=…)` | Søg i Ullas med det DANSKE ord, uændret. | [src](../../../core/tools/madopskrift_tools.py#L246) |
+| function | `_ullas_hent` | `(ident)` | Hent én Ullas-opskrift. ``ident`` er slug eller numerisk id. | [src](../../../core/tools/madopskrift_tools.py#L269) |
+| function | `_ullas_koleskab` | `(ingredienser, *, limit=…)` | Find danske retter ud fra råvarer. Ét opslag pr. ingrediens, flettet. | [src](../../../core/tools/madopskrift_tools.py#L307) |
+| function | `_themealdb_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L330) |
+| function | `_themealdb_hent` | `(meal_id)` | — | [src](../../../core/tools/madopskrift_tools.py#L346) |
+| function | `_myplate_soeg` | `(engelsk, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L371) |
+| function | `_myplate_hent` | `(slug)` | — | [src](../../../core/tools/madopskrift_tools.py#L388) |
+| function | `_myplate_koleskab` | `(ingredienser, *, limit=…)` | — | [src](../../../core/tools/madopskrift_tools.py#L411) |
+| function | `_exec_madopskrift` | `(args)` | Slå opskrifter op på dansk. Se ``madopskrift``-definitionen. | [src](../../../core/tools/madopskrift_tools.py#L431) |
+| function | `_soeg` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L461) |
+| function | `_hent` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L561) |
+| function | `_koleskab` | `(args)` | — | [src](../../../core/tools/madopskrift_tools.py#L640) |
 
 ## `core/tools/mail_tools.py`
 _Mail tools for Jarvis — jarvis@srvlab.dk_

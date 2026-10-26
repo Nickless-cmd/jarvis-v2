@@ -131,6 +131,43 @@ def test_mutating_shell_is_mutating(cmd):
     assert shell_command_is_mutating(cmd) is True
 
 
+# ── python / pytest / curl: læsning vs mutation (2026-10-26) ──────────────
+# Målt: fem beviseligt læsende kommandoer blev talt som mutation og brændte
+# R2.5-loftet — så `bash` blev blokeret netop fordi jeg verificerede.
+# Retningen er den samme som for `sed`, `sqlite3` og `ssh`: kun det der SELV
+# er beviseligt læsning slipper igennem; alt andet er fortsat en mutation.
+@pytest.mark.parametrize("cmd", [
+    "python3 -m pytest tests/ -q",
+    "/home/bs/miniconda3/envs/ai/bin/python3 -m pytest tests/test_x.py",
+    "python3 -m unittest discover",
+    "pytest tests/ -q",
+    "python3 -c 'print(1)'",
+    "python3 -c 'import sqlite3; print(sqlite3.connect(\"file:/x.db?mode=ro\", uri=True).execute(\"SELECT 1\").fetchall())'",
+    "python3 - <<'PY'\nimport sqlite3\nprint(sqlite3.connect('file:/x.db?mode=ro', uri=True).execute('SELECT 1').fetchall())\nPY",
+    "curl -s http://127.0.0.1:8080/health",
+    "curl -s -X GET http://127.0.0.1:8080/health",
+    "curl -sI https://example.com",
+])
+def test_readonly_python_pytest_curl_not_mutating(cmd):
+    assert shell_command_is_mutating(cmd) is False
+
+
+@pytest.mark.parametrize("cmd", [
+    "python3 -c 'open(\"a.txt\",\"w\").write(\"x\")'",
+    "python3 -c 'import os; os.remove(\"x\")'",
+    "python3 -c 'import subprocess; subprocess.run([\"ls\"])'",
+    "python3 -c 'import shutil; shutil.rmtree(\"x\")'",
+    "python3 - <<'PY'\nimport sqlite3\nsqlite3.connect('x.db').execute('INSERT INTO t VALUES (1)')\nPY",
+    "python3 script.py",
+    "curl -s -X POST http://127.0.0.1:8080/x",
+    "curl -s -d 'a=1' http://x",
+    "curl -s -o out.txt http://x",
+    "curl -s -T file http://x",
+])
+def test_mutating_python_curl_is_mutating(cmd):
+    assert shell_command_is_mutating(cmd) is True
+
+
 def test_empty_command_not_mutating():
     assert shell_command_is_mutating("") is False
     assert shell_command_is_mutating("   ") is False

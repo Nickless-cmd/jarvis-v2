@@ -43,6 +43,8 @@ ingen.
 Koer paa Jarvis-hosten (CT105). Cron, én gang dagligt:
   17 9 * * * /opt/conda/envs/ai/bin/python3 /media/projects/jarvis-v2/scripts/batch_maaling_monitor.py
 """
+# STARTLINJE: skriv ALTID en linje ved opstart, saa en tom log betyder praecis én ting —
+# aldrig startet. Uden den kan 0 bytes ikke skelnes fra «draebt undervejs» eller «venter stadig».
 from __future__ import annotations
 
 import argparse

@@ -3,6 +3,27 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _ingen_identitets_sketch_llm(monkeypatch):
+    """`compact_session_history` kalder `update_identity_sketch` ved hver
+    komprimering (Memory Fix Phase 2), og den kalder `compact_llm` → en rigtig
+    provider.
+
+    Maalt 26/10-2026: testen timede ud efter 45 s inde i
+    `cheap_provider_runtime_adapters._execute_opencode_chat`, som poller til sin
+    egen deadline. Test-vagten stoppede netvaerket, men poll-loekken ventede
+    alligevel — saa fejlen saa ud som en logik-fejl i komprimeringen.
+
+    Skitsen er ikke emnet for nogen test i denne fil; den mockes vaek. Samme
+    moenster som `tests/test_compact_dobbelt_markoer.py:18`.
+    """
+    monkeypatch.setattr(
+        "core.services.identity_sketch.update_identity_sketch", lambda **k: None
+    )
+
 
 # ── Task 1: token_estimate ─────────────────────────────────────────────────
 

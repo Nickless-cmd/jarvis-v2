@@ -8,10 +8,11 @@ den læser den RÅ ``user_message`` og lader et værktøjskald slippe forbi
 veto'et. Alt andet autorisation i huset er ContextVar-baseret og kan ikke
 forfalskes fra tekst (se ``core/tools/owner_approval.py``).
 
-De to ``xfail(strict=True)``-tests beskriver den ØNSKEDE adfærd, ikke den
-nuværende. De SKAL fejle i dag. Når bugen rettes, bliver de XPASS(strict),
-hvilket selv fejler — og tvinger nogen til at fjerne markeringen bevidst.
-En xfail der stille bliver grøn er en glemt bug.
+De to tests nedenfor beskriver den ØNSKEDE adfærd. De var ``xfail(strict=True)``
+fra 26/10-2026 kl. 20:12 til samme dag kl. 20:40, hvor bugen blev rettet:
+``_CONSENT_NEAR_RISK`` blev forankret til beskedens start, og ``_is_negated``
+kigger nu begge veje. Markeringen blev fjernet BEVIDST — den blev XPASS(strict)
+og fejlede, præcis som den skulle.
 """
 from __future__ import annotations
 
@@ -28,15 +29,8 @@ GODKENDT = "godkendt"
 
 
 # ── Acceptkriterium 1 ────────────────────────────────────────────────────────
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Målt 26/10-2026: _CONSENT_NEAR_RISK er ikke forankret (^...$), så et "
-        "konsent-ord HVOR SOM HELST i beskeden tæller — også når det står inde i "
-        "indsat tredjepartstekst. Rettes ved at forankre mønstret som "
-        "_OVERRIDE_PATTERNS allerede er."
-    ),
-)
+# Rettet 26/10-2026: _CONSENT_NEAR_RISK er nu forankret (^\s*…), som
+# _OVERRIDE_PATTERNS hele tiden har været.
 def test_indsat_forslag_fra_anden_model_giver_ikke_implementeringstilladelse():
     """Bjørn indsætter et forslag fra en anden model.
 
@@ -52,14 +46,7 @@ def test_indsat_forslag_fra_anden_model_giver_ikke_implementeringstilladelse():
     assert _check_token_signal_gate(indsat, "restart") is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Målt 26/10-2026: _is_negated kigger kun ~30 tegn BAGUD. Står negationen "
-        "EFTER konsent-ordet — som når Bjørn citerer det for at afvise det — "
-        "læses beskeden som samtykke. Rettes ved også at kigge fremad."
-    ),
-)
+# Rettet 26/10-2026: _is_negated kigger nu også ~30 tegn FREMAD.
 def test_bjoern_uenig_citeret_konsent_ord_er_ikke_konsent():
     """Bjørn citerer et konsent-ord for at være UENIG i det.
 

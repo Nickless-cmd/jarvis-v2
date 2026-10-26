@@ -62,24 +62,54 @@ _NEGATION_RE = re.compile(
 # Consent-in-context: when a consent word appears near a risk marker,
 # the user is explicitly approving the risky operation — not commanding it.
 # E.g. "godkendt restart" → consent, not risk.
+#
+# 26/10-2026: FORANKRET til beskedens START (^\s*), som _OVERRIDE_PATTERNS
+# hele tiden har været. Før søgte mønstret hvor som helst i beskeden, så et
+# konsent-ord inde i IND-SAT tredjepartstekst talte som Bjørns samtykke.
+# Målt: «Her er et forslag fra Claude:\n> Godkendt restart af jarvis-api.\n
+# Implementer det.» gav override — forslaget gav sig selv tilladelse.
+#
+# Reglen er nu: konsent skal STÅ FØRST i beskeden. En lang besked med et
+# indlejret konsent-ord er ikke konsent; den er en samtale der skal læses.
+# Slutningen er bevidst IKKE forankret — «godkendt restart af jarvis-api.»
+# er stadig konsent, selvom der står mere efter risiko-ordet.
+# Friktionsomkostningen er målt: 2 af 392 historiske beskeder («kør restart
+# self først» midt i en sætning) kræver nu et eksplicit ord. Til gengæld
+# forsvandt 2 falske positiver, hvor indsat tekst gav sig selv tilladelse.
 _CONSENT_NEAR_RISK = re.compile(
-    r'\b(godkendt|ja|kør|accepteret|approved|accept|ok)\b.{0,40}\b'
+    r'^\s*\b(godkendt|ja|kør|accepteret|approved|accept|ok)\b.{0,40}\b'
     r'(restart|deploy|merge|slet|delete|purge|force)\b',
     re.IGNORECASE,
 )
 
 
+_NEGATION_WINDOW = 30
+
+
 def _is_negated(user_message: str, consent_start_idx: int) -> bool:
-    """True if a negation word appears within ~30 chars BEFORE the consent token.
+    """True if a negation word appears within ~30 chars of the consent token.
 
     Catches "ikke godkendt restart", "aldrig approved", "nej, kør restart" etc.
     Window is 30 chars (~5-6 words) — Danish negations cling close to the verb.
+
+    26/10-2026: kigger nu BEGGE veje. Før kiggede den kun bagud, så en negation
+    der stod EFTER konsent-ordet blev læst som samtykke — præcis den form hvor
+    Bjørn citerer ordet for at afvise det. Målt: «Claude skrev 'godkendt
+    restart' - det er jeg ikke enig i» gav override, altså det stik modsatte af
+    hvad beskeden sagde.
+
+    Retningen er bevidst: en tvivlsom negation skal standse, ikke fortsætte.
+    En falsk negativ koster ét klik; en falsk positiv koster en tilladelse.
     """
-    if consent_start_idx <= 0:
+    if consent_start_idx < 0:
         return False
-    window_start = max(0, consent_start_idx - 30)
-    window = user_message[window_start:consent_start_idx]
-    return bool(_NEGATION_RE.search(window))
+
+    back_start = max(0, consent_start_idx - _NEGATION_WINDOW)
+    if _NEGATION_RE.search(user_message[back_start:consent_start_idx]):
+        return True
+
+    ahead_end = min(len(user_message), consent_start_idx + _NEGATION_WINDOW)
+    return bool(_NEGATION_RE.search(user_message[consent_start_idx:ahead_end]))
 
 
 def _check_token_signal_gate(user_message: str, tool_name: str) -> bool:

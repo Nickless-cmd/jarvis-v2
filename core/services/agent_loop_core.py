@@ -90,17 +90,46 @@ def _promises_action(text: str) -> bool:
 #: hvordan den afsluttende saetning lyder. Den fyrer kun naar opgaven FAKTISK stiller
 #: flere spoergsmaal (maalt: 1 af 60 historiske agent-opgaver), saa den er tavs for
 #: enkeltspoergsmaal-opgaver og koster intet der.
-_QUESTION_RE = re.compile(r"(?mi)^\s*(?:spørgsmål|spoergsmaal|question)\s*(\d+)\b")
+#: 26/10-2026 (aften): den foerste form var blind for almindelig nummerering. Maalt paa en
+#: rigtig Task-agent: opgaven skrev spoergsmaalene som "1)" "2)" "3)", regex'en kraevede
+#: ordet "spoergsmaal" foran tallet, fandt NUL spoergsmaal og returnerede 0 — hvorefter
+#: agenten blev meldt `completed` efter at have svaret paa 1 af 3. Vagtens tavshed var
+#: ikke "alt besvaret", den var "jeg kunne ikke se opgaven". Formerne daekkes nu begge
+#: veje: med ordet foran ("SPØRGSMÅL 2", "Spørgsmål 2:") OG som ren nummerering
+#: ("1)", "2.", "- 3)"). Kravet om mindst to fundne spoergsmaal staar uaendret, saa en
+#: enkeltspoergsmaal-opgave stadig er tavs.
+_QUESTION_RE = re.compile(
+    r"(?mi)^\s*(?:[-*]\s*)?(?:"
+    r"(?:spørgsmål|spoergsmaal|question)\s*(\d+)\b"   # SPØRGSMÅL 2 / Spørgsmål 2:
+    r"|(\d+)\s*[.):]"                                  # 1) / 2. / 3:
+    r")"
+)
 _ANSWER_RE = re.compile(r"(?m)^\s*(\d+)\s*[.):]")
 
 
+def _question_numbers(prompt: str) -> set[int]:
+    """Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering."""
+    out: set[int] = set()
+    for m in _QUESTION_RE.finditer(prompt or ""):
+        tal = m.group(1) or m.group(2)
+        if tal:
+            out.add(int(tal))
+    return out
+
+
 def _unanswered_questions(prompt: str, final_text: str) -> int:
-    """Antal nummererede spoergsmaal i opgaven som resultatet ikke daekker. 0 = alt besvaret.
+    """Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet.
 
     Mekanisk taelling, ikke en vurdering af teksten: spoergsmaalene identificeres ved deres
     nummer i opgaven, svarene ved deres nummer i resultatet. En agent der svarer paa 1 af 3
-    giver 2 — ogsaa naar dens afsluttende saetning lyder faerdig."""
-    qs = {int(m.group(1)) for m in _QUESTION_RE.finditer(prompt or "")}
+    giver 2 — ogsaa naar dens afsluttende saetning lyder faerdig.
+
+    Graensen (maalt 26/10-2026): en agent der svarer i PROSA uden at nummerere — fx
+    "Confirmed: Task har 5 properties: ..." — taelles som et hul selv om den svarede.
+    Tallet er derfor et OVERKANT-tal, og kalderen skal ikke kalde det "ubesvarede
+    spoergsmaal" men "spoergsmaal uden nummereret svar". Det er stadig et brugbart signal:
+    det fyrer naar en leverance stopper midt i arbejdet, og teksten foelger altid med."""
+    qs = _question_numbers(prompt)
     if len(qs) < 2:
         return 0
     answered = {int(m.group(1)) for m in _ANSWER_RE.finditer(final_text or "")}
@@ -154,6 +183,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     # noget. Kravet (Bjørn 26/10): "Jarvis skal altid vide, hvad den naaede, hvad den
     # ikke naaede, og hvorfor arbejdet stoppede."
     unanswered_total = 0
+    # 26/10-2026: HVORFOR arbejdet stoppede. Et maalt faktum (rundebudgettet loeb ud), ikke
+    # en vurdering af teksten. Maalt paa `asg-a413aa7ac3704131`: agenten brugte 7
+    # vaerktoejskald, fik sin nudge i runde 8 — som ER loftet — og loekken udloeb uden at
+    # markere noget som helst. Udfaldet blev `completed` med en statusnote som "svar".
+    stop_reason = ""
     parked: dict[str, Any] | None = None
     t0 = time.monotonic()
     # Kan agenten skrive i det hele taget? Det afgoeres af SKEMAET den fik, ikke af dens ord.
@@ -224,6 +258,15 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # krav om succes: naeste runde maa gerne vaere "det kan jeg ikke, fordi ...".
                 if not scout and action_retries < 1 and (promised or unanswered or (write_capable and write_calls == 0)):
                     action_retries += 1
+                    # 26/10-2026: nudgen maa ikke forbruge den SIDSTE tilladte runde. Goer den
+                    # det, udloeb loekken paa `while rounds < max_rounds` uden at naa ned til
+                    # markeringen nedenfor — og en afbrudt leverance blev meldt `completed`.
+                    # Er der ingen runde tilbage, er STOPPET et faktum og skal meldes som et.
+                    if rounds >= max_rounds:
+                        incomplete = True
+                        unanswered_total = unanswered
+                        stop_reason = f"rundebudgettet løb ud efter {rounds} runder"
+                        break
                     messages.append({"role": "assistant", "content": final_text})
                     messages.append({"role": "user", "content": _ACTION_NUDGE})
                     continue
@@ -258,16 +301,28 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             synth_text = str(synth.get("text") or "").strip()
             if synth_text:
                 final_text = synth_text
+                # Syntesen er et NYT svar: antallet af ubesvarede spoergsmaal skal maales paa
+                # det, ikke paa runden foer.
+                unanswered_total = _unanswered_questions(prompt, final_text)
+            else:
+                # Ingen syntese = agenten blev afbrudt midt i arbejdet. Det er et faktum.
+                incomplete = True
+                stop_reason = stop_reason or f"rundebudgettet løb ud efter {rounds} runder"
         except Exception:
             logger.warning("afsluttende syntese fejlede - beholder teksten fra sidste runde", exc_info=True)
+            incomplete = True
+            stop_reason = stop_reason or f"rundebudgettet løb ud efter {rounds} runder"
+
+    if unanswered_total:
+        incomplete = True
 
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
-                    None, incomplete=incomplete, unanswered=unanswered_total)
+                    None, incomplete=incomplete, unanswered=unanswered_total, stop_reason=stop_reason)
 
 
 def _outcome(final_text: str, total_input: int, total_output: int, total_cost: float, total_tool_calls: int,
              rounds: int, error_str: str, t0: float, parked: dict[str, Any] | None,
-             incomplete: bool = False, unanswered: int = 0) -> dict[str, Any]:
+             incomplete: bool = False, unanswered: int = 0, stop_reason: str = "") -> dict[str, Any]:
     out = {"final_text": final_text, "total_input": total_input, "total_output": total_output,
            "total_cost": total_cost, "total_tool_calls": total_tool_calls, "rounds": rounds,
            "error_str": error_str, "duration_ms": int((time.monotonic() - t0) * 1000)}
@@ -277,4 +332,6 @@ def _outcome(final_text: str, total_input: int, total_output: int, total_cost: f
         out["incomplete"] = True
     if unanswered:
         out["unanswered"] = int(unanswered)
+    if stop_reason:
+        out["stop_reason"] = str(stop_reason)
     return out

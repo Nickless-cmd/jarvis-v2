@@ -461,7 +461,20 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         # markeringen saettes FORAN den — sammen med antallet af ubesvarede spoergsmaal,
         # som loekken nu baerer med (`unanswered`).
         n = int(o.get("unanswered") or 0)
-        grund = f"{n} ubesvarede spørgsmål" if n else "et løfte den ikke udførte"
+        why = str(o.get("stop_reason") or "")
+        # 26/10-2026: ordet er "spørgsmål uden nummereret svar", ikke "ubesvarede
+        # spørgsmål". Optællingen ser kun NUMMEREREDE svar; en agent der svarer i prosa
+        # ("Confirmed: Task har 5 properties ...") tælles som et hul selv om den svarede.
+        # Maalt paa `asg-a413aa7ac3704131`: 1 af 3 var reelt besvaret, optællingen sagde 3.
+        # Et tal der lyder praecist men overdriver er værre end ingen tal.
+        if why and n:
+            grund = f"{why}; {n} spørgsmål uden nummereret svar"
+        elif why:
+            grund = why
+        elif n:
+            grund = f"{n} spørgsmål uden nummereret svar"
+        else:
+            grund = "et løfte den ikke udførte"
         status = DispatchStatus.BLOCKED
         result_payload = f"UFULDSTÆNDIG ({grund}) — agentens tekst:\n{final_text}"
     elif scout and (total_tool_calls == 0 or _promises_action(final_text)):

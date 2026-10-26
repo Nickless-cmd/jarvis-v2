@@ -101,8 +101,8 @@ def test_teksten_bevares_naar_leverancen_er_ufuldstaendig():
         "agentens tekst blev kastet vaek. Jarvis skal vide HVAD den naaede, "
         "ikke kun at den stoppede."
     )
-    assert "2 ubesvarede" in payload, (
-        "antallet af ubesvarede spoergsmaal skal staa i payloaden"
+    assert "2 spørgsmål uden nummereret svar" in payload, (
+        f"antallet skal staa i payloaden: {payload[:200]!r}"
     )
 
 

@@ -67,7 +67,10 @@ def test_flat_tool_call_shape_flows_to_blocks():
     # tester vi tool/tekst-rækkefølgen.
     non_prog = [b["type"] for b in blocks if b["type"] != "progress"]
     assert non_prog == ["tool_use", "tool_result", "text"]
-    assert {"type": "text", "text": "hej"} in blocks
+    # Tekstblokken baerer ogsaa sin fase (`_mark_text_phases`, indfoert 20/10).
+    # Testen tjekker tekst og fase hver for sig, saa den ikke laaser et felt
+    # den ikke handler om.
+    assert any(b.get("type") == "text" and b.get("text") == "hej" for b in blocks)
     use = next(b for b in blocks if b["type"] == "tool_use")
     assert use == {"type": "tool_use", "id": "c1", "name": "read_file", "input": {"path": "x"}}
     res = next(b for b in blocks if b["type"] == "tool_result")
@@ -259,7 +262,9 @@ def test_multiple_consecutive_tools_not_collapsed():
     ids = [b["id"] for b in blocks if b["type"] == "tool_use"]
     assert ids == ["c1", "c2", "c3"]  # ALLE 3, ikke kun sidste
     assert sum(1 for b in blocks if b["type"] == "tool_result") == 3
-    assert {"type": "text", "text": "Her er svaret."} in blocks  # progress kan følge efter
+    assert any(
+        b.get("type") == "text" and b.get("text") == "Her er svaret." for b in blocks
+    )  # progress kan følge efter
 
 
 def test_answer_text_never_dropped_when_interleave_lacks_text():

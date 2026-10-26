@@ -211,3 +211,60 @@ def test_vagten_i_visible_runs_kalder_den_UDSKILTE_funktion():
         "udpakningen staar igen inline i visible_runs — den hoerer i "
         "skill_gate_guard.samle_kaldte_navne, saa der er EN definition")
     ast.parse(src)
+
+
+# ─────────────────────────── 26/10-2026: gaten tier, prompten bærer kravet
+
+def test_kraev_navn_false_maalet_kun_paa_vaerktoejskald():
+    """Uden navne-kravet er det KUN et kaldt skill-værktøj der tæller.
+
+    Baggrund (målt 26/10-2026): prompten siger udtrykkeligt at et fravalgt
+    match er intern routing og ikke må omtales i det brugervendte svar. Den
+    gamle håndhævelse krævede alligevel navnet i teksten — altså straffede den
+    præcis den adfærd prompten påbyder. Med `kraev_navn=False` måles der på
+    handlingen, ikke på omtalen.
+    """
+    assert g.is_unanswered_skill_match(
+        primary_matches=["code-review"],
+        called_tool_names=["bash", "read_file"],
+        final_text="Jeg har gennemgået koden og rettet tre ting.",
+        kraev_navn=False,
+    ) is True
+    # Kaldet skill → valget er truffet, uanset teksten.
+    assert g.is_unanswered_skill_match(
+        primary_matches=["code-review"],
+        called_tool_names=["skill_invoke"],
+        final_text="",
+        kraev_navn=False,
+    ) is False
+
+
+def test_kraev_navn_true_er_uaendret():
+    """Standarden bevarer den gamle adfærd — den skal ikke ændre sig bagud."""
+    assert g.is_unanswered_skill_match(
+        primary_matches=["code-review"],
+        called_tool_names=["bash"],
+        final_text="Jeg springer code-review over; opgaven er en enkelt linje.",
+    ) is False
+    assert g.is_unanswered_skill_match(
+        primary_matches=["code-review"],
+        called_tool_names=["bash"],
+        final_text="Færdig.",
+    ) is True
+
+
+def test_gaten_skriver_ikke_laengere_i_turen():
+    """Vagten registrerer — den starter ikke en ny runde.
+
+    Bjørn 26/10-2026: «skill gaten rammer altid efter din slut besked, så jeg
+    får din sidste syntese i stedet for slutbeskeden og skal folde hoved ud».
+    Forpligtelsen står nu i prompten ved tur-start. Denne test fælder en
+    tilbagevenden: lægges nudgen igen i tur-halen, fejler den.
+    """
+    import pathlib
+
+    src = pathlib.Path("core/services/visible_runs.py").read_text()
+    assert "skill_gate.nudge" in src, "telemetrien skal blive — ellers kan vi ikke måle"
+    assert "kraev_navn=False" in src, "gaten skal måle på kald, ikke på omtale"
+    assert "_sg_tekst" not in src, "nudge-teksten blev igen lagt i turen"
+    assert "build_nudge as _sg_nudge" not in src, "den gamle nudge er stadig importeret"

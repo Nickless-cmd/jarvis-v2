@@ -338,9 +338,9 @@ _Skill-fladen nævner et skill — og intet kræver et svar (2/10-2026)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `skill_gate_guard_enabled` | `()` | Default TRUE (Bjørn bad om det 2/10-2026). Env vinder, så den kan slås | [src](../../../core/services/skill_gate_guard.py#L47) |
-| function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
-| function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L94) |
-| function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L109) |
+| function | `is_unanswered_skill_match` | `(*, primary_matches, called_tool_names, final_text, nudged_already=…, kraev_navn=…)` | True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt. | [src](../../../core/services/skill_gate_guard.py#L60) |
+| function | `build_nudge` | `(primary_matches)` | Beskeden der lægges i turen. Navngiver skillet og giver de to veje. | [src](../../../core/services/skill_gate_guard.py#L104) |
+| function | `samle_kaldte_navne` | `(followup_exchanges, runde_kald)` | De ÆGTE værktøjsnavne turen har kaldt — fra BEGGE kilder, udpakket. | [src](../../../core/services/skill_gate_guard.py#L119) |
 
 ## `core/services/skill_relevance_surface.py`
 _Slå skills op FOR ham i stedet for at bede ham huske at slå op._
@@ -357,7 +357,7 @@ _Slå skills op FOR ham i stedet for at bede ham huske at slå op._
 | function | `_er_autonom_tur` | `()` | Koerer vi en autonom tur lige nu? | [src](../../../core/services/skill_relevance_surface.py#L257) |
 | function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L290) |
 | function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L313) |
-| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L409) |
+| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L410) |
 
 ## `core/services/skill_scanner.py`
 _Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._

@@ -3938,7 +3938,6 @@ async def _stream_visible_run(
                         if not _is_last_round and _skill_gate_nudges < 1:
                             try:
                                 from core.services.skill_gate_guard import (
-                                    build_nudge as _sg_nudge,
                                     is_unanswered_skill_match as _sg_unanswered,
                                     samle_kaldte_navne as _sg_navne,
                                     skill_gate_guard_enabled as _sg_enabled,
@@ -3968,14 +3967,14 @@ async def _stream_visible_run(
                                     called_tool_names=_sg_kaldte,
                                     final_text="".join(_a_parts),
                                     nudged_already=bool(_skill_gate_nudges),
+                                    # 26/10-2026: maal KUN paa om et
+                                    # skill-vaerktoej blev kaldt. Prompten
+                                    # forbyder at omtale et fravalgt match i
+                                    # svaret, saa et krav om navnet i teksten
+                                    # gjorde hver maaling til falsk alarm.
+                                    kraev_navn=False,
                                 ):
                                     _skill_gate_nudges += 1
-                                    _sg_tekst = _sg_nudge(_sg_primaere)
-                                    _tur_hale.tilfoej_naeste(_sg_tekst)
-                                    _followup_exchanges.append(
-                                        _vf.ToolExchange(
-                                            text=_exchange_text(),
-                                            tool_calls=[], results=[]))
                                     logger.info(
                                         "skill-gate run_id=%s — staerkt match uden "
                                         "svar: %s", run.run_id, ", ".join(_sg_primaere[:3]))
@@ -3996,7 +3995,19 @@ async def _stream_visible_run(
                                         logger.warning(
                                             "skill-gate-telemetri fejlede "
                                             "(turen fortsaetter): %s", _sg_exc)
-                                    continue
+                                    # 26/10-2026: her stod `continue` — gaten
+                                    # startede en NY runde efter en tekstblok
+                                    # der allerede var et svar. Det er målt som
+                                    # Bjørns klage: «skill gaten rammer altid
+                                    # efter din slut besked, så jeg får din
+                                    # sidste syntese i stedet for slutbeskeden
+                                    # og skal folde hoved ud». Forpligtelsen
+                                    # står nu i PROMPTEN ved tur-start
+                                    # (`skill_relevance_surface`), hvor den
+                                    # hører: en regel før handling slår en
+                                    # irettesættelse efter. Vagten registrerer
+                                    # stadig — så vi kan måle om prompten bliver
+                                    # fulgt — men den skriver ikke mere i turen.
                             except Exception:
                                 pass  # fail-open → normal break nedenfor
                         # ── Baggrunds-shells: slut ikke mens noget koerer ──

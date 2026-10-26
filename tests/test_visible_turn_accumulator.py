@@ -135,7 +135,12 @@ def test_skill_surface_staar_foerst_i_blokkene():
     acc.note_text()
     blokke = acc.build_blocks("svar")
     assert blokke[0]["type"] == "skill_surface"
-    assert blokke[1] == {"type": "text", "text": "svar"}
+    # Tekstblokken baerer ogsaa sin fase (`_mark_text_phases`, indfoert 20/10).
+    # Testen tjekker tekst og fase hver for sig, saa den ikke laaser et felt
+    # den ikke handler om — den fejlede 26/10-2026 paa netop det.
+    assert blokke[1]["type"] == "text"
+    assert blokke[1]["text"] == "svar"
+    assert blokke[1]["phase"] == "final_answer"
 
 
 def test_uden_skill_surface_ingen_ekstra_blok():
@@ -567,3 +572,48 @@ def test_et_RIGTIGT_kald_i_midten_roeres_IKKE():
     # Teksten bliver hvor den var — efter bash, før read_file.
     assert typer.index("text") == 1, typer
     assert typer[2] == "tool_use"
+
+
+def test_svaret_er_final_answer_ogsaa_naar_et_tvunget_kald_flyttes_op():
+    """Fasen skal beskrive den rækkefølge klienten FAAR — ikke den streamede.
+
+    Målt 26/10-2026: ``_build_turn_blocks`` satte fasen mens blokkene endnu stod
+    i stream-rækkefølgen. Flyttede ``_med_interne_kald_foer_svaret`` bagefter et
+    fremtvunget kald op foran svaret, stod svaret pludselig EFTER det sidste
+    kald — men fasen sagde ``commentary``, fordi den var sat før flytningen.
+    Desk lægger alt med ``phase === 'commentary'`` i arbejdsblokken
+    (``chatFlowModel.ts``), så turens eneste svar forsvandt ind i folden og
+    kvitteringen blev det synlige svar.
+
+    Uden ``_mark_text_phases`` efter omorganiseringen fejler denne test.
+    """
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_text("Det er mit endelige svar.")
+    t.note_text()
+    t.close_segment()
+    t.add_tools(
+        [{"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}],
+        [], forced=True,
+    )
+    t.note_tool()
+    blokke = t.build_blocks("Det er mit endelige svar.")
+    tekster = [b for b in blokke if b.get("type") == "text"]
+    assert tekster, "turen mistede sin tekstblok"
+    assert tekster[-1]["phase"] == "final_answer", (
+        f"svaret blev {tekster[-1]['phase']!r} — desk folder det ind i arbejdet"
+    )
+
+
+def test_mellemsyntesen_forbliver_commentary():
+    """Vagten må ikke gøre AL tekst til svar: syntesen før et kald er arbejde."""
+    from core.services.visible_turn_blocks import _build_turn_blocks
+    blokke = _build_turn_blocks(
+        text="Det endelige svar.",
+        tool_calls=[{"id": "t1", "name": "bash", "input": {}}],
+        tool_results=[{"tool_use_id": "t1", "content": "ok", "status": "done"}],
+        interleave=["text", "tool", "text"],
+        text_segments=["Jeg tjekker lige.", "Det endelige svar."],
+    )
+    tekster = [b for b in blokke if b.get("type") == "text"]
+    assert [b["phase"] for b in tekster] == ["commentary", "final_answer"]

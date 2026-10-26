@@ -159,6 +159,178 @@ def test_wakeup_may_resume_work_but_not_send_mail():
         _clear_origin()
 
 
+def test_indbakke_vaekkeren_har_de_vaerktoejer_dens_direktiv_kraever():
+    """26/10-2026: `inbox` var klassificeret som vækning, men uden værktøjer.
+
+    `_WAKE_ORIGINS` indeholder «inbox», så politikken REGNEDE den for en
+    vækning — men `ORIGIN_TOOLS` havde ingen nøgle, og den faldt derfor til
+    bund-sættet: 106 værktøjer og hverken `bash` eller `web_search`.
+
+    Det kostede et rigtigt run. Kl. 17:32 blev en vækning sprunget over fordi
+    en tur var aktiv; `inbox_idle_waker` løftede den, og runnet svarede «jeg
+    har ikke adgang til tools, systemer eller kommandoer» — fordi dets
+    direktiv bad om `ps -eo pid,lstart,cmd` uden at `bash` var bundet.
+
+    Uden denne test kan nøglen forsvinde igen uden at nogen opdager det:
+    bund-sættet er stort nok til at se komplet ud.
+    """
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    vaekning = allowed_tools_for_origin("wakeup")
+    indbakke = allowed_tools_for_origin("inbox")
+
+    assert "bash" in indbakke, (
+        "inbox mangler bash — dens eget direktiv siger «UDFØR den nu med dine "
+        "tools», så politikken forbyder hvad direktivet påbyder"
+    )
+    assert "web_search" in indbakke
+    assert "inbox_done" in indbakke, "posten skal kunne lukke sig selv"
+    # De to må ikke drive fra hinanden: begge ER vækninger, og en løftet post
+    # skal have præcis samme råderum som den vækning den blev løftet fra.
+    assert indbakke == vaekning, (
+        f"inbox og wakeup er ikke længere samme sæt: "
+        f"inbox-wakeup={sorted(indbakke - vaekning)}, "
+        f"wakeup-inbox={sorted(vaekning - indbakke)}"
+    )
+    # Og den må ikke blive BREDERE end en vækning: en løftet post undersøger og
+    # fortæller i sin egen samtale — den skriver ikke filer og sender ikke DM'er.
+    assert "write_file" not in indbakke
+    assert "send_discord_dm" not in indbakke
+
+
+def test_de_tre_sidste_autonome_origin_har_de_vaerktoejer_deres_direktiv_kraever():
+    """26/10-2026: tre origins startede runs hvis direktiv krævede `bash`.
+
+    Samme fejlklasse som `inbox` samme dag, men fundet ved at måle ALLE
+    origins i koden mod `ORIGIN_TOOLS` — ikke ved at vente på endnu et
+    tandløst svar. Alle tre faldt til bund-sættet (106 værktøjer, intet
+    `bash`), og bund-sættet er stort nok til at se komplet ud:
+
+    * ``scheduled`` — `scheduled_tasks` siger ordret «UDFØR opgaven nu med
+      dine tools … så BRUG værktøjet». Målt: 113 fyrede opgaver, og de
+      seneste er alle verifikations-opgaver («begge uvicorn-PID'er
+      startede», «Tjek desk-release CI»), som kræver `ps`/`git`/`curl`.
+    * ``continuation`` — `visible_runs_memory` fyrer den fem sekunder efter
+      et run slutter med «Continue without waiting for a reply». Uden `bash`
+      kan den ikke fortsætte det den blev startet for.
+    * ``agent-completion`` — `agent_message_receipt` leverer en færdig
+      agents resultat. Uden `bash` kan runnet ikke efterprøve hvad agenten
+      påstod, og byggernes eget ord er ikke et review.
+
+    Uden denne test kan nøglerne forsvinde igen uden at nogen opdager det.
+    """
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    recurring = allowed_tools_for_origin("recurring")
+    wakeup = allowed_tools_for_origin("wakeup")
+
+    planlagt = allowed_tools_for_origin("scheduled")
+    fortsaettelse = allowed_tools_for_origin("continuation")
+    agent_faerdig = allowed_tools_for_origin("agent-completion")
+
+    # 1) Alle tre skal kunne undersøge. Det er hele grunden til at de findes.
+    for navn, saet in (
+        ("scheduled", planlagt),
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert "bash" in saet, (
+            f"{navn} mangler bash — dens eget direktiv siger «brug værktøjet», "
+            f"så politikken forbyder hvad direktivet påbyder"
+        )
+
+    # 2) En planlagt opgave er samme KLASSE som en recurring: kalender-drevet,
+    #    bestilt af Bjørn, og dens direktiv beder om at rapportere til ham.
+    assert planlagt == recurring, (
+        f"scheduled og recurring er ikke længere samme sæt: "
+        f"scheduled-recurring={sorted(planlagt - recurring)}, "
+        f"recurring-scheduled={sorted(recurring - planlagt)}"
+    )
+
+    # 3) Fortsættelsen og agent-leverancen er vækningens sæt: de undersøger og
+    #    fortæller i en samtale — de handler ikke i verden på egen hånd.
+    for navn, saet in (
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert saet == wakeup, (
+            f"{navn} og wakeup er ikke længere samme sæt: "
+            f"{navn}-wakeup={sorted(saet - wakeup)}, "
+            f"wakeup-{navn}={sorted(wakeup - saet)}"
+        )
+
+    # 4) Ingen af dem må blive BREDERE end deres opgave: de fyrer AUTOMATISK,
+    #    uden at nogen har bedt om netop den kørsel. Skal de skrive, må de sige
+    #    det først — ikke gøre det selv.
+    for navn, saet in (
+        ("scheduled", planlagt),
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert "write_file" not in saet, f"{navn} må ikke skrive filer"
+        assert "operator_bash" not in saet, f"{navn} må ikke nå Bjørns maskine"
+
+
+def test_tilstedevaerelse_aabner_for_ALT_uanset_origin():
+    """Origin-saettet er STANDARDEN, ikke en garanti (maalt 26/10-2026).
+
+    Bjoern: «autonomous_tool_policy.py har stadig denne regel: if user_present():
+    return True ... hans nye test beviser ikke, at de tre origins aldrig kan faa
+    skriveadgang. Den beviser alene, hvad deres autonome standardsaet
+    indeholder.»
+
+    Han har ret, og testen ovenfor blev laest som mere end den er. `is_allowed`
+    spoerger til tilstedevaerelse FOER den ser paa oprindelsen, saa snart et run
+    lander i Bjoerns egen app-samtale mens han er der. Det er et selvstaendigt
+    lag bygget 19/10 med hans egne ord («det er en vaekning, ikke et autonomt
+    baggrunds-run») - ikke en forglemmelse i origin-tabellen.
+
+    Maalt: presence vender `write_file`, `edit_file`, `operator_bash` og
+    `send_discord_dm` fra False til True for ALLE origins. Graensen for HVEM der
+    faar saettet ligger altsaa i `presence_for_run` (system-silo? ejerens
+    app-kanal? talt for nylig?), ikke her.
+
+    Testen pinner den faktiske adfaerd, saa de to paastande ikke smelter sammen:
+    «origin X's standardsaet indeholder ikke write_file» og «origin X kan ikke
+    skrive» er IKKE det samme, og kun den foerste er bevist ovenfor.
+    """
+    from core.services.run_autonomy_context import (
+        reset_autonomous, reset_user_present, set_user_present,
+    )
+    from core.tools.autonomous_tool_policy import is_allowed
+
+    # De to der rammer verden uden for samtalen. `send_discord_dm` er ikke med:
+    # den ER i `scheduled`s saet med vilje (den arver `recurring`), saa den kan
+    # ikke bruges som bevis paa en graense der ikke findes.
+    skrive_og_fjern = ("write_file", "edit_file", "operator_bash")
+    alle_fire = (*skrive_og_fjern, "send_discord_dm")
+
+    for origin in ("scheduled", "continuation", "agent-completion"):
+        token = _as_origin(origin)
+        try:
+            tok_p = set_user_present(False)
+            try:
+                for navn in skrive_og_fjern:
+                    assert is_allowed(navn) is False, (
+                        f"{origin} slap {navn} igennem UDEN tilstedevaerelse"
+                    )
+            finally:
+                reset_user_present(tok_p)
+
+            tok_p = set_user_present(True)
+            try:
+                for navn in alle_fire:
+                    assert is_allowed(navn) is True, (
+                        f"{origin} blev naegtet {navn} MED tilstedevaerelse - "
+                        "saa har reglen aendret sig, og skelnen her er foraeldet"
+                    )
+            finally:
+                reset_user_present(tok_p)
+        finally:
+            reset_autonomous(token)
+            _clear_origin()
+
+
 def test_visible_run_ignores_origin_grants():
     from core.tools.autonomous_tool_policy import is_allowed
 

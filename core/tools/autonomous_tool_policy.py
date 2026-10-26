@@ -139,6 +139,68 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
     # Nøglen er «wakeup»: det er hvad wakeup_dispatcher sender.
     "wakeup": frozenset({"bash", "send_webchat_message", "send_ntfy",
                         "web_search", "madopskrift"}),
+    # Indbakke-vækkeren (26/10-2026). Nøglen MANGLEDE, og det gjorde vækkeren
+    # tandløs: `_WAKE_ORIGINS` klassificerer allerede «inbox» som en VÆKNING,
+    # men uden en nøgle her faldt den til bund-sættet — målt 106 værktøjer og
+    # hverken `bash`, `web_search` eller `notify_user`, mens `wakeup` gav 111.
+    #
+    # Konsekvensen var ikke teoretisk. 26/10-2026 kl. 17:32 blev en vækning
+    # sprunget over fordi en tur var aktiv (`jarvis_skrev_for_nylig`);
+    # `inbox_idle_waker` løftede den som `origin="inbox"` — og runnet svarede
+    # «jeg har ikke adgang til tools, systemer eller kommandoer», fordi dets
+    # direktiv bad om `ps -eo pid,lstart,cmd` uden at `bash` var bundet.
+    # Direktivet i `inbox_idle_waker._direktiv` siger ordret «UDFØR den nu med
+    # dine tools»; politikken skal ikke forbyde hvad direktivet påbyder.
+    #
+    # Sættet er vækningens, ikke rutinens: en løftet post skal undersøge og
+    # fortælle i den samtale den hører til — ikke sende til nogen på egen hånd.
+    # `inbox_done`/`inbox_drop` ligger allerede i bund-sættet, så posten kan
+    # lukke sig selv.
+    "inbox": frozenset({"bash", "send_webchat_message", "send_ntfy",
+                        "web_search", "madopskrift"}),
+    # En PLANLAGT opgave (26/10-2026). Nøglen manglede, og direktivet i
+    # `scheduled_tasks` siger ordret: «UDFØR opgaven nu med dine tools —
+    # beskriv den ikke bare. Hvis det handler om at tjekke noget (Discord, en
+    # fil, en status), så BRUG værktøjet.» Politikken forbød præcis det.
+    #
+    # Målt i `scheduled_tasks`: 113 fyrede opgaver, og de seneste er alle
+    # verifikations-opgaver — «begge uvicorn-PID'er startede», «Tjek
+    # desk-release CI for v0.6.267», «Verificér memory_selection-fixet i
+    # drift». Hver af dem kræver `ps`, `git` eller `curl`, altså `bash`. Uden
+    # den kunne de kun svare at de ikke havde adgang — samme svar som
+    # inbox-vækkeren gav kl. 17:32 samme dag.
+    #
+    # Sættet er `recurring`s, ikke vækningens: en planlagt opgave er samme
+    # klasse som en tilbagevendende — en kalender-drevet opgave Bjørn selv har
+    # bestilt — og dens direktiv beder om at RAPPORTERE til ham, hvilket
+    # kræver `notify_user`/`send_webchat_message`. Den får IKKE `write_file`.
+    "scheduled": frozenset({
+        "send_ntfy", "notify_user", "send_discord_dm", "send_discord_channel",
+        "discord_channel", "send_webchat_message",
+        "web_search", "web_fetch", "get_weather", "get_news", "madopskrift",
+        "bash",
+    }),
+    # En FORTSÆTTELSE (26/10-2026). `visible_runs_memory` starter den fem
+    # sekunder efter et synligt run slutter med et run der siger «You stopped
+    # here — but the task isn't done. Continue without waiting for a reply».
+    # Uden en nøgle faldt den til bund-sættet: den kunne læse og huske, men
+    # ikke gøre det den blev startet for at gøre. Målt: 106 værktøjer, intet
+    # `bash`.
+    #
+    # Vækningens sæt, ikke det synlige runs: en fortsættelse fyrer AUTOMATISK
+    # uden at nogen har bedt om den, så den må ikke arve `write_file`. Skal
+    # den skrive, må den sige det — ikke gøre det selv.
+    "continuation": frozenset({"bash", "send_webchat_message", "send_ntfy",
+                               "web_search", "madopskrift"}),
+    # En AGENT der er færdig (26/10-2026). `agent_message_receipt` starter et
+    # run for at levere agentens resultat i den samtale agenten hørte til.
+    # Uden en nøgle kunne runnet ikke efterprøve hvad agenten påstod — og
+    # husets regel er at byggernes eget ord ikke er reviewet.
+    #
+    # Vækningens sæt: den skal undersøge og fortælle i samtalen, ikke handle
+    # i verden på agentens vegne.
+    "agent-completion": frozenset({"bash", "send_webchat_message", "send_ntfy",
+                                   "web_search", "madopskrift"}),
     # The idle side-task worker has two deliberately different envelopes.
     # `inspect` can gather local evidence and close its own bookkeeping; only
     # an explicitly selected `local_write` task receives local file mutation.

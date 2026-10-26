@@ -170,18 +170,61 @@ def test_visible_tool_exec_udleder_flaget_fra_KOERSLEN_ikke_fra_tekst():
     faldback), fordi flaget kun virkede ved et sammentræf: enhver
     system-startet tur går I DAG gennem `start_autonomous_run`.
 
-    Vagten holder nu EGENSKABEN — udledt af kørslen, ikke af teksten — frem for
-    én bestemt måde at skrive den på.
+    RETTET 26/10-2026 — tredje gang samme fejlklasse ramte denne fil. Vagten
+    greppede efter den BOGSTAVELIGE streng `user_present=_bruger_til_stede(run)`
+    og faldt derfor på ren main, da kilden lagde kaldet i en mellemvariabel
+    (`_tilstede = _bruger_til_stede(run)` … `user_present=_tilstede`) — selvom
+    egenskaben var præcis den samme. En vagt der holder en skrivemåde i stedet
+    for egenskaben fælder den næste der skriver koden pænere, og lader den
+    eneste ændring der betyder noget passere.
+
+    Vagten parser derfor AST'en og følger værdien tilbage til sin oprindelse:
+    `user_present` skal — direkte eller gennem en mellemvariabel — stamme fra
+    `_bruger_til_stede(run)`, og ingen gren må røre beskedteksten.
     """
-    src = Path("core/services/visible_tool_exec.py").read_text(encoding="utf-8")
-    assert "user_present=_bruger_til_stede(run)" in src, (
-        "exec-stedet skal udlede 'ingen bruger' af kørslen")
+    import ast
+
+    træ = ast.parse(
+        Path("core/services/visible_tool_exec.py").read_text(encoding="utf-8"))
+
+    def _fra_koerslen(node: ast.AST) -> bool:
+        """Stammer værdien fra `_bruger_til_stede(run)` — direkte eller via navn?"""
+        if (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_bruger_til_stede"):
+            return True
+        if isinstance(node, ast.Name):
+            for tildeling in ast.walk(træ):
+                if not isinstance(tildeling, (ast.Assign, ast.AnnAssign)):
+                    continue
+                mål = (tildeling.targets if isinstance(tildeling, ast.Assign)
+                       else [tildeling.target])
+                if any(isinstance(m, ast.Name) and m.id == node.id for m in mål):
+                    if tildeling.value is not None and _fra_koerslen(tildeling.value):
+                        return True
+        return False
+
+    kald = [
+        kw.value
+        for node in ast.walk(træ)
+        if isinstance(node, ast.Call)
+        for kw in node.keywords
+        if kw.arg == "user_present"
+    ]
+    assert kald, "exec-stedet sender ikke længere user_present — vagten måler intet"
+
+    for værdi in kald:
+        assert _fra_koerslen(værdi), (
+            "exec-stedet skal udlede 'ingen bruger' af kørslen "
+            f"(_bruger_til_stede(run)) — fandt {ast.dump(værdi)}")
+
     # …og det maa ALDRIG komme fra beskeden. Det var hele kategorifejlen:
     # «Du er i en drømmetilstand…» laest som brugerens frustration.
-    assert "user_present=" in src
-    for forbudt in ("user_message", "user_message_preview", "besked"):
-        assert f"user_present={forbudt}" not in src, (
-            f"flaget udledes af tekst ({forbudt}) — det var netop fejlen")
+    for værdi in kald:
+        navne = {n.id for n in ast.walk(værdi) if isinstance(n, ast.Name)}
+        for forbudt in ("user_message", "user_message_preview", "besked"):
+            assert forbudt not in navne, (
+                f"flaget udledes af tekst ({forbudt}) — det var netop fejlen")
 
 
 # ── Gatens egen svarkanal må ikke være gatet (30/9-2026) ──────────────────────
@@ -234,3 +277,55 @@ def test_forslaget_til_naeste_opgave_er_aldrig_gatet(monkeypatch):
     # består fordi sektionen er blevet harmløs.
     allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
     assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+
+
+# ── Værktøjsopdagelsen må ikke være gatet (26/10-2026) ───────────────────────
+#
+# Målt 26/10: gaten blokerede `load_more_tools` — det værktøj der henter
+# skemaet for `override_gate`. Når `override_gate` ikke allerede var i
+# værktøjslisten, var der dermed ingen vej til at hente den: gaten blokerede
+# adgangen til sin egen frigivelsesmekanisme. Observeret som
+# veto-063b9826d64d, i samme tur hvor en MEMORY-rettelse blev afvist.
+#
+# Samme klasse som svarkanalen ovenfor: at gate adgangen til udvejen fjerner
+# ikke behovet for den — den gør bare `bash` til den eneste dør.
+#
+# MUTATION der skal fanges:
+#   M12 — fjern "load_more_tools" fra `_ALWAYS_ALLOWED_TOOLS` -> testen falder
+
+def test_vaerktoejsopdagelsen_er_aldrig_gatet(monkeypatch):
+    """`load_more_tools` henter KUN et skema — den udfører intet."""
+    vg, written = _hermetic(monkeypatch, _FIRM_SECTION)
+    allowed, reason = vg.check_veto("load_more_tools", "jeg pusher nu", record_event=True)
+    assert allowed is True, f"load_more_tools blev gatet: {reason}"
+    assert written == [], "værktøjsopdagelse må ikke skrive blocked-rækker"
+
+    # Kontrollen: sektionen vetoer stadig en rigtig handling, så testen ikke
+    # består fordi sektionen er blevet harmløs.
+    allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
+    assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+
+
+# ── Hele frigivelses-kæden skal være åben (26/10-2026) ───────────────────────
+#
+# Egenskaben er ikke de enkelte navne, men at der findes en SAMMENHÆNGENDE vej
+# ud af en blokering. Mangler ét led, er de øvrige utilstrækkelige — det er
+# præcis hvad der skete 26/10, hvor `override_gate` var undtaget men skemaet
+# for den ikke kunne hentes.
+#
+# MUTATION der skal fanges:
+#   M13 — fjern ét vilkårligt led af kaeden -> testen falder
+
+def test_frigivelseskaeden_er_komplet(monkeypatch):
+    """Se status, hent skemaet, armér — eller spørg. Alle fire led skal virke."""
+    from core.services.veto_gate import _ALWAYS_ALLOWED_TOOLS
+
+    kaede = ("gate_override_status", "load_more_tools", "override_gate", "pause_and_ask")
+    manglende = [n for n in kaede if n not in _ALWAYS_ALLOWED_TOOLS]
+    assert not manglende, f"frigivelseskaeden mangler: {manglende}"
+
+    # Og hvert led skal faktisk slippe igennem — ikke bare stå på listen.
+    vg, _ = _hermetic(monkeypatch, _FIRM_SECTION)
+    for navn in kaede:
+        allowed, reason = vg.check_veto(navn, "jeg pusher nu", record_event=False)
+        assert allowed is True, f"{navn} blev gatet: {reason}"

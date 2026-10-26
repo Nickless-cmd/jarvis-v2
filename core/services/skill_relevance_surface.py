@@ -390,8 +390,9 @@ def relevant_skills_section(user_message: str) -> str:
         linjer.append(
             "Det stærke match er skrevet til præcis denne opgave og indeholder "
             "ting du ikke ved på forhånd. Kald skill_invoke(\"<navn>\") og læs "
-            "HELE SKILL.md før du svarer. Et forkert eller fravalgt match er intern "
-            "routing og må ikke omtales i det brugervendte svar."
+            "HELE SKILL.md før du svarer — det er en forpligtelse du indfrier FØR "
+            "arbejdet, ikke et tilbud du kan lade ligge. Et forkert eller fravalgt "
+            "match er intern routing og må ikke omtales i det brugervendte svar."
         )
     else:
         linjer.append(

@@ -63,11 +63,19 @@ def is_unanswered_skill_match(
     called_tool_names: list[str] | tuple[str, ...] | None,
     final_text: str,
     nudged_already: bool = False,
+    kraev_navn: bool = True,
 ) -> bool:
     """True når et stærkt skill-match stod klar og blev hverken brugt eller nævnt.
 
     Ren funktion — ingen I/O, ingen tilstand. Kaster aldrig: enhver fejl → False
     (normal afslutning, præcis som før vagten fandtes).
+
+    ``kraev_navn=False`` (26/10-2026) måler KUN om et skill-værktøj blev kaldt.
+    Det bruges af den tavse registrering: prompten forbyder med vilje at omtale
+    et fravalgt match i det brugervendte svar, så et krav om at navnet står i
+    teksten ville gøre hver eneste måling til en falsk alarm. Den gamle
+    håndhævelse krævede navnet — og straffede dermed den adfærd prompten
+    påbyder.
     """
     try:
         if nudged_already:
@@ -78,6 +86,8 @@ def is_unanswered_skill_match(
         kaldte = {str(n).strip() for n in (called_tool_names or []) if str(n).strip()}
         if kaldte & set(SKILL_TOOL_NAMES):
             return False
+        if not kraev_navn:
+            return True
         tekst = str(final_text or "")
         if not tekst.strip():
             # Intet svar at vurdere — det er empty-completion, en anden vagts sag.

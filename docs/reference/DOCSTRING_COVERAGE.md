@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9361/17674 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9365/17681 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9361/17674 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 850 | 1559 | 54% |
-| `core.services` | 6243 | 12019 | 51% |
+| `core.services` | 6247 | 12026 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,9 +42,9 @@ Generated from source. 9361/17674 functions/methods documented (52%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2595)
+## Undocumented public functions (2596)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L224)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -1572,6 +1572,7 @@ Generated from source. 9361/17674 functions/methods documented (52%). The list b
 - `core/services/plan_proposals.py` :: `resolve_plan` (L196)
 - `core/services/policy_abstraction.py` :: `is_enabled` (L71)
 - `core/services/policy_abstraction.py` :: `set_enabled` (L75)
+- `core/services/post_run_compaction.py` :: `stop_post_run_compaction` (L124)
 - `core/services/post_tool_answer_guard.py` :: `is_hollow_post_tool_answer` (L17)
 - `core/services/post_tool_answer_guard.py` :: `should_replace_with_synthesis` (L26)
 - `core/services/post_tool_answer_guard.py` :: `tool_call_count` (L13)

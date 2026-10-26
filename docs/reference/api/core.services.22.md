@@ -2,6 +2,47 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall_ownership_migration.py`
+_Signed, fail-closed ownership migration for legacy private recall data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InvalidRecallOwnershipReport` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L20) |
+| class | `RecallOwnershipSourceChanged` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L24) |
+| class | `MigrationDisabled` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L28) |
+| class | `OwnershipItem` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L33) |
+| class | `RecallOwnershipReport` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L42) |
+| method | `RecallOwnershipReport.authoritative_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L49) |
+| method | `RecallOwnershipReport.owner_fallback_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L53) |
+| method | `RecallOwnershipReport.conflict_count` | `(self)` | — | [src](../../../core/services/recall_ownership_migration.py#L57) |
+| method | `RecallOwnershipReport.destination_for` | `(self, source_kind, source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L60) |
+| method | `RecallOwnershipReport.reason_for` | `(self, source_kind, source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L67) |
+| class | `ApplyResult` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L75) |
+| class | `RollbackResult` | `` | — | [src](../../../core/services/recall_ownership_migration.py#L82) |
+| function | `ensure_recall_ownership_migration_tables` | `(conn)` | — | [src](../../../core/services/recall_ownership_migration.py#L96) |
+| function | `_table_exists` | `(conn, table)` | — | [src](../../../core/services/recall_ownership_migration.py#L116) |
+| function | `_columns` | `(conn, table)` | — | [src](../../../core/services/recall_ownership_migration.py#L122) |
+| function | `_source_hash` | `(source_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L126) |
+| function | `_state_path` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L130) |
+| function | `_report_dir` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L136) |
+| function | `report_path` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L142) |
+| function | `_master_key` | `()` | — | [src](../../../core/services/recall_ownership_migration.py#L149) |
+| function | `_derived_key` | `(label)` | — | [src](../../../core/services/recall_ownership_migration.py#L158) |
+| function | `_signature` | `(payload)` | — | [src](../../../core/services/recall_ownership_migration.py#L162) |
+| function | `_seal` | `(report_id, value)` | — | [src](../../../core/services/recall_ownership_migration.py#L168) |
+| function | `_open` | `(report_id, value)` | — | [src](../../../core/services/recall_ownership_migration.py#L174) |
+| function | `_linked_users` | `(conn, *, session_id=…, run_id=…, explicit=…)` | — | [src](../../../core/services/recall_ownership_migration.py#L182) |
+| function | `_classify` | `(users, owner_user_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L210) |
+| function | `_candidate_rows` | `(conn, owner_user_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L218) |
+| function | `_watermark` | `(rows)` | — | [src](../../../core/services/recall_ownership_migration.py#L303) |
+| function | `classify_recall_ownership` | `(conn, *, owner_user_id=…)` | — | [src](../../../core/services/recall_ownership_migration.py#L314) |
+| function | `_load_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L354) |
+| function | `_update_item` | `(conn, item, destination)` | — | [src](../../../core/services/recall_ownership_migration.py#L367) |
+| function | `_observation_backup_path` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L399) |
+| function | `_apply_observation_items` | `(report_id, items)` | — | [src](../../../core/services/recall_ownership_migration.py#L404) |
+| function | `apply_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L434) |
+| function | `rollback_report` | `(report_id)` | — | [src](../../../core/services/recall_ownership_migration.py#L502) |
+
 ## `core/services/recall_scheduler.py`
 _core/services/recall_scheduler.py_
 
@@ -677,13 +718,4 @@ _The single authorization matrix for Routine records._
 | function | `_deny` | `(reason)` | — | [src](../../../core/services/routine_authorization.py#L44) |
 | function | `authorize` | `(principal, action, record)` | Evaluate access without decrypting or including record content in reasons. | [src](../../../core/services/routine_authorization.py#L48) |
 | function | `require_authorized` | `(principal, action, record)` | — | [src](../../../core/services/routine_authorization.py#L95) |
-
-## `core/services/routine_classification.py`
-_Klassifikation af en rutine ved oprettelsen — valget, ikke gættet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse_execution_mode` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L57) |
-| function | `_parse_importance` | `(raw)` | — | [src](../../../core/services/routine_classification.py#L72) |
-| function | `classify_routine` | `(*, execution_mode=…, importance=…)` | Validér valget og udled de felter indbakken og runneren læser. | [src](../../../core/services/routine_classification.py#L85) |
 

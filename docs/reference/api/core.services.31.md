@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/wakeup_dispatcher.py`
+_Wakeup dispatcher — autonomous fire of self-wakeups._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L64) |
+| function | `_jarvis_skrev_for_nylig` | `(session_id)` | Skrev JEG inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L71) |
+| function | `_nylig_rolle_i_session` | `(session_id, *, rolle, vindue_s)` | Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe. | [src](../../../core/services/wakeup_dispatcher.py#L84) |
+| function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L118) |
+| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L209) |
+| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L240) |
+| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L417) |
+
 ## `core/services/wall_guard.py`
 _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
 

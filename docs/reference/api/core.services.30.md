@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_firstpass.py`
+_Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
+| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
+| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
+
 ## `core/services/visible_run_guard_notices.py`
 _Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
 
@@ -525,17 +534,4 @@ _Voice daemon — runs the Hey Jarvis voice loop as a background thread._
 | function | `start_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L60) |
 | function | `stop_voice_daemon` | `()` | — | [src](../../../core/services/voice_daemon.py#L73) |
 | function | `build_voice_daemon_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/voice_daemon.py#L84) |
-
-## `core/services/wakeup_dispatcher.py`
-_Wakeup dispatcher — autonomous fire of self-wakeups._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_skrev_for_nylig` | `(session_id)` | Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L64) |
-| function | `_jarvis_skrev_for_nylig` | `(session_id)` | Skrev JEG inden for karantænen? Self-safe → False ved enhver fejl. | [src](../../../core/services/wakeup_dispatcher.py#L71) |
-| function | `_nylig_rolle_i_session` | `(session_id, *, rolle, vindue_s)` | Findes der en besked fra `rolle` yngre end `vindue_s`? Self-safe. | [src](../../../core/services/wakeup_dispatcher.py#L84) |
-| function | `_active_turn_blocks` | `(session_id)` | Returnér en skip-årsag hvis en FERSK visible-tur kører i sessionen. | [src](../../../core/services/wakeup_dispatcher.py#L118) |
-| function | `pick_wakeup_run_target` | `(*, channel, record_session, app_resolver, owner_resolver, is_external)` | Beslut hvilken session et wakeup-run skal lande i — med Discord-guard. | [src](../../../core/services/wakeup_dispatcher.py#L209) |
-| function | `dispatch_due_wakeups` | `()` | Find newly-fired wakeups, push them out via webchat + heartbeat tick. | [src](../../../core/services/wakeup_dispatcher.py#L240) |
-| function | `_exec_dispatch_due_wakeups` | `(args)` | — | [src](../../../core/services/wakeup_dispatcher.py#L417) |
 

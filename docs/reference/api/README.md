@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17674 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17681 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -49,18 +49,18 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17674 functions/
 - [`core.services.17`](core.services.17.md) — `llm_json` … `meta_learning_aggregator`
 - [`core.services.18`](core.services.18.md) — `meta_learning_hypotheses` … `ntfy_gateway`
 - [`core.services.19`](core.services.19.md) — `nudge_broend` … `plugin_ruleset_store`
-- [`core.services.20`](core.services.20.md) — `policy_abstraction` … `prompt_memory_recall`
-- [`core.services.21`](core.services.21.md) — `prompt_mutation_loop` … `recall_ownership_migration`
-- [`core.services.22`](core.services.22.md) — `recall_scheduler` … `routine_classification`
-- [`core.services.23`](core.services.23.md) — `routine_crypto` … `runtime_self_model_affect`
-- [`core.services.24`](core.services.24.md) — `runtime_self_model_boundary` … `self_review_outcome_tracking`
-- [`core.services.25`](core.services.25.md) — `self_review_record_tracking` … `shared_cache`
-- [`core.services.26`](core.services.26.md) — `shared_language` … `stream_degeneration`
-- [`core.services.27`](core.services.27.md) — `stream_failure_kind` … `tool_calling_evidence`
-- [`core.services.28`](core.services.28.md) — `tool_catalog` … `user_md_update_proposal_tracking`
-- [`core.services.29`](core.services.29.md) — `user_model_daemon` … `visible_run_firstpass`
-- [`core.services.30`](core.services.30.md) — `visible_run_guard_notices` … `wakeup_dispatcher`
-- [`core.services.31`](core.services.31.md) — `wall_guard` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `policy_abstraction` … `prompt_heartbeat_self_knowledge`
+- [`core.services.21`](core.services.21.md) — `prompt_memory_recall` … `recall_observability`
+- [`core.services.22`](core.services.22.md) — `recall_ownership_migration` … `routine_authorization`
+- [`core.services.23`](core.services.23.md) — `routine_classification` … `runtime_self_model`
+- [`core.services.24`](core.services.24.md) — `runtime_self_model_affect` … `self_review_cadence_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `self_review_outcome_tracking` … `share_guard_store`
+- [`core.services.26`](core.services.26.md) — `shared_cache` … `state_flag_store`
+- [`core.services.27`](core.services.27.md) — `stream_degeneration` … `tiny_webchat_execution_pilot`
+- [`core.services.28`](core.services.28.md) — `tool_calling_evidence` … `user_hensyn`
+- [`core.services.29`](core.services.29.md) — `user_md_update_proposal_tracking` … `visible_run_cost`
+- [`core.services.30`](core.services.30.md) — `visible_run_firstpass` … `voice_daemon`
+- [`core.services.31`](core.services.31.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

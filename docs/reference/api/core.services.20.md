@@ -20,6 +20,19 @@ _Policy Abstraktion — Phase 2 of Generalized Learning._
 | function | `_compute_relevance` | `(*, principle, transfer_domains, task_description, context_domain, base_confidence)` | Score how relevant a generalized policy is to the current task. | [src](../../../core/services/policy_abstraction.py#L457) |
 | function | `build_policy_abstraction_prompt_section` | `(*, limit=…)` | Build a compact awareness section with top generalized policies. | [src](../../../core/services/policy_abstraction.py#L499) |
 
+## `core/services/post_run_compaction.py`
+_Luk kontekst-budgettet igen efter en lang synlig tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_completed_visible_session` | `(event)` | Session-id for et gemt, afsluttende visible-run-svar — ellers ``""``. | [src](../../../core/services/post_run_compaction.py#L28) |
+| function | `compact_after_completed_turn` | `(session_id)` | Vurdér og evt. start den normale compaction for den afsluttede session. | [src](../../../core/services/post_run_compaction.py#L41) |
+| function | `_handle` | `(event)` | — | [src](../../../core/services/post_run_compaction.py#L65) |
+| function | `_loop` | `(subscriber)` | — | [src](../../../core/services/post_run_compaction.py#L77) |
+| function | `_catch_up_recent_sessions` | `()` | Efter en genstart: eftertjek få nyligt afsluttede sessioner én gang. | [src](../../../core/services/post_run_compaction.py#L88) |
+| function | `start_post_run_compaction` | `()` | Start subscriber + et asynkront catch-up. Idempotent. | [src](../../../core/services/post_run_compaction.py#L106) |
+| function | `stop_post_run_compaction` | `()` | — | [src](../../../core/services/post_run_compaction.py#L124) |
+
 ## `core/services/post_tool_answer_guard.py`
 _Guards for tool turns that end in hollow final prose._
 
@@ -705,11 +718,4 @@ _Heartbeat self-knowledge section builder._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
-
-## `core/services/prompt_memory_recall.py`
-_Supplementary non-blocking recall during visible prompt assembly._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L17) |
 

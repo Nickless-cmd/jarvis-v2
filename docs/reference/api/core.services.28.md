@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_calling_evidence.py`
+_Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_db_noegle` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L71) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/tool_calling_evidence.py#L79) |
+| function | `tool_calling_record` | `(*, min_koersler=…)` | (provider, model) -> {koersler, med_kald, andel, dom}. | [src](../../../core/services/tool_calling_evidence.py#L84) |
+| function | `kan_kalde_vaerktoejer` | `(provider, model)` | Skal denne model faa en opgave der KRAEVER vaerktoejer? | [src](../../../core/services/tool_calling_evidence.py#L138) |
+
 ## `core/services/tool_catalog.py`
 _Compact tool catalog for system prompt._
 
@@ -543,29 +553,4 @@ _Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid._
 | function | `_profil_linjer` | `(workspace_dir)` | (sektion, linje) fra de dele af USER.md der kan bære hensyn. | [src](../../../core/services/user_hensyn.py#L561) |
 | function | `tick_user_hensyn` | `(*, workspace_dir=…, llm=…, skip_cadence=…)` | Baggrunds-udledning: læs profilen, udled hensyn, anvend levetiderne. | [src](../../../core/services/user_hensyn.py#L579) |
 | function | `byg_hensyn_sektion` | `(*, max_chars=…, nu=…, taeller_injektion=…)` | Prompt-sektionen — "" når intet hensyn er aktivt. | [src](../../../core/services/user_hensyn.py#L654) |
-
-## `core/services/user_md_update_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_user_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L20) |
-| function | `refresh_runtime_user_md_update_proposal_statuses` | `()` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L42) |
-| function | `build_runtime_user_md_update_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L73) |
-| function | `_extract_user_md_update_proposals` | `()` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L101) |
-| function | `_persist_user_md_update_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L159) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L232) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L242) |
-| function | `_build_proposal_type` | `(*, item)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L252) |
-| function | `_build_user_dimension` | `(*, item, proposal_type)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L265) |
-| function | `_build_proposed_update` | `(*, proposal_type)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L278) |
-| function | `_build_proposal_reason` | `(*, proposal_type, proposal_confidence, signal_summary)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L288) |
-| function | `_build_proposal_confidence` | `(*, signal_confidence, proposal_type)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L300) |
-| function | `_build_source_anchor` | `(*, item)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L308) |
-| function | `_build_status_reason` | `(*, proposal_type, signal_status)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L318) |
-| function | `_title_suffix` | `(user_dimension)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L329) |
-| function | `_dimension_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L334) |
-| function | `_source_anchor_from_support_summary` | `(summary)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L339) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L344) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L353) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/user_md_update_proposal_tracking.py#L363) |
 

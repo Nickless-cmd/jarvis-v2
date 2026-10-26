@@ -77,6 +77,10 @@ from core.services.session_inbox import (
     start_session_inbox,
     stop_session_inbox,
 )
+from core.services.post_run_compaction import (
+    start_post_run_compaction,
+    stop_post_run_compaction,
+)
 from core.services.auto_remember_subscriber import (
     start_auto_remember_subscriber,
     stop_auto_remember_subscriber,
@@ -373,6 +377,7 @@ def create_app() -> FastAPI:
             start_theory_of_mind_tracker()
             start_spatial_entity_ledger()
             start_session_inbox()
+            start_post_run_compaction()
             start_auto_remember_subscriber()
             start_daily_journal_daemon()
             start_discord_gateway()
@@ -791,6 +796,12 @@ def create_app() -> FastAPI:
                 ("stop_discord_gateway", stop_discord_gateway),
                 ("stop_telegram_gateway", stop_telegram_gateway),
                 ("stop_auto_remember_subscriber", stop_auto_remember_subscriber),
+                ("stop_post_run_compaction", stop_post_run_compaction),
+                ("stop_session_inbox", stop_session_inbox),
+                ("stop_spatial_entity_ledger", stop_spatial_entity_ledger),
+                ("stop_theory_of_mind_tracker", stop_theory_of_mind_tracker),
+                ("stop_metacognition_tracker", stop_metacognition_tracker),
+                ("stop_run_closure_gate", stop_run_closure_gate),
                 ("stop_daily_journal_daemon", stop_daily_journal_daemon),
                 ("stop_voice_daemon", stop_voice_daemon),
                 ("stop_watcher_daemon", _senere("core.services.process_watcher",

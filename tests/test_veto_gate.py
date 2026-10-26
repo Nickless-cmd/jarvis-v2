@@ -234,3 +234,55 @@ def test_forslaget_til_naeste_opgave_er_aldrig_gatet(monkeypatch):
     # består fordi sektionen er blevet harmløs.
     allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
     assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+
+
+# ── Værktøjsopdagelsen må ikke være gatet (26/10-2026) ───────────────────────
+#
+# Målt 26/10: gaten blokerede `load_more_tools` — det værktøj der henter
+# skemaet for `override_gate`. Når `override_gate` ikke allerede var i
+# værktøjslisten, var der dermed ingen vej til at hente den: gaten blokerede
+# adgangen til sin egen frigivelsesmekanisme. Observeret som
+# veto-063b9826d64d, i samme tur hvor en MEMORY-rettelse blev afvist.
+#
+# Samme klasse som svarkanalen ovenfor: at gate adgangen til udvejen fjerner
+# ikke behovet for den — den gør bare `bash` til den eneste dør.
+#
+# MUTATION der skal fanges:
+#   M12 — fjern "load_more_tools" fra `_ALWAYS_ALLOWED_TOOLS` -> testen falder
+
+def test_vaerktoejsopdagelsen_er_aldrig_gatet(monkeypatch):
+    """`load_more_tools` henter KUN et skema — den udfører intet."""
+    vg, written = _hermetic(monkeypatch, _FIRM_SECTION)
+    allowed, reason = vg.check_veto("load_more_tools", "jeg pusher nu", record_event=True)
+    assert allowed is True, f"load_more_tools blev gatet: {reason}"
+    assert written == [], "værktøjsopdagelse må ikke skrive blocked-rækker"
+
+    # Kontrollen: sektionen vetoer stadig en rigtig handling, så testen ikke
+    # består fordi sektionen er blevet harmløs.
+    allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
+    assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+
+
+# ── Hele frigivelses-kæden skal være åben (26/10-2026) ───────────────────────
+#
+# Egenskaben er ikke de enkelte navne, men at der findes en SAMMENHÆNGENDE vej
+# ud af en blokering. Mangler ét led, er de øvrige utilstrækkelige — det er
+# præcis hvad der skete 26/10, hvor `override_gate` var undtaget men skemaet
+# for den ikke kunne hentes.
+#
+# MUTATION der skal fanges:
+#   M13 — fjern ét vilkårligt led af kaeden -> testen falder
+
+def test_frigivelseskaeden_er_komplet(monkeypatch):
+    """Se status, hent skemaet, armér — eller spørg. Alle fire led skal virke."""
+    from core.services.veto_gate import _ALWAYS_ALLOWED_TOOLS
+
+    kaede = ("gate_override_status", "load_more_tools", "override_gate", "pause_and_ask")
+    manglende = [n for n in kaede if n not in _ALWAYS_ALLOWED_TOOLS]
+    assert not manglende, f"frigivelseskaeden mangler: {manglende}"
+
+    # Og hvert led skal faktisk slippe igennem — ikke bare stå på listen.
+    vg, _ = _hermetic(monkeypatch, _FIRM_SECTION)
+    for navn in kaede:
+        allowed, reason = vg.check_veto(navn, "jeg pusher nu", record_event=False)
+        assert allowed is True, f"{navn} blev gatet: {reason}"

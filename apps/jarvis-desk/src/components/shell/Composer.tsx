@@ -185,11 +185,11 @@ export function Composer({
    * rapporteres den op frem for at blive regnet ud to steder. Ingen dobbelt
    * sandhed.
    */
-  onGauge?: (g: { tokens: number; denominator: number }) => void
+  onGauge?: (g: { tokens: number; denominator: number; provider: string; model: string }) => void
   /** System-overhead (stabil prefix) — til tooltip'ens ægte total-tal. */
   overheadTokens?: number
   compactAt?: number
-  /** Compaction kører lige nu → composeren pauses (som i Claude Code) indtil den er færdig. */
+  /** Compaction kører i baggrunden. Bruges kun til status og til at forhindre et ekstra manuelt compact-kald. */
   compacting?: boolean
   /** Sat → context-ringen bliver en knap der udløser manuel compaction (Claude-Code /compact). */
   onManualCompact?: () => void
@@ -319,11 +319,11 @@ export function Composer({
   const ringDenominator = effectiveCtx || compactAt
 
   useEffect(() => {
-    onGauge?.({ tokens: contextTokens, denominator: ringDenominator })
+    onGauge?.({ tokens: contextTokens, denominator: ringDenominator, provider: provChoice, model: selModel })
     // `onGauge` udelades: kalderen gendanner den paa hver render, og at afhaenge
     // af den ville goere effekten til en loekke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contextTokens, ringDenominator])
+  }, [contextTokens, ringDenominator, provChoice, selModel])
 
   // Member: standard/pro. Owner: konkret model afhænger af valgt provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'
@@ -504,9 +504,6 @@ export function Composer({
     doSend()
   }, [attachments, doSend])
 
-  // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
-  // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
-  const [queuedDuringCompact, setQueuedDuringCompact] = useState(false)
   /** Sættes af forslags-blokken nedenfor; kaldes fra `send`. */
   const meldEget = useRef<() => void>(() => { /* intet forslag endnu */ })
   const send = useCallback(() => {
@@ -517,29 +514,15 @@ export function Composer({
     // resten af forslaget.
     meldEget.current()
     // `/side <opgave>` er en KOMMANDO, ikke en besked. Den åbner opret-boksen
-    // med teksten forudfyldt og sendes ALDRIG til modellen. Den ligger før
-    // compacting-grenen med vilje: en lokal kommando skal ikke vente på at
-    // konteksten komprimeres, og den koster ingen tokens.
+    // med teksten forudfyldt og sendes ALDRIG til modellen.
     const somKommando = text.trim()
     if (/^\/side(\s|$)/i.test(somKommando)) {
       setSideDialog(somKommando.replace(/^\/side\s*/i, ''))
       setText('')
       return
     }
-    if (compacting) {
-      // Også en upload der endnu ikke har sit id tæller som «noget at sende»
-      // — ellers blev beskeden tabt stille mens compaction kørte.
-      if (text.trim() || attachments.some((a) => !a.error)) setQueuedDuringCompact(true)
-      return
-    }
     doSend()
-  }, [compacting, doSend, text, attachments])
-  useEffect(() => {
-    if (!compacting && queuedDuringCompact) {
-      setQueuedDuringCompact(false)
-      doSend()
-    }
-  }, [compacting, queuedDuringCompact, doSend])
+  }, [doSend, text, setText])
 
   // @fil-komplettering. Kun for ejeren: endpointet læser værtens disk.
   const filnavne = useFileMention(config, isOwner)
@@ -777,7 +760,7 @@ export function Composer({
           inputRef={ref}
           value={text}
           placeholder={
-            compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…'
+            compacting ? 'Komprimerer kontekst i baggrunden — du kan stadig sende…'
               : streaming ? 'Skriv en follow-up (sendes når J.A.R.V.I.S. er færdig)…'
                 : ghostAktiv ? ''
                   : 'Bed om hvad som helst'
@@ -959,16 +942,6 @@ export function Composer({
             >
               <Square size={12} strokeWidth={2.5} />
             </button>
-          ) : compacting ? (
-            <button
-              type="button"
-              className={`composer-send composer-compacting ${queuedDuringCompact ? 'queued' : ''}`}
-              onClick={send}
-              aria-label={queuedDuringCompact ? 'I kø — sendes efter compaction' : 'Komprimerer kontekst'}
-              title={queuedDuringCompact ? 'Din besked sendes når komprimeringen er færdig' : 'Komprimerer kontekst — vent et øjeblik'}
-            >
-              <Loader2 size={14} strokeWidth={2.5} className="spin" />
-            </button>
           ) : tomt && voiceSupported && onVoice ? (
             /* Tomt felt → Puls-mærket, som i mobilappen: «I hvile er hoejre knap
                en voice-knap; saa snart der er tekst, bliver den send». Foer laa
@@ -987,9 +960,8 @@ export function Composer({
               <JarvisRing size={15} />
             </button>
           ) : venterPaaUpload ? (
-            /* Uploaden er ikke færdig endnu — beskeden venter og sendes selv.
-               Knappen viser det samme som under compaction, så «der sker noget»
-               er synligt i stedet for tavst. */
+            /* Uploaden er ikke færdig endnu — beskeden venter og sendes selv,
+               så «der sker noget» er synligt i stedet for tavst. */
             <button
               type="button"
               className="composer-send composer-waiting"

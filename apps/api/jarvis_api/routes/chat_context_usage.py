@@ -38,8 +38,7 @@ def _compactions_for_session(session_id: str) -> list[dict]:
 @router.get("/context-info")
 def chat_context_info() -> dict:
     """Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal:
-    autocompact-punktet (context_compact_threshold_tokens). Klienten holder
-    selv tælleren (usage.input + cache fra streamen)."""
+    autocompact-punktet (context_attention_budget_tokens)."""
     from core.runtime.settings import load_settings
     s = load_settings()
     # 2026-07-18: ringen måler nu mod ATTENTION-budgettet (den PRIMÆRE trigger), så den
@@ -57,7 +56,7 @@ async def chat_context_usage(
     """ÆGTE kontekst-fyld for en session — backend-autoritativt.
 
     Returnerer `tokens` = estimat af det FAKTISKE transcript der sendes til modellen siden
-    sidste compact (præcis det tal autocompact selv måler mod context_compact_threshold_tokens).
+    sidste compact (præcis det tal autocompact måler mod attention-budgettet).
     DERFOR harmonerer ringen med autocompact: den vokser mod loftet og FALDER når compaction
     fyrer — i stedet for den gamle per-tur stream-usage der nulstilledes hver besked.
 

@@ -1352,7 +1352,11 @@ def chat_model_context(provider: str = "", model: str = "") -> dict:
     model fylder forskelligt)."""
     from core.runtime.settings import load_settings
     from core.services.model_context import model_context_window, effective_context_limit
-    compact = int(load_settings().context_compact_threshold_tokens or 0)
+    settings = load_settings()
+    # Én sandhed for ringen og motoren: auto-compaction styres af attention-
+    # budgettet. Den gamle context_compact_threshold_tokens er et legacy-
+    # sikkerhedsloft og fik 80k-compaction til at se ud som 40 % af 200k.
+    compact = int(getattr(settings, "context_attention_budget_tokens", 35_000) or 35_000)
     window = model_context_window(provider, model)
     effective = effective_context_limit(provider, model, compact)
     return {"window": window, "compact_at": compact, "effective": int(effective)}

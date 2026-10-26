@@ -459,7 +459,7 @@ function RaekkeTranskriptImpl({
             aaben={aaben}
             koerer={arbejdeKoerer && aabenManuelt === null}
             tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
-            meta={visTokens ? <span className="rv-turMeta"><RullendeTokens tokens={tokens} /> tokens</span> : null}
+            meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
             skillelinje={visSkillelinje}
             sekunder={!streaming ? turSekunder : null}
             foldbar={arbejde.length > 0}

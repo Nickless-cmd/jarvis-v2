@@ -225,7 +225,8 @@ export function EnvironmentPanel({
 
           {/* Maskin- og kontekst-tryk. Bjørn: miljø-feltet er stedet hvor
               tilstand hører til, ikke endnu et dashboard. */}
-          <RunHealth config={config} tokens={kontekstTokens ?? totalTokens} komprimerVed={komprimerVed} sessionId={sessionId} />
+          <RunHealth config={config} tokens={kontekstTokens ?? totalTokens} komprimerVed={komprimerVed}
+            sessionId={sessionId} contextRefreshKey={refreshKey} />
 
           {note && (
             <div className={`env-note ${note.err ? 'is-err' : ''}`}>

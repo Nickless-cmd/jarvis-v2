@@ -24,6 +24,16 @@ describe('shell', () => {
     await userEvent.type(ta, 'linje1{Shift>}{Enter}{/Shift}linje2')
     expect(onSend).not.toHaveBeenCalled()
   })
+  it('Composer sender straks mens compaction kører i baggrunden', async () => {
+    const onSend = vi.fn()
+    renderComposer(<Composer compacting streaming={false} onSend={onSend} onStop={() => {}} getSessionId={async () => 's1'} model="m" />)
+    const ta = screen.getByRole('textbox')
+    expect(ta).toHaveAttribute('placeholder', expect.stringContaining('i baggrunden'))
+    await userEvent.type(ta, 'fortsæt nu{Enter}')
+    expect(onSend).toHaveBeenCalledWith('fortsæt nu', expect.objectContaining({ permission: 'ask', planMode: false }))
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Komprimerer kontekst|I kø/ })).toBeNull()
+  })
   it('Composer viser stop-knap der kalder onStop under streaming', async () => {
     const onStop = vi.fn()
     renderComposer(<Composer streaming onSend={() => {}} onStop={onStop} getSessionId={async () => 's1'} model="m" />)

@@ -29,6 +29,15 @@ describe('KontekstDetaljer', () => {
     await waitFor(() => expect(getKontekst).toHaveBeenCalledWith(cfg, 'samtale-7'))
   })
 
+  it('genhenter en åben sidste-tur-visning når en ny tur er gemt', async () => {
+    const { getKontekst } = await import('../../lib/coworkApi')
+    ;(getKontekst as ReturnType<typeof vi.fn>).mockClear()
+    const { rerender } = render(<KontekstDetaljer config={cfg} sessionId="s1" refreshKey={1} />)
+    await waitFor(() => expect(getKontekst).toHaveBeenCalledTimes(1))
+    rerender(<KontekstDetaljer config={cfg} sessionId="s1" refreshKey={2} />)
+    await waitFor(() => expect(getKontekst).toHaveBeenCalledTimes(2))
+  })
+
   it('siger det ærligt når der ingen målt tur er', async () => {
     const { getKontekst } = await import('../../lib/coworkApi')
     ;(getKontekst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({

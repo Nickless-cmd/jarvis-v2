@@ -236,6 +236,24 @@ def test_compact_session_history_compresses_only_old_messages(monkeypatch):
     assert len(captured_input["msgs"]) == 5
 
 
+def test_compact_session_history_does_not_shadow_message_added_while_summarising(monkeypatch):
+    """En baggrundskomprimering må vige for en ny composer-besked."""
+    from core.context import session_compact
+
+    messages = [{"role": "user", "content": f"msg {i}"} for i in range(25)]
+    reads = iter([messages, [*messages, {"role": "user", "content": "ny mens compact kører"}]])
+    store = Mock(return_value="should-not-be-written")
+    monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: next(reads))
+    monkeypatch.setattr(session_compact, "_store_marker", store)
+
+    result = session_compact.compact_session_history(
+        "session-x", keep_recent=20, summarise_fn=lambda _: "Summary",
+    )
+
+    assert result is None
+    store.assert_not_called()
+
+
 def test_compact_session_history_round_atomic_path_never_splits_tool_pair(monkeypatch):
     """New 2026-07-18 keep_recent_tokens path: round-atomic. A tool_use and its tool_result
     must never end up on opposite sides of the compaction boundary."""

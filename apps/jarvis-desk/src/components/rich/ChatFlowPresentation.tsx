@@ -11,6 +11,7 @@ import { BlocksRenderer } from './BlocksRenderer'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LabelSkift, SynteseLinje } from './LabelSkift'
 import { FoldPil, TurHoved } from './TurHoved'
+import { RullendeTokens } from '../feedback/RullendeTal'
 
 export interface ChatFlowPresentationProps {
   blocks: ContentBlock[]
@@ -27,6 +28,8 @@ export interface ChatFlowPresentationProps {
   /** Turens varighed udledt af transskriptet. Bruges på persisterede ture, hvor
    *  stream-tilstanden (og dermed `turStart`/`turSlut`) ikke findes længere. */
   varighedSekunder?: number | null
+  /** Levende output-token-estimat; erstattes af providerens slutmåling. */
+  tokens?: number
   workingStep?: string | null
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -76,6 +79,7 @@ export function ChatFlowPresentation({
   turStart,
   turSlut,
   varighedSekunder,
+  tokens = 0,
   workingStep,
   rundeEtiketter,
   tankeResumeer,
@@ -276,6 +280,9 @@ export function ChatFlowPresentation({
             koerer={streaming && !finalAnswerStarted}
             sekunder={sekunder}
             tekst={model.hovedTekst}
+            meta={streaming && tokens > 0
+              ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>
+              : null}
             skillelinje
             onToggle={() => {
               const naeste = !aaben

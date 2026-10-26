@@ -22,6 +22,12 @@ const common = {
 }
 
 describe('ChatFlowPresentation', () => {
+  it('viser levende output-tokens i chat-turhovedet', () => {
+    const { container } = render(<ChatFlowPresentation {...common} mode="living" blocks={[]} tokens={321} />)
+    expect(container.querySelector('.rv-turMeta .rullende')).toHaveAttribute('aria-label', '321')
+    expect(container.querySelector('.rv-turMeta')).toHaveTextContent('output')
+  })
+
   it('replaces the Living status in place instead of accumulating a list', () => {
     const { rerender } = render(<ChatFlowPresentation {...common} mode="living"
       blocks={['Et', 'To', 'Tre', 'Fire'].map(summary)} />)

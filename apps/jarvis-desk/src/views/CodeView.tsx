@@ -140,7 +140,9 @@ export function CodeView({
   const komprRef = useRef<{ sid: string | null; v: string | null }>({ sid: null, v: null })
   // Ringens tal, meldt op fra Composer. Miljoe-feltet skal vise DET SAMME —
   // ellers staar der to «Kontekst»-procenter der er uenige (Bjoern 8/9-2026).
-  const [gauge, setGauge] = useState<{ tokens: number; denominator: number }>({ tokens: 0, denominator: 0 })
+  const [gauge, setGauge] = useState<{ tokens: number; denominator: number; provider: string; model: string }>({
+    tokens: 0, denominator: 0, provider: '', model: '',
+  })
 
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
@@ -457,10 +459,11 @@ export function CodeView({
   useEffect(() => {
     if (!config || !sessionId) { setContextTokens(0); setOverheadTokens(0); setCompacting(false); setCompactions([]); return }
     let alive = true
-    const poll = () => getContextUsage(config, sessionId)
+    const poll = () => getContextUsage(config, sessionId, gauge.provider, gauge.model)
       .then((r) => {
         if (!alive) return
-        setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
+        setContextTokens(r.tokens || 0); setCompactAt(r.effective || r.compact_at || 0)
+        setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
         setCompactions(r.compactions ?? [])
           // En ny komprimerings-markoer er landet: hent beskederne, saa den
           // staar paa skaermen uden manuel opdatering (Bjoern 18/9-2026).
@@ -481,7 +484,7 @@ export function CodeView({
     }, compacting ? 1200 : 6000)
     return () => { alive = false; clearInterval(id) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config?.apiBaseUrl, config?.authToken, sessionId, stream.status, compacting])
+  }, [config?.apiBaseUrl, config?.authToken, sessionId, stream.status, compacting, gauge.provider, gauge.model])
 
   // Manuel compaction (Claude-Code /compact). Udløser samme motor NU.
   const triggerManualCompact = async (focus: string) => {

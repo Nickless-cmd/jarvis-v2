@@ -173,7 +173,8 @@ export function ChatView({
     const poll = () => getContextUsage(cfg, sessionId)
       .then((r) => {
         if (!alive) return
-        setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
+        setContextTokens(r.tokens || 0); setCompactAt(r.effective || r.compact_at || 0)
+        setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
         setCompactions(r.compactions ?? [])
           // En ny komprimerings-markoer er landet: hent beskederne, saa den
           // staar paa skaermen uden manuel opdatering (Bjoern 18/9-2026).
@@ -1082,6 +1083,7 @@ export function ChatView({
               role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
+              tokens={stream.usage.output}
               paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
           </>
         )}
@@ -1094,7 +1096,8 @@ export function ChatView({
             workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
             role="assistant" blocks={withoutPauseAsk(liveChatBlokke(followState))} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
-            tankeResumeer={followState.tankeResumeer} config={raekkeConfig} />
+            tankeResumeer={followState.tankeResumeer} config={raekkeConfig}
+            tokens={followState.usage.output} />
         )}
         {!streaming ? <ChatFlowSuggestion streaming={false}
           onboardingActive={!chatFlow.state.onboarding_seen} /> : null}

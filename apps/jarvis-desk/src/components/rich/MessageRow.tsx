@@ -158,7 +158,7 @@ function MessageRowImpl({
   varighedSekunder?: number | null
   /** Hele den aktive turs forløbne tid; code-rækken viser den ved den aktive runde. */
   elapsedMs?: number
-  /** Code-turens levende output-token-tal. */
+  /** Turens levende output-token-tal i både Chat og Code. */
   tokens?: number
   onWorkExpanded?: () => void
   paceFinalAnswer?: boolean
@@ -272,6 +272,7 @@ function MessageRowImpl({
                   streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
                   finalAnswerStarted={finalAnswerStarted} workingStep={workingStep}
                   runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
+                  tokens={tokens}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
                   paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}

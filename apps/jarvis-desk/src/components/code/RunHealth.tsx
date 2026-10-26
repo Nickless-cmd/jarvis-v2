@@ -23,13 +23,15 @@ function vindue(n: number): string {
 }
 
 export function RunHealth({
-  config, tokens = 0, komprimerVed = 0, sessionId,
+  config, tokens = 0, komprimerVed = 0, sessionId, contextRefreshKey = 0,
 }: {
   config?: ApiConfig
   tokens?: number
   komprimerVed?: number
   /** Samtalen kontekst-detaljerne skal vise sidste tur for. */
   sessionId?: string | null
+  /** Skifter når en tur er gemt, så åbne sidste-tur-detaljer genhentes. */
+  contextRefreshKey?: string | number
 }) {
   const [krop, setKrop] = useState<Krop | null>(null)
   const [kontekstAaben, setKontekstAaben] = useState(false)
@@ -109,7 +111,7 @@ export function RunHealth({
       )}
       {komprimerVed > 0 && kontekstAaben && (
         <li className="env-row rh-kontekst-detaljer">
-          <KontekstDetaljer config={config} sessionId={sessionId} />
+          <KontekstDetaljer config={config} sessionId={sessionId} refreshKey={contextRefreshKey} />
         </li>
       )}
     </ul>

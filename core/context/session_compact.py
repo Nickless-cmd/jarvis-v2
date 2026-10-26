@@ -160,6 +160,20 @@ def compact_session_history(
         exc.tokens = (tokens_foer, tokens_efter)  # type: ignore[attr-defined]
         raise exc
 
+    # Komprimeringen koerer i baggrunden, og Desk maa ikke holde composeren
+    # tilbage imens. Hvis en ny besked landede mens opsummeringsmodellen
+    # arbejdede, maa den derfor vinde: en markoer appendes sidst og ville ellers
+    # faa den nye besked til at ligge FOER markoeren og dermed forsvinde fra
+    # naeste prompt. Kassér dette snapshot; en senere tur kan komprimere den
+    # friske overflade.
+    if _get_all_session_messages(session_id) != messages:
+        logger.info(
+            "session_compact: session=%s aendrede sig under baggrundskomprimering — "
+            "kasserer markoeren",
+            session_id,
+        )
+        return None
+
     marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
 
     # Den nye markoer afloeser de gamle. Uden dette ville vagten (hvert 30.

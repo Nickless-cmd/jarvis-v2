@@ -17,8 +17,8 @@ import { getKontekst, type KontekstResume } from '../../lib/coworkApi'
  * Hentes først når rækken foldes ud.
  */
 export function KontekstDetaljer({
-  config, sessionId,
-}: { config: ApiConfig | undefined; sessionId?: string | null }) {
+  config, sessionId, refreshKey = 0,
+}: { config: ApiConfig | undefined; sessionId?: string | null; refreshKey?: string | number }) {
   const [data, setData] = useState<KontekstResume | null | undefined>(undefined)
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function KontekstDetaljer({
       .then((d) => { if (levende) setData(d) })
       .catch(() => { if (levende) setData(null) })
     return () => { levende = false }
-  }, [config?.apiBaseUrl, config?.authToken, sessionId])
+  }, [config?.apiBaseUrl, config?.authToken, sessionId, refreshKey])
 
   if (data === undefined) return <p className="ctx-note">Henter…</p>
   if (!data?.har_data) return <p className="ctx-note">Ingen målt tur i denne samtale endnu.</p>

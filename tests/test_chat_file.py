@@ -144,10 +144,14 @@ def test_model_context_returns_effective():
     j = r.json()
     assert j["window"] == 1_000_000
     assert j["effective"] == min(j["window"], j["compact_at"]) if j["compact_at"] else j["effective"] == j["window"]
+    from core.runtime.settings import load_settings
+    assert j["compact_at"] == load_settings().context_attention_budget_tokens
 
 
 def test_model_context_small_model_capped_by_window():
-    # gpt-4o (128k) < compact → effective = 128k (modellens eget loft).
+    # Endpointet rapporterer både modellens loft og det lavere attention-budget.
     r = client.get("/chat/model-context", params={"provider": "github-copilot", "model": "gpt-4o"})
     assert r.status_code == 200
-    assert r.json()["window"] == 128_000
+    j = r.json()
+    assert j["window"] == 128_000
+    assert j["effective"] == min(j["window"], j["compact_at"])

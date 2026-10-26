@@ -1,6 +1,6 @@
-/** Context-ring (#9): viser hvor fyldt samtalens kontekst-vindue er.
- *  blå → gul → rød → autocompact. Kun ægte tal: tokens kommer fra streamens
- *  usage (input + cache), compactAt fra backend-config.
+/** Context-ring (#9): viser hvor tæt samtaletranscriptet er på compaction.
+ *  blå → gul → rød → autocompact. Tæller og loft kommer fra backendens
+ *  context-usage/attention-policy; live output hører til turhovedet.
  *
  *  Zoner (af compactAt): <60% blå, <85% gul, <100% rød, ≥100% pulserende rød
  *  (autocompact-zone). */

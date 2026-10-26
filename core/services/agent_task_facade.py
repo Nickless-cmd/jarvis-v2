@@ -37,7 +37,15 @@ def _session_scope(owner: str, session: str) -> tuple[str, str]:
     if row is None:
         return "", ""
     session_owner = str(row["owner_user_id"] or "")
-    if session_owner and session_owner != owner:
+    # 26/10-2026: en TOM owner er ikke "en anden ejer". Maalt efter genstart:
+    # `current_user_id()` er tom i runtime-processen (ContextVar saettes i API'ets
+    # middleware, ikke i runtime-turen), saa `Task` afviste HVERT kald med
+    # "sessionen tilhoerer en anden ejer" — ogsaa fra ejerens egen session.
+    # En tom owner kan ikke paaSTAA et ejerskab, men den kan heller ikke goere
+    # vaerktoejet ubrugeligt: sessionens ejer er den autentificerede sandhed.
+    # En IKKE-tom owner der afviger fra sessionen afvises stadig — det er den
+    # eneste vej vaernet skal lukke.
+    if owner and session_owner and session_owner != owner:
         raise ValueError("sessionen tilhoerer en anden ejer")
     kind, root = str(row["workspace_kind"] or ""), str(row["workspace_root"] or "")
     # Desk may store the server root by its stable UI name. Resolve only the

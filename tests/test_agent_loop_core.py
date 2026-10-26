@@ -91,6 +91,42 @@ def test_an_agent_without_write_tools_is_not_judged_on_writing():
     assert out["rounds"] == 1 and "incomplete" not in out
 
 
+# ── Ubesvarede nummererede spoergsmaal (26/10-2026) ─────────────────────────────────
+# Maalt paa en rigtig Task-agent: den svarede paa 1 af 3 spoergsmaal og sluttede med
+# "Nu spoergsmaal 2 og 3." — hverken _PROGRESS_PREFIXES eller _PROMISE_DA fangede den
+# form, og den blev meldt `completed` med `partial: false`. Disse to tests er den
+# INTEGRATION der binder taellingen til loekken; uden dem er `_unanswered_questions`
+# kun en funktion nogen kalder, og mutationstesten viste at de rene funktionstests
+# ikke fangede det.
+_TRE_SPOERGSMAAL = "SPØRGSMÅL 1: a?\nSPØRGSMÅL 2: b?\nSPØRGSMÅL 3: c?\n"
+
+
+def test_ubesvarede_spoergsmaal_giver_en_nudge_og_markeres_ufuldstaendig():
+    """Scouten har kaldt et vaerktoej, svarer paa 1 af 3, faar én nudge, svarer stadig
+    ufuldstaendigt. Vaerktoejskaldet i runde 1 er noedvendigt: uden det fyrer
+    scout-nudgen paa `total_tool_calls == 0`, og saa isolerer testen ikke den gren
+    der taeller spoergsmaal (maalt: mutationen blev MISSET uden det)."""
+    io = FakeIO([
+        {"text": "", "tool_calls": [_tc(0)]},   # runde 1: laeser noget
+        {"text": "1. svar paa a."},             # runde 2: ufuldstaendigt -> nudge
+        {"text": "1. svar paa a."},             # runde 3: stadig ufuldstaendigt
+    ])
+    out = _run(io, prompt=_TRE_SPOERGSMAAL, scout=True)
+    assert out["rounds"] == 3, "nudgen skulle have givet praecis én ekstra runde"
+    assert out.get("incomplete") is True
+
+
+def test_alle_spoergsmaal_besvaret_giver_ingen_nudge_og_ingen_markering():
+    """Modstykket: en fuld leverance maa IKKE markeres. Ellers er vagten stoj.
+    Agenten har kaldt et vaerktoej foerst — ellers fyrer scout-nudgen paa
+    `total_tool_calls == 0`, og det er en anden (og korrekt) adfaerd."""
+    io = FakeIO([{"text": "", "tool_calls": [_tc(0)]}, {"text": "1. a\n2. b\n3. c\n"}])
+    out = _run(io, prompt=_TRE_SPOERGSMAAL, scout=True)
+    assert out["rounds"] == 2, "én runde med værktøj, én med svaret — ingen nudge"
+    assert out["total_tool_calls"] == 1
+    assert "incomplete" not in out
+
+
 def test_module_imports_only_the_standard_library():
     """Den indlaeses i en sandbox hvor intet andet er monteret."""
     tree = ast.parse(inspect.getsource(core))
@@ -100,7 +136,7 @@ def test_module_imports_only_the_standard_library():
             mods |= {a.name.split(".")[0] for a in n.names}
         elif isinstance(n, ast.ImportFrom):
             mods.add((n.module or "").split(".")[0])
-    assert mods <= {"__future__", "logging", "time", "typing"}, mods
+    assert mods <= {"__future__", "logging", "re", "time", "typing"}, mods
 
 
 def test_a_plain_answer_ends_after_one_round():

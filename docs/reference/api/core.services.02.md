@@ -97,10 +97,10 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 | function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L378) |
 | function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L394) |
 | function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L432) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L531) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L590) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L729) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L733) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L539) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L598) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L737) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L741) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._
@@ -251,8 +251,8 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L28) |
-| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L50) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L112) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L58) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L120) |
 
 ## `core/services/agent_todos.py`
 _Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._

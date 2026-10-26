@@ -452,10 +452,18 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         status = DispatchStatus.FAILED
         result_payload: object = f"error: {error_str}"
     elif o.get("incomplete"):
-        # Loekken gav én nudge, og agenten sluttede STADIG med et loefte uden en eneste
-        # skrivning. Det er ikke en fuldfoert opgave (maalt 8/10-2026).
+        # Loekken gav én nudge, og agenten sluttede STADIG ufuldstaendigt. Det er ikke en
+        # fuldfoert opgave (maalt 8/10-2026).
+        #
+        # 26/10-2026: teksten blev foer KASTET VAEK og erstattet af en fast saetning. Det
+        # gjorde markeringen synlig men resultatet ubrugeligt: Jarvis kunne se AT noget
+        # manglede, ikke HVAD agenten naaede. Kravet er begge dele, saa teksten bevares og
+        # markeringen saettes FORAN den — sammen med antallet af ubesvarede spoergsmaal,
+        # som loekken nu baerer med (`unanswered`).
+        n = int(o.get("unanswered") or 0)
+        grund = f"{n} ubesvarede spørgsmål" if n else "et løfte den ikke udførte"
         status = DispatchStatus.BLOCKED
-        result_payload = "Agenten sluttede med et løfte den ikke udførte"
+        result_payload = f"UFULDSTÆNDIG ({grund}) — agentens tekst:\n{final_text}"
     elif scout and (total_tool_calls == 0 or _promises_action(final_text)):
         status = DispatchStatus.BLOCKED
         result_payload = "Scout sluttede uden verificerede fund eller værktøjskald"

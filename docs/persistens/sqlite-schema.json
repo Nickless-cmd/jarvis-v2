@@ -801,6 +801,240 @@
         "iso_utc_z"
       ]
     },
+    "agent_assignment_mandates": {
+      "digest": "ec:cd:3e:86:f0:aa:25:87:6b:9c:b7:55:15:9a:e8:0e:39:2e:fe:ec:5a:44:94:a2:74:74:8f:bb:0a:73:24:4d",
+      "schema": {
+        "columns": [
+          {
+            "name": "allowed_tools_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "budget_tokens",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "deadline_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "expected_result",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "granted_side_effect",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "mandate_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "max_depth",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "max_fanout",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "max_turns",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "origin_session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "original_mandate_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "original_side_effect",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "parent_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "return_address",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "target",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tool_policy",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace_roots_json",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'[]'",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_agent_mandate_owner",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "owner_user_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "origin_session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_agent_mandate_owner ON agent_assignment_mandates(owner_user_id, origin_session_id)"
+          },
+          {
+            "name": "sqlite_autoindex_agent_assignment_mandates_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "mandate_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_agent_assignment_mandates_2",
+            "unique": true,
+            "origin": "u",
+            "partial": false,
+            "parts": [
+              {
+                "column": "assignment_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_z"
+      ]
+    },
     "agent_assignments": {
       "digest": "91:fe:bf:c7:0b:3a:47:f5:8e:81:1f:d8:4f:87:45:88:da:c8:93:49:ca:99:dc:21:21:4b:fc:ac:3a:08:9e:55",
       "schema": {
@@ -9326,7 +9560,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

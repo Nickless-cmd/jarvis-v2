@@ -153,3 +153,131 @@ def test_push_fejl_vaelter_ikke_leveringen(monkeypatch):
     monkeypatch.setattr(pd, "_push_to_web", boom)
 
     _push_owner(_claim())  # maa ikke kaste
+
+
+# ── Lag 3: resultatet skal lande i ejerens EGEN session (26/10-2026) ──────
+#
+# Maalt 26/10-2026: rutinen koerte, pushede, og resultatet laa i
+# `routine_runs.result_enc` — men der var intet sted at laese det. Bjørn:
+# «der findes ikk en session, kun push». Leverancen var gjort session-neutral
+# med vilje, fordi `most_recent_session_id()` ikke har noget bruger-scope og
+# derfor ville skrive til en FREMMED session. Scopet findes nu.
+
+
+def test_resultatet_laegges_i_ejerens_egen_session(monkeypatch):
+    """Uden dekryptering er `result` tom — og saa leveres der intet.
+
+    Det var den faktiske fejl: `get_run` uden `decrypt_for` giver blob, ikke
+    tekst, og funktionen faldt tavst igennem.
+    """
+    from core.services import routine_delivery as rd
+
+    kaldt = {}
+
+    class _FakeInbox:
+        @staticmethod
+        def is_session_active(sid):
+            return True
+
+        @staticmethod
+        def enqueue(**kw):
+            kaldt.update(kw)
+            return {"status": "queued", "id": 1}
+
+    import core.services.session_inbox as si
+    monkeypatch.setattr(si, "is_session_active", _FakeInbox.is_session_active)
+    monkeypatch.setattr(si, "enqueue", _FakeInbox.enqueue)
+    monkeypatch.setattr(
+        "core.services.chat_sessions.most_recent_session_id_for_user",
+        lambda uid: "chat-ejer-session",
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_run",
+        lambda run_id, decrypt_for=None: {
+            "run_id": run_id, "routine_id": "r1",
+            "result": b"Tre opskrifter: boller i karry",
+        },
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_routine",
+        lambda rid, decrypt_for=None: {
+            "name": "Ugentlige madopskrifter",
+            "access_scope": "user_private",
+            "delivery_policy": {},
+            "workspace_name": None,
+        },
+    )
+
+    rd._deliver_to_session(rd.DeliveryClaim(
+        delivery_id="d1", run_id="run-1", owner_user_id="michelle",
+        channel="desk", status="delivering", retry_count=0, lease_generation=1,
+    ))
+
+    assert kaldt.get("session_id") == "chat-ejer-session"
+    assert "boller i karry" in kaldt.get("content", "")
+    # bytes skal vaere afkodet — ellers lander der b'...' i chatten
+    assert "b'" not in kaldt.get("content", "")
+
+
+def test_ingen_session_betyder_ingen_gaet(monkeypatch):
+    """Har ejeren ingen session, oprettes ingen. Vi gaetter aldrig."""
+    from core.services import routine_delivery as rd
+
+    kaldt = []
+    import core.services.session_inbox as si
+    monkeypatch.setattr(si, "enqueue", lambda **kw: kaldt.append(kw))
+    monkeypatch.setattr(
+        "core.services.chat_sessions.most_recent_session_id_for_user",
+        lambda uid: "",
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_run",
+        lambda run_id, decrypt_for=None: {
+            "run_id": run_id, "routine_id": "r1", "result": b"noget",
+        },
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_routine",
+        lambda rid, decrypt_for=None: {
+            "name": "R", "access_scope": "user_private",
+            "delivery_policy": {}, "workspace_name": None,
+        },
+    )
+
+    rd._deliver_to_session(rd.DeliveryClaim(
+        delivery_id="d2", run_id="run-2", owner_user_id="nobody",
+        channel="desk", status="delivering", retry_count=0, lease_generation=1,
+    ))
+    assert kaldt == []
+
+
+def test_systemrutiner_vaekker_ikke_en_session(monkeypatch):
+    """Heartbeat/dream er rammer, ikke opgaver — de skal ikke skrive i en chat."""
+    from core.services import routine_delivery as rd
+
+    kaldt = []
+    import core.services.session_inbox as si
+    monkeypatch.setattr(si, "enqueue", lambda **kw: kaldt.append(kw))
+    monkeypatch.setattr(
+        "core.services.chat_sessions.most_recent_session_id_for_user",
+        lambda uid: "chat-1",
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_run",
+        lambda run_id, decrypt_for=None: {
+            "run_id": run_id, "routine_id": "r1", "result": b"x",
+        },
+    )
+    monkeypatch.setattr(
+        rd.db_routines, "get_routine",
+        lambda rid, decrypt_for=None: {
+            "name": "heartbeat", "access_scope": "system_owner",
+            "delivery_policy": {}, "workspace_name": None,
+        },
+    )
+
+    rd._deliver_to_session(rd.DeliveryClaim(
+        delivery_id="d3", run_id="run-3", owner_user_id="bjorn",
+        channel="desk", status="delivering", retry_count=0, lease_generation=1,
+    ))
+    assert kaldt == []

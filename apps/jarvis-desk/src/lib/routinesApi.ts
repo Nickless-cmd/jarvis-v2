@@ -37,6 +37,11 @@ export interface RoutineRun {
   routine_version?: number
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelling' | 'cancelled' | 'skipped'
   created_at: string
+  /** Det samlede svar, dekrypteret af serveren. Findes kun på GET /runs/{id}. */
+  result?: string | null
+  diagnostic_code?: string | null
+  started_at?: string | null
+  finished_at?: string | null
 }
 
 export interface RoutineEvent {
@@ -90,6 +95,14 @@ export const runRoutine = (config: ApiConfig, routineId: string) =>
 
 export const listRoutineRuns = (config: ApiConfig, routineId: string) =>
   apiFetch<RoutineRun[]>(config, `/api/routines/${encodeURIComponent(routineId)}/runs`)
+
+/**
+ * Ét run MED resultatet. `listRoutineRuns` læser `list_runs` i db-laget, som
+ * ikke dekrypterer — så listen bærer aldrig `result`. Kun dette kald giver
+ * det svar rutinen faktisk leverede.
+ */
+export const getRoutineRun = (config: ApiConfig, runId: string) =>
+  apiFetch<RoutineRun>(config, `/api/routines/runs/${encodeURIComponent(runId)}`)
 
 export const listRoutineEvents = (config: ApiConfig, runId: string) =>
   apiFetch<RoutineEvent[]>(config, `/api/routines/runs/${encodeURIComponent(runId)}/events`)

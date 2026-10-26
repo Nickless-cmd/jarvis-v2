@@ -150,6 +150,45 @@ def get_or_create_named_session(session_id: str, title: str) -> str:
     return session_id
 
 
+def most_recent_session_id_for_user(user_id: str) -> str:
+    """Session_id of the most recently updated session BELONGING to `user_id`.
+
+    Målt 26/10-2026: `most_recent_session_id()` har ingen `WHERE user_id` — den
+    tager den nyeste session i HELE systemet. En rutine der leverede til «den
+    sidst aktive session» skrev derfor til en anden brugers session. Det var
+    grunden til at rutine-leverancen blev gjort session-neutral med vilje; den
+    beslutning var rigtig, men løsningen var at scopet manglede, ikke at
+    sessionen skulle afvises.
+
+    Koblingen er `chat_messages.user_id` + `workspace_name` — IKKE
+    `chat_sessions.owner_user_id`, hvis id-format ikke matcher `users.user_id`
+    (numeriske id'er dér er Discord-id'er). Samme kobling som
+    `list_chat_sessions` bruger.
+
+    Returnerer '' naar brugeren ikke har nogen session — kalderen skal selv
+    afgøre om der saa skal falde tilbage til inbox.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return ""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT s.session_id
+              FROM chat_sessions s
+             WHERE EXISTS (
+                   SELECT 1 FROM chat_messages m
+                    WHERE m.session_id = s.session_id
+                      AND m.user_id = ?
+             )
+             ORDER BY s.updated_at DESC, s.id DESC
+             LIMIT 1
+            """,
+            (uid,),
+        ).fetchone()
+    return str(row[0]) if row and row[0] else ""
+
+
 def most_recent_session_id() -> str:
     """Lightweight: session_id of the most recently updated session.
 

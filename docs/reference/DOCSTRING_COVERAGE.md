@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9351/17649 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9353/17651 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9351/17649 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 848 | 1552 | 54% |
-| `core.services` | 6236 | 12002 | 51% |
+| `core.services` | 6238 | 12004 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1001,12 +1001,12 @@ Generated from source. 9351/17649 functions/methods documented (52%). The list b
 - `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L904)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L943)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1721)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1352)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1673)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1705)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1760)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1391)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1712)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1744)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1770,9 +1770,9 @@ Generated from source. 9351/17649 functions/methods documented (52%). The list b
 - `core/services/routine_authorization.py` :: `require_authorized` (L95)
 - `core/services/routine_crypto.py` :: `open_sealed` (L23)
 - `core/services/routine_crypto.py` :: `seal` (L17)
-- `core/services/routine_delivery.py` :: `RoutineDeliveryService.claim_for_run` (L143)
-- `core/services/routine_delivery.py` :: `RoutineDeliveryService.claim_next` (L147)
-- `core/services/routine_delivery.py` :: `RoutineDeliveryService.settle` (L186)
+- `core/services/routine_delivery.py` :: `RoutineDeliveryService.claim_for_run` (L229)
+- `core/services/routine_delivery.py` :: `RoutineDeliveryService.claim_next` (L233)
+- `core/services/routine_delivery.py` :: `RoutineDeliveryService.settle` (L276)
 - `core/services/routine_diagnostics.py` :: `project_failure` (L39)
 - `core/services/routine_diagnostics.py` :: `render_projection` (L62)
 - `core/services/routine_identity_migration.py` :: `IdentityCutoverReport.conflict_count` (L57)

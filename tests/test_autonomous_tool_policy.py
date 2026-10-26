@@ -198,6 +198,79 @@ def test_indbakke_vaekkeren_har_de_vaerktoejer_dens_direktiv_kraever():
     assert "send_discord_dm" not in indbakke
 
 
+def test_de_tre_sidste_autonome_origin_har_de_vaerktoejer_deres_direktiv_kraever():
+    """26/10-2026: tre origins startede runs hvis direktiv krævede `bash`.
+
+    Samme fejlklasse som `inbox` samme dag, men fundet ved at måle ALLE
+    origins i koden mod `ORIGIN_TOOLS` — ikke ved at vente på endnu et
+    tandløst svar. Alle tre faldt til bund-sættet (106 værktøjer, intet
+    `bash`), og bund-sættet er stort nok til at se komplet ud:
+
+    * ``scheduled`` — `scheduled_tasks` siger ordret «UDFØR opgaven nu med
+      dine tools … så BRUG værktøjet». Målt: 113 fyrede opgaver, og de
+      seneste er alle verifikations-opgaver («begge uvicorn-PID'er
+      startede», «Tjek desk-release CI»), som kræver `ps`/`git`/`curl`.
+    * ``continuation`` — `visible_runs_memory` fyrer den fem sekunder efter
+      et run slutter med «Continue without waiting for a reply». Uden `bash`
+      kan den ikke fortsætte det den blev startet for.
+    * ``agent-completion`` — `agent_message_receipt` leverer en færdig
+      agents resultat. Uden `bash` kan runnet ikke efterprøve hvad agenten
+      påstod, og byggernes eget ord er ikke et review.
+
+    Uden denne test kan nøglerne forsvinde igen uden at nogen opdager det.
+    """
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    recurring = allowed_tools_for_origin("recurring")
+    wakeup = allowed_tools_for_origin("wakeup")
+
+    planlagt = allowed_tools_for_origin("scheduled")
+    fortsaettelse = allowed_tools_for_origin("continuation")
+    agent_faerdig = allowed_tools_for_origin("agent-completion")
+
+    # 1) Alle tre skal kunne undersøge. Det er hele grunden til at de findes.
+    for navn, saet in (
+        ("scheduled", planlagt),
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert "bash" in saet, (
+            f"{navn} mangler bash — dens eget direktiv siger «brug værktøjet», "
+            f"så politikken forbyder hvad direktivet påbyder"
+        )
+
+    # 2) En planlagt opgave er samme KLASSE som en recurring: kalender-drevet,
+    #    bestilt af Bjørn, og dens direktiv beder om at rapportere til ham.
+    assert planlagt == recurring, (
+        f"scheduled og recurring er ikke længere samme sæt: "
+        f"scheduled-recurring={sorted(planlagt - recurring)}, "
+        f"recurring-scheduled={sorted(recurring - planlagt)}"
+    )
+
+    # 3) Fortsættelsen og agent-leverancen er vækningens sæt: de undersøger og
+    #    fortæller i en samtale — de handler ikke i verden på egen hånd.
+    for navn, saet in (
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert saet == wakeup, (
+            f"{navn} og wakeup er ikke længere samme sæt: "
+            f"{navn}-wakeup={sorted(saet - wakeup)}, "
+            f"wakeup-{navn}={sorted(wakeup - saet)}"
+        )
+
+    # 4) Ingen af dem må blive BREDERE end deres opgave: de fyrer AUTOMATISK,
+    #    uden at nogen har bedt om netop den kørsel. Skal de skrive, må de sige
+    #    det først — ikke gøre det selv.
+    for navn, saet in (
+        ("scheduled", planlagt),
+        ("continuation", fortsaettelse),
+        ("agent-completion", agent_faerdig),
+    ):
+        assert "write_file" not in saet, f"{navn} må ikke skrive filer"
+        assert "operator_bash" not in saet, f"{navn} må ikke nå Bjørns maskine"
+
+
 def test_visible_run_ignores_origin_grants():
     from core.tools.autonomous_tool_policy import is_allowed
 

@@ -111,6 +111,27 @@ def _dispatch_run_done(run_id: str) -> None:
     sid = rel.session_for_run(run_id)
     owner = _owner_of_run(run_id)
     if not owner:
+        # TAVST TAB (maalt 26/10-2026): her faldt Michelles to notifikationer
+        # 25/10 ud af journalen. `session_for_run` laeser en IN-MEMORY registry —
+        # er runnet pruned eller runtime genstartet, giver den None, og
+        # notifikationen blev droppet UDEN én linje. 220 push blev undertrykt
+        # den dag mod 1 dispatch, og for hendes runs stod der intet: et tab man
+        # ikke kan se i journalen, er et tab man ikke kan finde.
+        #
+        # De to aarsager er forskellige og skal kunne skelnes, ellers peger
+        # loglinjen paa det forkerte sted: intet run i det hele taget
+        # (pruned/genstartet) vs. et run hvis session ikke kan knyttes til en
+        # ejer (slettet session, ukendt workspace).
+        if not sid:
+            logger.warning(
+                "push: answer_ready DROPPET — run %s findes ikke i run_event_log "
+                "(pruned eller runtime genstartet)", run_id[:12],
+            )
+        else:
+            logger.warning(
+                "push: answer_ready DROPPET — session %s for run %s har ingen "
+                "ejer at sende til", sid[:12], run_id[:12],
+            )
         return
     # SPRING pushet over hvis runnet ikke producerede et synligt assistant-svar (rent
     # autonomt internt arbejde) → ingen tomme spam-notifikationer (Bjørn 3. jul).

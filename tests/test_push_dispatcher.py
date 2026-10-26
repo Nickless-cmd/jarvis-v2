@@ -105,3 +105,36 @@ def test_approval_requested_push_carries_navigation_identity(monkeypatch):
             "approval_requested",
         )
     ]
+
+
+def test_droppet_push_naevner_at_runnet_er_vaek(monkeypatch, caplog):
+    """Et tab der ikke staar i journalen, er et tab ingen kan finde (26/10-2026).
+
+    `session_for_run` laeser en in-memory registry. Er runnet pruned eller
+    runtime genstartet, giver den None — og notifikationen faldt foer i et
+    TAVST return. Michelles to notifikationer 25/10 forsvandt praecis saadan.
+    """
+    _setup(monkeypatch)
+    dt.register("bjorn", "tok-A")
+    monkeypatch.setattr(pd, "_owner_of_run", lambda run_id: None)
+    with caplog.at_level("WARNING", logger="core.services.push_dispatcher"):
+        pd._dispatch_run_done("run-findes-ikke")
+    beskeder = [r.getMessage() for r in caplog.records]
+    assert any("DROPPET" in m and "findes ikke i run_event_log" in m for m in beskeder), beskeder
+
+
+def test_droppet_push_naevner_session_uden_ejer(monkeypatch, caplog):
+    """Den anden aarsag: runnet FINDES, men sessionen kan ikke knyttes til en ejer.
+
+    De to skal kunne skelnes i loggen — ellers peger linjen paa det forkerte sted.
+    """
+    _setup(monkeypatch)
+    dt.register("bjorn", "tok-A")
+    rel.create("run-uden-ejer", "sess-uden-ejer")
+    monkeypatch.setattr(pd, "_owner_of_run", lambda run_id: None)
+    with caplog.at_level("WARNING", logger="core.services.push_dispatcher"):
+        pd._dispatch_run_done("run-uden-ejer")
+    beskeder = [r.getMessage() for r in caplog.records]
+    assert any("DROPPET" in m and "har ingen ejer" in m for m in beskeder), beskeder
+    # ... og den maa IKKE paastaa at runnet var vaek.
+    assert not any("findes ikke i run_event_log" in m for m in beskeder), beskeder

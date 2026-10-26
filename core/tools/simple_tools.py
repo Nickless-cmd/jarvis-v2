@@ -893,6 +893,28 @@ def classify_command(command: str) -> str:
         _emit_security_check(_sec, target=command)
         return _sec["decision"]
 
+    # 26/10-2026: en KAEDE maa ikke afgoeres af sit FOERSTE ord.
+    #
+    # Maalt samme dag: `ls; systemctl stop jarvis-runtime` blev `auto`, fordi
+    # prefix-grenen nedenfor returnerede ved `ls` og ignorerede resten af
+    # strengen. 10 af 10 testede kaeder slap igennem — ogsaa
+    # `ls; cat /etc/shadow` og `ls; chmod 777 /etc/passwd`.
+    #
+    # Det er samme fejlklasse som `_CONSENT_NEAR_RISK` i veto_gate.py foer den
+    # blev forankret: moensteret matcher et STED i strengen, ikke hele strengen.
+    #
+    # `;` kan ikke segmenteres sikkert — `simple_tools.py:943` udelukker den
+    # allerede bevidst fra pipe-grenen, og et forsoeg paa at genbruge
+    # `&&`-logikken gjorde gaten utaet (se
+    # tests/test_semicolon_er_ikke_en_segmentgraense.py). Derfor er svaret her
+    # FAIL-CLOSED: en `;`-kaede gaar til approval, ikke til auto.
+    #
+    # Prisen er nul for kommandoer uden `;`, og for `;`-kaeder er den den
+    # samme som foer (de gik allerede til approval, medmindre de startede med
+    # en read-only kommando — hvilket var netop hullet).
+    if ";" in normalized and "&&" not in normalized and "|" not in normalized:
+        return "approval"
+
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
         if normalized.startswith(prefix) or normalized == prefix.strip():
             return "auto"

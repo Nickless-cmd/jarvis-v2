@@ -8,8 +8,11 @@ adressen fra runtime.json (nøgle: ``phone_adb_address``). Det her script
 lukker hullet, så forbindelsen er der automatisk når telefonen er hjemme:
 
   1. Er telefonen allerede forbundet i adb på den gemte adresse? -> færdig.
-  2. Svarer dens sidst-kendte IP på ping? -> adb connect -> opdater runtime.json.
+  2. Svarer dens sidst-kendte IP på TCP (adb-porten)? -> adb connect -> opdater runtime.json.
   3. Nej? -> ARP-scan LAN'et efter telefonens MAC -> ny IP -> connect -> opdater.
+
+  ICMP er blokeret ud af containeren, så trin 2 måler med TCP. ``ping`` er
+  kun reserve — se ``_tcp_aaben``.
 
 Designhensyn
 ------------
@@ -89,7 +92,11 @@ def _skriv_state(**felter) -> None:
     try:
         os.makedirs(os.path.dirname(STATE_STI), exist_ok=True)
         with open(STATE_STI, "w") as f:
-            json.dump({"sidst_opdateret": _ts(), **gammel, **felter}, f,
+            # Raekkefoelgen er ikke kosmetisk: ``**gammel`` baerer den FORRIGE
+            # ``sidst_opdateret`` og vandt over den friske tid som ordene stod
+            # foer 26/10-2026 — tidsstemplet frøs, mens resten af filen blev
+            # opdateret. Ny tid skal staa SIDST.
+            json.dump({**gammel, **felter, "sidst_opdateret": _ts()}, f,
                       ensure_ascii=False, indent=2)
     except OSError:  # kan ikke skrive state — det skal ikke draebe vagten; naeste koersel proever igen
         pass
@@ -276,7 +283,11 @@ def main() -> int:
 
     # Allerede forbundet på den gemte adresse? Så er der intet at gøre.
     if gemt and _forbundet(gemt):
-        _skriv_state(adresse=gemt, forbundet=True, handling="allerede-forbundet")
+        # ``sidste_besked=""`` rydder den gamle fejl: uden det stod en forlaengst
+        # loest fejl som «sidste besked» i al evighed, og en fejl der vender
+        # tilbage efter en vellykket periode ER ny information der skal logges.
+        _skriv_state(adresse=gemt, forbundet=True, handling="allerede-forbundet",
+                     sidste_besked="")
         return 0
 
     # Udled sidst-kendte host:port fra den gemte adresse.
@@ -325,7 +336,7 @@ def main() -> int:
                  f"({'adresse-opdateret' if aendret else 'allerede-gemt'})")
             _skriv_state(adresse=adresse, forbundet=True,
                          handling="adresse-opdateret" if aendret else "connectet",
-                         sidste_scan_ts=str(time.time()))
+                         sidste_scan_ts=str(time.time()), sidste_besked="")
             return 0
 
     # Ingen port gav forbindelse. HVORFOR afgoer hvad naeste skridt er, og de

@@ -118,3 +118,57 @@ def test_startlinje_skrives_naar_loggen_er_tom(monkeypatch, tmp_path):
     foer = Path(mod.LOG_STI).read_text().count("START")
     mod._startlinje()
     assert Path(mod.LOG_STI).read_text().count("START") == foer
+
+
+def test_tidsstemplet_opdateres_ved_hvert_skriv(monkeypatch, tmp_path):
+    """`sidst_opdateret` skal vaere NY tid, ikke den forrige.
+
+    Maalt 26/10-2026: ``{"sidst_opdateret": _ts(), **gammel, **felter}`` lod
+    ``**gammel`` vinde, saa tidsstemplet frøs paa det tidspunkt hvor filen
+    foerste gang blev skrevet — mens resten af indholdet blev opdateret.
+    En state-fil der paastaar at den er fra kl. 14:12 naar den er fra 14:18
+    er vaerre end ingen tidsstempel: den ser rigtig ud.
+    """
+    import json
+
+    mod = _modul(monkeypatch, tmp_path)
+
+    mod._skriv_state(forbundet=False)
+
+    # Simulér at der er gaaet tid: skriv en GAMMEL tid ind, som ``**gammel``
+    # ellers ville baere videre.
+    state = json.loads(Path(mod.STATE_STI).read_text())
+    state["sidst_opdateret"] = "2000-01-01 00:00:00"
+    Path(mod.STATE_STI).write_text(json.dumps(state))
+
+    mod._skriv_state(forbundet=True)
+    anden = json.loads(Path(mod.STATE_STI).read_text())["sidst_opdateret"]
+
+    assert anden != "2000-01-01 00:00:00", (
+        "den gamle tid vandt over den friske — raekkefoelgen i _skriv_state er vendt forkert"
+    )
+    assert anden.startswith("20") and len(anden) == 19, anden
+
+
+def test_loest_fejl_bliver_ikke_staaende_som_sidste_besked(monkeypatch, tmp_path):
+    """En fejl der er loest maa ikke staa som «sidste besked» i al evighed.
+
+    Ellers ser state-filen ud som om den stadig fejler, og en fejl der vender
+    tilbage efter en vellykket periode bliver aldrig logget igen — fordi den
+    ligner den besked der allerede staar der.
+    """
+    import json
+
+    mod = _modul(monkeypatch, tmp_path)
+
+    mod._log_hvis_nyt("parringen mangler")
+    assert json.loads(Path(mod.STATE_STI).read_text())["sidste_besked"] == "parringen mangler"
+
+    # Succes rydder den.
+    mod._skriv_state(forbundet=True, handling="allerede-forbundet", sidste_besked="")
+    assert json.loads(Path(mod.STATE_STI).read_text())["sidste_besked"] == ""
+
+    # ... og saa skal den SAMME fejl kunne logges igen.
+    mod._log_hvis_nyt("parringen mangler")
+    linjer = [l for l in Path(mod.LOG_STI).read_text().splitlines() if l.strip()]
+    assert len(linjer) == 2, linjer

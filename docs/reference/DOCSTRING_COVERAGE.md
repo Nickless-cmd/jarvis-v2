@@ -2579,7 +2579,7 @@ Generated from source. 9351/17649 functions/methods documented (52%). The list b
 - `scripts/phase7_judge.py` :: `key` (L99)
 - `scripts/phase7_judge.py` :: `main` (L103)
 - `scripts/phase7_judge.py` :: `parse_verdict` (L80)
-- `scripts/phone_home_auto.py` :: `main` (L273)
+- `scripts/phone_home_auto.py` :: `main` (L280)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)
 - `scripts/pipelines/tiktok_analytics.py` :: `run` (L181)

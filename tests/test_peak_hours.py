@@ -101,6 +101,43 @@ def test_vinduets_start_viser_rigtig_dansk_tid_baade_sommer_og_vinter():
     assert "11:00" in vinter, "vinter: vinduet lukker 11:00 dansk"
 
 
+def test_badgen_viser_vinduets_egne_utc_timer_ikke_et_fast_tal():
+    """Regression (26/10-2026, vintertid): UTC-siden af vindueslinjen var skrevet ind.
+
+    Badgen skrev «Vindue: 06–10 UTC» uanset hvilket vindue vi stod i. I
+    nat-vinduet (01–04 UTC) blev linjen derfor selvmodsigende: «06–10 UTC =
+    02:00–05:00 dansk». Den danske side var regnet og rigtig; UTC-siden løj,
+    fordi den var hardkodet. Fejlen var usynlig for de øvrige tests, som alle
+    kun læser den danske visning — samme blinde vinkel som '08:00'-fejlen 30/9.
+    """
+    # Nat-vinduet 01–04 UTC: vinter = 02–05 dansk, sommer = 03–06 dansk.
+    nat_vinter = peak_badge(_u(2026, 10, 26, 2, 30))
+    nat_sommer = peak_badge(_u(2026, 7, 6, 2, 30))
+    assert "01:00–04:00 UTC" in nat_vinter
+    assert "01:00–04:00 UTC" in nat_sommer
+    assert "02:00–05:00 dansk" in nat_vinter
+    assert "03:00–06:00 dansk" in nat_sommer
+    assert "06–10 UTC" not in nat_vinter, "nat-vinduet må ikke låne dag-vinduets tal"
+
+    # Dag-vinduet 06–10 UTC: vinter = 07–11 dansk, sommer = 08–12 dansk.
+    dag_vinter = peak_badge(_u(2026, 10, 26, 7, 30))
+    dag_sommer = peak_badge(_u(2026, 7, 6, 7, 30))
+    assert "06:00–10:00 UTC" in dag_vinter
+    assert "07:00–11:00 dansk" in dag_vinter
+    assert "08:00–12:00 dansk" in dag_sommer
+
+
+def test_peak_state_eksponerer_vinduets_utc_timer():
+    """UTC-felterne skal følge det vindue vi står i — ikke være et fast par."""
+    nat = peak_state(_u(2026, 10, 26, 2, 30))
+    dag = peak_state(_u(2026, 10, 26, 7, 30))
+    assert (nat["peak_starts_utc"], nat["peak_ends_utc"]) == ("01:00", "04:00")
+    assert (dag["peak_starts_utc"], dag["peak_ends_utc"]) == ("06:00", "10:00")
+    # Off-peak har intet aktuelt vindue — felterne skal være tomme, ikke gættet.
+    off = peak_state(_u(2026, 10, 26, 13, 0))
+    assert off["peak_starts_utc"] is None and off["peak_ends_utc"] is None
+
+
 def test_naivt_tidspunkt_laeses_som_utc():
     """Et naivt datetime må ikke forskubbe vinduet — huset er faldet i den fælde før."""
     naiv = datetime(2026, 10, 5, 8)

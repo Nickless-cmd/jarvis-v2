@@ -26,8 +26,10 @@ HVORFOR ÅBNINGEN BEREGNES OG IKKE ER ET FAST KLOKKESLET
     for sent er ikke et varsel.
 
 KUN DAGVINDUET
-    Myldretiden er to vinduer: UTC 01-04 og 06-10. Det første er 03-04 dansk —
-    midt om natten. Der er ingen at minde, så daemonen ser kun dagvinduet
+    Myldretiden er to vinduer: UTC 01-04 og 06-10. Det første er midt om
+    natten i dansk tid — 02-05 om vinteren, 03-06 om sommeren (her stod
+    «03-04 dansk», som kun var rigtigt for det halve vindue og kun om
+    sommeren). Der er ingen at minde, så daemonen ser kun dagvinduet
     (``DAG_VINDUE_FRA_UTC``). Nat-vinduet gælder stadig for prisen.
 """
 

@@ -371,24 +371,25 @@ _core/services/peak_hours.py_
 | function | `aktuelt_vindue` | `(now_utc=…)` | (start, slut) for det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L85) |
 | function | `aktuelt_vindue_slut` | `(now_utc=…)` | Slutningen på det vindue vi står i — eller None hvis vi er i off-peak. | [src](../../../core/services/peak_hours.py#L104) |
 | function | `_dansk` | `(ts)` | — | [src](../../../core/services/peak_hours.py#L110) |
-| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L114) |
-| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L136) |
-| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L143) |
-| function | `booking_varsel` | `(naar)` | Én linje hvis et BOOKET tidspunkt rammer myldretiden. Ellers ``None``. | [src](../../../core/services/peak_hours.py#L184) |
-| function | `gentagelse_rammer_vindue` | `(interval_minutter)` | Vil en rutine med denne kadence uundgåeligt ramme et vindue? | [src](../../../core/services/peak_hours.py#L225) |
-| function | `tilfoej_booking_varsel` | `(svar, naar)` | Hæng ``peak_varsel`` på et booking-svar. Rører intet andet. | [src](../../../core/services/peak_hours.py#L241) |
+| function | `_utc` | `(ts)` | Vinduets egen UTC-tid — til visning ved siden af den danske. | [src](../../../core/services/peak_hours.py#L114) |
+| function | `peak_state` | `(now=…)` | Tilstanden lige nu — grundlaget for badgen og for alt andet der spørger. | [src](../../../core/services/peak_hours.py#L127) |
+| function | `_varighed` | `(minutter)` | — | [src](../../../core/services/peak_hours.py#L151) |
+| function | `peak_badge` | `(now=…)` | Badgen til prompt-halen. None når der ikke er noget at sige. | [src](../../../core/services/peak_hours.py#L158) |
+| function | `booking_varsel` | `(naar)` | Én linje hvis et BOOKET tidspunkt rammer myldretiden. Ellers ``None``. | [src](../../../core/services/peak_hours.py#L200) |
+| function | `gentagelse_rammer_vindue` | `(interval_minutter)` | Vil en rutine med denne kadence uundgåeligt ramme et vindue? | [src](../../../core/services/peak_hours.py#L241) |
+| function | `tilfoej_booking_varsel` | `(svar, naar)` | Hæng ``peak_varsel`` på et booking-svar. Rører intet andet. | [src](../../../core/services/peak_hours.py#L257) |
 
 ## `core/services/peak_varsel_daemon.py`
 _core/services/peak_varsel_daemon.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_vindue_slut` | `(aabning)` | Vinduets sluttid, læst fra ``MYLDRE_VINDUER`` — ikke et gæt på 4 timer. | [src](../../../core/services/peak_varsel_daemon.py#L65) |
-| function | `_allerede_varslet` | `(aabning)` | Har vi allerede sendt varsel for netop dette vindue? | [src](../../../core/services/peak_varsel_daemon.py#L73) |
-| function | `_marker_varslet` | `(aabning)` | — | [src](../../../core/services/peak_varsel_daemon.py#L79) |
-| function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L83) |
-| function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L96) |
-| function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L136) |
+| function | `_vindue_slut` | `(aabning)` | Vinduets sluttid, læst fra ``MYLDRE_VINDUER`` — ikke et gæt på 4 timer. | [src](../../../core/services/peak_varsel_daemon.py#L67) |
+| function | `_allerede_varslet` | `(aabning)` | Har vi allerede sendt varsel for netop dette vindue? | [src](../../../core/services/peak_varsel_daemon.py#L75) |
+| function | `_marker_varslet` | `(aabning)` | — | [src](../../../core/services/peak_varsel_daemon.py#L81) |
+| function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L85) |
+| function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L98) |
+| function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L138) |
 
 ## `core/services/perceptual_event_engine.py`
 _Perceptual event engine — eventful perception for Jarvis._

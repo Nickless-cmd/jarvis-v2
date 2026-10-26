@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9343/17642 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9344/17643 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9343/17642 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 848 | 1552 | 54% |
-| `core.services` | 6233 | 11999 | 51% |
+| `core.services` | 6234 | 12000 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 132 | 207 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1630,13 +1630,13 @@ Generated from source. 9343/17642 functions/methods documented (52%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3620)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3468)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3757)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3622)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3470)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3759)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4724)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4726)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2622,7 +2622,7 @@ Generated from source. 9343/17642 functions/methods documented (52%). The list b
 - `scripts/verify_guard_tests.py` :: `main` (L69)
 - `scripts/verify_history_reads.py` :: `fund_i_fil` (L54)
 - `scripts/verify_history_reads.py` :: `main` (L92)
-- `scripts/verify_memory_status.py` :: `main` (L291)
+- `scripts/verify_memory_status.py` :: `main` (L292)
 - `scripts/verify_notes.py` :: `fejl_i` (L50)
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)

@@ -139,6 +139,7 @@ _QF_SEKTIONER = (
     "hosts",
     "home assistant",
     "paths",
+    "priser",
     "værktøjskanaler",
     "værktøjer",
     "bruger",

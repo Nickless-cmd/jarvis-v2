@@ -596,9 +596,12 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     # (event-ids veto-063b9826d64d, veto-1d70ccac3b60).
     # Samme klasse som gatens svarkanal ovenfor.
     #
-    # `call_loaded_tool` er BEVIDST ikke her: den UDFØRER det loadede
-    # værktøj, så en undtagelse ville lade ethvert loadet værktøj — også
-    # `bash` — passere veto'et. Skema-adgang er undtagelsen, ikke udførelse.
+    # `call_loaded_tool` behøver IKKE at stå her, og det er ikke en
+    # forglemmelse: `_prepare_call` i simple_tool_executor.py pakker
+    # dispatcheren ud FØR alle gates (målt 26/10-2026), så gaten ser det
+    # ÆGTE navn — `call_loaded_tool(navn="override_gate", …)` når herind som
+    # `override_gate` og slippes igennem på den linje ovenfor. At undtage
+    # dispatcheren selv ville være virkningsløst, ikke farligt.
     "load_more_tools",
 })
 

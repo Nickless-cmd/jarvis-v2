@@ -73,10 +73,20 @@ def test_definitions_are_wellformed_and_required_fields_exist():
         assert d["type"] == "function" and d["function"]["description"]
         assert set(p["required"]) <= set(p["properties"])
     by = {d["function"]["name"]: d["function"]["parameters"] for d in defs}
-    assert by["dispatch_agent"]["required"] == ["goal"]
+    # 26/10-2026: fladen er skaaret fra 17 til 6 felter. Maalt paa 66 koersler i
+    # oktober: 38 returnerede under 60 tegn, snit 20.924 tokens ind for 875 ud.
+    # Aarsagen var at 17 beslutninger skulle traeffes foer ÉN agent kunne sendes.
+    # `expected_result` er nu REQUIRED med vilje: uden et resultatkrav rapporterer
+    # agenten sin proces ("Mange kandidater. Laes kerne.") i stedet for sit fund.
+    # Fjerner nogen det krav igen, skal denne test faelde dem.
+    assert by["dispatch_agent"]["required"] == ["goal", "expected_result"]
+    assert len(by["dispatch_agent"]["properties"]) == 6
+    # De brede knapper er ikke laengere en del af fladen — men maskinen kan dem
+    # stadig, saa et programmatisk kald (legacy-adapteren, agent_council) virker.
+    for fjernet in ("target", "tool_policy", "writes", "budget_tokens", "max_turns",
+                    "context_mode", "accept_fork_switch", "reasoning_effort"):
+        assert fjernet not in by["dispatch_agent"]["properties"], f"{fjernet} er tilbage paa fladen"
     assert by["wait_agents"]["properties"]["condition"]["enum"] == ["first_terminal", "all_terminal"]
-    tgt = by["dispatch_agent"]["properties"]["target"]
-    assert "enum" not in tgt and "client:<stable_client_id>" in tgt["description"] and "runtime-container" in tgt["description"]
 
 
 def test_new_tools_are_hidden_while_the_engine_is_off_and_shown_when_on(tl):

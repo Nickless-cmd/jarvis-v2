@@ -57,39 +57,30 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "Use it when a sub-task can run in parallel, needs separate focus or large sources, "
         "benefits from an independent reviewer, or must be monitored over time. Do not use it "
         "for a short step you can finish directly.",
-        {"goal": {"type": "string", "description": "The task, stated so it can be verified."},
-         "description": {"type": "string", "description": "Short context for the agent."},
-         "role": {"type": "string", "description": "researcher, critic, planner, executor, watcher ..."},
-         "expected_result": {"type": "string", "description": "What a usable answer contains."},
-         "tool_policy": {"type": "string", "description": "e.g. read-only-runtime. Omit for the role default."},
-         "target": {"type": "string",
-                    "description": "Where tools run: 'runtime-container' (default) or 'client:<stable_client_id>' "
-                    "for ONE named connected client (operator_* tools only). The agent never falls back to "
-                    "the container or to another client if that client disconnects."},
-         "budget_tokens": {"type": "integer", "description": "Token budget; 0 = role default."},
-         "max_turns": {"type": "integer", "description": "Tool/model step limit; 0 = default."},
-         "model": {"type": "string", "description": "Optional model preference (provider/model). "
-                   "The runtime validates it against the owner's allowed routes; it cannot unlock a "
-                   "provider the owner may not use."},
-         "model_required": {"type": "boolean", "description": "Treat `model` as a hard requirement: "
-                            "the dispatch fails with MODEL_UNAVAILABLE instead of using another model."},
-         "writes": {"type": "boolean", "description": "Code agent: it gets its OWN git worktree of `workspace` "
-                    "and can write only there (sandboxed). The result is a diff; nothing is merged."},
-         "workspace": {"type": "string", "description": "Repository path (required when writes is true)."},
-         "context_mode": {"type": "string", "enum": ["fresh", "fork"],
-                          "description": "fresh (default): the agent gets only the context you give it. fork: "
-                          "also a snapshot of your finished turns. If the agent will run on another model than "
-                          "you, the runtime computes the extra context cost and refuses unless you give "
-                          "context_excerpt or accept_fork_switch."},
-         "context_excerpt": {"type": "string", "description": "Explicit context excerpt for the agent (instead "
-                             "of copying your history)."},
-         "accept_fork_switch": {"type": "boolean", "description": "Accept a paid fork onto a different model "
-                                "(whole context is processed again). Never implied."},
-         "reasoning_effort": {"type": "string", "enum": ["fast", "think", "deep"],
-                              "description": "Explicit effort; your own effort is inherited only when the agent "
-                              "runs on exactly your model."},
+        # 26/10-2026: skaaret fra 17 felter til 6. Maalt samme dag paa 66 koersler i
+        # oktober: 38 returnerede under 60 tegn, og snittet var 20.924 tokens ind for
+        # 875 ud. Aarsagen var ikke modellen — den var at fladen kraevede 17 beslutninger
+        # foer ÉN agent kunne sendes, saa jeg valgte bash i stedet. Resten er defaults i
+        # _exec_dispatch_agent (den laeser alt med .get()), saa servicen og
+        # agent_council.py er uaendrede. Claudes Task-vaerktoej har 5 felter.
+        {"goal": {"type": "string",
+                  "description": "Opgaven, formuleret saa den kan verificeres."},
+         "expected_result": {"type": "string",
+                             "description": "HVAD der skal komme retur for at svaret er brugbart — "
+                             "ikke processen, men fundet. Agenten faar dette som sit eneste "
+                             "resultatkrav: svar paa opgaven, eller sig at den ikke kunne og hvorfor."},
+         "role": {"type": "string",
+                  "description": "researcher (laeser, aendrer intet) · critic · planner · "
+                  "executor · watcher. Default: researcher."},
+         "model": {"type": "string",
+                   "description": "Valgfri model-praeference (provider/model). Ruten valideres mod "
+                   "ejerens tilladte ruter; den kan ikke laase en provider op."},
+         "workspace": {"type": "string",
+                       "description": "Repo-sti. Saetter du den, bliver det en KODEAGENT: den faar sit "
+                       "eget git-worktree og kan kun skrive dér. Resultatet er en diff; intet "
+                       "merges. Udelad for en laesende agent."},
          "idempotency_key": _KEY},
-        ["goal"]),
+        ["goal", "expected_result"]),
     _fn("followup_agent",
         "Give an existing agent a NEW task (new assignment and run, same agent_id). Not allowed "
         "while it still has an active task or after close_agent.",
@@ -228,18 +219,30 @@ def _svc():
 def _exec_dispatch_agent(args: dict[str, Any]) -> dict[str, Any]:
     owner, session, run = _principal(args)
     scoped = _scoped_parent(args)
+    # 26/10-2026: `writes` og `tool_policy` er ikke laengere felter i skemaet.
+    # En repo-sti ER en kodeagent — det er den ene beslutning, ikke to.
+    workspace = str(args.get("workspace") or "")
+    writes = bool(workspace)
+    # Skemaet tilbyder ikke tool_policy laengere, men legacy-adapteren kan sende
+    # den — og en repo-sti vinder altid, fordi det ER en kodeagent.
+    tool_policy = "worktree-write" if writes else str(args.get("tool_policy") or "")
+    # Legacy-adapteren (spawn_agent_task) sender ikke expected_result. Uden et
+    # resultatkrav rapporterer agenten sin proces i stedet for sit fund — maalt
+    # 26/10-2026: "Mange kandidater. Laes kerne." Falder vi tilbage til goal,
+    # har agenten altid et krav om at LEVERE, ikke om at proeve.
+    expected_result = str(args.get("expected_result") or "") or str(args.get("goal") or "")
     return _svc().dispatch_agent(
         owner_user_id=owner, origin_session_id=session, parent_run_id=run,
         parent_agent_id=scoped[0] if scoped else "jarvis",
         goal=str(args.get("goal") or ""), description=str(args.get("description") or ""),
         role=str(args.get("role") or "researcher") or "researcher",
-        expected_result=str(args.get("expected_result") or ""),
-        tool_policy=str(args.get("tool_policy") or ""),
+        expected_result=expected_result,
+        tool_policy=tool_policy,
         target=str(args.get("target") or "runtime-container"),
         budget_tokens=max(0, int(args.get("budget_tokens") or 0)),
         max_turns=max(0, int(args.get("max_turns") or 0)),
         model=str(args.get("model") or ""), idempotency_key=str(args.get("idempotency_key") or ""),
-        writes=bool(args.get("writes")), workspace=str(args.get("workspace") or ""),
+        writes=writes, workspace=workspace,
         model_required=bool(args.get("model_required")),
         context_mode=str(args.get("context_mode") or "fresh"),
         context_excerpt=str(args.get("context_excerpt") or ""),

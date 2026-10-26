@@ -41,12 +41,12 @@ _Monitor paa vaerktoejer pr. agentisk runde. Tier medmindre tallet rykker._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L76) |
-| function | `_spredning` | `(tal)` | — | [src](../../../scripts/batch_maaling_monitor.py#L115) |
-| function | `vurder_ab` | `(arme)` | Returnerer (dom, linje). Dommen er "knappen_virker_ikke", "forskel" eller None. | [src](../../../scripts/batch_maaling_monitor.py#L122) |
-| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L161) |
-| function | `_ab_besked` | `(dom, linje)` | (ref, titel, tekst). Ref'et er stabilt pr. dom, saa hver dom siges ÉN gang. | [src](../../../scripts/batch_maaling_monitor.py#L177) |
-| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L204) |
+| function | `vurder` | `(serie, *, dage=…, min_runder=…)` | Returnerer (dom, snit, antal_taellende_dage). | [src](../../../scripts/batch_maaling_monitor.py#L78) |
+| function | `_spredning` | `(tal)` | — | [src](../../../scripts/batch_maaling_monitor.py#L117) |
+| function | `vurder_ab` | `(arme)` | Returnerer (dom, linje). Dommen er "knappen_virker_ikke", "forskel" eller None. | [src](../../../scripts/batch_maaling_monitor.py#L124) |
+| function | `_besked` | `(dom, snit)` | — | [src](../../../scripts/batch_maaling_monitor.py#L163) |
+| function | `_ab_besked` | `(dom, linje)` | (ref, titel, tekst). Ref'et er stabilt pr. dom, saa hver dom siges ÉN gang. | [src](../../../scripts/batch_maaling_monitor.py#L179) |
+| function | `main` | `()` | — | [src](../../../scripts/batch_maaling_monitor.py#L206) |
 
 ## `scripts/beacon_rapport.py`
 _Opgørelse fra vaertens crash-beacon-log._
@@ -132,12 +132,12 @@ _Cache hit rate monitor._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_aggregate_events` | `(rows)` | Aggregate hit/miss across a list of cost.recorded payloads. | [src](../../../scripts/cache_rate_monitor.py#L38) |
-| function | `_by_lane` | `(rows)` | Same aggregation grouped by lane. | [src](../../../scripts/cache_rate_monitor.py#L64) |
-| function | `_fetch_costs` | `(con, since_sql)` | Fetch cost rows from the costs table as dicts with cache_hit/miss keys. | [src](../../../scripts/cache_rate_monitor.py#L73) |
-| function | `collect_snapshot` | `()` | Read costs from DB and produce a rich snapshot — ALL lanes. | [src](../../../scripts/cache_rate_monitor.py#L94) |
-| function | `append_log` | `(snapshot)` | — | [src](../../../scripts/cache_rate_monitor.py#L118) |
-| function | `main` | `()` | — | [src](../../../scripts/cache_rate_monitor.py#L124) |
+| function | `_aggregate_events` | `(rows)` | Aggregate hit/miss across a list of cost.recorded payloads. | [src](../../../scripts/cache_rate_monitor.py#L40) |
+| function | `_by_lane` | `(rows)` | Same aggregation grouped by lane. | [src](../../../scripts/cache_rate_monitor.py#L66) |
+| function | `_fetch_costs` | `(con, since_sql)` | Fetch cost rows from the costs table as dicts with cache_hit/miss keys. | [src](../../../scripts/cache_rate_monitor.py#L75) |
+| function | `collect_snapshot` | `()` | Read costs from DB and produce a rich snapshot — ALL lanes. | [src](../../../scripts/cache_rate_monitor.py#L96) |
+| function | `append_log` | `(snapshot)` | — | [src](../../../scripts/cache_rate_monitor.py#L120) |
+| function | `main` | `()` | — | [src](../../../scripts/cache_rate_monitor.py#L126) |
 
 ## `scripts/capabilities_gen.py`
 _Generate docs/reference/CAPABILITIES.md from the live tool registry. Regenerable._

@@ -149,6 +149,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     action_retries = 0
     write_calls = 0
     incomplete = False
+    # 26/10-2026: antallet af ubesvarede nummererede spoergsmaal. Baeres med ud til
+    # kalderen, saa Jarvis kan se HVOR MEGET der manglede — ikke bare AT der manglede
+    # noget. Kravet (Bjørn 26/10): "Jarvis skal altid vide, hvad den naaede, hvad den
+    # ikke naaede, og hvorfor arbejdet stoppede."
+    unanswered_total = 0
     parked: dict[str, Any] | None = None
     t0 = time.monotonic()
     # Kan agenten skrive i det hele taget? Det afgoeres af SKEMAET den fik, ikke af dens ord.
@@ -231,6 +236,7 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 # ufuldstaendig — ogsaa for en laese-agent, og ogsaa naar teksten lyder faerdig.
                 if unanswered:
                     incomplete = True
+                    unanswered_total = unanswered
                 break
             messages.append({"role": "assistant", "content": final_text, "tool_calls": tool_calls})
             if run_calls(tool_calls, tool_calls):
@@ -256,12 +262,12 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
             logger.warning("afsluttende syntese fejlede - beholder teksten fra sidste runde", exc_info=True)
 
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
-                    None, incomplete=incomplete)
+                    None, incomplete=incomplete, unanswered=unanswered_total)
 
 
 def _outcome(final_text: str, total_input: int, total_output: int, total_cost: float, total_tool_calls: int,
              rounds: int, error_str: str, t0: float, parked: dict[str, Any] | None,
-             incomplete: bool = False) -> dict[str, Any]:
+             incomplete: bool = False, unanswered: int = 0) -> dict[str, Any]:
     out = {"final_text": final_text, "total_input": total_input, "total_output": total_output,
            "total_cost": total_cost, "total_tool_calls": total_tool_calls, "rounds": rounds,
            "error_str": error_str, "duration_ms": int((time.monotonic() - t0) * 1000)}
@@ -269,4 +275,6 @@ def _outcome(final_text: str, total_input: int, total_output: int, total_cost: f
         out["parked"] = parked
     if incomplete:
         out["incomplete"] = True
+    if unanswered:
+        out["unanswered"] = int(unanswered)
     return out

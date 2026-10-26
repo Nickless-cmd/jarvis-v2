@@ -251,8 +251,8 @@ _The five-field model-facing Task facade over agent-contract-v1._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L28) |
-| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L50) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L112) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L58) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L120) |
 
 ## `core/services/agent_todos.py`
 _Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._

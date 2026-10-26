@@ -45,8 +45,24 @@ logger = logging.getLogger(__name__)
 _OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r'^\s*(ja|kør|kør på|do it|go ahead|proceed)\s*\.?\s*$', re.IGNORECASE),
     re.compile(r'^\s*(godkendt|accepteret|approved|accept|ok|okay)\s*\.?\s*$', re.IGNORECASE),
+)
+
+# Uforankret override: «gør det» kan stå midt i en sætning og kan derfor ikke
+# forankres som de to ovenfor. I stedet en længde-grænse: en konsent-kommando
+# er KORT.
+#
+# Målt 26/10-2026 på 392 historiske brugerbeskeder: mønstret ramte 12. De 9 var
+# 2.590-6.434 tegn og bestod af Jarvis' EGNE svar gengivet som user-beskeder —
+# altså hans egen tekst der gav ham tilladelse. De 3 ægte var 7, 73 og 101
+# tegn. Gabet (101 → 2.590) betyder at grænsen ikke rammer et tilfældigt
+# cutoff; enhver værdi mellem 200 og 2.500 giver samme resultat.
+#
+# Samme fejlklasse som de to andre rettelser samme dag: gaten kontrollerede
+# ordet, ikke hvem der sagde det.
+_OVERRIDE_UFORANKRET: tuple[re.Pattern[str], ...] = (
     re.compile(r'\bg(?:ør|å) det\b', re.IGNORECASE),
 )
+_MAX_CONSENT_LEN = 800
 
 # Negation markers — words that flip consent into refusal.
 # When any of these appear before a consent token (within ~30 chars),
@@ -131,6 +147,14 @@ def _check_token_signal_gate(user_message: str, tool_name: str) -> bool:
         m = pattern.search(user_message)
         if m and not _is_negated(user_message, m.start()):
             return True
+
+    # «gør det» er ikke forankret — den gælder derfor kun korte beskeder, så en
+    # lang indsat tekst ikke kan give sig selv tilladelse ved at citere frasen.
+    if len(user_message) <= _MAX_CONSENT_LEN:
+        for pattern in _OVERRIDE_UFORANKRET:
+            m = pattern.search(user_message)
+            if m and not _is_negated(user_message, m.start()):
+                return True
 
     # Consent near risk marker: "godkendt restart" = explicit approval
     m = _CONSENT_NEAR_RISK.search(user_message)

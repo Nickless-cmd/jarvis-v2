@@ -143,3 +143,53 @@ def test_ingen_ambient_autoritet_i_en_frisk_kontekst():
     from core.tools.owner_approval import _ejer_godkendt
 
     assert _ejer_godkendt.get() is False
+
+
+# ── Uforankret override kræver kort besked (26/10-2026) ──────────────────────
+def test_uforankret_override_gaelder_kun_korte_beskeder():
+    """«gør det» kan ikke forankres — så den måles på længde i stedet.
+
+    Målt 26/10-2026 på 392 historiske brugerbeskeder: mønstret ramte 12. De 9
+    var 2.590-6.434 tegn og bestod af Jarvis' EGNE svar gengivet som
+    user-beskeder — hans egen tekst der gav ham tilladelse. De 3 ægte var 7,
+    73 og 101 tegn.
+
+    Den negative kontrol er nødvendig: uden den ville testen også bestå hvis
+    nogen fjernede «gør det»-mønstret helt, og så var en legitim kommando
+    blevet afvist i stilhed.
+    """
+    from core.services.veto_gate import _check_token_signal_gate
+
+    # Ægte, kort konsent — skal stadig virke (ellers er rettelsen en regression)
+    assert _check_token_signal_gate("gør det", "bash") is True
+    assert (
+        _check_token_signal_gate("Du skriver du mangler noget, så gør det færdigt..", "bash")
+        is True
+    )
+
+    # Lang indsat tekst der citerer frasen — må ikke give tilladelse.
+    # Længden er ABSOLUT og ikke afledt af _MAX_CONSENT_LEN: ellers flytter
+    # beskeden med konstanten, og testen kan ikke se at grænsen fjernes.
+    # (Målt 26/10-2026: første udgave brugte _MAX_CONSENT_LEN + 100 og bestod
+    # mutationen «sæt grænsen til 100000».)
+    lang = "Lad mig efterprøve det.\n\n" + ("x" * 3000) + "\n\ngør det"
+    assert _check_token_signal_gate(lang, "bash") is False, (
+        "en besked på ~3.000 tegn må ikke give konsent via det uforankrede "
+        "mønster — så kan indsat tekst give sig selv tilladelse"
+    )
+
+
+def test_uforankret_override_er_adskilt_fra_de_forankrede():
+    """De to forankrede mønstre må ikke blandes sammen med det uforankrede.
+
+    Blandes de, forsvinder længde-grænsen uden at nogen test ser det — og
+    «gør det» midt i en 6.000-tegns indsat tekst giver igen tilladelse.
+    """
+    from core.services import veto_gate as vg
+
+    assert len(vg._OVERRIDE_PATTERNS) == 2
+    assert len(vg._OVERRIDE_UFORANKRET) == 1
+    assert all(p.pattern.startswith("^") for p in vg._OVERRIDE_PATTERNS), (
+        "de to første mønstre skal være forankrede til hele beskeden"
+    )
+    assert not vg._OVERRIDE_UFORANKRET[0].pattern.startswith("^")

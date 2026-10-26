@@ -62,6 +62,16 @@ class RoutineInboxService:
         policy = db_routines.get_inbox_preference(owner, routine_id=routine_id)
         if not bool(policy.get(_POLICY_KEY.get(event_type, event_type), False)):
             return {"status": "suppressed"}
+        routine = db_routines.get_routine(routine_id, decrypt_for=owner)
+        classification = dict(
+            dict((routine or {}).get("delivery_policy") or {}).get("classification") or {}
+        )
+        importance = str(classification.get("importance") or "normal")
+        terminal_attention = event_type in {
+            "succeeded", "failed", "action_required", "delivery_failed",
+        }
+        blocks = bool(classification.get("blocks_mutations")) and terminal_attention
+        run_id = str(event.get("run_id") or "")
         from core.services.inbox_state import registrer_kilde
 
         try:
@@ -70,7 +80,13 @@ class RoutineInboxService:
                 kildetype="routine_event",
                 kilde_id=event_id,
                 kilde_ejer="jarvis",
-                beskrivelse=f"Routinehændelse: {event_type}",
+                beskrivelse=(
+                    f"Routinehændelse: {event_type}"
+                    if importance in {"low", "normal"}
+                    else f"Rutinehændelse [{importance}]: {event_type}"
+                    + (f" (run {run_id})" if run_id else "")
+                ),
+                bloker=blocks,
             )
         except Exception:
             # Inbox delivery is a projection after the authoritative lifecycle

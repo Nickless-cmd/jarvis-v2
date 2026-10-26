@@ -1,7 +1,8 @@
 """Value objects shared by the Routine domain.
 
-These types intentionally contain no session identifier.  A routine execution is
-owned and scoped directly; it is never authorized through a chat session.
+Definitions intentionally contain no session identifier.  A session execution is
+authorized by the routine owner and resolves a freshly owner-verified session at
+dispatch time; a stale chat id is never an authority token.
 """
 from __future__ import annotations
 
@@ -52,6 +53,9 @@ class RoutineExecutionMode(StrEnum):
 
     SESSION = "session"
     """Udføres i den samtale brugeren sidst var aktiv — med cool-down."""
+
+    ADAPTIVE = "adaptive"
+    """Wakeup når ejeren har en ledig session, ellers isoleret baggrundsrun."""
 
 
 class RoutineImportance(StrEnum):

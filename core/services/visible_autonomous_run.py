@@ -11,6 +11,7 @@ begge symboler under de gamle navne.
 from __future__ import annotations
 
 import logging
+from typing import Callable
 from uuid import uuid4
 
 import core.services.visible_runs as _vr  # noqa: E402  (cirkulaer-sikkert: kun brugt ved kald)
@@ -93,7 +94,9 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
 
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
                          origin: str | None = None, task_id: str = "",
-                         max_tool_calls: int = 0, max_seconds: float = 0.0) -> bool:
+                         max_tool_calls: int = 0, max_seconds: float = 0.0,
+                         tool_scope: str = "", force_user_id: str = "",
+                         completion_callback: Callable[..., None] | None = None) -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
@@ -286,7 +289,13 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         # PERMISSIONS-ARVEN (21/10-2026). Se `autonomous_stream_run`: samme
         # læsning af samtalens niveau, samme grund. To run-oprettelser må ikke
         # kunne svare forskelligt om hvad en vækning arver.
-        trust_all=_trust_for_session(resolved_session),
+        # A routine's persisted permission policy wins over a session's
+        # interactive "trust" toggle.  A wakeup is still unattended.
+        trust_all=(
+            False if str(origin or "").strip().lower() == "routine"
+            else _trust_for_session(resolved_session)
+        ),
+        user_id=str(force_user_id or ""),
         origin=_origin,
     )
     # KAEDE-STEMPLET (14/10-2026). Foer stemplede kun `detached_run` — og kun
@@ -360,13 +369,19 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             logger.warning("autonomt run-budget kunne ikke saettes", exc_info=True)
         consumed_frames = 0
         failed = False
+        failure_error = ""
         try:
             async def _consume() -> None:
                 nonlocal consumed_frames
                 from core.services.visible_runs_sse_v2 import translate_to_v2
 
+                stream_kwargs = {}
+                if force_user_id:
+                    stream_kwargs["force_user_id"] = str(force_user_id)
+                if tool_scope:
+                    stream_kwargs["tool_scope"] = str(tool_scope)
                 generator = translate_to_v2(
-                    _vr._stream_visible_run(run),
+                    _vr._stream_visible_run(run, **stream_kwargs),
                     run_id=run.run_id, model=run.model, provider=run.provider,
                     lane=run.lane, session_id=resolved_session,
                     ping_interval_s=10.0,
@@ -384,6 +399,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             loop.run_until_complete(_consume())
         except Exception as exc:
             failed = True
+            failure_error = str(exc)
             _vr.event_bus.publish(
                 "runtime.autonomous_run_failed",
                 {
@@ -425,6 +441,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                                     outcome="failed", frames=consumed_frames, error=str(exc))
         finally:
             frame_relay.finish()
+            callback_outcome = "failed" if failed else "completed"
             if not failed:
                 outcome = _vr.get_last_visible_run_outcome() or {}
                 interrupted = (
@@ -432,6 +449,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     and str(outcome.get("status") or "") == "interrupted"
                 )
                 if interrupted:
+                    callback_outcome = "interrupted"
                     _vr.event_bus.publish(
                         "runtime.autonomous_run_interrupted",
                         {
@@ -447,6 +465,16 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     _observe_autonomous_run(run=run, session_id=resolved_session,
                                             outcome="interrupted", frames=consumed_frames,
                                             error=str(outcome.get("error") or ""))
+                    if completion_callback is not None:
+                        try:
+                            completion_callback(
+                                outcome=callback_outcome,
+                                visible_run_id=run.run_id,
+                                session_id=resolved_session,
+                                error=str(outcome.get("error") or ""),
+                            )
+                        except Exception:
+                            logger.warning("autonom completion-callback fejlede", exc_info=True)
                     loop.close()
                     return
                 _vr.event_bus.publish(
@@ -480,6 +508,16 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                 )
                 _observe_autonomous_run(run=run, session_id=resolved_session,
                                         outcome="completed", frames=consumed_frames)
+            if completion_callback is not None:
+                try:
+                    completion_callback(
+                        outcome=callback_outcome,
+                        visible_run_id=run.run_id,
+                        session_id=resolved_session,
+                        error=failure_error,
+                    )
+                except Exception:
+                    logger.warning("autonom completion-callback fejlede", exc_info=True)
             loop.close()
 
     # EJEREN BINDES HVIS INGEN ER BUNDET (24/9-2026).

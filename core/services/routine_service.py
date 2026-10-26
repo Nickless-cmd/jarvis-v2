@@ -91,6 +91,7 @@ _DEFAULT_INBOX_POLICY = {
     "cancelled": True,
     "action_required": True,
     "delivery_failed": True,
+    "succeeded": True,
     "retention": True,
 }
 

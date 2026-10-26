@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_sentinel.py`
+_Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: streaming er_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_aktivitet` | `(run_id, rec)` | Seneste livstegn for runnet (monotonic). | [src](../../../core/services/stream_sentinel.py#L45) |
+| function | `_observe` | `(nerve, run_id, session_id, **data)` | — | [src](../../../core/services/stream_sentinel.py#L70) |
+| function | `note_start` | `(run_id, session_id=…, **meta)` | En SSE-stream sendte message_start. Registrér + observe + opportunistisk stall-sweep. | [src](../../../core/services/stream_sentinel.py#L81) |
+| function | `note_stop` | `(run_id, *, reason=…)` | En SSE-stream sendte message_stop (reason='done' normalt, 'fallback' = terminal-garanti). | [src](../../../core/services/stream_sentinel.py#L98) |
+| function | `note_event` | `(run_id, kind, session_id=…, **data)` | Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout. | [src](../../../core/services/stream_sentinel.py#L120) |
+| function | `_sweep_stalled` | `(timeout_s=…)` | Ingen livstegn i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L139) |
+| function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L188) |
+| function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L198) |
+
 ## `core/services/stream_settlement.py`
 _`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
 
@@ -609,12 +623,4 @@ _Compact tool catalog for system prompt._
 | function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L180) |
 | function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L216) |
 | function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L221) |
-
-## `core/services/tool_chip_payload.py`
-_Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
-| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
 

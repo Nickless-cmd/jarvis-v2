@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_interruption.py`
+_Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_visible_run_interruption` | `(error_message)` | — | [src](../../../core/services/visible_run_interruption.py#L17) |
+
 ## `core/services/visible_run_journal.py`
 _Persist the visible run and its composer context for durable recovery._
 
@@ -524,14 +531,4 @@ _Observerende vagt: opdager en «mur» — flere pointer i én prosablok._
 | function | `_prosablokke` | `(text)` | Del teksten i blokke og kast kode, tabeller, lister og native-JSON væk. | [src](../../../core/services/wall_guard.py#L42) |
 | function | `find_walls` | `(text)` | Returnér de prosablokke der ser ud som en mur. Tom liste = intet fundet. | [src](../../../core/services/wall_guard.py#L65) |
 | function | `observe` | `(text, *, run_id=…)` | Mål uden at røre teksten. Skriver en central-hændelse ved fund. | [src](../../../core/services/wall_guard.py#L86) |
-
-## `core/services/web_push_gateway.py`
-_Web-push via VAPID — fjerde udgang på push-stakken (side-67aea8c5b6)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_key` | `(name)` | Læs en VAPID-nøgle fra runtime.json. Tom streng hvis den ikke findes. | [src](../../../core/services/web_push_gateway.py#L20) |
-| function | `vapid_public_key` | `()` | Den offentlige VAPID-nøgle — gives til klienten ved abonnement. | [src](../../../core/services/web_push_gateway.py#L32) |
-| function | `_der_key` | `(raw)` | PEM → base64-DER uden headers. | [src](../../../core/services/web_push_gateway.py#L37) |
-| function | `send` | `(subscription, data)` | Send én web-push. Returnerer ``(ok, årsag)``. | [src](../../../core/services/web_push_gateway.py#L57) |
 

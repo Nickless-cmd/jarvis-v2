@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_scope.py`
+_Per-bruger data-scope (SECURITY #154, streng GDPR)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
+
 ## `core/services/user_temperature_engine.py`
 _User temperature field engine — Lag 10 two-stream pipeline._
 
@@ -197,9 +204,9 @@ _Autonome (heartbeat-startede) synlige runs: starter og observation._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/visible_autonomous_run.py#L21) |
-| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L36) |
-| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L94) |
+| function | `_trust_for_session` | `(session_id)` | Samtalens tilladelses-niveau — fail-closed til `ask`. | [src](../../../core/services/visible_autonomous_run.py#L22) |
+| function | `_observe_autonomous_run` | `(*, run, session_id, outcome, frames=…, error=…)` | #10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den | [src](../../../core/services/visible_autonomous_run.py#L37) |
+| function | `start_autonomous_run` | `(message, session_id=…, follow=…, origin=…, task_id=…, max_tool_calls=…, max_seconds=…, tool_scope=…, force_user_id=…, completion_callback=…)` | Trigger an autonomous (heartbeat-initiated) visible run in a background thread. | [src](../../../core/services/visible_autonomous_run.py#L95) |
 
 ## `core/services/visible_chat_pragmatics.py`
 _Pragmatic conversation boundaries for the visible chat-only lane._
@@ -596,11 +603,4 @@ _Værns-noterne — hvad Bjørn ser, og hvad modellen må se._
 | function | `er_handler_note` | `(tekst)` | Er dette en klasse-1-note? Den SKAL naa modellen; her kun til mærkning. | [src](../../../core/services/visible_run_guard_notices.py#L201) |
 | function | `fjern_menneske_noter` | `(dele)` | Fjern klasse-3-noter fra de dele der bliver model-input. | [src](../../../core/services/visible_run_guard_notices.py#L213) |
 | function | `fjern_menneske_noter_fra_historik` | `(historik)` | Fjern klasse-3-noter fra den PERSISTEREDE historik modellen får. | [src](../../../core/services/visible_run_guard_notices.py#L230) |
-
-## `core/services/visible_run_interruption.py`
-_Hvad afbrød et synligt run — til fejl-envelopen og Centralen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_visible_run_interruption` | `(error_message)` | — | [src](../../../core/services/visible_run_interruption.py#L17) |
 

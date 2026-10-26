@@ -756,6 +756,25 @@ def renew_run_lease(
         return dict(conn.execute("SELECT * FROM routine_runs WHERE run_id=?", (run_id,)).fetchone())
 
 
+def release_run_claim(
+    run_id: str, *, holder: str, expected_generation: int,
+) -> dict[str, Any]:
+    """Return an unstarted dispatch to the queue without changing occurrence identity."""
+    with connect() as conn:
+        _ensure_tables(conn)
+        changed = conn.execute(
+            "UPDATE routine_runs SET status='queued',lease_holder=NULL,"
+            "lease_expires_at=NULL,updated_at=? WHERE run_id=? AND status='running' "
+            "AND lease_holder=? AND lease_generation=?",
+            (_now(), run_id, holder, expected_generation),
+        )
+        if changed.rowcount != 1:
+            raise ValueError("stale routine lease")
+        return dict(conn.execute(
+            "SELECT * FROM routine_runs WHERE run_id=?", (run_id,),
+        ).fetchone())
+
+
 def reclaim_run(
     run_id: str, *, expected_generation: int, holder: str,
     now: datetime | None = None, lease_seconds: int = 90,

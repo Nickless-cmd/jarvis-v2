@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_chip_payload.py`
+_Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
+| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
+
 ## `core/services/tool_concurrency.py`
 _Tool-concurrency policy (harness Part C)._
 
@@ -564,11 +572,4 @@ _User model daemon — Theory of Mind: a living model of the user's state and pa
 | function | `_detect_communication_style` | `(messages)` | — | [src](../../../core/services/user_model_daemon.py#L184) |
 | function | `_generate_model_summary` | `(messages, model)` | — | [src](../../../core/services/user_model_daemon.py#L195) |
 | function | `_store_model` | `(summary, now)` | — | [src](../../../core/services/user_model_daemon.py#L223) |
-
-## `core/services/user_scope.py`
-_Per-bruger data-scope (SECURITY #154, streng GDPR)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `scope_uid` | `()` | Den bruger-id en privat DB-operation skal scopes til. "" hvis intet kan | [src](../../../core/services/user_scope.py#L15) |
 

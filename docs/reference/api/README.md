@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17638 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17648 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,15 +52,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17638 functions/
 - [`core.services.20`](core.services.20.md) — `post_tool_answer_guard` … `prompt_mutation_loop`
 - [`core.services.21`](core.services.21.md) — `prompt_observer` … `recall_scheduler`
 - [`core.services.22`](core.services.22.md) — `recurrence_loop_daemon` … `routine_crypto`
-- [`core.services.23`](core.services.23.md) — `routine_delivery` … `runtime_self_model_builder`
-- [`core.services.24`](core.services.24.md) — `runtime_self_model_identity` … `self_review_run_tracking`
-- [`core.services.25`](core.services.25.md) — `self_review_signal_tracking` … `shared_language_extended`
-- [`core.services.26`](core.services.26.md) — `shell_confinement_report` … `stream_sentinel`
-- [`core.services.27`](core.services.27.md) — `stream_settlement` … `tool_chip_payload`
-- [`core.services.28`](core.services.28.md) — `tool_concurrency` … `user_scope`
-- [`core.services.29`](core.services.29.md) — `user_temperature_engine` … `visible_run_interruption`
-- [`core.services.30`](core.services.30.md) — `visible_run_journal` … `web_push_gateway`
-- [`core.services.31`](core.services.31.md) — `web_push_subscriptions` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `routine_delivery` … `runtime_self_model_boundary`
+- [`core.services.24`](core.services.24.md) — `runtime_self_model_builder` … `self_review_record_tracking`
+- [`core.services.25`](core.services.25.md) — `self_review_run_tracking` … `shared_language`
+- [`core.services.26`](core.services.26.md) — `shared_language_extended` … `stream_failure_kind`
+- [`core.services.27`](core.services.27.md) — `stream_sentinel` … `tool_catalog`
+- [`core.services.28`](core.services.28.md) — `tool_chip_payload` … `user_model_daemon`
+- [`core.services.29`](core.services.29.md) — `user_scope` … `visible_run_guard_notices`
+- [`core.services.30`](core.services.30.md) — `visible_run_interruption` … `wall_guard`
+- [`core.services.31`](core.services.31.md) — `web_push_gateway` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

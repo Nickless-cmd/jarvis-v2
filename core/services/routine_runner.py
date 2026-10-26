@@ -566,6 +566,15 @@ class RoutineRunner:
                 run_id, generation=claim.lease_generation,
                 result=result.text.encode("utf-8"), delivery_channel=channel,
             )
+            from core.services.routine_inbox import project_event_to_inbox
+
+            project_event_to_inbox({
+                "owner_user_id": claim.owner_user_id,
+                "routine_id": claim.routine_id,
+                "run_id": run_id,
+                "event_id": f"{run_id}:succeeded",
+                "event_type": "succeeded",
+            })
             self.record_execution_success(claim.routine_id)
         elif result.status == "waiting_approval":
             self.repository.transition(
@@ -601,8 +610,11 @@ class RoutineRunner:
         return result
 
     def run_next(self) -> ExecutionResult | None:
-        run = self.repository.next_queued_run()
-        return None if run is None else self.run_once(run.run_id)
+        # Execution mode is a creation-time policy.  The worker routes the
+        # occurrence before either execution path may claim its lease.
+        from core.services.routine_dispatch import route_next
+
+        return route_next(self)
 
     def cancel(self, run_id: str) -> RunState:
         return _state(db_routines.cancel_run(run_id))

@@ -100,7 +100,7 @@ def classify_routine(
         highlights=weight in _HANDLING,
         cool_down_minutes=(
             _SESSION_COOL_DOWN_MINUTES
-            if mode is RoutineExecutionMode.SESSION
+            if mode in {RoutineExecutionMode.SESSION, RoutineExecutionMode.ADAPTIVE}
             else 0
         ),
     )

@@ -42,6 +42,7 @@ _Build a bounded Routine prompt directly from its immutable execution context._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_routine_prompt` | `(context, *, instruction)` | Return the execution prompt without consulting conversation state. | [src](../../../core/services/routine_prompt.py#L9) |
+| function | `build_session_routine_prompt` | `(context, *, instruction)` | Build a wakeup instruction; the visible lane supplies chat context. | [src](../../../core/services/routine_prompt.py#L55) |
 
 ## `core/services/routine_reconciler.py`
 _Crash reconciliation and retention sweeps for Routine work._
@@ -106,10 +107,10 @@ _Fenced, session-neutral execution of one Routine run._
 | method | `RoutineRunner.dispatch_tool` | `(self, run_id, *, generation, call, raw_executor=…)` | — | [src](../../../core/services/routine_runner.py#L485) |
 | method | `RoutineRunner._context` | `(self, row, generation)` | — | [src](../../../core/services/routine_runner.py#L507) |
 | method | `RoutineRunner.run_once` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L532) |
-| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L603) |
-| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L607) |
-| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L610) |
-| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id)` | — | [src](../../../core/services/routine_runner.py#L613) |
+| method | `RoutineRunner.run_next` | `(self)` | — | [src](../../../core/services/routine_runner.py#L612) |
+| method | `RoutineRunner.cancel` | `(self, run_id)` | — | [src](../../../core/services/routine_runner.py#L619) |
+| method | `RoutineRunner.record_execution_success` | `(self, routine_id)` | — | [src](../../../core/services/routine_runner.py#L622) |
+| method | `RoutineRunner.record_execution_failure` | `(self, routine_id, *, run_id)` | — | [src](../../../core/services/routine_runner.py#L625) |
 
 ## `core/services/routine_runtime.py`
 _Bounded worker and reconciler threads for Routines._

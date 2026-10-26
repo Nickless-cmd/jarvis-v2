@@ -1,5 +1,25 @@
 # Development log
 
+## 2026-10-26 — Routine execution policy now controls the real path
+
+Routine occurrences are now routed once, at the existing worker claim point,
+from their persisted `execution_mode` and shared runtime presence. `background`
+stays isolated, `session` waits for an owner-verified idle app conversation,
+and `adaptive` wakes that conversation when idle but falls back to the isolated
+runner while Jarvis is busy or the owner is offline. Unknown ownership or
+presence remains visibly queued.
+
+Session execution uses the existing visible autonomous-run path with real chat
+context, the routine's tool scope and owner identity. The Routine run is leased
+before wakeup, and a completion callback stores the visible-run/session evidence
+on that same occurrence, preventing scheduler/runner/wakeup duplication.
+Background success now projects to the durable Routine inbox; critical results
+carry the existing blocking escalation flag.
+
+Verification: 191 Routine, wakeup, guard and autonomous-run tests passed. Python
+compilation and `git diff --check` also passed. Full final checks are recorded in
+`STATUS.md`.
+
 ## 2026-10-15 — Adaptive Chat Flow for Jarvis Desk
 
 Jarvis Desk Chat Mode now has a dedicated conversational presentation layer with

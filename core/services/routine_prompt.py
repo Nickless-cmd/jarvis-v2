@@ -50,3 +50,24 @@ def build_routine_prompt(
         "Task:",
         task,
     ))
+
+
+def build_session_routine_prompt(
+    context: RoutineExecutionContext, *, instruction: bytes,
+) -> str:
+    """Build a wakeup instruction; the visible lane supplies chat context."""
+    try:
+        task = instruction.decode("utf-8")
+    except UnicodeDecodeError:
+        task = instruction.decode("utf-8", errors="replace")
+    return "\n".join((
+        "[ROUTINE WAKEUP]",
+        "Resume this owner-verified conversation and EXECUTE the routine now.",
+        "Use relevant conversation context, but obey the routine's capability scope.",
+        "Do not describe an isolated result as if it were executed here.",
+        f"Routine id: {context.routine_id}",
+        f"Routine version: {context.routine_version}",
+        f"Capability scope: {context.capability_scope}",
+        "Task:",
+        task,
+    ))

@@ -1,7 +1,7 @@
 # Routines: first-class, private autonomous work
 
 **Date:** 2026-10-12
-**Status:** Implemented for the approved Routine cutover (2026-10-13); approval continuation remains gated
+**Status:** Implemented; execution-policy/presence routing amended 2026-10-26
 **Scope:** Jarvis runtime, API, migration, and Jarvis Desk
 
 ## 1. Purpose
@@ -17,9 +17,11 @@ problems:
 4. background output can be routed through ordinary sessions.
 
 Replace that presentation and ownership model with a first-class **Routine**
-domain. A routine is a user-controlled definition. A routine run is an isolated
-execution. Delivery is a separate, private operation. None of these is a chat
-session.
+domain. A routine is a user-controlled definition. Each occurrence is routed by
+its creation-time execution policy: either to an isolated run, or to a real
+wakeup in a freshly owner-verified conversation. Delivery remains a separate,
+private operation for isolated results; a wakeup executes in conversation
+context rather than copying an isolated result into chat.
 
 ## 2. Goals
 
@@ -32,8 +34,9 @@ session.
   provable.
 - Treat internal routines as `system_owner`, visible and deliverable only to the
   owner.
-- Prevent routine content from being written into any ordinary chat or code
-  session.
+- Prevent isolated routine results from being copied into arbitrary chat or
+  code sessions; permit explicit session-policy wakeups only after current
+  owner and presence verification.
 - Project user-selected routine lifecycle and attention events into Jarvis'
   durable, user-scoped inbox without using a session inbox.
 - Preserve privacy between household users, including from the owner.
@@ -71,10 +74,14 @@ session.
 ## 5. Hard invariants
 
 1. A routine and a routine run are not chat sessions.
-2. A run receives a dedicated execution context and never uses an ordinary
-   `chat_session_id` as its context or destination.
-3. Routine execution and delivery must not call `append_chat_message()` for an
-   ordinary chat or code session.
+2. A background run receives a dedicated execution context and never uses an
+   ordinary `chat_session_id` as authority, context, or destination. A session
+   wakeup resolves its destination at dispatch time from a positive ownership
+   stamp and executes through the existing visible-run path with conversation
+   context.
+3. Delivery must not copy a background result into an ordinary chat or code
+   session. Session execution is not delivery: it performs the task in that
+   conversation and stores a fenced result reference on the Routine run.
 4. Every routine and run has explicit ownership and visibility. An ID prefix is
    never an authorization mechanism.
 5. Unknown or ambiguous ownership fails closed: do not execute and do not
@@ -97,6 +104,8 @@ session.
     that resolves to exactly one canonical user. Neither an unverified legacy
     `user_id` nor names/recipients parsed from private instruction text are
     ownership proof.
+13. One occurrence has one idempotency key and one execution lease. Scheduler,
+    background runner and session wakeup may not execute it independently.
 
 ## 6. Domain model
 
@@ -276,6 +285,23 @@ stack traces.
 Unknown ownership is not treated as legacy-open. Routine APIs fail closed.
 
 ## 9. Execution and delivery flow
+
+At creation, `execution_mode` is persisted in the immutable definition
+snapshot: `background` permits only isolated execution, `session` permits only
+an owner-verified wakeup, and `adaptive` permits wakeup when Jarvis is idle plus
+isolated fallback when Jarvis is busy or the owner is offline. `importance`
+controls inbox attention/escalation and never selects the execution path.
+
+When an occurrence is queued, the Routine worker is the single dispatch point.
+It reads shared in-flight runtime state and resolves the latest non-system,
+non-external session whose ownership stamp matches the canonical routine owner.
+Unknown ownership, an unknown execution mode, or unavailable runtime presence
+leaves the run visibly queued. A busy adaptive occurrence uses the isolated
+runner without interrupting active work. An idle adaptive/session occurrence
+claims the same Routine lease before starting the existing visible autonomous
+run in the verified session. Its completion callback settles that lease with a
+durable visible-run/session evidence reference. A rejected start releases the
+claim back to `queued`.
 
 1. A trigger asks the Routine service to enqueue a logical run.
 2. The service checks ownership, routine state, trigger permission, concurrency,

@@ -30,7 +30,7 @@ class RoutineCreateBody(BaseModel):
     #: Hvor opgaven udføres — valgt ved oprettelsen (Bjørn 19/10-2026).
     #: ``background`` = isoleret run, rapportér til indbakken.
     #: ``session`` = udfør hvor brugeren sidst var aktiv, med cool-down.
-    execution_mode: Literal["background", "session"] = "background"
+    execution_mode: Literal["background", "session", "adaptive"] = "background"
     #: Hvor vigtigt resultatet er. ``high``/``critical`` fremhæves i indbakken;
     #: kun ``critical`` må blokere en mutation.
     importance: Literal["low", "normal", "high", "critical"] = "normal"

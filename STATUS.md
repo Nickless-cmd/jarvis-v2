@@ -5,6 +5,25 @@ The repository-wide status source remains
 This file records the status of the 2026-10-15 Jarvis Desk Adaptive Chat Flow
 delivery requested for this implementation.
 
+## Routine policy/presence routing — complete locally (2026-10-26)
+
+- The persisted execution policy is connected to the Routine worker's actual
+  dispatch decision.
+- Adaptive routines do not interrupt active work; idle, owner-verified sessions
+  receive a real contextual wakeup; offline users fall back only when isolated
+  execution is permitted.
+- Ambiguous ownership and unavailable runtime presence fail closed to a visible
+  queued run.
+- One idempotent occurrence and fenced lease is shared across both execution
+  paths. Session completion stores durable visible-run evidence on the Routine
+  run.
+- Isolated successes reach the durable Routine inbox, with critical escalation
+  preserved.
+- Acceptance coverage includes busy Jarvis, idle Jarvis, offline Michelle,
+  critical runtime findings, one-time execution and fail-closed sensor states.
+- Verification: 191 relevant pytest tests passed; Python compilation and
+  `git diff --check` passed.
+
 ## Adaptive Chat Flow — complete locally
 
 - Chat Mode offers Living, Calm, and Adaptive without consulting the Code Mode

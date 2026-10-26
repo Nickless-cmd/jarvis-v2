@@ -49,6 +49,7 @@ BESKYTTEDE_ORIGINS: Final[frozenset[str]] = frozenset({
     "wakeup", "self-wakeup", "inbox", "scheduled", "recurring",
     "heartbeat", "heartbeat_runtime", "dream", "council",
     "side-task-inspect", "side-task-local_write",
+    "routine",
 })
 
 

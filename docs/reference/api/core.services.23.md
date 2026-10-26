@@ -35,6 +35,21 @@ _Content-free operational failure projections for owner and Jarvis._
 | function | `render_projection` | `(projection)` | — | [src](../../../core/services/routine_diagnostics.py#L62) |
 | function | `publish_failure` | `(projection)` | Publish the same fixed-schema projection to operational inbox and app chat. | [src](../../../core/services/routine_diagnostics.py#L72) |
 
+## `core/services/routine_dispatch.py`
+_Deterministic execution-path routing for queued Routine occurrences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RouteOutcome` | `` | — | [src](../../../core/services/routine_dispatch.py#L19) |
+| function | `_classification` | `(row)` | — | [src](../../../core/services/routine_dispatch.py#L25) |
+| function | `resolve_owner_session` | `(owner_user_id)` | Return (session, state); only a positive ownership stamp may wake. | [src](../../../core/services/routine_dispatch.py#L31) |
+| function | `runtime_presence` | `(session_id)` | Return idle/busy/unknown from shared runtime truth and cooldown state. | [src](../../../core/services/routine_dispatch.py#L65) |
+| function | `_context` | `(row, generation)` | — | [src](../../../core/services/routine_dispatch.py#L81) |
+| function | `_settle_session_run` | `(*, routine_run_id, generation, routine_id, owner_user_id, outcome, visible_run_id, session_id, error=…)` | — | [src](../../../core/services/routine_dispatch.py#L87) |
+| function | `_dispatch_session_claimed` | `(row, *, session_id)` | — | [src](../../../core/services/routine_dispatch.py#L125) |
+| function | `_dispatch_session` | `(row, *, session_id)` | Serialize the final presence check and synchronous visible-run birth. | [src](../../../core/services/routine_dispatch.py#L195) |
+| function | `route_next` | `(runner)` | Route one occurrence. Unknown state leaves it visibly queued. | [src](../../../core/services/routine_dispatch.py#L206) |
+
 ## `core/services/routine_identity.py`
 _Canonical, fail-closed identity resolution for Routine entry points._
 
@@ -74,7 +89,7 @@ _User-controlled projections of Routine lifecycle events into durable inbox._
 | method | `RoutineInboxService.set_override` | `(self, principal, routine_id, override)` | — | [src](../../../core/services/routine_inbox.py#L27) |
 | method | `RoutineInboxService.effective_policy` | `(self, principal, routine_id)` | — | [src](../../../core/services/routine_inbox.py#L41) |
 | method | `RoutineInboxService.project_event_to_inbox` | `(self, event)` | — | [src](../../../core/services/routine_inbox.py#L55) |
-| function | `project_event_to_inbox` | `(event)` | — | [src](../../../core/services/routine_inbox.py#L82) |
+| function | `project_event_to_inbox` | `(event)` | — | [src](../../../core/services/routine_inbox.py#L98) |
 
 ## `core/services/routine_run_recorder.py`
 _Session-neutral append-only recorder for observable Routine run events._
@@ -105,56 +120,56 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L32) |
 | method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L55) |
 | class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L60) |
-| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L98) |
-| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L123) |
-| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L140) |
-| function | `_apply_classification` | `(values)` | Validér oprettelsens valg og læg den udledte klassifikation i policy'en. | [src](../../../core/services/routine_service.py#L147) |
-| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L171) |
-| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L172) |
-| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L175) |
-| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L181) |
-| method | `RoutineService._project` | `(view, event_type)` | — | [src](../../../core/services/routine_service.py#L187) |
-| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L197) |
-| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L219) |
-| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L241) |
-| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L253) |
-| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L289) |
-| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L311) |
-| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L314) |
-| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L317) |
-| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L320) |
-| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L323) |
-| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L339) |
-| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L363) |
-| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L378) |
-| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L400) |
-| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L412) |
-| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L431) |
-| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L441) |
-| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L452) |
-| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L465) |
-| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L471) |
-| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L481) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L504) |
+| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L99) |
+| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L124) |
+| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L141) |
+| function | `_apply_classification` | `(values)` | Validér oprettelsens valg og læg den udledte klassifikation i policy'en. | [src](../../../core/services/routine_service.py#L148) |
+| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L172) |
+| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L173) |
+| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L176) |
+| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L182) |
+| method | `RoutineService._project` | `(view, event_type)` | — | [src](../../../core/services/routine_service.py#L188) |
+| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L198) |
+| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L220) |
+| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L242) |
+| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L254) |
+| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L290) |
+| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L312) |
+| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L315) |
+| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L318) |
+| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L321) |
+| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L324) |
+| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L340) |
+| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L364) |
+| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L379) |
+| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L401) |
+| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L413) |
+| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L432) |
+| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L442) |
+| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L453) |
+| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L466) |
+| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L472) |
+| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L482) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L505) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L13) |
-| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L22) |
-| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L32) |
-| class | `RoutineExecutionMode` | `` | Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter. | [src](../../../core/services/routine_types.py#L37) |
-| class | `RoutineImportance` | `` | Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det. | [src](../../../core/services/routine_types.py#L57) |
-| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L72) |
-| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L78) |
-| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L83) |
-| class | `RoutineClassification` | `` | Den udledte klassifikation — gemt i ``delivery_policy['classification']``. | [src](../../../core/services/routine_types.py#L104) |
-| method | `RoutineClassification.as_dict` | `(self)` | — | [src](../../../core/services/routine_types.py#L120) |
-| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L132) |
-| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L157) |
-| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L173) |
+| class | `RoutineStatus` | `` | — | [src](../../../core/services/routine_types.py#L14) |
+| class | `RunStatus` | `` | — | [src](../../../core/services/routine_types.py#L23) |
+| class | `AccessScope` | `` | — | [src](../../../core/services/routine_types.py#L33) |
+| class | `RoutineExecutionMode` | `` | Hvor en rutine UDFØRES — valgt ved oprettelsen, ikke gættet bagefter. | [src](../../../core/services/routine_types.py#L38) |
+| class | `RoutineImportance` | `` | Hvor vigtigt et rutine-resultat er — styrer om indbakken fremhæver det. | [src](../../../core/services/routine_types.py#L61) |
+| class | `RoutinePrincipal` | `` | — | [src](../../../core/services/routine_types.py#L76) |
+| method | `RoutinePrincipal.user_id` | `(self)` | — | [src](../../../core/services/routine_types.py#L82) |
+| class | `RoutineExecutionContext` | `` | — | [src](../../../core/services/routine_types.py#L87) |
+| class | `RoutineClassification` | `` | Den udledte klassifikation — gemt i ``delivery_policy['classification']``. | [src](../../../core/services/routine_types.py#L108) |
+| method | `RoutineClassification.as_dict` | `(self)` | — | [src](../../../core/services/routine_types.py#L124) |
+| class | `RoutineCreate` | `` | — | [src](../../../core/services/routine_types.py#L136) |
+| class | `RoutinePatch` | `` | — | [src](../../../core/services/routine_types.py#L161) |
+| method | `RoutinePatch.changes` | `(self)` | — | [src](../../../core/services/routine_types.py#L177) |
 
 ## `core/services/rule_definitions.py`
 _Rule definitions — production rules feeding the rule_engine._
@@ -305,9 +320,9 @@ _Én fælles vagt: kører der et run i denne session lige nu?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L55) |
-| function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L88) |
-| function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L108) |
+| function | `levende_run_i_session` | `(session_id)` | Run-id på et LEVENDE run i sessionen — cross-proces. "" hvis ingen. | [src](../../../core/services/run_guard.py#L56) |
+| function | `blokeringsgrund` | `(origin, session_id)` | Årsag hvis et nyt BAGGRUNDS-run ikke må starte her. "" = fri bane. | [src](../../../core/services/run_guard.py#L89) |
+| function | `parker_forpligtelse` | `(*, origin, session_id, beskrivelse, kilde_id=…)` | Læg en AFVIST forpligtelse i indbakken i stedet for at tabe den. | [src](../../../core/services/run_guard.py#L109) |
 
 ## `core/services/run_message_provenance.py`
 _Name the source of model input without changing the user's stored text._
@@ -666,15 +681,4 @@ _Runtime self-model — self-boundary clarity + world-contact awareness._
 | function | `_world_contact_narrative` | `(*, contact_state, parts, concerns)` | Felt-sense world-contact narrative — signal-first, 6-14 words. | [src](../../../core/services/runtime_self_model_boundary.py#L389) |
 | function | `build_world_contact_prompt_section` | `()` | Felt-sense prompt section for unified world awareness. None when idle. | [src](../../../core/services/runtime_self_model_boundary.py#L409) |
 | function | `_world_contact_surface` | `()` | — | [src](../../../core/services/runtime_self_model_boundary.py#L436) |
-
-## `core/services/runtime_self_model_builder.py`
-_Runtime self-model — top-level builder (assembles the full snapshot)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/runtime_self_model_builder.py#L24) |
-| function | `build_runtime_self_model` | `()` | Build a bounded runtime self-model snapshot. | [src](../../../core/services/runtime_self_model_builder.py#L36) |
-| function | `_collect_layers` | `()` | Collect all known layers with type annotations. | [src](../../../core/services/runtime_self_model_builder.py#L204) |
-| function | `_truth_boundaries` | `()` | Express the key distinctions Jarvis should maintain. | [src](../../../core/services/runtime_self_model_builder.py#L911) |
-| function | `_build_summary` | `(layers, boundaries)` | Build a compact summary for prompt injection. | [src](../../../core/services/runtime_self_model_builder.py#L966) |
 

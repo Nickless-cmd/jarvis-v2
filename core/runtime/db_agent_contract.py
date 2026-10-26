@@ -588,6 +588,25 @@ def adopt_run(*, agent_id: str, run_id: str) -> str:
         raise
 
 
+def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str]:
+    """(error_code, error_phase) for et terminalt udfald.
+
+    26/10-2026: en DELVIS leverance er ikke en model-fejl.
+
+    Maalt paa `asg-4a79ab1ca3094db2`: agenten svarede paa 1 af 3 spoergsmaal, og
+    markeringen "UFULDSTÆNDIG (N ubesvarede spoergsmaal)" stod i resultatet.
+    Alligevel blev udfaldet stemplet `AGENT_FAILED` med `error_phase: "model"` —
+    det paastaar at MODELLEN fejlede, naar den faktisk arbejdede (6 vaerktoejskald)
+    og leverede et korrekt svar paa det foerste spoergsmaal. En agent der stoppede
+    midt i, fejlede i LEVERANCEN, ikke i modelkaldet. Fasen skal sige det den ved,
+    ellers leder den naeste mig efter den forkerte aarsag.
+    """
+    text = str(full or "")
+    if text.strip() and "UFULDSTÆNDIG" in text:
+        return "AGENT_INCOMPLETE", "delivery"
+    return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
+
+
 def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any] | None:
     """Kaldes når agentens registry-status bliver terminal. Fastlægger det åbne
     assignments udfald og den ene terminalbesked. `None` når intet skal ske."""
@@ -629,6 +648,17 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
         "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
         "AND kind IN ('result','') ORDER BY created_at DESC LIMIT 1", (agent_id,)).fetchone()
     full = reply["content"] if reply else ""
+    # 26/10-2026: en DELVIS leverance er ikke en model-fejl.
+    #
+    # Maalt paa `asg-4a79ab1ca3094db2`: agenten svarede paa 1 af 3 spoergsmaal, og
+    # markeringen "UFULDSTÆNDIG (N ubesvarede spoergsmaal)" stod i resultatet.
+    # Alligevel blev udfaldet stemplet `AGENT_FAILED` med `error_phase: "model"` —
+    # det paastaar at MODELLEN fejlede, naar den faktisk arbejdede (6 vaerktoejskald)
+    # og leverede et korrekt svar paa det foerste spoergsmaal. En agent der stoppede
+    # midt i, fejlede i LEVERANCEN, ikke i modelkaldet. Fasen skal sige det den ved,
+    # ellers leder den naeste mig efter den forkerte aarsag.
+    _error_code, _error_phase = partial_delivery_error(
+        full=full, registry_status=registry_status)
     owner = conn.execute("SELECT owner_user_id FROM agent_assignments WHERE assignment_id=?",
                          (a["assignment_id"],)).fetchone()["owner_user_id"]
     # Resultatfilen faerdiggoeres FOER den terminale DB-transaktion (§9).
@@ -643,12 +673,12 @@ def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any
         logger.warning("worktree-aflevering fejlede for %s", a["assignment_id"], exc_info=True)
     art = write_terminal_artifacts(
         agent_id=agent_id, assignment_id=a["assignment_id"], owner_user_id=owner, status=target,
-        reply=full, summary=full[:500], error_code=_ERROR_CODE.get(registry_status, ""),
-        error_phase=_ERROR_PHASE.get(registry_status, ""), worktree=wt_summary)
+        reply=full, summary=full[:500], error_code=_error_code,
+        error_phase=_error_phase, worktree=wt_summary)
     return commit_terminal_outcome(
         assignment_id=a["assignment_id"], status=target, summary=full[:500],
-        error_code=_ERROR_CODE.get(registry_status, ""),
-        error_phase=_ERROR_PHASE.get(registry_status, ""),
+        error_code=_error_code,
+        error_phase=_error_phase,
         artifact_ref=art["artifact_ref"], artifact_error=art["artifact_error"],
     )
 

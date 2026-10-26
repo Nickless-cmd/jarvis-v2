@@ -799,6 +799,34 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                     logger.warning(
                         "agent_runtime_spawn: blocked-nerven fejlede for %s: %s",
                         agent_id, exc)
+            # 26/10-2026: en DELVIS leverance maa ikke kastes vaek.
+            #
+            # Maalt paa `asg-4a79ab1ca3094db2`: agenten laeste 6 vaerktoejskald og
+            # svarede KORREKT paa 1 af 3 spoergsmaal. Loekken bar markeringen
+            # "UFULDSTÆNDIG (N ubesvarede spoergsmaal) — agentens tekst: ..." hele
+            # vejen hertil — og raisen nedenfor gjorde den til en fejl UDEN tekst:
+            # `create_agent_message` blev aldrig naaet, saa `agent_messages` var tom,
+            # `has_final_text` var False og `final.txt` fandtes ikke. Jarvis kunne se
+            # AT noget manglede, men ikke HVAD agenten naaede. Det er praecis den
+            # halve leverance vaernet skulle fjerne.
+            #
+            # Teksten bevares derfor FOER raisen. Udfaldet er stadig ikke-verificeret:
+            # en delvis leverance er ikke en fuldfoert opgave.
+            if str(text or "").strip():
+                try:
+                    create_agent_message(
+                        message_id=f"agent-msg-{uuid4().hex}",
+                        thread_id=resolved_thread_id,
+                        run_id=run_id,
+                        agent_id=agent_id,
+                        direction="agent->jarvis",
+                        role="assistant",
+                        kind="result",
+                        content=text,
+                    )
+                except Exception:
+                    logger.warning(
+                        "kunne ikke bevare delvis leverance for %s", agent_id, exc_info=True)
             raise RuntimeError(
                 "Agent afsluttede uden et brugbart resultat: "
                 + str(result.get("result") or text or result.get("status"))[:350]

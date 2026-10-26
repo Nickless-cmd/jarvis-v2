@@ -118,3 +118,53 @@ def test_visible_run_routes_exit_through_terminal_recovery():
     assert '_agentic_loop_exit_reason = "early-exit-empty-text"' in source
     assert '_agentic_loop_exit_reason = "early-exit-tool-only"' in source
     assert '_agentic_loop_exit_reason = "early-exit-loop-gate-skip"' in source
+
+
+# ── 26/10-2026: kun FØRSTEPERSON er et løfte om fortsat arbejde ──────────────
+#
+# Målt: 124 runs bar `forced-finalize-unverified`; 65 var terminalt opgivet i
+# de sidste 14 dage — hver efter at brugeren havde fået sit svar. Årsagen var at
+# verbet + «nu» matchede uden subjekt, så en beskrivelse af et værktøj der
+# kører blev læst som mit eget løfte. Disse fire tests pinner grænsen.
+
+def test_vaerktoej_der_koerer_er_ikke_et_loefte_om_fortsat_arbejde():
+    """«bash kører nu» beskriver et kald — det er ikke uafsluttethed."""
+    from core.services.visible_run_terminal_recovery import has_incompletion_evidence
+    assert has_incompletion_evidence(
+        "Kanalen er åben, så `bash` kører nu på CheifOne — derfor fejlede sti-opslaget."
+    ) is False
+
+
+def test_kommando_i_baggrunden_er_ikke_et_loefte():
+    from core.services.visible_run_terminal_recovery import has_incompletion_evidence
+    assert has_incompletion_evidence(
+        "Kommandoen kører nu i baggrunden på din maskine."
+    ) is False
+
+
+def test_foerstepersons_loefte_er_stadig_uafsluttet():
+    """Grænsen må ikke blive så bred at den ægte form slipper igennem."""
+    from core.services.visible_run_terminal_recovery import has_incompletion_evidence
+    assert has_incompletion_evidence(
+        "Jeg har undersøgt loggen og samler nu resultaterne."
+    ) is True
+    assert has_incompletion_evidence("Jeg kører nu testen.") is True
+
+
+def test_et_faerdigt_svar_der_naevner_en_begraensning_genstarter_ikke():
+    """Et komplet svar må gerne sige hvad der IKKE virkede, uden at blive
+    genstartet — ellers straffes ærlig rapportering."""
+    from core.services.visible_run_terminal_recovery import resolve_agentic_exit
+    from core.services.visible_terminal_policy import TerminalState
+    result = resolve_agentic_exit(
+        exit_reason="completed",
+        final_text=(
+            "Kanalen er åben, så `bash` kører nu på din maskine. "
+            "Jeg fandt de tre lister og har rettet den første."
+        ),
+        finish_reason="stop",
+        forced_finalize=True,
+        pending_tool_intent=False,
+    )
+    assert result.exit_reason == "completed"
+    assert result.decision.state is TerminalState.COMPLETED

@@ -2291,7 +2291,7 @@ Generated from source. 9344/17643 functions/methods documented (52%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.error` (L61)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.set_error` (L93)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
-- `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L51)
+- `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L65)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
 - `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L549)
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L555)

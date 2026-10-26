@@ -22,9 +22,23 @@ _NEGATED_COMPLETION_RE = re.compile(
 )
 
 
+#: Kun MINE egne løfter om fortsat arbejde tæller som uafsluttethed.
+#:
+#: Målt 26/10-2026: den gamle form krævede kun verbet + «nu», uden subjekt.
+#: Derfor matchede den beskrivelser af et VÆRKTØJ der kører — «Kanalen er åben,
+#: så `bash` kører nu på CheifOne», «Kommandoen kører nu i baggrunden» — og
+#: gjorde et FÆRDIGT svar til `forced-finalize-unverified`. 124 runs bar det
+#: spor; 65 af dem var terminalt opgivet i de sidste 14 dage, hver efter at
+#: brugeren havde fået sit svar. Jo mere ærligt svaret beskrev hvad der ikke
+#: virkede, jo større var chancen for at turen blev stemplet fejlet.
+#:
+#: Førsteperson er nu påkrævet, i begge ordstillinger («jeg … samler nu» og
+#: «samler nu … jeg»), og må ikke krydse en sætningsgrænse.
+_FP = r"\b(?:jeg|vi)\b"
+_VERB = (r"\b(?:samler|fortsætter|fortsaetter|undersøger|undersoeger|tester|"
+         r"implementerer|retter|kører|koerer|afventer)\s+(?:nu|stadig|videre)\b")
 _CONTINUING_ACTION_RE = re.compile(
-    r"\b(?:samler|fortsætter|fortsaetter|undersøger|undersoeger|tester|"
-    r"implementerer|retter|kører|koerer|afventer)\s+(?:nu|stadig|videre)\b",
+    rf"{_FP}[^.!?\n]{{0,60}}?{_VERB}|{_VERB}[^.!?\n]{{0,40}}?{_FP}",
     re.IGNORECASE,
 )
 

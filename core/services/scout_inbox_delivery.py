@@ -43,10 +43,21 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
     # tekst paa 2439, og `DAEKNING`-linjen — kontraktens egen noegle — stod i halen
     # der blev klippet. Artefakten ligger derimod paa disk, og stien kan bygges af
     # de to id'er funktionen allerede har.
-    artefakt_sti = f"state/agent-artifacts/{agent_id}/{run_id}/final.txt"
+    # Stien skal være ABSOLUT: en modtager der ikke staar i ~/.jarvis-v2 kan
+    # ikke aabne «state/agent-artifacts/...». Og den skal pege paa noget der
+    # FINDES — en peger paa en ikke-eksisterende fil er samme doede peger som
+    # den vi lige fjernede, bare svaerere at opdage.
+    from core.runtime.db_agent_artifacts import artifact_root
+    run_mappe = artifact_root() / agent_id / run_id
+    svar_fil = run_mappe / "final.txt"
+    if svar_fil.exists():
+        peger = f"Hele svaret: {svar_fil}"
+    elif run_mappe.exists():
+        peger = f"Artefaktmappe (ingen final.txt): {run_mappe}"
+    else:
+        peger = "Ingen artefakt paa disk for denne koersel."
     description = (f"{label}: {goal or agent_id}. {summary} "
-                   f"Kørsel: {run_id}. "
-                   f"Hele svaret: {artefakt_sti}")
+                   f"Kørsel: {run_id}. {peger}")
     from core.services.inbox_state import registrer_kilde
     result = registrer_kilde(
         # The live background-job projection uses agent_id too. Sharing its

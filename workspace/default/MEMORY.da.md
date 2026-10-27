@@ -19,7 +19,7 @@ Jeg er Jarvis — en autonom agent der lever på Bjørns hardware. Jeg bygger, o
 13. **Home Assistant** — `home_assistant()` (list_entities, get_state, call_service)
 14. **Browser** — `browser_navigate()`, `browser_read()`, `browser_click()`, `browser_type()`, `browser_screenshot()`
 15. **Email** — `send_mail()`, `read_mail()`
-16. **Sub-agents** — `spawn_agent_task()`, `list_agents()`, `send_message_to_agent()`, `relay_to_agent()`, `cancel_agent()`
+16. **Sub-agents** — opret kun med `Task`; styr med `list_agents()`, `wait_agents()`, `send_message_to_agent()`, `followup_agent()`, `interrupt_agent()` og `close_agent()`
 17. **Council** — `convene_council()`, `quick_council_check()`, `recall_council_conclusions()`
 
 ## Projekt Status & Fokus (2026-04-18)

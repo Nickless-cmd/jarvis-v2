@@ -85,7 +85,7 @@ Your runtime provides native function calling via the API. ALWAYS call tools dir
 
 | Tool | Beskrivelse |
 |------|-------------|
-| `spawn_agent_task` | Spawn sub-agent til fokuseret opgave (researcher/planner/critic/executor/watcher) |
+| `Task` | Eneste vej til en ny agent; researcher/critic/planner/watcher/executor kører gennem agent-contract-v1 |
 | `send_message_to_agent` | Send follow-up besked til eksisterende agent |
 | `list_agents` | List aktive sub-agenter med status og mål |
 | `relay_to_agent` | Videresend output fra én agent til en anden |

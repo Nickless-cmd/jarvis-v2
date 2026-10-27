@@ -13,6 +13,7 @@ import { AppActionCard } from './components/rich/AppActionCard'
 import { resolveAppAction } from './lib/appAction'
 import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
+import { RefAabnHost } from './components/RefAabnHost'
 import { ViewRequestWatcher } from './components/ViewRequestWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
@@ -136,6 +137,7 @@ export function App() {
               model={settings.defaultModel}
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
+            <RefAabnHost setSurface={setSurface} />
             <ViewRequestWatcher config={cfg} />
             {/* OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026) */}
             <AiTransparencyNotice onNavigate={setSurface} />

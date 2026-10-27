@@ -41,15 +41,11 @@ def _frisk_db(tmp_path, monkeypatch):
     monkeypatch.setattr(rt, "connect", _connect, raising=False)
     with _connect() as c:
         rt._ensure_agent_runtime_tables(c)
-        # MAALT 26/10-2026: `_ensure_agent_runtime_tables` opretter IKKE
-        # error_code/error_phase — den LEVENDE base har dem, men en frisk goer
-        # ikke. Det er schema-drift og en separat fejl; her oprettes de
-        # eksplicit, saa testen maaler UPDATE'en og ikke skemaet.
-        for _kol in ("error_code", "error_phase"):
-            try:
-                c.execute(f"ALTER TABLE agent_runs ADD COLUMN {_kol} TEXT")
-            except Exception:
-                pass
+        # 27/10-2026: workarounden er FJERNET. Den lagde selv error_code og
+        # error_phase paa en frisk base, fordi `_ensure_agent_runtime_tables`
+        # ikke gjorde det — og skjulte dermed praecis den schema-drift der nu
+        # er rettet (fire kolonner blev lagt til). Uden workarounden maaler
+        # testen baade UPDATE'en OG at skemaet er komplet.
         c.execute(
             "INSERT INTO agent_runs (run_id, agent_id, status, created_at, updated_at,"
             " error_code, error_phase) VALUES ('run-x','agent-x','running','t0','t0','','')"
@@ -101,3 +97,25 @@ def test_en_delvis_leverance_er_delivery():
         registry_status="failed",
     )
     assert (kode, fase) == ("AGENT_INCOMPLETE", "delivery"), f"fik {(kode, fase)!r}"
+
+
+def test_en_frisk_db_har_de_kolonner_projektionen_laeser(tmp_path, monkeypatch):
+    """En frisk base skal kunne koere praecis den samme kode som den levende.
+
+    MAALT 27/10-2026: `_ensure_agent_runtime_tables` oprettede 19 kolonner,
+    men `_agent_run_row_to_dict` laeser 25. Paa den LEVENDE base var
+    forskellen usynlig — kolonnerne var lagt til med ALTER andre steder — men
+    en frisk base kastede `IndexError: No item with that key`, ikke KeyError.
+    Det var den fejl der fik `test_update_agent_run_kan_baere_error_code_og_fase`
+    til at fejle paa ren HEAD.
+    """
+    sti = _frisk_db(tmp_path, monkeypatch)
+    from core.runtime.db_agent_runtime import get_agent_run
+
+    run = get_agent_run("run-x")
+    assert run is not None, "raekken kunne ikke laeses fra en frisk base"
+    for felt in ("artifact_path", "error_code", "error_phase", "assignment_id"):
+        assert felt in run, (
+            f"{felt} mangler i projektionen — en frisk base kan ikke koere "
+            f"den samme kode som den levende. felter: {sorted(run)}"
+        )

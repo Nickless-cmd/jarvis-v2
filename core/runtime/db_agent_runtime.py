@@ -41,11 +41,20 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
     # Fase 9: hvad GJALDT der for koerslen. Foer havde agent_runs 19 kolonner
     # og ikke ét politik-felt — ingen koersel kunne bagefter sige hvilke
     # vaerktoejer den saa eller om bash var i sandkasse.
+    # 27/10-2026: `_agent_run_row_to_dict` laeser fire kolonner som denne
+    # funktion IKKE oprettede. Den LEVENDE base havde dem (lagt til med ALTER
+    # andre steder), men en FRISK base gjorde ikke — og saa kastede
+    # `row["artifact_path"]` IndexError, ikke KeyError. Schema-drift: en frisk
+    # base skal kunne koere praecis den samme kode som den levende.
     for _c, _t in [("policy_hash", "TEXT NOT NULL DEFAULT ''"),
-                   ("policy_json", "TEXT NOT NULL DEFAULT ''")]:
+                   ("policy_json", "TEXT NOT NULL DEFAULT ''"),
+                   ("assignment_id", "TEXT NOT NULL DEFAULT ''"),
+                   ("artifact_path", "TEXT NOT NULL DEFAULT ''"),
+                   ("error_code", "TEXT NOT NULL DEFAULT ''"),
+                   ("error_phase", "TEXT NOT NULL DEFAULT ''")]:
         try:
             conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {_c} {_t}")
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError:  # kolonnen findes allerede — det forventede udfald
             pass
 
     conn.execute(
@@ -214,6 +223,24 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
         )
         """
     )
+
+    # 27/10-2026: kolonnerne tilfoejes IGEN her — efter tabellerne er oprettet.
+    # Foerste pass (oeverst i funktionen) rammer kun en base hvor `agent_runs`
+    # allerede findes; paa en FRISK base fejler hver ALTER med «no such table»
+    # og bliver slugt, og saa oprettede CREATE TABLE kun de 19 oprindelige
+    # kolonner. Resultatet var schema-drift: den LEVENDE base havde
+    # `artifact_path`, en frisk gjorde ikke, og projiceringen kastede
+    # IndexError. Maalt 27/10-2026.
+    for _c, _t in [("policy_hash", "TEXT NOT NULL DEFAULT ''"),
+                   ("policy_json", "TEXT NOT NULL DEFAULT ''"),
+                   ("assignment_id", "TEXT NOT NULL DEFAULT ''"),
+                   ("artifact_path", "TEXT NOT NULL DEFAULT ''"),
+                   ("error_code", "TEXT NOT NULL DEFAULT ''"),
+                   ("error_phase", "TEXT NOT NULL DEFAULT ''")]:
+        try:
+            conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {_c} {_t}")
+        except sqlite3.OperationalError:  # kolonnen findes allerede — det forventede udfald
+            pass
 
 
 def create_agent_registry_entry(

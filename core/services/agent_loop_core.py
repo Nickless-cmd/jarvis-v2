@@ -409,8 +409,8 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                                 unanswered_total = _unanswered_questions(prompt, final_text)
                                 incomplete = bool(unanswered_total)
                                 stop_reason = (
-                                    f"{unanswered_total} spørgsmål stadig ubesvarede efter "
-                                    "afsluttende svar" if unanswered_total else "")
+                                    f"{unanswered_total} spørgsmål uden nummereret svar "
+                                    "efter afsluttende svar" if unanswered_total else "")
                         except Exception:
                             logger.warning(
                                 "afsluttende svar fejlede - beholder teksten fra sidste runde",

@@ -478,7 +478,12 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         # ("Confirmed: Task har 5 properties ...") tælles som et hul selv om den svarede.
         # Maalt paa `asg-a413aa7ac3704131`: 1 af 3 var reelt besvaret, optællingen sagde 3.
         # Et tal der lyder praecist men overdriver er værre end ingen tal.
-        if why and n:
+        # 27/10-2026: `why` kan SELV baere tallet («1 spørgsmål uden nummereret
+        # svar efter afsluttende svar»). Foer blev `n` lagt oveni som en ANDEN
+        # taelling, og markeringen sagde det samme tal to gange med to ord —
+        # maalt i drift paa `run-725174bb21544c40`. Tilfoej kun tallet naar
+        # aarsagen ikke allerede naevner det.
+        if why and n and f"{n} spørgsmål" not in why:
             grund = f"{why}; {n} spørgsmål uden nummereret svar"
         elif why:
             grund = why

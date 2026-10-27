@@ -113,3 +113,31 @@ def test_en_fuld_besvarelse_markeres_ikke():
     payload = str(_loop_result(out, scout=True, provider="p", model="m").get("result") or "")
     assert "UFULDSTÆNDIG" not in payload
     assert "agent_assignment_mandates" in payload, "det fulde svar skal stadig vaere der"
+
+
+def test_tallet_staar_KUN_eEN_gang_i_markeringen():
+    """Markeringen maa ikke naevne det samme tal to gange med to ord.
+
+    MAALT I DRIFT 27/10-2026 paa `run-725174bb21544c40`:
+
+        UFULDSTÆNDIG (1 spørgsmål stadig ubesvarede efter afsluttende svar;
+                      1 spørgsmål uden nummereret svar)
+
+    To tal der er ENIGE om 1, formuleret som en modstrid. `why` baerer
+    allerede tallet; `n` blev lagt oveni som en ANDEN taelling. En laeser
+    der ser to tal og to ord maa foerst afgoere om de er uenige — det er
+    arbejde markeringen selv skabte.
+    """
+    # 27/10-2026: MAALT at den foerste udgave af denne vagt var GROEN PAA DEN
+    # FORKERTE GREN. `_kør(DELVIST_SVAR)` rammer fallback'en (why er tom), hvor
+    # der kun er ÉT tal — mutationen (dobbelt-taellingen sat tilbage) faldt
+    # derfor IKKE. Her saettes `why` og `n` eksplicit, saa why+n-grenen rammes:
+    # det er praecis den gren der talte to gange i drift.
+    o = _kør(DELVIST_SVAR)
+    o["stop_reason"] = "2 spørgsmål uden nummereret svar efter afsluttende svar"
+    o["unanswered"] = 2
+    payload = str(_loop_result(o, scout=True, provider="p", model="m").get("result") or "")
+    assert "UFULDSTÆNDIG" in payload, "markeringen mangler"
+    assert payload.count("2 spørgsmål") == 1, (
+        f"tallet skal staa praecis én gang, ikke to: {payload[:240]!r}"
+    )

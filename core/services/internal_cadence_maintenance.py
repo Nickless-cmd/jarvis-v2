@@ -289,7 +289,13 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
 
     register_producer(ProducerSpec(
         name="config_drift_check",
-        cooldown_minutes=1440,  # daily — drift opstår kun ved deploy/config-skift
+        # 27/10-2026: var 1440 (dagligt) med begrundelsen «drift opstår kun ved
+        # deploy/config-skift». Det er sandt for DRIFTEN, men ikke for FLAGET: auto-resolve
+        # kører kun i denne producer, så et falsk positivt (transient stall, incident 15372)
+        # holdt `system`-clusteret rødt i op til 24 timer efter at tilstanden var fin igen.
+        # Proben koster nu 1 lokal GET (~2 ms) i sund tilstand, og kører i producer-tråden
+        # med timeout — 15 min giver recovery inden for et kvarter uden at belaste loopet.
+        cooldown_minutes=15,
         visible_grace_minutes=0,
         run_fn=_run_config_drift,
         priority=36,

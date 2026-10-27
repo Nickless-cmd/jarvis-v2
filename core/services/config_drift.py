@@ -52,15 +52,48 @@ def _api_responds(port: int) -> bool:
         return False
 
 
+_RETRY_PAUSE_S = 0.5
+
+
 def check_port_drift() -> dict[str, Any]:
     """Probe deklareret port + alternativer. drift=True hvis API'en svarer, men IKKE på den
-    deklarerede port. Self-safe."""
+    deklarerede port. Self-safe.
+
+    To rettelser målt 27/10-2026 (incident 15372 var et FALSK POSITIVT):
+
+    1. DEKLARERET PORT FØRST. Før blev alle fem kandidater probet ved hvert check — i sund
+       tilstand 5×2 ms, i værste fald 5×2 s = 10 s for et svar der lå i første probe. Nu
+       returnerer den med det samme når den deklarerede port svarer; alternativerne probes
+       kun når den ikke gør (det er der kun rapporten har brug for dem).
+    2. ÉT GENFORSØG før «drift» konkluderes. Kl. 14:02:04 blev der flagget drift fordi
+       runtime-processen ikke svarede inden for 2 s — den svarede fint 14:04:38, og
+       runtime.json har hele tiden sagt 8011. En transient stall (last, DB-lås, GIL) er
+       IKKE en config-fejl, og med cooldown på et døgn holdt det falske flag systemet rødt
+       i op til 24 timer. Et enkelt genforsøg efter 0,5 s skiller de to klasser ad.
+    """
     declared = _declared_port()
+
+    if _api_responds(declared):
+        return {
+            "declared_port": declared,
+            "reachable_ports": [declared],
+            "actual_port": declared,
+            "drift": False,
+        }
+
     candidates: list[int] = []
-    for p in (declared, *_ALT_PORTS):
+    for p in (*_ALT_PORTS, declared):
         if p not in candidates:
             candidates.append(p)
     reachable = [p for p in candidates if _api_responds(p)]
+
+    # Genforsøg på den deklarerede port: en stall skal ikke kunne læses som en config-fejl.
+    if reachable and declared not in reachable:
+        import time
+        time.sleep(_RETRY_PAUSE_S)
+        if _api_responds(declared):
+            reachable = [declared, *reachable]
+
     drift = bool(reachable) and declared not in reachable
     return {
         "declared_port": declared,

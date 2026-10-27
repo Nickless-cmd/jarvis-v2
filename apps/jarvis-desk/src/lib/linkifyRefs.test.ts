@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
-import { KODE_REPO, commitUrl, linkifyRefs, referenceUrl } from './linkifyRefs'
+import { KODE_REPO, commitUrl, isCommitHref, linkifyRefs, referenceUrl } from './linkifyRefs'
 
 /** Kør den ægte kæde (parse + gfm + vores plugin) og returnér alle links.
  *  `parse()` kører KUN parseren — transformere skal køres med `runSync`,
@@ -33,6 +33,21 @@ describe('linkifyRefs — referencer bliver klikbare', () => {
     // Målt 25/10-2026: `https://srvlab.dk` blev inlineCode UDEN link, mens
     // den samme URL i prosa blev autolinked. Det var hele forskellen.
     expect(links('Se `https://srvlab.dk` her.')).toEqual(['https://srvlab.dk'])
+  })
+
+  it('gør en fritstående commit-hash klikbar i chattekst', () => {
+    expect(links('Deployet som 442b3bc85 og klar.')).toEqual([
+      `https://github.com/${KODE_REPO}/commit/442b3bc85`,
+    ])
+  })
+
+  it('forveksler ikke farver, UUID-led eller rene hex-ord med commits', () => {
+    expect(links('Farve #a371f7, id 442b3bc8-1234 og ordet deadbeef.')).toEqual([])
+  })
+
+  it('genkender GitHub commit-links på tværs af repositories til ikonvalg', () => {
+    expect(isCommitHref('https://github.com/openai/codex/commit/442b3bc85')).toBe(true)
+    expect(isCommitHref('https://github.com/openai/codex/issues/442b3bc85')).toBe(false)
   })
 
   it('bevarer badge-formen: linket bærer stadig inlineCode indeni', () => {

@@ -42,6 +42,15 @@ describe('design-tokens', () => {
     expect(app).not.toMatch(/#d4b97a/i)
   })
 
+  it('links og commit-hashes er klikbare uden understregning', () => {
+    const link = app.match(/\.jarvis-body a\s*\{([^}]*)\}/)?.[1] ?? ''
+    const hash = app.match(/\.jarvis-body a > code\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(link).toMatch(/text-decoration:\s*none/)
+    expect(link).toMatch(/cursor:\s*pointer/)
+    expect(hash).toMatch(/text-decoration:\s*none/)
+    expect(hash).not.toMatch(/border-bottom/)
+  })
+
   it('composerens fokus-kant er teal (accent), ikke den blå #2c3e54', () => {
     const regel = app.match(/\.composer:focus-within\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(regel).toMatch(/var\(--accent\)/)

@@ -25,7 +25,16 @@ describe('MarkdownRenderer — referencer er klikbare', () => {
   })
 
   it('eksterne links får globus-ikonet foran', () => {
-    expect(html('Se https://srvlab.dk nu.')).toContain('link-globe')
+    const ud = html('Se https://srvlab.dk nu.')
+    expect(ud).toContain('link-globe')
+    expect(ud).not.toContain('link-github')
+  })
+
+  it('commit-hashes får GitHub-ikon i stedet for globus', () => {
+    const ud = html('Commit 442b3bc85 er inde.')
+    expect(ud).toContain('link-github')
+    expect(ud).not.toContain('link-globe')
+    expect(ud).toContain(`href="https://github.com/${KODE_REPO}/commit/442b3bc85"`)
   })
 
   it('hash-badgen beholder sin kode-form indeni linket', () => {

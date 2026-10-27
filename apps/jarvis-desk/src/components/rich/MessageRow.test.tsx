@@ -47,6 +47,16 @@ describe('MessageRow', () => {
     } finally { localStorage.removeItem(RAEKKE_KEY) }
   })
 
+  it.each(['chat', 'code'] as const)('viser GitHub-ikon og klikbar bar hash i %s mode', (presentation) => {
+    const { container } = render(<MessageRow presentation={presentation} chatMode="living" status="done"
+      role="assistant" blocks={[{ type: 'text', text: 'Commit 442b3bc85 er deployet.' }]}
+      density="compact" streaming={false} />)
+    const link = container.querySelector<HTMLAnchorElement>('a.ref-link--commit')
+    expect(link?.href).toContain('/commit/442b3bc85')
+    expect(link?.querySelector('.link-github')).not.toBeNull()
+    expect(link?.querySelector('.link-globe')).toBeNull()
+  })
+
   it.each([
     ['done' as const, 'Arbejdet'],
     ['interrupted' as const, 'Arbejdet afbrudt'],

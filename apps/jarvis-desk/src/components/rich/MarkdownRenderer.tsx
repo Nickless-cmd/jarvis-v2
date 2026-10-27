@@ -9,12 +9,14 @@ import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
-import { linkifyRefs } from '../../lib/linkifyRefs'
+import { isCommitHref, linkifyRefs } from '../../lib/linkifyRefs'
 import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
 import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { logFlade } from '../../lib/fladeLog'
+
+const githubMark = new URL('../../assets/github.svg', import.meta.url).href
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -78,21 +80,24 @@ const KOMPONENTER: Components = {
     // de står som en grå kode-badge midt i en sætning, hvor blå farve ikke
     // bærer alene.
     const ekstern = /^https?:/i.test(safe)
+    const commit = isCommitHref(safe)
     return (
       <a
         href={safe}
+        className={commit ? 'ref-link ref-link--commit' : ekstern ? 'ref-link ref-link--external' : 'ref-link'}
         rel="noopener noreferrer"
         onClick={(e) => {
           e.preventDefault()
           openExternal(safe)
         }}
       >
-        {ekstern ? (
+        {commit ? (
+          <img src={githubMark} alt="" aria-hidden="true" className="link-github" />
+        ) : ekstern ? (
           <Globe
             size="0.85em"
             aria-hidden="true"
             className="link-globe"
-            style={{ verticalAlign: '-0.1em', marginRight: '0.28em', opacity: 0.65 }}
           />
         ) : null}
         {children}

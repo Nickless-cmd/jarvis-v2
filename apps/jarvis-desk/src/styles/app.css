@@ -821,19 +821,31 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jarvis-body li { margin-bottom: 0.2em; }
 .jarvis-body li > p { margin: 0; } /* lister i markdown er ofte <p> indeni — fjern dobbelt-margin */
 .jarvis-body a {
-  color: #7fb3ff; text-decoration: underline; text-underline-offset: 2px;
+  color: #7fb3ff;
+  text-decoration: none;
+  cursor: pointer;
 }
 .jarvis-body a:hover { color: #a0c5ff; }
-/* 25/10-2026: en klikbar reference (commit-hash eller URL i backticks) skal
- * stadig se ud som den reference den er — kode-badgen bevares, og kun
- * understregningen fjernes, så badge-formen ikke bliver ridset. Globus-ikonet
- * bærer signalet om at den kan åbnes. */
+/* Ikonet bærer link-signalet, så hverken URL'er eller hash-badges behøver en
+ * streg. Fokusrammen bevarer tydelig tastaturnavigation. */
+.jarvis-body a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
 .jarvis-body a > code {
   text-decoration: none;
-  border-bottom: 1px solid rgba(127, 179, 255, 0.45);
 }
-.jarvis-body a:hover > code { border-bottom-color: #a0c5ff; }
-.jarvis-body .link-globe { flex: none; }
+.jarvis-body .link-globe,
+.jarvis-body .link-github {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.28em;
+  vertical-align: -0.08em;
+  flex: none;
+}
+.jarvis-body .link-globe { opacity: 0.65; }
 .jarvis-body blockquote {
   margin: 0.5em 0; padding: 0.2em 0.85em;
   border-left: 3px solid var(--line); color: var(--fg-2);

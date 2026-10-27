@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Check, X, Loader, FileDiff } from 'lucide-react'
+import { useContext, useEffect, useState } from 'react'
+import { Check, Eye, X, Loader, FileDiff } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { lookupTool } from '../../lib/toolRegistry'
+import { PanelContext } from '../../contexts/PanelContext'
+import { erDokVaerktoej } from '../../lib/dokFlade'
 import { visAendring } from '../../lib/aendringsFokus'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { DiffView } from './DiffView'
@@ -66,6 +68,34 @@ export function ToolCard({
   const ask = parsePauseAsk(block.result)
   const Icon = meta.Icon
 
+  // Google-læserne har en flade (27/10-2026). Knappen sidder her fordi det er
+  // HER svaret er — ikke i en menu et andet sted. Den vises ud fra
+  // værktøjsnavnet, ikke ud fra om det afkortede svar kan parses: et stort
+  // regneark kan være klippet midt i JSON'en, og en knap der forsvandt af den
+  // grund ville løje om sin egen årsag.
+  const panel = useContext(PanelContext)
+  const kanViseDok = !!panel && erDokVaerktoej(block.name) && status === 'done'
+  const [aabnerDok, setAabnerDok] = useState(false)
+
+  const aabnDok = async () => {
+    if (!panel) return
+    let raat = resultat || ''
+    // Samtalen bærer kun de første 2.000 tegn. Panelet skal have HELE svaret,
+    // ellers tolker det et klippet dokument.
+    if (block.resultAfkortet && config && beskedId) {
+      setAabnerDok(true)
+      try {
+        raat = await hentVaerktoejsResultat(config, beskedId, block.id)
+      } catch {
+        // Behold det vi har — en flade med et klippet svar er bedre end ingen,
+        // og DokPreview siger ærligt hvis det ikke kan læses.
+      } finally {
+        setAabnerDok(false)
+      }
+    }
+    panel.openTarget({ type: 'dok', dok: { vaerktoej: block.name, resultat: raat } })
+  }
+
   return (
     <div className={`toolcard fam-${fam} status-${status}`}>
       <div className="toolcard-headrow">
@@ -96,6 +126,18 @@ export function ToolCard({
           onClick={() => visAendring(filSti(args)!)}
         >
           <FileDiff size={13} />
+        </button>
+      ) : null}
+      {kanViseDok ? (
+        <button
+          type="button"
+          className="toolcard-aabn"
+          title={`Se ${meta.label.toLowerCase()} i panelet`}
+          aria-label={`Se ${meta.label.toLowerCase()} i panelet`}
+          onClick={() => { void aabnDok() }}
+          disabled={aabnerDok}
+        >
+          <Eye size={13} />
         </button>
       ) : null}
       </div>

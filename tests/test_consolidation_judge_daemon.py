@@ -104,3 +104,90 @@ def test_recommit_ser_alle_aktive(monkeypatch):
     assert all(lim is None for lim in limits), (
         f"grenen spoerger med en graense ({limits}) — den skjuler beslutninger"
     )
+
+
+# --- 27/10-2026: samme fejlklasse igen, nu i `_render_judgments` ------------
+#
+# Importen stod inde i funktionen og pegede på `heartbeat_runtime`, hvor
+# `daemon_llm_call` ikke findes længere (den bor i `daemon_llm`). Fordi den er
+# lazy, lykkedes modul-importen — fejlen dukkede først op ved kald, hvor
+# medlemmet fangede sin egen ImportError og lagde den i `member_errors`.
+# Familien meldte `fired: True`, så den natlige dommer var død i ugevis uden
+# at nogen alarm gik. Fundet af runtime-inspektionen 27/10 kl. 20:40.
+#
+# Testene herunder maaler BAADE adfaerden (kalder stien) og klassen (statisk
+# vagt over alle lazy imports i filen), saa en ny forkeret import ikke kan
+# snige sig ind uden at blive set.
+
+
+def test_render_judgments_kan_faktisk_kalde_daemon_llm(monkeypatch):
+    """Stien skal KUNNE kalde modellen — ikke do paa en ImportError."""
+    from core.services import consolidation_judge_daemon as cjd
+    from core.services import daemon_llm
+
+    kaldt: list[str] = []
+
+    def falsk_kald(prompt, *, max_len=200, fallback="", daemon_name=""):
+        kaldt.append(daemon_name)
+        return "Dom: accept\nValg: review_all\nBegrundelse: test\nHandling: ingen"
+
+    monkeypatch.setattr(daemon_llm, "daemon_llm_call", falsk_kald)
+    monkeypatch.setattr(cjd, "build_identity_preamble", lambda: "TEST")
+
+    domme = cjd._render_judgments(
+        [{
+            "title": "proeve",
+            "type": "broken_decisions",
+            "severity": "low",
+            "evidence": "bevis",
+            "options": ["review_all"],
+        }],
+        {},
+    )
+
+    assert kaldt, "importen eller kaldet fejler — dommeren er doed i stilhed"
+    assert domme and domme[0]["verdict"] == "accept", domme
+
+
+def test_ingen_lazy_import_peger_paa_et_navn_der_ikke_findes():
+    """Vagt for KLASSEN: hver `from X import Y` inde i en funktion skal holde.
+
+    Top-level-imports bliver fanget af `test_governance_bootstrap`, men en
+    import inde i en funktion naar kun at fejle ved kald — praecis den vej
+    den natlige dommer doede ad.
+    """
+    import ast
+    import importlib
+    from pathlib import Path
+
+    fil = Path("core/services/consolidation_judge_daemon.py")
+    trae = ast.parse(fil.read_text(encoding="utf-8"))
+
+    # Kun imports der ligger inde i en funktion — top-level fejler straks.
+    def inde_i_funktion(node: ast.AST, inde: bool = False):
+        for barn in ast.iter_child_nodes(node):
+            if isinstance(barn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                yield from inde_i_funktion(barn, True)
+            else:
+                if inde and isinstance(barn, ast.ImportFrom) and barn.module:
+                    yield barn
+                yield from inde_i_funktion(barn, inde)
+
+    fejl: list[str] = []
+    for node in inde_i_funktion(trae):
+        modul = node.module
+        if not modul.startswith("core."):
+            continue
+        try:
+            maal = importlib.import_module(modul)
+        except Exception as exc:  # modulet findes ikke
+            fejl.append(f"{modul} kan ikke importeres: {exc}")
+            continue
+        for alias in node.names:
+            if not hasattr(maal, alias.name):
+                fejl.append(
+                    f"`from {modul} import {alias.name}` (linje {node.lineno}) "
+                    f"— navnet findes ikke i {modul}"
+                )
+
+    assert not fejl, "lazy import peger paa et navn der ikke findes:\n" + "\n".join(fejl)

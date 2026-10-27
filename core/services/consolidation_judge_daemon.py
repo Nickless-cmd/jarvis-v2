@@ -112,7 +112,10 @@ def _gather_evidence() -> dict[str, Any]:
 
     # ── Today's sessions count ────────────────────────────────────
     try:
-        from core.runtime.db_decisions import list_chat_sessions
+        # 27/10-2026: pegede på `db_decisions`, hvor funktionen ikke findes.
+        # `except: = 0` skjulte det, så `sessions_today` var ALTID nul — og
+        # dommeren fik et bevidst forkert grundlag at dømme ud fra.
+        from core.services.chat_sessions import list_chat_sessions
         sessions = list_chat_sessions()
         today = now_date_str()
         evidence["sessions_today"] = len([
@@ -208,7 +211,12 @@ def _build_stillingtagen(evidence: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _render_judgments(items: list[dict[str, Any]], evidence: dict[str, Any]) -> list[dict[str, Any]]:
     """Present each stillingtagen to the LLM and force a verdict."""
-    from core.services.heartbeat_runtime import daemon_llm_call
+    # 27/10-2026: importen pegede på `heartbeat_runtime`, hvor funktionen ikke
+    # findes længere — den bor i `daemon_llm`. Fejlen var usynlig fordi den
+    # stod inde i funktionen: modul-importen lykkedes, og først ved kald gik
+    # den i ImportError, som medlemmet fangede og lagde i `member_errors`.
+    # Familien meldte `fired: True` og den natlige dommer var død i ugevis.
+    from core.services.daemon_llm import daemon_llm_call
 
     judgments: list[dict[str, Any]] = []
 

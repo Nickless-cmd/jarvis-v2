@@ -198,3 +198,61 @@ def test_filnavn_faar_endelsen_tilfoejet(som_bjorn):
                           "filnavn": "test-doc-uden-endelse"})
     assert r["status"] == "ok", r
     assert r["filename"].endswith(".pdf")
+
+
+# ── 4. fladen: filen skal HÆFTES på turen ─────────────────────────────────
+
+def test_filen_haefteS_paa_turen(som_bjorn):
+    """En udgivet fil uden post på turen har intet øje og intet at klikke på.
+
+    MÅLT 27/10-2026 (Bjørn: *«der er ikk noget øje? intet at klikke på?»*):
+    `pdf_create` blev kaldt, filen blev dannet med `url_verified: true` — og
+    svaret bar ingen filblok. Årsagen var ikke genereringen, men hæftningen:
+    `published_files.note()` returnerer straks når run_id er tom, og
+    `_udgiv` sendte ikke `_runtime_turn_id` videre til `_exec_publish_file`
+    (den kalder funktionen DIREKTE og springer dermed det executor-lag der
+    stempler turen ind i argumenterne).
+
+    Vagtens form er valgt efter fælden: en test der kun tjekker
+    `status == "ok"` og en fil på disken var GRØN hele tiden mens fejlen
+    stod. Det er hæftningen der skal måles, ikke filen.
+    """
+    from core.services import published_files
+    from core.tools.document_create_tools import _exec_pdf_create
+
+    published_files._nulstil_for_tests()
+    r = _exec_pdf_create({
+        "titel": "Flade",
+        "indhold": "tekst",
+        "filnavn": "test-flade-pdf",
+        "_runtime_turn_id": "tur-test-1",
+        "_runtime_tool_use_id": "kald-test-1",
+    })
+    assert r["status"] == "ok", r
+
+    poster = published_files.peek("tur-test-1")
+    assert poster, "filen blev udgivet, men der blev ikke lagt nogen post paa turen"
+    post = poster[0]
+    assert post["filename"] == "test-flade-pdf.pdf", post
+    assert post["url"], "posten baerer ingen hentbar reference"
+    assert post["mime_type"] == "application/pdf", post
+    assert post["tool_use_id"] == "kald-test-1", (
+        "uden ankeret lander filen bagerst i svaret i stedet for ved kaldet"
+    )
+
+
+def test_uden_tur_bliver_der_ingen_post(som_bjorn):
+    """Dokumenterer hvorfor parameteren er nødvendig — ikke en fejl i sig selv.
+
+    En post uden tur kan ikke hæftes på en besked, så `note()` afviser den
+    med vilje. Testen låser den adfærd fast, så en fremtidig «ret» der
+    begynder at gemme uden run_id ikke kan gøre det tavst.
+    """
+    from core.services import published_files
+    from core.tools.document_create_tools import _exec_pdf_create
+
+    published_files._nulstil_for_tests()
+    r = _exec_pdf_create({"titel": "Uden tur", "indhold": "tekst",
+                          "filnavn": "test-uden-tur"})
+    assert r["status"] == "ok", r
+    assert published_files.peek("") == []

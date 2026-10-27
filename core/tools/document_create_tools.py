@@ -49,11 +49,31 @@ logger = logging.getLogger(__name__)
 
 # ── fælles ────────────────────────────────────────────────────────────────
 
-def _udgiv(sti: Path, filnavn: str) -> dict[str, Any]:
-    """Send en genereret fil gennem den ene udlevering der findes."""
+def _udgiv(sti: Path, filnavn: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Send en genereret fil gennem den ene udlevering der findes.
+
+    TUREN SKAL MED. `publish_file` hæfter filen på svaret gennem
+    `published_files.note()`, og den returnerer STRAKS hvis run_id er tom.
+    Uden `_runtime_turn_id` blev filen altså udgivet helt korrekt — med en
+    URL der virker — men der blev ikke lagt nogen post på turen, så svaret
+    bar ingen filblok, og klienten havde intet at vise eller klikke på.
+
+    Målt 27/10-2026 (Bjørn: *«der er ikk noget øje? intet at klikke på?»*):
+    `visningsflade-test.pdf` blev dannet med `url_verified: true`, og der var
+    intet øje i tråden. De fire dokument-værktøjer kalder
+    `_exec_publish_file` DIREKTE og springer dermed det executor-lag der
+    stempler `_runtime_turn_id` ind i argumenterne. `vis_graf`,
+    `vis_widget` og `render_mermaid` sender den selv — derfor har de en
+    flade, og derfor er det kun disse fire der mangler én.
+    """
     from core.tools.publish_file_tool import _exec_publish_file
 
-    return _exec_publish_file({"source_path": str(sti), "filename": filnavn})
+    _args: dict[str, Any] = {"source_path": str(sti), "filename": filnavn}
+    for noegle in ("_runtime_turn_id", "_runtime_run_id", "_runtime_tool_use_id"):
+        vaerdi = str((args or {}).get(noegle) or "")
+        if vaerdi:
+            _args[noegle] = vaerdi
+    return _exec_publish_file(_args)
 
 
 def _filnavn(raa: str, standard_navn: str, endelse: str) -> str:
@@ -282,7 +302,7 @@ def _exec_pdf_create(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("pdf_create fejlede: %s", exc)
         return {"status": "error", "error": f"kunne ikke bygge PDF: {exc}"}
 
-    return _udgiv(sti, filnavn)
+    return _udgiv(sti, filnavn, args)
 
 
 # ── Word ──────────────────────────────────────────────────────────────────
@@ -321,7 +341,7 @@ def _exec_docx_create(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("docx_create fejlede: %s", exc)
         return {"status": "error", "error": f"kunne ikke bygge Word: {exc}"}
 
-    return _udgiv(sti, filnavn)
+    return _udgiv(sti, filnavn, args)
 
 
 # ── Excel ─────────────────────────────────────────────────────────────────
@@ -427,7 +447,7 @@ def _exec_xlsx_create(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("xlsx_create fejlede: %s", exc)
         return {"status": "error", "error": f"kunne ikke bygge regneark: {exc}"}
 
-    return _udgiv(sti, filnavn)
+    return _udgiv(sti, filnavn, args)
 
 
 # ── PowerPoint ────────────────────────────────────────────────────────────
@@ -484,4 +504,4 @@ def _exec_pptx_create(args: dict[str, Any]) -> dict[str, Any]:
         logger.warning("pptx_create fejlede: %s", exc)
         return {"status": "error", "error": f"kunne ikke bygge præsentation: {exc}"}
 
-    return _udgiv(sti, filnavn)
+    return _udgiv(sti, filnavn, args)

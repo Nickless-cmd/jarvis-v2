@@ -374,14 +374,14 @@ _Opret-dokumenter: Word, Excel, PowerPoint og PDF._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_udgiv` | `(sti, filnavn)` | Send en genereret fil gennem den ene udlevering der findes. | [src](../../../core/tools/document_create_tools.py#L52) |
-| function | `_filnavn` | `(raa, standard_navn, endelse)` | Sikrér en brugbar fil-endelse; ellers tilføj den. | [src](../../../core/tools/document_create_tools.py#L59) |
-| function | `_linjer` | `(indhold)` | Normalisér `indhold` til linjer — accepterer streng eller liste. | [src](../../../core/tools/document_create_tools.py#L68) |
-| function | `_blokke` | `(linjer)` | Parse linjer til (slags, tekst, niveau). | [src](../../../core/tools/document_create_tools.py#L75) |
-| function | `_exec_pdf_create` | `(args)` | Opret en PDF af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L220) |
-| function | `_exec_docx_create` | `(args)` | Opret et Word-dokument af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L290) |
-| function | `_exec_xlsx_create` | `(args)` | Opret et regneark. `ark` = [{navn, kolonner, rækker}] eller `rækker`. | [src](../../../core/tools/document_create_tools.py#L329) |
-| function | `_exec_pptx_create` | `(args)` | Opret en præsentation. `slides` = [{titel, punkter, note}]. | [src](../../../core/tools/document_create_tools.py#L435) |
+| function | `_udgiv` | `(sti, filnavn, args=…)` | Send en genereret fil gennem den ene udlevering der findes. | [src](../../../core/tools/document_create_tools.py#L52) |
+| function | `_filnavn` | `(raa, standard_navn, endelse)` | Sikrér en brugbar fil-endelse; ellers tilføj den. | [src](../../../core/tools/document_create_tools.py#L79) |
+| function | `_linjer` | `(indhold)` | Normalisér `indhold` til linjer — accepterer streng eller liste. | [src](../../../core/tools/document_create_tools.py#L88) |
+| function | `_blokke` | `(linjer)` | Parse linjer til (slags, tekst, niveau). | [src](../../../core/tools/document_create_tools.py#L95) |
+| function | `_exec_pdf_create` | `(args)` | Opret en PDF af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L240) |
+| function | `_exec_docx_create` | `(args)` | Opret et Word-dokument af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L310) |
+| function | `_exec_xlsx_create` | `(args)` | Opret et regneark. `ark` = [{navn, kolonner, rækker}] eller `rækker`. | [src](../../../core/tools/document_create_tools.py#L349) |
+| function | `_exec_pptx_create` | `(args)` | Opret en præsentation. `slides` = [{titel, punkter, note}]. | [src](../../../core/tools/document_create_tools.py#L455) |
 
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_

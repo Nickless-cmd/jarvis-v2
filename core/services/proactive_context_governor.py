@@ -375,8 +375,8 @@ PROACTIVE_CONTEXT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Compose a tailored context slice for a sub-agent based on its "
                 "goal. Includes: goal, active_goals, relevant_memories from "
-                "unified_recall. Use BEFORE spawn_agent_task to reduce token "
-                "waste — agent sees only what matters."
+                "unified_recall. This is an inspection tool; the Task contract "
+                "derives and fences its own context automatically."
             ),
             "parameters": {
                 "type": "object",

@@ -1600,22 +1600,10 @@ def _build_visible_chat_prompt_assembly_impl(
     # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
     # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
     # må aldrig stå i din synlige besked til brugeren.
-    # Adoptions-loeftestangen (6/9-2026). `explore` var bygget, synligt i alle
-    # scopes og alligevel ubrugt: bedt om at finde SSRF-vaernet lavede han 13
-    # bash-kald, 6 soegninger og 4 fil-laesninger — og konkluderede FORKERT at
-    # vaernet ikke fandtes, mens filen laa der. Maalt bredere: 36 dispatch-
-    # koersler i systemets samlede levetid, 35 fra én fejlfindings-session.
-    #
-    # Tilgaengelighed er ikke adoption. Vaerktoejslisten var ikke problemet, saa
-    # loeftestangen er her. Sidste saetning er lige saa vigtig som de foerste:
-    # uden den bliver `explore` en omvej naar han allerede ved hvor filen er.
-    _awareness_add(8, "scout before reading wide", (
-        "Kraever svaret at du laeser paa tvaers af FLERE filer, saa send "
-        "`scout_agent` (foer `explore`) afsted i stedet for at laese dem selv. "
-        "Den kommer tilbage med fund og linjenumre, og du beholder din kontekst. "
-        "Ved du allerede hvilken fil det er, saa laes den selv. Skal der SKRIVES "
-        "kode af flere agenter: `dispatch_code_mode_task`."
-    ))
+    # Agent-adoption er udskilt fra denne 4.000+-linjers assembly efter Boy
+    # Scout-reglen. Den maa kun pege paa kontraktens ene oprettelsesvej.
+    from core.services.prompt_sections.task_adoption import task_adoption_hint
+    _awareness_add(8, "delegate bounded work with Task", task_adoption_hint())
 
     # agent-contract-v1 (F3): konstant orkestratorsektion, tom naar motoren er slukket.
     from core.services.prompt_sections.agent_orchestration import orchestrator_section

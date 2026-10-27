@@ -231,11 +231,12 @@ def _registrerede_navne() -> dict[str, str]:
     """
     try:
         from core.tools.simple_tools import get_tool_definitions
+        from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
         ud: dict[str, str] = {}
         for d in get_tool_definitions() or []:
             f = d.get("function") or {}
             navn = str(f.get("name") or d.get("name") or "")
-            if navn:
+            if navn and navn not in RETIRED_AGENT_CREATION_TOOLS:
                 ud[navn] = str(f.get("description") or d.get("description") or "")
         return ud
     except Exception as exc:
@@ -374,8 +375,13 @@ def _korpus():
     global _korpus_cache
     from core.services.tool_lexical_match import byg_korpus_fra_definitioner
     from core.tools.simple_tools import get_tool_definitions
+    from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
 
-    defs = get_tool_definitions() or []
+    defs = [
+        d for d in (get_tool_definitions() or [])
+        if str(((d.get("function") or {}).get("name")) or d.get("name") or "")
+        not in RETIRED_AGENT_CREATION_TOOLS
+    ]
     if _korpus_cache is not None and _korpus_cache[0] == len(defs):
         return _korpus_cache[1]
     k = byg_korpus_fra_definitioner(defs)

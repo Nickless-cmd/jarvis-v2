@@ -62,7 +62,7 @@ def test_escalation_recommends_critic_on_multiple_failed_verifies():
          patch("core.services.reasoning_escalation._safe_gate", return_value=_stub_gate(failed=2)):
         result = evaluate_escalation("opdater config")
     assert result["escalate"] is True
-    assert result["recommendation"]["path"] == "spawn_agent_task"
+    assert result["recommendation"]["path"] == "Task"
     assert result["recommendation"]["role"] == "critic"
 
 
@@ -91,7 +91,7 @@ def test_risiko_markoerer_eskalerer_til_EN_uafhaengig_kritiker():
         result = evaluate_escalation("rm -rf prod")
     assert result["escalate"] is True
     anb = result["recommendation"]
-    assert anb["path"] == "spawn_agent_task"
+    assert anb["path"] == "Task"
     assert anb["role"] == "critic"
     assert anb["reason"], "en eskalering uden begrundelse siger ham ingenting"
 
@@ -107,7 +107,7 @@ def test_eskaleringen_peger_ALDRIG_paa_et_vaerktoej_der_ikke_findes():
     from core.tools.simple_tools_definitions import TOOL_DEFINITIONS
 
     kataloget = {str(((d.get("function") or {}).get("name")) or "") for d in TOOL_DEFINITIONS}
-    assert "spawn_agent_task" in kataloget, "forudsaetning: kataloget blev laest"
+    assert "Task" in kataloget, "forudsaetning: kataloget blev laest"
 
     risici = ["destructive command marker", "production system"]
     for tier in ("fast", "balanced", "deep"):
@@ -140,6 +140,8 @@ def test_section_returns_string_when_escalating():
         section = escalation_section("design")
     assert section is not None
     assert "eskalering" in section.lower() or "escalation" in section.lower() or "🚨" in section
+    assert "Task(" in section
+    assert "spawn_agent_task" not in section
 
 
 def test_tool_exec_wrapper():

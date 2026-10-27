@@ -32,11 +32,10 @@ def test_ingen_dubletter():
     assert not dubletter, f"nævnt flere gange: {dubletter}"
 
 
-def test_explore_staar_foerst_under_filer_og_kode():
-    """Rækkefølgen er budskabet: når han tænker «jeg skal finde noget i koden»,
-    skal alternativet til at læse alt selv stå først."""
-    gruppe = dict(_CORE_TOOL_GROUPS)["Filer & kode"]
-    assert gruppe[0] == "scout_agent"  # omdøbt fra explore 17/9-2026
+def test_task_har_sin_egen_agentgruppe():
+    grupper = dict(_CORE_TOOL_GROUPS)
+    assert grupper["Agenter"][0] == "Task"
+    assert "wait_agents" in grupper["Agenter"]
 
 
 def test_de_nye_operator_vaerktoejer_er_med():
@@ -83,25 +82,11 @@ def test_prompt_sektionen_og_vaerktoejerne_haenger_sammen():
     assert "todo_add" in _TOOL_HANDLERS
 
 
-def test_spawn_agent_task_staar_i_inventaret():
-    """Den dyreste tool-definition skal staa dér hvor han faktisk kigger.
-
-    Maalt 23/9-2026: `spawn_agent_task` fyldte 581 tokens i HVER runde — mere
-    end `bash` — fordi REQUIRED_LAZY_TOOL_NAMES pinnede den ind i selve
-    tool-arrayet. Men den stod ikke i inventaret, og blev kaldt NUL gange fra
-    en samtale, mens `scout_agent` (303 tok) blev brugt 46 gange.
-
-    Han greb den laesende fordi det var den han kunne se. Filens egen
-    kommentar siger det: inventaret er loeftestangen, ikke mere instruks-tekst.
-
-    Falder den ud af inventaret igen, betaler vi ~8.700 tokens i en lang tur
-    for en evne ingen kan finde — og det sker TAVST.
-    """
-    gruppe = dict(_CORE_TOOL_GROUPS)["Filer & kode"]
-    assert "spawn_agent_task" in gruppe
-    # Lige efter scout, saa forskellen kan ses paa stedet: scout LAESER,
-    # spawn HANDLER.
-    assert gruppe.index("spawn_agent_task") == gruppe.index("scout_agent") + 1
+def test_legacy_agentoprettelse_er_ude_af_inventaret():
+    navne = _alle_navne()
+    assert "Task" in navne
+    assert not ({"scout_agent", "spawn_agent_task", "dispatch_code_mode_task",
+                 "dispatch_to_claude_code", "task"} & set(navne))
 
 
 # ── Kataloget skal sige «se efter i dine egne defs foerst» (30/9-2026) ───────

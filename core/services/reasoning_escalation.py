@@ -12,11 +12,11 @@ Escalation triggers (any of):
   - tier=deep AND ≥3 unverified mutations (claiming work without proof)
   - tier=reasoning AND ≥2 failed verify_* (lots of broken claims)
 
-When triggered, the section names a specific escalation path that
-already exists in Jarvis' tool registry:
+When triggered, the section names the single agent-creation path in Jarvis'
+tool registry:
 
-  - spawn_agent_task(role=critic, goal=...) — independent review
-  - spawn_agent_task(role=researcher, goal=...) — verification at scale
+  - Task(subagent_type=critic, prompt=...) — independent review
+  - Task(subagent_type=researcher, prompt=...) — verification at scale
 
 Adfærds-sikker: surfaces awareness only. Does NOT auto-spawn agents
 (would surprise the user, cost tokens, and tie up GPU). The model
@@ -67,7 +67,7 @@ def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str])
     # where 1 failed verify + fast-tier message left the section silent.
     if failed >= 1:
         return {
-            "path": "spawn_agent_task",
+            "path": "Task",
             "role": "critic",
             "reason": (
                 f"{failed} verify_* fejlede — bed en critic-agent gennemgå "
@@ -81,12 +81,12 @@ def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str])
     # ikke findes er vaerre end ingen eskalering: modellen faar et raad den
     # ikke kan foelge, netop foer et destruktivt skridt.
     #
-    # `spawn_agent_task(role=critic)` er den naermeste bevarede vej — én
+    # `Task(subagent_type=critic)` er den kontraktbundne vej — én
     # uafhaengig vurdering i stedet for flere perspektiver. Mindre, men ægte.
     risk_markers = [s for s in signals if "destructive" in s or "production" in s or "secrets" in s or "migration" in s]
     if tier == "deep" and risk_markers:
         return {
-            "path": "spawn_agent_task",
+            "path": "Task",
             "role": "critic",
             "topic_hint": "; ".join(risk_markers[:2]),
             "reason": (
@@ -97,7 +97,7 @@ def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str])
     # Lots of unverified mutations → researcher to verify at scale
     if unverified >= 3:
         return {
-            "path": "spawn_agent_task",
+            "path": "Task",
             "role": "researcher",
             "reason": (
                 f"{unverified} mutations uden verify — bed en researcher-agent "
@@ -107,7 +107,7 @@ def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str])
     # Deep tier without specific failure pattern → planner for sequencing
     if tier == "deep":
         return {
-            "path": "spawn_agent_task",
+            "path": "Task",
             "role": "planner",
             "reason": (
                 "Deep tier — bed en planner-agent skitsere sekvensering før "
@@ -184,13 +184,13 @@ def escalation_section(message: str = "") -> str | None:
         return None
     triggers = result.get("triggers") or []
     trigger_text = "; ".join(triggers)
-    # Grenen for `convene_council` er vaek 7/10-2026 med vaerktoejet. Alle veje
-    # er nu `spawn_agent_task`; `topic_hint` baeres med som konkret opgave, saa
-    # raadet om HVAD der skal ses efter ikke gaar tabt sammen med vaerktoejet.
+    # Alle agent-oprettelser gaar gennem kontraktens `Task`; `topic_hint`
+    # baeres med som konkret opgave, saa raadet om HVAD der skal ses efter ikke
+    # gaar tabt.
     role = rec.get("role", "critic")
     hint = rec.get("topic_hint") or ""
     maal = f' om "{hint}"' if hint else ""
-    action = f'Brug `spawn_agent_task(role="{role}", goal=...)`{maal}.'
+    action = f'Brug `Task(subagent_type="{role}", prompt=...)`{maal}.'
     return (
         f"🚨 Reasoning-eskalation anbefalet ({trigger_text}).\n"
         f"{rec.get('reason', '')}\n"

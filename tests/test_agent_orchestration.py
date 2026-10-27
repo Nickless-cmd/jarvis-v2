@@ -34,7 +34,7 @@ def test_section_is_empty_when_off_and_versioned_when_on(pr):
     assert ao.orchestrator_section() == ""
     pr.on()
     text = ao.orchestrator_section()
-    assert text.startswith("Agenter (orchestrator-v1).")
+    assert text.startswith("Agenter (orchestrator-v2).")
     assert text == ao.orchestrator_section()          # konstant -> byte-stabil
 
 
@@ -50,9 +50,10 @@ def test_every_tool_the_text_names_is_really_advertised_when_on(pr):
 
     pr.on()
     # `wake_if_run_ends`, `include_output`, `writes` og `workspace` er PARAMETERnavne, ikke vaerktoejer
-    named = set(re.findall(r"`([a-z_]+)`", ao.orchestrator_section())) - {"wake_if_run_ends", "include_output", "writes", "workspace"}
+    named = set(re.findall(r"`([A-Za-z_]+)`", ao.orchestrator_section())) - {
+        "wake_if_run_ends", "include_output", "writes", "workspace", "executor"}
     advertised = {d["function"]["name"] for d in get_tool_definitions(role="owner", scope="")}
-    assert named == {"dispatch_agent", "wait_agents", "send_message_to_agent", "followup_agent",
+    assert named == {"Task", "wait_agents", "send_message_to_agent", "followup_agent",
                      "interrupt_agent", "close_agent", "list_agents", "integrate_agent_work",
                      "convene_agent_council", "review_agent_work"}
     assert named <= advertised, named - advertised
@@ -77,20 +78,20 @@ def test_real_prompt_assembly_has_the_section_only_when_on_and_leaves_the_cached
     from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
 
     off = _assembly().text
-    assert "Agenter (orchestrator-v1)" not in off
+    assert "Agenter (orchestrator-v2)" not in off
     pr.on()
     on = _assembly().text
-    assert on.count("Agenter (orchestrator-v1)") == 1
+    assert on.count("Agenter (orchestrator-v2)") == 1
     # Sektionen er awareness => den uncachede hale. Det CACHEDE praefiks skal vaere byte-ens.
     assert on.split(DYNAMIC_TAIL_SENTINEL)[0] == off.split(DYNAMIC_TAIL_SENTINEL)[0]
     pr.svc_.set_capability(False)
-    assert "Agenter (orchestrator-v1)" not in _assembly().text
+    assert "Agenter (orchestrator-v2)" not in _assembly().text
 
 
 def test_assembly_is_identical_across_two_turns_so_the_prefix_cache_holds(pr):
     pr.on()
     a, b = _assembly().text, _assembly().text
-    ia, ib = a.find("Agenter (orchestrator-v1)"), b.find("Agenter (orchestrator-v1)")
+    ia, ib = a.find("Agenter (orchestrator-v2)"), b.find("Agenter (orchestrator-v2)")
     assert a[ia:ia + 1500] == b[ib:ib + 1500]
 
 

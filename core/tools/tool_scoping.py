@@ -70,6 +70,13 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "archive_brain_entry",
     "read_brain_entry",
     "search_jarvis_brain",
+    # Git-laesning af husets kodebase + udlevering af en vilkaarlig source_path
+    # (27/10-2026). De staar i BASE for at ejeren kan naa dem i chat, og HER
+    # for at husstanden ikke kan — samme moenster som `search_jarvis_brain`
+    # ovenfor. En member maa ikke laese serverens kode, og `publish_file` ville
+    # give dem den samme fil gennem et download-link i stedet.
+    "git_log", "git_diff", "git_status", "git_branch", "git_blame",
+    "publish_file",
     "append_skill_observation",
     "generate_improvement_proposals",
     "identity_mutation_status",
@@ -170,6 +177,34 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # vaerktoejet der kigger paa dem stod i INGEN scope — saa et skaermbillede
     # i chat var noget han kunne modtage og ikke se paa. 6/9-2026.
     "read_attachment",
+    # At VISE. Maalt 27/10-2026 (Bjoern): `vis_graf`, `vis_widget` og
+    # `render_mermaid` stod i INGEN scope-liste — hverken chat, code eller
+    # cowork — praecis samme moenster som `read_attachment` (6/9) og
+    # billedvaerktoejerne (13/9): bygget, korrekt, og usynligt dér hvor
+    # samtalen foregaar. En graf eller et diagram ER svaret naar tal eller
+    # struktur er pointen; uden dem bliver det en mur af prosa.
+    #
+    # De hoerer i KERNEN og ikke i owner-listen: de tegner det data kalderen
+    # allerede har, laeser intet og skriver intet. Widget'en renderes
+    # sandboxet uden netvaerk, og alle tre er rene praesentationslag.
+    "vis_graf", "vis_widget", "render_mermaid",
+    # Git-laesning + udlevering (27/10-2026, Bjoern). De seks git-vaerktoejer
+    # stod i INGEN liste — hverken chat, code eller cowork — saa jeg kunne ikke
+    # svare paa «hvad aendrede den commit» i den mode samtalen foregaar i.
+    # `git_status` var vaerre: den stod i promptens katalog under «Filer & kode»
+    # og i nul scopes, altsaa pegede kataloget paa en doed evne.
+    #
+    # De staar HER og ikke i CHAT_MODE_OWNER_EXTRA, fordi den liste er
+    # kontraktbundet til at vaere ren laesning (se test_tool_scoping). De er i
+    # stedet owner-only via OWNER_ONLY_TOOLS nedenfor — samme moenster som
+    # `search_jarvis_brain`: de laeser husets kodebase, og et husstandsmedlem
+    # maa ikke se den.
+    "git_log", "git_diff", "git_status", "git_branch", "git_blame",
+    # At UDLEVERE en fil. Den kopierer `source_path` — en VILKAARLIG sti — til
+    # brugerens egen files-mappe og returnerer et download-link. Samme
+    # fil-adgang som `read_file`, og derfor samme owner-strip: for en member
+    # ville den vaere en omvej til serverens filer gennem et link.
+    "publish_file",
     # Arbejdshukommelse. Prompten har hele tiden vist hans todos og reglen om
     # max ÉN i gang — uden at han kunne skrive til dem.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
@@ -218,6 +253,10 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.
+# KONTRAKT: denne liste er KUN læsning, og test_tool_scoping kræver eksakt
+# disse tre. Git-læsning og `publish_file` ligger derfor i BASE sammen med
+# `OWNER_ONLY_TOOLS`-strippet i stedet — samme mønster som `search_jarvis_brain`
+# (27/10-2026: de blev først lagt her, og kontrakten fangede det med rette).
 CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "search", "find_files",
 })
@@ -237,6 +276,17 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "inbox", "inbox_done", "inbox_drop",
     # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
     "read_attachment",
+    # At VISE — samme begrundelse som i chat-listen ovenfor (27/10-2026). En
+    # graf eller et diagram ER svaret naar tal eller struktur er pointen, og
+    # behovet er ikke mindre fordi man er i code mode.
+    "vis_graf", "vis_widget", "render_mermaid",
+    # Git-laesning + udlevering. `git_status` stod i promptens katalog under
+    # «Filer & kode» — og i INGEN scope-liste, hverken her eller i chat. Den
+    # har altsaa vaeret doed hele tiden, mens kataloget pegede paa den.
+    # Maalt 27/10-2026. De seks er read-only opslag i det repo man sidder i;
+    # det er praecis den mode de hoerer til.
+    "git_log", "git_diff", "git_status", "git_branch", "git_blame",
+    "publish_file",
     # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026): vis diff'en
     # efter en redigering — det er NETOP her det betyder mest.
     "desk_get_layout", "desk_show_pane", "desk_close_pane",

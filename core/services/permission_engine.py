@@ -67,7 +67,14 @@ _MEMBER_CHAT_MEM = frozenset({
 # bevidst valg og ikke en oprydning — en ikke-ejer kan nu bruge af puljen.
 _MEMBER_IMAGE = frozenset({"openrouter_image", "openrouter_image_edit"})
 
-_MEMBER_CHAT = _MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM | _MEMBER_IMAGE
+# Visning — at TEGNE en graf eller et diagram i samtalen (27/10-2026).
+# Samme familie som billedvaerktoejerne: rene praesentationslag uden
+# data-adgang. De stod i INGEN scope-liste overhovedet, saa hverken Bjoern
+# eller husstanden kunne faa en kurve tegnet hvor samtalen foregaar.
+_MEMBER_VISNING = frozenset({"vis_graf", "vis_widget", "render_mermaid"})
+
+_MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
+                | _MEMBER_IMAGE | _MEMBER_VISNING)
 
 
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────
@@ -101,7 +108,7 @@ _MEMBER_CODE_FILE = frozenset({"read_file", "write_file", "edit_file", "find_fil
 _MEMBER_CODE_CONNECTOR = frozenset({"github_list_issues", "github_list_prs"})
 _MEMBER_CODE = (
     _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE
-    | _MEMBER_CODE_CONNECTOR | _MEMBER_IMAGE
+    | _MEMBER_CODE_CONNECTOR | _MEMBER_IMAGE | _MEMBER_VISNING
 )
 
 

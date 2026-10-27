@@ -24,12 +24,15 @@ KODE_NAEGTET = (
 
 def kode_tilladt() -> bool:
     try:
-        from core.runtime.db_devices import kraev_aktivt, maa_bruge_kode
-        if not kraev_aktivt():
-            return True
         from core.identity.workspace_context import current_token_enhed, current_user_id
         bruger = (current_user_id() or "").strip()
+        # Interne/dev-kald er uden bruger og skal være uberørte, også mens
+        # enhedsregistret er utilgængeligt. Tjek identiteten FØR DB-opslaget;
+        # ellers kunne en stale test-/shutdown-DB gøre et internt kald til 403.
         if not bruger:
+            return True
+        from core.runtime.db_devices import kraev_aktivt, maa_bruge_kode
+        if not kraev_aktivt():
             return True
         enhed, app_id = current_token_enhed()
         return maa_bruge_kode(bruger, enhed=enhed, app_id=app_id)

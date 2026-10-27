@@ -89,8 +89,7 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   // Notifikation
   notify_user: { label: 'Notifikation', Icon: Bell, summarize: (a) => firstStr(a, ['message', 'text']) },
   // Dispatch
-  dispatch_to_claude_code: { label: 'Kode-dispatch', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
-  dispatch_code_mode_task: { label: 'Kode-opgave', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
+  Task: { label: 'Agentopgave', Icon: Cpu, summarize: (a) => firstStr(a, ['description', 'prompt']) },
   read_model_config: { label: 'Model-konfig', Icon: Database, summarize: () => '' },
   // Shell-sessioner
   bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
@@ -134,9 +133,7 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   // Git
   git_log: { label: 'Git-log', Icon: GitBranch, summarize: () => '' },
   // Agenter / opgaver
-  spawn_agent_task: { label: 'Send agent', Icon: Bot, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   list_agents: { label: 'Agenter', Icon: Bot, summarize: () => '' },
-  scout_agent: { label: 'Spejder', Icon: Bot, summarize: (a) => firstStr(a, ['query', 'question', 'task']) },
   todo_set: { label: 'Opgaveliste', Icon: ListChecks, summarize: () => '' },
   todo_update_status: { label: 'Opdater opgave', Icon: ListChecks, summarize: (a) => firstStr(a, ['todo_id', 'status']) },
   schedule_self_wakeup: { label: 'Planlæg vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['prompt', 'reason']) },
@@ -167,8 +164,9 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
  *
  * 23/9-2026 ryddede vi døde navne ud af `TOOL_REGISTRY` og `KENDTE`. Det var
  * rigtigt — ingen af dem findes i registrets 482 værktøjer. Men `explore`
- * fandtes: den hedder `scout_agent` nu (omdøbt 17/9-2026). Forskellen er
- * hele pointen — et dødt navn skal ud, et OMDØBT skal pege videre.
+ * fandtes siden som `scout_agent` og er nu samlet i kontraktværktøjet `Task`.
+ * Forskellen er hele pointen — et dødt navn skal ud, en kompatibel historisk
+ * visning skal pege på den levende kontraktvej.
  *
  * Kun omdøbninger hvor stammen er mekanisk indlysende er med her. Navne hvor
  * vi ikke kan vide om de blev omdøbt eller slettet (fx `channel`,
@@ -176,8 +174,8 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
  * lyver om hvad værktøjet gør — værre end den generiske dump.
  */
 export const GAMLE_NAVNE: Record<string, string> = {
-  // omdøbt 17/9-2026 — samme værktøj, nyt navn
-  explore: 'scout_agent',
+  // historisk read-only agentkald — vises med den nuværende agentkontrakt
+  explore: 'Task',
   // `_run` tilføjet for at skelne kald fra åbn/luk af sessionen
   bash_session: 'bash_session_run',
   operator_bash_session: 'operator_bash_session_run',

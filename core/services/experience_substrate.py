@@ -15,12 +15,18 @@ Added 2026-05-09 per Runtime Decision Policy spec (Claude review iteration).
 from __future__ import annotations
 
 import json
+import hashlib
+import logging
+import math
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from core.runtime.config import STATE_DIR
+
+logger = logging.getLogger(__name__)
 
 CHROMADB_DIR = Path(STATE_DIR) / "chromadb_experience"
 COLLECTION_NAME = "experience_episodes"
@@ -121,6 +127,39 @@ class _Vec:
         return self._values
 
 
+class _HashingEmbedder:
+    """Offline nød-embedder med stabil 384-dimensionel token-hashing.
+
+    Den er mindre semantisk end MiniLM, men holder substratet funktionelt når
+    modelartefakter mangler eller ML-runtime er brudt. Samme input giver samme
+    normaliserede vektor på tværs af processer og Python-versioner.
+    """
+
+    dimension = 384
+
+    @classmethod
+    def _encode_one(cls, text: str, *, normalize: bool) -> list[float]:
+        tokens = re.findall(r"\w+", str(text or "").lower(), flags=re.UNICODE)
+        features = tokens + [f"{a}\x1f{b}" for a, b in zip(tokens, tokens[1:])]
+        vector = [0.0] * cls.dimension
+        for feature in features:
+            digest = hashlib.blake2b(feature.encode("utf-8"), digest_size=8).digest()
+            raw = int.from_bytes(digest, "big")
+            vector[raw % cls.dimension] += -1.0 if raw & (1 << 63) else 1.0
+        if normalize:
+            norm = math.sqrt(sum(value * value for value in vector))
+            if norm:
+                vector = [value / norm for value in vector]
+        return vector
+
+    def encode(self, text: str | list[str], normalize_embeddings: bool = True) -> _Vec:
+        if isinstance(text, str):
+            return _Vec(self._encode_one(text, normalize=normalize_embeddings))
+        return _Vec([
+            self._encode_one(item, normalize=normalize_embeddings) for item in text
+        ])
+
+
 def _get_embedder():
     """Get or create the embedder (lazy load).
 
@@ -134,10 +173,26 @@ def _get_embedder():
     try:
         _EMBEDDER = _FastEmbedEmbedder()
         return _EMBEDDER
-    except Exception:
+    except Exception as exc:
+        logger.warning("fastembed kunne ikke initialiseres; prøver CPU-fallback: %s", exc)
+    try:
         from sentence_transformers import SentenceTransformer
 
-        _EMBEDDER = SentenceTransformer(EMBED_MODEL)
+        # Tving CPU: en nyere GPU end den installerede torch-build må ikke gøre
+        # en ellers lokalt cachet model ubrugelig. Local-only først holder tests
+        # og offline-opstart fri for skjulte downloads.
+        try:
+            _EMBEDDER = SentenceTransformer(
+                EMBED_MODEL, device="cpu", local_files_only=True,
+            )
+        except Exception:
+            _EMBEDDER = SentenceTransformer(EMBED_MODEL, device="cpu")
+        return _EMBEDDER
+    except Exception as exc:
+        logger.error(
+            "ingen MiniLM-embedder kunne bygges; bruger hashing-fallback: %s", exc,
+        )
+        _EMBEDDER = _HashingEmbedder()
         return _EMBEDDER
 
 

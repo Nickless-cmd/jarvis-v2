@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9374/17690 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9374/17692 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9374/17690 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 852 | 1561 | 54% |
-| `core.services` | 6253 | 12032 | 51% |
+| `core.services` | 6253 | 12034 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 133 | 208 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1696,10 +1696,10 @@ Generated from source. 9374/17690 functions/methods documented (52%). The list b
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L802)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L810)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L958)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L967)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L797)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L805)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L953)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L962)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)

@@ -121,7 +121,6 @@ DANSKE_UDTRYK: dict[str, str] = {
     "semantic_search_code": "søg i koden, find i kodebasen, hvor i koden",
     "smart_outline": "struktur af filen, oversigt over filen, hvad indeholder filen",
     "find_symbol": "find funktionen, hvor er den defineret, find klassen",
-    "dispatch_to_claude_code": "send til claude, lad claude lave det, claude kode",
     "worktree_create": "lav en worktree, opret et arbejdstræ",
     "worktree_list": "vis worktrees, hvilke arbejdstræer",
     "git_blame": "hvem ændrede linjen, hvem skrev det",
@@ -161,9 +160,7 @@ DANSKE_UDTRYK: dict[str, str] = {
     "sheets_write": "skriv i regnearket, indsæt i arket, opdater regnearket",
     "drive_search": "søg i drevet, find filen på drevet",
     # ── Sub-agenter ──────────────────────────────────────────────────────
-    "scout_agent": "undersøg, find ud af, research, kig efter",
     "list_agents": "hvilke agenter kører, status på agenterne",
-    "dispatch_code_mode_task": "sæt agenter på, kør en kodeopgave",
     # ── Discords og webhooks ─────────────────────────────────────────────
     "discord_status": "virker discord, discord status, er discord oppe",
     "webhook_register": "opret en webhook, registrer et kald",

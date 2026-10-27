@@ -50,7 +50,7 @@ const VERBS: Record<string, [string, string]> = {
   memory_upsert_section: ['Opdaterer hukommelsen', 'Opdaterede hukommelsen'],
   central_query: ['Spørger centralen om', 'Spurgte centralen om'],
   discord_channel: ['Skriver i', 'Skrev i'],
-  scout_agent: ['Sender en spejder efter', 'Sendte en spejder efter'],
+  Task: ['Sender en agent efter', 'Sendte en agent efter'],
   skill_invoke: ['Bruger', 'Brugte'],
   analyze_image: ['Analyserer', 'Analyserede'],
   schedule_self_wakeup: ['Sætter en påmindelse om', 'Satte en påmindelse om'],

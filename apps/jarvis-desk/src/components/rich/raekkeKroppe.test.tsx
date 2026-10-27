@@ -359,14 +359,13 @@ describe('rækkevisningens værktøjskroppe', () => {
 
   it('mapper omdøbte værktøjer til deres nuværende form', () => {
     // Et omdøbt værktøj skal MAPPER, ikke slettes: gemte ture bærer det gamle
-    // navn. `explore` → `scout_agent` (omdøbt 17/9-2026) er det vigtigste
-    // tilfælde — uden opslaget faldt hver gammel spejder-tur til den generiske
-    // dump, selv om underagent-rækken stod klar til at vise dens kald.
+    // navn. Det historiske `explore` vises nu som kontraktværktøjet `Task`;
+    // uden opslaget falder gamle agent-ture til det generiske dump.
     //
     // Testen kræver ikke en bestemt familie: den kræver at gammelt og nyt
     // giver PRÆCIS samme form. Ændrer nogen det ene uden det andet, fejler den.
     const par: [string, string][] = [
-      ['explore', 'scout_agent'],
+      ['explore', 'Task'],
       ['bash_session', 'bash_session_run'],
       ['operator_bash_session', 'operator_bash_session_run'],
       ['glob', 'operator_glob'],

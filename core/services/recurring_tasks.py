@@ -273,12 +273,15 @@ def rutine_session_id(task_id: str) -> str:
     if not task_id:
         return ""
     try:
-        with runtime_db.connect() as conn:
-            link = conn.execute(
-                "SELECT routine_id FROM routine_legacy_links "
-                "WHERE source_kind = 'recurring' AND source_id = ?",
-                (task_id,),
-            ).fetchone()
+        # Link-tabellen er valgfri i friske/ældre databaser. Et manglende
+        # migrationslag må ikke skygge for session_id på selve opgaven.
+        try:
+            with runtime_db.connect() as conn:
+                link = conn.execute(
+                    "SELECT routine_id FROM routine_legacy_links "
+                    "WHERE source_kind = 'recurring' AND source_id = ?",
+                    (task_id,),
+                ).fetchone()
             if link:
                 from core.runtime import db_routines
 
@@ -291,6 +294,10 @@ def rutine_session_id(task_id: str) -> str:
                         valg = str(klass.get("session_id") or "").strip()
                         if valg:
                             return valg
+        except Exception:  # noqa: BLE001 — fallbacken nedenfor er autoritativ
+            logger.debug("recurring_tasks: rutine-link kunne ikke laeses for %s",
+                         task_id, exc_info=True)
+        with runtime_db.connect() as conn:
             row = conn.execute(
                 "SELECT session_id, execution_mode FROM recurring_tasks WHERE task_id = ?",
                 (task_id,),
@@ -430,18 +437,6 @@ def er_session_rutine(task_id: str) -> bool:
             logger.debug("recurring_tasks: rutine-link kunne ikke laeses for %s",
                          task_id, exc_info=True)
         # 3) Den ældre indikation: en opgave bestilt inde i en samtale.
-        return bool(str(row[0] or "").strip())
-    except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte vækkeren
-        logger.debug("recurring_tasks: kunne ikke afgoere session-mode for %s",
-                     task_id, exc_info=True)
-        return False
-        # Det EKSPLICITTE valg vejer tungest: en opgave der er sat til `session`
-        # maa vaekke selv om dens `session_id` er tom — adressen slaaes op naar
-        # den fyrer, i stedet for at vaere laast til den samtale der var aktiv
-        # den dag opgaven blev skrevet.
-        valg = str(row[1] or "").strip().lower()
-        if valg:
-            return valg == "session"
         return bool(str(row[0] or "").strip())
     except Exception:  # noqa: BLE001 — self-safe: et opslag må ikke vælte vækkeren
         logger.debug("recurring_tasks: kunne ikke afgoere session-mode for %s",

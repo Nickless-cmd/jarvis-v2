@@ -369,6 +369,20 @@ _Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._
 | function | `_exec_close_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L81) |
 | function | `_exec_set_chat_flow_preference` | `(args)` | Persist presentation state for the verified current run principal. | [src](../../../core/tools/desk_view_tools.py#L88) |
 
+## `core/tools/document_create_tools.py`
+_Opret-dokumenter: Word, Excel, PowerPoint og PDF._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udgiv` | `(sti, filnavn)` | Send en genereret fil gennem den ene udlevering der findes. | [src](../../../core/tools/document_create_tools.py#L52) |
+| function | `_filnavn` | `(raa, standard_navn, endelse)` | Sikrér en brugbar fil-endelse; ellers tilføj den. | [src](../../../core/tools/document_create_tools.py#L59) |
+| function | `_linjer` | `(indhold)` | Normalisér `indhold` til linjer — accepterer streng eller liste. | [src](../../../core/tools/document_create_tools.py#L68) |
+| function | `_blokke` | `(linjer)` | Parse linjer til (slags, tekst, niveau). | [src](../../../core/tools/document_create_tools.py#L75) |
+| function | `_exec_pdf_create` | `(args)` | Opret en PDF af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L220) |
+| function | `_exec_docx_create` | `(args)` | Opret et Word-dokument af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L290) |
+| function | `_exec_xlsx_create` | `(args)` | Opret et regneark. `ark` = [{navn, kolonner, rækker}] eller `rækker`. | [src](../../../core/tools/document_create_tools.py#L329) |
+| function | `_exec_pptx_create` | `(args)` | Opret en præsentation. `slides` = [{titel, punkter, note}]. | [src](../../../core/tools/document_create_tools.py#L435) |
+
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 
@@ -504,27 +518,4 @@ _API health monitor tools — Jarvis can watch services and be notified of outag
 | function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L115) |
 | function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
 | function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
-
-## `core/tools/hf_inference_tools.py`
-_Hugging Face Inference API tools — free-tier text-to-video + fallback image gen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hf_token` | `()` | Read HF token from runtime.json (never hardcoded). | [src](../../../core/tools/hf_inference_tools.py#L43) |
-| function | `_auth_headers` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L55) |
-| function | `_video_dir` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L66) |
-| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/hf_inference_tools.py#L71) |
-| function | `_write_sidecar` | `(path, metadata)` | — | [src](../../../core/tools/hf_inference_tools.py#L79) |
-| function | `generate_video` | `(*, prompt, model=…, num_frames=…, guidance_scale=…, negative_prompt=…, num_inference_steps=…, seed=…, save_dir=…)` | Generate a video via HF serverless inference API. | [src](../../../core/tools/hf_inference_tools.py#L88) |
-| function | `_exec_hf_text_to_video` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L221) |
-| function | `_read_audio_bytes` | `(source)` | Read audio from a local path or HTTP(S) URL. Returns raw bytes. | [src](../../../core/tools/hf_inference_tools.py#L283) |
-| function | `transcribe_audio` | `(*, audio_source, model=…, return_timestamps=…, language=…)` | Transcribe audio via HF Whisper. audio_source can be file path or URL. | [src](../../../core/tools/hf_inference_tools.py#L295) |
-| function | `_exec_hf_transcribe_audio` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L391) |
-| function | `semantic_similarity` | `(*, source, candidates, model=…)` | Compute cosine similarity between source and each candidate via HF. | [src](../../../core/tools/hf_inference_tools.py#L426) |
-| function | `_exec_hf_embed` | `(args)` | Semantic similarity via HF sentence-similarity pipeline. | [src](../../../core/tools/hf_inference_tools.py#L503) |
-| function | `zero_shot_classify` | `(*, text, labels, model=…, multi_label=…)` | Classify text against provided candidate labels via MNLI. | [src](../../../core/tools/hf_inference_tools.py#L552) |
-| function | `_exec_hf_zero_shot_classify` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L620) |
-| function | `_image_to_data_url` | `(source)` | Convert file path / URL / raw-bytes path to a data URL for VLM input. | [src](../../../core/tools/hf_inference_tools.py#L652) |
-| function | `vision_analyze` | `(*, image_source, prompt=…, model=…, max_tokens=…)` | Analyze an image via a vision-language model. image_source = path or URL. | [src](../../../core/tools/hf_inference_tools.py#L666) |
-| function | `_exec_hf_vision_analyze` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L729) |
 

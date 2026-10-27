@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-26 — 509 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-27 — 513 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -115,6 +115,7 @@
 | `dispatch_to_claude_code` | native | no |
 | `docs_append` | native | no |
 | `docs_read` | native | no |
+| `docx_create` | native | no |
 | `drive_search` | native | no |
 | `edit_file` | native | no |
 | `edit_task` | native | no |
@@ -252,6 +253,7 @@
 | `openrouter_image_edit` | native | no |
 | `override_gate` | native | no |
 | `pause_and_ask` | native | no |
+| `pdf_create` | native | no |
 | `pdf_read` | native | no |
 | `percentage` | native | no |
 | `personality_drift_check` | native | no |
@@ -277,6 +279,7 @@
 | `pollinations_image` | native | no |
 | `pollinations_video` | native | no |
 | `pollinations_video_edit` | native | no |
+| `pptx_create` | native | no |
 | `predict_outcome` | native | no |
 | `process_list` | native | no |
 | `process_remove` | native | no |
@@ -449,6 +452,7 @@
 | `write_memory_topic` | native | no |
 | `wt_bash` | native | no |
 | `wt_write_file` | native | no |
+| `xlsx_create` | native | no |
 | `operator_bash` | operator | yes |
 | `operator_bash_output` | operator | no |
 | `operator_bash_session_close` | operator | no |

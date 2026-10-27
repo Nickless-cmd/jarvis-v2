@@ -77,6 +77,10 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     # give dem den samme fil gennem et download-link i stedet.
     "git_log", "git_diff", "git_status", "git_branch", "git_blame",
     "publish_file",
+    # Dokument-laesning (27/10-2026, Bjoern). `pdf_read` kan laese en
+    # VILKAARLIG sti eller URL — samme fil-adgang som `read_file`. Den hoerer
+    # derfor i owner-strippet og ikke i kernen, selvom den kun laeser.
+    "pdf_read",
     "append_skill_observation",
     "generate_improvement_proposals",
     "identity_mutation_status",
@@ -205,6 +209,23 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # fil-adgang som `read_file`, og derfor samme owner-strip: for en member
     # ville den vaere en omvej til serverens filer gennem et link.
     "publish_file",
+    # At SKABE et dokument (27/10-2026, Bjoern: «dem skal vi osse have»).
+    # Maalt for denne aendring: huset kunne LAESE fem Google-formater gennem
+    # connectorer, men der fandtes NUL vaerktoejer der kunne oprette en fil —
+    # `pdf_read` fandtes, `pdf_create` gjorde ikke.
+    #
+    # De fire staar i KERNEN for alle roller, i modsaetning til `pdf_read`
+    # ovenfor, fordi de hverken laeser eller overskriver noget: de genererer
+    # en ny fil i en midlertidig mappe og sender den gennem `publish_file`,
+    # som skriver i den kaldende brugers EGEN isolerede mappe. En member kan
+    # altsaa kun skabe sin egen fil, aldrig roere en andens — og en
+    # opret-funktion der var owner-only ville goere ChatGPT-pariteten
+    # halv, praecis dér hvor husstanden arbejder.
+    "pdf_create", "docx_create", "xlsx_create", "pptx_create",
+    # `pdf_read` staar HER ogsaa (ikke kun i OWNER_ONLY_TOOLS): rollestrippet
+    # fjerner for husstanden, men uden en scope-liste ville den ogsaa vaere
+    # usynlig for EJEREN — maalt 27/10-2026, foerste forsoeg gav praecis det.
+    "pdf_read",
     # Arbejdshukommelse. Prompten har hele tiden vist hans todos og reglen om
     # max ÉN i gang — uden at han kunne skrive til dem.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
@@ -287,8 +308,9 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # det er praecis den mode de hoerer til.
     "git_log", "git_diff", "git_status", "git_branch", "git_blame",
     "publish_file",
-    # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026): vis diff'en
-    # efter en redigering — det er NETOP her det betyder mest.
+    # Dokumenter (27/10-2026): at SKABE en fil hoerer til i code mode, og
+    # `pdf_read` er den naturlige modpart naar man vil laese hvad man lavede.
+    "pdf_create", "docx_create", "xlsx_create", "pptx_create", "pdf_read",
     "desk_get_layout", "desk_show_pane", "desk_close_pane",
     # Jarvis' EGEN browser inde i desk (21/9-2026): han kan se en side OG vise
     # den til Bjørn samtidig — den ene flade hvor begge kan pege.

@@ -1563,6 +1563,12 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # (dispatch-dict + tests).
 from core.tools.recall_tool import _exec_recall  # noqa: E402
 from core.tools.repo_recall_tool import _exec_repo_recall  # noqa: E402
+from core.tools.document_create_tools import (  # noqa: E402
+    _exec_pdf_create,
+    _exec_docx_create,
+    _exec_xlsx_create,
+    _exec_pptx_create,
+)
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
@@ -1673,6 +1679,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "docs_append": _exec_docs_append,
     "sheets_write": _exec_sheets_write,
     "pdf_read": _exec_pdf_read,
+    "pdf_create": _exec_pdf_create,
+    "docx_create": _exec_docx_create,
+    "xlsx_create": _exec_xlsx_create,
+    "pptx_create": _exec_pptx_create,
     "note_add": _exec_note_add,
     "note_list": _exec_note_list,
     "note_search": _exec_note_search,

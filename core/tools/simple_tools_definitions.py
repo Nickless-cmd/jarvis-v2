@@ -35,6 +35,7 @@ from core.services.github_connector import (GITHUB_CONNECTOR_TOOL_DEFINITIONS)
 from core.services.gmail_connector import (GMAIL_CONNECTOR_TOOL_DEFINITIONS)
 from core.services.google_connector import (GOOGLE_CONNECTOR_TOOL_DEFINITIONS)
 from core.services.pdf_connector import (PDF_CONNECTOR_TOOL_DEFINITIONS)
+from core.tools.document_create_tools import (DOCUMENT_CREATE_TOOL_DEFINITIONS)
 from core.services.notes_connector import (NOTES_CONNECTOR_TOOL_DEFINITIONS)
 from core.services.hf_connector import (HF_CONNECTOR_TOOL_DEFINITIONS)
 from core.tools.reasoning_store_tools import (REASONING_STORE_TOOL_DEFINITIONS)
@@ -3462,6 +3463,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GMAIL_CONNECTOR_TOOL_DEFINITIONS,
     *GOOGLE_CONNECTOR_TOOL_DEFINITIONS,
     *PDF_CONNECTOR_TOOL_DEFINITIONS,
+    *DOCUMENT_CREATE_TOOL_DEFINITIONS,
     *NOTES_CONNECTOR_TOOL_DEFINITIONS,
     *HF_CONNECTOR_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,

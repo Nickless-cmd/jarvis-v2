@@ -93,7 +93,7 @@ describe('RoutineRuns', () => {
     expect(fold.hasAttribute('open')).toBe(false)
 
     // Payloaden findes stadig — den er bare ikke det man møder først.
-    fireEvent.click(screen.getByText(/^Detaljer/))
+    fireEvent.click(screen.getByText(/^Teknisk log/))
     expect(await screen.findByText('Værktøjets svar')).toBeVisible()
     expect(screen.getByText('Det private resultat')).toBeVisible()
   })

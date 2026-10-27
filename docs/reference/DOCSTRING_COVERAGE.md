@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9398/17716 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9400/17718 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9398/17716 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 852 | 1561 | 54% |
-| `core.services` | 6261 | 12042 | 51% |
+| `core.services` | 6263 | 12044 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 133 | 208 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1823,27 +1823,27 @@ Generated from source. 9398/17716 functions/methods documented (53%). The list b
 - `core/services/routine_runtime.py` :: `RoutineRuntime.worker_is_alive` (L98)
 - `core/services/routine_runtime.py` :: `start_routine_runtime` (L112)
 - `core/services/routine_runtime.py` :: `stop_routine_runtime` (L121)
-- `core/services/routine_service.py` :: `RoutineService.archive` (L318)
-- `core/services/routine_service.py` :: `RoutineService.archive_stopped_before` (L505)
-- `core/services/routine_service.py` :: `RoutineService.cancel_run` (L413)
-- `core/services/routine_service.py` :: `RoutineService.create_and_activate` (L198)
-- `core/services/routine_service.py` :: `RoutineService.create_proposal` (L220)
-- `core/services/routine_service.py` :: `RoutineService.delete` (L364)
-- `core/services/routine_service.py` :: `RoutineService.enqueue_run` (L379)
-- `core/services/routine_service.py` :: `RoutineService.get` (L242)
-- `core/services/routine_service.py` :: `RoutineService.get_inbox_defaults` (L466)
-- `core/services/routine_service.py` :: `RoutineService.get_redacted_diagnostic` (L482)
-- `core/services/routine_service.py` :: `RoutineService.get_run` (L401)
-- `core/services/routine_service.py` :: `RoutineService.list` (L432)
-- `core/services/routine_service.py` :: `RoutineService.list_run_events` (L453)
-- `core/services/routine_service.py` :: `RoutineService.list_runs` (L442)
-- `core/services/routine_service.py` :: `RoutineService.pause` (L312)
-- `core/services/routine_service.py` :: `RoutineService.restart` (L340)
-- `core/services/routine_service.py` :: `RoutineService.restore` (L321)
-- `core/services/routine_service.py` :: `RoutineService.resume` (L315)
-- `core/services/routine_service.py` :: `RoutineService.set_inbox_defaults` (L472)
-- `core/services/routine_service.py` :: `RoutineService.stop` (L324)
-- `core/services/routine_service.py` :: `RoutineService.update` (L254)
+- `core/services/routine_service.py` :: `RoutineService.archive` (L341)
+- `core/services/routine_service.py` :: `RoutineService.archive_stopped_before` (L528)
+- `core/services/routine_service.py` :: `RoutineService.cancel_run` (L436)
+- `core/services/routine_service.py` :: `RoutineService.create_and_activate` (L221)
+- `core/services/routine_service.py` :: `RoutineService.create_proposal` (L243)
+- `core/services/routine_service.py` :: `RoutineService.delete` (L387)
+- `core/services/routine_service.py` :: `RoutineService.enqueue_run` (L402)
+- `core/services/routine_service.py` :: `RoutineService.get` (L265)
+- `core/services/routine_service.py` :: `RoutineService.get_inbox_defaults` (L489)
+- `core/services/routine_service.py` :: `RoutineService.get_redacted_diagnostic` (L505)
+- `core/services/routine_service.py` :: `RoutineService.get_run` (L424)
+- `core/services/routine_service.py` :: `RoutineService.list` (L455)
+- `core/services/routine_service.py` :: `RoutineService.list_run_events` (L476)
+- `core/services/routine_service.py` :: `RoutineService.list_runs` (L465)
+- `core/services/routine_service.py` :: `RoutineService.pause` (L335)
+- `core/services/routine_service.py` :: `RoutineService.restart` (L363)
+- `core/services/routine_service.py` :: `RoutineService.restore` (L344)
+- `core/services/routine_service.py` :: `RoutineService.resume` (L338)
+- `core/services/routine_service.py` :: `RoutineService.set_inbox_defaults` (L495)
+- `core/services/routine_service.py` :: `RoutineService.stop` (L347)
+- `core/services/routine_service.py` :: `RoutineService.update` (L277)
 - `core/services/routine_service.py` :: `RoutineView.id` (L55)
 - `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_recurring` (L110)
 - `core/services/routine_trigger_adapters.py` :: `RoutineTriggerAdapters.enqueue_scheduled` (L104)

@@ -138,37 +138,38 @@ _Authorized lifecycle service for versioned Routine definitions and runs._
 | class | `RoutineView` | `` | — | [src](../../../core/services/routine_service.py#L32) |
 | method | `RoutineView.id` | `(self)` | — | [src](../../../core/services/routine_service.py#L55) |
 | class | `RunView` | `` | — | [src](../../../core/services/routine_service.py#L60) |
-| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L99) |
-| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L124) |
-| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L141) |
-| function | `_apply_classification` | `(values)` | Validér oprettelsens valg og læg den udledte klassifikation i policy'en. | [src](../../../core/services/routine_service.py#L148) |
-| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L172) |
-| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L173) |
-| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L176) |
-| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L182) |
-| method | `RoutineService._project` | `(view, event_type)` | — | [src](../../../core/services/routine_service.py#L188) |
-| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L198) |
-| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L220) |
-| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L242) |
-| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L254) |
-| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L290) |
-| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L312) |
-| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L315) |
-| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L318) |
-| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L321) |
-| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L324) |
-| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L340) |
-| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L364) |
-| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L379) |
-| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L401) |
-| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L413) |
-| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L432) |
-| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L442) |
-| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L453) |
-| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L466) |
-| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L472) |
-| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L482) |
-| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L505) |
+| function | `_routine_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L105) |
+| function | `_som_tekst` | `(value)` | Gør et gemt resultat til tekst. | [src](../../../core/services/routine_service.py#L130) |
+| function | `_run_view` | `(row)` | — | [src](../../../core/services/routine_service.py#L145) |
+| function | `_command_values` | `(command)` | — | [src](../../../core/services/routine_service.py#L164) |
+| function | `_apply_classification` | `(values)` | Validér oprettelsens valg og læg den udledte klassifikation i policy'en. | [src](../../../core/services/routine_service.py#L171) |
+| class | `RoutineService` | `` | — | [src](../../../core/services/routine_service.py#L195) |
+| method | `RoutineService.__init__` | `(self, principal=…)` | — | [src](../../../core/services/routine_service.py#L196) |
+| method | `RoutineService._actor` | `(self, supplied=…)` | — | [src](../../../core/services/routine_service.py#L199) |
+| method | `RoutineService._actor_and_rest` | `(self, args)` | — | [src](../../../core/services/routine_service.py#L205) |
+| method | `RoutineService._project` | `(view, event_type)` | — | [src](../../../core/services/routine_service.py#L211) |
+| method | `RoutineService.create_and_activate` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L221) |
+| method | `RoutineService.create_proposal` | `(self, principal, *, for_owner, command)` | — | [src](../../../core/services/routine_service.py#L243) |
+| method | `RoutineService.get` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L265) |
+| method | `RoutineService.update` | `(self, *args, expected_version=…, patch=…, reactivate=…, **changes)` | — | [src](../../../core/services/routine_service.py#L277) |
+| method | `RoutineService._transition` | `(self, operation, *args)` | — | [src](../../../core/services/routine_service.py#L313) |
+| method | `RoutineService.pause` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L335) |
+| method | `RoutineService.resume` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L338) |
+| method | `RoutineService.archive` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L341) |
+| method | `RoutineService.restore` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L344) |
+| method | `RoutineService.stop` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L347) |
+| method | `RoutineService.restart` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L363) |
+| method | `RoutineService.delete` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L387) |
+| method | `RoutineService.enqueue_run` | `(self, *args, trigger_key, execution_context=…)` | — | [src](../../../core/services/routine_service.py#L402) |
+| method | `RoutineService.get_run` | `(self, *args, decrypt=…)` | — | [src](../../../core/services/routine_service.py#L424) |
+| method | `RoutineService.cancel_run` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L436) |
+| method | `RoutineService.list` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L455) |
+| method | `RoutineService.list_runs` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L465) |
+| method | `RoutineService.list_run_events` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L476) |
+| method | `RoutineService.get_inbox_defaults` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L489) |
+| method | `RoutineService.set_inbox_defaults` | `(self, policy, *args)` | — | [src](../../../core/services/routine_service.py#L495) |
+| method | `RoutineService.get_redacted_diagnostic` | `(self, *args)` | — | [src](../../../core/services/routine_service.py#L505) |
+| method | `RoutineService.archive_stopped_before` | `(self, *, now=…)` | — | [src](../../../core/services/routine_service.py#L528) |
 
 ## `core/services/routine_types.py`
 _Value objects shared by the Routine domain._

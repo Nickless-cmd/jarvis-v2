@@ -106,7 +106,7 @@ describe('RoutineRuns', () => {
     fireEvent.click(run)
     // Hændelserne er foldet sammen som standard (27/10-2026) — de er detaljen,
     // ikke svaret. Testen åbner folden for at måle hvad der SKJULES i den.
-    fireEvent.click(await screen.findByText(/^Detaljer/))
+    fireEvent.click(await screen.findByText(/^Teknisk log/))
     await waitFor(() => expect(screen.getByText('ok')).toBeVisible())
     const timeline = screen.getByLabelText('Kørselshændelser')
     expect(within(timeline).queryByText('secret')).not.toBeInTheDocument()

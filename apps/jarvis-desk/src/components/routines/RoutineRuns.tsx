@@ -107,7 +107,7 @@ export function RoutineRuns({ config, routineId, instruction }: {
                 <p className="routine-error" role="alert">Diagnose: {detail.diagnostic_code}</p>
               )}
               <details className="routine-events">
-                <summary>Detaljer ({events?.length ?? 0})</summary>
+                <summary>Teknisk log ({events?.length ?? 0} hændelser)</summary>
                 <ol className="routine-timeline" aria-label="Kørselshændelser">
                   {!events && <li className="routine-empty"><Loader2 size={13} className="spin" /> Henter hændelser…</li>}
                   {events?.map((event) => (

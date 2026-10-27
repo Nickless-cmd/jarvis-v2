@@ -34,7 +34,8 @@ _A transport-neutral, fenced model/tool execution loop._
 | method | `RoutineExecutionAdapter.__init__` | `(self, context, *, instruction, driver=…, tool_executor=…, tools_payload=…, max_rounds=…)` | — | [src](../../../core/services/agentic_execution.py#L264) |
 | function | `_emit_terminal` | `(sink, result)` | — | [src](../../../core/services/agentic_execution.py#L285) |
 | function | `_approval` | `(sink, call)` | — | [src](../../../core/services/agentic_execution.py#L292) |
-| function | `execute_agentic` | `(context, sink, cancellation)` | Run bounded model/tool rounds and emit exactly one terminal result. | [src](../../../core/services/agentic_execution.py#L298) |
+| function | `_samlet_tekst` | `(parts)` | Saml rundernes tekst til ét svar — med luft mellem runderne. | [src](../../../core/services/agentic_execution.py#L298) |
+| function | `execute_agentic` | `(context, sink, cancellation)` | Run bounded model/tool rounds and emit exactly one terminal result. | [src](../../../core/services/agentic_execution.py#L311) |
 
 ## `core/services/routine_prompt.py`
 _Build a bounded Routine prompt directly from its immutable execution context._

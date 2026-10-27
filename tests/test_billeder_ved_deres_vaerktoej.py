@@ -174,3 +174,62 @@ def test_en_video_UDEN_kald_id_taber_ikke_sin_plads_helt():
     """Uden ankeret er bagest det bedste vi kan — men den maa ikke forsvinde."""
     ud = indsæt([{"type": "text", "text": "hej"}], [_video("k.mp4")])
     assert any(b.get("type") == "video" for b in ud)
+
+
+# ── Dokumenter er en LEVERANCE, ikke en illustration (27/10-2026) ───────────
+#
+# Bjørn, to gange: «den ligger stadig i toppen af din besked istedet for bunden
+# af din besked». Maalt paa den aegte besked: PDF'en stod paa **blok 13 af
+# 124** — oeverst, foer al den prosa der handlede om den.
+#
+# Ankringen var rigtig for et billede (det illustrerer afsnittet det staar i)
+# og forkert for et dokument (det er svarets leverance). Derfor to pladser.
+
+
+def _dok(navn: str, tid: str = "") -> dict:
+    b = {"type": "file", "filename": navn, "mime_type": "application/pdf"}
+    if tid:
+        b["tool_use_id"] = tid
+    return b
+
+
+def test_dokumentet_staar_UNDER_prosaen_ikke_ved_sit_vaerktoej():
+    blokke = [{"type": "text", "text": "jeg laver pdf'en"},
+              _prog("c1", "pdf_create"), {"type": "text", "text": "her er den"}]
+    ud = indsæt(blokke, [_dok("a.pdf", "c1")])
+    typer = [b["type"] for b in ud]
+    assert typer == ["text", "progress", "text", "file"], typer
+
+
+def test_dokumentet_lander_efter_AL_prosaen_selv_naar_den_kommer_sent():
+    blokke = [{"type": "text", "text": "1"}, _prog("c1"),
+              {"type": "text", "text": "2"}, {"type": "text", "text": "3"}]
+    ud = indsæt(blokke, [_dok("a.pdf", "c1")])
+    assert ud[-1]["filename"] == "a.pdf"
+
+
+def test_dokumentet_lander_FOER_progress_halen():
+    """«Bagerst i arrayet» var bagerst i DATA, ikke i laesningen.
+
+    Den maalte besked havde 26 `progress`-blokke efter den sidste prosa. Laa
+    filen efter dem, var den stadig svaer at finde.
+    """
+    blokke = [{"type": "text", "text": "svar"}, _prog("p1"), _prog("p2"), _prog("p3")]
+    ud = indsæt(blokke, [_dok("a.pdf")])
+    assert [b["type"] for b in ud] == ["text", "file", "progress", "progress", "progress"]
+
+
+def test_dokument_og_billede_i_SAMME_tur_faar_hver_sin_plads():
+    blokke = [_prog("c1", "openrouter_image"), {"type": "text", "text": "se her"}]
+    ud = indsæt(blokke, [_dok("a.pdf", "c2"), _bil("b.png", "c1")])
+    assert [b["type"] for b in ud] == ["progress", "image", "text", "file"]
+
+
+def test_den_MAALTE_besked_form():
+    """Formen fra den aegte besked: 124 blokke, filen paa plads 13."""
+    blokke = ([{"type": "text", "text": "optakt"}, _prog("c1"), {"type": "tool_result"}]
+              + [{"type": "text", "text": "lang prosa"}] * 20
+              + [_prog(f"p{i}") for i in range(26)])
+    ud = indsæt(blokke, [_dok("a.pdf", "c1")])
+    plads = [b["type"] for b in ud].index("file")
+    assert plads == 23, f"filen stod ikke under prosaen: blok {plads}"

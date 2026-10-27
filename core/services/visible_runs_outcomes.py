@@ -56,10 +56,11 @@ def _normaliser_tekstblokke(blocks: list[dict]) -> list[dict]:
 
 
 def _med_udgivne_filer(blocks: list[dict], run: "_vr.VisibleRun") -> list[dict]:
-    """Laeg turens udgivne filer BAGEST i blok-arrayet.
+    """Laeg turens udgivne filer paa deres plads i blok-arrayet.
 
-    Bagest, fordi en fil er et resultat: den blev til undervejs og hoerer til
-    efter det den handler om. Taenkningen ligger forrest af den modsatte grund.
+    Hvor «deres plads» er, afhaenger af filen: et billede eller en video bliver
+    ved sit vaerktoej, en dokumentfil laegges under prosaen. Delingen og dens
+    historie staar i :func:`_indsaet_ved_deres_vaerktoej`.
 
     Ingen udgivne filer → arrayet urOert. En tom blok ville faa klienten til at
     tegne et hul der aldrig kan fyldes.
@@ -75,30 +76,51 @@ def _med_udgivne_filer(blocks: list[dict], run: "_vr.VisibleRun") -> list[dict]:
         return blocks
 
 
+# Bloktyper der er noget man SER PÅ midt i en forklaring. Resten — `file`
+# (pdf, docx, xlsx, pptx, zip) — er en leverance man HENTER, og den hører til
+# svaret som helhed, ikke til det sted i tankestrømmen hvor den blev dannet.
+_SET_FOR_OEJET = frozenset({"image", "video"})
+
+
 def _indsaet_ved_deres_vaerktoej(
     blocks: list[dict], filer: list[dict],
 ) -> list[dict]:
-    """Sæt hver udgiven fil DÉR hvor den blev lavet.
+    """Sæt hver udgiven fil på sin plads — to slags filer, to pladser.
 
-    ## Hvad der var galt
+    ## Hvad der var galt (13/9-2026)
 
-    Målt 13/9-2026 på en ægte besked: 50 blokke, hvor begge billeder lå på
-    plads 49 og 50 — efter fyrre `progress`-blokke. Bjørn: «hans billeder
-    kommer først efter streamen er slut i stedet for inde i streamen hvor de
-    faktisk bliver lavet».
+    Målt på en ægte besked: 50 blokke, hvor begge billeder lå på plads 49 og
+    50 — efter fyrre `progress`-blokke. Bjørn: «hans billeder kommer først
+    efter streamen er slut i stedet for inde i streamen hvor de faktisk bliver
+    lavet». Begge dele kom af ét udtryk: `list(blocks) + as_blocks(poster)`.
 
-    Begge dele kom af ét udtryk: `list(blocks) + as_blocks(poster)`.
+    ## Og hvad der stadig var galt (27/10-2026)
 
-    ## Ankeret fandtes i forvejen
+    Bjørn, to gange: «den ligger stadig i toppen af din besked istedet for
+    bunden af din besked». En PDF dannet tidligt i turen stod på **blok 13 af
+    124** — øverst, før al den prosa der handlede om den. Ankringen gjorde
+    præcis hvad den skulle for et billede, og det forkerte for et dokument.
 
-    `progress`-blokken for værktøjet bærer et `tool_use_id`
-    (`progress 39: openrouter_image, call_00_WO06n96h…`). Filen bærer nu det
-    samme, så den kan indsættes lige efter sit eget værktøj.
+    ## Delingen
 
-    En fil uden anker — eller hvis værktøj ikke står i blokkene — lægges
+    Et billede eller en video **illustrerer** det der tales om netop dér, så
+    den bliver ved sit værktøj. En dokumentfil er svarets **leverance** — man
+    henter den når man har læst — så den lægges under prosaen, efter den
+    sidste blok der ikke er værktøjsstøj.
+
+    En mediefil uden anker — eller hvis værktøj ikke står i blokkene — lægges
     bagerst som før. Et gæt på en placering ville være værre: et billede ved
     den forkerte tekst læses som hørende til den.
     """
+    if not filer:
+        return blocks
+    medier = [f for f in filer if str(f.get("type") or "") in _SET_FOR_OEJET]
+    leverancer = [f for f in filer if str(f.get("type") or "") not in _SET_FOR_OEJET]
+    return _leverance_i_bunden(_indsat_ved_anker(blocks, medier), leverancer)
+
+
+def _indsat_ved_anker(blocks: list[dict], filer: list[dict]) -> list[dict]:
+    """Indsæt hver mediefil lige efter sit eget værktøj (`tool_use_id`)."""
     if not filer:
         return blocks
     efter_id: dict[str, list[dict]] = {}
@@ -121,6 +143,23 @@ def _indsaet_ved_deres_vaerktoej(
     for rest in efter_id.values():
         bagerst.extend(rest)
     return ud + bagerst
+
+
+def _leverance_i_bunden(blocks: list[dict], filer: list[dict]) -> list[dict]:
+    """Læg leverancen efter den sidste blok der ikke er værktøjsstøj.
+
+    Ikke efter `progress`: i den målte besked lå 26 sådanne blokke efter den
+    sidste prosa. «Bagerst i arrayet» ville dér være bagerst i data og ikke i
+    læsningen — og det var netop forskellen Bjørn pegede på.
+    """
+    if not filer:
+        return blocks
+    ud = list(blocks)
+    sidste = -1
+    for i, b in enumerate(ud):
+        if isinstance(b, dict) and b.get("type") != "progress":
+            sidste = i
+    return ud[: sidste + 1] + list(filer) + ud[sidste + 1 :]
 
 
 def _with_thinking_block(

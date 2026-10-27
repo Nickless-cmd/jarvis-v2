@@ -225,17 +225,33 @@ def _unanswered_questions(prompt: str, final_text: str) -> int:
     Tallet er derfor et OVERKANT-tal, og kalderen skal ikke kalde det "ubesvarede
     spoergsmaal" men "spoergsmaal uden nummereret svar". Det er stadig et brugbart signal:
     det fyrer naar en leverance stopper midt i arbejdet, og teksten foelger altid med."""
+    return _unanswered_detail(prompt, final_text)[0]
+
+
+def _unanswered_detail(prompt: str, final_text: str) -> tuple[int, str]:
+    """(antal, ord) — tallet OG hvad der faktisk blev maalt.
+
+    27/10-2026, maalt i drift paa `run-18acb0c3120142f2`: agenten erklaerede selv
+    `DÆKNING: 1,3`, og tallet 1 var KORREKT — spoergsmaal 2 blev aerligt afvist.
+    Men markeringen kaldte det «1 spoergsmaal uden nummereret svar», og agenten
+    HAVDE et nummereret svar paa 2) («Kan ikke besvares»). Ordet paastod altsaa en
+    formateringsfejl der ikke fandtes — praecis som «ubesvarede» gjorde foer.
+
+    Derfor foelger ordet KILDEN: giver erklaeringen tallet, maa ordet sige daekning;
+    giver taellingen det, maa ordet sige nummereret svar (den taelling er et
+    overkant-tal, se docstringen ovenfor).
+    """
     qs = _question_numbers(prompt)
     if len(qs) < 2:
-        return 0
+        return 0, ""
     # 27/10-2026: agentens egen erklaering vinder over taellingen. Den er den eneste kilde
     # der ikke kan narres af formatering — maalt tre gange samme doegn (feltliste, usynlig
     # nummerering, afvisning laest som svar). Mangler linjen, er svaret uaendret.
     declared = _declared_coverage(final_text or "")
     if declared is not None:
-        return len(qs - declared)
+        return len(qs - declared), "spørgsmål uden dækning"
     answered = _answered_numbers(final_text or "", qs)
-    return len(qs - answered)
+    return len(qs - answered), "spørgsmål uden nummereret svar"
 
 
 class ApprovalPending(Exception):
@@ -288,6 +304,7 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
     # noget. Kravet (Bjørn 26/10): "Jarvis skal altid vide, hvad den naaede, hvad den
     # ikke naaede, og hvorfor arbejdet stoppede."
     unanswered_total = 0
+    unanswered_ord = ""
     # 26/10-2026: HVORFOR arbejdet stoppede. Et maalt faktum (rundebudgettet loeb ud), ikke
     # en vurdering af teksten. Maalt paa `asg-a413aa7ac3704131`: agenten brugte 7
     # vaerktoejskald, fik sin nudge i runde 8 — som ER loftet — og loekken udloeb uden at
@@ -406,10 +423,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                             if svar_text:
                                 final_text = svar_text
                                 # Svaret er NYT: antallet skal maales paa det, ikke paa runden foer.
-                                unanswered_total = _unanswered_questions(prompt, final_text)
+                                unanswered_total, unanswered_ord = _unanswered_detail(
+                                    prompt, final_text)
                                 incomplete = bool(unanswered_total)
                                 stop_reason = (
-                                    f"{unanswered_total} spørgsmål uden nummereret svar "
+                                    f"{unanswered_total} {unanswered_ord} "
                                     "efter afsluttende svar" if unanswered_total else "")
                         except Exception:
                             logger.warning(
@@ -438,7 +456,7 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                 final_text = synth_text
                 # Syntesen er et NYT svar: antallet af ubesvarede spoergsmaal skal maales paa
                 # det, ikke paa runden foer.
-                unanswered_total = _unanswered_questions(prompt, final_text)
+                unanswered_total, unanswered_ord = _unanswered_detail(prompt, final_text)
             else:
                 # Ingen syntese = agenten blev afbrudt midt i arbejdet. Det er et faktum.
                 incomplete = True
@@ -452,12 +470,14 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
         incomplete = True
 
     return _outcome(final_text, total_input, total_output, total_cost, total_tool_calls, rounds, error_str, t0,
-                    None, incomplete=incomplete, unanswered=unanswered_total, stop_reason=stop_reason)
+                    None, incomplete=incomplete, unanswered=unanswered_total,
+                    unanswered_ord=unanswered_ord, stop_reason=stop_reason)
 
 
 def _outcome(final_text: str, total_input: int, total_output: int, total_cost: float, total_tool_calls: int,
              rounds: int, error_str: str, t0: float, parked: dict[str, Any] | None,
-             incomplete: bool = False, unanswered: int = 0, stop_reason: str = "") -> dict[str, Any]:
+             incomplete: bool = False, unanswered: int = 0, unanswered_ord: str = "",
+             stop_reason: str = "") -> dict[str, Any]:
     out = {"final_text": final_text, "total_input": total_input, "total_output": total_output,
            "total_cost": total_cost, "total_tool_calls": total_tool_calls, "rounds": rounds,
            "error_str": error_str, "duration_ms": int((time.monotonic() - t0) * 1000)}
@@ -467,6 +487,8 @@ def _outcome(final_text: str, total_input: int, total_output: int, total_cost: f
         out["incomplete"] = True
     if unanswered:
         out["unanswered"] = int(unanswered)
+    if unanswered_ord:
+        out["unanswered_ord"] = str(unanswered_ord)
     if stop_reason:
         out["stop_reason"] = str(stop_reason)
     return out

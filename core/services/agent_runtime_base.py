@@ -473,6 +473,12 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         # som loekken nu baerer med (`unanswered`).
         n = int(o.get("unanswered") or 0)
         why = str(o.get("stop_reason") or "")
+        # 27/10-2026: ordet skal foelge KILDEN, ikke vaere en fast saetning. Erklaerer
+        # agenten sin egen daekning, er tallet «spoergsmaal uden daekning» — ikke «uden
+        # nummereret svar», som paastaar en formateringsfejl der ikke findes. Maalt i
+        # drift paa `run-18acb0c3120142f2`: agenten skrev «2) Kan ikke besvares», altsaa
+        # VAR der et nummereret svar; markeringen sagde alligevel at det manglede.
+        ord_ = str(o.get("unanswered_ord") or "spørgsmål uden nummereret svar")
         # 26/10-2026: ordet er "spørgsmål uden nummereret svar", ikke "ubesvarede
         # spørgsmål". Optællingen ser kun NUMMEREREDE svar; en agent der svarer i prosa
         # ("Confirmed: Task har 5 properties ...") tælles som et hul selv om den svarede.
@@ -484,11 +490,11 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         # maalt i drift paa `run-725174bb21544c40`. Tilfoej kun tallet naar
         # aarsagen ikke allerede naevner det.
         if why and n and f"{n} spørgsmål" not in why:
-            grund = f"{why}; {n} spørgsmål uden nummereret svar"
+            grund = f"{why}; {n} {ord_}"
         elif why:
             grund = why
         elif n:
-            grund = f"{n} spørgsmål uden nummereret svar"
+            grund = f"{n} {ord_}"
         else:
             grund = "et løfte den ikke udførte"
         status = DispatchStatus.BLOCKED

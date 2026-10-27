@@ -42,7 +42,11 @@ def observe_tool_call(name: str, arguments: dict[str, Any],
     # Centralen kan ordne kataloget (mest-brugt først, døde sidst) + flagge døde tools.
     try:
         from core.services.tool_usage_store import record_use
-        _ok = isinstance(result, dict) and str(result.get("status") or "ok") == "ok"
+        # Muterende kontrakt-tools svarer ``accepted`` naar arbejdet er varigt
+        # modtaget. Det er succesfuld dispatch, ikke en fejl. Telemetrien viste
+        # ellers 21/21 Task-fejl, mens eventloggen viste 17 accepted / 4 error.
+        _status = str(result.get("status") or "ok") if isinstance(result, dict) else "error"
+        _ok = _status in {"ok", "accepted", "completed", "noop"}
         record_use(name, kind="operator" if str(name).startswith("operator_") else "native",
                    ok=_ok)
     except Exception:

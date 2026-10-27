@@ -89,6 +89,12 @@ def test_new_tools_are_hidden_while_the_engine_is_off_and_shown_when_on(tl):
     assert {"send_message_to_agent", "list_agents"} <= _visible()      # de gamle forsvinder aldrig
     tl.on()
     assert set(NEW) <= _visible()
+    assert "Task" in _visible(scope="chat")
+    assert "Task" in _visible(scope="code")
+    gamle = {"scout_agent", "spawn_agent_task", "dispatch_code_mode_task",
+             "dispatch_to_claude_code", "task"}
+    assert not (gamle & _visible(scope="chat"))
+    assert not (gamle & _visible(scope="code"))
     tl.svc_.set_capability(False)
     assert not set(NEW) & _visible()
 
@@ -168,6 +174,47 @@ def test_task_facade_derives_and_persists_the_mandate(tl, tmp_path):
     assert mandate["return_address"].startswith("agent-inbox:bjorn:")
 
 
+def test_task_koerer_til_terminalt_resultat_vaekker_og_leverer_til_parent(tl, tmp_path):
+    """Den modelvendte Task-vej bevises samlet: accept -> worker -> wake -> inbox."""
+    from core.services.agent_result_inbox import claim_for_model_step
+    from core.services.chat_sessions import create_chat_session
+
+    tl.on()
+    (tmp_path / ".git").mkdir()
+    session = create_chat_session(title="Task e2e", workspace_kind="container",
+                                  workspace_root=str(tmp_path))
+    out = tl.t_._exec_task({
+        "_runtime_session_id": session["id"], "_runtime_turn_id": "visible-e2e",
+        "description": "Et brugbart fund", "prompt": "Find svaret og lever det.",
+        "subagent_type": "researcher", "run_in_background": True,
+    })
+    assert out["status"] == "accepted" and len(tl.started) == 1
+
+    # Workerloekken er bevist separat med en falsk model i service-testene.
+    # Her afslutter vi ved kontraktens atomiske terminale seam, saa denne test
+    # maaler Task-facade, wake og levering uden et netvaerkskald.
+    tl.svc_.c.commit_terminal_outcome(
+        assignment_id=out["assignment_id"], status="completed",
+        summary="klart", artifact_ref="agent-artifacts/result.json")
+    assignment = tl.svc_.c.get_assignment(
+        assignment_id=out["assignment_id"], owner_user_id="bjorn")
+    assert assignment["status"] == "completed"
+    wait = tl.svc_.c._conn().execute(
+        "SELECT status, wake_task_id FROM agent_wait_contracts WHERE assignment_ids_json LIKE ?",
+        (f'%{out["assignment_id"]}%',),
+    ).fetchone()
+    assert wait is not None and wait["status"] == "fired" and wait["wake_task_id"]
+
+    delivered = claim_for_model_step(owner_user_id="bjorn", session_id=session["id"])
+    assert "DATA fra dine agenter" in delivered
+    assert out["assignment_id"] in delivered and "status=completed" in delivered
+    row = tl.svc_.c._conn().execute(
+        "SELECT delivery_status FROM agent_result_outbox WHERE assignment_id=?",
+        (out["assignment_id"],),
+    ).fetchone()
+    assert row["delivery_status"] == "claimed_by_model_step"
+
+
 def test_mandate_gate_is_mechanical_and_only_original_exceedance_reaches_bjorn(tl, tmp_path):
     import json
     from core.services.agent_approval_gate import gate
@@ -229,7 +276,7 @@ def test_pinned_set_is_empty_when_off_and_the_full_surface_when_on(tl):
 
 
 def test_visible_pool_pins_the_full_surface_without_load_more_tools_and_is_message_independent(tl):
-    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    from core.tools.copilot_tool_pruning import VISIBLE_MAX_TOOLS, select_tools_for_visible
     from core.tools.simple_tools import get_tool_definitions
 
     defs = get_tool_definitions(role="owner", scope="")
@@ -240,7 +287,7 @@ def test_visible_pool_pins_the_full_surface_without_load_more_tools_and_is_messa
     a = [d["function"]["name"] for d in select_tools_for_visible(defs, user_message="hej")]
     b = [d["function"]["name"] for d in select_tools_for_visible(defs, user_message="refaktorer kode")]
     assert set(PINNED) <= set(a) and a == b          # byte-stabilt array -> prefiks-cachen holder
-    assert len(a) <= 48
+    assert len(a) <= VISIBLE_MAX_TOOLS
 
 
 def test_session_pin_union_includes_the_full_surface_only_when_on(tl):

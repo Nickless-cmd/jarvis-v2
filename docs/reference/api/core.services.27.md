@@ -71,11 +71,11 @@ _Surface recently-completed subagents into the visible prompt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L30) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L37) |
-| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L41) |
-| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L45) |
-| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L52) |
+| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L32) |
+| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L39) |
+| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L43) |
+| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L47) |
+| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L54) |
 
 ## `core/services/subagent_ecology.py`
 

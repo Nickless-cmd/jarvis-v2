@@ -41,6 +41,28 @@ def test_den_returnerer_ingenting(isolated_runtime):
     assert observe_tool_call("write_file", {}, {"status": "ok"}) is None
 
 
+@pytest.mark.parametrize("status", ["ok", "accepted", "completed", "noop"])
+def test_successtatusser_taelles_som_succes(isolated_runtime, monkeypatch, status):
+    """Task returnerer accepted; det maa ikke blive til en falsk tool-fejl."""
+    import core.services.tool_usage_store as usage
+
+    set_ok = []
+    monkeypatch.setattr(usage, "record_use",
+                        lambda name, *, kind, ok: set_ok.append((name, ok)))
+    observe_tool_call("Task", {}, {"status": status})
+    assert set_ok == [("Task", True)]
+
+
+def test_en_aegte_error_taelles_som_fejl(isolated_runtime, monkeypatch):
+    import core.services.tool_usage_store as usage
+
+    set_ok = []
+    monkeypatch.setattr(usage, "record_use",
+                        lambda name, *, kind, ok: set_ok.append((name, ok)))
+    observe_tool_call("Task", {}, {"status": "error", "error": "nej"})
+    assert set_ok == [("Task", False)]
+
+
 def test_execute_tool_kalder_den(isolated_runtime, monkeypatch):
     """Boy Scout-udskilningen maa ikke have tabt koblingen: hvis ingen kalder
     den, er tre observationer stille forsvundet."""

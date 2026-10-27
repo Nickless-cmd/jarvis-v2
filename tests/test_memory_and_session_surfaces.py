@@ -41,6 +41,7 @@ def test_subagent_digest_surfaces_completed_agents(monkeypatch):
         lambda limit=80: [
             {
                 "agent_id": "agent-1",
+                "owner_user_id": "legacy_unscoped",
                 "role": "researcher",
                 "status": "completed",
                 "completed_at": "2026-05-12T10:00:00+00:00",
@@ -61,6 +62,25 @@ def test_subagent_digest_surfaces_completed_agents(monkeypatch):
     assert section is not None
     assert "Subagenter der har afsluttet" in section
     assert seen == [("sess-4", "2026-05-12T10:00:00+00:00")]
+
+
+def test_subagent_digest_excludes_task_contract_results(monkeypatch):
+    from core.services import subagent_digest as digest
+
+    monkeypatch.setattr(digest, "_load_marks", lambda: {})
+    monkeypatch.setattr(
+        "core.runtime.db.list_agent_registry_entries",
+        lambda limit=80: [{
+            "agent_id": "agent-task",
+            "owner_user_id": "owner-1",
+            "role": "researcher",
+            "status": "completed",
+            "completed_at": "2026-10-27T10:00:00+00:00",
+            "goal": "contract work",
+        }],
+    )
+
+    assert digest.subagent_digest_section("sess-4") is None
 
 
 def test_visible_self_state_summary_reads_real_counts(monkeypatch):

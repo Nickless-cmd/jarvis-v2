@@ -569,12 +569,17 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "",
     with agent_lease_scope(agent_id), uden_foraeldrens_godkendelse(), agent_koersel_marker():
         surface = _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
                                            execution_mode=execution_mode)
-    try:
-        from core.services.scout_inbox_delivery import record_scout_completion
-        record_scout_completion(surface)
-    except Exception:
-        logger.warning("kunne ikke levere scout-resultat til indbakken (%s)",
-                       agent_id, exc_info=True)
+    # Kontraktbundne Task-agenter leverer gennem agent_result_outbox i den
+    # terminale transaktion. Den gamle scout-indbakke er kun en kompatibilitets-
+    # vej for legacy_unscoped runs; at kalde begge gav to leveringssandheder og
+    # kunne skabe dubletter. Modelvendte legacy-spawnere er nu pensioneret.
+    if str(surface.get("owner_user_id") or "legacy_unscoped") == "legacy_unscoped":
+        try:
+            from core.services.scout_inbox_delivery import record_scout_completion
+            record_scout_completion(surface)
+        except Exception:
+            logger.warning("kunne ikke levere legacy-scout-resultat til indbakken (%s)",
+                           agent_id, exc_info=True)
     return surface
 
 

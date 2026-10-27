@@ -1,10 +1,12 @@
 """Surface recently-completed subagents into the visible prompt.
 
-When Jarvis spawns a subagent (via spawn_agent_task), the subagent runs
-in the background, writes to the eventbus, and updates its registry
-entry on completion. The parent had to remember to call list_agents to
-see what came back. Without an explicit nudge, completed work could sit
-unread for hours.
+Legacy agents update their registry entry on completion. The parent used to
+have to remember to call list_agents to see what came back. Without an
+explicit nudge, completed legacy work could sit unread for hours.
+
+Contract-bound `Task` agents are deliberately excluded: their terminal result
+is delivered exactly once through `agent_result_outbox`. Showing them here too
+would recreate the duplicate delivery truth the contract replaced.
 
 This mirrors how Claude Code surfaces Agent results inline: when an
 Agent call returns, I see the result in my next turn automatically. We
@@ -71,6 +73,8 @@ def subagent_digest_section(session_id: str | None) -> str | None:
 
     finished: list[dict[str, Any]] = []
     for ent in registry:
+        if str(ent.get("owner_user_id") or "legacy_unscoped") != "legacy_unscoped":
+            continue
         if ent.get("status") not in {"completed", "failed", "expired", "cancelled"}:
             continue
         completed_at = str(ent.get("completed_at") or ent.get("expired_at") or "")

@@ -47,9 +47,21 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
     # ikke aabne «state/agent-artifacts/...». Og den skal pege paa noget der
     # FINDES — en peger paa en ikke-eksisterende fil er samme doede peger som
     # den vi lige fjernede, bare svaerere at opdage.
+    # 27/10-2026: stien GÆTTES ikke laengere — den LAESES fra koerselsraekken.
+    #
+    # Her stod `artifact_root()/agent_id/run_id/final.txt`, altsaa en sti bygget
+    # af to id'er. Den gættede forkert to gange i traek: foerst som RELATIV sti
+    # (kunne ikke aabnes uden for ~/.jarvis-v2), derefter som en peger paa et
+    # vaerktoej der ikke findes. `write_terminal_artifacts` skriver nu
+    # `agent_runs.artifact_path` i det oejeblik filen skrives — saa posten arver
+    # en sti der er MALET, ikke en der er regnet. Fallback'en nedenfor er kun for
+    # raekker fra foer feltet blev udfyldt.
+    from pathlib import Path as _Path
+
     from core.runtime.db_agent_artifacts import artifact_root
+    _skrevet = str(run.get("artifact_path") or "").strip()
     run_mappe = artifact_root() / agent_id / run_id
-    svar_fil = run_mappe / "final.txt"
+    svar_fil = _Path(_skrevet) if _skrevet else run_mappe / "final.txt"
     if svar_fil.exists():
         peger = f"Hele svaret: {svar_fil}"
     elif run_mappe.exists():

@@ -245,6 +245,26 @@ def write_terminal_artifacts(*, agent_id: str, assignment_id: str, owner_user_id
             "error_code": error_code, "error_phase": error_phase,
             "has_final_text": bool(reply), "worktree": worktree}, ensure_ascii=False, indent=2),
             **common)
+        # 27/10-2026: FILEN ER LEVERANCEN — og raekken skal baere den fra det
+        # oejeblik svaret opstaar.
+        #
+        # Maalt: `agent_runs.artifact_path` var TOM i 1613 af 1613 raekker, selv
+        # naar `final.txt` laa paa disken. Kolonnen fandtes i schemaet fra starten
+        # og blev aldrig skrevet. Fladerne byggede derfor stien SELV
+        # (`artifact_root()/agent_id/run_id/final.txt`) — og gættede forkert to
+        # gange i traek samme dag: foerst en RELATIV sti som ingen uden for
+        # ~/.jarvis-v2 kunne aabne, saa et doedt vaerktoejsnavn (`get_agent`) der
+        # ikke findes. En gættet sti kan drive fra virkeligheden; en skrevet kan
+        # ikke: her peger raekken paa netop den fil der FAKTISK blev skrevet.
+        #
+        # `final.txt` foretraekkes naar den findes — den baerer hele svaret inkl.
+        # agentens egen kontrakt-linje. Ellers `result.json`, som altid skrives.
+        bedste = "final.txt" if reply else "result.json"
+        record = get_artifact_record(run_id=run_id, name=bedste)
+        if record:
+            conn.execute("UPDATE agent_runs SET artifact_path=?, updated_at=? WHERE run_id=?",
+                         (str(record["path"]), _now_iso(), run_id))
+            conn.commit()
     except Exception as exc:
         logger.warning("terminale artefakter kunne ikke gemmes for %s", assignment_id, exc_info=True)
         return {"artifact_ref": "", "artifact_error": f"{type(exc).__name__}: {exc}"[:200]}

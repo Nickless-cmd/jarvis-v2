@@ -544,6 +544,7 @@ def update_agent_run(
     failure_reason: str | None = None,
     error_code: str | None = None,
     error_phase: str | None = None,
+    artifact_path: str | None = None,
 ) -> dict[str, object] | None:
     """Patch selected columns of one agent_runs row and return the updated dict.
 
@@ -573,6 +574,7 @@ def update_agent_run(
         ("failure_reason", failure_reason),
         ("error_code", error_code),
         ("error_phase", error_phase),
+        ("artifact_path", artifact_path),
     ):
         if value is None:
             continue
@@ -1224,6 +1226,18 @@ def _agent_run_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         # Tredje gang i dag: en ALTER uden denne linje giver en kolonne INGEN
         # kan laese. Se `kind` i godkendelses-broen og `runtime_owner`.
         "policy_hash": str(row["policy_hash"] or ""),
+        # 27/10-2026: FJERDE gang — samme fejlform, samme fil. `artifact_path` er
+        # den kolonne der peger paa selve leverancen, og `error_code`/`error_phase`
+        # er dem der siger HVORFOR en koersel fejlede. Alle tre fandtes i
+        # schemaet, blev skrevet til DB — og faldt derefter ud her, fordi denne
+        # projektion er den ENESTE vej fra raekken til en flade. Maalt:
+        # `artifact_path` var tom i 1613 af 1613 raekker, og `error_code` kunne
+        # ikke ses paa nogen koersel der blev laest gennem dict'en. En kolonne
+        # der ikke projiceres er en kolonne ingen kan laese.
+        "artifact_path": str(row["artifact_path"] or ""),
+        "error_code": str(row["error_code"] or ""),
+        "error_phase": str(row["error_phase"] or ""),
+        "assignment_id": str(row["assignment_id"] or ""),
         "policy": _json_or_empty(row["policy_json"]),
         "created_at": str(row["created_at"]),
         "updated_at": str(row["updated_at"]),

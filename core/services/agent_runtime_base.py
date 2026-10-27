@@ -489,8 +489,26 @@ def _loop_result(o: dict, *, scout: bool, provider: str, model: str) -> dict[str
         status = DispatchStatus.BLOCKED
         result_payload = f"UFULDSTÆNDIG ({grund}) — agentens tekst:\n{final_text}"
     elif scout and (total_tool_calls == 0 or _promises_action(final_text)):
+        # 27/10-2026: beskeden loej. Maalt paa `run-89b26399ed774b84`: agenten
+        # havde SYV vaerktoejskald og SYV resultater i events.jsonl, og alligevel
+        # stod der «sluttede uden verificerede fund eller vaerktoejskald».
+        # Aarsagen var `_promises_action`: agentens sidste saetning var «Lad mig
+        # laese det faktiske stykke med read_file» — et LOEFTE om naeste skridt,
+        # ikke et svar. Dommen var rigtig i sin HENSIGT (agenten svarede ikke),
+        # men dens BEGRUNDELSE var falsk, og den kastede syv gennemfoerte
+        # vaerktoejskald vaek. En fejl der navngiver den forkerte aarsag sender
+        # den naeste mig efter det forkerte spor — praecis den fejlform jeg
+        # selv har skrevet ned som den dyreste.
+        #
+        # Nu siges det der faktisk skete, og agentens tekst bevares, saa
+        # modtageren kan se HVAD den naaede — samme krav som `incomplete`-grenen.
         status = DispatchStatus.BLOCKED
-        result_payload = "Scout sluttede uden verificerede fund eller værktøjskald"
+        if total_tool_calls == 0:
+            grund = "ingen værktøjskald"
+        else:
+            grund = (f"{total_tool_calls} værktøjskald, men svaret er et løfte "
+                     f"om næste skridt — ikke et resultat")
+        result_payload = f"UFULDSTÆNDIG ({grund}) — agentens tekst:\n{final_text}"
     elif final_text.strip():
         status = DispatchStatus.COMPLETED
         result_payload = final_text

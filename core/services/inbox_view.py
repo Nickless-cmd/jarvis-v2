@@ -481,7 +481,22 @@ def _indenfor_workspace(sti: str, bruger_id: str) -> bool:
         return False
     if not navn:
         return False
-    return os.path.normpath(s).startswith(f"/home/bs/.jarvis-v2/workspaces/{navn}")
+    normaliseret = os.path.normpath(s)
+    if normaliseret.startswith(f"/home/bs/.jarvis-v2/workspaces/{navn}"):
+        return True
+    # 27/10-2026: AGENT-ARTEFAKTER er systemets EGNE filer, ikke en anden
+    # brugers workspace. Uden denne gren blev hver agent-leverance skjult i
+    # visningen: `scout_inbox_delivery` satte den korrekte absolutte sti, og
+    # `_indenfor_workspace` tømte den igen — målt på post 8144, hvor filen
+    # fandtes og stien var rigtig, men `vis_sti` var False.
+    #
+    # Grænsen er ikke svækket: stien skal ligge under `state/agent-artifacts/`,
+    # som kun runtime skriver til, og `..` er allerede afvist ovenfor. Det
+    # bevarer præcis det constraint'et værner — at en ANDEN BRUGERS mappe ikke
+    # kan navngives i Bjørns indbakke.
+    if normaliseret.startswith("/home/bs/.jarvis-v2/state/agent-artifacts/"):
+        return True
+    return False
 
 
 def _ejer_id() -> str:

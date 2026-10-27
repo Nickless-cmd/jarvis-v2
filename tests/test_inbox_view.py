@@ -1060,3 +1060,40 @@ def test_en_UDLOEBET_post_er_ikke_handlingskraevende_i_visningen():
     fundet = [p for p in alle if p["id"] == "wake-udl"]
     assert fundet, "posten forsvandt — udloeb er en tilstand, ikke en sletning"
     assert fundet[0]["kraever_handling"] is False
+
+
+def test_en_AGENT_ARTEFAKT_er_systemets_egen_fil_og_VISES():
+    """27/10-2026: agent-leverancen forsvandt i visningen.
+
+    `scout_inbox_delivery` satte den korrekte ABSOLUTTE sti til `final.txt`,
+    men `_indenfor_workspace` krævede at stien laa under
+    `workspaces/<navn>` — og artefakten ligger i `state/agent-artifacts/`.
+    Resultatet var at `vis_sti` blev False og stien tømt, saa modtageren
+    hverken kunne se eller aabne det agenten havde lavet.
+
+    Maalt paa post 8144: filen fandtes, stien var rigtig, vis_sti var False.
+    """
+    sti = ("/home/bs/.jarvis-v2/state/agent-artifacts/agent-38f4de12505448b3bda60ad1e51d2a1d"
+           "/run-d8bddc4d3a1c4980/final.txt")
+    v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+        _post(id="agent-1", kildetype="agent_result", output_sti=sti, output_bytes=2189)]))
+    post = v["venter_paa_dig"][0]
+    assert post["output_sti"] == sti, "agent-artefakten blev skjult i visningen"
+    assert post["output_bytes"] == 2189
+    assert sti in post["linje"]
+
+
+def test_undtagelsen_for_agent_artefakter_aabner_IKKE_for_andet():
+    """Undtagelsen skal vaere SNAEVER. Ellers er den en omvej til praecis det
+    constraint'et forbyder: at navngive en anden brugers mappe."""
+    for sti in (
+        "/home/bs/.jarvis-v2/state/agent-artifacts/../../../workspaces/anden/x",
+        "/home/bs/.jarvis-v2/state/agent-artifactsX/agent-1/run-1/final.txt",
+        "/home/bs/.jarvis-v2/state/agent-artifacts",
+        "/home/bs/.jarvis-v2/state/jarvis.db",
+        "/etc/shadow",
+    ):
+        v = byg_indbakke(BJORN, nu_ts=TID, kilder=_kilder(poster=[
+            _post(id="job-uden", output_sti=sti, output_bytes=10)]))
+        post = v["venter_paa_dig"][0]
+        assert post["output_sti"] == "", f"{sti} blev vist"

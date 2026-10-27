@@ -36,9 +36,17 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
     summary = " ".join(str(run.get("output_summary") or surface.get("last_error")
                            or "").split())[:450]
     label = "Scout færdig" if status == "completed" else "Scout fejlede"
+    # 27/10-2026: her stod «Hent hele svaret med get_agent(agent_id=…)» — men der
+    # findes intet `get_agent`-vaerktoej (grep over core/ og apps/ gav nul). Pekeren
+    # var doed, og `output_sti` blev aldrig sat, saa posten havde ingen vej til
+    # leverancen. Maalt paa `run-4316279150ea47ba`: beskrivelsen bar 702 tegn af en
+    # tekst paa 2439, og `DAEKNING`-linjen — kontraktens egen noegle — stod i halen
+    # der blev klippet. Artefakten ligger derimod paa disk, og stien kan bygges af
+    # de to id'er funktionen allerede har.
+    artefakt_sti = f"state/agent-artifacts/{agent_id}/{run_id}/final.txt"
     description = (f"{label}: {goal or agent_id}. {summary} "
                    f"Kørsel: {run_id}. "
-                   f"Hent hele svaret med get_agent(agent_id='{agent_id}').")
+                   f"Hele svaret: {artefakt_sti}")
     from core.services.inbox_state import registrer_kilde
     result = registrer_kilde(
         # The live background-job projection uses agent_id too. Sharing its

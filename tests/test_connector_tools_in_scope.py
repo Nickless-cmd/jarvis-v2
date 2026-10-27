@@ -99,15 +99,22 @@ def test_et_fejlende_opslag_vaelter_ikke_prompten():
         assert _forbundne_connector_vaerktoejer() == frozenset()
 
 
-def test_registret_er_den_ENE_sandhed():
+def test_registret_er_den_ENE_sandhed(monkeypatch):
     """Værktøjs-listen bor i connector-definitionen, ikke i en kopi i porten.
 
     Lå den to steder, ville en ny connector kunne blive forbundet uden at
     åbne noget — præcis den slags stille uenighed huset har en regel imod.
+
+    Broen maa vaere aktiv for at maale det: `approval_rollout_gate` holder
+    BEVIDST nye godkendelses-vaerktoejer tilbage naar den ikke er (K4), og en
+    isoleret test-runtime har ingen bro. Uden dette ville testen maale gaten
+    og kalde det en manglende værktøjsdefinition.
     """
     import core.services.connectors as C
+    from core.tools import approval_rollout_gate as gate
     from core.tools.simple_tools import get_tool_definitions
 
+    monkeypatch.setattr(gate, "bridge_active", lambda: True)
     kendte = {(d.get("function") or d).get("name") for d in get_tool_definitions()}
     med_tools = [c for c in C._CATALOG if c.get("tools")]
     assert len(med_tools) >= 7, "connector-registret har mistet sine tool-lister"

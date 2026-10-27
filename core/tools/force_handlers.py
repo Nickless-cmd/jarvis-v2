@@ -34,8 +34,11 @@ from core.tools.phone_adb import PHONE_ADB_FORCE_HANDLERS as _PHONE_ADB_FORCE_HA
 from core.tools.simple_tools_native import (
     _exec_calendar_create_event,
     _exec_docs_append,
+    _exec_docs_create,
     _exec_gmail_send,
+    _exec_sheets_create,
     _exec_sheets_write,
+    _exec_slides_create,
 )
 from core.tools.simple_tools_operator import (
     _exec_operator_browser_evaluate,
@@ -212,6 +215,21 @@ def _force_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
     return _exec_sheets_write({**args, "_runtime_trust_all": True})
 
 
+def _force_docs_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret dokumentet direkte efter chat-godkendelse."""
+    return _exec_docs_create({**args, "_runtime_trust_all": True})
+
+
+def _force_sheets_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret regnearket direkte efter chat-godkendelse."""
+    return _exec_sheets_create({**args, "_runtime_trust_all": True})
+
+
+def _force_slides_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret præsentationen direkte efter chat-godkendelse."""
+    return _exec_slides_create({**args, "_runtime_trust_all": True})
+
+
 def _force_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
     """Skriv filen paa operatoerens maskine direkte efter chat-godkendelse."""
     return _exec_operator_write_file({**args, "_runtime_trust_all": True})
@@ -268,4 +286,7 @@ _FORCE_HANDLERS: dict[str, Any] = {
     "calendar_create_event": _force_calendar_create_event,
     "docs_append": _force_docs_append,
     "sheets_write": _force_sheets_write,
+    "docs_create": _force_docs_create,
+    "sheets_create": _force_sheets_create,
+    "slides_create": _force_slides_create,
 }

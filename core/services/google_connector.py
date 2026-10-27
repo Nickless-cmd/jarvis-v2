@@ -3,8 +3,10 @@
 Deler ÉN Google-OAuth med Gmail (token gemt under provider="google",
 get_fresh_token → auto-refresh). Alle tools bruger BRUGERENS egen token.
 
-v1: kun LÆSE-tools (sikre). Opret/rediger-tools (calendar_create, docs_write …)
-kræver approval-flow og følger separat — derfor ikke registreret endnu.
+Læse-tools er sikre og kaldes frit. Skrive- og opret-tools (calendar_create_event,
+docs_append, sheets_write, docs_create, sheets_create, slides_create) kræver
+brugerens godkendelse — gatingen sker i `simple_tools`, ikke her; funktionerne
+her antager at godkendelsen allerede er givet.
 Fejl: intet token → *_not_connected; 403 → *_scope_missing.
 """
 from __future__ import annotations
@@ -181,6 +183,63 @@ GOOGLE_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
                                "items": {"type": "array", "items": {"type": "string"}}},
                 },
                 "required": ["spreadsheet_id", "range", "values"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "docs_create",
+            "description": (
+                "Opret et nyt Google Docs-dokument med en titel, og indsæt eventuelt tekst "
+                "med det samme. KRÆVER brugerens godkendelse (approval-kort) — kald bare "
+                "værktøjet direkte. Returnerer document_id og et link."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Dokumentets titel"},
+                    "text": {"type": "string", "description": "Valgfri starttekst i dokumentet"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sheets_create",
+            "description": (
+                "Opret et nyt Google Sheets-regneark med en titel, og skriv eventuelt rækker "
+                "med det samme. KRÆVER brugerens godkendelse (approval-kort) — kald bare "
+                "værktøjet direkte. values = liste af rækker, fx [[\"Navn\",\"Beløb\"]]."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Regnearkets titel"},
+                    "values": {"type": "array", "description": "Valgfri rækker (liste af lister)",
+                               "items": {"type": "array", "items": {"type": "string"}}},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "slides_create",
+            "description": (
+                "Opret en ny Google Slides-præsentation med en titel. KRÆVER brugerens "
+                "godkendelse (approval-kort) — kald bare værktøjet direkte. Returnerer "
+                "presentation_id og et link."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Præsentationens titel"},
+                },
+                "required": ["title"],
             },
         },
     },
@@ -504,6 +563,59 @@ def append_doc(user_id: str, document_id: str, text: str) -> dict:
     if res["status"] != "ok":
         return res
     return {"status": "ok", "document_id": document_id}
+
+
+def create_doc(user_id: str, title: str, *, text: str = "") -> dict:
+    """Opret et nyt Google Docs-dokument. `text` indsættes som første indhold."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://docs.googleapis.com/v1/documents",
+                json_body={"title": title}, err_prefix="docs")
+    if res["status"] != "ok":
+        return res
+    document_id = str(res["data"].get("documentId") or "")
+    if text and document_id:
+        # Dokumentet findes nu; en fejl i indsættelsen må ikke skjule det.
+        # Derfor rapporteres begge: id'et er det vigtige, teksten er sekundær.
+        skriv = append_doc(user_id, document_id, text)
+        if skriv["status"] != "ok":
+            return {"status": "ok", "document_id": document_id,
+                    "link": f"https://docs.google.com/document/d/{document_id}/edit",
+                    "text_status": skriv.get("error", "failed")}
+    return {"status": "ok", "document_id": document_id,
+            "link": f"https://docs.google.com/document/d/{document_id}/edit"}
+
+
+def create_sheet(user_id: str, title: str, *, values: list | None = None) -> dict:
+    """Opret et nyt Google Sheets-regneark. `values` skrives i første ark."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://sheets.googleapis.com/v4/spreadsheets",
+                json_body={"properties": {"title": title}}, err_prefix="sheets")
+    if res["status"] != "ok":
+        return res
+    spreadsheet_id = str(res["data"].get("spreadsheetId") or "")
+    if values and spreadsheet_id:
+        skriv = write_sheet(user_id, spreadsheet_id, "A1", values)
+        if skriv["status"] != "ok":
+            return {"status": "ok", "spreadsheet_id": spreadsheet_id,
+                    "link": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
+                    "values_status": skriv.get("error", "failed")}
+    return {"status": "ok", "spreadsheet_id": spreadsheet_id,
+            "link": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"}
+
+
+def create_slides(user_id: str, title: str) -> dict:
+    """Opret en ny Google Slides-præsentation (tom, med titel)."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://slides.googleapis.com/v1/presentations",
+                json_body={"title": title}, err_prefix="slides")
+    if res["status"] != "ok":
+        return res
+    presentation_id = str(res["data"].get("presentationId") or "")
+    return {"status": "ok", "presentation_id": presentation_id,
+            "link": f"https://docs.google.com/presentation/d/{presentation_id}/edit"}
 
 
 def write_sheet(user_id: str, spreadsheet_id: str, cell_range: str, values: list) -> dict:

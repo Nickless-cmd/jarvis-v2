@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-27 — 514 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-27 — 517 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -114,6 +114,7 @@
 | `dispatch_status` | native | no |
 | `dispatch_to_claude_code` | native | no |
 | `docs_append` | native | no |
+| `docs_create` | native | no |
 | `docs_read` | native | no |
 | `docx_create` | native | no |
 | `drive_download` | native | no |
@@ -376,6 +377,7 @@
 | `set_process_watch_enabled` | native | no |
 | `set_recurring_channel` | native | no |
 | `set_recurring_weekdays` | native | no |
+| `sheets_create` | native | no |
 | `sheets_read` | native | no |
 | `sheets_write` | native | no |
 | `skill_chain` | native | no |
@@ -391,6 +393,7 @@
 | `skill_reload` | native | no |
 | `skill_search` | native | no |
 | `skill_suggest` | native | no |
+| `slides_create` | native | no |
 | `slides_read` | native | no |
 | `smart_compact` | native | no |
 | `smart_outline` | native | no |

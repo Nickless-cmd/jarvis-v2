@@ -41,7 +41,7 @@
 .routine-detail-empty { display: grid; place-items: center; align-content: center; height: 100%; padding: 30px; color: var(--fg-3); text-align: center; }.routine-detail-empty h2 { margin-top: 10px; color: var(--fg-2); font-size: 16px; }
 .routine-empty { display: flex; align-items: center; gap: 6px; padding: 16px; color: var(--fg-3); font-size: 12.5px; }.routine-error { margin: 12px; color: var(--error-fg); font-size: 12.5px; }
 .routine-run { border-bottom: 1px solid var(--line); }.routine-run-row { display: grid; grid-template-columns: auto 100px 1fr; align-items: center; gap: 8px; width: 100%; padding: 11px 5px; border: 0; background: transparent; color: var(--fg-2); text-align: left; cursor: pointer; }.routine-run-row time { justify-self: end; color: var(--fg-3); font-size: 11px; }
-.routine-timeline { margin: 0 0 12px 21px; padding-left: 18px; border-left: 1px solid var(--line); list-style: none; }.routine-timeline li { display: grid; gap: 3px; padding: 8px 10px; color: var(--fg-2); font-size: 12px; }.routine-timeline time { color: var(--fg-3); font-size: 10px; }.routine-event-kind { color: var(--accent-text); font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
+.routine-timeline { margin: 0 0 12px 21px; padding-left: 18px; border-left: 1px solid var(--line); list-style: none; }.routine-timeline li { display: grid; gap: 3px; padding: 8px 10px; color: var(--fg-2); font-size: 12px; }.routine-timeline time { color: var(--fg-3); font-size: 10px; }.routine-event-kind { color: var(--accent-text); font-family: var(--mono); font-size: 10px; }
 .routine-editor { height: 100%; min-height: 0; overflow-y: auto; background: var(--page-bg); }.routine-editor-head { height: 52px; padding: 0 18px; }.routine-editor-tab { height: 52px; padding: 16px 2px 12px; border-bottom: 2px solid var(--accent); font-size: 13px; }
 .routine-form { display: grid; gap: 17px; width: min(720px, calc(100% - 40px)); margin: 0 auto; padding: 32px 0 56px; }.routine-form-intro h1 { font-size: 22px; }.routine-form-intro p { margin-top: 5px; color: var(--fg-3); font-size: 13px; }
 .routine-form label { display: grid; gap: 6px; color: var(--fg-2); font-size: 12px; font-weight: 550; }.routine-form input, .routine-form textarea, .routine-form select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); outline: none; background: var(--field-bg); color: var(--fg-1); font: inherit; font-size: 13px; }.routine-form textarea { resize: vertical; line-height: 1.55; }.routine-form input:focus, .routine-form textarea:focus, .routine-form select:focus { border-color: var(--accent); }
@@ -53,8 +53,13 @@
    det samlede svar lå i routine_runs.result_enc og aldrig blev hentet. */
 .routine-run-detail { padding: 0 5px 12px 21px; }
 .routine-result { margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2); }
-.routine-result h4 { margin: 0 0 8px; color: var(--fg-3); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.routine-result-text { color: var(--fg-1); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.routine-result h4, .routine-task h4 { margin: 0 0 8px; color: var(--fg-3); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+/* Markdown-renderet: linjeskift kommer fra markdown-blokkene, ikke fra
+   pre-wrap. `pre-wrap` her ville gøre hvert kildelinjeskift til et synligt
+   hul i den færdige tekst. */
+.routine-result-text { color: var(--fg-1); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.routine-task { margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-1); }
+.routine-task-text { margin: 0; color: var(--fg-2); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .routine-events { margin-top: 4px; }
 .routine-events > summary { padding: 6px 0; color: var(--fg-3); font-size: 11.5px; cursor: pointer; }
 .routine-events > summary:hover { color: var(--fg-2); }

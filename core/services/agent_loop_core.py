@@ -72,7 +72,8 @@ def _answers_directive(unanswered: int) -> str:
         "nummereret præcis som de står i opgaven (1), 2), 3) …), ud fra det du allerede "
         "har fundet. Kald INGEN værktøjer — der er ingen runder tilbage. Kan du ikke "
         "svare på et spørgsmål, så skriv det eksplicit med grunden; afslut ikke med et "
-        "løfte om at undersøge det senere.")
+        "løfte om at undersøge det senere. Slut af med én linje, "
+        "'DÆKNING: <de numre du faktisk besvarede>'.")
 
 #: Skrivevaerktoejerne i kataloget. Bruges til at afgoere om agenten overhovedet KAN udfoere
 #: en handling: en agent der ikke kan skrive skal ikke nudges for ikke at have skrevet.
@@ -135,6 +136,40 @@ _DECLARATION_RE = re.compile(
     r"(?:str|int|float|bool|bytes|dict|list|tuple|set|Any|None|Optional|Sequence|Mapping)\b"
 )
 
+#: 27/10-2026: agentens EGEN daeknings-erklæring. Kontrakten findes fordi en teksttaelling
+#: kun kan se FORM, ikke BETYDNING — og det blev maalt tre gange i traek samme doegn:
+#:   1) en feltliste ("1. goal: str") blev laest som svar paa spoergsmaal 1-3,
+#:   2) "1) 2) 3)"-formen blev slet ikke fundet (regex'en kraevede ordet "spoergsmaal"),
+#:   3) en AFVISNING ("3) Jeg kunne ikke verificere ...") blev laest som et svar.
+#: Hver lap paa regex'en saa rigtig ud og fejlede paa den naeste formulering. Den eneste
+#: kilde der ikke kan narres af formatering er agenten selv: den ved hvad den naaede.
+#:
+#: Formatet er en linje, ikke prosa: "DAEKNING: 1,2". Kun de numre agenten erklaerer
+#: BESVARET. Mangler linjen, falder vi tilbage til taellingen — saa kontrakten kan kun
+#: goere maalingen bedre, aldrig efterlade en tidligere korrekt koersel som fejl.
+#: "DAEKNING: ingen" (eller tom liste) betyder at intet er besvaret.
+_COVERAGE_RE = re.compile(
+    r"(?mi)^[\s>*_-]*(?:dækning|daekning|coverage)[\s*_:-]*"
+    r"(?:([0-9][0-9, \t]*)|(ingen|none|intet)\b)"
+)
+
+
+def _declared_coverage(final_text: str) -> set[int] | None:
+    """Spoergsmaalsnumrene agenten SELV erklaerer besvaret. ``None`` = ingen erklaering.
+
+    ``None`` og ``set()`` betyder ikke det samme og maa ikke blandes sammen:
+    ``None`` = agenten skrev ingen daeknings-linje (vi ved det ikke, brug taellingen),
+    ``set()`` = agenten skrev at den ikke besvarede noget.
+    """
+    m = _COVERAGE_RE.search(final_text or "")
+    if m is None:
+        return None
+    if not m.group(1):
+        # "DÆKNING: ingen" — agenten erklaerer at den ikke besvarede NOGET. Det er en
+        # erklaering, ikke en manglende erklaering: et tomt saet, ikke ``None``.
+        return set()
+    return {int(x) for x in re.findall(r"\d+", m.group(1))}
+
 
 def _question_numbers(prompt: str) -> set[int]:
     """Spoergsmaalsnumrene i opgaven, uanset om de er skrevet med ord eller som ren nummerering."""
@@ -192,6 +227,12 @@ def _unanswered_questions(prompt: str, final_text: str) -> int:
     qs = _question_numbers(prompt)
     if len(qs) < 2:
         return 0
+    # 27/10-2026: agentens egen erklaering vinder over taellingen. Den er den eneste kilde
+    # der ikke kan narres af formatering — maalt tre gange samme doegn (feltliste, usynlig
+    # nummerering, afvisning laest som svar). Mangler linjen, er svaret uaendret.
+    declared = _declared_coverage(final_text or "")
+    if declared is not None:
+        return len(qs - declared)
     answered = _answered_numbers(final_text or "", qs)
     return len(qs - answered)
 

@@ -538,6 +538,24 @@ _AGENT_VERIFY_RULE = (
     "not whole files. Return conclusions and evidence, not raw dumps."
 )
 
+# Universal — the agent's OWN coverage declaration (27/10-2026).
+#
+# Why this exists: a text heuristic can see FORM, not MEANING, and that was measured
+# three times in one day on real Task runs — (1) a field list ("1. goal: str") counted
+# as answers to questions 1-3, (2) the plain "1) 2) 3)" numbering was invisible to a
+# regex that required the word "question", (3) a REFUSAL ("3) I could not verify …")
+# counted as an answer. Every patch to the regex looked right and failed on the next
+# phrasing. The only source that cannot be fooled by formatting is the agent itself:
+# it knows what it reached. So we ask it to say so in one machine-readable line.
+_AGENT_COVERAGE_RULE = (
+    "IF the task asks NUMBERED questions (1), 2), 3) …), end your answer with ONE "
+    "line stating which ones you actually answered:\n"
+    "DÆKNING: 1,2\n"
+    "List only the numbers you truly answered — a question you could not verify is "
+    "NOT answered. An honest 'DÆKNING: 1' plus the reason for the rest is worth more "
+    "than a claim you cannot back. Write 'DÆKNING: ingen' if you answered none."
+)
+
 # For task/reporting roles — the structured result shape (matches result_contract).
 _AGENT_RESULT_SHAPE = (
     "Structure your answer with these labels:\n"
@@ -554,7 +572,7 @@ def _role_prompt(intro: str, *, tools: bool = False, structured: bool = True) ->
     verify-before-assert rule (tool-holding roles); ``structured`` adds the labelled
     result shape (task/reporting roles; council/position roles set it False)."""
     parts = [intro.strip(), _AGENT_VERIFY_RULE if tools else "", _AGENT_FINISH_RULE,
-             _AGENT_RESULT_SHAPE if structured else ""]
+             _AGENT_COVERAGE_RULE, _AGENT_RESULT_SHAPE if structured else ""]
     return "\n\n".join(p for p in parts if p)
 
 

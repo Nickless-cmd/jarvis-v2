@@ -24,6 +24,12 @@ export function rendererCsp({ development, connectOrigins, widgetNonce }: {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
+    // 27/10-2026: FilPreview viser PDF som blob:-iframe og video som
+    // blob:-<video>. Uden frame-src/media-src falder begge tilbage til
+    // default-src, og en blob:-URL er ikke 'self' — indholdet blokeres
+    // tavst (blank rude, ingen fejlbesked). Samme regel i begge grene.
+    "frame-src 'self' blob:",
+    "media-src 'self' blob:",
     `${connect} http://localhost:5174 ws://localhost:5174`,
   ]
   // Rækkefølgen er ikke kosmetisk: `'nonce-…'` er en kilde som de andre, og en
@@ -42,6 +48,14 @@ export function rendererCsp({ development, connectOrigins, widgetNonce }: {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
+    // 27/10-2026: FilPreview viser PDF som blob:-iframe og video som
+    // blob:-<video>. Uden frame-src/media-src falder begge tilbage til
+    // default-src 'self', og en blob:-URL er ikke 'self' — iframe'en blev
+    // blokeret og panelet stod blankt (maalt: Bjørn saa en hvid rude,
+    // ingen fejlbesked). En blob:-iframe ARVER forælderens policy, så
+    // direktivet skal stå HER, ikke kun på iframe'ens egen respons.
+    "frame-src 'self' blob:",
+    "media-src 'self' blob:",
     connect,
   ]
 }

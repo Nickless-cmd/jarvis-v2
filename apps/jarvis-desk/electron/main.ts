@@ -430,6 +430,11 @@ function createMainWindow(): void {
       // Samtale-mode: tillad TTS-afspilning uden frisk brugergestus (se autoplay-
       // policy-switchen ovenfor). Sammen sikrer de at audio.play() ikke afvises.
       autoplayPolicy: 'no-user-gesture-required',
+      // 27/10-2026: FilPreview viser PDF som blob:-iframe. Chromium's indbyggede
+      // PDF-viewer (PDFium) er SLUKKET som default i Electron — uden `plugins`
+      // loader iframe'en blob:-URL'en men tegner ingenting: blank rude, ingen
+      // fejlbesked. Samme signatur som CSP-blokering; begge rettes samtidig.
+      plugins: true,
     },
   })
 

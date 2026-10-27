@@ -52,4 +52,18 @@ describe('renderer CSP', () => {
     expect(directives).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5174")
     expect(directives.join('; ')).toContain('ws://localhost:5174')
   })
+
+  it('tillader blob:-iframe og blob:-video i BEGGE grene — FilPreview', () => {
+    // MAALT 27/10-2026 (Bjørn: «der er ikk noget øje? intet at klikke på?»):
+    // FilPreview viser PDF som blob:-iframe og video som blob:-<video>.
+    // Uden frame-src/media-src falder begge tilbage til default-src 'self',
+    // og en blob:-URL er ikke 'self' — indholdet blokeres TAVST (blank
+    // rude, ingen fejlbesked). En blob:-iframe arver forælderens policy,
+    // så direktivet skal stå her — ikke kun på iframe'ens egen respons.
+    for (const development of [false, true]) {
+      const directives = rendererCsp({ development, connectOrigins })
+      expect(directives).toContain("frame-src 'self' blob:")
+      expect(directives).toContain("media-src 'self' blob:")
+    }
+  })
 })

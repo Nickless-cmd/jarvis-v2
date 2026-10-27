@@ -59,10 +59,19 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
     description = (f"{label}: {goal or agent_id}. {summary} "
                    f"Kørsel: {run_id}. {peger}")
     from core.services.inbox_state import registrer_kilde
+    # 27/10-2026: `output_sti` blev ALDRIG sat. Beskrivelsen naevnte stien i prosa,
+    # men det strukturerede felt var tomt — saa fladen havde intet at aabne, og
+    # `output_bytes` var None. En tekst der peger paa en fil er ikke det samme som
+    # en post DER HAR filen; kun det sidste kan vises uden at nogen laeser prosa.
+    # Maalt foer rettelsen: `output_sti=''`, `output_bytes=None` paa en post hvor
+    # final.txt laa paa disken hele tiden.
+    fil_findes = svar_fil.exists()
     result = registrer_kilde(
         # The live background-job projection uses agent_id too. Sharing its
         # identity prevents a failed scout from appearing twice in the inbox.
         bruger_id=user_id, kildetype="agent_result", kilde_id=agent_id,
         kilde_ejer="jarvis", beskrivelse=description,
+        output_sti=str(svar_fil) if fil_findes else "",
+        output_bytes=svar_fil.stat().st_size if fil_findes else None,
     )
     return str(result.get("status") or "") == "ok"

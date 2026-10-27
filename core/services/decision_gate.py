@@ -73,7 +73,10 @@ def check_decision_gate(
     if not decisions:
         return True, None
 
-    # Build a combined context string from tool name + args + user message
+    # Match the decision against the action Jarvis is about to execute. The
+    # user's message is only authority for the explicit "alligevel" override;
+    # including it here lets a negated request such as "ingen researcher"
+    # falsely block an executor (and every unrelated tool call in the turn).
     context = _build_context(tool_name, tool_args, user_message)
 
     conflicts: list[str] = []
@@ -323,15 +326,23 @@ def _build_context(
     tool_args: dict[str, Any] | None,
     user_message: str,
 ) -> str:
-    """Build a context string for conflict detection."""
+    """Build conflict context from the proposed action, not the whole request.
+
+    ``user_message`` remains in the signature for call-site compatibility and
+    is deliberately ignored here. It is evaluated separately by
+    :func:`ejeren_har_sagt_alligevel`, where only the owner can authorize an
+    override. Task fields are included so decisions can distinguish a real
+    researcher dispatch from an executor dispatch.
+    """
     parts = [tool_name]
     if tool_args:
-        for key in ("path", "command", "content", "text", "old_text", "new_text"):
+        for key in (
+            "path", "command", "content", "text", "old_text", "new_text",
+            "description", "prompt", "subagent_type", "goal", "query", "role",
+        ):
             val = tool_args.get(key)
             if val:
                 parts.append(str(val)[:200])
-    if user_message:
-        parts.append(user_message[:300])
     return " ".join(parts).lower()
 
 

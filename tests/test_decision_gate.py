@@ -171,6 +171,47 @@ def test_overstyringen_laeses_af_BRUGERENS_besked_ikke_argumenterne(monkeypatch)
     assert sev2 == "none"
 
 
+def test_konflikt_matcher_handlingen_ikke_hele_brugerbeskeden(monkeypatch):
+    """Et fravalgt alternativ i brugerens tekst må ikke forgifte alle tools.
+
+    Den levende fejl var ``ingen researcher`` i en bestilling af en executor:
+    hele brugerbeskeden blev føjet til hver tool-context, så både executoren og
+    efterfølgende fil-tools blev blokeret af en researcher-beslutning.
+    """
+    from core.services.decision_gate import evaluate_decision_conflict
+
+    monkeypatch.setattr(
+        "core.services.behavioral_decisions.list_active_decisions",
+        lambda limit=10: [{
+            "decision_id": "dec_6a234cd30460",
+            "directive": (
+                "Verificér selv git-historik og regressioner med bash — send det ikke "
+                "til en researcher-agent, som ikke har shell-adgang."
+            ),
+            "priority": 65,
+        }],
+    )
+
+    user_message = "send en executor; ingen researcher og ingen retries"
+    executor, _ = evaluate_decision_conflict(
+        "Task",
+        {"subagent_type": "executor", "prompt": "opret filen og kør git diff --check"},
+        user_message,
+    )
+    unrelated, _ = evaluate_decision_conflict(
+        "find_files", {"path": "docs", "query": "agent-task"}, user_message,
+    )
+    researcher, _ = evaluate_decision_conflict(
+        "Task",
+        {"subagent_type": "researcher", "prompt": "verificér git-historik"},
+        "send en agent",
+    )
+
+    assert executor == "none"
+    assert unrelated == "none"
+    assert researcher == "hard"
+
+
 def test_alle_aktive_beslutninger_tjekkes_ikke_kun_de_foerste_ti(monkeypatch):
     """45 aktive, limit=10 → 35 blev aldrig tjekket. Samme fejl som anmelderens
     limit=20 mod 45."""

@@ -626,4 +626,5 @@ _One durable exit path for findings from unattended runtime work._
 | function | `_existing_inbox` | `(*, owner, inbox_id)` | — | [src](../../../core/services/background_attention.py#L58) |
 | function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L67) |
 | function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L73) |
+| function | `report_background_recovered` | `(*, source_kind, source_id)` | Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben. | [src](../../../core/services/background_attention.py#L193) |
 

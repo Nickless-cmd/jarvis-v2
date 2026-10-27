@@ -495,6 +495,28 @@ def run_cadence_tick(
                 except Exception:
                     logger.warning("kunne ikke bogfoere kadence-koerslen '%s' "
                                    "holdbart", spec.name, exc_info=True)
+                # SUCCES-GRENEN (27/10-2026). Fejl-grenen nedenfor projicerer
+                # til indbakken, men der fandtes ingen vej TILBAGE: en producer
+                # der timede ud ÉN gang efterlod en post der gatede indtil
+                # nogen ryddede den i hånden. Målt 27/10:
+                # `central_hypothesis_sampler` overskred 75 s kl. 13:32, kørte
+                # fint på 50 s og 32 s bagefter — og posten stod stadig `aaben`
+                # kl. 15:30. En post der beskriver en tilstand skal lukke sig
+                # selv når tilstanden er væk. Self-safe: uden en åben post er
+                # kaldet en enkelt læsning og ingen skrivning.
+                try:
+                    from core.services.background_attention import (
+                        report_background_recovered,
+                    )
+
+                    report_background_recovered(
+                        source_kind="cadence-producer", source_id=spec.name,
+                    )
+                except Exception:
+                    logger.debug(
+                        "cadence-succes kunne ikke lukke en gammel post",
+                        exc_info=True,
+                    )
                 ran_names.append(spec.name)
                 results.append(ProducerTickResult(
                     name=spec.name,

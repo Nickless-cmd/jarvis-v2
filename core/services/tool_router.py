@@ -35,7 +35,6 @@ _BOOTSTRAP_FALLBACK_CORE = [
     "discord_channel", "send_message",
     "scheduled_task_create", "goal_create",
     "search_sessions", "todo_complete", "web_fetch",
-    "git_show",
 ]
 
 

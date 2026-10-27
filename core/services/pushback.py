@@ -134,7 +134,21 @@ def _conflict_with_decisions(message: str) -> list[str]:
         )
         if m:
             target = m.group(2).strip()
-            if target and target in msg_lower:
+            # 27/10-2026: `target in msg_lower` var en SUBSTRING-test, ikke et
+            # ord-match. Maalt: forpligtelsen «Er de ikke ens, skriv blokken om»
+            # gav target `ens`, og `"ens" in "genstart"` er sandt — saa en
+            # vaekst-prompt der bad om at «genstart igen og vent» blev laest som
+            # et pres for at springe et konsistens-tjek over. Fem vaerktoejskald
+            # blev blokeret i traek (Task, bash_session_open, bash_session_run,
+            # notify_user, inbox_done), og jeg kunne hverken maale, underrette
+            # eller lukke vaekningen.
+            #
+            # Graensen skal vaere ORD, ikke tegn: `\b` paa begge sider. Det
+            # bevarer de aegte konflikter («slette filer nu» fanges stadig) og
+            # fjerner de falske, hvor target er en del af et laengere ord.
+            if target and re.search(
+                rf"\b{re.escape(target)}\b", msg_lower
+            ):
                 flags.append(
                     f"forpligtelse '{directive[:60]}…' kan være i konflikt med dette ask"
                 )

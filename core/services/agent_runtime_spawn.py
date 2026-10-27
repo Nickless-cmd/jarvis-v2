@@ -1034,11 +1034,28 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             _err_code, _err_phase = partial_delivery_error(full=message, registry_status="failed")
         except Exception:
             logger.warning("partial_delivery_error fejlede for %s", run_id, exc_info=True)
+        # 27/10-2026: `output_summary` blev KUN sat paa SUCCES-stien (linje ~899).
+        # Maalt i den levende DB: 6 af 6 fejlede koersler havde en TOM summary, mens
+        # 0 af 9 `completed` havde det. `scout_inbox_delivery` laeser praecis det felt
+        # (`run.get("output_summary") or surface.get("last_error")`), saa modtageren
+        # fik fejlmarkeringen i stedet for leverancen — Bjoerns klage var netop det:
+        # «der er ingen steder at se hvad den session leverede». `message` BAERER
+        # agentens tekst (den er bygget som "<markering> — agentens tekst:\n<final_text>"),
+        # saa naar arbejdet fejler er den eneste kopi af leverancen i den raekke.
+        # Uden den forsvinder arbejdet praecis naar det fejler — det er bagvendt.
+        try:
+            from core.services.text_clip import forkort_synligt
+            _fejl_summary = forkort_synligt(message, limit=400)
+        except Exception:
+            logger.warning("kunne ikke forkorte fejlbeskeden — bruger raat klip",
+                           exc_info=True)
+            _fejl_summary = str(message or "")[:400]
         update_agent_run(
             run_id,
             status="failed",
             finished_at=_now_iso(),
             failure_reason=message,
+            output_summary=_fejl_summary,
             provider_status="failed",
             error_code=_err_code,
             error_phase=_err_phase,

@@ -143,11 +143,18 @@ def _conflict_with_decisions(message: str) -> list[str]:
             # notify_user, inbox_done), og jeg kunne hverken maale, underrette
             # eller lukke vaekningen.
             #
-            # Graensen skal vaere ORD, ikke tegn: `\b` paa begge sider. Det
-            # bevarer de aegte konflikter («slette filer nu» fanges stadig) og
-            # fjerner de falske, hvor target er en del af et laengere ord.
+            # Graensen skal vaere ORD, ikke tegn. `\b` alene er dog ikke nok:
+            # `\b` behandler bindestreg som en graense, saa target `et tool`
+            # matcher «et tool-kald» — og dansk bygger netop sammensætninger
+            # med bindestreg. Maalt 27/10-2026: baade «et tool-kald» og
+            # «et emne-omraade» blev flagget af `\b`.
+            #
+            # Derfor eksplicit: tegnene foer og efter skal hverken vaere
+            # ord-tegn ELLER bindestreg. Det bevarer de aegte konflikter
+            # («slette filer nu» fanges stadig) og fjerner baade
+            # delstreng- og sammensætnings-tilfaeldene.
             if target and re.search(
-                rf"\b{re.escape(target)}\b", msg_lower
+                rf"(?<![\w-]){re.escape(target)}(?![\w-])", msg_lower
             ):
                 flags.append(
                     f"forpligtelse '{directive[:60]}…' kan være i konflikt med dette ask"

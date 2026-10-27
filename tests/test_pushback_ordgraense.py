@@ -81,3 +81,48 @@ def test_den_maalte_vaekst_prompt_er_ren(med_forpligtelse):
         "Er den ældre, genstart igen og vent."
     )
     assert med_forpligtelse._conflict_with_decisions(prompt) == []
+
+
+# ── Bindestreg er en del af ordet (27/10-2026) ────────────────────────────
+#
+# `\b` behandler bindestreg som en ordgraense, saa `\b`-rettelsen var ikke
+# komplet: forpligtelsen «Sæt ikke et tool-kald efter …» giver target
+# `et tool`, og `\bet tool\b` matcher «et tool-kald». Dansk bygger
+# sammensætninger med bindestreg, saa graensen skal ogsaa afvise den.
+
+
+@pytest.fixture()
+def med_tool_forpligtelse(monkeypatch):
+    from core.services import behavioral_decisions
+
+    monkeypatch.setattr(
+        behavioral_decisions,
+        "list_active_decisions",
+        lambda limit=5: [
+            {"directive": "Sæt ikke et tool-kald efter den afsluttende tekstblok."}
+        ],
+    )
+    return pushback
+
+
+@pytest.mark.parametrize(
+    "besked",
+    [
+        "jeg satte et tool-kald efter svaret",
+        "der stod et tool-kald i sidste runde",
+        "et tool-kald er ikke tilladt her",
+    ],
+)
+def test_bindestreg_sammensaetning_er_ikke_en_konflikt(
+    med_tool_forpligtelse, besked
+):
+    """`et tool` inde i «et tool-kald» er samme fejlform som `ens` i «genstart»."""
+    assert med_tool_forpligtelse._conflict_with_decisions(besked) == []
+
+
+def test_det_selvstaendige_ord_fanges_stadig(med_tool_forpligtelse):
+    """Uden bindestreg er det stadig et ord-match og skal flagges."""
+    flags = med_tool_forpligtelse._conflict_with_decisions(
+        "sæt et tool her efter svaret"
+    )
+    assert len(flags) >= 1, "aegte konflikt blev ikke fanget"

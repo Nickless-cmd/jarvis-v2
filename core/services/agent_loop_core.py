@@ -72,7 +72,8 @@ def _answers_directive(unanswered: int) -> str:
         "nummereret præcis som de står i opgaven (1), 2), 3) …), ud fra det du allerede "
         "har fundet. Kald INGEN værktøjer — der er ingen runder tilbage. Kan du ikke "
         "svare på et spørgsmål, så skriv det eksplicit med grunden; afslut ikke med et "
-        "løfte om at undersøge det senere. Slut af med én linje, "
+        "løfte om at undersøge det senere. Et spørgsmål du ikke kunne verificere er IKKE "
+        "besvaret — tæl det ikke med. Slut af med én linje, "
         "'DÆKNING: <de numre du faktisk besvarede>'.")
 
 #: Skrivevaerktoejerne i kataloget. Bruges til at afgoere om agenten overhovedet KAN udfoere

@@ -81,11 +81,17 @@ def test_den_fulde_tekst_vinder_over_den_trunkerede():
     """Kernen: en forkortet `failure`-kopi må ikke slå den fulde `result`."""
     conn = _conn([("result", FULD), ("failure", TRUNKERET)])
     svar = latest_agent_reply(conn, "agent-x")
-    assert svar == FULD, (
-        "den trunkerede failure-kopi vandt — DÆKNING-linjen er skåret af, og "
-        f"kontrakten kan ikke læses. Fik {len(svar)} tegn, forventede {len(FULD)}"
+    # 27/10-2026: svaret er nu BEGGE halvdele — markeringen fra `failure` foran
+    # den fulde tekst fra `result`. Kravet er derfor ikke eksakt lighed med FULD,
+    # men at ingen af de to halvdele er tabt: den trunkerede kopi maa ikke vinde,
+    # og markeringen maa ikke forsvinde.
+    assert FULD in svar, (
+        "den fulde tekst er ikke med — den trunkerede failure-kopi vandt. "
+        f"Fik {len(svar)} tegn, forventede mindst {len(FULD)}"
     )
+    assert "UFULDSTÆNDIG" in svar, "markeringen fra failure skal stadig vaere med"
     assert "DÆKNING: 3" in svar, "dæknings-linjen skal være med i det der læses"
+    assert "_unanswere" not in svar, "den afklippede kopi maa ikke vaere med"
 
 
 def test_daekningen_kan_laeses_paa_det_der_returneres():

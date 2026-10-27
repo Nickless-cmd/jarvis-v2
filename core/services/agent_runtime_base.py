@@ -103,7 +103,18 @@ _AGENT_TOOL_LOOP_MAX_ROUNDS = 8  # tool round-trips per agent turn
 _AGENT_SYNTHESIS_DIRECTIVE = (
     "[TOOL-RUNDER OPBRUGT] Du har brugt dine værktøjs-runder. Giv NU dit endelige "
     "svar udelukkende baseret på det du allerede har fundet og lavet — opsummér "
-    "resultatet konkret og brugbart. Kald IKKE flere værktøjer."
+    "resultatet konkret og brugbart. Kald IKKE flere værktøjer. "
+    # 27/10-2026: dæknings-kontrakten skal med HER, ikke kun i `_answers_directive`.
+    # Maalt paa `asg-8c08c689239f4ff8` (run-18c079a314b24e14): agenten brugte alle 8
+    # værktøjs-runder, syntese-kaldet fyrede — men dette direktiv naevnte ikke DÆKNING,
+    # saa det afsluttende svar blev skrevet uden linjen. Kontrakten stod i system-prompten
+    # og blev alligevel ikke fulgt, fordi den afsluttende ordre er det der vejer tungest.
+    # Uden linjen faldt taellingen tilbage paa heuristikken og sagde 3 hvor det sande
+    # tal var 2 (agenten svarede faktisk paa spoergsmaal 3).
+    "Er opgaven nummererede spørgsmål, slut af med ÉN linje: "
+    "'DÆKNING: <de numre du faktisk besvarede>' — kun dem du reelt kunne verificere. "
+    "Kunne du ikke besvare et spørgsmål, er det IKKE besvaret; skriv 'DÆKNING: ingen' "
+    "hvis du ikke besvarede nogen."
 )
 
 

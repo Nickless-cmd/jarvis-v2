@@ -643,7 +643,20 @@ def latest_agent_reply(conn: Any, agent_id: str) -> str:
             full_result = body
         elif r["kind"] == "failure" and not failure:
             failure = body
-    # Den fulde leverance vinder: den baerer agentens egne ord til sidst.
+    # 27/10-2026: BEGGE halvdele skal med. `failure` baerer markeringen, `result` baerer
+    # den fulde tekst — og spawn klipper `failure` ved 350 tegn, saa den alene mister
+    # agentens afsluttende linje (maalt: `DAEKNING: 3` blev skaaret af).
+    #
+    # Maalt paa `asg-8c08c689239f4ff8`: `result` alene gav 2 ubesvarede men INGEN
+    # markering; `failure` alene gav markeringen men en trunkeret tekst. Foerst den ene,
+    # saa den anden = begge fejl tilbage. Derfor: markeringen FORAN den fulde tekst.
+    if full_result.strip() and failure.strip() and "UFULDSTÆNDIG" in failure:
+        if "UFULDSTÆNDIG" in full_result:
+            return full_result
+        # `failure` er "… UFULDSTÆNDIG (N …) — agentens tekst:\n<trunkeret>".
+        # Behold markeringen, kast den trunkerede kopi, saet den fulde tekst ind.
+        hoved = failure.split("— agentens tekst:", 1)[0].strip()
+        return f"{hoved} — agentens tekst:\n{full_result}"
     if full_result.strip():
         return full_result
     return failure

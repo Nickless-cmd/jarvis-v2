@@ -6,6 +6,7 @@ import {
   setSideTaskSkjult, setSideTaskStatus, type SideTask,
 } from '../../lib/sideTasksApi'
 import { useSideTasks } from '../../lib/sideTasksStream'
+import { SIDE_OPGAVE_AABN_EVENT } from '../../lib/sideOpgaveHighlight'
 import type { ApiConfig } from '../../lib/api'
 import '../../styles/side-tasks.css'
 
@@ -72,6 +73,32 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refresh
   // Hvilken række der venter på bekræftelse på «Fjern for altid».
   const [bekraeft, setBekraeft] = useState('')
 
+  // 27/10-2026: en klikket `side-xxxx`-reference i markdown lander her som
+  // CustomEvent (se lib/sideOpgaveHighlight.ts). Panelet ejer sin egen state,
+  // så broen er en event i stedet for en prop ned gennem det memo'ede
+  // MarkdownBlok — en ny prop ville bryde memoiseringen for hver blok.
+  const [fremhaevet, setFremhaevet] = useState('')
+  useEffect(() => {
+    const lyt = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (!id) return
+      setFremhaevet(id)
+      // Rækken kan ligge i den sammenklappede gruppe; åbn den så den er synlig.
+      setLukkedeAabne(true)
+    }
+    window.addEventListener(SIDE_OPGAVE_AABN_EVENT, lyt)
+    return () => window.removeEventListener(SIDE_OPGAVE_AABN_EVENT, lyt)
+  }, [])
+
+  // Scroll til rækken når den er fremhævet — ellers kan den ligge under folden
+  // i et panel med mange opgaver, og fremhævningen ville være usynlig.
+  useEffect(() => {
+    if (!fremhaevet) return
+    document.getElementById(`sop-${fremhaevet}`)?.scrollIntoView({ block: 'nearest' })
+    const t = setTimeout(() => setFremhaevet(''), 2400)
+    return () => clearTimeout(t)
+  }, [fremhaevet])
+
   // `refreshKey` bumpes når en opgave oprettes andetsteds. Strømmen fanger
   // ændringen selv, men et eksplicit bump skal virke med det samme i stedet
   // for at vente på næste signal.
@@ -96,7 +123,11 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refresh
     (t) => t.status === 'completed' || t.status === 'dismissed')
 
   const raekke = (t: SideTask, lukket: boolean) => (
-    <li key={t.side_task_id} className={`sop-post sop-${t.status}`}>
+    <li
+      key={t.side_task_id}
+      id={`sop-${t.side_task_id}`}
+      className={`sop-post sop-${t.status}${fremhaevet === t.side_task_id ? ' sop-fremhaevet' : ''}`}
+    >
       <div className="sop-top">
         <span className="sop-status">{STATUS_TEKST[t.status] ?? t.status}</span>
         {t.skjult_i_chat ? (

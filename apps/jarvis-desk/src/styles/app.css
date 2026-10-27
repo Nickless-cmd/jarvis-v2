@@ -837,7 +837,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   text-decoration: none;
 }
 .jarvis-body .link-globe,
-.jarvis-body .link-github {
+.jarvis-body .link-github,
+.jarvis-body .link-todo {
   display: inline-block;
   width: 0.85em;
   height: 0.85em;
@@ -846,6 +847,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   flex: none;
 }
 .jarvis-body .link-globe { opacity: 0.65; }
+/* Side-opgave-referencer bærer accent-farven: de peger IND i appen, ikke ud. */
+.jarvis-body .link-todo { opacity: 0.85; color: var(--accent); }
 .jarvis-body blockquote {
   margin: 0.5em 0; padding: 0.2em 0.85em;
   border-left: 3px solid var(--line); color: var(--fg-2);

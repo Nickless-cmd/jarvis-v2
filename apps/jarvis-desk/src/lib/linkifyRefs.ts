@@ -26,6 +26,9 @@ const BARE_HASH_RE = /\b[0-9a-f]{7,40}\b/gi
 /** En hel URL — ikke en URL inde i en sætning, for så er det ikke en reference. */
 const URL_RE = /^https?:\/\/[^\s<>"`]+$/i
 
+/** Side-opgave-id: `side-` + 8-12 hex-tegn. */
+const SIDE_OPGAVE_RE = /^side-[0-9a-f]{8,12}$/i
+
 export function commitUrl(hash: string): string {
   return `https://github.com/${KODE_REPO}/commit/${hash}`
 }
@@ -35,11 +38,32 @@ export function isCommitHref(href: string): boolean {
   return /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/commit\/[0-9a-f]{7,40}(?:[/?#].*)?$/i.test(href)
 }
 
+/** Pseudo-href til en side-opgave. Side-opgaver har ingen rigtig side — de
+ *  bor i et panel (jarvis-desk:panel:sideopgaver), ikke en route. Dette
+ *  interne scheme lader MarkdownRenderer genkende og åbne panelet i stedet
+ *  for at forsøge en navigation. */
+export function sideOpgaveHref(id: string): string {
+  return `#side-opgave=${id}`
+}
+
+/** Er href en reference til en side-opgave? Bruges til ikonvalg (ListTodo)
+ *  og til klik-håndtering (åbn panel i stedet for ekstern navigation). */
+export function isSideOpgaveHref(href: string): boolean {
+  return /^#side-opgave=side-[0-9a-f]{8,12}$/i.test(href)
+}
+
+/** Udtræk side-opgave-id'et fra en pseudo-href, eller null hvis den ikke er en. */
+export function sideOpgaveIdFromHref(href: string): string | null {
+  const m = /^#side-opgave=(side-[0-9a-f]{8,12})$/i.exec(href)
+  return m?.[1] ?? null
+}
+
 /** Den URL en inline code-reference peger på, eller null hvis den ikke er en. */
 export function referenceUrl(raw: string): string | null {
   const tekst = raw.trim()
   if (!tekst) return null
   if (URL_RE.test(tekst)) return tekst
+  if (SIDE_OPGAVE_RE.test(tekst)) return sideOpgaveHref(tekst)
   if (HASH_RE.test(tekst)) return commitUrl(tekst)
   return null
 }

@@ -10,6 +10,10 @@ const ALLOWED_LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:'])
  *  Blokerer javascript:, file:, data:, blob:, custom schemes + malformet URL. */
 export function safeLinkHref(raw: string): string | null {
   if (!raw) return null
+  // Interne pseudo-hrefs (fx `#side-opgave=side-xxxx`) peger ikke på en
+  // ekstern ressource — de styrer kun UI-tilstand i appen selv, og skal
+  // derfor IKKE afvises af URL-parseren som kun kender http/https/mailto.
+  if (/^#side-opgave=side-[0-9a-f]{8,12}$/i.test(raw)) return raw
   let url: URL
   try {
     url = new URL(raw)

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { KODE_REPO } from '../../lib/linkifyRefs'
+import { SIDE_OPGAVE_AABN_EVENT } from '../../lib/sideOpgaveHighlight'
 
 /** Ægte render — ikke bare mdast. Et link der findes i træet men ikke i
  *  DOM'en er ikke et link Bjørn kan klikke på. */
@@ -45,5 +46,39 @@ describe('MarkdownRenderer — referencer er klikbare', () => {
   it('kodeblokke forbliver kode — ingen link inde i en kommando', () => {
     const ud = html('```bash\ngit show 442b3bc85\n```')
     expect(ud).not.toContain('/commit/442b3bc85')
+  })
+})
+
+describe('MarkdownRenderer — side-opgave-referencer', () => {
+  it('en side-opgave-reference får ListTodo-ikonet, ikke globus eller GitHub', () => {
+    const ud = html('Se `side-4978e79e57` her.')
+    expect(ud).toContain('link-todo')
+    expect(ud).toContain('ref-link--sideopgave')
+    expect(ud).not.toContain('link-globe')
+    expect(ud).not.toContain('link-github')
+  })
+
+  it('href bærer id\'et — ellers kan klikket ikke finde opgaven', () => {
+    expect(html('Se `side-4978e79e57` her.'))
+      .toContain('href="#side-opgave=side-4978e79e57"')
+  })
+
+  it('klik åbner panelet via event i stedet for ekstern navigation', () => {
+    const modtaget: string[] = []
+    const lyt = (e: Event) => {
+      modtaget.push((e as CustomEvent<{ id: string }>).detail.id)
+    }
+    window.addEventListener(SIDE_OPGAVE_AABN_EVENT, lyt)
+    try {
+      const { container } = render(
+        <MarkdownRenderer text="Se `side-4978e79e57` her." streaming={false} />,
+      )
+      const a = container.querySelector('a')
+      expect(a).not.toBeNull()
+      fireEvent.click(a!)
+      expect(modtaget).toEqual(['side-4978e79e57'])
+    } finally {
+      window.removeEventListener(SIDE_OPGAVE_AABN_EVENT, lyt)
+    }
   })
 })

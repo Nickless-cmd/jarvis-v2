@@ -255,7 +255,13 @@ def test_en_ekstern_kanal_aabner_ikke_saettet(monkeypatch):
 
     Måler de værktøjer der KUN kommer fra tilstedeværelse. `bash` og
     `web_search` er bevidst ikke med: `wakeup`-origin har dem allerede i
-    `ORIGIN_TOOLS`, så de siger intet om hvorvidt kanalen åbnede sættet.
+    `ORIGIN_TOOLS`, så de siger intet om hvorvidt KANALEN åbnede sættet.
+
+    (27/10-2026: `web_search` blev føjet til `wakeup`/`inbox`-originens sæt
+    26/10 fordi inbox-vækkeren ellers svarede «jeg har ikke adgang til tools».
+    Denne test listede den dengang som tilstedeværelses-bevis og fejlede
+    derfor — af den forkerte grund. Grænsen selv var intakt: målt uden
+    tilstedeværelse slipper kun originens egne værktøjer igennem.)
     """
     from core.tools.autonomous_tool_policy import is_allowed, presence_for_run
 
@@ -273,7 +279,10 @@ def test_en_ekstern_kanal_aabner_ikke_saettet(monkeypatch):
     set_run_identity("visible-test", "wakeup")
     tok_p = set_user_present(False)
     try:
-        for navn in ("operator_bash", "write_file", "notify_user"):
+        for navn in (
+            "operator_bash", "write_file", "edit_file", "notify_user",
+            "dispatch_agent", "send_discord_dm",
+        ):
             assert is_allowed(navn) is False, navn
     finally:
         reset_user_present(tok_p)
@@ -308,9 +317,12 @@ def test_autonom_uden_tilstedevaerelse_er_stadig_spaerret():
     set_run_identity("visible-test", "inbox")
     tok_p = set_user_present(False)
     try:
-        # `inbox` har udtrykkeligt fået bash/web_search; de tre her kræver
-        # stadig tilstedeværelse og beviser derfor, at hele sættet er lukket.
-        for navn in ("write_file", "notify_user", "dispatch_agent"):
+        # `bash` og `web_search` er IKKE med: `inbox`-originens eget sæt
+        # tildeler dem (26/10-2026), så de måler ikke tilstedeværelse.
+        for navn in (
+            "write_file", "edit_file", "notify_user", "operator_bash",
+            "dispatch_agent", "send_discord_dm",
+        ):
             assert is_allowed(navn) is False, navn
     finally:
         reset_user_present(tok_p)
@@ -362,8 +374,9 @@ def test_kataloget_foelger_tilstedevaerelsen():
     finally:
         reset_autonomous(tok_a)
 
-    # `inbox` har sit eget smalle sæt med web_search. `write_file` kommer
-    # derimod kun fra den beviste tilstedeværelse og måler katalog-gaten.
+    # `write_file` er tilstedeværelses-beviset: den findes hverken i
+    # `AUTONOMOUS_TOOLS` eller i `inbox`-originens sæt. `web_search` blev
+    # flyttet til originens sæt 26/10-2026 og kan derfor ikke bruges her.
     assert "write_file" not in uden
     assert "write_file" in med
     assert len(med) > len(uden)

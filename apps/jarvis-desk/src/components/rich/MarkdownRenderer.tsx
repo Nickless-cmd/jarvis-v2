@@ -1,5 +1,5 @@
 import { isValidElement, memo, useEffect, useMemo } from 'react'
-import { Globe } from 'lucide-react'
+import { Globe, ListTodo, Bot, GitBranch, AlarmClock, Activity, FileCode } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -9,7 +9,8 @@ import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
-import { isCommitHref, linkifyRefs } from '../../lib/linkifyRefs'
+import { isCommitHref, linkifyRefs, refKind, refVaerdi, type RefKind } from '../../lib/linkifyRefs'
+import { aabnRef } from '../../lib/refAabn'
 import { openExternalUrl } from '../../lib/host'
 import { ChatCodeBlock } from './ChatCodeBlock'
 import { MermaidBlock, MermaidStreamingContext } from './MermaidBlock'
@@ -76,34 +77,70 @@ const KOMPONENTER: Components = {
     const safe = href ? safeLinkHref(href) : null
     if (!safe) return <span>{children}</span>
     // 25/10-2026 (Bjørn): et link skal kunne SES, ikke kun rammes. Et lille
-    // globus-ikon foran gør eksterne links genkendelige på et blik — også når
-    // de står som en grå kode-badge midt i en sætning, hvor blå farve ikke
-    // bærer alene.
+    // ikon foran gør referencer genkendelige på et blik — også når de står som
+    // en grå kode-badge midt i en sætning, hvor blå farve ikke bærer alene.
+    //
+    // 27/10-2026 (Bjørn): ikonet valgte før kun mellem «side-opgave», «commit»
+    // og «eksternt». Agent-, worktree-, wake-, run- og fil-referencer fandtes
+    // ikke i den tabel, så de faldt igennem til globe-ikonet — eller til
+    // ingenting. Nu afgør `refKind` både ikon, klasse og klikmål ét sted.
+    const kind = refKind(safe)
+    const vaerdi = kind ? refVaerdi(safe) : null
     const ekstern = /^https?:/i.test(safe)
     const commit = isCommitHref(safe)
+    const klasse = kind
+      ? `ref-link ref-link--${kind}`
+      : commit
+        ? 'ref-link ref-link--commit'
+        : ekstern
+          ? 'ref-link ref-link--external'
+          : 'ref-link'
     return (
       <a
         href={safe}
-        className={commit ? 'ref-link ref-link--commit' : ekstern ? 'ref-link ref-link--external' : 'ref-link'}
+        className={klasse}
         rel="noopener noreferrer"
         onClick={(e) => {
           e.preventDefault()
+          // 27/10-2026: disse id'er har ingen URL — de bor i et panel. Klikket
+          // sender en CustomEvent (se lib/refAabn.ts) i stedet for
+          // openExternal, som ville fejle på det interne scheme.
+          if (kind && vaerdi) {
+            aabnRef(kind, vaerdi)
+            return
+          }
           openExternal(safe)
         }}
       >
-        {commit ? (
-          <img src={githubMark} alt="" aria-hidden="true" className="link-github" />
-        ) : ekstern ? (
-          <Globe
-            size="0.85em"
-            aria-hidden="true"
-            className="link-globe"
-          />
-        ) : null}
+        {ikonFor(kind, commit, ekstern)}
         {children}
       </a>
     )
   },
+}
+
+/** Ikonet foran en reference. Én tabel, så et nyt id ikke kan få et tilfældigt
+ *  ikon fordi nogen glemte en gren. */
+function ikonFor(kind: RefKind | null, commit: boolean, ekstern: boolean) {
+  switch (kind) {
+    case 'sideopgave':
+      return <ListTodo size="0.85em" aria-hidden="true" className="link-todo" />
+    case 'agent':
+      return <Bot size="0.85em" aria-hidden="true" className="link-agent" />
+    case 'worktree':
+      return <GitBranch size="0.85em" aria-hidden="true" className="link-worktree" />
+    case 'wake':
+      return <AlarmClock size="0.85em" aria-hidden="true" className="link-wake" />
+    case 'run':
+      return <Activity size="0.85em" aria-hidden="true" className="link-run" />
+    case 'fil':
+      return <FileCode size="0.85em" aria-hidden="true" className="link-fil" />
+    default:
+      break
+  }
+  if (commit) return <img src={githubMark} alt="" aria-hidden="true" className="link-github" />
+  if (ekstern) return <Globe size="0.85em" aria-hidden="true" className="link-globe" />
+  return null
 }
 
 /** Én blok markdown. Memoiseret på strengen: en færdig blok parses én gang. */

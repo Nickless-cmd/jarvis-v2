@@ -3,8 +3,10 @@
 Deler ÉN Google-OAuth med Gmail (token gemt under provider="google",
 get_fresh_token → auto-refresh). Alle tools bruger BRUGERENS egen token.
 
-v1: kun LÆSE-tools (sikre). Opret/rediger-tools (calendar_create, docs_write …)
-kræver approval-flow og følger separat — derfor ikke registreret endnu.
+Læse-tools er sikre og kaldes frit. Skrive- og opret-tools (calendar_create_event,
+docs_append, sheets_write, docs_create, sheets_create, slides_create) kræver
+brugerens godkendelse — gatingen sker i `simple_tools`, ikke her; funktionerne
+her antager at godkendelsen allerede er givet.
 Fejl: intet token → *_not_connected; 403 → *_scope_missing.
 """
 from __future__ import annotations
@@ -46,6 +48,28 @@ GOOGLE_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
                     "max_results": {"type": "integer", "description": "Maks antal (1-25, standard 10)"},
                 },
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "drive_download",
+            "description": (
+                "Hent en fil fra brugerens Google Drive ned på maskinen og få et download-link. "
+                "Google Docs/Sheets/Slides eksporteres automatisk til .docx/.xlsx/.pptx. "
+                "Brug file_id fra drive_search. Kræver forbundet Drive."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_id": {"type": "string", "description": "Drive-filens id (fra drive_search)"},
+                    "export_as": {
+                        "type": "string",
+                        "description": "Valgfri: 'pdf', 'docx', 'xlsx' eller 'pptx' — tvinger format for Google-native filer",
+                    },
+                },
+                "required": ["file_id"],
             },
         },
     },
@@ -162,6 +186,63 @@ GOOGLE_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "docs_create",
+            "description": (
+                "Opret et nyt Google Docs-dokument med en titel, og indsæt eventuelt tekst "
+                "med det samme. KRÆVER brugerens godkendelse (approval-kort) — kald bare "
+                "værktøjet direkte. Returnerer document_id og et link."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Dokumentets titel"},
+                    "text": {"type": "string", "description": "Valgfri starttekst i dokumentet"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sheets_create",
+            "description": (
+                "Opret et nyt Google Sheets-regneark med en titel, og skriv eventuelt rækker "
+                "med det samme. KRÆVER brugerens godkendelse (approval-kort) — kald bare "
+                "værktøjet direkte. values = liste af rækker, fx [[\"Navn\",\"Beløb\"]]."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Regnearkets titel"},
+                    "values": {"type": "array", "description": "Valgfri rækker (liste af lister)",
+                               "items": {"type": "array", "items": {"type": "string"}}},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "slides_create",
+            "description": (
+                "Opret en ny Google Slides-præsentation med en titel. KRÆVER brugerens "
+                "godkendelse (approval-kort) — kald bare værktøjet direkte. Returnerer "
+                "presentation_id og et link."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Præsentationens titel"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
 ]
 
 
@@ -209,7 +290,7 @@ def _send(user_id: str, method: str, url: str, *, json_body: dict | None = None,
 def _clamp(n, lo: int, hi: int, default: int) -> int:
     try:
         return max(lo, min(hi, int(n)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # uden tal → standardvaerdien; en ugyldig graense er ikke en haendelse
         return default
 
 
@@ -254,6 +335,123 @@ def drive_search(user_id: str, *, query: str = "", max_results: int = 10) -> dic
         for f in (res["data"].get("files") or [])
     ]
     return {"status": "ok", "files": files, "count": len(files)}
+
+
+#: Google-native filer kan ikke hentes som bytes — de skal EKSPORTERES til et
+#: rigtigt format. Uden denne tabel ville `drive_download` på en Docs give
+#: `drive_http_400` og se ud som en fejl i forbindelsen.
+_EXPORT_AS: dict[str, tuple[str, str]] = {
+    "application/vnd.google-apps.document": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
+    "application/vnd.google-apps.spreadsheet": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+    "application/vnd.google-apps.presentation": (
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
+    "application/vnd.google-apps.drawing": ("image/png", ".png"),
+}
+
+
+def drive_download(user_id: str, file_id: str, *, export_as: str = "") -> dict:
+    """Hent en Drive-fil ned til brugerens EGEN filmappe og returnér et link.
+
+    Hvorfor den gemmer i stedet for at returnere bytes
+    -------------------------------------------------
+    Et værktøjssvar er tekst. En PDF på 61 kB som base64 er 82 kB tekst i
+    prompten — det æder konteksten og kan ikke bruges til noget. Filen lægges
+    derfor i brugerens isolerede mappe (samme som `publish_file`) og svaret
+    bærer et download-link. Det gør den samtidig synlig i desk som et
+    fil-kort, fordi klienten kender `/files/…`-formen.
+
+    Google-native filer (Docs/Sheets/Slides) har ingen bytes — de eksporteres
+    til .docx/.xlsx/.pptx. `export_as` kan tvinge et andet format, fx
+    `"pdf"` for alle tre.
+    """
+    fid = (file_id or "").strip()
+    if not fid:
+        return {"status": "error", "error": "file_id mangler"}
+
+    meta = _get(user_id, f"https://www.googleapis.com/drive/v3/files/{fid}",
+                {"fields": "id,name,mimeType,size", "supportsAllDrives": "true"},
+                "drive")
+    if meta["status"] != "ok":
+        return meta
+    data = meta.get("data") or {}
+    navn = str(data.get("name") or fid).strip()
+    mime = str(data.get("mimeType") or "")
+
+    token = get_fresh_token(user_id, _PROVIDER)
+    if not token or not token.get("access_token"):
+        return {"status": "error", "error": "drive_not_connected"}
+
+    valg = (export_as or "").strip().lower()
+    if mime in _EXPORT_AS:
+        ud_mime, endelse = _EXPORT_AS[mime]
+        if valg == "pdf":
+            ud_mime, endelse = "application/pdf", ".pdf"
+        elif valg in ("docx", "xlsx", "pptx"):
+            for m, (mm, ee) in _EXPORT_AS.items():
+                if ee == "." + valg:
+                    ud_mime, endelse = mm, ee
+                    break
+        url = f"https://www.googleapis.com/drive/v3/files/{fid}/export"
+        params = {"mimeType": ud_mime}
+    else:
+        ud_mime, endelse = mime or "application/octet-stream", ""
+        # En Drive-fil kan hedde «brev» uden endelse. Så kan modtageren ikke
+        # åbne den, uanset at indholdet er en fuldgyldig PDF. Endelsen udledes
+        # derfor af mime-typen når navnet ikke selv bærer den.
+        if mime:
+            import mimetypes
+            gæt = mimetypes.guess_extension(mime.split(";")[0].strip()) or ""
+            if gæt == ".jpe":
+                gæt = ".jpg"
+            endelse = gæt
+        url = f"https://www.googleapis.com/drive/v3/files/{fid}"
+        params = {"alt": "media", "supportsAllDrives": "true"}
+
+    try:
+        import httpx
+        r = httpx.get(url, headers={"Authorization": f"Bearer {token['access_token']}"},
+                      params=params, timeout=60, follow_redirects=True)
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"drive_request_failed: {e}"}
+    if r.status_code == 401:
+        return {"status": "error", "error": "drive_not_connected"}
+    if r.status_code == 403:
+        return {"status": "error", "error": "drive_scope_missing"}
+    if r.status_code != 200:
+        return {"status": "error", "error": f"drive_http_{r.status_code}"}
+
+    # Endelsen følger INDHOLDET, ikke filnavnet: en Docs der eksporteres til
+    # docx skal heddde .docx, ellers kan modtageren ikke åbne den.
+    rent = navn if endelse and navn.lower().endswith(endelse) else f"{navn}{endelse}"
+    from core.runtime.workspace_paths import NoUserContextError, published_file_path
+    try:
+        dest = published_file_path(rent, opret_mappe=True)
+    except NoUserContextError:  # fail-closed: uden bruger maa filen ikke havne i en faelles mappe
+        return {"status": "error", "error": "ingen bruger i konteksten — filen blev ikke hentet"}
+    except ValueError as exc:  # et ugyldigt filnavn er kalderens fejl, ikke en haendelse
+        return {"status": "error", "error": str(exc)}
+    try:
+        dest.write_bytes(r.content)
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "error": str(exc)}
+
+    try:
+        from core.runtime.secrets import read_runtime_key
+        base = str(read_runtime_key("public_base_url", "JARVIS_PUBLIC_BASE_URL") or "").strip()
+    except Exception:
+        base = ""
+    base = (base or "http://localhost:8080").rstrip("/")
+    return {
+        "status": "ok",
+        "filename": dest.name,
+        "url": f"{base}/files/{dest.name}",
+        "mime_type": ud_mime,
+        "size_bytes": len(r.content),
+        "source_id": fid,
+        "exported_from": mime if mime in _EXPORT_AS else "",
+    }
 
 
 def _doc_text(content: list) -> str:
@@ -365,6 +563,59 @@ def append_doc(user_id: str, document_id: str, text: str) -> dict:
     if res["status"] != "ok":
         return res
     return {"status": "ok", "document_id": document_id}
+
+
+def create_doc(user_id: str, title: str, *, text: str = "") -> dict:
+    """Opret et nyt Google Docs-dokument. `text` indsættes som første indhold."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://docs.googleapis.com/v1/documents",
+                json_body={"title": title}, err_prefix="docs")
+    if res["status"] != "ok":
+        return res
+    document_id = str(res["data"].get("documentId") or "")
+    if text and document_id:
+        # Dokumentet findes nu; en fejl i indsættelsen må ikke skjule det.
+        # Derfor rapporteres begge: id'et er det vigtige, teksten er sekundær.
+        skriv = append_doc(user_id, document_id, text)
+        if skriv["status"] != "ok":
+            return {"status": "ok", "document_id": document_id,
+                    "link": f"https://docs.google.com/document/d/{document_id}/edit",
+                    "text_status": skriv.get("error", "failed")}
+    return {"status": "ok", "document_id": document_id,
+            "link": f"https://docs.google.com/document/d/{document_id}/edit"}
+
+
+def create_sheet(user_id: str, title: str, *, values: list | None = None) -> dict:
+    """Opret et nyt Google Sheets-regneark. `values` skrives i første ark."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://sheets.googleapis.com/v4/spreadsheets",
+                json_body={"properties": {"title": title}}, err_prefix="sheets")
+    if res["status"] != "ok":
+        return res
+    spreadsheet_id = str(res["data"].get("spreadsheetId") or "")
+    if values and spreadsheet_id:
+        skriv = write_sheet(user_id, spreadsheet_id, "A1", values)
+        if skriv["status"] != "ok":
+            return {"status": "ok", "spreadsheet_id": spreadsheet_id,
+                    "link": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
+                    "values_status": skriv.get("error", "failed")}
+    return {"status": "ok", "spreadsheet_id": spreadsheet_id,
+            "link": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"}
+
+
+def create_slides(user_id: str, title: str) -> dict:
+    """Opret en ny Google Slides-præsentation (tom, med titel)."""
+    if not (title or "").strip():
+        return {"status": "error", "error": "title_required"}
+    res = _send(user_id, "POST", "https://slides.googleapis.com/v1/presentations",
+                json_body={"title": title}, err_prefix="slides")
+    if res["status"] != "ok":
+        return res
+    presentation_id = str(res["data"].get("presentationId") or "")
+    return {"status": "ok", "presentation_id": presentation_id,
+            "link": f"https://docs.google.com/presentation/d/{presentation_id}/edit"}
 
 
 def write_sheet(user_id: str, spreadsheet_id: str, cell_range: str, values: list) -> dict:

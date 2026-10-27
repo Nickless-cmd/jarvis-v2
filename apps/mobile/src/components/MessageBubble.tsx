@@ -3,7 +3,8 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import { enforceStructure } from '../lib/enforceStructure'
-import { linkifyRefsRule } from '../lib/linkifyRefs'
+import { linkifyRefsRule, parseRefHref } from '../lib/linkifyRefs'
+import { emitRefAabn } from '../lib/refAabn'
 import { delIBlokke } from '../lib/markdownBlokke'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
@@ -66,12 +67,36 @@ const MARKDOWN_REGLER = {
 }
 
 
+/** Klik på en reference (27/10-2026).
+ *
+ * Ligger på modul-niveau af samme grund som `MARKDOWN_REGLER`: `MarkdownBlok`
+ * er `memo`'et, og en handler der blev bygget pr. render ville gøre
+ * memoiseringen værdiløs for hvert eneste svar.
+ *
+ * Returnerer `false` for pseudo-hrefs, så markdown-visningen ikke selv prøver
+ * at åbne `#ref=…` som en URL. Eksterne links går gennem `Linking` som før.
+ */
+function haandterLink(url: string): boolean {
+  const ref = parseRefHref(url)
+  if (ref) {
+    emitRefAabn(ref.kind, ref.id)
+    return false
+  }
+  void Linking.openURL(url)
+  return false
+}
+
 /** Én markdown-blok. En færdig blok er en uforanderlig streng og parses aldrig
  *  igen; under streaming er det kun den sidste blok der ændrer sig (se
  *  lib/markdownBlokke — samme opdeling som desk). */
 const MarkdownBlok = memo(function MarkdownBlok({ tekst, stil }: { tekst: string; stil: StyleSheet.NamedStyles<any> }) {
   return (
-    <Markdown markdownit={markdownItInstance} style={stil} rules={MARKDOWN_REGLER}>
+    <Markdown
+      markdownit={markdownItInstance}
+      style={stil}
+      rules={MARKDOWN_REGLER}
+      onLinkPress={haandterLink}
+    >
       {tekst}
     </Markdown>
   )

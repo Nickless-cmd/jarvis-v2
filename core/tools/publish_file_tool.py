@@ -165,6 +165,10 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             url=url,
             mime_type=str(mimetypes.guess_type(safe_name)[0] or ""),
             size_bytes=int(result.get("size_bytes") or 0),
+            # Ankeret. Uden det lander filen BAGEST i svaret, efter al
+            # prosaen — ikke dér hvor den blev lavet. Samme regel som
+            # `vis_graf` og `vis_widget` bruger.
+            tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
         )
     except Exception:
         pass  # en visning maa aldrig braekke selve udgivelsen

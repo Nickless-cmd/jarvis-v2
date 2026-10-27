@@ -82,3 +82,76 @@ def test_invalid_autonomy_mode_fails_closed(monkeypatch):
     )
     assert result["status"] == "error"
     assert "autonomy_mode" in result["error"]
+
+
+# ── Succes-grenen (27/10-2026) ──────────────────────────────────────────────
+#
+# Fejl-grenen har altid projiceret til indbakken, men der fandtes ingen vej
+# tilbage. Målt: en cadence-producer timede ud én gang og efterlod en post der
+# gatede i timer, mens produceren kørte fint. En post der beskriver en
+# TILSTAND skal lukke sig selv når tilstanden er væk.
+
+
+def test_recovery_closes_an_open_post(monkeypatch):
+    lukket = []
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(
+        attention, "_existing_inbox", lambda **kwargs: {"status": "aaben"},
+    )
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: lukket.append(kwargs) or {
+            "status": "ok", "id": "x", "ny_status": "afsluttet_af_kilde",
+        },
+    )
+
+    result = attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="central_hypothesis_sampler",
+    )
+
+    assert result["status"] == "ok"
+    assert result["ny_status"] == "afsluttet_af_kilde"
+    assert lukket[0]["kilde_id"] == (
+        "background-cadence-producer-central_hypothesis_sampler"
+    )
+    assert lukket[0]["exit_kode"] == 0
+    assert lukket[0]["bruger_id"] == "bjorn"
+
+
+def test_recovery_leaves_a_done_post_alone(monkeypatch):
+    """Bjørns egen afgørelse må ikke overskrives af en rutine."""
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(
+        attention, "_existing_inbox", lambda **kwargs: {"status": "done"},
+    )
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("no close")),
+    )
+
+    result = attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="x",
+    )
+
+    assert result["inbox"] == "allerede-lukket"
+    assert result["havde"] == "done"
+
+
+def test_recovery_without_a_post_writes_nothing(monkeypatch):
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "bjorn")
+    monkeypatch.setattr(attention, "_existing_inbox", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "core.runtime.db_inbox.meld_kilde_faerdig",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("no close")),
+    )
+
+    assert attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="y",
+    )["inbox"] == "ingen-post"
+
+
+def test_recovery_without_owner_does_not_guess(monkeypatch):
+    monkeypatch.setattr(attention, "_owner_user_id", lambda: "")
+    assert attention.report_background_recovered(
+        source_kind="cadence-producer", source_id="z",
+    )["inbox"] == "no-owner"

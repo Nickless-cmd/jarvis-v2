@@ -1,9 +1,11 @@
-import { ArrowLeft, Bot, File, FileText, Globe, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Bot, File, FileText, Globe, Table2, Wrench, X } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import type { InspectorTarget } from '../../lib/inspectorTargets'
 import { lookupTool } from '../../lib/toolRegistry'
 import { ArtifactInspectorBody } from './ArtifactPanel'
 import { AgentInspector } from './AgentInspector'
+import { DokPreview } from './DokPreview'
+import { FilPreview } from './FilPreview'
 import { SourceInspector } from './SourceInspector'
 import { ToolInspector } from './ToolInspector'
 
@@ -21,6 +23,8 @@ function meta(target: InspectorTarget | null) {
   if (target.type === 'artifact') return { title: target.artifact.title, Icon: target.artifact.kind === 'markdown' ? FileText : File }
   if (target.type === 'agent') return { title: target.agent.role || target.agent.goal || target.agent.agentId, Icon: Bot }
   if (target.type === 'source') return { title: target.source.domaene, Icon: Globe }
+  if (target.type === 'file') return { title: target.file.navn, Icon: FileText }
+  if (target.type === 'dok') return { title: lookupTool(target.dok.vaerktoej).label, Icon: Table2 }
   return { title: lookupTool(target.tool.name).label, Icon: Wrench }
 }
 
@@ -64,6 +68,8 @@ export function InspectorPanel({
       {target?.type === 'agent' && (config
         ? <AgentInspector config={config} agent={target.agent} canMessage={target.canMessage} />
         : <div className="artifact-body artifact-empty">Agentdetaljen kræver forbindelse til serveren.</div>)}
+      {target?.type === 'file' && <FilPreview fil={target.file} config={config} />}
+      {target?.type === 'dok' && <DokPreview dok={target.dok} />}
       {!target && <div className="artifact-body artifact-empty">Intet at vise endnu.</div>}
     </div>
   )

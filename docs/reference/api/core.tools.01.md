@@ -19,22 +19,23 @@ _Modelvendte agent-vaerktoejer over agent-contract-v1 (leverance F2)._
 | function | `_fn` | `(name, description, properties, required)` | — | [src](../../../core/tools/agent_contract_tools.py#L43) |
 | function | `contract_tool_names_advertised` | `()` | De navne der skal fastnaeles i Jarvis' flade - tom naar kapabiliteten er slukket. | [src](../../../core/tools/agent_contract_tools.py#L141) |
 | function | `hidden_contract_tools` | `()` | De rene kontrakt-vaerktoejer der SKAL skjules lige nu: alle naar motoren er slukket | [src](../../../core/tools/agent_contract_tools.py#L152) |
-| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L160) |
-| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L178) |
-| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L200) |
-| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L205) |
-| function | `_exec_task` | `(args)` | Five model fields in; all authority-bearing fields come from runtime state. | [src](../../../core/tools/agent_contract_tools.py#L239) |
-| function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L254) |
-| function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L264) |
-| function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L277) |
-| function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L284) |
-| function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L290) |
-| function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L298) |
-| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L310) |
-| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L323) |
-| function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L329) |
-| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L339) |
-| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L354) |
+| function | `_ejer_fra_session` | `(session)` | Sessionens registrerede ejer — naar ContextVar'en er tom. | [src](../../../core/tools/agent_contract_tools.py#L160) |
+| function | `_principal` | `(args)` | (ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument. | [src](../../../core/tools/agent_contract_tools.py#L197) |
+| function | `_scoped_parent` | `(args)` | Return (agent, owner, session, run) for the current fenced child run. | [src](../../../core/tools/agent_contract_tools.py#L217) |
+| function | `_svc` | `()` | — | [src](../../../core/tools/agent_contract_tools.py#L239) |
+| function | `_exec_dispatch_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L244) |
+| function | `_exec_task` | `(args)` | Five model fields in; all authority-bearing fields come from runtime state. | [src](../../../core/tools/agent_contract_tools.py#L278) |
+| function | `_exec_followup_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L293) |
+| function | `_exec_wait_agents` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L303) |
+| function | `_exec_interrupt_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L316) |
+| function | `_exec_close_agent` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L323) |
+| function | `_is_contract_bound` | `(agent_id, owner)` | — | [src](../../../core/tools/agent_contract_tools.py#L329) |
+| function | `_exec_send_message_to_agent` | `(args)` | Kontrakt-udgaven for bundne agenter; den gamle (inline) for resten. | [src](../../../core/tools/agent_contract_tools.py#L337) |
+| function | `_exec_list_agents` | `(args)` | Naar motoren er taendt: ejerens kontrakt-agenter (+ de gamle under `legacy`). | [src](../../../core/tools/agent_contract_tools.py#L349) |
+| function | `_exec_integrate_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L362) |
+| function | `_exec_convene_agent_council` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L368) |
+| function | `_exec_decide_agent_approval` | `(args)` | Jarvis afgoer en af SINE EGNE agenters vaerktoejskald (14/10-2026). | [src](../../../core/tools/agent_contract_tools.py#L378) |
+| function | `_exec_review_agent_work` | `(args)` | — | [src](../../../core/tools/agent_contract_tools.py#L393) |
 
 ## `core/tools/agent_memory_tools.py`
 _Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C, hul 3; spec 7.2)._
@@ -368,6 +369,20 @@ _Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._
 | function | `_exec_close_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L81) |
 | function | `_exec_set_chat_flow_preference` | `(args)` | Persist presentation state for the verified current run principal. | [src](../../../core/tools/desk_view_tools.py#L88) |
 
+## `core/tools/document_create_tools.py`
+_Opret-dokumenter: Word, Excel, PowerPoint og PDF._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udgiv` | `(sti, filnavn, args=…)` | Send en genereret fil gennem den ene udlevering der findes. | [src](../../../core/tools/document_create_tools.py#L52) |
+| function | `_filnavn` | `(raa, standard_navn, endelse)` | Sikrér en brugbar fil-endelse; ellers tilføj den. | [src](../../../core/tools/document_create_tools.py#L79) |
+| function | `_linjer` | `(indhold)` | Normalisér `indhold` til linjer — accepterer streng eller liste. | [src](../../../core/tools/document_create_tools.py#L88) |
+| function | `_blokke` | `(linjer)` | Parse linjer til (slags, tekst, niveau). | [src](../../../core/tools/document_create_tools.py#L95) |
+| function | `_exec_pdf_create` | `(args)` | Opret en PDF af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L240) |
+| function | `_exec_docx_create` | `(args)` | Opret et Word-dokument af overskrifter, afsnit og punktopstilling. | [src](../../../core/tools/document_create_tools.py#L310) |
+| function | `_exec_xlsx_create` | `(args)` | Opret et regneark. `ark` = [{navn, kolonner, rækker}] eller `rækker`. | [src](../../../core/tools/document_create_tools.py#L349) |
+| function | `_exec_pptx_create` | `(args)` | Opret en præsentation. `slides` = [{titel, punkter, note}]. | [src](../../../core/tools/document_create_tools.py#L455) |
+
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 
@@ -391,25 +406,28 @@ _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_exec_operator_bash` | `(args)` | Sen import: simple_tools_operator traekker paa broen, som traekker paa | [src](../../../core/tools/force_handlers.py#L51) |
-| function | `_exec_bash` | `(args)` | Facade → ``simple_tools._exec_bash`` (honorér test-patch-søm). | [src](../../../core/tools/force_handlers.py#L66) |
-| function | `_canonicalize_workspace_target` | `(target)` | Sen import: bor i simple_tools, som importerer DENNE fil. En import paa | [src](../../../core/tools/force_handlers.py#L78) |
-| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L85) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L109) |
-| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L139) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L169) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L174) |
-| function | `_force_stripe_create_issuing_card` | `(args)` | Opret kortet EFTER at Bjørn har sagt ja. Uden denne ville godkendelsen | [src](../../../core/tools/force_handlers.py#L188) |
-| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L195) |
-| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L200) |
-| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L205) |
-| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L210) |
-| function | `_force_operator_write_file` | `(args)` | Skriv filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L215) |
-| function | `_force_operator_edit_file` | `(args)` | Redigér filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L220) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L225) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L230) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L235) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L240) |
+| function | `_exec_operator_bash` | `(args)` | Sen import: simple_tools_operator traekker paa broen, som traekker paa | [src](../../../core/tools/force_handlers.py#L54) |
+| function | `_exec_bash` | `(args)` | Facade → ``simple_tools._exec_bash`` (honorér test-patch-søm). | [src](../../../core/tools/force_handlers.py#L69) |
+| function | `_canonicalize_workspace_target` | `(target)` | Sen import: bor i simple_tools, som importerer DENNE fil. En import paa | [src](../../../core/tools/force_handlers.py#L81) |
+| function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L88) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L112) |
+| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L142) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L172) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L177) |
+| function | `_force_stripe_create_issuing_card` | `(args)` | Opret kortet EFTER at Bjørn har sagt ja. Uden denne ville godkendelsen | [src](../../../core/tools/force_handlers.py#L191) |
+| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L198) |
+| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L203) |
+| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L208) |
+| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L213) |
+| function | `_force_docs_create` | `(args)` | Opret dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L218) |
+| function | `_force_sheets_create` | `(args)` | Opret regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L223) |
+| function | `_force_slides_create` | `(args)` | Opret præsentationen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L228) |
+| function | `_force_operator_write_file` | `(args)` | Skriv filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L233) |
+| function | `_force_operator_edit_file` | `(args)` | Redigér filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L238) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L243) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L248) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L253) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L258) |
 
 ## `core/tools/forgetting_tools.py`
 _Forgetting tools — Lag 11 self-track._
@@ -503,27 +521,4 @@ _API health monitor tools — Jarvis can watch services and be notified of outag
 | function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L115) |
 | function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
 | function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
-
-## `core/tools/hf_inference_tools.py`
-_Hugging Face Inference API tools — free-tier text-to-video + fallback image gen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_hf_token` | `()` | Read HF token from runtime.json (never hardcoded). | [src](../../../core/tools/hf_inference_tools.py#L43) |
-| function | `_auth_headers` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L55) |
-| function | `_video_dir` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L66) |
-| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/hf_inference_tools.py#L71) |
-| function | `_write_sidecar` | `(path, metadata)` | — | [src](../../../core/tools/hf_inference_tools.py#L79) |
-| function | `generate_video` | `(*, prompt, model=…, num_frames=…, guidance_scale=…, negative_prompt=…, num_inference_steps=…, seed=…, save_dir=…)` | Generate a video via HF serverless inference API. | [src](../../../core/tools/hf_inference_tools.py#L88) |
-| function | `_exec_hf_text_to_video` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L221) |
-| function | `_read_audio_bytes` | `(source)` | Read audio from a local path or HTTP(S) URL. Returns raw bytes. | [src](../../../core/tools/hf_inference_tools.py#L283) |
-| function | `transcribe_audio` | `(*, audio_source, model=…, return_timestamps=…, language=…)` | Transcribe audio via HF Whisper. audio_source can be file path or URL. | [src](../../../core/tools/hf_inference_tools.py#L295) |
-| function | `_exec_hf_transcribe_audio` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L391) |
-| function | `semantic_similarity` | `(*, source, candidates, model=…)` | Compute cosine similarity between source and each candidate via HF. | [src](../../../core/tools/hf_inference_tools.py#L426) |
-| function | `_exec_hf_embed` | `(args)` | Semantic similarity via HF sentence-similarity pipeline. | [src](../../../core/tools/hf_inference_tools.py#L503) |
-| function | `zero_shot_classify` | `(*, text, labels, model=…, multi_label=…)` | Classify text against provided candidate labels via MNLI. | [src](../../../core/tools/hf_inference_tools.py#L552) |
-| function | `_exec_hf_zero_shot_classify` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L620) |
-| function | `_image_to_data_url` | `(source)` | Convert file path / URL / raw-bytes path to a data URL for VLM input. | [src](../../../core/tools/hf_inference_tools.py#L652) |
-| function | `vision_analyze` | `(*, image_source, prompt=…, model=…, max_tokens=…)` | Analyze an image via a vision-language model. image_source = path or URL. | [src](../../../core/tools/hf_inference_tools.py#L666) |
-| function | `_exec_hf_vision_analyze` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L729) |
 

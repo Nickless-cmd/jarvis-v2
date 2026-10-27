@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/recall_memory_tools.py`
+_Semantic recall tools — Jarvis-facing recall across all memory surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_excerpt_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L30) |
+| function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L44) |
+| function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L54) |
+
 ## `core/tools/recall_tool.py`
 _`recall` — the one memory-search tool (memory repair 2026-09-04, R5)._
 
@@ -111,11 +120,11 @@ _Simple, general-purpose tools for Jarvis visible lane._
 | function | `classify_file_write` | `(path)` | Classify a file write: 'auto', 'approval', or 'blocked'. | [src](../../../core/tools/simple_tools.py#L1012) |
 | function | `execute_tool` | `(name, arguments)` | Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1). | [src](../../../core/tools/simple_tools.py#L1034) |
 | function | `_execute_tool_impl` | `(name, arguments)` | Execute a tool call and return the result. | [src](../../../core/tools/simple_tools.py#L1073) |
-| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1285) |
-| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1335) |
-| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1425) |
-| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2142) |
-| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2228) |
+| function | `execute_tool_force` | `(name, arguments, *, owner_approved=…)` | Execute tool bypassing approval checks. Only call for user-approved requests. | [src](../../../core/tools/simple_tools.py#L1288) |
+| function | `_execute_tool_force_impl` | `(name, arguments)` | — | [src](../../../core/tools/simple_tools.py#L1338) |
+| function | `_record_tool_outcome_memory` | `(name, arguments, result, *, mode)` | — | [src](../../../core/tools/simple_tools.py#L1428) |
+| function | `_med_samtykke` | `(navn, fn)` | — | [src](../../../core/tools/simple_tools.py#L2163) |
+| function | `get_tool_definitions` | `(role=…, scope=…)` | Return Ollama-compatible tool definitions, filtered by role + scope. | [src](../../../core/tools/simple_tools.py#L2249) |
 
 ## `core/tools/simple_tools_agent_spawn.py`
 _spawn_agent_task som modelvendt vaerktoej._
@@ -130,8 +139,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3654) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3671) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3656) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3673) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -238,22 +247,26 @@ _Native (non-operator, non-web) tool executors for Jarvis._
 | function | `_exec_gmail_send` | `(args)` | Send mail på brugerens vegne — bag approval-kort (som operator-tools). | [src](../../../core/tools/simple_tools_native.py#L2572) |
 | function | `_exec_calendar_list_events` | `(args)` | List kommende begivenheder i brugerens primære Google Calendar. | [src](../../../core/tools/simple_tools_native.py#L2593) |
 | function | `_exec_drive_search` | `(args)` | Søg/list filer i brugerens Google Drive. | [src](../../../core/tools/simple_tools_native.py#L2599) |
-| function | `_exec_docs_read` | `(args)` | Læs tekst fra et Google Docs-dokument. | [src](../../../core/tools/simple_tools_native.py#L2606) |
-| function | `_exec_sheets_read` | `(args)` | Læs celler fra et Google Sheets-regneark. | [src](../../../core/tools/simple_tools_native.py#L2612) |
-| function | `_exec_slides_read` | `(args)` | Læs titler og tekst fra et Google Slides-show. | [src](../../../core/tools/simple_tools_native.py#L2619) |
-| function | `_exec_calendar_create_event` | `(args)` | Opret kalender-aftale — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2625) |
-| function | `_exec_docs_append` | `(args)` | Tilføj tekst til et Google-dokument — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2647) |
-| function | `_exec_sheets_write` | `(args)` | Skriv celler i et Google Sheets-regneark — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2666) |
-| function | `_exec_pdf_read` | `(args)` | Læs/ekstraher tekst fra en PDF (sti eller URL). | [src](../../../core/tools/simple_tools_native.py#L2688) |
-| function | `_exec_note_add` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2694) |
-| function | `_exec_note_list` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2699) |
-| function | `_exec_note_search` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2704) |
-| function | `_exec_note_delete` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2709) |
-| function | `_exec_hf_search_models` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2714) |
-| function | `_exec_hf_model_info` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2719) |
-| function | `_exec_operator_channel` | `(args)` | Aabn/luk/vis operator-kanalen. Owner-only for open/close. | [src](../../../core/tools/simple_tools_native.py#L2807) |
-| function | `_exec_mcp` | `(args)` | Én indgang til MCP: se, godkend, list vaerktoejer, kald. | [src](../../../core/tools/simple_tools_native.py#L2825) |
-| function | `_exec_checkpoint` | `(args)` | Se eller fortryd en redigeringsrunde. | [src](../../../core/tools/simple_tools_native.py#L2865) |
+| function | `_exec_drive_download` | `(args)` | Hent en Drive-fil til brugerens filmappe og returnér et link. | [src](../../../core/tools/simple_tools_native.py#L2606) |
+| function | `_exec_docs_read` | `(args)` | Læs tekst fra et Google Docs-dokument. | [src](../../../core/tools/simple_tools_native.py#L2613) |
+| function | `_exec_sheets_read` | `(args)` | Læs celler fra et Google Sheets-regneark. | [src](../../../core/tools/simple_tools_native.py#L2619) |
+| function | `_exec_slides_read` | `(args)` | Læs titler og tekst fra et Google Slides-show. | [src](../../../core/tools/simple_tools_native.py#L2626) |
+| function | `_exec_calendar_create_event` | `(args)` | Opret kalender-aftale — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2632) |
+| function | `_exec_docs_append` | `(args)` | Tilføj tekst til et Google-dokument — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2654) |
+| function | `_exec_sheets_write` | `(args)` | Skriv celler i et Google Sheets-regneark — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2673) |
+| function | `_exec_docs_create` | `(args)` | Opret et Google-dokument — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2695) |
+| function | `_exec_sheets_create` | `(args)` | Opret et Google-regneark — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2712) |
+| function | `_exec_slides_create` | `(args)` | Opret en Google-præsentation — bag approval-kort. | [src](../../../core/tools/simple_tools_native.py#L2733) |
+| function | `_exec_pdf_read` | `(args)` | Læs/ekstraher tekst fra en PDF (sti eller URL). | [src](../../../core/tools/simple_tools_native.py#L2749) |
+| function | `_exec_note_add` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2755) |
+| function | `_exec_note_list` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2760) |
+| function | `_exec_note_search` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2765) |
+| function | `_exec_note_delete` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2770) |
+| function | `_exec_hf_search_models` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2775) |
+| function | `_exec_hf_model_info` | `(args)` | — | [src](../../../core/tools/simple_tools_native.py#L2780) |
+| function | `_exec_operator_channel` | `(args)` | Aabn/luk/vis operator-kanalen. Owner-only for open/close. | [src](../../../core/tools/simple_tools_native.py#L2868) |
+| function | `_exec_mcp` | `(args)` | Én indgang til MCP: se, godkend, list vaerktoejer, kald. | [src](../../../core/tools/simple_tools_native.py#L2886) |
+| function | `_exec_checkpoint` | `(args)` | Se eller fortryd en redigeringsrunde. | [src](../../../core/tools/simple_tools_native.py#L2926) |
 
 ## `core/tools/simple_tools_operator.py`
 _Operator-bridge tool executors for Jarvis (desktop operator lane)._
@@ -616,35 +629,25 @@ _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L337) |
-| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L348) |
-| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L353) |
-| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L357) |
-| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L370) |
-| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L375) |
-| function | `reset_local_exec` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L379) |
-| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L384) |
-| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L392) |
-| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L406) |
-| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L424) |
-| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L458) |
-| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L471) |
-| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L490) |
-| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L524) |
-| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L603) |
-| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L613) |
-| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L630) |
-| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L648) |
-| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L672) |
-| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L676) |
-
-## `core/tools/tool_text_render.py`
-_Læsbar `text`-form for strukturerede tool-resultater._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_cell` | `(value, limit=…)` | — | [src](../../../core/tools/tool_text_render.py#L31) |
-| function | `render_daemons` | `(daemons)` | Én linje pr. dæmon: navn, om den kører, kadence, hvornår sidst. | [src](../../../core/tools/tool_text_render.py#L37) |
-| function | `render_events` | `(events)` | Én linje pr. hændelse: tid, art, og begyndelsen af payload. | [src](../../../core/tools/tool_text_render.py#L77) |
-| function | `render_rows` | `(columns, rows, *, capped=…)` | Et resultatsæt som en justeret tabel. | [src](../../../core/tools/tool_text_render.py#L102) |
+| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L409) |
+| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L420) |
+| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L425) |
+| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L429) |
+| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L442) |
+| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L447) |
+| function | `reset_local_exec` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L451) |
+| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L456) |
+| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L464) |
+| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L478) |
+| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L496) |
+| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L530) |
+| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L543) |
+| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L562) |
+| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L596) |
+| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L675) |
+| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L685) |
+| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L702) |
+| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L720) |
+| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L744) |
+| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L748) |
 

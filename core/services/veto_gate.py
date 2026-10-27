@@ -611,7 +611,7 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     "list_arcs", "list_crisis_markers", "list_recurring",
     "list_self_wakeups", "list_events",
     # Read-only git operations — observability into the repo, no mutation.
-    "git_log", "git_diff", "git_status", "git_show",
+    "git_log", "git_diff", "git_status",
     # bash — arbitrary shell exec. Owner-calibrated trust: Bjørn
     # explicitly enabled this 2026-05-03 ("han har haft det hele tiden").
     # Side effects are Jarvis's responsibility; veto_gate doesn't gate it.

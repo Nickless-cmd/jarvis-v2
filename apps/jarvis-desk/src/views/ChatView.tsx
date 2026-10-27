@@ -12,6 +12,7 @@ import { PlansPanel } from '../components/panel/PlansPanel'
 import { PrPanel } from '../components/panel/PrPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
+import { useRefPanelLytting } from '../lib/refAabn'
 import { registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
@@ -816,6 +817,13 @@ export function ChatView({
     setFokusFil(sti)
     setChangesOpen(true)
   }), [])
+
+  // 27/10-2026: samme lytter som CodeView — en klikket reference i markdown
+  // (`side-…`, `asg-…`, `run-…`) aabner det panel der viser den. Én hook, to
+  // visninger, saa adfaerden ikke kan divergere mellem chat og code.
+  const aabnSideOpgavePanel = useCallback(() => setSideOpgaveOpen(true), [setSideOpgaveOpen])
+  const aabnJobsPanel = useCallback(() => setJobsOpen(true), [setJobsOpen])
+  useRefPanelLytting({ sideopgave: aabnSideOpgavePanel, jobs: aabnJobsPanel })
 
   // Jarvis' desk-værktøjer (Claude Desktops ccd_view, 19/9-2026): hvad står på
   // skærmen for denne samtale, og hvordan åbnes/lukkes panelerne. Tilstanden

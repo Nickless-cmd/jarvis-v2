@@ -1269,6 +1269,7 @@ from core.tools.force_handlers import (  # noqa: E402
     _force_bash,
     _force_calendar_create_event,
     _force_docs_append,
+    _force_docs_create,
     _force_edit_file,
     _force_gmail_send,
     _force_operator_bash,
@@ -1278,6 +1279,8 @@ from core.tools.force_handlers import (  # noqa: E402
     _force_operator_open_url,
     _force_operator_record_audio,
     _force_sheets_write,
+    _force_sheets_create,
+    _force_slides_create,
     _force_write_file,
 )
 
@@ -1563,6 +1566,12 @@ from core.tools.simple_tools_web import (  # noqa: E402,F401
 # (dispatch-dict + tests).
 from core.tools.recall_tool import _exec_recall  # noqa: E402
 from core.tools.repo_recall_tool import _exec_repo_recall  # noqa: E402
+from core.tools.document_create_tools import (  # noqa: E402
+    _exec_pdf_create,
+    _exec_docx_create,
+    _exec_xlsx_create,
+    _exec_pptx_create,
+)
 from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_list_initiatives,
     _exec_push_initiative,
@@ -1635,12 +1644,16 @@ from core.tools.simple_tools_native import (  # noqa: E402,F401
     _exec_gmail_send,
     _exec_calendar_list_events,
     _exec_drive_search,
+    _exec_drive_download,
     _exec_docs_read,
     _exec_sheets_read,
     _exec_slides_read,
     _exec_calendar_create_event,
     _exec_docs_append,
+    _exec_docs_create,
     _exec_sheets_write,
+    _exec_sheets_create,
+    _exec_slides_create,
     _exec_pdf_read,
     _exec_note_add,
     _exec_note_list,
@@ -1666,13 +1679,21 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "gmail_send": _exec_gmail_send,
     "calendar_list_events": _exec_calendar_list_events,
     "drive_search": _exec_drive_search,
+    "drive_download": _exec_drive_download,
     "docs_read": _exec_docs_read,
     "sheets_read": _exec_sheets_read,
     "slides_read": _exec_slides_read,
     "calendar_create_event": _exec_calendar_create_event,
     "docs_append": _exec_docs_append,
     "sheets_write": _exec_sheets_write,
+    "docs_create": _exec_docs_create,
+    "sheets_create": _exec_sheets_create,
+    "slides_create": _exec_slides_create,
     "pdf_read": _exec_pdf_read,
+    "pdf_create": _exec_pdf_create,
+    "docx_create": _exec_docx_create,
+    "xlsx_create": _exec_xlsx_create,
+    "pptx_create": _exec_pptx_create,
     "note_add": _exec_note_add,
     "note_list": _exec_note_list,
     "note_search": _exec_note_search,

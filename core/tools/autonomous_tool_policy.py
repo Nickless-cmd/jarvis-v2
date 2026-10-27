@@ -12,7 +12,7 @@ AUTONOMOUS_TOOLS: frozenset[str] = frozenset({
     # Local read-only lookup. External connectors/network calls stay out.
     "read_file", "read_tool_result", "search", "grep", "glob", "list_dir",
     "find_files", "find_symbol", "find_usages", "git_status", "git_diff",
-    "git_log", "git_show", "git_blame", "git_branch",
+    "git_log", "git_blame", "git_branch",
     # Runtime, session and internal-state observation.
     "central_query", "eventbus_recent", "context_pressure", "context_size_check",
     "heartbeat_status", "daemon_status", "health_status", "provider_health_status",

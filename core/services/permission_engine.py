@@ -67,7 +67,29 @@ _MEMBER_CHAT_MEM = frozenset({
 # bevidst valg og ikke en oprydning — en ikke-ejer kan nu bruge af puljen.
 _MEMBER_IMAGE = frozenset({"openrouter_image", "openrouter_image_edit"})
 
-_MEMBER_CHAT = _MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM | _MEMBER_IMAGE
+# Visning — at TEGNE en graf eller et diagram i samtalen (27/10-2026).
+# Samme familie som billedvaerktoejerne: rene praesentationslag uden
+# data-adgang. De stod i INGEN scope-liste overhovedet, saa hverken Bjoern
+# eller husstanden kunne faa en kurve tegnet hvor samtalen foregaar.
+_MEMBER_VISNING = frozenset({"vis_graf", "vis_widget", "render_mermaid"})
+
+# Dokumenter — at SKABE en fil (27/10-2026, Bjørn: «dem skal vi osse have»).
+#
+# Målt før denne ændring: nul opret-værktøjer i hele kataloget. Huset kunne
+# læse fem Google-formater gennem connectorer, men ikke lave en PDF, et
+# regneark, et Word-dokument eller en præsentation — den ene ChatGPT-evne der
+# slet ikke fandtes.
+#
+# De er sikre for husstanden af én grund: de genererer en NY fil og sender den
+# gennem `publish_file`, som skriver i den kaldende brugers EGEN isolerede
+# mappe. De læser intet og kan ikke overskrive noget.
+#
+# `pdf_read` er BEVIDST ikke med: den læser en vilkårlig sti eller URL og er
+# derfor owner-only, som `read_file`.
+_MEMBER_DOKUMENTER = frozenset({"pdf_create", "docx_create", "xlsx_create", "pptx_create"})
+
+_MEMBER_CHAT = (_MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
+                | _MEMBER_IMAGE | _MEMBER_VISNING | _MEMBER_DOKUMENTER)
 
 
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────
@@ -101,7 +123,8 @@ _MEMBER_CODE_FILE = frozenset({"read_file", "write_file", "edit_file", "find_fil
 _MEMBER_CODE_CONNECTOR = frozenset({"github_list_issues", "github_list_prs"})
 _MEMBER_CODE = (
     _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE
-    | _MEMBER_CODE_CONNECTOR | _MEMBER_IMAGE
+    | _MEMBER_CODE_CONNECTOR | _MEMBER_IMAGE | _MEMBER_VISNING
+    | _MEMBER_DOKUMENTER
 )
 
 

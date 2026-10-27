@@ -95,7 +95,27 @@ def _role_needs_tools(role: str) -> bool:
 # role/scope + approval gates, so an agent can never bypass approvals for
 # risky actions.
 AGENT_TOOLS_FLAG_KEY = "agent_tools_enabled"
-_AGENT_TOOL_LOOP_MAX_ROUNDS = 8  # tool round-trips per agent turn
+# 27/10-2026: haevet 8 -> 20. MAALT paa en rigtig opgave (asg-c3865f7a047649a4,
+# "ikon + klikbare side-opgave-referencer"): seks filer at laese, aendringer i
+# fem af dem og tre vitest-koersler. Agenten brugte 4 af de 8 runder og gav selv
+# op med en aerlig "jeg naaede det ikke"-syntese — rundebudgettet bandt ALDRIG
+# (4/8), saa tallet var ikke det der fejlede den kørsel. Men 8 er for lavt til en
+# fler-fils-opgave: en agent der FAKTISK proever at naa igennem rammer loftet
+# midt i skrivningen og faar en syntese i stedet for en leverance. 20 runder
+# daekker laes-og-skriv-passet med plads til en retry. Det separate `max_turns`
+# (12 for skrivende agenter, agent_task_facade.py:87) er antal TURNS — hele
+# koersler — ikke vaerktoejsrunder, og blev maalt til 0/12: den bandt heller ikke.
+#
+# 27/10-2026, anden maaling: haevet 20 -> 60. Samme opgave igen
+# (asg-876fa702ed2f4a2b): agenten brugte 20 af 20 runder og naaede ALDRIG at
+# skrive — 19 kald, alle `wt_bash`, alle laesninger, diff 0 bytes, sidste ord
+# "nu tjekker jeg ...test.tsx". Mere budget gav mere REKOGNOSCERING, ikke mere
+# leverance. 60 er ikke maalt som tilstraekkeligt; det er valgt saa laesepasset
+# (ca. 10 filer + greps) ikke alene kan spise budgettet, og saa et faktisk
+# skrive-forsoeg kan naa at fejle og blive rettet inden for samme koersel.
+# Bemaerk: én runde = ÉN shell-kommando, ikke én fil. Det er den enhed
+# budgettet er udtrykt i, og den er nem at undervurdere naar man skriver mandatet.
+_AGENT_TOOL_LOOP_MAX_ROUNDS = 60  # tool round-trips per agent turn
 
 # Final user turn shown when the round budget is exhausted mid-tool-use, so the
 # agent turns its research into a real answer instead of being cut off with an

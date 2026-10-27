@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, AppState, StatusBar, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Alert, AppState, StatusBar, StyleSheet, View } from 'react-native'
 import * as Application from 'expo-application'
 import {
   SafeAreaProvider,
@@ -10,6 +10,7 @@ import {
 import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
+import { onRefAabn } from './lib/refAabn'
 import { TopBarMenu } from './components/TopBarMenu'
 import type { ContextUsage, GitStatus } from './lib/apiClient'
 import { OnboardingGuide } from './components/OnboardingGuide'
@@ -55,6 +56,25 @@ function AppBody() {
   // Arbejde-rummet (V2). Tilstanden bor her — ikke i en navigation-lib;
   // to bevidste tilstande af samme forhold til Jarvis, ikke to apps.
   const [mode, setMode] = useState<AppMode>('snak')
+
+  // Klik på en reference i en besked (27/10-2026).
+  //
+  // De fem kørsels-familier (side-opgave, agent, worktree, wake, run) lander i
+  // Arbejde, hvor kørsler og sideopgaver bor — standardfanen dér er `tasks`.
+  // Mobilen har INGET filtræ, så et filnavn viser sin sti i stedet for at
+  // påstå en flade appen ikke har: et link der lover mere end appen kan
+  // levere er værre end et der ærligt viser sig selv.
+  useEffect(
+    () =>
+      onRefAabn((kind, id) => {
+        if (kind === 'fil') {
+          Alert.alert('Fil', id)
+          return
+        }
+        setMode('arbejde')
+      }),
+    []
+  )
   // Et approval-push skal lande i Arbejde → GODKEND. Signalet tæller op, så
   // to pushes i træk begge rammer fanen, også hvis man selv har skiftet væk.
   const [approveFokus, setApproveFokus] = useState(0)

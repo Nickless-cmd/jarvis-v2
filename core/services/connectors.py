@@ -94,7 +94,7 @@ _CATALOG: list[dict] = [
     {
         "id": "google-drive", "name": "Google Drive", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["drive_search"],
+        "tools": ["drive_search", "drive_download"],
         "category": "Google", "icon": "hard-drive", "status": "available",
         "desc": "Søg og læs filer",
         "scopes": ["drive.readonly"],
@@ -103,27 +103,27 @@ _CATALOG: list[dict] = [
     {
         "id": "google-docs", "name": "Google Docs", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["docs_read", "docs_append"],
+        "tools": ["docs_read", "docs_append", "docs_create"],
         "category": "Google", "icon": "file-text", "status": "available",
-        "desc": "Læs dokumenter",
+        "desc": "Læs og opret dokumenter",
         "scopes": ["documents"],
         "oauth_scopes": ["https://www.googleapis.com/auth/documents"],
     },
     {
         "id": "google-sheets", "name": "Google Sheets", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["sheets_read", "sheets_write"],
+        "tools": ["sheets_read", "sheets_write", "sheets_create"],
         "category": "Google", "icon": "table", "status": "available",
-        "desc": "Læs regneark",
+        "desc": "Læs og opret regneark",
         "scopes": ["spreadsheets"],
         "oauth_scopes": ["https://www.googleapis.com/auth/spreadsheets"],
     },
     {
         "id": "google-slides", "name": "Google Slides", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["slides_read"],
+        "tools": ["slides_read", "slides_create"],
         "category": "Google", "icon": "presentation", "status": "available",
-        "desc": "Læs præsentationer",
+        "desc": "Læs og opret præsentationer",
         "scopes": ["presentations"],
         "oauth_scopes": ["https://www.googleapis.com/auth/presentations"],
     },

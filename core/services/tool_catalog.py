@@ -72,6 +72,20 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     ("Filer & kode", [
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
+        # 27/10-2026: de fem andre git-vaerktoejer stod i «+ N flere» — altsaa
+        # findbare kun ved at soege efter et navn man ikke vidste fandtes. Det
+        # er praecis den fejl `git_status` selv led af: den stod HER, men i
+        # ingen scope-liste. Begge dele skal vaere sande for at et vaerktoej
+        # findes i praksis.
+        "git_log", "git_diff", "git_branch", "git_blame",
+        "publish_file",
+    ]),
+    # Visning er ikke pynt: naar tal eller struktur ER pointen, er en graf
+    # eller et diagram svaret — og en mur af prosa skjuler det. Vaerktoejerne
+    # fandtes fra foer, men stod i hverken en mode-liste eller her (maalt
+    # 27/10-2026), samme fejlklasse som billedvaerktoejerne 13/9.
+    ("Visning & diagrammer", [
+        "vis_graf", "vis_widget", "render_mermaid",
     ]),
     ("Agenter", [
         "Task", "wait_agents", "list_agents", "send_message_to_agent",

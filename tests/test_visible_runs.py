@@ -180,6 +180,171 @@ class TestVisibleRunsModuleSurface:
         assert cleared == []
         assert cancel_called["v"] is False
 
+    def test_levende_run_i_anden_proces_ryddes_ikke(self, monkeypatch):
+        """Et LEVENDE run i en ANDEN proces må ikke ryddes som zombie.
+
+        Målt 27/10-2026 i jarvis-api-loggen: 13 gange på 14 dage ryddede
+        api-processen slottet for et wakeup-run der kørte i jarvis-runtime,
+        og startede dermed et PARALLELT run i samme samtale. Begge tests i
+        rydde-grenen (`_VISIBLE_RUN_CONTROLLERS` og `_relay_owns_open_run`)
+        er lokale for processen, så de kan ikke se det.
+
+        Beviset er ikke «slottet bestod» alene — det kunne også betyde at
+        koden gav op. Beviset er at beskeden blev knyttet til det KØRENDE
+        run (push_nudge) i stedet for at føde et nyt.
+        """
+        from datetime import datetime, timedelta, UTC
+
+        run_id = "autonomous-wakeup-abc123"
+        monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", {})
+        monkeypatch.setattr(visible_runs, "_relay_owns_open_run", lambda _rid: False)
+        # Journalen — den DELTE sandhed — siger runnet lever.
+        monkeypatch.setattr(
+            "core.services.in_flight_runs.levende_koersler",
+            lambda **_kw: [{
+                "run_id": run_id,
+                "session_id": "chat-wakeup",
+                "status": "running",
+            }],
+        )
+
+        started = (datetime.now(UTC) - timedelta(seconds=20)).isoformat()
+        state = {
+            "active": True,
+            "run_id": run_id,
+            "session_id": "chat-wakeup",
+            "started_at": started,
+            "cancelled": False,
+        }
+        monkeypatch.setattr(visible_runs, "_get_active_visible_run_state", lambda: state)
+        cleared: list = []
+        monkeypatch.setattr(
+            visible_runs, "_set_active_visible_run", lambda p: cleared.append(p),
+        )
+
+        nudges: list = []
+        monkeypatch.setattr(
+            "core.services.outbound_nudges.push_nudge",
+            lambda **kw: nudges.append(kw),
+        )
+        monkeypatch.setattr(
+            "core.runtime.settings.load_settings",
+            lambda: type("S", (), {"nudge_system_enabled": True})(),
+        )
+
+        visible_runs.start_visible_run(
+            message="kør videre", session_id="chat-wakeup",
+            approval_mode="approve", thinking_mode="none",
+        )
+
+        assert cleared == [], f"Levende run må ikke ryddes, fik: {cleared}"
+        assert len(nudges) == 1, f"Beskeden skulle knyttes til runnet, fik: {nudges}"
+        assert nudges[0]["parent_message_id"] == run_id
+
+    def test_levende_run_overlever_baade_to_og_ti_minutter(self, monkeypatch):
+        """Alderen er målt lokalt og må ikke alene dræbe et levende run.
+
+        Der er TRE rydde-grene i `start_visible_run`: >300 s, >600 s og
+        >120 s. Retter man kun den første, flytter hullet sig blot til
+        næste tærskel — derfor måles alle tre. Journalen afgør, og et run
+        der rører sig er levende uanset hvor længe det har kørt.
+        """
+        from datetime import datetime, timedelta, UTC
+
+        run_id = "autonomous-wakeup-lang"
+        monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", {})
+        monkeypatch.setattr(visible_runs, "_relay_owns_open_run", lambda _rid: False)
+        monkeypatch.setattr(
+            "core.services.in_flight_runs.levende_koersler",
+            lambda **_kw: [{
+                "run_id": run_id,
+                "session_id": "chat-wakeup-lang",
+                "status": "running",
+            }],
+        )
+
+        nudges: list = []
+        monkeypatch.setattr(
+            "core.services.outbound_nudges.push_nudge",
+            lambda **kw: nudges.append(kw),
+        )
+        monkeypatch.setattr(
+            "core.runtime.settings.load_settings",
+            lambda: type("S", (), {"nudge_system_enabled": True})(),
+        )
+
+        for minutter in (8, 15):
+            started = (datetime.now(UTC) - timedelta(minutes=minutter)).isoformat()
+            state = {
+                "active": True,
+                "run_id": run_id,
+                "session_id": "chat-wakeup-lang",
+                "started_at": started,
+                "cancelled": False,
+            }
+            monkeypatch.setattr(
+                visible_runs, "_get_active_visible_run_state", lambda s=state: s,
+            )
+            cleared: list = []
+            monkeypatch.setattr(
+                visible_runs, "_set_active_visible_run", lambda p, c=cleared: c.append(p),
+            )
+            nudges.clear()
+
+            visible_runs.start_visible_run(
+                message="status?", session_id="chat-wakeup-lang",
+                approval_mode="approve", thinking_mode="none",
+            )
+
+            assert cleared == [], (
+                f"Et levende run på {minutter} min må ikke ryddes, fik: {cleared}"
+            )
+            assert len(nudges) == 1, (
+                f"Ved {minutter} min skulle beskeden knyttes til runnet, fik: {nudges}"
+            )
+
+    def test_doedt_run_ryddes_stadig_naar_journalen_er_tom(self, monkeypatch):
+        """Fixet må ikke gøre en ægte zombie udødelig.
+
+        Journalen svarer «ingen» — så er runnet dødt, og den gamle adfærd
+        (ryd + start frisk) skal stadig gælde. Uden denne test ville fixet
+        kunne læses som «ryd aldrig».
+        """
+        from datetime import datetime, timedelta, UTC
+
+        monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", {})
+        monkeypatch.setattr(visible_runs, "_relay_owns_open_run", lambda _rid: False)
+        monkeypatch.setattr(
+            "core.services.in_flight_runs.levende_koersler", lambda **_kw: [],
+        )
+
+        started = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+        state = {
+            "active": True,
+            "run_id": "visible-doed-999",
+            "session_id": "chat-doed",
+            "started_at": started,
+            "cancelled": False,
+        }
+        monkeypatch.setattr(visible_runs, "_get_active_visible_run_state", lambda: state)
+        cleared: list = []
+        monkeypatch.setattr(
+            visible_runs, "_set_active_visible_run", lambda p: cleared.append(p),
+        )
+        monkeypatch.setattr(visible_runs, "load_settings", lambda: type("S", (), {
+            "primary_model_lane": "primary",
+            "visible_model_provider": "deepseek",
+            "visible_model_name": "test",
+        })())
+        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run, **_kw: iter([]))
+
+        visible_runs.start_visible_run(
+            message="hello", session_id="chat-doed",
+            approval_mode="approve", thinking_mode="none",
+        )
+
+        assert cleared == [{}], f"Dødt run skal stadig ryddes, fik: {cleared}"
+
     def test_preview_text_truncates(self):
         """Long input gets truncated to a single bounded line."""
         long_text = "x" * 1000

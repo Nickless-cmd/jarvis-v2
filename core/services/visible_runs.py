@@ -480,6 +480,52 @@ from core.services.visible_turn_blocks import (  # noqa: E402,F401
 )
 
 
+def _lever_i_anden_proces(run_id: str, session_id: str) -> bool:
+    """Kører DETTE run stadig — set fra en proces der ikke ejer det? (27/10-2026)
+
+    Hullet den lukker
+    -----------------
+    Rydde-grenen i ``start_visible_run`` afgør «runnet er dødt» ud fra to
+    ting: at run-id'et ikke findes i ``_VISIBLE_RUN_CONTROLLERS`` (in-memory,
+    PR. PROCES) og at ``_relay_owns_open_run`` siger nej (også lokal log).
+    Et autonomt wakeup-run fødes i `jarvis-runtime` (8011), mens Bjørns tur
+    kører i `jarvis-api` (8080). Set fra api-processen er controlleren
+    derfor usynlig — grenen rydder slottet og starter et PARALLELT run i
+    samme samtale.
+
+    Målt 27/10-2026 i `jarvis-api`-loggen: 13 forekomster af
+    «has no live controller, clearing and proceeding with fresh run» på 14
+    dage, alle på `[chat/stream/v2]` — altså Bjørns egne beskeder. Det er
+    den spejlvendte fejl af den `run_guard` blev bygget til 13/10: vagten
+    værner wakeup mod Bjørn, ikke Bjørn mod wakeup.
+
+    Kilden er den SAMME som `run_guard` læser: `in_flight_runs` — fil +
+    flock, ejer = `<pid>:<starttid>`, så et genbrugt pid ikke narrer os.
+    Der spørges på PRÆCIS slottets run-id, ikke «er der et run i
+    sessionen»: findes der allerede to, er det en anden sag, og vi skal
+    ikke bruge det ene som påskud for at beholde det andet.
+
+    Fallback-retning: TRUE ved fejl. Vi ved så ikke om runnet lever, men
+    nedstrøms står stadig 120-sekunders stale-loftet, som frigiver en ægte
+    zombie. At gætte «dødt» her er den dyre fejl — den koster et parallelt
+    run; at gætte «levende» koster højst to minutter.
+    """
+    rid = str(run_id or "").strip()
+    sid = str(session_id or "").strip()
+    if not rid or not sid:
+        return False
+    try:
+        from core.services import in_flight_runs as ifr
+
+        for post in ifr.levende_koersler(session_id=sid):
+            if str(post.get("run_id") or "") == rid:
+                return True
+        return False
+    except Exception as exc:  # noqa: BLE001 — self-safe, se docstringen
+        logger.debug("visible_runs: kunne ikke laese den delte journal: %s", exc)
+        return True
+
+
 @dataclass(slots=True)
 class VisibleRun:
     run_id: str
@@ -767,8 +813,18 @@ def start_visible_run(
             except Exception:
                 age_s = 99999.0  # malformed timestamp → treat as very old
             relay_open = _relay_owns_open_run(stale_run_id)
-            should_clear_dead = (not still_alive) and age_s > 300 and not relay_open
-            should_clear_hung = age_s > 600 and not relay_open            # 10 min
+            # 27/10-2026: `still_alive` og `relay_open` er BEGGE lokale for
+            # denne proces. Et wakeup-run lever i jarvis-runtime, så herfra
+            # ser det dødt ud — og grenen ryddede det. Journalen er den
+            # delte sandhed; den må kun overrule os når controlleren ikke er
+            # her (er den her, er det vores eget run, og så er alderen et
+            # lokalt og gyldigt signal).
+            levende_ude = (not still_alive) and _lever_i_anden_proces(
+                stale_run_id, str(normalized_session_id or ""))
+            should_clear_dead = ((not still_alive) and age_s > 300
+                                 and not relay_open and not levende_ude)
+            should_clear_hung = (age_s > 600 and not relay_open
+                                 and not levende_ude)            # 10 min
             if should_clear_dead or should_clear_hung:
                 logger.warning(
                     "visible_runs: clearing stuck active_run %s "
@@ -843,7 +899,13 @@ def start_visible_run(
                 and normalized_session_id
                 and str(active.get("session_id") or "") == normalized_session_id
                 and str(active.get("run_id") or "") not in _VISIBLE_RUN_CONTROLLERS
-                and not _relay_owns_open_run(str(active.get("run_id") or ""))):
+                and not _relay_owns_open_run(str(active.get("run_id") or ""))
+                # 27/10-2026: de to tests ovenfor er BEGGE lokale for denne
+                # proces. Et wakeup-run fødes i jarvis-runtime og er derfor
+                # usynligt her — uden denne tredje test ryddede vi et LEVENDE
+                # run og startede et parallelt (målt 13 gange på 14 dage).
+                and not _lever_i_anden_proces(
+                    str(active.get("run_id") or ""), normalized_session_id)):
             logger.warning(
                 "visible_runs: same-session active_run %s has no live controller, "
                 "clearing and proceeding with fresh run",
@@ -882,7 +944,13 @@ def start_visible_run(
             # uden at angribe legitime lange runs.
             _stale_threshold_s = 120.0
             if (_age_s > _stale_threshold_s
-                    and not _relay_owns_open_run(str(active.get("run_id") or ""))):
+                    and not _relay_owns_open_run(str(active.get("run_id") or ""))
+                    # 27/10-2026: alderen er målt LOKALT. Et wakeup-run der
+                    # har kørt i tre minutter i jarvis-runtime er ikke
+                    # «stale» — det er bare usynligt herfra. Journalen
+                    # afgør, og et run der rører sig er levende uanset alder.
+                    and not _lever_i_anden_proces(
+                        str(active.get("run_id") or ""), normalized_session_id)):
                 logger.warning(
                     "visible_runs: same-session active_run %s is stale "
                     "(age=%.0fs > %.0fs) — clearing and proceeding with fresh run",

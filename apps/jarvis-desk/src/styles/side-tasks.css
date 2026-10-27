@@ -99,6 +99,14 @@
   border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
   background: var(--bg);
 }
+/* 27/10-2026: en klikket `side-xxxx`-reference i markdown fremhæver sin række
+ * her. Rækken skal kunne FINDES i et panel med mange opgaver — derfor både
+ * farve og ramme, og fremhævningen falder selv tilbage efter ~2,4 s. */
+.sop-fremhaevet {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 /* De lukkede træder tilbage — de er spor, ikke opgaver. */
 .sop-completed, .sop-dismissed { opacity: 0.68; }
 .sop-top { display: flex; align-items: baseline; gap: 8px; }

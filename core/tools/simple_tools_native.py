@@ -2603,6 +2603,13 @@ def _exec_drive_search(args: dict[str, Any]) -> dict[str, Any]:
                         max_results=args.get("max_results", 10))
 
 
+def _exec_drive_download(args: dict[str, Any]) -> dict[str, Any]:
+    """Hent en Drive-fil til brugerens filmappe og returnér et link."""
+    from core.services.google_connector import drive_download
+    return drive_download(_operator_user_id(args), str(args.get("file_id") or "").strip(),
+                          export_as=str(args.get("export_as") or ""))
+
+
 def _exec_docs_read(args: dict[str, Any]) -> dict[str, Any]:
     """Læs tekst fra et Google Docs-dokument."""
     from core.services.google_connector import docs_read
@@ -2683,6 +2690,60 @@ def _exec_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
         }
     from core.services.google_connector import write_sheet
     return write_sheet(_operator_user_id(args), spreadsheet_id, cell_range, values)
+
+
+def _exec_docs_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret et Google-dokument — bag approval-kort."""
+    title = str(args.get("title") or "").strip()
+    text = str(args.get("text") or "")
+    if not title:
+        return {"status": "error", "error": "title_required"}
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "docs_create",
+            "message": f"Jarvis vil oprette et Google-dokument: \"{title}\".",
+            "command": f"Doc: {title}" + (f"\n\n{text[:200]}" if text else ""),
+        }
+    from core.services.google_connector import create_doc
+    return create_doc(_operator_user_id(args), title, text=text)
+
+
+def _exec_sheets_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret et Google-regneark — bag approval-kort."""
+    title = str(args.get("title") or "").strip()
+    values = args.get("values")
+    if not title:
+        return {"status": "error", "error": "title_required"}
+    if values is not None and not isinstance(values, list):
+        return {"status": "error", "error": "values_must_be_list"}
+    if not bool(args.get("_runtime_trust_all")):
+        antal = len(values) if isinstance(values, list) else 0
+        return {
+            "status": "approval_needed",
+            "tool_name": "sheets_create",
+            "message": f"Jarvis vil oprette et regneark: \"{title}\""
+                       + (f" med {antal} række(r)." if antal else "."),
+            "command": f"Sheet: {title}" + (f" · {antal} rækker" if antal else ""),
+        }
+    from core.services.google_connector import create_sheet
+    return create_sheet(_operator_user_id(args), title, values=values)
+
+
+def _exec_slides_create(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret en Google-præsentation — bag approval-kort."""
+    title = str(args.get("title") or "").strip()
+    if not title:
+        return {"status": "error", "error": "title_required"}
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "slides_create",
+            "message": f"Jarvis vil oprette en præsentation: \"{title}\".",
+            "command": f"Slides: {title}",
+        }
+    from core.services.google_connector import create_slides
+    return create_slides(_operator_user_id(args), title)
 
 
 def _exec_pdf_read(args: dict[str, Any]) -> dict[str, Any]:

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { AlertCircle, AppWindow, Download, ExternalLink, FileText, Loader2 } from 'lucide-react'
+import { useContext, useEffect, useState } from 'react'
+import { AlertCircle, AppWindow, Download, ExternalLink, Eye, FileText, Loader2 } from 'lucide-react'
 import { useSettings } from '../../hooks/useSettings'
+import { PanelContext } from '../../contexts/PanelContext'
 import { absolutApiUrl, downloadBlob, fetchBlobWithAuth, hentSigneretFilLink, type ApiConfig } from '../../lib/api'
 import { KlikbartBillede } from './BilledLightbox'
 import { prepareExternalWindow } from '../../lib/host'
@@ -100,6 +101,7 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
   imageClassName?: string
 }) {
   const { settings } = useSettings()
+  const panel = useContext(PanelContext)
   const config: ApiConfig | null = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     : null
@@ -211,6 +213,26 @@ export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
       {fejl ? <span className="fil-raekke-prik" aria-hidden="true" /> : null}
       {fejl ? <span className="fil-raekke-stoerrelse">kunne ikke hentes</span> : null}
       <span className="fil-raekke-handlinger">
+        {/* «Se» — fladen der manglede (27/10-2026). Kun når panelet findes i
+            træet: AttachmentBlock bruges også i tests og i mobil-lignende
+            sammenhænge uden PanelProvider, og et kast derfra ville vælte
+            hele tråden for én manglende kontekst. */}
+        {panel && adresse ? (
+          <button type="button"
+                  onClick={() => panel.openTarget({
+                    type: 'file',
+                    file: {
+                      navn,
+                      url: block.url,
+                      attachment_id: block.attachment_id,
+                      mime_type: block.mime_type,
+                      size_bytes: block.size_bytes,
+                    },
+                  })}
+                  title={`Se ${navn}`} aria-label={`Se ${navn}`}>
+            <Eye size={14} />
+          </button>
+        ) : null}
         {kanAabnes && kanAabneIJarvisBrowser ? (
           <button type="button" onClick={aabnIJarvisBrowser} disabled={henter}
                   title="Åbn i Jarvis' browser" aria-label="Åbn i Jarvis' browser">

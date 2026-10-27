@@ -397,3 +397,77 @@ def test_an_error_while_deciding_the_capability_pins_nothing(tl, monkeypatch):
                         lambda: (_ for _ in ()).throw(RuntimeError("boom")))
     assert tl.t_.contract_tool_names_advertised() == ()
     assert tl.t_.hidden_contract_tools() == tl.t_._NEW_ONLY
+
+
+def _session_med_ejer(session_id: str, owner: str) -> None:
+    """En chat-session som den SER UD i drift: titel/tidsstempler sat, intet workspace."""
+    from datetime import UTC, datetime
+
+    from core.runtime.db import connect
+    from core.services.chat_sessions import _sikr_flag_kolonner
+
+    now = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        _sikr_flag_kolonner(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO chat_sessions "
+            "(session_id, title, created_at, updated_at, owner_user_id) VALUES (?,?,?,?,?)",
+            (session_id, "vaekning", now, now, owner),
+        )
+        conn.commit()
+
+
+def test_agent_vaekning_uden_brugerkontekst_henter_ejeren_fra_sessionen(isolated_runtime, monkeypatch):
+    """Maalt 27/10-2026: en agent-vaekning har SESSION men ingen BRUGER.
+
+    `tool.invoked` paa vaeknings-turen bar `session_id=chat-8225d047...` og
+    `user_id=UKENDT`. `_guard` kraever begge ikke-tomme, saa `Task` svarede
+    `INVALID_SCOPE: ejer og session mangler` — en vaekning kunne ikke fortsaette
+    det arbejde den blev vakt for. Sessionens ejer er den autentificerede sandhed.
+    """
+    from core.identity import workspace_context as w
+    from core.tools import agent_contract_tools as t
+
+    monkeypatch.setattr(t, "_scoped_parent", lambda args: None)
+    tok = w.set_context(workspace_name="bjorn", user_id="")  # runtime-turen: ingen bruger
+    try:
+        _session_med_ejer("chat-vaekning", "1246415163603816499")
+        owner, session, run = t._principal(
+            {"_runtime_session_id": "chat-vaekning", "_runtime_turn_id": "run-1"})
+    finally:
+        w.reset_context(tok)
+
+    assert (owner, session, run) == ("1246415163603816499", "chat-vaekning", "run-1")
+
+
+def test_ukendt_session_gaetter_ikke_en_ejer(isolated_runtime, monkeypatch):
+    """En session der ikke findes maa ikke opfinde en ejer — gaten skal stadig lukke."""
+    from core.identity import workspace_context as w
+    from core.tools import agent_contract_tools as t
+
+    monkeypatch.setattr(t, "_scoped_parent", lambda args: None)
+    tok = w.set_context(workspace_name="bjorn", user_id="")
+    try:
+        owner, session, _ = t._principal({"_runtime_session_id": "findes-ikke"})
+        uden_session, _, _ = t._principal({})
+    finally:
+        w.reset_context(tok)
+
+    assert owner == "" and session == "findes-ikke"
+    assert uden_session == ""
+
+
+def test_brugerkonteksten_vinder_over_sessionen(isolated_runtime, monkeypatch):
+    """Middleware-saettet bruger er staerkere end et DB-opslag — backfill er kun et fald tilbage."""
+    from core.identity import workspace_context as w
+    from core.tools import agent_contract_tools as t
+
+    monkeypatch.setattr(t, "_scoped_parent", lambda args: None)
+    tok = w.set_context(workspace_name="bjorn", user_id="fra-middleware")
+    try:
+        _session_med_ejer("chat-vaekning", "en-helt-anden-ejer")
+        owner, _, _ = t._principal({"_runtime_session_id": "chat-vaekning"})
+    finally:
+        w.reset_context(tok)
+
+    assert owner == "fra-middleware"

@@ -82,25 +82,25 @@ _Agent runtime — shared foundation (imports, constants, role templates, helper
 |---|---|---|---|---|
 | function | `_facade` | `()` | Return the facade module so monkeypatch-through-facade is honored. | [src](../../../core/services/agent_runtime_base.py#L63) |
 | function | `_role_needs_tools` | `(role)` | — | [src](../../../core/services/agent_runtime_base.py#L86) |
-| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L121) |
-| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L136) |
-| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L156) |
-| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L200) |
-| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L280) |
-| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L324) |
-| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L327) |
-| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L338) |
-| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L353) |
-| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L356) |
-| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L377) |
-| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L380) |
-| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L389) |
-| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L405) |
-| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L443) |
-| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L610) |
-| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L669) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L808) |
-| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L812) |
+| function | `agent_tools_enabled` | `()` | Read the reversible ``agent_tools_enabled`` runtime-state flag. | [src](../../../core/services/agent_runtime_base.py#L141) |
+| function | `set_agent_tools_enabled` | `(enabled, *, role=…)` | Flip the ``agent_tools_enabled`` flag. Returns the CURRENT value. | [src](../../../core/services/agent_runtime_base.py#L156) |
+| function | `_build_agent_tools_payload` | `(allowed_tools, *, ceiling=…)` | Build an OpenAI-compat tools array from an agent's allowed_tools. | [src](../../../core/services/agent_runtime_base.py#L176) |
+| function | `_execute_agent_tool_call` | `(tool_call, *, agent_id)` | Execute one model-issued tool call through the guarded dispatcher. | [src](../../../core/services/agent_runtime_base.py#L220) |
+| function | `_run_agent_tool_loop` | `(*, agent, prompt, requires_tools, run_id=…, resume=…)` | Run an agent turn WITH a real tools array + tool-execution loop. | [src](../../../core/services/agent_runtime_base.py#L300) |
+| class | `_InProcessLoopIO` | `` | Loekkens I/O naar den koerer i serverprocessen (dagens adfaerd, uaendret). | [src](../../../core/services/agent_runtime_base.py#L344) |
+| method | `_InProcessLoopIO.__init__` | `(self, *, agent, run_id, resume=…)` | — | [src](../../../core/services/agent_runtime_base.py#L347) |
+| method | `_InProcessLoopIO.model` | `(self, *, messages, tools, requires_tools, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L358) |
+| method | `_InProcessLoopIO.run_id` | `(self)` | — | [src](../../../core/services/agent_runtime_base.py#L373) |
+| method | `_InProcessLoopIO.tool` | `(self, tc)` | — | [src](../../../core/services/agent_runtime_base.py#L376) |
+| method | `_InProcessLoopIO.after_tool` | `(self, tc, tool_out)` | — | [src](../../../core/services/agent_runtime_base.py#L397) |
+| method | `_InProcessLoopIO.after_round` | `(self, rounds, tool_calls)` | — | [src](../../../core/services/agent_runtime_base.py#L400) |
+| function | `_bogfoer_start` | `(agent, run_id, tc)` | Startposten for et vaerktoejskald (status ``running``, ``started_at`` sat, ingen ``finished_at``). | [src](../../../core/services/agent_runtime_base.py#L409) |
+| function | `_bogfoer_vaerktoejskald` | `(agent, run_id, tc, tool_out)` | BOGFOER KALDET (db + per-agent transcript). `agent_tool_calls` havde foer NUL kaldere: | [src](../../../core/services/agent_runtime_base.py#L425) |
+| function | `_loop_result` | `(o, *, scout, provider, model)` | — | [src](../../../core/services/agent_runtime_base.py#L463) |
+| function | `_role_prompt` | `(intro, *, tools=…, structured=…)` | Compose a role intro with the shared discipline blocks. ``tools`` adds the | [src](../../../core/services/agent_runtime_base.py#L630) |
+| function | `tools_for_policy` | `(policy)` | Concrete tool-name allowlist for a tool_policy. Unknown/empty → []. | [src](../../../core/services/agent_runtime_base.py#L689) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/agent_runtime_base.py#L828) |
+| function | `_json_loads` | `(raw, fallback)` | — | [src](../../../core/services/agent_runtime_base.py#L832) |
 
 ## `core/services/agent_runtime_council.py`
 _Agent runtime — council & swarm collective rounds._

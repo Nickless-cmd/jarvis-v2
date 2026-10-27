@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/hf_inference_tools.py`
+_Hugging Face Inference API tools — free-tier text-to-video + fallback image gen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hf_token` | `()` | Read HF token from runtime.json (never hardcoded). | [src](../../../core/tools/hf_inference_tools.py#L43) |
+| function | `_auth_headers` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L55) |
+| function | `_video_dir` | `()` | — | [src](../../../core/tools/hf_inference_tools.py#L66) |
+| function | `_safe_filename` | `(prompt, gen_id, ext)` | — | [src](../../../core/tools/hf_inference_tools.py#L71) |
+| function | `_write_sidecar` | `(path, metadata)` | — | [src](../../../core/tools/hf_inference_tools.py#L79) |
+| function | `generate_video` | `(*, prompt, model=…, num_frames=…, guidance_scale=…, negative_prompt=…, num_inference_steps=…, seed=…, save_dir=…)` | Generate a video via HF serverless inference API. | [src](../../../core/tools/hf_inference_tools.py#L88) |
+| function | `_exec_hf_text_to_video` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L221) |
+| function | `_read_audio_bytes` | `(source)` | Read audio from a local path or HTTP(S) URL. Returns raw bytes. | [src](../../../core/tools/hf_inference_tools.py#L283) |
+| function | `transcribe_audio` | `(*, audio_source, model=…, return_timestamps=…, language=…)` | Transcribe audio via HF Whisper. audio_source can be file path or URL. | [src](../../../core/tools/hf_inference_tools.py#L295) |
+| function | `_exec_hf_transcribe_audio` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L391) |
+| function | `semantic_similarity` | `(*, source, candidates, model=…)` | Compute cosine similarity between source and each candidate via HF. | [src](../../../core/tools/hf_inference_tools.py#L426) |
+| function | `_exec_hf_embed` | `(args)` | Semantic similarity via HF sentence-similarity pipeline. | [src](../../../core/tools/hf_inference_tools.py#L503) |
+| function | `zero_shot_classify` | `(*, text, labels, model=…, multi_label=…)` | Classify text against provided candidate labels via MNLI. | [src](../../../core/tools/hf_inference_tools.py#L552) |
+| function | `_exec_hf_zero_shot_classify` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L620) |
+| function | `_image_to_data_url` | `(source)` | Convert file path / URL / raw-bytes path to a data URL for VLM input. | [src](../../../core/tools/hf_inference_tools.py#L652) |
+| function | `vision_analyze` | `(*, image_source, prompt=…, model=…, max_tokens=…)` | Analyze an image via a vision-language model. image_source = path or URL. | [src](../../../core/tools/hf_inference_tools.py#L666) |
+| function | `_exec_hf_vision_analyze` | `(args)` | — | [src](../../../core/tools/hf_inference_tools.py#L729) |
+
 ## `core/tools/identity_pin_tools.py`
 _Identity-pinning — pin a snippet from chronicle/MILESTONES/letters as_
 
@@ -546,13 +569,4 @@ _Reasoning Store tools for Jarvis — Phase 1 Generalized Learning._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_recall_reasoning` | `(args)` | Retrieve stored reasoning conclusions, ranked by relevance. | [src](../../../core/tools/reasoning_store_tools.py#L19) |
-
-## `core/tools/recall_memory_tools.py`
-_Semantic recall tools — Jarvis-facing recall across all memory surfaces._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_excerpt_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L30) |
-| function | `_timestamp_for` | `(record, source_table)` | — | [src](../../../core/tools/recall_memory_tools.py#L44) |
-| function | `_exec_recall_memories` | `(args)` | — | [src](../../../core/tools/recall_memory_tools.py#L54) |
 

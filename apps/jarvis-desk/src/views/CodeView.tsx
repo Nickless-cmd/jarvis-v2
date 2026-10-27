@@ -52,6 +52,7 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
+import { useRefPanelLytting } from '../lib/refAabn'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, steerRun, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
@@ -568,6 +569,15 @@ export function CodeView({
       requestAnimationFrame(() => setHighlightPath(p))
     }
   }), [isOwner, canUseLocalWorkspace])
+
+  // 27/10-2026: et klik på en reference i markdown (`side-…`, `asg-…`,
+  // `run-…`) skal åbne det panel der viser den. Panelerne ejes af lokal state
+  // her, så de kan ikke åbnes udefra — visningen må selv lytte. Se
+  // lib/refAabn.ts (useRefPanelLytting), som ChatView bruger identisk.
+  const aabnSideOpgavePanel = useCallback(() => setSideOpgaveOpen(true), [setSideOpgaveOpen])
+  const aabnJobsPanel = useCallback(() => setJobsOpen(true), [setJobsOpen])
+  useRefPanelLytting({ sideopgave: aabnSideOpgavePanel, jobs: aabnJobsPanel })
+
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
 

@@ -190,4 +190,52 @@ def report_background_outcome(
     return result
 
 
-__all__ = ["report_background_outcome"]
+def report_background_recovered(*, source_kind: str, source_id: str) -> dict[str, Any]:
+    """Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben.
+
+    Hvorfor den findes (27/10-2026)
+    -------------------------------
+    `report_background_outcome` projicerer en FEJL til indbakken, men der
+    fandtes ingen vej tilbage. Målt: `central_hypothesis_sampler` overskred
+    75 s kl. 13:32, kørte derefter fint på 50 s og 32 s — og posten stod
+    stadig `aaben` kl. 15:30 og gatede indtil den blev lukket i hånden.
+
+    Det er samme fejlklasse som config-drift-flaget: en transient fejl bliver
+    permanent, fordi kun fejl-retningen er koblet på. En post der beskriver en
+    TILSTAND skal lukke sig selv når tilstanden er væk.
+
+    `meld_kilde_faerdig` er den rigtige vej, ikke en sletning: den nedgraderer
+    til `afsluttet_af_kilde` (beviset bevares), den frigiver gaten i samme
+    greb (`kraever_handling = 0`), og den rører ikke en post Bjørn allerede
+    har lukket som `done`. Findes posten ikke, læses den som `ukendt` — ingen
+    skrivning, ingen ny række.
+    """
+    kind_n = _token(source_kind, "background")
+    id_n = _token(source_id, "unknown")
+    owner = _owner_user_id()
+    if not owner:
+        return {"status": "partial", "inbox": "no-owner"}
+    inbox_id = f"background-{kind_n}-{id_n}"[:220]
+    existing = _existing_inbox(owner=owner, inbox_id=inbox_id)
+    if not existing:
+        return {"status": "ok", "inbox": "ingen-post"}
+    havde = str(existing.get("status") or "")
+    # Kun en AABEN post beskriver en tilstand der stadig gælder. `done` er
+    # Bjørns egen afgørelse, `afsluttet_af_kilde` er allerede lukket, og en
+    # `udloebet` post skal ikke genåbnes af en rutine der kørte.
+    if havde != "aaben":
+        return {"status": "ok", "inbox": "allerede-lukket", "havde": havde}
+    try:
+        from core.runtime.db_inbox import meld_kilde_faerdig
+
+        lukket = meld_kilde_faerdig(bruger_id=owner, kilde_id=inbox_id, exit_kode=0)
+    except Exception:  # en lukning der fejler må ikke vælte produceren
+        return {"status": "error", "inbox": "lukning-fejlede"}
+    return {
+        "status": "ok",
+        "inbox": str(lukket.get("status") or "error"),
+        "ny_status": str(lukket.get("ny_status") or ""),
+    }
+
+
+__all__ = ["report_background_outcome", "report_background_recovered"]

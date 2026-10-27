@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
-import { KODE_REPO, commitUrl, isCommitHref, linkifyRefs, referenceUrl } from './linkifyRefs'
+import {
+  KODE_REPO, commitUrl, isCommitHref, isSideOpgaveHref, linkifyRefs, referenceUrl,
+  sideOpgaveHref, sideOpgaveIdFromHref,
+} from './linkifyRefs'
 
 /** Kør den ægte kæde (parse + gfm + vores plugin) og returnér alle links.
  *  `parse()` kører KUN parseren — transformere skal køres med `runSync`,
@@ -82,5 +85,33 @@ describe('linkifyRefs — referencer bliver klikbare', () => {
 
   it('commitUrl peger på det repo git selv peger på', () => {
     expect(commitUrl('abc1234')).toBe(`https://github.com/${KODE_REPO}/commit/abc1234`)
+  })
+})
+
+describe('linkifyRefs — side-opgave-referencer', () => {
+  // 27/10-2026: agenten skrev `return \`#side-opgave=\`` og smed argumentet
+  // væk. Et link blev dannet, men id'et manglede, så isSideOpgaveHref afviste
+  // det og klikket gjorde ingenting. En test der kun tjekkede «der kom et
+  // link» var grøn hele tiden. Derfor tjekker disse id'et, ikke linket.
+  it('sideOpgaveHref bærer id\'et — det var den faktiske fejl', () => {
+    expect(sideOpgaveHref('side-4978e79e57')).toBe('#side-opgave=side-4978e79e57')
+  })
+
+  it('en side-opgave-reference bliver et link med id\'et intakt', () => {
+    expect(referenceUrl('side-4978e79e57')).toBe('#side-opgave=side-4978e79e57')
+    expect(links('Se `side-4978e79e57` her.')).toEqual(['#side-opgave=side-4978e79e57'])
+  })
+
+  it('isSideOpgaveHref og sideOpgaveIdFromHref læser samme form', () => {
+    const href = sideOpgaveHref('side-4978e79e57')
+    expect(isSideOpgaveHref(href)).toBe(true)
+    expect(sideOpgaveIdFromHref(href)).toBe('side-4978e79e57')
+  })
+
+  it('afviser id-format der ikke er en side-opgave', () => {
+    expect(isSideOpgaveHref('#side-opgave=')).toBe(false)
+    expect(sideOpgaveIdFromHref('#side-opgave=')).toBeNull()
+    expect(isSideOpgaveHref('#side-opgave=side-XYZ')).toBe(false)
+    expect(referenceUrl('side-')).toBeNull()
   })
 })

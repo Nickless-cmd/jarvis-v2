@@ -116,3 +116,36 @@ def test_ingen_besked_giver_tom_tekst(conn):
         "AGENT_FAILED",
         "model",
     )
+
+FULL_TEXT = (
+    "**Summary** — Jeg kunne verificere svar 3 med stor sikkerhed.\n\n"
+    "**Findings**\n"
+    "- Spørgsmål 3: Funktionen er defineret i agent_loop_core.py, linje 215.\n"
+    "- Spørgsmål 1: Kunne ikke verificere.\n"
+    "- Spørgsmål 2: Nåede ikke at finde en tabel-definition.\n\n"
+    "**Blockers** — Opbrugte tool-runder før spørgsmål 1 og 2 kunne verificeres.\n\n"
+    "DÆKNING: 3\n"
+)
+
+
+def test_markeringen_kommer_fra_failure_men_teksten_fra_result(conn):
+    """Markeringen er kort, teksten er lang — de bor i hver sin besked (27/10-2026).
+
+    MAALT 27/10-2026 paa `asg-8c08c689239f4ff8`: spawn klipper sin raise-besked
+    ved 350 tegn, saa `failure` bar markeringen OG en trunkeret kopi af teksten.
+    Da opslaget tog hele `failure`, blev `final.txt` 394 tegn hvor agentens svar
+    var 1575 — markeringen rigtig, 3/4 af teksten vaek.
+
+    Vagten er et PAR: markeringen skal med, OG den fulde tekst skal med. En
+    rettelse der kun redder den ene halvdel er netop den fejl den skal forhindre.
+    """
+    _besked(conn, "result", FULL_TEXT, "2026-10-27T05:00:00.001Z")
+    _besked(conn, "failure",
+            "Agent afsluttede uden et brugbart resultat: UFULDSTÆNDIG (2 spørgsmål "
+            "uden nummereret svar) — agentens tekst:\n**Summary** — Jeg kunne verificere",
+            "2026-10-27T05:00:00.002Z")
+    svar = _opslag(conn)
+    assert "UFULDSTÆNDIG (2 spørgsmål uden nummereret svar)" in svar, (
+        f"markeringen mangler: {svar[:200]!r}")
+    assert FULL_TEXT.strip() in svar, (
+        "den fulde tekst mangler — markeringen blev reddet, teksten tabt")

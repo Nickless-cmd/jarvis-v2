@@ -621,12 +621,32 @@ def latest_agent_reply(conn: Any, agent_id: str) -> str:
     ("UFULDSTÆNDIG (N …) — agentens tekst: …"), mens `result` kun baerer den raa
     tekst uden markering.
     """
-    row = conn.execute(
-        "SELECT content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
-        "AND kind IN ('result','failure','') "
-        "ORDER BY CASE WHEN kind='failure' THEN 0 ELSE 1 END, created_at DESC LIMIT 1",
-        (agent_id,)).fetchone()
-    return str(row["content"] or "") if row else ""
+    # 27/10-2026: `failure` er KORTET NED til 350 tegn i spawn (agent_runtime_spawn.py),
+    # saa agentens afsluttende linje — `DAEKNING: 1,2` — blev skaaret af. Maalt paa
+    # `asg-8c08c689239f4ff8`: den fulde `result`-besked gav 2 ubesvarede (det sande tal),
+    # mens den trunkerede `failure` gav 3 og slet ingen erklaering. Kontrakten blev derfor
+    # laest paa en tekst hvor dens egen noegle var fjernet.
+    #
+    # Raekkefoelgen er nu: den FULDE tekst foerst. `failure` bruges kun naar den baerer
+    # markeringen OG `result` ikke findes — ellers ville den trunkerede kopi vinde igen.
+    rows = conn.execute(
+        "SELECT kind, content FROM agent_messages WHERE agent_id=? AND direction='agent->jarvis' "
+        "AND kind IN ('result','failure','') ORDER BY created_at DESC",
+        (agent_id,)).fetchall()
+    if not rows:
+        return ""
+    full_result = ""
+    failure = ""
+    for r in rows:
+        body = str(r["content"] or "")
+        if r["kind"] == "result" and not full_result:
+            full_result = body
+        elif r["kind"] == "failure" and not failure:
+            failure = body
+    # Den fulde leverance vinder: den baerer agentens egne ord til sidst.
+    if full_result.strip():
+        return full_result
+    return failure
 
 
 def settle_agent_status(*, agent_id: str, registry_status: str) -> dict[str, Any] | None:

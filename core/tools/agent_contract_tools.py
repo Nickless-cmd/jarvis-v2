@@ -157,6 +157,43 @@ def hidden_contract_tools() -> frozenset[str]:
 
 # --- adaptere ----------------------------------------------------------------------
 
+def _ejer_fra_session(session: str) -> str:
+    """Sessionens registrerede ejer — naar ContextVar'en er tom.
+
+    27/10-2026: `current_user_id()` saettes i API'ets middleware, ikke i
+    runtime-turen. En agent-vaekning koerer i runtime-processen og har derfor
+    ingen brugerkontekst: maalt paa vaeknings-turen var `session_id` kendt
+    (`chat-8225d047...`) mens `user_id` var `UKENDT` i `tool.invoked`. `_guard`
+    kraever BEGGE ikke-tomme, saa hvert agent-vaerktoej — ogsaa `Task` — svarede
+    `INVALID_SCOPE: ejer og session mangler`, og en vaekning kunne ikke
+    fortsaette det arbejde den blev vakt for.
+
+    Sessionens ejer er den autentificerede sandhed: praecis samme praecedens som
+    `agent_task_facade._session_scope` (26/10-2026) og `_scoped_parent` her i
+    filen. Et model-suppleret argument kan ikke udpege en ejer — `session` kommer
+    fra `_runtime_session_id`, som runtime stamper.
+    """
+    if not session:
+        return ""
+    try:
+        from core.runtime.db import connect
+        from core.services.chat_sessions import _sikr_flag_kolonner
+
+        with connect() as conn:
+            # `owner_user_id` oprettes af `_sikr_flag_kolonner` — IKKE af
+            # `_ensure_chat_session_workspace_columns`, som kun kender de to
+            # workspace-kolonner. Uden det rigtige ensure-kald fejler SELECT'en
+            # paa en frisk DB, og saa faldt vi TAVST tilbage til tom ejer.
+            _sikr_flag_kolonner(conn)
+            row = conn.execute(
+                "SELECT owner_user_id FROM chat_sessions WHERE session_id=?",
+                (session,),
+            ).fetchone()
+    except Exception:  # DB utilgaengelig maa ikke goere vaerktoejet ubrugeligt
+        return ""
+    return str(row["owner_user_id"] or "").strip() if row else ""
+
+
 def _principal(args: dict[str, Any]) -> tuple[str, str, str]:
     """(ejer, session, parent-run). Ejeren er den autentificerede kontekst - IKKE et argument."""
     try:
@@ -171,8 +208,10 @@ def _principal(args: dict[str, Any]) -> tuple[str, str, str]:
     if scoped:
         owner = scoped[1]
         return (owner, scoped[2], scoped[3])
-    return (owner, str(args.get("_runtime_session_id") or "").strip(),
-            str(args.get("_runtime_turn_id") or "").strip())
+    session = str(args.get("_runtime_session_id") or "").strip()
+    if not owner:
+        owner = _ejer_fra_session(session)
+    return (owner, session, str(args.get("_runtime_turn_id") or "").strip())
 
 
 def _scoped_parent(args: dict[str, Any]) -> tuple[str, str, str, str] | None:

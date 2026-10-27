@@ -9,9 +9,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 from datetime import UTC, datetime, timedelta
 from typing import Any
+
+from core.runtime.config import PROJECT_ROOT
 
 
 _READ_TOOLS = (
@@ -48,10 +49,17 @@ def _session_scope(owner: str, session: str) -> tuple[str, str]:
     if owner and session_owner and session_owner != owner:
         raise ValueError("sessionen tilhoerer en anden ejer")
     kind, root = str(row["workspace_kind"] or ""), str(row["workspace_root"] or "")
+    # Task er med vilje den samme dispatch-flade i chat og code. En almindelig
+    # ejer-chat har intet klient-workspace, men Jarvis' eget server-repo er en
+    # runtime-kapabilitet og maa ikke derfor blive til et tomt mandat: det gav
+    # researcheren nul filvaerktoejer og afviste executoren. Et eksplicit
+    # session-workspace vinder stadig; fallbacken gaetter aldrig ud fra prompten.
+    if not kind and not root:
+        return "repo", str(PROJECT_ROOT)
     # Desk may store the server root by its stable UI name. Resolve only the
     # repository name here; runtime-state/user-workspace roots are not code repos.
     if root == "repo":
-        root = str(Path(__file__).resolve().parents[2])
+        root = str(PROJECT_ROOT)
     return kind, root
 
 

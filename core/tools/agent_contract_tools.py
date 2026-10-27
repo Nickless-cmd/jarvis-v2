@@ -55,7 +55,8 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "Delegate one bounded task. Runtime derives owner, parent, mandate, tools, target, "
         "workspace/sandbox, limits, idempotency, delivery contract and return address. The "
         "agent works freely inside that mechanical mandate. Use a writing subagent_type only "
-        "when the origin session has a repository workspace.",
+        "for repository work; owner chat sessions use Jarvis' server repository when no "
+        "explicit workspace is selected.",
         {"description": {"type": "string",
                          "description": "Short description of the usable deliverable."},
          "prompt": {"type": "string", "description": "Complete task instructions."},

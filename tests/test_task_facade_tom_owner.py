@@ -22,6 +22,7 @@ from contextlib import contextmanager
 import pytest
 
 from core.services.agent_task_facade import _session_scope
+from core.runtime.config import PROJECT_ROOT
 
 SESSION = "chat-test-session"
 EJER = "1246415163603816499"
@@ -107,3 +108,11 @@ def test_repo_alias_oploses(monkeypatch):
     with _patched(monkeypatch, [(SESSION, EJER, "workstation", "repo")]):
         _kind, root = _session_scope(EJER, SESSION)
     assert root.endswith("jarvis-v2")
+
+
+def test_ejerchat_uden_workspace_faar_jarvis_repoet(monkeypatch):
+    """Chat-mode maa kunne sende en rigtig repo-Task uden et mode-skift."""
+    with _patched(monkeypatch, [(SESSION, EJER, "", "")]):
+        kind, root = _session_scope(EJER, SESSION)
+    assert kind == "repo"
+    assert root == str(PROJECT_ROOT)

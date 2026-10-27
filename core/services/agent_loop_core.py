@@ -124,6 +124,16 @@ _QUESTION_RE = re.compile(
     r")"
 )
 _ANSWER_RE = re.compile(r"(?m)^\s*(\d+)\s*[.):]")
+#: 27/10-2026: en feltdeklaration ("goal: str", "`scope_files: tuple[str, ...]`") er
+#: INDHOLDET af et svar, ikke et svar paa et nummereret spoergsmaal. Maalt paa
+#: `asg-cb17dfab58834177`: agenten svarede kun paa spoergsmaal 1 med en nummereret
+#: liste over otte felter, og tallene 1-3 blev laest som svar paa spoergsmaal 1-3.
+#: Moensteret er snaevert: et bart navn efterfulgt af en PYTHON-TYPE. Prosa som
+#: "Fil: agent_loop_core.py:139" skal stadig taelle som et svar.
+_DECLARATION_RE = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*\s*:\s*"
+    r"(?:str|int|float|bool|bytes|dict|list|tuple|set|Any|None|Optional|Sequence|Mapping)\b"
+)
 
 
 def _question_numbers(prompt: str) -> set[int]:
@@ -135,6 +145,37 @@ def _question_numbers(prompt: str) -> set[int]:
             out.add(int(tal))
     return out
 
+
+def _answered_numbers(final_text: str, qs: set[int]) -> set[int]:
+    """Hvilke af opgavens spoergsmaalsnumre der faktisk er besvaret i resultatet.
+
+    27/10-2026: den foerste form talte ALLE nummererede linjer i resultatet som svar.
+    Maalt paa `asg-cb17dfab58834177`: agenten svarede kun paa spoergsmaal 1, men svaret
+    var en nummereret liste over otte felter ("1. goal", "2. scope_files", ...). De otte
+    tal blev laest som svar paa spoergsmaal 1-8, `qs - answered` blev tom, og en
+    HALV leverance blev meldt `completed` med tom `error_code`.
+
+    Reglen er derfor ikke "et tal ved linjestart" men "et tal der hoerer til opgaven":
+    kun numre der FINDES i opgaven taelles, og et nummer taeller kun naar linjen baerer
+    svar-indhold — ikke en tom nummerering og ikke en ren feltdeklaration.
+    """
+    out: set[int] = set()
+    for m in _ANSWER_RE.finditer(final_text or ""):
+        n = int(m.group(1))
+        if n not in qs:
+            continue
+        rest = (final_text[m.end():m.end() + 200].split("\n")[0] or "").strip()
+        if not rest:
+            continue
+        # En feltdeklaration er ikke et svar: "1. `goal: str`" og "1. goal: int" er
+        # indholdet AF et svar (en liste), ikke et svar paa et nummereret spoergsmaal.
+        # Reglen er snaever med vilje: kun et bart navn efterfulgt af en PYTHON-TYPE.
+        # "1. Fil: agent_loop_core.py:139" er prosa og skal stadig taelle — derfor
+        # matcher vi typenavnet, ikke bare "navn: noget".
+        if _DECLARATION_RE.match(rest.strip("`")):
+            continue
+        out.add(n)
+    return out
 
 def _unanswered_questions(prompt: str, final_text: str) -> int:
     """Antal nummererede spoergsmaal i opgaven uden et NUMMERERET svar i resultatet.
@@ -151,7 +192,7 @@ def _unanswered_questions(prompt: str, final_text: str) -> int:
     qs = _question_numbers(prompt)
     if len(qs) < 2:
         return 0
-    answered = {int(m.group(1)) for m in _ANSWER_RE.finditer(final_text or "")}
+    answered = _answered_numbers(final_text or "", qs)
     return len(qs - answered)
 
 

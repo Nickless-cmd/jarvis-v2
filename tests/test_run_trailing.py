@@ -252,11 +252,11 @@ def test_budgetvarslet_er_ogsaa_en_RAADGIVNING():
     assert "_tur_hale.tilfoej_runde(_varsel)" in kilde
 
 
-def test_de_fem_gater_er_FORPLIGTELSER():
+def test_de_fire_halegater_er_FORPLIGTELSER():
     """De skal kunne kraeve deres runde. Ligger de i `runde`, ryddes de ved
     runde-START — foer de blev sendt."""
     kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
-    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 5
+    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 4
 
 
 # ── Kilde-vagt: gaterne maa ikke falde tilbage til «resten af turen» ────────
@@ -269,9 +269,10 @@ def test_gaterne_bruger_naeste_ikke_vedvarende():
     kilde = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
     assert "_tur_hale.tilfoej_vedvarende(" not in kilde, (
         "en gate i loekken er faldet tilbage til «resten af turen»")
-    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 5, (
-        "de fem gates (hollow-promise, skill, baggrunds-shell, stop-hook, "
-        "stillingtagen) skal alle bruge `naeste`")
+    assert kilde.count("_tur_hale.tilfoej_naeste(") >= 4, (
+        "de fire halegates (hollow-promise, baggrunds-shell, stop-hook, "
+        "stillingtagen) skal alle bruge `naeste`; skill-gaten skriver bevidst "
+        "ikke længere i turens hale")
 
 
 def test_vedvarende_staar_FOERST_fordi_de_er_aeldst():

@@ -454,6 +454,32 @@ def _pin_deployment_env_for_tests(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_workspace_context_between_tests():
+    """Ingen test må arve en tidligere tests bruger-/session-identitet.
+
+    ``workspace_context`` er proces-global ContextVar-state og modulet reloades
+    desuden af ``isolated_runtime``. En token fra før reload kan derfor ikke
+    nulstille det nye modul. Vi binder den neutrale kontekst ved start og
+    rydder igen på det modul, der faktisk er levende ved teardown.
+    """
+    import core.identity.workspace_context as wsctx
+
+    token = wsctx.set_context(workspace_name="bjorn")
+    try:
+        yield
+    finally:
+        current = sys.modules.get("core.identity.workspace_context")
+        if current is wsctx:
+            try:
+                wsctx.reset_context(token)
+                return
+            except (RuntimeError, ValueError):
+                pass
+        if current is not None and hasattr(current, "set_context"):
+            current.set_context(workspace_name="bjorn")
+
+
+@pytest.fixture(autouse=True)
 def _guard_prod_db_path(request, monkeypatch):
     """Sikkerhedsnet: INGEN test må skrive i den ægte ~/.jarvis-v2/state/jarvis.db."""
     if request.node.get_closest_marker("real_db") is not None:

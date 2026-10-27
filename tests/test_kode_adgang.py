@@ -28,5 +28,15 @@ def test_slukket_regel_rører_ikke_registret(monkeypatch):
     assert ka.kode_tilladt() is True
 
 
+def test_internt_kald_roerer_ikke_et_utilgaengeligt_register(monkeypatch):
+    monkeypatch.setattr(wc, "current_user_id", lambda: "")
+
+    def boom():
+        raise RuntimeError("stale test-database")
+
+    monkeypatch.setattr(dd, "kraev_aktivt", boom)
+    assert ka.kode_tilladt() is True
+
+
 def test_forklaringen_siger_hvor_man_tilfoejer_enheden():
     assert "Enheder" in ka.KODE_NAEGTET and "totrinskode" in ka.KODE_NAEGTET

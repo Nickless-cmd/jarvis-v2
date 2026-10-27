@@ -22,7 +22,7 @@ def test_build_blocks_orders_text_and_tools():
 
 def test_build_blocks_text_only_no_tools():
     blocks = _build_turn_blocks(text="bare svar", tool_calls=[], tool_results=[])
-    assert blocks == [{"type": "text", "text": "bare svar"}]
+    assert blocks == [{"type": "text", "text": "bare svar", "phase": "final_answer"}]
 
 
 def test_build_blocks_tool_without_result_still_emits_tool_use():

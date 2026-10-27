@@ -1,6 +1,8 @@
 """Integration-tests for owner-only user-admin routes (spec 2026-06-15 §4/§6)."""
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 
@@ -61,9 +63,18 @@ def test_register_then_login_flow(isolated_runtime, monkeypatch) -> None:
     captured = {}
     monkeypatch.setattr(email_verify, "_send_mail",
                         lambda a: captured.update(a) or {"success": True})
+    monkeypatch.setattr(
+        "core.identity.users.find_user_by_discord_id",
+        lambda uid: SimpleNamespace(
+            discord_id=uid, role="owner", workspace="bjorn", name="Owner",
+        ),
+    )
+    _owner, owner_token = _owner_token(isolated_runtime)
+    headers = {"Authorization": f"Bearer {owner_token}"}
     c = _client(isolated_runtime)
 
-    r = c.post("/api/auth/register", json={"email": "flow@b.dk", "name": "Flow", "password": "pw123456"})
+    r = c.post("/api/auth/register", headers=headers,
+               json={"email": "flow@b.dk", "name": "Flow", "password": "pw123456"})
     assert r.status_code == 200, r.text
     assert r.json()["email_verified"] is False
 
@@ -94,7 +105,17 @@ def test_login_wrong_password_401(isolated_runtime, monkeypatch) -> None:
 def test_register_duplicate_email_409(isolated_runtime, monkeypatch) -> None:
     from core.identity import email_verify
     monkeypatch.setattr(email_verify, "_send_mail", lambda a: {"success": True})
+    monkeypatch.setattr(
+        "core.identity.users.find_user_by_discord_id",
+        lambda uid: SimpleNamespace(
+            discord_id=uid, role="owner", workspace="bjorn", name="Owner",
+        ),
+    )
+    _owner, owner_token = _owner_token(isolated_runtime)
+    headers = {"Authorization": f"Bearer {owner_token}"}
     c = _client(isolated_runtime)
-    c.post("/api/auth/register", json={"email": "d@b.dk", "name": "A", "password": "pw123456"})
-    r = c.post("/api/auth/register", json={"email": "d@b.dk", "name": "B", "password": "pw123456"})
+    c.post("/api/auth/register", headers=headers,
+           json={"email": "d@b.dk", "name": "A", "password": "pw123456"})
+    r = c.post("/api/auth/register", headers=headers,
+               json={"email": "d@b.dk", "name": "B", "password": "pw123456"})
     assert r.status_code == 409

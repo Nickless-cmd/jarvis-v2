@@ -394,7 +394,7 @@ def _nedluknings_blok() -> str:
     return "\n".join(t[s:e + 1])
 
 
-def test_alle_31_nedluknings_trin_er_stadig_med():
+def test_alle_37_nedluknings_trin_er_stadig_med():
     """Vagt mod at et trin falder ud under en oprydning.
 
     Blokken havde 29 kald foer omskrivningen (15 uden vaern, 14 i
@@ -406,12 +406,13 @@ def test_alle_31_nedluknings_trin_er_stadig_med():
     ejerskab og rejser gatewayen igen midt i en afslutning. Selve raekkefoelgen
     er pinnet i test_discord_gateway_supervisor.py; her taelles kun at trinnet
     ikke forsvinder igen. 12/10-2026: routine-runtime blev det 31. trin.
+    27/10-2026: seks senere runtime-services bringer totalen til 37.
     Tallet skal KUN haeves sammen med et nyt trin man bevidst har tilfoejet.
     """
     import re
     navne = re.findall(r'\("(stop_\w+|write_inheritance_seed)"', _nedluknings_blok())
-    assert len(navne) == 31, f"nedlukningen har {len(navne)} trin, forventede 31"
-    assert len(set(navne)) == 31, "et trin staar to gange"
+    assert len(navne) == 37, f"nedlukningen har {len(navne)} trin, forventede 37"
+    assert len(set(navne)) == 37, "et trin staar to gange"
 
 
 def test_ingen_UBESKYTTEDE_stop_kald_er_kommet_tilbage():

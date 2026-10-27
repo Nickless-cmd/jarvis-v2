@@ -116,6 +116,7 @@ def test_exec_stien_bruger_ankeret():
     import ast
     import pathlib
     kilde = pathlib.Path("core/services/visible_tool_exec.py").read_text()
-    assert "user_present=_bruger_til_stede(run)" in kilde, \
-        "exec-stien bruger stadig stedfortraederen"
+    assert "_tilstede = _bruger_til_stede(run)" in kilde
+    assert "user_present=_tilstede" in kilde, \
+        "exec-stien sender ikke det målte tilstedeværelsesanker videre"
     assert "user_present=not run.autonomous" not in kilde

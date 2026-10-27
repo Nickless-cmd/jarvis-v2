@@ -13,7 +13,8 @@ def test_both_tiers_define_commentary_and_final_answer_lanes():
         text = _output_discipline_instruction(strength=strength)
         assert "Call the first tool BEFORE writing prose" in text
         assert "between tool rounds is commentary" in text
-        assert "terminal, tool-free response is the final answer" in text
+        assert "terminal, tool-free response completes the current turn" in text
+        assert "final answer" in text
 
 
 def test_strong_gets_conciseness_weak_does_not():

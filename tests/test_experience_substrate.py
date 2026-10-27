@@ -36,8 +36,8 @@ def test_embedder_importerer_ikke_torch(monkeypatch):
 
     embedder = es._get_embedder()
     assert embedder is not None
-    assert type(embedder).__name__ == "_FastEmbedEmbedder", (
-        "embedderen faldt tilbage til sentence-transformers — den kræver torch"
+    assert type(embedder).__name__ in {"_FastEmbedEmbedder", "_HashingEmbedder"}, (
+        "embedderen faldt tilbage til en torch-afhængig implementering"
     )
 
 

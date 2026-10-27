@@ -1,8 +1,8 @@
 """Tests for core.tools.simple_tools_definitions — tool-schema-integritet.
 
-Fokus: master-listen TOOL_DEFINITIONS er velformet, og det klient-lokale
-`task`/explore-subagent-schema (Path B) er til stede og korrekt formet, så
-serveren kan annoncere det til modellen i jarvis-code.
+Fokus: master-listen TOOL_DEFINITIONS er velformet, og agent-kontraktens
+`Task`-schema er til stede og korrekt formet, så serveren kan annoncere det
+samme værktøj, som runtime faktisk har en handler til.
 """
 from __future__ import annotations
 
@@ -31,20 +31,21 @@ class TestSchemaIntegrity:
 
 
 class TestTaskSubagentSchema:
-    """`task` = nested subagent / explore, forwardet klient-lokalt i Path B."""
+    """`Task` = den runtime-håndterede agentkontrakt."""
 
     def test_task_definition_present(self):
-        assert "task" in _by_name(), "task-schema mangler → jarvis-code får intet explore-tool"
+        assert "Task" in _by_name(), "Task-schema mangler → modellen kan ikke delegere"
 
     def test_task_schema_shape(self):
-        fn = _by_name()["task"]["function"]
+        fn = _by_name()["Task"]["function"]
         params = fn["parameters"]
         props = params.get("properties") or {}
-        # Matcher klientens jarvis-code/src/tools.py-kontrakt
-        assert set(params.get("required") or []) == {"description", "prompt"}
+        assert set(params.get("required") or []) == {
+            "description", "prompt", "subagent_type",
+        }
         for key in ("description", "prompt", "subagent_type"):
-            assert key in props, f"task-param {key!r} mangler"
-        assert "subagent" in fn["description"].lower()
+            assert key in props, f"Task-param {key!r} mangler"
+        assert "delegate" in fn["description"].lower()
 
 
 # ── Ensretning af det flettede array (6/9-2026) ──────────────────────────

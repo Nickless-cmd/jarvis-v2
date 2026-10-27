@@ -150,30 +150,44 @@ def test_krypteret_medlems_samtale_aabner_ikke_saettet(monkeypatch):
 
 
 @pytest.mark.real_db
-@pytest.mark.parametrize(
-    "sid",
-    [
-        # Ægte rækker målt 19/10-2026 mod den levende base.
-        "chat-e82192b29646453aaf688e2043e43d89",   # hans egen app-samtale
-        "chat-19d9fc4151b346e",                    # enc:v1: — medlems-session
-        "auto-recurring-20261019",                 # autonom silo
-        "chat-findes-ikke-1234567890",             # findes ikke
-    ],
-)
-def test_kanal_beviset_mod_den_aegte_base(sid):
+def test_kanal_beviset_mod_den_aegte_base():
     """Klassifikationen selv — målt mod den levende DB, ikke en shield-fil.
 
     `real_db` er nødvendig: uden den peger `_guard_prod_db_path` på en tom
     DB, `SELECT title` finder intet, og ALLE cases ville svare False — også
     hans egen samtale. Så var testen grøn af den forkerte grund.
-    """
-    from core.identity.owner_resolver import is_owner_app_session
 
-    svar = is_owner_app_session(sid)
-    if sid == "chat-e82192b29646453aaf688e2043e43d89":
-        assert svar is True, "hans egen app-samtale skal bevises"
-    else:
-        assert svar is False, f"{sid} må ikke åbne sættet"
+    En bestemt sessions-id er ikke varig testdata: samtaler kan slettes. Find
+    derfor den seneste levende app-session, som har ejerens beskeder og ingen
+    andres, og mål klassifikationen mod den. De fail-closed grene bruger
+    stabile syntetiske id'er; de skal være falske, også når rækkerne mangler.
+    """
+    from core.identity.owner_resolver import is_owner_app_session, owner_user_id
+    from core.runtime.db import connect
+
+    ejer = owner_user_id()
+    with connect() as conn:
+        kandidater = conn.execute(
+            "SELECT s.session_id FROM chat_sessions s "
+            "JOIN chat_messages m ON m.session_id = s.session_id "
+            "WHERE s.session_id LIKE 'chat-%' "
+            "AND COALESCE(s.title, '') NOT LIKE 'enc:v1:%' "
+            "GROUP BY s.session_id "
+            "HAVING SUM(CASE WHEN m.user_id = ? THEN 1 ELSE 0 END) > 0 "
+            "AND SUM(CASE WHEN COALESCE(m.user_id, '') <> '' "
+            "AND m.user_id <> ? THEN 1 ELSE 0 END) = 0 "
+            "ORDER BY MAX(m.created_at) DESC",
+            (ejer, ejer),
+        ).fetchall()
+
+    beviste = [str(row[0]) for row in kandidater if is_owner_app_session(row[0])]
+    assert beviste, "den levende base skal indeholde mindst én bevist ejersamtale"
+
+    for sid in (
+        "auto-recurring-test",
+        "chat-findes-ikke-1234567890",
+    ):
+        assert is_owner_app_session(sid) is False, f"{sid} må ikke åbne sættet"
 
 
 def test_presence_kaaster_aldrig(monkeypatch):
@@ -239,9 +253,9 @@ def test_hans_egen_app_samtale_er_stadig_tilstedevaerelse(monkeypatch):
 def test_en_ekstern_kanal_aabner_ikke_saettet(monkeypatch):
     """Kontrakten målt på politikken, ikke kun på hjælpefunktionen.
 
-    Måler de værktøjer der KUN kommer fra tilstedeværelse. `bash` er bevidst
-    ikke med: `wakeup`-origin har den allerede i `ORIGIN_TOOLS`, så den siger
-    intet om hvorvidt kanalen åbnede sættet.
+    Måler de værktøjer der KUN kommer fra tilstedeværelse. `bash` og
+    `web_search` er bevidst ikke med: `wakeup`-origin har dem allerede i
+    `ORIGIN_TOOLS`, så de siger intet om hvorvidt kanalen åbnede sættet.
     """
     from core.tools.autonomous_tool_policy import is_allowed, presence_for_run
 
@@ -259,7 +273,7 @@ def test_en_ekstern_kanal_aabner_ikke_saettet(monkeypatch):
     set_run_identity("visible-test", "wakeup")
     tok_p = set_user_present(False)
     try:
-        for navn in ("operator_bash", "write_file", "web_search", "notify_user"):
+        for navn in ("operator_bash", "write_file", "notify_user"):
             assert is_allowed(navn) is False, navn
     finally:
         reset_user_present(tok_p)
@@ -287,14 +301,16 @@ def test_en_brækket_kanal_klassifikation_lukker(monkeypatch):
 
 
 def test_autonom_uden_tilstedevaerelse_er_stadig_spaerret():
-    """Regressionen der ikke må ske: baggrunds-runs må ikke få sættet."""
+    """Baggrunds-runs må kun få deres delegerede origin-sæt."""
     from core.tools.autonomous_tool_policy import is_allowed
 
     tok_a = set_autonomous(True)
     set_run_identity("visible-test", "inbox")
     tok_p = set_user_present(False)
     try:
-        for navn in ("web_search", "write_file", "notify_user", "bash", "dispatch_agent"):
+        # `inbox` har udtrykkeligt fået bash/web_search; de tre her kræver
+        # stadig tilstedeværelse og beviser derfor, at hele sættet er lukket.
+        for navn in ("write_file", "notify_user", "dispatch_agent"):
             assert is_allowed(navn) is False, navn
     finally:
         reset_user_present(tok_p)
@@ -346,8 +362,10 @@ def test_kataloget_foelger_tilstedevaerelsen():
     finally:
         reset_autonomous(tok_a)
 
-    assert "web_search" not in uden
-    assert "web_search" in med
+    # `inbox` har sit eget smalle sæt med web_search. `write_file` kommer
+    # derimod kun fra den beviste tilstedeværelse og måler katalog-gaten.
+    assert "write_file" not in uden
+    assert "write_file" in med
     assert len(med) > len(uden)
 
 

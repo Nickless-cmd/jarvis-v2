@@ -105,7 +105,11 @@ def test_payloaden_baerer_aarsag_antal_og_tekst():
     payload = str(res.get("result") or "")
     assert "UFULDSTÆNDIG" in payload, "markeringen mangler"
     assert "rundebudgettet løb ud" in payload, f"aarsagen mangler i payloaden: {payload[:200]!r}"
-    assert "3 spørgsmål uden nummereret svar" in payload, (
+    # 27/10-2026: formen er nu ÉT tal med kvalifikationen i parentes. Foer stod
+    # det samme tal to gange med to forskellige ord («1 spørgsmål stadig
+    # ubesvarede …; 1 spørgsmål uden nummereret svar»), og den anden paastod en
+    # fejl der ikke fandtes. Kravet er uaendret: tallet skal staa der, aerligt.
+    assert "3 spørgsmål stadig ubesvarede" in payload, (
         f"antallet mangler i payloaden: {payload[:200]!r}"
     )
     assert "5 properties" in payload, (

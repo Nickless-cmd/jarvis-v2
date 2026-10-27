@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-27 — 513 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-27 — 514 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -116,6 +116,7 @@
 | `docs_append` | native | no |
 | `docs_read` | native | no |
 | `docx_create` | native | no |
+| `drive_download` | native | no |
 | `drive_search` | native | no |
 | `edit_file` | native | no |
 | `edit_task` | native | no |

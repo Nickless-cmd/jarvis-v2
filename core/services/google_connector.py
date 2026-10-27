@@ -52,6 +52,28 @@ GOOGLE_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "drive_download",
+            "description": (
+                "Hent en fil fra brugerens Google Drive ned på maskinen og få et download-link. "
+                "Google Docs/Sheets/Slides eksporteres automatisk til .docx/.xlsx/.pptx. "
+                "Brug file_id fra drive_search. Kræver forbundet Drive."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_id": {"type": "string", "description": "Drive-filens id (fra drive_search)"},
+                    "export_as": {
+                        "type": "string",
+                        "description": "Valgfri: 'pdf', 'docx', 'xlsx' eller 'pptx' — tvinger format for Google-native filer",
+                    },
+                },
+                "required": ["file_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "docs_read",
             "description": (
                 "Læs tekstindholdet af et Google Docs-dokument via dets document_id "
@@ -209,7 +231,7 @@ def _send(user_id: str, method: str, url: str, *, json_body: dict | None = None,
 def _clamp(n, lo: int, hi: int, default: int) -> int:
     try:
         return max(lo, min(hi, int(n)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # uden tal → standardvaerdien; en ugyldig graense er ikke en haendelse
         return default
 
 
@@ -254,6 +276,123 @@ def drive_search(user_id: str, *, query: str = "", max_results: int = 10) -> dic
         for f in (res["data"].get("files") or [])
     ]
     return {"status": "ok", "files": files, "count": len(files)}
+
+
+#: Google-native filer kan ikke hentes som bytes — de skal EKSPORTERES til et
+#: rigtigt format. Uden denne tabel ville `drive_download` på en Docs give
+#: `drive_http_400` og se ud som en fejl i forbindelsen.
+_EXPORT_AS: dict[str, tuple[str, str]] = {
+    "application/vnd.google-apps.document": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
+    "application/vnd.google-apps.spreadsheet": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+    "application/vnd.google-apps.presentation": (
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
+    "application/vnd.google-apps.drawing": ("image/png", ".png"),
+}
+
+
+def drive_download(user_id: str, file_id: str, *, export_as: str = "") -> dict:
+    """Hent en Drive-fil ned til brugerens EGEN filmappe og returnér et link.
+
+    Hvorfor den gemmer i stedet for at returnere bytes
+    -------------------------------------------------
+    Et værktøjssvar er tekst. En PDF på 61 kB som base64 er 82 kB tekst i
+    prompten — det æder konteksten og kan ikke bruges til noget. Filen lægges
+    derfor i brugerens isolerede mappe (samme som `publish_file`) og svaret
+    bærer et download-link. Det gør den samtidig synlig i desk som et
+    fil-kort, fordi klienten kender `/files/…`-formen.
+
+    Google-native filer (Docs/Sheets/Slides) har ingen bytes — de eksporteres
+    til .docx/.xlsx/.pptx. `export_as` kan tvinge et andet format, fx
+    `"pdf"` for alle tre.
+    """
+    fid = (file_id or "").strip()
+    if not fid:
+        return {"status": "error", "error": "file_id mangler"}
+
+    meta = _get(user_id, f"https://www.googleapis.com/drive/v3/files/{fid}",
+                {"fields": "id,name,mimeType,size", "supportsAllDrives": "true"},
+                "drive")
+    if meta["status"] != "ok":
+        return meta
+    data = meta.get("data") or {}
+    navn = str(data.get("name") or fid).strip()
+    mime = str(data.get("mimeType") or "")
+
+    token = get_fresh_token(user_id, _PROVIDER)
+    if not token or not token.get("access_token"):
+        return {"status": "error", "error": "drive_not_connected"}
+
+    valg = (export_as or "").strip().lower()
+    if mime in _EXPORT_AS:
+        ud_mime, endelse = _EXPORT_AS[mime]
+        if valg == "pdf":
+            ud_mime, endelse = "application/pdf", ".pdf"
+        elif valg in ("docx", "xlsx", "pptx"):
+            for m, (mm, ee) in _EXPORT_AS.items():
+                if ee == "." + valg:
+                    ud_mime, endelse = mm, ee
+                    break
+        url = f"https://www.googleapis.com/drive/v3/files/{fid}/export"
+        params = {"mimeType": ud_mime}
+    else:
+        ud_mime, endelse = mime or "application/octet-stream", ""
+        # En Drive-fil kan hedde «brev» uden endelse. Så kan modtageren ikke
+        # åbne den, uanset at indholdet er en fuldgyldig PDF. Endelsen udledes
+        # derfor af mime-typen når navnet ikke selv bærer den.
+        if mime:
+            import mimetypes
+            gæt = mimetypes.guess_extension(mime.split(";")[0].strip()) or ""
+            if gæt == ".jpe":
+                gæt = ".jpg"
+            endelse = gæt
+        url = f"https://www.googleapis.com/drive/v3/files/{fid}"
+        params = {"alt": "media", "supportsAllDrives": "true"}
+
+    try:
+        import httpx
+        r = httpx.get(url, headers={"Authorization": f"Bearer {token['access_token']}"},
+                      params=params, timeout=60, follow_redirects=True)
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"drive_request_failed: {e}"}
+    if r.status_code == 401:
+        return {"status": "error", "error": "drive_not_connected"}
+    if r.status_code == 403:
+        return {"status": "error", "error": "drive_scope_missing"}
+    if r.status_code != 200:
+        return {"status": "error", "error": f"drive_http_{r.status_code}"}
+
+    # Endelsen følger INDHOLDET, ikke filnavnet: en Docs der eksporteres til
+    # docx skal heddde .docx, ellers kan modtageren ikke åbne den.
+    rent = navn if endelse and navn.lower().endswith(endelse) else f"{navn}{endelse}"
+    from core.runtime.workspace_paths import NoUserContextError, published_file_path
+    try:
+        dest = published_file_path(rent, opret_mappe=True)
+    except NoUserContextError:  # fail-closed: uden bruger maa filen ikke havne i en faelles mappe
+        return {"status": "error", "error": "ingen bruger i konteksten — filen blev ikke hentet"}
+    except ValueError as exc:  # et ugyldigt filnavn er kalderens fejl, ikke en haendelse
+        return {"status": "error", "error": str(exc)}
+    try:
+        dest.write_bytes(r.content)
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "error": str(exc)}
+
+    try:
+        from core.runtime.secrets import read_runtime_key
+        base = str(read_runtime_key("public_base_url", "JARVIS_PUBLIC_BASE_URL") or "").strip()
+    except Exception:
+        base = ""
+    base = (base or "http://localhost:8080").rstrip("/")
+    return {
+        "status": "ok",
+        "filename": dest.name,
+        "url": f"{base}/files/{dest.name}",
+        "mime_type": ud_mime,
+        "size_bytes": len(r.content),
+        "source_id": fid,
+        "exported_from": mime if mime in _EXPORT_AS else "",
+    }
 
 
 def _doc_text(content: list) -> str:

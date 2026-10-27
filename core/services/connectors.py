@@ -94,7 +94,7 @@ _CATALOG: list[dict] = [
     {
         "id": "google-drive", "name": "Google Drive", "kind": "oauth", "provider": "google",
         # Vaerktoejer denne connector laaser op. Se docstringen oeverst.
-        "tools": ["drive_search"],
+        "tools": ["drive_search", "drive_download"],
         "category": "Google", "icon": "hard-drive", "status": "available",
         "desc": "Søg og læs filer",
         "scopes": ["drive.readonly"],

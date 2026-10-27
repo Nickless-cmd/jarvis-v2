@@ -1266,6 +1266,36 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .artifact-body > * { max-width: 760px; margin-left: auto; margin-right: auto; }
 .artifact-body { font-size: 14.5px; line-height: 1.7; color: var(--fg-1); }
 .artifact-body h1 { font-size: 24px; font-weight: 600; margin: 28px 0 12px; line-height: 1.3; }
+
+/* ── Fil-preview (27/10-2026) ─────────────────────────────────────────────
+   Panelet kan nu vise en fil, ikke kun et download-kort. Fladen fylder
+   ruden: en PDF der er 400px høj midt i et 1000px-panel ser ud som en fejl. */
+.fil-preview-flade { display: flex; flex-direction: column; padding: 0; }
+.fil-preview-flade > * { max-width: none; margin: 0; }
+.fil-preview-billede { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.fil-preview-video { width: 100%; height: auto; display: block; background: #000; }
+.fil-preview-pdf iframe { width: 100%; height: 100%; min-height: 70vh; border: 0; display: block; background: #fff; }
+.fil-preview-tekst { padding: 0; }
+.fil-preview-tekst pre {
+  max-width: none; margin: 0; padding: 16px 20px;
+  font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px;
+  line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+}
+.fil-preview-meta {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; color: var(--fg-2); padding: 48px 24px;
+}
+.fil-preview-meta > * { max-width: none; }
+.fil-preview-navn { font-size: 14px; font-weight: 600; color: var(--fg-1); word-break: break-word; }
+.fil-preview-linje { font-size: 12.5px; color: var(--fg-3); }
+.fil-preview-note { margin-top: 6px; max-width: 34ch; }
+.fil-preview-hent {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--fg-1);
+  font-size: 12.5px;
+}
+.fil-preview-hent:hover { background: var(--hover, rgba(255,255,255,0.05)); }
 .artifact-body h2 { font-size: 19px; font-weight: 600; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .artifact-body h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
 .artifact-body h4 { font-size: 14.5px; font-weight: 600; margin: 16px 0 6px; color: var(--fg-2); }

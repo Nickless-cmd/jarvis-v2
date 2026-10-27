@@ -2603,6 +2603,13 @@ def _exec_drive_search(args: dict[str, Any]) -> dict[str, Any]:
                         max_results=args.get("max_results", 10))
 
 
+def _exec_drive_download(args: dict[str, Any]) -> dict[str, Any]:
+    """Hent en Drive-fil til brugerens filmappe og returnér et link."""
+    from core.services.google_connector import drive_download
+    return drive_download(_operator_user_id(args), str(args.get("file_id") or "").strip(),
+                          export_as=str(args.get("export_as") or ""))
+
+
 def _exec_docs_read(args: dict[str, Any]) -> dict[str, Any]:
     """Læs tekst fra et Google Docs-dokument."""
     from core.services.google_connector import docs_read

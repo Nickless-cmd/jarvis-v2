@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9385/17701 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9387/17703 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9385/17701 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 852 | 1561 | 54% |
-| `core.services` | 6255 | 12034 | 51% |
+| `core.services` | 6256 | 12035 | 51% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 133 | 208 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 579 | 1129 | 51% |
+| `core.tools` | 580 | 1130 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1304,11 +1304,11 @@ Generated from source. 9385/17701 functions/methods documented (53%). The list b
 - `core/services/goal_signal_tracking.py` :: `refresh_runtime_goal_signal_statuses` (L64)
 - `core/services/goal_signal_tracking.py` :: `track_runtime_goal_signals_for_visible_turn` (L23)
 - `core/services/good_enough_gate.py` :: `evaluate_good_enough` (L57)
-- `core/services/google_connector.py` :: `docs_read` (L272)
-- `core/services/google_connector.py` :: `drive_search` (L237)
-- `core/services/google_connector.py` :: `list_events` (L216)
-- `core/services/google_connector.py` :: `sheets_read` (L283)
-- `core/services/google_connector.py` :: `slides_read` (L311)
+- `core/services/google_connector.py` :: `docs_read` (L411)
+- `core/services/google_connector.py` :: `drive_search` (L259)
+- `core/services/google_connector.py` :: `list_events` (L238)
+- `core/services/google_connector.py` :: `sheets_read` (L422)
+- `core/services/google_connector.py` :: `slides_read` (L450)
 - `core/services/google_login.py` :: `is_login_state` (L70)
 - `core/services/gratitude_tracker.py` :: `build_gratitude_surface` (L59)
 - `core/services/gratitude_tracker.py` :: `detect_gratitude_from_interaction` (L44)

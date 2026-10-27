@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.tools.copilot_tool_pruning import select_tools_for_visible
+from core.tools.copilot_tool_pruning import VISIBLE_MAX_TOOLS, select_tools_for_visible
 from core.tools.simple_tools import execute_tool, get_tool_definitions
 
 
@@ -12,7 +12,7 @@ def test_visible_tool_pool_is_small_and_has_lazy_loader():
     selected = select_tools_for_visible(get_tool_definitions(), user_message="hej")
     names = [_tool_name(item) for item in selected]
 
-    assert len(names) <= 48
+    assert len(names) <= VISIBLE_MAX_TOOLS
     assert "load_more_tools" in names
     assert {"read_file", "write_file", "edit_file", "bash", "search"}.issubset(names)
 
@@ -38,7 +38,7 @@ def test_visible_tool_pool_keeps_catalog_order_for_deepseek_cache():
     # med vilje INGEN executor og staar derfor ikke i kataloget (se
     # core/tools/kaldt_vaerktoej.py: «den findes kun som et navn»). Den er en
     # TRANSPORT, ikke et katalog-vaerktoej — saa den kan ikke slaas op i
-    # original_order. Maalt: den ER med i puljen (48 valgt), den kommer bare
+    # original_order. Maalt: den ER med i puljen, den kommer bare
     # ikke fra kataloget. Undtag praecis den ene, og kraev at intet ANDET
     # dukker op udefra.
     uden_for_katalog = {n for n in selected if n not in original_order}

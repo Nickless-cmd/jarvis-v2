@@ -35,8 +35,10 @@ def _navn(t: dict) -> str:
 
 
 @pytest.fixture
-def katalog():
+def katalog(isolated_runtime):
+    from core.services.agent_contract_service import set_capability
     from core.tools.simple_tools import get_tool_definitions
+    set_capability(True, role="owner")
     return get_tool_definitions()
 
 
@@ -159,10 +161,9 @@ def test_kappen_holder_stadig(katalog):
 
 
 def test_de_faste_vaerktoejer_overlever_stadig(katalog):
-    """`load_more_tools` og `explore` var der før. En ny betinget regel må ikke
-    have skubbet dem ud — det var netop sådan `explore` forsvandt 6/9."""
+    """Schema-loaderen og kontraktens Task skal begge overleve den synlige kappe."""
     ud = {_navn(t) for t in p.select_tools_for_visible(katalog, user_message="hjaelp mig med excel")}
-    for navn in ("load_more_tools", "scout_agent", "dispatch_code_mode_task"):
+    for navn in ("load_more_tools", "Task", "wait_agents"):
         assert navn in ud, navn
 
 
@@ -199,7 +200,11 @@ def test_den_tidlige_udgang_faestner_ogsaa(katalog):
     # mistede sit eget regnestykke da sættet voksede. Bindes loftet til begge
     # lister, måler den igen præcis det den hedder: at den TIDLIGE udgang
     # fæstner.
-    lille = len(set(p.REQUIRED_LAZY_TOOL_NAMES) | set(p.SAFETY_FLOOR)) + 1
+    lille = len(
+        set(p.REQUIRED_LAZY_TOOL_NAMES)
+        | set(p.SAFETY_FLOOR)
+        | set(p.agent_contract_pinned())
+    ) + 1
     ud = p.select_tools_for_copilot(
         katalog, user_message="hjaelp mig med excel", max_tools=lille, stable_only=True)
     assert "skill_invoke" in {_navn(t) for t in ud}

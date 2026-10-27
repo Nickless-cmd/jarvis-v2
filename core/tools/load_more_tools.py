@@ -27,6 +27,9 @@ def _tool_load_more_tools(arguments: dict) -> dict:
         for d in (TOOL_DEFINITIONS or [])
         if _tool_name(d)
     }
+    from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
+    all_by_name = {name: definition for name, definition in all_by_name.items()
+                   if name not in RETIRED_AGENT_CREATION_TOOLS}
     from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
     all_by_name = {name: definition for name, definition in all_by_name.items()
                    if _autonomous_allowed(name)}

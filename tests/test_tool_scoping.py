@@ -71,7 +71,8 @@ class TestNonChatScope:
 
     def test_owner_unrestricted(self):
         allow = allowed_tool_names(role="owner", scope="", all_names=ALL)
-        assert allow == set(ALL)
+        from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
+        assert allow == set(ALL) - RETIRED_AGENT_CREATION_TOOLS
 
     def test_member_unbounded_is_fail_closed_cowork(self):
         # KONSOLIDERET (Fase 4.1): member uden scope → fail-closed til cowork-sættet
@@ -139,11 +140,11 @@ class TestCodeScope:
         "dispatch_to_claude_code", "web_search", "godnat_unrelated",
     ]
 
-    def test_owner_code_gets_container_workstation_dispatch(self):
+    def test_owner_code_gets_container_workstation_and_task(self):
         allow = allowed_tool_names(role="owner", scope="code", all_names=self.CODE_ALL)
         assert {"read_file", "write_file", "edit_file", "bash", "search", "find_files"} <= allow
         assert {"operator_read_file", "operator_write_file", "operator_bash"} <= allow
-        assert "dispatch_to_claude_code" in allow
+        assert "dispatch_to_claude_code" not in allow
 
     def test_member_code_operator_plus_scoped_files_no_server_shell(self):
         # KONSOLIDERET (Fase 4.1, matrixen): member code = operator_* (egen maskine)
@@ -167,7 +168,7 @@ def test_is_local_execution_tool() -> None:
     from core.tools.tool_scoping import is_local_execution_tool
     assert is_local_execution_tool("operator_bash") is True
     assert is_local_execution_tool("operator_read_file") is True
-    assert is_local_execution_tool("dispatch_to_claude_code") is True
+    assert is_local_execution_tool("dispatch_to_claude_code") is False
     assert is_local_execution_tool("web_search") is False
     assert is_local_execution_tool("") is False
 
@@ -264,8 +265,8 @@ class TestLocalExecOnlyTools:
         finally:
             ts._local_exec_var.reset(tok)
 
-    def test_owner_code_local_exec_gets_task(self):
-        assert self._has_task("owner", "code", True) is True
+    def test_owner_code_local_exec_does_not_get_legacy_lowercase_task(self):
+        assert self._has_task("owner", "code", True) is False
 
     def test_owner_code_without_local_exec_no_task(self):
         # desk/container code-mode: ingen klient at forwarde til → task skjult
@@ -282,9 +283,9 @@ class TestLocalExecOnlyTools:
         # subagent-dispatch er owner-only
         assert self._has_task("member", "code", True) is False
 
-    def test_task_is_local_execution_tool(self):
+    def test_legacy_lowercase_task_is_not_local_execution_tool(self):
         from core.tools.tool_scoping import is_local_execution_tool
-        assert is_local_execution_tool("task") is True
+        assert is_local_execution_tool("task") is False
 
 
 # ── Scope-listen er den ægte port, 06-09-2026 ───────────────────────────────
@@ -306,11 +307,15 @@ class TestNyeVaerktoejerErSynlige:
         finally:
             set_tool_scope(foer or "")
 
-    def test_scout_agent_er_i_BEGGE_modes(self):
-        """Læse-kun undersøgelse ændrer intet og sparer den kontekst en manuel
-        gennemlæsning ville koste — den hører hjemme begge steder."""
-        assert "scout_agent" in self._navne("code")
-        assert "scout_agent" in self._navne("chat")
+    def test_task_er_den_eneste_agentoprettelse_i_begge_modes(self, isolated_runtime):
+        from core.services.agent_contract_service import set_capability
+        set_capability(True, role="owner")
+        gamle = {"scout_agent", "spawn_agent_task", "dispatch_code_mode_task",
+                 "dispatch_to_claude_code", "task"}
+        for scope in ("code", "chat"):
+            navne = self._navne(scope)
+            assert "Task" in navne
+            assert not (gamle & navne)
 
     def test_de_nye_operator_vaerktoejer_er_i_code_mode(self):
         navne = self._navne("code")
@@ -326,23 +331,31 @@ class TestNyeVaerktoejerErSynlige:
             assert t in navne
 
 
-def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_helt_vaek():
-    """Bjørn 17/9-2026: explore omdøbt til scout_agent. 18/10-2026: «explore
-    toolet er afskaffet.. du har din agent dispatch og scouts».
-
-    Aliaset blev fjernet HELT, ikke bare skjult bag definitionerne: et navn uden
-    definition kan modellen alligevel ikke kalde, så det var kun død vægt i
-    handler-kortet — og det lod et afskaffet værktøj se levende ud for enhver
-    der læste kortet. Undersøgelse sker nu via `scout_agent` og `dispatch_agent`.
-    """
-    from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
+def test_task_er_den_eneste_agentoprettelse_i_den_faste_flade(isolated_runtime):
+    """Kontraktens Task er eneste modelvendte oprettelsesvej i alle scopes."""
+    from core.services.agent_contract_service import set_capability
+    set_capability(True, role="owner")
     import core.tools.simple_tools as st
     navne = {t["function"]["name"] for t in st.get_tool_definitions()}
-    assert "scout_agent" in navne
-    assert "explore" not in navne, "explore er afskaffet og maa ikke annonceres"
-    assert "explore" not in st._TOOL_HANDLERS, "explore-aliaset skal vaere fjernet"
-    assert "scout_agent" in REQUIRED_LAZY_TOOL_NAMES
-    assert "dispatch_code_mode_task" in REQUIRED_LAZY_TOOL_NAMES
+    assert "Task" in navne
+    assert not ({"explore", "scout_agent", "spawn_agent_task",
+                 "dispatch_code_mode_task", "dispatch_to_claude_code", "task"} & navne)
+
+
+def test_legacy_agentoprettelse_afvises_ogsaa_for_owner():
+    from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS, is_tool_allowed
+    for navn in RETIRED_AGENT_CREATION_TOOLS:
+        assert is_tool_allowed(role="owner", scope="", name=navn) is False
+
+
+def test_load_more_tools_kan_ikke_genoplive_legacy_agentoprettelse(isolated_runtime):
+    from core.tools.load_more_tools import _tool_load_more_tools
+    from core.tools.tool_scoping import RETIRED_AGENT_CREATION_TOOLS
+
+    for navn in RETIRED_AGENT_CREATION_TOOLS:
+        out = _tool_load_more_tools({"names": [navn]})
+        assert out["status"] == "error"
+        assert navn not in out.get("added", [])
 
 
 def test_chat_scope_beholder_find_vejen_til_det_lange_toolkatalog():

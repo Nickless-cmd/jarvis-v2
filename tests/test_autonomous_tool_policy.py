@@ -59,17 +59,20 @@ def test_autonomous_executor_blocks_direct_and_wrapped_agent_calls(monkeypatch):
         reset_autonomous(token)
 
 
-def test_visible_run_keeps_agent_tools():
+def test_visible_run_keeps_only_contract_agent_creation(isolated_runtime):
     from core.tools.simple_tools import get_tool_definitions
+    from core.services.agent_contract_service import set_capability
 
+    set_capability(True, role="owner")
     token = set_autonomous(False)
     try:
         names = {d["function"]["name"] for d in get_tool_definitions(role="owner", scope="")}
     finally:
         reset_autonomous(token)
 
-    assert "scout_agent" in names
-    assert "dispatch_code_mode_task" in names
+    assert "Task" in names
+    assert not ({"scout_agent", "spawn_agent_task", "dispatch_code_mode_task",
+                 "dispatch_to_claude_code", "task"} & names)
 
 
 def test_owner_permission_check_cannot_bypass_autonomous_policy():

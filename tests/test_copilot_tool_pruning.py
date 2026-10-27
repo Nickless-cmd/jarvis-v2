@@ -46,8 +46,17 @@ def test_visible_set_is_deterministic_across_messages():
     )
     # Byte-identical selection regardless of (keyword-heavy) message → cacheable.
     assert _names(a) == _names(b)
-    # Den synlige bane har sit eget loft (48), ikke det generelle 128.
+    # Den synlige bane har sit eget lille loft, ikke det generelle 128.
     assert len(a) == ctp.VISIBLE_MAX_TOOLS
+
+
+def test_visible_cap_can_hold_every_required_tool_when_task_is_enabled():
+    required = (
+        set(ctp.REQUIRED_LAZY_TOOL_NAMES)
+        | set(ctp.SAFETY_FLOOR)
+        | set(ctp.agent_contract_pinned())
+    )
+    assert len(required) < ctp.VISIBLE_MAX_TOOLS
 
 
 def test_stable_only_ignores_user_message():
@@ -58,7 +67,7 @@ def test_stable_only_ignores_user_message():
 
 
 def test_pinned_tools_survive_the_cap():
-    """Tier 1 er 107 navne og kappen 48 — de kan ikke alle overleve.
+    """Tier 1 er stoerre end den synlige kappe — navnene kan ikke alle overleve.
 
     Foer 6/9-2026 paastod denne test det modsatte og havde vaeret roed siden
     kappen blev sat ned 4/9. Det der FAKTISK skal garanteres er de pinnede:
@@ -205,21 +214,24 @@ def test_gulvet_har_ÉN_kilde():
 #
 # Bjoern 30/9: «den hedder scout idag» og «scout skal vaere i kataloget».
 
-def test_scout_er_i_kataloget():
-    """Bjoerns krav, og det han faktisk bruger. Faldt den ud af inventaret,
-    ville han igen kun kunne se det han ikke bruger."""
-    from core.services.tool_catalog import build_catalog_text
+def test_task_er_i_kataloget_uden_legacy_spawnere(isolated_runtime):
+    from core.services.agent_contract_service import set_capability
+    from core.services.tool_catalog import build_catalog_text, invalidate_cache
 
-    assert "scout_agent" in build_catalog_text()
+    set_capability(True, role="owner")
+    invalidate_cache()
+    tekst = build_catalog_text()
+    assert "Task" in tekst
+    assert "scout_agent" not in tekst
+    assert "spawn_agent_task" not in tekst
+    assert "dispatch_code_mode_task" not in tekst
 
 
 def test_spawn_agent_task_er_ude_af_det_faste_array():
-    """Det dyreste enkeltvaerktoej med nul kald. Den kan stadig naas — den
-    staar i kataloget og hentes med load_more_tools + call_loaded_tool."""
+    """Legacy-spawneren er hverken pinnet eller synlig i kataloget."""
     import core.tools.copilot_tool_pruning as ctp
     from core.services.tool_catalog import build_catalog_text
 
     assert "spawn_agent_task" not in ctp.REQUIRED_LAZY_TOOL_NAMES
     assert "spawn_agent_task" not in ctp.SAFETY_FLOOR
-    # men den skal stadig kunne FINDES, ellers er evnen vaek og ikke bare flyttet
-    assert "spawn_agent_task" in build_catalog_text()
+    assert "spawn_agent_task" not in build_catalog_text()

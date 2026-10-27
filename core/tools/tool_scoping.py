@@ -24,6 +24,18 @@ from typing import Any, Iterable, Iterator
 
 logger = logging.getLogger(__name__)
 
+# Agent-contract-v1 har EN modelvendt oprettelsesvej: ``Task``. De gamle navne
+# bliver ikke blot skjult fra en bestemt mode; de traekkes fra alle scopes og
+# afvises i eksekveringsporten. Dermed kan load_more_tools, en gammel session-
+# laas eller samtalehistorik ikke genoplive en parallel agent-livscyklus.
+RETIRED_AGENT_CREATION_TOOLS: frozenset[str] = frozenset({
+    "scout_agent",
+    "spawn_agent_task",
+    "dispatch_code_mode_task",
+    "dispatch_to_claude_code",
+    "task",
+})
+
 _PERSONAL_CONTEXT_RE = re.compile(
     r"\b(min|mit|mine|vores|jarvis|workspace|memory|hukommelse|huske|aftalt|"
     r"besluttet|my|our|remember|decided)\b",
@@ -72,10 +84,8 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "approve_proposal",
     # Agent dispatch + scheduling control
     "dispatch_cancel",
-    "dispatch_code_mode_task",
     "dispatch_due_wakeups",
     "dispatch_status",
-    "dispatch_to_claude_code",
     "cancel_agent",
     # agent-contract-v1: owner-only indtil flerbrugerpiloten (spec 12.4) - andre brugeres
     # agenter kraever den proevede ejer-/rutegraense foer deres modeller faar vaerktoejet.
@@ -124,14 +134,11 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # kunne han ikke se hvad der blokerer. `inbox_done`/`inbox_drop` er de
     # eneste to veje en blokerende post frigives.
     "inbox", "inbox_done", "inbox_drop",
-    # Undersoegelse — laese-kun agent, aendrer intet. Det gamle navn `explore` er
-    # afskaffet 18/10-2026 og staar her ikke laengere.
-    "scout_agent",
-    # Kode-flåden i den faste flade også i chat (Bjørn 17/9-2026: «lad ham få
-    # det i sit fast toolset så ser vi»). Står i OWNER_ONLY_TOOLS, så member og
-    # guest får den strippet — den hører ikke i OWNER_EXTRA, der kun må være
-    # læse-værktøjer.
-    "dispatch_code_mode_task",
+    # Agent-contract-v1: samme Task-vej i chat og code. Runtime udleder selv
+    # read-only researcher vs. worktree-executor fra subagent_type.
+    "Task", "wait_agents", "list_agents", "send_message_to_agent",
+    "followup_agent", "interrupt_agent", "close_agent", "review_agent_work",
+    "convene_agent_council", "integrate_agent_work",
     # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
     # her — men uden for scope kunne han slet ikke aabne den.
     "operator_channel",
@@ -251,9 +258,10 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # reelt ikke for modellen.
     "operator_multi_edit",
     "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
-    # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
-    # sparer den kontekst en manuel gennemlaesning ville koste.
-    "scout_agent",
+    # Samme kontraktvej som chat: ingen separat scout- eller kode-dispatcher.
+    "Task", "wait_agents", "list_agents", "send_message_to_agent",
+    "followup_agent", "interrupt_agent", "close_agent", "review_agent_work",
+    "convene_agent_council", "integrate_agent_work",
     # Repo-dokumentation (23/10-2026). Hoerer netop her: en kode-opgave er dér
     # man har brug for at laese hvad der ER skrevet om systemet. (Bemaerk at
     # `recall` selv ikke staar i denne liste — memory-soegning er i dag kun
@@ -275,7 +283,6 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",
     "flag_side_task", "activate_side_task", "dismiss_side_task", "list_side_tasks",
     "snooze_side_task", "wake_side_task",
-    "dispatch_to_claude_code", "dispatch_code_mode_task",
     # Owner-only operator backup-channel (jarvis-code bash reroute). Deliberately
     # NOT in the member/guest base scope — a non-owner must never get the
     # dialog-free operator reroute.
@@ -287,7 +294,7 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 # task_tool). Modsat bash/operator_* (der også har en server/bro-executor) må disse
 # ALDRIG annonceres uden for et local_tool_exec-run — ellers kunne modellen kalde et
 # værktøj serveren ikke kan udføre. Annoncering gates på current_local_exec() nedenfor.
-LOCAL_EXEC_ONLY_TOOLS: frozenset[str] = frozenset({"task"})
+LOCAL_EXEC_ONLY_TOOLS: frozenset[str] = frozenset()
 
 # Computer-use: mus, tastatur, skaermbillede, OCR (21/9-2026).
 #
@@ -587,6 +594,7 @@ def allowed_tool_names(
     if not current_local_exec():
         result = result - LOCAL_EXEC_ONLY_TOOLS
 
+    result -= RETIRED_AGENT_CREATION_TOOLS
     result = _apply_computer_use_policy(result)
     from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
     return {name for name in result if _autonomous_allowed(name)}
@@ -626,6 +634,8 @@ def is_tool_allowed(*, role: str, scope: str, name: str) -> bool:
     kører uden bundet non-owner-rolle. Non-owner → `allowed_tool_names` (som er
     permission_engine + computer-use-policy → samme sandhed som model-filteret).
     """
+    if name in RETIRED_AGENT_CREATION_TOOLS:
+        return False
     from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed
     if not _autonomous_allowed(name):
         return False

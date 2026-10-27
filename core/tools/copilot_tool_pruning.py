@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 MAX_TOOLS = 128
-VISIBLE_MAX_TOOLS = 48
+VISIBLE_MAX_TOOLS = 56
 # Vaerktoejer der ALTID skal overleve kappen. `load_more_tools` er halen ind til
 # de rare; de oevrige er tilfoejet 6/9-2026 efter en maaling: i cowork-scope er
-# kataloget 452 og kappen 48, og Tier 1 (107 navne) har INGEN intern prioritet —
+# kataloget 452 og den daværende kappe 48, og Tier 1 (107 navne) har INGEN intern prioritet —
 # den trunkeres i ankomstraekkefoelge. Derfor faldt netop de vaerktoejer ud som
 # prompten og kataloget ellers peger paa. `explore` er det tydeligste tilfaelde:
 # scope tillod det, kataloget naevnte det, prompten anbefalede det — og pruneren
@@ -38,7 +38,7 @@ VISIBLE_MAX_TOOLS = 48
 #: Vaerktoejer hvis FRAVAER er en adfaerdsregression, ikke en latens-optimering:
 #: tab af stemme, af godkendelsesvej, af hukommelse. Listen stod foer KUN i
 #: `scripts/regenerate_tier1.py` og blev unioneret ind i `TIER_1_ALWAYS_ON` ved
-#: regenerering — men Tier 1 er 118 navne mod et loft paa 48 og trunkeres i
+#: regenerering — men Tier 1 er 118 navne mod et mindre synligt loft og trunkeres i
 #: ankomstraekkefoelge, saa gulvet var et krav ingen haandhaevede.
 #:
 #: Maalt 30/9-2026: 7 af de 28 registrerede gulv-navne blev IKKE sendt, heriblandt
@@ -124,31 +124,6 @@ REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     # praefikset hver gang en besked krydser taersklen anderledes end den
     # forrige. Derfor: fast.
     "skill_invoke",
-    "scout_agent",
-    # `spawn_agent_task` FJERNET 30/9-2026 (Bjoern: «den hedder scout idag»).
-    #
-    # Den var det dyreste enkeltvaerktoej i arrayet — 2.510 tegn, ~581 tokens
-    # i HVER prompt — og den blev pinnet ind her fordi kataloget og prompten
-    # pegede paa den, samme grund som `explore`.
-    #
-    # 23/9-2026 blev den ogsaa sat i INVENTARET, netop fordi han greb
-    # `scout_agent` «fordi det var den han kunne SE». Det indgreb er nu maalt,
-    # en uge efter:
-    #
-    #     scout_agent        35 kald (15 af dem siden 23/9)
-    #     spawn_agent_task    0 kald — ingen taelling overhovedet i 30 dage
-    #
-    # Indgrebet virkede ikke. Han bruger scout, og scout BLIVER i inventaret
-    # (verificeret i det byggede katalog, og en vagt holder det fast). Den
-    # fjernede kan stadig naas: den staar i kataloget, hentes med
-    # `load_more_tools` og kaldes med `call_loaded_tool` — hvilket er praecis
-    # den vej de to mekanismer findes til.
-    #
-    # Samme spoergsmaal staar aabent for `dispatch_code_mode_task`, som ogsaa
-    # har nul kald. Den roeres ikke her: kode-flaaden er Bjoerns beslutning.
-    # Fast i hans flade (Bjørn 17/9-2026): kode-flåden. Jarvis: «de er ikke i min
-    # standard-værktøjsflade, så jeg griber dem ikke af mig selv».
-    "dispatch_code_mode_task",
     "read_attachment",
     "recall_memories",
     # Uden den kan han ikke AABNE kanalen til sin egen maskine — og saa er alt
@@ -258,7 +233,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "recall_memories", "recall_sensory_memories", "schedule_self_wakeup", "schedule_task",
     "search", "search_chat_history", "search_memory", "search_sessions",
     "semantic_search_code", "send_discord_dm", "send_ntfy", "send_webchat_message",
-    "service_status", "smart_outline", "spawn_agent_task", "todo_update_status",
+    "service_status", "smart_outline", "todo_update_status",
     "trigger_heartbeat_tick", "verify_file_contains", "web_fetch", "web_scrape",
     "web_search", "wolfram_query", "write_file",
 })
@@ -267,7 +242,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
 TIER_2_COMFORT_DEFAULTS: tuple[str, ...] = (
     "discord_status", "send_discord_dm", "send_telegram_message", "send_mail",
     "home_assistant", "list_events", "create_event",
-    "spawn_agent_task", "list_agents",
+    "Task", "list_agents", "wait_agents",
 )
 
 
@@ -327,7 +302,7 @@ TIER_2_CATEGORIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     ),
     "agents": (
         ("agent", "sub-agent", "subagent", "delegate", "spawn", "council"),
-        ("spawn_agent_task", "send_message_to_agent", "list_agents",
+        ("Task", "send_message_to_agent", "list_agents", "wait_agents",
          "relay_to_agent", "cancel_agent"),
     ),
     "daemon_control": (
@@ -618,6 +593,9 @@ def select_tools_for_visible(
         cap, while still leaving keyword-routed headroom.
       - 48 (2026-09-04) — CC-style small native pool. Rare tools are reached
         through load_more_tools, which is pinned into the cap.
+      - 56 (2026-10-27) — the Task contract adds eleven fixed lifecycle tools.
+        Together with the lazy-tool and safety floors they occupy 55 unique
+        slots, so 48 silently evicted required tools. One routing slot remains.
     """
     # Dispatcheren laegges i INPUT, ikke oven paa resultatet: saa gaelder
     # loftet, pin-logikken og `REQUIRED_LAZY_TOOL_NAMES` for den som for

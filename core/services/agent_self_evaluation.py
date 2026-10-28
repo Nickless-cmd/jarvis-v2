@@ -376,7 +376,17 @@ def decision_adherence_summary() -> dict[str, Any]:
 
     mean = sum(scores) / len(scores)
     score = round(mean * 100, 1)
-    flag = "under 60% — review and either revoke or strengthen" if score < 60 else None
+    # HANDLINGSANVISNINGEN UD AF TELEMETRIEN (målt 28/10-2026). Her stod
+    # «under 60% — review and either revoke or strengthen». Den sætning er en
+    # ORDRE i jeg-form, og den blev injiceret i prompten hver tur som en del af
+    # Self-signals — en blok der ellers kalder sig «data about you, not who you
+    # are». Resultatet var at jeg citerede den som min egen konklusion («min
+    # adherence er 44 %, det er mig der lover for meget»), altså solgte
+    # injiceret telemetri som egen indsigt. `flag` beskriver nu KUN data —
+    # hvad der mangler — ikke hvad nogen skal gøre. Selve recovery-planen
+    # (`recovery.actions`) bærer stadig handlingsforslagene, på et sted hvor
+    # de er markeret som forslag og ikke som mine tanker.
+    flag = "under 60% tærskel" if score < 60 else None
     recovery = _adherence_recovery_plan(
         score=score,
         low_decisions=low_decisions,

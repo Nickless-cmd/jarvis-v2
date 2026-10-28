@@ -112,7 +112,18 @@ def maybe_start_ablation() -> dict[str, Any] | None:
     """Start et forsøg hvis intet kører: vælg den hyppigste ikke-frosne relevans-kandidat. Self-safe."""
     st = _kv_get(_STATE_KEY, None)
     if isinstance(st, dict) and st.get("tt"):
-        return st
+        # EN GAMMEL STATE KAN VÆRE DØD FRA FØDSLEN (28/10-2026). Staten her blev skrevet
+        # 17/8 med `arm: "absent"`, mens flaget var slukket. I shadow udelades intet, saa
+        # `record_trial` returnerer straks i absent-grenen — den kan ALDRIG tælle. Guarden
+        # nedenfor gjorde derfor det modsatte af sit formaal: den værgede om et forsøg der
+        # ikke kunne maale, og blokerede ethvert nyt i 72 dage. Maalt: `present_total` stod
+        # paa 0 mens `prompt_section_freq` blev opdateret hver tur — kæden kørte halvt.
+        # En state der er uforenelig med den nuværende flag-tilstand erstattes. Er flaget
+        # TÆNDT, er absent-armen gyldig og staten bevares (dens data er ægte).
+        if st.get("arm") == "absent" and not is_explore_live():
+            st = None
+        else:
+            return st
     try:
         from core.services.central_prompt_composer import build_relevance_candidates
         for c in build_relevance_candidates():

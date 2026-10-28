@@ -147,6 +147,11 @@ RELATION_OPERATORS = {
     "prediction_error": "!",       # sekvens-modellen blev overrasket (Tråd 4)
 }
 
+# Operatorer der er UNÆRE i lexikonet — de står som præfiks på ét led, ikke som infiks
+# mellem to. `central_notation.parse()` kender kun `!` som præfiks (`!term` → saliens-form),
+# så en infiks-form kan den ikke læse. Se `render_relation` for den fulde begrundelse.
+_UNARY_OPERATORS = frozenset({"!"})
+
 _SCHEMA_READY = False
 
 
@@ -230,6 +235,23 @@ def render_relation(x_name: str, y_name: str, *, relation: str = "causal_converg
     op = RELATION_OPERATORS.get(relation, "→")
     if not tx or not ty:
         return None
+    if op in _UNARY_OPERATORS:
+        # `!` er UNÆR i lexikonet — PRIMITIVES-eksemplerne er `!grænse`, `!nysgerrighed`,
+        # `!signal ⊂ nu`. Som infiks giver den `x ! y`, som `central_notation.parse()`
+        # ikke kan læse: parse() kender kun `!` som PRÆFIKS.
+        #
+        # Målt 28/10-2026: 75.877 rækker i `central_hypotheses` bar netop den infiks-form
+        # (`puls ! krop` m.fl., 10 unikke), og 97 % af Centralens notationer var derfor
+        # blinde for inferensen. Det var ikke parseren der var for snæver — det var
+        # rendereren der skrev en form sproget ikke har.
+        #
+        # Som præfiks på andet led bevares det binære forhold OG notationen kan læses:
+        # `x → !y` = «x fører til en overraskelse i y» — det er prediction_error.
+        #
+        # BEMÆRK: ren salience («x er salient») kan IKKE udtrykkes her; den er en-leds
+        # (`!x`) og hører i en egen vej. Ingen kalder den i dag (målt 28/10-2026), men
+        # hvis nogen gør, får de prediction_error-betydningen, ikke salience.
+        return f"{tx} → {op}{ty}"
     return f"{tx} {op} {ty}"
 
 

@@ -73,6 +73,11 @@ export function useChatPacedBlocks(
   blocks: readonly ContentBlock[],
   options: ChatPacingOptions,
 ): ContentBlock[] {
+  // Nøglen er TUREN, ikke runnet (28/10-2026). Kalderen sender en nøgle der
+  // er stabil gennem hele turen; et follow-up-run må ikke give en ny nøgle,
+  // for så nulstilles cursoren og svaret paces FORFRA. Se `paceNoegle` i
+  // `ChatFlowPresentation`. Herunder er reglen derfor simpel: nøglen skifter
+  // → teksten er en anden → cursoren starter tom.
   const key = `${options.runId ?? 'current'}:chat-text`
   const harTekst = blocks.some((block) => block?.type === 'text' && block.text)
   const paceNu = options.paceAllText || options.finalAnswerStarted
@@ -125,9 +130,10 @@ export function useChatPacedBlocks(
     if (!current.active) return
 
     const previous = cursorRef.current
-    const prefix = previous.key === current.key && current.target.startsWith(previous.shown)
-      ? previous.shown
-      : ''
+    // Nøglen kan skifte (nyt run) mens teksten fortsætter. Er den viste tekst
+    // stadig et præfiks af målet, beholder vi den — ellers ville pacen starte
+    // forfra midt i et svar brugeren allerede læser.
+    const prefix = previous.key === current.key ? previous.shown : ''
     const targetPoints = codePoints(current.target)
     const shownPoints = codePoints(prefix)
     const pending = targetPoints.length - shownPoints.length
@@ -170,7 +176,7 @@ export function useChatPacedBlocks(
   useEffect(() => {
     if (!active || !target) return
     const previous = cursorRef.current
-    const shown = previous.key === key && target.startsWith(previous.shown) ? previous.shown : ''
+    const shown = previous.key === key ? previous.shown : ''
     if (shown !== target && frame.current === null) {
       frame.current = requestAnimationFrame((time) => tickRef.current(time))
     }
@@ -182,7 +188,7 @@ export function useChatPacedBlocks(
   }, [])
 
   if (!active) return blocks as ContentBlock[]
-  const shown = cursor.key === key && target.startsWith(cursor.shown) ? cursor.shown : ''
+  const shown = cursor.key === key ? cursor.shown : ''
   if (shown === target) return blocks as ContentBlock[]
   let resterende = codePoints(shown).length
   return blocks.map((block) => {

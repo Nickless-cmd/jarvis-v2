@@ -193,6 +193,10 @@ export interface StreamContextValue {
   turSlut: number | null
   /** Serveren har bekræftet, at den synlige tekst nu er slutsvaret. */
   finalAnswerStarted: boolean
+  /** SVAR-LÅSEN (Bjørn 28/10-2026): sand når svaret er begyndt at rulle ud, og
+   *  bliver ALDRIG falsk igen inden for samme tur. Et follow-up-run efter
+   *  slutsvaret må ikke folde hovedet ud og pace svaret forfra. */
+  svarLaast: boolean
   elapsedMs: number
   workingStep: string | null
   recoveryNotice?: { reason: string; message: string; continuing: boolean }
@@ -706,6 +710,7 @@ export function StreamProvider({
       turStart: state.turStart,
       turSlut: state.turSlut,
       finalAnswerStarted: state.finalAnswerStarted,
+      svarLaast: state.svarLaast,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,
       elapsedMs,
@@ -731,7 +736,7 @@ export function StreamProvider({
       visGenoptagelsesVarsel,
       rydGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.provisionalText, state.provisionalBlockIndex, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
+    [status, state.model, state.provider, state.lane, state.blocks, state.provisionalText, state.provisionalBlockIndex, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, state.finalAnswerStarted, state.svarLaast, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel, rydGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

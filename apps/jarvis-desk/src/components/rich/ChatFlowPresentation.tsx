@@ -98,7 +98,12 @@ export function ChatFlowPresentation({
     live: streaming || paceFinalAnswer,
     finalAnswerStarted: pacingFinal,
     paceAllText: streaming,
-    runId,
+    // Nøglen er TUREN, ikke runnet (28/10-2026). Cursoren ligger under
+    // `${nøgle}:chat-text`; gav et follow-up-run en ny nøgle, faldt cursoren
+    // til `''` og svaret blev pacet FORFRA — det Bjørn beskrev som «tom skærm,
+    // og så starter slut besked med at pace uden for hoved». Turen har ét
+    // starttidspunkt (sat ved `client_turn_start`), og det overlever runderne.
+    runId: turStart != null ? `tur-${turStart}` : runId,
   })
   const model = deriveChatFlow({
     blocks: pacedBlocks,

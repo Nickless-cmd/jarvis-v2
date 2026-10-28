@@ -1320,14 +1320,14 @@ export function CodeView({
             </Fragment>
           ))}
           {visLevendeTur && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
               runId={stream.activeRunId} onAnswerPaced={markerSvarPacet}
               elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {stream.status !== 'working' && bgActive && followState.status === 'working' && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
+            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
               runId={followState.activeRunId}
               elapsedMs={bgElapsedMs} tokens={followState.usage.output} />
           )}

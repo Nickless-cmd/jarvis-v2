@@ -882,7 +882,17 @@ def settle_terminal(
         rec["recovery_owner"] = ""
         rec["recovery_lease_until"] = ""
         rec["next_attempt_at"] = ""
-        rec["notice_pending"] = normalized == "failed_terminal"
+        # VARSLET KRAEVER EN MODTAGER (28/10-2026). `recovery_snapshot` er den
+        # eneste laeser, og den filtrerer `kind != "visible"` fra — en autonom
+        # post kunne derfor baere et varsel som ALDRIG blev hentet. Posten blev
+        # holdt i live af `not rec.get("notice_pending")` i rydningen og
+        # forsvandt foerst ved 24-timers-graensen, uden at nogen fik besked.
+        # Maalt: tre autonome poster fra 26.-27/10 stod saadan.
+        # Et varsel uden modtager er ikke en besked, det er en laas.
+        rec["notice_pending"] = (
+            normalized == "failed_terminal"
+            and str(rec.get("kind") or "visible") == "visible"
+        )
 
         # SOESKENDE-SWEEP (14/10-2026). Maalt: en genoptagelse opretter sin EGEN
         # post — `mark_started(run_id=<nyt>, task_id=<opgavens>)` — saa kaeden
@@ -1031,7 +1041,9 @@ def claim_due_recovery(
             gammel["recovery_lease_until"] = ""
             gammel["next_attempt_at"] = ""
             gammel["final_synthesis_pending"] = False
-            gammel["notice_pending"] = True
+            # Kun den synlige lane kan hente varselet (se `settle_terminal`).
+            gammel["notice_pending"] = (
+                str(gammel.get("kind") or "visible") == "visible")
         if not candidates:
             return None
         key, rec = min(
@@ -1170,7 +1182,9 @@ def release_recovery_claim(
             rec["status"] = "failed_terminal"
             rec["settled_at"] = instant.isoformat()
             rec["next_attempt_at"] = ""
-            rec["notice_pending"] = True
+            # Kun den synlige lane kan hente varselet (se `settle_terminal`).
+            rec["notice_pending"] = (
+                str(rec.get("kind") or "visible") == "visible")
             return True
         rec["next_attempt_at"] = (
             instant + timedelta(seconds=max(0.0, float(retry_after_s)))

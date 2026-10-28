@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from core.services.jarvisx_bridge import (
@@ -13,7 +13,9 @@ from core.services.jarvisx_bridge import (
 )
 from core.services.run_stream_proxy import local_frame_generator
 
-router = APIRouter()
+from apps.api.jarvis_api.middleware.internal_loopback import require_loopback
+
+router = APIRouter(dependencies=[Depends(require_loopback)])
 logger = logging.getLogger(__name__)
 _LOCALHOST_HOSTS = {"127.0.0.1", "::1", "localhost"}
 

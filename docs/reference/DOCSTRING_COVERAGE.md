@@ -1,13 +1,13 @@
 # Docstring coverage
 
-Generated from source. 9406/17724 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9407/17725 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
 | Package | Documented | Functions | % |
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
-| `apps.api.jarvis_api.middleware` | 14 | 25 | 56% |
+| `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
 | `apps.api.jarvis_api.routes` | 714 | 984 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
@@ -98,8 +98,8 @@ Generated from source. 9406/17724 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `finish_session` (L232)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `progress` (L222)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `serve_ui` (L269)
-- `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L34)
-- `apps/api/jarvis_api/routes/internal_run_stream.py` :: `internal_run_stream` (L22)
+- `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L36)
+- `apps/api/jarvis_api/routes/internal_run_stream.py` :: `internal_run_stream` (L24)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L57)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L141)
 - `apps/api/jarvis_api/routes/live.py` :: `websocket_stream` (L20)

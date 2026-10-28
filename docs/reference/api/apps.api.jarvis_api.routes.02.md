@@ -207,50 +207,50 @@ _Internal loopback endpoint for cross-process Discord dispatch._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L28) |
-| function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L34) |
+| class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L30) |
+| function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L36) |
 
 ## `apps/api/jarvis_api/routes/internal_errors.py`
 _Internal loopback endpoint for canonical error reports (Fase 0)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `_Origin` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L46) |
-| class | `ErrorReport` | `` | Canonical fejl-wire-form (REVIEW §4 / impl-plan §3). Kun kind/severity/ | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L51) |
-| function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L66) |
-| function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L80) |
-| function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L166) |
+| class | `_Origin` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L48) |
+| class | `ErrorReport` | `` | Canonical fejl-wire-form (REVIEW §4 / impl-plan §3). Kun kind/severity/ | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L53) |
+| function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L68) |
+| function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L82) |
+| function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L168) |
 
 ## `apps/api/jarvis_api/routes/internal_run_stream.py`
 _Loopback-only endpoint serving the current process' run frame log._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `internal_run_stream` | `(request, run_id, from_idx=…)` | — | [src](../../../apps/api/jarvis_api/routes/internal_run_stream.py#L22) |
+| function | `internal_run_stream` | `(request, run_id, from_idx=…)` | — | [src](../../../apps/api/jarvis_api/routes/internal_run_stream.py#L24) |
 
 ## `apps/api/jarvis_api/routes/internal_runtime_surface.py`
 _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flader._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_require_loopback` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L25) |
-| function | `_living_executive` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L33) |
-| function | `_self_model` | `()` | LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L38) |
-| function | `_world_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L56) |
-| function | `_inner_life` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L63) |
-| function | `_affect` | `()` | Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L68) |
-| function | `_hardware_body` | `()` | Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L75) |
-| function | `_soul` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L82) |
-| function | `_dark_products` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L87) |
-| function | `_light` | `(surface)` | §24.4-reduktion: udled KUN skalarer + længder fra en fuld surface. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L92) |
-| function | `_open_loops` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L118) |
-| function | `_runtime_awareness` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L125) |
-| function | `_runtime_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L132) |
-| function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L139) |
-| function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L146) |
-| function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L154) |
-| function | `_db_pool` | `()` | DB-forbindelses-poolen i DENNE proces — gjort læsbar i drift (15/10-2026). | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L162) |
-| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L198) |
+| function | `_require_loopback` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L27) |
+| function | `_living_executive` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L35) |
+| function | `_self_model` | `()` | LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L40) |
+| function | `_world_model` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L58) |
+| function | `_inner_life` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L65) |
+| function | `_affect` | `()` | Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L70) |
+| function | `_hardware_body` | `()` | Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L77) |
+| function | `_soul` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L84) |
+| function | `_dark_products` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L89) |
+| function | `_light` | `(surface)` | §24.4-reduktion: udled KUN skalarer + længder fra en fuld surface. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L94) |
+| function | `_open_loops` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L120) |
+| function | `_runtime_awareness` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L127) |
+| function | `_runtime_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L134) |
+| function | `_counterfactual` | `()` | — | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L141) |
+| function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L148) |
+| function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L156) |
+| function | `_db_pool` | `()` | DB-forbindelses-poolen i DENNE proces — gjort læsbar i drift (15/10-2026). | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L164) |
+| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L200) |
 
 ## `apps/api/jarvis_api/routes/jarvisx.py`
 _JarvisX-specific routes — small endpoints used by the desktop app._

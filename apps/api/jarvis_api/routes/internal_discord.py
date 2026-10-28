@@ -10,7 +10,7 @@ process (prevents dispatch loops).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from core.services.discord_gateway import (
@@ -22,7 +22,9 @@ from core.services.discord_gateway import (
     start_discord_typing,
 )
 
-router = APIRouter(prefix="/api/internal/discord", tags=["internal"])
+from apps.api.jarvis_api.middleware.internal_loopback import require_loopback
+
+router = APIRouter(dependencies=[Depends(require_loopback)], prefix="/api/internal/discord", tags=["internal"])
 
 
 class DispatchRequest(BaseModel):

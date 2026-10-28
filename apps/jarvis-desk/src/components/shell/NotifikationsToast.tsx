@@ -290,9 +290,46 @@ export function NotifikationsToast({ config, onAabenSession }: {
     // tokens.test.ts:575 advarer om («.composer-wrap — begge views bruger
     // .composer-area»). Findes den ikke (fx PWA uden composer), falder vi
     // tilbage til CSS'ens 14px i stedet for at gaette et tal.
+    // ── TO FEJL I DET FOERSTE ANKER (maalt og rettet 28/10-2026) ──────────
+    //
+    // 1. `querySelector('.composer-area')` tager den FOERSTE i DOM'en. Der
+    //    findes TO i koden — ChatView.tsx:1121 og CodeView.tsx:1342 — og den
+    //    forkerte kan vaere skjult eller ligge i en anden view. Ligger den
+    //    hoejere oppe end den man faktisk staar paa, bliver
+    //    `window.innerHeight - rect.top` STOR, og hele stakken hanger hoejt
+    //    paa skaermen. Det er praecis Bjoerns klage: «nogen toasts vises
+    //    hoejere op» — de ramte den forkerte skriveflade.
+    //    Vi vaelger nu den SYNLIGE og NEDERSTE.
+    //
+    // 2. Ankeret blev maalt ÉN gang ved mount plus ved `resize`. Skrivefladen
+    //    skifter hoejde af sig selv — flere linjer tekst, en vedhaengning, en
+    //    notice — og saa pegede ankeret paa en position der ikke findes
+    //    laengere. En `ResizeObserver` paa det valgte element holder det
+    //    maalt, uanset hvad der skubber til det.
+    let observeret: HTMLElement | null = null
+    let ro: ResizeObserver | null = null
+
+    const vaelg = (): HTMLElement | null => {
+      const alle = Array.from(document.querySelectorAll('.composer-area')) as HTMLElement[]
+      const synlige = alle.filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 && el.offsetParent !== null
+      })
+      if (!synlige.length) return null
+      // Den NEDERSTE vinder: det er den skriveflade brugeren ser.
+      return synlige.reduce((a, b) =>
+        (b.getBoundingClientRect().top > a.getBoundingClientRect().top ? b : a))
+    }
+
     const maal = () => {
-      const wrap = document.querySelector('.composer-area') as HTMLElement | null
+      const wrap = vaelg()
       if (!wrap) { setNotifBund(null); return }
+      if (wrap !== observeret) {
+        ro?.disconnect()
+        observeret = wrap
+        ro = new ResizeObserver(() => maal())
+        ro.observe(wrap)
+      }
       const rect = wrap.getBoundingClientRect()
       // Afstand fra viewport-bunden op til composerens overkant, plus 10px
       // luft. Gulv paa 12px saa et felt aldrig kan ligge halvt uden for.
@@ -300,7 +337,10 @@ export function NotifikationsToast({ config, onAabenSession }: {
     }
     maal()
     window.addEventListener('resize', maal)
-    return () => window.removeEventListener('resize', maal)
+    return () => {
+      window.removeEventListener('resize', maal)
+      ro?.disconnect()
+    }
   }, [])
 
   const luk = useCallback((nogle: string) => {

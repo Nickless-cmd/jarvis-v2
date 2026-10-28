@@ -5172,7 +5172,18 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    tal, de er valgt ved at se paa den. */
 .notif-toast-lag {
   position: fixed; z-index: 68;
-  right: 22px; bottom: 96px;
+  right: 22px;
+  /* ANKERET MAALES, IKKE GAETTET (28/10-2026).
+     Her stod et fast `bottom: 96px` siden 82498f6b8 (7/10). Maalt i en
+     koerende browser 28/10 ved 1920x1080: laget landede praecis 96px over
+     bunden, og med tre felter a 82px toppede stakken 262px oppe — den saas
+     som «under midten» i stedet for «i bunden», som var Bjoerns klage.
+     Ankeret saettes derfor fra den FAKTISKE skriveflade: NotifikationsToast
+     maaler `.composer-area` og skriver `--notif-bund`. 14px er kun fallback
+     for de flader hvor der ingen composer er (fx foerste render).
+     (Foerste forsoeg maalte `.composer-wrap` — en klasse ingen komponent
+     renderer. Se NotifikationsToast.tsx for maalingen.) */
+  bottom: var(--notif-bund, 14px);
   display: flex; flex-direction: column; gap: 8px;
   /* Kun felterne selv fanger klik. Laget maa ikke ligge usynligt over
      skrivefeltet og stjaele klik i det omraade hvor der ingen toast er. */
@@ -5184,19 +5195,41 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   width: 268px; max-width: calc(100vw - 44px);
   display: flex; gap: 8px;
   padding: 7px 11px 8px 11px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: 10px;
-  background: var(--bg-2);
-  box-shadow: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  /* DESIGN B (Bjoerns valg 28/10-2026): fladtloennet baggrund og en
+     accent-RING hele vejen rundt — ikke den gamle venstrekant. Ringen er en
+     custom property, saa tonen skifter uden at flytte indholdet et eneste
+     pixel (en tykkere venstrekant gjorde praecis det). */
+  --toast-ring: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--toast-ring) 42%, var(--line));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--bg-2) 74%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--toast-ring) 22%, transparent),
+    0 14px 34px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.35);
   cursor: pointer;
-  transform: translateX(130%); opacity: 0;
-  transition: transform .34s cubic-bezier(.16,.84,.44,1), opacity .34s ease;
+  /* Indgang: skub fra hoejre OG lidt mindre. cubic-bezier(.16,.84,.44,1) er
+     haard start og bloed landing — feltet bliver SKUBBET ind. */
+  transform: translateX(120%) scale(.96); opacity: 0;
+  transition: transform .42s cubic-bezier(.16,.84,.44,1), opacity .28s ease;
 }
-.notif-toast.er-ind { transform: translateX(0); opacity: 1; }
-.notif-toast.er-ude { transform: translateX(0); opacity: 0; transition: opacity .5s ease; }
-.notif-toast.er-fejl { border-left-color: var(--error-fg); }
-.notif-toast.er-ok { border-left-color: var(--accent); }
+/* Blur OVENPAA den solide farve, ikke i stedet for den. Kan GPU'en ikke
+   blur, staar den fladtloennede baggrund tilbage og teksten er stadig
+   laesbar — en `backdrop-filter` uden fallback giver gennemsigtig graat. */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .notif-toast {
+    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    backdrop-filter: blur(14px) saturate(1.25);
+  }
+}
+.notif-toast.er-ind { transform: translateX(0) scale(1); opacity: 1; }
+/* Forsvinden er hurtigere og mere direkte end indgangen: den skal ikke
+   underholde, den skal væk. */
+.notif-toast.er-ude {
+  transform: translateX(0) scale(.98); opacity: 0;
+  transition: transform .46s cubic-bezier(.4,0,.7,.2), opacity .46s cubic-bezier(.4,0,.7,.2);
+}
+.notif-toast.er-fejl { --toast-ring: var(--error-fg); }
+.notif-toast.er-ok { --toast-ring: var(--accent); }
 
 .notif-toast-ikon {
   flex: none; width: 24px; height: 24px; border-radius: 6px;
@@ -5276,7 +5309,8 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .notif-toast-agent {
   width: 320px;
   cursor: default;
-  border-left-color: var(--error-fg);
+  /* Ringen erstatter den gamle `border-left-color` — se `.notif-toast`. */
+  --toast-ring: var(--error-fg);
 }
 .notif-toast-agent .notif-toast-ikon {
   color: var(--error-fg);

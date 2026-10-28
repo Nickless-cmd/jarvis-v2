@@ -36,6 +36,9 @@
    Bjørn bad om mobil-appens teal i stedet. Alt andet i paletten er stadig
    målt i CC. */
 :root {
+  /* Toast-ankeret. Saettes inline af NotifikationsToast fra den FAKTISKE
+     skriveflade (.composer-area); 14px er fallback foer foerste maaling. */
+  --notif-bund: 14px;
   --bg-0: #111111;   /* sidebar — det mørkeste i billedet */
   --bg-1: #151515;   /* kort og hævede flader; i mørkt tema også siden */
   /* Den STORE flade — chatten, composer-området, statusbaren, rutine-visningen.

@@ -613,6 +613,58 @@ def read_entry(entry_id: str) -> BrainEntry:
     return entry_from_frontmatter(fm, body)
 
 
+def verify_brain_entry(entry_id: str) -> dict[str, Any]:
+    """Slå en brain-post op i BEGGE lag — indekset OG filen på disken.
+
+    Målt 28/10-2026: en post kan være skrevet korrekt til filen og alligevel
+    se tabt ud, fordi indekset (``state/jarvis_brain_index.sqlite``) og filerne
+    (``shared/jarvis_brain/<kind>/``) er to lag. Et opslag der kun kender det
+    ene melder «findes ikke» om noget der ligger der — og en korrekt skrivning
+    bliver læst som en tavs fiasko.
+
+    Skellet mellem tilstandene er med vilje, ikke kosmetik:
+
+    * ``ok`` — både indeks og fil findes.
+    * ``not_found`` — indekset kender ikke id'et. Posten blev ikke skrevet.
+    * ``index_uden_fil`` — indekset peger på en fil der ikke er der. Skrivningen
+      skete halvt, og det er en anden fejl end «ikke skrevet».
+    * ``fil_ulaeselig`` — filen findes, men kunne ikke parses.
+    * ``index_ulaeseligt`` — «ved ikke», aldrig «findes ikke».
+    """
+    eid = str(entry_id or "").strip()
+    lager = {"index": str(index_db_path()), "filer": str(brain_dir())}
+    if not eid:
+        return {"status": "error", "error": "entry_id er tomt", "lager": lager}
+    try:
+        rel = _index_path_for(eid)
+    except KeyError:  # indekset kender ikke id'et — det er et SVAR, ikke en fejl
+        return {"status": "not_found", "id": eid, "lager": lager,
+                "index_findes": False, "fil_findes": False}
+    except Exception as exc:  # noqa: BLE001 — «ukendt» maa ikke laeses som «findes ikke»
+        logger.warning("brain: kunne ikke laese indekset for %s: %s", eid, exc)
+        return {"status": "error", "error": "index_ulaeseligt", "id": eid,
+                "lager": lager, "details": str(exc)[:200]}
+    fpath = _workspace_root() / rel
+    fil_findes = fpath.exists()
+    out: dict[str, Any] = {
+        "status": "ok" if fil_findes else "index_uden_fil",
+        "id": eid, "lager": lager, "index_findes": True,
+        "fil": str(fpath), "fil_findes": fil_findes,
+    }
+    if fil_findes:
+        try:
+            fm, _body = parse_frontmatter(fpath)
+            out["title"] = fm.get("title")
+            out["kind"] = fm.get("kind")
+            out["domain"] = fm.get("domain")
+            out["visibility"] = fm.get("visibility")
+        except Exception as exc:  # noqa: BLE001 — filen ER der; kun indholdet fejler
+            logger.warning("brain: filen for %s kunne ikke parses: %s", eid, exc)
+            out["status"] = "fil_ulaeselig"
+            out["details"] = str(exc)[:200]
+    return out
+
+
 def _index_path_for(entry_id: str) -> str:
     """Returns the relative path stored in brain_index for entry_id."""
     conn = connect_index()

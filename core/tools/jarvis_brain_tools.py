@@ -356,7 +356,25 @@ def remember_this(
     _turn_counts[turn_key] += 1
     _day_counts[day_key] += 1
 
-    return {"status": "ok", "id": new_id}
+    # ÆRLIG RETUR (28/10-2026). «status: ok» + et id var ikke til at verificere:
+    # et opslag efter posten i en tabel svarede «no such table», og en korrekt
+    # skrivning blev derfor læst som en tavs fiasko. Returen bærer nu HVOR
+    # posten ligger — og et read-back der bekræfter at den faktisk er der.
+    from core.services import jarvis_brain as _brain
+
+    _v = _brain.verify_brain_entry(new_id)
+    _out: dict[str, Any] = {
+        "status": "ok",
+        "id": new_id,
+        "fil": _v.get("fil"),
+        "index": (_v.get("lager") or {}).get("index"),
+        "fil_findes": bool(_v.get("fil_findes")),
+    }
+    if _v.get("status") not in ("ok", "fil_ulaeselig"):
+        # Skrivningen stod ikke til at finde bagefter. Det er ikke en «ok».
+        _out["status"] = "written_unverified"
+        _out["verify_status"] = _v.get("status")
+    return _out
 
 
 def search_jarvis_brain(

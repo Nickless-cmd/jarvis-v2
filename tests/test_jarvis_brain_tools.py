@@ -347,3 +347,49 @@ def test_tom_streng_taeller_som_manglende():
                              "visibility": "v", "domain": "d",
                              "_runtime_session_id": "s", "_runtime_turn_id": "t"})
     assert r.get("missing") == ["kind"]
+
+
+def test_remember_this_retur_baerer_stien_og_verificerer(isolated_brain):
+    """28/10-2026: returen var «ok» + et id uden at sige hvor posten laa, saa
+    en korrekt skrivning kunne ikke efterproeves. Nu baerer den fil OG indeks,
+    og read-back bekreafter at posten faktisk ligger der."""
+    from core.tools.jarvis_brain_tools import remember_this
+
+    res = remember_this(
+        kind="fakta", title="Verificerbar", content="Indhold",
+        visibility="personal", domain="engineering",
+        session_id="s1", turn_id="t1",
+    )
+    assert res["status"] == "ok"
+    assert res["fil_findes"] is True
+    assert res["fil"].endswith(".md")
+    assert "jarvis_brain_index.sqlite" in res["index"]
+
+    v = isolated_brain.verify_brain_entry(res["id"])
+    assert v["status"] == "ok"
+    assert v["fil"] == res["fil"]
+    assert v["title"] == "Verificerbar"
+
+
+def test_verify_brain_entry_skelner_index_uden_fil(isolated_brain):
+    """Indekset og filerne er to lag. Peger indekset paa en fil der ikke er
+    der, er skrivningen sket halvt — og det er en anden fejl end «ikke skrevet»."""
+    import os
+    from core.services import jarvis_brain
+
+    v = jarvis_brain.verify_brain_entry("brn_findes_ikke")
+    assert v["status"] == "not_found"
+    assert v["index_findes"] is False
+
+    eid = jarvis_brain.write_entry(
+        kind="fakta", title="Halv skrivning", content="x",
+        visibility="personal", domain="engineering",
+    )
+    helt = jarvis_brain.verify_brain_entry(eid)
+    assert helt["status"] == "ok"
+
+    os.unlink(helt["fil"])
+    halvt = jarvis_brain.verify_brain_entry(eid)
+    assert halvt["status"] == "index_uden_fil"
+    assert halvt["index_findes"] is True
+    assert halvt["fil_findes"] is False

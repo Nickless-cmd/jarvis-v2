@@ -79,12 +79,12 @@ _Visible Jarvis' værktøjer til hjernen._
 | function | `_exec_adopt_brain_proposal` | `(args)` | Executor for adopt_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L228) |
 | function | `_exec_discard_brain_proposal` | `(args)` | Executor for discard_brain_proposal tool. | [src](../../../core/tools/jarvis_brain_tools.py#L236) |
 | function | `remember_this` | `(*, kind, title, content, visibility, domain, session_id, turn_id, related=…, tags=…, source_url=…, source_chronicle=…, importance=…)` | Skriv en post i Jarvis' egen hjerne. | [src](../../../core/tools/jarvis_brain_tools.py#L249) |
-| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L362) |
-| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L446) |
-| function | `_bound_visibility_ceiling` | `()` | Derive the ceiling only from the authenticated request context. | [src](../../../core/tools/jarvis_brain_tools.py#L479) |
-| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L496) |
-| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L508) |
-| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L584) |
+| function | `search_jarvis_brain` | `(*, query, session_visibility_ceiling=…, kinds=…, limit=…, domain=…, tags=…, include_archived=…, min_cosine=…)` | Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content. | [src](../../../core/tools/jarvis_brain_tools.py#L380) |
+| function | `read_brain_entry` | `(entry_id)` | Hent fuld content for én brain entry. | [src](../../../core/tools/jarvis_brain_tools.py#L464) |
+| function | `_bound_visibility_ceiling` | `()` | Derive the ceiling only from the authenticated request context. | [src](../../../core/tools/jarvis_brain_tools.py#L497) |
+| function | `archive_brain_entry` | `(entry_id, *, reason=…)` | Mark entry as archived and move file to _archive/<kind>/. | [src](../../../core/tools/jarvis_brain_tools.py#L514) |
+| function | `adopt_brain_proposal` | `(proposal_id, edits=…)` | Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis. | [src](../../../core/tools/jarvis_brain_tools.py#L526) |
+| function | `discard_brain_proposal` | `(proposal_id, *, reason=…)` | Slet en pending proposal og log reason. | [src](../../../core/tools/jarvis_brain_tools.py#L602) |
 
 ## `core/tools/jc_tool_catalog.py`
 _Single source of truth for what jarvis-code (jc) presents as tools._

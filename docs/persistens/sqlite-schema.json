@@ -8478,6 +8478,67 @@
       },
       "created_at_formats": []
     },
+    "central_word_weights": {
+      "digest": "2d:8b:79:b0:11:67:a3:66:3b:5c:88:d7:27:f5:69:90:22:8f:30:2b:2f:ea:01:29:fa:08:20:28:63:d2:8c:43",
+      "schema": {
+        "columns": [
+          {
+            "name": "last_updated",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "n_samples",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "term",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "weight",
+            "type": "REAL",
+            "nullable": false,
+            "default": "0.5",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_central_word_weights_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "term",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "channel_attachments": {
       "digest": "b0:f0:ba:e5:db:af:96:8d:8d:41:6e:35:71:cc:b1:35:5c:85:91:84:57:53:8d:9f:0f:06:b4:f5:6f:0e:a5:49",
       "schema": {

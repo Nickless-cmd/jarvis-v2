@@ -6297,6 +6297,13 @@ async def _stream_visible_run(
                     _rec_mt(getattr(run, "model", "") or "", degenerated=_mt_deg)
                 except Exception:
                     pass
+                # A/B-armen (28/10-2026): UDFALDET FINDES FØRST HER. Prompt-bygningen
+                # kunne ikke sende det — den sker før turen. Self-safe; rører ikke run'et.
+                try:
+                    from core.services import central_prompt_explore as _cpe
+                    _cpe.record_turn_outcome(_outcome_state.status)
+                except Exception:  # self-safe: A/B-maaling maa ikke vaelte finalize
+                    pass
                 _track_runtime_candidates(run, visible_output_text)
                 # ── Lag 1: record response_style choice ─────
                 # Only record for runs with a user present — autonomous

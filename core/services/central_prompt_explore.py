@@ -19,9 +19,26 @@ SIKKERHED (alle ikke-forhandlelige):
 """
 from __future__ import annotations
 
+import contextvars
 from typing import Any
 
 from core.services import central_hypothesis_governance as gov
+
+# ── UDFALDET FINDES IKKE VED PROMPT-BYGNINGEN (28/10-2026) ──────────────────────────
+# `observe_composition` har altid haft `outcome: str = ""` som default, og den ENESTE
+# kalder (prompt_contract.py:2302) udelader parameteren. Derfor ramte hver tur
+# `if not outcome: return` i record_trial, og forsøget kunne ALDRIG samle ét datapunkt —
+# det stod som et kørende forsøg i månedsvis uden en enkelt måling.
+#
+# Aarsagen er arkitektonisk, ikke en glemt parameter: prompten bygges FOER turen, saa
+# udfaldet eksisterer ikke paa det tidspunkt. Løsningen er derfor to-faset — kompositionen
+# gemmes her ved bygningen, og udfaldet sendes fra run-finalize (visible_runs.py) hvor
+# `_outcome_state.status` faktisk findes. ContextVar fordi den følger turen, ikke processen:
+# en global dict ville lade session A's udfald tælle paa session B's sektioner.
+_sidste_komposition: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "prompt_explore_sidste_komposition", default=None
+)
+_MISSING_KEY = "prompt_ablation_missing_context"   # synligt bevis hvis koblingen brister
 
 _EXPLORE_FLAG = "prompt_relevance_explore_live_enabled"   # Bjørns switch (default OFF)
 _STATE_KEY = "prompt_ablation_state"                      # aktivt A/B-forsøg
@@ -154,6 +171,48 @@ def record_trial(turn_type: str, included_labels: list[str] | None, outcome: str
                 return
         _kv_set(_STATE_KEY, st)
     except Exception:
+        pass
+
+
+def note_composition(turn_type: str, included_labels: list[str] | None) -> None:
+    """Gem HVAD der blev komponeret denne tur, så udfaldet kan sendes senere.
+
+    To-faset kobling (28/10-2026): prompten bygges før turen kører, så `observe_composition`
+    kan ikke kende udfaldet — den parameter var altid "" og forsøget målte derfor intet.
+    Her gemmes kun det faktum der ER kendt på bygningstidspunktet; `record_turn_outcome`
+    læser det ved run-finalize og sender udfaldet videre. Self-safe, kaster aldrig.
+    """
+    try:
+        _sidste_komposition.set({
+            "tt": str(turn_type or ""),
+            "labels": list(included_labels or []),
+        })
+    except Exception:  # self-safe: kontekst-gemmelse maa ikke vaelte prompt-bygningen
+        pass
+
+
+def record_turn_outcome(outcome: str) -> None:
+    """Send turens udfald til det A/B-forsøg der var aktivt i DENNE tur.
+
+    Kaldes fra run-finalize (`visible_runs.py`) hvor `_outcome_state.status` findes —
+    det er det eneste sted i kæden hvor 'completed'/'failed'/'interrupted' er kendt.
+
+    Koblingen er bevidst IKKE stille når den brister: kører et forsøg (live-flag ON) og
+    der ikke ligger en komposition i konteksten, tælles det i
+    `prompt_ablation_missing_context` i stedet for at forsvinde. Et forsøg der tier om
+    at det ikke måler, er præcis den fejl der holdt denne arm død i månedsvis.
+    """
+    try:
+        if not is_explore_live():
+            return                   # shadow: intet forsøg kører → manglende kontekst er ikke en fejl
+        komp = _sidste_komposition.get()
+        if not isinstance(komp, dict):
+            n = int(_kv_get(_MISSING_KEY, 0) or 0)
+            _kv_set(_MISSING_KEY, n + 1)
+            return
+        _sidste_komposition.set(None)
+        record_trial(str(komp.get("tt") or ""), komp.get("labels") or [], outcome)
+    except Exception:  # self-safe: en maale-fejl maa ikke vaelte run-finalize
         pass
 
 

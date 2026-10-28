@@ -45,22 +45,56 @@ _PING_ENDPOINTS: dict[str, str] = {
 }
 
 
+def classify_http_code(code: int | None) -> str:
+    """HTTP-svar → hvad det BETYDER for om provideren kan bruges.
+
+    28/10-2026: indført fordi ``reachable`` blev sat til ``code < 500``, så 401/403/404
+    alle talte som sunde. Målt samme dag: filen meldte 8/8 «reachable» mens groq svarede
+    403, mistral 401, opencode 403, gemini 404 og cloudflare 404 — kun tre af otte kunne
+    faktisk bruges. Et health-signal der tæller «svarede» som «virker» skjuler netop det
+    det findes for at vise.
+
+    Klassifikationen er bevidst grov: den skal kunne læses uden at kende provideren.
+    """
+    if code is None:
+        return "unreachable"
+    if 200 <= code < 300:
+        return "healthy"
+    if code in (401, 403):
+        return "auth_failed"      # nøgle mangler/er ugyldig — provideren kan IKKE bruges
+    if code == 404:
+        return "wrong_endpoint"   # stien findes ikke — ping-URL'en er forkert, ikke provideren
+    if code == 429:
+        return "rate_limited"     # virker, men tør lige nu
+    if 400 <= code < 500:
+        return "bad_request"
+    return "unreachable"          # 5xx = serveren svarer ikke brugbart
+
+
 def _ping_host(url: str) -> dict[str, Any]:
-    """HTTP GET with short timeout. Returns reachable=True/False + latency_ms."""
+    """HTTP GET med kort timeout. Returnerer ``status`` (klassificeret) + ``reachable``.
+
+    ``reachable`` bevares for bagudkompatibilitet, men betyder nu «kan bruges», ikke
+    «svarede». Forskellen er hele pointen: en 403 er et svar, men ikke et brugbart et.
+    """
     started = datetime.now(UTC)
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=_PING_TIMEOUT_SECONDS) as response:
             code = response.getcode()
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": True, "http_code": code, "latency_ms": elapsed_ms}
+        status = classify_http_code(code)
+        return {"reachable": status == "healthy", "status": status,
+                "http_code": code, "latency_ms": elapsed_ms}
     except urllib.error.HTTPError as exc:
-        # 401/403 = host is up, just denying us — that's "reachable" for our purposes
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": exc.code < 500, "http_code": exc.code, "latency_ms": elapsed_ms}
+        status = classify_http_code(exc.code)
+        return {"reachable": status == "healthy", "status": status,
+                "http_code": exc.code, "latency_ms": elapsed_ms}
     except Exception as exc:
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": False, "error": str(exc)[:120], "latency_ms": elapsed_ms}
+        return {"reachable": False, "status": "unreachable",
+                "error": str(exc)[:120], "latency_ms": elapsed_ms}
 
 
 def health_check_all_providers() -> dict[str, Any]:
@@ -73,12 +107,25 @@ def health_check_all_providers() -> dict[str, Any]:
         if not result.get("reachable"):
             unreachable.append(provider)
 
+    # 28/10-2026: «reachable» betød «svarede», så 401/403/404 talte som sunde. Nu tælles
+    # healthy_count kun ved 2xx, og de øvrige navngives med deres årsag — ellers kan man
+    # ikke se på filen hvilke providers der faktisk kan bruges.
+    by_status: dict[str, list[str]] = {}
+    for provider, r in results.items():
+        st = str(r.get("status") or "unreachable")
+        by_status.setdefault(st, []).append(provider)
+
     snapshot = {
         "checked_at": datetime.now(UTC).isoformat(),
         "results": results,
         "unreachable": unreachable,
-        "reachable_count": len(_PING_ENDPOINTS) - len(unreachable),
+        "healthy_count": len(by_status.get("healthy") or []),
+        "reachable_count": len(by_status.get("healthy") or []),
         "total_count": len(_PING_ENDPOINTS),
+        "by_status": by_status,
+        "auth_failed": by_status.get("auth_failed") or [],
+        "wrong_endpoint": by_status.get("wrong_endpoint") or [],
+        "rate_limited": by_status.get("rate_limited") or [],
     }
 
     try:
@@ -293,23 +340,35 @@ def latest_health_snapshot() -> dict[str, Any]:
 
 
 def health_section() -> str | None:
-    """Awareness section listing currently unreachable providers.
+    """Awareness section listing providers that CANNOT be used — not just silent ones.
 
     2026-05-22 (Claude): dropped the `(check HH:MM:SS)` timestamp suffix.
     It was unique per build and broke DeepSeek's prompt cache at exactly
     the boundary where this section landed in the prompt. The model
     doesn't need the wall-clock time of the check — only the result.
     Time Pin gives the model wall time globally.
+
+    28/10-2026: sektionen listede kun ``unreachable`` (helt tavse hosts). Målt samme dag
+    meldte filen 8/8 sunde mens fem svarede med fejlkode — så sektionen var tavs om netop
+    det den findes for. Nu nævnes auth-fejl og forkerte endpoints også, med deres årsag.
     """
     snap = latest_health_snapshot()
     unreachable = snap.get("unreachable") or []
-    if not unreachable:
+    auth_failed = snap.get("auth_failed") or []
+    wrong_endpoint = snap.get("wrong_endpoint") or []
+    if not (unreachable or auth_failed or wrong_endpoint):
         return None
-    return (
-        f"Provider health: "
-        f"{len(unreachable)} unreachable ({', '.join(unreachable)}). "
-        "Cheap-lane fallback chain håndterer routing."
-    )
+    parts: list[str] = []
+    if auth_failed:
+        parts.append(f"auth-fejl ({', '.join(auth_failed)})")
+    if wrong_endpoint:
+        parts.append(f"forkert endpoint ({', '.join(wrong_endpoint)})")
+    if unreachable:
+        parts.append(f"unreachable ({', '.join(unreachable)})")
+    healthy = snap.get("healthy_count")
+    total = snap.get("total_count")
+    head = f"{healthy}/{total} providers brugbare" if healthy is not None and total else "Provider health"
+    return f"{head}: " + "; ".join(parts) + ". Cheap-lane fallback chain håndterer routing."
 
 
 def _exec_run_health_check(args: dict[str, Any]) -> dict[str, Any]:

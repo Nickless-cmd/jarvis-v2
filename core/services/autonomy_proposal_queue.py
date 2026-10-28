@@ -678,8 +678,169 @@ def _execute_instrument_fix_proposal(payload: dict) -> dict:
     }
 
 
+def _execute_prompt_evolution_proposal(payload: dict) -> dict:
+    """Execute an approved prompt-evolution proposal.
+
+    APPLY-VEJEN (28/10-2026). Indtil nu fandtes der INGEN vej fra et
+    prompt-forslag til virkning: `prompt_evolution_runtime` producerede 65
+    forslag, hvoraf 0 blev anvendt, fordi der hverken var en executor eller en
+    status der hed «applied». Docstringen sagde «proposal-only» — og det var
+    sandt, men det var ikke tilsigtet at intet MENNESKE kunne anvende dem.
+
+    To ting er vaerd at vide om denne executor:
+
+    1. `prompt_mutation_loop.apply_mutation()` ERSTATTER hele filen med
+       `new_content`. Den tilfoejer ikke en saetning. Derfor laeses filen
+       foerst, fragmentet indsaettes under en navngivet sektion, og hele
+       indholdet skrives tilbage. Uden det trin ville en godkendelse slette
+       HEARTBEAT.md og efterlade én saetning.
+
+    2. Fragmentet skal vaere en INSTRUKTION, ikke en beskrivelse af en
+       instruktion. De 65 oprindelige forslag bar metadata-prosa («Bounded
+       focus-nudge proposal for HEARTBEAT.md. Prompt target=...»), som ville
+       skrive systemprosa ind i prompten. Executoren afviser derfor tomt
+       fragment og fragmenter der aabner med en beskrivelse.
+
+    Payload schema:
+        {"proposal_id": "runtime-prompt-evolution-...",
+         "target_file": "HEARTBEAT.md",
+         "candidate_fragment": "Keep the next step plain, bounded, ..."}
+    """
+    from core.services import prompt_mutation_loop as pml
+    from core.runtime import db_runtime_self as drs
+
+    proposal_id = str(payload.get("proposal_id") or "").strip()
+    if not proposal_id:
+        return {"status": "error", "error": "proposal_id is required"}
+
+    row = drs.get_runtime_self_authored_prompt_proposal(proposal_id)
+    if row is None:
+        return {"status": "error", "error": f"proposal not found: {proposal_id}"}
+
+    target_file = str(payload.get("target_file") or "HEARTBEAT.md").strip()
+    fragment = str(
+        payload.get("candidate_fragment")
+        or row.get("candidate_fragment")
+        or ""
+    ).strip()
+    if not fragment:
+        return {
+            "status": "error",
+            "error": "proposal carries no candidate_fragment — nothing to apply",
+        }
+
+    # Vaern: fragmentet skal vaere en instruktion, ikke en beskrivelse.
+    beskrivelse = (
+        "proposal for", "prompt target=", "candidate fragment present",
+        "bounded ", "proposal-only",
+    )
+    if any(fragment.lower().startswith(b) for b in beskrivelse):
+        return {
+            "status": "error",
+            "error": "candidate_fragment is metadata prose, not an instruction",
+        }
+
+    try:
+        path = pml._workspace_path(target_file)
+        previous = path.read_text(encoding="utf-8")
+    except Exception as exc:  # self-safe: returnerer fejlen som svar, sluger den ikke
+        return {"status": "error", "error": f"could not read {target_file}: {exc}"}
+
+    markoer = "## Anvendt prompt-justering"
+    if markoer in previous:
+        # Idempotent: samme sektion erstattes, ikke duplikeret.
+        hoved = previous.split(markoer, 1)[0].rstrip()
+        nyt_indhold = f"{hoved}\n\n{markoer}\n\n{fragment}\n"
+    else:
+        nyt_indhold = f"{previous.rstrip()}\n\n{markoer}\n\n{fragment}\n"
+
+    try:
+        mutation_id = pml.apply_mutation(
+            target_file=target_file,
+            new_content=nyt_indhold,
+            source="prompt_evolution",
+            reason=f"approved proposal {proposal_id}",
+            metadata={"proposal_id": proposal_id},
+        )
+    except Exception as exc:  # self-safe: returnerer fejlen som svar, sluger den ikke
+        return {"status": "error", "error": f"apply_mutation refused: {exc}"}
+
+    drs.update_runtime_self_authored_prompt_proposal_status(
+        proposal_id,
+        status="applied",
+        updated_at=datetime.now(UTC).isoformat(),
+        status_reason=f"applied to {target_file} as {mutation_id}",
+    )
+
+    try:
+        event_bus.publish("prompt_evolution.proposal_applied", {
+            "proposal_id": proposal_id,
+            "target_file": target_file,
+            "mutation_id": mutation_id,
+        })
+    except Exception:  # self-safe: en event-fejl maa ikke vaelte skrivningen
+        pass
+
+    return {
+        "status": "executed",
+        "proposal_id": proposal_id,
+        "target_file": target_file,
+        "mutation_id": mutation_id,
+        "action": "prompt_fragment_applied",
+    }
+
+
+def propose_prompt_evolution_apply(
+    proposal_id: str,
+    *,
+    target_file: str = "HEARTBEAT.md",
+    created_by: str = "jarvis",
+) -> dict:
+    """Rejs et prompt-forslag til MENNESKETS godkendelse.
+
+    Dette er den manglende forbindelse: forslaget lever i
+    `runtime_self_authored_prompt_proposals`, men godkendelses-vejen lever i
+    `autonomy_proposals`. Uden denne funktion kan et forslag aldrig naa fra
+    «fresh» til «applied» — praecis de 65 forslag, der stod i tre maaneder.
+
+    Returnerer {"status": "queued"|"error", ...}. Selve skrivningen sker
+    FOERST naar et menneske godkender.
+    """
+    from core.runtime import db_runtime_self as drs
+
+    row = drs.get_runtime_self_authored_prompt_proposal(proposal_id)
+    if row is None:
+        return {"status": "error", "error": f"proposal not found: {proposal_id}"}
+
+    fragment = str(row.get("candidate_fragment") or "").strip()
+    if not fragment:
+        return {
+            "status": "error",
+            "error": "proposal carries no candidate_fragment — nothing to apply",
+        }
+
+    created = create_autonomy_proposal(
+        proposal_id=f"prompt-apply-{uuid4().hex[:12]}",
+        kind="prompt-evolution",
+        title=f"Anvend prompt-justering i {target_file}",
+        rationale=(
+            f"Forslag {proposal_id} baerer en indsaettelig saetning. "
+            f"Godkendelse skriver den ind i {target_file} under "
+            f"«## Anvendt prompt-justering» med snapshot og auto-rollback."
+        ),
+        payload={
+            "proposal_id": proposal_id,
+            "target_file": target_file,
+            "candidate_fragment": fragment,
+        },
+        created_by=created_by,
+    )
+    return {"status": "queued", "autonomy_proposal": created}
+
+
 # Register built-ins on import
 register_proposal_executor("memory-rewrite", _execute_memory_rewrite_proposal)
 register_proposal_executor("source-edit", _execute_source_edit_proposal)
 register_proposal_executor("git-commit", _execute_git_commit_proposal)
 register_proposal_executor("instrument_fix", _execute_instrument_fix_proposal)
+register_proposal_executor("prompt-evolution", _execute_prompt_evolution_proposal)

@@ -40005,9 +40005,17 @@
       ]
     },
     "runtime_self_authored_prompt_proposals": {
-      "digest": "7b:69:06:47:ad:d8:cb:28:e1:72:aa:8a:56:02:89:5d:13:1d:cf:52:49:c1:36:8f:f0:9e:2e:79:af:47:aa:05",
+      "digest": "64:98:13:6e:d9:f9:b9:e9:03:8f:4d:66:6e:8a:9d:3e:ae:4c:14:1d:5c:1d:dd:c3:ac:51:55:f7:e9:72:54:70",
       "schema": {
         "columns": [
+          {
+            "name": "candidate_fragment",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
           {
             "name": "canonical_key",
             "type": "TEXT",
@@ -47253,8 +47261,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset",
-        "sqlite_utc_seconds"
+        "iso_utc_offset"
       ]
     },
     "tool_router_load_more": {
@@ -47688,7 +47695,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "user_flags": {

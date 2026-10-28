@@ -174,6 +174,11 @@ def run_prompt_evolution_runtime(
         status_reason=str(artifact.get("status_reason") or ""),
         run_id="",
         session_id="heartbeat",
+        # APPLY-VEJEN (28/10-2026). Fragmentet blev foer KUN returneret i
+        # resultatet og levede dermed kun i hukommelsen — det var vaek ved
+        # naeste genstart, og de 65 forslag stod tilbage som metadata uden en
+        # saetning der kunne anvendes. Nu baerer raekken sin egen tekst.
+        candidate_fragment=str(artifact.get("candidate_fragment") or ""),
     )
 
     result = {

@@ -166,6 +166,26 @@ class TurnAccumulator:
         """
         if not chunk:
             return
+        # REN WHITESPACE ÅBNER IKKE EN TANKE (målt 28/10-2026).
+        #
+        # DeepSeek sender «\n\n» som reasoning-delta. Det åbnede et TOMT
+        # tanke-segment, satte `_segment_open = False` — så tekst-segmentet blev
+        # lukket midt i en sætning — og lagde et 'think'-mærke i interleave som
+        # `_build_turn_blocks` bagefter filtrerede væk (en tom tanke har ingen
+        # blok). Tilbage stod to tekstblokke uden noget imellem, og klienten
+        # tegnede dem som to afsnit: «(In» + «gen nye fund …», «J» + «eg
+        # tjekker …».
+        #
+        # Målt over 4.000 gemte beskeder: 162 ramt — 107 i auto-sessioner og 55
+        # i almindelige samtaler. Det blev SET i wakeup- og autonome runs fordi
+        # de vises som genindlæst `content_json`; en almindelig tur streames
+        # live og samles i klientens egen akkumulator, så bruddet først dukker
+        # op når tråden genindlæses.
+        #
+        # Whitespace INDE i en åben tanke er stadig gyldigt indhold — kun det
+        # at ÅBNE en tanke på ren luft er forkert.
+        if not chunk.strip() and not self._thinking_open:
+            return
         nu = self._nu()
         if not self._thinking_open:
             self.thinking_segments.append("")

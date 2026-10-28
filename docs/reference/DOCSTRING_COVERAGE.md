@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9411/17732 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9412/17733 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9411/17732 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 852 | 1561 | 54% |
-| `core.services` | 6269 | 12050 | 52% |
+| `core.services` | 6270 | 12051 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -759,7 +759,7 @@ Generated from source. 9411/17732 functions/methods documented (53%). The list b
 - `core/services/agent_sandbox.py` :: `bwrap_path` (L58)
 - `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L136)
 - `core/services/agent_sandbox.py` :: `python_prefixes` (L65)
-- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
+- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L317)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L66)
@@ -1094,7 +1094,7 @@ Generated from source. 9411/17732 functions/methods documented (53%). The list b
 - `core/services/connectors.py` :: `set_enabled` (L191)
 - `core/services/consent_registry.py` :: `build_consent_registry_surface` (L143)
 - `core/services/consent_registry.py` :: `get_active_consents` (L112)
-- `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L401)
+- `core/services/consolidation_judge_daemon.py` :: `now_date_str` (L412)
 - `core/services/consolidation_target_signal_tracking.py` :: `build_runtime_consolidation_target_signal_surface` (L55)
 - `core/services/consolidation_target_signal_tracking.py` :: `refresh_runtime_consolidation_target_signal_statuses` (L51)
 - `core/services/consolidation_target_signal_tracking.py` :: `track_runtime_consolidation_target_signals_for_visible_turn` (L41)
@@ -1400,15 +1400,15 @@ Generated from source. 9411/17732 functions/methods documented (53%). The list b
 - `core/services/living_executive.py` :: `start_listener` (L981)
 - `core/services/living_executive.py` :: `stop_listener` (L1002)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
-- `core/services/long_horizon_goals.py` :: `create_goal` (L32)
-- `core/services/long_horizon_goals.py` :: `delete_goal` (L126)
-- `core/services/long_horizon_goals.py` :: `edit_goal` (L107)
-- `core/services/long_horizon_goals.py` :: `get_goal` (L136)
-- `core/services/long_horizon_goals.py` :: `get_goal_with_history` (L140)
-- `core/services/long_horizon_goals.py` :: `get_stats` (L177)
-- `core/services/long_horizon_goals.py` :: `list_active_goals` (L149)
-- `core/services/long_horizon_goals.py` :: `list_all_goals` (L153)
-- `core/services/long_horizon_goals.py` :: `update_goal` (L64)
+- `core/services/long_horizon_goals.py` :: `create_goal` (L33)
+- `core/services/long_horizon_goals.py` :: `delete_goal` (L127)
+- `core/services/long_horizon_goals.py` :: `edit_goal` (L108)
+- `core/services/long_horizon_goals.py` :: `get_goal` (L137)
+- `core/services/long_horizon_goals.py` :: `get_goal_with_history` (L141)
+- `core/services/long_horizon_goals.py` :: `get_stats` (L200)
+- `core/services/long_horizon_goals.py` :: `list_active_goals` (L150)
+- `core/services/long_horizon_goals.py` :: `list_all_goals` (L154)
+- `core/services/long_horizon_goals.py` :: `update_goal` (L65)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_from_sources` (L45)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_prompt_section` (L110)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_surface` (L14)

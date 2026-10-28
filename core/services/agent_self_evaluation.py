@@ -36,7 +36,12 @@ logger = logging.getLogger(__name__)
 _TICK_EVAL_KEY = "tick_quality_evaluations"
 _GOAL_PROGRESS_KEY = "goal_progress_tracking"
 _MAX_TICK_EVALS_KEPT = 200
-_GOAL_STALE_DAYS = 3
+_GOAL_STALE_DAYS = 14
+# 28/10-2026: var 3. Et LANGTIDSMÅL er pr. definition noget der strækker sig
+# over uger — med 3 dage var alle fem aktive mål altid «stale», og så
+# ignorerer man signalet. Målt samme dag: med 14 dage rammer vagten 4 af 5
+# (29-170 dage), mens det ni dage gamle mål er frisk. Det er den forskel
+# der gør tallet læsbart i stedet for konstant.
 
 
 # ── Tick quality scoring ──────────────────────────────────────────
@@ -281,9 +286,16 @@ def tick_quality_summary(*, days: int = 7) -> dict[str, Any]:
 
 def detect_stale_goals(*, stale_days: int = _GOAL_STALE_DAYS) -> list[dict[str, Any]]:
     """Find active goals with no recent progress signal."""
+    # 28/10-2026: denne vagt laeste `autonomous_goals` — en ANDEN tabel end
+    # den prompten viser (`long_horizon_goals`). Maalt samme dag: 0 aktive
+    # raekker der, 5 aktive her, hvoraf 4 var uroert i 29-170 dage. Vagten
+    # svarede derfor altid [] og kunne pr. konstruktion ikke fange noget.
+    # En vagt der peger paa en tom tabel er ikke en vagt — den er tavshed
+    # med et funktionsnavn.
     try:
-        from core.services.autonomous_goals import list_goals
-        active = list_goals(status="active", parent_id="any", limit=50)
+        from core.services.long_horizon_goals import list_active_goals
+
+        active = list_active_goals(limit=50)
     except Exception:
         return []
 

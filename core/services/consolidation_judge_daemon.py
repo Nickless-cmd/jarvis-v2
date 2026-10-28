@@ -94,7 +94,7 @@ def _gather_evidence() -> dict[str, Any]:
     # ── Stale goals ──────────────────────────────────────────────
     try:
         from core.services.agent_self_evaluation import detect_stale_goals
-        evidence["stale_goals"] = detect_stale_goals(stale_days=3)
+        evidence["stale_goals"] = detect_stale_goals()
     except Exception as e:
         logger.warning("consolidation_judge: stale_goals failed: %s", e)
         evidence["stale_goals"] = []
@@ -322,10 +322,21 @@ def _enforce_reject(j: dict[str, Any]) -> None:
 
     elif item_type == "stale_goals" and "abandon" in choice:
         try:
-            from core.services.autonomous_goals import update_goal_status
+            # 28/10-2026: `detect_stale_goals` laeser nu `long_horizon_goals`,
+            # men abandon-kaldet pegede stadig paa `autonomous_goals`. Maalt
+            # samme dag: den tabel havde 0 raekker, saa valget «abandon» ville
+            # ramme et id der ikke findes der og gøre INTET — en tavs handling
+            # der ser ud som om den blev udfoert. Begge ender skal pege samme
+            # sted hen, ellers er dommen og handlingen uenige om hvad et maal er.
+            from core.services.long_horizon_goals import update_goal as _update_lh_goal
             from core.services.agent_self_evaluation import detect_stale_goals
-            for g in detect_stale_goals(stale_days=3):
-                update_goal_status(g["goal_id"], "abandoned")
+            for g in detect_stale_goals():
+                _update_lh_goal(
+                    goal_id=str(g.get("goal_id") or ""),
+                    note="forladt af konsoliderings-dommeren: ingen fremdrift",
+                    new_status="abandoned",
+                    source="consolidation_judge",
+                )
                 event_bus.publish("consolidation_judge.abandoned_goal", {
                     "goal_id": g["goal_id"],
                     "title": g.get("title", ""),

@@ -73,16 +73,17 @@ _Long-horizon goals — persistent objectives across sessions._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_goal` | `(*, title, description=…, priority=…, target_date=…, tags=…, created_by=…)` | — | [src](../../../core/services/long_horizon_goals.py#L32) |
-| function | `update_goal` | `(*, goal_id, note, progress_delta=…, new_status=…, source=…)` | — | [src](../../../core/services/long_horizon_goals.py#L64) |
-| function | `edit_goal` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/services/long_horizon_goals.py#L107) |
-| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/services/long_horizon_goals.py#L126) |
-| function | `get_goal` | `(goal_id)` | — | [src](../../../core/services/long_horizon_goals.py#L136) |
-| function | `get_goal_with_history` | `(goal_id, *, history_limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L140) |
-| function | `list_active_goals` | `(*, limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L149) |
-| function | `list_all_goals` | `(*, limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L153) |
-| function | `format_active_goals_for_heartbeat` | `(*, max_goals=…)` | Compact single-paragraph summary for heartbeat prompt injection. | [src](../../../core/services/long_horizon_goals.py#L157) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/long_horizon_goals.py#L177) |
+| function | `create_goal` | `(*, title, description=…, priority=…, target_date=…, tags=…, created_by=…)` | — | [src](../../../core/services/long_horizon_goals.py#L33) |
+| function | `update_goal` | `(*, goal_id, note, progress_delta=…, new_status=…, source=…)` | — | [src](../../../core/services/long_horizon_goals.py#L65) |
+| function | `edit_goal` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/services/long_horizon_goals.py#L108) |
+| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/services/long_horizon_goals.py#L127) |
+| function | `get_goal` | `(goal_id)` | — | [src](../../../core/services/long_horizon_goals.py#L137) |
+| function | `get_goal_with_history` | `(goal_id, *, history_limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L141) |
+| function | `list_active_goals` | `(*, limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L150) |
+| function | `list_all_goals` | `(*, limit=…)` | — | [src](../../../core/services/long_horizon_goals.py#L154) |
+| function | `format_active_goals_for_heartbeat` | `(*, max_goals=…)` | Compact single-paragraph summary for heartbeat prompt injection. | [src](../../../core/services/long_horizon_goals.py#L158) |
+| function | `_alder_dage` | `(tid)` | Dage siden et ISO-tidsstempel. None hvis det mangler eller ikke kan læses. | [src](../../../core/services/long_horizon_goals.py#L186) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/long_horizon_goals.py#L200) |
 
 ## `core/services/longing_signal_daemon.py`
 _Longing-toward-user signal daemon — Spor-1 of generative autonomy._

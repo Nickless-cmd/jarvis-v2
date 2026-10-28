@@ -2323,7 +2323,7 @@ Generated from source. 9406/17724 functions/methods documented (53%). The list b
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L65)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L180)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L83)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L199)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L215)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L87)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L91)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_item` (L111)

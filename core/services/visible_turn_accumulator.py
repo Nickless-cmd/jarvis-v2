@@ -192,7 +192,23 @@ class TurnAccumulator:
             self.thinking_times.append([nu, nu])
             self.interleave.append("think")
             self._thinking_open = True
-            self._segment_open = False
+            # EN TANKE LUKKER IKKE TEKSTEN (målt 28/10-2026, anden runde).
+            #
+            # Her stod `self._segment_open = False`, og det modsagde
+            # `add_text`s egen docstring: «Et segment lukkes af et
+            # værktøjskald». Konsekvensen var at en ÆGTE tanke midt i et ord
+            # rev teksten over i to segmenter, som `_build_turn_blocks` lagde
+            # ved hver sin markør — og klienten tegnede dem som to afsnit.
+            #
+            # Målt i `auto-heartbeat` 28/10 kl. 15:53, dvs. EFTER
+            # whitespace-fixet kl. 15:38: tre ord revet over i ÉN besked —
+            # «K|larsignal», «Jeg har|tjekket», «Der|er ingen». Det første fix
+            # dækkede kun TOM luft; her var tanken 11 tegn ægte indhold
+            # («inbox tool.»), så det fyrede ikke.
+            #
+            # Rækkefølgen bliver text → think i stedet for text → think → text.
+            # Det er en usynlig unøjagtighed (tanken er foldet sammen i UI'et),
+            # og den er langt billigere end et ord der er revet midt over.
         self.thinking_segments[-1] += chunk
         self.thinking_times[-1][1] = nu
 

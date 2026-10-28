@@ -66,11 +66,20 @@ def test_whitespace_tanke_efterlader_ingen_tom_tankeblok() -> None:
     assert _text_blokke(ta) == ["Jeg tjekker CI-status."]
 
 
-def test_rigtig_tanke_midt_i_teksten_giver_stadig_to_blokke() -> None:
-    """MODPRØVE: en ægte tanke SKAL stadig skabe to tekstblokke.
+def test_rigtig_tanke_midt_i_teksten_deler_ikke_teksten() -> None:
+    """MODPRØVE: en ægte tanke bevares som blok — men river IKKE teksten over.
 
-    Uden denne test ville et bart `return ""` i `add_thinking` bestå alle de
-    andre — og så ville tænkning midt i en tur forsvinde som synlig struktur.
+    Testen hed tidligere «…giver stadig to blokke» og krævede
+    ``["text", "thinking", "text"]``. Det var forkert, og den målte sin egen
+    fejl: den værgede om at tænkning forsvandt (rigtigt) ved at kræve at
+    teksten blev delt (forkert). Målt i `auto-heartbeat` 28/10 kl. 15:53 rev
+    den adfærd tre ord over i én besked: «K|larsignal», «Jeg har|tjekket»,
+    «Der|er ingen».
+
+    Det værn der faktisk skal stå, er todelt — og begge dele testes her:
+      * tanken findes stadig som blok (ellers ville et bart `return` i
+        `add_thinking` bestå, og tænkning blev usynlig), og
+      * teksten er ÉN blok (ellers bliver et ord revet midt over).
     """
     ta = TurnAccumulator()
     ta.note_text()
@@ -79,8 +88,10 @@ def test_rigtig_tanke_midt_i_teksten_giver_stadig_to_blokke() -> None:
     ta.note_text()
     ta.add_text("Anden del.")
 
-    assert _typer(ta) == ["text", "thinking", "text"]
-    assert _text_blokke(ta) == ["Første del.", "Anden del."]
+    typer = _typer(ta)
+    assert "thinking" in typer, "tænkningen forsvandt — det er den fejl testen værner mod"
+    assert typer.count("text") == 1, f"teksten blev revet over: {typer}"
+    assert _text_blokke(ta) == ["Første del. Anden del."]
 
 
 def test_whitespace_inde_i_en_aaaben_tanke_bevares() -> None:

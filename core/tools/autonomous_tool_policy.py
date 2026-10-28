@@ -128,6 +128,15 @@ ORIGIN_TOOLS: dict[str, frozenset[str]] = {
         "discord_channel", "send_webchat_message",
         "web_search", "web_fetch", "get_weather", "get_news", "madopskrift",
         "bash",
+        # Sansearkiv (28/10-2026): natrutinen og dybdesessionen ER rutiner
+        # hvis formål er at sanse og arkivere. Uden disse svarede kørslen
+        # «ikke i capability scope» og skrev intet i fire døgn.
+        # `record_sensory_memory`/`recall_sensory_memories` kommer allerede
+        # fra bund-sættet; `look_around`/`mic_listen` fandtes KUN i `dream`.
+        # De står her eksplicit fordi `is_allowed` krydser mod denne nøgle —
+        # en tilføjelse til `_RUTINE_KERNE_TOOLS` alene bliver filtreret væk.
+        "look_around", "mic_listen", "record_sensory_memory",
+        "recall_sensory_memories",
     }),
     # Drømmen skal sanse og arkivere sit indtryk — ikke tale med verden.
     "dream": frozenset({"look_around", "mic_listen"}),

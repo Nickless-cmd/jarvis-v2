@@ -496,10 +496,10 @@ _Lease and dispatch one explicitly autonomous side task while Jarvis is idle._
 | function | `_something_running` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L54) |
 | function | `_target_session` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L63) |
 | function | `_session_for_task` | `(task)` | Hvilken SAMTALE hører denne opgave til? | [src](../../../core/services/autonomous_side_task_dispatcher.py#L78) |
-| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L124) |
-| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L142) |
-| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L162) |
-| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L183) |
+| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L167) |
+| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L185) |
+| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L205) |
+| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L226) |
 
 ## `core/services/autonomous_stream_run.py`
 _Server-authoritative streaming lifecycle for autonomous visible runs._

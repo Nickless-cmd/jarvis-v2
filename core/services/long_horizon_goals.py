@@ -22,6 +22,7 @@ from core.runtime.db_goals import (
     create_goal as _db_create_goal,
     delete_goal as _db_delete_goal,
     get_goal as _db_get_goal,
+    last_progress_map as _db_last_progress_map,
     list_goal_updates,
     list_goals as _db_list_goals,
     update_goal_fields,
@@ -149,6 +150,16 @@ def get_goal_with_history(goal_id: str, *, history_limit: int = 10) -> dict[str,
 
 def list_active_goals(*, limit: int = 20) -> list[dict[str, Any]]:
     return _db_list_goals(status="active", limit=limit)
+
+
+def last_progress_map(goal_ids: list[str]) -> dict[str, str]:
+    """Sidste REELLE fremskridt pr. mål — ikke sidste rørelse.
+
+    28/10-2026: ``updated_at`` flytter sig også når nogen blot SKRIVER en note
+    («dette mål er forladt»). Måler man den, kan vagten gøres blind ved at
+    skrive til den. Her tæller kun opdateringer med ``progress_delta``.
+    """
+    return _db_last_progress_map(goal_ids)
 
 
 def list_all_goals(*, limit: int = 100) -> list[dict[str, Any]]:

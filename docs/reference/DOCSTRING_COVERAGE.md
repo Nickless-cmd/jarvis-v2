@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9412/17733 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9417/17738 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9412/17733 functions/methods documented (53%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 852 | 1561 | 54% |
-| `core.services` | 6270 | 12051 | 52% |
+| `core.runtime` | 853 | 1562 | 54% |
+| `core.services` | 6274 | 12055 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -491,13 +491,13 @@ Generated from source. 9412/17733 functions/methods documented (53%). The list b
 - `core/runtime/db_experiential_memory.py` :: `list_cognitive_experiential_memories` (L75)
 - `core/runtime/db_experiential_memory.py` :: `reinforce_experiential_memory` (L66)
 - `core/runtime/db_fts.py` :: `fts5_available` (L74)
-- `core/runtime/db_goals.py` :: `count_goals` (L281)
+- `core/runtime/db_goals.py` :: `count_goals` (L311)
 - `core/runtime/db_goals.py` :: `create_goal` (L75)
-- `core/runtime/db_goals.py` :: `delete_goal` (L268)
+- `core/runtime/db_goals.py` :: `delete_goal` (L298)
 - `core/runtime/db_goals.py` :: `get_goal` (L180)
 - `core/runtime/db_goals.py` :: `list_goal_updates` (L213)
 - `core/runtime/db_goals.py` :: `list_goals` (L192)
-- `core/runtime/db_goals.py` :: `update_goal_fields` (L224)
+- `core/runtime/db_goals.py` :: `update_goal_fields` (L254)
 - `core/runtime/db_governance.py` :: `create_tool_intent_approval_request` (L80)
 - `core/runtime/db_governance.py` :: `expire_tool_intent_approval_request` (L223)
 - `core/runtime/db_governance.py` :: `get_runtime_contract_file_write` (L337)
@@ -759,7 +759,7 @@ Generated from source. 9412/17733 functions/methods documented (53%). The list b
 - `core/services/agent_sandbox.py` :: `bwrap_path` (L58)
 - `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L136)
 - `core/services/agent_sandbox.py` :: `python_prefixes` (L65)
-- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L317)
+- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L388)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L66)
@@ -1400,15 +1400,15 @@ Generated from source. 9412/17733 functions/methods documented (53%). The list b
 - `core/services/living_executive.py` :: `start_listener` (L981)
 - `core/services/living_executive.py` :: `stop_listener` (L1002)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
-- `core/services/long_horizon_goals.py` :: `create_goal` (L33)
-- `core/services/long_horizon_goals.py` :: `delete_goal` (L127)
-- `core/services/long_horizon_goals.py` :: `edit_goal` (L108)
-- `core/services/long_horizon_goals.py` :: `get_goal` (L137)
-- `core/services/long_horizon_goals.py` :: `get_goal_with_history` (L141)
-- `core/services/long_horizon_goals.py` :: `get_stats` (L200)
-- `core/services/long_horizon_goals.py` :: `list_active_goals` (L150)
-- `core/services/long_horizon_goals.py` :: `list_all_goals` (L154)
-- `core/services/long_horizon_goals.py` :: `update_goal` (L65)
+- `core/services/long_horizon_goals.py` :: `create_goal` (L34)
+- `core/services/long_horizon_goals.py` :: `delete_goal` (L128)
+- `core/services/long_horizon_goals.py` :: `edit_goal` (L109)
+- `core/services/long_horizon_goals.py` :: `get_goal` (L138)
+- `core/services/long_horizon_goals.py` :: `get_goal_with_history` (L142)
+- `core/services/long_horizon_goals.py` :: `get_stats` (L211)
+- `core/services/long_horizon_goals.py` :: `list_active_goals` (L151)
+- `core/services/long_horizon_goals.py` :: `list_all_goals` (L165)
+- `core/services/long_horizon_goals.py` :: `update_goal` (L66)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_from_sources` (L45)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_prompt_section` (L110)
 - `core/services/loop_runtime.py` :: `build_loop_runtime_surface` (L14)

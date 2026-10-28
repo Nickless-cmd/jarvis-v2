@@ -228,10 +228,11 @@ _Long-horizon goals store — persistent objectives Jarvis carries across sessio
 | function | `get_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L180) |
 | function | `list_goals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L192) |
 | function | `list_goal_updates` | `(goal_id, *, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L213) |
-| function | `update_goal_fields` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/runtime/db_goals.py#L224) |
-| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L268) |
-| function | `count_goals` | `(*, status=…)` | — | [src](../../../core/runtime/db_goals.py#L281) |
-| function | `_row_to_goal` | `(row)` | — | [src](../../../core/runtime/db_goals.py#L296) |
+| function | `last_progress_map` | `(goal_ids)` | Sidste REELLE fremskridt pr. mål — ISO-tidsstempel, kun rækker med delta. | [src](../../../core/runtime/db_goals.py#L224) |
+| function | `update_goal_fields` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/runtime/db_goals.py#L254) |
+| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L298) |
+| function | `count_goals` | `(*, status=…)` | — | [src](../../../core/runtime/db_goals.py#L311) |
+| function | `_row_to_goal` | `(row)` | — | [src](../../../core/runtime/db_goals.py#L326) |
 
 ## `core/runtime/db_governance.py`
 _Persistence for governance-adjacent CRUD domains._

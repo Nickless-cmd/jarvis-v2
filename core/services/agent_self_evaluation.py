@@ -284,33 +284,104 @@ def tick_quality_summary(*, days: int = 7) -> dict[str, Any]:
 # ── Stale goal detection ─────────────────────────────────────────
 
 
+def _parse_ts(raw: Any) -> datetime | None:
+    """Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid.
+
+    28/10-2026: de to formater lever side om side i samme kolonne (målt i
+    ``causal_edges``: 102.419 rækker med ``Z``, resten med ``+00:00``).
+    Derfor kan de IKKE sammenlignes som strenge — ``'...Z' >= '...+00:00'``
+    er sandt uanset hvad klokken er. Ukendt eller ulæseligt giver ``None``,
+    som kalderen skal behandle som «ukendt», aldrig som «friskt».
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        d = datetime.fromisoformat(s)
+    except Exception:
+        # Bevidst: et ulæseligt tidsstempel skal give «ukendt», aldrig «friskt».
+        # Kalderen lægger målet i stale-listen med days_stale=None i stedet for
+        # at skjule det — tavshed om det mål vagten ikke forstår er værre end
+        # en upræcis alder.
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=UTC)
+
+
+def _load_active_and_progress() -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """(aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning."""
+    from core.services.long_horizon_goals import last_progress_map, list_active_goals
+
+    active = list_active_goals(limit=50)
+    ids = [str(g.get("goal_id")) for g in active if g.get("goal_id")]
+    return active, last_progress_map(ids)
+
+
+def _active_with_last_progress() -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et."""
+    try:
+        return _load_active_and_progress()
+    except Exception:
+        # Bevidst: tomt svar = «intet at rapportere», ikke en gættet tilstand.
+        # Falder mod det der standser (ingen sektion), ikke mod det der
+        # fortsætter (en sektion bygget på halve data).
+        return [], {}
+
+
 def detect_stale_goals(*, stale_days: int = _GOAL_STALE_DAYS) -> list[dict[str, Any]]:
-    """Find active goals with no recent progress signal."""
+    """Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``.
+
+    28/10-2026, rettelse to samme dag: første udgave målte ``updated_at``.
+    Det gjorde vagten blind for sin egen bruger — jeg skrev en statusnote på
+    tre forladte mål (noten SAGDE at de var forladte), ``updated_at`` blev
+    rørt, og vagten svarede pludselig 0. En vagt der kan gøres blind ved at
+    skrive til den måler RØRELSE, ikke FREMSKRIDT.
+
+    Nu tælles kun opdateringer med ``progress_delta``. Et mål uden en enkelt
+    sådan opdatering måles fra ``created_at`` — det har aldrig flyttet sig og
+    er dermed forladt fra fødslen, ikke friskt.
+    """
     # 28/10-2026: denne vagt laeste `autonomous_goals` — en ANDEN tabel end
     # den prompten viser (`long_horizon_goals`). Maalt samme dag: 0 aktive
     # raekker der, 5 aktive her, hvoraf 4 var uroert i 29-170 dage. Vagten
     # svarede derfor altid [] og kunne pr. konstruktion ikke fange noget.
     # En vagt der peger paa en tom tabel er ikke en vagt — den er tavshed
     # med et funktionsnavn.
-    try:
-        from core.services.long_horizon_goals import list_active_goals
+    active, fremskridt = _active_with_last_progress()
 
-        active = list_active_goals(limit=50)
-    except Exception:
-        return []
-
-    cutoff = (datetime.now(UTC) - timedelta(days=stale_days)).isoformat()
+    nu = datetime.now(UTC)
+    graense = nu - timedelta(days=stale_days)
     stale: list[dict[str, Any]] = []
     for g in active:
-        updated = str(g.get("updated_at") or g.get("created_at") or "")
-        if updated and updated < cutoff:
+        gid = str(g.get("goal_id") or "")
+        sidste_fremskridt = fremskridt.get(gid)
+        # Uden et eneste fremskridt er fødslen det ærlige udgangspunkt.
+        grundlag = "progress" if sidste_fremskridt else "created"
+        raa = sidste_fremskridt or str(g.get("created_at") or "")
+        ts = _parse_ts(raa)
+        if ts is None:
+            # Kan alderen ikke måles, må den ikke forsvinde — så ville vagten
+            # tie om netop det mål den ikke forstår.
             stale.append({
                 "goal_id": g.get("goal_id"),
                 "title": g.get("title"),
                 "priority": g.get("priority"),
-                "last_update": updated,
-                "days_stale": stale_days,
+                "last_update": raa or None,
+                "days_stale": None,
+                "basis": grundlag,
             })
+            continue
+        if ts >= graense:
+            continue
+        stale.append({
+            "goal_id": g.get("goal_id"),
+            "title": g.get("title"),
+            "priority": g.get("priority"),
+            "last_update": raa,
+            "days_stale": (nu - ts).days,
+            "basis": grundlag,
+        })
     return stale
 
 
@@ -318,9 +389,12 @@ def stale_goals_section() -> str | None:
     stale = detect_stale_goals()
     if not stale:
         return None
-    lines = [f"⏰ {len(stale)} aktive mål uden progress i ≥{_GOAL_STALE_DAYS} dage:"]
+    lines = [f"⏰ {len(stale)} aktive mål uden fremskridt i ≥{_GOAL_STALE_DAYS} dage:"]
     for g in stale[:5]:
-        lines.append(f"  • [{g.get('priority', '?')}] {g.get('title', '?')} (sidst opdateret {g.get('last_update', '?')[:10]})")
+        dage = g.get("days_stale")
+        alder = "alder ukendt" if dage is None else f"{dage}d"
+        hvad = "sidste fremskridt" if g.get("basis") == "progress" else "intet fremskridt siden oprettelse"
+        lines.append(f"  • [{g.get('priority', '?')}] {g.get('title', '?')} ({hvad} · {alder})")
     return "\n".join(lines)
 
 

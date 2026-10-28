@@ -221,6 +221,36 @@ def list_goal_updates(goal_id: str, *, limit: int = 20) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def last_progress_map(goal_ids: list[str]) -> dict[str, str]:
+    """Sidste REELLE fremskridt pr. mål — ISO-tidsstempel, kun rækker med delta.
+
+    28/10-2026: tilføjet fordi ``detect_stale_goals`` målte ``updated_at``,
+    altså RØRELSE. En note der sagde «dette mål er forladt» rørte
+    ``updated_at`` og fik målet til at se friskt ud — vagten kunne gøres
+    blind ved at skrive til den. Kun en opdatering der faktisk flyttede
+    procenten (``progress_delta IS NOT NULL``) er fremskridt.
+    """
+    ids = [str(g) for g in (goal_ids or []) if g]
+    if not ids:
+        return {}
+    placeholders = ",".join("?" * len(ids))
+    with connect() as conn:
+        _ensure_tables(conn)
+        rows = conn.execute(
+            "SELECT goal_id, MAX(created_at) AS sidste "
+            "FROM long_horizon_goal_updates "
+            "WHERE progress_delta IS NOT NULL "
+            f"AND goal_id IN ({placeholders}) "
+            "GROUP BY goal_id",
+            ids,
+        ).fetchall()
+    return {
+        str(r["goal_id"]): str(r["sidste"])
+        for r in rows
+        if r["goal_id"] and r["sidste"]
+    }
+
+
 def update_goal_fields(
     goal_id: str,
     *,

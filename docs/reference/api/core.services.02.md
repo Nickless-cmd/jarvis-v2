@@ -204,16 +204,19 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 | function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L124) |
 | function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad det EFTERLOD — ikke på hvilken form det havde. | [src](../../../core/services/agent_self_evaluation.py#L144) |
 | function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L240) |
-| function | `detect_stale_goals` | `(*, stale_days=…)` | Find active goals with no recent progress signal. | [src](../../../core/services/agent_self_evaluation.py#L287) |
-| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L317) |
-| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L330) |
-| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L429) |
-| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L433) |
-| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L463) |
-| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L491) |
-| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L568) |
-| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L572) |
-| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L577) |
+| function | `_parse_ts` | `(raw)` | Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/agent_self_evaluation.py#L287) |
+| function | `_load_active_and_progress` | `()` | (aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning. | [src](../../../core/services/agent_self_evaluation.py#L312) |
+| function | `_active_with_last_progress` | `()` | Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et. | [src](../../../core/services/agent_self_evaluation.py#L321) |
+| function | `detect_stale_goals` | `(*, stale_days=…)` | Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``. | [src](../../../core/services/agent_self_evaluation.py#L332) |
+| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L388) |
+| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L404) |
+| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L503) |
+| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L507) |
+| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L537) |
+| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L565) |
+| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L642) |
+| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L646) |
+| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L651) |
 
 ## `core/services/agent_skill_distiller.py`
 _Agent skill distillation — turns observed outcomes into principles._

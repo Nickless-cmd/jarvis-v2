@@ -266,3 +266,42 @@ def test_linjen_baerer_besked_aftrykkene_videre(tmp_path, monkeypatch):
     assert linje["msg_shas"] == ["aaaaaa", "bbbbbb"]
     assert linje["msg_lens"] == [12, 34]
     assert linje["msg_count"] == 2
+
+
+def test_loggen_roterer_naar_den_bliver_for_stor(tmp_path, monkeypatch):
+    """115 MB uden én rotation er hvad denne test forhindrer.
+
+    MAALT 28/10-2026: `cache_telemetry.jsonl` var 115 MB og havde aldrig vaeret
+    roteret, mens soesterfilerne holdt sig under 9 MB fordi DERES skrivere
+    roterer. `prune_rotated_logs` sletter roterede filer — men den roterer ikke,
+    saa uden en roterende skriver vokser filen til den fylder disken.
+    """
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    monkeypatch.setattr(ct, "LOG_MAKS_BYTES", 500)
+    log = tmp_path / "logs" / "cache_telemetry.jsonl"
+
+    ct.record_visible_cache(run_id="r1", cache_hit=1, cache_miss=1)
+    assert log.exists() and not log.with_suffix(".jsonl.1").exists()
+
+    # Skub filen over loftet, som mange timers drift ville goere.
+    log.write_text("x" * 600, encoding="utf-8")
+    ct.record_visible_cache(run_id="r2", cache_hit=2, cache_miss=2)
+
+    roteret = log.with_suffix(".jsonl.1")
+    assert roteret.exists(), "filen blev ikke roteret — den vokser stadig uden loft"
+    assert roteret.read_text(encoding="utf-8").startswith("x" * 600)
+    # Den friske fil indeholder KUN den nye linje, ikke den gamle bulk.
+    frisk = log.read_text(encoding="utf-8")
+    assert "r2" in frisk
+    assert "r1" not in frisk
+    assert len(frisk) < 600
+
+
+def test_loggen_roterer_ikke_under_loftet(tmp_path, monkeypatch):
+    """Rotation maa ikke kaste en lille log vaek ved hvert kald."""
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    ct.record_visible_cache(run_id="a", cache_hit=1, cache_miss=0)
+    ct.record_visible_cache(run_id="b", cache_hit=1, cache_miss=0)
+    log = tmp_path / "logs" / "cache_telemetry.jsonl"
+    assert not log.with_suffix(".jsonl.1").exists()
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 2

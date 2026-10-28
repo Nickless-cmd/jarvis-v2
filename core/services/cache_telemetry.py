@@ -18,8 +18,35 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+#: Loft foer rotation. Samme tal som `scripts/primary_cache_warmer.LOG_MAKS_BYTES`
+#: — de to filer skrives af samme slags kode og skal have samme levetid.
+#:
+#: MAALT 28/10-2026: `cache_telemetry.jsonl` var 115 MB og havde ALDRIG vaeret
+#: roteret, mens soesterfilerne (`cache_rate.jsonl` 8,7 MB, `cache_warmer.jsonl`
+#: 2,0 MB) holdt sig smaa fordi deres skrivere roterer. `prune_rotated_logs` i
+#: `state_file_retention` sletter roterede filer — men den roterer ikke, saa en
+#: fil uden en roterende skriver vokser til den fylder disken.
+LOG_MAKS_BYTES = 8 * 1024 * 1024
+
+
+def _rotér(sti: Path) -> None:
+    """Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem.
+
+    Samme bevidste valg som varmeren: formaalet er at kende det seneste moenster,
+    ikke at foere arkiv. To filer aa 8 MB er et loft man kan regne med.
+
+    Selv-sikker: telemetri maa aldrig vaelte stream-stien.
+    """
+    try:
+        if sti.exists() and sti.stat().st_size > LOG_MAKS_BYTES:
+            sti.replace(sti.with_suffix(sti.suffix + ".1"))
+    except Exception:  # rotation må aldrig vælte stream-stien — telemetri er ikke kritisk
+        pass
 
 
 def prefix_signature(system_content: str, tools: Any) -> tuple[str, int]:
@@ -241,12 +268,11 @@ def record_visible_cache(
 ) -> None:
     """Append én telemetri-linje. Self-safe (sluger alt)."""
     try:
-        import os
-        from pathlib import Path
         home = Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
         log_dir = home / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         path = log_dir / "cache_telemetry.jsonl"
+        _rotér(path)
         _in = int(cache_hit) + int(cache_miss)
         line = {
             "timestamp": datetime.now(timezone.utc).isoformat(),

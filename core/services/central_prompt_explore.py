@@ -99,7 +99,12 @@ def _good(outcome: str) -> bool:
 
 # ── A/B-forsøgets tilstandsmaskine ───────────────────────────────────────────────────
 def _new_state(tt: str, sec: str) -> dict[str, Any]:
-    return {"tt": tt, "sec": sec, "arm": "absent", "left": _TRIALS_PER_ARM,
+    # SHADOW-BASELINE (28/10-2026): uden live-flag udelades intet, saa ABSENT-armen kan ikke
+    # maales. Forsøget starter derfor paa PRESENT i shadow — den arm der FAKTISK sker — og
+    # skifter først til absent naar flaget taendes. Ellers stod staten paa en arm der aldrig
+    # kunne tælle, hvilket er præcis den slags "levende forsøg" der ikke maaler noget.
+    return {"tt": tt, "sec": sec, "arm": "present" if not is_explore_live() else "absent",
+            "left": _TRIALS_PER_ARM,
             "absent_good": 0, "absent_total": 0, "present_good": 0, "present_total": 0}
 
 
@@ -140,8 +145,6 @@ def record_trial(turn_type: str, included_labels: list[str] | None, outcome: str
     tur-type, tæl udfaldet ind i den arm der FAKTISK skete (verificeret mod included_labels, så
     dataen ikke forurenes) → skift arm / evaluér når armen er fuld. Shadow → intet tælles. Self-safe."""
     try:
-        if not is_explore_live():
-            return                   # shadow: intet udelades → intet A/B-data (undgår forurening)
         st = _kv_get(_STATE_KEY, None)
         if not isinstance(st, dict) or st.get("tt") != str(turn_type):
             return
@@ -150,7 +153,15 @@ def record_trial(turn_type: str, included_labels: list[str] | None, outcome: str
         arm = st.get("arm")
         present_now = bool(included_labels) and st.get("sec") in (included_labels or [])
         good = _good(outcome)
+        # SHADOW-BASELINE (28/10-2026). PRESENT-armen er gratis at maale: sektionen VAR med,
+        # intet blev udeladt, ingen risiko for turen. Uden den er et ABSENT-resultat et tal
+        # uden reference. Derfor tælles PRESENT ogsaa naar flaget er slukket — men ABSENT
+        # gør ALDRIG: shadow udelader intet, saa en "absent"-taelling i shadow ville vaere
+        # en løgn om hvad der skete. Den graense er det der gør baseline aerlig.
+        live = is_explore_live()
         if arm == "absent":
+            if not live:
+                return               # shadow: intet blev udeladt → ingen ABSENT-data at hente
             if present_now:
                 return               # inkonsistent (sektionen var MED i absent-armen) → forurener ikke
             st["absent_total"] += 1
@@ -164,6 +175,13 @@ def record_trial(turn_type: str, included_labels: list[str] | None, outcome: str
         if st["left"] <= 0:
             if arm == "absent":
                 st["arm"] = "present"    # skift til present-armen
+                st["left"] = _TRIALS_PER_ARM
+                _kv_set(_STATE_KEY, st)
+            elif not live:
+                # SHADOW-BASELINE: armen er fuld, men der er ingen ABSENT-data at sammenligne
+                # med — et forsøg kan ikke afgøres paa halvdelen af sit grundlag. Staten
+                # BEHOLDES (baseline-rate akkumulerer videre) og armen bliver staaende paa
+                # 'present'. Rydder vi her, forsvinder den eneste baseline vi har.
                 st["left"] = _TRIALS_PER_ARM
                 _kv_set(_STATE_KEY, st)
             else:
@@ -203,12 +221,13 @@ def record_turn_outcome(outcome: str) -> None:
     at det ikke måler, er præcis den fejl der holdt denne arm død i månedsvis.
     """
     try:
-        if not is_explore_live():
-            return                   # shadow: intet forsøg kører → manglende kontekst er ikke en fejl
         komp = _sidste_komposition.get()
         if not isinstance(komp, dict):
-            n = int(_kv_get(_MISSING_KEY, 0) or 0)
-            _kv_set(_MISSING_KEY, n + 1)
+            # Kun en FEJL hvis et forsøg faktisk kører live. I shadow er der intet forsøg,
+            # og en manglende komposition er normal (fx en tur uden prompt-bygning).
+            if is_explore_live():
+                n = int(_kv_get(_MISSING_KEY, 0) or 0)
+                _kv_set(_MISSING_KEY, n + 1)
             return
         _sidste_komposition.set(None)
         record_trial(str(komp.get("tt") or ""), komp.get("labels") or [], outcome)
@@ -319,6 +338,16 @@ def build_prompt_explore_surface() -> dict[str, object]:
     """Mission Control — read-only: aktivt forsøg + foreslåede snit (shadow-diff Bjørn kan se)."""
     st = _kv_get(_STATE_KEY, {}) or {}
     shadow = _kv_get(_SHADOW_KEY, {}) or {}
+    baseline = None
+    if isinstance(st, dict) and st.get("tt"):
+        # Baseline-rate: hvad er PRESENT-armens gode-udfald i drift? Uden den er et
+        # ABSENT-resultat et tal uden reference. Synlig ogsaa i shadow.
+        baseline = {"present_good": int(st.get("present_good", 0)),
+                    "present_total": int(st.get("present_total", 0)),
+                    "present_rate": round(_rate(st.get("present_good", 0),
+                                                st.get("present_total", 0)), 3)}
     return {"active": True, "explore_live": is_explore_live(),
             "experiment": st if isinstance(st, dict) and st.get("tt") else None,
+            "baseline": baseline,
+            "missing_context": int(_kv_get(_MISSING_KEY, 0) or 0),
             "proposed_cuts": shadow if isinstance(shadow, dict) else {}}

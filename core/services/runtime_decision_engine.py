@@ -320,6 +320,8 @@ def _apply_feedback(
         signal_stats=signal_stats,
     )
     reasons.extend(semantic_reasons)
+    score, weight_reasons = _apply_persisted_weight(candidate, score=score)
+    reasons.extend(weight_reasons)
 
     return RuntimeActionCandidate(
         action_id=candidate.action_id,
@@ -328,6 +330,59 @@ def _apply_feedback(
         payload=dict(candidate.payload),
         mode=candidate.mode,
     )
+
+
+def _apply_persisted_weight(
+    candidate: RuntimeActionCandidate,
+    *,
+    score: float,
+) -> tuple[float, list[str]]:
+    """Laese-vejen: den PERSISTEREDE vaegt konsulteres FOER valget traeffes.
+
+    28/10-2026: alt feedback ovenfor er bygget paa ``summarize_executive_feedback``
+    — en snapshot der genberegnes ved hver laesning ud fra de SAMME raa raekker.
+    Den kan pr. konstruktion ikke flytte sig over tid. Her laeses i stedet den
+    vaegt der blev SKREVET efter tidligere udfald (``central_word_weights``), saa
+    et daarligt forloeb faktisk tynger det naeste valg.
+
+    Skellet der betyder noget: en term UDEN raekke er «ingen viden», ikke
+    «neutral vaegt 0.5». Kun en term der er set mindst én gang flytter scoren.
+    """
+    try:
+        from core.runtime import db as runtime_db
+
+        loader = getattr(runtime_db, "load_action_weights", None)
+        if not callable(loader):
+            return score, []
+        weights = loader([candidate.action_id])
+    except Exception:
+        # bevidst: en laesefejl maa ikke vaelte et valg — den skal bare ikke flytte noget
+        return score, []
+    entry = weights.get(candidate.action_id) if isinstance(weights, dict) else None
+    if not entry:
+        return score, []
+    n_samples = int(entry.get("n_samples") or 0)
+    if n_samples <= 0:
+        return score, []
+    # 28/10-2026: ``or 0.5`` var en falsk-neutral-faelde. En vaegt paa PRAECIS
+    # 0.0 (en handling der kun har fejlet) er falsy og blev laest som 0.5 —
+    # altsaa «neutral» — saa det daarligste forloeb flyttede INTET. Samme form
+    # som `active`-flaget: en vaerdi der betyder noget, behandlet som «mangler».
+    # Kun et FRAVAER af noeglen maa give neutral.
+    raw_weight = entry.get("weight")
+    weight = 0.5 if raw_weight is None else float(raw_weight)
+    # 0.5 = neutral. Flytningen vokser med sample-tallet (mere bevis = stoerre
+    # konsekvens) og er strukturelt loftet til 0.20, fordi faktoren 0.4 gange
+    # den halve skala er 0.2. Der er ingen indstilling der kan saette den til 0:
+    # en vaegt der kan tunes vaek er ikke en konsekvens.
+    confidence = min(1.0, n_samples / 5.0)
+    delta = (weight - 0.5) * 0.4 * confidence
+    if abs(delta) < 0.005:
+        return score, []
+    return score + delta, [
+        f"Persisted weight {weight:.2f} (n={n_samples}) moves "
+        f"{candidate.action_id} by {delta:+.2f}."
+    ]
 
 
 def _matching_note_loop_synergy(

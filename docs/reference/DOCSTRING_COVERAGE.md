@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9418/17739 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9423/17744 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9418/17739 functions/methods documented (53%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 853 | 1562 | 54% |
-| `core.services` | 6275 | 12056 | 52% |
+| `core.runtime` | 856 | 1565 | 54% |
+| `core.services` | 6277 | 12058 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -606,10 +606,10 @@ Generated from source. 9418/17739 functions/methods documented (53%). The list b
 - `core/runtime/db_runtime_initiatives.py` :: `list_runtime_initiatives` (L281)
 - `core/runtime/db_runtime_initiatives.py` :: `update_runtime_initiative` (L341)
 - `core/runtime/db_runtime_signals.py` :: `ensure_runtime_signals_tables` (L17)
-- `core/runtime/db_runtime_signals.py` :: `recent_runtime_action_outcomes` (L122)
-- `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L146)
-- `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L171)
-- `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L239)
+- `core/runtime/db_runtime_signals.py` :: `recent_runtime_action_outcomes` (L138)
+- `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L162)
+- `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L187)
+- `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L255)
 - `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L103)
 - `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L41)
 - `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)
@@ -1893,8 +1893,8 @@ Generated from source. 9418/17739 functions/methods documented (53%). The list b
 - `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L432)
 - `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L162)
 - `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L444)
-- `core/services/runtime_action_outcome_tracking.py` :: `build_runtime_action_outcome_surface` (L53)
-- `core/services/runtime_action_outcome_tracking.py` :: `recent_runtime_action_outcomes` (L77)
+- `core/services/runtime_action_outcome_tracking.py` :: `build_runtime_action_outcome_surface` (L54)
+- `core/services/runtime_action_outcome_tracking.py` :: `recent_runtime_action_outcomes` (L78)
 - `core/services/runtime_action_outcome_tracking.py` :: `record_runtime_action_outcome` (L13)
 - `core/services/runtime_action_registry.py` :: `get_runtime_action_spec` (L113)
 - `core/services/runtime_action_registry.py` :: `list_runtime_action_specs` (L109)

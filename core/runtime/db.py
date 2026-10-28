@@ -554,6 +554,9 @@ from core.runtime.db_runtime_signals import (  # noqa: E402,F401
     recent_runtime_learning_signals,
     record_runtime_action_outcome,
     record_runtime_learning_signal,
+    load_action_weights,
+    apply_action_weight_update,
+    outcome_target,
 )
 
 

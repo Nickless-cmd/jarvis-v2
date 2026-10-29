@@ -332,8 +332,18 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
     # komme og siger det højt, frem for at lade feltet stå tomt så runneren
     # skal gætte:
     #
-    # * `session_id` sat  -> opgaven var bundet til en samtale dengang, så
-    #   `session` er den tro adfærd. Ellers `background` (den isolerede silo).
+    # * `execution_mode` -> opgavens EGET valg, når kolonnen findes. Det er
+    #   den ægte kilde: `recurring_tasks.execution_mode` blev indført for at
+    #   sige om svaret skal lande i samtalen (`session`) eller i siloen
+    #   (`background`). Målt 29/10-2026: migrationen gættede i stedet ud fra
+    #   `session_id`, som er TOM for en opgave der er sat til `session` (tom
+    #   betyder «slå den aktive op nu», ikke «ingen adresse»). Resultatet var
+    #   at morgenbriefen og medicin-påmindelsen blev migreret som
+    #   `background` og derefter kørte i en isoleret silo — `delivered` i
+    #   basen, men aldrig set af nogen.
+    # * `session_id` sat  -> fallback for rækker fra før kolonnen fandtes:
+    #   opgaven var bundet til en samtale dengang, så `session` er den tro
+    #   adfærd. Ellers `background` (den isolerede silo).
     # * `importance`      -> `normal`. Der findes ingen evidens for andet, og
     #   at gætte `high` ville fremhæve støj i indbakken.
     #
@@ -341,8 +351,11 @@ def _definition(row: dict[str, object]) -> dict[str, object]:
     # før den første affyring — den er et udgangspunkt, ikke en dom.
     from core.services.routine_classification import classify_routine
 
+    _mode = str(row.get("execution_mode") or "").strip().lower()
+    if _mode not in {"session", "background", "adaptive"}:
+        _mode = "session" if str(row.get("session_id") or "").strip() else "background"
     klassifikation = classify_routine(
-        execution_mode="session" if str(row.get("session_id") or "").strip() else "background",
+        execution_mode=_mode,
         importance="normal",
     )
     instruction = str(row.get("focus") or "Legacy autonomous work").strip()

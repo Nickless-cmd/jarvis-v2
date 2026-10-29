@@ -96,11 +96,11 @@ _Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
 | function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L805) |
 | function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L810) |
 | function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L830) |
-| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L910) |
-| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L924) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L934) |
-| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L953) |
-| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L962) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L922) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L936) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L946) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L965) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L974) |
 
 ## `core/services/recursion_guard.py`
 _Recursion guard for autonomous agent dispatch._

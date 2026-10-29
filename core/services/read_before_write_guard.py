@@ -396,6 +396,11 @@ def check_bash_command_safe(
                 "read_before_write_guard: BLOCKED wrong-root write %s (findes paa %s)",
                 target, andetsteds,
             )
+            _emit_read_before_write_guard_event(
+                "blocked",
+                {"path": str(target), "name": target.name,
+                 "session_id": session_id, "via": "bash_wrong_root"},
+            )
             return False, reason
         # Block — found a protected overwrite without prior read
         try:
@@ -414,6 +419,11 @@ def check_bash_command_safe(
         logger.info(
             "read_before_write_guard: BLOCKED bash overwrite of %s (session=%s)",
             target.name, session_id,
+        )
+        _emit_read_before_write_guard_event(
+            "blocked",
+            {"path": str(target), "name": target.name,
+             "session_id": session_id, "via": "bash"},
         )
         return False, reason
 
@@ -598,6 +608,11 @@ def check_operator_read_before_write(
     reason = (
         "⚠️ READ-BEFORE-WRITE GUARD (operator): {p}\n\n{hint}"
     ).format(p=path, hint=hint)
+    _emit_read_before_write_guard_event(
+        "blocked",
+        {"path": norm, "name": norm.rsplit("/", 1)[-1],
+         "session_id": session_id, "via": "operator"},
+    )
     return False, reason
 
 

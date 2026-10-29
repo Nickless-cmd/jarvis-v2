@@ -402,6 +402,70 @@ def test_ikke_governed_fil_stoejer_ikke(tmp_path, monkeypatch):
     assert fanget == [], f"ikke-governed fil emitterede: {fanget}"
 
 
+
+def test_bash_blokering_efterlader_et_spor(tmp_path, monkeypatch):
+    """Bash-vejen var den vej vagten blev omgaaet i maj (`cp ... SOUL.md`).
+    Blokerer den uden et spor, er det den gren jeg aldrig kan maale."""
+    from core.services import read_before_write_guard as rbw
+
+    f = tmp_path / "SOUL.md"
+    f.write_text("# sjael\n")
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: False)
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_bash_command_safe(f"cp x {f}", session_id="s1")
+
+    assert ok is False
+    kinds = [k for k, _ in fanget]
+    assert "read_before_write_guard.blocked" in kinds, f"ingen spor: {kinds}"
+    p = next(p for k, p in fanget if k == "read_before_write_guard.blocked")
+    assert p.get("via", "").startswith("bash")
+
+
+def test_operator_blokering_efterlader_et_spor(monkeypatch):
+    from core.services import read_before_write_guard as rbw
+
+    monkeypatch.setattr(rbw, "_operator_was_read", lambda p, s: False)
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_operator_read_before_write(
+        "/home/bs/notat.md", session_id="s1", file_exists=True
+    )
+
+    assert ok is False
+    kinds = [k for k, _ in fanget]
+    assert "read_before_write_guard.blocked" in kinds, f"ingen spor: {kinds}"
+    p = next(p for k, p in fanget if k == "read_before_write_guard.blocked")
+    assert p.get("via") == "operator"
+
+
+def test_bash_wrong_root_efterlader_et_spor(tmp_path, monkeypatch):
+    """Gren 1: skrivning til det rigtige filnavn i den FORKERTE rod.
+
+    Den er separat fra overwrite-grenen, og modproeven viste at min foerste
+    bash-test kun ramte gren 2 — saa denne gren var udaekket indtil her.
+    """
+    from pathlib import Path
+
+    from core.services import read_before_write_guard as rbw
+
+    target = tmp_path / "forkert-rod" / "SOUL.md"
+    target.parent.mkdir()
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: False)
+    monkeypatch.setattr(
+        rbw, "_samme_navn_andetsteds",
+        lambda t: Path("/rigtig/rod/SOUL.md"),
+    )
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_bash_command_safe(f"cp x {target}", session_id="s1")
+
+    assert ok is False
+    p = next((p for k, p in fanget if k == "read_before_write_guard.blocked"), None)
+    assert p is not None, f"ingen spor: {[k for k, _ in fanget]}"
+    assert p.get("via") == "bash_wrong_root"
+
+
 def test_edit_sender_session_id_til_gaten(tmp_path, monkeypatch):
     """Læsningen registreres under sessions-id'et; blev der spurgt under
     "default", ville svaret være «nej» om en fil der netop var læst."""

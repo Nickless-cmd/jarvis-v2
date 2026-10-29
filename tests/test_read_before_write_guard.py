@@ -308,6 +308,100 @@ def test_edit_file_slipper_naar_filen_er_laest(tmp_path, monkeypatch):
     assert f.read_text() == "x = 2\n"
 
 
+# ── Vagten skal efterlade sig et spor (29/10-2026) ────────────────────────
+#
+# Det åbne spørgsmål var «bliver vagten for ivrig?» — og det kunne ikke
+# afgøres. Ikke fordi den blokerede for lidt eller for meget, men fordi den
+# var STUM: `_emit_read_before_write_guard_event` havde nul kaldere, og
+# familien var ikke registreret, så et kald ville kaste og blive slugt af
+# `except: pass`. Målt i den levende DB: nul guard-events blandt 854.376
+# rækker mens bussen ellers skrev samme minut.
+#
+# Samme fejlform som Smith-rettelsen: en funktion der ser ud som om den
+# virker, men aldrig kaldes. Testene her pinner at hvert udfald efterlader
+# et spor — og at den ikke-governede flade forbliver stille.
+
+def test_familien_er_registreret():
+    """Et kald til en uregistreret familie kaster `Unsupported event family`,
+    og kaldestedets `except` sluger den. Familien SKAL stå i registret, ellers
+    er et kald ikke et spor."""
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+
+    assert "read_before_write_guard" in ALLOWED_EVENT_FAMILIES
+    Event.create("read_before_write_guard.blocked", {"path": "/x.py"})
+
+
+def _fang(monkeypatch):
+    fanget: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        "core.eventbus.bus.event_bus.publish",
+        lambda kind, payload=None, **kw: fanget.append((kind, payload or {})),
+    )
+    return fanget
+
+
+def test_blokering_efterlader_et_spor(tmp_path, monkeypatch):
+    from core.services import read_before_write_guard as rbw
+
+    f = tmp_path / "ulast.py"
+    f.write_text("x = 1\n")
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: False)
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_read_before_write(str(f), session_id="s1")
+
+    assert ok is False
+    kinds = [k for k, _ in fanget]
+    assert "read_before_write_guard.blocked" in kinds, (
+        f"vagten blokerede uden at efterlade et spor — fanget: {kinds}"
+    )
+    payload = next(p for k, p in fanget if k == "read_before_write_guard.blocked")
+    assert payload.get("name") == "ulast.py"
+    assert payload.get("session_id") == "s1"
+
+
+def test_tilladelse_efterlader_et_spor(tmp_path, monkeypatch):
+    """Uden dette spor kan jeg ikke skelne «vagten sagde ja» fra «vagten blev
+    aldrig kaldt» — og så er blokeringstallet meningsløst."""
+    from core.services import read_before_write_guard as rbw
+
+    f = tmp_path / "laest.py"
+    f.write_text("x = 1\n")
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: True)
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_read_before_write(str(f), session_id="s1")
+
+    assert ok is True
+    assert "read_before_write_guard.allowed" in [k for k, _ in fanget]
+
+
+def test_ny_fil_efterlader_et_spor(tmp_path, monkeypatch):
+    from core.services import read_before_write_guard as rbw
+
+    fanget = _fang(monkeypatch)
+    ok, _ = rbw.check_read_before_write(str(tmp_path / "helt-ny.py"), session_id="s1")
+
+    assert ok is True
+    assert "read_before_write_guard.new_file" in [k for k, _ in fanget]
+
+
+def test_ikke_governed_fil_stoejer_ikke(tmp_path, monkeypatch):
+    """En .txt er ikke vagtens domæne. Ville den emittere for hvert sådant
+    kald, druknede blokeringerne i støj — og så kunne spørgsmålet stadig ikke
+    besvares."""
+    from core.services import read_before_write_guard as rbw
+
+    f = tmp_path / "note.txt"
+    f.write_text("hej\n")
+    fanget = _fang(monkeypatch)
+
+    ok, _ = rbw.check_read_before_write(str(f), session_id="s1")
+
+    assert ok is True
+    assert fanget == [], f"ikke-governed fil emitterede: {fanget}"
+
+
 def test_edit_sender_session_id_til_gaten(tmp_path, monkeypatch):
     """Læsningen registreres under sessions-id'et; blev der spurgt under
     "default", ville svaret være «nej» om en fil der netop var læst."""

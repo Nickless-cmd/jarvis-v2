@@ -164,8 +164,19 @@ def check_read_before_write(
     if not _kraever_laesning(target):
         return True, None
     if not target.exists():
+        # Spor ogsaa her: uden det kan jeg ikke skelne «vagten sagde ja til en
+        # ny fil» fra «vagten blev aldrig kaldt» — og saa er blokeringstallet
+        # meningsloest (29/10-2026).
+        _emit_read_before_write_guard_event(
+            "new_file",
+            {"path": str(target), "name": target.name, "session_id": session_id},
+        )
         return True, None
     if _was_read(str(target), session_id):
+        _emit_read_before_write_guard_event(
+            "allowed",
+            {"path": str(target), "name": target.name, "session_id": session_id},
+        )
         return True, None
 
     # Block — file exists but hasn't been read
@@ -194,6 +205,10 @@ def check_read_before_write(
     logger.info(
         "read_before_write_guard: BLOCKED write to %s (session=%s)",
         target.name, session_id,
+    )
+    _emit_read_before_write_guard_event(
+        "blocked",
+        {"path": str(target), "name": target.name, "session_id": session_id},
     )
     return False, reason
 
@@ -456,11 +471,26 @@ def build_read_before_write_guard_surface() -> dict[str, object]:
 def _emit_read_before_write_guard_event(
     kind: str, payload: dict[str, object] | None = None
 ) -> None:
-    """Defensive scoped event emitter."""
+    """Efterlad et spor for hvert udfald af vagtens dom.
+
+    Maalt 29/10-2026: funktionen havde NUL kaldere. Det gjorde det umuligt at
+    besvare «bliver vagten for ivrig?» — ikke fordi den blokerede for lidt
+    eller for meget, men fordi den var stum. Nul guard-events blandt 854.376
+    raekker i `events`, mens bussen ellers skrev samme minut.
+
+    `kind` er `blocked`, `allowed` eller `new_file`. Kun filer vagten FAKTISK
+    vogter (identitetsnavne + kode-endelser) efterlader et spor; den brede
+    flade forbliver stille, saa blokeringerne ikke drukner i stoej.
+
+    Familien `read_before_write_guard` SKAL staa i ALLOWED_EVENT_FAMILIES —
+    ellers kaster `publish` `Unsupported event family`, og `except` herunder
+    sluger den. Det var praecis hvad der skete: navnet stod kun i en f-string,
+    som den statiske scanner ikke kan se.
+    """
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish(f"read_before_write_guard.{kind}", payload or {})
-    except Exception:
+    except Exception:  # self-safe: et manglende spor maa ikke blokere en skrivning
         pass
 
 

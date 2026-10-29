@@ -47,11 +47,11 @@ _EventContext — ContextVar holding the current parent event_id._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L331) |
-| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L337) |
-| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L341) |
-| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L347) |
-| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L358) |
+| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L344) |
+| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L350) |
+| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L354) |
+| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L360) |
+| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L371) |
 
 ## `core/eventbus/krydsproces.py`
 _Krydsproces-relæ: events fra den ANDEN proces når de lokale abonnenter._

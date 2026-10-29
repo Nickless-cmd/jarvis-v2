@@ -324,6 +324,19 @@ ALLOWED_EVENT_FAMILIES = {
     #    (samme vurdering som `prompt` 4/9 og `autonomous_tool_policy` 9/10).
     #    Fundet af vagten (tests/test_publish_scan.py) — main var rød i to døgn.
     "prompt_evolution",    # autonomy_proposal_queue — en prompt-mutation blev anvendt
+    # ── 29. okt 2026: NIENDE gang samme mønster — men med en ekstra vridning
+    #    der gjorde det usynligt for vagten selv.
+    #    `_emit_read_before_write_guard_event` (read_before_write_guard.py:456)
+    #    publicerer `read_before_write_guard.<udfald>` via en F-STRENG. Den
+    #    statiske scanner i tests/test_publish_scan.py ser kun string-literals
+    #    (dens docstring siger det selv: «f"{cluster}.flag" kan ikke afgøres
+    #    statisk»), så familien kom aldrig i baselinen og vagten kunne ikke
+    #    fælde den. Oveni havde funktionen NUL kaldere — så spørgsmålet «bliver
+    #    vagten for ivrig?» kunne ikke besvares: der var ingen spor at måle på.
+    #    Målt i den levende DB: nul guard-events blandt 854.376 rækker.
+    #    Familien bærer sti, filnavn, session og udfald — governance-metadata
+    #    om en vagt, ikke tanke-indhold → kun her, ikke i PRIVATE-ruter.
+    "read_before_write_guard",  # read_before_write_guard.{blocked,allowed,new_file}
 }
 
 

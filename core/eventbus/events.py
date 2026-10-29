@@ -311,6 +311,19 @@ ALLOWED_EVENT_FAMILIES = {
     #    ville et opbrugt budget se ud som en kørsel der bare ikke gjorde noget.
     "background",          # inbox_idle_waker — baggrundsstart/attention-beslutninger
     "autonomous_budget",   # simple_tool_executor — budget-håndhævelse ved autonom kørsel
+    # ── 29. okt 2026: OTTENDE gang samme mønster (prompt 4/9, tool_discovery 6/9,
+    #    r2_5_gate 19/9, app 20/9, central_instrument 29/9, mobile 3/10,
+    #    background+autonomous_budget 25/10).
+    #    `prompt_evolution.proposal_applied` publiceres fra
+    #    core/services/autonomy_proposal_queue.py:776, som landede 28/10 med
+    #    apply-vejen (6bd59418e) — uden at familien blev registreret her.
+    #    publish() kastede ValueError, og kaldestedets `except Exception: pass`
+    #    slugte den, så hver anvendt prompt-mutation var usynlig i telemetrien.
+    #    Familien bærer proposal_id + target_file + mutation_id: strukturel
+    #    governance-metadata, ikke tanke-indhold → kun her, ikke i PRIVATE-ruter
+    #    (samme vurdering som `prompt` 4/9 og `autonomous_tool_policy` 9/10).
+    #    Fundet af vagten (tests/test_publish_scan.py) — main var rød i to døgn.
+    "prompt_evolution",    # autonomy_proposal_queue — en prompt-mutation blev anvendt
 }
 
 

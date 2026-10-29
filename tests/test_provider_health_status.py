@@ -100,15 +100,22 @@ def test_snapshot_taeller_kun_2xx_som_sunde(monkeypatch):
         "nvidia-nim": 200, "openrouter": 200, "sambanova": 200,
     }
 
-    def fake_ping(url: str):
+    def fake_probe(provider: str):
+        return {"url": f"https://{provider}.example/models", "headers": {},
+                "has_credentials": True}
+
+    def fake_ping(url: str, headers=None):
         for navn, kode in koder.items():
-            if navn in url or (navn == "gemini" and "googleapis" in url):
+            if navn in url:
                 return {"reachable": kode == 200, "status": phc.classify_http_code(kode),
                         "http_code": kode, "latency_ms": 10}
         return {"reachable": True, "status": "healthy", "http_code": 200, "latency_ms": 10}
 
+    # 29/10-2026: URL'en kommer fra `_probe_request` (router-base + nøgle), ikke fra
+    # `_PING_ENDPOINTS`. Testen patcher derfor resolveren — ellers målte den sin egen
+    # monkeypatch i stedet for aggregeringen.
+    monkeypatch.setattr(phc, "_probe_request", fake_probe)
     monkeypatch.setattr(phc, "_ping_host", fake_ping)
-    monkeypatch.setattr(phc, "_PING_ENDPOINTS", {k: f"https://{k}.example/" for k in koder})
     snap = phc.health_check_all_providers()
 
     assert snap["healthy_count"] == 3, "fejlkoder blev talt som sunde"

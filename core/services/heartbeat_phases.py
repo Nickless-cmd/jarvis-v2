@@ -74,6 +74,56 @@ def _inner_tick_during_chat_enabled() -> bool:
         return True
 
 
+def _aktive_maal(*, limit: int = 5) -> list[dict[str, Any]]:
+    """Aktive mål fra BEGGE mål-butikker — de kan ikke være usynlige for sansningen.
+
+    MÅLT 29/10-2026: `sense_phase` læste kun `autonomous_goals`. Den butik er en
+    JSON-fil med **3.691 mål, alle i `pending`, nul i `active`** — og der findes
+    ingen kode der promoverer et mål fra pending til active (`update_goal_status`
+    findes, men kaldes kun manuelt). `advance_goals`-grenen i
+    `_identify_priorities` kunne derfor ALDRIG fyre, uanset hvor meget arbejde
+    der lå: hjerteslaget stod på `productive_idle` seks tik i træk (90 minutter)
+    med 5 ventende initiativer i køen.
+
+    Den butik der FAKTISK har aktive mål er `long_horizon_goals` — DB-tabellen
+    som `goal_create`/`goal_update` skriver til (målt: 1 aktiv). Den blev aldrig
+    læst her. Det er samme fejlform som guard-emitteren og Smiths Trin 2: en gren
+    der ser rigtig ud i koden og hvis indgangsbetingelse intet kan opfylde.
+
+    Læser begge og dedup'er på goal_id, så et aktivt mål ikke kan forsvinde ved
+    at bo i den forkerte butik.
+    """
+    maal: list[dict[str, Any]] = []
+    sete: set[str] = set()
+
+    def _tilfoej(rows: Any) -> None:
+        for g in rows or []:
+            if not isinstance(g, dict):
+                continue
+            gid = str(g.get("goal_id") or g.get("id") or "")
+            if gid and gid in sete:
+                continue
+            if gid:
+                sete.add(gid)
+            maal.append({
+                "goal_id": g.get("goal_id") or g.get("id"),
+                "title": g.get("title"),
+                "priority": g.get("priority"),
+            })
+
+    try:
+        from core.services.autonomous_goals import list_goals
+        _tilfoej(list_goals(status="active", parent_id="any", limit=limit))
+    except Exception:  # butikken kan mangle eller kaste — den anden skal stadig læses
+        logger.debug("_aktive_maal: autonomous_goals kunne ikke læses", exc_info=True)
+    try:
+        from core.services.long_horizon_goals import list_active_goals
+        _tilfoej(list_active_goals(limit=limit))
+    except Exception:  # samme: én brækkende butik må ikke gøre sansningen blind
+        logger.debug("_aktive_maal: long_horizon_goals kunne ikke læses", exc_info=True)
+    return maal[:limit]
+
+
 # ── Phase 1: Sense ─────────────────────────────────────────────────────
 
 
@@ -89,24 +139,17 @@ def sense_phase(*, name: str = "default") -> dict[str, Any]:
         from core.services.mood_oscillator import get_current_mood, get_mood_intensity
         signals["mood_name"] = str(get_current_mood() or "")
         signals["mood_intensity"] = float(get_mood_intensity() or 0.0)
-    except Exception:
+    except Exception:  # humøret er en berigelse af signalet, ikke en forudsætning for ticket
         pass
     try:
         from core.services.affective_meta_state import current_temperature_field
         signals["temperature_field"] = str(current_temperature_field() or "")
-    except Exception:
+    except Exception:  # samme: et manglende temperaturfelt må ikke vælte sansningen
         pass
 
-    # Active goals
-    try:
-        from core.services.autonomous_goals import list_goals
-        active = list_goals(status="active", parent_id="any", limit=5)
-        signals["active_goals"] = [
-            {"goal_id": g.get("goal_id"), "title": g.get("title"), "priority": g.get("priority")}
-            for g in active
-        ]
-    except Exception:
-        signals["active_goals"] = []
+    # Active goals — fra BEGGE butikker. Se `_aktive_maal`: den ene butik havde
+    # 3.691 mål i `pending` og nul i `active`, så denne linje var altid tom.
+    signals["active_goals"] = _aktive_maal(limit=5)
 
     # Recent eventbus activity (last hour)
     try:
@@ -249,7 +292,20 @@ _MAX_CHAIN_PROPOSALS = 5
 
 
 def _collect_active_goals() -> list[dict[str, Any]]:
-    """Fetch active goals for chain proposal targeting."""
+    """Fetch active goals for chain proposal targeting.
+
+    ⚠️ BEVIDST IKKE rettet 29/10-2026, selv om den har samme døde gren som
+    sansningen havde: den læser kun `autonomous_goals`, hvor intet mål nogensinde
+    blev `active`, så C3-forslagene i `productive_idle` (afsnit 8) aldrig blev
+    dannet. Målt: da grenen blev koblet til den levende butik, begyndte
+    `productive_idle` at kalde en LLM ved HVERT idle-tik (2 mål × forslag) — og
+    det væltede `test_tick_with_phases_full_pipeline`, som hidtil var grøn fordi
+    grenen var død.
+
+    Det er en anden beslutning end «sansningen skal se aktive mål»: den ændrer
+    omkostningsprofilen for hvert ledigt hjerteslag. Rettelsen af `sense_phase`
+    er 1:1 med den målte fejl; denne gren venter på Bjørns valg.
+    """
     try:
         from core.services.autonomous_goals import list_goals
         return list_goals(status="active", parent_id="any", limit=5) or []

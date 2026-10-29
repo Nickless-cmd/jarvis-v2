@@ -22,10 +22,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from core.services import central_hypothesis_governance as gov
+
+logger = logging.getLogger(__name__)
 
 # Trigger-parametre.
 _EDGE_WINDOW = 2000          # seneste kanter der scannes
@@ -240,6 +243,32 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
             c.commit()
     except Exception:
         pass
+
+    # 29/10-2026: den LEVENDE kaldevej til drømmene. `meta_learning_hypotheses`
+    # er tom (0 rækker målt i dag), så broen derfra fyrer aldrig — dette er det
+    # maskineri der faktisk afgør hypoteser (134.765 resolved). En afgjort
+    # hypotese er netop den eksterne evidens `confirm_dream` aldrig fik, fordi
+    # intet kaldte den. `record_dream_evidence` kræver stadig to uafhængige
+    # pegepinde, så én afgørelse bekræfter intet alene.
+    if new_status in {"resolved", "dead"} and outcome:
+        try:
+            from core.services.dream_carry_over import record_evidence_for_hypothesis
+
+            record_evidence_for_hypothesis(
+                hyp_id,
+                supports=outcome == "supported",
+                source="central_hypothesis_generator",
+                evidence=(
+                    f"hypotese {hyp_id} afgjort som {outcome} "
+                    f"(status {new_status}, {grounded_n} grounded samples)"
+                ),
+                evidence_ref=f"central-hypothesis:{hyp_id}:{resolved_at}",
+            )
+        except Exception as exc:
+            # En drøm der ikke kan opdateres må ikke vælte en gennemført
+            # hypotese-afgørelse — men fejlen skal kunne forklares bagefter.
+            logger.warning("central_hypothesis_generator: drømme-bro fejlede: %s", exc)
+
     return {"status": "ok", "confidence": verdict.confidence, "hyp_status": new_status,
             "outcome": outcome, "acts": verdict.acts, "reason": verdict.reason}
 

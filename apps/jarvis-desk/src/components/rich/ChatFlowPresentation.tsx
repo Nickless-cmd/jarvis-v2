@@ -237,7 +237,17 @@ export function ChatFlowPresentation({
   // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
   // arbejde at folde, turen kører, eller vi kender dens varighed.
   const harArbejde = model.hasObservableWork
-  const visTurhoved = harArbejde || streaming || sekunder !== null
+  // 29/10-2026 (Bjørn): «pacen kører først inde i hoved efter foldet … til den
+  // pacer for nyt uden for hoved». MÅLT med den rigtige pacer: foldet var
+  // lukket (`data-aaben=false`), men `.rv-tur` stod i DOM'en gennem HELE
+  // pace-vinduet, fordi `sekunder` er sat for enhver tur der har kørt. Så
+  // rullede svaret under et hoved der ikke var væk — og stod først alene da
+  // pacen var færdig.
+  //
+  // Hovedet hører til det FÆRDIGE svar. Ruller pacen, er svaret ikke færdigt,
+  // og hovedet skal ikke stå over en tekst der stadig skriver sig.
+  const pacerSvar = paceFinalAnswer && status === 'done'
+  const visTurhoved = !pacerSvar && (harArbejde || streaming || sekunder !== null)
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.

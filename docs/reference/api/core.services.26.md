@@ -281,8 +281,8 @@ _Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
 | function | `_led` | `(command)` | Split i (operator, led) på top-niveau. Første led har operator ''. | [src](../../../core/services/silent_chain_break.py#L63) |
 | function | `silent_chain_break` | `(command, exit_code)` | Ren detektor. Fund-dict hvis en REN ``&&``-kæde brød, ellers None. | [src](../../../core/services/silent_chain_break.py#L117) |
 | function | `_record` | `(fund)` | Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser. | [src](../../../core/services/silent_chain_break.py#L150) |
-| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L168) |
-| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L183) |
+| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L189) |
+| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L204) |
 
 ## `core/services/simple_tool_executor.py`
 _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._

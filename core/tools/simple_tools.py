@@ -1239,7 +1239,30 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         try:
             from core.services.silent_chain_break import observe as _scb_observe
 
-            _scb_observe(name, arguments, result)
+            # LÆNKEN (29/10-2026). Fundet blev returneret og KASTET VÆK: det
+            # skrev en lesson — ren tekst i prompten — men nåede aldrig det
+            # tool-svar jeg læser. Målt i `lessons` (id 99): 1.318 gentagelser
+            # på 19 dage (~69/dag), og ikke én af dem blev synlig i det jeg
+            # læste videre på. Det er forskellen på en NOTE og en GATE: Claudes
+            # harness RETURNERER fejlen til modellen («File has not been read
+            # yet» → 222 blokeringer); min skrev den i en tæller og lod mig
+            # læse videre som om hele kommandoen kørte.
+            _scb_fund = _scb_observe(name, arguments, result)
+            if _scb_fund and isinstance(result, dict):
+                _scb_note = (
+                    f"KÆDEN BRØD: ren `&&`-kæde fejlede (exit "
+                    f"{_scb_fund['exit_code']}) efter led {_scb_fund['led']}. "
+                    f"Led efter brud-punktet kørte IKKE — læs ikke outputtet "
+                    f"som om hele kommandoen kørte."
+                )
+                # Egen nøgle (synlig i det serialiserede resultat) OG i stderr,
+                # som er det felt jeg læser først når noget fejler.
+                result["chain_broken"] = _scb_note
+                _scb_stderr = result.get("stderr")
+                if isinstance(_scb_stderr, str):
+                    result["stderr"] = (_scb_stderr + "\n" + _scb_note).strip()
+                elif _scb_stderr is None:
+                    result["stderr"] = _scb_note
         except Exception:  # self-safe: detektoren maa ikke vaelte tool-flow
             pass
 

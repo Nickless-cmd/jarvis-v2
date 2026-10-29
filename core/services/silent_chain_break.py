@@ -148,7 +148,13 @@ def silent_chain_break(command: object, exit_code: object) -> dict | None:
 
 
 def _record(fund: dict) -> None:
-    """Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser."""
+    """Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser.
+
+    Og i gate-verdict-ledgeren (29/10-2026): bruddet fik her et CLUSTER-tag, så
+    det kan ses aggregeret i Centralen i stedet for kun som en række i `lessons`
+    som ingen læser. Aggregeret, ikke 69 incidents i døgnet — ledgeren tæller
+    pr. (nerve, decision) og skriver ét delta ad gangen.
+    """
     try:
         from core.runtime.db_lessons import SOURCE_TOOL_ERROR, upsert_lesson
 
@@ -163,6 +169,21 @@ def _record(fund: dict) -> None:
         )
     except Exception:  # self-safe: en fejl her maa ikke vaelte tool-flow
         logger.debug("silent_chain_break: kunne ikke skrive lesson", exc_info=True)
+
+    try:
+        from core.services.gate_verdict_ledger import record as _ledger_record
+
+        _ledger_record(
+            nerve="silent_chain_break",
+            cluster="execution",
+            decision="yellow",
+            reason=(
+                f"ren `&&`-kæde brød: exit {fund['exit_code']} "
+                f"efter {fund['led']} led"
+            ),
+        )
+    except Exception:  # self-safe: ledgeren er observabilitet, ikke kontrol-flow
+        logger.debug("silent_chain_break: kunne ikke skrive gate-verdict", exc_info=True)
 
 
 def observe(tool_name: object, arguments: object, result: object) -> dict | None:

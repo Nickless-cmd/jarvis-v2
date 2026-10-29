@@ -70,6 +70,18 @@ const KOMPONENTER: Components = {
         kode: code,
       })
       if (spec) return <NativeRichBlock code={code} />
+      // 29/10-2026 (Bjørn): «kode boksen der udvider sig og så blink».
+      //
+      // Uden denne gren faldt en ufuldstændig flade til `ChatCodeBlock`, så
+      // rå JSON stod på skærmen som om det var indhold. Persisterede
+      // beskeder, replay og genindlæsning går ALDRIG gennem pacerens spring,
+      // så de rammer ikke den vej der ellers løser problemet — de skal have
+      // en placeholder her.
+      return (
+        <div className="flade-pending" aria-live="polite">
+          <span className="flade-pending-tekst">flade forberedes…</span>
+        </div>
+      )
     }
     return <ChatCodeBlock code={code} lang={lang} className={props.className} />
   },

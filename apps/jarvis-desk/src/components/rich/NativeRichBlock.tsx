@@ -66,6 +66,21 @@ export function parseNativeRichSpec(code: string): NativeSpec | null {
 function Heading({ title }: { title: string }) { return title ? <h4 className="native-rich-title">{title}</h4> : null }
 
 export function NativeRichBlock({ code }: { code: string }) {
+  // Ankomst-laget (29/10-2026). Bjørn så fladen poppe ind i ét hug når
+  // paceren sprang over JSON'en: «så blink».
+  //
+  // `key` er bundet til fladens INDHOLD, ikke til renderet. Skiftede nøglen
+  // ved hver re-render, ville fladen danse hver gang paceren rykker ét tegn i
+  // prosaen ovenover — værre end den kodeboks den afløser. Nu remountes noden
+  // kun når en NY flade lander, og CSS-animationen fyrer præcis én gang.
+  return (
+    <div className="flade-ankomst" key={code}>
+      <NativeRichIndhold code={code} />
+    </div>
+  )
+}
+
+function NativeRichIndhold({ code }: { code: string }) {
   const spec = parseNativeRichSpec(code)
   const send = useContext(WidgetPrompt)
   if (!spec) return null

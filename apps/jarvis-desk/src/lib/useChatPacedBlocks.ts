@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
+import { scanFences, type FenceSpan } from './fenceScanner'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
 const BASE_CODE_POINTS_PER_SECOND = 48
@@ -43,6 +44,50 @@ interface Cursor {
 
 function codePoints(value: string): string[] {
   return Array.from(value)
+}
+
+/** Er denne fence en `jarvis-ui`-flade?
+ *
+ *  `FenceSpan` bærer ikke info-strengen, så den læses fra åbningslinjen.
+ *  Uden dette tjek ville ALLE fences (mermaid, kode) blive sprunget over, og
+ *  et almindeligt kodeblok-eksempel ville lande i ét hug midt i et svar der
+ *  ellers ruller roligt. */
+function erFlade(target: string, span: FenceSpan): boolean {
+  const slut = target.indexOf('\n', span.start)
+  const aabning = target.slice(span.start, slut < 0 ? target.length : slut)
+  return aabning.includes('jarvis-ui')
+}
+
+/**
+ * Hvor skal cursoren lande, hvis næste skridt rammer en `jarvis-ui`-flade?
+ *
+ * `null` = ingen flade i vejen, rul normalt.
+ * `offset` = stå stille: fladen er ikke komplet, og halv JSON må ikke vises.
+ * andet = spring hertil (fence-slut), så fladen lander i ét hug.
+ *
+ * Springet flytter cursoren FREM i den samme streng, så `shown` er stadig et
+ * præfiks af `target` — kontrakten hele hooket bygger på.
+ */
+function fladeSpring(
+  target: string,
+  offset: number,
+  step: number,
+  hold: boolean,
+): number | null {
+  for (const span of scanFences(target)) {
+    if (span.end <= offset) continue          // allerede passeret
+    if (!erFlade(target, span)) continue      // ikke en flade — rør den ikke
+    if (offset >= span.start) {
+      // Inde i fladen. Kan kun ske hvis et tidligere spring blev klippet.
+      if (span.closed) return span.end
+      return hold ? offset : null
+    }
+    if (offset + step <= span.start) return null   // næste skridt rammer ikke
+    // Næste skridt ville lande inde i fladen.
+    if (span.closed) return span.end
+    return hold ? span.start : null
+  }
+  return null
 }
 
 /**
@@ -111,8 +156,8 @@ export function useChatPacedBlocks(
 
   const active = textIndices.length > 0 && target.length > 0 && (options.live || harVaeretLive)
 
-  const latest = useRef({ active, key, target })
-  latest.current = { active, key, target }
+  const latest = useRef({ active, key, target, hold: options.live })
+  latest.current = { active, key, target, hold: options.live }
   const frame = useRef<number | null>(null)
   const sidst = useRef(0)
   const kredit = useRef(0)
@@ -163,6 +208,40 @@ export function useChatPacedBlocks(
       return
     }
     kredit.current -= step
+
+    // 29/10-2026 (Bjørn): «kode boksen der udvider sig og så blink».
+    //
+    // Paceren er blind for struktur: den rullede rå JSON ind i en åben fence,
+    // og `stabilizeStreamingMarkdown` lukkede fencen midlertidigt, så
+    // react-markdown så en LUKKET kodeblok med halv JSON og voksede en
+    // kodeboks. Nu springes en komplet flade over i ét spring, og en ukomplet
+    // flade holder cursoren stille — så JSON'en aldrig bliver synlig.
+    //
+    // Springet sker EFTER `step` er beregnet og er derfor ikke bundet af
+    // `MAX_CODE_POINTS_PER_FRAME`: et loft pr. frame må ikke gøre et spring
+    // umuligt. `prefix.length` er en UTF-16-offset (fence-scanneren regner i
+    // UTF-16), mens cursoren tæller kodepunkter — derfor konverteres tilbage.
+    const spring = fladeSpring(current.target, prefix.length, step, current.hold)
+    if (spring !== null) {
+      const springPoints = spring === prefix.length
+        ? shownPoints.length
+        : codePoints(current.target.slice(0, spring)).length
+      if (springPoints <= shownPoints.length) {
+        // Fladen er ikke komplet endnu. Kreditten gives tilbage, så
+        // akkumulatoren ikke går i baglås mens cursoren venter.
+        kredit.current = Math.min(MAX_CODE_POINTS_PER_FRAME, kredit.current + step)
+        frame.current = requestAnimationFrame((time) => tickRef.current(time))
+        return
+      }
+      const sprunget = { key: current.key, shown: current.target.slice(0, spring) }
+      cursorRef.current = sprunget
+      setCursor(sprunget)
+      if (springPoints < targetPoints.length) {
+        frame.current = requestAnimationFrame((time) => tickRef.current(time))
+      }
+      return
+    }
+
     const end = Math.min(targetPoints.length, shownPoints.length + step)
     const next = { key: current.key, shown: targetPoints.slice(0, end).join('') }
     cursorRef.current = next

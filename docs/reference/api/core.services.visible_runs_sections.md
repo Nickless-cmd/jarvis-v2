@@ -52,16 +52,16 @@ _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._
 | function | `_get_active_visible_run_state` | `()` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L53) |
 | function | `relay_owns_open_run` | `(run_id)` | Whether the detached relay still owns this run, independent of age. | [src](../../../core/services/visible_runs_sections/run_control_state.py#L58) |
 | function | `touch_active_visible_run` | `(run_id)` | Heartbeat: opdatér last_activity_at i den DELTE active-run state (DB), | [src](../../../core/services/visible_runs_sections/run_control_state.py#L67) |
-| function | `_visible_run_cancelled` | `(run_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L82) |
-| function | `_mark_visible_run_cancelled` | `(run_id, *, cancelled=…)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L86) |
-| function | `append_visible_run_steer` | `(run_id, content)` | Append a mid-flight 'steer' message that the agentic loop will pick | [src](../../../core/services/visible_runs_sections/run_control_state.py#L95) |
-| function | `consume_visible_run_steers` | `(run_id)` | Pop unread steers for this run. Marks them consumed in shared state | [src](../../../core/services/visible_runs_sections/run_control_state.py#L119) |
-| function | `_set_visible_approval_state` | `(approval_id, payload)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L140) |
-| function | `_get_visible_approval_state` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L144) |
-| function | `_visible_run_client_tool_key` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L152) |
-| function | `_set_visible_client_tool_state` | `(call_id, payload)` | Sæt state for en delegeret klient-tool (cross-worker via DB). | [src](../../../core/services/visible_runs_sections/run_control_state.py#L156) |
-| function | `_get_visible_client_tool_state` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L161) |
-| function | `resolve_visible_client_tool` | `(call_id, result_text)` | Klienten leverer resultatet af en delegeret tool. Flip pending → resolved | [src](../../../core/services/visible_runs_sections/run_control_state.py#L166) |
+| function | `_visible_run_cancelled` | `(run_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L101) |
+| function | `_mark_visible_run_cancelled` | `(run_id, *, cancelled=…)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L105) |
+| function | `append_visible_run_steer` | `(run_id, content)` | Append a mid-flight 'steer' message that the agentic loop will pick | [src](../../../core/services/visible_runs_sections/run_control_state.py#L114) |
+| function | `consume_visible_run_steers` | `(run_id)` | Pop unread steers for this run. Marks them consumed in shared state | [src](../../../core/services/visible_runs_sections/run_control_state.py#L138) |
+| function | `_set_visible_approval_state` | `(approval_id, payload)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L159) |
+| function | `_get_visible_approval_state` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L163) |
+| function | `_visible_run_client_tool_key` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L171) |
+| function | `_set_visible_client_tool_state` | `(call_id, payload)` | Sæt state for en delegeret klient-tool (cross-worker via DB). | [src](../../../core/services/visible_runs_sections/run_control_state.py#L175) |
+| function | `_get_visible_client_tool_state` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L180) |
+| function | `resolve_visible_client_tool` | `(call_id, result_text)` | Klienten leverer resultatet af en delegeret tool. Flip pending → resolved | [src](../../../core/services/visible_runs_sections/run_control_state.py#L185) |
 
 ## `core/services/visible_runs_sections/run_finalization.py`
 _Hvad der skal ske NÅR et visible run er slut — samlet ét sted._

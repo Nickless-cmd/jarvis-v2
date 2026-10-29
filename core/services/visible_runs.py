@@ -681,14 +681,46 @@ def is_visible_run_alive(run_id: str) -> bool:
                     pass
         return True
     try:
-        if str(state.get("run_id") or "") != str(run_id) or state.get("cancelled"):
-            return False
-        ts = str(state.get("last_activity_at") or state.get("started_at") or "")
-        if not ts:
-            return False
         from datetime import UTC, datetime
-        age = (datetime.now(UTC) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds()
-        return age < _VISIBLE_RUN_STALE_S
+
+        def _alder_sekunder(ts: str) -> float | None:
+            if not ts:
+                return None
+            try:
+                return (
+                    datetime.now(UTC)
+                    - datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                ).total_seconds()
+            except Exception:  # ukendt tidsformat = ukendt alder, ikke "frisk"
+                return None
+
+        # 1) Aktiv-slot'en — kun hvis den faktisk er MIN.
+        if not state.get("cancelled") and str(state.get("run_id") or "") == str(run_id):
+            alder = _alder_sekunder(
+                str(state.get("last_activity_at") or state.get("started_at") or "")
+            )
+            if alder is not None:
+                return alder < _VISIBLE_RUN_STALE_S
+
+        # 2) Per-run-heartbeatet (29/10-2026). Aktiv-slot'en er ÉN plads: en kort
+        #    tur kan tage den, og naar den er faerdig rydder `unregister_visible_run`
+        #    pladsen — hvorefter denne funktion svarede False om et run der stadig
+        #    koerte. Maalt to gange 29/10: den udskudte genstart ventede 5-8 s i
+        #    stedet for 75 og draebte turen midt i svaret (14:51:40, 14:56:06).
+        #    `visible_runs.control.<run_id>` kan ikke stjaeles, saa den er den
+        #    autoritative kilde naar pladsen ikke er min.
+        kontrol = _get_visible_run_control(run_id)
+        if not kontrol or kontrol.get("cancelled") or kontrol.get("active") is False:
+            return False
+        alder = _alder_sekunder(
+            str(
+                kontrol.get("last_activity_at")
+                or kontrol.get("updated_at")
+                or kontrol.get("started_at")
+                or ""
+            )
+        )
+        return alder is not None and alder < _VISIBLE_RUN_STALE_S
     except Exception:
         return False
 

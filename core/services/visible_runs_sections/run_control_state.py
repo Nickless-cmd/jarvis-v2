@@ -70,12 +70,31 @@ def touch_active_visible_run(run_id: str) -> None:
     et autonomt runs in-memory controller (det lever i jarvis-runtime), men kan
     se DB-heartbeat'en. Et levende run kalder denne hvert par sekunder; et dødt
     run holder op → freshness-vinduet udløber → klienten rydder hängende UI.
-    Kun hvis det stadig er DETTE runs active-state (undgå at genoplive en afløst).
+
+    TO NØGLER, IKKE ÉN (29/10-2026). Aktiv-slot'en er ÉN plads i hele huset.
+    Starter en kort tur mens jeg er midt i min, tager den pladsen; naar den korte
+    tur er færdig, rydder `unregister_visible_run` pladsen — og saa ser
+    `is_visible_run_alive(mig)` en TOM plads og dømmer mig DØD, mens jeg stadig
+    kører. Maalt to gange samme dag: den udskudte genstart ventede 5-8 sekunder
+    (én poll + margin) i stedet for 75, fyrede midt i turen og dræbte svaret
+    (14:51:40 og 14:56:06, begge med signaturen «kort tur startede og sluttede
+    inde i den lange»).
+
+    Per-run-nøglen `visible_runs.control.<run_id>` kan ikke stjæles, så den
+    skrives ALTID. Aktiv-slot'en skrives kun naar den stadig er min — den maa
+    ikke genoplives for en afløst tur.
     """
+    if not run_id:
+        return
+    nu = datetime.now(UTC).isoformat()
+    kontrol = _get_visible_run_control(run_id)
+    if kontrol:
+        kontrol["last_activity_at"] = nu
+        _set_visible_run_control(run_id, kontrol)
     state = _get_active_visible_run_state()
     if str(state.get("run_id") or "") != str(run_id):
         return
-    state["last_activity_at"] = datetime.now(UTC).isoformat()
+    state["last_activity_at"] = nu
     set_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, state)
 
 

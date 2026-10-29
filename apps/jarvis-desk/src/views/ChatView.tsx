@@ -772,7 +772,7 @@ export function ChatView({
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         getSessionId={ensureSessionId}
         sessionId={sessionId}
-        showPermissions={false}
+        showPermissions={auth?.role === 'owner'}
         contextTokens={contextTokens}
         overheadTokens={overheadTokens}
         compactAt={compactAt}

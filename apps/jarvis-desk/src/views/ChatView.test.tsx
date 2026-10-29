@@ -782,3 +782,64 @@ describe('ChatView — Jarvis\' browser', () => {
     expect(document.querySelector('.jbrowser')).toBeInTheDocument()
   })
 })
+
+/**
+ * Permission-vælgeren i CHAT-composeren (side-3e6e7612c0, 29/10-2026).
+ *
+ * MÅLT: `ChatView.tsx:775` sendte `showPermissions={false}` hårdkodet, mens
+ * `CodeView.tsx:951` sender `true`. Vælgeren var fuldt implementeret i
+ * Composer (default `true`, tegnet bag `{showPermissions && ...}`) og
+ * PermissionContext var allerede serverkoblet til `chat_sessions.approval_mode`.
+ * Den eneste grund til at den ikke fandtes i chat var den hårdkodede false —
+ * så hvert eneste tool-kald i chat mode krævede et godkendelses-kort.
+ *
+ * Gatingen er `auth?.role === 'owner'`: et medlem må ikke kunne give sig selv
+ * fuld adgang. `isOwner` blev ALLEREDE sendt syv linjer nedenunder, så der
+ * kræves intet nyt data — kun at det samme svar bruges på begge felter.
+ */
+describe('ChatView — permission-vælger (owner-only)', () => {
+  const vis = () => render(
+    <SettingsProvider initialConfig={cfg}>
+      <SessionProvider config={cfg}>
+        <StreamProvider config={cfg}>
+          <PermissionProvider>
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider>
+          </PermissionProvider>
+        </StreamProvider>
+      </SessionProvider>
+    </SettingsProvider>,
+  )
+
+  const somRolle = (role: 'owner' | 'member') => {
+    vi.mocked(api.whoami).mockResolvedValue({
+      user_id: 'u', display_name: 'Test', role,
+    } as never)
+  }
+
+  afterEach(() => {
+    // Gendan ejer-rollen: de øvrige tests i filen forudsætter den.
+    somRolle('owner')
+  })
+
+  it('owner ser permission-vælgeren i chat-composeren', async () => {
+    somRolle('owner')
+    const { container } = vis()
+    // Auth kommer asynkront fra whoami — vælgeren kan først tegnes derefter.
+    await waitFor(() => {
+      expect(container.querySelector('.composer-perm')).toBeInTheDocument()
+    })
+  })
+
+  it('et medlem ser den IKKE — fuld adgang må ikke kunne vælges af ikke-ejer', async () => {
+    somRolle('member')
+    const { container } = vis()
+    // Vent til auth faktisk er landet, ellers er fraværet tomt og beviser intet.
+    await waitFor(() => {
+      expect(container.querySelector('.composer-shell')).toBeInTheDocument()
+    })
+    await act(() => new Promise<void>((r) => setTimeout(r, 150)))
+    expect(container.querySelector('.composer-perm')).not.toBeInTheDocument()
+  })
+})

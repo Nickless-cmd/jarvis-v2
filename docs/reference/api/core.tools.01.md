@@ -397,9 +397,10 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L112) |
 | function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L154) |
 | function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L177) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L193) |
-| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L280) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L312) |
+| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L193) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L234) |
+| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L321) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L353) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._

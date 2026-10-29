@@ -6,6 +6,29 @@ const TICK_MS = 33
 const MIN_CHARS = 5
 const MAX_CHARS = 28
 const SHORT_TEXT = 32
+/** Et HOP = mere end denne andel af det ventende indhold landede i ÉT tick.
+ *
+ *  ## Hvorfor loftet skal gælde hop og ikke jævn ankomst (29/10-2026)
+ *
+ *  `MAX_CHARS` blev vedtaget 20/10 efter «glitch bump»: pacen fortsatte et
+ *  par sekunder, gik glitch, og så var resten af beskeden der. Det var et
+ *  ægte hak — men hakket opstod fordi reglen sprang frem til `target - 330`
+ *  uanset hvordan teksten var ankommet.
+ *
+ *  Loftet beskytter altså mod ÉN ting: at et helt svar lander i én frame og
+ *  bliver kastet op. Det beskytter ikke mod noget når kilden selv leverer
+ *  jævnt — for der er der intet at skjule, og loftet gør bare at visningen
+ *  ikke kan følge kilden.
+ *
+ *  MÅLT 29/10-2026: `pending / 3 s` kræver 44 tegn/tick ved 4000 tegn, men
+ *  loftet klipper til 28. Kurven blev derfor konstant 848 tegn/s — flad,
+ *  fordi den var KLIPPET, ikke fordi den indhentede.
+ *
+ *  Gaten herunder skelner de to: lander en stor andel af efterslæbet i dette
+ *  ene tick, er det et hop, og loftet gælder. Kommer teksten jævnt, må
+ *  visningen følge raten helt op til `PACE_LOFT`.
+ */
+const HOP_ANDEL = 0.5
 /** Code Mode bruger nu SAMME adaptive regel som chat mode (29/10-2026).
  *
  *  MÅLT med den rigtige hook og et deterministisk ur, FØR ændringen:
@@ -108,6 +131,23 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
   const rateRef = useRef(PACE_GULV)
   const forrigeLaengde = useRef<number | null>(null)
 
+  // MÅLT 29/10-2026: uden denne nulstilling starter et NYT svar i fuld
+  // hastighed. `forrigeLaengde` stod tilbage fra det forrige svar, så det
+  // første tick målte `4000 - 3000 = 1000` tegn som «ankomst» — et hop der
+  // aldrig skete — og raten sprang til loftet. Målt: 28 tegn i FØRSTE tick
+  // i stedet for grundtempoets 5. Det er «det kører stadig mærkeligt»: svaret
+  // skvulper ud i stedet for at begynde roligt.
+  //
+  // `key` er generationen og skifter præcis når en ny stream begynder, så det
+  // er den rigtige kant at nulstille på — ikke `active`, som også bliver sand
+  // igen efter en fold af SAMME svar.
+  const maaltForKey = useRef<string | null>(null)
+  if (maaltForKey.current !== key) {
+    maaltForKey.current = key
+    forrigeLaengde.current = null
+    rateRef.current = PACE_GULV
+  }
+
   useEffect(() => {
     if (!active) return
     const timer = setInterval(() => {
@@ -122,8 +162,19 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         const laengde = current.target.length
         const foer = forrigeLaengde.current
         forrigeLaengde.current = laengde
-        const ankomst =
-          foer === null ? null : Math.max(0, ((laengde - foer) * 1000) / TICK_MS)
+        const delta = foer === null ? laengde : Math.max(0, laengde - foer)
+        const ankomst = foer === null ? null : (delta * 1000) / TICK_MS
+
+        // Er dette tick et HOP? Tre tilfælde, og kun det sidste lemper loftet:
+        //
+        //  · FØRSTE tick efter et nyt svar (`foer === null`): vi ved ikke om
+        //    teksten kom jævnt eller dumpede, så vi vælger det sikre — loft.
+        //  · `delta === 0`: kilden er stoppet, men der ligger stadig et
+        //    efterslæb. Det efterslæb blev skabt af et hop, så loftet gælder.
+        //    (MÅLT 29/10: uden denne gren slap 78 tegn igennem i ét tick.)
+        //  · `delta >= pending * HOP_ANDEL`: mere end halvdelen af efterslæbet
+        //    landede i dette ene tick — det ER et hop.
+        const erHop = foer === null || delta === 0 || delta >= pending * HOP_ANDEL
 
         // Samme regel som chat mode: grundtempo er gulv, ankomst glattes,
         // indhentningskravet (pending / 3 s) er den nedre grænse. Uden det
@@ -135,12 +186,19 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         })
 
         // Ratens tidsrum er ét tick. Gulvet på MIN_CHARS bevarer den rolige
-        // kadence på korte svar. MAX_CHARS er en HÅRD kontrakt (20/10-2026):
-        // højst 28 nye tegn pr. tick, uanset hvor stort efterslæbet er — et
-        // pacing-lag må accelerere, men aldrig springe. Ratens indhentning
-        // sker derfor ved at nå 28 og BLIVE der, ikke ved at overskride det.
+        // kadence på korte svar.
+        //
+        // Loftet afhænger af HVORDAN teksten kom ind (målt 29/10-2026):
+        //
+        //  · HOP: `MAX_CHARS` — den hårde 20/10-kontrakt. Et svar der lander
+        //    i ét hug må accelerere, aldrig springe.
+        //  · JÆVN ANKOMST: `max(MAX_CHARS, delta)`. Visningen må aldrig vise
+        //    mere end kilden lige leverede i dette tick — så er et spring
+        //    strukturelt umuligt, uanset hvor stort efterslæbet er. Kom der
+        //    200 tegn ind, må der vises op til 200; kom der 5, bliver det 28.
         const prTick = (rateRef.current * TICK_MS) / 1000
-        const step = Math.max(MIN_CHARS, Math.min(MAX_CHARS, Math.ceil(prTick)))
+        const loft = erHop ? MAX_CHARS : Math.max(MAX_CHARS, delta)
+        const step = Math.max(MIN_CHARS, Math.min(loft, Math.ceil(prTick)))
 
         // INGEN spring (målt 20/10-2026). Den gamle regel sprang frem til
         // `target - BACKLOG_MAX` når efterslæbet oversteg 330 tegn. Ved fold

@@ -180,7 +180,15 @@ export function ChatFlowPresentation({
     && String(block.mime_type || '').toLowerCase().startsWith('text/html')
     && String(block.kilde || '') === 'generated'
     && !!String(block.attachment_id || '').trim()
-  const synligeSvar = venterPaaPace ? answer.filter((block) => !erLeverance(block)) : answer
+  // Leverancen holdes ALTID ude af svar-lanen — ikke kun mens pacen ruller.
+  //
+  // Målt 29/10-2026 (Bjørn: «widget bliver vist 2 gange nu? men i bunden af
+  // beskeden?»): filtreringen var gated på `venterPaaPace`, så i det øjeblik
+  // pacen sluttede blev `synligeSvar === answer`, og widgetten stod BÅDE i
+  // `.chat-flow-answer` og i leverance-blokken nedenfor. To instanser, begge
+  // i bunden. Repro: 4 forekomster af filnavnet i hver. Leverance-blokken er
+  // den eneste ejer, så svar-lanen må aldrig bære den.
+  const synligeSvar = answer.filter((block) => !erLeverance(block))
   const ventendeLeverancer = venterPaaPace ? answer.filter(erLeverance) : []
   useEffect(() => {
     if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()

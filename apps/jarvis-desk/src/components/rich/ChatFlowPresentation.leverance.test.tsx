@@ -111,4 +111,22 @@ describe('ChatFlowPresentation — widgetten ankommer efter pacen', () => {
     )
     expect(widgetSynlig(view.container)).toBe(true)
   })
+
+  it('tegner widgetten ÉT sted — ikke både i svar-lanen og i leverance-blokken', () => {
+    // Målt 29/10-2026 (Bjørn: «widget bliver vist 2 gange nu? men i bunden af
+    // beskeden?»): `synligeSvar` filtrerede kun leverancen ud MENS pacen
+    // rullede, så i det øjeblik pacen sluttede stod widgetten både i
+    // `.chat-flow-answer` og i leverance-blokken — fire forekomster hvert
+    // sted. `widgetSynlig` er grøn trods dubletten, fordi den kun spørger OM
+    // der findes en leverance. Denne test tæller derfor FOREKOMSTER.
+    const view = render(
+      <ChatFlowPresentation blocks={[widget, svar]} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted runId="run-widget-dublet"
+        paceFinalAnswer />,
+    )
+    for (let i = 0; i < 400; i += 1) frame(50)
+    const antal = (html: string | undefined): number => (html?.match(/flade\.html/g) ?? []).length
+    expect(antal(view.container.querySelector('.chat-flow-answer')?.innerHTML)).toBe(0)
+    expect(antal(view.container.querySelector('[data-leverance="widget"]')?.innerHTML)).toBeGreaterThan(0)
+  })
 })

@@ -97,11 +97,20 @@ def _er_risikabel(etiket: str, cfg: dict[str, Any] | None) -> bool:
 
 
 def maa_minte(pattern_key: str, etiket: str = "",
-              cfg: dict[str, Any] | None = None) -> tuple[bool, str]:
+              cfg: dict[str, Any] | None = None,
+              metric: float = 0.0) -> tuple[bool, str]:
     """Skal Smith have lov at minte dette moenster?
 
     Returnerer ``(maa, grund)``. ``grund`` logges, saa vetoets virkning er
     synlig i Centralen i stedet for at moenstre bare forsvinder.
+
+    ``metric`` (29/10-2026): dommeren fik FOER kun den raa ``pattern_key`` —
+    fx ``behaviour:gentaget fejl: en `&&`-kæde brød tavst: exit 1 eft``. Maalt
+    svarede den STOEJ paa den form, men AEGTE paa den samme fejl skrevet som
+    en laesbar saetning med konsekvens og antal. Noeglen er en teknisk
+    identifikator, ikke et moenster; backticks og ``behaviour:``-praefiks
+    goer den svaerere at doemme end det den beskriver. Derfor: labelen er
+    primaer tekst, noeglen kun reserve.
     """
     noegle = (pattern_key or "").strip()
     if not noegle:
@@ -110,9 +119,41 @@ def maa_minte(pattern_key: str, etiket: str = "",
     if _er_risikabel(etiket or noegle, cfg):
         return True, "risikabel_gaar_udenom"
 
+    # Den laesbare label foerst: det er den der beskriver moensteret. Noeglen
+    # er kun identifikatoren. Maalt 29/10-2026: samme fejl doemt STOEJ som
+    # noegle og AEGTE som saetning — forskellen var formen, ikke indholdet.
+    beskrivelse = (etiket or "").strip()
+    if beskrivelse:
+        # «gentaget fejl:»-praefikset er Smiths egen bogfoering, ikke en del af
+        # moensteret — og det flytter dommen. Maalt 29/10-2026: den SAMME fejl
+        # blev doemt STOEJ med praefikset og AEGTE uden. Dommeren skal se
+        # moensteret, ikke etiketten.
+        lav = beskrivelse.lower()
+        for praefiks in ("gentaget fejl:", "gentaget fejl :"):
+            if lav.startswith(praefiks):
+                beskrivelse = beskrivelse[len(praefiks):].strip()
+                break
+        # ANKLAGERENS ARGUMENT MAa IKKE MED. Maalt 7/9-2026: giver man dommeren
+        # Smiths egen begrundelse, minter den ALT (0 af 29 stoej afvist). Det er
+        # stadig sandt efter 29/10 — derfor fjernes Smiths stemme fra teksten,
+        # uanset hvor den staar i labelen.
+        for stemme in ("agent smith har målt", "agent smith:", "mr. anderson"):
+            idx = beskrivelse.lower().find(stemme)
+            if idx >= 0:
+                beskrivelse = beskrivelse[:idx].strip()
+        tekst = beskrivelse or noegle
+        try:
+            n = int(float(metric or 0))
+        except (TypeError, ValueError):
+            n = 0
+        if n >= 2 and beskrivelse:
+            tekst = f"{beskrivelse} ({n} forekomster)"
+    else:
+        tekst = noegle
+
     try:
         from core.services.local_small_model import spoerg_et_ord
-        ord_ = spoerg_et_ord(_DOMMER, "Moenster: %s" % noegle, timeout_s=_TIMEOUT_S)
+        ord_ = spoerg_et_ord(_DOMMER, "Moenster: %s" % tekst, timeout_s=_TIMEOUT_S)
     except Exception as exc:
         logger.debug("smith_noise_veto: dommeren fejlede: %s", exc)
         return False, "dommer_fejlede"

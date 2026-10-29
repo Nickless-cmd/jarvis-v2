@@ -128,3 +128,45 @@ def test_kun_den_raa_noegle_sendes_ikke_smiths_begrundelse():
         "dommeren får anklagerens argument — målt: minter alt (0 af 29 afvist)"
     )
     assert "i stedet for" in bruger
+
+
+# ---------------------------------------------------------------------------
+# Dommeren skal se MØNSTRET, ikke den tekniske nøgle (29/10-2026)
+#
+# Målt: den SAMME fejl blev dømt STØJ som rå nøgle
+# (`behaviour:gentaget fejl: en `&&`-kæde brød tavst: exit 1 eft`) og ÆGTE som
+# læsbar sætning med konsekvens og antal. Nøglen er en identifikator, ikke et
+# mønster — `behaviour:`-præfikset og backticks gør den sværere at dømme end
+# det den beskriver. Uden denne test kunne rettelsen fjernes uden at nogen så
+# det: ingen af de øvrige tests kigger på HVAD dommeren får.
+# ---------------------------------------------------------------------------
+
+def test_dommeren_faar_den_laesbare_label_ikke_den_raa_noegle():
+    from core.services.smith_noise_veto import maa_minte
+
+    noegle = "behaviour:gentaget fejl: En `&&`-kæde brød tavst: exit 1 eft"
+    label = "gentaget fejl: En `&&`-kæde brød tavst: exit 1 efter kommando"
+    a, b = _sprogligt("AEGTE")
+    with a, patch("core.services.local_small_model.spoerg_et_ord",
+                  return_value="AEGTE") as m:
+        maa_minte(noegle, label, None, metric=1320.0)
+    bruger = m.call_args.args[1]
+    assert "behaviour:" not in bruger, (
+        "dommeren fik den raa noegle — den er en identifikator, ikke et moenster"
+    )
+    assert "kæde brød tavst" in bruger, "dommeren skal se hvad fejlen ER"
+    assert "1320 forekomster" in bruger, (
+        "omfanget mangler — uden det kan dommeren ikke se konsekvensen"
+    )
+
+
+def test_gentaget_fejl_praefikset_fjernes_foer_dommen():
+    """«gentaget fejl:» er Smiths egen bogføring, ikke en del af mønstret.
+    Målt: samme fejl blev dømt STØJ med præfikset og ÆGTE uden."""
+    from core.services.smith_noise_veto import maa_minte
+
+    a, b = _sprogligt("AEGTE")
+    with a, patch("core.services.local_small_model.spoerg_et_ord",
+                  return_value="AEGTE") as m:
+        maa_minte("behaviour:x", "gentaget fejl: kæden brød tavst", None, metric=5.0)
+    assert "gentaget fejl" not in m.call_args.args[1].lower()

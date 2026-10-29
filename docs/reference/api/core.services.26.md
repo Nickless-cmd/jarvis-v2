@@ -444,7 +444,7 @@ _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
-| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
+| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…, metric=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
 
 ## `core/services/social_labilizer.py`
 _Social labilizer — Fase 2 of generative autonomy._

@@ -300,17 +300,27 @@ def _measured_error_patterns(limit: int = 3) -> list[dict[str, Any]]:
             n = int(r["repeated_count"] or 0)
             if not tekst or n < 2:
                 continue
+            kilde = str(r["source"] or "ukendt").strip().lower()
+            # `source=regret` maa IKKE baere et moenster alene (rettet 29/10-2026).
+            # En regret er MIN reaktion paa noget — ikke en maalt fejl. Maalt
+            # konsekvens: lektion #38 (source=regret, n=2) om «Bruger afviste
+            # tool-call til bash» blev Trin 3 og armerede standing order #22.
+            # Bjoerns afvisning af et approval-kort er ikke et brudt loefte.
+            # Regret-lessons bliver derfor paa Trin 1 (kommentar) med mindre et
+            # ANDET vaern korroborerer dem via den tunbare kanal.
+            selv_bundet = kilde != "regret"
             out.append({
                 "kind": "behaviour",
                 "label": f"gentaget fejl: {tekst}",
                 "metric": float(n),
-                "detail": f"{n}× ({str(r['source'] or 'ukendt')})",
-                # Samme port som de tomme loefter gaar gennem: et maalt, gentaget
-                # moenster ER selv-bundet (han lovede at rette det, og gjorde
-                # det ikke), og et andet vaern har allerede talt det — `lessons`
-                # skrives af korrektions- og fejl-vejene.
-                "self_bound": True,
-                "corroborated": True,
+                "detail": f"{n}× ({kilde})",
+                # `self_bound` saettes kun naar maalingen selv kan baere det. Et
+                # gentaget vaerktoejs-fejl-moenster ER selv-bundet i den forstand
+                # at Jarvis' egen korrektions-vej skrev det; en regret er ikke.
+                # `corroborated` saettes IKKE her — den afgoeres af den tunbare
+                # kanal i `_detected_patterns`, saa et andet vaern faktisk skal
+                # have talt moensteret foer det klatrer.
+                "self_bound": selv_bundet,
             })
         except Exception:
             continue
@@ -375,15 +385,29 @@ def _detected_patterns(a: dict[str, Any],
             out[pattern_key("seq", label)] = {"kind": "seq", "label": label,
                                              "metric": float(p.get("in_runs") or 0),
                                              "corroborated": label.lower() in corr}
-    # Maalt adfaerd. Baerer selv `corroborated` — et andet vaern HAR talt den, saa
-    # den gaar gennem den eksisterende berettigelses-port frem for uden om den.
+    # Maalt adfaerd. Baerer IKKE laengere `self_bound`/`corroborated` som hardcodede
+    # sandheder (rettet 29/10-2026). Foer stod der `"self_bound": True,
+    # "corroborated": True` ubetinget, med en kommentar om at moensteret «gaar
+    # gennem den eksisterende berettigelses-port frem for uden om den». Men at
+    # hardcode portens EGNE INPUT til True ER at gaa uden om den: `_is_self_bound`
+    # blev aldrig evalueret for denne kanal. Maalt konsekvens: lektion #38
+    # (source=regret, n=2) — «Bruger afviste tool-call til bash» — blev et Trin
+    # 3-moenster og armerede standing order #22 med ordlyden «du forpligtede dig
+    # til at stoppe …». Det er BJOERNS afvisning af et approval-kort, ikke et
+    # brudt loefte fra Jarvis.
+    #
+    # Nu baerer vi kun det maalte videre. `self_bound` saettes KUN hvis maalingen
+    # selv kan begrunde det (se `_measured_error_patterns`), og `corroborated`
+    # saettes KUN naar et ANDET vaern reelt har flagget labelen — praecis som
+    # phrase- og seq-kanalerne allerede goer. Porten afgoer resten.
     for b in (a.get("behaviours") or []):
         label = str(b.get("label") or "").strip()
         if label:
             out[pattern_key("behaviour", label)] = {
                 "kind": "behaviour", "label": label,
                 "metric": float(b.get("metric") or 0),
-                "self_bound": True, "corroborated": True}
+                "self_bound": bool(b.get("self_bound")),
+                "corroborated": label.lower() in corr}
     return out
 
 
@@ -588,19 +612,42 @@ def _agent_smith_enforced() -> bool:
 
 
 def _execute_arm_confront(pattern_key: str, label: str) -> int | None:
-    """Trin 3/KONFRONTÉR: registrér en standing-order så reasoning-interceptoren fanger Jarvis
-    MENS han er ved at gentage mønstret (FØR tool-exec) og injicerer en korrektion. KUN når
-    gate_enforce.agent_smith er flippet ON (default OFF = shadow: armeret men ikke aktiv).
-    Self-safe → None."""
+    """Trin 3/KONFRONTÉR: gør mønstret virksomt i realtid.
+
+    RETTET 29/10-2026 — den gamle vej kunne per konstruktion ALDRIG ramme.
+    Den skrev en standing order med ``match_key`` = mønsterets label, mens
+    modtageren (``reasoning_detectors.standing_orders_on_reasoning``) gjorde
+    ``if mk in classes`` mod fem FASTE klassenavne (cross_user_share,
+    decision_gate, fact_gate, verification, veto). En label som «gentaget
+    fejl: Bruger afviste tool-call til bash» kan aldrig være ét af dem.
+    Målt i drift: 2 aktive ordrer, nul events der refererer standing orders.
+
+    Det virksomme maskineri fandtes allerede: ``smith_confrontation.
+    smith_confront_on_action`` læser STIGEN SELV (``agent_smith_escalation``,
+    rung ≥ 3, ``seq:``-mønstre) og returnerer RED mod de tool-kald der er på
+    vej — runnet fortsætter, han tvinges til at vælge om. Det har aldrig
+    brug for en standing order.
+
+    Derfor registrerer vi ingen død ordre mere. Vi bekræfter at mønstret står
+    på Trin 3 (så konfrontationen kan se det), og returnerer intet id — der
+    er ingen ordre at deaktivere bagefter.
+
+    ``behaviour:``-mønstre har intet tool-kald at holde; ``hollow_promise_guard``
+    dækker dem. De får ingen arm — det er ikke en mangel, det er dækning.
+
+    Self-safe → None.
+    """
     if not _agent_smith_enforced():
-        return None  # shadow: observ 'ville-konfrontere', men registrér ingen standing-order
+        return None  # shadow: observ 'ville-konfrontere', men gør intet virksomt
+    if not str(pattern_key or "").startswith("seq:"):
+        return None  # intet kald at holde — se docstring
     try:
-        from core.services.standing_orders_registry import add_standing_order
-        return add_standing_order(
-            text=(f"Agent Smith: du forpligtede dig til at stoppe «{label}». Gentag den IKKE — "
-                  f"vælg en anden formulering/tilgang FØR du fortsætter."),
-            match_key=str(label)[:64])
-    except Exception:
+        from core.services import shared_cache
+        # Sporet skrives saa forholdet arm→faktisk hold kan maales bagefter.
+        # Uden det er Trin 3 igen teater: armeret, men uden bevis for effekt.
+        shared_cache.set("smith_confront:armed:%s" % pattern_key, label, ttl_seconds=3600)
+        return None
+    except Exception:  # self-safe: et spoer maa ikke vaelte eskaleringen
         return None
 
 
@@ -634,7 +681,8 @@ def run_escalation_tick(assessment: dict[str, Any] | None = None) -> dict[str, A
                 # ikke kan tie et farligt moenster ihjel.
                 # Se core.services.smith_noise_veto.
                 from core.services.smith_noise_veto import maa_minte
-                maa, grund = maa_minte(act["pattern_key"], act.get("label", ""), cfg)
+                maa, grund = maa_minte(act["pattern_key"], act.get("label", ""), cfg,
+                                       metric=float(act.get("metric") or 0))
                 if not maa:
                     _execute_observe({"type": "observe", "event": "veto",
                                       "pattern_key": act["pattern_key"],

@@ -35,6 +35,25 @@ export interface StreamState {
    */
   svarLaast: boolean
   /**
+   * ARBEJDE EFTER LÅSEN (Bjørn 29/10-2026).
+   *
+   * «hoved folder, streamen forsætter inde i hoved -> tom skærm -> stream slut
+   * -> pace starter uden for tur hoved».
+   *
+   * Låsen ovenfor beskytter SVARET. Den siger «slutsvaret er identificeret»,
+   * ikke «turen er slut» — men klienten brugte den som det sidste:
+   * `finalAnswerStarted = finalAnswerStarted || svarLaast`, og
+   * `arbejdeKoerer = streaming && !finalAnswerStarted`. Derfor foldede hovedet
+   * i samme frame som et nyt run startede, og rundens commentary-tekst lå
+   * usynlig i den foldede liste indtil streamen sluttede.
+   *
+   * Dette flag er signalet der manglede: der ER kommet arbejde efter låsen.
+   * Det sættes af et nyt run-id (en runde i samme tur) og falder ved
+   * `message_stop` og ved en helt ny tur. Hovedet folder ud på det — låsen og
+   * svarets blokke røres ikke.
+   */
+  arbejdeEfterSvar: boolean
+  /**
    * Turens starttid (ms epoch), sat ved `message_start`.
    *
    * Uret i turhovedet skal måle TUREN, ikke hvor længe komponenten har været
@@ -72,7 +91,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -313,6 +332,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         finalAnswerStarted: _bevar ? state.finalAnswerStarted : false,
         // Låsen ryddes KUN af `client_turn_start`. Et nyt run-id er en runde.
         svarLaast: _bevar ? state.svarLaast : false,
+        // En ny runde i samme tur ER arbejde — også når svaret er låst. Uden
+        // dette foldede hovedet mens runden skrev ind i den foldede liste.
+        arbejdeEfterSvar: _bevar && !_sameRun ? true : (_bevar ? state.arbejdeEfterSvar : false),
         // Et ægte nyt run starter uret; en replay af SAMME run beholder det
         // oprindelige starttidspunkt, så tiden ikke springer tilbage.
         // Turens starttid maa ikke rykke naar en runde kommer til: den er
@@ -509,6 +531,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           provisionalMissingBlockIndex: nytRun && !bevarSvar ? null : state.provisionalMissingBlockIndex,
           finalAnswerStarted: nytRun && !bevarSvar ? false : state.finalAnswerStarted,
           svarLaast: state.svarLaast,
+          arbejdeEfterSvar: nytRun && bevarSvar ? true : state.arbejdeEfterSvar,
           usage: { ...state.usage,
             output: estimateOutputTokens(blocks, provisionalText, provisionalBlockIndex) },
         }
@@ -624,6 +647,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
               status: 'working',
               activeRunId: rp.run_id,
               workingStep: null,
+              // Runden ER arbejde: hovedet skal folde ud, så dens tekst er
+              // synlig mens den kører — ikke først når streamen slutter.
+              arbejdeEfterSvar: true,
             }
           }
           return {
@@ -741,6 +767,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Turens ur skal stå stille fra nu af — og blive stående i hovedet.
         // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi».)
         turSlut: state.turSlut ?? Date.now(),
+        // Låsen bliver (svaret skal stadig ikke rives op), men der kører ikke
+        // længere noget arbejde — så hovedet må folde sammen igen.
+        arbejdeEfterSvar: false,
         provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 

@@ -20,6 +20,12 @@ export interface ChatFlowPresentationProps {
   streaming: boolean
   status: StreamStatus
   finalAnswerStarted: boolean
+  /**
+   * Der er kommet arbejde EFTER svar-låsen (et nyt run i samme tur). Hovedet
+   * skal folde ud igen, så rundens tekst er synlig mens den kører — uden at
+   * det låste svar rives op. Se `StreamState.arbejdeEfterSvar`.
+   */
+  arbejdeEfterSvar?: boolean
   runId?: string | null
   /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
   turStart?: number | null
@@ -75,6 +81,7 @@ export function ChatFlowPresentation({
   streaming,
   status,
   finalAnswerStarted,
+  arbejdeEfterSvar = false,
   runId,
   turStart,
   turSlut,
@@ -301,7 +308,11 @@ export function ChatFlowPresentation({
   // foldet glider frem for at blinke — men det sker ved svarets start, ikke
   // når pacen er færdig.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
+  // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026): er der
+  // kommet arbejde efter svar-låsen, kører turen stadig og hovedet skal være
+  // åbent. Samme formel som code mode (`RaekkeTranskript`: `arbejdeKoerer`).
+  const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
+  const aaben = aabenManuelt ?? arbejdeKoerer
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
@@ -317,7 +328,7 @@ export function ChatFlowPresentation({
           <TurHoved
             aaben={aaben}
             foldbar={harArbejde}
-            koerer={streaming && !finalAnswerStarted}
+            koerer={arbejdeKoerer}
             sekunder={sekunder}
             tekst={model.hovedTekst}
             meta={streaming && tokens > 0

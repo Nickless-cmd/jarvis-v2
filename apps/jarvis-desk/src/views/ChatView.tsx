@@ -1101,7 +1101,7 @@ export function ChatView({
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
               role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
-              finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} rundeEtiketter={stream.rundeEtiketter}
+              finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
               paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
@@ -1115,7 +1115,7 @@ export function ChatView({
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
             workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
             role="assistant" blocks={withoutPauseAsk(liveChatBlokke(followState))} density="compact" streaming
-            finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} rundeEtiketter={followState.rundeEtiketter}
+            finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig}
             tokens={followState.usage.output} />
         )}

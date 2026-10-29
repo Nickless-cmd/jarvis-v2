@@ -26,12 +26,14 @@ import type { StreamStatus } from '../../lib/streamReducer'
 import type { ActiveChatFlowMode } from '../../lib/chatFlowApi'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 
-function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, beskedId, config,
+function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarted, arbejdeEfterSvar, beskedId, config,
   rundeEtiketter, tankeResumeer, raekker, elapsedMs, tokens, varighedSekunder, runId, onPaced }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
   finalAnswerStarted: boolean
+  /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
+  arbejdeEfterSvar?: boolean
   beskedId?: string
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
@@ -98,6 +100,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   }, [streaming, pacingFaerdig])
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
+        arbejdeEfterSvar={arbejdeEfterSvar}
         beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
         skjulAktivRunde={skjulAktivRunde} />
@@ -131,6 +134,7 @@ function MessageRowImpl({
   density,
   streaming,
   finalAnswerStarted = false,
+  arbejdeEfterSvar = false,
   rundeEtiketter,
   tankeResumeer,
   createdAt,
@@ -167,6 +171,12 @@ function MessageRowImpl({
   streaming: boolean
   /** Bekræftet slutsvar fra serveren; folder arbejdet mens teksten stadig kommer. */
   finalAnswerStarted?: boolean
+  /**
+   * Der er kommet arbejde EFTER svar-låsen (et nyt run i samme tur). Hovedet
+   * skal folde ud igen, så rundens tekst er synlig mens den kører — uden at
+   * det låste svar rives op. Se `StreamState.arbejdeEfterSvar`.
+   */
+  arbejdeEfterSvar?: boolean
   /**
    * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
    * Udeladt = ingen overskrifter; tråden ser ud som før.
@@ -270,13 +280,13 @@ function MessageRowImpl({
             {presentation === 'chat'
               ? <ChatFlowPresentation blocks={blocks} mode={chatMode} density={density}
                   streaming={streaming} status={status ?? (streaming ? 'working' : 'done')}
-                  finalAnswerStarted={finalAnswerStarted} workingStep={workingStep}
+                  finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} workingStep={workingStep}
                   runId={runId} turStart={turStart} turSlut={turSlut} varighedSekunder={varighedSekunder} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   tokens={tokens}
                   beskedId={beskedId} config={config} onWorkExpanded={onWorkExpanded}
                   paceFinalAnswer={paceFinalAnswer} onAnswerPaced={onAnswerPaced} />
               : <CodeAssistantTranscript blocks={blocks} density={density} streaming={streaming} onPaced={onAnswerPaced}
-                  finalAnswerStarted={finalAnswerStarted} beskedId={beskedId} config={config}
+                  finalAnswerStarted={finalAnswerStarted} arbejdeEfterSvar={arbejdeEfterSvar} beskedId={beskedId} config={config}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} raekker={raekker}
                   runId={runId}
                   elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder} />}

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from core.services.heartbeat_phases import (
     sense_phase,
     reflect_phase,
@@ -12,6 +14,38 @@ from core.services.heartbeat_phases import (
     _classify_activity,
     _identify_priorities,
 )
+
+
+@pytest.fixture(autouse=True)
+def _ingen_rigtig_llm(monkeypatch):
+    """Idle-stien må ikke kalde netværk i en test der måler fase-struktur.
+
+    Siden 29/10-2026 læser `_collect_active_goals` de LEVENDE mål-butikker, så
+    `productive_idle` forsøgte ellers et rigtigt LLM-kald i hver test der rører
+    idle-stien — og kun netværksvagten stoppede det. Målt: samme fil gav 30
+    passed i 4,2 s og 1 failed efter 51 s, fordi et kald slap gennem vagten og
+    timede ud. En test der nogle gange kalder netværk er ikke en test.
+
+    C3 har sin egen fil (`test_heartbeat_phases_c3.py`) med sin egen mock; her
+    isoleres de tre kilder i `productive_idle` der kan nå en model.
+    """
+    monkeypatch.setattr(
+        "core.tools.skill_chain_propose_tool._exec_propose_skill_chain",
+        lambda *a, **k: {"status": "error", "plan": []},
+    )
+    monkeypatch.setattr(
+        "core.services.dreaming_session.trigger_dream_session",
+        lambda *a, **k: {"fired": False},
+    )
+    # `tick_with_phases` kører de ~30 indre daemoner FØR faserne. Målt 29/10:
+    # en af dem nåede cheap-lane, der pollede `opencode` og timede ud efter
+    # 45 s — 1 fejl af 5 kørsler på en test der ellers tager 4 s. Testen måler
+    # fase-strukturen, ikke daemonerne.
+    monkeypatch.setattr(
+        "core.services.heartbeat_daemon_ticks.tik_indre_daemoner",
+        lambda *a, **k: {"koert": 0, "fejlet": 0},
+    )
+
 
 
 def test_sense_returns_structured_signals():
@@ -150,7 +184,9 @@ def test_tick_with_phases_full_pipeline():
     with patch("core.services.heartbeat_phases.sense_phase",
                return_value={"tool_invocations_last_hour": 1000, "active_goals": []}), \
          patch("core.services.heartbeat_runtime.run_heartbeat_tick") as fake_tick, \
-         patch("core.services.heartbeat_phases._user_active_recently", return_value=False):
+         patch("core.services.heartbeat_phases._user_active_recently", return_value=False), \
+         patch("core.services.heartbeat_phases.productive_idle",
+               return_value={"kind": "productive_idle", "actions": []}):
         fake_tick.return_value = type("R", (), {"status": "ok"})()
         result = tick_with_phases()
     assert result["status"] == "ok"

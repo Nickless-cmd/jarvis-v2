@@ -294,29 +294,36 @@ _MAX_CHAIN_PROPOSALS = 5
 def _collect_active_goals() -> list[dict[str, Any]]:
     """Fetch active goals for chain proposal targeting.
 
-    ⚠️ BEVIDST IKKE rettet 29/10-2026, selv om den har samme døde gren som
-    sansningen havde: den læser kun `autonomous_goals`, hvor intet mål nogensinde
-    blev `active`, så C3-forslagene i `productive_idle` (afsnit 8) aldrig blev
-    dannet. Målt: da grenen blev koblet til den levende butik, begyndte
-    `productive_idle` at kalde en LLM ved HVERT idle-tik (2 mål × forslag) — og
-    det væltede `test_tick_with_phases_full_pipeline`, som hidtil var grøn fordi
-    grenen var død.
+    ⚠️ RETTET 29/10-2026. Den læste før kun `autonomous_goals`, hvor intet mål
+    nogensinde blev `active`, så C3-forslagene i `productive_idle` (afsnit 8)
+    aldrig blev dannet — samme døde gren som `sense_phase` havde, og som
+    `_aktive_maal` blev skrevet for at lukke.
 
-    Det er en anden beslutning end «sansningen skal se aktive mål»: den ændrer
-    omkostningsprofilen for hvert ledigt hjerteslag. Rettelsen af `sense_phase`
-    er 1:1 med den målte fejl; denne gren venter på Bjørns valg.
+    At koble den til uden videre var ikke nok: `_exec_propose_skill_chain` kalder
+    en LLM per mål, og `productive_idle` kører ved hvert ledigt tick (hvert 15.
+    minut). Dedup'en i `_propose_skill_chains_in_idle` sker EFTER kaldet, så den
+    sparer lagring — ikke penge. Gaten der gør omkostningen bæredygtig ligger
+    derfor i den funktion: ét kald pr. NYT aktivt mål.
     """
-    try:
-        from core.services.autonomous_goals import list_goals
-        return list_goals(status="active", parent_id="any", limit=5) or []
-    except Exception:
-        return []
+    return _aktive_maal(limit=5)
 
 
 def _propose_skill_chains_in_idle(max_goals: int = 3) -> list[dict[str, Any]]:
     """Propose skill chains for active goals. Time-bounded, never blocks."""
     global _chain_proposals
     goals = _collect_active_goals()[:max_goals]
+    if not goals:
+        return []
+
+    # GATEN (29/10-2026). Et mål der allerede HAR et forslag bliver ikke
+    # foreslået igen. Dedup'en nedenfor kører efter LLM-kaldet — den sparer
+    # lagring, ikke penge — så uden denne linje kaldte hvert ledige tick LLM'en
+    # for det samme mål: op til 192 kald i døgnet for forslag der blev kastet
+    # væk med det samme. Med gaten koster grenen ét kald pr. NYT aktivt mål.
+    allerede_foreslaaet = {
+        str(cp.get("goal_id") or "") for cp in _chain_proposals if cp.get("goal_id")
+    }
+    goals = [g for g in goals if str(g.get("goal_id") or "") not in allerede_foreslaaet]
     if not goals:
         return []
 

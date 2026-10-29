@@ -38,7 +38,15 @@ describe('CentralBadge', () => {
 
   it('renderer Central-label + status-prik for grønt snapshot (owner)', async () => {
     render(<CentralBadge config={CFG} isOwner />)
-    await waitFor(() => expect(screen.getByText('Central')).toBeTruthy())
+    // Vent på TILSTANDEN, ikke på at elementet findes.
+    //
+    // MÅLT 29/10-2026: `waitFor(() => getByText('Central'))` er sand i første
+    // frame — labelen står der altid, med `tone-unknown` indtil snapshot'et
+    // lander. Så er waitFor færdig med det samme, og tonen tjekkes før
+    // promise'et er resolved. På en hurtig maskine resolver det inden
+    // assertionen; på en CI-runner under last gør det ikke — og testen fældede
+    // en commit hvis tvilling-run på SAMME sha var grøn.
+    await waitFor(() => expect(screen.getByTestId('central-badge').className).toContain('tone-green'))
     const badge = screen.getByTestId('central-badge')
     expect(badge.className).toContain('tone-green')
     expect(badge.querySelector('.cb-dot')).toBeTruthy()
@@ -50,7 +58,9 @@ describe('CentralBadge', () => {
     // bærer tilstanden; hover og klik giver detaljerne.
     getCentralRealtime.mockResolvedValue(RED)
     render(<CentralBadge config={CFG} isOwner />)
-    await waitFor(() => expect(screen.getByTestId('central-badge')).toBeTruthy())
+    // Samme fælde som testen ovenfor: badge'en findes straks med `tone-unknown`,
+    // så en waitFor på eksistens er færdig før data er der.
+    await waitFor(() => expect(screen.getByTestId('central-badge').className).toContain('tone-red'))
     expect(screen.queryByText('2')).toBeNull()
     expect(screen.getByTestId('central-badge').className).toContain('tone-red')
   })

@@ -549,6 +549,51 @@ describe('mergeServer: run-id slaar tekst-matchet', () => {
     const merged = mergeServer([uden], server)
     expect(merged.find((m) => m.id === 'noget-andet')).toBeDefined()
   })
+
+  // ── 29/10-2026: "" betyder «uvist», og tekst-matchet skal bære beslutningen ──
+  //
+  // `besked_run_kobling.run_for()` siger eksplicit at "" betyder «uvist» —
+  // ALDRIG «et andet run» — og at klienten derfor skal falde tilbage på sit
+  // tekst-match. Men matchet var et BYTE-match (`assistantNorm`), og serveren
+  // omskriver blokkene ved persistering (`_with_thinking_block`,
+  // `_med_udgivne_filer`, `_normaliser_tekstblokke`). Faldt både run-id og
+  // byte-match bort, stod broen VED SIDEN AF serverens kopi: to svar på
+  // skærmen. Testen her pinner at faldbacken bruger samme suffix-tolerance som
+  // `transcriptFilter` allerede gør — så "" + omskrevet tekst ikke længere er
+  // et blindt punkt.
+  it('dropper broen naar run_id er tomt OG persisteringen omskrev teksten', () => {
+    const svar =
+      'Det endelige svar staar her og er langt nok til at taelle som et rigtigt svar. ' +
+      'Det fortsaetter over flere linjer, praecis som svarene i den virkelige flade, ' +
+      'og slutter med en saetning der kun findes i dette ene svar.'
+    // Serverens kopi mangler den FOERSTE text-blok — den maalte asymmetri.
+    // Derfor er `assistantNorm` forskellig, selv om det er SAMME svar.
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: svar }],
+        created_at: '2026-10-29T14:00:01Z', parent_id: null, run_id: '' },
+      // Turen slutter paa en tool-raekke -> serverCaughtUp er falsk.
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-29T14:00:02Z', parent_id: null },
+    ]
+    const merged = mergeServer([bro('visible-29okt', `Foerste afsnit af arbejdsteksten. ${svar}`)], server)
+    expect(merged.filter((m) => m.role === 'assistant')).toHaveLength(1)
+    expect(merged.find((m) => m.id === 'a-visible-29okt')).toBeUndefined()
+  })
+
+  it('beholder broen naar run_id er tomt og teksten er et HELT andet svar', () => {
+    // Den anden side af samme regel: uden tekst-match er broen et distinkt
+    // svar og maa ikke skjules — ellers forsvinder svaret fra skaermen.
+    const server = [
+      { id: 'message-1', role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: 'Et helt andet svar om noget ganske andet, som ikke deler afslutning med broen overhovedet.' }],
+        created_at: '2026-10-29T14:00:01Z', parent_id: null, run_id: '' },
+      { id: 'message-2', role: 'tool' as const, content: [],
+        created_at: '2026-10-29T14:00:02Z', parent_id: null },
+    ]
+    const merged = mergeServer([bro('visible-29okt-b', 'Svaret paa det spoergsmaal jeg selv stillede, med sin helt egen afslutning paa sagen.')], server)
+    expect(merged.find((m) => m.id === 'a-visible-29okt-b')).toBeDefined()
+  })
 })
 
 // ---------------------------------------------------------------------------

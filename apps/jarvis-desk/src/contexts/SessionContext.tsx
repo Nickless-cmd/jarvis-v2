@@ -3,6 +3,7 @@ import { erKodeSamtale } from '../lib/sessionGroups'
 import { listSessions, getSession, createSession, renameSession, deleteSession, setSessionFlags, setSessionWorkspace, releaseSessionWorkspace, type ChatSession, type ChatMessage } from '../lib/api'
 import { parsePauseAsk } from '../lib/pauseAsk'
 import { denseBlocks } from '../lib/blockHelpers'
+import { delerSuffix } from '../lib/transcriptFilter'
 
 /** Nøglen hvor den sidste samtale i en given mode ligger.
  *
@@ -555,6 +556,22 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   const serverAsstTexts = new Set(
     server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean),
   )
+  // Tekst-matchet var et BYTE-match. Serveren omskriver blokkene ved
+  // persistering (`_with_thinking_block`, `_med_udgivne_filer`,
+  // `_normaliser_tekstblokke`), saa et svar der ER det samme kan give en anden
+  // streng — og naar `run_id` samtidig er "" («uvist», jf.
+  // `besked_run_kobling.run_for()`) og turen slutter paa en tool-raekke, stod
+  // broen VED SIDEN AF serverens kopi. Maalt 29/10-2026: 2 assistent-raekker.
+  //
+  // `""` betyder «uvist», ALDRIG «et andet run». Faldbacken skal derfor vaere
+  // tekst-matchet — men det skal dele afslutning, ikke bytes. Samme tolerance
+  // som `transcriptFilter.udenAktivRun` bruger; den bor ét sted.
+  const delerSvar = (tekst: string): boolean => {
+    if (!tekst) return false
+    if (serverAsstTexts.has(tekst)) return true
+    for (const t of serverAsstTexts) if (delerSuffix(t, tekst)) return true
+    return false
+  }
   // RUN-ID FØRST (Bjørn 2026-10-06, "Jeg ser 2 runs i tråden med samme svar").
   //
   // Tekst-matchet ovenfor er `assistantNorm` = whitespace-kollaps af de
@@ -601,7 +618,7 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
         const r = broRun(lm)
         return !!r && serverAsstRuns.has(r)
       })()
-      const persisted = samme_run || serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      const persisted = samme_run || serverCaughtUp || delerSvar(assistantNorm(lm))
       if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
     // persisteret → drop placeholder; serverens rensede besked (nu m. re-injicerede tool-blokke) vises

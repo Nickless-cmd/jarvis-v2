@@ -323,13 +323,32 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
 
-    # Execution-cluster 🔒 GENNEM Centralen (SECURITY): klassifikation via gate (edit har
-    # historisk ingen read-before-write — bevaret med kind="edit").
+    # Execution-cluster 🔒 GENNEM Centralen (SECURITY): klassifikation via gate.
+    #
+    # `edit` sprang read-before-write over indtil 29/10-2026 (kommentaren sagde
+    # det selv: «edit har historisk ingen rbw»). Da vagten blev udvidet til
+    # kodefiler, viste det sig at noget vaerre laa gemt: grenen for
+    # `guard_blocked` fandtes slet ikke her. `check_file` svarede korrekt
+    # `guard_blocked` — men koden tjekkede kun `blocked` og `approval`, saa
+    # svaret faldt igennem og skrivningen skete. Guarden havde ret hele tiden;
+    # ingen laeste svaret. Maalt ende-til-ende samme dag: en ulaest `.py` gik
+    # igennem `execute_tool` uden en advarsel.
+    #
+    # `session_id` manglede ogsaa: laesningen registreres under sessions-id'et,
+    # men her blev der spoergt under "default" — to noegler, ét svar.
+    _session_id = (
+        args.get("_runtime_session_id")
+        or args.get("_session_id")
+        or "default"
+    )
     from core.services.gate_execution import check_file
-    _ec = check_file(str(target), kind="edit")
+    _ec = check_file(str(target), session_id=str(_session_id), kind="edit")
 
     if _ec.classification == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
+
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
 
     if _ec.classification == "approval":
         return {

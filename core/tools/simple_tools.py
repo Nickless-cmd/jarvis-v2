@@ -1206,6 +1206,31 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if not _intern:
         udgiv_tool_invoked(name, arguments)
 
+    # Var filen laest FOER dette kald? (29/10-2026)
+    #
+    # Maales her og ikke i `byg_completed_payload`, fordi den funktion kaldes
+    # EFTER handleren — og `edit_file`/`write_file` skriver filen. En maaling
+    # bagefter ville spoerge «er filen laest?» om en fil der netop blev aendret,
+    # og svaret ville vaere «nej» uanset hvad der skete foer. Det er praecis
+    # den slags omvendte maaling der goer et panel grønt uden at noget er i
+    # orden.
+    _pre_read: bool | None = None
+    if name in ("edit_file", "write_file"):
+        try:
+            from core.services.read_before_write_guard import was_read as _was_read_pub
+            _pre_sti = str(arguments.get("path") or "")
+            if _pre_sti:
+                _pre_read = _was_read_pub(
+                    _pre_sti,
+                    session_id=str(
+                        arguments.get("_runtime_session_id")
+                        or arguments.get("_session_id")
+                        or "default"
+                    ),
+                )
+        except Exception:
+            _pre_read = None  # self-safe: en maaling maa ikke vaelte kaldet
+
     try:
         result = handler(arguments)
     except Exception as exc:
@@ -1217,7 +1242,9 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = byg_completed_payload(name, status, arguments, result)
+    _completed_payload = byg_completed_payload(
+        name, status, arguments, result, pre_read=_pre_read
+    )
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):

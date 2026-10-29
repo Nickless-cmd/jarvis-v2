@@ -46,6 +46,22 @@ _PROTECTED_FILENAMES = frozenset({
     "CHRONICLE.md",
 })
 
+#: Endelser der ogsaa kraever laesning foerst (29/10-2026).
+#:
+#: Vagtens daekning var NAVNE-baseret: ni filer, alle identitet og hukommelse
+#: — nul kode. Maalt samme dag i produktionsdata: `edit_file` 2.229 kald mod
+#: `write_file` 444 siden 15/10, og INGEN af dem blev daekket naar filen var
+#: kode. Claudes harness blokerede 222 blinde skrivninger fordi det daekkede
+#: `Edit`; mit daekkede kun ni filnavne. En vagt der vogter en doer ingen gaar
+#: ind ad er ikke en vagt — den er en kommentar der ligner en.
+#:
+#: `.md` er BEVIDST udeladt: workspace-noter, brain-poster og daglige noter
+#: skrives i et tempo hvor et krav om genlaesning hvert 10. minut ville goere
+#: vagten til stoj. Kode aendres sjaeldnere pr. fil og koster mere at clobbe.
+_PROTECTED_SUFFIXES = frozenset({
+    ".py", ".ts", ".tsx", ".js", ".jsx", ".css", ".sh",
+})
+
 # How long a recent-read is considered "fresh enough" to satisfy the guard.
 # Stored as TTL in shared_cache so cross-process visibility is automatic.
 _READ_FRESHNESS_SECONDS = 600  # 10 minutes
@@ -108,17 +124,44 @@ def is_protected(path: str) -> bool:
     return name in _PROTECTED_FILENAMES
 
 
+def _kraever_laesning(target: Path) -> bool:
+    """True hvis denne fil kraever laesning foerst.
+
+    To grunde: den er en identitets-/hukommelsesfil (navn), eller den er kode
+    (endelse). Sidstnaevnte kom til 29/10-2026 — se `_PROTECTED_SUFFIXES`.
+    """
+    if target.name in _PROTECTED_FILENAMES:
+        return True
+    return target.suffix.lower() in _PROTECTED_SUFFIXES
+
+
+def was_read(path: str, session_id: str = "default") -> bool:
+    """Offentlig, STI-baseret laese-status — uden navne-filter.
+
+    `_was_read` er den interne variant, og den er allerede sti-baseret; denne
+    wrapper findes fordi telemetrien skal kunne spoerge «var filen laest FOER
+    dette kald?» for en vilkaarlig fil, ikke kun de ni beskyttede navne.
+    Kaster ALDRIG: en manglende cache betyder «ved det ikke», og det svarer
+    False — den konservative retning for en vagt, men den rigtige for en
+    maaling, hvor et falsk positivt ville skjule problemet.
+    """
+    try:
+        return _was_read(str(Path(path).expanduser().resolve()), session_id)
+    except Exception:  # bevidst: en maaling maa ikke vaelte det den maaler — ukendt = False
+        return False
+
+
 def check_read_before_write(
     path: str,
     session_id: str = "default",
 ) -> tuple[bool, str | None]:
-    """Check whether write_file should be allowed for this path.
+    """Check whether a file write should be allowed for this path.
 
     Returns (allowed, reason). If allowed=False, the write is blocked.
     """
     target = Path(path).expanduser().resolve()
 
-    if target.name not in _PROTECTED_FILENAMES:
+    if not _kraever_laesning(target):
         return True, None
     if not target.exists():
         return True, None

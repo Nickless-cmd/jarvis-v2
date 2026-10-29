@@ -168,3 +168,165 @@ def test_is_protected_kender_beskyttede_navne(monkeypatch):
     navn = next(iter(g._PROTECTED_FILENAMES))
     assert g.is_protected(f"/vilkårlig/sti/{navn}") is True
     assert g.is_protected("/vilkårlig/sti/helt-normal.txt") is False
+
+
+# ── Kode-daekning (29/10-2026) ────────────────────────────────────────────
+#
+# Vagtens daekning var NAVNE-baseret: ni filer, alle identitet/hukommelse —
+# nul kode. Maalt samme dag: `edit_file` 2.229 kald mod `write_file` 444, og
+# ingen af dem blev daekket naar filen var kode. Claudes harness blokerede 222
+# blinde skrivninger fordi det daekkede `Edit`; mit daekkede kun ni filnavne.
+
+def test_kodefil_kraever_laesning(tmp_path):
+    from core.services import read_before_write_guard as rbw
+    f = tmp_path / "modul.py"
+    f.write_text("x = 1\n")
+    assert rbw._kraever_laesning(f) is True
+
+
+def test_markdown_kraever_ikke_laesning(tmp_path):
+    """.md er BEVIDST udeladt: workspace-noter og brain-poster skrives i et
+    tempo hvor et genlaesningskrav hvert 10. minut ville goere vagten til stoj."""
+    from core.services import read_before_write_guard as rbw
+    f = tmp_path / "note.md"
+    f.write_text("# note\n")
+    assert rbw._kraever_laesning(f) is False
+
+
+def test_identitetsfil_kraever_laesning_uanset_endelse(tmp_path):
+    from core.services import read_before_write_guard as rbw
+    assert rbw._kraever_laesning(tmp_path / "SOUL.md") is True
+
+
+def test_ulaest_kodefil_blokeres(tmp_path, monkeypatch):
+    from core.services import read_before_write_guard as rbw
+    f = tmp_path / "modul.py"
+    f.write_text("x = 1\n")
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: False)
+    ok, reason = rbw.check_read_before_write(str(f), session_id="s1")
+    assert ok is False
+    assert "READ-BEFORE-WRITE" in reason
+
+
+def test_laest_kodefil_tillades(tmp_path, monkeypatch):
+    from core.services import read_before_write_guard as rbw
+    f = tmp_path / "modul.py"
+    f.write_text("x = 1\n")
+    monkeypatch.setattr(rbw, "_was_read", lambda p, s: True)
+    ok, reason = rbw.check_read_before_write(str(f), session_id="s1")
+    assert ok is True
+    assert reason is None
+
+
+def test_ny_kodefil_tillades_uden_laesning(tmp_path):
+    """Man kan ikke laese hvad der ikke findes — en ny fil har intet at clobbe."""
+    from core.services import read_before_write_guard as rbw
+    ok, reason = rbw.check_read_before_write(
+        str(tmp_path / "helt-ny.py"), session_id="s1"
+    )
+    assert ok is True
+    assert reason is None
+
+
+def test_was_read_er_sti_baseret(tmp_path, monkeypatch):
+    """Den offentlige wrapper maa ikke arve navne-filteret: telemetrien spoerger
+    om en VILKAARLIG fil, ikke kun de ni beskyttede navne."""
+    from core.services import read_before_write_guard as rbw
+    f = tmp_path / "tilfaeldig.py"
+    f.write_text("x\n")
+    set_flag: dict[str, str] = {}
+
+    def fake(p, s):
+        set_flag["p"] = p
+        return True
+
+    monkeypatch.setattr(rbw, "_was_read", fake)
+    assert rbw.was_read(str(f), session_id="s1") is True
+    assert set_flag["p"] == str(f.resolve())
+
+
+def test_was_read_kaster_aldrig(monkeypatch):
+    """En maaling maa ikke vaelte det den maaler."""
+    from core.services import read_before_write_guard as rbw
+
+    def braek(p, s):
+        raise RuntimeError("cachen er nede")
+
+    monkeypatch.setattr(rbw, "_was_read", braek)
+    assert rbw.was_read("/x.py") is False
+
+
+# ── Ende-til-ende: guarden svarer, men HVEM læser svaret? (29/10-2026) ────
+#
+# Da vagten blev udvidet til kodefiler, viste `execute_tool` at en ulæst `.py`
+# gik igennem uden en advarsel. Årsagen var ikke guarden: `check_file` svarede
+# korrekt `guard_blocked` — men `_exec_edit_file` tjekkede kun `blocked` og
+# `approval`, så svaret faldt igennem. Guarden havde ret hele tiden; ingen
+# læste svaret. Det er samme fejlform som `silent_chain_break`-fundet: en
+# mekanisme der returnerer sit fund til en kalder der kaster det væk.
+
+def test_edit_file_returnerer_guard_blocked(tmp_path, monkeypatch):
+    """Den gren der manglede. En ulæst kodefil skal give `guard_blocked` —
+    ikke `ok`, og ikke en skrivning."""
+    from core.tools import file_tools_exec as fte
+
+    f = tmp_path / "ulast.py"
+    f.write_text("x = 1\n")
+
+    monkeypatch.setattr(
+        "core.services.read_before_write_guard._was_read", lambda p, s: False
+    )
+    ud = fte._exec_edit_file({
+        "path": str(f),
+        "old_text": "x = 1",
+        "new_text": "x = 2",
+        "_runtime_session_id": "test-edit-guard",
+    })
+    assert ud.get("status") == "guard_blocked"
+    assert "READ-BEFORE-WRITE" in str(ud.get("error"))
+    # Og det afgørende: filen blev IKKE ændret.
+    assert f.read_text() == "x = 1\n"
+
+
+def test_edit_file_slipper_naar_filen_er_laest(tmp_path, monkeypatch):
+    """Modstykket — vagten må ikke blokere den legitime vej."""
+    from core.tools import file_tools_exec as fte
+
+    f = tmp_path / "laest.py"
+    f.write_text("x = 1\n")
+
+    monkeypatch.setattr(
+        "core.services.read_before_write_guard._was_read", lambda p, s: True
+    )
+    ud = fte._exec_edit_file({
+        "path": str(f),
+        "old_text": "x = 1",
+        "new_text": "x = 2",
+        "_runtime_session_id": "test-edit-guard",
+    })
+    assert ud.get("status") == "ok"
+    assert f.read_text() == "x = 2\n"
+
+
+def test_edit_sender_session_id_til_gaten(tmp_path, monkeypatch):
+    """Læsningen registreres under sessions-id'et; blev der spurgt under
+    "default", ville svaret være «nej» om en fil der netop var læst."""
+    from core.tools import file_tools_exec as fte
+    from core.services import gate_execution
+
+    f = tmp_path / "sess.py"
+    f.write_text("x = 1\n")
+    set_flag: dict[str, str] = {}
+
+    def fake_check_file(path, session_id="default", **kw):
+        set_flag["sid"] = session_id
+        return gate_execution._to_check(gate_execution._green("exec_file", "auto"))
+
+    monkeypatch.setattr(gate_execution, "check_file", fake_check_file)
+    fte._exec_edit_file({
+        "path": str(f),
+        "old_text": "x = 1",
+        "new_text": "x = 2",
+        "_runtime_session_id": "min-session-42",
+    })
+    assert set_flag["sid"] == "min-session-42"

@@ -148,15 +148,20 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
             return _green("exec_file", cls)
         if cls == "approval":
             return _yellow("exec_file", "approval")
-        # auto-stien → read-before-write (KUN write; edit har historisk ingen rbw)
-        if kind == "write":
-            try:
-                from core.services.read_before_write_guard import check_read_before_write
-                ok, reason = check_read_before_write(path, session_id=session_id)
-                if not ok:
-                    return _red("exec_file", reason, "guard_blocked")
-            except Exception:
-                pass  # infra-blip → tillad (paritet med tidligere except:pass), men traced
+        # auto-stien → read-before-write.
+        #
+        # GJALDT kun `write` indtil 29/10-2026 — kommentaren sagde endda selv
+        # «edit har historisk ingen rbw». Men `edit_file` er fem gange saa
+        # hyppig som `write_file` (2.229 mod 444 kald siden 15/10), og det er
+        # praecis det vaerktoej Claudes harness blokerede 222 gange. En vagt
+        # paa det sjaeldne vaerktoej vogter en doer ingen gaar ind ad.
+        try:
+            from core.services.read_before_write_guard import check_read_before_write
+            ok, reason = check_read_before_write(path, session_id=session_id)
+            if not ok:
+                return _red("exec_file", reason, "guard_blocked")
+        except Exception:
+            pass  # infra-blip → tillad (paritet med tidligere except:pass), men traced
         return _green("exec_file", "auto")
 
     # ── workspace-trust (skrive/exec i ikke-betroet code-workspace) ──

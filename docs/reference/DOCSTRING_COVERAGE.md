@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9430/17752 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9432/17754 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9430/17752 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 857 | 1566 | 54% |
-| `core.services` | 6283 | 12065 | 52% |
+| `core.services` | 6285 | 12067 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1202,7 +1202,7 @@ Generated from source. 9430/17752 functions/methods documented (53%). The list b
 - `core/services/dream_adoption_candidate_tracking.py` :: `track_runtime_dream_adoption_candidates_for_visible_turn` (L32)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_from_inputs` (L165)
 - `core/services/dream_articulation.py` :: `build_dream_articulation_surface` (L332)
-- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L436)
+- `core/services/dream_carry_over.py` :: `build_dream_carry_over_surface` (L587)
 - `core/services/dream_consolidation_daemon.py` :: `build_dream_consolidation_surface` (L880)
 - `core/services/dream_consolidation_daemon.py` :: `list_recent_dreams` (L876)
 - `core/services/dream_distillation_daemon.py` :: `build_dream_distillation_surface` (L167)
@@ -1458,7 +1458,7 @@ Generated from source. 9430/17752 functions/methods documented (53%). The list b
 - `core/services/memory_write_policy.py` :: `reject_review` (L194)
 - `core/services/mermaid_render.py` :: `find_mermaid` (L86)
 - `core/services/message_feedback.py` :: `markér_gennemgået` (L122)
-- `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
+- `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L213)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)
 - `core/services/meta_learning_retrospective.py` :: `list_recent_memos` (L272)
 - `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L340)

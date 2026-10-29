@@ -19,12 +19,14 @@ _Dream Carry-Over — hypotheses that survive across sessions._
 | function | `mark_dream_presented` | `(dream_id)` | Mark a dream as presented in the CURRENT session; track carry depth. | [src](../../../core/services/dream_carry_over.py#L329) |
 | function | `confirm_dream` | `(dream_id)` | Confirm a dream hypothesis — boost confidence, track confirmed sessions. | [src](../../../core/services/dream_carry_over.py#L348) |
 | function | `reject_dream` | `(dream_id)` | Reject a dream hypothesis — archive with 'was_wrong'. | [src](../../../core/services/dream_carry_over.py#L385) |
-| function | `promote_confirmed_dream_to_identity` | `(dream_id)` | Promote a high-confidence confirmed dream to identity evolution proposal. | [src](../../../core/services/dream_carry_over.py#L402) |
-| function | `format_dream_for_prompt` | `(dream)` | Format a dream for injection into the visible prompt. | [src](../../../core/services/dream_carry_over.py#L422) |
-| function | `build_dream_carry_over_surface` | `()` | — | [src](../../../core/services/dream_carry_over.py#L436) |
-| function | `maybe_auto_promote_dreams` | `()` | Promote high-confidence confirmed dreams to identity proposals. Returns promoted IDs. | [src](../../../core/services/dream_carry_over.py#L461) |
-| function | `_enforce_active_cap` | `()` | Hold antallet af aktive drømme under `_MAX_ACTIVE_DREAMS`. | [src](../../../core/services/dream_carry_over.py#L482) |
-| function | `_maybe_fade_old_dreams` | `()` | Archive unconfirmed dreams that have been presented too many times. | [src](../../../core/services/dream_carry_over.py#L528) |
+| function | `record_dream_evidence` | `(dream_id, *, supports, source, evidence, evidence_ref)` | Registrér ÉN ekstern observation for eller imod en drøm. | [src](../../../core/services/dream_carry_over.py#L430) |
+| function | `record_evidence_for_hypothesis` | `(hypothesis_id, *, supports, source, evidence, evidence_ref)` | Før en afgjort hypotese-måling videre til de drømme der nævner den. | [src](../../../core/services/dream_carry_over.py#L519) |
+| function | `promote_confirmed_dream_to_identity` | `(dream_id)` | Promote a high-confidence confirmed dream to identity evolution proposal. | [src](../../../core/services/dream_carry_over.py#L553) |
+| function | `format_dream_for_prompt` | `(dream)` | Format a dream for injection into the visible prompt. | [src](../../../core/services/dream_carry_over.py#L573) |
+| function | `build_dream_carry_over_surface` | `()` | — | [src](../../../core/services/dream_carry_over.py#L587) |
+| function | `maybe_auto_promote_dreams` | `()` | Promote high-confidence confirmed dreams to identity proposals. Returns promoted IDs. | [src](../../../core/services/dream_carry_over.py#L612) |
+| function | `_enforce_active_cap` | `()` | Hold antallet af aktive drømme under `_MAX_ACTIVE_DREAMS`. | [src](../../../core/services/dream_carry_over.py#L633) |
+| function | `_maybe_fade_old_dreams` | `()` | Archive unconfirmed dreams that have been presented too many times. | [src](../../../core/services/dream_carry_over.py#L679) |
 
 ## `core/services/dream_consolidation_daemon.py`
 _Dream Consolidation — semantic + LLM-driven consolidation during low-activity._

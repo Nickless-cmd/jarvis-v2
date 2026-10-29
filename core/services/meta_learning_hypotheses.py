@@ -177,6 +177,30 @@ def record_hypothesis_sample(
             })
         conn.commit()
 
+    # 29/10-2026: den manglende kaldevej. En hypotese der er AFGJORT af
+    # eksterne samples er netop den evidens `confirm_dream` aldrig fik, fordi
+    # intet kaldte den. Målingen føres videre til de drømme der nævner
+    # hypotese-id'et; `record_dream_evidence` kræver stadig to uafhængige
+    # pegepinde, så ét sample afgør intet alene.
+    if auto_resolved.get("outcome") in {"supported", "contradicted"}:
+        try:
+            from core.services.dream_carry_over import record_evidence_for_hypothesis
+
+            record_evidence_for_hypothesis(
+                hypothesis_id,
+                supports=auto_resolved["outcome"] == "supported",
+                source="meta_learning_hypotheses",
+                evidence=(
+                    f"hypotese {hypothesis_id} afgjort som {auto_resolved['outcome']} "
+                    f"paa {total} samples (ratio {auto_resolved['ratio']})"
+                ),
+                evidence_ref=f"meta-learning-sample:{sample_id}",
+            )
+        except Exception as exc:
+            # En drøm der ikke kunne opdateres må ikke vælte en gennemført
+            # hypotese-afgørelse — men fejlen skal kunne forklares bagefter.
+            logger.warning("meta_learning_hypotheses: drømme-bro fejlede: %s", exc)
+
     return {
         "status": "ok",
         "sample_id": sample_id,

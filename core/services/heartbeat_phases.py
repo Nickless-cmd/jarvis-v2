@@ -730,6 +730,25 @@ def act_phase(
                 "idle_result": idle_result,
             }
 
+        # C3 — forslag til aktive mål (29/10-2026, MÅLT).
+        #
+        # Grenen lå i `productive_idle`, og den er nu UOPNÅELIG: `active_goals`
+        # er altid ikke-tom (ét aktivt mål), så `_identify_priorities` tilføjer
+        # `advance_goals` hver gang — og `if priorities:` vinder altid over
+        # `productive_idle`. Målt i databasen: `productive_idle` fyrede 3-4
+        # gange i timen i et helt døgn og stoppede HELT kl. 19, samme time som
+        # fixet gjorde målene synlige. Grenen skal ligge der hvor betingelsen
+        # faktisk opstår, ikke der hvor den engang gjorde.
+        #
+        # Gaten i `_propose_skill_chains_in_idle` gør kaldet til ét pr. NYT
+        # mål: denne linje koster en DB-læsning pr. tick og en LLM kun når et
+        # mål dukker op første gang.
+        if "advance_goals" in priorities:
+            try:
+                _propose_skill_chains_in_idle(max_goals=2)
+            except Exception:  # forslag er en berigelse — må ikke vælte ticken
+                logger.debug("act_phase: skill-chain-forslag fejlede", exc_info=True)
+
         # Action warranted — dispatch to existing tick
         try:
             from core.services.heartbeat_runtime import run_heartbeat_tick

@@ -113,3 +113,66 @@ def test_c3_foreslaar_for_nyt_maal_naar_det_dukker_op():
 
     assert fake.call_count == 2, "det nye mål skal have sit eget kald"
     assert [f["goal_id"] for f in forslag] == ["goal_test_2"]
+
+
+# ── Grenen skal ligge hvor betingelsen OPSTÅR ──────────────────────────────
+#
+# MÅLT 29/10-2026, efter at målene blev synlige for sansningen: `productive_idle`
+# fyrede 3-4 gange i timen i et helt døgn og stoppede HELT kl. 19 — samme time
+# som fixet trådte i kraft. Årsagen er strukturel: `active_goals` er nu altid
+# ikke-tom, så `_identify_priorities` tilføjer `advance_goals` hver gang, og
+# `if priorities:` i `act_phase` vinder altid over `productive_idle`.
+#
+# C3-grenen lå i `productive_idle` og var derfor uopnåelig — samme fejlform som
+# den oprindeligt havde. Den ligger nu i `advance_goals`-vejen.
+
+
+def _stille_omgivelser():
+    """Ingen streaming, ingen aktiv bruger — så `act_phase` dispatcher ticken."""
+    return (
+        patch("core.services.visible_stream_gate.visible_streaming", return_value=False),
+        patch("core.services.heartbeat_phases._user_active_recently", return_value=False),
+        patch("core.services.heartbeat_phases._inner_tick_during_chat_enabled", return_value=True),
+    )
+
+
+def test_c3_kaldes_i_advance_goals_grenen():
+    """Prioriteten `advance_goals` er den vej der FAKTISK tages — grenen skal ligge der."""
+    from core.services.heartbeat_phases import act_phase
+
+    a, b, c = _stille_omgivelser()
+    with a, b, c, patch(
+        "core.services.heartbeat_phases._propose_skill_chains_in_idle"
+    ) as forslag, patch(
+        "core.services.heartbeat_runtime.run_heartbeat_tick"
+    ) as tick:
+        tick.return_value = type("R", (), {"status": "ok"})()
+        resultat = act_phase(
+            signals={"active_goals": [MAAL]},
+            reflection={"activity_level": "normal", "priorities": ["advance_goals"]},
+        )
+
+    assert forslag.call_count == 1, (
+        "C3 kaldes ikke i advance_goals-vejen — så er grenen død igen, fordi "
+        "productive_idle aldrig indtræffer når der findes et aktivt mål"
+    )
+    assert resultat.get("kind") == "tick_dispatched"
+
+
+def test_c3_kaldes_ikke_uden_advance_goals():
+    """En prioritet uden aktive mål skal ikke trække et LLM-kald ind i ticken."""
+    from core.services.heartbeat_phases import act_phase
+
+    a, b, c = _stille_omgivelser()
+    with a, b, c, patch(
+        "core.services.heartbeat_phases._propose_skill_chains_in_idle"
+    ) as forslag, patch(
+        "core.services.heartbeat_runtime.run_heartbeat_tick"
+    ) as tick:
+        tick.return_value = type("R", (), {"status": "ok"})()
+        act_phase(
+            signals={},
+            reflection={"activity_level": "normal", "priorities": ["compact_context"]},
+        )
+
+    assert forslag.call_count == 0

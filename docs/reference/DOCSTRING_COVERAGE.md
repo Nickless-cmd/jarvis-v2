@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9434/17756 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9435/17757 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9434/17756 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 857 | 1566 | 54% |
-| `core.services` | 6287 | 12069 | 52% |
+| `core.services` | 6288 | 12070 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -710,10 +710,10 @@ Generated from source. 9434/17756 functions/methods documented (53%). The list b
 - `core/services/adaptive_reasoning_runtime.py` :: `build_adaptive_reasoning_runtime_surface` (L10)
 - `core/services/aesthetic_sense.py` :: `build_aesthetic_surface` (L83)
 - `core/services/aesthetic_sense.py` :: `list_aesthetic_notes` (L234)
-- `core/services/aesthetic_taste_daemon.py` :: `build_taste_surface` (L102)
-- `core/services/aesthetic_taste_daemon.py` :: `get_latest_taste_insight` (L98)
-- `core/services/aesthetic_taste_daemon.py` :: `record_choice` (L44)
-- `core/services/aesthetic_taste_daemon.py` :: `tick_taste_daemon` (L56)
+- `core/services/aesthetic_taste_daemon.py` :: `build_taste_surface` (L146)
+- `core/services/aesthetic_taste_daemon.py` :: `get_latest_taste_insight` (L142)
+- `core/services/aesthetic_taste_daemon.py` :: `record_choice` (L80)
+- `core/services/aesthetic_taste_daemon.py` :: `tick_taste_daemon` (L92)
 - `core/services/affective_meta_state.py` :: `build_affective_meta_prompt_section` (L299)
 - `core/services/affective_meta_state.py` :: `build_affective_meta_state_from_sources` (L38)
 - `core/services/agency_cartographer.py` :: `get_cartographer_snapshot` (L183)

@@ -1082,3 +1082,97 @@ async def test_run_uden_done_maa_heller_ikke_miste_fold_signalet():
     assert stop_at is not None, "message_stop skal altid komme (terminal-garanti)"
     assert signaler, "fold-signalet manglede paa gendannelsesvejen"
     assert signaler[0] < stop_at, "fold-signalet skal komme FOER message_stop"
+
+
+@pytest.mark.asyncio
+async def test_svaret_foer_et_sidste_vaerktoejskald_er_stadig_slutsvaret():
+    """Bjørn 29/10-2026: «alt der sker efter slut svaret gør hoved holdes
+    lukkes, og svaret først paces ind i det lukket hoved».
+
+    Målt i 395 persisterede assistent-svar: 11 (2,8 %) havde mønstret
+    `text → tool_use → progress`. Svaret lå inde i folden.
+
+    Årsagen er her: ved `done` afgøres uafklaret tekst som `commentary` når
+    turen har haft et værktøjskald (`has_tool`). Er svaret allerede sendt ud
+    FØR det sidste værktøjskald, ligger der intet i `_pending_text` ved
+    `done` — så der åbnes ingen slutblok, og turens sidste tekst bliver
+    stående som arbejde. `deriveChatFlow` flytter den derfor ind i folden,
+    `finalBlocks` er tom, og paceren har intet at rulle ud: tom skærm.
+
+    Kontrakten: en AFLUTTET tur har altid en slutblok. Er der ingen, er
+    turens SIDSTE tekstblok svaret — det er den brugeren læser.
+    """
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {"type": "tool_result", "tool": "bash",
+                                         "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1",
+                                    "delta": "Begge sideopgaver er lukket og pushet."})
+        # Endnu et værktøjskald EFTER svaret: det tømmer `_pending_text` og
+        # gør teksten til commentary.
+        yield _legacy_sse("working_step", _annoncering(
+            tool_id="call-2", navn="verify_file_contains"))
+        yield _legacy_sse("capability", {"type": "tool_result",
+                                         "tool": "verify_file_contains",
+                                         "capability_id": "call-2", "status": "ok"})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+
+    # Slutfasen pr. tekstblok: åbningsfasen, derefter evt. phase-updates.
+    faser: dict[int, str] = {}
+    for kind, data in events:
+        if kind == "content_block_start" and data["content_block"]["type"] == "text":
+            faser[data["index"]] = data["content_block"].get("phase") or ""
+        elif kind == "system_event" and data.get("kind") == "text_phase_update":
+            faser[data["payload"]["index"]] = data["payload"]["phase"]
+
+    svar_idx = [i for i, fase in faser.items() if fase == "final_answer"]
+    assert svar_idx, (
+        "ingen slutblok — turens svar ligger i folden og skærmen bliver tom "
+        f"mens paceren venter på et svar der ikke findes. Faser: {faser}"
+    )
+
+    tekst = "".join(
+        data["delta"]["text"] for kind, data in events
+        if kind == "content_block_delta"
+        and data["delta"].get("type") == "text_delta"
+        and data["index"] == svar_idx[0]
+    )
+    assert tekst == "Begge sideopgaver er lukket og pushet."
+
+
+@pytest.mark.asyncio
+async def test_afbrudt_tur_promoveres_ikke_til_slutsvar():
+    """Promoveringen kræver `_completed`.
+
+    En afbrudt tur har intet svar. Bliver dens sidste tekst stemplet
+    `final_answer`, ville klienten pace et uafsluttet svar som om det var
+    færdigt — og `deriveChatFlow` ville flytte den ud af folden. Det er den
+    modsatte fejl af den vi retter: hellere vise arbejdet end at påstå et
+    svar der ikke findes.
+    """
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {"type": "tool_result", "tool": "bash",
+                                         "capability_id": "call-1", "status": "ok"})
+        yield _legacy_sse("delta", {"run_id": "v1", "delta": "Uafsluttet svar."})
+        yield _legacy_sse("working_step", {"run_id": "v1", "action": "thinking",
+                                           "detail": "Tænker videre · runde 2"})
+        yield _legacy_sse("done", {"run_id": "v1", "status": "interrupted"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", session_id="s", ping_interval_s=999.0,
+    )))
+    faser: dict[int, str] = {}
+    for kind, data in events:
+        if kind == "content_block_start" and data["content_block"]["type"] == "text":
+            faser[data["index"]] = data["content_block"].get("phase") or ""
+        elif kind == "system_event" and data.get("kind") == "text_phase_update":
+            faser[data["payload"]["index"]] = data["payload"]["phase"]
+
+    assert "final_answer" not in faser.values(), (
+        f"en afbrudt tur fik et slutsvar den ikke har: {faser}"
+    )

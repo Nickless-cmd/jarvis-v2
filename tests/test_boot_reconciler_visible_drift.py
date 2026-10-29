@@ -332,3 +332,51 @@ def test_opslaget_bruger_FAKTISK_graensen(_lager, monkeypatch):
     _lager["kendte"] = {}
     sbr._ryd_visible_drift(True)
     assert _lager["sidste_parametre"] == (valgt.isoformat(), uden_omk.isoformat())
+
+
+def test_TERMINAL_post_er_IKKE_et_fritagelsesbrev(_lager):
+    """En post med terminal status beskriver en kørsel der ER slut.
+
+    Den kan derfor ikke være ejer af en række der stadig står `recovering` i det
+    andet lager. Filteret spurgte før «findes run_id'et i lageret?» — og en
+    afsluttet post findes stadig, så svaret var altid ja.
+
+    Målt 29/10-2026: `autonomous-43dcbb1f…` stod `recovering` med `finished_at`
+    sat siden 27/10 kl. 06:52 — 47 timer — mens dens post i `in_flight_runs`
+    sagde `failed_terminal` med `settled_at` dagen efter. SQL-grenen fandt
+    rækken ved HVER opstart (den kræver ingen alder), og filteret smed den væk
+    hver gang. Oprydningen rapporterede nul — og havde «set» posten, så intet
+    så forkert ud noget sted.
+    """
+    _lager["raekker"] = [("autonomous-43dcbb1f", "recovering")]
+    _lager["kendte"] = {
+        "autonomous-43dcbb1f": {
+            "run_id": "autonomous-43dcbb1f",
+            "status": "failed_terminal",
+        }
+    }
+    assert sbr._ryd_visible_drift(True) == 1
+    assert _lager["afloest"] == [
+        ("autonomous-43dcbb1f", "genoptaget under et andet run_id")]
+
+
+def test_AFSLUTTET_post_frigiver_en_running_raekke(_lager):
+    """Samme regel for `running`: er kørslen `completed` i det ene lager, er der
+    ingen proces der streamer den i det andet."""
+    _lager["raekker"] = [("visible-blev-faerdig", "running")]
+    _lager["kendte"] = {
+        "visible-blev-faerdig": {"run_id": "visible-blev-faerdig", "status": "completed"}
+    }
+    assert sbr._ryd_visible_drift(True) == 1
+    assert _lager["stemplet"] == [
+        ("visible-blev-faerdig", "proces doede uden at afslutte koerslen")]
+
+
+def test_LEVENDE_post_beskytter_stadig(_lager):
+    """Modstykket: en post der faktisk kører må ikke røres af den nye regel."""
+    _lager["raekker"] = [("visible-koerer-nu", "running")]
+    _lager["kendte"] = {
+        "visible-koerer-nu": {"run_id": "visible-koerer-nu", "status": "running"}
+    }
+    assert sbr._ryd_visible_drift(True) == 0
+    assert _lager["stemplet"] == []

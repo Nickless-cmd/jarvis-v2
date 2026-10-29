@@ -309,7 +309,24 @@ def _ryd_visible_drift(enforced: bool) -> int:
 
     kendte: set[str] = set()
     try:
-        kendte = {str(r.get("run_id") or "") for r in in_flight_runs._load().values()}
+        # Kun LEVENDE poster er «kendte» (29/10-2026).
+        #
+        # Filteret spurgte før «findes run_id'et i lageret?» — og en post med
+        # terminal status (`completed`/`cancelled`/`failed_terminal`) findes
+        # stadig. Dermed blev en afsluttet post et evigt fritagelsesbrev for en
+        # række der stod `running`/`recovering` i det andet lager.
+        #
+        # Målt samme dag: `autonomous-43dcbb1f…` stod `recovering` med
+        # `finished_at` sat siden 27/10 kl. 06:52 — 47 timer — mens dens post i
+        # `in_flight_runs` sagde `failed_terminal` med `settled_at` dagen efter.
+        # SQL-grenen fandt rækken ved HVER opstart (den kræver ingen alder), og
+        # filteret smed den væk hver gang. Ingen log, ingen tælling, ingen
+        # advarsel: oprydningen rapporterede nul fordi den havde «set» posten.
+        kendte = {
+            str(r.get("run_id") or "")
+            for r in in_flight_runs._load().values()
+            if str(r.get("status") or "") not in in_flight_runs._TERMINAL_STATUSES
+        }
     except Exception as exc:
         # Kan vi ikke laese det andet lager, kan vi ikke vide at posten er
         # ukendt — og saa stempler vi ikke. Et gaet er ikke et fravaer.

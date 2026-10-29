@@ -70,16 +70,20 @@ describe('useChatPacedBlocks', () => {
     while (shown().length < text.length && antalFrames < 4_000) {
       nextFrame()
       const now = shown().length
-      // Frame-loftet er 6 (se MAX_CODE_POINTS_PER_FRAME) — ikke 2. Hensigten
-      // er den samme: resten skal komme i TRIN, aldrig i ét spring.
-      expect(now - previous).toBeLessThanOrEqual(6)
+      // 29/10-2026: frame-loftet er ikke længere et fast 6. Det følger
+      // hastigheden (`maksPrFrame = rate × MAX_FRAME_DELTA_S`), fordi et fast
+      // loft gjorde indhentningen umulig — samme fælde som 20/10, hvor et
+      // loft på 2 gjorde hastighedsloftet virkningsløst. Hensigten er UÆNDRET:
+      // resten skal komme i TRIN, aldrig i ét spring. Derfor måles det
+      // relativt: ingen frame må vise mere end en tyvendedel af svaret.
+      expect(now - previous).toBeLessThanOrEqual(Math.ceil(Array.from(text).length / 20))
       previous = now
       antalFrames += 1
     }
     expect(shown()).toBe(text)
-    // 3000 tegn ved 180 tegn/s ≈ 17 s ≈ 1000 frames ved 60 fps. Kravet er at
-    // det tager målbar tid — ikke at det tager præcis den gamle tid.
-    expect(antalFrames).toBeGreaterThan(800)
+    // MÅLT 29/10-2026: ~187 frames (3,1 s) — var >800 (≈17 s) med det faste
+    // loft på 180. Kravet er at det tager målbar tid, ikke den gamle tid.
+    expect(antalFrames).toBeGreaterThan(150)
   })
 
   it('begrænser en vedvarende hurtig replay til en læsbar strøm', () => {
@@ -95,10 +99,11 @@ describe('useChatPacedBlocks', () => {
       rerender({ text: source })
       nextFrame()
       const vistNu = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text.length
-      // 180 tegn/s ved en 16 ms frame er højst 6 kodepunkter (frame-loftet).
-      // Replay-kilden løber ~3000 tegn/s foran; skærmen må ikke forsøge at
-      // matche dens tempo.
-      expect(vistNu - forrige).toBeLessThanOrEqual(6)
+      // Kilden løber ~3000 tegn/s foran. Skærmen må ikke matche dens tempo
+      // råt — den må kun indhente via efterslæbs-reglen, og et trin må aldrig
+      // blive et spring. Grænsen er `maksPrFrame` (rate × 0,1 s), ikke et
+      // fast 6: ved 667 tegn/s er den 67.
+      expect(vistNu - forrige).toBeLessThanOrEqual(70)
       forrige = vistNu
     }
     const visible = (result.current[0] as Extract<ContentBlock, { type: 'text' }>).text
@@ -192,8 +197,11 @@ describe('useChatPacedBlocks', () => {
     }
     expect(shown()).toBe(text.length)
     const sekunder = frames / 60
-    expect(sekunder).toBeLessThan(12)
-    expect(sekunder).toBeGreaterThan(5)
+    // MÅLT 29/10-2026: **3,13 s** for 1000 tegn. Med det faste loft på 180 var
+    // det 5–12 s, og ved 72 var det 18,8 s. Kontrakten er nu under 5 s — og
+    // stadig ikke i ét spring (testen ovenfor måler trinnene).
+    expect(sekunder).toBeLessThan(5)
+    expect(sekunder).toBeGreaterThan(1)
   })
 
   it('beholder grundtempoet på et kort svar — tuningen må ikke gøre det hurtigere', () => {

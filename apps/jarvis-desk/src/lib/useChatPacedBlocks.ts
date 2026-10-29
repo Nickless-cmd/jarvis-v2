@@ -1,30 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 import { scanFences, type FenceSpan } from './fenceScanner'
+import { naesteRate, PACE_GULV } from './paceRate'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
-const BASE_CODE_POINTS_PER_SECOND = 48
-/** Selv en stor replay-backlog må ikke forvandle strømmen til et dump.
+const BASE_CODE_POINTS_PER_SECOND = PACE_GULV
+/** 29/10-2026: det faste hastighedsloft er VÆK.
  *
- *  20/10-2026 (Bjørn): «synket mellem den ægte stream og pacen [skal] ikk
- *  være så stort». Loftet var 72, hvilket betød at et svar på 1000 tegn tog
- *  18,8 s at rulle færdigt — længe efter serveren havde leveret alt, så
- *  skærmen og sandheden var ude af trit i hele det vindue. Målt kurve ved
- *  1000 tegn efterslæb: 72 → 18,8 s, 180 → 9,5 s. Korte svar (100 tegn) er
- *  UÆNDREDE, fordi de aldrig når loftet — grundtempoet er stadig 48. */
-const MAX_CODE_POINTS_PER_SECOND = 180
-/** Hele efterslæbet forsøges fordelt over så mange sekunder, men det hårde
- *  hastighedsloft vinder altid. 12 s betød at et efterslæb på 300 tegn blev
- *  fordelt ud over 6,2 s selv om der var plads til at gøre det hurtigere.
- *  3 s gør kontrakten enkel: pacen indhenter et efterslæb på op til ~540 tegn
- *  på cirka tre sekunder, og ligger derfor aldrig langt bagefter serveren. */
-const CATCH_UP_SECONDS = 3
+ *  Det hed `MAX_CODE_POINTS_PER_SECOND = 180` og var sat 20/10 for at undgå et
+ *  18,8 s hængevindue. Det ramte rigtigt — men det ramte ikke problemet: skrev
+ *  modellen hurtigere end 180 tegn/s, voksede efterslæbet gennem HELE svaret,
+ *  og pacen indhentede aldrig. Målt: 2000 tegn tog 15,07 s at rulle ud mens
+ *  serveren havde sendt alt på under et sekund. Det er den «svaret streames
+ *  færdigt inde i hoved» Bjørn beskrev.
+ *
+ *  Hastigheden bor nu i `paceRate.ts` og følger ANKOMSTEN, justeret mod
+ *  efterslæbet — samme model som Codex desktop bruger (målt 29/10-2026). Den
+ *  kan ikke komme bagud, og derfor er der intet vindue at skjule. */
 /** Hårdt loft pr. frame. En tabt frame må ikke blive et spring.
  *
- *  Hævet fra 2 til 6 sammen med hastighedsloftet: ved 60 fps klippede et loft
- *  på 2 kurven ved 120 tegn/s, så `MAX_CODE_POINTS_PER_SECOND` ikke kunne
- *  slå igennem uanset hvad den blev sat til. 6 × 60 = 360 tegn/s er over
- *  loftet og derfor ikke længere den bindende grænse. */
+ *  Loftet er nu et GULV for hvor lille et trin må være, ikke et tag: den
+ *  effektive grænse beregnes som `rate × MAX_FRAME_DELTA_S` i tick'et. Uden
+ *  det ville 6 tegn/frame ved 60 fps klippe kurven ved 360 tegn/s og dermed
+ *  gøre den adaptive rate uhåndhævet — samme fælde som 20/10. */
 const MAX_CODE_POINTS_PER_FRAME = 6
 /** Længste frame-afstand vi regner med. En lang pause må ikke give et spring. */
 const MAX_FRAME_DELTA_S = 0.1
@@ -161,11 +159,17 @@ export function useChatPacedBlocks(
   const frame = useRef<number | null>(null)
   const sidst = useRef(0)
   const kredit = useRef(0)
+  // Ankomstmålingen (29/10-2026): hvor mange kodepunkter kom der siden sidste
+  // frame, og hvad er den glattede rate. `maal`/`tid` er den forrige måling —
+  // forskellen mellem dem ER ankomsthastigheden, og `rate` bærer historikken
+  // ind i `naesteRate`, så ét stort delta ikke kaster kurven.
+  const ankomst = useRef({ maal: 0, tid: 0, rate: BASE_CODE_POINTS_PER_SECOND })
   const sidsteKey = useRef('')
   if (sidsteKey.current !== key) {
     sidsteKey.current = key
     sidst.current = 0
     kredit.current = 0
+    ankomst.current = { maal: 0, tid: 0, rate: BASE_CODE_POINTS_PER_SECOND }
   }
   const tickRef = useRef<FrameRequestCallback>(() => undefined)
 
@@ -190,19 +194,32 @@ export function useChatPacedBlocks(
       : 1 / 60
     sidst.current = nu
 
-    // Efterslæbet bestemmer hvor STORT trinnet må være — aldrig hvor vi lander.
-    const rate = Math.min(
-      MAX_CODE_POINTS_PER_SECOND,
-      Math.max(BASE_CODE_POINTS_PER_SECOND, pending / CATCH_UP_SECONDS),
-    )
+    // ADAPTIV HASTIGHED (29/10-2026). Målt med den gamle, faste grænse:
+    // 2000 tegn tog 15,07 s at rulle ud, fordi `Math.min(180, …)` klippede
+    // indhentningen og efterslæbet derfor voksede gennem hele svaret.
+    // Reglen bor i `paceRate.ts` og følger ankomsten, justeret mod
+    // efterslæbet — samme model som Codex desktop (målt 29/10-2026).
+    const a = ankomst.current
+    const vokset = targetPoints.length - a.maal
+    const dtAnkomst = a.tid > 0 ? (nu - a.tid) / 1000 : 0
+    const maaltAnkomst = vokset > 0 && dtAnkomst > 0 ? vokset / dtAnkomst : null
+    a.maal = targetPoints.length
+    a.tid = nu
+    const rate = naesteRate({ pending, forrigeRate: a.rate, ankomst: maaltAnkomst })
+    a.rate = rate
     // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
     // ellers 48 tegn/s til mindst 60 tegn/s på en 60 Hz-skærm og endnu mere
     // på hurtigere paneler. Kreditten giver samme rolige tempo uanset fps.
-    kredit.current = Math.min(
+    //
+    // Loftet pr. frame FØLGER raten: et fast 6 ville klippe kurven ved 360
+    // tegn/s og gøre den adaptive rate uhåndhævet — samme fælde som 20/10,
+    // hvor et frame-loft på 2 gjorde hastighedsloftet virkningsløst.
+    const maksPrFrame = Math.max(
       MAX_CODE_POINTS_PER_FRAME,
-      kredit.current + rate * dt,
+      Math.ceil(rate * MAX_FRAME_DELTA_S),
     )
-    const step = Math.min(MAX_CODE_POINTS_PER_FRAME, Math.floor(kredit.current))
+    kredit.current = Math.min(maksPrFrame, kredit.current + rate * dt)
+    const step = Math.min(maksPrFrame, Math.floor(kredit.current))
     if (step <= 0) {
       frame.current = requestAnimationFrame((time) => tickRef.current(time))
       return
@@ -229,7 +246,7 @@ export function useChatPacedBlocks(
       if (springPoints <= shownPoints.length) {
         // Fladen er ikke komplet endnu. Kreditten gives tilbage, så
         // akkumulatoren ikke går i baglås mens cursoren venter.
-        kredit.current = Math.min(MAX_CODE_POINTS_PER_FRAME, kredit.current + step)
+        kredit.current = Math.min(maksPrFrame, kredit.current + step)
         frame.current = requestAnimationFrame((time) => tickRef.current(time))
         return
       }

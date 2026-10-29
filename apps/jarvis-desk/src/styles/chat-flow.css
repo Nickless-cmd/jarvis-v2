@@ -57,6 +57,34 @@
   min-width: 0;
 }
 
+/* Leverancen (widgetten) ankommer EFTER pacen — Bjørn 29/10-2026: «det bør kun
+   tilføjes naturligt i enden af pacen altså ikk før pacen er slut med en
+   levende forlængning? fade eller sådan noget?»
+
+   Pladsen reserveres MENS den venter. Uden den ville layoutet hoppe i stedet
+   for widgetten, og så var rykket bare blevet blødere. Højden er et skøn over
+   en typisk flade — bevidst rund og lille nok til ikke at efterlade et hul. */
+.chat-flow-leverance-plads {
+  min-height: 120px;
+}
+
+/* Faden er den SAMME som `flade-ankomst` i chat-reading.css — ét sprog for
+   «noget lander», ikke to. `key` på elementet er attachment-id'et, så
+   animationen kun kører når blokken er NY; ellers ville widgetten danse hver
+   gang paceren rykker et tegn i teksten ovenover. */
+.chat-flow-leverance {
+  --flade-ankomst-ms: 180ms;
+  --flade-ankomst-px: 10px;
+  animation: flade-ankomst var(--flade-ankomst-ms) ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-flow-leverance {
+    animation-name: flade-ankomst-ren;
+    animation-duration: var(--flade-ankomst-ms);
+  }
+}
+
 /* 20/10-2026 (Bjørn): «synteser og runder forsvinder i et blink». Gruppen blev
    fjernet med `hidden`, altså `display: none` i én frame — der var ingen højde
    at animere fra, og hele billedet rykked sammen med præcis linjernes højde.

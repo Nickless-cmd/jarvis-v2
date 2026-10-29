@@ -165,6 +165,23 @@ export function ChatFlowPresentation({
   const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
+  // Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen altså
+  // ikk før pacen er slut med en levende forlængning? fade eller sådan noget?»
+  //
+  // Widgetten er en leverance og hører i bunden (se `leveranceIBunden`), men
+  // den skal ikke dukke op MIDT i pacen: den ankommer først når svaret er
+  // rullet færdigt. Imens står en PLACEHOLDER med reserveret højde, så det er
+  // widgetten der fader ind — ikke layoutet der hopper.
+  //
+  // `paceFinalAnswer` er gaten: en persisteret besked (uden pace) viser
+  // widgetten med det samme, og en tur der ikke paces røres ikke.
+  const venterPaaPace = paceFinalAnswer && !svarFaerdigPacet
+  const erLeverance = (block: ContentBlock): boolean => block.type === 'file'
+    && String(block.mime_type || '').toLowerCase().startsWith('text/html')
+    && String(block.kilde || '') === 'generated'
+    && !!String(block.attachment_id || '').trim()
+  const synligeSvar = venterPaaPace ? answer.filter((block) => !erLeverance(block)) : answer
+  const ventendeLeverancer = venterPaaPace ? answer.filter(erLeverance) : []
   useEffect(() => {
     if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()
   }, [onAnswerPaced, paceFinalAnswer, svarFaerdigPacet])
@@ -370,10 +387,24 @@ export function ChatFlowPresentation({
         </>
       ) : null}
 
-      {answer.length > 0 ? (
+      {synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
-          <BlocksRenderer blocks={answer} density={density} streaming={streaming}
+          <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
             beskedId={beskedId} config={config} />
+        </div>
+      ) : null}
+
+      {/* Leverancen (widgetten) ankommer EFTER pacen — ikke midt i den.
+          Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen».
+          Pladsen reserveres mens den venter, så det er widgetten der fader
+          ind og ikke layoutet der hopper. */}
+      {ventendeLeverancer.length > 0 ? (
+        <div className="chat-flow-leverance-plads" data-leverance-plads aria-hidden="true" />
+      ) : null}
+      {!venterPaaPace && answer.some(erLeverance) ? (
+        <div className="chat-flow-leverance" data-leverance="widget" data-ankomst="ankommet">
+          <BlocksRenderer blocks={answer.filter(erLeverance)} density={density}
+            streaming={streaming} beskedId={beskedId} config={config} />
         </div>
       ) : null}
     </div>

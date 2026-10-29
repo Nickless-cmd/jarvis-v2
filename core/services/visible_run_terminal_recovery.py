@@ -14,11 +14,28 @@ from core.services.visible_terminal_policy import (
 )
 
 
+#: Negationen må ikke krydse en sætningsgrænse.
+#:
+#: Målt 29/10-2026 på et rigtigt svar (8.710 tegn, komplet, sluttede med et
+#: spørgsmål til Bjørn): dommen matchede `«ikke er min.» + «Verificeret»` —
+#: altså en negation i ÉN sætning og ordet «Verificeret» som overskrift i det
+#: NÆSTE afsnit — og læste det som «ikke verificeret». `re.DOTALL` gjorde at
+#: prik og linjeskift talte som ét vilkårligt tegn.
+#:
+#: Konsekvensen var ikke kosmetisk: `forced_finalize` + `incompletion_evidence`
+#: → `forced-finalize-unverified` → `SVAR_ER_IKKE_BEVIS` → RECOVERING. Svaret
+#: blev vist for Bjørn, og turen blev derefter genoptaget oveni, så han ikke
+#: nåede at svare før den næste mig skrev igen.
+#:
+#: Samme fejlklasse som `_CONTINUING_ACTION_RE` nedenfor blev rettet for
+#: 26/10-2026: en vagt der læser tekst på tværs af sætninger svarer om noget
+#: andet end det den måler. Reglen er derfor den samme i begge: `[^.!?\n]`.
+#: En ægte uafsluttethed («det er ikke færdigt endnu») står i samme sætning.
 _NEGATED_COMPLETION_RE = re.compile(
-    r"\b(?:ikke|ej|aldrig|not|never)\b.{0,32}"
-    r"\b(?:færdig|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
+    r"\b(?:ikke|ej|aldrig|not|never)\b[^.!?\n]{0,32}"
+    r"\b(?:færdig(?:t)?|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
     r"completed|finished|done|fixed|implemented|verified)\b",
-    re.IGNORECASE | re.DOTALL,
+    re.IGNORECASE,
 )
 
 

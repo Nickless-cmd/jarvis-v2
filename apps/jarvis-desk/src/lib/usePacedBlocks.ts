@@ -1,10 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
+import { naesteRate, PACE_GULV } from './paceRate'
 
 const TICK_MS = 33
 const MIN_CHARS = 5
 const MAX_CHARS = 28
 const SHORT_TEXT = 32
+/** Code Mode bruger nu SAMME adaptive regel som chat mode (29/10-2026).
+ *
+ *  MÅLT med den rigtige hook og et deterministisk ur, FØR ændringen:
+ *
+ *    2000 tegn → 3,00 s
+ *    5000 tegn → 6,53 s
+ *    100 tegn  → 0,59 s
+ *
+ *  Kurven er lineær, og det er beviset: `step = min(28, max(5, ceil(pending/12)))`
+ *  rammer loftet på 28 tegn pr. 33 ms-tick = **848 tegn/s** og bliver der.
+ *  Er kilden hurtigere, vokser efterslæbet gennem hele svaret — præcis den
+ *  klage chat mode fik løst med `paceRate.ts`, men Code Mode blev aldrig
+ *  koblet på. Bjørn 29/10-2026: «det køre stadig mærkeligt».
+ *
+ *  Reglen er nu den samme som i chat-laget: grundtempoet er et GULV, ankomsten
+ *  glattes, og indhentningskravet (`pending / 3 s`) sætter den nedre grænse
+ *  der gør at pacen ikke kan komme bagud. `MAX_CHARS` er derfor ikke længere
+ *  et loft — kun en størrelse på det tidsrum et tick dækker.
+ */
 /** Der er MED VILJE intet backlog-loft længere (målt 20/10-2026).
  *
  *  Den gamle regel sprang frem til `target - BACKLOG_MAX` når efterslæbet
@@ -81,6 +101,13 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
   const latest = useRef({ active, target, key })
   latest.current = { active, target, key }
 
+  // Ankomstmålingen: hvor mange tegn kom der ind siden sidste tick? Det er
+  // kilden, og det er den raten skal følge. `null` = intet nyt delta, så
+  // målingen står stille — et færdigankommet svar må ikke nulstille raten
+  // midt i udrulningen.
+  const rateRef = useRef(PACE_GULV)
+  const forrigeLaengde = useRef<number | null>(null)
+
   useEffect(() => {
     if (!active) return
     const timer = setInterval(() => {
@@ -90,8 +117,31 @@ export function usePacedBlocks(blocks: ContentBlock[], live: boolean): ContentBl
         const shown = current.target.startsWith(previous.shown) ? previous.shown : ''
         const pending = current.target.length - shown.length
         if (pending <= 0) return previous
-        // Jævn kadence: små trin så længe vi kan følge kilden.
-        const step = Math.min(MAX_CHARS, Math.max(MIN_CHARS, Math.ceil(pending / 12)))
+
+        // Ankomst siden sidste tick, målt i kodepunkter pr. sekund.
+        const laengde = current.target.length
+        const foer = forrigeLaengde.current
+        forrigeLaengde.current = laengde
+        const ankomst =
+          foer === null ? null : Math.max(0, ((laengde - foer) * 1000) / TICK_MS)
+
+        // Samme regel som chat mode: grundtempo er gulv, ankomst glattes,
+        // indhentningskravet (pending / 3 s) er den nedre grænse. Uden det
+        // sidste ville et svar på 5000 tegn tage 6,5 s — målt.
+        rateRef.current = naesteRate({
+          pending,
+          forrigeRate: rateRef.current,
+          ankomst,
+        })
+
+        // Ratens tidsrum er ét tick. Gulvet på MIN_CHARS bevarer den rolige
+        // kadence på korte svar. MAX_CHARS er en HÅRD kontrakt (20/10-2026):
+        // højst 28 nye tegn pr. tick, uanset hvor stort efterslæbet er — et
+        // pacing-lag må accelerere, men aldrig springe. Ratens indhentning
+        // sker derfor ved at nå 28 og BLIVE der, ikke ved at overskride det.
+        const prTick = (rateRef.current * TICK_MS) / 1000
+        const step = Math.max(MIN_CHARS, Math.min(MAX_CHARS, Math.ceil(prTick)))
+
         // INGEN spring (målt 20/10-2026). Den gamle regel sprang frem til
         // `target - BACKLOG_MAX` når efterslæbet oversteg 330 tegn. Ved fold
         // lander resten af svaret i ét hop, så efterslæbet eksploderede og

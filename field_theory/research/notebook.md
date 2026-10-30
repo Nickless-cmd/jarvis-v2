@@ -4,7 +4,79 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
-## 2026-10-30 — Investigation 6, second correction: rigid is not empty, and two mutants survived
+## 2026-10-30 — Investigation 6, third correction: the mutation hit the wrong line
+
+**Status:** one correction to the mutation review. Preserved runs, protocol and
+forecasts unchanged. No new experiment.
+
+### Observation
+
+The mutation review reported two surviving mutants. One of them —
+`required_rows` → `0` — was applied to **line 178** of
+`experiment_004_prospective.py`:
+
+```python
+"required_rows": int(target["rows"]),   # reporting field in the pending dict
+```
+
+The actual access condition is **line 214**:
+
+```python
+required = int(target["rows"])          # what `if available < required:` tests
+```
+
+Disabling a reporting field does not remove a guard. Its survival therefore said
+nothing about whether the guard was protected, and the claim that the frozen
+evaluation's threshold was unguarded was unsupported.
+
+Mutating line 214 instead turns
+`test_investigation_004_prospective_waits_without_reading_outcomes` red: with
+`required = 0`, `available < required` is never true, outcomes are read
+immediately, and `observations[0]` raises `IndexError` on the empty selection.
+
+**The threshold is guarded. Six of seven mutants are caught; one survives.**
+
+### What actually survives
+
+`weekdays` → constant in `_window_metrics`. Mutated at the correct site: it
+deletes one of the three perspectives Investigations 1–3 rest on, and no test
+reacts. That is a genuine coverage gap, and it is now the only one this scan
+reports.
+
+### Limitation
+
+This is the third instance of the same failure form in one evening, now inside
+the instrument built to detect that form: a measurement was claimed about a
+site that was never touched. Mutation testing constrains what a test suite can
+see; it does not constrain whether the mutation was aimed correctly. Verifying
+*where* the mutation landed is a separate step, and skipping it reproduces the
+exact error the method was adopted to catch.
+
+### Correction of scope: three faults are not one mechanism
+
+The evening's three code faults — `mutating` written but never read,
+`commit_attributed` built but never registered, the reset branch never
+satisfied — share a *form*: an intended relation between two operations is
+never realised. They do not share a mechanism with the sunspot lock-in, where
+the retained state does determine every prediction and measurably stopped
+responding. Shared form is not shared mechanism.
+
+### Correction of scope: "rigid" is bounded
+
+A near-unchanged weight distribution across 318 observed months does not
+establish that the state could never move. The report now states the scope: the
+claim is bounded by the expert set, the learning rate, the loss, and the
+observed window.
+
+### Question raised
+
+If a mutation can be aimed at the wrong site and still produce a clean-looking
+result, what makes the *aim* verifiable? In this case the answer was reading
+both occurrences of the same expression and asking which one the guard tests.
+That is a manual step, and manual steps are what this project keeps finding are
+not enforced.
+
+
 
 **Status:** two further corrections to the Investigation 6 report. Preserved runs, protocol and forecasts unchanged.
 

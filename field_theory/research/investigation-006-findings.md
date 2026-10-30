@@ -174,6 +174,12 @@ A mechanism can retain a strong historical preference, be nearly insensitive to
 new consequences, and still perform worse than if its history were cleared. That
 is not absence of information; it is information whose influence has gone rigid.
 
+**Scope of "rigid".** This is a description of the measured window, not an
+absolute property. A near-unchanged weight distribution across the observed
+period does not establish that the state could never move — only that it did
+not move under the conditions present. The claim is bounded by the expert set,
+the learning rate, the loss, and the 318 evaluation months actually observed.
+
 Concretely: long and cumulative continued collapsed to exactly the fixed expert
 on sunspots (MAE 14.8513 = fixed 14.8513, 1.000 effective experts, mean weight
 change 0.000000), and reset gave the mixture a chance to rebuild from uniform.
@@ -262,23 +268,45 @@ and reverted with `git checkout`:
 | exp_006 `falsifies_transfer` → `False` | 1 failed — caught |
 | exp_004 `outcomes_read` → `True` | 1 failed — caught |
 | `metrics.mutual_information()` → `0.0` | 5 failed — caught |
-| exp_004 `required_rows` → `0` | 27 passed — **survived** |
+| exp_004 access condition `required = 0` (line 214) | 1 failed — caught |
 | exp_003 `weekdays` → constant | 27 passed — **survived** |
 
-Five of seven are caught. The last two are not, and an earlier version of this
-section claimed "all seven are caught" — which was the same failure this whole
-review is about: a statement about a measurement that had not been made. Both
-were run afterwards, and both survive:
+Six of seven are caught. An earlier version of this section claimed "all seven
+are caught" — the same failure this whole review is about: a statement about a
+measurement that had not been made. It was then corrected in the other
+direction, to "five of seven", on the strength of a mutation that turned out to
+have hit the wrong line.
 
-- **`required_rows` → 0** removes the threshold that keeps the frozen
-  prospective evaluation from delivering a verdict on too few observations. No
-  test reacts. The guard against premature scoring of the one artifact in this
-  project whose value is that it cannot be moved is not enforced by the suite.
+### Correction: the first "surviving" mutation was aimed at the wrong line
+
+`target["rows"]` occurs twice in `experiment_004_prospective.py`:
+
+- line 214 — `required = int(target["rows"])`, the access condition that
+  `if available < required:` actually tests
+- line 178 — `"required_rows": int(target["rows"])`, a reporting field inside
+  the pending status dict
+
+The mutation was applied to line 178. Disabling a reporting field does not
+remove a guard, so its survival said nothing about the guard — and the claim
+that the threshold was unguarded was unsupported. Mutating line 214 instead
+turns the existing test
+`test_investigation_004_prospective_waits_without_reading_outcomes` red: with
+`required = 0` the `available < required` branch is never taken, outcomes are
+read immediately, and `observations[0]` raises `IndexError` on the empty
+selection.
+
+**The threshold is guarded.** The mutation review did not find a hole there; it
+found a mutation aimed at the wrong line — a third instance of the same failure
+form, now inside the instrument that was built to detect it.
+
+What does survive is real:
+
 - **`weekdays` → constant** deletes the weekday perspective from
   `_window_metrics`, i.e. one of the three perspectives Investigation 1–3 is
-  built on. No test reacts.
+  built on. No test reacts. This one was mutated at the correct site and is a
+  genuine coverage gap.
 
-That second one confirms the limit stated below by measurement rather than by
+That one confirms the limit stated below by measurement rather than by
 argument: `experiment_003_change.py` is covered only indirectly, and the
 perspective construction itself is unguarded.
 
@@ -291,10 +319,29 @@ Two limits on this review:
 
 - It tests the conditions I could name. A condition nobody thought of has no
   mutant to apply, and this method cannot find it.
-- Two of the seven mutants survive, so mutation testing is not a certificate.
-  It is a scan, and this scan reports two open holes. Direct state-transition
+- One of the seven mutants survives, so mutation testing is not a certificate.
+  It is a scan, and this scan reports one open hole. Direct state-transition
   assertions and an independent reference implementation would cover ground
   this method does not reach.
+
+### The three code faults are not one mechanism
+
+It is tempting to read the evening's three faults as the same phenomenon as the
+sunspot lock-in. They are not, and flattening them would be exactly the error
+this project keeps warning about — seeing a pattern and assuming the pattern
+means the same underlying mechanism.
+
+- A field that is written but never read has no demonstrated influence through
+  that path at all. (`mutating`.)
+- A tool that is never registered in the dispatch array is an unreachable
+  action path, not a state that resists change. (`commit_attributed`.)
+- A condition that is never satisfied is an inactive state transition. (The
+  reset branch.)
+
+They share a *form*: an intended relation between two operations is never
+realised. The sunspot case is different in kind: there the retained state does
+determine every prediction, and it is measurable that it stopped responding.
+Shared form is not shared mechanism, and only the sunspot relation was measured.
 
 The one finding this review produced on its own: `experiment_004_prospective.py`
 has no dedicated test module. The frozen forecast — the single artifact in this

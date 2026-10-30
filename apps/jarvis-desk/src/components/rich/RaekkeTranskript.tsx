@@ -472,7 +472,7 @@ function RaekkeTranskriptImpl({
           <TurHoved
             knapRef={turRef}
             aaben={aaben}
-            koerer={arbejdeKoerer && aabenManuelt === null}
+            koerer={arbejdeKoerer}
             tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
             meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
             skillelinje={visSkillelinje}

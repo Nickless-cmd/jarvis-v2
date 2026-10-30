@@ -1,0 +1,552 @@
+{
+  "candidate_catalog": [
+    "value(provider)",
+    "value(model)",
+    "value(lane)",
+    "value(profile_name)",
+    "value(capability_presence)",
+    "value(hour_bin_utc)",
+    "value(weekday_utc)",
+    "joint(provider,model)",
+    "joint(provider,lane)",
+    "joint(provider,profile_name)",
+    "joint(provider,capability_presence)",
+    "joint(provider,hour_bin_utc)",
+    "joint(provider,weekday_utc)",
+    "joint(model,lane)",
+    "joint(model,profile_name)",
+    "joint(model,capability_presence)",
+    "joint(model,hour_bin_utc)",
+    "joint(model,weekday_utc)",
+    "joint(lane,profile_name)",
+    "joint(lane,capability_presence)",
+    "joint(lane,hour_bin_utc)",
+    "joint(lane,weekday_utc)",
+    "joint(profile_name,capability_presence)",
+    "joint(profile_name,hour_bin_utc)",
+    "joint(profile_name,weekday_utc)",
+    "joint(capability_presence,hour_bin_utc)",
+    "joint(capability_presence,weekday_utc)",
+    "joint(hour_bin_utc,weekday_utc)",
+    "status_lag(1)",
+    "status_lag(2)",
+    "status_lag(3)",
+    "status_lag(4)",
+    "status_lag(5)",
+    "status_lag(6)",
+    "status_lag(7)",
+    "status_lag(8)",
+    "status_lag(9)",
+    "status_lag(10)",
+    "status_lag(11)",
+    "status_lag(12)"
+  ],
+  "candidate_count": 40,
+  "live_source": {
+    "database_path": "/home/bs/.jarvis-v2/state/jarvis.db",
+    "first_observed_at_utc": "2026-03-22T18:22:39.047251+00:00",
+    "high_water_id": 46095,
+    "hostname": "Jarvis",
+    "last_observed_at_utc": "2026-10-30T18:17:57.986571+00:00",
+    "snapshot_rows": 25000,
+    "sqlite_mode": "mode=ro; PRAGMA query_only=ON",
+    "table": "visible_runs"
+  },
+  "method_version": "exp002.live.1",
+  "observations_sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e",
+  "parameters": {
+    "maximum_lag": 12,
+    "permutation_seed": 202610305,
+    "permutations": 250,
+    "source_blocks": 5
+  },
+  "sources": {
+    "L-4BA0": {
+      "confirmation_rows": 2500,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 12,
+        "maximum": 0.005908270341724808,
+        "median": 0.0007357420009110882,
+        "minimum": 2.7503050908483928e-05,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.05179282868525897,
+        "q05": 6.507885008333325e-05,
+        "q95": 0.002247757599983513
+      },
+      "discovery_rows": 2500,
+      "discovery_search_wide_null": {
+        "exceedance_count": 250,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0,
+        "permutations": 250,
+        "plus_one_rank_fraction": 1.0,
+        "q05": 0.0,
+        "q95": 0.0
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.0022690886914256136,
+        "discovery_mi_bits": 0.0,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(capability_presence,hour_bin_utc)",
+        "rank": 1,
+        "variables": [
+          "capability_presence",
+          "hour_bin_utc"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.0022690886914256136,
+          "discovery_mi_bits": 0.0,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(capability_presence,hour_bin_utc)",
+          "rank": 1,
+          "variables": [
+            "capability_presence",
+            "hour_bin_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.009495524603574168,
+          "discovery_mi_bits": 0.0,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(capability_presence,weekday_utc)",
+          "rank": 2,
+          "variables": [
+            "capability_presence",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.016874307044892234,
+          "discovery_mi_bits": 0.0,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(hour_bin_utc,weekday_utc)",
+          "rank": 3,
+          "variables": [
+            "hour_bin_utc",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0,
+          "discovery_mi_bits": 0.0,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(lane,capability_presence)",
+          "rank": 4,
+          "variables": [
+            "lane",
+            "capability_presence"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0022690886914256136,
+          "discovery_mi_bits": 0.0,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(lane,hour_bin_utc)",
+          "rank": 5,
+          "variables": [
+            "lane",
+            "hour_bin_utc"
+          ]
+        }
+      ]
+    },
+    "L-503D": {
+      "confirmation_rows": 2500,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.04380477255371229,
+        "median": 0.03015352651288561,
+        "minimum": 0.023155592643520073,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.025169622360007658,
+        "q95": 0.03684661490427059
+      },
+      "discovery_rows": 2500,
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.04459290728155363,
+        "median": 0.03140144607234241,
+        "minimum": 0.021432253215433406,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.02569227326340564,
+        "q95": 0.03789318861451622
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.193990961715369,
+        "discovery_mi_bits": 0.09047663137835649,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(model,weekday_utc)",
+        "rank": 1,
+        "variables": [
+          "model",
+          "weekday_utc"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.193990961715369,
+          "discovery_mi_bits": 0.09047663137835649,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,weekday_utc)",
+          "rank": 1,
+          "variables": [
+            "model",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.16067176281377993,
+          "discovery_mi_bits": 0.06507530027314701,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,hour_bin_utc)",
+          "rank": 2,
+          "variables": [
+            "model",
+            "hour_bin_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.10821918905098027,
+          "discovery_mi_bits": 0.04580628827969768,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(hour_bin_utc,weekday_utc)",
+          "rank": 3,
+          "variables": [
+            "hour_bin_utc",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.16180948170149723,
+          "discovery_mi_bits": 0.04025894938015995,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(provider,weekday_utc)",
+          "rank": 4,
+          "variables": [
+            "provider",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.12631685081911215,
+          "discovery_mi_bits": 0.03569514980392263,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,capability_presence)",
+          "rank": 5,
+          "variables": [
+            "model",
+            "capability_presence"
+          ]
+        }
+      ]
+    },
+    "L-B626": {
+      "confirmation_rows": 2500,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.037270258250714505,
+        "median": 0.024057641666464402,
+        "minimum": 0.014725540532912085,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.01856890882901312,
+        "q95": 0.03059213803080753
+      },
+      "discovery_rows": 2500,
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.034545894960525736,
+        "median": 0.02671241345577302,
+        "minimum": 0.020582427492652045,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.022651536976472285,
+        "q95": 0.03131283710786361
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.07306918619501701,
+        "discovery_mi_bits": 0.0745079481204316,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(model,weekday_utc)",
+        "rank": 1,
+        "variables": [
+          "model",
+          "weekday_utc"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.07306918619501701,
+          "discovery_mi_bits": 0.0745079481204316,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,weekday_utc)",
+          "rank": 1,
+          "variables": [
+            "model",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.04689387442762882,
+          "discovery_mi_bits": 0.06545024910320851,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(provider,weekday_utc)",
+          "rank": 2,
+          "variables": [
+            "provider",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.05807176033776562,
+          "discovery_mi_bits": 0.05320128025602333,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,hour_bin_utc)",
+          "rank": 3,
+          "variables": [
+            "model",
+            "hour_bin_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.035816877105290246,
+          "discovery_mi_bits": 0.045240155236567325,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(provider,hour_bin_utc)",
+          "rank": 4,
+          "variables": [
+            "provider",
+            "hour_bin_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.039774476518186,
+          "discovery_mi_bits": 0.04366157833585227,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,capability_presence)",
+          "rank": 5,
+          "variables": [
+            "model",
+            "capability_presence"
+          ]
+        }
+      ]
+    },
+    "L-C998": {
+      "confirmation_rows": 2500,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 1,
+        "maximum": 0.014106245505645987,
+        "median": 0.009820649030911621,
+        "minimum": 0.007677464498744513,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00796812749003984,
+        "q05": 0.008108723221440427,
+        "q95": 0.01184504982516601
+      },
+      "discovery_rows": 2500,
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.01855001346388896,
+        "median": 0.013142460487093555,
+        "minimum": 0.008864936839097837,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.010527673810806836,
+        "q95": 0.016884315409153673
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.013448543498872034,
+        "discovery_mi_bits": 0.026810557484211017,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(hour_bin_utc,weekday_utc)",
+        "rank": 1,
+        "variables": [
+          "hour_bin_utc",
+          "weekday_utc"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.013448543498872034,
+          "discovery_mi_bits": 0.026810557484211017,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(hour_bin_utc,weekday_utc)",
+          "rank": 1,
+          "variables": [
+            "hour_bin_utc",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.02009528541647221,
+          "discovery_mi_bits": 0.025936289352423536,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,weekday_utc)",
+          "rank": 2,
+          "variables": [
+            "model",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.008591082608539413,
+          "discovery_mi_bits": 0.024206919685270056,
+          "family": "lag",
+          "lag": 1,
+          "name": "status_lag(1)",
+          "rank": 3,
+          "variables": []
+        },
+        {
+          "confirmation_mi_bits": 0.013603687986539548,
+          "discovery_mi_bits": 0.02349569198923085,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(provider,weekday_utc)",
+          "rank": 4,
+          "variables": [
+            "provider",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.01364264774029067,
+          "discovery_mi_bits": 0.02333061028377248,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,hour_bin_utc)",
+          "rank": 5,
+          "variables": [
+            "model",
+            "hour_bin_utc"
+          ]
+        }
+      ]
+    },
+    "L-D029": {
+      "confirmation_rows": 2500,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.028483455157671145,
+        "median": 0.020426145082558467,
+        "minimum": 0.012354989266398775,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.016307338889864062,
+        "q95": 0.025177301206027767
+      },
+      "discovery_rows": 2500,
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.040374123566528475,
+        "median": 0.027316885359360832,
+        "minimum": 0.020722945613258936,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.022365488578029426,
+        "q95": 0.03301569632447192
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.03420142255811154,
+        "discovery_mi_bits": 0.06002174552285755,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(model,weekday_utc)",
+        "rank": 1,
+        "variables": [
+          "model",
+          "weekday_utc"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.03420142255811154,
+          "discovery_mi_bits": 0.06002174552285755,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,weekday_utc)",
+          "rank": 1,
+          "variables": [
+            "model",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.022039494050346775,
+          "discovery_mi_bits": 0.050322103146314134,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,hour_bin_utc)",
+          "rank": 2,
+          "variables": [
+            "model",
+            "hour_bin_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.04206511834604587,
+          "discovery_mi_bits": 0.049495709562275,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(hour_bin_utc,weekday_utc)",
+          "rank": 3,
+          "variables": [
+            "hour_bin_utc",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.036557874580997574,
+          "discovery_mi_bits": 0.04028702158749109,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(profile_name,weekday_utc)",
+          "rank": 4,
+          "variables": [
+            "profile_name",
+            "weekday_utc"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.02219870966332027,
+          "discovery_mi_bits": 0.03945301774365495,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(model,profile_name)",
+          "rank": 5,
+          "variables": [
+            "model",
+            "profile_name"
+          ]
+        }
+      ]
+    }
+  }
+}

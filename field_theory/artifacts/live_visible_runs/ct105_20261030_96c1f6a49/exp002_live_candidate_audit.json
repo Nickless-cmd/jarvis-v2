@@ -1,0 +1,9 @@
+{
+  "candidate_rows": 200,
+  "deployed_git_revision_colon_hex": "1a:ec:61:08:0b:17:83:8e:cf:f7:0a:46:f8:cf:55:b4:a8:01:98:00",
+  "method_version": "exp002.live.candidate-audit.1",
+  "observations_sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e",
+  "output": "exp002_live_candidate_scores.csv",
+  "primary_method_version": "exp002.live.1",
+  "status": "post-hoc after primary candidate selection and confirmation inspection"
+}

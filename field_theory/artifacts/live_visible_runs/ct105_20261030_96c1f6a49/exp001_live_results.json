@@ -1,0 +1,69 @@
+{
+  "descriptive": {
+    "rows": 25000,
+    "status_counts": {
+      "cancelled": 178,
+      "completed": 23674,
+      "failed": 282,
+      "interrupted": 866
+    },
+    "status_entropy_bits": 0.3662834760849923
+  },
+  "live_source": {
+    "database_path": "/home/bs/.jarvis-v2/state/jarvis.db",
+    "first_observed_at_utc": "2026-03-22T18:22:39.047251+00:00",
+    "high_water_id": 46095,
+    "hostname": "Jarvis",
+    "last_observed_at_utc": "2026-10-30T18:17:57.986571+00:00",
+    "snapshot_rows": 25000,
+    "sqlite_mode": "mode=ro; PRAGMA query_only=ON",
+    "table": "visible_runs"
+  },
+  "method_version": "exp001.live.1",
+  "observations_sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e",
+  "parameters": {
+    "permutation_seed": 202610304,
+    "permutations": 500
+  },
+  "perspectives": {
+    "outcome_ordering": {
+      "observed_mutual_information_bits": 0.045475893616718555,
+      "permuted_outcome_null": {
+        "exceedance_count": 0,
+        "maximum": 0.0008092615193889818,
+        "median": 0.00025595206859985176,
+        "minimum": 3.160780943045616e-05,
+        "permutations": 500,
+        "plus_one_rank_fraction": 0.001996007984031936,
+        "q05": 0.00010833544365435044,
+        "q95": 0.0004978157100976544
+      }
+    },
+    "provider_access": {
+      "observed_mutual_information_bits": 0.023295069247251332,
+      "permuted_outcome_null": {
+        "exceedance_count": 0,
+        "maximum": 0.0016964117576834248,
+        "median": 0.0008886988538699958,
+        "minimum": 0.0004348605937132266,
+        "permutations": 500,
+        "plus_one_rank_fraction": 0.001996007984031936,
+        "q05": 0.0006217735539511438,
+        "q95": 0.0012572751092719157
+      }
+    },
+    "provider_model_access": {
+      "observed_mutual_information_bits": 0.04628187849956911,
+      "permuted_outcome_null": {
+        "exceedance_count": 0,
+        "maximum": 0.004388972744161279,
+        "median": 0.00318082116426055,
+        "minimum": 0.0021717360921278406,
+        "permutations": 500,
+        "plus_one_rank_fraction": 0.001996007984031936,
+        "q05": 0.0025346741688942356,
+        "q95": 0.003820801303546517
+      }
+    }
+  }
+}

@@ -52,14 +52,14 @@ def _parse_timestamp(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _git_revision(repo_root: Path) -> str:
+def _git_revision_colon_hex(repo_root: Path) -> str:
     result = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
         check=True,
         capture_output=True,
         text=True,
     )
-    return result.stdout.strip()
+    return bytes.fromhex(result.stdout.strip()).hex(":")
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -176,7 +176,7 @@ def extract_live_visible_runs(
                 "weekday_utc": "English weekday derived from observed_at_utc",
                 "capability_presence": "presence only; capability identifier excluded",
             },
-            "deployed_git_revision": _git_revision(repo_root),
+            "deployed_git_revision_colon_hex": _git_revision_colon_hex(repo_root),
             "runtime": {
                 "python": platform.python_version(),
                 "sqlite": sqlite3.sqlite_version,

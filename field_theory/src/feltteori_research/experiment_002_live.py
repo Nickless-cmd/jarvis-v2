@@ -404,7 +404,9 @@ def audit_live_candidate_scores(run_directory: Path, repo_root: Path) -> None:
                 }
             )
     with output.open("x", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(audit_rows[0]))
+        writer = csv.DictWriter(
+            handle, fieldnames=list(audit_rows[0]), lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(audit_rows)
     revision = subprocess.run(
@@ -421,7 +423,7 @@ def audit_live_candidate_scores(run_directory: Path, repo_root: Path) -> None:
             "primary_method_version": primary["method_version"],
             "observations_sha256_colon_hex": digest,
             "candidate_rows": len(audit_rows),
-            "deployed_git_revision": revision,
+            "deployed_git_revision_colon_hex": bytes.fromhex(revision).hex(":"),
             "output": output.name,
         },
     )

@@ -1,0 +1,53 @@
+{
+  "deployed_git_revision_colon_hex": "96:c1:f6:a4:93:c7:fe:b7:c1:ea:99:45:b0:3b:7f:d7:a9:da:42:5a",
+  "method_version": "live-visible-runs.extract.2",
+  "observations": {
+    "path": "observations.csv",
+    "sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e"
+  },
+  "privacy_boundary": {
+    "excluded": [
+      "text_preview",
+      "error",
+      "run_id",
+      "user_id",
+      "workspace_name"
+    ],
+    "included": [
+      "observation_id",
+      "source_row_id",
+      "observed_at_utc",
+      "timestamp_basis",
+      "provider",
+      "model",
+      "lane",
+      "profile_name",
+      "capability_presence",
+      "hour_bin_utc",
+      "weekday_utc",
+      "status"
+    ]
+  },
+  "runtime": {
+    "python": "3.11.14",
+    "sqlite": "3.51.2"
+  },
+  "source": {
+    "database_path": "/home/bs/.jarvis-v2/state/jarvis.db",
+    "first_observed_at_utc": "2026-03-22T18:22:39.047251+00:00",
+    "high_water_id": 46095,
+    "hostname": "Jarvis",
+    "last_observed_at_utc": "2026-10-30T18:17:57.986571+00:00",
+    "snapshot_rows": 25000,
+    "sqlite_mode": "mode=ro; PRAGMA query_only=ON",
+    "table": "visible_runs"
+  },
+  "transformations": {
+    "capability_presence": "presence only; capability identifier excluded",
+    "hour_bin_utc": "six-hour band derived from observed_at_utc",
+    "missing_values": "normalized to literal 'missing'",
+    "observed_at_utc": "started_at, or finished_at when started_at is absent",
+    "timestamp_basis": "records which timestamp supplied observed_at_utc",
+    "weekday_utc": "English weekday derived from observed_at_utc"
+  }
+}

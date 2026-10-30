@@ -21,6 +21,9 @@ not established facts and not a destination built into the software.
 - [`research/notebook.md`](research/notebook.md) is the living research record.
 - [`research/investigation-002-findings.md`](research/investigation-002-findings.md)
   separates the second investigation's measurements from its interpretations.
+- [`research/live-investigations-001-002-findings.md`](research/live-investigations-001-002-findings.md)
+  reports the first deployed, database-backed measurements and supersedes the
+  simulations as evidence about Jarvis.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)
@@ -85,3 +88,19 @@ history. Their measurements are not observations of Jarvis. Deployed
 measurements use the protocols in `experiments/exp_001_live/` and
 `experiments/exp_002_live/` and must be extracted on hostname `Jarvis` from the
 live database in read-only mode.
+
+## Run deployed measurements
+
+These commands are intentionally host-gated and must run from the deployed
+repository on CT105:
+
+```bash
+python field_theory/experiments/live_visible_runs/extract.py --output /tmp/<new-run>
+python field_theory/experiments/exp_001_live/analyze.py --run /tmp/<new-run>
+python field_theory/experiments/exp_002_live/analyze.py --run /tmp/<new-run>
+```
+
+The valid 2026-10-30 run is preserved under
+`artifacts/live_visible_runs/ct105_20261030_96c1f6a49/`. Its manifest identifies
+hostname `Jarvis`, deployed revision `96c1f6a49`, SQLite read-only mode, table
+high-water ID 46095, and the observation digest.

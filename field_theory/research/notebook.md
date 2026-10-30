@@ -22,6 +22,44 @@ All 365 had `finished_at`. Extraction version 2 therefore uses `finished_at` as
 an explicit fallback and records the timestamp basis per row. The partial
 `/tmp` output is not a valid run and no number from it is reported as evidence.
 
+### Valid deployed run
+
+Revision `96c1f6a49` was deployed to CT105 without restarting runtime services,
+because only the independent research project changed. The extractor ran on
+hostname `Jarvis` against the production database with `mode=ro` and
+`query_only=ON`. It preserved 25,000 `visible_runs` rows through high-water ID
+46095, digest
+`b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e`.
+
+**Live Investigation 1 observation:** Adjacent-status MI was 0.045476 bits,
+provider/status MI was 0.023295 bits, and joint provider-model/status MI was
+0.046282 bits. None of 500 outcome permutations reached any observed value.
+The terminal-status distribution was strongly imbalanced: 23,674 completed,
+866 interrupted, 282 failed, and 178 cancelled.
+
+**Live Investigation 2 observation:** The first chronological block had a
+constant discovery outcome (2,500 completed runs), so all candidate scores were
+zero and its tie-broken candidate has no discovery meaning. Block 2 selected
+hour band plus weekday and retained a smaller later relationship. Blocks 3, 4,
+and 5 independently selected model plus weekday, with discovery/confirmation
+scores of 0.090477/0.193991, 0.074508/0.073069, and 0.060022/0.034201 bits.
+
+**Interpretation:** A model-plus-weekday relationship was continuous across
+three later operational eras but not constant in strength. It may reflect
+routing, availability, workload, deployments, or incidents. It is detectable
+structure in the live record, not yet a causal explanation.
+
+**Post-hoc method change:** The primary result retained only the five highest
+discovery candidates. After inspecting it, revision `1aec61080` added and ran a
+post-hoc audit preserving all 200 candidate/block scores on the same observation
+digest. This audit found positive incremental joint-minus-model information in
+blocks 3–5, but it is exploratory and the inspected confirmation rows cannot be
+reused to confirm that refinement.
+
+**Operational verification:** Both Jarvis services remained active throughout,
+the deployed repository remained clean, and no runtime restart or database
+write was performed by the measurement workflow.
+
 ## 2026-10-30 — Project initiation
 
 ### Prompt and assumptions

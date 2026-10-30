@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="520" viewBox="0 0 1040 520">
+<rect width="100%" height="100%" fill="#fbfaf6"/>
+<style>text{font-family:system-ui,sans-serif;fill:#20242b}.title{font-size:20px;font-weight:700}.small{font-size:12px}.label{font-size:13px}.source{font-size:14px;font-weight:700}</style>
+<text x="28" y="30" class="title">Live Investigation 2 — selected perspectives before chronology reveal</text>
+<text x="28" y="50" class="small">Log scale. Orange: discovery; blue: later confirmation; lines: corresponding permutation-null 5–95%.</text>
+<line x1="340.00" y1="68" x2="340.00" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="340.00" y="504" class="small" text-anchor="middle">10^-6</text>
+<line x1="441.67" y1="68" x2="441.67" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="441.67" y="504" class="small" text-anchor="middle">10^-5</text>
+<line x1="543.33" y1="68" x2="543.33" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="543.33" y="504" class="small" text-anchor="middle">10^-4</text>
+<line x1="645.00" y1="68" x2="645.00" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="645.00" y="504" class="small" text-anchor="middle">10^-3</text>
+<line x1="746.67" y1="68" x2="746.67" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="746.67" y="504" class="small" text-anchor="middle">10^-2</text>
+<line x1="848.33" y1="68" x2="848.33" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="848.33" y="504" class="small" text-anchor="middle">10^-1</text>
+<line x1="950.00" y1="68" x2="950.00" y2="482" stroke="#d8d4ca" stroke-dasharray="2 4"/>
+<text x="950.00" y="504" class="small" text-anchor="middle">10^0</text>
+<text x="28" y="92" class="source">L-4BA0</text>
+<text x="82" y="92" class="label">joint(capability_presence,hour_bin_utc)</text>
+<line x1="340.00" y1="85" x2="340.00" y2="85" stroke="#4b5563" stroke-width="2"/>
+<circle cx="340.00" cy="85" r="5" fill="#d97706"/>
+<text x="328" y="89" class="small" text-anchor="end">D</text>
+<text x="960" y="89" class="small">0.00000</text>
+<line x1="524.37" y1="101" x2="680.76" y2="101" stroke="#4b5563" stroke-width="2"/>
+<circle cx="681.18" cy="101" r="5" fill="#2563eb"/>
+<text x="328" y="105" class="small" text-anchor="end">C</text>
+<text x="960" y="105" class="small">0.00227</text>
+<text x="28" y="172" class="source">L-C998</text>
+<text x="82" y="172" class="label">joint(hour_bin_utc,weekday_utc)</text>
+<line x1="748.94" y1="165" x2="769.79" y2="165" stroke="#4b5563" stroke-width="2"/>
+<circle cx="790.21" cy="165" r="5" fill="#d97706"/>
+<text x="328" y="169" class="small" text-anchor="end">D</text>
+<text x="960" y="169" class="small">0.02681</text>
+<line x1="737.41" y1="181" x2="754.14" y2="181" stroke="#4b5563" stroke-width="2"/>
+<circle cx="759.75" cy="181" r="5" fill="#2563eb"/>
+<text x="328" y="185" class="small" text-anchor="end">C</text>
+<text x="960" y="185" class="small">0.01345</text>
+<text x="28" y="252" class="source">L-503D</text>
+<text x="82" y="252" class="label">joint(model,weekday_utc)</text>
+<line x1="788.33" y1="245" x2="805.49" y2="245" stroke="#4b5563" stroke-width="2"/>
+<circle cx="843.91" cy="245" r="5" fill="#d97706"/>
+<text x="328" y="249" class="small" text-anchor="end">D</text>
+<text x="960" y="249" class="small">0.09048</text>
+<line x1="787.42" y1="261" x2="804.25" y2="261" stroke="#4b5563" stroke-width="2"/>
+<circle cx="877.59" cy="261" r="5" fill="#2563eb"/>
+<text x="328" y="265" class="small" text-anchor="end">C</text>
+<text x="960" y="265" class="small">0.19399</text>
+<text x="28" y="332" class="source">L-B626</text>
+<text x="82" y="332" class="label">joint(model,weekday_utc)</text>
+<line x1="782.77" y1="325" x2="797.07" y2="325" stroke="#4b5563" stroke-width="2"/>
+<circle cx="835.34" cy="325" r="5" fill="#d97706"/>
+<text x="328" y="329" class="small" text-anchor="end">D</text>
+<text x="960" y="329" class="small">0.07451</text>
+<line x1="773.99" y1="341" x2="796.04" y2="341" stroke="#4b5563" stroke-width="2"/>
+<circle cx="834.48" cy="341" r="5" fill="#2563eb"/>
+<text x="328" y="345" class="small" text-anchor="end">C</text>
+<text x="960" y="345" class="small">0.07307</text>
+<text x="28" y="412" class="source">L-D029</text>
+<text x="82" y="412" class="label">joint(model,weekday_utc)</text>
+<line x1="782.21" y1="405" x2="799.40" y2="405" stroke="#4b5563" stroke-width="2"/>
+<circle cx="825.79" cy="405" r="5" fill="#d97706"/>
+<text x="328" y="409" class="small" text-anchor="end">D</text>
+<text x="960" y="409" class="small">0.06002</text>
+<line x1="768.26" y1="421" x2="787.44" y2="421" stroke="#4b5563" stroke-width="2"/>
+<circle cx="800.96" cy="421" r="5" fill="#2563eb"/>
+<text x="328" y="425" class="small" text-anchor="end">C</text>
+<text x="960" y="425" class="small">0.03420</text>
+</svg>

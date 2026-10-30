@@ -880,6 +880,68 @@ def _emit_security_check(hit: dict, *, target: str) -> None:
         pass
 
 
+#: Kommandoer der SKRIVER, uanset at de kan stå som et pipe-segment efter en
+#: læsning. ``tee`` var det målte hul 30/10-2026: ``grep -r foo . | tee /tmp/out``
+#: blev ``auto`` fordi segmentet før var en læsning og tee aldrig blev vurderet.
+_SKRIVENDE_SEGMENT_COMMANDS = frozenset({
+    "tee", "sponge", "dd", "truncate", "install", "rsync", "cp", "mv",
+    "rm", "rmdir", "mkdir", "touch", "chmod", "chown", "ln", "patch",
+    "shred", "unlink", "sed", "awk", "xargs", "sudo", "su",
+})
+
+#: ``find``-flag der muterer. ``-exec``/``-execdir``/``-ok``/``-okdir`` kører en
+#: vilkårlig kommando; ``-fprint*`` skriver en fil; ``-delete`` sletter.
+_FIND_SKRIVENDE_FLAG = re.compile(
+    r"\s-(?:delete|exec|execdir|ok|okdir|fprint\w*)\b"
+)
+
+_QUOTED_STRENG = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _uden_for_quotes(command: str) -> str:
+    """Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect.
+
+    ``echo 'a > b'`` skriver intet — den printer teksten. Uden dette ville
+    enhver kommando der nævner ``>`` i en besked blive sendt til godkendelse.
+    """
+    return _QUOTED_STRENG.sub(" ", command)
+
+
+def _har_skrivende_redirect(command: str) -> bool:
+    """``>`` eller ``>>`` uden for quotes gør kommandoen muterende.
+
+    Målt 30/10-2026: ``echo foo > /tmp/x`` og
+    ``echo foo >> /media/projects/jarvis-v2/README.md`` blev begge ``auto``,
+    fordi prefix-listen kun ser det forreste ord. Kommentaren ved
+    ``_AUTO_APPROVE_WRITE_PREFIXES`` dokumenterede svagheden ordret allerede
+    (»no redirect awareness«) — den blev aldrig fulgt op.
+
+    ``>&`` (fd-duplikation, fx ``2>&1``) tælles med. Den skriver godt nok
+    ikke en fil, men et unødigt godkendelseskort er billigere end et uønsket
+    skriv — og formen er sjælden i rene læsninger.
+    """
+    return ">" in _uden_for_quotes(command)
+
+
+def _segment_er_laesende(segment: str) -> bool:
+    """Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl."""
+    seg = segment.strip()
+    if not seg:
+        return True
+    if _har_skrivende_redirect(seg):
+        return False
+    foerste = seg.split()[0]
+    if foerste in _SKRIVENDE_SEGMENT_COMMANDS:
+        return False
+    if _FIND_SKRIVENDE_FLAG.search(seg):
+        return False
+    for prefix in _READ_ONLY_COMMAND_PREFIXES:
+        if seg.startswith(prefix) or seg == prefix.strip():
+            return True
+    # Ukendt segment må ikke arve «read-only» fra segmentet før det.
+    return False
+
+
 def classify_command(command: str) -> str:
     """Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'.
 
@@ -913,6 +975,40 @@ def classify_command(command: str) -> str:
     # samme som foer (de gik allerede til approval, medmindre de startede med
     # en read-only kommando — hvilket var netop hullet).
     if ";" in normalized and "&&" not in normalized and "|" not in normalized:
+        return "approval"
+
+    # 30/10-2026: en kommando må ikke afgøres af sit FORRESTE ord alene.
+    #
+    # Målt mod den levende funktion: ``echo foo > /tmp/x``,
+    # ``cat /etc/passwd > /tmp/x`` og ``find . -name x -delete`` blev alle
+    # ``auto``, fordi ``echo``/``cat``/``find`` står i prefix-listen og resten
+    # af strengen aldrig blev læst. Samme fejlklasse som ``;``-kæden 26/10:
+    # mønsteret matcher et STED, ikke hele kommandoen.
+    #
+    # Listen selv er rigtig — ``echo``, ``cat`` og ``find`` ER legitime
+    # læsninger og bruges hele tiden. Det der manglede var at se redirecten og
+    # flaget. Derfor rettes HER og ikke i listen.
+    if _har_skrivende_redirect(normalized):
+        return "approval"
+    if _FIND_SKRIVENDE_FLAG.search(normalized):
+        return "approval"
+
+    # Piped commands (|): HVERT segment skal klassificeres — læsende ELLER
+    # skrivende — og grenen skal ligge FØR prefix-listen.
+    #
+    # Målt 30/10-2026 i to omgange: først arvede et ukendt segment «read-only»
+    # fra segmentet før det, og ``tee`` blev slet ikke vurderet som skrivende.
+    # Dernæst viste det sig at grenen slet ikke blev nået for
+    # ``echo hej | tee /tmp/x`` — prefix-loopet nedenfor returnerede ved
+    # ``echo `` og resten af strengen blev aldrig læst. Det er præcis den
+    # fejlklasse hele rettelsen handler om, bare et lag længere inde.
+    #
+    # Derfor returnerer grenen EKSPLICIT: en pipe-kommando afgøres af sine
+    # segmenter, ikke af sit første ord.
+    if "|" in normalized and "&&" not in normalized and ";" not in normalized:
+        segments = [s.strip() for s in normalized.split("|")]
+        if segments and all(_segment_er_laesende(seg) for seg in segments):
+            return "auto"
         return "approval"
 
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
@@ -949,15 +1045,8 @@ def classify_command(command: str) -> str:
         if any(subcmd.startswith(s) for s in _READ_ONLY_GH_SUBCOMMANDS):
             return "auto"
 
-    # Piped commands (|): check if all segments are read-only
-    if "|" in normalized and "&&" not in normalized and ";" not in normalized:
-        segments = [s.strip() for s in normalized.split("|")]
-        if all(
-            any(seg.startswith(p) or seg == p.strip() for p in _READ_ONLY_COMMAND_PREFIXES)
-            for seg in segments
-            if seg
-        ):
-            return "auto"
+    # Piped commands er afgjort ovenfor (FØR prefix-listen) — en pipe må ikke
+    # nå herned og blive afgjort af sit første ord.
 
     # &&-chained commands: classify each segment independently
     # If ALL segments are auto or read-only, the chain is auto

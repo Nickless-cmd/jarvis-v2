@@ -7,8 +7,8 @@ the run, and that the verdict is derived from them rather than asserted.
 
 from __future__ import annotations
 
-import csv
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -17,6 +17,9 @@ from feltteori_research.experiment_006_order import (
     FALSIFY_MAX_MAE_GAP_FRACTION,
     FALSIFY_MIN_EFFECTIVE_EXPERTS,
     FALSIFY_MIN_WEIGHT_CHANGE,
+    EXPERTS,
+    MonthlyObservation,
+    _adaptive_trace,
     _judge,
     parse_noaa_monthly,
 )
@@ -26,6 +29,13 @@ RUN = (
     / "artifacts"
     / "exp_006_order"
     / "noaa_20261030"
+)
+
+RUN_V2 = (
+    Path(__file__).resolve().parents[1]
+    / "artifacts"
+    / "exp_006_order"
+    / "noaa_20261030_v2"
 )
 
 
@@ -96,27 +106,104 @@ def test_preserved_run_records_a_falsified_transfer() -> None:
     assert long_row["mean_effective_experts"] > FALSIFY_MIN_EFFECTIVE_EXPERTS
 
 
-@pytest.mark.skipif(not RUN.exists(), reason="preserved run not present")
-def test_continued_and_reset_were_indistinguishable_on_this_source() -> None:
-    """The second result: reset removed nothing the mechanism was still using."""
-    rows = list(
-        csv.DictReader((RUN / "exp006_trace.csv").open(encoding="utf-8"))
-    )
-    by_mechanism: dict[str, list[dict[str, str]]] = {}
-    for row in rows:
-        by_mechanism.setdefault(row["mechanism"], []).append(row)
-    for base in (
-        "one_encounter",
-        "short_continuity",
-        "long_continuity",
-        "cumulative_continuity",
-    ):
-        continued = by_mechanism[f"{base}_continued"]
-        reset = by_mechanism[f"{base}_reset"]
-        assert len(continued) == len(reset)
-        differences = sum(
-            1
-            for left, right in zip(continued, reset)
-            if abs(float(left["prediction"]) - float(right["prediction"])) > 1e-12
+def _synthetic_series() -> list[MonthlyObservation]:
+    """Months from 1985-01 to 2001-12: 132 warmup + 48 dev + 24 evaluation."""
+    rows: list[MonthlyObservation] = []
+    year, month = 1985, 1
+    for step in range(204):
+        rows.append(
+            MonthlyObservation(
+                year=year,
+                month=month,
+                decimal_date=year + (month - 0.5) / 12.0,
+                value=100.0 + 40.0 * math.sin(step / 7.0) + step * 0.3,
+            )
         )
-        assert differences == 0, f"{base}: reset changed {differences} predictions"
+        month += 1
+        if month == 13:
+            year, month = year + 1, 1
+    return rows
+
+
+def test_reset_fires_exactly_once_at_the_evaluation_boundary() -> None:
+    """The guard the previous version lacked: a reset must actually reset.
+
+    Measured 2026-10-30: the first implementation gated the reset on an empty
+    trace, which is never true at the boundary. The old test asserted that
+    continued and reset were identical — that assertion was the fault wearing
+    a guard's clothes. This test asserts the opposite for a retention that can
+    still carry history, and checks the reset is not applied repeatedly.
+    """
+    observations = _synthetic_series()
+    continued = _adaptive_trace(observations, 0.99, reset_at_evaluation=False)
+    reset = _adaptive_trace(observations, 0.99, reset_at_evaluation=True)
+
+    first_eval = next(i for i, row in enumerate(continued) if row["period"] == "evaluation")
+    second_eval = first_eval + 1
+
+    for expert in EXPERTS:
+        key = f"weight_{expert}"
+        assert float(reset[first_eval][key]) == pytest.approx(1 / 3, abs=1e-12), (
+            f"reset did not restart {expert} at uniform weight"
+        )
+        assert float(continued[first_eval][key]) != pytest.approx(1 / 3, abs=1e-6), (
+            "continued must keep its development history, not restart"
+        )
+
+    assert any(
+        abs(float(continued[first_eval][f"weight_{e}"]) - float(reset[first_eval][f"weight_{e}"]))
+        > 1e-12
+        for e in EXPERTS
+    ), "reset and continued must diverge at the boundary"
+
+    # Fired once, not every evaluation row: the second evaluation weights are
+    # no longer uniform because one loss update has already been applied.
+    assert any(
+        float(reset[second_eval][f"weight_{e}"]) != pytest.approx(1 / 3, abs=1e-6)
+        for e in EXPERTS
+    ), "reset appears to fire on every evaluation row"
+
+
+def test_zero_retention_reset_changes_only_the_boundary_row() -> None:
+    """Control: with retention 0 the history is one row deep.
+
+    So reset changes exactly the boundary prediction — the single row where
+    `retained` still carries the last development loss — and nothing after it.
+    This pins the mechanism precisely instead of assuming indifference.
+    """
+    observations = _synthetic_series()
+    continued = _adaptive_trace(observations, 0.0, reset_at_evaluation=False)
+    reset = _adaptive_trace(observations, 0.0, reset_at_evaluation=True)
+    differing = [
+        index
+        for index, (left, right) in enumerate(zip(continued, reset))
+        if abs(float(left["prediction"]) - float(right["prediction"])) > 1e-12
+    ]
+    assert len(differing) == 1, f"expected the boundary row only, got {len(differing)}"
+    assert continued[differing[0]]["period"] == "evaluation"
+
+
+@pytest.mark.skipif(not RUN_V2.exists(), reason="corrected run not present")
+def test_corrected_run_separates_reset_and_keeps_the_falsification() -> None:
+    """The fixed run: continued untouched, reset actually executing."""
+    results = json.loads((RUN_V2 / "exp006_results.json").read_text(encoding="utf-8"))
+    assert results["falsification"]["transfer_falsified"] is True
+
+    by_name = {row["mechanism"]: row for row in results["mechanism_summaries"]}
+
+    # The bug never touched this branch, so it must reproduce to the digit.
+    assert by_name["long_continuity_continued"]["mean_effective_experts"] == (
+        pytest.approx(1.8857, abs=1e-4)
+    )
+    assert by_name["long_continuity_continued"]["mae"] == pytest.approx(
+        1.3024, abs=1e-4
+    )
+
+    # Reset now runs, and on this source it costs accuracy and flattens weights.
+    for base in ("short_continuity", "long_continuity", "cumulative_continuity"):
+        assert by_name[f"{base}_reset"]["mae"] > by_name[f"{base}_continued"]["mae"], (
+            f"{base}: reset should cost accuracy on this source"
+        )
+    assert by_name["cumulative_continuity_reset"]["mean_effective_experts"] > (
+        by_name["cumulative_continuity_continued"]["mean_effective_experts"]
+    )

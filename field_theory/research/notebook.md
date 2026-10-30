@@ -58,6 +58,67 @@ forecasts depend on.
 Investigation 5's "continuity became lock-in" and this run's "continuity
 reached a fixed point" — same phenomenon at two levels, or two different ones?
 
+## 2026-10-30 — Method deviation: the reset branch in Investigation 6 never ran
+
+**Status:** deviation recorded; original run preserved, corrected run added.
+
+### What happened
+
+Investigation 6 (`2221ad6bb9ae`) applied Investigation 5's mechanism unchanged
+to NOAA Mauna Loa CO₂ and reported two results: the transfer was falsified, and
+continued and reset variants produced identical predictions in every row.
+
+The second result was not an observation. The reset was gated on `not trace`,
+and `trace` is already populated by the development period when the evaluation
+boundary is reached. The condition was never true. **Reset never executed**, so
+the `_reset` variants ran the same computation as `_continued`.
+
+### Why the guard did not catch it
+
+The preserved test asserted that continued and reset produced identical
+predictions for every retention. It encoded the symptom as the expectation. A
+test that requires two variants to agree, without checking that the mechanism
+which should separate them actually fires, protects the fault rather than
+the instrument.
+
+### Correction
+
+The gate is now a pending flag that is consumed at the first evaluation
+observation. Two tests replace the old one: the reset variant's first evaluation
+weights must be exactly 1/3 each while the continued variant keeps its
+development history, and a zero-retention control pins how far a reset can reach
+when the retained state is one observation deep.
+
+The corrected run is `artifacts/exp_006_order/noaa_20261030_v2/`. The original
+is preserved unchanged at `noaa_20261030/`, and the continued rows are
+bit-identical between the two — the fix touched only the branch that had never
+executed.
+
+### What the corrected run shows
+
+Reset now diverges from continued for every non-zero retention, and it makes
+the mechanism **worse**: long continuity 1.3024 → 1.5308 MAE, cumulative
+1.1558 → 1.4354. So on this source the retained history is doing work, which is
+the opposite of what the broken run reported.
+
+The falsification of the transfer stands: `long_continuity_continued` still
+holds 1.886 effective experts and is 12.1 % worse than the fixed expert. Those
+figures come from the branch the bug never touched, and they are reproduced
+exactly.
+
+### Observation
+
+The error was found by inspecting an observation that should have been
+surprising — that a reset produces no change at all is a claim strong enough to
+warrant checking the mechanism before publishing it. It was not found by the
+test suite, which had been written to agree with the result.
+
+### Question
+
+Which other results in this project rest on a variant that may never have
+executed? The same failure shape — a condition that cannot be satisfied, whose
+symptom looks like a finding — is cheap to produce and expensive to notice.
+
 ## 2026-10-30 — Method deviation: prospective blind was broken after freeze
 
 **Status:** deviation recorded, forecasts and evaluation left unchanged.

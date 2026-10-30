@@ -174,11 +174,21 @@ def _adaptive_trace(
 ) -> list[dict[str, object]]:
     retained = {expert: 0.0 for expert in EXPERTS}
     trace: list[dict[str, object]] = []
+    # The reset must fire exactly once, at the FIRST evaluation observation.
+    # Measured 2026-10-30 (method deviation, see research/notebook.md): the
+    # first version tested `not trace`, but `trace` is already filled by the
+    # development period when the boundary is reached — so the condition was
+    # never true and reset never ran. `continued` and `reset` then traced the
+    # identical computation, which was reported as an empirical finding about
+    # continuity. It was an instrument fault. A pending flag cannot be
+    # satisfied by a non-empty history.
+    reset_pending = reset_at_evaluation
     for index in range(WARMUP_MONTHS, len(observations)):
         observation = observations[index]
         period = _period(observation)
-        if reset_at_evaluation and period == "evaluation" and not trace:
+        if reset_pending and period == "evaluation":
             retained = {expert: 0.0 for expert in EXPERTS}
+            reset_pending = False
         predictions = _expert_predictions(observations, index)
         weights = _weights(retained)
         prediction = _weighted_prediction(predictions, weights)

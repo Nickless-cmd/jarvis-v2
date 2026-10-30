@@ -47,6 +47,15 @@ export interface TurHovedProps {
   /** Om skillestregen under hovedet er kommet til syne. Hovedets plads er
    *  uændret mens stregen glider ind, så `Working` kan stå der fra turstart. */
   skillelinje?: boolean
+  /** Om turen stadig er i gang i DENNE session. Sætter `data-levende`, som er
+   *  det eneste der må starte indglidnings-animationen.
+   *
+   *  Uden den skelnen animerer stregen ved hver mount — også når persisteret
+   *  historik genindlæses. Målt 30/10-2026 i Chromium: 20 persisterede ture
+   *  gav 20 `animationstart`-events ved reload, og én React-remount gen-fyrer
+   *  animationen midt i en samtale. `koerer` duede ikke som markør, fordi den
+   *  slukker når svaret begynder at streame. */
+  levende?: boolean
   /** Om der er noget at folde. `false` = hovedet er kun en skillestreg med
    *  uret, og fold-pilen skjules, så den ikke lover et indhold der ikke er der
    *  (Bjørn 17/10-2026: hovedet skal stå der også på ture uden værktøjskald). */
@@ -56,11 +65,12 @@ export interface TurHovedProps {
 
 export function TurHoved({
   tekst, aaben, onToggle, koerer = false, sekunder = null, meta,
-  skillelinje = true, foldbar = true, knapRef,
+  skillelinje = true, levende = false, foldbar = true, knapRef,
 }: TurHovedProps) {
   const tilstand = {
     ...(koerer ? { 'data-koerer': '' } : {}),
     ...(skillelinje ? { 'data-skillelinje': '' } : {}),
+    ...(levende ? { 'data-levende': '' } : {}),
   }
   const indhold = (
     <>

@@ -36,10 +36,23 @@ describe('TurHoved — skillelinjens livscyklus', () => {
     expect(blok).toMatch(/to\s*\{[^}]*transform:\s*scaleX\(1\)/)
   })
 
-  it('den tændte streg animerer ind — ikke kun en transition', () => {
-    const blok = regel('.rv-tur[data-skillelinje]::after')
+  it('den LEVENDE turs streg animerer ind — ikke kun en transition', () => {
+    const blok = regel('.rv-tur[data-skillelinje][data-levende]::after')
     expect(blok).toMatch(/animation:\s*rv-skillelinje-ind/)
     expect(blok).toMatch(/\bboth\b/)
+  })
+
+  it('persisteret historik animerer IKKE — stregen staar bare der', () => {
+    // MÅLT 30/10-2026 i Chromium (Playwright, denne fil, TurHoveds ægte
+    // markup): med animationen paa `[data-skillelinje]` alene gav reload af 20
+    // persisterede ture 20 `animationstart`-events — alle streger gled ind
+    // samtidigt — og én React-remount gen-fyrede animationen midt i samtalen.
+    // Derfor er indglidningen bundet til `data-levende`, som kun den
+    // streamende tur bærer.
+    const blok = regel('.rv-tur[data-skillelinje]::after')
+    expect(blok).not.toMatch(/animation:/)
+    expect(blok).toMatch(/opacity:\s*1/)
+    expect(blok).toMatch(/transform:\s*scaleX\(1\)/)
   })
 
   it('bruger en hel CSS-pixel, så Firefox og Electron rasteriserer den ens', () => {

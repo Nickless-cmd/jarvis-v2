@@ -352,6 +352,7 @@ export function ChatFlowPresentation({
               ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span>
               : null}
             skillelinje
+            levende={streaming}
             onToggle={() => {
               const naeste = !aaben
               setAabenManuelt(naeste)

@@ -476,6 +476,7 @@ function RaekkeTranskriptImpl({
             tekst={streaming ? 'Arbejder' : turFortalt(familier, kald, 0)}
             meta={visTokens ? <span className="rv-turMeta">~<RullendeTokens tokens={tokens} /> output</span> : null}
             skillelinje={visSkillelinje}
+            levende={streaming}
             sekunder={!streaming ? turSekunder : null}
             foldbar={arbejde.length > 0}
             onToggle={() => { huskFold(); setAabenManuelt(!aaben) }}

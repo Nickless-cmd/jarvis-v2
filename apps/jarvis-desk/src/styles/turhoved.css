@@ -56,8 +56,31 @@
   to   { opacity: 1; transform: scaleX(1); }
 }
 
+/* Stregen er synlig saa snart den er taendt. Uden denne regel ville den falde
+ * tilbage til grundtilstanden (`opacity: 0; transform: scaleX(0)`) i det
+ * ojeblik animationen fjernes — fx naar turen holder op med at vaere levende. */
 .rv-tur[data-skillelinje]::after {
   opacity: 1; transform: scaleX(1);
+}
+
+/* KUN den levende tur glider ind.
+ *
+ * MÅLT 30/10-2026 i Chromium (Playwright, den ægte fil, TurHoveds ægte
+ * markup): med animationen paa `[data-skillelinje]` alene fyrer den ved HVER
+ * mount. Reload af en samtale med 20 persisterede ture gav 20
+ * `animationstart`-events — alle streger gled ind samtidigt, som om tyve ture
+ * startede paa én gang. Samme maaling viste at én React-remount gen-fyrer
+ * animationen midt i en samtale.
+ *
+ * `data-levende` saettes af begge flader mens turen streamer. Persisteret
+ * historik har ingen stream og animerer derfor ikke — stregen staar bare der.
+ * I code mode, hvor gaten taender `data-skillelinje` senere, er turen stadig
+ * levende, saa animationen starter praecis naar stregen kommer til syne.
+ *
+ * `data-koerer` duede IKKE som betingelse: den er falsk naar det endelige svar
+ * begynder at streame (`arbejdeKoerer` kraever `!finalAnswerStarted`), og code
+ * modes gate taender netop stregen derefter. */
+.rv-tur[data-skillelinje][data-levende]::after {
   animation: rv-skillelinje-ind 260ms cubic-bezier(.22, .61, .36, 1) both;
 }
 
@@ -103,7 +126,11 @@
 /* Respekterer dem der har slået bevægelse fra: tallet skifter stadig, men
    hopper i stedet for at rulle. */
 @media (prefers-reduced-motion: reduce) {
-  .rv-tur::after { transition: none; animation: none; }
+  /* Den levende selektor skal nævnes EKSPLICIT. Den har højere specificitet
+   * (0,3,1 mod 0,1,1), så `.rv-tur::after` alene ville tabe til den — og
+   * brugere med `prefers-reduced-motion` ville få glidningen alligevel. */
+  .rv-tur::after,
+  .rv-tur[data-skillelinje][data-levende]::after { transition: none; animation: none; }
 }
 
 .rv-turC {

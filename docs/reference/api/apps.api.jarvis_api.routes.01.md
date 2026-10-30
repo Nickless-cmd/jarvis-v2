@@ -112,9 +112,11 @@ _Anthropic Messages API compatible endpoint._
 | function | `_resolve_backend_model` | `(requested)` | Pick the Ollama model to use. 'jarvis' or empty → visible-lane default. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L54) |
 | function | `_ollama_chat_non_stream` | `(payload)` | Call Ollama /api/chat with stream=False; return the single response dict. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L64) |
 | function | `_ollama_chat_stream` | `(payload)` | Call Ollama /api/chat with stream=True; yield chunks. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L77) |
-| function | `list_models` | `()` | — | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L98) |
-| function | `messages` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L113) |
-| function | `_stream_response` | `(*, payload, message_id, model)` | Drive the AnthropicSSEEmitter from Ollama stream chunks. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L203) |
+| function | `_book_usage` | `(*, backend_model, response)` | Bogfør Ollamas token-forbrug i ``costs``-ledgeren. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L97) |
+| function | `_tap_usage` | `(chunks, *, backend_model)` | Videresend Ollama-chunks uændret, men bogfør forbruget fra ``done``-chunket. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L136) |
+| function | `list_models` | `()` | — | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L156) |
+| function | `messages` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L171) |
+| function | `_stream_response` | `(*, payload, message_id, model, backend_model)` | Drive the AnthropicSSEEmitter from Ollama stream chunks. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L263) |
 
 ## `apps/api/jarvis_api/routes/app_release.py`
 _App-release-vagt — push i stedet for poll._

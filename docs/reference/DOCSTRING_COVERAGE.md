@@ -2041,7 +2041,7 @@ Generated from source. 9448/17771 functions/methods documented (53%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L384)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L365)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L625)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L638)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)

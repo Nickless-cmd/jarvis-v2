@@ -81,9 +81,22 @@ _MAX_PENDING = 20
 #: TALLET er maalt, ikke valgt. Fordelingen pr. samtale:
 #:   pr. TIME : p50 2, p90 4, maks 6   → timeniveauet er sundt, ikke her
 #:   pr. DOEGN: 44 · 28 · 12 · 11 · 11 · 7 · 5 · 4
-#: Normalen topper ved 12; 28 og 44 er loebet. 20 giver normalen rigelig luft
-#: og skaerer kun loebet. Et lavere tal ville ramme en legitim CI-vagt.
-_MAX_PR_SAMTALE_PR_DOEGN = 20
+#: Normalen topper ved 12; 28 og 44 er loebet.
+#:
+#: 20 → 30 (30/10-2026, Bjoern: «vil du haeve den til 30?»). Loftet paa 20
+#: ramte en LEGITIM arbejdsdag, ikke et loeb. Maalt i `self_wakeups.json`
+#: for det foregaaende doegn: 20 bookinger, ALLE `consumed`, alle med hver
+#: sin unikke aarsag — release-verifikation for 0.6.280 til 0.6.288 (ni
+#: versioner), CI-verifikationer, c3-fix-i-drift, genstarts-verifikationer.
+#: Nul af dem var den form loftet blev bygget til at standse («allerede
+#: haandteret, book en ny om 30 min»). En dag med ni releases genererer
+#: naturligt 20+ verifikationer, og det er arbejdets form, ikke et loeb.
+#:
+#: 30 fanger stadig 44-loebet og giver en release-dag luft. 28-loebet fra
+#: 5/10 ville slippe igennem — men det loeb var kendetegnet ved INDHOLD
+#: (fjorten led med samme tekst), ikke ved antal. Det er vaerd at maale
+#: indholdet hvis det kommer igen; et antals-loft kan ikke skelne de to.
+_MAX_PR_SAMTALE_PR_DOEGN = 30
 
 
 def _load() -> list[dict[str, Any]]:

@@ -165,6 +165,14 @@ def test_flat_records_would_dispatch_false_no_llm_no_council(monkeypatch, captur
 def test_signal_source_error_is_safe_skip(monkeypatch, captured, shadow_mode):
     mod = _load()
 
+    # Cadence-gaten er en MODUL-GLOBAL (`_last_tick_at`), ikke runtime-state, så
+    # den arves fra enhver tidligere test i samme proces der kaldte heartbeat-
+    # stien (signals=None). Uden nulstillingen returnerer tick'et `cadence` i
+    # stedet for at nå signal-kilden, og testen måler rækkefølge i stedet for
+    # sit eget emne. Målt 30/10-2026: grøn isoleret, rød i suite — også på ren
+    # kode, altså præeksisterende.
+    monkeypatch.setattr(mod, "_last_tick_at", None)
+
     # Force the signal-source read to blow up; the tick must NOT record + NOT raise.
     def _boom():
         raise RuntimeError("surface read failed")

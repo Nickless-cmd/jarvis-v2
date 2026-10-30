@@ -201,14 +201,15 @@ _core/services/central_convene_judge.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_convene_judge.py#L52) |
-| function | `current_mode` | `()` | off | shadow — `on` er ikke laengere en tilstand der findes. | [src](../../../core/services/central_convene_judge.py#L61) |
-| function | `_movement_from_signal` | `(name, surface)` | Normalise ONE signal surface to a 0..1 'how much is this moving' reading. | [src](../../../core/services/central_convene_judge.py#L86) |
-| function | `_read_flowing_values` | `(surfaces)` | Read the flowing values: signal movement + affective valence + agenda hint. | [src](../../../core/services/central_convene_judge.py#L113) |
-| function | `_mood_to_valence` | `(mood)` | Map a coarse mood word to a signed valence in [-1, 1]. Unknown → 0. | [src](../../../core/services/central_convene_judge.py#L172) |
-| function | `_derive_topic_hint` | `(movement, latest_wonder, agenda_hint, mood)` | Build a short subject hint from what is actually moving — fed to derive_topic. | [src](../../../core/services/central_convene_judge.py#L188) |
-| function | `_observe` | `(verdict, mode)` | — | [src](../../../core/services/central_convene_judge.py#L210) |
-| function | `judge_convene` | `(*, surfaces, top_signals, score, score_override=…)` | Decide whether there is a real reason to convene the council now. | [src](../../../core/services/central_convene_judge.py#L228) |
+| function | `reset_reference` | `()` | Glem dommerens forrige aflæsning, så næste kald etablerer en ny reference. | [src](../../../core/services/central_convene_judge.py#L61) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_convene_judge.py#L75) |
+| function | `current_mode` | `()` | off | shadow — `on` er ikke laengere en tilstand der findes. | [src](../../../core/services/central_convene_judge.py#L84) |
+| function | `_movement_from_signal` | `(name, surface)` | Normalise ONE signal surface to a 0..1 'how much is this moving' reading. | [src](../../../core/services/central_convene_judge.py#L109) |
+| function | `_read_flowing_values` | `(surfaces)` | Read the flowing values: signal movement + affective valence + agenda hint. | [src](../../../core/services/central_convene_judge.py#L136) |
+| function | `_mood_to_valence` | `(mood)` | Map a coarse mood word to a signed valence in [-1, 1]. Unknown → 0. | [src](../../../core/services/central_convene_judge.py#L257) |
+| function | `_derive_topic_hint` | `(movement, latest_wonder, agenda_hint, mood)` | Build a short subject hint from what is actually moving — fed to derive_topic. | [src](../../../core/services/central_convene_judge.py#L273) |
+| function | `_observe` | `(verdict, mode)` | — | [src](../../../core/services/central_convene_judge.py#L295) |
+| function | `judge_convene` | `(*, surfaces, top_signals, score, score_override=…)` | Decide whether there is a real reason to convene the council now. | [src](../../../core/services/central_convene_judge.py#L313) |
 
 ## `core/services/central_core.py`
 _Den Intelligente Central — facade (§3.1). Komponerer gate_kernel (decide-motor)_

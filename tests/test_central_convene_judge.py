@@ -74,23 +74,43 @@ def _surfaces(**over):
 
 
 def test_reads_movement_from_provided_surfaces():
+    """Dommeren måler ÆNDRING, ikke tilstedeværelse (rettet 30/10-2026).
+
+    MÅLT FØR: fire signaler stod konstant på 1.0 fordi de målte om en streng var
+    ikke-tom — `conflict` var 1.0 så længe `last_conflict` havde en værdi, også
+    timer efter konflikten. `movement_total` var derfor 4.0 i 40 af 40 samples
+    og dommeren indkaldte rådet hver gang uden at noget flyttede sig.
+
+    Kontrakten er nu: første aflæsning etablerer referencen (0), og kun en
+    faktisk ændring bærer bevægelse. Testen værner det samme som før — at
+    surfaces faktisk LÆSES og at emne-hintet bæres.
+    """
     from core.services import central_convene_judge as j
     surfaces = _surfaces(
-        existential_wonder={"latest_wonder": "Hvem er jeg når ingen ser?"},
-        autonomy_pressure={"summary": {"active_count": 3}},
+        existential_wonder={"latest_wonder": ""},
+        autonomy_pressure={"summary": {"active_count": 0}},
     )
 
     def _read(name):
         return surfaces.get(name, {})
 
+    j.reset_reference()
     with _mode("on"), patch(
         "core.services.signal_surface_router.read_surface", side_effect=_read
     ):
-        v = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
-    assert v["convene"] is True
-    assert v["movement_total"] > 0.0
+        foer = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
+        assert foer["convene"] is False, "første aflæsning etablerer kun referencen"
+        assert foer["movement_total"] == 0.0
+
+        # Nu BEVÆGER to signaler sig.
+        surfaces["existential_wonder"] = {"latest_wonder": "Hvem er jeg når ingen ser?"}
+        surfaces["autonomy_pressure"] = {"summary": {"active_count": 3}}
+        efter = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
+    assert efter["convene"] is True
+    assert efter["movement_total"] > 0.0
     # existential_wonder present → topic hint is the wonder text itself
-    assert v["topic_hint"] == "Hvem er jeg når ingen ser?"
+    assert efter["topic_hint"] == "Hvem er jeg når ingen ser?"
+    j.reset_reference()
 
 
 def test_judge_nudges_topic_but_prescribes_no_roles():
@@ -99,20 +119,26 @@ def test_judge_nudges_topic_but_prescribes_no_roles():
     (Claudes model). Ingen låst signal→rolle-tabel."""
     from core.services import central_convene_judge as j
     surfaces = _surfaces(
-        existential_wonder={"latest_wonder": "Hvem er jeg?"},
-        conflict={"last_conflict": "spænding"},
+        existential_wonder={"latest_wonder": ""},
+        conflict={"last_conflict": ""},
     )
 
     def _read(name):
         return surfaces.get(name, {})
 
+    j.reset_reference()
     with _mode("on"), patch(
         "core.services.signal_surface_router.read_surface", side_effect=_read
     ):
+        j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
+        # Ændringen er det der bærer bevægelsen (ikke tilstedeværelsen alene).
+        surfaces["existential_wonder"] = {"latest_wonder": "Hvem er jeg?"}
+        surfaces["conflict"] = {"last_conflict": "spænding"}
         v = j.judge_convene(surfaces=surfaces, top_signals=[], score=0.0)
     assert v["convene"] is True            # bevægelse → tilbud til Jarvis
     assert v["roles"] == []                # men INGEN foreskrevne roller
     assert v["topic_hint"]                 # emne-hint bæres (det nudgen tilbyder)
+    j.reset_reference()
 
 
 def test_no_role_derivation_symbols_remain():

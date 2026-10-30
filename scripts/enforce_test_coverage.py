@@ -26,6 +26,9 @@ COVERED_DIRS = ("core/",)
 
 # Few known modules whose tests live in non-standard locations
 KNOWN_MAPPINGS: dict[str, str] = {
+    # C2-triggeren testes efter modulstien (tests/services/), samme moenster
+    # som tool_router nedenfor — testen ligger der og har altid gjort det.
+    "core/services/signal_delta_trigger.py": "tests/services/test_signal_delta_trigger.py",
     "core/services/tool_router.py": "tests/services/test_tool_router.py",
     "core/services/tool_result_store.py": "tests/services/test_tool_result_store.py",
     "core/services/events_retention.py": "tests/services/test_events_retention.py",

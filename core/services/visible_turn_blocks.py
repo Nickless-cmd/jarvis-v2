@@ -337,9 +337,25 @@ def _build_turn_blocks(
     # (interleave + fallback): ét settlet element pr. tool-kald + narration.
     # Fail-open: en fejl her må aldrig vælte blok-bygningen for et live run.
     try:
-        blocks.extend(_build_progress_blocks(tool_calls, tool_results))
+        _spor = _build_progress_blocks(tool_calls, tool_results)
     except Exception:
-        pass
+        # Fail-open: et brudt spor maa ikke vaelte blok-bygningen for et live run
+        _spor = []
+    if _spor:
+        # 30/10-2026 (Bjoern: «knaekket i enden»): spoeret blev lagt BAGEST, saa
+        # en gemt besked med mange kald sluttede i 41 progress-blokke (maalt:
+        # chat_messages 236638, svar paa index 143, spor 144-184). Klienten
+        # tegner dem som efter-arbejde, og turen ser ud som om den fortsatte
+        # efter den var slut. Spoeret skal ligge FOER den sidste tekstblok, saa
+        # beskeden slutter i `final_answer` — samme regel som
+        # `_flyt_afslutning_til_sidst` bruger paa live-vejen.
+        if blocks and blocks[-1].get("type") == "text":
+            # Kun naar SVARET er kernens sidste blok. Er teksten en mellemtekst
+            # (flere kald bagefter), hoerer spoeret til hele turen og skal
+            # fortsat bagerst — ellers flyttede vi sporet ind midt i arbejdet.
+            blocks[-1:-1] = _spor
+        else:
+            blocks.extend(_spor)
     return _mark_text_phases(blocks)
 
 

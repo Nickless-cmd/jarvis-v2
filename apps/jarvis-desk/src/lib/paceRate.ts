@@ -59,22 +59,74 @@ export const PACE_GULV = 48
  *  ét stort delta ikke kaster hastigheden. */
 export const PACE_EMA = 0.1
 
-/** Efterslæbet fordeles over så mange sekunder. Uændret fra 20/10 — det er
- *  dét der gør at pacen ikke kan komme bagud: rate ≥ pending / 3. */
-export const PACE_CATCH_UP_SECONDS = 3
+/** Efterslæbet fordeles over så mange sekunder.
+ *
+ *  Den var 3 fra 20/10. MÅLT 30/10-2026 (Bjørn: «Pacen løber for stærkt»)
+ *  viste en sweep at 3 gjorde halen for lang, fordi `pending / T` er
+ *  ASYMPTOTISK: p(t) = p₀·exp(-t/T), så et langt svar aldrig «lander».
+ *
+ *  MÅLT kurve, alt-i-én-frame (værste tilfælde):
+ *
+ *    T    100     300     500     1000    2000    4000
+ *    3s   2,08s   4,73s   6,25s   8,33s   10,40s  12,47s
+ *    2s   2,05s   3,45s   4,45s   5,83s    7,22s   8,58s
+ *    1,5s 1,70s   2,48s   2,93s   3,65s    4,52s   5,55s
+ *    1s   1,20s   1,45s   1,53s   1,60s    1,65s   1,67s
+ *
+ *  2 er valgt fordi det er det største T hvor et langt svar ikke nærmer sig
+ *  de 15 s der VAR klagen 29/10 — og det mindste hvor 100 tegn stadig ruller
+ *  >1,9 s, som er kontrakten fra 20/10. 1,5 bryder den kontrakt (1,70 s), og
+ *  1 gør hvert svar til et dump på under 2 s uanset længde. */
+export const PACE_CATCH_UP_SECONDS = 2
 
 /** Sikkerhedsloft. Højt nok til at 2000 tegn indhentes på ~3 s (667 tegn/s)
  *  og lavt nok til at et absurd target stadig fordeles over tid. */
 export const PACE_LOFT = 4000
+
+/** Halveringstid for tilbagefaldet mod grundtempoet, i sekunder.
+ *
+ *  MÅLT 30/10-2026 (Bjørn: «Pacen løber for stærkt»): uden dette faldt raten
+ *  ALDRIG tilbage. `naesteRate` startede med `let rate = forrigeRate` og
+ *  rørte den kun når der kom et nyt delta — så ÉN burst på 100 tegn i én
+ *  frame (målt som 6000 tegn/s) satte tempoet til 643 tegn/s, 13,4x
+ *  grundtempoet, og den blev stående der resten af svaret. Målt: frame 1, 2
+ *  og 5 gav alle 643.
+ *
+ *  1,0 s betyder at et burst-tempo er halveret efter ét sekund og praktisk
+ *  talt væk efter tre. Det er langsomt nok til at et svar der ankommer i
+ *  bølger stadig føles jævnt, og hurtigt nok til at et afsluttet burst ikke
+ *  farver resten af udrulningen.
+ *
+ *  Tilbagefaldet kan ALDRIG sænke pacen under indhentningskravet — trin 3
+ *  nedenfor sætter den nedre grænse, så et reelt efterslæb indhentes stadig. */
+export const PACE_DECAY_HALFLIFE_S = 1.0
+
+/** Hvor langt et vindue ankomsthastigheden måles over, i sekunder.
+ *
+ *  MÅLT 30/10-2026: blev ankomsten målt pr. FRAME, gav en SSE-chunk på 100
+ *  tegn i én 16,7 ms-frame en «ankomst» på 6000 tegn/s. Over 300 ms bliver
+ *  den samme chunk til ~333 tegn/s — den hastighed brugeren faktisk ser.
+ *
+ *  Vinduet er også hvad der gør et burst-mønster og et jævnt mønster med
+ *  SAMME gennemsnit tilnærmelsesvis ens: målt uden vindue gav jævn ankomst
+ *  600 tegn/s en rate på 600, mens burst gav 4000 (sikkerhedsloftet).
+ *
+ *  300 ms er ~18 frames ved 60 Hz: langt nok til at en enkelt chunk ikke
+ *  farver målingen, kort nok til at pacen reagerer inden for en læsbar pause. */
+export const PACE_ANKOMST_VINDUE_S = 0.3
 
 export interface RateInput {
   /** Hvor mange kodepunkter der mangler at blive vist. */
   pending: number
   /** Forrige rates værdi — glatningen bærer historikken. */
   forrigeRate: number
-  /** Målt ankomst i kodepunkter/s siden sidste frame. `null` = intet nyt
+  /** Målt ankomst i kodepunkter/s over målevinduet. `null` = intet nyt
    *  delta i denne frame, så ankomsten må ikke opdateres. */
   ankomst: number | null
+  /** Sekunder siden sidste frame. Gør tilbagefaldet uafhængigt af fps —
+   *  uden den ville et 144 Hz-panel falde 2,4x hurtigere tilbage end et
+   *  60 Hz-panel, og hastigheden ville afhænge af skærmen. */
+  dt?: number
 }
 
 /**
@@ -86,14 +138,22 @@ export interface RateInput {
  * kan være bagud. Bytter man om på de to sidste, kan grundtempoet tabe til
  * et efterslæb der ikke findes.
  */
-export function naesteRate({ pending, forrigeRate, ankomst }: RateInput): number {
+export function naesteRate({ pending, forrigeRate, ankomst, dt }: RateInput): number {
   if (pending <= 0) return PACE_GULV
 
-  // 1. Følg kilden. Uden et nyt delta står målingen stille — et svar der er
-  //    færdigankommet må ikke få sin rate nulstillet midt i udrulningen.
+  // 1. Følg kilden. Kommer der et nyt delta, glattes det ind. Kommer der
+  //    INTET nyt, måler vi ikke — men vi fryser heller ikke. Raten glider
+  //    tilbage mod grundtempoet med en halveringstid, så én burst ikke
+  //    sætter tempoet for resten af svaret (målt 30/10-2026: den blev
+  //    stående på 643 tegn/s, 13,4x grundtempoet, i alle efterfølgende
+  //    frames).
   let rate = forrigeRate
   if (ankomst !== null && Number.isFinite(ankomst) && ankomst > 0) {
     rate = PACE_EMA * ankomst + (1 - PACE_EMA) * rate
+  } else if (rate > PACE_GULV) {
+    const sekunder = Math.max(0, Math.min(0.5, dt ?? 1 / 60))
+    const tilbage = Math.pow(0.5, sekunder / PACE_DECAY_HALFLIFE_S)
+    rate = PACE_GULV + (rate - PACE_GULV) * tilbage
   }
 
   // 2. Grundtempoet er et GULV, ikke et mål.
@@ -101,7 +161,8 @@ export function naesteRate({ pending, forrigeRate, ankomst }: RateInput): number
 
   // 3. Indhentningskravet — dét der gør at pacen ikke KAN komme bagud.
   //    Ved 2000 tegn giver det 667 tegn/s: målt 2,50 s mod 15,07 s med det
-  //    gamle faste loft på 180.
+  //    gamle faste loft på 180. Det er også dét der gør tilbagefaldet i
+  //    trin 1 sikkert: et reelt efterslæb kan ikke dø hen.
   rate = Math.max(rate, pending / PACE_CATCH_UP_SECONDS)
 
   // 4. Sikkerhedsloftet er en nødudgang, ikke den bindende grænse.

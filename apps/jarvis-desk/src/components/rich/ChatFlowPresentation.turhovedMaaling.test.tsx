@@ -190,17 +190,19 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
 
     // MÅLT 29/10-2026, FØR den adaptive pacer: **15,07 s**.
     // MÅLT samme dag, EFTER: **2,50 s** — 6× hurtigere.
+    // MÅLT 30/10-2026: **7,20 s**. De 2,50 s var «pacen løber for stærkt»
+    // (Bjørn 30/10): 800 tegn/s er 17× grundtempoet, og det blev drevet af
+    // at ankomsten blev målt PR. FRAME — en chunk på 100 tegn i én 16,7 ms
+    // frame blev læst som 6000 tegn/s. Nu måles ankomsten over et vindue
+    // (`PACE_ANKOMST_VINDUE_S`) og raten falder tilbage når intet nyt
+    // ankommer, så 2000 tegn ruller med 278 tegn/s — stadig 5,8× grundtempo
+    // og stadig under halvdelen af de 15,07 s der VAR klagen.
     //
-    // Det gamle tal var ikke et valg, det var `Math.min(180, pending/3)`: et
-    // fast loft der klippede indhentningen, så efterslæbet voksede gennem
-    // hele svaret. Nu følger hastigheden ankomsten og justeres mod
-    // efterslæbet (`lib/paceRate.ts`), og pacen kan ikke komme bagud.
-    //
-    // Vagten er et BÅND, ikke et præcist tal: under 4 s er kontrakten, og
+    // Vagten er et BÅND, ikke et præcist tal: under 8 s er kontrakten, og
     // over 1 s beviser at grundtempoet stadig ruller korte svar roligt i
     // stedet for at dumpe dem.
     expect(sekunder).toBeGreaterThan(1)
-    expect(sekunder).toBeLessThan(4)
+    expect(sekunder).toBeLessThan(8)
     // Tallet er selve pointen: det gøres synligt i fejlbeskeden hvis det
     // flytter sig, så en tempoændring ikke kan ske ubemærket.
     expect({ frames, sekunder: Number(sekunder.toFixed(1)) }).toEqual({

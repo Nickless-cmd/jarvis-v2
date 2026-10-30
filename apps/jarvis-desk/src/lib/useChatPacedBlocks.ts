@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from './sseProtocol'
 import { scanFences, type FenceSpan } from './fenceScanner'
-import { naesteRate, PACE_GULV } from './paceRate'
+import { naesteRate, PACE_GULV, PACE_ANKOMST_VINDUE_S } from './paceRate'
 
 /** Læsbar grundhastighed. Et svar der lander i ét hug må ikke blinke frem. */
 const BASE_CODE_POINTS_PER_SECOND = PACE_GULV
@@ -200,12 +200,28 @@ export function useChatPacedBlocks(
     // Reglen bor i `paceRate.ts` og følger ankomsten, justeret mod
     // efterslæbet — samme model som Codex desktop (målt 29/10-2026).
     const a = ankomst.current
+    // ADAPTIV HASTIGHED (29/10-2026). Målt med den gamle, faste grænse:
+    // 2000 tegn tog 15,07 s at rulle ud, fordi `Math.min(180, …)` klippede
+    // indhentningen og efterslæbet derfor voksede gennem hele svaret.
+    // Reglen bor i `paceRate.ts` og følger ankomsten, justeret mod
+    // efterslæbet — samme model som Codex desktop (målt 29/10-2026).
+    //
+    // 30/10-2026 (Bjørn: «Pacen løber for stærkt»): ankomsten måles nu over
+    // et VINDUE, ikke pr. frame. Målt pr. frame blev en SSE-chunk på 100 tegn
+    // der lander i én 16,7 ms-frame til 6000 tegn/s — ikke 100 tegn — og
+    // EMA'en løftede raten til 643 tegn/s, 13,4x grundtempoet, hvor den blev
+    // stående resten af svaret. Se `PACE_ANKOMST_VINDUE_S`.
     const vokset = targetPoints.length - a.maal
     const dtAnkomst = a.tid > 0 ? (nu - a.tid) / 1000 : 0
-    const maaltAnkomst = vokset > 0 && dtAnkomst > 0 ? vokset / dtAnkomst : null
-    a.maal = targetPoints.length
-    a.tid = nu
-    const rate = naesteRate({ pending, forrigeRate: a.rate, ankomst: maaltAnkomst })
+    const vindueUde = dtAnkomst >= PACE_ANKOMST_VINDUE_S
+    const maaltAnkomst = vokset > 0 && vindueUde ? vokset / dtAnkomst : null
+    if (vindueUde || a.tid === 0) {
+      // Vinduet starter forfra fra NU — også når intet nyt landede, så et
+      // dødt vindue ikke akkumuleres ind i det næste.
+      a.maal = targetPoints.length
+      a.tid = nu
+    }
+    const rate = naesteRate({ pending, forrigeRate: a.rate, ankomst: maaltAnkomst, dt })
     a.rate = rate
     // Bevar brøkdelen mellem frames. `ceil` eller et minimum pr. frame gør
     // ellers 48 tegn/s til mindst 60 tegn/s på en 60 Hz-skærm og endnu mere

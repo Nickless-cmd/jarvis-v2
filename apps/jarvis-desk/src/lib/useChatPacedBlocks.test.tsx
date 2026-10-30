@@ -197,10 +197,12 @@ describe('useChatPacedBlocks', () => {
     }
     expect(shown()).toBe(text.length)
     const sekunder = frames / 60
-    // MÅLT 29/10-2026: **3,13 s** for 1000 tegn. Med det faste loft på 180 var
-    // det 5–12 s, og ved 72 var det 18,8 s. Kontrakten er nu under 5 s — og
-    // stadig ikke i ét spring (testen ovenfor måler trinnene).
-    expect(sekunder).toBeLessThan(5)
+    // MÅLT 29/10-2026: 3,13 s for 1000 tegn — 320 tegn/s, 6,7x grundtempoet.
+    // MÅLT 30/10-2026: **6,07 s** efter at ankomstmålingen blev flyttet til et
+    // vindue og raten fik tilbagefald. De 3,13 s VAR «pacen løber for stærkt»
+    // (Bjørn 30/10), så kontrakten er hævet med vilje: 165 tegn/s er 3,4x
+    // grundtempoet og stadig hurtigere end de 12 s ved det gamle 72-loft.
+    expect(sekunder).toBeLessThan(7)
     expect(sekunder).toBeGreaterThan(1)
   })
 

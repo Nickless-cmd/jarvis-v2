@@ -4,6 +4,17 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-10-30 — Scope correction: measurements must be live
+
+Bjørn clarified after the first two runs that both investigations' substantive
+measurements must occur on the deployed Jarvis system and its live database.
+The existing experiment 001 and Investigation 2 values are therefore
+reclassified as **synthetic method-validation results**. They remain preserved
+for research history and software verification but are not evidence about the
+live system. New live protocols require execution on CT105 after deployment,
+read-only SQLite access, a recorded database high-water mark, and explicit
+exclusion of conversational text and user identifiers.
+
 ## 2026-10-30 — Project initiation
 
 ### Prompt and assumptions

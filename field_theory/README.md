@@ -41,7 +41,7 @@ The distinction is more important than the directories: raw observations are
 never rewritten by analysis; derived results identify their method and raw-data
 digest; and notebook interpretation remains separate from measured output.
 
-## Run experiment 001
+## Run synthetic method experiment 001
 
 From this directory, using Python 3.11 or newer:
 
@@ -63,7 +63,7 @@ Run the focused tests from the repository root:
 No database, service, network access, or Jarvis state is required. The first
 implementation uses only the Python standard library.
 
-## Run Investigation 2
+## Run synthetic method Investigation 2
 
 The three commands preserve generation, opaque analysis, and source reveal as
 separate events:
@@ -79,3 +79,9 @@ python experiments/exp_002_discovery/reveal.py \
 
 The analyzer verifies the raw-data digest and never reads `source_key.json`.
 Analysis and reveal refuse to replace prior outputs.
+
+The two commands above preserve the original synthetic method-validation
+history. Their measurements are not observations of Jarvis. Deployed
+measurements use the protocols in `experiments/exp_001_live/` and
+`experiments/exp_002_live/` and must be extracted on hostname `Jarvis` from the
+live database in read-only mode.

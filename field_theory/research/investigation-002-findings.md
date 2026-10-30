@@ -1,9 +1,10 @@
 # Investigation 2: findings
 
-**Status:** completed exploratory run with local independent confirmation,
-2026-10-30. This report interprets the preserved run at
+**Status:** synthetic method-validation run, not a live-system measurement.
+Reclassified 2026-10-30 after Bjørn clarified that substantive measurements
+must occur on the deployed system. This report interprets the preserved run at
 `artifacts/exp_002/seed_202610302`; generated output remains the measurement
-record.
+record for that simulation only.
 
 ## What was investigated
 

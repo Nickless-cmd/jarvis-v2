@@ -2870,29 +2870,15 @@ async def _stream_visible_run(
                             _varsel = ""
                         if _varsel:
                             _tur_hale.tilfoej_runde(_varsel)
-                    # 30/10-2026 (Bjørn): «hvordan gør vi dig bedre til at
-                    # huske suggest_next_task i code mode før du afslutter».
-                    # Reglen fandtes — men i præfikset. Her ligger den i
-                    # halen, tæt på beslutningen, som RAADGIVNING: nul
-                    # ekstra runder. Fyres én gang pr. tur, først når der
-                    # er arbejde at afrunde, og ikke i den sidste runde
-                    # hvor værktøjerne er fjernet fysisk.
-                    if _agentic_round >= 1 and not _is_last_round:
-                        try:
-                            from core.services.suggest_tail_note import (
-                                suggest_tail_note as _stn,
-                            )
-                            _suggest_note = _stn()
-                        except Exception:  # en note må aldrig vælte turen
-                            _suggest_note = ""
-                        if _suggest_note:
-                            # `tilfoej_runde` og ikke `tilfoej_vedvarende`:
-                            # en vedvarende note gen-sendes i HVER runde
-                            # (maalt op til 40 gange i én tur), og
-                            # test_gaterne_bruger_naeste_ikke_vedvarende
-                            # vogter netop det. Runde-formen koster det
-                            # samme paa traaden og kan ikke akkumulere.
-                            _tur_hale.tilfoej_runde(_suggest_note)
+                    # 30/10-2026 (Bjørn): «suggest_next_task laver rod igen, så
+                    # det hjalp ikk. flyt den bare tilbage igen». Noten laa her
+                    # som RAADGIVNING i halen og blev FYRET — runtime-maalingen
+                    # viste raadgivning=1 i hver runde. Den hjalp ikke: den
+                    # gjorde forslaget til en fast takt i stedet for en
+                    # beslutning, og forslagene blev selv-refererende (de
+                    # handlede om noten selv). Reglen bor derfor igen KUN i
+                    # `output_discipline` i praefikset. Genindfoer den ikke uden
+                    # at maale mod baseline 17,8 assistent-beskeder/dag.
                     if _is_last_round:
                         _forced_finalize_seen = True
                         # Behold listen hos de udbydere der ER maalt til at

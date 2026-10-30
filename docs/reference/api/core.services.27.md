@@ -131,13 +131,6 @@ _Stillingtagen til næste skridt ved tur-afslutning (Bjørn 7/10-2026)._
 | function | `mangler_stilling` | `(*, called_tool_names, nudged_already=…, final_text=…, is_last_round=…, er_autonom=…)` | True når turen udførte arbejde og intet forslag blev lagt. | [src](../../../core/services/suggest_standing_guard.py#L118) |
 | function | `build_nudge` | `()` | Beskeden der lægges i turen. Bedømmer, opfordrer ikke til gentagelse. | [src](../../../core/services/suggest_standing_guard.py#L169) |
 
-## `core/services/suggest_tail_note.py`
-_Én linje i turens hale, lige dér hvor svaret bliver skrevet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `suggest_tail_note` | `(*, already_sent=…)` | Noten til turens hale. "" når den allerede er lagt i denne tur. | [src](../../../core/services/suggest_tail_note.py#L38) |
-
 ## `core/services/surprise_daemon.py`
 _Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline._
 
@@ -616,4 +609,15 @@ _Thought Thread — continuity of attention across ticks._
 | function | `build_thought_thread_prompt_section` | `()` | Tell him what thread he was holding before this turn. | [src](../../../core/services/thought_thread.py#L227) |
 | function | `reset_thought_thread` | `()` | Reset cached state (for testing). | [src](../../../core/services/thought_thread.py#L249) |
 | function | `_emit_thought_thread_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/thought_thread.py#L256) |
+
+## `core/services/tick_cache.py`
+_Tick-scoped in-memory cache — lives exactly one heartbeat tick._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_tick` | `()` | Activate cache for this tick. Resets any previous data. | [src](../../../core/services/tick_cache.py#L14) |
+| function | `end_tick` | `()` | Deactivate cache and clear all data. | [src](../../../core/services/tick_cache.py#L22) |
+| function | `get` | `(key)` | Return cached value or None. Safe to call when inactive. | [src](../../../core/services/tick_cache.py#L30) |
+| function | `set` | `(key, value)` | Store value for this tick. No-op when inactive. | [src](../../../core/services/tick_cache.py#L43) |
+| function | `get_tick_cache_stats` | `()` | Return hit/miss stats for current tick. | [src](../../../core/services/tick_cache.py#L50) |
 

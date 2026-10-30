@@ -101,3 +101,12 @@ representation, and estimator co-vary. It cannot identify a physical field,
 subjective experience, causal mechanism, or hidden information. A stable
 number need not imply a stable process, and a changing number need not imply a
 changing underlying relation.
+
+## Post-primary audit boundary
+
+If the primary rolling result exposes a localized peak, a separately invoked
+audit may preserve model×weekday terminal-status counts for that maximum window
+and the immediately preceding and following non-overlapping row intervals.
+This audit is selected after seeing the primary result. It can show whether a
+peak is broad or cell-concentrated, but it is neither preregistered discovery
+nor confirmation.

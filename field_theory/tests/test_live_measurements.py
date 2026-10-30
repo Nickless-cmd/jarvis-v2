@@ -22,6 +22,7 @@ from feltteori_research.experiment_003_change import (
     Experiment003Config,
     OperationalContextConfig,
     analyze_experiment_003,
+    audit_peak_cells,
     collect_operational_context,
 )
 from feltteori_research.live_visible_runs import (
@@ -231,6 +232,11 @@ def test_investigation_003_preserves_snapshot_and_writes_views(tmp_path: Path) -
     assert result["observations_sha256_colon_hex"]
     assert (output / "exp003_live_evolution.svg").exists()
     assert (output / "exp003_live_rolling.csv").exists()
+    audit = audit_peak_cells(run, output, Path(__file__).resolve().parents[2])
+    assert audit["evidence_status"].startswith("post-hoc")
+    assert (output / "exp003_live_peak_cells.csv").exists()
+    with pytest.raises(FileExistsError):
+        audit_peak_cells(run, output, Path(__file__).resolve().parents[2])
     with pytest.raises(FileExistsError):
         analyze_experiment_003(
             run,

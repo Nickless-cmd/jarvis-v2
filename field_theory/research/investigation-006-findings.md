@@ -151,13 +151,35 @@ written.
 
 The pattern across both sources is consistent with one reading, offered as an
 interpretation rather than a result: **a reset helps only when the retained
-state has already become information-free.** On sunspots, long and cumulative
-continued collapsed to exactly the fixed expert (MAE 14.8513 = fixed 14.8513,
-1.000 effective experts, mean weight change 0.000000) — there was literally
-nothing for the history to carry, and reset gave the mixture a chance to
-rebuild from uniform. Everywhere the retained state still carried information —
-short and one-encounter on sunspots, all four on CO₂ — reset cost accuracy.
-No mechanism on CO₂ collapsed that far, so reset cost there across the board.
+state has become rigid — when it still determines the prediction but can no
+longer be moved by new evidence.**
+
+An earlier version of this paragraph said "information-free", and that was
+wrong. On sunspots the two high-retention mechanisms had locked almost all
+weight onto one expert and their weights moved by 0.000000, but the retained
+state was not empty: it still carried the result of earlier adaptation — *this
+expert is to be preferred* — and it still determined every prediction. What had
+gone was not the information but its **responsiveness**. Reset changed 189/318
+and 95/318 predictions precisely because the state still mattered.
+
+Three properties have to be kept apart, and they vary independently:
+
+| Property | What it asks |
+|---|---|
+| Retention | Is earlier adaptation still represented in the state? |
+| Responsiveness | Can new observations still move that state? |
+| Utility | Does the retained state improve the system's results? |
+
+A mechanism can retain a strong historical preference, be nearly insensitive to
+new consequences, and still perform worse than if its history were cleared. That
+is not absence of information; it is information whose influence has gone rigid.
+
+Concretely: long and cumulative continued collapsed to exactly the fixed expert
+on sunspots (MAE 14.8513 = fixed 14.8513, 1.000 effective experts, mean weight
+change 0.000000), and reset gave the mixture a chance to rebuild from uniform.
+Where the state was still both retained *and* responsive — short and
+one-encounter on sunspots, all four on CO₂ — reset cost accuracy. No mechanism
+on CO₂ saturated that far, so reset cost there across the board.
 
 That reading is not tested. It is fitted to eight cells from two sources, and
 the CO₂ `long_continuity` case (continued already 12.1 % worse than the fixed
@@ -240,22 +262,39 @@ and reverted with `git checkout`:
 | exp_006 `falsifies_transfer` → `False` | 1 failed — caught |
 | exp_004 `outcomes_read` → `True` | 1 failed — caught |
 | `metrics.mutual_information()` → `0.0` | 5 failed — caught |
+| exp_004 `required_rows` → `0` | 27 passed — **survived** |
+| exp_003 `weekdays` → constant | 27 passed — **survived** |
 
-All seven, including the two baseline checks, are caught **after** the
-correction. That is the point worth stating plainly: before the correction,
-disabling the exp_006 reset branch would have produced a *green* suite. The
-preserved test asserted that continued and reset were identical, so the mutant
-and the expectation agreed. The guard was not absent — it pointed the wrong way.
+Five of seven are caught. The last two are not, and an earlier version of this
+section claimed "all seven are caught" — which was the same failure this whole
+review is about: a statement about a measurement that had not been made. Both
+were run afterwards, and both survive:
+
+- **`required_rows` → 0** removes the threshold that keeps the frozen
+  prospective evaluation from delivering a verdict on too few observations. No
+  test reacts. The guard against premature scoring of the one artifact in this
+  project whose value is that it cannot be moved is not enforced by the suite.
+- **`weekdays` → constant** deletes the weekday perspective from
+  `_window_metrics`, i.e. one of the three perspectives Investigation 1–3 is
+  built on. No test reacts.
+
+That second one confirms the limit stated below by measurement rather than by
+argument: `experiment_003_change.py` is covered only indirectly, and the
+perspective construction itself is unguarded.
+
+What the review does establish: before the correction, disabling the exp_006
+reset branch would have produced a *green* suite. The preserved test asserted
+that continued and reset were identical, so the mutant and the expectation
+agreed. The guard was not absent — it pointed the wrong way.
 
 Two limits on this review:
 
 - It tests the conditions I could name. A condition nobody thought of has no
   mutant to apply, and this method cannot find it.
-- `experiment_003_change.py` is covered only indirectly, through
-  `test_live_measurements.py`, and that test asserts snapshot preservation and
-  view writing — not the perspective construction or the mutual-information
-  values themselves. A mutation of the analysis rather than of the metric would
-  likely survive.
+- Two of the seven mutants survive, so mutation testing is not a certificate.
+  It is a scan, and this scan reports two open holes. Direct state-transition
+  assertions and an independent reference implementation would cover ground
+  this method does not reach.
 
 The one finding this review produced on its own: `experiment_004_prospective.py`
 has no dedicated test module. The frozen forecast — the single artifact in this

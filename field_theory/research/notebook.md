@@ -4,6 +4,43 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-10-30 — Investigation 6, second correction: rigid is not empty, and two mutants survived
+
+**Status:** two further corrections to the Investigation 6 report. Preserved runs, protocol and forecasts unchanged.
+
+### Correction 1: a locked state is not an information-free state
+
+The report read: *"a reset helps only when the retained state has already become information-free."* That does not follow from the results.
+
+On sunspots the two high-retention mechanisms had locked almost all weight onto one expert (mean weight change 0.000000), but the retained state still carried the result of earlier adaptation — *this expert is to be preferred* — and still determined every prediction. Reset changed 189/318 and 95/318 predictions, which is direct evidence the state mattered.
+
+Three properties must be kept apart, and they vary independently:
+
+- **Retention** — is earlier adaptation still represented in the state?
+- **Responsiveness** — can new observations still move that state?
+- **Utility** — does the retained state improve the system's results?
+
+What had gone on sunspots was not the information but its responsiveness. The report now says *rigid*, and states the three properties explicitly.
+
+### Correction 2: the mutation review claimed a count it had not measured
+
+The review stated "all seven, including the two baseline checks, are caught". The table showed five rows. Two mutants had been attempted but never measured, and the sentence was written as if they had been.
+
+Both were run afterwards:
+
+| Mutation | Result |
+|---|---|
+| exp_004 `required_rows` → `0` | 27 passed — survived |
+| exp_003 `weekdays` → constant | 27 passed — survived |
+
+Both survive. The first removes the threshold that keeps the frozen prospective evaluation from scoring on too few observations. The second deletes the weekday perspective from `_window_metrics` — one of the three perspectives Investigations 1–3 rest on.
+
+So mutation testing is a scan, not a certificate, and this scan reports two open holes. The methodological point is unchanged and now measured rather than argued: before the reset correction, disabling the exp_006 reset branch produced a green suite because the guard pointed the wrong way.
+
+### Question raised
+
+Which of the three properties — retention, responsiveness, utility — is the one the chain's learning→continuity relation actually constrains? A mechanism can hold a strong historical preference, be nearly insensitive to new consequences, and perform worse than if its history were cleared. If that is possible, then continuity is not one property but a relation between what is kept and what the system subsequently meets.
+
 ## 2026-10-30 — Investigation 6: the transfer test fired against us
 
 **Status:** completed transfer test; falsification conditions frozen before the

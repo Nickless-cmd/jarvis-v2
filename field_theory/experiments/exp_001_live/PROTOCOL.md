@@ -21,11 +21,13 @@ deployed. It opens `/home/bs/.jarvis-v2/state/jarvis.db` with SQLite `mode=ro`
 and `PRAGMA query_only=ON`, begins one read transaction, records the maximum
 visible-run row ID, and exports rows through that high-water mark.
 
-Preserved fields are row ID, start time, provider, model, lane, profile,
+Preserved fields are row ID, observation time, timestamp basis, provider, model, lane, profile,
 capability presence, derived UTC hour band, derived weekday, and terminal
 status. Message previews, errors, run IDs, user IDs, and workspace content are
-excluded. Derived calendar fields and missing-value normalization are explicit
-extraction transformations, not raw database facts.
+excluded. Observation time uses `started_at`, falling back to `finished_at`
+when the live row lacks a start time. Derived calendar fields, timestamp
+fallback, and missing-value normalization are explicit extraction
+transformations, not raw database facts.
 
 ## Fixed perspectives
 

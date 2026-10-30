@@ -25,6 +25,11 @@ divided into five contiguous blocks of nearly equal size. Opaque source IDs are
 used in the pre-reveal report. Within each block, the earlier half is discovery
 and the later half is confirmation.
 
+The first deployed extraction attempt exposed 365 live rows without
+`started_at`. Before any valid result was produced, extraction version 2
+recorded an explicit fallback to `finished_at` and a per-row timestamp-basis
+field. This revision is part of the method history, not a silent data repair.
+
 The blocks are observational eras, not independent randomized experiments.
 Chronological persistence can be affected by deployments, provider changes,
 traffic, outages, user behavior, or schema evolution. Confirmation here means

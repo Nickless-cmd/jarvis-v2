@@ -64,8 +64,8 @@ def build_visible_runs_db(path: Path, rows: int = 240) -> None:
                 provider,
                 model,
                 status,
-                (start + timedelta(hours=index)).isoformat(),
-                None,
+                None if index == 7 else (start + timedelta(hours=index)).isoformat(),
+                (start + timedelta(hours=index, minutes=1)).isoformat(),
                 "private text",
                 "private error",
                 "tool:x" if index % 3 == 0 else None,
@@ -113,6 +113,7 @@ def test_live_extractor_is_host_gated_and_privacy_limited(tmp_path: Path) -> Non
     assert "user_id" not in rows[0]
     assert "run_id" not in rows[0]
     assert "private" not in (output / "observations.csv").read_text(encoding="utf-8")
+    assert rows[7]["timestamp_basis"] == "finished_at_fallback"
 
 
 def test_live_experiment_001_measures_fixed_perspectives(tmp_path: Path) -> None:

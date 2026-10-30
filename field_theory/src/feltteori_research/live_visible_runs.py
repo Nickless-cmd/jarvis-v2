@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-METHOD_VERSION = "live-visible-runs.extract.1"
+METHOD_VERSION = "live-visible-runs.extract.2"
 FIELDS = (
     "observation_id",
     "source_row_id",
-    "started_at",
+    "observed_at_utc",
+    "timestamp_basis",
     "provider",
     "model",
     "lane",
@@ -89,7 +90,7 @@ def extract_live_visible_runs(
             raise ValueError("live visible_runs table is empty")
         rows = connection.execute(
             """
-            SELECT id, started_at, provider, model, lane, profile_name,
+            SELECT id, started_at, finished_at, provider, model, lane, profile_name,
                    capability_id, status
             FROM visible_runs
             WHERE id <= ?
@@ -109,6 +110,7 @@ def extract_live_visible_runs(
         for (
             row_id,
             started_at,
+            finished_at,
             provider,
             model,
             lane,
@@ -116,7 +118,10 @@ def extract_live_visible_runs(
             capability,
             status,
         ) in rows:
-            timestamp = _parse_timestamp(str(started_at))
+            timestamp_source = started_at or finished_at
+            if not timestamp_source:
+                raise ValueError(f"visible_runs row {row_id} has no usable timestamp")
+            timestamp = _parse_timestamp(str(timestamp_source))
             timestamp_text = timestamp.isoformat()
             first_timestamp = first_timestamp or timestamp_text
             last_timestamp = timestamp_text
@@ -125,7 +130,10 @@ def extract_live_visible_runs(
                 {
                     "observation_id": f"visible-run:{row_id}",
                     "source_row_id": row_id,
-                    "started_at": timestamp_text,
+                    "observed_at_utc": timestamp_text,
+                    "timestamp_basis": (
+                        "started_at" if started_at else "finished_at_fallback"
+                    ),
                     "provider": _normalize(provider),
                     "model": _normalize(model),
                     "lane": _normalize(lane),
@@ -147,8 +155,8 @@ def extract_live_visible_runs(
                 "table": "visible_runs",
                 "high_water_id": high_water,
                 "snapshot_rows": len(rows),
-                "first_started_at_utc": first_timestamp,
-                "last_started_at_utc": last_timestamp,
+                "first_observed_at_utc": first_timestamp,
+                "last_observed_at_utc": last_timestamp,
             },
             "privacy_boundary": {
                 "included": list(FIELDS),
@@ -162,8 +170,10 @@ def extract_live_visible_runs(
             },
             "transformations": {
                 "missing_values": "normalized to literal 'missing'",
-                "hour_bin_utc": "six-hour band derived from started_at",
-                "weekday_utc": "English weekday derived from started_at",
+                "observed_at_utc": "started_at, or finished_at when started_at is absent",
+                "timestamp_basis": "records which timestamp supplied observed_at_utc",
+                "hour_bin_utc": "six-hour band derived from observed_at_utc",
+                "weekday_utc": "English weekday derived from observed_at_utc",
                 "capability_presence": "presence only; capability identifier excluded",
             },
             "deployed_git_revision": _git_revision(repo_root),

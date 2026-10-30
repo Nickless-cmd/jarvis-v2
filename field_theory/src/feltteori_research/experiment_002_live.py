@@ -226,8 +226,8 @@ def analyze_live_experiment_002(
         }
         source_key[source_id] = {
             "chronological_block": block_index + 1,
-            "first_started_at_utc": block[0]["started_at"],
-            "last_started_at_utc": block[-1]["started_at"],
+            "first_observed_at_utc": block[0]["observed_at_utc"],
+            "last_observed_at_utc": block[-1]["observed_at_utc"],
             "first_source_row_id": int(block[0]["source_row_id"]),
             "last_source_row_id": int(block[-1]["source_row_id"]),
         }
@@ -285,7 +285,7 @@ def _write_summaries(run_directory: Path, results: dict, source_key: dict) -> No
     for source_id, details in source_key.items():
         revealed.append(
             f"| {source_id} | {details['chronological_block']} "
-            f"| {details['first_started_at_utc']} → {details['last_started_at_utc']} |"
+            f"| {details['first_observed_at_utc']} → {details['last_observed_at_utc']} |"
         )
     revealed.extend(["", *header, *rows])
     for filename, lines in (

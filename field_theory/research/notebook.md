@@ -15,6 +15,13 @@ live system. New live protocols require execution on CT105 after deployment,
 read-only SQLite access, a recorded database high-water mark, and explicit
 exclusion of conversational text and user identifiers.
 
+**First deployed extraction attempt:** revision `b13ca76e2` reached CT105 and
+opened the production database read-only, but stopped before producing a
+manifest or measurements because 365 of 25,000 live rows lacked `started_at`.
+All 365 had `finished_at`. Extraction version 2 therefore uses `finished_at` as
+an explicit fallback and records the timestamp basis per row. The partial
+`/tmp` output is not a valid run and no number from it is reported as evidence.
+
 ## 2026-10-30 — Project initiation
 
 ### Prompt and assumptions

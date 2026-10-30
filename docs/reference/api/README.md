@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17789 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17790 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -56,11 +56,11 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17789 functions/
 - [`core.services.24`](core.services.24.md) — `runtime_self_model` … `self_repair_engine`
 - [`core.services.25`](core.services.25.md) — `self_review_cadence_signal_tracking` … `shadow_scan_daemon`
 - [`core.services.26`](core.services.26.md) — `share_guard_store` … `state_file_retention`
-- [`core.services.27`](core.services.27.md) — `state_flag_store` … `tick_cache`
-- [`core.services.28`](core.services.28.md) — `tiny_webchat_execution_pilot` … `user_emotional_resonance`
-- [`core.services.29`](core.services.29.md) — `user_hensyn` … `visible_run_abandonment`
-- [`core.services.30`](core.services.30.md) — `visible_run_cost` … `voice_curator`
-- [`core.services.31`](core.services.31.md) — `voice_daemon` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `state_flag_store` … `thought_thread`
+- [`core.services.28`](core.services.28.md) — `tick_cache` … `user_contradiction_tracker`
+- [`core.services.29`](core.services.29.md) — `user_emotional_resonance` … `visible_preview_crypto`
+- [`core.services.30`](core.services.30.md) — `visible_run_abandonment` … `voice_anchor`
+- [`core.services.31`](core.services.31.md) — `voice_curator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

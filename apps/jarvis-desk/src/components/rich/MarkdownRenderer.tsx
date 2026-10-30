@@ -1,4 +1,4 @@
-import { isValidElement, memo, useEffect, useMemo } from 'react'
+import { createContext, isValidElement, memo, useContext, useEffect, useMemo } from 'react'
 import { Globe, ListTodo, Bot, GitBranch, AlarmClock, Activity, FileCode } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -18,6 +18,19 @@ import { NativeRichBlock, parseNativeRichSpec } from './NativeRichBlock'
 import { logFlade } from '../../lib/fladeLog'
 
 const githubMark = new URL('../../assets/github.svg', import.meta.url).href
+
+/** Bærer `streaming` ned til `pre`-grenen.
+ *
+ *  30/10-2026 (Bjørn): «enten fejler fladerne ellers hænger de på flade
+ *  forberedes». Placeholderen blev indført 29/10 mod at rå JSON blinkede frem
+ *  under streaming — men den havde ingen udgang. På en PERSISTERET besked
+ *  står den for evigt og påstår at noget er i gang, når intet er. Det er en
+ *  løgn i grænsefladen, ikke en ventetilstand.
+ *
+ *  `MermaidStreamingContext` bærer allerede samme boolean, men navnet lyver om
+ *  hvem der ejer den; en delt context med to betydninger er den slags kobling
+ *  der senere knækker stille. Derfor en dedikeret. */
+const FladeStreamingContext = createContext(false)
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
  *  (XSS-guard mod fjendtligt tool-output). Links saniteres + åbnes eksternt.
@@ -41,50 +54,84 @@ const PLUGINS = [remarkGfm, remarkMath, linkifyRefs]
 // står uændret. `strict: false` gør det samme for halvfærdige udtryk — mens
 // svaret streames er `$e^{i\pi` en lovlig mellemtilstand.
 const REHYPE_PLUGINS = [[rehypeKatex, { throwOnError: false, strict: false, output: 'html' }]] as const
-const KOMPONENTER: Components = {
-  pre: ({ children }) => {
-    if (!isValidElement(children)) return <pre>{children}</pre>
-    const props = children.props as { className?: string; children?: unknown }
-    const code = typeof props.children === 'string' ? props.children : String(props.children ?? '')
-    const lang = /^language-([^\s]+)/.exec(props.className ?? '')?.[1] ?? ''
-    // 6/10-2026: ```mermaid tegnes som diagram. Blokken venter til den er
-    // færdig (se MermaidStreamingContext) — en uafsluttet fence kan ikke
-    // parses, og et forsøg ville skifte blokken fra kode til diagram midt i
-    // turen. Alt andet går til ChatCodeBlock som før.
-    if (lang === 'mermaid') return <MermaidBlock code={code} />
-    if (lang === 'jarvis-ui') {
-      // Klientlog (25/10-2026, side-155f2dc398): her træffes beslutningen, og
-      // før blev den truffet lydløst. Fire diagnoser i træk pegede forkert,
-      // fordi der ikke var ét eneste spor af hvad grenen faktisk så.
-      //
-      // Der logges KUN her hvor grenen faktisk blev kørt. En fejl der betyder
-      // at grenen aldrig nås (`no-pre-node`) kan denne log pr. definition ikke
-      // se — den fanges i MarkdownBlok nedenfor.
-      const spec = parseNativeRichSpec(code)
-      logFlade({
-        udfald: spec ? 'native' : 'parse-null',
-        foer: '', efter: '',
-        blok: code,
-        className: props.className ?? '',
-        lang,
-        kode: code,
-      })
-      if (spec) return <NativeRichBlock code={code} />
-      // 29/10-2026 (Bjørn): «kode boksen der udvider sig og så blink».
-      //
-      // Uden denne gren faldt en ufuldstændig flade til `ChatCodeBlock`, så
-      // rå JSON stod på skærmen som om det var indhold. Persisterede
-      // beskeder, replay og genindlæsning går ALDRIG gennem pacerens spring,
-      // så de rammer ikke den vej der ellers løser problemet — de skal have
-      // en placeholder her.
+/** `pre`-grenen: kode, mermaid og flader.
+ *
+ *  Egen komponent fordi den kalder `useContext` — React's rules-of-hooks
+ *  kræver et navn med stort begyndelsesbogstav. Lå hooken i en anonym
+ *  `pre`-funktion, fejlede lint med 1 error (målt 30/10-2026), og CI kører lint.
+ */
+function Pre({ children }: { children?: React.ReactNode }) {
+  // Hooken ligger FØR enhver betinget return. Lå den efter, ville antallet
+  // af hooks skifte mellem renders og React ville rive hele beskeden ned —
+  // den fejl der ser ud som om indholdet «forsvandt».
+  const streaming = useContext(FladeStreamingContext)
+  if (!isValidElement(children)) return <pre>{children}</pre>
+  const props = children.props as { className?: string; children?: unknown }
+  const code = typeof props.children === 'string' ? props.children : String(props.children ?? '')
+  const lang = /^language-([^\s]+)/.exec(props.className ?? '')?.[1] ?? ''
+  // 6/10-2026: ```mermaid tegnes som diagram. Blokken venter til den er
+  // færdig (se MermaidStreamingContext) — en uafsluttet fence kan ikke
+  // parses, og et forsøg ville skifte blokken fra kode til diagram midt i
+  // turen. Alt andet går til ChatCodeBlock som før.
+  if (lang === 'mermaid') return <MermaidBlock code={code} />
+  if (lang === 'jarvis-ui') {
+    // Klientlog (25/10-2026, side-155f2dc398): her træffes beslutningen, og
+    // før blev den truffet lydløst. Fire diagnoser i træk pegede forkert,
+    // fordi der ikke var ét eneste spor af hvad grenen faktisk så.
+    //
+    // Der logges KUN her hvor grenen faktisk blev kørt. En fejl der betyder
+    // at grenen aldrig nås (`no-pre-node`) kan denne log pr. definition ikke
+    // se — den fanges i MarkdownBlok nedenfor.
+    const spec = parseNativeRichSpec(code)
+    logFlade({
+      udfald: spec ? 'native' : 'parse-null',
+      foer: '', efter: '',
+      blok: code,
+      className: props.className ?? '',
+      lang,
+      kode: code,
+    })
+    if (spec) return <NativeRichBlock code={code} />
+    // 29/10-2026 (Bjørn): «kode boksen der udvider sig og så blink».
+    //
+    // Uden denne gren faldt en ufuldstændig flade til `ChatCodeBlock`, så
+    // rå JSON stod på skærmen som om det var indhold. Persisterede
+    // beskeder, replay og genindlæsning går ALDRIG gennem pacerens spring,
+    // så de rammer ikke den vej der ellers løser problemet — de skal have
+    // en placeholder her.
+    // 30/10-2026 (Bjørn): «enten fejler fladerne ellers hænger de på flade
+    // forberedes». To krav stod i konflikt: rå JSON i en kodeboks er dårligt
+    // (29/10), og en ventetilstand der aldrig ender er også dårligt (30/10).
+    // Begge er sande, så løsningen er en TREDJE vej — ikke et kompromis
+    // mellem dem:
+    //
+    //   streaming  → «flade forberedes…». Påstanden er SAND her: blokken er
+    //                ufuldstændig og bliver til en flade om lidt.
+    //   færdig     → en stille note der siger hvad der faktisk skete. Ingen
+    //                spinner (intet forberedes), ingen rå JSON (den er ikke
+    //                indhold). Noten er dæmpet, ikke en fejlalarm — fladen
+    //                fejlede, men svaret er intet i vejen med.
+    if (streaming) {
       return (
         <div className="flade-pending" aria-live="polite">
           <span className="flade-pending-tekst">flade forberedes…</span>
         </div>
       )
     }
-    return <ChatCodeBlock code={code} lang={lang} className={props.className} />
-  },
+    return (
+      <div className="flade-utilgaengelig" role="note">
+        <span className="flade-utilgaengelig-tekst">Fladen kunne ikke tegnes</span>
+      </div>
+    )
+  }
+  return <ChatCodeBlock code={code} lang={lang} className={props.className} />
+}
+
+const KOMPONENTER: Components = {
+  // Navnet SKAL starte med stort: `useContext` kaldes indeni, og React's
+  // rules-of-hooks afviser en hook i en funktion der ikke ligner en komponent.
+  // Målt 30/10-2026 — lint fejlede på `pre` med 1 error, og CI kører lint.
+  pre: Pre,
   a: ({ href, children }) => {
     const safe = href ? safeLinkHref(href) : null
     if (!safe) return <span>{children}</span>
@@ -190,9 +237,11 @@ export const MarkdownBlok = memo(function MarkdownBlok({
     }
   }, [struktureret])
   return (
-    <MermaidStreamingContext.Provider value={streaming}>
-      <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={REHYPE_PLUGINS as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
-    </MermaidStreamingContext.Provider>
+    <FladeStreamingContext.Provider value={streaming}>
+      <MermaidStreamingContext.Provider value={streaming}>
+        <ReactMarkdown remarkPlugins={PLUGINS} rehypePlugins={REHYPE_PLUGINS as never} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
+      </MermaidStreamingContext.Provider>
+    </FladeStreamingContext.Provider>
   )
 })
 

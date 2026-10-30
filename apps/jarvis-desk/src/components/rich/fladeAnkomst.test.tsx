@@ -30,14 +30,31 @@ const SPEC = JSON.stringify({ type: 'callout', tone: 'info', title: 'T', body: '
 const SPEC2 = JSON.stringify({ type: 'callout', tone: 'warning', title: 'U', body: 'C' })
 
 describe('fladens ankomst', () => {
-  it('en jarvis-ui-fence uden gyldig spec viser placeholder — ALDRIG en kodeboks med rå JSON', () => {
-    // Uafsluttet/afkortet JSON, præcis som den ser ud midt i en stream.
-    const md = 'Her er den:\n\n```jarvis-ui\n{"type":"callout","tit\n```\n\nEfter.'
+  it('under streaming viser en ugyldig flade «flade forberedes…» — ALDRIG rå JSON', () => {
+    // Under streaming er kun den SIDSTE blok levende (delIBlokke), så fladen
+    // skal ligge sidst for at nå `pre`-grenen med streaming=true. Målt
+    // 30/10-2026: med fladen i midten fik den streaming=false og testen
+    // målte en anden gren end den påstod.
+    const md = 'Her er den:\n\n```jarvis-ui\n{"type":"callout","tit\n```'
     const view = render(<MarkdownRenderer text={md} streaming />)
 
     expect(view.container.querySelector('pre')).toBeNull()
     expect(view.container.querySelector('.flade-pending')).not.toBeNull()
     // Den rå JSON må ikke lække ud i teksten.
+    expect(view.container.textContent).not.toContain('"type"')
+  })
+
+  it('30/10-2026: på en FÆRDIG besked står der ikke «flade forberedes» — intet forberedes', () => {
+    // Bjørns klage: «hænger på flade forberedes». På en persisteret besked er
+    // venteteksten en løgn der står for evigt. Noten skal sige hvad der skete.
+    const md = 'Her er den:\n\n```jarvis-ui\n{"type":"callout","tit\n```\n\nEfter.'
+    const view = render(<MarkdownRenderer text={md} streaming={false} />)
+
+    expect(view.container.textContent).not.toContain('flade forberedes')
+    expect(view.container.querySelector('.flade-pending')).toBeNull()
+    // Den tredje vej: en stille note, hverken spinner eller rå JSON.
+    expect(view.container.querySelector('.flade-utilgaengelig')).not.toBeNull()
+    expect(view.container.querySelector('pre')).toBeNull()
     expect(view.container.textContent).not.toContain('"type"')
   })
 
@@ -60,6 +77,7 @@ describe('fladens ankomst', () => {
     const md = `Her:\n\n\`\`\`jarvis-ui\n${SPEC}\n\`\`\`\n\nEfter.`
     const view = render(<MarkdownRenderer text={md} streaming={false} />)
     expect(view.container.querySelector('.flade-pending')).toBeNull()
+    expect(view.container.querySelector('.flade-utilgaengelig')).toBeNull()
     expect(view.container.textContent).toContain('B')
   })
 })

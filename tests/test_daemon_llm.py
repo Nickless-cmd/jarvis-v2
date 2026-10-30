@@ -51,13 +51,19 @@ def test_both_lanes_dry_observes_central(monkeypatch):
     # Ingen cache-sti: form-judge/cache må ikke kortslutte kaldet.
     monkeypatch.setattr(dl, "_get_cache_ttl", lambda name: 0)
 
-    # public_safe=True → cheap-lane går via execute_public_safe_cheap_lane; lad den kaste.
+    # public_safe=True → primær vej er nu den gratis balancer (kill switch
+    # default TIL, 30/10-2026). Patch BEGGE grene, så testen måler fallback-
+    # adfærden uanset flagets tilstand.
     def _cheap_boom(*a, **k):
         raise RuntimeError("provider outage")
 
     monkeypatch.setattr(
         "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
         _cheap_boom)
+    monkeypatch.setattr(
+        "core.services.cheap_lane_balancer.call_balanced",
+        lambda *, prompt, daemon_name="": (_ for _ in ()).throw(
+            RuntimeError("balancer outage")))
     # Heartbeat-fallback: lad target-valget kaste, så text forbliver tomt.
     monkeypatch.setattr(
         "core.services.heartbeat_runtime._select_heartbeat_target",
@@ -94,6 +100,10 @@ def test_dry_observe_is_self_safe(monkeypatch):
         "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("outage")))
     monkeypatch.setattr(
+        "core.services.cheap_lane_balancer.call_balanced",
+        lambda *, prompt, daemon_name="": (_ for _ in ()).throw(
+            RuntimeError("balancer outage")))
+    monkeypatch.setattr(
         "core.services.heartbeat_runtime._select_heartbeat_target",
         lambda: (_ for _ in ()).throw(RuntimeError("down")))
 
@@ -115,6 +125,10 @@ def test_lane_success_does_not_observe_dry(monkeypatch):
     monkeypatch.setattr(
         "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
         lambda *a, **k: {"text": "ægte svar", "provider": "public-safe"})
+    monkeypatch.setattr(
+        "core.services.cheap_lane_balancer.call_balanced",
+        lambda *, prompt, daemon_name="": {
+            "text": "ægte svar", "provider": "groq", "model": "llama-3"})
 
     observed: list[dict] = []
 

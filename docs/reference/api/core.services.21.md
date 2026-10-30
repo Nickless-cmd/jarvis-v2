@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_heartbeat_self_knowledge.py`
+_Heartbeat self-knowledge section builder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_heartbeat_self_knowledge_section` | `()` | Build a compact self-knowledge section for the heartbeat prompt. | [src](../../../core/services/prompt_heartbeat_self_knowledge.py#L19) |
+
 ## `core/services/prompt_memory_recall.py`
 _Supplementary non-blocking recall during visible prompt assembly._
 
@@ -604,11 +611,4 @@ _One recall path over every memory source (memory repair 2026-09-04, R5)._
 | function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L253) |
 | function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L297) |
 | function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…, deadline_s=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L301) |
-
-## `core/services/recall_observability.py`
-_Scalar-only outcome telemetry for scoped recall._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `emit_recall_outcome` | `(**metadata)` | — | [src](../../../core/services/recall_observability.py#L14) |
 

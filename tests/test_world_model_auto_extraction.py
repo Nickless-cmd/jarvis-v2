@@ -45,6 +45,13 @@ def test_extract_records_and_observes_on_success(monkeypatch, _mem_state):
     monkeypatch.setattr(cpr, "execute_public_safe_cheap_lane",
                         lambda *, message: {"text": '{"is_prediction": true, "subject": "deploy", '
                                                     '"expectation": "virker", "confidence": "high"}'})
+    # Kill switch (30/10-2026): daemon_llm går nu via den gratis balancer som
+    # primær vej. Patch den også, så testen måler extraction — ikke ruten.
+    import core.services.cheap_lane_balancer as _clb
+    monkeypatch.setattr(_clb, "call_balanced",
+                        lambda *, prompt, daemon_name="": {
+                            "text": '{"is_prediction": true, "subject": "deploy", '
+                                    '"expectation": "virker", "confidence": "high"}'})
     import core.services.world_model_signal_tracking as wmst
     monkeypatch.setattr(wmst, "record_runtime_world_model_prediction",
                         lambda **kw: {"prediction_id": "p1"})

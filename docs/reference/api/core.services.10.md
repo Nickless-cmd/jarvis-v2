@@ -420,6 +420,18 @@ _Daemon-helbred (Fase 1) — gør de standalone daemon-tråde + silent eventbus-
 | function | `note_tick` | `(daemon, *, ok=…, **data)` | En daemon kørte en cyklus. Valgfri helbreds-puls (brug sparsomt — fejl er hovedsignalet). | [src](../../../core/services/daemon_health.py#L30) |
 | function | `daemon_health_summary` | `(*, window=…)` | Read-only: hvilke daemons har fejlet i seneste trace (til MC/debug). Self-safe. | [src](../../../core/services/daemon_health.py#L42) |
 
+## `core/services/daemon_lane_switch.py`
+_Live kill switch for daemon-lanens public-safe-rute._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_som_bool` | `(value, *, default)` | Tolk en JSON/env-værdi som bool. | [src](../../../core/services/daemon_lane_switch.py#L74) |
+| function | `_read_live` | `()` | Læs flaget fra env → runtime.json → default. Kaster aldrig. | [src](../../../core/services/daemon_lane_switch.py#L94) |
+| function | `public_safe_free_first` | `()` | True = public-safe-daemons må bruge den gratis balancer. | [src](../../../core/services/daemon_lane_switch.py#L112) |
+| function | `set_public_safe_free_first` | `(enabled)` | Flip flaget i runtime.json (atomisk, med backup) og invalider cachen. | [src](../../../core/services/daemon_lane_switch.py#L130) |
+| function | `invalidate_cache` | `()` | Tving næste ``public_safe_free_first()`` til at læse filen igen. | [src](../../../core/services/daemon_lane_switch.py#L152) |
+| function | `_main` | `(argv)` | — | [src](../../../core/services/daemon_lane_switch.py#L158) |
+
 ## `core/services/daemon_llm.py`
 _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 
@@ -434,7 +446,9 @@ _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 | function | `tegn_for_tokens` | `(tokens)` | Oversaet et token-budget til den TEGN-graense `max_len` klipper paa. | [src](../../../core/services/daemon_llm.py#L166) |
 | function | `quality_daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path for QUALITY-CRITICAL daemons (self-review, decision-review, | [src](../../../core/services/daemon_llm.py#L184) |
 | function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L300) |
-| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L322) |
+| function | `_gratis_balancer_foerst` | `()` | Live kill switch for public-safe-daemons. Fejler ALDRIG. | [src](../../../core/services/daemon_llm.py#L322) |
+| function | `_estimer_tokens` | `(text)` | Grov token-estimat når provideren ikke returnerer et tal. | [src](../../../core/services/daemon_llm.py#L339) |
+| function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L354) |
 
 ## `core/services/daemon_manager.py`
 _Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
@@ -619,23 +633,4 @@ _Decision gate — pre-execution decision conflict detection._
 | function | `_build_context` | `(tool_name, tool_args, user_message)` | Build conflict context from the proposed action, not the whole request. | [src](../../../core/services/decision_gate.py#L324) |
 | function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L391) |
 | function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L396) |
-
-## `core/services/decision_ghosts.py`
-_Decision Ghosts — de veje der blev fravalgt, og dem der holdt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/decision_ghosts.py#L58) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/decision_ghosts.py#L70) |
-| function | `_vaelg` | `(poster, felt)` | Den mest saliente — eller den nyeste hvis ingen har et maalt tal. | [src](../../../core/services/decision_ghosts.py#L77) |
-| function | `record_rejected_path` | `(decision, reason, alternative, regret_potential=…)` | Gem en vej der blev fravalgt eller brudt. | [src](../../../core/services/decision_ghosts.py#L91) |
-| function | `record_confirmed_path` | `(decision, outcome, key_factor=…, success_echo=…)` | Gem en beslutning der holdt. `success_echo` er `adherence_score`. | [src](../../../core/services/decision_ghosts.py#L113) |
-| function | `record_reaffirmed_decision` | `(decision_id, title, verdict, adherence_score=…)` | Kaldes fra `behavioral_decisions.review_decision`. | [src](../../../core/services/decision_ghosts.py#L128) |
-| function | `record_broken_decision` | `(decision_id, title, adherence_score=…, note=…)` | En brudt beslutning er den rigtige kilde til en fortrydelse. | [src](../../../core/services/decision_ghosts.py#L145) |
-| function | `describe_ghost_decision` | `()` | — | [src](../../../core/services/decision_ghosts.py#L163) |
-| function | `describe_success_echo` | `()` | — | [src](../../../core/services/decision_ghosts.py#L171) |
-| function | `format_decision_ghost_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L179) |
-| function | `format_decision_echo_for_prompt` | `()` | — | [src](../../../core/services/decision_ghosts.py#L184) |
-| function | `reset_decision_ghosts` | `()` | — | [src](../../../core/services/decision_ghosts.py#L189) |
-| function | `build_decision_ghosts_surface` | `()` | — | [src](../../../core/services/decision_ghosts.py#L193) |
 

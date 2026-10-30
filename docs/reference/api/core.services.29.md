@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_hensyn.py`
+_Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Hensyn` | `` | Ét handlingsrelevant hensyn med levetid, grænse og effekt-tælling. | [src](../../../core/services/user_hensyn.py#L161) |
+| method | `Hensyn.to_dict` | `(self)` | — | [src](../../../core/services/user_hensyn.py#L185) |
+| method | `Hensyn.from_dict` | `(cls, data)` | — | [src](../../../core/services/user_hensyn.py#L189) |
+| function | `_load` | `()` | Læs de gemte hensyn. Tom liste hvis intet er gemt — aldrig en fejl. | [src](../../../core/services/user_hensyn.py#L199) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/user_hensyn.py#L212) |
+| function | `_normaliser` | `(tekst)` | — | [src](../../../core/services/user_hensyn.py#L224) |
+| function | `_nøgle` | `(regel)` | Sammenligningsnøgle for to formuleringer af samme hensyn. | [src](../../../core/services/user_hensyn.py#L228) |
+| function | `kandidat_kategori` | `(linje)` | Kategori for en kandidatlinje — ``None`` når linjen ikke er en kandidat. | [src](../../../core/services/user_hensyn.py#L235) |
+| function | `kandidater` | `(linjer)` | (kategori, linje) for de linjer der kan bære et hensyn. Rækkefølgen bevares. | [src](../../../core/services/user_hensyn.py#L255) |
+| function | `_formuler` | `(linje, kategori, llm)` | Formulér (regel, grænse) for én kandidat — ``None`` når den forkastes. | [src](../../../core/services/user_hensyn.py#L286) |
+| function | `_nu` | `()` | — | [src](../../../core/services/user_hensyn.py#L337) |
+| function | `_alder_dage` | `(hensyn, nu)` | — | [src](../../../core/services/user_hensyn.py#L341) |
+| function | `vaegt` | `(hensyn, nu=…)` | Hensynets aktuelle vægt 0-1. Varige er altid 1.0. | [src](../../../core/services/user_hensyn.py#L351) |
+| function | `forfrem` | `(hensyn, nu=…)` | Situationel → varig når den er set nok gange eller kilden er eksplicit varig. | [src](../../../core/services/user_hensyn.py#L360) |
+| function | `opdater` | `(hensyn, nu=…)` | Anvend levetidsreglerne: forfrem, falm, og erklær støj. | [src](../../../core/services/user_hensyn.py#L372) |
+| function | `aktive` | `(hensyns, nu=…)` | De hensyn der må bruge plads i prompten, stærkeste først. | [src](../../../core/services/user_hensyn.py#L395) |
+| function | `marker_injiceret` | `(hensyns, ids)` | Tæl at disse hensyn blev injiceret i en tur. Kaldes af læsesiden. | [src](../../../core/services/user_hensyn.py#L407) |
+| function | `marker_ramte` | `(hensyns, hensyn_id)` | Registrér at hensynet faktisk påvirkede et svar. Nulstiller støj-tællingen. | [src](../../../core/services/user_hensyn.py#L416) |
+| function | `tjek_brud` | `(hensyn, svar)` | Deterministisk brud-detektor for de kategorier hvor det er entydigt. | [src](../../../core/services/user_hensyn.py#L426) |
+| function | `registrer_svar` | `(hensyns, svar)` | Kør brud-detektoren på et færdigt svar. Returnerer den opdaterede liste. | [src](../../../core/services/user_hensyn.py#L450) |
+| function | `_linje_hash` | `(linje)` | — | [src](../../../core/services/user_hensyn.py#L464) |
+| function | `_behandlede` | `()` | Kildelinjer der allerede er vurderet — så et modelkald ikke gentages. | [src](../../../core/services/user_hensyn.py#L470) |
+| function | `_gem_behandlede` | `(hashes)` | — | [src](../../../core/services/user_hensyn.py#L487) |
+| function | `udled` | `(linjer, *, kilde, llm=…, eksisterende=…)` | Udled hensyn fra profil-linjer. Eksisterende hensyn genkendes og tælles. | [src](../../../core/services/user_hensyn.py#L498) |
+| function | `_profil_linjer` | `(workspace_dir)` | (sektion, linje) fra de dele af USER.md der kan bære hensyn. | [src](../../../core/services/user_hensyn.py#L561) |
+| function | `tick_user_hensyn` | `(*, workspace_dir=…, llm=…, skip_cadence=…)` | Baggrunds-udledning: læs profilen, udled hensyn, anvend levetiderne. | [src](../../../core/services/user_hensyn.py#L579) |
+| function | `byg_hensyn_sektion` | `(*, max_chars=…, nu=…, taeller_injektion=…)` | Prompt-sektionen — "" når intet hensyn er aktivt. | [src](../../../core/services/user_hensyn.py#L654) |
+
 ## `core/services/user_md_update_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -613,11 +646,4 @@ _Hvad der sker naar et run doer midt-flugt._
 | function | `_loop_lag` | `()` | Hvor sultent var event-loopet lige nu? | [src](../../../core/services/visible_run_abandonment.py#L40) |
 | function | `report_abandoned_run` | `(run, *, abort_kind, run_stage, visible_len)` | Rapportér et run der aldrig naaede sin beslutning. Kaster aldrig. | [src](../../../core/services/visible_run_abandonment.py#L53) |
 | function | `abandon_bridge_records` | `(run)` | K6: giv runnets uafklarede godkendelses-poster deres AERLIGE udfald. | [src](../../../core/services/visible_run_abandonment.py#L92) |
-
-## `core/services/visible_run_cost.py`
-_Bogfoer en koersels omkostning — ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `bogfoer_koerslens_omkostning` | `(run, *, input_tokens, output_tokens, cache_hit_tokens, cache_miss_tokens, cost_usd=…)` | Skriv koerslens raekke i hovedbogen. | [src](../../../core/services/visible_run_cost.py#L37) |
 

@@ -319,6 +319,38 @@ def daemon_public_safe_llm_call(
     )
 
 
+def _gratis_balancer_foerst() -> bool:
+    """Live kill switch for public-safe-daemons. Fejler ALDRIG.
+
+    True  = brug den almindelige cheap-lane-balancer (ny adfærd).
+    False = brug Ollama-ruten som før (kill switch aktiv).
+
+    Tvivl falder mod GRATIS: falder vi mod betalt, er kill switchen
+    meningsløs — så ville en fejl i flag-læsningen koste penge i stedet
+    for at spare dem. Se ``core/services/daemon_lane_switch.py``.
+    """
+    try:
+        from core.services.daemon_lane_switch import public_safe_free_first
+        return bool(public_safe_free_first())
+    except Exception:  # switch-modulet utilgængeligt => fald mod GRATIS; falder vi mod betalt, er switchen meningsløs
+        return True
+
+
+def _estimer_tokens(text: str) -> int:
+    """Grov token-estimat når provideren ikke returnerer et tal.
+
+    Uden dette ville balancer-kald skrive ``input_tokens=0``, og så kunne
+    ``record_cost`` ikke prissætte rækken — regnskabet ville se tomt ud
+    selvom det blev skrevet. Bedre et estimat end et nul.
+    """
+    try:
+        from core.services.cheap_provider_runtime_adapters import _estimate_tokens
+
+        return int(_estimate_tokens(text) or 0)
+    except Exception:  # adapteren utilgængelig => groft tegnestimat; bedre end nul, som ikke kan prissættes
+        return max(1, len(str(text or "")) // 4)
+
+
 def _daemon_llm_call_impl(
     prompt: str,
     *,
@@ -368,15 +400,35 @@ def _daemon_llm_call_impl(
     _note_call(daemon_name, hit=False)
     text = ""
     provider = ""
+    model = ""
+    result: dict = {}
 
     # 1. Try primary execution path
     try:
         if public_safe:
-            from core.services.cheap_provider_runtime import (
-                execute_public_safe_cheap_lane,
-            )
+            # ── KILL SWITCH (30/10-2026) ──────────────────────────────────
+            # public-safe-puljen indeholder KUN ollama ``:cloud`` — betalte
+            # cloud-modeller bag en localhost-gateway. Målt 30/10: 23,5 % af
+            # alle daemon-kald ramte betalt, og experiential_memory alene
+            # stod for 2.063 af dem på 7 dage (~295/dag) til at score minder.
+            #
+            # Er gratis-flaget slået til (default), sendes daemons på den
+            # almindelige cheap-lane-balancer — samme vej som thought_stream
+            # bruger, hvor kun 4 % af kaldene rammer betalt.
+            #
+            # Kill switch: flip ``daemon_public_safe_free_first`` til false i
+            # runtime.json (eller JARVIS_PUBLIC_SAFE_FREE_FIRST=0). Så går
+            # hvert nyt kald tilbage hertil — uden genstart.
+            if _gratis_balancer_foerst():
+                from core.services.cheap_lane_balancer import call_balanced
 
-            result = execute_public_safe_cheap_lane(message=prompt)
+                result = call_balanced(prompt=prompt, daemon_name=daemon_name)
+            else:
+                from core.services.cheap_provider_runtime import (
+                    execute_public_safe_cheap_lane,
+                )
+
+                result = execute_public_safe_cheap_lane(message=prompt)
         else:
             # Cheap-lane balancer: spread daemon traffic across all
             # eligible (provider, model) slots via weighted random.
@@ -404,7 +456,8 @@ def _daemon_llm_call_impl(
         provider = str(
             result.get("provider") or ("public-safe" if public_safe else "cheap")
         )
-    except Exception:
+        model = str(result.get("model") or "").strip()
+    except Exception:  # primaer lane fejlede => text forbliver tom, og heartbeat-fallbacken tager over nedenfor
         pass
 
     # 2. Fallback to heartbeat model (Ollama / configured provider)
@@ -427,7 +480,34 @@ def _daemon_llm_call_impl(
             )
             text = str(result.get("text") or "").strip()
             provider = str(target.get("provider") or "heartbeat")
+            model = str(target.get("model") or "").strip()
         except Exception:
+            pass
+
+    # ── REGNSKAB (30/10-2026) ────────────────────────────────────────────
+    # Målt: nul lane='daemon'-rækker i costs. 13.495 daemon-kald på 7 dage
+    # var usynlige i hovedbogen — Ollama fakturerede dem, men vi kunne
+    # hverken se hvad de kostede eller hvem der kaldte. record_cost beregner
+    # selv prisen fra pris-tabellen når cost_usd mangler, så vi behøver ikke
+    # kende taksten her. Uden rækken er "vi har styr på alle kald" en
+    # påstand, ikke en egenskab.
+    if text:
+        try:
+            from core.costing.ledger import record_cost
+
+            record_cost(
+                lane="daemon",
+                provider=provider or "unknown",
+                model=model,
+                input_tokens=int(result.get("input_tokens") or 0)
+                or _estimer_tokens(prompt),
+                output_tokens=int(result.get("output_tokens") or 0)
+                or _estimer_tokens(text),
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                cache_hit_tokens=int(result.get("cache_hit_tokens") or 0),
+                cache_miss_tokens=int(result.get("cache_miss_tokens") or 0),
+            )
+        except Exception:  # regnskab må aldrig vælte et daemon-kald; en manglende række er billigere end et tabt svar
             pass
 
     # Fail-open synlighed (audit 2026-07-04): når BEGGE LLM-lanes (cheap + heartbeat)

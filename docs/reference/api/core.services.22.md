@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall_observability.py`
+_Scalar-only outcome telemetry for scoped recall._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emit_recall_outcome` | `(**metadata)` | — | [src](../../../core/services/recall_observability.py#L14) |
+
 ## `core/services/recall_ownership_migration.py`
 _Signed, fail-closed ownership migration for legacy private recall data._
 
@@ -706,16 +713,4 @@ _Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
-
-## `core/services/routine_authorization.py`
-_The single authorization matrix for Routine records._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Action` | `` | — | [src](../../../core/services/routine_authorization.py#L11) |
-| class | `Decision` | `` | — | [src](../../../core/services/routine_authorization.py#L23) |
-| class | `RoutineForbidden` | `` | The principal is not allowed to perform a Routine action. | [src](../../../core/services/routine_authorization.py#L28) |
-| function | `_deny` | `(reason)` | — | [src](../../../core/services/routine_authorization.py#L44) |
-| function | `authorize` | `(principal, action, record)` | Evaluate access without decrypting or including record content in reasons. | [src](../../../core/services/routine_authorization.py#L48) |
-| function | `require_authorized` | `(principal, action, record)` | — | [src](../../../core/services/routine_authorization.py#L95) |
 

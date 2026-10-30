@@ -34,9 +34,18 @@ gater KUN om rådet indkaldes — den begrænser ikke hvem der må tænke.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from typing import Any
 
 _MODE_KEY = "central_convene_judge_mode"
+
+# Dommerens EGEN reference: signal-niveauerne ved forrige aflæsning. Gør det
+# muligt at måle ÆGTE bevægelse (niveau − forrige niveau) i stedet for niveau.
+# Se `_read_flowing_values` for hvorfor `signal_baseline` ikke duer her.
+_PREV_LEVELS_KEY = "central_convene_judge_prev_levels"
 
 # Minimum "bevægelses"-vægt (sum af aktive signal-bidrag + valens-udsving) før der er
 # en reel grund. Bevidst lav — dommeren skal fange ægte bevægelse, ikke kræve en storm.
@@ -47,6 +56,20 @@ _MOVEMENT_THRESHOLD = 0.30
 # — som Claudes model, hvor råd = fan-out af dispatch-primitivet med roller valgt til
 # lige det spørgsmål, ikke et opslag i et skema.
 _MAX_ROLES = 4
+
+
+def reset_reference() -> None:
+    """Glem dommerens forrige aflæsning, så næste kald etablerer en ny reference.
+
+    Referencen ligger i runtime-state (den skal overleve en genstart, ellers
+    ville hvert tick efter en genstart se hele verden som «bevægelse»). Derfor
+    skal tests nulstille den eksplicit — ellers arver de forrige tests niveauer.
+    """
+    try:
+        from core.runtime import db_core
+        db_core.set_runtime_state_value(_PREV_LEVELS_KEY, None)
+    except Exception as exc:  # reference-nulstilling er kun til tests; en fejl her må ikke kaste
+        logger.debug("convene_judge: kunne ikke nulstille reference: %s", exc)
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -125,6 +148,11 @@ def _read_flowing_values(surfaces: dict[str, Any] | None) -> dict[str, Any]:
     src = surfaces if isinstance(surfaces, dict) else {}
     movement: dict[str, float] = {}
     latest_wonder = ""
+    # Hvilke signaler blev faktisk LÆST? En læsefejl må ikke forveksles med
+    # «signalet faldt til nul» — det ville se ud som en kæmpe bevægelse og
+    # udløse en indkaldelse netop når kilden er nede. Målt 30/10-2026:
+    # `test_self_safe_when_surface_read_raises` fældede præcis det.
+    ok_signals: set[str] = set()
     for name in signal_names:
         surf = src.get(name)
         if not isinstance(surf, dict):
@@ -132,6 +160,10 @@ def _read_flowing_values(surfaces: dict[str, Any] | None) -> dict[str, Any]:
                 surf = read_surface(name)
             except Exception:
                 surf = {}
+            else:
+                ok_signals.add(name)
+        else:
+            ok_signals.add(name)
         movement[name] = _movement_from_signal(name, surf if isinstance(surf, dict) else {})
         if name == "existential_wonder" and isinstance(surf, dict):
             latest_wonder = str(surf.get("latest_wonder") or "").strip()
@@ -146,6 +178,58 @@ def _read_flowing_values(surfaces: dict[str, Any] | None) -> dict[str, Any]:
             valence = _mood_to_valence(mood)
     except Exception:
         pass
+
+    # ÆGTE bevægelse = |niveau − dommerens EGEN forrige aflæsning|.
+    #
+    # MÅLT 30/10-2026: niveau-summen var konstant 4.0, fordi fire signaler måler
+    # TILSTEDEVÆRELSE og ikke bevægelse — `conflict` er 1.0 så længe
+    # `last_conflict` er en ikke-tom streng (en konflikt fra kl. 05:56 talte
+    # stadig kl. 08:40), `existential_wonder` er 1.0 så længe der ligger en
+    # wonder fra i går, og `creative_drift`/`desire` tæller PERSISTENTE
+    # appetites og dagens drift-buffer. Dommeren sagde derfor ja i 40 af 40
+    # samples med `movement` 4.0 mens intet faktisk flyttede sig.
+    #
+    # Referencen er dommerens egen, ikke `signal_baseline`: den baseline
+    # rykker først når C2-triggeren DISPATCHER, så i en periode uden dispatch
+    # står den fastlåst og et konstant niveau ville give et evigt delta
+    # (målt: `desire` gav 0.333 hver gang af den grund). Dommerens egen
+    # reference flytter sig ved hver aflæsning, så et signal der står stille
+    # giver 0 — og kun en faktisk ændring giver noget.
+    movement_delta: dict[str, float] = {}
+    try:
+        from core.runtime import db_core as _dbc
+        _prev_raw = _dbc.get_runtime_state_value(_PREV_LEVELS_KEY, None)
+    except Exception as exc:  # uden reference falder vi tilbage til delta 0 — konservativt
+        logger.debug("convene_judge: kunne ikke laese reference: %s", exc)
+        _dbc = None  # type: ignore[assignment]
+        _prev_raw = None
+    _prev = _prev_raw if isinstance(_prev_raw, dict) else {}
+    for _name, _level in movement.items():
+        # Et signal der ikke kunne læses er UKENDT, ikke nul. Delta 0 bevarer
+        # den gamle reference, så næste vellykkede læsning måles mod det
+        # niveau der faktisk blev set sidst.
+        if _name not in ok_signals:
+            movement_delta[_name] = 0.0
+            continue
+        try:
+            _p = _prev.get(_name)
+            # Intet reference-niveau (første aflæsning) → 0.0. Konservativt med
+            # vilje: et signal skal ikke kunne udløse en indkaldelse alene ved
+            # at blive set for første gang.
+            movement_delta[_name] = (
+                abs(float(_level) - float(_p)) if _p is not None else 0.0
+            )
+        except (TypeError, ValueError):
+            movement_delta[_name] = 0.0
+    if _dbc is not None:
+        try:
+            _ny = dict(_prev)
+            for _name in ok_signals:
+                if _name in movement:
+                    _ny[_name] = round(float(movement[_name]), 6)
+            _dbc.set_runtime_state_value(_PREV_LEVELS_KEY, _ny)
+        except Exception as exc:  # skrivning er telemetri; naeste kald maaler saa mod en aeldre reference
+            logger.debug("convene_judge: kunne ikke gemme reference: %s", exc)
 
     # Agenda — a short hint of what he actively wants right now (from desire surface).
     agenda_hint = ""
@@ -162,6 +246,7 @@ def _read_flowing_values(surfaces: dict[str, Any] | None) -> dict[str, Any]:
 
     return {
         "movement": movement,
+        "movement_delta": movement_delta,
         "valence": valence,
         "mood": mood,
         "latest_wonder": latest_wonder,
@@ -258,7 +343,13 @@ def judge_convene(
             flowing = {"valence": 0.0, "mood": "", "latest_wonder": "", "agenda_hint": ""}
         else:
             flowing = _read_flowing_values(surfaces)
-            movement = flowing["movement"]
+            # Dommeren måler BEVÆGELSE, ikke NIVEAU. Målt 30/10-2026: niveau-
+            # summen stod konstant på 4.0 (fire signaler der måler
+            # tilstedeværelse), mens den ægte delta mod baseline var 0.333.
+            # `event_trigger_shadow` bruger fortsat `flowing["movement"]`,
+            # fordi C2-triggeren selv laver delta — der må der ikke dobbelt-
+            # differencere, ellers fyrer den aldrig.
+            movement = flowing.get("movement_delta") or {}
             movement_total = min(sum(movement.values()), 4.0)
 
         convene = movement_total >= _MOVEMENT_THRESHOLD

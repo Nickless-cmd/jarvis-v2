@@ -29,6 +29,58 @@ def test_forced_final_with_explicit_conclusion_can_complete():
     assert result.event_name == ""
 
 
+# ── 29/10-2026: negationen må ikke krydse en sætningsgrænse ─────────────────
+#
+# Målt på et rigtigt svar (8.710 tegn, komplet, sluttede med et spørgsmål til
+# Bjørn): dommen matchede «ikke er min.» + «Verificeret» — negation i ÉN
+# sætning, completions-ord som OVERSKRIFT i det næste afsnit — fordi regexen
+# havde `re.DOTALL` og 32 vilkårlige tegn. Svaret blev vist, og turen blev
+# derefter genoptaget oveni (RECOVERING), så Bjørn ikke nåede at svare.
+#
+# Disse tests pinner begge sider: mønstret der ikke må fanges, og de ægte
+# negationer der stadig skal fanges.
+
+def test_overskrift_efter_negation_er_ikke_en_uafsluttethed():
+    """«… ikke er min.\\n\\nVerificeret: …» er to sætninger, ikke «ikke verificeret»."""
+    from core.services.visible_run_terminal_recovery import has_incompletion_evidence
+    assert has_incompletion_evidence(
+        "Aarsagen var at liveness-testen saa en tom plads, fordi den stjaalne "
+        "slot ikke er min.\n\nVerificeret: HEAD = fjern = f45723dcf, trae rent."
+    ) is False
+
+
+def test_komplet_svar_med_overskrift_genstarter_ikke():
+    """Ende-til-ende: et færdigt svar hvis næste afsnit er en «Verificeret»-
+    overskrift må ikke blive stemplet uverificeret og genoptaget."""
+    from core.services.visible_run_terminal_recovery import resolve_agentic_exit
+    from core.services.visible_terminal_policy import TerminalState
+    result = resolve_agentic_exit(
+        exit_reason="completed",
+        final_text=(
+            "Forklaringen er ikke den jeg først antog.\n\n"
+            "Verificeret: lokal = fjern, træ rent, alle hooks passede.\n\n"
+            "Sig til når intet er i gang, så tager jeg den."
+        ),
+        finish_reason="stop",
+        forced_finalize=True,
+        pending_tool_intent=False,
+    )
+    assert result.exit_reason == "completed"
+    assert result.decision.state is TerminalState.COMPLETED
+    assert result.event_name == ""
+
+
+def test_aegte_negation_i_samme_saetning_fanges_stadig():
+    """Grænsen må ikke blive så bred at den ægte form slipper igennem."""
+    from core.services.visible_run_terminal_recovery import has_incompletion_evidence
+    assert has_incompletion_evidence("Opgaven er ikke afsluttet.") is True
+    assert has_incompletion_evidence("Det er ikke færdigt endnu.") is True
+    assert has_incompletion_evidence("Jeg har ikke løst det.") is True
+    assert has_incompletion_evidence(
+        "Det er ikke blevet ordentligt verificeret."
+    ) is True
+
+
 def test_forced_final_answer_without_magic_completion_words_does_not_restart():
     result = resolve_agentic_exit(
         exit_reason="completed",

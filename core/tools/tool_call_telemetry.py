@@ -166,12 +166,25 @@ SHELL_TOOLS = frozenset({"bash", "bash_session_run", "operator_bash"})
 #: kommando. Detektoren klipper selv ved 400.
 COMMAND_GRAENSE = 400
 
+#: Fil-vaerktoejer. Deres completed-event bar INGEN sti (maalt 29/10-2026):
+#: `tool.completed` for `edit_file` var `{tool, status, run_id, tool_use_id}`
+#: og intet mere. Foelgen var at spoergsmaalet «skrev jeg til en fil jeg ikke
+#: havde laest?» ikke kunne besvares bagud — praecis den maaling der skulle
+#: afgoere om en read-before-write-vagt var vaerd at bygge. Et event der ikke
+#: baerer det man vil maale, goer maalingen umulig uden at nogen opdager det.
+FILE_TOOLS = frozenset({"read_file", "edit_file", "write_file"})
+
+#: Stien er kort nok til at gemmes hel. Graensen er mod en enkelt patologisk
+#: sti, ikke mod normal brug.
+PATH_GRAENSE = 500
+
 
 def byg_completed_payload(
     name: str,
     status: str,
     arguments: dict[str, Any],
     result: dict[str, Any] | None = None,
+    pre_read: bool | None = None,
 ) -> dict[str, Any]:
     """`tool.completed` — nu med de to felter der goer parringen mulig.
 
@@ -207,4 +220,20 @@ def byg_completed_payload(
         kommando = _fra_args(args, "command")
         if kommando:
             payload["command"] = kommando[:COMMAND_GRAENSE]
+    # Fil-stien (29/10-2026). `file_tools_exec` returnerer allerede den
+    # RESOLVEDE sti i `result["path"]` — den foretraekkes, fordi den er den
+    # fil der faktisk blev roert. Ved en fejl findes den ikke, saa vi falder
+    # tilbage til argumentet: et fejlet skrivningsforsoeg er netop det
+    # interessant case, og det maa ikke forsvinde ud af maalingen.
+    if str(name) in FILE_TOOLS:
+        sti = ""
+        if isinstance(result, dict):
+            sti = str(result.get("path") or "")
+        if not sti:
+            sti = _fra_args(args, "path")
+        if sti:
+            payload["path"] = sti[:PATH_GRAENSE]
+        # Sat af `execute_tool` FOER handleren koerte — se simple_tools.
+        if pre_read is not None:
+            payload["pre_read"] = bool(pre_read)
     return payload

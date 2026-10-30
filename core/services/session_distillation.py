@@ -452,6 +452,18 @@ def _analyze_session_for_cognitive_systems(
 _BRAIN_CONTEXT_LIMIT = 6
 _BRAIN_CONTEXT_MAX_CHARS_PER_RECORD = 200
 
+#: Kvitterings-typer: de bekræfter at noget blev GJORT, de er ikke en tanke.
+#: MÅLT 30/10-2026: `initiative_queue.mark_acted()` skriver en
+#: `initiative-acted`-post i `private_brain_records`. Den blev nyeste aktive →
+#: `build_private_brain_context()` satte den som `excerpts[0]` → den indre
+#: stemmes top-fokus → stemmen skrev om den afbrudte kørsel → nyt initiativ →
+#: ny lukning → ny post. Løkken er bevist ende-til-ende: excerpt [1] var
+#: `pb-initiative-8cd96bde9cb5`, skrevet 35 min efter lukningen af netop det
+#: initiativ. 253 initiativer med «afbrudt» siden 29/5, 341 af 712 aktive
+#: inner-voice-poster om samme tema, 20 aktive `initiative-acted` med samme
+#: tema (ældste 20/8). Tekst-dedup ser dem ikke: median ord-overlap 0,11.
+_BRAIN_CONTEXT_EXCLUDED_TYPES = frozenset({"initiative-acted"})
+
 
 def _scrub_continuity_text(text: str) -> str:
     """Read-time-rens af LAGRET continuity-tekst (Jarvis-spec 2026-06-23 #2): ældre
@@ -493,7 +505,15 @@ def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[st
     Returns a compact summary + selected record excerpts, bounded by
     count and character limits to avoid prompt bloat.
     """
-    records = list_private_brain_records(limit=limit, status="active")
+    # 30/10-2026: kvitteringer må ikke kunne blive et emne (se
+    # `_BRAIN_CONTEXT_EXCLUDED_TYPES`). Vi henter bredere og filtrerer, så en
+    # bunke `initiative-acted` ikke kan spise hele vinduet og efterlade færre
+    # end `limit` ægte tanker.
+    _raw = list_private_brain_records(limit=max(limit * 4, limit), status="active")
+    records = [
+        r for r in _raw
+        if str(r.get("record_type") or "") not in _BRAIN_CONTEXT_EXCLUDED_TYPES
+    ][:limit]
 
     if not records:
         return {

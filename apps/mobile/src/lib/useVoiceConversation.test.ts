@@ -238,7 +238,10 @@ describe('hænderfri holder samtalen i gang', () => {
     await act(async () => { result.current.enter() })
 
     await waitFor(() => expect(rec.record).toHaveBeenCalledTimes(1))
-    expect(result.current.state).toBe('listening')
+    // `record` kan kaldes i samme mikrotask som `setState('listening')` endnu
+    // ikke er committet — derfor ventes der paa tilstanden selv. Uden dette
+    // laeste testen 'idle' cirka hver tredje koersel (maalt 27/10-2026).
+    await waitFor(() => expect(result.current.state).toBe('listening'))
   })
 
   it('tænder ikke mikrofonen hvis samtalen lukkes før den er oppe', async () => {

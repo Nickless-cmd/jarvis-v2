@@ -604,6 +604,43 @@ def _is_quarantined(text: str) -> bool:
     return "[QUARANTINED" in text or "[QUARANTINE NOTE" in text
 
 
+def _candidate_er_primaer(text: str) -> bool:
+    """True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold.
+
+    ## Hvorfor (28/10-2026, målt slut-til-slut)
+
+    Penaltyen fra 22/5-2026 var skrevet til legacy `[CANDIDATE→...]`-hint-linjer
+    fra en bulk-rewrite af MEMORY.md. Men `_chunk_markdown` joiner alle linjer
+    med mellemrum, så betingelsen `"[CANDIDATE→" in text` ramte ALT der blot
+    indeholdt markøren — inklusive `carried:`-metadata midt i en ellers
+    værdifuld daily-entry.
+
+    Målt på `memory/daily/2026-10-18.md`: 119 af 130 chunks (91 %) bar markøren,
+    og i ALLE stod den som `carried:`-metadata i slutningen (position 405-473 af
+    528-622 tegn). De blev demoteret til 0,3× — under `adjusted_scores <= 0.1`-
+    filteret — og kunne derfor aldrig surface. Probe: en næsten ordret streng
+    fra filen scorer raw cosine 0,763 (rank #0 af 12.696 chunks) men var
+    FRAVÆRENDE fra top-8; semantisk fjerne imported-filer vandt i stedet.
+
+    Skelnen er ikke «indeholder markøren» men «ER markøren indholdet». Målt på
+    samme fil: 0 af 119 daily-chunks er primære, og MEMORY.md har kun 2 chunks
+    med markøren tilbage — bulk-rewriten er forbi, så penaltyen vogter reelt
+    intet længere.
+    """
+    pos = text.find("[CANDIDATE→")
+    if pos < 0:
+        return False
+    # Metadata-formen: markøren står EFTER en `carried:`-linje i samme chunk.
+    if "carried:" in text[:pos]:
+        return False
+    # Ellers kun primær når den står forrest — efter et sti-præfiks som
+    # `_chunk_markdown` sætter foran kroppen ("<sektion>: <krop>").
+    hoved = text[:pos]
+    if hoved and not hoved.rstrip().endswith(":"):
+        return False
+    return True
+
+
 def _source_matches(chunk_source: str, sources: list[str] | None) -> bool:
     if not sources:
         return True
@@ -657,9 +694,14 @@ def search_memory(
             # top_idx so genuinely-curated entries surface above legacy
             # [CANDIDATE→...] entries that the bulk-rewrite preserved as
             # low-confidence hints. 0.3x penalty matches recall_engine.
+            #
+            # 28/10-2026: penaltyen rammer nu KUN chunks hvor markøren er det
+            # PRIMÆRE indhold (`_candidate_er_primaer`). Den brede betingelse
+            # demoterede 89 % af alle daily-chunks fordi de bærer markøren som
+            # `carried:`-metadata — se helperens docstring for målingen.
             adjusted_scores = scores.copy()
             for i in range(len(chunks)):
-                if "[CANDIDATE→" in chunks[i].text:
+                if _candidate_er_primaer(chunks[i].text):
                     adjusted_scores[i] = adjusted_scores[i] * 0.3
             top_idx = np.argsort(adjusted_scores)[::-1][:limit * 3]
             results = []
@@ -674,7 +716,7 @@ def search_memory(
                     "section": chunks[i].section,
                     "score": float(adjusted_scores[i]),
                     "raw_score": float(scores[i]),
-                    "candidate_penalty": "[CANDIDATE→" in chunks[i].text,
+                    "candidate_penalty": _candidate_er_primaer(chunks[i].text),
                     "method": "embedding",
                 })
                 if len(results) >= limit:

@@ -429,6 +429,7 @@ def upsert_runtime_self_authored_prompt_proposal(
     status_reason: str = "",
     run_id: str = "",
     session_id: str = "",
+    candidate_fragment: str = "",
 ) -> dict[str, object]:
     """Insert or merge a self-authored prompt proposal via the shared _upsert_signal.
 
@@ -455,6 +456,7 @@ def upsert_runtime_self_authored_prompt_proposal(
                 ("rationale", rationale),
                 ("run_id", run_id),
                 ("session_id", session_id),
+                ("candidate_fragment", candidate_fragment),
             ],
             rank_cols=[
                 ("source_kind", source_kind, _SOURCE_KIND_RANKS),
@@ -514,6 +516,7 @@ def list_runtime_self_authored_prompt_proposals(
                 status_reason,
                 run_id,
                 session_id,
+                candidate_fragment,
                 support_count,
                 session_count,
                 merge_count,
@@ -552,6 +555,7 @@ def get_runtime_self_authored_prompt_proposal(
                 status_reason,
                 run_id,
                 session_id,
+                candidate_fragment,
                 support_count,
                 session_count,
                 merge_count,
@@ -1170,6 +1174,23 @@ def _ensure_runtime_self_authored_prompt_proposal_table(
         )
         """
     )
+    # APPLY-VEJEN (28/10-2026). Indtil nu fandtes den indsættelige sætning KUN
+    # som hale i `rationale` («Candidate fragment: …»), hvor den var umulig at
+    # skelne fra begrundelsen og umulig at skrive ind i en fil uden at parse
+    # prosa. Kolonnen bærer nu præcis den tekst der kan anvendes — eller tom
+    # streng når forslaget ikke har et brugbart fragment. Additiv: eksisterende
+    # rækker får '' og opfører sig som før.
+    _cols = {
+        str(r[1])
+        for r in conn.execute(
+            "PRAGMA table_info(runtime_self_authored_prompt_proposals)"
+        ).fetchall()
+    }
+    if "candidate_fragment" not in _cols:
+        conn.execute(
+            "ALTER TABLE runtime_self_authored_prompt_proposals "
+            "ADD COLUMN candidate_fragment TEXT NOT NULL DEFAULT ''"
+        )
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_runtime_self_authored_prompt_proposals_status
@@ -1286,6 +1307,13 @@ def _runtime_self_narrative_continuity_signal_from_row(
         "status_reason": row["status_reason"],
         "run_id": row["run_id"],
         "session_id": row["session_id"],
+        # 30/10-2026: `candidate_fragment` blev fjernet her. Tabellen
+        # `runtime_self_narrative_continuity_signals` har 20 kolonner og INGEN
+        # `candidate_fragment` — nøglen var en rest fra
+        # `runtime_self_authored_prompt_proposals`/autonomy_proposal_queue, som
+        # bruger samme navn. Målt: IndexError ved HVER række, 24 forekomster i
+        # api-journalen siden 29/10 21:57, så ingen narrative-continuity-signal
+        # nåede den kognitive tracking. SELECT'en her over har den heller ikke.
         "support_count": int(row["support_count"] or 0),
         "session_count": int(row["session_count"] or 0),
         "merge_count": int(row["merge_count"] or 0),

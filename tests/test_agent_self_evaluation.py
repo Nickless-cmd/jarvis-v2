@@ -156,7 +156,7 @@ def test_summary_calculates_trend_improving():
 def test_detect_stale_goals_returns_old_ones():
     old_iso = (datetime.now(UTC) - timedelta(days=5)).isoformat()
     fresh_iso = datetime.now(UTC).isoformat()
-    with patch("core.services.autonomous_goals.list_goals", return_value=[
+    with patch("core.services.long_horizon_goals.list_active_goals", return_value=[
         {"goal_id": "g1", "title": "stale one", "priority": "high",
          "updated_at": old_iso, "created_at": old_iso},
         {"goal_id": "g2", "title": "fresh one", "priority": "low",

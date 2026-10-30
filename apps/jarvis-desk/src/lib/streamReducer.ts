@@ -18,6 +18,42 @@ export interface StreamState {
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   finalAnswerStarted: boolean // serveren har bekræftet slutsvar før første synlige delta
   /**
+   * SVAR-LÅSEN (Bjørn 28/10-2026).
+   *
+   * `finalAnswerStarted` kan blive falsk igen: et follow-up-run efter
+   * slutsvaret nulstiller den (`nytRun ? false : …`), og så folder turhovedet
+   * UD igen mens svaret allerede stod på skærmen. Bjørn beskrev det præcist:
+   * «hoved ud → agentiske runder → runder slut → hoved ind → pace forsætter»,
+   * og med en ekstra runde blev det i stedet «hoved ind → hoved ud igen →
+   * tom skærm → pace forfra uden for hovedet».
+   *
+   * Er svaret først begyndt at rulle ud, ER det begyndt. Et værktøjskald
+   * bagefter er en ny runde EFTER svaret — ikke en annullering af det.
+   * Derfor denne lås: den sættes sammen med `finalAnswerStarted` og kan
+   * ALDRIG åbnes igen inden for samme tur. Kun `message_start` for et helt
+   * nyt run (ny tur) rydder den.
+   */
+  svarLaast: boolean
+  /**
+   * ARBEJDE EFTER LÅSEN (Bjørn 29/10-2026).
+   *
+   * «hoved folder, streamen forsætter inde i hoved -> tom skærm -> stream slut
+   * -> pace starter uden for tur hoved».
+   *
+   * Låsen ovenfor beskytter SVARET. Den siger «slutsvaret er identificeret»,
+   * ikke «turen er slut» — men klienten brugte den som det sidste:
+   * `finalAnswerStarted = finalAnswerStarted || svarLaast`, og
+   * `arbejdeKoerer = streaming && !finalAnswerStarted`. Derfor foldede hovedet
+   * i samme frame som et nyt run startede, og rundens commentary-tekst lå
+   * usynlig i den foldede liste indtil streamen sluttede.
+   *
+   * Dette flag er signalet der manglede: der ER kommet arbejde efter låsen.
+   * Det sættes af et nyt run-id (en runde i samme tur) og falder ved
+   * `message_stop` og ved en helt ny tur. Hovedet folder ud på det — låsen og
+   * svarets blokke røres ikke.
+   */
+  arbejdeEfterSvar: boolean
+  /**
    * Turens starttid (ms epoch), sat ved `message_start`.
    *
    * Uret i turhovedet skal måle TUREN, ikke hvor længe komponenten har været
@@ -55,7 +91,7 @@ export interface StreamState {
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], provisionalText: '', provisionalBlockIndex: null, provisionalMissingBlockIndex: null, workingStep: null, finalAnswerStarted: false, svarLaast: false, arbejdeEfterSvar: false, turStart: null, turSlut: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0, ttftMs: null, tokPerSek: null } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -261,6 +297,13 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // stadig — det er hele pointen med vagten.
       const _indkommende = event.message.id || ''
       const _sameRun = !_indkommende || state.activeRunId === _indkommende
+      // ── LÅSEN SLÅR FØRST (Bjørn 28/10-2026) ─────────────────────────────
+      // `client_turn_start` er den ENESTE autoritative turgrænse (brugerens
+      // send). Alt der kommer bagefter med et nyt run-id er en RUNDE i samme
+      // tur — ikke en ny besked. Er svaret låst, må en ny runde derfor hverken
+      // rydde blokkene eller åbne låsen; ellers blev skærmen tom og pacen
+      // startede forfra.
+      const _bevar = _sameRun || state.svarLaast
       return {
         ...state,
         status: 'working',
@@ -268,12 +311,12 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         model: event.message.model || state.model,
         provider: event.message.provider || state.provider,
         lane: event.message.lane || state.lane,
-        blocks: _sameRun ? state.blocks : [],
-        provisionalText: _sameRun ? state.provisionalText : '',
-        provisionalBlockIndex: _sameRun ? state.provisionalBlockIndex : null,
-        provisionalMissingBlockIndex: _sameRun ? state.provisionalMissingBlockIndex : null,
+        blocks: _bevar ? state.blocks : [],
+        provisionalText: _bevar ? state.provisionalText : '',
+        provisionalBlockIndex: _bevar ? state.provisionalBlockIndex : null,
+        provisionalMissingBlockIndex: _bevar ? state.provisionalMissingBlockIndex : null,
         workingStep: _sameRun ? state.workingStep : null,
-        rundeEtiketter: _sameRun ? state.rundeEtiketter : undefined,
+        rundeEtiketter: _bevar ? state.rundeEtiketter : undefined,
         tankeResumeer: _sameRun ? state.tankeResumeer : undefined,
         // Et NYT run rydder genoptagelses-varslet. Foer var `message_delta`
         // med stop_reason end_turn/completed den eneste vej ud — og en tvungen
@@ -286,10 +329,17 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Naar fortsaettelsen faktisk koerer, har det sagt sit — og fejler den
         // ogsaa, kommer der et nyt.
         recoveryNotice: _sameRun ? state.recoveryNotice : undefined,
-        finalAnswerStarted: _sameRun ? state.finalAnswerStarted : false,
+        finalAnswerStarted: _bevar ? state.finalAnswerStarted : false,
+        // Låsen ryddes KUN af `client_turn_start`. Et nyt run-id er en runde.
+        svarLaast: _bevar ? state.svarLaast : false,
+        // En ny runde i samme tur ER arbejde — også når svaret er låst. Uden
+        // dette foldede hovedet mens runden skrev ind i den foldede liste.
+        arbejdeEfterSvar: _bevar && !_sameRun ? true : (_bevar ? state.arbejdeEfterSvar : false),
         // Et ægte nyt run starter uret; en replay af SAMME run beholder det
         // oprindelige starttidspunkt, så tiden ikke springer tilbage.
-        turStart: _sameRun ? (state.turStart ?? Date.now()) : Date.now(),
+        // Turens starttid maa ikke rykke naar en runde kommer til: den er
+        // pacing-noeglen OG uret i turhovedet, som maaler TUREN.
+        turStart: _bevar ? (state.turStart ?? Date.now()) : Date.now(),
         // Et ægte nyt run åbner uret igen; en replay beholder den slutning
         // den allerede har, så tiden ikke springer.
         turSlut: _sameRun ? state.turSlut : null,
@@ -385,6 +435,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         ...state, blocks,
         finalAnswerStarted: state.finalAnswerStarted
           || (cb.type === 'text' && cb.phase === 'final_answer'),
+        svarLaast: state.svarLaast
+          || (cb.type === 'text' && cb.phase === 'final_answer'),
         provisionalBlockIndex: cb.type === 'text' && state.provisionalText
           ? event.index : state.provisionalBlockIndex,
       }
@@ -460,17 +512,26 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         if (!delta) return state
         // Ved sen tilkobling kan message_start være faldet ud af relay-bufferen.
         // Deltaens run-id er nok til at starte en ny live-visning.
+        // ── SVAR-LÅSEN (Bjørn 28/10-2026) ────────────────────────────────────
+        // Et follow-up-run efter slutsvaret må IKKE rive svaret op. Før ryddede
+        // `nytRun` både `blocks` og `finalAnswerStarted`, og så foldede hovedet
+        // ud igen mens skærmen blev tom — præcis det Bjørn beskrev som «hoved
+        // ind → hoved ud → tom skærm → pace forfra». Er svaret låst, bevares
+        // både blokkene og låsen; det nye run er en runde EFTER svaret.
         const nytRun = !!state.activeRunId && state.activeRunId !== runId
-        const blocks = nytRun ? [] : state.blocks
-        const provisionalText = (nytRun ? '' : state.provisionalText) + delta
-        const provisionalBlockIndex = nytRun ? null : state.provisionalBlockIndex
+        const bevarSvar = nytRun && state.svarLaast
+        const blocks = nytRun && !bevarSvar ? [] : state.blocks
+        const provisionalText = (nytRun && !bevarSvar ? '' : state.provisionalText) + delta
+        const provisionalBlockIndex = nytRun && !bevarSvar ? null : state.provisionalBlockIndex
         return {
           ...state, status: 'working', activeRunId: runId,
           blocks,
           provisionalText,
           provisionalBlockIndex,
-          provisionalMissingBlockIndex: nytRun ? null : state.provisionalMissingBlockIndex,
-          finalAnswerStarted: nytRun ? false : state.finalAnswerStarted,
+          provisionalMissingBlockIndex: nytRun && !bevarSvar ? null : state.provisionalMissingBlockIndex,
+          finalAnswerStarted: nytRun && !bevarSvar ? false : state.finalAnswerStarted,
+          svarLaast: state.svarLaast,
+          arbejdeEfterSvar: nytRun && bevarSvar ? true : state.arbejdeEfterSvar,
           usage: { ...state.usage,
             output: estimateOutputTokens(blocks, provisionalText, provisionalBlockIndex) },
         }
@@ -508,6 +569,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           ...state,
           blocks,
           finalAnswerStarted: phase === 'final_answer'
+            || blocks.some((block) => block?.type === 'text' && block.phase === 'final_answer'),
+          // Låsen sættes af `final_answer` og kan ikke åbnes af en retræt til
+          // `commentary` — ellers ville et sent phase-event folde hovedet ud.
+          svarLaast: state.svarLaast || phase === 'final_answer'
             || blocks.some((block) => block?.type === 'text' && block.phase === 'final_answer'),
         }
       }
@@ -573,6 +638,20 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // En run-frame kan være den første frame ved follow/reconnect. Er id'et
         // nyt, må intet visuelt arbejde fra den forrige tur følge med over.
         if (state.activeRunId && state.activeRunId !== rp.run_id) {
+          // Er svaret låst, er dette en RUNDE i samme tur — ikke en ny besked.
+          // Før wipede denne frame blokke, lås og turStart, og skærmen blev
+          // tom midt i et svar brugeren allerede læste.
+          if (state.svarLaast) {
+            return {
+              ...state,
+              status: 'working',
+              activeRunId: rp.run_id,
+              workingStep: null,
+              // Runden ER arbejde: hovedet skal folde ud, så dens tekst er
+              // synlig mens den kører — ikke først når streamen slutter.
+              arbejdeEfterSvar: true,
+            }
+          }
           return {
             ...initialStreamState(),
             status: 'working',
@@ -688,6 +767,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Turens ur skal stå stille fra nu af — og blive stående i hovedet.
         // (Bjørn 17/10-2026: «ueret skal osse når strømmen er forbi».)
         turSlut: state.turSlut ?? Date.now(),
+        // Låsen bliver (svaret skal stadig ikke rives op), men der kører ikke
+        // længere noget arbejde — så hovedet må folde sammen igen.
+        arbejdeEfterSvar: false,
         provisionalBlockIndex: null, provisionalMissingBlockIndex: null }
     }
 

@@ -196,7 +196,11 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     # derfor ved med at blive tilbudt indtil det ses; det hober sig ikke op,
     # for `gem_forslag` holder hoejst ét pr. session.
     try:
-        from core.runtime.db_composer_jarvis import kig_forslag, ryd_forslag
+        from core.runtime.db_composer_jarvis import (
+            kig_forslag,
+            kig_forslag_til_klient,
+            ryd_forslag,
+        )
         eget = kig_forslag(session_id=sid)
         if eget:
             skrevet = str(eget.get("skrevet_at") or "")
@@ -213,6 +217,14 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
                 if vis:
                     ryd_forslag(session_id=sid)
                     eget = None
+        # 30/10-2026: er der intet forslag i HANS session, falder vi tilbage
+        # til et USET, friskt forslag fra en autonom koersel. Maalt: 6 af 8
+        # auto-forslag blev aldrig vist, fordi opslaget var bundet til den
+        # session de blev skrevet i. Foraeldelses-tjekket ovenfor gaelder kun
+        # hans EGET forslag — et auto-forslags `skrevet_at` ligger i en anden
+        # samtale, saa `_svar_efter` her ville vaere et meningsloest tal.
+        if not eget:
+            eget = kig_forslag_til_klient(session_id=sid)
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
         eget = None

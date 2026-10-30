@@ -382,6 +382,11 @@ async def translate_to_v2(
     # (final_answer for en ren teksttur).
     _unresolved_text_indexes: set[int] = set()
 
+    #: Fase pr. tekstblok, i åbningsrækkefølge. Bruges ved `done` til at
+    #: afgøre om turen overhovedet HAR en slutblok — og hvis ikke, hvilken
+    #: blok der er turens svar (se `_promote_last_text_block_to_answer`).
+    _text_block_phases: dict[int, str | None] = {}
+
     #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
     #: den ville resultat-eventet føde en linje MERE om samme kald.
     _annonceret: set[str] = set()
@@ -397,6 +402,7 @@ async def translate_to_v2(
         await queue.put(ContentBlockStart(
             index=idx, block_type="text", phase=phase,
         ).to_sse_line())
+        _text_block_phases[idx] = phase
         if phase is None:
             _unresolved_text_indexes.add(idx)
         _state["text_block_open"] = True
@@ -442,6 +448,7 @@ async def translate_to_v2(
                 payload={"run_id": str(_state["run_id"] or "")},
             ).to_sse_line())
         for index in sorted(_unresolved_text_indexes):
+            _text_block_phases[index] = phase
             await queue.put(SystemEvent(
                 kind="text_phase_update",
                 payload={
@@ -451,6 +458,44 @@ async def translate_to_v2(
                 },
             ).to_sse_line())
         _unresolved_text_indexes.clear()
+
+    async def _promote_last_text_block_to_answer() -> None:
+        """En AFLUTTET tur har altid en slutblok.
+
+        Bjørn 29/10-2026: «alt der sker efter slut svaret gør hoved holdes
+        lukkes, og svaret først paces ind i det lukket hoved». Målt i 395
+        persisterede assistent-svar: 11 (2,8 %) havde mønstret
+        `text → tool_use → progress` — og svaret lå inde i folden.
+
+        Mekanikken: teksten blev sendt ud FØR det sidste værktøjskald. Kaldet
+        tømte `_pending_text` og stemplede blokken `commentary`, så der lå
+        intet tilbage ved `done`. `_flush_pending_text(final=True)` returnerer
+        tidligt på en tom kø, og der blev derfor aldrig åbnet en blok med
+        `phase=final_answer`.
+
+        Konsekvensen er ikke kosmetisk: `deriveChatFlow` flytter blokken ind i
+        folden, `finalBlocks` bliver tom — og paceren har intet at rulle ud.
+        Skærmen er tom indtil den persisterede række overtager.
+
+        Turens SIDSTE tekstblok ER svaret: det er den brugeren læser. Er der
+        slet ingen tekst, gør vi intet — en tur der kun kørte værktøjer skal
+        ikke opfinde et svar.
+        """
+        if not _text_block_phases:
+            return
+        index = max(_text_block_phases)
+        if _text_block_phases.get(index) == "final_answer":
+            return
+        _text_block_phases[index] = "final_answer"
+        _state["final_answer_started"] = True
+        await queue.put(SystemEvent(
+            kind="text_phase_update",
+            payload={
+                "run_id": str(_state["run_id"] or ""),
+                "index": index,
+                "phase": "final_answer",
+            },
+        ).to_sse_line())
 
     # ── Thinking/reasoning-block (live deepseek-reasoning) ──
     async def _open_thinking_block() -> None:
@@ -947,6 +992,18 @@ async def translate_to_v2(
                             kind="final_answer_start",
                             payload={"run_id": str(_state["run_id"] or "")},
                         ).to_sse_line())
+                    # En afsluttet tur skal ALTID have en slutblok. Har
+                    # værktøjskaldet efter svaret tømt køen, blev der aldrig
+                    # åbnet en — og så ligger svaret i folden mens skærmen er
+                    # tom. Se `_promote_last_text_block_to_answer`.
+                    #
+                    # Rækkefølgen er ikke ligegyldig: promoveringen sætter
+                    # `final_answer_started`, så kørte den FØR blokken ovenfor,
+                    # ville den kvalt fold-signalet. Den eksisterende test
+                    # `test_runde_linje_efter_svaret_maa_ikke_fjerne_fold_signalet`
+                    # fangede præcis det.
+                    if _completed:
+                        await _promote_last_text_block_to_answer()
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)

@@ -94,9 +94,22 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     content, _esc_note = _guard_py_escapes(content, path)
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
+    # `blocked_only=True` returnerede GROENT foer laes-foer-skriv-linjen i
+    # `gate_execution._decide`. Maalt 29/10-2026: synlige og autonome koersler
+    # gaar gennem DENNE handler (simple_tool_executor, force=True), saa
+    # read-before-write-vagten var teater i den eneste vej der taeller — den
+    # blokerede kun den vej ingen brugte. Filens egen docstring siger det
+    # allerede: force springer GODKENDELSEN over, ikke sikkerheden.
+    #
+    # `approval` ignoreres fortsat med vilje (det er hele pointen med force);
+    # kun `blocked` og `guard_blocked` stopper skrivningen.
     from core.services.gate_execution import check_file as _check_file
-    if _check_file(str(target), kind="write", blocked_only=True).classification == "blocked":
+    _sid = str(args.get("_runtime_session_id") or args.get("_session_id") or "default")
+    _ec = _check_file(str(target), session_id=_sid, kind="write")
+    if _ec.classification == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
     target.parent.mkdir(parents=True, exist_ok=True)
     from core.tools.file_tools_exec import _ws_write_text
     _ws_write_text(target, content)
@@ -118,9 +131,17 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path and old_text are required", "status": "error"}
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
+    # Samme hul som `_force_write_file`: `blocked_only=True` sprang
+    # laes-foer-skriv over. Se begrundelsen der. `edit_file` er det hyppigste
+    # fil-vaerktoej (2.229 kald mod 444 for write_file siden 15/10-2026), saa
+    # det er praecis her hullet var dyrest.
     from core.services.gate_execution import check_file as _check_file
-    if _check_file(str(target), kind="edit", blocked_only=True).classification == "blocked":
+    _sid = str(args.get("_runtime_session_id") or args.get("_session_id") or "default")
+    _ec = _check_file(str(target), session_id=_sid, kind="edit")
+    if _ec.classification == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
     from core.tools.file_tools_exec import _ws_read_text, _ws_write_text, _ws_path_exists
     if not _ws_path_exists(target):
         return {"error": f"File not found: {path}", "status": "error"}

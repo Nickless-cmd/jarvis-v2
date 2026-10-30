@@ -5933,7 +5933,7 @@
       ]
     },
     "behavioral_decisions": {
-      "digest": "07:26:76:8b:a0:d7:49:b1:d2:e9:6b:7f:ac:b8:10:e4:cb:f1:d3:30:61:b0:d5:81:1b:52:c9:ca:12:bd:c9:d0",
+      "digest": "9c:5a:41:73:ea:ea:fc:88:f5:d9:53:81:79:b9:a1:48:19:37:8e:02:57:d8:41:8f:a2:cc:36:f3:3b:dd:a1:64",
       "schema": {
         "columns": [
           {
@@ -5994,6 +5994,22 @@
           },
           {
             "name": "rationale",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "revoked_evidence",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "revoked_reason",
             "type": "TEXT",
             "nullable": true,
             "default": null,
@@ -8478,6 +8494,67 @@
       },
       "created_at_formats": []
     },
+    "central_word_weights": {
+      "digest": "2d:8b:79:b0:11:67:a3:66:3b:5c:88:d7:27:f5:69:90:22:8f:30:2b:2f:ea:01:29:fa:08:20:28:63:d2:8c:43",
+      "schema": {
+        "columns": [
+          {
+            "name": "last_updated",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "n_samples",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "term",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "weight",
+            "type": "REAL",
+            "nullable": false,
+            "default": "0.5",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_central_word_weights_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "term",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "channel_attachments": {
       "digest": "b0:f0:ba:e5:db:af:96:8d:8d:41:6e:35:71:cc:b1:35:5c:85:91:84:57:53:8d:9f:0f:06:b4:f5:6f:0e:a5:49",
       "schema": {
@@ -9560,7 +9637,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -18198,7 +18275,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "emergent_patterns": {
@@ -40005,9 +40082,17 @@
       ]
     },
     "runtime_self_authored_prompt_proposals": {
-      "digest": "7b:69:06:47:ad:d8:cb:28:e1:72:aa:8a:56:02:89:5d:13:1d:cf:52:49:c1:36:8f:f0:9e:2e:79:af:47:aa:05",
+      "digest": "64:98:13:6e:d9:f9:b9:e9:03:8f:4d:66:6e:8a:9d:3e:ae:4c:14:1d:5c:1d:dd:c3:ac:51:55:f7:e9:72:54:70",
       "schema": {
         "columns": [
+          {
+            "name": "candidate_fragment",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
           {
             "name": "canonical_key",
             "type": "TEXT",
@@ -47253,8 +47338,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset",
-        "sqlite_utc_seconds"
+        "iso_utc_offset"
       ]
     },
     "tool_router_load_more": {

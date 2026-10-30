@@ -274,3 +274,85 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
     }
   })
 })
+
+describe('ChatFlowPresentation — hovedet under pacen (30/10-2026)', () => {
+  // Bjørn 29/10-2026: «pacen kører først inde i hoved efter foldet, og så går
+  // der indtil pacen er færdig inde i hoved, til den pacer for nyt uden for
+  // hoved». Jeg læste det som «hovedet skal væk» og satte en gate foran hele
+  // `visTurhoved`. Det var den forkerte læsning.
+  //
+  // Bjørn 30/10-2026: «nu forsvinder turhoved og skill linjen indtil svaret er
+  // færdig». Gaten fjernede ikke et problem — den fjernede turens eneste
+  // vandrette streg midt i turen, så turen så ud som to.
+  //
+  // Den ægte kerne i 29/10-klagen var PLACERINGEN: teksten rullede inde i
+  // arbejdsvisningen under hovedet. Den vej er lukket (`restoredText` henter
+  // de bekræftede tekster fra de PACEDE arbejdsblokke og lægger dem i
+  // svar-lanen; `retainedWork` filtrerer dem ud af arbejdet). Så nu er begge
+  // krav opfyldt på én gang: hovedet står, og teksten ruller uden for det.
+  //
+  // Kontrakten er derfor:
+  //   1. `.rv-tur` STÅR gennem pace-vinduet.
+  //   2. Foldet er LUKKET (`aria-expanded="false"`).
+  //   3. Teksten ruller i `.chat-flow-answer`.
+  //   4. Teksten står IKKE i arbejdsvisningen.
+  it('beholder hovedet, men lukker foldet — teksten ruller uden for det', () => {
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted runId="run-hoved"
+        paceFinalAnswer turStart={Date.now() - 5000} />,
+    )
+    frame()
+    frame()
+
+    // 1. Pacen ruller stadig — teksten er ikke færdig.
+    expect(answerText(view.container).length).toBeLessThan(LANG.length)
+
+    // 2. Hovedet STÅR. Det er turens skillestreg, ikke en statuslinje.
+    const hoved = view.container.querySelector('.rv-tur')
+    expect(hoved).not.toBeNull()
+
+    // 3. Foldet er lukket, så pacen ikke ruller inde i hovedet.
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+
+    // 4. Arbejdsvisningen er ikke monteret — svaret har ingen vej ind i den.
+    expect(view.container.querySelector('.chat-flow-work-details')).toBeNull()
+    // Og teksten står i svar-lanen, som er en SØSKEN til hovedet.
+    expect(answerText(view.container).length).toBeGreaterThan(0)
+  })
+
+  it('står ogsaa naar KUN paceFinalAnswer baerer pacen (intet fold-signal)', () => {
+    // Vejen hvor serveren ikke har sendt `final_answer_start`: `pacingFinal`
+    // bliver sand via `paceFinalAnswer && status === 'done'`, men
+    // `finalAnswerStarted` er FALSK. Hovedet skal stadig stå — det er samme
+    // tur for øjet, uanset hvilket signal der satte pacen i gang.
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false} runId="run-uden-signal"
+        paceFinalAnswer turStart={Date.now() - 5000} />,
+    )
+    frame()
+    frame()
+    expect(answerText(view.container).length).toBeLessThan(LANG.length)
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
+    // Uden fold-signal er `arbejdeKoerer` falsk, så hovedet er ikke åbent.
+    expect(view.container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('hovedet bliver ogsaa staaende efter pacen er færdig', () => {
+    // Det modsatte yderpunkt: hvis hovedet forsvandt da pacen sluttede, ville
+    // turen skifte form midt for øjet på brugeren. Det må ikke ske.
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: 'Kort svar.' }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted runId="run-efter"
+        paceFinalAnswer turStart={Date.now() - 5000} />,
+    )
+    for (let i = 0; i < 60; i += 1) frame()
+    expect(answerText(view.container)).toBe('Kort svar.')
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
+  })
+})
+

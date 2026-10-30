@@ -175,6 +175,17 @@ def register_central_wiring_producers() -> None:
     except Exception:
         pass
 
+    # TTL-SWEEP (30/10-2026): skriv døden for hypoteser hvis frist er udløbet men som stadig
+    # står 'active'. Dødsdommen i evaluate() fyrer KUN ved sample-ankomst — og en udløbet
+    # hypotese får netop ingen samples. Målt: 478 rækker, op til 118 dage gamle, stadig testet
+    # hvert 30. minut og stadig vist i awareness-prompten. Udløbet ≠ falsificeret: rækken
+    # bevares og et nyt grounded sample genopliver den.
+    try:
+        from core.services.central_hypothesis_generator import register_hypothesis_expiry_producer
+        register_hypothesis_expiry_producer()
+    except Exception:  # en manglende expiry-producer maa ikke vaelte hele cadence-bootstrappen
+        pass
+
     # Lag 4 (§11 Fase 3): governed gut-bias-adaptation — SHADOW medmindre central_lag4_live_enabled=True.
     try:
         from core.services.central_adaptation import register_adaptation_producer

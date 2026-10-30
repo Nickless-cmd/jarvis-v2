@@ -18,6 +18,42 @@ _TIME_GATE_MINUTES = 30
 _MAX_LOG = 50
 _MAX_INSIGHTS = 5
 
+#: Tekniske markører — bærer svaret kode, funktionsnavne eller agent-ræsonnement,
+#: er det ikke en smagsindsigt. Målt 29/10-2026 i private_brain_records.
+_TEKNISKE_MARKOERER: tuple[str, ...] = (
+    "`",
+    "()",
+    "jeg kan ikke køre",
+    "i dette miljø",
+    "apply_",
+    "cooldow",
+    "remote-status",
+    "kommando",
+    "funktionen",
+    "script",
+    "tjek at",
+)
+
+#: Mindst ét skal være til stede: en førstepersons-præference om FORM.
+_SMAGS_MARKOERER: tuple[str, ...] = (
+    "smag",
+    "æstetik",
+    "foretrækker",
+    "trækkes mod",
+    "hælder mod",
+    "jeg vælger",
+    "jeg søger",
+    "jeg prioriterer",
+    "klarhed",
+    "præcision",
+    "rolig",
+    "tæthed",
+    "direkte",
+    "håndværk",
+    "enkel",
+    "minimal",
+)
+
 _accumulated_motifs: set[str] = set()
 _seeded: bool = False
 _choice_log: list[dict] = []
@@ -91,6 +127,14 @@ def tick_taste_daemon(*, skip_event_gate: bool = False) -> dict[str, object]:
     insight = _generate_insight()
     if not insight:
         return {"generated": False, "insight": _latest_insight}
+    # 29/10-2026: afvisning FØR lagring. Prompten er smal — den indeholder kun
+    # motiv-tællinger — men SVARET er det ikke, og det var svaret der lækkede.
+    # To rækker (pb-taste-f6063059901e, pb-taste-7fc38ddb746e) bar rå
+    # agent-tekst: "jeg kan ikke køre `gh` i dette miljø" og
+    # "apply_mutation() kan bære mutationerne". Kilden var LLM-svaret, ikke
+    # inputtet — derfor valideres outputtet her og ikke kilden ovenfor.
+    if not _is_aesthetic_insight(insight):
+        return {"skipped": "not_aesthetic"}
     _store_insight(insight)
     return {"generated": True, "insight": insight}
 
@@ -150,6 +194,29 @@ def _generate_insight() -> str:
 
     fallback = "Jeg trækkes mod ro og klarhed i mine valg."
     return daemon_public_safe_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="aesthetic_taste")
+
+
+def _is_aesthetic_insight(text: str) -> bool:
+    """Er svaret en førstepersons-præference om FORM — eller lækket agent-tekst?
+
+    Målt 29/10-2026: daemonens prompt er smal (kun motiv-tællinger), men
+    svaret kommer fra en delt cheap-lane og kan bære hvad som helst. To
+    rækker var ren agent-ræsonnement. Prompten kan ikke strammes til at
+    forhindre det — derfor er dette en vagt på OUTPUTTET.
+
+    Heuristik, ikke en garanti: den fanger den målte fejlform (kode-markører,
+    funktionsnavne, "jeg kan ikke køre … i dette miljø") og kræver samtidig
+    et smags-ord. Et teknisk svar helt uden de kendte markører kan slippe
+    igennem — det er accepteret, fordi den modsatte fejl (at kassere en ægte
+    smagsindsigt) koster mere: daemonen ville så stå tom uden grund.
+    """
+    if not text or not text.strip():
+        return False
+    lav = text.lower()
+    for markoer in _TEKNISKE_MARKOERER:
+        if markoer in lav:
+            return False
+    return any(m in lav for m in _SMAGS_MARKOERER)
 
 
 def _store_insight(insight: str) -> None:

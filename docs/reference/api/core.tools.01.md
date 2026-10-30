@@ -105,9 +105,9 @@ _Explicit tool permissions for runs without a user present._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `allowed_tools_for_origin` | `(origin)` | Bund-sættet plus det kørslens oprindelse har fået delegeret. | [src](../../../core/tools/autonomous_tool_policy.py#L217) |
-| function | `presence_for_run` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/tools/autonomous_tool_policy.py#L223) |
-| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L312) |
+| function | `allowed_tools_for_origin` | `(origin)` | Bund-sættet plus det kørslens oprindelse har fået delegeret. | [src](../../../core/tools/autonomous_tool_policy.py#L226) |
+| function | `presence_for_run` | `(run)` | Er der et menneske i den anden ende af DENNE kørsel? | [src](../../../core/tools/autonomous_tool_policy.py#L232) |
+| function | `is_allowed` | `(name)` | Fail closed for autonomous calls; visible runs use their normal policy. | [src](../../../core/tools/autonomous_tool_policy.py#L321) |
 
 ## `core/tools/bash_session.py`
 _Persistent bash sessions — Jarvis' one-shot bash forced him to restart his_
@@ -334,7 +334,7 @@ _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
 | function | `_exec_decision_list` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L63) |
 | function | `_exec_decision_get` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L85) |
 | function | `_exec_decision_update` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L102) |
-| function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L135) |
+| function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L143) |
 
 ## `core/tools/desk_browser_tools.py`
 _Jarvis' EGEN browser inde i desk — otte værktøjer over broen._
@@ -397,9 +397,10 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L112) |
 | function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L154) |
 | function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L177) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L193) |
-| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L280) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L312) |
+| function | `_trust_giver_adgang` | `(args)` | Har dette kald adgang til at springe «uden for workspace»-kortet over? | [src](../../../core/tools/file_tools_exec.py#L193) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L234) |
+| function | `linjetal` | `(gammel, ny, erstatninger)` | (tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik. | [src](../../../core/tools/file_tools_exec.py#L321) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L353) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._
@@ -410,24 +411,24 @@ _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._
 | function | `_exec_bash` | `(args)` | Facade → ``simple_tools._exec_bash`` (honorér test-patch-søm). | [src](../../../core/tools/force_handlers.py#L69) |
 | function | `_canonicalize_workspace_target` | `(target)` | Sen import: bor i simple_tools, som importerer DENNE fil. En import paa | [src](../../../core/tools/force_handlers.py#L81) |
 | function | `_force_write_file` | `(args)` | Write file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L88) |
-| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L112) |
-| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L142) |
-| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L172) |
-| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L177) |
-| function | `_force_stripe_create_issuing_card` | `(args)` | Opret kortet EFTER at Bjørn har sagt ja. Uden denne ville godkendelsen | [src](../../../core/tools/force_handlers.py#L191) |
-| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L198) |
-| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L203) |
-| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L208) |
-| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L213) |
-| function | `_force_docs_create` | `(args)` | Opret dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L218) |
-| function | `_force_sheets_create` | `(args)` | Opret regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L223) |
-| function | `_force_slides_create` | `(args)` | Opret præsentationen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L228) |
-| function | `_force_operator_write_file` | `(args)` | Skriv filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L233) |
-| function | `_force_operator_edit_file` | `(args)` | Redigér filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L238) |
-| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L243) |
-| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L248) |
-| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L253) |
-| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L258) |
+| function | `_force_edit_file` | `(args)` | Edit file bypassing approval (blocked paths still blocked). | [src](../../../core/tools/force_handlers.py#L125) |
+| function | `_force_bash` | `(args)` | Kør bash uden godkendelses-prompt. Blokerede kommandoer stoppes stadig. | [src](../../../core/tools/force_handlers.py#L163) |
+| function | `_force_operator_bash` | `(args)` | Kør operator_bash direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L193) |
+| function | `_force_operator_open_url` | `(args)` | Åbn URL direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L198) |
+| function | `_force_stripe_create_issuing_card` | `(args)` | Opret kortet EFTER at Bjørn har sagt ja. Uden denne ville godkendelsen | [src](../../../core/tools/force_handlers.py#L212) |
+| function | `_force_gmail_send` | `(args)` | Send mailen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L219) |
+| function | `_force_calendar_create_event` | `(args)` | Opret begivenheden direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L224) |
+| function | `_force_docs_append` | `(args)` | Skriv i dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L229) |
+| function | `_force_sheets_write` | `(args)` | Skriv i regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L234) |
+| function | `_force_docs_create` | `(args)` | Opret dokumentet direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L239) |
+| function | `_force_sheets_create` | `(args)` | Opret regnearket direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L244) |
+| function | `_force_slides_create` | `(args)` | Opret præsentationen direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L249) |
+| function | `_force_operator_write_file` | `(args)` | Skriv filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L254) |
+| function | `_force_operator_edit_file` | `(args)` | Redigér filen paa operatoerens maskine direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L259) |
+| function | `_force_operator_launch_app` | `(args)` | Start program direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L264) |
+| function | `_force_operator_browser_evaluate` | `(args)` | Kør browser-JavaScript direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L269) |
+| function | `_force_operator_kill_process` | `(args)` | Afslut proces direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L274) |
+| function | `_force_operator_record_audio` | `(args)` | Optag lyd direkte efter chat-godkendelse. | [src](../../../core/tools/force_handlers.py#L279) |
 
 ## `core/tools/forgetting_tools.py`
 _Forgetting tools — Lag 11 self-track._

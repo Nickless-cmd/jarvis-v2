@@ -101,27 +101,42 @@ def test_ping_host_reports_unreachable_on_error():
     assert result["reachable"] is False
 
 
-def test_ping_host_treats_401_as_reachable():
+def test_ping_host_kalder_401_for_auth_failed():
+    """401 er et SVAR, men ikke et brugbart et.
+
+    Testen hed oprindeligt `..._treats_401_as_reachable` og krævede `reachable is True`.
+    Det var sandt indtil 28/10-2026, hvor `reachable` blev omdefineret til «kan bruges»
+    — netop fordi 8/8 blev meldt sunde mens fem svarede med fejlkode. En 401 betyder
+    «nøglen blev afvist», og det er den vigtigste oplysning sektionen kan give.
+    """
     import urllib.error
     err = urllib.error.HTTPError("u", 401, "unauthorized", {}, None)
     with patch("urllib.request.urlopen", side_effect=err):
         result = _ping_host("http://example.com/")
-    assert result["reachable"] is True
+    assert result["reachable"] is False
+    assert result["status"] == "auth_failed"
     assert result["http_code"] == 401
 
 
 def test_health_check_aggregates_results():
     # ollamafreeapi was removed from the ping rotation (2026-06-13, dead
     # provider). Assert aggregation against a currently-registered endpoint.
-    from core.services.provider_health_check import _PING_ENDPOINTS
+    #
+    # 29/10-2026: proben bygges nu af `_probe_request` (base_url fra provider_router.json
+    # + providerens egen nøgle), så URL'en kan ikke længere læses ud af `_PING_ENDPOINTS`
+    # alene. Testen patcher derfor resolveren — det er den kontrakt der gælder.
     down_provider = "groq"
-    down_url = _PING_ENDPOINTS[down_provider]
-    fake_responses = {
-        down_url: {"reachable": False, "error": "down"},
-    }
-    def fake_ping(url):
-        return fake_responses.get(url, {"reachable": True, "http_code": 200, "latency_ms": 50})
-    with patch("core.services.provider_health_check._ping_host", side_effect=fake_ping):
+
+    def fake_probe(provider):
+        return {"url": f"https://{provider}.example/models", "headers": {}, "has_credentials": True}
+
+    def fake_ping(url, headers=None):
+        if down_provider in url:
+            return {"reachable": False, "status": "unreachable", "error": "down"}
+        return {"reachable": True, "status": "healthy", "http_code": 200, "latency_ms": 50}
+
+    with patch("core.services.provider_health_check._probe_request", side_effect=fake_probe), \
+         patch("core.services.provider_health_check._ping_host", side_effect=fake_ping):
         snap = health_check_all_providers()
     assert down_provider in snap["unreachable"]
     assert snap["reachable_count"] == snap["total_count"] - 1

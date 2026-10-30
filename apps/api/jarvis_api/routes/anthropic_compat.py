@@ -94,6 +94,64 @@ def _ollama_chat_stream(payload: dict) -> Iterator[dict]:
                 logger.warning("anthropic_compat: bad ollama chunk: %s", exc)
 
 
+def _book_usage(*, backend_model: str, response: dict) -> None:
+    """Bogfør Ollamas token-forbrug i ``costs``-ledgeren.
+
+    MÅLT 30/10-2026: denne sti kaldte Ollama og returnerede uden at røre
+    ``costs``. Alt der kom ind ad ``/anthropic/v1/messages`` var derfor
+    usynligt i hovedbogen — Ollama fakturerede det, men vi kunne hverken se
+    hvad det kostede eller hvem der kaldte. Ollamas eget API viste 59.336 kald
+    over 30 dage mod vores 161 i døgnet: dsh-harnesset løb igennem netop denne
+    dør, og den var den eneste indgang i huset uden regnskab.
+
+    Ollama returnerer ``prompt_eval_count``/``eval_count`` men INGEN cache-split
+    (cache er en cloud-side størrelse). ``compute_cost_usd`` lægger derfor alt
+    input som ``cache_miss`` — den forsigtige retning: vi overestimerer hellere
+    end vi underestimerer.
+    """
+    try:
+        prompt_tokens = int(response.get("prompt_eval_count") or 0)
+        output_tokens = int(response.get("eval_count") or 0)
+        if prompt_tokens <= 0 and output_tokens <= 0:
+            return
+        from core.costing.ledger import record_cost
+
+        record_cost(
+            lane="anthropic_compat",
+            provider="ollama",
+            model=backend_model,
+            input_tokens=prompt_tokens,
+            output_tokens=output_tokens,
+        )
+    except Exception:
+        # En manglende regnskabs-række må ikke vælte svaret til kalderen —
+        # men den må heller ikke forsvinde tavst.
+        logger.warning(
+            "anthropic_compat: kunne ikke bogfoere forbrug (model=%s)",
+            backend_model,
+            exc_info=True,
+        )
+
+
+def _tap_usage(chunks: Iterator[dict], *, backend_model: str) -> Iterator[dict]:
+    """Videresend Ollama-chunks uændret, men bogfør forbruget fra ``done``-chunket.
+
+    Stream-stien er den Claude Desktop faktisk bruger, så uden denne tap ville
+    den vej stadig være usynlig selv om non-stream blev rettet.
+
+    MÅLT 30/10-2026: bogføringen lå først EFTER ``for``-løkken. Det virkede i
+    en isoleret test, men i drift bryder ``drive_emitter_from_ollama_chunks``
+    ud af iterationen når den ser ``done`` — så generatorens hale kørte aldrig,
+    og forbruget blev aldrig skrevet. En generator der ikke bliver udtømt,
+    kører ikke sin hale. Derfor sker bogføringen nu i det øjeblik chunket
+    passerer, før det yieldes videre.
+    """
+    for chunk in chunks:
+        if isinstance(chunk, dict) and chunk.get("done"):
+            _book_usage(backend_model=backend_model, response=chunk)
+        yield chunk
+
+
 @router.get("/anthropic/v1/models")
 async def list_models() -> JSONResponse:
     return JSONResponse(content={
@@ -175,6 +233,7 @@ async def messages(request: Request) -> JSONResponse | StreamingResponse:
                 payload=ollama_payload,
                 message_id=message_id,
                 model=requested_model_label,
+                backend_model=backend_model,
             ),
             media_type="text/event-stream",
         )
@@ -192,6 +251,7 @@ async def messages(request: Request) -> JSONResponse | StreamingResponse:
     msg = response.get("message") or {}
     text = str(msg.get("content") or "")
     tool_calls = msg.get("tool_calls") or []
+    _book_usage(backend_model=backend_model, response=response)
     return JSONResponse(content=build_non_streaming_response(
         message_id=message_id,
         model=requested_model_label,
@@ -200,11 +260,15 @@ async def messages(request: Request) -> JSONResponse | StreamingResponse:
     ))
 
 
-def _stream_response(*, payload: dict, message_id: str, model: str) -> Iterator[str]:
+def _stream_response(
+    *, payload: dict, message_id: str, model: str, backend_model: str
+) -> Iterator[str]:
     """Drive the AnthropicSSEEmitter from Ollama stream chunks."""
     emitter = AnthropicSSEEmitter(message_id=message_id, model=model)
     try:
-        chunks = _ollama_chat_stream(payload)
+        chunks = _tap_usage(
+            _ollama_chat_stream(payload), backend_model=backend_model
+        )
         yield from drive_emitter_from_ollama_chunks(emitter, chunks)
     except Exception as exc:
         logger.exception("anthropic_compat: stream failed")

@@ -23,13 +23,15 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("uvicorn.error")
 
-router = APIRouter(prefix="/api/internal/errors", tags=["internal"])
+from apps.api.jarvis_api.middleware.internal_loopback import require_loopback
+
+router = APIRouter(dependencies=[Depends(require_loopback)], prefix="/api/internal/errors", tags=["internal"])
 
 _LOCALHOST_HOSTS = {"127.0.0.1", "::1", "localhost"}
 

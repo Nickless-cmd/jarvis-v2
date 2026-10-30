@@ -295,6 +295,19 @@ def _approval(sink: ExecutionSink, call: ToolCall) -> None:
         callback(call)
 
 
+def _samlet_tekst(parts: list[str]) -> str:
+    """Saml rundernes tekst til ét svar — med luft mellem runderne.
+
+    ``"".join(parts)`` smeltede to runders tekst sammen til «workspace-rod.Første
+    gennemgang …»: modellen afslutter ikke altid en runde med linjeskift, så
+    næste rundes første ord blev hængt direkte på den forrige. Målt 27/10-2026
+    på en rigtig rutinekørsel. Kun ikke-tomme dele tælles med, så en runde uden
+    tekst ikke efterlader et hul.
+    """
+    rene = [del_ for del_ in (p.strip() for p in parts) if del_]
+    return "\n\n".join(rene)
+
+
 def execute_agentic(
     context: ExecutionContext,
     sink: ExecutionSink,
@@ -337,7 +350,7 @@ def execute_agentic(
             ))
         except Exception:  # Provider details stay private; caller receives a typed terminal result.
             return _emit_terminal(sink, ExecutionResult(
-                status="failed", text="".join(text_parts), provider=provider,
+                status="failed", text=_samlet_tekst(text_parts), provider=provider,
                 model=model, usage=usage, rounds=round_number,
                 error_code="model_error",
             ))
@@ -350,7 +363,7 @@ def execute_agentic(
             sink.model_fragment(turn.text)
         if not turn.tool_calls:
             return _emit_terminal(sink, ExecutionResult(
-                status="succeeded", text="".join(text_parts), provider=provider,
+                status="succeeded", text=_samlet_tekst(text_parts), provider=provider,
                 model=model, usage=usage, rounds=round_number,
             ))
 
@@ -359,7 +372,7 @@ def execute_agentic(
             if call.requires_approval:
                 _approval(sink, call)
                 return _emit_terminal(sink, ExecutionResult(
-                    status="waiting_approval", text="".join(text_parts),
+                    status="waiting_approval", text=_samlet_tekst(text_parts),
                     provider=provider, model=model, usage=usage,
                     rounds=round_number,
                 ))
@@ -382,7 +395,7 @@ def execute_agentic(
         cancellation.check_between_rounds()
 
     return _emit_terminal(sink, ExecutionResult(
-        status="failed", text="".join(text_parts), provider=provider,
+        status="failed", text=_samlet_tekst(text_parts), provider=provider,
         model=model, usage=usage, rounds=context.max_rounds,
         error_code="round_limit",
     ))

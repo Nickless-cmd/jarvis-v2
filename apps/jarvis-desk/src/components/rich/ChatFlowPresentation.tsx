@@ -20,6 +20,12 @@ export interface ChatFlowPresentationProps {
   streaming: boolean
   status: StreamStatus
   finalAnswerStarted: boolean
+  /**
+   * Der er kommet arbejde EFTER svar-låsen (et nyt run i samme tur). Hovedet
+   * skal folde ud igen, så rundens tekst er synlig mens den kører — uden at
+   * det låste svar rives op. Se `StreamState.arbejdeEfterSvar`.
+   */
+  arbejdeEfterSvar?: boolean
   runId?: string | null
   /** Turens starttid (ms epoch) — uret måler turen, ikke komponentens montering. */
   turStart?: number | null
@@ -75,6 +81,7 @@ export function ChatFlowPresentation({
   streaming,
   status,
   finalAnswerStarted,
+  arbejdeEfterSvar = false,
   runId,
   turStart,
   turSlut,
@@ -98,7 +105,12 @@ export function ChatFlowPresentation({
     live: streaming || paceFinalAnswer,
     finalAnswerStarted: pacingFinal,
     paceAllText: streaming,
-    runId,
+    // Nøglen er TUREN, ikke runnet (28/10-2026). Cursoren ligger under
+    // `${nøgle}:chat-text`; gav et follow-up-run en ny nøgle, faldt cursoren
+    // til `''` og svaret blev pacet FORFRA — det Bjørn beskrev som «tom skærm,
+    // og så starter slut besked med at pace uden for hoved». Turen har ét
+    // starttidspunkt (sat ved `client_turn_start`), og det overlever runderne.
+    runId: turStart != null ? `tur-${turStart}` : runId,
   })
   const model = deriveChatFlow({
     blocks: pacedBlocks,
@@ -160,6 +172,31 @@ export function ChatFlowPresentation({
   const targetSvar = blocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const vistSvar = pacedBlocks.flatMap((block) => block.type === 'text' ? [block.text] : []).join('')
   const svarFaerdigPacet = targetSvar.length > 0 && targetSvar === vistSvar
+  // Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen altså
+  // ikk før pacen er slut med en levende forlængning? fade eller sådan noget?»
+  //
+  // Widgetten er en leverance og hører i bunden (se `leveranceIBunden`), men
+  // den skal ikke dukke op MIDT i pacen: den ankommer først når svaret er
+  // rullet færdigt. Imens står en PLACEHOLDER med reserveret højde, så det er
+  // widgetten der fader ind — ikke layoutet der hopper.
+  //
+  // `paceFinalAnswer` er gaten: en persisteret besked (uden pace) viser
+  // widgetten med det samme, og en tur der ikke paces røres ikke.
+  const venterPaaPace = paceFinalAnswer && !svarFaerdigPacet
+  const erLeverance = (block: ContentBlock): boolean => block.type === 'file'
+    && String(block.mime_type || '').toLowerCase().startsWith('text/html')
+    && String(block.kilde || '') === 'generated'
+    && !!String(block.attachment_id || '').trim()
+  // Leverancen holdes ALTID ude af svar-lanen — ikke kun mens pacen ruller.
+  //
+  // Målt 29/10-2026 (Bjørn: «widget bliver vist 2 gange nu? men i bunden af
+  // beskeden?»): filtreringen var gated på `venterPaaPace`, så i det øjeblik
+  // pacen sluttede blev `synligeSvar === answer`, og widgetten stod BÅDE i
+  // `.chat-flow-answer` og i leverance-blokken nedenfor. To instanser, begge
+  // i bunden. Repro: 4 forekomster af filnavnet i hver. Leverance-blokken er
+  // den eneste ejer, så svar-lanen må aldrig bære den.
+  const synligeSvar = answer.filter((block) => !erLeverance(block))
+  const ventendeLeverancer = venterPaaPace ? answer.filter(erLeverance) : []
   useEffect(() => {
     if (paceFinalAnswer && svarFaerdigPacet) onAnswerPaced?.()
   }, [onAnswerPaced, paceFinalAnswer, svarFaerdigPacet])
@@ -232,6 +269,26 @@ export function ChatFlowPresentation({
   // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
   // arbejde at folde, turen kører, eller vi kender dens varighed.
   const harArbejde = model.hasObservableWork
+  // Hovedet bliver stående gennem HELE turen — også mens slutsvaret rulles ud
+  // efter `message_stop`.
+  //
+  // 29/10-2026 fjernede jeg det i pace-vinduet (`pacerSvar`), fordi Bjørn
+  // beskrev at «pacen kører først inde i hoved». Det var den forkerte læsning
+  // af symptomet: teksten lå dengang i ARBEJDSVISNINGEN under hovedet, fordi
+  // de bekræftede tekster blev hentet fra de RÅ blokke. Den vej er lukket
+  // siden — `restoredText` henter dem fra de PACEDE arbejdsblokke og lægger
+  // dem i svar-lanen, og `retainedWork` filtrerer præcis de samme blokke ud af
+  // arbejdet. Så pacen ruller allerede UDEN FOR hovedet.
+  //
+  // Målt 30/10-2026 (Bjørn: «nu forsvinder turhoved og skill linjen indtil
+  // svaret er færdig»): gaten fjernede ikke et problem, den fjernede turens
+  // skillestreg midt i turen. `.rv-tur` var væk fra DOM'en gennem hele
+  // pace-vinduet og dukkede først op da svaret var færdigt. Hovedet er turens
+  // vandrette streg — det er dét der fortæller at turen er én tur — så det må
+  // ikke forsvinde mens turen stadig løber.
+  //
+  // Foldet er lukket under pacen (`arbejdeKoerer` er falsk når `streaming` er
+  // falsk), så hovedet står som en stille streg over et svar der skriver sig.
   const visTurhoved = harArbejde || streaming || sekunder !== null
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
@@ -261,7 +318,11 @@ export function ChatFlowPresentation({
   // foldet glider frem for at blinke — men det sker ved svarets start, ikke
   // når pacen er færdig.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)
+  // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026): er der
+  // kommet arbejde efter svar-låsen, kører turen stadig og hovedet skal være
+  // åbent. Samme formel som code mode (`RaekkeTranskript`: `arbejdeKoerer`).
+  const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
+  const aaben = aabenManuelt ?? arbejdeKoerer
   // Arbejdsdetaljerne under rundelinjen. Mens der arbejdes er de foldet
   // sammen som udgangspunkt — den levende linje er nok — men Bjørn kan folde
   // dem ud UNDER streaming (17/10-2026: «runde linjen under streaming bør
@@ -277,7 +338,7 @@ export function ChatFlowPresentation({
           <TurHoved
             aaben={aaben}
             foldbar={harArbejde}
-            koerer={streaming && !finalAnswerStarted}
+            koerer={arbejdeKoerer}
             sekunder={sekunder}
             tekst={model.hovedTekst}
             meta={streaming && tokens > 0
@@ -355,10 +416,24 @@ export function ChatFlowPresentation({
         </>
       ) : null}
 
-      {answer.length > 0 ? (
+      {synligeSvar.length > 0 ? (
         <div className="chat-flow-answer">
-          <BlocksRenderer blocks={answer} density={density} streaming={streaming}
+          <BlocksRenderer blocks={synligeSvar} density={density} streaming={streaming}
             beskedId={beskedId} config={config} />
+        </div>
+      ) : null}
+
+      {/* Leverancen (widgetten) ankommer EFTER pacen — ikke midt i den.
+          Bjørn 29/10-2026: «det bør kun tilføjes naturligt i enden af pacen».
+          Pladsen reserveres mens den venter, så det er widgetten der fader
+          ind og ikke layoutet der hopper. */}
+      {ventendeLeverancer.length > 0 ? (
+        <div className="chat-flow-leverance-plads" data-leverance-plads aria-hidden="true" />
+      ) : null}
+      {!venterPaaPace && answer.some(erLeverance) ? (
+        <div className="chat-flow-leverance" data-leverance="widget" data-ankomst="ankommet">
+          <BlocksRenderer blocks={answer.filter(erLeverance)} density={density}
+            streaming={streaming} beskedId={beskedId} config={config} />
         </div>
       ) : null}
     </div>

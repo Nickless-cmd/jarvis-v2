@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
+import { MarkdownRenderer } from '../rich/MarkdownRenderer'
 import {
   getRoutineRun, listRoutineEvents, listRoutineRuns,
   type RoutineEvent, type RoutineRun,
@@ -22,7 +23,13 @@ const visiblePayload = (payload: Record<string, unknown> | undefined): string[] 
   })
 }
 
-export function RoutineRuns({ config, routineId }: { config: ApiConfig; routineId: string }) {
+export function RoutineRuns({ config, routineId, instruction }: {
+  config: ApiConfig
+  routineId: string
+  /** Rutinens opgave. Bjørn 27/10-2026: en kørsel skal vise opgave + svar —
+   *  opgaven er det mennesket bad om, svaret er det de fik. Alt andet er log. */
+  instruction?: string
+}) {
   const [runs, setRuns] = useState<RoutineRun[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<RoutineRun | null>(null)
@@ -75,10 +82,18 @@ export function RoutineRuns({ config, routineId }: { config: ApiConfig; routineI
           {selected === run.run_id && (
             <div className="routine-run-detail">
               {!detail && <p className="routine-empty"><Loader2 size={13} className="spin" /> Henter resultat…</p>}
+              {instruction && (
+                <section className="routine-task" aria-label="Rutinens opgave">
+                  <h4>Opgave</h4>
+                  <p className="routine-task-text">{instruction}</p>
+                </section>
+              )}
               {detail?.result && (
                 <section className="routine-result" aria-label="Rutinens resultat">
-                  <h4>Resultat</h4>
-                  <div className="routine-result-text">{detail.result}</div>
+                  <h4>Svar</h4>
+                  <div className="routine-result-text jarvis-body">
+                    <MarkdownRenderer text={detail.result} streaming={false} />
+                  </div>
                 </section>
               )}
               {detail && !detail.result && (
@@ -91,8 +106,8 @@ export function RoutineRuns({ config, routineId }: { config: ApiConfig; routineI
               {detail?.diagnostic_code && (
                 <p className="routine-error" role="alert">Diagnose: {detail.diagnostic_code}</p>
               )}
-              <details className="routine-events" open>
-                <summary>Hændelser ({events?.length ?? 0})</summary>
+              <details className="routine-events">
+                <summary>Teknisk log ({events?.length ?? 0} hændelser)</summary>
                 <ol className="routine-timeline" aria-label="Kørselshændelser">
                   {!events && <li className="routine-empty"><Loader2 size={13} className="spin" /> Henter hændelser…</li>}
                   {events?.map((event) => (

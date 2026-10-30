@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/verify_memory_status.py`
+_Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_qf_loft` | `()` | Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden. | [src](../../../scripts/verify_memory_status.py#L150) |
+| function | `quick_facts_brud` | `(sti)` | QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank. | [src](../../../scripts/verify_memory_status.py#L187) |
+| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L226) |
+| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L249) |
+| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L261) |
+| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L287) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L292) |
+
 ## `scripts/verify_notes.py`
 _Vagt: en note skal have en status, en slags, og sine fire overskrifter._
 

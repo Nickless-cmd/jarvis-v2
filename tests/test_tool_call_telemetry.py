@@ -280,3 +280,54 @@ def test_uden_koersel_og_uden_argumenter_staar_der_UKENDT():
     set_run_identity("", "")
     p = t.byg_payload("operator_bash", {"command": "ls"})
     assert p["run_id"] == t.UKENDT
+
+
+# ── Fil-stien i payloaden (29/10-2026) ────────────────────────────────────
+#
+# `tool.completed` for `edit_file` var `{tool, status, run_id, tool_use_id}`
+# og intet mere. Spoergsmaalet «skrev jeg til en fil jeg ikke havde laest?»
+# kunne derfor ikke besvares bagud — praecis den maaling der skulle afgoere om
+# en read-before-write-vagt var vaerd at bygge. Et event der ikke baerer det
+# man vil maale goer maalingen umulig uden at nogen opdager det.
+
+def test_fil_stien_staar_i_payloaden():
+    p = t.byg_completed_payload(
+        "edit_file", "ok", {"path": "relativ.py"}, {"path": "/abs/modul.py"}
+    )
+    assert p["path"] == "/abs/modul.py"
+
+
+def test_fejlet_skrivning_falder_tilbage_til_argumentet():
+    """Et fejlet skrivningsforsoeg er netop det interessante — det maa ikke
+    forsvinde ud af maalingen fordi resultatet mangler en sti."""
+    p = t.byg_completed_payload(
+        "write_file", "error", {"path": "/abs/x.py"}, {"error": "nej"}
+    )
+    assert p["path"] == "/abs/x.py"
+
+
+def test_pre_read_kommer_med():
+    p = t.byg_completed_payload(
+        "edit_file", "ok", {"path": "/a.py"}, {"path": "/a.py"}, pre_read=False
+    )
+    assert p["pre_read"] is False
+
+
+def test_pre_read_udelades_naar_ukendt():
+    """Ukendt er ikke det samme som False — et manglende svar skal staa som
+    manglende, ikke som «nej»."""
+    p = t.byg_completed_payload("edit_file", "ok", {"path": "/a.py"}, {"path": "/a.py"})
+    assert "pre_read" not in p
+
+
+def test_shell_payload_faar_ingen_sti():
+    """Stien hoerer til fil-vaerktoejerne; bash baerer kommandoen."""
+    p = t.byg_completed_payload("bash", "ok", {"command": "ls"}, {"exit_code": 0})
+    assert "path" not in p
+
+
+def test_read_file_baerer_ogsaa_sti():
+    p = t.byg_completed_payload(
+        "read_file", "ok", {"path": "/a.py"}, {"path": "/a.py", "text": "x"}
+    )
+    assert p["path"] == "/a.py"

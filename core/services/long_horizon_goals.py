@@ -12,6 +12,7 @@ Surface:
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from core.eventbus.bus import event_bus
@@ -21,6 +22,7 @@ from core.runtime.db_goals import (
     create_goal as _db_create_goal,
     delete_goal as _db_delete_goal,
     get_goal as _db_get_goal,
+    last_progress_map as _db_last_progress_map,
     list_goal_updates,
     list_goals as _db_list_goals,
     update_goal_fields,
@@ -128,7 +130,7 @@ def delete_goal(goal_id: str) -> bool:
     if ok:
         try:
             event_bus.publish("goal.deleted", {"goal_id": goal_id})
-        except Exception:
+        except Exception:  # bevidst: en publish-fejl maa ikke rulle en gennemfoert sletning tilbage
             pass
     return ok
 
@@ -150,6 +152,16 @@ def list_active_goals(*, limit: int = 20) -> list[dict[str, Any]]:
     return _db_list_goals(status="active", limit=limit)
 
 
+def last_progress_map(goal_ids: list[str]) -> dict[str, str]:
+    """Sidste REELLE fremskridt pr. mål — ikke sidste rørelse.
+
+    28/10-2026: ``updated_at`` flytter sig også når nogen blot SKRIVER en note
+    («dette mål er forladt»). Måler man den, kan vagten gøres blind ved at
+    skrive til den. Her tæller kun opdateringer med ``progress_delta``.
+    """
+    return _db_last_progress_map(goal_ids)
+
+
 def list_all_goals(*, limit: int = 100) -> list[dict[str, Any]]:
     return _db_list_goals(status="all", limit=limit)
 
@@ -167,11 +179,33 @@ def format_active_goals_for_heartbeat(*, max_goals: int = 5) -> str:
         pct = int(g.get("progress_pct") or 0)
         title = str(g.get("title") or "").strip()
         note = str(g.get("latest_note") or "").strip()
+        # ALDER (28/10-2026). Maalt samme dag: 4 af 5 aktive maal var uroert i
+        # 29-170 dage, og jeg kunne ikke se det. Linjen viste titel + procent,
+        # saa et maal paa 70% der ikke havde roert sig siden 11. maj laeste som
+        # «naesten i maal» i stedet for «forladt». Procenten er et LOEFTE om
+        # fremskridt; alderen er beviset paa om der skete noget.
         chunk = f"{title} ({pct}%)"
+        alder = _alder_dage(g.get("updated_at"))
+        if alder is not None:
+            chunk += f" · {alder}d"
         if note:
             chunk += f" — {note[:120]}"
         parts.append(chunk)
     return " | ".join(parts)
+
+
+def _alder_dage(tid: object) -> int | None:
+    """Dage siden et ISO-tidsstempel. None hvis det mangler eller ikke kan læses.
+
+    Bevidst None og ikke 0: et ukendt tidsstempel maa ikke se ud som «frisk».
+    """
+    raw = str(tid or "").strip()
+    if not raw:
+        return None
+    try:
+        return max(0, (datetime.now(UTC) - datetime.fromisoformat(raw)).days)
+    except Exception:  # bevidst: et ulaeseligt tidsstempel skal give None (ukendt), ikke 0 (friskt)
+        return None
 
 
 def get_stats() -> dict[str, Any]:

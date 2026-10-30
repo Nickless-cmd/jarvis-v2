@@ -137,6 +137,18 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
         pass
     if force or (controller and controller.trust_all):
         arguments["_runtime_trust_all"] = True
+    # Samtalens EGET niveau, adskilt fra `force` (29/10-2026).
+    #
+    # `_runtime_trust_all` betyder «denne kørsel må ikke spørge» og sættes også
+    # for autonome runs, hvor ingen kan svare på et kort. Det er rigtigt for
+    # værktøjer der ellers ville hænge — men det er IKKE det samme som «Bjørn
+    # har sat samtalen til fuld adgang».
+    #
+    # Fil-tools skelner nu de to: kun samtalens eget trust-niveau må springe
+    # godkendelsen over for en sti uden for workspace. En autonom kørsel i en
+    # `ask`-samtale får derfor stadig kortet — og bliver skippet, som den skal.
+    if controller is not None and getattr(controller, "trust_all", False):
+        arguments["_runtime_trust_mode"] = True
     signature = json.dumps({"tool_name": name, "arguments": arguments},
                            ensure_ascii=False, sort_keys=True)
     seen = (controller.seen_simple_tool_call_signatures if controller else set())

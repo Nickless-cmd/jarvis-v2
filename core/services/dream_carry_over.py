@@ -399,6 +399,157 @@ def reject_dream(dream_id: str) -> None:
     _save()
 
 
+# ── Ekstern evidens (29/10-2026) ──────────────────────────────────────────
+# Målt 29/10-2026: `confirm_dream` og `reject_dream` var DEFINERET men havde
+# nul produktionskaldere (grep over core/, tools/, apps/ gav kun de to
+# definitioner). Konsekvensen var ikke kosmetisk: `_maybe_fade_old_dreams`
+# freder `confirmed`-drømme, men intet kunne sætte flaget — så fredningen var
+# død kode, og HVER drøm døde på carry 5 uanset evidens. Samme nat faldt
+# aktive drømme 7→5, og HC-DREAM-111's egen forudsigelse blev fældet af
+# målingen. En drøm havde to udgange, `capped` og `faded` — begge glemsel.
+#
+# Værnet her er den modsatte fejl: en drøm må IKKE kunne bekræftes af sin egen
+# formulering. Derfor kræves en kilde udefra, en ikke-tom pegepind til den
+# faktiske måling, og to UAFHÆNGIGE pegepinde før noget afgøres. Den samme
+# pegepind tælles kun én gang — ellers kunne ét enkelt kald bekræfte sig selv
+# ved at blive gentaget.
+_INTERNE_EVIDENS_KILDER = frozenset(
+    {
+        "dream",
+        "dream_carry_over",
+        "dreaming_session",
+        "dream_continuum",
+        "self",
+        "formulation",
+        "egen_formulering",
+    }
+)
+_EVIDENS_TIL_AFGOERELSE = 2
+
+
+def record_dream_evidence(
+    dream_id: str,
+    *,
+    supports: bool,
+    source: str,
+    evidence: str,
+    evidence_ref: str,
+) -> dict[str, object]:
+    """Registrér ÉN ekstern observation for eller imod en drøm.
+
+    ``source`` er hvem der målte (fx ``meta_learning_hypotheses`` eller
+    ``record_hypothesis_sample``), ``evidence`` er hvad der blev set, og
+    ``evidence_ref`` er pegepinden til den faktiske måling. Kilden må ikke
+    være drømmemaskineriet selv, og pegepinden må ikke være tom: en drøm der
+    bekræfter sig selv med sin egen sætning er ikke evidens, den er en
+    gentagelse.
+
+    Ved ``_EVIDENS_TIL_AFGOERELSE`` uafhængige pegepinde i samme retning
+    afgøres drømmen — ``confirm_dream`` (som freder den for fade) eller
+    ``reject_dream`` (som arkiverer den som ``was_wrong``).
+    """
+    _ensure_loaded()
+    kilde = str(source or "").strip()
+    ref = str(evidence_ref or "").strip()
+    tekst = str(evidence or "").strip()
+    if not kilde:
+        return {"status": "rejected", "reason": "kilden er tom — evidens skal komme udefra"}
+    if kilde.lower() in _INTERNE_EVIDENS_KILDER:
+        return {
+            "status": "rejected",
+            "reason": f"kilden {kilde!r} er drømmemaskineriet selv — en drøm kan ikke bekræfte sig selv",
+        }
+    if not ref:
+        return {"status": "rejected", "reason": "evidence_ref er tom — der skal være en pegepind til målingen"}
+    if not tekst:
+        return {"status": "rejected", "reason": "evidence er tom — der skal stå HVAD der blev målt"}
+
+    with _LOCK:
+        dream = next((d for d in _ACTIVE_DREAMS if d.get("dream_id") == dream_id), None)
+        if dream is None:
+            return {"status": "error", "error": f"ukendt eller arkiveret drøm {dream_id!r}"}
+
+        optegnelser = list(dream.get("evidence") or [])
+        if any(str(e.get("evidence_ref") or "") == ref for e in optegnelser):
+            return {
+                "status": "duplicate",
+                "reason": "denne pegepind er allerede talt med — én måling tæller én gang",
+                "evidence_count": len(optegnelser),
+            }
+
+        optegnelser.append(
+            {
+                "supports": bool(supports),
+                "source": kilde,
+                "evidence": tekst[:400],
+                "evidence_ref": ref,
+                "at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            }
+        )
+        dream["evidence"] = optegnelser
+        dream["updated_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+        refs_for = {str(e.get("evidence_ref")) for e in optegnelser if e.get("supports")}
+        refs_imod = {str(e.get("evidence_ref")) for e in optegnelser if not e.get("supports")}
+        afgjort: str | None = None
+
+        if len(refs_for) >= _EVIDENS_TIL_AFGOERELSE and len(refs_for) > len(refs_imod):
+            afgjort = "confirmed"
+        elif len(refs_imod) >= _EVIDENS_TIL_AFGOERELSE and len(refs_imod) > len(refs_for):
+            afgjort = "was_wrong"
+
+    # Uden for lock: begge funktioner publicerer og skriver selv.
+    if afgjort == "confirmed":
+        confirm_dream(dream_id)
+    elif afgjort == "was_wrong":
+        reject_dream(dream_id)
+    else:
+        _save()
+
+    return {
+        "status": "ok",
+        "dream_id": dream_id,
+        "decision": afgjort,
+        "refs_for": len(refs_for),
+        "refs_imod": len(refs_imod),
+        "evidence_count": len(optegnelser),
+    }
+
+
+def record_evidence_for_hypothesis(
+    hypothesis_id: str,
+    *,
+    supports: bool,
+    source: str,
+    evidence: str,
+    evidence_ref: str,
+) -> list[str]:
+    """Før en afgjort hypotese-måling videre til de drømme der nævner den.
+
+    Broen mellem det eksisterende hypotese-maskineri og drømmene: en drøm
+    hvis ``dream_id`` ER hypotese-id'et, eller hvis indhold nævner det, får
+    målingen som ekstern evidens. Returnerer de drømme der blev rørt.
+    """
+    _ensure_loaded()
+    hyp = str(hypothesis_id or "").strip()
+    if not hyp:
+        return []
+    ramte: list[str] = []
+    for d in list(_ACTIVE_DREAMS):
+        did = str(d.get("dream_id") or "")
+        if did == hyp or hyp in str(d.get("content") or ""):
+            ud = record_dream_evidence(
+                did,
+                supports=supports,
+                source=source,
+                evidence=evidence,
+                evidence_ref=evidence_ref,
+            )
+            if ud.get("status") in {"ok", "duplicate"}:
+                ramte.append(did)
+    return ramte
+
+
 def promote_confirmed_dream_to_identity(dream_id: str) -> dict[str, object] | None:
     """Promote a high-confidence confirmed dream to identity evolution proposal."""
     _ensure_loaded()

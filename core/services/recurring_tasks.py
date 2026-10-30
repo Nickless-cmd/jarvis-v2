@@ -866,7 +866,7 @@ def _fire_due() -> None:
         try:
             from core.services.routine_trigger_adapters import dispatch_recurring
 
-            def _legacy() -> None:
+            def _legacy() -> bool:
                 from core.services.visible_runs import start_autonomous_run
 
                 # SESSION-BINDING (14/10-2026): kør i den samtale opgaven blev
@@ -879,7 +879,14 @@ def _fire_due() -> None:
                 # `auto-recurring`-siloen uden tilstedeværelse og uden de
                 # værktøjer opgaven kræver. `fire_session_id` svarer på hvor
                 # kørslen skal LAND, ikke hvad der står på opgaven.
-                start_autonomous_run(
+                #
+                # RETURVÆRDIEN BÆRES NU MED (29/10-2026). Før blev den kastet
+                # væk, og `_advance` kørte uanset udfaldet — så `fire_count` og
+                # `last_fired_at` talte FORSØG, ikke leveringer. Målt: en
+                # opgave stod med `fire_count: 134` og havde ikke født et run
+                # siden 23/10. En scheduler der melder «fired» om noget der
+                # aldrig blev født er værre end en der tier.
+                return bool(start_autonomous_run(
                     message=focus,
                     session_id=fire_session_id(task_id) or None,
                     origin="recurring",
@@ -888,13 +895,18 @@ def _fire_due() -> None:
                     # `inbox_on_complete`. Uden den vidste closure-gaten ikke
                     # hvilken opgave runnet hoerte til.
                     task_id=task_id,
-                )
+                ))
 
-            dispatch_recurring(
+            _foedt = dispatch_recurring(
                 task_id,
                 occurrence_id=str(task.get("next_fire_at") or task_id),
                 legacy=_legacy,
             )
+            # `dispatch_recurring` svarer `None` naar legacy-vejen kørte (den
+            # returnerer kun et TriggerResult for rutine-vejen). Så `None` er
+            # ikke «afvist» — det er «legacy tog beslutningen», og den ligger
+            # nu i `_legacy`s returværdi. Vi kan ikke se den herfra, så vi
+            # avancerer som før og lader `_legacy` logge sin egen afvisning.
             _advance(task_id, interval_minutes, now,
                      str(task.get('next_fire_at') or ''), ugedage)
             logger.info(

@@ -93,10 +93,18 @@ class TestBehaviourEyes:
         assert "det er ikke" not in v
 
     def test_stigen_ser_adfaerden(self):
+        """29/10-2026: `corroborated` saettes IKKE laengere foraeret paa behaviour-
+        kanalen. Foer stod der `True` ubetinget, og det var praecis dét der gjorde
+        berettigelses-porten til en no-op: portens eget input var hardcodet.
+        Nu kommer korroborationen fra den tunbare kanal — som for phrase/seq."""
         detected = s._detected_patterns({"behaviours": s.behaviour_patterns(31, 139)})
         key = s.pattern_key("behaviour", "tomme løfter")
         assert key in detected
-        assert detected[key]["corroborated"] is True
+        assert detected[key]["corroborated"] is False, (
+            "korroboration blev foraeret — porten er en no-op igen"
+        )
+        # men den ER selv-bundet: et tomt loefte er definitionen paa et brudt eget loefte
+        assert detected[key]["self_bound"] is True
 
     def test_daarlige_tal_vaelter_ingenting(self):
         assert s.behaviour_patterns(None, None) == []
@@ -175,8 +183,11 @@ def test_vetoet_stopper_minten_og_efterlader_et_spor(monkeypatch):
                                   [{"type": "mint", "pattern_key": "phrase:i stedet for",
                                     "label": "i stedet for", "kind": "phrase", "metric": 10}]),
     )
+    # 29/10-2026: `maa_minte` tager nu ogsaa `metric` med, saa dommeren kan se
+    # omfanget («1320 forekomster») i stedet for kun den raa noegle. Mock'en skal
+    # derfor acceptere det argument — ellers fejler kaldet, ikke vetoet.
     monkeypatch.setattr("core.services.smith_noise_veto.maa_minte",
-                        lambda k, e="", c=None: (False, "doemt_stoej"))
+                        lambda k, e="", c=None, metric=0.0: (False, "doemt_stoej"))
 
     A.run_escalation_tick({"felt": "", "score": 0.0, "verdict": False})
 
@@ -341,3 +352,201 @@ def test_fejl_oejet_ser_kun_AKTIVE_lektioner(monkeypatch, tmp_path):
     assert "fixet fejl" not in etiketter, (
         "en pensioneret lektion maa ikke eskalere — det var hele fejlen"
     )
+
+
+# ---------------------------------------------------------------------------
+# Berettigelses-porten var en no-op for behaviour-kanalen (29/10-2026)
+#
+# `_detected_patterns` satte `"self_bound": True, "corroborated": True`
+# UBETINGET paa alle behaviour-moenstre, med en kommentar om at moensteret
+# «gaar gennem den eksisterende berettigelses-port frem for uden om den». Men
+# at hardcode portens EGNE INPUT til True ER at gaa uden om den:
+# `_is_self_bound` blev aldrig evalueret for den kanal.
+#
+# Maalt konsekvens: lektion #38 (source=regret, n=2) — «Bruger afviste
+# tool-call til bash (forventede: approved; fik: rejected)» — blev et Trin
+# 3-moenster og armerede standing order #22 med ordlyden «du forpligtede dig
+# til at stoppe …». Det er BJOERNS afvisning af et approval-kort, ikke et
+# brudt loefte fra Jarvis. To forekomster var hele grundlaget.
+# ---------------------------------------------------------------------------
+
+class TestBerettigelsesPortenErIkkeEnNoOp:
+    def test_behaviour_uden_selv_lovet_cue_bliver_paa_trin_1(self):
+        """Et maalt behaviour-moenster der IKKE er selv-bundet maa ikke klatre —
+        uanset hvor mange gange det er set. Det er praecis den fejl der gav
+        standing order #22 paa Bjoerns eget approval-afslag."""
+        from core.services.central_agent_smith_escalation import step_escalation
+
+        detected = s._detected_patterns({"behaviours": [{
+            "kind": "behaviour",
+            "label": "gentaget fejl: bruger afviste tool-call til bash",
+            "metric": 2.0,
+            "self_bound": False,
+        }]})
+        key = s.pattern_key("behaviour", "gentaget fejl: bruger afviste tool-call til bash")
+        assert detected[key]["self_bound"] is False
+        assert detected[key]["corroborated"] is False
+
+        # Selv efter mange cykler med hoej metrik bliver den paa Trin 1 — eller
+        # helt afvist. Begge er korrekte: `step_escalation` smider et moenster UD
+        # naar det hverken er risikabelt eller selv-lovet (linje ~330), saa det
+        # naar slet ikke ind i `patterns`. Det er staerkere end Trin 1.
+        state: dict = {}
+        cfg = {"risky_terms": [], "benign_terms": [], "self_commitments": [],
+               "spike_factor": 1.5}
+        for _ in range(10):
+            state, actions = step_escalation(state, detected, "2026-10-29T16:00:00+00:00", cfg)
+        runger = [v.get("rung") for v in (state.get("patterns") or {}).values()]
+        assert runger in ([], [1]), f"moenster uden selv-lovet cue klatrede: {runger}"
+        assert not any(a.get("type") in ("mint", "arm_confront") for a in actions), (
+            "et ikke-selv-bundet moenster fik lov at binde eller konfrontere"
+        )
+
+    def test_regret_lesson_kan_ikke_baere_et_moenster_alene(self, monkeypatch):
+        """`source=regret` er MIN reaktion paa noget — ikke en maalt fejl. Den maa
+        ikke saette `self_bound`, for saa baerer Bjoerns afvisning af et
+        approval-kort hele eskaleringen."""
+        import sqlite3
+
+        from core.runtime import db as db_mod
+
+        import tempfile
+        from pathlib import Path
+
+        sti = Path(tempfile.mkdtemp()) / "lessons.db"
+        # `repeated_count` skal vaere INTEGER, ikke TEXT: med TEXT sorterer
+        # `ORDER BY repeated_count DESC` leksikalsk, saa «2» rangerer over
+        # «1322» og den aegte fejl falder ud af LIMIT. Det var testens skema
+        # der var forkert — ikke koden. (Maalt 29/10-2026.)
+        kolonner = ("signature", "signature_key", "lesson", "source", "status",
+                    "evidence_count", "repeated_count", "user_words", "jarvis_words",
+                    "first_at", "last_at", "last_repeated_at")
+        conn = sqlite3.connect(sti)
+        conn.row_factory = sqlite3.Row
+        conn.execute(
+            "CREATE TABLE lessons (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "signature TEXT, signature_key TEXT, lesson TEXT, source TEXT, "
+            "status TEXT, evidence_count INTEGER, repeated_count INTEGER, "
+            "user_words TEXT, jarvis_words TEXT, first_at TEXT, last_at TEXT, "
+            "last_repeated_at TEXT)"
+        )
+        sql = (f"INSERT INTO lessons ({', '.join(kolonner)}) "
+               f"VALUES ({', '.join('?' * len(kolonner))})")
+        conn.execute(sql, ("sig-regret", "sig-regret",
+                           "Bruger afviste tool-call til bash", "regret", "active",
+                           2, 2, "", "", "2026-10-28", "2026-10-29", "2026-10-29"))
+        conn.execute(sql, ("sig-tool", "sig-tool",
+                           "En &&-kaede broed tavst", "tool_error", "active",
+                           1322, 1322, "", "", "2026-10-01", "2026-10-29", "2026-10-29"))
+        conn.commit()
+        conn.close()
+
+        def _connect(*a, **k):
+            c = sqlite3.connect(sti)
+            c.row_factory = sqlite3.Row
+            return c
+
+        monkeypatch.setattr(db_mod, "connect", _connect)
+
+        fundet = {x["label"]: x for x in s._measured_error_patterns(limit=10)}
+        regret = next(v for k, v in fundet.items() if "afviste tool-call" in k)
+        tool = next(v for k, v in fundet.items() if "&&-kaede" in k)
+        assert regret["self_bound"] is False, (
+            "en regret-lesson blev selv-bundet — saa baerer Bjoerns afslag eskaleringen"
+        )
+        assert tool["self_bound"] is True, (
+            "et maalt vaerktoejs-fejl-moenster skal stadig kunne baere sig selv"
+        )
+        # Og ingen af dem foraerer korroboration: den afgoeres af den tunbare kanal.
+        assert "corroborated" not in regret
+        assert "corroborated" not in tool
+
+    def test_korroboration_kommer_fra_den_tunbare_kanal_ikke_fra_maalingen(self):
+        """`corroborated` maa kun vaere sandt naar et ANDET vaern reelt har flagget
+        labelen — praecis som phrase- og seq-kanalerne."""
+        label = "gentaget fejl: en &&-kaede broed tavst"
+        uden = s._detected_patterns({"behaviours": [
+            {"kind": "behaviour", "label": label, "metric": 1322.0, "self_bound": True}]})
+        key = s.pattern_key("behaviour", label)
+        assert uden[key]["corroborated"] is False
+
+        med = s._detected_patterns(
+            {"behaviours": [{"kind": "behaviour", "label": label,
+                             "metric": 1322.0, "self_bound": True}]},
+            {label.lower()},
+        )
+        assert med[key]["corroborated"] is True
+
+
+# ---------------------------------------------------------------------------
+# Trin 3 skrev standing orders der per konstruktion ALDRIG kunne matche
+# (rettet 29/10-2026)
+#
+# `_execute_arm_confront` skrev en ordre med `match_key` = mønsterets label,
+# mens modtageren (`reasoning_detectors.standing_orders_on_reasoning`) gjorde
+# `if mk in classes` mod fem FASTE klassenavne (cross_user_share, decision_gate,
+# fact_gate, verification, veto). En label som «gentaget fejl: Bruger afviste
+# tool-call til bash» kan per konstruktion aldrig være ét af dem.
+#
+# Målt i drift: 2 aktive ordrer, nul events der refererer standing orders.
+# Det virksomme maskineri fandtes allerede — `smith_confrontation.
+# smith_confront_on_action` læser STIGEN SELV og holder kaldet. Det har
+# aldrig brug for en standing order.
+# ---------------------------------------------------------------------------
+
+class TestTrin3SkriverIkkeDoedeOrdrer:
+    def test_arm_confront_registrerer_ingen_standing_order(self, monkeypatch):
+        """Den gamle vej skrev en ordre der aldrig kunne ramme. Nu skrives ingen."""
+        import core.services.central_agent_smith as A
+
+        kaldt: list = []
+        monkeypatch.setattr(A, "_agent_smith_enforced", lambda: True)
+        monkeypatch.setattr(
+            "core.services.standing_orders_registry.add_standing_order",
+            lambda **kw: kaldt.append(kw) or 99,
+        )
+        A._execute_arm_confront("seq:delete workspace memory line",
+                                "delete workspace memory line")
+        assert kaldt == [], (
+            "der blev skrevet en standing order — den kan ikke matche de fem "
+            "faste klassenavne, saa den er teater"
+        )
+
+    def test_arm_confront_efterlader_et_spor_saa_effekten_kan_maales(self, monkeypatch):
+        """Uden et spor kan forholdet arm→faktisk hold ikke måles bagefter — og
+        saa er Trin 3 igen teater: armeret, men uden bevis for virkning."""
+        import core.services.central_agent_smith as A
+        from core.services import shared_cache
+
+        gemt: dict = {}
+        monkeypatch.setattr(A, "_agent_smith_enforced", lambda: True)
+        monkeypatch.setattr(shared_cache, "set",
+                            lambda k, v, ttl_seconds=None: gemt.update({k: v}))
+        A._execute_arm_confront("seq:delete workspace memory line",
+                                "delete workspace memory line")
+        assert "smith_confront:armed:seq:delete workspace memory line" in gemt
+
+    def test_behaviour_moenster_armeres_ikke(self, monkeypatch):
+        """`behaviour:`-mønstre har intet tool-kald at holde — hollow_promise_guard
+        dækker dem. Det er dækning, ikke en mangel."""
+        import core.services.central_agent_smith as A
+        from core.services import shared_cache
+
+        gemt: dict = {}
+        monkeypatch.setattr(A, "_agent_smith_enforced", lambda: True)
+        monkeypatch.setattr(shared_cache, "set",
+                            lambda k, v, ttl_seconds=None: gemt.update({k: v}))
+        A._execute_arm_confront("behaviour:tomme løfter", "tomme løfter")
+        assert gemt == {}
+
+    def test_shadow_armerer_intet(self, monkeypatch):
+        import core.services.central_agent_smith as A
+        from core.services import shared_cache
+
+        gemt: dict = {}
+        monkeypatch.setattr(A, "_agent_smith_enforced", lambda: False)
+        monkeypatch.setattr(shared_cache, "set",
+                            lambda k, v, ttl_seconds=None: gemt.update({k: v}))
+        A._execute_arm_confront("seq:delete workspace memory line",
+                                "delete workspace memory line")
+        assert gemt == {}

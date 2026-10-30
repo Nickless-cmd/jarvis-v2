@@ -210,7 +210,23 @@ def predictive_self_model_section() -> str:
     if isinstance(adh, dict) and adh.get("total"):
         rate = adh.get("adherence_rate")
         flag = adh.get("flag")
-        bit = f"- Decision adherence: {rate} ({adh.get('total')} commitments)"
+        # GRUNDLAGET SKAL STÅ VED TALLET (målt 28/10-2026). `rate` er snittet
+        # over de beslutninger der ER reviewet — ikke over alle aktive. Før
+        # stod der «59.4% (18 commitments)» hvor 18 var totalen men tallet kun
+        # dækkede 4: 14 beslutninger var usynlige i målingen uden at nogen
+        # kunne se det. Samme fejlklasse som et health-signal der tæller
+        # «svarede» som «virker». Nu bærer linjen sit eget grundlag, så et
+        # smalt tal ikke kan læses som en dom over det hele.
+        _reviewed = int(adh.get("reviewed") or 0)
+        _unreviewed = int(adh.get("unreviewed") or 0)
+        _total = int(adh.get("total") or 0)
+        if _unreviewed:
+            bit = (
+                f"- Decision adherence: {rate} — målt på {_reviewed} af {_total} "
+                f"({_unreviewed} aldrig reviewet)"
+            )
+        else:
+            bit = f"- Decision adherence: {rate} ({_total} commitments)"
         if flag:
             bit += f" ⚠ {flag}"
         lines.append(bit)

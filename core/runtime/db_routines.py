@@ -508,6 +508,131 @@ def update_routine_definition(
     return _routine_values(updated, decrypt_for=owner)
 
 
+def transfer_ownership(
+    routine_id: str, *, to_owner_user_id: str,
+) -> dict[str, Any]:
+    """Move a Routine and its entire history to another owner.
+
+    Routine content is sealed per owner (``routine_crypto.seal`` binds every
+    ``_enc`` column to the owner's keyring entry), so changing the
+    ``owner_user_id`` column alone leaves rows the new owner cannot open — the
+    next read raises ``DecryptionError``. Every sealed value must therefore be
+    opened with the OLD key and re-sealed with the NEW one, in the same
+    transaction.
+
+    The history is not optional: ``get_run(decrypt_for=<the run's own owner>)``
+    means the new owner's view of their own Routine includes its past runs. A
+    transfer that only re-seals ``routines`` and ``routine_versions`` leaves
+    those runs unreadable, and ``create_run`` copies the version snapshot
+    verbatim, so a stale snapshot breaks the next scheduled fire.
+
+    Measured 29/10-2026 on a real Routine: 7 tables, 244 sealed values.
+    """
+    new_owner = str(to_owner_user_id or "").strip()
+    if not new_owner:
+        raise ValueError("to_owner_user_id is required")
+
+    with connect() as conn:
+        _ensure_tables(conn)
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            if row is None:
+                raise KeyError(routine_id)
+            old_owner = str(row["owner_user_id"])
+            if old_owner == new_owner:
+                conn.rollback()
+                return _routine_values(row, decrypt_for=new_owner)
+
+            def reseal(blob: object) -> object:
+                if blob is None:
+                    return None
+                return seal(new_owner, open_sealed(old_owner, bytes(blob)))
+
+            enc_columns = (
+                "name_enc", "instruction_enc", "workspace_enc", "trigger_config_enc",
+                "permission_policy_enc", "delivery_policy_enc", "inbox_policy_enc",
+                "retention_policy_enc", "failure_policy_enc",
+            )
+            conn.execute(
+                "UPDATE routines SET " + ",".join(f"{c}=?" for c in enc_columns)
+                + ",owner_user_id=?,updated_at=? WHERE routine_id=?",
+                (*[reseal(row[c]) for c in enc_columns], new_owner, _now(), routine_id),
+            )
+
+            # Version snapshots carry no owner column but are sealed per owner,
+            # and create_run copies the current one into every new run.
+            for version_row in conn.execute(
+                "SELECT version, definition_snapshot_enc FROM routine_versions WHERE routine_id=?",
+                (routine_id,),
+            ).fetchall():
+                conn.execute(
+                    "UPDATE routine_versions SET definition_snapshot_enc=? "
+                    "WHERE routine_id=? AND version=?",
+                    (reseal(version_row["definition_snapshot_enc"]), routine_id, version_row["version"]),
+                )
+
+            run_columns = (
+                "definition_snapshot_enc", "execution_context_enc", "usage_enc",
+                "result_enc", "diagnostic_projection_enc",
+            )
+            run_ids: list[str] = []
+            for run_row in conn.execute(
+                "SELECT * FROM routine_runs WHERE routine_id=?", (routine_id,),
+            ).fetchall():
+                run_ids.append(str(run_row["run_id"]))
+                conn.execute(
+                    "UPDATE routine_runs SET " + ",".join(f"{c}=?" for c in run_columns)
+                    + ",owner_user_id=?,updated_at=? WHERE run_id=?",
+                    (*[reseal(run_row[c]) for c in run_columns], new_owner, _now(), run_row["run_id"]),
+                )
+
+            if run_ids:
+                marks = ",".join("?" for _ in run_ids)
+                for event_row in conn.execute(
+                    f"SELECT event_id, payload_enc FROM routine_run_events WHERE run_id IN ({marks})",
+                    run_ids,
+                ).fetchall():
+                    conn.execute(
+                        "UPDATE routine_run_events SET payload_enc=? WHERE event_id=?",
+                        (reseal(event_row["payload_enc"]), event_row["event_id"]),
+                    )
+                for effect_row in conn.execute(
+                    f"SELECT effect_id, tool_name_enc FROM routine_tool_effects WHERE run_id IN ({marks})",
+                    run_ids,
+                ).fetchall():
+                    conn.execute(
+                        "UPDATE routine_tool_effects SET tool_name_enc=? WHERE effect_id=?",
+                        (reseal(effect_row["tool_name_enc"]), effect_row["effect_id"]),
+                    )
+                for delivery_row in conn.execute(
+                    f"SELECT delivery_id, payload_enc, receipt_enc FROM routine_deliveries "
+                    f"WHERE run_id IN ({marks})",
+                    run_ids,
+                ).fetchall():
+                    conn.execute(
+                        "UPDATE routine_deliveries SET payload_enc=?,receipt_enc=?,owner_user_id=? "
+                        "WHERE delivery_id=?",
+                        (reseal(delivery_row["payload_enc"]), reseal(delivery_row["receipt_enc"]),
+                         new_owner, delivery_row["delivery_id"]),
+                    )
+
+            conn.execute(
+                "UPDATE routine_inbox_preferences SET policy_enc=?,owner_user_id=?,updated_at=? "
+                "WHERE routine_id=?",
+                (seal(new_owner, _json_bytes(_open_json(old_owner, row["inbox_policy_enc"]))),
+                 new_owner, _now(), routine_id),
+            )
+
+            moved = conn.execute("SELECT * FROM routines WHERE routine_id=?", (routine_id,)).fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return _routine_values(moved, decrypt_for=new_owner)
+
+
 def stop_routine(routine_id: str, *, expected_version: int | None = None) -> dict[str, Any]:
     """Stop a definition and revoke/cancel all unfinished work atomically."""
     with connect() as conn:

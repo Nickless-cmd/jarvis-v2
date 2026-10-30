@@ -22,10 +22,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from core.services import central_hypothesis_governance as gov
+
+logger = logging.getLogger(__name__)
 
 # Trigger-parametre.
 _EDGE_WINDOW = 2000          # seneste kanter der scannes
@@ -193,8 +196,21 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
     h = _load(hyp_id)
     if not h:
         return {"status": "error", "error": f"unknown hyp_id {hyp_id}"}
-    if h.get("status") != "active":
-        return {"status": "noop", "reason": f"hypotese er {h.get('status')!r}"}
+    status_now = str(h.get("status") or "")
+    if status_now not in ("active", "expired"):
+        return {"status": "noop", "reason": f"hypotese er {status_now!r}"}
+    if status_now == "expired":
+        # 30/10-2026: udloeb er en TILSTAND, ikke en endelig dom. Et nyt grounded sample er
+        # praecis den evidens der manglede, saa hypotesen vaagner og gaar gennem den fulde
+        # doedsmekanisme (evaluate) som enhver anden — den faar ikke lov at overleve uden.
+        try:
+            from core.runtime.db import connect
+            with connect() as c:
+                c.execute("UPDATE central_hypotheses SET status='active', resolved_at=NULL "
+                          "WHERE hyp_id=? AND status='expired'", (hyp_id,))
+                c.commit()
+        except Exception as exc:  # en fejlet genoplivning maa ikke se ud som et gemt sample
+            return {"status": "error", "error": f"kunne ikke genoplive udloebet hypotese: {exc}"}
     try:
         from core.runtime.db import connect
         with connect() as c:
@@ -240,6 +256,32 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
             c.commit()
     except Exception:
         pass
+
+    # 29/10-2026: den LEVENDE kaldevej til drømmene. `meta_learning_hypotheses`
+    # er tom (0 rækker målt i dag), så broen derfra fyrer aldrig — dette er det
+    # maskineri der faktisk afgør hypoteser (134.765 resolved). En afgjort
+    # hypotese er netop den eksterne evidens `confirm_dream` aldrig fik, fordi
+    # intet kaldte den. `record_dream_evidence` kræver stadig to uafhængige
+    # pegepinde, så én afgørelse bekræfter intet alene.
+    if new_status in {"resolved", "dead"} and outcome:
+        try:
+            from core.services.dream_carry_over import record_evidence_for_hypothesis
+
+            record_evidence_for_hypothesis(
+                hyp_id,
+                supports=outcome == "supported",
+                source="central_hypothesis_generator",
+                evidence=(
+                    f"hypotese {hyp_id} afgjort som {outcome} "
+                    f"(status {new_status}, {grounded_n} grounded samples)"
+                ),
+                evidence_ref=f"central-hypothesis:{hyp_id}:{resolved_at}",
+            )
+        except Exception as exc:
+            # En drøm der ikke kan opdateres må ikke vælte en gennemført
+            # hypotese-afgørelse — men fejlen skal kunne forklares bagefter.
+            logger.warning("central_hypothesis_generator: drømme-bro fejlede: %s", exc)
+
     return {"status": "ok", "confidence": verdict.confidence, "hyp_status": new_status,
             "outcome": outcome, "acts": verdict.acts, "reason": verdict.reason}
 
@@ -502,17 +544,123 @@ def register_hypothesis_generator_producer() -> None:
 
 
 def list_active_hypotheses(*, limit: int = 10) -> list[dict[str, Any]]:
+    """Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence.
+
+    30/10-2026: TTL-filteret manglede her. Målt i den levende base stod 478 af 872
+    aktive rækker med en passeret frist — op til 118 dage gamle — og denne funktion
+    føder `format_governed_hypotheses_for_awareness()`, altså Jarvis' egen prompt.
+    Filtreringen sker i Python via SAMME `gov.is_expired` som dødsdommen bruger, fordi
+    `created_at` er ISO med tidszone-offset som SQLites `strftime` ikke læser ensartet.
+    LIMIT anvendes EFTER filtreringen, så udløbne ikke brænder pladser.
+    """
     ensure_schema()
     try:
         from core.runtime.db import connect
         with connect() as c:
             rows = c.execute(
-                "SELECT hyp_id, statement, confidence, grounded_samples, sample_size, created_at "
+                "SELECT hyp_id, statement, confidence, grounded_samples, sample_size, "
+                "created_at, ttl_seconds "
                 "FROM central_hypotheses WHERE status='active' "
-                "ORDER BY confidence DESC LIMIT ?", (max(int(limit), 1),)).fetchall()
-        return [dict(r) for r in rows]
+                "ORDER BY confidence DESC").fetchall()
+        now = datetime.now(timezone.utc)
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
+                continue
+            d = dict(r)
+            d.pop("ttl_seconds", None)
+            out.append(d)
+            if len(out) >= max(int(limit), 1):
+                break
+        return out
     except Exception:
         return []
+
+
+def _ttl_deadline_iso(created_at_iso: Any, ttl_seconds: Any) -> str | None:
+    """Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses."""
+    try:
+        t = datetime.fromisoformat(str(created_at_iso).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return (t + timedelta(seconds=float(ttl_seconds))).isoformat()
+    except Exception:  # ulaeselig dato er ikke et bevis paa liv — samme kontrakt som is_expired
+        return None
+
+
+def expire_overdue_hypotheses(*, now: datetime | None = None) -> dict[str, Any]:
+    """Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'.
+
+    30/10-2026: dødsdommen i `gov.evaluate()` fyrer KUN når et sample ankommer — og en
+    udløbet hypotese er netop den der ikke får samples. Den blev derfor stående som
+    'active' i op til 118 dage (målt: 478 rækker, 315 med nul samples), stadig testet af
+    sampler'en hvert 30. minut og stadig vist i awareness-prompten. Denne sweep eksekverer
+    den samme dom uden at vente på et sample, så tabellen afspejler virkeligheden.
+
+    TTL måler tid UDEN ny evidens: har hypotesen fået et grounded sample efter sin frist,
+    er den ikke længere «udløbet uden bekræftelse» og springes over — ellers ville en
+    genoplivet hypotese blive dræbt igen ved næste sweep, og genoplivningen var meningsløs.
+
+    Udløbet er IKKE falsificeret: rækken bevares, `outcome` røres ikke, og et nyt grounded
+    sample genopliver hypotesen (se `record_governed_sample`). Self-safe — kaster ALDRIG.
+    """
+    ensure_schema()
+    n = now or datetime.now(timezone.utc)
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            rows = c.execute(
+                "SELECT hyp_id, created_at, ttl_seconds FROM central_hypotheses "
+                "WHERE status='active'").fetchall()
+            overdue: list[str] = []
+            for r in rows:
+                hyp_id = str(r["hyp_id"])
+                if not gov.is_expired(r["created_at"], r["ttl_seconds"], now=n):
+                    continue
+                deadline = _ttl_deadline_iso(r["created_at"], r["ttl_seconds"])
+                if deadline is not None:
+                    fresh = c.execute(
+                        "SELECT 1 FROM central_hypothesis_samples "
+                        "WHERE hyp_id=? AND created_at > ? LIMIT 1",
+                        (hyp_id, deadline)).fetchone()
+                    if fresh:
+                        continue   # frisk evidens efter fristen → ikke udloebet uden bekræftelse
+                overdue.append(hyp_id)
+            if overdue:
+                c.executemany(
+                    "UPDATE central_hypotheses SET status='expired', resolved_at=? "
+                    "WHERE hyp_id=? AND status='active'",
+                    [(n.isoformat(), h) for h in overdue])
+                c.commit()
+        if overdue:
+            logger.info("expire_overdue_hypotheses: %d hypoteser markeret udloebet", len(overdue))
+        return {"status": "ok", "expired": len(overdue), "ids": overdue[:20]}
+    except Exception as exc:
+        # En fejlende sweep maa ikke vaekke noget — men den skal kunne forklares bagefter.
+        logger.warning("expire_overdue_hypotheses fejlede: %s", exc)
+        return {"status": "error", "error": str(exc), "expired": 0}
+
+
+def run_hypothesis_expiry_tick(*, trigger: str = "cadence",
+                               last_visible_at: str = "") -> dict[str, object]:
+    """Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret."""
+    return expire_overdue_hypotheses()
+
+
+def register_hypothesis_expiry_producer() -> None:
+    """Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en).
+
+    Uden denne registrering ville sweep'en være død kode: defineret, testet og aldrig kaldt.
+    Det er præcis den fejlform der blev målt 29/10 (en guard-emitter med nul kaldere).
+    """
+    from core.services.internal_cadence import ProducerSpec, register_producer
+    register_producer(ProducerSpec(
+        name="central_hypothesis_expiry",
+        cooldown_minutes=30,
+        visible_grace_minutes=0,
+        run_fn=run_hypothesis_expiry_tick,
+        priority=8,
+    ))
 
 
 def format_governed_hypotheses_for_awareness(*, limit: int = 3) -> str | None:

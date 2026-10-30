@@ -94,7 +94,7 @@ def _gather_evidence() -> dict[str, Any]:
     # ── Stale goals ──────────────────────────────────────────────
     try:
         from core.services.agent_self_evaluation import detect_stale_goals
-        evidence["stale_goals"] = detect_stale_goals(stale_days=3)
+        evidence["stale_goals"] = detect_stale_goals()
     except Exception as e:
         logger.warning("consolidation_judge: stale_goals failed: %s", e)
         evidence["stale_goals"] = []
@@ -112,7 +112,10 @@ def _gather_evidence() -> dict[str, Any]:
 
     # ── Today's sessions count ────────────────────────────────────
     try:
-        from core.runtime.db_decisions import list_chat_sessions
+        # 27/10-2026: pegede på `db_decisions`, hvor funktionen ikke findes.
+        # `except: = 0` skjulte det, så `sessions_today` var ALTID nul — og
+        # dommeren fik et bevidst forkert grundlag at dømme ud fra.
+        from core.services.chat_sessions import list_chat_sessions
         sessions = list_chat_sessions()
         today = now_date_str()
         evidence["sessions_today"] = len([
@@ -208,7 +211,12 @@ def _build_stillingtagen(evidence: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _render_judgments(items: list[dict[str, Any]], evidence: dict[str, Any]) -> list[dict[str, Any]]:
     """Present each stillingtagen to the LLM and force a verdict."""
-    from core.services.heartbeat_runtime import daemon_llm_call
+    # 27/10-2026: importen pegede på `heartbeat_runtime`, hvor funktionen ikke
+    # findes længere — den bor i `daemon_llm`. Fejlen var usynlig fordi den
+    # stod inde i funktionen: modul-importen lykkedes, og først ved kald gik
+    # den i ImportError, som medlemmet fangede og lagde i `member_errors`.
+    # Familien meldte `fired: True` og den natlige dommer var død i ugevis.
+    from core.services.daemon_llm import daemon_llm_call
 
     judgments: list[dict[str, Any]] = []
 
@@ -314,10 +322,21 @@ def _enforce_reject(j: dict[str, Any]) -> None:
 
     elif item_type == "stale_goals" and "abandon" in choice:
         try:
-            from core.services.autonomous_goals import update_goal_status
+            # 28/10-2026: `detect_stale_goals` laeser nu `long_horizon_goals`,
+            # men abandon-kaldet pegede stadig paa `autonomous_goals`. Maalt
+            # samme dag: den tabel havde 0 raekker, saa valget «abandon» ville
+            # ramme et id der ikke findes der og gøre INTET — en tavs handling
+            # der ser ud som om den blev udfoert. Begge ender skal pege samme
+            # sted hen, ellers er dommen og handlingen uenige om hvad et maal er.
+            from core.services.long_horizon_goals import update_goal as _update_lh_goal
             from core.services.agent_self_evaluation import detect_stale_goals
-            for g in detect_stale_goals(stale_days=3):
-                update_goal_status(g["goal_id"], "abandoned")
+            for g in detect_stale_goals():
+                _update_lh_goal(
+                    goal_id=str(g.get("goal_id") or ""),
+                    note="forladt af konsoliderings-dommeren: ingen fremdrift",
+                    new_status="abandoned",
+                    source="consolidation_judge",
+                )
                 event_bus.publish("consolidation_judge.abandoned_goal", {
                     "goal_id": g["goal_id"],
                     "title": g.get("title", ""),

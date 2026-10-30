@@ -681,14 +681,46 @@ def is_visible_run_alive(run_id: str) -> bool:
                     pass
         return True
     try:
-        if str(state.get("run_id") or "") != str(run_id) or state.get("cancelled"):
-            return False
-        ts = str(state.get("last_activity_at") or state.get("started_at") or "")
-        if not ts:
-            return False
         from datetime import UTC, datetime
-        age = (datetime.now(UTC) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds()
-        return age < _VISIBLE_RUN_STALE_S
+
+        def _alder_sekunder(ts: str) -> float | None:
+            if not ts:
+                return None
+            try:
+                return (
+                    datetime.now(UTC)
+                    - datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                ).total_seconds()
+            except Exception:  # ukendt tidsformat = ukendt alder, ikke "frisk"
+                return None
+
+        # 1) Aktiv-slot'en — kun hvis den faktisk er MIN.
+        if not state.get("cancelled") and str(state.get("run_id") or "") == str(run_id):
+            alder = _alder_sekunder(
+                str(state.get("last_activity_at") or state.get("started_at") or "")
+            )
+            if alder is not None:
+                return alder < _VISIBLE_RUN_STALE_S
+
+        # 2) Per-run-heartbeatet (29/10-2026). Aktiv-slot'en er ÉN plads: en kort
+        #    tur kan tage den, og naar den er faerdig rydder `unregister_visible_run`
+        #    pladsen — hvorefter denne funktion svarede False om et run der stadig
+        #    koerte. Maalt to gange 29/10: den udskudte genstart ventede 5-8 s i
+        #    stedet for 75 og draebte turen midt i svaret (14:51:40, 14:56:06).
+        #    `visible_runs.control.<run_id>` kan ikke stjaeles, saa den er den
+        #    autoritative kilde naar pladsen ikke er min.
+        kontrol = _get_visible_run_control(run_id)
+        if not kontrol or kontrol.get("cancelled") or kontrol.get("active") is False:
+            return False
+        alder = _alder_sekunder(
+            str(
+                kontrol.get("last_activity_at")
+                or kontrol.get("updated_at")
+                or kontrol.get("started_at")
+                or ""
+            )
+        )
+        return alder is not None and alder < _VISIBLE_RUN_STALE_S
     except Exception:
         return False
 
@@ -2838,6 +2870,15 @@ async def _stream_visible_run(
                             _varsel = ""
                         if _varsel:
                             _tur_hale.tilfoej_runde(_varsel)
+                    # 30/10-2026 (Bjørn): «suggest_next_task laver rod igen, så
+                    # det hjalp ikk. flyt den bare tilbage igen». Noten laa her
+                    # som RAADGIVNING i halen og blev FYRET — runtime-maalingen
+                    # viste raadgivning=1 i hver runde. Den hjalp ikke: den
+                    # gjorde forslaget til en fast takt i stedet for en
+                    # beslutning, og forslagene blev selv-refererende (de
+                    # handlede om noten selv). Reglen bor derfor igen KUN i
+                    # `output_discipline` i praefikset. Genindfoer den ikke uden
+                    # at maale mod baseline 17,8 assistent-beskeder/dag.
                     if _is_last_round:
                         _forced_finalize_seen = True
                         # Behold listen hos de udbydere der ER maalt til at
@@ -6296,6 +6337,13 @@ async def _stream_visible_run(
                         "failed", "interrupted", "cancelled")
                     _rec_mt(getattr(run, "model", "") or "", degenerated=_mt_deg)
                 except Exception:
+                    pass
+                # A/B-armen (28/10-2026): UDFALDET FINDES FØRST HER. Prompt-bygningen
+                # kunne ikke sende det — den sker før turen. Self-safe; rører ikke run'et.
+                try:
+                    from core.services import central_prompt_explore as _cpe
+                    _cpe.record_turn_outcome(_outcome_state.status)
+                except Exception:  # self-safe: A/B-maaling maa ikke vaelte finalize
                     pass
                 _track_runtime_candidates(run, visible_output_text)
                 # ── Lag 1: record response_style choice ─────

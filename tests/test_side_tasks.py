@@ -631,3 +631,43 @@ def test_flag_kan_rejses_med_en_tid(lager, vaekninger):
     assert "not_before" not in side_tasks.get(r2["side_task_id"])
     assert side_tasks.flag(title="C", prompt="goer C",
                            not_before="i morgen")["status"] == "error"
+
+
+def test_verify_side_task_finder_posten_og_siger_hvor(monkeypatch, tmp_path):
+    """28/10-2026: en korrekt skrivning blev laest som en tavs fiasko, fordi
+    verifikationen slog op i en tabel der ikke findes. Verify skal svare med
+    lagerets FYSISKE sti, saa «ikke gemt» og «gemt et andet sted» kan skelnes."""
+    state = []
+    monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: list(state))
+    monkeypatch.setattr(side_tasks, "save_json",
+                        lambda _key, items: state.__setitem__(slice(None), items))
+    monkeypatch.setattr(side_tasks, "_path", lambda _name: tmp_path / "side_tasks.json")
+
+    r = side_tasks.flag(title="Verificér mig", prompt="Skal kunne findes igen")
+    assert r["status"] == "ok"
+    assert r["lager"].endswith("side_tasks.json")
+
+    v = side_tasks.verify_side_task(r["side_task_id"])
+    assert v["status"] == "ok"
+    assert v["lager"] == r["lager"]
+    assert v["record"]["title"] == "Verificér mig"
+    assert v["antal_i_lageret"] == 1
+
+
+def test_verify_side_task_skelner_ikke_fundet_fra_ulaeseligt(monkeypatch, tmp_path):
+    """Et ukendt id er «findes ikke»; et ulaeseligt lager er «ved ikke».
+    Sammenlignes de, melder vi en tavs fiasko om en skrivning der gik fint."""
+    monkeypatch.setattr(side_tasks, "_path", lambda _name: tmp_path / "side_tasks.json")
+    monkeypatch.setattr(side_tasks, "load_json", lambda _key, _default: [])
+
+    ukendt = side_tasks.verify_side_task("side-findes-ikke")
+    assert ukendt["status"] == "not_found"
+    assert ukendt["antal_i_lageret"] == 0
+
+    def _braender(_key, _default):
+        raise OSError("lageret kunne ikke laeses")
+
+    monkeypatch.setattr(side_tasks, "load_json", _braender)
+    ulaeseligt = side_tasks.verify_side_task("side-whatever")
+    assert ulaeseligt["status"] == "error"
+    assert ulaeseligt["error"] == "lager_ulaeseligt"

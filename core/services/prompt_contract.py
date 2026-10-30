@@ -1925,6 +1925,18 @@ def _build_visible_chat_prompt_assembly_impl(
     except Exception as _e:
         _sec_err("cross-session arc", _e)
     try:
+        # Active runs — hvad der kører NU, ud over mig selv (28/10-2026).
+        # Arc'en ovenfor giver fortiden; intet gav nutiden, og 28/10 skrev jeg
+        # «skal jeg skrive til ham?» om en agent der var MIG i en anden session.
+        # Prioritet 17 = lige over arc'en (18), fordi NU slår DA; under fejl og
+        # narrative-now, som skal have budgettet først. Kryds-verificerer mod
+        # visible_runs.status, fordi `active`-flaget kan stå fast (målt: 1241
+        # minutter gammelt flag på et run der var væk).
+        from core.services.prompt_sections.active_runs import active_runs_section
+        _awareness_add(17, "active runs", active_runs_section(session_id))
+    except Exception as _e:
+        _sec_err("active runs", _e)
+    try:
         # ── Proactivity-cluster: R2/R2.5 verifikations-disciplin GENNEM Centralen ──
         # Konsolideret GRADERET gate (R2 blød = YELLOW @ slot 23, R2.5 hård = RED @
         # slot 95) routet gennem central().decide → fuld catch+flag+notify+trace.

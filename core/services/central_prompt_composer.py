@@ -362,9 +362,13 @@ def observe_composition(turn_type: str, *, sections_total: int, sections_include
         _kv_set(_FREQ_KEY, freq)
     except Exception:
         pass
-    # DEN MODIGE DEL (Tråd 2): fodr eksplorations-armens A/B-forsøg med denne turs udfald (self-safe).
+    # DEN MODIGE DEL (Tråd 2): A/B-armen fodres nu i TO faser (28/10-2026).
+    # Her kendes kun HVAD der blev komponeret — `outcome` er altid "" fordi prompten bygges
+    # før turen kører, og det var derfor forsøget aldrig målte noget. Kompositionen gemmes,
+    # udfaldet sendes fra run-finalize via central_prompt_explore.record_turn_outcome().
     try:
         from core.services import central_prompt_explore
+        central_prompt_explore.note_composition(turn_type, included_labels)
         central_prompt_explore.record_trial(turn_type, included_labels, outcome)
     except Exception:
         pass

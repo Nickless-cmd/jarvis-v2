@@ -74,4 +74,34 @@ describe('composer-kladden huskes', () => {
     unmount()
     expect(localStorage.getItem(draftKeyFor('chat'))).toBe('""')
   })
+
+  /**
+   * MÅLT 28/10-2026 — Bjørn: «når man trykker ny samtale og skriver i composer
+   * og trykker send, så både sender den teksten og beholder den i composer».
+   *
+   * Testen ovenfor unmounter EFTER Enter, altså i en senere React-cyklus, og
+   * kunne derfor ikke se fejlen. Her unmountes Composeren inde i `onSend` —
+   * præcis hvad et samtalekift gør — og så afslører den at `setValue('')` er
+   * asynkron: `nyeste.current` bærer stadig den gamle tekst når unmount-effekten
+   * skriver kladden, så besked 2 startede med besked 1 i feltet.
+   */
+  it('rydder kladden selv når onSend unmounter i samme cyklus (nyt samtalekift)', () => {
+    let unmountFn: (() => void) | null = null
+    const onSend = vi.fn(() => { unmountFn?.() })
+    const r = render(
+      <PermissionProvider>
+        <Composer
+          streaming={false} onSend={onSend} onStop={vi.fn()} model="m"
+          config={cfg} showPermissions={false} getSessionId={async () => 's1'}
+          sessionId="s1" draftKey="chat" isOwner
+        />
+      </PermissionProvider>,
+    )
+    unmountFn = r.unmount
+    const ta = screen.getByRole('textbox')
+    fireEvent.change(ta, { target: { value: 'besked 1' } })
+    fireEvent.keyDown(ta, { key: 'Enter' })
+    expect(onSend).toHaveBeenCalled()
+    expect(localStorage.getItem(draftKeyFor('chat'))).toBe('""')
+  })
 })

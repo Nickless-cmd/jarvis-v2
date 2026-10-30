@@ -224,7 +224,7 @@ export function Composer({
   // Kladden huskes pr. flade (Bjørn 4/10-2026): mode-skift unmounter denne
   // Composer, og uden persistens tog `useState('')` teksten med sig.
   const persistPrivateText = isOwner || Boolean((window as unknown as { jarvisDesk?: unknown }).jarvisDesk)
-  const [text, setText] = usePersistedState<string>(draftKeyFor(draftKey), '', persistPrivateText)
+  const [text, setText, rydText] = usePersistedState<string>(draftKeyFor(draftKey), '', persistPrivateText)
   const memberHistory = useRef<string[]>([])
   useEffect(() => {
     if (indsaet) setText(indsaet.tekst)
@@ -458,17 +458,23 @@ export function Composer({
     const pastes = pendingPastes
 
     const emit = (finalText: string) => {
-      onSend(finalText, {
-        planMode,
+      // RÆKKEFØLGEN ER BÆRENDE (målt 28/10-2026): kladden skal tømmes FØR
+      // `onSend`, ikke efter. `onSend` kan skifte samtale, og så unmountes
+      // denne Composer i samme cyklus — og `usePersistedState`s unmount-effekt
+      // skriver `nyeste.current` til localStorage. Stod `setText('')` bagefter,
+      // ville den skrive den GAMLE tekst tilbage som kladde, og besked 2 ville
+      // starte med besked 1 i feltet. Repro-testen fangede præcis det:
+      // `expected '"besked 1"' to be '""'`.
+      rydText()
+      setAttachments([])
+      setPendingPastes([])
+      onSend(finalText, {        planMode,
         permission,
         attachments: readyAttachments,
         model: sendModel,
         providerChoice: sendProvider,
         thinkingMode: thinkMode,
       })
-      setText('')
-      setAttachments([])
-      setPendingPastes([])
     }
 
     if (pastes.length === 0 || !config) {
@@ -518,7 +524,7 @@ export function Composer({
     const somKommando = text.trim()
     if (/^\/side(\s|$)/i.test(somKommando)) {
       setSideDialog(somKommando.replace(/^\/side\s*/i, ''))
-      setText('')
+      rydText()
       return
     }
     doSend()

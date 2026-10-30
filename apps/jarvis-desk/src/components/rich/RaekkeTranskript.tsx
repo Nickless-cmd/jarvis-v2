@@ -394,13 +394,15 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, finalAnswerStarted = false, beskedId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
   skjulAktivRunde = false,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
   finalAnswerStarted?: boolean
+  /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
+  arbejdeEfterSvar?: boolean
   beskedId?: string
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
@@ -431,7 +433,11 @@ function RaekkeTranskriptImpl({
   // Fold først ved serverens bekræftede grænse, før det første svar-delta.
   // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
-  const arbejdeKoerer = streaming && !finalAnswerStarted
+  // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026). Er der
+  // kommet arbejde efter låsen, kører turen stadig — og hovedet skal være
+  // ÅBENT, så rundens tekst er synlig mens den skriver. Uden det andet led
+  // foldede hovedet i samme frame som det nye run startede.
+  const arbejdeKoerer = streaming && (!finalAnswerStarted || arbejdeEfterSvar)
   const turSekunder = streaming ? Math.max(0, Math.floor(elapsedMs / 1000)) : varighedSekunder
   // Den første tekst-delta kan lande før det første tool-kald. Turhovedet skal
   // stadig være den første synlige del af Jarvis' tur; ellers hopper det ind

@@ -46,6 +46,22 @@ _PROTECTED_FILENAMES = frozenset({
     "CHRONICLE.md",
 })
 
+#: Endelser der ogsaa kraever laesning foerst (29/10-2026).
+#:
+#: Vagtens daekning var NAVNE-baseret: ni filer, alle identitet og hukommelse
+#: — nul kode. Maalt samme dag i produktionsdata: `edit_file` 2.229 kald mod
+#: `write_file` 444 siden 15/10, og INGEN af dem blev daekket naar filen var
+#: kode. Claudes harness blokerede 222 blinde skrivninger fordi det daekkede
+#: `Edit`; mit daekkede kun ni filnavne. En vagt der vogter en doer ingen gaar
+#: ind ad er ikke en vagt — den er en kommentar der ligner en.
+#:
+#: `.md` er BEVIDST udeladt: workspace-noter, brain-poster og daglige noter
+#: skrives i et tempo hvor et krav om genlaesning hvert 10. minut ville goere
+#: vagten til stoj. Kode aendres sjaeldnere pr. fil og koster mere at clobbe.
+_PROTECTED_SUFFIXES = frozenset({
+    ".py", ".ts", ".tsx", ".js", ".jsx", ".css", ".sh",
+})
+
 # How long a recent-read is considered "fresh enough" to satisfy the guard.
 # Stored as TTL in shared_cache so cross-process visibility is automatic.
 _READ_FRESHNESS_SECONDS = 600  # 10 minutes
@@ -108,21 +124,59 @@ def is_protected(path: str) -> bool:
     return name in _PROTECTED_FILENAMES
 
 
+def _kraever_laesning(target: Path) -> bool:
+    """True hvis denne fil kraever laesning foerst.
+
+    To grunde: den er en identitets-/hukommelsesfil (navn), eller den er kode
+    (endelse). Sidstnaevnte kom til 29/10-2026 — se `_PROTECTED_SUFFIXES`.
+    """
+    if target.name in _PROTECTED_FILENAMES:
+        return True
+    return target.suffix.lower() in _PROTECTED_SUFFIXES
+
+
+def was_read(path: str, session_id: str = "default") -> bool:
+    """Offentlig, STI-baseret laese-status — uden navne-filter.
+
+    `_was_read` er den interne variant, og den er allerede sti-baseret; denne
+    wrapper findes fordi telemetrien skal kunne spoerge «var filen laest FOER
+    dette kald?» for en vilkaarlig fil, ikke kun de ni beskyttede navne.
+    Kaster ALDRIG: en manglende cache betyder «ved det ikke», og det svarer
+    False — den konservative retning for en vagt, men den rigtige for en
+    maaling, hvor et falsk positivt ville skjule problemet.
+    """
+    try:
+        return _was_read(str(Path(path).expanduser().resolve()), session_id)
+    except Exception:  # bevidst: en maaling maa ikke vaelte det den maaler — ukendt = False
+        return False
+
+
 def check_read_before_write(
     path: str,
     session_id: str = "default",
 ) -> tuple[bool, str | None]:
-    """Check whether write_file should be allowed for this path.
+    """Check whether a file write should be allowed for this path.
 
     Returns (allowed, reason). If allowed=False, the write is blocked.
     """
     target = Path(path).expanduser().resolve()
 
-    if target.name not in _PROTECTED_FILENAMES:
+    if not _kraever_laesning(target):
         return True, None
     if not target.exists():
+        # Spor ogsaa her: uden det kan jeg ikke skelne «vagten sagde ja til en
+        # ny fil» fra «vagten blev aldrig kaldt» — og saa er blokeringstallet
+        # meningsloest (29/10-2026).
+        _emit_read_before_write_guard_event(
+            "new_file",
+            {"path": str(target), "name": target.name, "session_id": session_id},
+        )
         return True, None
     if _was_read(str(target), session_id):
+        _emit_read_before_write_guard_event(
+            "allowed",
+            {"path": str(target), "name": target.name, "session_id": session_id},
+        )
         return True, None
 
     # Block — file exists but hasn't been read
@@ -151,6 +205,10 @@ def check_read_before_write(
     logger.info(
         "read_before_write_guard: BLOCKED write to %s (session=%s)",
         target.name, session_id,
+    )
+    _emit_read_before_write_guard_event(
+        "blocked",
+        {"path": str(target), "name": target.name, "session_id": session_id},
     )
     return False, reason
 
@@ -338,6 +396,11 @@ def check_bash_command_safe(
                 "read_before_write_guard: BLOCKED wrong-root write %s (findes paa %s)",
                 target, andetsteds,
             )
+            _emit_read_before_write_guard_event(
+                "blocked",
+                {"path": str(target), "name": target.name,
+                 "session_id": session_id, "via": "bash_wrong_root"},
+            )
             return False, reason
         # Block — found a protected overwrite without prior read
         try:
@@ -356,6 +419,11 @@ def check_bash_command_safe(
         logger.info(
             "read_before_write_guard: BLOCKED bash overwrite of %s (session=%s)",
             target.name, session_id,
+        )
+        _emit_read_before_write_guard_event(
+            "blocked",
+            {"path": str(target), "name": target.name,
+             "session_id": session_id, "via": "bash"},
         )
         return False, reason
 
@@ -413,11 +481,26 @@ def build_read_before_write_guard_surface() -> dict[str, object]:
 def _emit_read_before_write_guard_event(
     kind: str, payload: dict[str, object] | None = None
 ) -> None:
-    """Defensive scoped event emitter."""
+    """Efterlad et spor for hvert udfald af vagtens dom.
+
+    Maalt 29/10-2026: funktionen havde NUL kaldere. Det gjorde det umuligt at
+    besvare «bliver vagten for ivrig?» — ikke fordi den blokerede for lidt
+    eller for meget, men fordi den var stum. Nul guard-events blandt 854.376
+    raekker i `events`, mens bussen ellers skrev samme minut.
+
+    `kind` er `blocked`, `allowed` eller `new_file`. Kun filer vagten FAKTISK
+    vogter (identitetsnavne + kode-endelser) efterlader et spor; den brede
+    flade forbliver stille, saa blokeringerne ikke drukner i stoej.
+
+    Familien `read_before_write_guard` SKAL staa i ALLOWED_EVENT_FAMILIES —
+    ellers kaster `publish` `Unsupported event family`, og `except` herunder
+    sluger den. Det var praecis hvad der skete: navnet stod kun i en f-string,
+    som den statiske scanner ikke kan se.
+    """
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish(f"read_before_write_guard.{kind}", payload or {})
-    except Exception:
+    except Exception:  # self-safe: et manglende spor maa ikke blokere en skrivning
         pass
 
 
@@ -525,6 +608,11 @@ def check_operator_read_before_write(
     reason = (
         "⚠️ READ-BEFORE-WRITE GUARD (operator): {p}\n\n{hint}"
     ).format(p=path, hint=hint)
+    _emit_read_before_write_guard_event(
+        "blocked",
+        {"path": norm, "name": norm.rsplit("/", 1)[-1],
+         "session_id": session_id, "via": "operator"},
+    )
     return False, reason
 
 

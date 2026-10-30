@@ -166,13 +166,49 @@ class TurnAccumulator:
         """
         if not chunk:
             return
+        # REN WHITESPACE ÅBNER IKKE EN TANKE (målt 28/10-2026).
+        #
+        # DeepSeek sender «\n\n» som reasoning-delta. Det åbnede et TOMT
+        # tanke-segment, satte `_segment_open = False` — så tekst-segmentet blev
+        # lukket midt i en sætning — og lagde et 'think'-mærke i interleave som
+        # `_build_turn_blocks` bagefter filtrerede væk (en tom tanke har ingen
+        # blok). Tilbage stod to tekstblokke uden noget imellem, og klienten
+        # tegnede dem som to afsnit: «(In» + «gen nye fund …», «J» + «eg
+        # tjekker …».
+        #
+        # Målt over 4.000 gemte beskeder: 162 ramt — 107 i auto-sessioner og 55
+        # i almindelige samtaler. Det blev SET i wakeup- og autonome runs fordi
+        # de vises som genindlæst `content_json`; en almindelig tur streames
+        # live og samles i klientens egen akkumulator, så bruddet først dukker
+        # op når tråden genindlæses.
+        #
+        # Whitespace INDE i en åben tanke er stadig gyldigt indhold — kun det
+        # at ÅBNE en tanke på ren luft er forkert.
+        if not chunk.strip() and not self._thinking_open:
+            return
         nu = self._nu()
         if not self._thinking_open:
             self.thinking_segments.append("")
             self.thinking_times.append([nu, nu])
             self.interleave.append("think")
             self._thinking_open = True
-            self._segment_open = False
+            # EN TANKE LUKKER IKKE TEKSTEN (målt 28/10-2026, anden runde).
+            #
+            # Her stod `self._segment_open = False`, og det modsagde
+            # `add_text`s egen docstring: «Et segment lukkes af et
+            # værktøjskald». Konsekvensen var at en ÆGTE tanke midt i et ord
+            # rev teksten over i to segmenter, som `_build_turn_blocks` lagde
+            # ved hver sin markør — og klienten tegnede dem som to afsnit.
+            #
+            # Målt i `auto-heartbeat` 28/10 kl. 15:53, dvs. EFTER
+            # whitespace-fixet kl. 15:38: tre ord revet over i ÉN besked —
+            # «K|larsignal», «Jeg har|tjekket», «Der|er ingen». Det første fix
+            # dækkede kun TOM luft; her var tanken 11 tegn ægte indhold
+            # («inbox tool.»), så det fyrede ikke.
+            #
+            # Rækkefølgen bliver text → think i stedet for text → think → text.
+            # Det er en usynlig unøjagtighed (tanken er foldet sammen i UI'et),
+            # og den er langt billigere end et ord der er revet midt over.
         self.thinking_segments[-1] += chunk
         self.thinking_times[-1][1] = nu
 

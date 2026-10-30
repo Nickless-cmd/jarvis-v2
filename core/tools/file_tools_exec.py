@@ -190,6 +190,47 @@ def _exec_read_self_docs(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _trust_giver_adgang(args: dict[str, Any]) -> bool:
+    """Har dette kald adgang til at springe «uden for workspace»-kortet over?
+
+    ## Hvorfor denne findes (29/10-2026)
+
+    `showPermissions` blev åbnet i chat-composeren, så Bjørn kan sætte samtalens
+    niveau til `trust`. MÅLT gennem `execute_tool` samme dag: det gjorde ingen
+    forskel. `_exec_write_file` returnerede `approval_needed` for en sti uden
+    for auto-listen — uanset at `_runtime_trust_all` var sat. Vælgeren ville
+    have været teater: et ikon der lover fuld adgang og et kort der kommer
+    alligevel.
+
+    ## To veje ind — og hvorfor de ikke er den samme
+
+    `_runtime_trust_mode` sættes KUN af `simple_tool_executor` når
+    `controller.trust_all` er sand, altså når SAMTALEN står på `trust`.
+
+    `er_ejer_godkendt()` er ContextVar'en fra `owner_approval.py`: et menneske
+    har set PRÆCIS dette kald og klikket godkend. Uden den gren kunne et
+    godkendt kort aldrig fuldføre — kaldet ville ramme den samme gate igen, i
+    ring. Det er præcis fejlen `owner_approval.py` beskriver for `rm -rf`.
+
+    `_runtime_trust_all` ALENE åbner bevidst IKKE: autonome kørsler sætter det
+    (`force=True`) fordi de ikke kan svare på et kort. En vækning i en
+    `ask`-samtale må ikke kunne skrive uden for workspace ved at arve et flag
+    der betyder «ingen kan spørge dig».
+
+    ## Grænsen — hvad dette IKKE åbner
+
+    Kun `approval`. `blocked` (security-prædikater, fx `.ssh/authorized_keys`)
+    og `guard_blocked` (read-before-write) returneres uændret FØR dette tjek.
+    """
+    if bool(args.get("_runtime_trust_mode")):
+        return True
+    try:
+        from core.tools.owner_approval import er_ejer_godkendt
+        return er_ejer_godkendt()
+    except Exception:  # fail-closed: ukendt godkendelse = spørg
+        return False
+
+
 def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.simple_tools import _canonicalize_workspace_target
 
@@ -214,7 +255,7 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if _ec.classification == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
 
-    if _ec.classification == "approval":
+    if _ec.classification == "approval" and not _trust_giver_adgang(args):
         return {
             "status": "approval_needed",
             "message": f"Writing to {path} requires your approval. Please confirm in chat.",
@@ -323,15 +364,34 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
 
-    # Execution-cluster 🔒 GENNEM Centralen (SECURITY): klassifikation via gate (edit har
-    # historisk ingen read-before-write — bevaret med kind="edit").
+    # Execution-cluster 🔒 GENNEM Centralen (SECURITY): klassifikation via gate.
+    #
+    # `edit` sprang read-before-write over indtil 29/10-2026 (kommentaren sagde
+    # det selv: «edit har historisk ingen rbw»). Da vagten blev udvidet til
+    # kodefiler, viste det sig at noget vaerre laa gemt: grenen for
+    # `guard_blocked` fandtes slet ikke her. `check_file` svarede korrekt
+    # `guard_blocked` — men koden tjekkede kun `blocked` og `approval`, saa
+    # svaret faldt igennem og skrivningen skete. Guarden havde ret hele tiden;
+    # ingen laeste svaret. Maalt ende-til-ende samme dag: en ulaest `.py` gik
+    # igennem `execute_tool` uden en advarsel.
+    #
+    # `session_id` manglede ogsaa: laesningen registreres under sessions-id'et,
+    # men her blev der spoergt under "default" — to noegler, ét svar.
+    _session_id = (
+        args.get("_runtime_session_id")
+        or args.get("_session_id")
+        or "default"
+    )
     from core.services.gate_execution import check_file
-    _ec = check_file(str(target), kind="edit")
+    _ec = check_file(str(target), session_id=str(_session_id), kind="edit")
 
     if _ec.classification == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
 
-    if _ec.classification == "approval":
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
+
+    if _ec.classification == "approval" and not _trust_giver_adgang(args):
         return {
             "status": "approval_needed",
             "message": f"Editing {path} requires your approval. Please confirm in chat.",

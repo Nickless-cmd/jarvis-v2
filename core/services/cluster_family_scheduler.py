@@ -50,7 +50,13 @@ INTERVAL_SECONDS = 20
 # der kalder. Kadencen kommer fra daemon_manager, ikke herfra — ét sted at skrue.
 _FAMILY_DEADLINES: tuple[tuple[str, float], ...] = (
     ("cluster_somatic", 8.0),
-    ("cluster_innervoice", 25.0),
+    # 25.0 → 40.0 (målt 30/10-2026): innervoice er den eneste familie med et
+    # rent LLM-medlem i spidsen (thought_stream). Målt isoleret: 19,45s typisk,
+    # 21,67s instrumenteret, og thought_stream alene svinger 3,03s → 17,80s.
+    # Fristen på 25s gav 3-6s margin og ramte ~78 gange i døgnet. 40s dækker
+    # spidsen; den er ikke hævet for at skjule langsomhed, men fordi arbejdet
+    # reelt tager 19-22s med varians.
+    ("cluster_innervoice", 40.0),
     ("cluster_affect", 25.0),
     ("cluster_narrative", 40.0),
     ("cluster_cognition", 40.0),
@@ -127,6 +133,33 @@ def _is_due(family: str, cadence_minutes: float, last_run_at: str) -> bool:
     return elapsed_minutes >= max(float(cadence_minutes or 1.0), 0.5)
 
 
+def _tick_writing_own_state(family: str, fn):
+    """Wrap en familie-tick så den skriver sit EGET spor, før den returnerer.
+
+    Hvorfor (målt 30/10-2026): ``_daemon_tick_with_deadline`` orphander tråden når
+    fristen rammer og returnerer None — resultatet kasseres. Familien har på det
+    tidspunkt gjort arbejdet færdigt, men sporet forsvandt. ``decision_review`` fik
+    præcis denne rettelse 18/9 (d6c9dd918), men den blev aldrig overført til
+    cluster-familierne: ``cluster_innervoice`` ramte sin 25s-frist ~78 gange i
+    døgnet (676 events/7d), og hver gang blev et færdigt resultat smidt væk.
+
+    Wrapperen lægger skrivningen inde i den tråd der laver arbejdet, så den
+    overlever at returværdien kasseres. Kaldevejen skriver kun videre når den
+    FAKTISK fik et resultat — ellers ville den overskrive dette spor med tomhed.
+    """
+    from core.services import daemon_manager as dm
+
+    def _wrapped(*args, **kwargs):
+        result = fn(*args, **kwargs)
+        try:
+            dm.record_daemon_tick(family, result or {})
+        except Exception:  # observability må aldrig vælte tick'en
+            logger.warning("cluster-family-scheduler: kunne ikke skrive spor for %s", family)
+        return result
+
+    return _wrapped
+
+
 def run_due_families() -> dict[str, object]:
     """Kør de familier der er forfaldne. Returnerer hvad der skete — også til test.
 
@@ -162,8 +195,16 @@ def run_due_families() -> dict[str, object]:
                 failed.append(family)
                 continue
 
-            result = _daemon_tick_with_deadline(family, fn, deadline_seconds=deadline)
-            dm.record_daemon_tick(family, result or {})
+            result = _daemon_tick_with_deadline(
+                family, _tick_writing_own_state(family, fn), deadline_seconds=deadline,
+            )
+            # None = fristen ramte og tråden blev orphandet (se
+            # _daemon_tick_with_deadline). Familien skriver sit EGET spor inden
+            # den returnerer, så et tomt resultat her må ikke overskrive det med
+            # en tom summary. Samme rettelse som decision_review fik 18/9
+            # (d6c9dd918) — den blev aldrig overført til familierne.
+            if result is not None:
+                dm.record_daemon_tick(family, result)
             _LAST_RAN[family] = datetime.now(UTC).isoformat()
             ran.append(family)
         except Exception as exc:

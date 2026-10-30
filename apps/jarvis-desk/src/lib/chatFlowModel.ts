@@ -85,6 +85,50 @@ function isDelivery(block: ContentBlock): boolean {
   return block.type === 'image' || block.type === 'video' || block.type === 'file'
 }
 
+/**
+ * En genereret `text/html` er en widget — samme definition som `erWidget` i
+ * `BlocksRenderer`. Begge betingelser skal holde: `kilde: 'generated'`
+ * udelukker en UDGIVET html-fil (`publish_file`), som Bjørn selv har bedt om
+ * at få som fil.
+ */
+function erWidget(block: ContentBlock): boolean {
+  if (block.type !== 'file') return false
+  return String(block.mime_type || '').toLowerCase().startsWith('text/html')
+    && String(block.kilde || '') === 'generated'
+    && !!String(block.attachment_id || '').trim()
+}
+
+/**
+ * Leverancen hører i BUNDEN — samme regel som serverens `_leverance_i_bunden`
+ * i `core/services/visible_runs_outcomes.py`.
+ *
+ * Bjørn 29/10-2026: «når du tegner et widget, vises det over din slut besked
+ * mens der paces og derefter hopper det til under din besked». Reglen fandtes
+ * kun ved persistering, så den levende tur tegnede widgetten på sit
+ * oprindelige indeks — og `vis_widget` kaldes typisk i en runde FØR teksten
+ * skrives, altså øverst. Da den persisterede besked (med serverens
+ * rækkefølge) afløste den levende, hoppede blokken ned.
+ *
+ * Hoppet forsvinder kun hvis de to visninger er ENS. Derfor udledes
+ * placeringen her, hvor begge veje går igennem.
+ *
+ * `image` og `video` røres ikke: de illustrerer det der tales om netop dér
+ * (serverens `_SET_FOR_OEJET`), og bliver ved deres værktøj.
+ */
+function leveranceIBunden(blocks: ContentBlock[]): ContentBlock[] {
+  const leverancer = blocks.filter(erWidget)
+  if (leverancer.length === 0) return blocks
+  const resten = blocks.filter((block) => !erWidget(block))
+  // Efter den sidste blok der ikke er værktøjsstøj — ikke «bagerst i arrayet».
+  // Det er forskellen mellem bagerst i DATA og bagerst i LÆSNINGEN.
+  let sidste = -1
+  for (let index = 0; index < resten.length; index += 1) {
+    const block = resten[index]
+    if (block && block.type !== 'progress') sidste = index
+  }
+  return [...resten.slice(0, sidste + 1), ...leverancer, ...resten.slice(sidste + 1)]
+}
+
 function synthesisLines(input: ChatFlowInput): string[] {
   const candidates: string[] = []
   for (const block of input.blocks) {
@@ -159,7 +203,9 @@ export function deriveChatFlow(input: ChatFlowInput): ChatFlowModel {
     // fjerner selve metadata-blokken fra output og bruger dens ids til at
     // placere etiketten og tænke-resuméet ved den rigtige værktøjsrunde.
     workBlocks,
-    finalBlocks,
+    // Leverancen (widgetten) lægges i bunden, så den levende tur og den
+    // persisterede besked giver IDENTISK rækkefølge — se `leveranceIBunden`.
+    finalBlocks: leveranceIBunden(finalBlocks),
     hasObservableWork,
     ...end,
     // «Kører» er arbejdsfasen: status er working og svaret er ikke bekræftet

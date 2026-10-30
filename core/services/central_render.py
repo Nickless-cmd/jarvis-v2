@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-_DENY = ("deny", "denied", "block", "blocked", "reject", "rejected", "veto")
-_ALLOW = ("allow", "allowed", "proceed", "ok", "pass", "passed", "commit")
+_DENY = ("deny", "denied", "block", "blocked", "reject", "rejected", "veto", "red")
+_ALLOW = ("allow", "allowed", "proceed", "ok", "pass", "passed", "commit", "green", "yellow")
 _SEVERE = ("critical", "high", "severe", "fatal")
 
 

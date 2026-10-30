@@ -13,10 +13,13 @@ total. Each ping is a single token completion → minimal cost.
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 import urllib.request
 import urllib.error
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -33,52 +36,238 @@ _HEALTH_STATE_KEY = "provider_health"
 # timed out / 503 server busy' — IKKE DNS NXDOMAIN, jf. Jarvis' kommentar). De
 # 10 døde model-entries er også fjernet fra provider_router.json. Relevance-
 # referencen i runtime.json er nu en inert forældreløs.
+# 29/10-2026 — PROBEN LØJ OM FEM AF OTTE.
+#
+# Filen meldte `auth_failed`/`wrong_endpoint` for groq, mistral, gemini, cloudflare
+# og opencode. Målt samme dag med providerens EGEN nøgle og EGEN base_url:
+#
+#     mistral     200   (proben: 401 auth_failed)
+#     gemini      200   (proben: 404 wrong_endpoint)
+#     opencode    200   (proben: 403 — den pingede opencode.ai, men provideren er LOKAL)
+#     groq        200   (proben: 403 «error code: 1010» = Cloudflares UA-blok, ikke nøglen)
+#     cloudflare  200   (proben: 404 — /models findes ikke; /ai/models/search gør)
+#
+# Tre fejl oveni hinanden: (1) proben sendte ALDRIG nøglen, så 401/403 betød
+# «vi spurgte uden adgang», ikke «nøglen er død»; (2) URL'erne var håndskrevne og
+# var råtnede — gemini og cloudflare pegede på rod-stier, opencode på den forkerte
+# vaert; (3) `urllib`s standard-UA blokeres af Cloudflare med 1010.
+#
+# `provider_router.json` er sandheden om hvor en provider bor (jf.
+# `provider_registry_admin`). Denne fil må ikke holde sin egen kopi der kan rådne:
+# den læser routeren og bruger `_PING_ENDPOINTS` KUN som fallback når config er
+# ulæselig. Nøglen hentes gennem `core.auth.profiles` — samme vej som rigtige kald.
 _PING_ENDPOINTS: dict[str, str] = {
-    "groq": "https://api.groq.com/openai/v1/models",
-    "gemini": "https://generativelanguage.googleapis.com/",
-    "nvidia-nim": "https://integrate.api.nvidia.com/v1/models",
-    "openrouter": "https://openrouter.ai/api/v1/models",
-    "mistral": "https://api.mistral.ai/v1/models",
-    "sambanova": "https://api.sambanova.ai/v1/models",
-    "cloudflare": "https://api.cloudflare.com/client/v4/",
-    "opencode": "https://opencode.ai/",
+    "groq": "https://api.groq.com/openai/v1",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta",
+    "nvidia-nim": "https://integrate.api.nvidia.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "mistral": "https://api.mistral.ai/v1",
+    "sambanova": "https://api.sambanova.ai/v1",
+    "cloudflare": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+    "opencode": "http://127.0.0.1:4199",
 }
 
+# Stien der SPØRGER om provideren kan bruges. OpenAI-kompatible svarer på /models;
+# Cloudflare gør ikke (405 på GET /models), men har /models/search.
+_PROBE_PATH_DEFAULT = "/models"
+_PROBE_PATHS: dict[str, str] = {"cloudflare": "/models/search"}
 
-def _ping_host(url: str) -> dict[str, Any]:
-    """HTTP GET with short timeout. Returns reachable=True/False + latency_ms."""
+# Cloudflare er den ene hvor routerens base_url ikke er probens rod: routeren peger
+# på `.../ai/v1` (inferens-stien), men model-kataloget ligger på `.../ai/models/search`
+# — altså FØR `/v1`. Målt 29/10-2026: med `/v1` beholdt gav stien 405, uden gav 200.
+_PROBE_TRIM_SUFFIX: dict[str, str] = {"cloudflare": "/v1"}
+
+# Cloudflare blokerer urllib's standard-UA med `403 error code: 1010`. Det er samme
+# fælde som ntfy-403'erne (QUICK_FACTS): et 403 kan betyde «du ligner en bot», ikke
+# «nøglen er ugyldig». Uden denne header ville groq se død ud med en perfekt nøgle.
+_PROBE_UA = "JarvisHealthCheck/1.0 (+https://jarvis.srvlab.dk)"
+
+# Gemini tager ikke `Authorization: Bearer` — den vil have nøglen i denne header.
+_GEMINI_KEY_HEADER = "x-goog-api-key"
+
+
+def _router_config_path() -> Path:
+    return Path(
+        os.environ.get("JARVIS_CONFIG_DIR") or Path.home() / ".jarvis-v2" / "config"
+    ) / "provider_router.json"
+
+
+def _router_providers() -> dict[str, dict[str, Any]]:
+    """provider → {base_url, auth_profile} fra provider_router.json. {} ved fejl."""
+    try:
+        data = json.loads(_router_config_path().read_text(encoding="utf-8"))
+    except Exception:  # bevidst: ulaeselig config falder tilbage paa _PING_ENDPOINTS
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for entry in data.get("providers") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("provider") or "").strip()
+        if name:
+            out[name] = entry
+    return out
+
+
+def _load_provider_credentials(provider: str, profile: str) -> dict[str, Any]:
+    """Hent providerens nøgle ad samme vej som rigtige kald. {} når den ikke findes.
+
+    Egen funktion så `try` kun dækker ét kald: en manglende eller ulæselig
+    auth-profil er «vi har ingen nøgle», ikke en grund til at vælte health-checket.
+    """
+    try:
+        from core.auth.profiles import get_provider_credentials
+
+        return dict(get_provider_credentials(profile=profile, provider=provider) or {})
+    except Exception:  # bevidst: ingen/ulaeselig profil = ingen noegle, ikke et crash
+        return {}
+
+
+def _probe_request(provider: str) -> dict[str, Any] | None:
+    """Byg URL + headers som et RIGTIGT kald ville gøre. None = ingen base_url.
+
+    ``has_credentials`` skelnes fra ``auth_failed``: at vi ikke HAR en nøgle er en
+    anden fejl end at nøglen afvises. Før blev de to slået sammen, så en provider
+    uden profil-nøgle blev rapporteret som død.
+    """
+    entry = _router_providers().get(provider) or {}
+    base = str(entry.get("base_url") or "").strip() or _PING_ENDPOINTS.get(provider, "")
+    if not base:
+        return None
+
+    api_key = ""
+    account_id = ""
+    profile = str(entry.get("auth_profile") or "").strip() or "default"
+    creds = _load_provider_credentials(provider, profile)
+    api_key = str(creds.get("api_key") or creds.get("access_token") or "").strip()
+    account_id = str(creds.get("account_id") or "").strip()
+
+    if "{account_id}" in base:
+        if not account_id:
+            return {"url": "", "headers": {}, "has_credentials": False}
+        base = base.replace("{account_id}", account_id)
+
+    trim = _PROBE_TRIM_SUFFIX.get(provider)
+    if trim and base.rstrip("/").endswith(trim):
+        base = base.rstrip("/")[: -len(trim)]
+
+    url = base.rstrip("/") + _PROBE_PATHS.get(provider, _PROBE_PATH_DEFAULT)
+    headers = {"User-Agent": _PROBE_UA, "Accept": "application/json"}
+    if api_key:
+        if provider == "gemini":
+            headers[_GEMINI_KEY_HEADER] = api_key
+        else:
+            headers["Authorization"] = f"Bearer {api_key}"
+    return {"url": url, "headers": headers, "has_credentials": bool(api_key)}
+
+
+def classify_http_code(code: int | None) -> str:
+    """HTTP-svar → hvad det BETYDER for om provideren kan bruges.
+
+    28/10-2026: indført fordi ``reachable`` blev sat til ``code < 500``, så 401/403/404
+    alle talte som sunde. Målt samme dag: filen meldte 8/8 «reachable» mens groq svarede
+    403, mistral 401, opencode 403, gemini 404 og cloudflare 404 — kun tre af otte kunne
+    faktisk bruges. Et health-signal der tæller «svarede» som «virker» skjuler netop det
+    det findes for at vise.
+
+    Klassifikationen er bevidst grov: den skal kunne læses uden at kende provideren.
+    """
+    if code is None:
+        return "unreachable"
+    if 200 <= code < 300:
+        return "healthy"
+    if code in (401, 403):
+        return "auth_failed"      # nøgle mangler/er ugyldig — provideren kan IKKE bruges
+    if code == 404:
+        return "wrong_endpoint"   # stien findes ikke — ping-URL'en er forkert, ikke provideren
+    if code == 429:
+        return "rate_limited"     # virker, men tør lige nu
+    if 400 <= code < 500:
+        return "bad_request"
+    return "unreachable"          # 5xx = serveren svarer ikke brugbart
+
+
+def _ping_host(url: str, headers: dict[str, str] | None = None) -> dict[str, Any]:
+    """HTTP GET med kort timeout. Returnerer ``status`` (klassificeret) + ``reachable``.
+
+    ``reachable`` bevares for bagudkompatibilitet, men betyder nu «kan bruges», ikke
+    «svarede». Forskellen er hele pointen: en 403 er et svar, men ikke et brugbart et.
+
+    29/10-2026: ``headers`` tilføjet. Uden den sendte proben hverken nøgle eller
+    User-Agent — så 401/403 målte VORES forespørgsel, ikke providerens helbred.
+    """
     started = datetime.now(UTC)
     try:
         req = urllib.request.Request(url, method="GET")
+        for navn, vaerdi in (headers or {}).items():
+            req.add_header(navn, vaerdi)
         with urllib.request.urlopen(req, timeout=_PING_TIMEOUT_SECONDS) as response:
             code = response.getcode()
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": True, "http_code": code, "latency_ms": elapsed_ms}
+        status = classify_http_code(code)
+        return {"reachable": status == "healthy", "status": status,
+                "http_code": code, "latency_ms": elapsed_ms}
     except urllib.error.HTTPError as exc:
-        # 401/403 = host is up, just denying us — that's "reachable" for our purposes
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": exc.code < 500, "http_code": exc.code, "latency_ms": elapsed_ms}
+        status = classify_http_code(exc.code)
+        return {"reachable": status == "healthy", "status": status,
+                "http_code": exc.code, "latency_ms": elapsed_ms}
     except Exception as exc:
         elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-        return {"reachable": False, "error": str(exc)[:120], "latency_ms": elapsed_ms}
+        return {"reachable": False, "status": "unreachable",
+                "error": str(exc)[:120], "latency_ms": elapsed_ms}
 
 
 def health_check_all_providers() -> dict[str, Any]:
     """Ping every cheap-lane provider once. Returns per-provider status."""
     results: dict[str, Any] = {}
     unreachable: list[str] = []
-    for provider, url in _PING_ENDPOINTS.items():
-        result = _ping_host(url)
+    for provider in _PING_ENDPOINTS:
+        request = _probe_request(provider)
+        if request is None:
+            results[provider] = {"reachable": False, "status": "no_endpoint",
+                                 "http_code": None, "latency_ms": 0}
+            unreachable.append(provider)
+            continue
+        if not request["url"] or not request["has_credentials"]:
+            # Vi har ingen nøgle at spørge med. Så kan proben ikke sige noget om
+            # provideren — den kan kun sige noget om os. Før blev der alligevel
+            # pinget, og 401/403 blev rapporteret som «nøglen er død», selv når
+            # vi slet ikke havde sendt en.
+            #
+            # Bemærk: alle providere i `_PING_ENDPOINTS` kræver en nøgle. Tilføjer
+            # man en nøglefri udbyder, skal den vej ind her — ikke gennem et 401.
+            results[provider] = {"reachable": False, "status": "no_credentials",
+                                 "http_code": None, "latency_ms": 0}
+            unreachable.append(provider)
+            continue
+        result = _ping_host(request["url"], request["headers"])
         results[provider] = result
         if not result.get("reachable"):
             unreachable.append(provider)
+
+    # 28/10-2026: «reachable» betød «svarede», så 401/403/404 talte som sunde. Nu tælles
+    # healthy_count kun ved 2xx, og de øvrige navngives med deres årsag — ellers kan man
+    # ikke se på filen hvilke providers der faktisk kan bruges.
+    by_status: dict[str, list[str]] = {}
+    for provider, r in results.items():
+        st = str(r.get("status") or "unreachable")
+        by_status.setdefault(st, []).append(provider)
 
     snapshot = {
         "checked_at": datetime.now(UTC).isoformat(),
         "results": results,
         "unreachable": unreachable,
-        "reachable_count": len(_PING_ENDPOINTS) - len(unreachable),
+        "healthy_count": len(by_status.get("healthy") or []),
+        "reachable_count": len(by_status.get("healthy") or []),
         "total_count": len(_PING_ENDPOINTS),
+        "by_status": by_status,
+        "auth_failed": by_status.get("auth_failed") or [],
+        "wrong_endpoint": by_status.get("wrong_endpoint") or [],
+        "rate_limited": by_status.get("rate_limited") or [],
+        # 29/10-2026: «vi har ingen nøgle» er ikke «provideren er død». Uden denne
+        # kunne en manglende lokal profil læses som en udfaldende udbyder.
+        "no_credentials": by_status.get("no_credentials") or [],
+        "no_endpoint": by_status.get("no_endpoint") or [],
     }
 
     try:
@@ -293,23 +482,38 @@ def latest_health_snapshot() -> dict[str, Any]:
 
 
 def health_section() -> str | None:
-    """Awareness section listing currently unreachable providers.
+    """Awareness section listing providers that CANNOT be used — not just silent ones.
 
     2026-05-22 (Claude): dropped the `(check HH:MM:SS)` timestamp suffix.
     It was unique per build and broke DeepSeek's prompt cache at exactly
     the boundary where this section landed in the prompt. The model
     doesn't need the wall-clock time of the check — only the result.
     Time Pin gives the model wall time globally.
+
+    28/10-2026: sektionen listede kun ``unreachable`` (helt tavse hosts). Målt samme dag
+    meldte filen 8/8 sunde mens fem svarede med fejlkode — så sektionen var tavs om netop
+    det den findes for. Nu nævnes auth-fejl og forkerte endpoints også, med deres årsag.
     """
     snap = latest_health_snapshot()
     unreachable = snap.get("unreachable") or []
-    if not unreachable:
+    auth_failed = snap.get("auth_failed") or []
+    wrong_endpoint = snap.get("wrong_endpoint") or []
+    no_credentials = snap.get("no_credentials") or []
+    if not (unreachable or auth_failed or wrong_endpoint or no_credentials):
         return None
-    return (
-        f"Provider health: "
-        f"{len(unreachable)} unreachable ({', '.join(unreachable)}). "
-        "Cheap-lane fallback chain håndterer routing."
-    )
+    parts: list[str] = []
+    if auth_failed:
+        parts.append(f"auth-fejl ({', '.join(auth_failed)})")
+    if wrong_endpoint:
+        parts.append(f"forkert endpoint ({', '.join(wrong_endpoint)})")
+    if no_credentials:
+        parts.append(f"mangler nøgle ({', '.join(no_credentials)})")
+    if unreachable:
+        parts.append(f"unreachable ({', '.join(unreachable)})")
+    healthy = snap.get("healthy_count")
+    total = snap.get("total_count")
+    head = f"{healthy}/{total} providers brugbare" if healthy is not None and total else "Provider health"
+    return f"{head}: " + "; ".join(parts) + ". Cheap-lane fallback chain håndterer routing."
 
 
 def _exec_run_health_check(args: dict[str, Any]) -> dict[str, Any]:

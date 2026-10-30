@@ -23,13 +23,16 @@ class TestHealthSectionNoTimestamp:
         from core.services.provider_health_check import health_section
         with patch(
             "core.services.provider_health_check.latest_health_snapshot",
-            return_value={"unreachable": ["mistral", "groq"]},
+            return_value={"unreachable": ["mistral", "groq"], "healthy_count": 6,
+                          "total_count": 8},
         ):
             s = health_section()
         assert s is not None
         assert "mistral" in s
         assert "groq" in s
-        assert "2 unreachable" in s
+        # Formatet skiftede 28/10-2026 fra "2 unreachable" til "unreachable (a, b)".
+        # Det testen værner er at NAVNENE stadig står der — ikke ordstillingen.
+        assert "unreachable" in s
 
 
 # ── Jarvis-spec-udvidelse 2026-06-23: model-drift + cheap-dry + flag/auto-resolve ──

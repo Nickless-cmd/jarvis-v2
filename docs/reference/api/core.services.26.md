@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/share_guard_store.py`
+_Pending cross-user share-beslutninger — DB-backed kø (spec §4.4, Fase 6 #1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/share_guard_store.py#L19) |
+| function | `_save` | `(items)` | — | [src](../../../core/services/share_guard_store.py#L24) |
+| function | `record_pending` | `(*, decision_id, session_id, current_user_id, mentioned_users, text_preview, created_at)` | Registrér en pending share-beslutning. Returnér recorden. | [src](../../../core/services/share_guard_store.py#L28) |
+| function | `list_pending` | `()` | Alle uafgjorte share-beslutninger (til Cowork-køen). | [src](../../../core/services/share_guard_store.py#L53) |
+| function | `resolve` | `(decision_id, *, shared)` | Afgør en beslutning: shared=True (okay at dele) / False (hold privat). | [src](../../../core/services/share_guard_store.py#L58) |
+
 ## `core/services/shared_cache.py`
 _SQLite-backed shared cache for cross-process state._
 
@@ -84,34 +95,36 @@ _Side-task flag — keep the main thread focused._
 | function | `_book_vaekning` | `(record, *, nu=…)` | Book ÉN vækning til opgavens `not_before`. Id, eller ``""``. | [src](../../../core/services/side_tasks.py#L250) |
 | function | `_ventende_vaekning_ids` | `()` | Id'er på vækninger der stadig venter. ``None`` = kunne IKKE læses. | [src](../../../core/services/side_tasks.py#L296) |
 | function | `flag` | `(*, title, prompt, tldr=…, session_id=…, finding_key=…, source_run_id=…, evidence=…, not_before=…, autonomy_mode=…, max_minutes=…, max_tool_calls=…)` | Rejs et flag. `not_before` (16/10-2026) gør det til en TIDSINDSTILLET | [src](../../../core/services/side_tasks.py#L312) |
-| function | `snooze` | `(side_task_id, *, until, reason=…)` | Udskyd en sideopgave: den må ikke tages op før `until`. | [src](../../../core/services/side_tasks.py#L394) |
-| function | `vaagn` | `(side_task_id, *, reason=…)` | Væk en sovende opgave FØR tid: ryd `not_before`, annullér vækningen. | [src](../../../core/services/side_tasks.py#L469) |
-| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L498) |
-| function | `list_open` | `()` | Alle åbne — ventende, køede og igangværende. | [src](../../../core/services/side_tasks.py#L502) |
-| function | `list_open_synlige` | `()` | De åbne der IKKE er skjult i chatten — præcis dem kortet viser. | [src](../../../core/services/side_tasks.py#L507) |
-| function | `_iso` | `(value)` | — | [src](../../../core/services/side_tasks.py#L523) |
-| function | `claim_autonomous` | `(*, worker_id, lease_minutes=…, now=…)` | Atomically lease one explicitly eligible side task. | [src](../../../core/services/side_tasks.py#L531) |
-| function | `attach_autonomous_session` | `(side_task_id, *, worker_id, session_id)` | Bind a successfully started autonomous task to its visible session. | [src](../../../core/services/side_tasks.py#L579) |
-| function | `release_autonomous_claim` | `(side_task_id, *, worker_id, reason=…, retry_minutes=…)` | Release a lease when no run was born; the task stays durable and open. | [src](../../../core/services/side_tasks.py#L595) |
-| function | `unreported_exhausted_autonomy` | `(*, now=…)` | Tasks whose bounded retries ended without a terminal decision. | [src](../../../core/services/side_tasks.py#L619) |
-| function | `mark_autonomy_exhausted_reported` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L639) |
-| function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L651) |
-| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L655) |
-| function | `opdater` | `(side_task_id, **aendringer)` | Redigér en sideopgave der endnu ikke er taget op. | [src](../../../core/services/side_tasks.py#L679) |
-| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L772) |
-| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L857) |
-| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L885) |
-| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L917) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L989) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L1022) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1027) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1039) |
-| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L1051) |
-| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L1065) |
-| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L1223) |
-| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1245) |
-| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1269) |
-| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1280) |
+| function | `snooze` | `(side_task_id, *, until, reason=…)` | Udskyd en sideopgave: den må ikke tages op før `until`. | [src](../../../core/services/side_tasks.py#L396) |
+| function | `vaagn` | `(side_task_id, *, reason=…)` | Væk en sovende opgave FØR tid: ryd `not_before`, annullér vækningen. | [src](../../../core/services/side_tasks.py#L471) |
+| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L500) |
+| function | `list_open` | `()` | Alle åbne — ventende, køede og igangværende. | [src](../../../core/services/side_tasks.py#L504) |
+| function | `list_open_synlige` | `()` | De åbne der IKKE er skjult i chatten — præcis dem kortet viser. | [src](../../../core/services/side_tasks.py#L509) |
+| function | `_iso` | `(value)` | — | [src](../../../core/services/side_tasks.py#L525) |
+| function | `claim_autonomous` | `(*, worker_id, lease_minutes=…, now=…)` | Atomically lease one explicitly eligible side task. | [src](../../../core/services/side_tasks.py#L533) |
+| function | `attach_autonomous_session` | `(side_task_id, *, worker_id, session_id)` | Bind a successfully started autonomous task to its visible session. | [src](../../../core/services/side_tasks.py#L581) |
+| function | `release_autonomous_claim` | `(side_task_id, *, worker_id, reason=…, retry_minutes=…)` | Release a lease when no run was born; the task stays durable and open. | [src](../../../core/services/side_tasks.py#L597) |
+| function | `unreported_exhausted_autonomy` | `(*, now=…)` | Tasks whose bounded retries ended without a terminal decision. | [src](../../../core/services/side_tasks.py#L621) |
+| function | `mark_autonomy_exhausted_reported` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L641) |
+| function | `get` | `(side_task_id)` | — | [src](../../../core/services/side_tasks.py#L653) |
+| function | `lager_sti` | `()` | Den FYSISKE fil hvor side-opgaverne bor — aldrig en gættet tabel. | [src](../../../core/services/side_tasks.py#L657) |
+| function | `verify_side_task` | `(side_task_id)` | Slå en side-opgave op i det lager den faktisk bor i, og sig HVOR. | [src](../../../core/services/side_tasks.py#L672) |
+| function | `list_alle` | `(*, maks=…)` | ALLE opgaver, nyeste først — også de lukkede. | [src](../../../core/services/side_tasks.py#L703) |
+| function | `opdater` | `(side_task_id, **aendringer)` | Redigér en sideopgave der endnu ikke er taget op. | [src](../../../core/services/side_tasks.py#L727) |
+| function | `resolve` | `(side_task_id, *, decision, arbejds_session=…, arbejds_run_id=…, lukket_af=…, reason=…, bevis=…)` | Flyt en opgaves status. `arbejds_session` knytter den til den samtale | [src](../../../core/services/side_tasks.py#L820) |
+| function | `saet_skjult` | `(side_task_id, *, skjult=…)` | Vis eller skjul en ÅBEN opgave i chatkortet. Rører ikke dens status. | [src](../../../core/services/side_tasks.py#L905) |
+| function | `arbejds_session_for` | `(session_id)` | Den ÅBNE side-opgave denne samtale blev startet for — eller ``None``. | [src](../../../core/services/side_tasks.py#L933) |
+| function | `side_tasks_prompt_section` | `(session_id=…)` | Listen over åbne side-opgaver — og en eksplicit lukke-instruks når | [src](../../../core/services/side_tasks.py#L965) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1037) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L1070) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1075) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L1087) |
+| function | `_exec_snooze_side_task` | `(args)` | Udskyd en sideopgave til et tidspunkt (16/10-2026). | [src](../../../core/services/side_tasks.py#L1099) |
+| function | `_exec_wake_side_task` | `(args)` | Væk en sovende opgave før tid — modstykket til `snooze`. | [src](../../../core/services/side_tasks.py#L1113) |
+| function | `_minutter_siden` | `(tidsstempel)` | Minutter siden et ISO-tidsstempel — ``None`` hvis det ikke kan læses. | [src](../../../core/services/side_tasks.py#L1271) |
+| function | `_sidst_aktiv` | `(session_id)` | Hvornår samtalen sidst sagde noget (`chat_sessions.updated_at`). | [src](../../../core/services/side_tasks.py#L1293) |
+| function | `_arbejds_run_aktiv` | `(session_id)` | Et langt run må ikke omklassificeres på grund af stille chat-historik. | [src](../../../core/services/side_tasks.py#L1317) |
+| function | `fej_faerdige` | `(*, stilstand_minutter=…)` | Flyt forladte `activated` opgaver tilbage til `pending`. | [src](../../../core/services/side_tasks.py#L1328) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._
@@ -279,8 +292,8 @@ _Detektor: en bash-kæde der brød tavst ved et ``&&``-led._
 | function | `_led` | `(command)` | Split i (operator, led) på top-niveau. Første led har operator ''. | [src](../../../core/services/silent_chain_break.py#L63) |
 | function | `silent_chain_break` | `(command, exit_code)` | Ren detektor. Fund-dict hvis en REN ``&&``-kæde brød, ellers None. | [src](../../../core/services/silent_chain_break.py#L117) |
 | function | `_record` | `(fund)` | Fød fundet ind i `lessons` — kilden Smiths fejl-detektor læser. | [src](../../../core/services/silent_chain_break.py#L150) |
-| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L168) |
-| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L183) |
+| function | `observe` | `(tool_name, arguments, result)` | Kaldes fra `execute_tool` efter hvert kald. Self-safe → None. | [src](../../../core/services/silent_chain_break.py#L189) |
+| function | `_observe_impl` | `(tool_name, arguments, result)` | — | [src](../../../core/services/silent_chain_break.py#L204) |
 
 ## `core/services/simple_tool_executor.py`
 _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-08)._
@@ -288,10 +301,10 @@ _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-0
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_prepare_call` | `(tc, *, force, run_id, session_id, user_message, controller, round_seen, user_present=…)` | Single-thread prep for one call: parse/stamp args, signature, dedup, cache, | [src](../../../core/services/simple_tool_executor.py#L27) |
-| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L240) |
-| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L365) |
-| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L383) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L535) |
+| function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L252) |
+| function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L377) |
+| function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…, output_buffer=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L395) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L547) |
 
 ## `core/services/skill_autosurface.py`
 _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._
@@ -442,7 +455,7 @@ _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
-| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
+| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…, metric=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
 
 ## `core/services/social_labilizer.py`
 _Social labilizer — Fase 2 of generative autonomy._
@@ -597,19 +610,4 @@ _Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
 | function | `_log_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L238) |
 | function | `er_roteret` | `(navn)` | Sandt for en logfil der er rullet fra, falsk for den der skrives til. | [src](../../../core/services/state_file_retention.py#L242) |
 | function | `prune_rotated_logs` | `(*, max_age_days=…, now=…)` | Slet roterede logfiler ældre end ``max_age_days``. Self-safe. | [src](../../../core/services/state_file_retention.py#L254) |
-
-## `core/services/state_flag_store.py`
-_State-flag store (leak-kandidat #1, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/state_flag_store.py#L22) |
-| function | `_key` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L26) |
-| function | `_load` | `(user_id)` | — | [src](../../../core/services/state_flag_store.py#L30) |
-| function | `_save` | `(user_id, flags)` | — | [src](../../../core/services/state_flag_store.py#L39) |
-| function | `_prune` | `(flags)` | Fjern udløbne flag. Returnerer den rensede dict (muterer input). | [src](../../../core/services/state_flag_store.py#L43) |
-| function | `set_flag` | `(key, value, *, ttl_minutes=…, user_id=…)` | Sæt/opdatér et flag. ttl_minutes=None/0 → intet udløb. Returnerer den lagrede | [src](../../../core/services/state_flag_store.py#L53) |
-| function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
-| function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
-| function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
 

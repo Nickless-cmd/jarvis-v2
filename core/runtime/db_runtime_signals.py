@@ -38,6 +38,22 @@ def ensure_runtime_signals_tables(conn: sqlite3.Connection) -> None:
         ON runtime_action_outcomes(action_id, recorded_at DESC)
         """
     )
+    # 28/10-2026: den manglende PIL. Alt andet i denne fil INSERT'er en ny raekke;
+    # denne tabel er den ENESTE der OPDATERER en vaegt. Maalt foer den fandtes:
+    # runtime_action_outcomes havde 274.614 raekker, men decision_score havde kun
+    # 6 distinkte vaerdier for 257.027 ok-raekker — et facit-notat skrevet EFTER
+    # udfaldet kan ikke have paavirket det valg det beskriver. `term` er her
+    # handlingens identitet (action_id), fordi det er den noegle valget slaar op med.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS central_word_weights (
+            term TEXT PRIMARY KEY,
+            weight REAL NOT NULL DEFAULT 0.5,
+            n_samples INTEGER NOT NULL DEFAULT 0,
+            last_updated TEXT NOT NULL
+        )
+        """
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_learning_signals (
@@ -306,3 +322,114 @@ def record_runtime_learning_signal(
     if row is None:
         raise RuntimeError("runtime learning signal was not persisted")
     return _runtime_learning_signal_from_row(row)
+
+
+# ── Vaegt-loekken (28/10-2026) ────────────────────────────────────────────
+# Skrive-vejen: udfaldet flytter vaegten. Laese-vejen: valget konsulterer den.
+# Foer dette fandtes kun en SNAPSHOT (summarize_executive_feedback) der blev
+# genberegnet ved hver laesning ud fra de SAMME raa raekker — den kunne pr.
+# konstruktion ikke flytte sig over tid. Det saa ud som akkumulering, men var
+# en re-derivation.
+
+# Hvad et udfald peger imod. Bevidst groft: et udfald er ikke en finmasket
+# dom, og en vaegt der bevaege sig i spring paa 0.01 ville vaere stoj.
+_OUTCOME_TARGET = {
+    "executed": 1.0,
+    "recorded": 1.0,
+    "sent": 1.0,
+    "success": 1.0,
+    "ok": 1.0,
+    "proposed": 0.6,   # skete ikke — halvt fremskridt, ikke et nej
+    "blocked": 0.25,
+    "failed": 0.0,
+    "error": 0.0,
+}
+
+
+def outcome_target(status: str) -> float:
+    """Et udfalds retning som tal i [0,1]. Ukendt status giver 0.5 (neutral)."""
+    return _OUTCOME_TARGET.get(str(status or "").strip().lower(), 0.5)
+
+
+def load_action_weights(terms: list[str] | None = None) -> dict[str, dict[str, object]]:
+    """Laese-vejen: persisterede vaegte pr. term (action_id).
+
+    Kaldes FOER valget. Returnerer ``{term: {weight, n_samples, last_updated}}``.
+    En term der aldrig er set mangler i mappet — kalderen skal behandle det som
+    «ingen viden», ikke som neutral vaegt 0.5. Forskellen er hele pointen.
+    """
+    with connect() as conn:
+        ensure_runtime_signals_tables(conn)
+        if terms:
+            placeholders = ",".join("?" for _ in terms)
+            rows = conn.execute(
+                f"SELECT term, weight, n_samples, last_updated "
+                f"FROM central_word_weights WHERE term IN ({placeholders})",
+                tuple(terms),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT term, weight, n_samples, last_updated FROM central_word_weights"
+            ).fetchall()
+    return {
+        str(row["term"]): {
+            "weight": float(row["weight"]),
+            "n_samples": int(row["n_samples"]),
+            "last_updated": str(row["last_updated"]),
+        }
+        for row in rows
+    }
+
+
+def apply_action_weight_update(
+    *,
+    term: str,
+    outcome_status: str,
+    recorded_at: str,
+) -> dict[str, object]:
+    """Skrive-vejen: udfaldet flytter vaegten — UPDATE, ikke INSERT.
+
+    Vaegten er et loebende gennemsnit mod udfaldets retning::
+
+        weight <- weight + rate * (target - weight),  rate = 1/(n_samples+1)
+
+    Læringsraten er AFledt af forloebet, ikke valgt frit: jo flere samples, jo
+    mindre flytter den enkelte observation. En haandplukket konstant ville vaere
+    en indstilling, ikke en laering.
+
+    Atomisk i ÉN saetning: der er ingen laes-saa-skriv-der kan skilles ad, saa to
+    samtidige udfald kan ikke overskrive hinandens sample-tal.
+    """
+    key = str(term or "").strip()
+    if not key:
+        return {}
+    target = outcome_target(outcome_status)
+    with connect() as conn:
+        ensure_runtime_signals_tables(conn)
+        conn.execute(
+            """
+            INSERT INTO central_word_weights (term, weight, n_samples, last_updated)
+            VALUES (?, ?, 1, ?)
+            ON CONFLICT(term) DO UPDATE SET
+                weight = central_word_weights.weight
+                    + (1.0 / (central_word_weights.n_samples + 1.0))
+                    * (? - central_word_weights.weight),
+                n_samples = central_word_weights.n_samples + 1,
+                last_updated = excluded.last_updated
+            """,
+            (key, target, recorded_at, target),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT term, weight, n_samples, last_updated "
+            "FROM central_word_weights WHERE term = ?",
+            (key,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("action weight was not persisted")
+    return {
+        "term": str(row["term"]),
+        "weight": float(row["weight"]),
+        "n_samples": int(row["n_samples"]),
+        "last_updated": str(row["last_updated"]),
+    }

@@ -1,4 +1,28 @@
 import '@testing-library/jest-dom/vitest'
+import { configure } from '@testing-library/dom'
+
+/**
+ * Hvor længe `findBy*` og `waitFor` venter før de giver op.
+ *
+ * Standard er 1000 ms, og den er målt for kort på CI. 29/10-2026 faldt
+ * `ChatView.test.tsx > shows optimistic user msg` på CI med
+ * «Unable to find an element with the text: hej» efter 1205 ms, mens samme
+ * test svarede på 355 ms lokalt og bestod 8/8 isoleret. Hele suiten tog
+ * 187 s på CI mod 75 s her — runneren er ~2,5× langsommere, og en
+ * `userEvent.type` på fire tastetryk plus den efterfølgende render kan
+ * sagtens krydse et sekund når CPU'en er mættet af 392 parallelle filer.
+ *
+ * 17/10-2026 blev samme test rettet fra `getByText` (synkron, ventede slet
+ * ikke) til `findByText`. Det var den rigtige retning, men utlistrækkelig:
+ * den arvede stadig de 1000 ms. Fejlen kom igen med samme besked.
+ *
+ * 3000 ms er ~2,5× den målte fejlgrænse — nok til CI's last, ikke så meget
+ * at en test der venter på noget der ALDRIG kommer kan hænge i minutter.
+ * Dette ændrer hvad testene venter på, ikke hvad de påstår.
+ *
+ * `setup.asyncUtilTimeout.test.ts` fælder det hvis linjen forsvinder.
+ */
+configure({ asyncUtilTimeout: 3000 })
 
 /**
  * jsdom har ingen ResizeObserver.

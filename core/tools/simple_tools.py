@@ -880,6 +880,68 @@ def _emit_security_check(hit: dict, *, target: str) -> None:
         pass
 
 
+#: Kommandoer der SKRIVER, uanset at de kan stå som et pipe-segment efter en
+#: læsning. ``tee`` var det målte hul 30/10-2026: ``grep -r foo . | tee /tmp/out``
+#: blev ``auto`` fordi segmentet før var en læsning og tee aldrig blev vurderet.
+_SKRIVENDE_SEGMENT_COMMANDS = frozenset({
+    "tee", "sponge", "dd", "truncate", "install", "rsync", "cp", "mv",
+    "rm", "rmdir", "mkdir", "touch", "chmod", "chown", "ln", "patch",
+    "shred", "unlink", "sed", "awk", "xargs", "sudo", "su",
+})
+
+#: ``find``-flag der muterer. ``-exec``/``-execdir``/``-ok``/``-okdir`` kører en
+#: vilkårlig kommando; ``-fprint*`` skriver en fil; ``-delete`` sletter.
+_FIND_SKRIVENDE_FLAG = re.compile(
+    r"\s-(?:delete|exec|execdir|ok|okdir|fprint\w*)\b"
+)
+
+_QUOTED_STRENG = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _uden_for_quotes(command: str) -> str:
+    """Fjern quotede strenge, så en ``>`` inde i en streng ikke tælles som redirect.
+
+    ``echo 'a > b'`` skriver intet — den printer teksten. Uden dette ville
+    enhver kommando der nævner ``>`` i en besked blive sendt til godkendelse.
+    """
+    return _QUOTED_STRENG.sub(" ", command)
+
+
+def _har_skrivende_redirect(command: str) -> bool:
+    """``>`` eller ``>>`` uden for quotes gør kommandoen muterende.
+
+    Målt 30/10-2026: ``echo foo > /tmp/x`` og
+    ``echo foo >> /media/projects/jarvis-v2/README.md`` blev begge ``auto``,
+    fordi prefix-listen kun ser det forreste ord. Kommentaren ved
+    ``_AUTO_APPROVE_WRITE_PREFIXES`` dokumenterede svagheden ordret allerede
+    (»no redirect awareness«) — den blev aldrig fulgt op.
+
+    ``>&`` (fd-duplikation, fx ``2>&1``) tælles med. Den skriver godt nok
+    ikke en fil, men et unødigt godkendelseskort er billigere end et uønsket
+    skriv — og formen er sjælden i rene læsninger.
+    """
+    return ">" in _uden_for_quotes(command)
+
+
+def _segment_er_laesende(segment: str) -> bool:
+    """Er ÉT pipe-segment en ren læsning? Fail-closed ved tvivl."""
+    seg = segment.strip()
+    if not seg:
+        return True
+    if _har_skrivende_redirect(seg):
+        return False
+    foerste = seg.split()[0]
+    if foerste in _SKRIVENDE_SEGMENT_COMMANDS:
+        return False
+    if _FIND_SKRIVENDE_FLAG.search(seg):
+        return False
+    for prefix in _READ_ONLY_COMMAND_PREFIXES:
+        if seg.startswith(prefix) or seg == prefix.strip():
+            return True
+    # Ukendt segment må ikke arve «read-only» fra segmentet før det.
+    return False
+
+
 def classify_command(command: str) -> str:
     """Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'.
 
@@ -913,6 +975,40 @@ def classify_command(command: str) -> str:
     # samme som foer (de gik allerede til approval, medmindre de startede med
     # en read-only kommando — hvilket var netop hullet).
     if ";" in normalized and "&&" not in normalized and "|" not in normalized:
+        return "approval"
+
+    # 30/10-2026: en kommando må ikke afgøres af sit FORRESTE ord alene.
+    #
+    # Målt mod den levende funktion: ``echo foo > /tmp/x``,
+    # ``cat /etc/passwd > /tmp/x`` og ``find . -name x -delete`` blev alle
+    # ``auto``, fordi ``echo``/``cat``/``find`` står i prefix-listen og resten
+    # af strengen aldrig blev læst. Samme fejlklasse som ``;``-kæden 26/10:
+    # mønsteret matcher et STED, ikke hele kommandoen.
+    #
+    # Listen selv er rigtig — ``echo``, ``cat`` og ``find`` ER legitime
+    # læsninger og bruges hele tiden. Det der manglede var at se redirecten og
+    # flaget. Derfor rettes HER og ikke i listen.
+    if _har_skrivende_redirect(normalized):
+        return "approval"
+    if _FIND_SKRIVENDE_FLAG.search(normalized):
+        return "approval"
+
+    # Piped commands (|): HVERT segment skal klassificeres — læsende ELLER
+    # skrivende — og grenen skal ligge FØR prefix-listen.
+    #
+    # Målt 30/10-2026 i to omgange: først arvede et ukendt segment «read-only»
+    # fra segmentet før det, og ``tee`` blev slet ikke vurderet som skrivende.
+    # Dernæst viste det sig at grenen slet ikke blev nået for
+    # ``echo hej | tee /tmp/x`` — prefix-loopet nedenfor returnerede ved
+    # ``echo `` og resten af strengen blev aldrig læst. Det er præcis den
+    # fejlklasse hele rettelsen handler om, bare et lag længere inde.
+    #
+    # Derfor returnerer grenen EKSPLICIT: en pipe-kommando afgøres af sine
+    # segmenter, ikke af sit første ord.
+    if "|" in normalized and "&&" not in normalized and ";" not in normalized:
+        segments = [s.strip() for s in normalized.split("|")]
+        if segments and all(_segment_er_laesende(seg) for seg in segments):
+            return "auto"
         return "approval"
 
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
@@ -949,15 +1045,8 @@ def classify_command(command: str) -> str:
         if any(subcmd.startswith(s) for s in _READ_ONLY_GH_SUBCOMMANDS):
             return "auto"
 
-    # Piped commands (|): check if all segments are read-only
-    if "|" in normalized and "&&" not in normalized and ";" not in normalized:
-        segments = [s.strip() for s in normalized.split("|")]
-        if all(
-            any(seg.startswith(p) or seg == p.strip() for p in _READ_ONLY_COMMAND_PREFIXES)
-            for seg in segments
-            if seg
-        ):
-            return "auto"
+    # Piped commands er afgjort ovenfor (FØR prefix-listen) — en pipe må ikke
+    # nå herned og blive afgjort af sit første ord.
 
     # &&-chained commands: classify each segment independently
     # If ALL segments are auto or read-only, the chain is auto
@@ -1206,6 +1295,31 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if not _intern:
         udgiv_tool_invoked(name, arguments)
 
+    # Var filen laest FOER dette kald? (29/10-2026)
+    #
+    # Maales her og ikke i `byg_completed_payload`, fordi den funktion kaldes
+    # EFTER handleren — og `edit_file`/`write_file` skriver filen. En maaling
+    # bagefter ville spoerge «er filen laest?» om en fil der netop blev aendret,
+    # og svaret ville vaere «nej» uanset hvad der skete foer. Det er praecis
+    # den slags omvendte maaling der goer et panel grønt uden at noget er i
+    # orden.
+    _pre_read: bool | None = None
+    if name in ("edit_file", "write_file"):
+        try:
+            from core.services.read_before_write_guard import was_read as _was_read_pub
+            _pre_sti = str(arguments.get("path") or "")
+            if _pre_sti:
+                _pre_read = _was_read_pub(
+                    _pre_sti,
+                    session_id=str(
+                        arguments.get("_runtime_session_id")
+                        or arguments.get("_session_id")
+                        or "default"
+                    ),
+                )
+        except Exception:
+            _pre_read = None  # self-safe: en maaling maa ikke vaelte kaldet
+
     try:
         result = handler(arguments)
     except Exception as exc:
@@ -1217,7 +1331,9 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    _completed_payload = byg_completed_payload(name, status, arguments, result)
+    _completed_payload = byg_completed_payload(
+        name, status, arguments, result, pre_read=_pre_read
+    )
     # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
     # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
     if name in ("bash", "bash_session_run"):
@@ -1239,7 +1355,30 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         try:
             from core.services.silent_chain_break import observe as _scb_observe
 
-            _scb_observe(name, arguments, result)
+            # LÆNKEN (29/10-2026). Fundet blev returneret og KASTET VÆK: det
+            # skrev en lesson — ren tekst i prompten — men nåede aldrig det
+            # tool-svar jeg læser. Målt i `lessons` (id 99): 1.318 gentagelser
+            # på 19 dage (~69/dag), og ikke én af dem blev synlig i det jeg
+            # læste videre på. Det er forskellen på en NOTE og en GATE: Claudes
+            # harness RETURNERER fejlen til modellen («File has not been read
+            # yet» → 222 blokeringer); min skrev den i en tæller og lod mig
+            # læse videre som om hele kommandoen kørte.
+            _scb_fund = _scb_observe(name, arguments, result)
+            if _scb_fund and isinstance(result, dict):
+                _scb_note = (
+                    f"KÆDEN BRØD: ren `&&`-kæde fejlede (exit "
+                    f"{_scb_fund['exit_code']}) efter led {_scb_fund['led']}. "
+                    f"Led efter brud-punktet kørte IKKE — læs ikke outputtet "
+                    f"som om hele kommandoen kørte."
+                )
+                # Egen nøgle (synlig i det serialiserede resultat) OG i stderr,
+                # som er det felt jeg læser først når noget fejler.
+                result["chain_broken"] = _scb_note
+                _scb_stderr = result.get("stderr")
+                if isinstance(_scb_stderr, str):
+                    result["stderr"] = (_scb_stderr + "\n" + _scb_note).strip()
+                elif _scb_stderr is None:
+                    result["stderr"] = _scb_note
         except Exception:  # self-safe: detektoren maa ikke vaelte tool-flow
             pass
 

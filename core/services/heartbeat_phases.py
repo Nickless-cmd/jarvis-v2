@@ -74,6 +74,56 @@ def _inner_tick_during_chat_enabled() -> bool:
         return True
 
 
+def _aktive_maal(*, limit: int = 5) -> list[dict[str, Any]]:
+    """Aktive mål fra BEGGE mål-butikker — de kan ikke være usynlige for sansningen.
+
+    MÅLT 29/10-2026: `sense_phase` læste kun `autonomous_goals`. Den butik er en
+    JSON-fil med **3.691 mål, alle i `pending`, nul i `active`** — og der findes
+    ingen kode der promoverer et mål fra pending til active (`update_goal_status`
+    findes, men kaldes kun manuelt). `advance_goals`-grenen i
+    `_identify_priorities` kunne derfor ALDRIG fyre, uanset hvor meget arbejde
+    der lå: hjerteslaget stod på `productive_idle` seks tik i træk (90 minutter)
+    med 5 ventende initiativer i køen.
+
+    Den butik der FAKTISK har aktive mål er `long_horizon_goals` — DB-tabellen
+    som `goal_create`/`goal_update` skriver til (målt: 1 aktiv). Den blev aldrig
+    læst her. Det er samme fejlform som guard-emitteren og Smiths Trin 2: en gren
+    der ser rigtig ud i koden og hvis indgangsbetingelse intet kan opfylde.
+
+    Læser begge og dedup'er på goal_id, så et aktivt mål ikke kan forsvinde ved
+    at bo i den forkerte butik.
+    """
+    maal: list[dict[str, Any]] = []
+    sete: set[str] = set()
+
+    def _tilfoej(rows: Any) -> None:
+        for g in rows or []:
+            if not isinstance(g, dict):
+                continue
+            gid = str(g.get("goal_id") or g.get("id") or "")
+            if gid and gid in sete:
+                continue
+            if gid:
+                sete.add(gid)
+            maal.append({
+                "goal_id": g.get("goal_id") or g.get("id"),
+                "title": g.get("title"),
+                "priority": g.get("priority"),
+            })
+
+    try:
+        from core.services.autonomous_goals import list_goals
+        _tilfoej(list_goals(status="active", parent_id="any", limit=limit))
+    except Exception:  # butikken kan mangle eller kaste — den anden skal stadig læses
+        logger.debug("_aktive_maal: autonomous_goals kunne ikke læses", exc_info=True)
+    try:
+        from core.services.long_horizon_goals import list_active_goals
+        _tilfoej(list_active_goals(limit=limit))
+    except Exception:  # samme: én brækkende butik må ikke gøre sansningen blind
+        logger.debug("_aktive_maal: long_horizon_goals kunne ikke læses", exc_info=True)
+    return maal[:limit]
+
+
 # ── Phase 1: Sense ─────────────────────────────────────────────────────
 
 
@@ -89,24 +139,17 @@ def sense_phase(*, name: str = "default") -> dict[str, Any]:
         from core.services.mood_oscillator import get_current_mood, get_mood_intensity
         signals["mood_name"] = str(get_current_mood() or "")
         signals["mood_intensity"] = float(get_mood_intensity() or 0.0)
-    except Exception:
+    except Exception:  # humøret er en berigelse af signalet, ikke en forudsætning for ticket
         pass
     try:
         from core.services.affective_meta_state import current_temperature_field
         signals["temperature_field"] = str(current_temperature_field() or "")
-    except Exception:
+    except Exception:  # samme: et manglende temperaturfelt må ikke vælte sansningen
         pass
 
-    # Active goals
-    try:
-        from core.services.autonomous_goals import list_goals
-        active = list_goals(status="active", parent_id="any", limit=5)
-        signals["active_goals"] = [
-            {"goal_id": g.get("goal_id"), "title": g.get("title"), "priority": g.get("priority")}
-            for g in active
-        ]
-    except Exception:
-        signals["active_goals"] = []
+    # Active goals — fra BEGGE butikker. Se `_aktive_maal`: den ene butik havde
+    # 3.691 mål i `pending` og nul i `active`, så denne linje var altid tom.
+    signals["active_goals"] = _aktive_maal(limit=5)
 
     # Recent eventbus activity (last hour)
     try:
@@ -249,18 +292,38 @@ _MAX_CHAIN_PROPOSALS = 5
 
 
 def _collect_active_goals() -> list[dict[str, Any]]:
-    """Fetch active goals for chain proposal targeting."""
-    try:
-        from core.services.autonomous_goals import list_goals
-        return list_goals(status="active", parent_id="any", limit=5) or []
-    except Exception:
-        return []
+    """Fetch active goals for chain proposal targeting.
+
+    ⚠️ RETTET 29/10-2026. Den læste før kun `autonomous_goals`, hvor intet mål
+    nogensinde blev `active`, så C3-forslagene i `productive_idle` (afsnit 8)
+    aldrig blev dannet — samme døde gren som `sense_phase` havde, og som
+    `_aktive_maal` blev skrevet for at lukke.
+
+    At koble den til uden videre var ikke nok: `_exec_propose_skill_chain` kalder
+    en LLM per mål, og `productive_idle` kører ved hvert ledigt tick (hvert 15.
+    minut). Dedup'en i `_propose_skill_chains_in_idle` sker EFTER kaldet, så den
+    sparer lagring — ikke penge. Gaten der gør omkostningen bæredygtig ligger
+    derfor i den funktion: ét kald pr. NYT aktivt mål.
+    """
+    return _aktive_maal(limit=5)
 
 
 def _propose_skill_chains_in_idle(max_goals: int = 3) -> list[dict[str, Any]]:
     """Propose skill chains for active goals. Time-bounded, never blocks."""
     global _chain_proposals
     goals = _collect_active_goals()[:max_goals]
+    if not goals:
+        return []
+
+    # GATEN (29/10-2026). Et mål der allerede HAR et forslag bliver ikke
+    # foreslået igen. Dedup'en nedenfor kører efter LLM-kaldet — den sparer
+    # lagring, ikke penge — så uden denne linje kaldte hvert ledige tick LLM'en
+    # for det samme mål: op til 192 kald i døgnet for forslag der blev kastet
+    # væk med det samme. Med gaten koster grenen ét kald pr. NYT aktivt mål.
+    allerede_foreslaaet = {
+        str(cp.get("goal_id") or "") for cp in _chain_proposals if cp.get("goal_id")
+    }
+    goals = [g for g in goals if str(g.get("goal_id") or "") not in allerede_foreslaaet]
     if not goals:
         return []
 
@@ -666,6 +729,25 @@ def act_phase(
                 "had_priorities": bool(priorities),
                 "idle_result": idle_result,
             }
+
+        # C3 — forslag til aktive mål (29/10-2026, MÅLT).
+        #
+        # Grenen lå i `productive_idle`, og den er nu UOPNÅELIG: `active_goals`
+        # er altid ikke-tom (ét aktivt mål), så `_identify_priorities` tilføjer
+        # `advance_goals` hver gang — og `if priorities:` vinder altid over
+        # `productive_idle`. Målt i databasen: `productive_idle` fyrede 3-4
+        # gange i timen i et helt døgn og stoppede HELT kl. 19, samme time som
+        # fixet gjorde målene synlige. Grenen skal ligge der hvor betingelsen
+        # faktisk opstår, ikke der hvor den engang gjorde.
+        #
+        # Gaten i `_propose_skill_chains_in_idle` gør kaldet til ét pr. NYT
+        # mål: denne linje koster en DB-læsning pr. tick og en LLM kun når et
+        # mål dukker op første gang.
+        if "advance_goals" in priorities:
+            try:
+                _propose_skill_chains_in_idle(max_goals=2)
+            except Exception:  # forslag er en berigelse — må ikke vælte ticken
+                logger.debug("act_phase: skill-chain-forslag fejlede", exc_info=True)
 
         # Action warranted — dispatch to existing tick
         try:

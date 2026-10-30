@@ -44,9 +44,22 @@ export function parseNativeRichSpec(code: string): NativeSpec | null {
   }
   if (type === 'comparison') {
     const columns = Array.isArray(raw.columns) ? raw.columns.map((x) => text(x, 80)).filter(Boolean).slice(0, 4) : []
-    const rows = list(raw.rows, 12).map((x) => ({
-      label: text(x.label, 100), values: Array.isArray(x.values) ? x.values.map((v) => text(v, 240)).slice(0, columns.length) : [],
-    })).filter((x) => x.label && x.values.length === columns.length)
+    // 30/10-2026: PAD i stedet for at kassere.
+    //
+    // Før krævede hver række PRÆCIS `columns.length` values. Manglede én, blev
+    // rækken filtreret væk; manglede de alle, blev HELE fladen kasseret og
+    // erstattet af en placeholder der aldrig forsvandt. Målt i
+    // `state/flade_log.jsonl`: 34 flader med fuldt gyldig JSON blev smidt væk
+    // alene på denne regel — de så rigtige ud for mig, var døde for ham.
+    //
+    // En tom celle er ærlig. En forsvundet flade er ikke.
+    const rows = list(raw.rows, 12).map((x) => {
+      const givne = Array.isArray(x.values) ? x.values.map((v) => text(v, 240)) : []
+      return {
+        label: text(x.label, 100),
+        values: Array.from({ length: columns.length }, (_, i) => givne[i] ?? ''),
+      }
+    }).filter((x) => x.label && x.values.some(Boolean))
     return columns.length >= 2 && rows.length ? { type, title, columns, rows } : null
   }
   if (type === 'choices') {
@@ -66,6 +79,21 @@ export function parseNativeRichSpec(code: string): NativeSpec | null {
 function Heading({ title }: { title: string }) { return title ? <h4 className="native-rich-title">{title}</h4> : null }
 
 export function NativeRichBlock({ code }: { code: string }) {
+  // Ankomst-laget (29/10-2026). Bjørn så fladen poppe ind i ét hug når
+  // paceren sprang over JSON'en: «så blink».
+  //
+  // `key` er bundet til fladens INDHOLD, ikke til renderet. Skiftede nøglen
+  // ved hver re-render, ville fladen danse hver gang paceren rykker ét tegn i
+  // prosaen ovenover — værre end den kodeboks den afløser. Nu remountes noden
+  // kun når en NY flade lander, og CSS-animationen fyrer præcis én gang.
+  return (
+    <div className="flade-ankomst" key={code}>
+      <NativeRichIndhold code={code} />
+    </div>
+  )
+}
+
+function NativeRichIndhold({ code }: { code: string }) {
   const spec = parseNativeRichSpec(code)
   const send = useContext(WidgetPrompt)
   if (!spec) return null

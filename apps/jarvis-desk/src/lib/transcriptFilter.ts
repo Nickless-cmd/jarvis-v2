@@ -75,7 +75,14 @@ export function broId(runId: string): string {
 const SUFFIX_LOFT = 120
 const SUFFIX_GULV = 40
 
-function delerSuffix(a: string, b: string): boolean {
+/**
+ * Deler de to tekster deres afslutning?
+ *
+ * Eksporteret 29/10-2026 fordi `mergeServer` har PRAECIS samme problem:
+ * serveren omskriver blokkene ved persistering, saa et byte-match fejler mens
+ * det er SAMME svar. To steder med hver sin tolerance ville drive fra hinanden.
+ */
+export function delerSuffix(a: string, b: string): boolean {
   const n = Math.min(a.length, b.length)
   if (n < SUFFIX_GULV) return false
   const krav = Math.min(SUFFIX_LOFT, Math.max(SUFFIX_GULV, Math.floor(n * 0.6)))

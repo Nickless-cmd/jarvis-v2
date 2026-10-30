@@ -15,11 +15,13 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/internal", tags=["internal-runtime-surface"])
+from apps.api.jarvis_api.middleware.internal_loopback import require_loopback
+
+router = APIRouter(dependencies=[Depends(require_loopback)], prefix="/api/internal", tags=["internal-runtime-surface"])
 
 
 def _require_loopback(request: Request) -> None:

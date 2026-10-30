@@ -63,17 +63,28 @@ def resolve_owner_session(owner_user_id: str) -> tuple[str, str]:
 
 
 def runtime_presence(session_id: str) -> tuple[str, str]:
-    """Return idle/busy/unknown from shared runtime truth and cooldown state."""
-    try:
-        from core.services.in_flight_runs import levende_koersler
+    """Return idle/busy/unknown from shared runtime truth and cooldown state.
 
-        if levende_koersler():
-            return "busy", "active-run"
+    Kørsel tælles pr. SESSION, ikke globalt (målt 29/10-2026). Før spurgte
+    denne vagt ``levende_koersler()`` — som svarer sandt for ENHVER kørsel i
+    processen — så en helt almindelig samtale mellem Bjørn og Jarvis kl. 05:00
+    gjorde Michelles og Mikkels morgenbriefe «busy» og lod dem ligge i kø.
+    Tre briefs var tavse i seks dage af den grund. En rutine i én session må
+    ikke blokeres af arbejde i en anden; kun et run i SAMME session kolliderer.
+    """
+    try:
         from core.services.wakeup_dispatcher import _active_turn_blocks
 
         reason = str(_active_turn_blocks(session_id) or "")
-        return ("busy", reason) if reason else ("idle", "")
-    except Exception as exc:
+        if reason:
+            return "busy", reason
+        from core.services.in_flight_runs import levende_koersler
+
+        for koersel in levende_koersler():
+            if str(koersel.get("session_id") or "") == session_id:
+                return "busy", "active-run"
+        return "idle", ""
+    except Exception as exc:  # ukendt presence er «ved ikke» — aldrig «ledig»
         logger.warning("routine dispatch: runtime presence unavailable: %s", type(exc).__name__)
         return "unknown", "presence-unavailable"
 

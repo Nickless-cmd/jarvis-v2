@@ -25,6 +25,20 @@ from core.runtime.db import connect
 VALID_STATUSES = {"active", "paused", "revoked", "fulfilled"}
 
 
+def _add_column_if_missing(
+    conn: sqlite3.Connection, table: str, column: str, ddl_type: str
+) -> None:
+    """Idempotent ALTER TABLE — _ensure_tables kaldes ved HVERT opslag.
+
+    SQLite har ingen «ADD COLUMN IF NOT EXISTS», saa vi laeser skemaet foerst.
+    Uden det ville anden kaldsvej kaste «duplicate column name» og vaelte
+    hvert eneste beslutnings-opslag.
+    """
+    cols = {str(row[1]) for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}")
+
+
 def _ensure_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -42,10 +56,24 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
             adherence_score REAL,
             source_record_id TEXT,
             source_type TEXT,
-            created_by TEXT
+            created_by TEXT,
+            revoked_reason TEXT,
+            revoked_evidence TEXT
         )
         """
     )
+    # Migration 30/10-2026: revocationer bar ingen grund.
+    #
+    # Maalt samme dag: 144 raekker med status='revoked' — 71 fra user-feedback,
+    # 41 fra reflection, 11 fra measurement — og ingen af dem kunne sige HVORFOR
+    # politikken blev fjernet. `revoke_decision` HAVDE en reason-parameter hele
+    # tiden, men den blev kun sendt til en ephemeral event. Agent Smith kaldte
+    # den med en rigtig grund (central_agent_smith.py:526) og grunden forsvandt.
+    #
+    # Backfill bevidst udeladt: de 144 eksisterende har ingen grund, og en
+    # gaettet grund er vaerre end ingen. NULL betyder «ikke registreret».
+    _add_column_if_missing(conn, "behavioral_decisions", "revoked_reason", "TEXT")
+    _add_column_if_missing(conn, "behavioral_decisions", "revoked_evidence", "TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_decisions_status "
         "ON behavioral_decisions (status, priority DESC, updated_at DESC)"
@@ -238,6 +266,8 @@ def update_decision(
     trigger_name: str | None = None,
     priority: int | None = None,
     status: str | None = None,
+    revoked_reason: str | None = None,
+    revoked_evidence: str | None = None,
 ) -> dict[str, Any] | None:
     """Update mutable fields on a decision.
 
@@ -274,6 +304,12 @@ def update_decision(
     if status is not None:
         sets.append("status = ?")
         params.append(status)
+    if revoked_reason is not None:
+        sets.append("revoked_reason = ?")
+        params.append(str(revoked_reason).strip() or None)
+    if revoked_evidence is not None:
+        sets.append("revoked_evidence = ?")
+        params.append(str(revoked_evidence).strip() or None)
     if not sets:
         return get_decision(decision_id)  # nothing to change — return as-is
 
@@ -291,18 +327,38 @@ def update_decision(
     return get_decision(decision_id)
 
 
-def set_status(decision_id: str, new_status: str) -> dict[str, Any] | None:
+def set_status(
+    decision_id: str,
+    new_status: str,
+    *,
+    reason: str | None = None,
+    evidence: str | None = None,
+) -> dict[str, Any] | None:
+    """Sæt status. Ved 'revoked' SKAL reason følge med og persisteres.
+
+    Grunden blev tidligere kun sendt til en event og forsvandt dermed. Nu skrives
+    den i rækken, så politik-før kan sammenlignes med politik-efter.
+    """
     if new_status not in VALID_STATUSES:
         return None
     if not get_decision(decision_id):
         return None
     now = _now_iso()
+    sets = ["status = ?", "updated_at = ?"]
+    params: list[Any] = [new_status, now]
+    if new_status == "revoked":
+        sets.append("revoked_reason = ?")
+        params.append((reason or "").strip() or None)
+        if evidence is not None:
+            sets.append("revoked_evidence = ?")
+            params.append(str(evidence).strip() or None)
+    params.append(decision_id)
     with connect() as conn:
         _ensure_tables(conn)
         conn.execute(
-            "UPDATE behavioral_decisions SET status = ?, updated_at = ? "
+            f"UPDATE behavioral_decisions SET {', '.join(sets)} "
             "WHERE decision_id = ?",
-            (new_status, now, decision_id),
+            params,
         )
         conn.commit()
     return get_decision(decision_id)

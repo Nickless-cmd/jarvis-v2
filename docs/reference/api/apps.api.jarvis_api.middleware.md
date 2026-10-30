@@ -33,6 +33,13 @@ _Internal loopback endpoint for cross-process Discord dispatch._
 | class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/middleware/internal_discord.py#L27) |
 | function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/middleware/internal_discord.py#L33) |
 
+## `apps/api/jarvis_api/middleware/internal_loopback.py`
+_Delt loopback-vagt for /api/internal-ruterne — som DEPENDENCY, ikke som kropskode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `require_loopback` | `(request)` | Rejs 403 hvis kaldet ikke er et ægte, lokalt IPC-kald. | [src](../../../apps/api/jarvis_api/middleware/internal_loopback.py#L41) |
+
 ## `apps/api/jarvis_api/middleware/jarvisx_user_routing.py`
 _JarvisX user-routing + bearer-token auth middleware._
 

@@ -311,20 +311,66 @@ def _fire_due_tasks() -> None:
                                     is_external=session_is_external_channel,
                                 )
 
-                                self_directive = (
-                                    f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
-                                    f"Du planlagde: {focus}\n\n"
-                                    "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
-                                    "Hvis det handler om at tjekke noget (Discord, en fil, "
-                                    "en status), så BRUG værktøjet. "
-                                    "Når du er færdig, rapportér resultatet kort til Bjørn."
+                                # AKTIV-GUARD (30/10-2026). Bjørn: «dine 2 ture er
+                                # kollideret og knækket den ende og leaked ind i den
+                                # sidste». MÅLT: chat_messages 236638 (min tur) og
+                                # 236639 (denne dispatch) ligger i SAMME session med
+                                # seks sekunders mellemrum — 236639 er scheduled task
+                                # 152, der skrev sit runs svar ind i den samtale han
+                                # sad i.
+                                #
+                                # Kanal-guarden ovenfor afviser eksterne kanaler, men
+                                # den siger JA til hans egen app-session — og det er
+                                # netop den, der er optaget. Kommentaren ovenfor lovede
+                                # «samme guard som wakeup_dispatcher bruger», men kun
+                                # kanal-delen blev koblet på; aktiv-delen blev aldrig.
+                                #
+                                # Guarden er den FÆLLES, ikke en kopi: den bærer tre lag
+                                # (levende run via den delte proces-journal, 10 min efter
+                                # hans besked, 5 min efter min). Er samtalen ikke ledig,
+                                # dispatcher vi INTET — posten ligger allerede i
+                                # indbakken ovenfor og venter på ham i stedet for at
+                                # tale oveni ham.
+                                from core.services.wakeup_dispatcher import (
+                                    _active_turn_blocks,
                                 )
-                                start_autonomous_run(
-                                    self_directive,
-                                    session_id=target_session or None,
-                                    origin="scheduled",
-                                )
-                                logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
+
+                                _blokeret = _active_turn_blocks(str(target_session or ""))
+                                if _blokeret:
+                                    logger.info(
+                                        "scheduled_tasks: dispatched IKKE %s — sessionen "
+                                        "er optaget (%s); posten venter i indbakken",
+                                        task_id, _blokeret,
+                                    )
+                                    try:
+                                        from core.services.central_core import central
+                                        central().observe({
+                                            "cluster": "loop",
+                                            "nerve": "scheduled_task_fire",
+                                            "task_id": task_id,
+                                            "outcome": "dispatch_skipped",
+                                            "reason": _blokeret,
+                                        })
+                                    except Exception as obs_exc:  # observabilitet må aldrig vælte fyringen
+                                        logger.debug(
+                                            "scheduled_tasks: Central-observe fejlede for %s: %s",
+                                            task_id, obs_exc,
+                                        )
+                                else:
+                                    self_directive = (
+                                        f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
+                                        f"Du planlagde: {focus}\n\n"
+                                        "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                                        "Hvis det handler om at tjekke noget (Discord, en fil, "
+                                        "en status), så BRUG værktøjet. "
+                                        "Når du er færdig, rapportér resultatet kort til Bjørn."
+                                    )
+                                    start_autonomous_run(
+                                        self_directive,
+                                        session_id=target_session or None,
+                                        origin="scheduled",
+                                    )
+                                    logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
                                 # B6: påmindelse fyrede OG blev dispatchet — synligt i Centralen.
                                 try:
                                     from core.services.central_core import central

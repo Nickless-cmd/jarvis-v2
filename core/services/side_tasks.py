@@ -28,7 +28,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 from uuid import uuid4
 
-from core.runtime.state_store import load_json, med_laas, save_json
+from core.runtime.state_store import _path, load_json, med_laas, save_json
 
 logger = logging.getLogger(__name__)
 
@@ -346,7 +346,8 @@ def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = No
             existing = next((r for r in items if r.get("finding_key") == key), None)
             if existing:
                 return {"status": "ok", "side_task_id": existing["side_task_id"],
-                        "title": existing.get("title", ""), "deduplicated": True}
+                        "title": existing.get("title", ""), "deduplicated": True,
+                        "lager": lager_sti()}
         record = {
             "side_task_id": f"side-{uuid4().hex[:10]}",
             "title": title[:200],
@@ -388,7 +389,8 @@ def flag(*, title: str, prompt: str, tldr: str = "", session_id: str | None = No
                 if f is not None and str(f.get("not_before") or "") == nb:
                     f["vaekning_id"] = vid
                     _save_all(items)
-    return {"status": "ok", "side_task_id": record["side_task_id"], "title": title}
+    return {"status": "ok", "side_task_id": record["side_task_id"], "title": title,
+            "lager": lager_sti()}
 
 
 def snooze(side_task_id: str, *, until: str, reason: str = "") -> dict[str, Any]:
@@ -650,6 +652,52 @@ def mark_autonomy_exhausted_reported(side_task_id: str) -> bool:
 
 def get(side_task_id: str) -> dict[str, Any] | None:
     return next((r for r in _load_all() if r.get("side_task_id") == side_task_id), None)
+
+
+def lager_sti() -> str:
+    """Den FYSISKE fil hvor side-opgaverne bor — aldrig en gættet tabel.
+
+    Målt 28/10-2026: et opslag efter side-opgaver i `kv_store` svarede
+    «no such table». Det var ikke et manglende lager, men det forkerte: side
+    tasks ligger i ``state/side_tasks.json``, ikke i nogen tabel. En korrekt
+    skrivning blev derfor læst som en tavs fiasko, og svaret til Bjørn var
+    «jeg har ikke adgang» om noget der lå lige for.
+
+    Stien kommer fra `state_store._path`, som er den funktion der FAKTISK
+    bestemmer placeringen — ikke en kopi af den.
+    """
+    return str(_path(_STATE_KEY))
+
+
+def verify_side_task(side_task_id: str) -> dict[str, Any]:
+    """Slå en side-opgave op i det lager den faktisk bor i, og sig HVOR.
+
+    Forskellen fra `get()` er tre ting, og de er hele pointen:
+
+    1. **Stien med i svaret.** Uden den kan kalderen ikke se forskel på «ikke
+       gemt» og «gemt et andet sted», og det var præcis fejlen 28/10-2026.
+    2. **`not_found` skelnes fra `lager_ulaeseligt`.** Et ulæseligt lager er
+       «ved ikke», ikke «findes ikke» — ellers melder vi en tavs fiasko om en
+       skrivning der gik fint.
+    3. **Antallet i lageret.** Er posten væk men filen fuld af andre, er det
+       en anden fejl end en tom fil.
+    """
+    sid = str(side_task_id or "").strip()
+    lager = lager_sti()
+    if not sid:
+        return {"status": "error", "error": "side_task_id er tomt", "lager": lager}
+    try:
+        poster = _load_all()
+    except Exception as exc:  # noqa: BLE001 — «ukendt» maa ikke laeses som «findes ikke»
+        logger.warning("side-opgaver: kunne ikke laese lageret: %s", exc)
+        return {"status": "error", "error": "lager_ulaeseligt",
+                "lager": lager, "details": str(exc)[:200]}
+    record = next((r for r in poster if r.get("side_task_id") == sid), None)
+    if record is None:
+        return {"status": "not_found", "side_task_id": sid, "lager": lager,
+                "antal_i_lageret": len(poster)}
+    return {"status": "ok", "side_task_id": sid, "lager": lager,
+            "antal_i_lageret": len(poster), "record": dict(record)}
 
 
 def list_alle(*, maks: int = 50) -> list[dict[str, Any]]:

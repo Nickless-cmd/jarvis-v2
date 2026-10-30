@@ -13,6 +13,79 @@
 .chatview .jarvis-body h3 { font-size: 1.15em; }
 .chatview .native-rich { margin-block: 1.1em 1.35em; }
 
+/* ── Fladens ankomst (29/10-2026, Bjørn: «kode boksen … og så blink») ──
+ *
+ * Paceren springer nu over en komplet `jarvis-ui`-fence, så fladen lander i
+ * ét hug i stedet for at vokse frem som en kodeboks. Et spring uden en
+ * overgang læses som et blink, så den glider de sidste 10 px op mens den
+ * fader ind. Varigheden er kort med vilje: over ~250 ms føles fladen som om
+ * den tøver med at vise noget den allerede har.
+ *
+ * Animationen er bundet til `.flade-ankomst`, hvis `key` er fladens INDHOLD —
+ * se `NativeRichBlock`. Uden den binding ville den fyre ved hver re-render.
+ *
+ * Tallene står som variabler, så de kan justeres uden at røre logikken.
+ */
+.flade-ankomst {
+  --flade-ankomst-ms: 180ms;
+  --flade-ankomst-px: 10px;
+  animation: flade-ankomst var(--flade-ankomst-ms) ease-out both;
+}
+
+@keyframes flade-ankomst {
+  from { opacity: 0; transform: translateY(var(--flade-ankomst-px)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion: ingen bevægelse, kun synlighed. */
+@media (prefers-reduced-motion: reduce) {
+  .flade-ankomst {
+    animation-name: flade-ankomst-ren;
+    animation-duration: var(--flade-ankomst-ms);
+  }
+}
+
+@keyframes flade-ankomst-ren {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Placeholder for veje UDEN om paceren: persisteret besked, replay og
+ * genindlæsning. Rå JSON i en kodeboks viser halve data som om det var
+ * indhold — her står der i stedet at fladen er på vej. */
+.flade-pending {
+  display: flex;
+  align-items: center;
+  min-height: 2.6em;
+  margin-block: 1.1em 1.35em;
+  padding: 0.55em 0.8em;
+  border: 1px dashed var(--border-1, rgba(255, 255, 255, 0.14));
+  border-radius: 10px;
+}
+
+.flade-pending-tekst {
+  font-size: 13px;
+  color: var(--fg-2);
+  opacity: 0.85;
+}
+
+/* 30/10-2026: den tredje vej. En flade der ikke kunne tegnes på en FÆRDIG
+ * besked. Hverken spinner (intet forberedes) eller rå JSON (den er ikke
+ * indhold). Bevidst uden ramme og uden accent-farve: det er en note om
+ * formen, ikke en fejl i svaret — en rød boks ville påstå mere end der skete. */
+.flade-utilgaengelig {
+  margin-block: 0.9em 1.1em;
+  padding-left: 0.75em;
+  border-left: 2px solid var(--border-1, rgba(255, 255, 255, 0.14));
+}
+
+.flade-utilgaengelig-tekst {
+  font-size: 12.5px;
+  color: var(--fg-2);
+  opacity: 0.7;
+  font-style: italic;
+}
+
 /* Bevar mørkt tema, men gør sessionsnavne og navigation lettere at læse. */
 .sidebar .session-item { color: var(--fg-1); }
 .sidebar .sidebar-label { color: var(--fg-2); opacity: 1; }

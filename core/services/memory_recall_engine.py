@@ -23,6 +23,10 @@ from typing import Any, Optional
 import numpy as np
 
 from core.services.multi_signal_retrieval import BM25Index, entity_overlap_score, fuse_signals
+# 28/10-2026: samme skelnen som memory_search bruger. Den brede betingelse
+# `"[CANDIDATE→" in text` demoterede 89 % af alle daily-chunks fordi de bærer
+# markøren som `carried:`-metadata — se `_candidate_er_primaer`'s docstring.
+from core.services.memory_search import _candidate_er_primaer
 
 logger = logging.getLogger(__name__)
 
@@ -495,7 +499,7 @@ def cold_tier_recall(
 
     # 4. Candidate penalty
     for r in all_results:
-        if "[CANDIDATE→" in str(r.get("text", "")):
+        if _candidate_er_primaer(str(r.get("text", ""))):
             r["weighted_score"] = float(r.get("weighted_score", 0.0)) * 0.3
             r["candidate_penalty"] = True
 
@@ -590,7 +594,7 @@ def unified_recall(
     # they only surface when nothing else is available, but don't drop
     # them entirely — they CAN be useful as low-confidence hints.
     for r in all_results:
-        if "[CANDIDATE→" in str(r.get("text", "")):
+        if _candidate_er_primaer(str(r.get("text", ""))):
             r["weighted_score"] = float(r.get("weighted_score", 0.0)) * 0.3
             r["candidate_penalty"] = True
 
@@ -835,7 +839,7 @@ def multi_signal_recall(
 
     # 4. Candidate penalty (legacy)
     for r in all_results:
-        if "[CANDIDATE→" in str(r.get("text", "")):
+        if _candidate_er_primaer(str(r.get("text", ""))):
             r["multi_signal_score"] = float(r.get("multi_signal_score", 0.0)) * 0.3
             r["candidate_penalty"] = True
 

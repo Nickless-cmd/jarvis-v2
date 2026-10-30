@@ -193,3 +193,36 @@ def test_schedule_occurrence_idempotency_is_shared_by_both_paths(isolated_runtim
     )
     assert replay.run_id == run.run_id
     assert len(service.list_runs(routine.id)) == 1
+
+
+def test_presence_er_sessions_lokal_ikke_global(monkeypatch):
+    """En kørsel i ÉN session må ikke gøre en ANDEN sessions rutine «busy».
+
+    Målt 29/10-2026: vagten spurgte ``levende_koersler()`` — som svarer sandt
+    for enhver kørsel i processen. En almindelig samtale kl. 05:00 gjorde
+    Michelles og Mikkels morgenbriefe «busy», og de lå i kø i seks dage mens
+    deres fire ugentlige briefs så sunde ud i basen.
+    """
+    from core.services import in_flight_runs, wakeup_dispatcher
+    from core.services import routine_dispatch
+
+    monkeypatch.setattr(
+        in_flight_runs, "levende_koersler",
+        lambda: [{"run_id": "visible-x", "session_id": "chat-A"}],
+    )
+    monkeypatch.setattr(wakeup_dispatcher, "_active_turn_blocks", lambda _sid: "")
+
+    assert routine_dispatch.runtime_presence("chat-A") == ("busy", "active-run")
+    assert routine_dispatch.runtime_presence("chat-B") == ("idle", "")
+
+
+def test_presence_unknown_naar_sensor_fejler(monkeypatch):
+    """Kan presence ikke måles, er svaret «ved ikke» — aldrig «ledig»."""
+    from core.services import in_flight_runs
+    from core.services import routine_dispatch
+
+    def _braek():
+        raise RuntimeError("sensor nede")
+
+    monkeypatch.setattr(in_flight_runs, "levende_koersler", _braek)
+    assert routine_dispatch.runtime_presence("chat-A") == ("unknown", "presence-unavailable")

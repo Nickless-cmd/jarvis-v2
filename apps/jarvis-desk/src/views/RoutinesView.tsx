@@ -151,7 +151,7 @@ export function RoutinesView({ config, currentUserId, role, onClose, onEdit }: {
             </nav>
             <div className="routine-detail-body">
               {tab === 'overview' && <RoutineOverview routine={selected} />}
-              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} />}
+              {tab === 'runs' && <RoutineRuns config={config} routineId={selected.routine_id} instruction={selected.instruction} />}
               {tab === 'access' && <RoutineAccess routine={selected} />}
               <div className="routine-danger-zone">
                 <div><strong>Slet rutine</strong><span>Fjerner definition, kørsler og privat indhold permanent.</span></div>

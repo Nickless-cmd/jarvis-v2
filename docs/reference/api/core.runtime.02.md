@@ -7,12 +7,13 @@ _Jarvis' EGET forslag til Bjørns næste besked — skrevet i hans egen tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L68) |
-| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L86) |
-| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L99) |
-| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L145) |
-| function | `ryd_forslag` | `(*, session_id)` | Slet sessionens forslag. Returnerer antal slettede raekker. | [src](../../../core/runtime/db_composer_jarvis.py#L181) |
-| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L202) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L69) |
+| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L87) |
+| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L100) |
+| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L146) |
+| function | `ryd_forslag` | `(*, session_id)` | Slet sessionens forslag. Returnerer antal slettede raekker. | [src](../../../core/runtime/db_composer_jarvis.py#L182) |
+| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L203) |
+| function | `kig_forslag_til_klient` | `(*, session_id)` | Forslaget klienten skal vise: eget først, ellers et USET autonomt. | [src](../../../core/runtime/db_composer_jarvis.py#L230) |
 
 ## `core/runtime/db_composites.py`
 _Composite tools store — Jarvis proposals of new tool sequences._
@@ -99,20 +100,21 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_decisions.py#L28) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L72) |
-| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L76) |
-| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L80) |
-| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L119) |
-| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L176) |
-| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L211) |
-| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L232) |
-| function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L294) |
-| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L311) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L323) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L354) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L365) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L380) |
+| function | `_add_column_if_missing` | `(conn, table, column, ddl_type)` | Idempotent ALTER TABLE — _ensure_tables kaldes ved HVERT opslag. | [src](../../../core/runtime/db_decisions.py#L28) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_decisions.py#L42) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_decisions.py#L100) |
+| function | `_new_id` | `(prefix)` | — | [src](../../../core/runtime/db_decisions.py#L104) |
+| function | `create_decision` | `(*, directive, rationale=…, trigger_cue=…, priority=…, source_record_id=…, source_type=…, created_by=…)` | — | [src](../../../core/runtime/db_decisions.py#L108) |
+| function | `append_review` | `(*, decision_id, verdict, note=…, evidence=…)` | Record a self-assessment: how am I doing on this? | [src](../../../core/runtime/db_decisions.py#L147) |
+| function | `_verified_adherence` | `(conn, decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L204) |
+| function | `repair_legacy_auto_adherence` | `()` | Rebuild stored scores after legacy automatic suspicions polluted them. | [src](../../../core/runtime/db_decisions.py#L239) |
+| function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…, revoked_reason=…, revoked_evidence=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L260) |
+| function | `set_status` | `(decision_id, new_status, *, reason=…, evidence=…)` | Sæt status. Ved 'revoked' SKAL reason følge med og persisteres. | [src](../../../core/runtime/db_decisions.py#L330) |
+| function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L367) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L379) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L410) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L421) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L436) |
 
 ## `core/runtime/db_devices.py`
 _Enheder — hvem må styre denne computer, og hvem må bruge code mode._
@@ -228,10 +230,11 @@ _Long-horizon goals store — persistent objectives Jarvis carries across sessio
 | function | `get_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L180) |
 | function | `list_goals` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L192) |
 | function | `list_goal_updates` | `(goal_id, *, limit=…)` | — | [src](../../../core/runtime/db_goals.py#L213) |
-| function | `update_goal_fields` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/runtime/db_goals.py#L224) |
-| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L268) |
-| function | `count_goals` | `(*, status=…)` | — | [src](../../../core/runtime/db_goals.py#L281) |
-| function | `_row_to_goal` | `(row)` | — | [src](../../../core/runtime/db_goals.py#L296) |
+| function | `last_progress_map` | `(goal_ids)` | Sidste REELLE fremskridt pr. mål — ISO-tidsstempel, kun rækker med delta. | [src](../../../core/runtime/db_goals.py#L224) |
+| function | `update_goal_fields` | `(goal_id, *, title=…, description=…, priority=…, target_date=…, tags=…)` | — | [src](../../../core/runtime/db_goals.py#L254) |
+| function | `delete_goal` | `(goal_id)` | — | [src](../../../core/runtime/db_goals.py#L298) |
+| function | `count_goals` | `(*, status=…)` | — | [src](../../../core/runtime/db_goals.py#L311) |
+| function | `_row_to_goal` | `(row)` | — | [src](../../../core/runtime/db_goals.py#L326) |
 
 ## `core/runtime/db_governance.py`
 _Persistence for governance-adjacent CRUD domains._
@@ -460,40 +463,41 @@ _SQLite repository for first-class, owner-scoped Routines._
 | function | `list_schedulable_routines` | `()` | Alle AKTIVE rutiner med en tids-trigger — på tværs af ALLE ejere. | [src](../../../core/runtime/db_routines.py#L362) |
 | function | `transition_routine` | `(routine_id, *, to_status, expected_version=…)` | — | [src](../../../core/runtime/db_routines.py#L385) |
 | function | `update_routine_definition` | `(routine_id, *, expected_version, changes, reactivate=…)` | Atomically write a new immutable definition version. | [src](../../../core/runtime/db_routines.py#L420) |
-| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L511) |
-| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L546) |
-| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L591) |
-| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L611) |
-| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L621) |
-| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L642) |
-| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L652) |
-| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L695) |
-| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L711) |
-| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L741) |
-| function | `release_run_claim` | `(run_id, *, holder, expected_generation)` | Return an unstarted dispatch to the queue without changing occurrence identity. | [src](../../../core/runtime/db_routines.py#L759) |
-| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L778) |
-| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L797) |
-| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L817) |
-| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L826) |
-| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L867) |
-| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L909) |
-| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L920) |
-| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L971) |
-| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L992) |
-| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L1003) |
-| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L1036) |
-| function | `complete_run_success` | `(run_id, *, expected_generation, result, delivery_channel)` | Atomically persist success, its terminal event, and private outbox row. | [src](../../../core/runtime/db_routines.py#L1065) |
-| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L1121) |
-| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1148) |
-| function | `claim_next_delivery` | `(*, holder)` | Claim the oldest due outbox item across all Routine runs. | [src](../../../core/runtime/db_routines.py#L1191) |
-| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1216) |
-| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1254) |
-| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1262) |
-| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1281) |
-| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1294) |
-| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1320) |
-| function | `hidden_migrated_source_ids` | `(*, source_kind, source_ids)` | Return only legacy rows covered by applied migration artifacts. | [src](../../../core/runtime/db_routines.py#L1330) |
-| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1365) |
+| function | `transfer_ownership` | `(routine_id, *, to_owner_user_id)` | Move a Routine and its entire history to another owner. | [src](../../../core/runtime/db_routines.py#L511) |
+| function | `stop_routine` | `(routine_id, *, expected_version=…)` | Stop a definition and revoke/cancel all unfinished work atomically. | [src](../../../core/runtime/db_routines.py#L636) |
+| function | `create_run` | `(*, routine_id, idempotency_key, trigger_source=…, execution_context=…)` | — | [src](../../../core/runtime/db_routines.py#L671) |
+| function | `get_run` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L716) |
+| function | `list_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L736) |
+| function | `cancel_run` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L746) |
+| function | `list_stopped_routines` | `(*, before)` | — | [src](../../../core/runtime/db_routines.py#L767) |
+| function | `delete_routine_content` | `(routine_id, *, reason_code=…)` | Erase all private material and retain only a content-free audit tombstone. | [src](../../../core/runtime/db_routines.py#L777) |
+| function | `read_run_events` | `(run_id, *, decrypt_for=…)` | — | [src](../../../core/runtime/db_routines.py#L820) |
+| function | `claim_run` | `(run_id, *, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L836) |
+| function | `renew_run_lease` | `(run_id, *, holder, expected_generation, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L866) |
+| function | `release_run_claim` | `(run_id, *, holder, expected_generation)` | Return an unstarted dispatch to the queue without changing occurrence identity. | [src](../../../core/runtime/db_routines.py#L884) |
+| function | `reclaim_run` | `(run_id, *, expected_generation, holder, now=…, lease_seconds=…)` | — | [src](../../../core/runtime/db_routines.py#L903) |
+| function | `assert_current_run_lease` | `(run_id, *, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L922) |
+| function | `next_queued_run` | `()` | — | [src](../../../core/runtime/db_routines.py#L942) |
+| function | `record_tool_effect_started` | `(*, run_id, call_id, tool_name, expected_generation, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L951) |
+| function | `settle_tool_effect` | `(*, run_id, call_id, expected_generation, succeeded, holder=…, now=…)` | — | [src](../../../core/runtime/db_routines.py#L992) |
+| function | `list_open_tool_effects` | `(run_id)` | — | [src](../../../core/runtime/db_routines.py#L1034) |
+| function | `reconcile_expired_runs` | `(*, now)` | — | [src](../../../core/runtime/db_routines.py#L1045) |
+| function | `update_execution_failure_count` | `(routine_id, *, success)` | — | [src](../../../core/runtime/db_routines.py#L1096) |
+| function | `get_execution_failure_count` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1117) |
+| function | `append_run_event` | `(*, run_id, kind, payload, terminal=…, event_id=…, expected_generation=…)` | — | [src](../../../core/runtime/db_routines.py#L1128) |
+| function | `transition_run` | `(run_id, *, to_status, expected_generation=…, result=…, diagnostic_code=…)` | — | [src](../../../core/runtime/db_routines.py#L1161) |
+| function | `complete_run_success` | `(run_id, *, expected_generation, result, delivery_channel)` | Atomically persist success, its terminal event, and private outbox row. | [src](../../../core/runtime/db_routines.py#L1190) |
+| function | `create_delivery` | `(*, run_id, channel, payload=…)` | — | [src](../../../core/runtime/db_routines.py#L1246) |
+| function | `claim_delivery_for_run` | `(run_id, *, holder)` | — | [src](../../../core/runtime/db_routines.py#L1273) |
+| function | `claim_next_delivery` | `(*, holder)` | Claim the oldest due outbox item across all Routine runs. | [src](../../../core/runtime/db_routines.py#L1316) |
+| function | `settle_delivery` | `(delivery_id, *, holder, outcome, next_attempt_at=…, receipt=…)` | — | [src](../../../core/runtime/db_routines.py#L1341) |
+| function | `count_runs` | `(routine_id)` | — | [src](../../../core/runtime/db_routines.py#L1379) |
+| function | `set_inbox_preference` | `(owner_user_id, *, routine_id=…, policy)` | — | [src](../../../core/runtime/db_routines.py#L1387) |
+| function | `get_inbox_preference` | `(owner_user_id, *, routine_id=…)` | — | [src](../../../core/runtime/db_routines.py#L1406) |
+| function | `put_quarantine` | `(*, source_kind, source_id_hash, source_reference, classifier_evidence, reason_code, sealed_for=…)` | — | [src](../../../core/runtime/db_routines.py#L1419) |
+| function | `get_legacy_routine_id` | `(*, source_kind, source_id)` | — | [src](../../../core/runtime/db_routines.py#L1445) |
+| function | `hidden_migrated_source_ids` | `(*, source_kind, source_ids)` | Return only legacy rows covered by applied migration artifacts. | [src](../../../core/runtime/db_routines.py#L1455) |
+| function | `run_exists_for_trigger` | `(*, routine_id, idempotency_key)` | — | [src](../../../core/runtime/db_routines.py#L1490) |
 
 ## `core/runtime/db_runtime_browser.py`
 _Persistence for the `runtime_browser_bodies` table — Jarvis' browser bodies._
@@ -906,27 +910,27 @@ _Persistence for Jarvis' runtime self-* signal cluster._
 | function | `get_runtime_self_model_signal` | `(signal_id)` | Return the runtime self-model signal for `signal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L304) |
 | function | `update_runtime_self_model_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-model signal. | [src](../../../core/runtime/db_runtime_self.py#L341) |
 | function | `supersede_runtime_self_model_signals` | `(*, signal_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/uncertain/stale self-model signals of `signal_type` as superseded. | [src](../../../core/runtime/db_runtime_self.py#L377) |
-| function | `upsert_runtime_self_authored_prompt_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a self-authored prompt proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L412) |
-| function | `list_runtime_self_authored_prompt_proposals` | `(*, status=…, limit=…)` | Return self-authored prompt proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L483) |
-| function | `get_runtime_self_authored_prompt_proposal` | `(proposal_id)` | Return the self-authored prompt proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L532) |
-| function | `update_runtime_self_authored_prompt_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-authored prompt proposal. | [src](../../../core/runtime/db_runtime_self.py#L571) |
-| function | `supersede_runtime_self_authored_prompt_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live self-authored prompt proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L607) |
-| function | `upsert_runtime_self_narrative_continuity_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a self-narrative-continuity signal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L643) |
-| function | `list_runtime_self_narrative_continuity_signals` | `(*, status=…, limit=…)` | Return self-narrative-continuity signals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L714) |
-| function | `get_runtime_self_narrative_continuity_signal` | `(signal_id)` | Return the self-narrative-continuity signal for `signal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L763) |
-| function | `update_runtime_self_narrative_continuity_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-narrative-continuity signal. | [src](../../../core/runtime/db_runtime_self.py#L802) |
-| function | `supersede_runtime_self_narrative_continuity_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all live self-narrative-continuity signals for a focus as superseded. | [src](../../../core/runtime/db_runtime_self.py#L838) |
-| function | `upsert_runtime_selfhood_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime selfhood proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L874) |
-| function | `list_runtime_selfhood_proposals` | `(*, status=…, limit=…)` | Return runtime selfhood proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L945) |
-| function | `get_runtime_selfhood_proposal` | `(proposal_id)` | Return the runtime selfhood proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L994) |
-| function | `update_runtime_selfhood_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one runtime selfhood proposal. | [src](../../../core/runtime/db_runtime_self.py#L1031) |
-| function | `supersede_runtime_selfhood_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live runtime selfhood proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L1067) |
-| function | `_ensure_runtime_self_model_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1103) |
-| function | `_ensure_runtime_self_authored_prompt_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1144) |
-| function | `_ensure_runtime_self_narrative_continuity_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1187) |
-| function | `_ensure_runtime_selfhood_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1230) |
-| function | `_runtime_self_narrative_continuity_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1271) |
-| function | `_runtime_self_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1297) |
-| function | `_runtime_self_authored_prompt_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1321) |
-| function | `_runtime_selfhood_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1347) |
+| function | `upsert_runtime_self_authored_prompt_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…, candidate_fragment=…)` | Insert or merge a self-authored prompt proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L412) |
+| function | `list_runtime_self_authored_prompt_proposals` | `(*, status=…, limit=…)` | Return self-authored prompt proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L485) |
+| function | `get_runtime_self_authored_prompt_proposal` | `(proposal_id)` | Return the self-authored prompt proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L535) |
+| function | `update_runtime_self_authored_prompt_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-authored prompt proposal. | [src](../../../core/runtime/db_runtime_self.py#L575) |
+| function | `supersede_runtime_self_authored_prompt_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live self-authored prompt proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L611) |
+| function | `upsert_runtime_self_narrative_continuity_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a self-narrative-continuity signal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L647) |
+| function | `list_runtime_self_narrative_continuity_signals` | `(*, status=…, limit=…)` | Return self-narrative-continuity signals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L718) |
+| function | `get_runtime_self_narrative_continuity_signal` | `(signal_id)` | Return the self-narrative-continuity signal for `signal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L767) |
+| function | `update_runtime_self_narrative_continuity_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-narrative-continuity signal. | [src](../../../core/runtime/db_runtime_self.py#L806) |
+| function | `supersede_runtime_self_narrative_continuity_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all live self-narrative-continuity signals for a focus as superseded. | [src](../../../core/runtime/db_runtime_self.py#L842) |
+| function | `upsert_runtime_selfhood_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime selfhood proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L878) |
+| function | `list_runtime_selfhood_proposals` | `(*, status=…, limit=…)` | Return runtime selfhood proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L949) |
+| function | `get_runtime_selfhood_proposal` | `(proposal_id)` | Return the runtime selfhood proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L998) |
+| function | `update_runtime_selfhood_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one runtime selfhood proposal. | [src](../../../core/runtime/db_runtime_self.py#L1035) |
+| function | `supersede_runtime_selfhood_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live runtime selfhood proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L1071) |
+| function | `_ensure_runtime_self_model_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1107) |
+| function | `_ensure_runtime_self_authored_prompt_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1148) |
+| function | `_ensure_runtime_self_narrative_continuity_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1208) |
+| function | `_ensure_runtime_selfhood_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1251) |
+| function | `_runtime_self_narrative_continuity_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1292) |
+| function | `_runtime_self_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1325) |
+| function | `_runtime_self_authored_prompt_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1349) |
+| function | `_runtime_selfhood_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1375) |
 

@@ -175,11 +175,80 @@ def test_overfladen_daekker_alle_familier(_stubbet):
 
 
 def test_fristerne_er_de_samme_som_paa_den_gamle_sti():
-    """Løkken må ikke opfinde nye frister — den flytter kun hvem der kalder."""
+    """Løkken må ikke opfinde nye frister — den flytter kun hvem der kalder.
+
+    UNDTAGELSE (målt 30/10-2026): `cluster_innervoice` er hævet 25.0 → 40.0.
+    Den er den eneste familie med et rent LLM-medlem i spidsen (thought_stream),
+    og målt isoleret tog tick'en 19,45s typisk / 21,67s instrumenteret, med
+    thought_stream alene svingende 3,03s → 17,80s. 25s gav 3-6s margin og ramte
+    ~78 gange i døgnet. Afvigelsen er bevidst og skal stå her, ikke skjules.
+    """
     forventet = {
-        "cluster_somatic": 8.0, "cluster_innervoice": 25.0, "cluster_affect": 25.0,
+        "cluster_somatic": 8.0, "cluster_innervoice": 40.0, "cluster_affect": 25.0,
         "cluster_narrative": 40.0, "cluster_cognition": 40.0, "cluster_memory": 60.0,
         "cluster_aesthetic": 20.0, "cluster_relation": 20.0,
         "cluster_projects": 30.0, "cluster_infra": 40.0,
     }
     assert dict(CFS._FAMILY_DEADLINES) == forventet
+
+
+# ---------------------------------------------------------------------------
+# Sporet overlever orphaning
+# ---------------------------------------------------------------------------
+
+
+def test_timeout_overskriver_ikke_sporet_med_tomhed(_stubbet, monkeypatch):
+    """Deadline ramt → None → kaldevejen må IKKE skrive en tom summary.
+
+    Uden denne vagt skriver `result or {}` en tom last_result_summary oven på det
+    spor familien selv har skrevet. Det var præcis fejlen der ramte
+    cluster_innervoice ~78 gange i døgnet (676 events/7d, første 16/10-2026).
+    """
+    from core.services import heartbeat_runtime as hb
+
+    _kaldt, registreret, _t = _stubbet
+    monkeypatch.setattr(hb, "_daemon_tick_with_deadline", lambda *a, **k: None)
+
+    ud = CFS.run_due_families()
+
+    assert ud["ran"], "familien skal stadig tælles som kørt"
+    assert registreret == [], (
+        "kaldevejen skrev et spor selvom deadlinen ramte — det overskriver "
+        "familiens eget spor med tomhed"
+    )
+
+
+def test_familien_skriver_sit_eget_spor_inden_den_returnerer(monkeypatch):
+    """Resultatet skal overleve at returværdien kasseres af deadline-wrapperen."""
+    from core.services import daemon_manager as dm
+
+    registreret: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        dm, "record_daemon_tick",
+        lambda navn, res: registreret.append((navn, dict(res or {}))),
+    )
+
+    wrapped = CFS._tick_writing_own_state("cluster_innervoice", lambda: {"fired": True})
+    ud = wrapped()
+
+    assert ud == {"fired": True}
+    assert registreret == [("cluster_innervoice", {"fired": True})], (
+        "familien skrev ikke sit eget spor — et tabt tick efterlader da tomhed"
+    )
+
+
+def test_eget_spor_skrives_ogsaa_naar_tick_kaster(monkeypatch):
+    """En crash må ikke efterlade sporet uden forklaring — wrapperen lader fejlen gå videre."""
+    from core.services import daemon_manager as dm
+
+    registreret: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        dm, "record_daemon_tick",
+        lambda navn, res: registreret.append((navn, dict(res or {}))),
+    )
+
+    def _braender():
+        raise RuntimeError("provider nede")
+
+    with pytest.raises(RuntimeError):
+        CFS._tick_writing_own_state("cluster_affect", _braender)()

@@ -116,10 +116,28 @@ def test_file_rbw_after_classify(patch_classify, patch_rbw):
     assert v.evidence["classification"] == "guard_blocked"
 
 
-def test_file_edit_skips_rbw(patch_classify, patch_rbw):
-    # edit har historisk ingen read-before-write
+def test_file_edit_faar_rbw(patch_classify, patch_rbw):
+    # VENDT 29/10-2026. Testen hed `test_file_edit_skips_rbw` og pinnede at
+    # `edit` sprang read-before-write over — «edit har historisk ingen rbw».
+    # Historikken var problemet: `edit_file` er fem gange saa hyppig som
+    # `write_file` (2.229 mod 444 kald siden 15/10), saa vagten daekkede det
+    # sjaeldne vaerktoej og ikke det almindelige. Claudes harness blokerede
+    # 222 blinde skrivninger netop paa `Edit`.
+    #
+    # Testen pinner nu den NYE kontrakt: en edit paa en fil der ikke er laest
+    # skal blokeres, praecis som en write.
     patch_classify["file"] = "auto"
     patch_rbw["file_ok"] = False
+    v = g("file", path="/x", kind="edit")
+    assert v.decision is Decision.RED
+    assert v.evidence["classification"] == "guard_blocked"
+
+
+def test_file_edit_tillades_naar_filen_er_laest(patch_classify, patch_rbw):
+    # Modstykket: vagten maa ikke blokere den legitime vej. Er filen laest,
+    # gaar edit igennem praecis som write.
+    patch_classify["file"] = "auto"
+    patch_rbw["file_ok"] = True
     assert g("file", path="/x", kind="edit").decision is Decision.GREEN
 
 

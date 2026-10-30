@@ -496,10 +496,10 @@ _Lease and dispatch one explicitly autonomous side task while Jarvis is idle._
 | function | `_something_running` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L54) |
 | function | `_target_session` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L63) |
 | function | `_session_for_task` | `(task)` | Hvilken SAMTALE hører denne opgave til? | [src](../../../core/services/autonomous_side_task_dispatcher.py#L78) |
-| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L124) |
-| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L142) |
-| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L162) |
-| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L183) |
+| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L167) |
+| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L185) |
+| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L205) |
+| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L226) |
 
 ## `core/services/autonomous_stream_run.py`
 _Server-authoritative streaming lifecycle for autonomous visible runs._
@@ -599,6 +599,8 @@ _Autonomy proposal queue — Niveau 2 fundament._
 | function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L441) |
 | function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L532) |
 | function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L635) |
+| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L681) |
+| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L793) |
 
 ## `core/services/avoidance_detector.py`
 _Avoidance Detector — unbidden self-observation of patterns over time._

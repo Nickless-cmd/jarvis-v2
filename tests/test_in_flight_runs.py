@@ -334,3 +334,38 @@ def test_soesteren_giver_IKKE_et_varsel(_isoleret_lager):
 
     assert _isoleret_lager["visible-orig"]["notice_pending"] is True
     assert _isoleret_lager["visible-gen1"]["notice_pending"] is False
+
+
+def test_autonom_post_baerer_ikke_et_varsel_ingen_kan_hente(_isoleret_lager):
+    """`notice_pending` er kun til den SYNLIGE lane.
+
+    Maalt 28/10-2026: tre autonome poster stod med `notice_pending=True` fra
+    26.-27/10. Den eneste laeser — `recovery_snapshot` — filtrerer
+    `kind != "visible"` fra, saa varselet kunne ALDRIG hentes. Posten blev
+    holdt i live af `not rec.get("notice_pending")` i rydningen og forsvandt
+    foerst ved 24-timers-graensen — uden at nogen nogensinde fik besked.
+
+    Et varsel der ikke kan leveres er ikke et varsel; det er en laas.
+    """
+    _isoleret_lager["a1"] = {
+        "run_id": "a1", "task_id": "a1", "session_id": "auto-heartbeat-1",
+        "kind": "autonomous", "status": "running",
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    ifr.settle_terminal("a1", status="failed_terminal", reason="vinduet udloeb")
+    assert _isoleret_lager["a1"]["notice_pending"] is False, (
+        "en autonom post baerer et varsel som `recovery_snapshot` filtrerer "
+        "væk — det kan aldrig leveres og holder posten i live i et doegn"
+    )
+
+
+def test_synlig_post_baerer_stadig_sit_varsel(_isoleret_lager):
+    """Modproeven: den synlige lane SKAL varsle. Ellers ville rettelsen
+    ovenfor have fjernet den besked Bjørn faktisk skal have."""
+    _isoleret_lager["v1"] = {
+        "run_id": "v1", "task_id": "v1", "session_id": "chat-1",
+        "kind": "visible", "status": "running",
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    ifr.settle_terminal("v1", status="failed_terminal", reason="vinduet udloeb")
+    assert _isoleret_lager["v1"]["notice_pending"] is True

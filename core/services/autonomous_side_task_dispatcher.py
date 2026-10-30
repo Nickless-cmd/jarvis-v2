@@ -112,13 +112,56 @@ def _session_for_task(task: dict[str, Any]) -> str:
     # behandler `_default` som «ingen session».
     if egen in {"_default", "default", "legacy_unscoped"}:
         egen = ""
-    return pick_wakeup_run_target(
+    valgt = pick_wakeup_run_target(
         channel="app",
         record_session=egen,
         app_resolver=_target_session,
         owner_resolver=resolve_owner_target_session,
         is_external=session_is_external_channel,
     ) or ""
+    if not valgt:
+        return ""
+
+    # EN AUTONOM KOERSEL MA A IKKE LAND I EN SAMTALE DER LEVER (28/10-2026)
+    #
+    # Maalt 28/10 kl. 12:05 og 12:17: to opgaver med mode=inspect landede i
+    # `chat-c05e28bb...` — Bjorns igangvaerende samtale — fordi dette var det
+    # ENESTE led der ikke spurgte om nogen talte i den. De tre andre
+    # vae kke-veje (`inbox_idle_waker`, `scheduled_tasks`, `dispatch_due_wakeups`)
+    # spoerger allerede; reglen fandtes, den blev blot ikke brugt her.
+    #
+    # Hvorfor ikke et `kind`-forbud (den oprindelige opgaves forslag): maalt i
+    # `chat_sessions` findes kun to vaerdier — 'chat' (651) og 'code' (55) — og
+    # BEGGE er samtaler Bjorn sidder i (titlerne i kind='code' er «yo»,
+    # «godmorgen j..»). Et kind-forbud ville derfor afvise ALT og goere
+    # dispatchen virkningsloes. Det er samme faelde som «fald mod det der
+    # standser, ikke mod det der fortsaetter» — her: en regel der ser rigtig ud
+    # og slukker funktionen.
+    #
+    # I stedet genbruges de to karantaener der allerede er maalt og begrundet
+    # i `wakeup_dispatcher`: en fersk tur blokerer, og en fersk besked fra
+    # hver rolle blokerer. Posten gaar ikke tabt — den bliver i koeen til en
+    # senere runde (samme kontrakt som `_target_session`'s tomme svar).
+    from core.services.wakeup_dispatcher import (
+        _active_turn_blocks,
+        _bruger_skrev_for_nylig,
+        _jarvis_skrev_for_nylig,
+    )
+
+    grund = _active_turn_blocks(valgt)
+    if grund:
+        logger.info(
+            "autonomous_side_task: session %s er optaget (%s) — opgaven venter",
+            valgt[:28], grund,
+        )
+        return ""
+    if _bruger_skrev_for_nylig(valgt) or _jarvis_skrev_for_nylig(valgt):
+        logger.info(
+            "autonomous_side_task: session %s er i karantaene — opgaven venter",
+            valgt[:28],
+        )
+        return ""
+    return valgt
 
 
 def _start(text: str, *, session_id: str, origin: str, task_id: str,

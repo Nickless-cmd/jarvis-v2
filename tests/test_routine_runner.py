@@ -132,3 +132,38 @@ def test_rundebudget_laeses_fra_policy_og_afgraenses():
     assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": 20})) == 20
     assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": 1000})) == 64
     assert _rutine_max_rounds(_kontekst(permission_policy={"max_rounds": True})) == 8
+
+
+def test_en_sanse_rutine_kan_faktisk_sanse_og_arkivere():
+    """Natrutinen skal kunne SE, LYTTE og SKRIVE i arkivet — ikke kun læse det.
+
+    MÅLT 28/10-2026 (``run_f43a8b354a864f0d846beec34930b73f``): kørslen svarede
+    «Sanseværktøjerne var ikke i denne kørsels capability scope» og skrev INTET
+    i fire døgn, mens den meldte ``succeeded`` hver nat.
+
+    Rod-årsagen var ikke ``ORIGIN_TOOLS``: ``_rutine_tools_payload`` falder
+    tilbage til ``_RUTINE_KERNE_TOOLS & tilladte`` når rutinen ikke har en
+    ``tools``-policy (natrutinens er kun ``{"max_rounds": 20}``). Stod navnet
+    ikke i den håndholdte liste, nåede det aldrig modellen — uanset politik.
+
+    Testen fælder begge halvdele: at værktøjet er TILLADT af politikken, og at
+    det faktisk er med i det skema rutinen byder modellen.
+    """
+    from core.services.routine_runner import _rutine_tools_payload
+    from core.tools.autonomous_tool_policy import allowed_tools_for_origin
+
+    navne = _navne(_rutine_tools_payload(_kontekst(permission_policy={"max_rounds": 20})))
+    politik = allowed_tools_for_origin("routine")
+
+    for værktøj in (
+        "look_around", "mic_listen",
+        "record_sensory_memory", "recall_sensory_memories",
+    ):
+        assert værktøj in politik, (
+            f"{værktøj} afvises af politikken for origin 'routine' — et "
+            f"rutine-run kan ikke sanse"
+        )
+        assert værktøj in navne, (
+            f"{værktøj} er tilladt men står ikke i rutinens kerne-sæt, så det "
+            f"når aldrig modellen (28/10-2026: natrutinen skrev intet i fire døgn)"
+        )

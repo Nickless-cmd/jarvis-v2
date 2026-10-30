@@ -2,51 +2,69 @@ import { describe, it, expect } from 'vitest'
 import { delIBlokke } from './markdownBlokke'
 
 describe('delIBlokke', () => {
-  it('arbejdet ved 4× så mange blokke vokser omtrent lineært', () => {
+  it('koster det samme at dele 1600 blokke i ét kald som i fire', () => {
     // 29/9-2026: en kopi af resten af linjerne for hver tom linje gav
     // superlineær vækst. Mange små afsluttede blokke svarer til et langt stream.
+    //
+    // OMSKREVET 30/10-2026 efter en ÆGTE CI-fejl: den gamle form målte
+    // `tid(1600 blokke) / tid(400 blokke)` og sammenlignede med 8. Den målte
+    // 8.22 på UÆNDRET kode (run 41012450840, job «desk (lint + typecheck +
+    // test)»). Årsagen er ikke støj: den lange arm udfører 4× arbejdet, og på
+    // en runner med CPU-kvote rammer den kvoten mens den korte ikke gør. Så
+    // bliver forholdet systematisk skævt opad, og `min` over batches hjælper
+    // ikke — ALLE lange batches er ramt af samme kvote.
+    //
+    // Den nye form er ARBEJDSMATCHET: begge arme deler præcis 1600 blokke.
+    //   arm Ét   = ét dokument på 1600 blokke
+    //   arm Fire = fire dokumenter på 400 blokke, kaldt efter hinanden
+    // Er koden lineær, koster de to det samme, og forholdet er ~1.0 uanset hvor
+    // hurtig eller hvor hårdt kvotebelagt maskinen er — maskinens hastighed står
+    // i BÅDE tæller og nævner og forkorter ud. Er koden superlineær, bliver arm
+    // Ét markant dyrere, fordi den ene store kørsel betaler den kvadratiske pris.
+    //
+    // MÅLT 30/10-2026 (denne maskine, 7 par):
+    //   lineær kode             median 1.07   (par: 0.81-1.40)
+    //   hale-kopierende variant median 21.0   (par: 21.0-21.6)
+    // Grænsen 3.0 ligger 2.8× over det lineære og 7× under regressionen.
+    //
+    // Batching (N kald pr. måling, divideret ud) er bevaret: én kørsel af det
+    // lille dokument tager under én millisekund, og så bliver
+    // `performance.now()`s opløsning en betydelig del af tallet.
     const dokument = (antal: number) => Array.from({ length: antal }, (_, i) =>
       `## Del ${i}\n${Array.from({ length: 15 }, (_, j) => `linje ${i}-${j}`).join('\n')}\n\n`,
     ).join('') + 'slut'
     const kort = dokument(400)
     const langt = dokument(1600)
 
-    // Kalibreret 8/10-2026. Tre forsøg på at måle denne egenskab er fejlet på
-    // CI, alle af samme grund: de målte ÉN kørsel ad gangen, og én kørsel af
-    // det lille dokument tager under én millisekund. Så bliver
-    // `performance.now()`s opløsning og en enkelt GC-pause en betydelig del af
-    // tallet. Målt på CI: 9.45 og 8.40 mod en grænse på 8 — på UÆNDRET kode.
-    //
-    // Den robuste form er tre ting på én gang:
-    //  1. BATCH — hver måling er et gennemsnit over 6 kørsler, så tallet er
-    //     flere millisekunder og kvantiseringen forsvinder.
-    //  2. INTERLEAVED — kort og langt måles skiftevis, så begge møder samme
-    //     CPU-frekvens og samme GC-tryk. Måler man dem i to blokke, kan én
-    //     throttling- eller GC-fase ramme den ene gruppe alene.
-    //  3. MINIMUM over 5 batches — den mindst forstyrrede måling viser den
-    //     faktiske algoritmiske pris, og den er stabil på tværs af runners.
-    //
-    // Kalibreringen måler sin egen spredning: lineær vækst giver 4.32-4.49
-    // (4% fra min til max over 12 runder), og den gamle hale-kopierende kode
-    // giver 20.2. Grænsen 8 ligger altså 1,8× over det lineære og 2,5× under
-    // regressionen — regressionsværnet er intakt.
-    const maalBatch = (tekst: string) => {
-      const N = 6
+    const maal = (tekst: string, N: number) => {
       const start = performance.now()
       for (let i = 0; i < N; i++) delIBlokke(tekst)
       return (performance.now() - start) / N
     }
-
-    for (let i = 0; i < 2; i++) { maalBatch(kort); maalBatch(langt) }
-
-    let bedsteKort = Infinity
-    let bedsteLangt = Infinity
-    for (let i = 0; i < 5; i++) {
-      bedsteKort = Math.min(bedsteKort, maalBatch(kort))
-      bedsteLangt = Math.min(bedsteLangt, maalBatch(langt))
+    // 1600 blokke i ét kald
+    const armEt = () => maal(langt, 4)
+    // 1600 blokke fordelt på fire kald
+    const armFire = () => {
+      let sum = 0
+      for (let i = 0; i < 4; i++) sum += maal(kort, 1)
+      return sum
     }
 
-    expect(bedsteLangt / bedsteKort).toBeLessThan(8)
+    for (let i = 0; i < 2; i++) { armEt(); armFire() }
+
+    // Interleaved, så begge arme møder samme CPU-frekvens og samme GC-tryk.
+    // MEDIAN og ikke min: én enkelt forstyrret måling må ikke afgøre sagen i
+    // nogen af retningerne.
+    const par: number[] = []
+    for (let i = 0; i < 7; i++) {
+      const et = armEt()
+      const fire = armFire()
+      par.push(et / fire)
+    }
+    par.sort((a, b) => a - b)
+    const median = par[Math.floor(par.length / 2)]!
+
+    expect(median).toBeLessThan(3)
   })
 
   it('deler ved tomme linjer mellem afsnit, overskrifter og tabeller', () => {

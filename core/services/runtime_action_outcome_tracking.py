@@ -36,6 +36,7 @@ def record_runtime_action_outcome(
 
     stored = _persist_runtime_action_outcome(normalized)
     learning_signals = _persist_learning_signals(stored)
+    weight_after = _persist_action_weight(normalized)
     event_bus.publish(
         "runtime.executive_action_outcome_recorded",
         {
@@ -98,6 +99,26 @@ def _persist_runtime_action_outcome(outcome: dict[str, Any]) -> dict[str, Any]:
         result_status=str(outcome.get("result_status") or ""),
         result_summary=str(outcome.get("result_summary") or ""),
         result_json=outcome.get("result") or {},
+        recorded_at=str(outcome.get("recorded_at") or ""),
+    )
+
+
+def _persist_action_weight(outcome: dict[str, Any]) -> dict[str, Any]:
+    """Skrive-vejen: udfaldet flytter vaegten (UPDATE, ikke INSERT).
+
+    28/10-2026: foer dette blev der kun INSERT'et en ny raekke pr. udfald, og
+    laese-vejen genberegnede sin snapshot fra de samme raa raekker. Vaegten
+    kunne derfor pr. konstruktion ikke laere. Her skrives den — og kalderen
+    faar den nye vaerdi tilbage, saa et forloeb kan efterproeves.
+    """
+    from core.runtime import db as runtime_db
+
+    updater = getattr(runtime_db, "apply_action_weight_update", None)
+    if not callable(updater):
+        return {}
+    return updater(
+        term=str(outcome.get("action_id") or ""),
+        outcome_status=str(outcome.get("result_status") or ""),
         recorded_at=str(outcome.get("recorded_at") or ""),
     )
 

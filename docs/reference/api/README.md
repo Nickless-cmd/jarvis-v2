@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17716 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17789 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,28 +39,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17716 functions/
 - [`core.services.07`](core.services.07.md) — `central_red_dress` … `chat_session_private_metadata`
 - [`core.services.08`](core.services.08.md) — `chat_sessions` … `cognitive_core_experiments`
 - [`core.services.09`](core.services.09.md) — `cognitive_episodes` … `council_memory_service`
-- [`core.services.10`](core.services.10.md) — `council_runtime` … `decision_ghosts`
-- [`core.services.11`](core.services.11.md) — `decision_log` … `dream_bias_engine`
-- [`core.services.12`](core.services.12.md) — `dream_carry_over` … `epistemic_pragmatic`
-- [`core.services.13`](core.services.13.md) — `epistemic_runtime_state` … `gate_enforcement`
-- [`core.services.14`](core.services.14.md) — `gate_eval` … `hardware_body`
-- [`core.services.15`](core.services.15.md) — `heartbeat_action_hints` … `inner_dialectic_engine`
-- [`core.services.16`](core.services.16.md) — `inner_visible_support_signal_tracking` … `living_heartbeat_cycle`
-- [`core.services.17`](core.services.17.md) — `llm_json` … `meta_learning_aggregator`
-- [`core.services.18`](core.services.18.md) — `meta_learning_hypotheses` … `ntfy_gateway`
-- [`core.services.19`](core.services.19.md) — `nudge_broend` … `plugin_ruleset_store`
-- [`core.services.20`](core.services.20.md) — `policy_abstraction` … `prompt_heartbeat_self_knowledge`
-- [`core.services.21`](core.services.21.md) — `prompt_memory_recall` … `recall_observability`
-- [`core.services.22`](core.services.22.md) — `recall_ownership_migration` … `routine_authorization`
-- [`core.services.23`](core.services.23.md) — `routine_classification` … `runtime_self_model`
-- [`core.services.24`](core.services.24.md) — `runtime_self_model_affect` … `self_review_cadence_signal_tracking`
-- [`core.services.25`](core.services.25.md) — `self_review_outcome_tracking` … `share_guard_store`
-- [`core.services.26`](core.services.26.md) — `shared_cache` … `state_flag_store`
-- [`core.services.27`](core.services.27.md) — `stream_degeneration` … `tiny_webchat_execution_pilot`
-- [`core.services.28`](core.services.28.md) — `tool_calling_evidence` … `user_hensyn`
-- [`core.services.29`](core.services.29.md) — `user_md_update_proposal_tracking` … `visible_run_cost`
-- [`core.services.30`](core.services.30.md) — `visible_run_firstpass` … `voice_daemon`
-- [`core.services.31`](core.services.31.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `council_runtime` … `decision_gate`
+- [`core.services.11`](core.services.11.md) — `decision_ghosts` … `dream_articulation`
+- [`core.services.12`](core.services.12.md) — `dream_bias_engine` … `env_block`
+- [`core.services.13`](core.services.13.md) — `epistemic_pragmatic` … `gate_commit`
+- [`core.services.14`](core.services.14.md) — `gate_enforcement` … `handover_tools`
+- [`core.services.15`](core.services.15.md) — `hardware_body` … `initiative_queue`
+- [`core.services.16`](core.services.16.md) — `inner_dialectic_engine` … `living_executive`
+- [`core.services.17`](core.services.17.md) — `living_heartbeat_cycle` … `meta_cognition_daemon`
+- [`core.services.18`](core.services.18.md) — `meta_learning_aggregator` … `notifikations_valg`
+- [`core.services.19`](core.services.19.md) — `ntfy_gateway` … `plugin_ruleset`
+- [`core.services.20`](core.services.20.md) — `plugin_ruleset_store` … `prompt_evolution_runtime`
+- [`core.services.21`](core.services.21.md) — `prompt_heartbeat_self_knowledge` … `recall`
+- [`core.services.22`](core.services.22.md) — `recall_observability` … `round_budget_notice`
+- [`core.services.23`](core.services.23.md) — `routine_authorization` … `runtime_self_knowledge`
+- [`core.services.24`](core.services.24.md) — `runtime_self_model` … `self_repair_engine`
+- [`core.services.25`](core.services.25.md) — `self_review_cadence_signal_tracking` … `shadow_scan_daemon`
+- [`core.services.26`](core.services.26.md) — `share_guard_store` … `state_file_retention`
+- [`core.services.27`](core.services.27.md) — `state_flag_store` … `tick_cache`
+- [`core.services.28`](core.services.28.md) — `tiny_webchat_execution_pilot` … `user_emotional_resonance`
+- [`core.services.29`](core.services.29.md) — `user_hensyn` … `visible_run_abandonment`
+- [`core.services.30`](core.services.30.md) — `visible_run_cost` … `voice_curator`
+- [`core.services.31`](core.services.31.md) — `voice_daemon` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -77,10 +77,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17716 functions/
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `identity_formation_monitor`
-- [`scripts.02`](scripts.02.md) — `injection_richness_check` … `navngiv_kode_sessioner`
-- [`scripts.03`](scripts.03.md) — `normalize_sensory_sources` … `verify_memory_status`
-- [`scripts.04`](scripts.04.md) — `verify_notes` … `verify_vagt_graenser`
+- [`scripts.01`](scripts.01.md) — `__init__` … `honesty_metrics`
+- [`scripts.02`](scripts.02.md) — `identity_formation_monitor` … `model_catalogue_sweep`
+- [`scripts.03`](scripts.03.md) — `navngiv_kode_sessioner` … `verify_history_reads`
+- [`scripts.04`](scripts.04.md) — `verify_memory_status` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

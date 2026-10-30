@@ -7,6 +7,19 @@ _Prompt-sections udskilt fra prompt_contract.py for læselighed._
 
 _(no top-level classes or functions)_
 
+## `core/services/prompt_sections/active_runs.py`
+_Active runs — hvad der kører lige nu, ud over mig selv._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_alder_minutter` | `(streng)` | Alder i minutter fra en ISO-streng, eller None hvis den ikke kan læses. | [src](../../../core/services/prompt_sections/active_runs.py#L56) |
+| function | `_kort_alder` | `(minutter)` | — | [src](../../../core/services/prompt_sections/active_runs.py#L69) |
+| function | `_kort_titel` | `(titel, session_id)` | — | [src](../../../core/services/prompt_sections/active_runs.py#L76) |
+| function | `_aktive_kandidater` | `()` | (run_id, control-payload) for hvert flag der står ``active``. | [src](../../../core/services/prompt_sections/active_runs.py#L85) |
+| function | `_levende_runs` | `(run_ids)` | run_id → started_at, men KUN for dem der reelt er ``running``. | [src](../../../core/services/prompt_sections/active_runs.py#L112) |
+| function | `_titler` | `(session_ids)` | — | [src](../../../core/services/prompt_sections/active_runs.py#L135) |
+| function | `active_runs_section` | `(session_id=…)` | Andre sessioner der kører lige nu, eller ``None`` når der ikke gør. | [src](../../../core/services/prompt_sections/active_runs.py#L148) |
+
 ## `core/services/prompt_sections/agent_orchestration.py`
 _Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
 

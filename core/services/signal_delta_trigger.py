@@ -228,9 +228,19 @@ def evaluate(signals: dict[str, float], scope: str | None = None) -> Optional[di
                 continue
 
             # Cross on delta OR on absolute floor (slow-boil drift).
-            # TODO: refine absolute-floor with a "held for T" dwell so a signal
-            # that merely sits above θ_abs cannot re-trip after each settle.
-            if absdelta >= theta_high or val >= theta_abs:
+            #
+            # MÅLT 30/10-2026: θ_abs-grenen fyrede UDEN at nogen bevægelse var
+            # målt. 201 af 500 samples havde `crossed` ikke-tom mens
+            # `movement = max(abs(v) for v in movements.values())` var præcis
+            # 0.0. Årsagen er at grenen sammenlignede NIVEAUET (`val`) med
+            # gulvet og aldrig så på `absdelta`: et signal der står stille over
+            # θ_abs krydser derfor igen og igen, hver gang det er kølet ned,
+            # med `movements[name] = val - b = 0`.
+            #
+            # "Slow-boil" betyder at noget BEVÆGER sig langsomt — ikke at det
+            # står stille højt. Grenen kræver derfor en delta; et helt statisk
+            # signal er pr. definition ingen ændring og skal ikke dispatche.
+            if absdelta >= theta_high or (val >= theta_abs and absdelta > 0.0):
                 crossed.append(name)
                 movements[name] = val - b
                 new_baselines[name] = val

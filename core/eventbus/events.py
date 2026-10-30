@@ -311,6 +311,32 @@ ALLOWED_EVENT_FAMILIES = {
     #    ville et opbrugt budget se ud som en kørsel der bare ikke gjorde noget.
     "background",          # inbox_idle_waker — baggrundsstart/attention-beslutninger
     "autonomous_budget",   # simple_tool_executor — budget-håndhævelse ved autonom kørsel
+    # ── 29. okt 2026: OTTENDE gang samme mønster (prompt 4/9, tool_discovery 6/9,
+    #    r2_5_gate 19/9, app 20/9, central_instrument 29/9, mobile 3/10,
+    #    background+autonomous_budget 25/10).
+    #    `prompt_evolution.proposal_applied` publiceres fra
+    #    core/services/autonomy_proposal_queue.py:776, som landede 28/10 med
+    #    apply-vejen (6bd59418e) — uden at familien blev registreret her.
+    #    publish() kastede ValueError, og kaldestedets `except Exception: pass`
+    #    slugte den, så hver anvendt prompt-mutation var usynlig i telemetrien.
+    #    Familien bærer proposal_id + target_file + mutation_id: strukturel
+    #    governance-metadata, ikke tanke-indhold → kun her, ikke i PRIVATE-ruter
+    #    (samme vurdering som `prompt` 4/9 og `autonomous_tool_policy` 9/10).
+    #    Fundet af vagten (tests/test_publish_scan.py) — main var rød i to døgn.
+    "prompt_evolution",    # autonomy_proposal_queue — en prompt-mutation blev anvendt
+    # ── 29. okt 2026: NIENDE gang samme mønster — men med en ekstra vridning
+    #    der gjorde det usynligt for vagten selv.
+    #    `_emit_read_before_write_guard_event` (read_before_write_guard.py:456)
+    #    publicerer `read_before_write_guard.<udfald>` via en F-STRENG. Den
+    #    statiske scanner i tests/test_publish_scan.py ser kun string-literals
+    #    (dens docstring siger det selv: «f"{cluster}.flag" kan ikke afgøres
+    #    statisk»), så familien kom aldrig i baselinen og vagten kunne ikke
+    #    fælde den. Oveni havde funktionen NUL kaldere — så spørgsmålet «bliver
+    #    vagten for ivrig?» kunne ikke besvares: der var ingen spor at måle på.
+    #    Målt i den levende DB: nul guard-events blandt 854.376 rækker.
+    #    Familien bærer sti, filnavn, session og udfald — governance-metadata
+    #    om en vagt, ikke tanke-indhold → kun her, ikke i PRIVATE-ruter.
+    "read_before_write_guard",  # read_before_write_guard.{blocked,allowed,new_file}
 }
 
 

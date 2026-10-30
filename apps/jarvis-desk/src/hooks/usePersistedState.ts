@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * En `useState` der huskes i localStorage — så UI-tilstand overlever mode-skift
@@ -77,5 +77,20 @@ export function usePersistedState<T>(key: string, fallback: T, persist = true) {
     try { localStorage.setItem(key, JSON.stringify(nyeste.current)) } catch { /* ignoreres */ }
   }, [key])
 
-  return [value, setValue] as const
+  // Tøm kladden med det samme — synkront, ikke via `setValue`.
+  //
+  // HVORFOR (målt 28/10-2026): `setValue('')` er en React-opdatering, så
+  // `nyeste.current` bærer stadig den GAMLE tekst indtil næste render. Skifter
+  // `onSend` samtale, unmountes komponenten i samme cyklus — der kommer aldrig
+  // et næste render — og unmount-effekten skriver den gamle tekst tilbage som
+  // kladde. Resultatet var at besked 2 startede med besked 1 i feltet.
+  // Repro-testen fangede det: `expected '"besked 1"' to be '""'`.
+  const ryd = useCallback(() => {
+    nyeste.current = fallback
+    setValue(fallback)
+    if (!persistRef.current) return
+    try { localStorage.setItem(key, JSON.stringify(fallback)) } catch { /* ignoreres */ }
+  }, [key, fallback])
+
+  return [value, setValue, ryd] as const
 }

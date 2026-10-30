@@ -72,7 +72,10 @@ function toastTone(post: Notifikation): 'fejl' | 'ok' | 'neutral' {
 
 /** Hvor laenge en toast lever, og hvor mange der maa staa paa skaermen. */
 export const LEVETID_MS = 7000
-const MAKS_SAMTIDIGE = 3
+/** Antal felter der maa være SYNLIGE samtidig. Resten venter i kø (28/10-2026). */
+export const MAKS_SYNLIGE = 2
+/** Loft for køen — kun saa en fejlende kilde ikke kan æde hukommelsen. */
+export const MAKS_KOE = 50
 
 /** Hvad en toast kan bære: en notifikations-post — eller et agent-kort der
  *  VENTER paa et svar.
@@ -104,6 +107,12 @@ export function NotifikationsToast({ config, onAabenSession }: {
 }) {
   const [koe, setKoe] = useState<ToastPost[]>([])
   const [synlig, setSynlig] = useState(() => document.visibilityState !== 'hidden')
+  // Ankeret maales fra den FAKTISKE skriveflade (28/10-2026). Maalt i en
+  // koerende browser: `bottom: 96px` var et fast tal, og stakken paa tre
+  // felter toppede 262px oppe ved 1080px hoejde — den saas som «under
+  // midten». `null` = vi har ikke maalt endnu, og CSS'ens fallback (14px)
+  // gaelder, saa der aldrig staar et felt uden for skaermen.
+  const [notifBund, setNotifBund] = useState<number | null>(null)
   const apiBaseUrl = config?.apiBaseUrl ?? ''
   const authToken = config?.authToken ?? null
 
@@ -179,7 +188,7 @@ export function NotifikationsToast({ config, onAabenSession }: {
           const udenGammelReleasefase = k.filter((t) => t.kind !== 'notif' || !nyeIds.has(t.post.id))
           return [...udenGammelReleasefase, ...nye.map((p) => ({
             kind: 'notif' as const, nogle: toastNoegle(p), post: p,
-          }))].slice(-MAKS_SAMTIDIGE)
+          }))].slice(-MAKS_KOE)
         })
       })
       .catch(() => { /* pollet/WS daekker; en fejlet hentning maa ikke stoeje */ })
@@ -214,7 +223,7 @@ export function NotifikationsToast({ config, onAabenSession }: {
         if (!nye.length) return
         nye.forEach((k) => kendteAgent.current!.add(k.approval!.approval_id))
         spilToastKlang('neutral')
-        setKoe((k) => [...k, ...nye.map((c) => ({ kind: 'agent' as const, nogle: c.approval!.approval_id, card: c }))].slice(-MAKS_SAMTIDIGE))
+        setKoe((k) => [...k, ...nye.map((c) => ({ kind: 'agent' as const, nogle: c.approval!.approval_id, card: c }))].slice(-MAKS_KOE))
       })
       .catch(() => { /* pollet daekker; en fejlet hentning maa ikke stoeje */ })
   }, [apiBaseUrl, authToken])
@@ -269,6 +278,71 @@ export function NotifikationsToast({ config, onAabenSession }: {
     return () => document.removeEventListener('visibilitychange', opdaterSynlighed)
   }, [hentNu, hentKontraktNu])
 
+  useEffect(() => {
+    // Ankeret maales fra skrivefladen (28/10-2026). `.composer-area` er den
+    // faktiske beholder — ChatView.tsx:1121 og CodeView.tsx:1342.
+    //
+    // `.composer-wrap` blev brugt foerst og var FORKERT: den klasse findes kun
+    // i app.css:992, og ingen komponent renderer den. Maalt 28/10 i en
+    // koerende browser: `document.querySelector('.composer-wrap')` svarede
+    // null, saa ankeret faldt altid tilbage til CSS'ens 14px, og maale-koden
+    // var doed kode der saa rigtig ud i en diff. Praecis den fejlklasse
+    // tokens.test.ts:575 advarer om («.composer-wrap — begge views bruger
+    // .composer-area»). Findes den ikke (fx PWA uden composer), falder vi
+    // tilbage til CSS'ens 14px i stedet for at gaette et tal.
+    // ── TO FEJL I DET FOERSTE ANKER (maalt og rettet 28/10-2026) ──────────
+    //
+    // 1. `querySelector('.composer-area')` tager den FOERSTE i DOM'en. Der
+    //    findes TO i koden — ChatView.tsx:1121 og CodeView.tsx:1342 — og den
+    //    forkerte kan vaere skjult eller ligge i en anden view. Ligger den
+    //    hoejere oppe end den man faktisk staar paa, bliver
+    //    `window.innerHeight - rect.top` STOR, og hele stakken hanger hoejt
+    //    paa skaermen. Det er praecis Bjoerns klage: «nogen toasts vises
+    //    hoejere op» — de ramte den forkerte skriveflade.
+    //    Vi vaelger nu den SYNLIGE og NEDERSTE.
+    //
+    // 2. Ankeret blev maalt ÉN gang ved mount plus ved `resize`. Skrivefladen
+    //    skifter hoejde af sig selv — flere linjer tekst, en vedhaengning, en
+    //    notice — og saa pegede ankeret paa en position der ikke findes
+    //    laengere. En `ResizeObserver` paa det valgte element holder det
+    //    maalt, uanset hvad der skubber til det.
+    let observeret: HTMLElement | null = null
+    let ro: ResizeObserver | null = null
+
+    const vaelg = (): HTMLElement | null => {
+      const alle = Array.from(document.querySelectorAll('.composer-area')) as HTMLElement[]
+      const synlige = alle.filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 && el.offsetParent !== null
+      })
+      if (!synlige.length) return null
+      // Den NEDERSTE vinder: det er den skriveflade brugeren ser.
+      return synlige.reduce((a, b) =>
+        (b.getBoundingClientRect().top > a.getBoundingClientRect().top ? b : a))
+    }
+
+    const maal = () => {
+      const wrap = vaelg()
+      if (!wrap) { setNotifBund(null); return }
+      if (wrap !== observeret) {
+        ro?.disconnect()
+        observeret = wrap
+        ro = new ResizeObserver(() => maal())
+        ro.observe(wrap)
+      }
+      const rect = wrap.getBoundingClientRect()
+      // Afstand fra viewport-bunden op til composerens overkant, plus 10px
+      // luft. Gulv paa 12px saa et felt aldrig kan ligge halvt uden for.
+      setNotifBund(Math.max(12, Math.round(window.innerHeight - rect.top) + 10))
+    }
+    maal()
+    window.addEventListener('resize', maal)
+    return () => {
+      window.removeEventListener('resize', maal)
+      ro?.disconnect()
+    }
+  }, [])
+
   const luk = useCallback((nogle: string) => {
     setKoe((k) => k.filter((t) => t.nogle !== nogle))
   }, [])
@@ -294,11 +368,27 @@ export function NotifikationsToast({ config, onAabenSession }: {
     void kald.catch(() => { /* naeste hentning genopretter sandheden */ })
   }, [config, luk])
 
-  if (!koe.length) return null
+  // KØEN ER IKKE EN VISNING (28/10-2026). Her stod `koe.map` over ALLE poster,
+  // mens `slice(-3)` ved indsættelse havde kastet alt over tre væk. To fejl i
+  // samme mekanisme: post 4-6 blev smidt ud (brugeren fik aldrig sit varsel),
+  // og havde de ligget i køen, var de blevet vist SAMTIDIG i stedet for
+  // efter hinanden.
+  //
+  // Nu bærer køen ALT, og kun de første MAKS_SYNLIGE monteres. En post der
+  // venter er ikke monteret, saa dens nedtaelling — en CSS-animation der
+  // starter ved mount — loeber ikke. Den begynder foerst naar feltet rykker
+  // ind. Det er praecis den adfaerd man vil have: tiden maales fra man kan SE
+  // posten, ikke fra den ankom.
+  //
+  // Naar et felt udloeber eller afvises, fjernes det fra køen (`luk`), og den
+  // næste glider ind af sig selv — der er ingen JS-timer der skal rykke den.
+  const synlige = koe.slice(0, MAKS_SYNLIGE)
+  if (!synlige.length) return null
 
   return (
-    <div className="notif-toast-lag" role="status" aria-live="polite">
-      {koe.map((t) => t.kind === 'notif' ? (
+    <div className="notif-toast-lag" role="status" aria-live="polite"
+         style={notifBund === null ? undefined : { ['--notif-bund' as string]: `${notifBund}px` }}>
+      {synlige.map((t) => t.kind === 'notif' ? (
         <ToastKort key={t.nogle} post={t.post}
                    synlig={synlig}
                    onAabn={() => aabn(t.post, t.nogle)}

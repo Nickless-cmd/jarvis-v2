@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/identity_formation_monitor.py`
+_Identity formation monitor — daily snapshot of Jarvis' becoming._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/identity_formation_monitor.py#L36) |
+
 ## `scripts/injection_richness_check.py`
 _Rigdoms-gate for injektions-migration (spec 2026-07-05 §7)._
 
@@ -433,11 +440,4 @@ _Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/model_catalogue_sweep.py#L36) |
-
-## `scripts/navngiv_kode_sessioner.py`
-_Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
 

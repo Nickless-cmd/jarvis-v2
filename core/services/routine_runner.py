@@ -161,6 +161,24 @@ _RUTINE_KERNE_TOOLS: frozenset[str] = frozenset({
     "web_search", "web_fetch",
     # Hukommelse
     "recall", "search_memory", "remember_this", "read_memory_topic",
+    # Sansearkiv (28/10-2026). Uden disse kunne en rutine LÆSE sit arkiv men
+    # ikke skrive i det — og natrutinen, hvis hele formål er at sanse og
+    # arkivere, meldte `succeeded` med nul indlæg i fire døgn.
+    #
+    # Målt 28/10-2026 på `run_f43a8b354a864f0d846beec34930b73f`: kørslen
+    # svarede «Sanseværktøjerne var ikke i denne kørsels capability scope» med
+    # alle fire markeret ✗. Årsagen var ikke `ORIGIN_TOOLS` — den var denne
+    # liste: `_rutine_tools_payload` falder tilbage til
+    # `_RUTINE_KERNE_TOOLS & tilladte` når rutinen ikke har en `tools`-policy
+    # (natrutinens policy er kun `{"max_rounds": 20}`), så et værktøj der ikke
+    # står HER når aldrig modellen, uanset hvad politikken i øvrigt tillader.
+    #
+    # Det er sansning, ikke handling i verden: at se og lytte er perception,
+    # samme klasse som `read_file`, og `dream`-originens sæt har dem allerede.
+    # Rutinen gjorde det RIGTIGE ved at nægte at digte indtryk — fejlen var at
+    # den ikke måtte sanse.
+    "look_around", "mic_listen", "record_sensory_memory",
+    "recall_sensory_memories",
     # Data og handling
     "madopskrift", "get_weather", "home_assistant",
     "notify_user", "send_push_notification",

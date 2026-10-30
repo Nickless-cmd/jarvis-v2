@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/navngiv_kode_sessioner.py`
+_Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
+
 ## `scripts/normalize_sensory_sources.py`
 _Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel først._
 
@@ -423,17 +430,4 @@ _Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
 | function | `fund_i_fil` | `(sti)` | — | [src](../../../scripts/verify_history_reads.py#L54) |
 | function | `_filer` | `(a)` | — | [src](../../../scripts/verify_history_reads.py#L76) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_history_reads.py#L92) |
-
-## `scripts/verify_memory_status.py`
-_Skraldespærre mod statuspåstande i MEMORY.md der ikke kan efterprøves._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_qf_loft` | `()` | Promptens FAKTISKE klip-loft for QUICK_FACTS — læst fra kilden. | [src](../../../scripts/verify_memory_status.py#L150) |
-| function | `quick_facts_brud` | `(sti)` | QUICK_FACTS.md skal være et OPSLAG — ikke en hukommelsesbank. | [src](../../../scripts/verify_memory_status.py#L187) |
-| function | `_filer` | `()` | De vogtede filer — stien løses ved KALDSTID, ikke ved import. | [src](../../../scripts/verify_memory_status.py#L226) |
-| function | `fund_i_fil` | `(sti)` | (linjenummer, tekst) for hver `## `-overskrift der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L249) |
-| function | `fund_i_broedtekst` | `(sti)` | (linjenummer, tekst) for hver brødtekst-linje der er en påstand uden spor. | [src](../../../scripts/verify_memory_status.py#L261) |
-| function | `_navn` | `(sti)` | Kort, entydigt navn til grundlinjen: <workspace>/<fil>. | [src](../../../scripts/verify_memory_status.py#L287) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_memory_status.py#L292) |
 

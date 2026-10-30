@@ -817,8 +817,41 @@ _DSML_OPEN = "<｜｜DSML｜｜tool_calls>"
 _DSML_CLOSE = "</｜｜DSML｜｜tool_calls>"
 _DSML_CALLS_OPEN = "<｜｜DSML｜｜ calls>"
 _DSML_CALLS_CLOSE = "</｜｜DSML｜｜ calls>"
-_DSML_OPENERS = (_DSML_OPEN, _DSML_CALLS_OPEN)
+# 30/10-2026 (Bjørn: «nu leaker du osse»): modellen kan starte sin DSL midt i
+# blokken — uden `calls`-omslaget — så den første token er `invoke` eller
+# `parameter`. Målt i 104 persisterede lækager: 59 startede med `calls`,
+# 2 med `invoke`, 43 med andre former. Uden disse to åbnere så stripperen
+# ingenting og lod hele blokken passere til den gemte besked.
+_DSML_INVOKE_OPEN = "<｜｜DSML｜｜ invoke"
+_DSML_PARAM_OPEN = "<｜｜DSML｜｜ parameter"
+# Closer-formerne. En lækage kan STARTE midt i blokken — den første token er så
+# `</｜｜DSML｜｜ parameter>` eller `</｜｜DSML｜｜ invoke>`, altså en LUKKER uden
+# nogen åbner foran. Målt 30/10-2026 på besked 236732: stripperen så ingenting
+# og lod hele halen passere. Behandles de som åbnere, dræbes halen fra første
+# token — der er intet legitimt indhold i en bar DSML-closer.
+_DSML_INVOKE_CLOSE = "</｜｜DSML｜｜ invoke"
+_DSML_PARAM_CLOSE = "</｜｜DSML｜｜ parameter"
+# 30/10-2026 (målt, ikke gættet): closer-formerne lå først i `_DSML_OPENERS` for
+# at dræbe en hale der STARTER midt i blokken. Det var forkert. En LEGITIM lukker
+# — `</｜｜DSML｜｜ calls>` der afslutter en blok — blev dermed også læst som en
+# åbner: stod blokken midt i teksten, blev dens egen lukker spist, blokken kunne
+# aldrig slutte, og ALT hvad der stod efter den forsvandt. Målt i
+# tests/test_visible_first_pass_dsml.py: «Anden del af svaret.» blev ædt.
+# Nu er de hvad de er — MARKUP-RESTER: et token uden nogen åbner foran. Resten
+# dræbes som token; teksten efter den er ægte indhold og skal blive stående.
+_DSML_OPENERS = (
+    _DSML_OPEN,
+    _DSML_CALLS_OPEN,
+    _DSML_INVOKE_OPEN,
+    _DSML_PARAM_OPEN,
+)
 _DSML_CLOSERS = (_DSML_CLOSE, _DSML_CALLS_CLOSE)
+_DSML_RESIDUE = (
+    _DSML_INVOKE_CLOSE,
+    _DSML_PARAM_CLOSE,
+    _DSML_CALLS_CLOSE,
+    _DSML_CLOSE,
+)
 
 
 def contains_dsml_tool_intent(text: str | None) -> bool:
@@ -862,30 +895,49 @@ def _strip_dsml_leak(buffer: str, in_block: bool) -> tuple[str, str, bool]:
             buffer = buffer[close_idx + len(closer):]
             in_block = False
             continue
-        # Not in block — find next opener
-        matches = [(buffer.find(opener), opener) for opener in _DSML_OPENERS]
-        matches = [(idx, opener) for idx, opener in matches if idx >= 0]
+        # Not in block — find the NEAREST of opener and markup-rest.
+        matches: list[tuple[int, str, bool]] = []
+        for opener in _DSML_OPENERS:
+            _i = buffer.find(opener)
+            if _i >= 0:
+                matches.append((_i, opener, True))
+        for rest in _DSML_RESIDUE:
+            _i = buffer.find(rest)
+            if _i >= 0:
+                matches.append((_i, rest, False))
         if not matches:
-            # No full opener. But the buffer's tail could still be a partial
-            # opener mid-stream (e.g. ends with "<｜｜D"). Hold back any tail
-            # that *could* be a prefix of the opener to avoid emitting "<｜"
-            # before deciding.
+            # No full token. But the buffer's tail could still be a partial
+            # token mid-stream (e.g. ends with "<｜｜D"). Hold back any tail
+            # that *could* be a prefix of one, so we don't emit "<｜" before
+            # deciding whether it opens a block or is residue.
             tail_keep = 0
-            for opener in _DSML_OPENERS:
-                for k in range(1, min(len(opener), len(buffer)) + 1):
-                    if opener.startswith(buffer[-k:]):
+            for tok in (*_DSML_OPENERS, *_DSML_RESIDUE):
+                for k in range(1, min(len(tok), len(buffer)) + 1):
+                    if tok.startswith(buffer[-k:]):
                         tail_keep = max(tail_keep, k)
             if tail_keep:
                 safe.append(buffer[:-tail_keep])
                 return "".join(safe), buffer[-tail_keep:], in_block
             safe.append(buffer)
             return "".join(safe), "", in_block
-        # Emit prefix before the opener, then enter block
-        open_idx, opener = min(matches, key=lambda item: item[0])
-        if open_idx > 0:
-            safe.append(buffer[:open_idx])
-        buffer = buffer[open_idx + len(opener):]
-        in_block = True
+        hit_idx, tok, is_open = min(matches, key=lambda item: (item[0], not item[2]))
+        if hit_idx > 0:
+            safe.append(buffer[:hit_idx])
+        buffer = buffer[hit_idx + len(tok):]
+        if is_open:
+            in_block = True
+            continue
+        # Markup-REST: dræb selve tag'et — teksten EFTER det er ægte indhold.
+        # `</｜｜DSML｜｜ parameter>` har sin `>` lige efter tokenet; bærer den
+        # attributter, stopper vi ved første `>` uden linjeskift i nærheden, så
+        # vi aldrig sluger prosa.
+        if buffer.startswith(">"):
+            buffer = buffer[1:]
+        else:
+            _gt = buffer.find(">", 0, 120)
+            if _gt >= 0 and "\n" not in buffer[:_gt]:
+                buffer = buffer[_gt + 1:]
+        continue
     return "".join(safe), "", in_block
 
 

@@ -70,6 +70,12 @@ class RunView:
     created_at: str
     definition_snapshot: dict[str, object] | None = None
     execution_context: dict[str, object] | None = None
+    #: Det samlede svar, dekrypteret. Feltet MANGLEDE indtil 27/10-2026:
+    #: `db_routines.get_run(decrypt_for=…)` satte det korrekt, men `_run_view`
+    #: byggede en RunView uden feltet — så svaret blev kastet væk her, og
+    #: fladen viste tomt mens hele hændelsesloggen væltede ud i stedet.
+    result: str | None = None
+    diagnostic_code: str | None = None
 
 
 _TRANSITIONS = {
@@ -121,6 +127,21 @@ def _routine_view(row: Mapping[str, Any]) -> RoutineView:
     )
 
 
+def _som_tekst(value: object) -> str | None:
+    """Gør et gemt resultat til tekst.
+
+    ``db_routines`` gemmer svaret som UTF-8-bytes (``result.text.encode()`` i
+    runneren), og ``get_run(decrypt_for=…)`` giver dem videre uændret. Sendt
+    direkte til JSON blev det til ``b'...'`` med escape-koder — derfor kunne
+    markdown aldrig rendere, uanset hvad fladen gjorde. Målt 27/10-2026.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value).decode("utf-8", errors="replace")
+    return str(value)
+
+
 def _run_view(row: Mapping[str, Any]) -> RunView:
     return RunView(
         run_id=str(row["run_id"]),
@@ -135,6 +156,8 @@ def _run_view(row: Mapping[str, Any]) -> RunView:
         created_at=str(row["created_at"]),
         definition_snapshot=row.get("definition_snapshot"),
         execution_context=row.get("execution_context"),
+        result=_som_tekst(row.get("result")),
+        diagnostic_code=row.get("diagnostic_code"),
     )
 
 

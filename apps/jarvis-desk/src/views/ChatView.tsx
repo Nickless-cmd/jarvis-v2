@@ -74,6 +74,7 @@ import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
 import { udenAktivRun, normaliseretTekst } from '../lib/transcriptFilter'
+import { svarPacingGate } from '../lib/svarPacing'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
 
@@ -391,10 +392,21 @@ export function ChatView({
     finalAnswerStarted: stream.finalAnswerStarted,
     status: stream.status,
   }), [stream])
-  const afslutterSvarPacing = stream.status === 'done'
-    && !!stream.activeRunId
-    && pacedAnswerRunId !== stream.activeRunId
-    && primaryChatModel.finalBlocks.some((block) => block.type === 'text' && block.text.length > 0)
+  // Tre spørgsmål, tre svar (29/10-2026). Før var det ÉT flag der både skulle
+  // gate paceren OG filteret — faldt det bort (fordi et værktøj efter teksten
+  // tømte `finalBlocks`), forsvandt begge i samme frame. Se `lib/svarPacing.ts`.
+  const levendeTekst = normaliseretTekst(liveChatBlokke(stream))
+  const pacing = svarPacingGate({
+    status: stream.status,
+    activeRunId: stream.activeRunId,
+    pacedAnswerRunId,
+    harSlutblok: primaryChatModel.finalBlocks.some(
+      (block) => block.type === 'text' && block.text.length > 0,
+    ),
+    finalAnswerStarted: stream.finalAnswerStarted,
+    levendeTekst,
+  })
+  const afslutterSvarPacing = pacing.afslutterSvarPacing
 
   const scroll = useChatScroll(transcriptRef, {
     arbejder: stream.status === 'working',
@@ -519,7 +531,7 @@ export function ChatView({
   const followedChatMode = followedRunId
     ? chatFlow.activeModeForRun(followedRunId)
     : historicalChatMode
-  const visLevendeTur = streaming || afslutterSvarPacing
+  const visLevendeTur = pacing.visLevendeTur
   const markerSvarPacet = useCallback(() => {
     if (stream.activeRunId) setPacedAnswerRunId(stream.activeRunId)
   }, [stream.activeRunId])
@@ -595,9 +607,9 @@ export function ChatView({
   // der betyder noget: tegnes runnet levende, må dets persisterede række ikke
   // også tegnes. Se `lib/transcriptFilter.ts` og dens tests.
   const renderedTranscriptMessages = udenAktivRun(
-    transcriptMessages, stream.activeRunId, visLevendeTur,
+    transcriptMessages, stream.activeRunId, pacing.filterAktiv,
     // Samme faldback som CodeView: raekken kan mangle `run_id` et kort vindue.
-    visLevendeTur ? normaliseretTekst(liveChatBlokke(stream)) : '',
+    levendeTekst,
   )
 
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken
@@ -760,7 +772,7 @@ export function ChatView({
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         getSessionId={ensureSessionId}
         sessionId={sessionId}
-        showPermissions={false}
+        showPermissions={auth?.role === 'owner'}
         contextTokens={contextTokens}
         overheadTokens={overheadTokens}
         compactAt={compactAt}
@@ -1089,7 +1101,7 @@ export function ChatView({
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
               role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
-              finalAnswerStarted={stream.finalAnswerStarted} rundeEtiketter={stream.rundeEtiketter}
+              finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
               paceFinalAnswer={afslutterSvarPacing} onAnswerPaced={markerSvarPacet} />
@@ -1103,7 +1115,7 @@ export function ChatView({
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
             workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
             role="assistant" blocks={withoutPauseAsk(liveChatBlokke(followState))} density="compact" streaming
-            finalAnswerStarted={followState.finalAnswerStarted} rundeEtiketter={followState.rundeEtiketter}
+            finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig}
             tokens={followState.usage.output} />
         )}

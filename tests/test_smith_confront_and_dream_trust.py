@@ -16,17 +16,25 @@ def test_arm_confront_shadow_registers_nothing(monkeypatch):
     assert oid is None and "hit" not in called
 
 
-def test_arm_confront_enforced_registers_standing_order(monkeypatch):
+def test_arm_confront_enforced_skriver_INGEN_standing_order(monkeypatch):
+    """VENDT 29/10-2026. Testen pinnede foer at en enforced arm_confront skrev en
+    standing order med `match_key` = moensterets label. Men modtageren
+    (`reasoning_detectors.standing_orders_on_reasoning`) goer `if mk in classes`
+    mod fem FASTE klassenavne — en label kan per konstruktion aldrig vaere ét af
+    dem. Maalt i drift: 2 aktive ordrer, nul events der refererer standing
+    orders. Ordenen var altsaa doed fra foerste dag.
+
+    Det virksomme maskineri er `smith_confrontation.smith_confront_on_action`,
+    som laeser STIGEN SELV og holder kaldet. Derfor skrives ingen ordre mere."""
     monkeypatch.setattr(smith, "_agent_smith_enforced", lambda: True)
-    captured = {}
-    def fake_add(**kw):
-        captured.update(kw)
-        return 42
-    monkeypatch.setattr("core.services.standing_orders_registry.add_standing_order", fake_add)
-    oid = smith._execute_arm_confront("phrase:vil du have", "vil du have")
-    assert oid == 42
-    assert captured["match_key"] == "vil du have"
-    assert "vil du have" in captured["text"]
+    called = {}
+    monkeypatch.setattr("core.services.standing_orders_registry.add_standing_order",
+                        lambda **k: called.setdefault("hit", True) or 42)
+    oid = smith._execute_arm_confront("seq:vil du have", "vil du have")
+    assert oid is None, "der blev returneret et ordre-id — der findes ingen ordre"
+    assert "hit" not in called, (
+        "der blev skrevet en standing order der ikke kan matche de fem klassenavne"
+    )
 
 
 def test_resolve_deactivates_standing_order():

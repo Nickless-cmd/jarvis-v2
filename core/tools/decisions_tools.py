@@ -122,11 +122,19 @@ def _exec_decision_update(args: dict[str, Any]) -> dict[str, Any]:
             return {"status": "error", "error": "priority must be an integer"}
     if "status" in args and args.get("status") is not None:
         fields["status"] = str(args["status"]).strip().lower()
+    # Revokationens spor. Sættes status til 'revoked' kræver laget en grund —
+    # se behavioral_decisions.update_decision.
+    for key in ("revoked_reason", "revoked_evidence"):
+        if key in args and args.get(key) is not None:
+            fields[key] = str(args[key]).strip()
 
     if not fields:
         return {"status": "error", "error": "nothing to update — pass at least one field"}
 
-    updated = behavioral_decisions.update_decision(decision_id, **fields)
+    try:
+        updated = behavioral_decisions.update_decision(decision_id, **fields)
+    except ValueError as exc:  # laget kraever en grund ved status='revoked' — fejlen er svaret, ikke et uheld
+        return {"status": "error", "error": str(exc)}
     if updated is None:
         return {"status": "error", "error": "decision_id not found"}
     return {"status": "ok", "decision": updated}
@@ -136,8 +144,21 @@ def _exec_decision_revoke(args: dict[str, Any]) -> dict[str, Any]:
     decision_id = str(args.get("decision_id") or "").strip()
     if not decision_id:
         return {"status": "error", "error": "decision_id is required"}
-    reason = str(args.get("reason") or "").strip() or None
-    updated = behavioral_decisions.revoke_decision(decision_id, reason=reason)
+    reason = str(args.get("reason") or "").strip()
+    if not reason:
+        return {
+            "status": "error",
+            "error": (
+                "reason is required — a revocation without a reason leaves no "
+                "trace of why the policy was removed"
+            ),
+        }
+    evidence = args.get("evidence")
+    updated = behavioral_decisions.revoke_decision(
+        decision_id,
+        reason=reason,
+        evidence=None if evidence is None else str(evidence),
+    )
     if updated is None:
         return {"status": "error", "error": "decision_id not found"}
     return {"status": "ok", "decision": updated}
@@ -231,7 +252,15 @@ DECISION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "status": {
                         "type": "string",
                         "enum": list(_VALID_STATUS_FILTERS[:-1]),
-                        "description": "'active' | 'paused' | 'revoked' | 'fulfilled'",
+                        "description": "'active' | 'paused' | 'revoked' | 'fulfilled'. Sættes 'revoked', kræves revoked_reason.",
+                    },
+                    "revoked_reason": {
+                        "type": "string",
+                        "description": "Why the decision is being revoked. Required when status='revoked'.",
+                    },
+                    "revoked_evidence": {
+                        "type": "string",
+                        "description": "Optional JSON with the measurements behind the revocation.",
                     },
                 },
                 "required": ["decision_id"],
@@ -308,15 +337,25 @@ DECISION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "decision_revoke",
             "description": (
                 "Retire a decision that no longer fits. Prefer this over "
-                "quietly ignoring it — the revocation itself is honest data."
+                "quietly ignoring it — the revocation itself is honest data. "
+                "A reason is REQUIRED: without it the revocation leaves no "
+                "trace of why the policy was removed, and policy-before can "
+                "never be compared with policy-after."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "decision_id": {"type": "string"},
-                    "reason": {"type": "string"},
+                    "reason": {
+                        "type": "string",
+                        "description": "Why this decision no longer fits. Required.",
+                    },
+                    "evidence": {
+                        "type": "string",
+                        "description": "Optional JSON with the measurements that led here.",
+                    },
                 },
-                "required": ["decision_id"],
+                "required": ["decision_id", "reason"],
             },
         },
     },

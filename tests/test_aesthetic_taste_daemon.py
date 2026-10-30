@@ -103,3 +103,59 @@ class TestPrivateBrainRecord:
         kwargs = mock_insert.call_args[1]
         assert kwargs["record_type"] == "taste-insight"
         assert kwargs["summary"] == "Jeg vælger det kompakte."
+
+
+class TestAestheticRejection:
+    """Output-vagt: lækket agent-tekst må ikke blive en smagsindsigt.
+
+    Målt 29/10-2026: to rækker i private_brain_records bar rå agent-tekst.
+    Kilden var LLM-svaret — prompten er smal — så vagten sidder på outputtet.
+    """
+
+    #: Ordret fra de to forurenede rækker (pb-taste-f6063059901e, pb-taste-7fc38ddb746e).
+    LEAKET_GH = (
+        "Jeg kan ikke køre `gh` i dette miljø, så jeg kan ikke bekræfte "
+        "remote-status; dine tendenser peger mod rolig, klar og direkte præcision."
+    )
+    LEAKET_MUTATION = (
+        "apply_mutation() kan bære mutationerne, så længe de er sjældne nok "
+        "til at overholde 24-timers-cooldown."
+    )
+
+    def test_laekket_gh_tekst_afvises(self) -> None:
+        assert atd._is_aesthetic_insight(self.LEAKET_GH) is False
+
+    def test_laekket_mutation_tekst_afvises(self) -> None:
+        assert atd._is_aesthetic_insight(self.LEAKET_MUTATION) is False
+
+    def test_rigtig_smagsindsigt_slipper(self) -> None:
+        # Modsatte side: en ægte førstepersons-præference må ikke kasseres.
+        assert atd._is_aesthetic_insight(
+            "Jeg trækkes mod rolig klarhed og direkte form frem for det prangende."
+        ) is True
+
+    def test_tool_output_gemmer_ingen_raekke(self) -> None:
+        """Ende-til-ende: tool-agtigt svar → ingen række, ingen lagring."""
+        _reset()
+        atd._seeded = True
+        atd._accumulated_motifs = {"clarity", "craft", "calm-focus"}
+        with patch.object(atd, "_generate_insight", return_value=self.LEAKET_MUTATION):
+            with patch("core.services.aesthetic_taste_daemon.insert_private_brain_record") as mock_insert:
+                result = atd.tick_taste_daemon()
+        mock_insert.assert_not_called()
+        assert result == {"skipped": "not_aesthetic"}
+        assert atd._latest_insight == ""
+
+    def test_rigtig_indsigt_gemmes_stadig(self) -> None:
+        """Kontrakten ovenfor må ikke gøre daemonen tandløs."""
+        _reset()
+        atd._seeded = True
+        atd._accumulated_motifs = {"clarity", "craft", "calm-focus"}
+        with patch.object(
+            atd, "_generate_insight",
+            return_value="Jeg foretrækker rolig klarhed frem for visuel tæthed.",
+        ):
+            with patch("core.services.aesthetic_taste_daemon.insert_private_brain_record") as mock_insert:
+                result = atd.tick_taste_daemon()
+        mock_insert.assert_called_once()
+        assert result["generated"] is True

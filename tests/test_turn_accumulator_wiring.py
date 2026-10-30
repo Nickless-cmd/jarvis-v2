@@ -196,8 +196,10 @@ def test_build_turn_blocks_appends_progress_after_tool_pairs():
     # Ingen interleave (fallback, fx native batch-tool-exec): tool_use →
     # tool_result → tekst (svaret opsummerer værktøjerne) → progress sidst.
     # Bjørn 10. jul: 6 native tool-kald må IKKE rendre med teksten på index 0.
-    assert types == ["tool_use", "tool_result", "text", "progress"]
-    assert blocks[-1]["tool_use_id"] == "c1"
+    # 30/10-2026 (Bjorn: «knaekket i enden»): spoeret ligger nu FOER svaret, saa
+    # beskeden slutter i tekst. Vaerktoejerne ligger stadig FOERST (10. jul).
+    assert types == ["tool_use", "tool_result", "progress", "text"]
+    assert blocks[-2]["tool_use_id"] == "c1"
 
 
 def test_fallback_native_batch_places_all_tools_before_answer_text():

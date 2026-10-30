@@ -30,6 +30,11 @@ from feltteori_research.experiment_004_continuity import (
     Experiment004Config,
     analyze_experiment_004,
 )
+from feltteori_research.experiment_004_prospective import (
+    ProspectiveEvaluationConfig,
+    evaluate_prospective,
+    prepare_prospective_forecast,
+)
 from feltteori_research.live_visible_runs import (
     LiveExtractionConfig,
     extract_live_visible_runs,
@@ -310,3 +315,93 @@ def test_investigation_004_compares_recurrence_without_target_leakage(
             Path(__file__).resolve().parents[2],
             Experiment004Config(block_rows=40),
         )
+
+
+def test_investigation_004_prospective_waits_without_reading_outcomes(
+    tmp_path: Path,
+) -> None:
+    run = extract_fixture(tmp_path, 480)
+    analysis = tmp_path / "analysis"
+    analyze_experiment_004(
+        run,
+        analysis,
+        Path(__file__).resolve().parents[2],
+        Experiment004Config(
+            block_rows=40,
+            sensitivity_block_rows=(30, 60),
+        ),
+    )
+    forecast_path = tmp_path / "forecast.json"
+    forecast = prepare_prospective_forecast(
+        run,
+        analysis,
+        forecast_path,
+        Path(__file__).resolve().parents[2],
+    )
+    assert forecast["source_high_water_id"] == 480
+    output = tmp_path / "prospective"
+    with pytest.raises(RuntimeError, match="requires host"):
+        evaluate_prospective(
+            forecast_path,
+            output,
+            Path(__file__).resolve().parents[2],
+            ProspectiveEvaluationConfig(
+                db_path=tmp_path / "jarvis.db", expected_host="not-this-host"
+            ),
+        )
+    pending = evaluate_prospective(
+        forecast_path,
+        output,
+        Path(__file__).resolve().parents[2],
+        ProspectiveEvaluationConfig(
+            db_path=tmp_path / "jarvis.db", expected_host=socket.gethostname()
+        ),
+    )
+    assert pending["status"] == "pending_insufficient_rows"
+    assert pending["outcomes_read"] is False
+    assert not (output / "exp004_prospective_observations.csv").exists()
+
+    connection = sqlite3.connect(tmp_path / "jarvis.db")
+    start = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    for index in range(40):
+        connection.execute(
+            """
+            INSERT INTO visible_runs (
+                run_id, lane, provider, model, status, started_at, finished_at,
+                text_preview, error, capability_id, user_id, workspace_name,
+                profile_name
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"new-private-{index}",
+                "primary",
+                "alpha",
+                "m1",
+                "completed" if index < 35 else "failed",
+                (start + timedelta(hours=index)).isoformat(),
+                (start + timedelta(hours=index, minutes=1)).isoformat(),
+                "private future text",
+                None,
+                None,
+                "private-user",
+                "private-workspace",
+                "visible-owner",
+            ),
+        )
+    connection.commit()
+    connection.close()
+    completed_output = tmp_path / "prospective-complete"
+    completed = evaluate_prospective(
+        forecast_path,
+        completed_output,
+        Path(__file__).resolve().parents[2],
+        ProspectiveEvaluationConfig(
+            db_path=tmp_path / "jarvis.db", expected_host=socket.gethostname()
+        ),
+    )
+    assert completed["status"] == "complete_designated_independent_evaluation"
+    assert completed["evaluated_rows"] == 40
+    exported = (completed_output / "exp004_prospective_observations.csv").read_text(
+        encoding="utf-8"
+    )
+    assert "private" not in exported

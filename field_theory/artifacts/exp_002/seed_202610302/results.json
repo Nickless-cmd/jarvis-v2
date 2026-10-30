@@ -1,0 +1,1012 @@
+{
+  "candidate_catalog": [
+    {
+      "family": "single",
+      "lag": null,
+      "name": "value(v0)",
+      "variables": [
+        "v0"
+      ]
+    },
+    {
+      "family": "single",
+      "lag": null,
+      "name": "value(v1)",
+      "variables": [
+        "v1"
+      ]
+    },
+    {
+      "family": "single",
+      "lag": null,
+      "name": "value(v2)",
+      "variables": [
+        "v2"
+      ]
+    },
+    {
+      "family": "single",
+      "lag": null,
+      "name": "value(v3)",
+      "variables": [
+        "v3"
+      ]
+    },
+    {
+      "family": "single",
+      "lag": null,
+      "name": "value(context)",
+      "variables": [
+        "context"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v0,v1)",
+      "variables": [
+        "v0",
+        "v1"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v0,v2)",
+      "variables": [
+        "v0",
+        "v2"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v0,v3)",
+      "variables": [
+        "v0",
+        "v3"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v0,context)",
+      "variables": [
+        "v0",
+        "context"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v1,v2)",
+      "variables": [
+        "v1",
+        "v2"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v1,v3)",
+      "variables": [
+        "v1",
+        "v3"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v1,context)",
+      "variables": [
+        "v1",
+        "context"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v2,v3)",
+      "variables": [
+        "v2",
+        "v3"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v2,context)",
+      "variables": [
+        "v2",
+        "context"
+      ]
+    },
+    {
+      "family": "joint",
+      "lag": null,
+      "name": "joint(v3,context)",
+      "variables": [
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1)",
+      "variables": [
+        "v0",
+        "v1"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v2)",
+      "variables": [
+        "v0",
+        "v2"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v3)",
+      "variables": [
+        "v0",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,context)",
+      "variables": [
+        "v0",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v2)",
+      "variables": [
+        "v1",
+        "v2"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v3)",
+      "variables": [
+        "v1",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,context)",
+      "variables": [
+        "v1",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v2,v3)",
+      "variables": [
+        "v2",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v2,context)",
+      "variables": [
+        "v2",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v3,context)",
+      "variables": [
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,v2)",
+      "variables": [
+        "v0",
+        "v1",
+        "v2"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,v3)",
+      "variables": [
+        "v0",
+        "v1",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,context)",
+      "variables": [
+        "v0",
+        "v1",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v2,v3)",
+      "variables": [
+        "v0",
+        "v2",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v2,context)",
+      "variables": [
+        "v0",
+        "v2",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v3,context)",
+      "variables": [
+        "v0",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v2,v3)",
+      "variables": [
+        "v1",
+        "v2",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v2,context)",
+      "variables": [
+        "v1",
+        "v2",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v3,context)",
+      "variables": [
+        "v1",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v2,v3,context)",
+      "variables": [
+        "v2",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,v2,v3)",
+      "variables": [
+        "v0",
+        "v1",
+        "v2",
+        "v3"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,v2,context)",
+      "variables": [
+        "v0",
+        "v1",
+        "v2",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v1,v3,context)",
+      "variables": [
+        "v0",
+        "v1",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v0,v2,v3,context)",
+      "variables": [
+        "v0",
+        "v2",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "xor",
+      "lag": null,
+      "name": "xor(v1,v2,v3,context)",
+      "variables": [
+        "v1",
+        "v2",
+        "v3",
+        "context"
+      ]
+    },
+    {
+      "family": "lag",
+      "lag": 1,
+      "name": "outcome_lag(1)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 2,
+      "name": "outcome_lag(2)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 3,
+      "name": "outcome_lag(3)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 4,
+      "name": "outcome_lag(4)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 5,
+      "name": "outcome_lag(5)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 6,
+      "name": "outcome_lag(6)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 7,
+      "name": "outcome_lag(7)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 8,
+      "name": "outcome_lag(8)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 9,
+      "name": "outcome_lag(9)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 10,
+      "name": "outcome_lag(10)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 11,
+      "name": "outcome_lag(11)",
+      "variables": []
+    },
+    {
+      "family": "lag",
+      "lag": 12,
+      "name": "outcome_lag(12)",
+      "variables": []
+    }
+  ],
+  "method_version": "exp002.discover.1",
+  "parameters": {
+    "maximum_lag": 12,
+    "permutation_seed": 202610303,
+    "permutations": 250
+  },
+  "raw_observations_sha256_colon_hex": "c7:ec:38:26:6a:44:5a:f1:6d:3d:11:f2:78:6b:b2:07:72:c2:76:c8:c1:8f:bb:f6:0f:6d:91:ed:83:32:67:6d",
+  "sources": {
+    "S-05E2": {
+      "candidate_count": 52,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.0062420720249232176,
+        "median": 0.0008634094761885702,
+        "minimum": 4.9063775204416515e-05,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.00011645248954947896,
+        "q95": 0.0032680272893655916
+      },
+      "descriptive": {
+        "confirmation_outcome_entropy_bits": 0.9991571208502711,
+        "confirmation_rows": 2048,
+        "discovery_outcome_entropy_bits": 0.9999752343565644,
+        "discovery_rows": 1024
+      },
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.015427954193542925,
+        "median": 0.004954570092629451,
+        "minimum": 0.002006824844314359,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.0028652319880623,
+        "q95": 0.009380357075357247
+      },
+      "discovery_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.011087418843198638,
+        "median": 0.0014869712506675459,
+        "minimum": 1.9531711406450825e-05,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.0003265631162113758,
+        "q95": 0.0057018429025626335
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.46733499648863885,
+        "discovery_mi_bits": 0.4765417660765756,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(v0,context)",
+        "rank": 1,
+        "variables": [
+          "v0",
+          "context"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.46733499648863885,
+          "discovery_mi_bits": 0.4765417660765756,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v0,context)",
+          "rank": 1,
+          "variables": [
+            "v0",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.46668202838275974,
+          "discovery_mi_bits": 0.4764777174554726,
+          "family": "xor",
+          "lag": null,
+          "name": "xor(v0,context)",
+          "rank": 2,
+          "variables": [
+            "v0",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.000786589022746309,
+          "discovery_mi_bits": 0.005207136315002803,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v3,context)",
+          "rank": 3,
+          "variables": [
+            "v3",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0006214473170640389,
+          "discovery_mi_bits": 0.003464156021263598,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v1,context)",
+          "rank": 4,
+          "variables": [
+            "v1",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.00037379068339715715,
+          "discovery_mi_bits": 0.0032074273734536973,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v2,context)",
+          "rank": 5,
+          "variables": [
+            "v2",
+            "context"
+          ]
+        }
+      ]
+    },
+    "S-11B3": {
+      "candidate_count": 52,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 139,
+        "maximum": 0.0021632387529120223,
+        "median": 0.00013372946290290955,
+        "minimum": 2.362128492805482e-09,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.5577689243027888,
+        "q05": 2.5931880076601743e-06,
+        "q95": 0.0012106180576434422
+      },
+      "descriptive": {
+        "confirmation_outcome_entropy_bits": 0.9999752343565644,
+        "confirmation_rows": 2048,
+        "discovery_outcome_entropy_bits": 0.9995349089317649,
+        "discovery_rows": 1024
+      },
+      "discovery_search_wide_null": {
+        "exceedance_count": 221,
+        "maximum": 0.015781274445588522,
+        "median": 0.005014034399815959,
+        "minimum": 0.002076549973556663,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.8844621513944223,
+        "q05": 0.0028025577285070826,
+        "q95": 0.009161832005589
+      },
+      "discovery_selected_candidate_null": {
+        "exceedance_count": 7,
+        "maximum": 0.0054217790560999735,
+        "median": 0.0003752580288634011,
+        "minimum": 3.0019159291683195e-07,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.03187250996015936,
+        "q05": 3.0019159291683195e-07,
+        "q95": 0.002212607200109529
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.00010004715037492673,
+        "discovery_mi_bits": 0.0032498815061574593,
+        "family": "xor",
+        "lag": null,
+        "name": "xor(v0,v2,v3)",
+        "rank": 1,
+        "variables": [
+          "v0",
+          "v2",
+          "v3"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.00010004715037492673,
+          "discovery_mi_bits": 0.0032498815061574593,
+          "family": "xor",
+          "lag": null,
+          "name": "xor(v0,v2,v3)",
+          "rank": 1,
+          "variables": [
+            "v0",
+            "v2",
+            "v3"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0010308295449092952,
+          "discovery_mi_bits": 0.0025229388048138013,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v1,context)",
+          "rank": 2,
+          "variables": [
+            "v1",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.000859511521448475,
+          "discovery_mi_bits": 0.002155906040453459,
+          "family": "xor",
+          "lag": null,
+          "name": "xor(v1,context)",
+          "rank": 3,
+          "variables": [
+            "v1",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0015830390008071404,
+          "discovery_mi_bits": 0.002091445548319193,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v0,v2)",
+          "rank": 4,
+          "variables": [
+            "v0",
+            "v2"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 6.260951178904683e-05,
+          "discovery_mi_bits": 0.0018427484728169574,
+          "family": "lag",
+          "lag": 1,
+          "name": "outcome_lag(1)",
+          "rank": 5,
+          "variables": []
+        }
+      ]
+    },
+    "S-197C": {
+      "candidate_count": 52,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 104,
+        "maximum": 0.00723252382202233,
+        "median": 0.0008299927104340465,
+        "minimum": 7.081832610555949e-06,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.41832669322709165,
+        "q05": 0.00012878463140535422,
+        "q95": 0.0028191763917517314
+      },
+      "descriptive": {
+        "confirmation_outcome_entropy_bits": 0.9992954443621549,
+        "confirmation_rows": 2048,
+        "discovery_outcome_entropy_bits": 0.9999009357256291,
+        "discovery_rows": 1024
+      },
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.012021595874888824,
+        "median": 0.005091444735090378,
+        "minimum": 0.0017393786621715535,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.0027963848545294436,
+        "q95": 0.008909720574364077
+      },
+      "discovery_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.010451420582307414,
+        "median": 0.0017299599774649455,
+        "minimum": 2.806381900999355e-05,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.00023305608120045563,
+        "q95": 0.005796135848793836
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.0009911568740852417,
+        "discovery_mi_bits": 0.5844640833122079,
+        "family": "joint",
+        "lag": null,
+        "name": "joint(v2,context)",
+        "rank": 1,
+        "variables": [
+          "v2",
+          "context"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.0009911568740852417,
+          "discovery_mi_bits": 0.5844640833122079,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v2,context)",
+          "rank": 1,
+          "variables": [
+            "v2",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.003319551728909964,
+          "discovery_mi_bits": 0.5829289063535352,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v2,v3)",
+          "rank": 2,
+          "variables": [
+            "v2",
+            "v3"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0010343403804751183,
+          "discovery_mi_bits": 0.582898629127711,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v0,v2)",
+          "rank": 3,
+          "variables": [
+            "v0",
+            "v2"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.0002857418587551841,
+          "discovery_mi_bits": 0.5822111539860813,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v1,v2)",
+          "rank": 4,
+          "variables": [
+            "v1",
+            "v2"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 2.0400986804114396e-05,
+          "discovery_mi_bits": 0.5820931995958913,
+          "family": "single",
+          "lag": null,
+          "name": "value(v2)",
+          "rank": 5,
+          "variables": [
+            "v2"
+          ]
+        }
+      ]
+    },
+    "S-B4E5": {
+      "candidate_count": 52,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.0031318559460387085,
+        "median": 0.00016343419162767603,
+        "minimum": 2.4607134774257133e-07,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 1.3547730048912854e-06,
+        "q95": 0.0015484533855714133
+      },
+      "descriptive": {
+        "confirmation_outcome_entropy_bits": 0.9992046060381146,
+        "confirmation_rows": 2048,
+        "discovery_outcome_entropy_bits": 0.9997248102609695,
+        "discovery_rows": 1024
+      },
+      "discovery_search_wide_null": {
+        "exceedance_count": 0,
+        "maximum": 0.012674940146712554,
+        "median": 0.004803830330190828,
+        "minimum": 0.0016183603441906058,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 0.0026897334125043134,
+        "q95": 0.008985486358187522
+      },
+      "discovery_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.009597371454515446,
+        "median": 0.00022395605699998544,
+        "minimum": 2.6463038937940553e-06,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 2.8613658886733617e-06,
+        "q95": 0.002840642713190916
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 0.3791610587341714,
+        "discovery_mi_bits": 0.41179495963481183,
+        "family": "xor",
+        "lag": null,
+        "name": "xor(v0,v1,v2)",
+        "rank": 1,
+        "variables": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 0.3791610587341714,
+          "discovery_mi_bits": 0.41179495963481183,
+          "family": "xor",
+          "lag": null,
+          "name": "xor(v0,v1,v2)",
+          "rank": 1,
+          "variables": [
+            "v0",
+            "v1",
+            "v2"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 2.0030623887334897e-05,
+          "discovery_mi_bits": 0.004320918780355898,
+          "family": "lag",
+          "lag": 9,
+          "name": "outcome_lag(9)",
+          "rank": 2,
+          "variables": []
+        },
+        {
+          "confirmation_mi_bits": 1.8304117554990285e-05,
+          "discovery_mi_bits": 0.003993119724231553,
+          "family": "lag",
+          "lag": 8,
+          "name": "outcome_lag(8)",
+          "rank": 3,
+          "variables": []
+        },
+        {
+          "confirmation_mi_bits": 0.0002579095037327228,
+          "discovery_mi_bits": 0.0033222243910562277,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v3,context)",
+          "rank": 4,
+          "variables": [
+            "v3",
+            "context"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.00166522395713109,
+          "discovery_mi_bits": 0.0029256928438972096,
+          "family": "lag",
+          "lag": 10,
+          "name": "outcome_lag(10)",
+          "rank": 5,
+          "variables": []
+        }
+      ]
+    },
+    "S-D592": {
+      "candidate_count": 52,
+      "confirmation_selected_candidate_null": {
+        "exceedance_count": 205,
+        "maximum": 0.0034829025731928365,
+        "median": 0.00015715604072386036,
+        "minimum": 5.434904972734245e-07,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.8207171314741036,
+        "q05": 8.499509196457922e-07,
+        "q95": 0.0012662484395548179
+      },
+      "descriptive": {
+        "confirmation_outcome_entropy_bits": 0.9999752343565644,
+        "confirmation_rows": 2048,
+        "discovery_outcome_entropy_bits": 0.9998651614008649,
+        "discovery_rows": 1024
+      },
+      "discovery_search_wide_null": {
+        "exceedance_count": 4,
+        "maximum": 0.011764107476424979,
+        "median": 0.0050595698748436835,
+        "minimum": 0.0021425501827381233,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.0199203187250996,
+        "q05": 0.0028413472161666897,
+        "q95": 0.008970459141979012
+      },
+      "discovery_selected_candidate_null": {
+        "exceedance_count": 0,
+        "maximum": 0.005255583591723845,
+        "median": 0.0002984652971618207,
+        "minimum": 4.340441228656289e-07,
+        "permutations": 250,
+        "plus_one_rank_fraction": 0.00398406374501992,
+        "q05": 7.099488150030808e-06,
+        "q95": 0.002759339166802055
+      },
+      "selected_candidate": {
+        "confirmation_mi_bits": 1.7979546291568838e-05,
+        "discovery_mi_bits": 0.010502875401169787,
+        "family": "xor",
+        "lag": null,
+        "name": "xor(v0,v2,v3)",
+        "rank": 1,
+        "variables": [
+          "v0",
+          "v2",
+          "v3"
+        ]
+      },
+      "top_discovery_candidates": [
+        {
+          "confirmation_mi_bits": 1.7979546291568838e-05,
+          "discovery_mi_bits": 0.010502875401169787,
+          "family": "xor",
+          "lag": null,
+          "name": "xor(v0,v2,v3)",
+          "rank": 1,
+          "variables": [
+            "v0",
+            "v2",
+            "v3"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.002170812893590446,
+          "discovery_mi_bits": 0.004921732553083924,
+          "family": "lag",
+          "lag": 4,
+          "name": "outcome_lag(4)",
+          "rank": 2,
+          "variables": []
+        },
+        {
+          "confirmation_mi_bits": 0.0005986283063670328,
+          "discovery_mi_bits": 0.004342204253533488,
+          "family": "lag",
+          "lag": 3,
+          "name": "outcome_lag(3)",
+          "rank": 3,
+          "variables": []
+        },
+        {
+          "confirmation_mi_bits": 0.0015662458283181024,
+          "discovery_mi_bits": 0.002402876780942087,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v0,v1)",
+          "rank": 4,
+          "variables": [
+            "v0",
+            "v1"
+          ]
+        },
+        {
+          "confirmation_mi_bits": 0.00287359954148636,
+          "discovery_mi_bits": 0.002324091761370717,
+          "family": "joint",
+          "lag": null,
+          "name": "joint(v1,v2)",
+          "rank": 5,
+          "variables": [
+            "v1",
+            "v2"
+          ]
+        }
+      ]
+    }
+  }
+}

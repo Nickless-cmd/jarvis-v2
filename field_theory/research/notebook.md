@@ -115,3 +115,99 @@ same records as independent confirming evidence.
   predictive accuracy, such as persistent representational change.
 - Null models themselves encode perspective and assumptions; they should be
   treated as methods with provenance, not neutral reality.
+
+## 2026-10-30 — Investigation 2: unknown structure
+
+### Prompt
+
+Move from recovering a known context relation to selecting candidate
+relationships without generator-revealing labels, while measuring what the
+search itself contributes and testing selected candidates on independent data.
+
+### Method recorded before the run
+
+- Five sources were assigned opaque identifiers.
+- The automated analyzer could access only preserved observations and the
+  generation manifest, not `source_key.json` or generator code through imports.
+- It searched 52 declared perspectives: five single variables, ten joint
+  pairs, 25 XOR subsets, and twelve sequence lags.
+- The maximum discovery mutual information selected one candidate per source.
+- A 250-permutation maximum-over-search null represented selection opportunity.
+- The selected candidate was frozen and measured on a separately generated
+  confirmation partition with its own 250-permutation null.
+- This is procedural, not genuine investigator blinding: the code author knew
+  the families used on both sides.
+
+### Preserved observations
+
+The reference bundle is `artifacts/exp_002/seed_202610302`. It contains 15,360
+raw rows: 1,024 discovery and 2,048 confirmation rows for each of five sources.
+The raw SHA-256 digest is
+`c7:ec:38:26:6a:44:5a:f1:6d:3d:11:f2:78:6b:b2:07:72:c2:76:c8:c1:8f:bb:f6:0f:6d:91:ed:83:32:67:6d`.
+
+**Observation:** Two selected relationships persisted. The contextual source's
+selected representation measured 0.476542 bits in discovery and 0.467335 bits
+in confirmation. The three-variable parity source measured 0.411795 and
+0.379161 bits. Neither confirmation score was reached by 250 permutations.
+
+**Observation:** A partition-specific relation measured 0.584464 bits during
+discovery but only 0.000991 bits in confirmation; 104/250 confirmation
+permutations were at least as large. The relation existed locally but did not
+support continuity across the new partition.
+
+**Observation:** The independent source's best searched candidate was not
+unusual even during discovery: 221/250 search-wide permutation maxima were at
+least as large. It fell from 0.003250 to 0.000100 bits on confirmation.
+
+**Unexpected observation:** The deterministic digest source produced a best
+discovery candidate of 0.010503 bits. Only 4/250 search-wide permutations were
+at least as large, so search calibration alone made it look unusual. The fixed
+candidate fell to 0.000018 bits on confirmation, where 205/250 permutations
+were at least as large. A rare search result survived the multiple-perspective
+comparison but not new data.
+
+### Interpretation
+
+The catalog discovered two persistent planted relationships, including a
+higher-order parity relation. It also named patterns in independent and
+deterministic-but-inaccessible data. Independent confirmation, not the most
+interesting discovery score, separated these outcomes in this run.
+
+Determinism and observable structure were not equivalent: the digest source
+was fully deterministic but its actual generating relation was outside the
+available perspective. Conversely, the partition-specific source contained
+strong observable structure that was not continuous.
+
+### Search-induced method finding
+
+Raw mutual-information maximization favored richer joint representations. In
+the contextual source, `joint(v0,context)` exceeded the simpler
+`xor(v0,context)` by only 0.000064 bits. In the partition-specific source, four
+joint representations containing `v2` narrowly exceeded `value(v2)`, even
+though their extra variables were not part of the planted relation. Search-wide
+permutations calibrate magnitude but do not supply explanatory simplicity.
+
+### Limitations and changed status
+
+- Confirmation data have now been inspected and must not be reused as fresh
+  confirmation for revised hypotheses.
+- Source families and candidate families were co-designed; external validity
+  is unknown.
+- Unrestricted outcome permutation assumes exchangeability and may be wrong
+  for future nonstationary or sequence-dependent sources.
+- Mutual information was the selection score because the binary candidate
+  catalog made it interpretable, not because it is a universal pattern metric.
+- No causal, experiential, physical-field, or subjective claim was tested.
+
+### New questions
+
+- Should a later search compare nested perspectives by their incremental
+  information rather than their raw maximum?
+- Can a simplicity or compression criterion be recorded before new data,
+  without privileging the generator form?
+- What happens when source construction and candidate design are performed by
+  different, genuinely blinded parties?
+- How should continuity be investigated when a relationship changes gradually
+  rather than at an explicit partition boundary?
+- Which null preserves relevant local sequence structure without preserving
+  the candidate relation itself?

@@ -19,8 +19,12 @@ not established facts and not a destination built into the software.
 - [`research/observation-model.md`](research/observation-model.md) defines the
   minimal provenance boundary without prescribing a database schema.
 - [`research/notebook.md`](research/notebook.md) is the living research record.
+- [`research/investigation-002-findings.md`](research/investigation-002-findings.md)
+  separates the second investigation's measurements from its interpretations.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
+- [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)
+  records the discovery and confirmation boundary for Investigation 2.
 
 ## Minimal structure
 
@@ -58,3 +62,20 @@ Run the focused tests from the repository root:
 
 No database, service, network access, or Jarvis state is required. The first
 implementation uses only the Python standard library.
+
+## Run Investigation 2
+
+The three commands preserve generation, opaque analysis, and source reveal as
+separate events:
+
+```bash
+python experiments/exp_002_discovery/generate.py \
+  --output artifacts/exp_002/seed_202610302
+python experiments/exp_002_discovery/analyze.py \
+  --run artifacts/exp_002/seed_202610302
+python experiments/exp_002_discovery/reveal.py \
+  --run artifacts/exp_002/seed_202610302
+```
+
+The analyzer verifies the raw-data digest and never reads `source_key.json`.
+Analysis and reveal refuse to replace prior outputs.

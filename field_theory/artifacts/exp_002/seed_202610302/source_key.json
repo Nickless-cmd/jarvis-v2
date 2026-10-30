@@ -1,0 +1,34 @@
+{
+  "blinding_limit": "Procedural only; code author designed both source and candidate families.",
+  "sources": {
+    "S-05E2": {
+      "description": "Outcome is noisy XOR of v0 and context.",
+      "generator": "noisy_context_xor",
+      "intended_contrast": "A relation visible only when context participates.",
+      "noise_probability": 0.12
+    },
+    "S-11B3": {
+      "description": "Independent pseudorandom outcome and recorded variables.",
+      "generator": "independent_prng",
+      "intended_contrast": "Search-generated apparent structure without a planted relation."
+    },
+    "S-197C": {
+      "description": "Discovery outcome is a noisy copy of v2; confirmation outcome is independent.",
+      "discovery_noise_probability": 0.1,
+      "generator": "partition_specific_relation",
+      "intended_contrast": "Detectable sample-specific structure that should not generalize."
+    },
+    "S-B4E5": {
+      "description": "Outcome is noisy XOR of v0, v1, and v2.",
+      "generator": "noisy_triple_xor",
+      "intended_contrast": "Higher-order relation with weak pairwise visibility.",
+      "noise_probability": 0.15
+    },
+    "S-D592": {
+      "description": "Outcome is a deterministic SHA-256-derived bit with hidden input state.",
+      "generator": "deterministic_digest",
+      "intended_contrast": "Determinism that may remain random-looking under available perspectives."
+    }
+  },
+  "status": "reveal only after results.json exists"
+}

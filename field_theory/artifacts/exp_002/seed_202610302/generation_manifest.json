@@ -1,0 +1,28 @@
+{
+  "analysis_visible_source_ids": [
+    "S-05E2",
+    "S-11B3",
+    "S-197C",
+    "S-B4E5",
+    "S-D592"
+  ],
+  "blinding_note": "The analyzer must not read source_key.json.",
+  "experiment": "exp_002_discovery",
+  "method_version": "exp002.generate.1",
+  "parameters": {
+    "confirmation_rows": 2048,
+    "discovery_rows": 1024,
+    "seed": 202610302
+  },
+  "raw_observations": {
+    "path": "observations.csv",
+    "rows": 15360,
+    "sha256_colon_hex": "c7:ec:38:26:6a:44:5a:f1:6d:3d:11:f2:78:6b:b2:07:72:c2:76:c8:c1:8f:bb:f6:0f:6d:91:ed:83:32:67:6d"
+  },
+  "runtime": {
+    "implementation": "CPython",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+    "prng": "random.Random (Mersenne Twister)",
+    "python": "3.11.14"
+  }
+}

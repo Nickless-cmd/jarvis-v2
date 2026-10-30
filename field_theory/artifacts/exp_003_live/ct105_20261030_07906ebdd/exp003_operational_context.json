@@ -1,0 +1,119 @@
+{
+  "central_incidents": {
+    "coverage": {
+      "first": "2026-08-07T17:19:24.349078+00:00",
+      "last": "2026-10-30T18:17:54.293062+00:00",
+      "rows": 11091
+    },
+    "limitation": "incident categories are aggregate operational records, not verified visible-run causes",
+    "monthly": [
+      {
+        "clusters": 9,
+        "incidents": 3480,
+        "kinds": 14,
+        "month": "2026-08",
+        "resolved": 3480
+      },
+      {
+        "clusters": 17,
+        "incidents": 3397,
+        "kinds": 21,
+        "month": "2026-09",
+        "resolved": 3397
+      },
+      {
+        "clusters": 17,
+        "incidents": 4214,
+        "kinds": 25,
+        "month": "2026-10",
+        "resolved": 4165
+      }
+    ]
+  },
+  "deployed_collection_revision_colon_hex": "07:90:6e:bd:d3:e0:55:57:4d:c0:26:69:ba:e1:66:d0:d2:16:47:96",
+  "evidence_status": "aggregate operational context; not deployment or causal evidence",
+  "git_author_dates": {
+    "limitation": "author date measures repository history, not what revision was deployed when",
+    "monthly": [
+      {
+        "commits": 318,
+        "month": "2026-03"
+      },
+      {
+        "commits": 1266,
+        "month": "2026-04"
+      },
+      {
+        "commits": 906,
+        "month": "2026-05"
+      },
+      {
+        "commits": 1241,
+        "month": "2026-06"
+      },
+      {
+        "commits": 1161,
+        "month": "2026-07"
+      },
+      {
+        "commits": 121,
+        "month": "2026-08"
+      },
+      {
+        "commits": 2286,
+        "month": "2026-09"
+      },
+      {
+        "commits": 1584,
+        "month": "2026-10"
+      }
+    ]
+  },
+  "method_version": "exp003.live.context.1",
+  "observation_range": {
+    "cutoff": "2026-10-30T18:17:57.986571+00:00",
+    "first": "2026-03-22T18:22:39.047251+00:00"
+  },
+  "observations_sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e",
+  "privacy_boundary": {
+    "excluded": [
+      "message and incident text",
+      "payloads",
+      "run and session identifiers",
+      "user and workspace identifiers",
+      "secrets"
+    ],
+    "included": "monthly aggregate counts and coverage timestamps only"
+  },
+  "provider_model_epochs": {
+    "coverage": {
+      "first": "2026-09-10T12:26:15.584657+00:00",
+      "last": "2026-10-30T17:12:45.851156+00:00",
+      "rows": 100
+    },
+    "limitation": "coverage begins after the observation series; epochs are not deployment records",
+    "monthly": [
+      {
+        "epochs": 81,
+        "mismatches": 69,
+        "month": "2026-09",
+        "observations": 3947,
+        "observed_models": 31,
+        "providers": 7
+      },
+      {
+        "epochs": 19,
+        "mismatches": 8,
+        "month": "2026-10",
+        "observations": 2887,
+        "observed_models": 8,
+        "providers": 4
+      }
+    ]
+  },
+  "source": {
+    "database_path": "/home/bs/.jarvis-v2/state/jarvis.db",
+    "hostname": "Jarvis",
+    "sqlite_mode": "mode=ro; PRAGMA query_only=ON"
+  }
+}

@@ -267,3 +267,117 @@ permutations calibrate magnitude but do not supply explanatory simplicity.
   rather than at an explicit partition boundary?
 - Which null preserves relevant local sequence structure without preserving
   the candidate relation itself?
+
+## 2026-10-30 — Investigation 3: changing observable relationships
+
+### Prompt and evidence status
+
+Investigation 2 repeatedly selected `model + weekday → terminal status` in its
+last three historical blocks, while later-half plug-in MI changed from
+0.193991 to 0.073069 to 0.034201 bits. Investigation 3 asked what changed
+without treating the apparent decline as a weakening relation in advance.
+
+The 25,000 observations had already been inspected. The protocol therefore
+classified every new measurement as retrospective exploration rather than
+independent confirmation. The immutable live observation digest remained
+`b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e`.
+
+### Recorded method
+
+The primary deployed runner used overlapping 2,000-row windows stepped by 500
+rows, plus 1,000- and 4,000-row sensitivity views. It measured outcome entropy,
+model and joint cardinality, raw and normalized MI, and incremental weekday
+information beyond model. Two null references were kept distinct:
+
+- global outcome permutation, which destroys operational chronology;
+- weekday permutation within model×calendar-month, which preserves outcomes,
+  models, row order, monthly drift, and status clustering while disrupting
+  exact calendar alignment.
+
+Adjacent 1,000-row blocks exposed descriptive distribution discontinuities.
+Smoothed block-to-next-block log-loss examined whether a learned perspective
+transported as expectation.
+
+### Method correction before the preserved run
+
+The first deployed context collection at revision `f0c8295ac` revealed that a
+provider/model epoch beginning before the observation cutoff extended 12
+minutes beyond it. The observation analysis was unaffected, but the context
+claim was too broad. That output was rejected and not preserved as a valid run.
+
+Revision `07906ebdd` changed the query to include only epochs ending at or
+before the cutoff and added a crossing-epoch regression fixture. The complete
+primary analysis and corrected context collection were then rerun on CT105.
+Both `jarvis-api` and `jarvis-runtime` remained active; neither was restarted.
+
+### Primary observations
+
+Forty-seven overlapping windows showed no smooth three-era decline. The first
+six had constant `completed` outcomes and zero measurable status relation.
+Structure appeared in May, rose in June, and formed a localized maximum from
+July 5–16:
+
+- status entropy: 0.759112 bits;
+- non-completed prevalence: 15.05%;
+- model MI: 0.153956 bits;
+- model×weekday MI: 0.251291 bits;
+- incremental weekday given model: 0.097335 bits;
+- conditional-null mean: 0.020596 bits;
+- conditional-reference adjusted increment: 0.076739 bits;
+- conditional exceedances: 0/200.
+
+The maximum remained in the same July region with 1,000-row and 4,000-row
+windows, although magnitude changed. September reached slightly higher outcome
+entropy (0.791889 bits) with much lower joint MI (0.091898), challenging an
+entropy-only explanation. A June window contained 19 models but only 0.087929
+bits, challenging a cardinality-only explanation.
+
+The largest model-composition discontinuity occurred May 6 (0.683707-bit
+Jensen–Shannon divergence) with almost no status-distribution change. July 5
+and July 16 instead bracketed a +12.5 and −12.2 percentage-point change in
+non-completion while model composition also changed.
+
+### Unexpected transport result
+
+`model + weekday` worsened next-block log-loss relative to model alone in all
+four adjacent transfers: −0.004993, −0.007098, −0.062123, and −0.020104 bits of
+gain. The largest degradation occurred with 93.9% exact joint-state coverage,
+so unseen categories were not a sufficient explanation. Retrospective
+dependence did not become stable expectation under this instrument.
+
+### Post-hoc investigative path
+
+After the July maximum was observed, revision `1824d98cb` added a declared
+post-hoc cell audit. Non-completion was 3.90% in the immediately preceding
+2,000 rows, 15.05% in the selected maximum, and 3.85% in the following rows.
+Thursday contained 155/639 non-completed outcomes and the elevation crossed
+several models rather than one rare category.
+
+That result made weekday look potentially date-local. Revision `0b9524ce8`
+therefore added a second declared post-hoc day×model audit. Both Thursdays were
+elevated, but differently: July 9 had 34/123 non-completed, dominated by 30
+interruptions; July 16 had 121/516, dominated by 115 failures. Two occurrences
+do not establish a weekly process. The stable label joined operationally
+different status mixtures.
+
+### Context limitations
+
+The read-only aggregate context source established no explanation for July.
+`provider_model_epochs` begins September 10 and `central_incidents` August 7.
+Git author dates are not deployment records, and later routing/event tables do
+not reconstruct the earlier deployed state. Deployment, routing, incidents,
+workload, retries, and classification change remain alternatives without
+adequate historical evidence.
+
+### Revised interpretation and unresolved questions
+
+The five-block decline is now better described as a localized July episode,
+later weaker structure, and a measurement that changes with window,
+representation, and null model. Weekday may encode recurrence, exact dates, or
+unobserved shared causes. The current record cannot decide among them.
+
+The next defensible step is prospective: freeze a method before untouched rows,
+record deployment/routing revision at observation time, retain exact-date
+context, and distinguish failure from interruption. A null preserving weekly
+traffic and date-local clusters should be designed for that specific question,
+not retrofitted as confirmation on these rows.

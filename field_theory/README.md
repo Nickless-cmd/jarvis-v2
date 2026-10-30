@@ -24,6 +24,9 @@ not established facts and not a destination built into the software.
 - [`research/live-investigations-001-002-findings.md`](research/live-investigations-001-002-findings.md)
   reports the first deployed, database-backed measurements and supersedes the
   simulations as evidence about Jarvis.
+- [`research/investigation-003-findings.md`](research/investigation-003-findings.md)
+  examines how the live model×weekday relationship changes across the preserved
+  history, measurement perspectives, and adjacent-period transport.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)
@@ -104,3 +107,19 @@ The valid 2026-10-30 run is preserved under
 `artifacts/live_visible_runs/ct105_20261030_96c1f6a49/`. Its manifest identifies
 hostname `Jarvis`, deployed revision `96c1f6a49`, SQLite read-only mode, table
 high-water ID 46095, and the observation digest.
+
+Investigation 3 reuses that immutable snapshot and must also execute from the
+deployed CT105 repository:
+
+```bash
+python field_theory/experiments/exp_003_change/collect_context.py \
+  --run field_theory/artifacts/live_visible_runs/ct105_20261030_96c1f6a49 \
+  --output /tmp/<exp003-run>
+python field_theory/experiments/exp_003_change/analyze.py \
+  --run field_theory/artifacts/live_visible_runs/ct105_20261030_96c1f6a49 \
+  --output /tmp/<exp003-run>
+```
+
+The preserved deployed result is
+`artifacts/exp_003_live/ct105_20261030_07906ebdd/`. Its post-hoc cell and
+day×model audits are explicitly marked as following primary-result inspection.

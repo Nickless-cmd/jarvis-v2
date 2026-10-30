@@ -1,0 +1,43 @@
+{
+  "method_version": "exp005.learning.1",
+  "observations": {
+    "definitive_non_missing_rows": 3330,
+    "excluded": {
+      "missing": 0,
+      "provisional": 3
+    },
+    "first_month": "1749-01",
+    "last_month": "2026-06"
+  },
+  "parameters": {
+    "evaluation_start": "2000-01",
+    "experts": [
+      "previous_month",
+      "trailing_12_mean",
+      "cycle_lag_132"
+    ],
+    "learning_rate": 2.0,
+    "loss": "absolute_error / (1 + absolute_outcome)",
+    "retentions": {
+      "cumulative_continuity": 1.0,
+      "long_continuity": 0.99,
+      "one_encounter": 0.0,
+      "short_continuity": 0.9
+    },
+    "warmup_months": 132
+  },
+  "retrieved_at_utc": "2026-10-30T19:47:20.722051+00:00",
+  "runtime": {
+    "python": "3.11.14"
+  },
+  "source": {
+    "canonical_url": "https://www.sidc.be/SILSO/INFO/snmtotcsv.php",
+    "doi": "10.24414/qnza-ac80",
+    "information_page": "https://www.sidc.be/SILSO/infosnmtot",
+    "license": "CC BY-NC 4.0",
+    "publisher": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+    "publisher_page": "https://www.sidc.be/SILSO/datafiles",
+    "requested_location": "https://www.sidc.be/SILSO/INFO/snmtotcsv.php",
+    "sha256_colon_hex": "47:49:cc:16:c6:8e:06:73:f5:6e:c8:50:67:4d:05:c4:c8:7c:9d:3c:b8:48:5f:45:35:19:31:b3:82:2f:3f:3e"
+  }
+}

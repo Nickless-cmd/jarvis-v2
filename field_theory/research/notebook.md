@@ -487,3 +487,90 @@ success has not yet been observed.
 - Does recurrence become useful in an independently understood non-Jarvis
   process?
 - What will the frozen forecasts do on the first complete untouched target?
+
+## 2026-10-30 — Investigation 5: consequence, learning, and continuity
+
+### Prompt and protocol boundary
+
+Investigation 5 made error/consequence and learning explicit in the conceptual
+foundation. The selected unresolved dependency was whether a consequence that
+changes state also changes a subsequent access organization, and whether that
+change persists. The protocol and implementation were committed as
+`e9a732ca9` before the independent source file was downloaded or inspected.
+
+The source was the WDC-SILSO version 2.0 monthly mean total sunspot number.
+The preserved download contained 3,330 definitive non-missing observations
+from 1749-01 through 2026-06 and three excluded provisional rows. Its SHA-256
+digest is
+`47:49:cc:16:c6:8e:06:73:f5:6e:c8:50:67:4d:05:c4:c8:7c:9d:3c:b8:48:5f:45:35:19:31:b3:82:2f:3f:3e`.
+No live Jarvis data were queried; Investigation 4 remains pending and untouched.
+
+### Constructed mechanisms
+
+All mechanisms received previous-month, trailing-12-mean, and lag-132
+expectations. A fixed-uniform control recorded a cumulative error ledger but
+never changed weights. Adaptive mechanisms used the same normalized errors to
+change later weights with retentions 0.0, 0.9, 0.99, and 1.0. Continued/reset
+pairs differed only in whether pre-2000 retained loss entered evaluation.
+
+These update rules are constructed operational examples of consequence,
+learning, and continuity. Their existence is not an observation about the
+external process.
+
+### Primary observations
+
+The previous-month expert was selected by development MAE and remained the
+best fixed expert in 318 evaluation months. Fixed uniform MAE was 17.8609 and
+the selected fixed expert's was 14.8513. Continued short continuity produced
+the lowest MAE at 14.0282, while reset long continuity produced the lowest
+normalized absolute error at 0.4283 versus 0.4297 for the fixed expert. Short
+continuity's normalized error was worse at 0.4489. No single mechanism won all
+predeclared measurements.
+
+Prior history altered later expectations. Continued/reset predictions differed
+for 1, 263, 189, and 95 evaluation months as retention increased from 0.0 to
+0.9, 0.99, and 1.0. Duration was not monotonic because both cumulative paths
+eventually concentrated on the same expert.
+
+### Unexpected result and post-hoc audit
+
+Continued long and cumulative retention were effectively one-hot on the
+previous-month expert for every evaluation row. Continuity had become lock-in;
+new errors no longer materially reorganized access. Reset variants temporarily
+used the trailing-12 relation and slightly improved all aggregate errors over
+their continued counterparts.
+
+One declared post-hoc audit examined the metric conflict. Short continuity
+improved absolute error in the two upper outcome quartiles but worsened the
+lowest quartile, where normalized error gives misses much greater weight. The
+lowest-quartile normalized error was 1.1186 versus 1.0140 for the fixed expert;
+highest-quartile MAE was 22.7645 versus 24.8025. This explains the arithmetic
+disagreement but is not independent evidence.
+
+### Interpretation and limitations
+
+**Interpretation:** The distinctions are empirically useful within the
+instrument. A retained consequence can leave access unchanged; adaptive change
+can fail to improve a chosen outcome; and continuity can preserve organization
+while reducing adaptability. Different histories can alter later expectation
+without implying subjective perspective.
+
+**Limitation:** The experiment cannot distinguish learning from ordinary state
+transition at an ontological level. It does not show that the solar process
+learns or that algorithmic weights instantiate identity, experience, or
+subjective perspective. Dataset selection used knowledge of solar cyclicity,
+the evaluation is one historical interval, uncertainty fields were not modeled,
+and no stochastic significance claim was made.
+
+### Revised assumptions and open questions
+
+- Retention is not a sufficient operational definition of continuity; it may
+  preserve state while destroying effective responsiveness.
+- Prediction improvement cannot define learning without collapsing two concepts
+  that the project intends to keep separate.
+- Identical outputs can conceal different retained histories. It remains open
+  whether that constitutes latent perspective or merely inaccessible state.
+- A second independent process should test whether the lock-in/metric conflict
+  is source-specific before new adaptive rules are tuned on this series.
+- A future controlled intervention may be needed to distinguish consequence-
+  caused change from an autonomous transition that happens after the same event.

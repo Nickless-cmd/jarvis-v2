@@ -30,6 +30,9 @@ not established facts and not a destination built into the software.
 - [`research/investigation-004-findings.md`](research/investigation-004-findings.md)
   separates state recurrence, transition continuity, chronology, and frozen
   prospective expectation.
+- [`research/investigation-005-findings.md`](research/investigation-005-findings.md)
+  distinguishes recorded error, consequence, adaptive response, and retention
+  on an independent WDC-SILSO observational series.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)
@@ -142,3 +145,28 @@ python field_theory/experiments/exp_004_continuity/prepare_forecast.py \
 The forecast must be committed and deployed before
 `evaluate_prospective.py` queries availability above the frozen high-water ID.
 The preserved run is `artifacts/exp_004_live/ct105_20261030_32092ec71/`.
+
+## Run independent-source Investigation 5
+
+Investigation 5 does not query Jarvis or CT105. Its protocol was committed
+before the WDC-SILSO source file was downloaded or inspected. A new run fetches
+and preserves the exact source response, excludes provisional values, and
+compares fixed and adaptive expectation mechanisms:
+
+```bash
+python field_theory/experiments/exp_005_learning/run.py \
+  --output /tmp/<exp005-run>
+```
+
+The preserved run is
+`artifacts/exp_005_independent/silso_20261030_e9a732ca9/`. The declared post-hoc
+audit can be reproduced once for a new primary run with:
+
+```bash
+python field_theory/experiments/exp_005_learning/audit.py \
+  --run /tmp/<exp005-run>
+```
+
+WDC-SILSO data are credited to the Royal Observatory of Belgium, Brussels,
+DOI `10.24414/qnza-ac80`, and distributed under CC BY-NC 4.0. The source bytes,
+license, retrieval time, and digest are recorded in the run manifest.

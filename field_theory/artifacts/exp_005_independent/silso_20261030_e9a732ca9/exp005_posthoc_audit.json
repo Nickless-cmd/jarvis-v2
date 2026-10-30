@@ -1,0 +1,264 @@
+{
+  "evidence_status": "post-hoc after primary result inspection",
+  "limits": [
+    "Value ranges and extreme months were selected after primary inspection.",
+    "The audit explains arithmetic behavior of constructed mechanisms, not solar causality.",
+    "It does not replace or retune the preserved primary summaries."
+  ],
+  "lock_in": [
+    {
+      "dominant_expert_counts": {
+        "cycle_lag_132": 22,
+        "previous_month": 234,
+        "trailing_12_mean": 62
+      },
+      "final_weights": {
+        "cycle_lag_132": 0.40775380015786045,
+        "previous_month": 0.41530389594296196,
+        "trailing_12_mean": 0.17694230389917753
+      },
+      "first_weights": {
+        "cycle_lag_132": 0.02401069480121094,
+        "previous_month": 0.44350073558455544,
+        "trailing_12_mean": 0.5324885696142337
+      },
+      "mean_weights": {
+        "cycle_lag_132": 0.10820458902109267,
+        "previous_month": 0.6681770234383432,
+        "trailing_12_mean": 0.22361838754056423
+      },
+      "mechanism": "adaptive_short_continuity_continued",
+      "near_one_hot_rows": 7,
+      "rows": 318
+    },
+    {
+      "dominant_expert_counts": {
+        "previous_month": 318
+      },
+      "final_weights": {
+        "cycle_lag_132": 3.9752961440585664e-67,
+        "previous_month": 0.9999999998974751,
+        "trailing_12_mean": 1.0252486785397683e-10
+      },
+      "first_weights": {
+        "cycle_lag_132": 1.039863754912193e-40,
+        "previous_month": 0.9999999999998335,
+        "trailing_12_mean": 1.6642494646016722e-13
+      },
+      "mean_weights": {
+        "cycle_lag_132": 1.7188486329467523e-25,
+        "previous_month": 0.9999999997725724,
+        "trailing_12_mean": 2.2742802426315475e-10
+      },
+      "mechanism": "adaptive_long_continuity_continued",
+      "near_one_hot_rows": 318,
+      "rows": 318
+    },
+    {
+      "dominant_expert_counts": {
+        "previous_month": 288,
+        "trailing_12_mean": 30
+      },
+      "final_weights": {
+        "cycle_lag_132": 1.7873731009613488e-65,
+        "previous_month": 0.999999999653991,
+        "trailing_12_mean": 3.460089087110248e-10
+      },
+      "first_weights": {
+        "cycle_lag_132": 0.3333333333333333,
+        "previous_month": 0.3333333333333333,
+        "trailing_12_mean": 0.3333333333333333
+      },
+      "mean_weights": {
+        "cycle_lag_132": 0.004330058886995203,
+        "previous_month": 0.9152543628284326,
+        "trailing_12_mean": 0.08041557828457273
+      },
+      "mechanism": "adaptive_long_continuity_reset",
+      "near_one_hot_rows": 230,
+      "rows": 318
+    },
+    {
+      "dominant_expert_counts": {
+        "previous_month": 318
+      },
+      "final_weights": {
+        "cycle_lag_132": 0.0,
+        "previous_month": 1.0,
+        "trailing_12_mean": 0.0
+      },
+      "first_weights": {
+        "cycle_lag_132": 0.0,
+        "previous_month": 1.0,
+        "trailing_12_mean": 0.0
+      },
+      "mean_weights": {
+        "cycle_lag_132": 0.0,
+        "previous_month": 1.0,
+        "trailing_12_mean": 0.0
+      },
+      "mechanism": "adaptive_cumulative_continuity_continued",
+      "near_one_hot_rows": 318,
+      "rows": 318
+    },
+    {
+      "dominant_expert_counts": {
+        "previous_month": 287,
+        "trailing_12_mean": 31
+      },
+      "final_weights": {
+        "cycle_lag_132": 0.0,
+        "previous_month": 1.0,
+        "trailing_12_mean": 4.749535240965914e-44
+      },
+      "first_weights": {
+        "cycle_lag_132": 0.3333333333333333,
+        "previous_month": 0.3333333333333333,
+        "trailing_12_mean": 0.3333333333333333
+      },
+      "mean_weights": {
+        "cycle_lag_132": 0.0041848531426300324,
+        "previous_month": 0.9134104572599502,
+        "trailing_12_mean": 0.08240468959741984
+      },
+      "mechanism": "adaptive_cumulative_continuity_reset",
+      "near_one_hot_rows": 236,
+      "rows": 318
+    }
+  ],
+  "method_version": "exp005.posthoc.lock_in.1",
+  "posthoc_outcome_quartile_boundaries": [
+    17.950000000000003,
+    62.3,
+    113.80000000000001
+  ],
+  "primary_trace_sha256_colon_hex": "d5:8c:11:d1:0a:b0:ba:3d:1f:9e:25:58:ab:84:cf:75:e1:e8:34:ef:47:a6:aa:3f:2d:2e:15:c0:be:ff:b2:3b",
+  "prompt": "Locate the observed lock-in and disagreement between absolute and normalized error without changing the primary method.",
+  "short_continuity_extreme_differences": {
+    "largest_absolute_error_harms": [
+      {
+        "date": "2024-08",
+        "outcome": 216.0,
+        "short_minus_fixed_absolute_error": 23.29690779496059,
+        "short_minus_fixed_normalized_error": 0.10735902209659257
+      },
+      {
+        "date": "2013-11",
+        "outcome": 113.9,
+        "short_minus_fixed_absolute_error": 22.222717388464005,
+        "short_minus_fixed_normalized_error": 0.19340920268463013
+      },
+      {
+        "date": "2013-12",
+        "outcome": 124.2,
+        "short_minus_fixed_absolute_error": 18.106813390204607,
+        "short_minus_fixed_normalized_error": 0.1446231101454042
+      },
+      {
+        "date": "2007-11",
+        "outcome": 2.8,
+        "short_minus_fixed_absolute_error": 17.498075844408852,
+        "short_minus_fixed_normalized_error": 4.6047568011602245
+      },
+      {
+        "date": "2023-07",
+        "outcome": 160.0,
+        "short_minus_fixed_absolute_error": 17.07142870170938,
+        "short_minus_fixed_normalized_error": 0.10603371864415763
+      },
+      {
+        "date": "2015-03",
+        "outcome": 54.5,
+        "short_minus_fixed_absolute_error": 16.581964800925903,
+        "short_minus_fixed_normalized_error": 0.2987741405572234
+      },
+      {
+        "date": "2023-06",
+        "outcome": 160.5,
+        "short_minus_fixed_absolute_error": 16.449552828649757,
+        "short_minus_fixed_normalized_error": 0.10185481627646908
+      },
+      {
+        "date": "2002-12",
+        "outcome": 135.3,
+        "short_minus_fixed_absolute_error": 16.4241367478445,
+        "short_minus_fixed_normalized_error": 0.12049990277215335
+      },
+      {
+        "date": "2001-01",
+        "outcome": 142.6,
+        "short_minus_fixed_absolute_error": 16.40846913830407,
+        "short_minus_fixed_normalized_error": 0.11426510541994478
+      },
+      {
+        "date": "2003-01",
+        "outcome": 133.5,
+        "short_minus_fixed_absolute_error": 16.16728813299096,
+        "short_minus_fixed_normalized_error": 0.12020288574714469
+      }
+    ],
+    "largest_absolute_error_improvements": [
+      {
+        "date": "2000-08",
+        "outcome": 180.5,
+        "short_minus_fixed_absolute_error": -37.86711506261,
+        "short_minus_fixed_normalized_error": -0.20863424276920106
+      },
+      {
+        "date": "2001-10",
+        "outcome": 194.1,
+        "short_minus_fixed_absolute_error": -34.72223050469648,
+        "short_minus_fixed_normalized_error": -0.17797145312504606
+      },
+      {
+        "date": "2002-07",
+        "outcome": 161.0,
+        "short_minus_fixed_absolute_error": -29.20460005173652,
+        "short_minus_fixed_normalized_error": -0.18027530896133653
+      },
+      {
+        "date": "2025-06",
+        "outcome": 114.6,
+        "short_minus_fixed_absolute_error": -27.828270991110813,
+        "short_minus_fixed_normalized_error": -0.24072898781237728
+      },
+      {
+        "date": "2002-01",
+        "outcome": 184.6,
+        "short_minus_fixed_absolute_error": -26.32824558965902,
+        "short_minus_fixed_normalized_error": -0.14185477149600764
+      },
+      {
+        "date": "2023-02",
+        "outcome": 111.3,
+        "short_minus_fixed_absolute_error": -25.932700190230264,
+        "short_minus_fixed_normalized_error": -0.23092342110623568
+      },
+      {
+        "date": "2001-08",
+        "outcome": 161.5,
+        "short_minus_fixed_absolute_error": -21.87779722414811,
+        "short_minus_fixed_normalized_error": -0.13463259830244992
+      },
+      {
+        "date": "2013-10",
+        "outcome": 114.4,
+        "short_minus_fixed_absolute_error": -21.20189140843013,
+        "short_minus_fixed_normalized_error": -0.18372522884254883
+      },
+      {
+        "date": "2003-03",
+        "outcome": 100.7,
+        "short_minus_fixed_absolute_error": -21.051755156688344,
+        "short_minus_fixed_normalized_error": -0.20699857577864644
+      },
+      {
+        "date": "2002-04",
+        "outcome": 186.9,
+        "short_minus_fixed_absolute_error": -20.246727193709603,
+        "short_minus_fixed_normalized_error": -0.10775267266476637
+      }
+    ]
+  },
+  "source_sha256_colon_hex": "47:49:cc:16:c6:8e:06:73:f5:6e:c8:50:67:4d:05:c4:c8:7c:9d:3c:b8:48:5f:45:35:19:31:b3:82:2f:3f:3e"
+}

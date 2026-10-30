@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from feltteori_research.experiment_005_audit import audit_investigation
 from feltteori_research.experiment_005_learning import (
     EXPERTS,
     parse_silso_monthly,
@@ -62,5 +63,11 @@ def test_investigation_preserves_source_and_distinguishes_retention(
     assert comparisons["one_encounter"]["different_prediction_rows"] == 1
     assert comparisons["cumulative_continuity"]["different_prediction_rows"] > 0
     assert (output / "exp005_learning_continuity.svg").exists()
+    audit = audit_investigation(output)
+    assert audit["evidence_status"].startswith("post-hoc")
+    assert len(audit["lock_in"]) == 5
+    assert (output / "exp005_posthoc_value_ranges.csv").exists()
+    with pytest.raises(FileExistsError):
+        audit_investigation(output)
     with pytest.raises(FileExistsError):
         run_investigation(str(source), output)

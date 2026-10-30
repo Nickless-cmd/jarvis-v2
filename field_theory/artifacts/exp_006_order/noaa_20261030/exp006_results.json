@@ -1,0 +1,158 @@
+{
+  "constants_inherited_from": "exp005.learning.1",
+  "environment": {
+    "generated_at_utc": "2026-10-30T20:42:50.329419+00:00",
+    "platform": "Linux-7.0.14-20-pve-x86_64-with-glibc2.43",
+    "python": "3.11.14"
+  },
+  "evaluation_start": "2000-01",
+  "expert_development_mae": {
+    "cycle_lag_132": 14.53248648648649,
+    "previous_month": 1.0901351351351345,
+    "trailing_12_mean": 1.9662207207207185
+  },
+  "experts": [
+    "previous_month",
+    "trailing_12_mean",
+    "cycle_lag_132"
+  ],
+  "falsification": {
+    "thresholds": {
+      "max_mae_gap_fraction": 0.005,
+      "min_effective_experts": 1.5,
+      "min_weight_change": 0.05
+    },
+    "transfer_falsified": true,
+    "verdicts": {
+      "cumulative_continuity_continued": {
+        "conditions": {
+          "effective_experts_above_threshold": false,
+          "mae_gap_above_threshold": true,
+          "weight_change_above_threshold": false
+        },
+        "falsifies_transfer": true,
+        "mae": 1.1558428068853237,
+        "mae_gap_fraction_vs_fixed": 0.0050000241084795565,
+        "mean_effective_experts": 1.151676933263718,
+        "mean_weight_change": 0.0005120495416832073
+      },
+      "long_continuity_continued": {
+        "conditions": {
+          "effective_experts_above_threshold": true,
+          "mae_gap_above_threshold": true,
+          "weight_change_above_threshold": false
+        },
+        "falsifies_transfer": true,
+        "mae": 1.3023798658761925,
+        "mae_gap_fraction_vs_fixed": 0.1211454770743596,
+        "mean_effective_experts": 1.8856506370006225,
+        "mean_weight_change": 0.001629072418555194
+      }
+    }
+  },
+  "learning_rate": 2.0,
+  "mechanism_summaries": [
+    {
+      "evaluation_months": 321,
+      "mae": 1.1616510903426787,
+      "mean_effective_experts": 1.0,
+      "mean_weight_change": 0.0,
+      "mechanism": "fixed_previous_month",
+      "normalized_absolute_error": 0.0029167865817791364,
+      "rmse": 1.3054106192057737
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 7.628390727857422,
+      "mean_effective_experts": 2.992557261299819,
+      "mean_weight_change": 0.0015147708952192144,
+      "mechanism": "one_encounter_continued",
+      "normalized_absolute_error": 0.01905275041314442,
+      "rmse": 7.762774724211311
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 7.628390727857422,
+      "mean_effective_experts": 2.992557261299819,
+      "mean_weight_change": 0.0015147708952192144,
+      "mechanism": "one_encounter_reset",
+      "normalized_absolute_error": 0.01905275041314442,
+      "rmse": 7.762774724211311
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 3.973186934834969,
+      "mean_effective_experts": 2.5983840576805743,
+      "mean_weight_change": 0.0017814171734449285,
+      "mechanism": "short_continuity_continued",
+      "normalized_absolute_error": 0.009948993184772315,
+      "rmse": 4.162045486202339
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 3.973186934834969,
+      "mean_effective_experts": 2.5983840576805743,
+      "mean_weight_change": 0.0017814171734449285,
+      "mechanism": "short_continuity_reset",
+      "normalized_absolute_error": 0.009948993184772315,
+      "rmse": 4.162045486202339
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 1.3023798658761925,
+      "mean_effective_experts": 1.8856506370006225,
+      "mean_weight_change": 0.001629072418555194,
+      "mechanism": "long_continuity_continued",
+      "normalized_absolute_error": 0.003265027898774696,
+      "rmse": 1.4460126726088611
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 1.3023798658761925,
+      "mean_effective_experts": 1.8856506370006225,
+      "mean_weight_change": 0.001629072418555194,
+      "mechanism": "long_continuity_reset",
+      "normalized_absolute_error": 0.003265027898774696,
+      "rmse": 1.4460126726088611
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 1.1558428068853237,
+      "mean_effective_experts": 1.151676933263718,
+      "mean_weight_change": 0.0005120495416832073,
+      "mechanism": "cumulative_continuity_continued",
+      "normalized_absolute_error": 0.00290163754907422,
+      "rmse": 1.28660161071183
+    },
+    {
+      "evaluation_months": 321,
+      "mae": 1.1558428068853237,
+      "mean_effective_experts": 1.151676933263718,
+      "mean_weight_change": 0.0005120495416832073,
+      "mechanism": "cumulative_continuity_reset",
+      "normalized_absolute_error": 0.00290163754907422,
+      "rmse": 1.28660161071183
+    }
+  ],
+  "method_version": "exp006.order.1",
+  "observations": {
+    "excluded": {
+      "malformed": 0,
+      "missing": 0
+    },
+    "first": "1958-03",
+    "last": "2026-09",
+    "total": 823,
+    "warmup_months": 132
+  },
+  "retentions": {
+    "cumulative_continuity": 1.0,
+    "long_continuity": 0.99,
+    "one_encounter": 0.0,
+    "short_continuity": 0.9
+  },
+  "selected_fixed_expert_from_development_mae": "previous_month",
+  "source_info": "https://gml.noaa.gov/ccgg/trends/data.html",
+  "source_sha256_colon_hex": "d8:95:fb:5b:4a:59:fb:5e:4c:d9:8e:69:b7:66:7f:e5:be:f5:95:c6:58:1f:63:08:52:b1:2c:b4:1c:07:f6:75",
+  "source_url": "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_mm_mlo.csv"
+}

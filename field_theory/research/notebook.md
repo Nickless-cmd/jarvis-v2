@@ -4,6 +4,60 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-10-30 — Investigation 6: the transfer test fired against us
+
+**Status:** completed transfer test; falsification conditions frozen before the
+run and one of them fired.
+
+### Observation
+
+Investigation 5's "continuity became lock-in" was recorded as a property of the
+constructed mechanism, not a general law. Investigation 6 applied the identical
+mechanism — constants imported, not retyped — to NOAA Mauna Loa CO₂ (823
+monthly observations, 1958-03 to 2026-09).
+
+The relation did not transfer. `long_continuity_continued` kept 1.886
+effective experts on CO₂ against 1.000 on sunspots, and was 12.1 % worse than
+the fixed expert in MAE against being identical to it on sunspots.
+
+### Second observation, not anticipated in the protocol
+
+Continued and reset variants produced identical predictions in all 691
+evaluation rows, for every retention value. On sunspots the same comparison
+produced 263 of 318 differing predictions for short continuity. The weights
+show why: `long_continuity_continued` settles at 0.621/0.379 within the first
+evaluation month and moves by less than 0.002 across 321 months. The retained
+state was already saturated before the reset point, so discarding it removed
+nothing the update rule could still express.
+
+### Interpretation
+
+The solar finding stands as measured, but its scope narrows. Lock-in is not a
+property of the retention rule; it is an interaction between the rule, the
+expert set, and the source. Where one expert is persistently best, accumulated
+loss drives the softmax to one-hot and adaptation stops. Where two experts stay
+comparable, the same rule settles at a stable mixture and keeps a small
+responsiveness.
+
+### Limitation
+
+Two sources are two sources. The CO₂ series has a strong monotone trend, which
+makes `previous_month` near-optimal by construction — a plausible reason the
+adaptive mechanisms cannot beat it. That is an interpretation, not a
+measurement, and it was not tested.
+
+### Why this entry is worth anything
+
+The thresholds were written down before the run and they fired. Had they been
+chosen after seeing 1.886 and 12.1 %, they could have been set to accommodate
+either conclusion. This is the same discipline Investigation 4's frozen
+forecasts depend on.
+
+### Question
+
+Investigation 5's "continuity became lock-in" and this run's "continuity
+reached a fixed point" — same phenomenon at two levels, or two different ones?
+
 ## 2026-10-30 — Method deviation: prospective blind was broken after freeze
 
 **Status:** deviation recorded, forecasts and evaluation left unchanged.

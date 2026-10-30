@@ -33,6 +33,11 @@ not established facts and not a destination built into the software.
 - [`research/investigation-005-findings.md`](research/investigation-005-findings.md)
   distinguishes recorded error, consequence, adaptive response, and retention
   on an independent WDC-SILSO observational series.
+- [`research/investigation-006-findings.md`](research/investigation-006-findings.md)
+  tests whether Investigation 5's retention→adaptation relation transfers to a
+  physically unrelated series (NOAA Mauna Loa CO₂) under the identical
+  mechanism. It does not: the transfer is falsified, and the earlier lock-in
+  result is narrowed to a joint configuration of rule, expert set and source.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)

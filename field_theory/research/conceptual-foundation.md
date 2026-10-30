@@ -1,8 +1,68 @@
 # Conceptual foundation
 
-**Status:** initial research framing, 2026-10-30. This document states starting
-propositions precisely enough to investigate them without presenting them as
-scientific findings.
+**Status:** living research framing, initially recorded and revised 2026-10-30.
+This document states starting propositions precisely enough to investigate
+them without presenting them as scientific findings. The Investigation 5
+revision adds distinctions that the initial framing left implicit; it does not
+retroactively change the meaning of earlier experiments.
+
+## Investigation 5 conceptual correction
+
+Bjørn's current conceptual progression is:
+
+> Field → filter → error/consequence → learning → continuity →
+> relations → identity → perspective → experience → related context →
+> access to information.
+
+This is a proposition about dependencies worth investigating, not an
+established causal pipeline or a required software architecture. Arrows may
+denote enabling conditions, reciprocal influence, organization, or emergence;
+their meaning has not yet been fixed. In particular, learning may alter later
+filtering, continuity may make learning possible, and relations may both shape
+and be shaped by a continuing organization.
+
+The terms must remain distinct:
+
+- **Field** is presently a conceptual source or condition of information, not
+  a database, vector space, collective mind, or known physical field.
+- **Filter** denotes a restriction, selection, or transformation that changes
+  what distinctions are accessible. It may be fixed, learned, embodied in an
+  instrument, or imposed by an analyst.
+- **Error** is a mismatch under a stated relation or expectation. It is not
+  automatically a software failure or a universal defect.
+- **Consequence** is a change attributable to an encounter or error. A
+  consequence may be unobserved, may affect an irrelevant state, and need not
+  be recognized or retained.
+- **Learning** is an operationally specified consequence that changes later
+  organization or response. It need not improve prediction, produce explicit
+  knowledge, or be conscious.
+- **Continuity** is the persistence or recoverable transformation of some
+  declared organization across encounters. It is not identical to unchanged
+  state, chronology, or successful learning.
+- **Relations** connect distinctions structurally, statistically, causally,
+  semantically, contextually, temporally, or in a form not yet classified.
+- **Identity** is a criterion of sameness or continued organization through
+  change. An identifier, label, or name is not sufficient evidence of it.
+- **Perspective** is the organization from which distinctions and relations
+  become observable. In the proposition it depends on identity, but that
+  dependency remains unverified and need not imply subjectivity.
+- **Experience** may mean encounter, reorganized context, observable response,
+  or phenomenal experience. Only the first three are currently open to direct
+  computational instrumentation; none establishes the fourth.
+- **Related context** is information organized as relevant through relations.
+  It is not equivalent to every available variable or to arbitrary feature
+  addition.
+- **Access to information** is the resulting relation between an observer or
+  instrument and distinctions it can use. It is neither the existence of the
+  information nor proof that all information is accessible.
+
+The smallest empirical dependency currently at issue is therefore not whether
+an output changes after an error. It is whether an observed mismatch has a
+traceable consequence, whether that consequence changes a subsequent
+organization or access relation, and whether the change persists. A recorded
+error with no changed response, a changed response with no retention, retained
+change that harms expectation, and stable response without learning are all
+different possible observations.
 
 ## Neutral restatement
 
@@ -42,6 +102,13 @@ is derived from perspective.
    prediction.
 8. The propositions themselves are revisable. The project remains useful if
    any of them are contradicted or dissolved by better definitions.
+9. Error, consequence, learning, and continuity are distinguishable: an error
+   can be recorded without consequence, a consequence can occur without
+   learning, learning can occur without durable continuity, and continuity can
+   preserve a mechanism that learns badly.
+10. Access is provisionally treated as downstream of filtering and organized
+    context. This does not imply that inaccessible information is absent or
+    that a filter is the sole determinant of access.
 
 ## Ambiguities that must remain visible
 
@@ -93,6 +160,24 @@ Experience may denote an encounter, a changed internal context, or subjective
 phenomenology. Learning may denote durable model change, explicit knowledge,
 or improved behavior. Operational definitions will be local to an experiment,
 not universal replacements for the concepts.
+
+### Error, consequence, learning, and continuity
+
+An error requires a reference relation: prediction versus outcome, intended
+versus observed state, or one organization versus another. A consequence may
+be any state change caused by the encounter, while learning is a narrower
+claim that the consequence changes a later organization or response.
+Continuity asks whether that changed organization persists or transforms in a
+traceable way. These definitions remain experiment-local because the theory
+does not yet supply universal boundaries between ordinary state transition,
+adaptation, and learning.
+
+A system that stores an error counter but never uses it exhibits a retained
+consequence without altered access under that instrument. A one-step update
+exhibits short continuity. A persistent update can still be misleading.
+Observing these constructed cases can validate distinctions in a measurement
+instrument, but cannot establish that a natural process contains the same
+mechanisms.
 
 ## Potential observable consequences
 

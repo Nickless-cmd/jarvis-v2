@@ -18,9 +18,20 @@
  * 1. `tekst` — chat: `model.hovedTekst` («Arbejder»/«Arbejdet»/«Tænker»).
  *    code: `turFortalt(...)` («Læste 3 filer · 42s»). TO SPROG, ikke en fejl:
  *    chat har ingen værktøjsliste at fortælle om, code har.
+ *    **AFGJORT 30/10-2026: ensrettes IKKE.** Hver flade bærer sin egen
+ *    eksplicitte instruks fra Bjørn — 17/10 («istedet for arbejdsorløb så
+ *    bare arbejder under kørslen og arbejdet når den er færdig») og 22/9
+ *    («Læste 3 filer · 42s»). `turFortalt` kræver desuden `familier` og
+ *    `kald`, som kun findes i code-modens `opdel`-resultat; chat ville ikke
+ *    kunne kalde den uden at opfinde data.
  * 2. `sekunder` — chat: `useTurSekunder(...) ?? varighedSekunder` (altid sat).
- *    code: `!streaming ? turSekunder : null` (kun når turen er ovre).
- *    Chat viser uret mens den kører, code gør ikke. Reelt forskelligt.
+ *    code: `!streaming ? turSekunder : null`. **AFGJORT 30/10-2026:
+ *    forskellen BLIVER — den er ikke en manglende visning.** Code mode viser
+ *    nemlig uret mens turen kører, blot ET ANDET STED: `rv-rundeur` med
+ *    `RullendeUr` i den aktive rundelinje (RaekkeTranskript.tsx:370-371).
+ *    `turSekunder` beregnes live i begge flader (:441). Satte man den også i
+ *    hovedet, ville code mode vise TO ure samtidig. Hovedets ur er
+ *    efterspillets tal; rundelinjens er det levende.
  * 3. `skillelinje` — chat: bar prop (altid sand). code: `visSkillelinje`
  *    (sand når svaret er begyndt). **AFGJORT 30/10-2026: forskellen BLIVER.**
  *    Bjørn valgte «behold som nu — stregen glider ind ved turstart og bliver».
@@ -149,12 +160,31 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     expect(code.get('tekst')).toContain('turFortalt')
   })
 
-  it('sekunder er reelt forskellige: chat viser uret mens turen kører', () => {
-    // chat: `sekunder` = useTurSekunder(...) ?? varighedSekunder — altid et tal
-    // code: `!streaming ? turSekunder : null` — kun når turen er ovre
+  it('sekunder er AFGJORT forskellig — code viser uret i rundelinjen, ikke i hovedet', () => {
+    // AFGJORT 30/10-2026: forskellen BLIVER. Den er ikke en manglende
+    // visning: `turSekunder` beregnes live i code mode (RaekkeTranskript.tsx
+    // :441) og vises som `rv-rundeur`/`RullendeUr` i den aktive rundelinje
+    // (:370-371). Hovedets ur er efterspillets tal. Satte man det også i
+    // hovedet, ville code mode vise to ure samtidig.
     // (chat sender VARIABLEN, ikke hook-kaldet; udledningen står på linje 267)
     expect(chat.get('sekunder')).toBe('sekunder={sekunder}')
     expect(code.get('sekunder')).toContain('!streaming')
+  })
+
+  it('code mode viser uret LIVE i rundelinjen — derfor er hovedets gate ikke en mangel', () => {
+    // Afgørelsens BÆRENDE faktum (30/10-2026). Hvis denne linje forsvinder,
+    // er begrundelsen for `sekunder`-forskellen ikke længere sand: så viser
+    // code mode INTET ur mens turen kører, og hovedet burde tage over.
+    // Vagten findes fordi en afgørelse der hviler på en mekanisme ingen
+    // vogter, er en afgørelse der stille kan blive forkert.
+    //
+    // FÆLDE (målt 30/10-2026): første udgave brugte `toContain('rv-rundeur')`,
+    // og den blev GRØN da jeg muterede klassen til `rv-rundeur-MUTERET` —
+    // mutationsstrengen indeholder jo stadig originalen. En delstreng-vagt
+    // måler næsten intet. Der matches derfor på den præcise attribut.
+    const tekst = kilde('RaekkeTranskript.tsx')
+    expect(tekst).toContain('className="rv-rundeur"')
+    expect(tekst).toContain('<RullendeUr sek={turSekunder} />')
   })
 
   it('skillelinje er reelt forskellig — og forskellen er AFGJORT, ikke en fejl', () => {

@@ -119,6 +119,44 @@ Which other results in this project rest on a variant that may never have
 executed? The same failure shape — a condition that cannot be satisfied, whose
 symptom looks like a finding — is cheap to produce and expensive to notice.
 
+## 2026-10-30 — Investigation 6: two reporting errors corrected, and a mutation review
+
+**Status:** findings corrected; no change to the frozen protocol, the preserved
+runs, or any forecast.
+
+### Two errors in my own report
+
+1. I wrote that reset "changed nothing" for long and cumulative retention on the
+   solar series. That is the opposite of my own measured data. Investigation 5's
+   preserved run shows 189/318 and 95/318 differing prediction rows, with MAE
+   14.8513 -> 14.4150 and 14.8513 -> 14.4548 — reset executed and *improved* both.
+   The direction of the reset effect is source-dependent, which makes the
+   cross-source comparison more interesting, not less.
+2. I reported the cumulative variant as 0.508 % from the fixed expert. The
+   preserved value is `mae_gap_fraction_vs_fixed = 0.0050000241`, i.e. 0.5000024 %
+   against a 0.5 % threshold. That is 0.0000024 percentage points over the line.
+   It falsifies on the letter of the pre-registered rule and carries no weight as
+   an independent argument. `long_continuity_continued` carries the verdict.
+
+### Mutation review
+
+Seven conditions were deliberately disabled one at a time and the suite re-run
+(baseline 27 passed, each mutation reverted with `git checkout`). All seven were
+caught: exp_005 reset, exp_006 reset, exp_006 falsification verdict, exp_004
+`outcomes_read`, and `mutual_information()` returning zero.
+
+**Observation:** before the reset correction, disabling the exp_006 reset branch
+would have produced a green suite. The guard was not missing — it asserted the
+bug. A mutation test is therefore the check that would have caught this class,
+and it was not run.
+
+**Limitation recorded:** mutation testing only covers conditions someone thought
+to name. `experiment_003_change.py` is guarded only indirectly, through a test
+that asserts snapshot preservation rather than the perspective construction or
+the MI values. And `experiment_004_prospective.py` — the frozen forecast, the
+artifact whose entire value is that it cannot move — has no dedicated test
+module.
+
 ## 2026-10-30 — Method deviation: prospective blind was broken after freeze
 
 **Status:** deviation recorded, forecasts and evaluation left unchanged.

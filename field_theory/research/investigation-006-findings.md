@@ -111,10 +111,13 @@ that could fire, fired:
   fixed expert.
 
 `cumulative_continuity_continued` sits at 1.152 effective experts — below the
-threshold — but 0.508 % from the fixed expert, which is above the 0.5 %
-threshold by the width of the rounding. It falsifies on the MAE condition
-alone, and it is close enough to the boundary that the margin should be read as
-"at the threshold", not as a comfortable gap.
+threshold — but `mae_gap_fraction_vs_fixed = 0.0050000241`, i.e. **0.5000024 %**
+against a 0.5 % threshold. That is 0.0000024 percentage points over the line.
+
+It falsifies on the MAE condition alone, and the margin is not a margin. It
+should be read as "at the threshold", and it must not be used as an independent
+argument for failed transfer. The `long_continuity_continued` result — 1.886
+effective experts and a 12.1 % MAE gap — is the one that carries the verdict.
 
 ## Second result, corrected: reset costs accuracy on this source
 
@@ -128,9 +131,38 @@ every non-zero retention**. The direction is consistent across all four:
 
 So on this source the retained history is *doing work*: discarding it at the
 evaluation boundary makes the mechanism worse and pushes it toward the uniform
-prior. That is the opposite of what the broken run reported, and it is the
-opposite of the solar result, where reset changed nothing for long and
-cumulative continuity.
+prior. That is the opposite of what the broken run reported.
+
+It is **not** the opposite of the solar result — an earlier version of this
+document said reset "changed nothing" there, which is wrong. Measured on the
+preserved Investigation 5 run:
+
+| Retention on sunspots | Prediction rows differing after reset | MAE continued → reset |
+|---|---:|---|
+| long continuity | 189 / 318 | 14.8513 → 14.4150 (−0.4363) |
+| cumulative continuity | 95 / 318 | 14.8513 → 14.4548 (−0.3964) |
+| short continuity | 263 / 318 | 14.0282 → 14.0445 (+0.0163) |
+| one encounter | 1 / 318 | 14.4462 → 14.4903 (+0.0440) |
+
+Reset executed on the solar series, and it *improved* MAE for the two
+high-retention mechanisms. So the direction of the reset effect is
+source-dependent, and the comparison is more interesting than the one that was
+written.
+
+The pattern across both sources is consistent with one reading, offered as an
+interpretation rather than a result: **a reset helps only when the retained
+state has already become information-free.** On sunspots, long and cumulative
+continued collapsed to exactly the fixed expert (MAE 14.8513 = fixed 14.8513,
+1.000 effective experts, mean weight change 0.000000) — there was literally
+nothing for the history to carry, and reset gave the mixture a chance to
+rebuild from uniform. Everywhere the retained state still carried information —
+short and one-encounter on sunspots, all four on CO₂ — reset cost accuracy.
+No mechanism on CO₂ collapsed that far, so reset cost there across the board.
+
+That reading is not tested. It is fitted to eight cells from two sources, and
+the CO₂ `long_continuity` case (continued already 12.1 % worse than the fixed
+expert, yet reset still made it worse) shows it is not simply "reset helps when
+continued underperforms".
 
 The one-encounter case changes by a single row — the boundary prediction — which
 is expected: with retention 0 the retained state is only one observation deep,
@@ -188,6 +220,47 @@ conclusion.
 The same discipline is what Investigation 4's frozen forecasts depend on, and
 what the recorded blind-breach deviation protects. It is the one part of this
 project that has held under pressure.
+
+## Mutation review (2026-10-30): are the experimental conditions guarded?
+
+The reset fault was not a typo. It was a condition that was named, implemented
+and reported without ever being activated — and the test suite was green
+throughout. That is a class of failure the ordinary tests cannot see, so the
+suite was mutation-tested: each experimental condition was deliberately
+disabled and the tests re-run. A condition with no test that reacts to its
+removal is a condition nothing is guarding.
+
+Baseline 27 passed. Every mutation was applied to the working tree, measured,
+and reverted with `git checkout`:
+
+| Mutation | Result |
+|---|---|
+| exp_005 reset branch → `if False` | 1 failed — caught |
+| exp_006 reset branch → `if False` | 2 failed — caught |
+| exp_006 `falsifies_transfer` → `False` | 1 failed — caught |
+| exp_004 `outcomes_read` → `True` | 1 failed — caught |
+| `metrics.mutual_information()` → `0.0` | 5 failed — caught |
+
+All seven, including the two baseline checks, are caught **after** the
+correction. That is the point worth stating plainly: before the correction,
+disabling the exp_006 reset branch would have produced a *green* suite. The
+preserved test asserted that continued and reset were identical, so the mutant
+and the expectation agreed. The guard was not absent — it pointed the wrong way.
+
+Two limits on this review:
+
+- It tests the conditions I could name. A condition nobody thought of has no
+  mutant to apply, and this method cannot find it.
+- `experiment_003_change.py` is covered only indirectly, through
+  `test_live_measurements.py`, and that test asserts snapshot preservation and
+  view writing — not the perspective construction or the mutual-information
+  values themselves. A mutation of the analysis rather than of the metric would
+  likely survive.
+
+The one finding this review produced on its own: `experiment_004_prospective.py`
+has no dedicated test module. The frozen forecast — the single artifact in this
+project whose whole value is that it cannot move — is guarded only from inside
+another experiment's test file.
 
 ## Questions raised
 

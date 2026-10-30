@@ -320,10 +320,23 @@ every statement is recorded:
 
 So the unmutated evaluator issues **no** statement that touches `status` when
 the sample is insufficient — the boundary holds at the level of what reaches
-the database, not merely at the level of the returned dict. And the mutant does
-read `status` before crashing, which means the red test is *coincidentally*
-red: the `IndexError` comes from `observations[0]` on an empty selection, after
-the outcome column has already been read.
+the database, not merely at the level of the returned dict.
+
+An earlier version of this paragraph said the mutant "reads `status` before
+crashing". That overreaches, and the correction is the review's own subject one
+level down. With `required = 0` the same statement is executed with `LIMIT 0`:
+it **references** the protected column but returns zero rows, so no status
+value is ever retrieved (measured: the same statement against a 999-row
+synthetic table returns 0 rows and 0 status values at `LIMIT 0`, and 999 rows
+at `LIMIT 1000`). What the mutant demonstrates is a breached *query*
+boundary — the guard stopped gating — not a leaked value. Issuing a query and
+accessing its results are different events, and the audit trail has to name
+which one happened.
+
+The `IndexError` still comes from `observations[0]` on an empty selection, so
+the red test remains red for an unrelated reason: it is red because the mutant
+sees an empty list, not because any assertion noticed that the guard had
+stopped gating.
 
 The verdict for that mutant is therefore neither "caught" nor "survived" but a
 third category: **caught by an unrelated error**. The existing test does not

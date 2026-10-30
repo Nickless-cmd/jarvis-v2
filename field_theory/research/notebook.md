@@ -16,9 +16,13 @@ synthetic database with 999 rows above the high-water mark and `target.rows =
 - mutant: the same three, then `SELECT id, started_at, finished_at, status …`, then `IndexError`
 
 **Interpretation.** The boundary holds at the level of what reaches the
-database, which is stronger than the returned dict. But the mutant reads the
-outcome-bearing column *before* it crashes, so the red test is red for an
-unrelated reason. The verdict is neither `killed` nor `survived` but a third
+database, which is stronger than the returned dict. The mutant does issue a
+statement that *references* the outcome-bearing column before it crashes — but
+with `LIMIT 0`, so it returns zero rows and no value is retrieved. An earlier
+version of this entry said the mutant "reads the outcome-bearing column"; that
+is more than the observation supports. A query being issued and its results
+being accessed are two different events, and only the first is demonstrated
+here. The red test is red for an unrelated reason either way. The verdict is neither `killed` nor `survived` but a third
 category: **caught by an unrelated error**. The existing test asserts the
 returned status and the absence of an observations file — both of which a
 mutant that read outcomes and then returned `pending` would also satisfy.

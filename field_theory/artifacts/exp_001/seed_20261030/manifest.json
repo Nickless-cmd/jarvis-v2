@@ -1,0 +1,22 @@
+{
+  "experiment": "exp_001_perspective",
+  "method_version": "exp001.1",
+  "parameters": {
+    "context_block_size": 32,
+    "permutations": 500,
+    "relation_noise": 0.1,
+    "rows_per_source": 2048,
+    "seed": 20261030
+  },
+  "raw_observations": {
+    "path": "observations.csv",
+    "rows": 4096,
+    "sha256_colon_hex": "c2:27:42:7e:a5:95:a2:29:83:df:3c:cd:50:a7:3d:6e:3b:27:c3:44:11:aa:29:eb:24:d7:52:2c:1e:01:07:b8"
+  },
+  "runtime": {
+    "implementation": "CPython",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+    "prng": "random.Random (Mersenne Twister)",
+    "python": "3.11.14"
+  }
+}

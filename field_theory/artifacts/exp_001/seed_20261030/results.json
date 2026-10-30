@@ -1,0 +1,90 @@
+{
+  "method_version": "exp001.1",
+  "raw_observations_sha256_colon_hex": "c2:27:42:7e:a5:95:a2:29:83:df:3c:cd:50:a7:3d:6e:3b:27:c3:44:11:aa:29:eb:24:d7:52:2c:1e:01:07:b8",
+  "sources": {
+    "context_relation": {
+      "descriptive": {
+        "outcome_entropy_bits": 0.9987276422262038,
+        "outcome_one_fraction": 0.52099609375,
+        "rows": 2048
+      },
+      "perspectives": {
+        "cue_access": {
+          "observed_mutual_information_bits": 5.888951896881878e-05,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.698,
+            "maximum": 0.003505357785388963,
+            "median": 0.00019400671642522127,
+            "minimum": 4.025841917609796e-07,
+            "q05": 1.0551367131128586e-06,
+            "q95": 0.0013852711489683689
+          }
+        },
+        "cue_context_access": {
+          "observed_mutual_information_bits": 0.5157532559385838,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.0,
+            "maximum": 0.0062303752773424925,
+            "median": 0.0008976336220096748,
+            "minimum": 6.722009597392997e-06,
+            "q05": 9.771614063285307e-05,
+            "q95": 0.002699036667838171
+          }
+        },
+        "outcome_only": {
+          "observed_mutual_information_bits": 3.8127231991591515e-06,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.906,
+            "maximum": 0.005074987006892906,
+            "median": 0.00014919910323518693,
+            "minimum": 4.844299272832586e-08,
+            "q05": 1.1792125145237975e-06,
+            "q95": 0.0013806760854984225
+          }
+        }
+      }
+    },
+    "iid_control": {
+      "descriptive": {
+        "outcome_entropy_bits": 0.9994605951780708,
+        "outcome_one_fraction": 0.513671875,
+        "rows": 2048
+      },
+      "perspectives": {
+        "cue_access": {
+          "observed_mutual_information_bits": 7.189521635653229e-05,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.632,
+            "maximum": 0.0033974489939079255,
+            "median": 0.00017147236064740667,
+            "minimum": 3.294519834717846e-08,
+            "q05": 2.184468227195424e-06,
+            "q95": 0.0012021947463949356
+          }
+        },
+        "cue_context_access": {
+          "observed_mutual_information_bits": 0.0001244940280491491,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.946,
+            "maximum": 0.0046924134424428665,
+            "median": 0.0008467570281671666,
+            "minimum": 1.2563465694448439e-05,
+            "q05": 0.00011931141058012519,
+            "q95": 0.0025796800759757084
+          }
+        },
+        "outcome_only": {
+          "observed_mutual_information_bits": 5.293178408338761e-05,
+          "permuted_outcome_null": {
+            "fraction_at_least_observed": 0.7,
+            "maximum": 0.005748764980191945,
+            "median": 0.00016602676058241617,
+            "minimum": 4.8705901978252086e-08,
+            "q05": 2.074148549802146e-06,
+            "q95": 0.00106634508436254
+          }
+        }
+      }
+    }
+  }
+}

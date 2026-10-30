@@ -307,10 +307,12 @@ _Én synlig grænse for første modelsvar._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `FirstPassOutputFilter` | `` | Filtrér capability-markup først og synlige runtime-markører bagefter. | [src](../../../core/services/visible_first_pass_output.py#L17) |
-| method | `FirstPassOutputFilter.__init__` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L20) |
-| method | `FirstPassOutputFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L24) |
-| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L27) |
+| class | `FirstPassOutputFilter` | `` | Filtrér capability-markup, DSML og synlige runtime-markører — i den rækkefølge. | [src](../../../core/services/visible_first_pass_output.py#L49) |
+| method | `FirstPassOutputFilter.__init__` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L52) |
+| method | `FirstPassOutputFilter._dsml` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L63) |
+| method | `FirstPassOutputFilter._halv` | `(self, text)` | Fjern den halve DSL-form: navnet og de rå tags — men BEHOLD indholdet. | [src](../../../core/services/visible_first_pass_output.py#L75) |
+| method | `FirstPassOutputFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L110) |
+| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L117) |
 
 ## `core/services/visible_first_pass_pump.py`
 _Worker-thread pump for the first visible model stream._

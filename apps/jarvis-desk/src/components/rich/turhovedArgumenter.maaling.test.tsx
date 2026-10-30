@@ -22,8 +22,21 @@
  *    code: `!streaming ? turSekunder : null` (kun når turen er ovre).
  *    Chat viser uret mens den kører, code gør ikke. Reelt forskelligt.
  * 3. `skillelinje` — chat: bar prop (altid sand). code: `visSkillelinje`
- *    (sand når svaret er begyndt). CSS'en animerer stregen ind ved mount, så
- *    chat får en animation der starter FØR der er noget at adskille.
+ *    (sand når svaret er begyndt). **AFGJORT 30/10-2026: forskellen BLIVER.**
+ *    Bjørn valgte «behold som nu — stregen glider ind ved turstart og bliver».
+ *    `turhoved.css` er allerede bygget til netop det (`animation … both`,
+ *    så `from` er den faktiske starttilstand uanset hvornår attributten
+ *    sættes), og hans ord fra 22/10 står i CSS-kommentaren: «det burde komme
+ *    fra starten og blive». Chat mode har ingen svar-lås at vente på, så
+ *    code-modens gate ville fjerne stregen i præcis den fase hvor hovedet
+ *    står og siger «Arbejder».
+ *
+ *    ⚠️ UMÅLT sidefund: fordi `data-skillelinje` er sand fra første render,
+ *    fyrer `@keyframes` også ved MOUNT af historikken — et reload animerer
+ *    alle persisterede tures streger ind samtidig. Det er ikke målt i en
+ *    browser, og en gate ville ikke løse det (historik har tekst, så
+ *    `harSynligTekst` er sand). Den rigtige rettelse ville være at binde
+ *    animationen til den LEVENDE tur, ikke til mount.
  * 4. `knapRef` — kun code sender den (`useFoldPosition` bruger den til at
  *    holde foldelinjen på skærmen). Chat har ingen scroll-anker.
  *
@@ -135,11 +148,13 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     expect(code.get('sekunder')).toContain('!streaming')
   })
 
-  it('skillelinje er reelt forskellig: chat sender den altid, code gater den', () => {
-    // chat: bar prop → data-skillelinje fra FØRSTE render (CSS'en animerer
-    //       stregen ind ved mount, så den glider ind før der er noget at
-    //       adskille — målt 22/10-2026 i turhoved.css:41-44)
+  it('skillelinje er reelt forskellig — og forskellen er AFGJORT, ikke en fejl', () => {
+    // AFGJORT 30/10-2026: chat beholder den bare prop. Bjørn valgte «behold
+    // som nu — stregen glider ind ved turstart og bliver», og CSS'en er
+    // bygget til det (`animation … both` i turhoved.css:59-62).
+    // chat: bar prop → data-skillelinje fra FØRSTE render
     // code: visSkillelinje = !streaming || finalAnswerStarted || harSynligTekst
+    //       (code har en svar-lås at vente på; chat har ikke)
     expect(chat.get('skillelinje')).toBe('skillelinje')
     expect(code.get('skillelinje')).toBe('skillelinje={visSkillelinje}')
   })

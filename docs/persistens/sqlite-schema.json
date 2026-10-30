@@ -5933,7 +5933,7 @@
       ]
     },
     "behavioral_decisions": {
-      "digest": "07:26:76:8b:a0:d7:49:b1:d2:e9:6b:7f:ac:b8:10:e4:cb:f1:d3:30:61:b0:d5:81:1b:52:c9:ca:12:bd:c9:d0",
+      "digest": "9c:5a:41:73:ea:ea:fc:88:f5:d9:53:81:79:b9:a1:48:19:37:8e:02:57:d8:41:8f:a2:cc:36:f3:3b:dd:a1:64",
       "schema": {
         "columns": [
           {
@@ -5994,6 +5994,22 @@
           },
           {
             "name": "rationale",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "revoked_evidence",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "revoked_reason",
             "type": "TEXT",
             "nullable": true,
             "default": null,
@@ -9621,7 +9637,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -18259,7 +18275,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "emergent_patterns": {
@@ -47756,7 +47772,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "user_flags": {

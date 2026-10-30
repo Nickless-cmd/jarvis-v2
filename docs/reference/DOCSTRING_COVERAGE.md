@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9460/17783 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9463/17784 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9460/17783 functions/methods documented (53%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 858 | 1567 | 54% |
-| `core.services` | 6303 | 12085 | 52% |
+| `core.runtime` | 860 | 1568 | 54% |
+| `core.services` | 6304 | 12085 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9460/17783 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2596)
+## Undocumented public functions (2594)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -471,12 +471,11 @@ Generated from source. 9460/17783 functions/methods documented (53%). The list b
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L86)
 - `core/runtime/db_core.py` :: `get_runtime_state_value` (L579)
 - `core/runtime/db_core.py` :: `set_runtime_state_value` (L559)
-- `core/runtime/db_decisions.py` :: `count_decisions` (L380)
-- `core/runtime/db_decisions.py` :: `create_decision` (L80)
-- `core/runtime/db_decisions.py` :: `delete_decision` (L365)
-- `core/runtime/db_decisions.py` :: `get_decision` (L311)
-- `core/runtime/db_decisions.py` :: `list_reviews` (L354)
-- `core/runtime/db_decisions.py` :: `set_status` (L294)
+- `core/runtime/db_decisions.py` :: `count_decisions` (L436)
+- `core/runtime/db_decisions.py` :: `create_decision` (L108)
+- `core/runtime/db_decisions.py` :: `delete_decision` (L421)
+- `core/runtime/db_decisions.py` :: `get_decision` (L367)
+- `core/runtime/db_decisions.py` :: `list_reviews` (L410)
 - `core/runtime/db_devices.py` :: `browser_anmodning` (L247)
 - `core/runtime/db_devices.py` :: `kraev_aktivt` (L320)
 - `core/runtime/db_devices.py` :: `saet_kraev` (L329)
@@ -889,16 +888,15 @@ Generated from source. 9460/17783 functions/methods documented (53%). The list b
 - `core/services/background_resume.py` :: `tracked` (L85)
 - `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L383)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L223)
-- `core/services/behavioral_decisions.py` :: `change_status` (L236)
+- `core/services/behavioral_decisions.py` :: `change_status` (L249)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L97)
-- `core/services/behavioral_decisions.py` :: `delete_decision` (L272)
-- `core/services/behavioral_decisions.py` :: `get_decision` (L282)
-- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L286)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L340)
-- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L313)
-- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L317)
+- `core/services/behavioral_decisions.py` :: `delete_decision` (L317)
+- `core/services/behavioral_decisions.py` :: `get_decision` (L327)
+- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L331)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L385)
+- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L358)
+- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L362)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L145)
-- `core/services/behavioral_decisions.py` :: `revoke_decision` (L254)
 - `core/services/body_memory.py` :: `build_body_memory_surface` (L142)
 - `core/services/body_memory.py` :: `describe_body_memory` (L124)
 - `core/services/body_memory.py` :: `format_body_for_prompt` (L133)

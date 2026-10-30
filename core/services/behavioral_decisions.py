@@ -201,12 +201,23 @@ def update_decision(
     trigger_name: str | None = None,
     priority: int | None = None,
     status: str | None = None,
+    revoked_reason: str | None = None,
+    revoked_evidence: str | None = None,
 ) -> dict[str, Any] | None:
     """Update a decision's mutable fields (None = unchanged, "" = cleared).
 
     Thin wrapper over the store that publishes ``decision.updated`` so
     downstream (MC projections, commitment instruments) stay in sync.
+
+    Sættes ``status='revoked'`` kræves ``revoked_reason`` — ellers kan en
+    politik forsvinde ud af prompten uden at nogen kan se hvorfor (målt
+    30/10-2026: 144 revokationer uden spor).
     """
+    if status == "revoked" and not str(revoked_reason or "").strip():
+        raise ValueError(
+            "update_decision: status='revoked' kræver revoked_reason — "
+            "en revokation uden grund gør politik-før og politik-efter usammenlignelige"
+        )
     updated = _db_update_decision(
         decision_id,
         directive=directive,
@@ -215,6 +226,8 @@ def update_decision(
         trigger_name=trigger_name,
         priority=priority,
         status=status,
+        revoked_reason=revoked_reason,
+        revoked_evidence=revoked_evidence,
     )
     if not updated:
         return None
@@ -233,8 +246,18 @@ def update_decision(
     return updated
 
 
-def change_status(decision_id: str, new_status: str) -> dict[str, Any] | None:
-    updated = _db_set_status(decision_id, new_status)
+def change_status(
+    decision_id: str,
+    new_status: str,
+    *,
+    reason: str | None = None,
+    evidence: str | None = None,
+) -> dict[str, Any] | None:
+    if new_status == "revoked" and not str(reason or "").strip():
+        raise ValueError(
+            "change_status: 'revoked' kræver reason — ellers forsvinder politikken uden spor"
+        )
+    updated = _db_set_status(decision_id, new_status, reason=reason, evidence=evidence)
     if not updated:
         return None
     try:
@@ -251,8 +274,29 @@ def change_status(decision_id: str, new_status: str) -> dict[str, Any] | None:
     return updated
 
 
-def revoke_decision(decision_id: str, *, reason: str | None = None) -> dict[str, Any] | None:
-    updated = _db_set_status(decision_id, "revoked")
+def revoke_decision(
+    decision_id: str,
+    *,
+    reason: str | None = None,
+    evidence: str | None = None,
+) -> dict[str, Any] | None:
+    """Træk en beslutning tilbage — MED sin grund.
+
+    Grunden er ikke valgfri. Målt 30/10-2026: 144 rækker med status='revoked'
+    og nul spor af hvorfor. `reason` fandtes i signaturen hele tiden, men blev
+    kun sendt til en ephemeral event; Agent Smith kaldte den med en rigtig grund
+    (`central_agent_smith.py:526`) og grunden forsvandt i det samme.
+
+    En revokation uden grund gør adaptation umulig at måle: man kan se at
+    politikken er væk, ikke hvad der fjernede den, og ikke hvad den ville have
+    gjort hvis den havde stået der.
+    """
+    if not str(reason or "").strip():
+        raise ValueError(
+            "revoke_decision: reason er påkrævet — en revokation uden grund "
+            "efterlader ingen spor af hvorfor politikken blev fjernet"
+        )
+    updated = _db_set_status(decision_id, "revoked", reason=reason, evidence=evidence)
     if not updated:
         return None
     try:
@@ -262,6 +306,7 @@ def revoke_decision(decision_id: str, *, reason: str | None = None) -> dict[str,
                 "decision_id": updated.get("decision_id"),
                 "directive": updated.get("directive"),
                 "reason": reason,
+                "evidence": evidence,
             },
         )
     except Exception:

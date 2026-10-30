@@ -87,7 +87,10 @@ exports only monthly counts from `provider_model_epochs` and
 or user fields are read. It also counts Git author dates by month. Author dates
 show repository activity, not deployment time.
 
-Coverage start and end are part of the result. Missing early context must not
+Only provider/model epochs whose recorded end is at or before the observation
+cutoff are included; an epoch crossing the boundary is excluded because its
+aggregate observation count cannot be split reliably. Coverage start and end
+are part of the result. Missing early context must not
 be replaced by narrative. Coincidence between a context count and a measured
 change is not causal evidence.
 

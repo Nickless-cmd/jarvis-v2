@@ -501,14 +501,14 @@ def collect_operational_context(
                    COUNT(DISTINCT provider) AS providers,
                    COUNT(DISTINCT observed_model) AS observed_models
             FROM provider_model_epochs
-            WHERE first_seen_at <= ?
+            WHERE last_seen_at <= ?
             GROUP BY month ORDER BY month
             """,
             (cutoff,),
         ).fetchall()
         epoch_coverage = connection.execute(
             """SELECT COUNT(*), MIN(first_seen_at), MAX(last_seen_at)
-               FROM provider_model_epochs WHERE first_seen_at <= ?""",
+               FROM provider_model_epochs WHERE last_seen_at <= ?""",
             (cutoff,),
         ).fetchone()
         incident_rows = connection.execute(

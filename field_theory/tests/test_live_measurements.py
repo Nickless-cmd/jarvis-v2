@@ -106,6 +106,11 @@ def build_visible_runs_db(path: Path, rows: int = 240) -> None:
             '2026-01-01T00:00:00+00:00', '2026-01-02T00:00:00+00:00')"""
     )
     connection.execute(
+        """INSERT INTO provider_model_epochs VALUES
+           ('crosses-cutoff', 'beta', 'm2', 'm2', 0, 99,
+            '2026-01-02T00:00:00+00:00', '2027-01-02T00:00:00+00:00')"""
+    )
+    connection.execute(
         """INSERT INTO central_incidents VALUES
            (1, '2026-01-02T00:00:00+00:00', 'runtime', 'test', 'low',
             'private incident text', 'private-run', 'private-session', 1)"""

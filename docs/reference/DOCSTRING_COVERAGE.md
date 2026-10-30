@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9467/17789 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9470/17792 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9467/17789 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 860 | 1568 | 54% |
-| `core.services` | 6305 | 12087 | 52% |
+| `core.services` | 6307 | 12089 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 590 | 1140 | 51% |
+| `core.tools` | 591 | 1141 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1291,10 +1291,10 @@ Generated from source. 9467/17789 functions/methods documented (53%). The list b
 - `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L184)
 - `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L175)
 - `core/services/ghost_networks.py` :: `reset_ghost_networks` (L180)
-- `core/services/git_actions.py` :: `commit_all` (L128)
+- `core/services/git_actions.py` :: `commit_all` (L205)
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
-- `core/services/git_actions.py` :: `commit_all_workstation` (L110)
-- `core/services/git_actions.py` :: `parse_owner_repo` (L140)
+- `core/services/git_actions.py` :: `commit_all_workstation` (L187)
+- `core/services/git_actions.py` :: `parse_owner_repo` (L217)
 - `core/services/gmail_connector.py` :: `list_inbox` (L148)
 - `core/services/gmail_connector.py` :: `search` (L142)
 - `core/services/goal_signal_tracking.py` :: `build_runtime_goal_signal_surface` (L101)

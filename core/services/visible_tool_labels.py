@@ -61,6 +61,7 @@ _TOOL_LABELS: dict[str, str] = {
     # Kode og forslag
     "propose_source_edit": "Foreslår kodeændring",
     "propose_git_commit": "Foreslår commit",
+    "commit_attributed": "Committer",
     "approve_proposal": "Godkender forslag",
     "list_proposals": "Lister forslag",
     # Projekt

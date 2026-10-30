@@ -144,6 +144,10 @@ from core.tools.nudge_broend_tools import (NUDGE_BROEND_TOOL_DEFINITIONS)
 from core.tools.coding_lane_tools import (CODING_LANE_TOOL_DEFINITIONS)
 from core.tools.identity_sketch_tools import (IDENTITY_SKETCH_TOOL_DEFINITIONS)
 from core.tools.session_search import TOOL_DEFINITION as _SESSION_SEARCH_TOOL_DEF
+from core.tools.commit_attributed_tool import (
+    COMMIT_ATTRIBUTED_TOOL_DEFINITIONS,
+    COMMIT_ATTRIBUTED_TOOL_HANDLERS,
+)
 
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -3465,6 +3469,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DESK_VIEW_TOOL_DEFINITIONS,
     # Jarvis' EGEN browser inde i desk (21/9-2026) — otte handlinger over broen.
     *DESK_BROWSER_TOOL_DEFINITIONS,
+    # Commit uden shell — beskeden er et JSON-argument (30/10-2026).
+    *COMMIT_ATTRIBUTED_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
     *VERIFY_TOOL_DEFINITIONS,

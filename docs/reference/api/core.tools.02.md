@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/health_monitor_tools.py`
+_API health monitor tools — Jarvis can watch services and be notified of outages._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/tools/health_monitor_tools.py#L21) |
+| function | `_save` | `(data)` | — | [src](../../../core/tools/health_monitor_tools.py#L28) |
+| function | `_ping` | `(url, expected_status=…, timeout=…)` | — | [src](../../../core/tools/health_monitor_tools.py#L33) |
+| function | `_record_check` | `(name, result)` | — | [src](../../../core/tools/health_monitor_tools.py#L62) |
+| function | `_exec_health_check` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L79) |
+| function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L115) |
+| function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
+| function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
+
 ## `core/tools/hf_inference_tools.py`
 _Hugging Face Inference API tools — free-tier text-to-video + fallback image gen._
 
@@ -562,11 +576,4 @@ _py_source_guard — vaern mod en tilbagevendende LLM-skrive-artefakt._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `guard_py_escapes` | `(content, path)` | Returnér (evt. rettet content, advarsels-note eller None). Se modul-docstring. | [src](../../../core/tools/py_source_guard.py#L22) |
-
-## `core/tools/reasoning_store_tools.py`
-_Reasoning Store tools for Jarvis — Phase 1 Generalized Learning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_recall_reasoning` | `(args)` | Retrieve stored reasoning conclusions, ranked by relevance. | [src](../../../core/tools/reasoning_store_tools.py#L19) |
 

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-28 — 517 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-10-30 — 518 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -54,6 +54,7 @@
 | `comfyui_objects` | native | no |
 | `comfyui_status` | native | no |
 | `comfyui_workflow` | native | no |
+| `commit_attributed` | native | no |
 | `commit_staged_edits` | native | no |
 | `compact_context` | native | no |
 | `composite_approve` | native | no |

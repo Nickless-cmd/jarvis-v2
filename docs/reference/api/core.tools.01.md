@@ -230,6 +230,13 @@ _ComfyUI integration tools for Jarvis._
 | function | `_exec_comfyui_history` | `(args)` | Get ComfyUI execution history. | [src](../../../core/tools/comfyui_tools.py#L118) |
 | function | `_exec_comfyui_objects` | `(args)` | List available ComfyUI node types / models. | [src](../../../core/tools/comfyui_tools.py#L148) |
 
+## `core/tools/commit_attributed_tool.py`
+_Commit-værktøj uden shell — beskeden kan ikke fortolkes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_commit_attributed` | `(args)` | Commit med canonical attribution uden at gå gennem en shell. | [src](../../../core/tools/commit_attributed_tool.py#L66) |
+
 ## `core/tools/companion_push_tools.py`
 _Tool: send_push_notification — proaktiv push til brugerens companion (mobil/desktop)._
 
@@ -508,18 +515,4 @@ _`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
 |---|---|---|---|---|
 | function | `_graf_dir` | `()` | — | [src](../../../core/tools/graf_tools.py#L44) |
 | function | `_exec_vis_graf` | `(args)` | Tegn en graf og laeg den i traaden. Kaster aldrig. | [src](../../../core/tools/graf_tools.py#L49) |
-
-## `core/tools/health_monitor_tools.py`
-_API health monitor tools — Jarvis can watch services and be notified of outages._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/tools/health_monitor_tools.py#L21) |
-| function | `_save` | `(data)` | — | [src](../../../core/tools/health_monitor_tools.py#L28) |
-| function | `_ping` | `(url, expected_status=…, timeout=…)` | — | [src](../../../core/tools/health_monitor_tools.py#L33) |
-| function | `_record_check` | `(name, result)` | — | [src](../../../core/tools/health_monitor_tools.py#L62) |
-| function | `_exec_health_check` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L79) |
-| function | `_exec_health_register` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L115) |
-| function | `_exec_health_status` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L139) |
-| function | `_exec_health_history` | `(args)` | — | [src](../../../core/tools/health_monitor_tools.py#L169) |
 

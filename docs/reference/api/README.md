@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17789 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17792 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -69,10 +69,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17789 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `health_monitor_tools`
-- [`core.tools.02`](core.tools.02.md) — `hf_inference_tools` … `reasoning_store_tools`
-- [`core.tools.03`](core.tools.03.md) — `recall_memory_tools` … `tool_scoping`
-- [`core.tools.04`](core.tools.04.md) — `tool_text_render` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `graf_tools`
+- [`core.tools.02`](core.tools.02.md) — `health_monitor_tools` … `py_source_guard`
+- [`core.tools.03`](core.tools.03.md) — `reasoning_store_tools` … `tool_schema_contract`
+- [`core.tools.04`](core.tools.04.md) — `tool_scoping` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

@@ -60,6 +60,83 @@ def commit_all_container(repo: str, message: str) -> dict:
     return {"status": "ok", "sha": sha, "branch": branch, "message": msg}
 
 
+def _agent_attribution() -> CommitAttribution:
+    """Jarvis' egen attribution: actor=jarvis, origin=interactive.
+
+    Bevidst adskilt fra `_human_attribution`. Actor-feltet afgør hvem
+    commit'en tilskrives, og et agent-commit må ikke stå som Bjørns.
+    """
+    return CommitAttribution(
+        actor="jarvis",
+        actor_type="agent",
+        run_id=new_manual_run_id(),
+        session_id="none",
+        origin="interactive",
+        approved_by="bjorn",
+    )
+
+
+def commit_paths_as_jarvis(
+    repo: str,
+    message: str,
+    paths: tuple[str, ...] = (),
+) -> dict:
+    """Commit uden shell — argv hele vejen, beskeden gennem en temp-fil.
+
+    Derfor findes denne funktion: ``bash "git commit -m '<besked>'"`` sender
+    beskeden gennem en shell FØR git ser den. Backticks bliver
+    kommando-substitution og ``$variabel`` bliver ekspanderet, så det der
+    lander i repoet er skåret — permanent, fordi `main` ikke kan amenderes.
+
+    Målt 30/10-2026: ordet ``running`` forsvandt ud af en commit-besked,
+    med reglen om præcis dette stående i prompten den tur.
+
+    Her er beskeden et JSON-argument. Der er ingen shell imellem.
+    """
+    root = str(repo or "").strip()
+    if not root:
+        return {"status": "error", "detail": "repo mangler"}
+    if not str(message or "").strip():
+        return {"status": "error", "detail": "message mangler"}
+
+    selected = tuple(str(p) for p in paths if str(p))
+    add_cmd = ["git", "-C", root, "add"]
+    if selected:
+        add_cmd.extend(["--", *selected])
+    else:
+        add_cmd.append("-A")
+    add = subprocess.run(add_cmd, capture_output=True, text=True, timeout=60)
+    if add.returncode != 0:
+        return {"status": "error", "detail": f"git add: {(add.stderr or '').strip()[:200]}"}
+
+    result = commit_with_attribution(
+        repo=Path(root),
+        message=message,
+        attribution=_agent_attribution(),
+        paths=selected,
+    )
+    if result.returncode != 0:
+        blob = ((result.stdout or "") + (result.stderr or "")).strip()
+        if "nothing to commit" in blob or "working tree clean" in blob:
+            return {"status": "nochange", "detail": blob[:200]}
+        return {"status": "error", "detail": blob[:400]}
+
+    sha = (result.sha or "").strip()
+    branch = subprocess.run(
+        ["git", "-C", root, "branch", "--show-current"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    ).stdout.strip()
+    return {
+        "status": "ok",
+        "sha": sha[:12],
+        "full_sha": sha,
+        "branch": branch,
+        "message": message,
+    }
+
+
 # ── Workstation (brugerens egen bro) ───────────────────────────────────────
 
 def _operator_exec(name: str, args: dict) -> dict:

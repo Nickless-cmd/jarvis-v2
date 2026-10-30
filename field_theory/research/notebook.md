@@ -4,6 +4,36 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-10-30 — Investigation 6, fourth correction: a red test is not a verdict
+
+**Observation.** The line-214 mutant (`required = 0`) turns
+`test_investigation_004_prospective_waits_without_reading_outcomes` red with
+`IndexError`. Wrapping `sqlite3.connect` and recording every statement, on a
+synthetic database with 999 rows above the high-water mark and `target.rows =
+1000`:
+
+- unmutated: `PRAGMA query_only=ON`, `BEGIN`, `SELECT COUNT(*), COALESCE(MAX(id), ?) …` — nothing else
+- mutant: the same three, then `SELECT id, started_at, finished_at, status …`, then `IndexError`
+
+**Interpretation.** The boundary holds at the level of what reaches the
+database, which is stronger than the returned dict. But the mutant reads the
+outcome-bearing column *before* it crashes, so the red test is red for an
+unrelated reason. The verdict is neither `killed` nor `survived` but a third
+category: **caught by an unrelated error**. The existing test asserts the
+returned status and the absence of an observations file — both of which a
+mutant that read outcomes and then returned `pending` would also satisfy.
+
+**Limitation.** The mutation review's own conclusion ("the threshold is
+guarded") was drawn from a signal that cannot distinguish the two cases it
+needs to distinguish. `killed`/`survived` is too coarse a vocabulary for this.
+
+**Question.** What would a mutation harness need to record so that "caught for
+the right reason" is a measurement rather than a judgement? The candidate
+answer, not yet built: identify the target by AST node plus file hash rather
+than line number; run in an isolated worktree; assert on the query stream, not
+only on the return value; and classify each result as caught-by-assertion,
+caught-by-unrelated-error, or survived.
+
 ## 2026-10-30 — Investigation 6, third correction: the mutation hit the wrong line
 
 **Status:** one correction to the mutation review. Preserved runs, protocol and

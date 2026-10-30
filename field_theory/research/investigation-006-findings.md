@@ -275,7 +275,9 @@ Six of seven are caught. An earlier version of this section claimed "all seven
 are caught" — the same failure this whole review is about: a statement about a
 measurement that had not been made. It was then corrected in the other
 direction, to "five of seven", on the strength of a mutation that turned out to
-have hit the wrong line.
+have hit the wrong line. And the sixth is caught by an unrelated error rather
+than by the assertion it appears to exercise (see below), so the honest count
+of mutations caught *for the right reason* is five.
 
 ### Correction: the first "surviving" mutation was aimed at the wrong line
 
@@ -298,6 +300,47 @@ selection.
 **The threshold is guarded.** The mutation review did not find a hole there; it
 found a mutation aimed at the wrong line — a third instance of the same failure
 form, now inside the instrument that was built to detect it.
+
+### Correction to the correction: "caught" is not the same as "guarded for the right reason"
+
+The line-214 mutant turns the test red with `IndexError: list index out of
+range`. That is a red test, but a red test is not by itself evidence that the
+property under test was checked. If the mutant already read the outcome-bearing
+column before it crashed, the test would go red *while the boundary had in fact
+been breached* — the failure would be incidental, not protective.
+
+Measured, not argued. A synthetic database with 999 rows above the frozen
+high-water mark and `target.rows = 1000`, with `sqlite3.connect` wrapped so
+every statement is recorded:
+
+| Run | Statements actually executed |
+|---|---|
+| unmutated | `PRAGMA query_only=ON`, `BEGIN`, `SELECT COUNT(*), COALESCE(MAX(id), ?) …` |
+| `required = 0` | the same three, **then** `SELECT id, started_at, finished_at, status …` → `IndexError` |
+
+So the unmutated evaluator issues **no** statement that touches `status` when
+the sample is insufficient — the boundary holds at the level of what reaches
+the database, not merely at the level of the returned dict. And the mutant does
+read `status` before crashing, which means the red test is *coincidentally*
+red: the `IndexError` comes from `observations[0]` on an empty selection, after
+the outcome column has already been read.
+
+The verdict for that mutant is therefore neither "caught" nor "survived" but a
+third category: **caught by an unrelated error**. The existing test does not
+assert the property it appears to assert. It asserts that the returned status is
+`pending_insufficient_rows` and that no observations file is written — both
+true of the unmutated code, and both still true of a hypothetical mutant that
+read outcomes and then returned `pending` anyway.
+
+A test that would actually guard it has to observe the query stream, not the
+return value: assert that no statement referencing `status` is executed while
+`available < required`. That is a different assertion, and it does not exist
+yet.
+
+This is the fourth instance of the evening's failure form, and the sharpest:
+the mutation review's own conclusion — "the threshold is guarded" — was drawn
+from a signal (red test) that does not distinguish the two cases it needs to
+distinguish.
 
 What does survive is real:
 
@@ -323,6 +366,14 @@ Two limits on this review:
   It is a scan, and this scan reports one open hole. Direct state-transition
   assertions and an independent reference implementation would cover ground
   this method does not reach.
+- A red test is not a verdict. The scan recorded `killed`/`survived`, and the
+  line-214 case shows why that is too coarse: a mutant can be killed by an
+  unrelated exception after the property has already been violated. Every
+  mutation needs three separate proofs before its result means anything —
+  that the intended syntax node was the one changed, that the change altered
+  the intended behaviour, and that the test reacted *for the right reason*.
+  The third is the one this review did not have, and it is the one that
+  matters.
 
 ### The three code faults are not one mechanism
 

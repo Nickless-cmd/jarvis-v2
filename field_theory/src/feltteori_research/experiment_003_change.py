@@ -810,7 +810,11 @@ def _write_svg(path: Path, rolling: list[dict[str, object]]) -> None:
         return left + plot_width * index / max(1, len(rolling) - 1)
 
     def y(value: float, maximum: float, panel_top: float) -> float:
-        return panel_top + panel_height * (1 - value / maximum)
+        # Værn mod nul-skala: en kørsel hvor alle MI-værdier er nul (fx et lille
+        # fixture uden association) gav ZeroDivisionError og væltede hele
+        # SVG-genereringen. Nul-serie skal tegnes som en flad linje i bunden.
+        scale = maximum if maximum > 0 else 1.0
+        return panel_top + panel_height * (1 - value / scale)
 
     def polyline(field: str, maximum: float, panel_top: float, color: str) -> str:
         points = " ".join(

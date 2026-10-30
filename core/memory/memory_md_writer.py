@@ -139,6 +139,33 @@ def upsert_section(
         target["heading"] = heading
         target["level"] = level
         action = "updated"
+        # 30/10-2026: når det NYE indhold selv indeholder heading-linjer, ser
+        # `parse_sections` dem som selvstændige sektioner ved NÆSTE upsert.
+        # MÅLT: anden upsert efterlod den gamle krop som en forældreløs
+        # "## Under"-sektion, så filen voksede 4 linjer pr. kald mens værktøjet
+        # svarede «updated successfully». MEMORY.md nåede 34.584 linjer.
+        #
+        # Vi fjerner derfor en efterfølgende sektion KUN når både dens heading
+        # og hele dens krop optræder i det vi netop skrev — så er den den gamle
+        # hale, ikke en anden sektion der tilfældigvis hedder det samme.
+        nye_headings = {
+            normalize_heading(m.group(2))
+            for m in (_HEADING_RE.match(ln) for ln in body_lines)
+            if m
+        }
+        if nye_headings:
+            nye_linjer = {" ".join(ln.split()) for ln in body_lines if ln.strip()}
+            idx = sections.index(target)
+            while idx + 1 < len(sections):
+                nxt = sections[idx + 1]
+                if not nxt["heading"]:
+                    break
+                if normalize_heading(nxt["heading"]) not in nye_headings:
+                    break
+                krop = {" ".join(ln.split()) for ln in nxt["body"] if ln.strip()}
+                if not krop <= nye_linjer:
+                    break
+                sections.pop(idx + 1)
 
     # blank line before every heading except the first
     for i, sec in enumerate(sections):

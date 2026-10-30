@@ -1307,7 +1307,13 @@ def _runtime_self_narrative_continuity_signal_from_row(
         "status_reason": row["status_reason"],
         "run_id": row["run_id"],
         "session_id": row["session_id"],
-        "candidate_fragment": row["candidate_fragment"],
+        # 30/10-2026: `candidate_fragment` blev fjernet her. Tabellen
+        # `runtime_self_narrative_continuity_signals` har 20 kolonner og INGEN
+        # `candidate_fragment` — nøglen var en rest fra
+        # `runtime_self_authored_prompt_proposals`/autonomy_proposal_queue, som
+        # bruger samme navn. Målt: IndexError ved HVER række, 24 forekomster i
+        # api-journalen siden 29/10 21:57, så ingen narrative-continuity-signal
+        # nåede den kognitive tracking. SELECT'en her over har den heller ikke.
         "support_count": int(row["support_count"] or 0),
         "session_count": int(row["session_count"] or 0),
         "merge_count": int(row["merge_count"] or 0),

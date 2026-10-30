@@ -7,12 +7,13 @@ _Jarvis' EGET forslag til Bjørns næste besked — skrevet i hans egen tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L68) |
-| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L86) |
-| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L99) |
-| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L145) |
-| function | `ryd_forslag` | `(*, session_id)` | Slet sessionens forslag. Returnerer antal slettede raekker. | [src](../../../core/runtime/db_composer_jarvis.py#L181) |
-| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L202) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L69) |
+| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L87) |
+| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L100) |
+| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L146) |
+| function | `ryd_forslag` | `(*, session_id)` | Slet sessionens forslag. Returnerer antal slettede raekker. | [src](../../../core/runtime/db_composer_jarvis.py#L182) |
+| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L203) |
+| function | `kig_forslag_til_klient` | `(*, session_id)` | Forslaget klienten skal vise: eget først, ellers et USET autonomt. | [src](../../../core/runtime/db_composer_jarvis.py#L230) |
 
 ## `core/runtime/db_composites.py`
 _Composite tools store — Jarvis proposals of new tool sequences._
@@ -928,7 +929,7 @@ _Persistence for Jarvis' runtime self-* signal cluster._
 | function | `_ensure_runtime_self_narrative_continuity_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1208) |
 | function | `_ensure_runtime_selfhood_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1251) |
 | function | `_runtime_self_narrative_continuity_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1292) |
-| function | `_runtime_self_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1319) |
-| function | `_runtime_self_authored_prompt_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1343) |
-| function | `_runtime_selfhood_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1369) |
+| function | `_runtime_self_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1325) |
+| function | `_runtime_self_authored_prompt_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1349) |
+| function | `_runtime_selfhood_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1375) |
 

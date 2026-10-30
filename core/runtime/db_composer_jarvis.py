@@ -51,6 +51,7 @@ komponist-vejen bruger `kig_forslag` + `ryd_forslag`.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.runtime.db_core import _now_iso, connect, skriv_med_genforsoeg
@@ -213,3 +214,71 @@ def kig_forslag(*, session_id: str) -> dict[str, str] | None:
             (sid,),
         ).fetchone()
     return dict(raekke) if raekke else None
+
+
+#: Hvor længe et autonomt forslag stadig må tilbydes i en anden session.
+#: MÅLT 30/10-2026: 8 forslag skrevet i `auto-*`-kørsler, **6 aldrig vist**.
+#: `gem_forslag` binder forslaget til den session det blev skrevet i, og
+#: `kig_forslag` slår kun op i DEN — så et forslag fra en autonom kørsel kunne
+#: aldrig nå Bjørns chat. Konkret offer: `cj-81581b5da64948fa` («Godkend
+#: gentagelses-porten i Mission Control», 30/10 kl. 04:00) og
+#: `cj-e3dac326c0fb4327` (24/10, samme ærinde) lå begge usete. Forslaget der
+#: skulle få ham til at godkende porten nåede aldrig frem.
+AUTONOM_FORSLAG_MAKS_ALDER_H: int = 24
+
+
+def kig_forslag_til_klient(*, session_id: str) -> dict[str, str] | None:
+    """Forslaget klienten skal vise: eget først, ellers et USET autonomt.
+
+    ## Beslutning (30/10-2026)
+
+    Et autonomt forslag må gerne hentes i Bjørns chat-session. Grunden er at
+    `session_id` beskriver HVOR Jarvis kørte, ikke HVEM forslaget er til — og
+    hele tabellen findes for at nå ham. At binde leverancen til afsenderens
+    sessions-id var en teknisk detalj der fik et tilbud til at forsvinde.
+
+    ## Garantierne der bevares
+
+    * **Eget forslag vinder altid.** Er der et forslag i hans egen session,
+      returneres det, uanset hvad der ligger i `auto-*`. Et gammelt autonomt
+      bud kan derfor aldrig fortrænge et nyere han selv fik.
+    * **Kun USETE forslag.** `er_vist` spørges pr. række; et forslag han
+      allerede har set på skærmen tilbydes ikke igen.
+    * **Kun friske.** Ældre end `AUTONOM_FORSLAG_MAKS_ALDER_H` droppes — ellers
+      ville et bud fra 24/10 dukke op midt i en samtale i dag og pege på
+      arbejde der for længst er kørt videre.
+    * **De 11 usete rækker røres ikke.** Beslutning `dec_cb38687f3917`: vi
+      sletter ikke det Bjørn ikke bad om. De bliver blot hentbare.
+    """
+    eget = kig_forslag(session_id=session_id)
+    if eget:
+        return eget
+
+    sid = (session_id or "").strip()
+    # Er vi SELV i en autonom kørsel, er der ingen Bjørn at vise noget til —
+    # og et auto-forslag må ikke arve et andet auto-forslags bud.
+    if not sid or sid.startswith("auto-"):
+        return None
+
+    graense = (datetime.now(UTC) - timedelta(hours=AUTONOM_FORSLAG_MAKS_ALDER_H)).isoformat()
+    with connect() as conn:
+        _sikr_tabel(conn)
+        raekker = conn.execute(
+            f"SELECT forslag_id, forslag, kilde_besked_id, skrevet_at "
+            f"FROM {_TABEL} WHERE session_id LIKE 'auto-%' AND skrevet_at >= ? "
+            f"ORDER BY skrevet_at DESC, rowid DESC LIMIT 20",
+            (graense,),
+        ).fetchall()
+
+    from core.runtime.db_composer_choice import er_vist
+    for raekke in raekker:
+        try:
+            if er_vist(forslag_id=str(raekke["forslag_id"])):
+                continue
+        except Exception:
+            # Kan vi ikke afgøre om det er set, behandler vi det som USET —
+            # samme sikre side som `foreslaa_naeste_detaljer` vælger: hellere
+            # tilbyde et bud for meget end at tabe et han aldrig fik.
+            logger.debug("kig_forslag_til_klient: kunne ikke afgøre set/uset", exc_info=True)
+        return dict(raekke)
+    return None

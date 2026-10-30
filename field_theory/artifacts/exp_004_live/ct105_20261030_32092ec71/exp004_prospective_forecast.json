@@ -1,0 +1,76 @@
+{
+  "forecasts": {
+    "expanding_prevalence": {
+      "distribution": {
+        "cancelled": 0.007139286071392861,
+        "completed": 0.9468853114688531,
+        "failed": 0.0112988701129887,
+        "interrupted": 0.03465653434656534,
+        "other": 1.999800019998e-05
+      },
+      "source": "all 25,000 historical observations"
+    },
+    "previous_block": {
+      "distribution": {
+        "cancelled": 0.008478802992518703,
+        "completed": 0.9291770573566085,
+        "failed": 0.0014962593516209476,
+        "interrupted": 0.06034912718204489,
+        "other": 0.0004987531172069825
+      },
+      "source": "historical block 25"
+    },
+    "recurrence_model_composition": {
+      "analog_distance": 0.10350863339892105,
+      "analog_following_block": 8,
+      "analog_state_block": 7,
+      "distribution": {
+        "cancelled": 0.0004987531172069825,
+        "completed": 0.9910224438902743,
+        "failed": 0.003491271820448878,
+        "interrupted": 0.004488778054862843,
+        "other": 0.0004987531172069825
+      },
+      "source": "status distribution following the frozen historical analog"
+    },
+    "recurrence_operational_relation": {
+      "analog_distance": 0.02098566407403046,
+      "analog_following_block": 19,
+      "analog_state_block": 18,
+      "distribution": {
+        "cancelled": 0.017456359102244388,
+        "completed": 0.9261845386533666,
+        "failed": 0.012468827930174564,
+        "interrupted": 0.04339152119700748,
+        "other": 0.0004987531172069825
+      },
+      "source": "status distribution following the frozen historical analog"
+    }
+  },
+  "method_version": "exp004.prospective.forecast.1",
+  "prepared_on_deployed_revision_colon_hex": "05:69:9c:ef:6d:f5:00:6b:71:8c:be:f8:bd:dc:c9:42:00:61:09:f1",
+  "primary_comparison": "previous_block versus expanding_prevalence",
+  "primary_score_difference": "previous_block minus expanding_prevalence; negative favors previous_block",
+  "secondary_comparisons": [
+    "recurrence_model_composition",
+    "recurrence_operational_relation"
+  ],
+  "smoothing_alpha": 0.5,
+  "source_high_water_id": 46095,
+  "source_last_observed_at_utc": "2026-10-30T18:17:57.986571+00:00",
+  "source_observations_sha256_colon_hex": "b4:49:e4:93:d2:0b:17:31:da:85:48:72:2e:23:fc:b4:f6:30:1d:b3:b9:20:b6:6d:2f:49:ea:d7:1e:ce:ea:6e",
+  "source_rows": 25000,
+  "status": "frozen before availability or outcome query above source high-water",
+  "statuses": [
+    "cancelled",
+    "completed",
+    "failed",
+    "interrupted",
+    "other"
+  ],
+  "target": {
+    "interim_outcome_inspection": "prohibited",
+    "rows": 1000,
+    "selection": "first database-ordered visible_runs rows above source_high_water_id"
+  }
+}

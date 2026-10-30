@@ -61,6 +61,39 @@ depends on who keeps talking to the system. This is recorded as a question for
 the project, not as a finding, and it does not license any change to the frozen
 predictions.
 
+### Amendment (same day): preregistration and blindness are not the same thing
+
+The deviation above was first written as if a broken blind also weakened the
+forecast. That conflates two properties that must be kept apart:
+
+- **Preregistration** — forecast, cutoff, evaluation procedure and scoring were
+  fixed and committed *before* any post-cutoff outcome was observed. This still
+  holds. The four distributions are unchanged, their hashes match, and the
+  evaluation rules were never edited. The prediction remains genuinely
+  prospective and can still be tested.
+- **Blindness** — the evaluator's ignorance of the reserved observations. This
+  is lost and cannot be restored.
+
+What was lost is the evaluator's ignorance, not the forecast's prospective
+status. A later claim that the forecast "held" is still meaningful; a claim that
+it held *under blind conditions* is not.
+
+Three further distinctions, recorded so they are not flattened later:
+
+1. An independent evaluator restores independence of *judgement*, not blindness
+   of *collection*. It does not need to restore the latter for the
+   preregistered test to stand. A locked, deterministic scorer with inspectable
+   output is a strong starting point.
+2. `running` is not a terminal outcome. The sixteen `completed` rows are known
+   outcomes; the last row was an observed intermediate state and must not be
+   treated as final except by the frozen evaluator's own rules.
+3. Sample composition is a separate problem from blindness. If the next 1,000
+   rows are produced mainly by one person's intensive use, the result can still
+   be a valid evaluation of *that period* without being representative of
+   Jarvis' operation in general.
+
+The forecasts and the evaluation procedure remain untouched by this amendment.
+
 ## 2026-10-30 — Scope correction: measurements must be live
 
 Bjørn clarified after the first two runs that both investigations' substantive

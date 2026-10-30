@@ -101,7 +101,7 @@ function CodeAssistantTranscript({ blocks, density, streaming, finalAnswerStarte
   return raekker
     ? <RaekkeTranskript blocks={paced} streaming={streaming} finalAnswerStarted={finalAnswerStarted}
         arbejdeEfterSvar={arbejdeEfterSvar}
-        beskedId={beskedId} config={config} rundeEtiketter={rundeEtiketter}
+        beskedId={beskedId} runId={runId} config={config} rundeEtiketter={rundeEtiketter}
         elapsedMs={elapsedMs} tokens={tokens} varighedSekunder={varighedSekunder}
         skjulAktivRunde={skjulAktivRunde} />
     : <BlocksRenderer blocks={paced} density={density} streaming={streaming}

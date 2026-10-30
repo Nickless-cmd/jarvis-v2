@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { deriveChatFlow } from '../../lib/chatFlowModel'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { StreamStatus } from '../../lib/streamReducer'
 import { useChatPacedBlocks } from '../../lib/useChatPacedBlocks'
+import { useFoldHukommelse } from '../../lib/foldHukommelse'
 import { useTurSekunder } from '../../lib/turTid'
 import { usePacingWorkLine } from '../../lib/usePacingWorkLine'
 import '../../styles/chat-flow.css'
@@ -317,7 +318,13 @@ export function ChatFlowPresentation({
   // mode gør nu præcis det samme. Glidningen bliver stående i CSS'en, så
   // foldet glider frem for at blinke — men det sker ved svarets start, ikke
   // når pacen er færdig.
-  const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
+  // Folden huskes på beskedens identitet, ikke på komponentinstansen. Målt
+  // 30/10-2026 (`foldRemount.maaling.test.tsx`): et remount nulstillede den —
+  // og overgangen live → persisteret ER et remount, fordi den levende række
+  // afmonteres når turen slutter. `runId` er den fælles nøgle: den levende
+  // række har `activeRunId`, og den persisterede besked bærer samme id i
+  // `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
+  const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
   // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026): er der
   // kommet arbejde efter svar-låsen, kører turen stadig og hovedet skal være
   // åbent. Samme formel som code mode (`RaekkeTranskript`: `arbejdeKoerer`).

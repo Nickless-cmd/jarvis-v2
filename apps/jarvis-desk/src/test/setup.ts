@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom/vitest'
+import { beforeEach } from 'vitest'
 import { configure } from '@testing-library/dom'
+import { rydFoldHukommelse } from '../lib/foldHukommelse'
 
 /**
  * Hvor længe `findBy*` og `waitFor` venter før de giver op.
@@ -52,3 +54,20 @@ class ResizeObserverStub {
   unobserve() {}
 }
 ;(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub
+
+/**
+ * Fold-hukommelsen er delt MODUL-state, ikke komponent-state.
+ *
+ * Den ligger uden for React med vilje (se `lib/foldHukommelse.ts`: et remount
+ * må ikke nulstille folden), og derfor overlever den også fra én test til den
+ * næste. Målt 30/10-2026: `ChatFlowPresentation.test.tsx` bruger `runId:
+ * 'run-1'` i sin fælles render-hjælper, så én tests udfoldning blev læst som
+ * `true` af alle de følgende — 11 tests faldt på `chat-flow-round-label`
+ * manglede, fordi gruppen stod udfoldet.
+ *
+ * Det er testmiljøets problem, ikke komponentens: i produktion er nøglen unik
+ * pr. besked. Derfor ryddes den her, ikke ved at svække komponenten.
+ */
+beforeEach(() => {
+  rydFoldHukommelse()
+})

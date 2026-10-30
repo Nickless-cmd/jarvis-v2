@@ -1307,6 +1307,7 @@ export function CodeView({
               streaming={false}
               varighedSekunder={varighedForBesked.get(m.id) ?? null}
               createdAt={m.created_at}
+              runId={m.run_id}
               beskedId={m.id}
               sessionId={sessionId}
               canUndo={isOwner}

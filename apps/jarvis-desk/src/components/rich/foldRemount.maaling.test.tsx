@@ -24,24 +24,38 @@
  * Testen er en måling: den fejler ikke på et forkert tal, den udskriver hvad
  * der faktisk sker, så vi kan beslutte os på data frem for på læsning.
  *
- * ⚠️ FORVENTNINGERNE DOKUMENTERER NUVÆRENDE ADFÆRD, ikke ønsket adfærd.
- * `expect(efterRemount).toBe('false')` siger «i dag nulstilles folden». Giver
- * vi fold-tilstanden en stabil identitet (som Codex' `${beskedId}:${indeks}`),
- * skal de vendes til `'true'` — det er meningen, ikke en regression.
+ * ⚠️ To halvdele, og forskellen er pointen:
  *
- * MÅLT 30/10-2026 (4/4 grønne, begge flader):
+ *   UDEN nøgle (første `describe`) dokumenterer den den GAMLE adfærd: uden en
+ *   identitet at hænge tilstanden på, nulstilles folden ved remount. Den bliver
+ *   stående som kontrast, ikke som en fejl der venter på at blive rettet.
+ *
+ *   MED nøgle (anden `describe`) er den VAGT: får komponenten den identitet den
+ *   har i produktion (`runId ?? beskedId`), SKAL folden overleve. Målt
+ *   30/10-2026 efter fixet: remount → `true` på begge flader.
+ *
+ * MÅLT 30/10-2026 FØR fixet (4/4 grønne, begge flader):
  *   rerender uden remount  → tilstanden overlever
  *   remount                → NULSTILLES (både chat og code)
+ * MÅLT EFTER fixet (9/9 grønne):
+ *   remount med nøgle      → OVERLEVER (både chat og code)
+ *   live → persisteret     → brugerens valg følger med (samme `run_id`)
+ *   en anden besked        → arver ikke folden
+ *   loftet                 → hukommelsen kaster de ældste, lækker ikke
+ *
  * Transcriptet virtualiseres IKKE, så historiske rækker bliver siddende mens
  * sessionen er åben. Remountet rammer derfor i praksis ved (a) overgangen
  * live → persisteret besked når turen slutter, og (b) genindlæsning/skift af
- * session. Inden for samme session overlever en manuel fold.
+ * session. Inden for samme session overlevede en manuel fold også før fixet.
  */
 import { act, render, cleanup, fireEvent } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { ChatFlowPresentation } from './ChatFlowPresentation'
 import { RaekkeTranskript } from './RaekkeTranskript'
+import {
+  MAKS_POSTER, foldHukommelseStoerrelse, laesFold, rydFoldHukommelse, skrivFold,
+} from '../../lib/foldHukommelse'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
 const kald = (navn: string, input: Record<string, unknown> = {}): ContentBlock => ({
@@ -208,5 +222,124 @@ describe('fold overlever ikke et remount — målt på begge flader', () => {
       `[MÅLING live→historisk] åben under arbejde → efter persistering=${efter}`,
     )
     expect(efter).toBe('false')
+  })
+})
+
+/**
+ * Den anden halvdel — og den der afgør om ændringen virker.
+ *
+ * Målingen ovenfor kalder UDEN nøgle, så den viser med vilje den gamle adfærd:
+ * uden en identitet at hænge tilstanden på, findes der intet at huske. Her får
+ * komponenterne den nøgle de har i produktion (`runId ?? beskedId`), og så skal
+ * folden overleve præcis det remount den faldt på før.
+ *
+ * Uden disse cases ville en grøn suite kun sige «intet gik i stykker» — ikke
+ * «det virker».
+ */
+describe('med en besked-identitet overlever folden et remount', () => {
+  it('chat mode: manuel udfoldning overlever remount når nøglen er sat', () => {
+    const a = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false}
+        runId="visible-abc123"
+      />,
+    )
+    expect(foldTilstand(a.container)).toBe('false')
+    klikFold(a.container)
+    expect(foldTilstand(a.container)).toBe('true')
+
+    // Samme remount som fik den til at springe tilbage før.
+    cleanup()
+    const b = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false}
+        runId="visible-abc123"
+      />,
+    )
+    const efter = foldTilstand(b.container)
+    console.log(`[MED NØGLE chat] remount=${efter} → ${efter === 'true' ? 'OVERLEVER' : 'NULSTILLES'}`)
+    expect(efter).toBe('true')
+  })
+
+  it('code mode: manuel udfoldning overlever remount når nøglen er sat', () => {
+    const a = render(
+      <RaekkeTranskript blocks={ARBEJDE} streaming={false} finalAnswerStarted={false} runId="visible-abc123" />,
+    )
+    expect(foldTilstand(a.container)).toBe('false')
+    klikFold(a.container)
+    expect(foldTilstand(a.container)).toBe('true')
+
+    cleanup()
+    const b = render(
+      <RaekkeTranskript blocks={ARBEJDE} streaming={false} finalAnswerStarted={false} runId="visible-abc123" />,
+    )
+    const efter = foldTilstand(b.container)
+    console.log(`[MED NØGLE code] remount=${efter} → ${efter === 'true' ? 'OVERLEVER' : 'NULSTILLES'}`)
+    expect(efter).toBe('true')
+  })
+
+  it('overgangen live → persisteret bevarer folden, fordi run_id er den fælles nøgle', () => {
+    // Den levende tur: samme run-id som rækken har i `activeRunId`.
+    const live = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming status="working" finalAnswerStarted={false}
+        runId="visible-abc123"
+      />,
+    )
+    expect(foldTilstand(live.container)).toBe('true')
+
+    // Brugeren folder SAMMEN undervejs for at se svaret.
+    klikFold(live.container)
+    expect(foldTilstand(live.container)).toBe('false')
+
+    // Streamen slutter. ChatView afmonterer den levende række og monterer den
+    // persisterede — som bærer SAMME id i `run_id` (`ChatMessage.run_id`).
+    cleanup()
+    const historisk = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false}
+        runId="visible-abc123" beskedId="a-visible-abc123"
+      />,
+    )
+    const efter = foldTilstand(historisk.container)
+    console.log(`[MED NØGLE live→historisk] sammenfoldet under arbejde → efter persistering=${efter}`)
+    // Brugerens valg følger med over i den persisterede besked.
+    expect(efter).toBe('false')
+  })
+
+  it('en ANDEN besked arver ikke folden', () => {
+    const a = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false}
+        runId="visible-abc123"
+      />,
+    )
+    klikFold(a.container)
+    expect(foldTilstand(a.container)).toBe('true')
+
+    cleanup()
+    const anden = render(
+      <ChatFlowPresentation
+        blocks={ARBEJDE} mode="calm" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false}
+        runId="visible-xyz789"
+      />,
+    )
+    // Nøglen er en anden, så tilstanden hører til en anden besked.
+    expect(foldTilstand(anden.container)).toBe('false')
+  })
+
+  it('hukommelsen holdes under loftet, så en lang session ikke lækker', () => {
+    rydFoldHukommelse()
+    for (let i = 0; i < MAKS_POSTER + 25; i++) skrivFold(`run-${i}`, true)
+    expect(foldHukommelseStoerrelse()).toBe(MAKS_POSTER)
+    // Den ældste er kastet ud, den nyeste er der stadig.
+    expect(laesFold('run-0')).toBeUndefined()
+    expect(laesFold(`run-${MAKS_POSTER + 24}`)).toBe(true)
   })
 })

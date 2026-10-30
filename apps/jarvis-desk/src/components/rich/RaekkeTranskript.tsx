@@ -35,6 +35,7 @@ import { erUnderagent } from '../../lib/agentKald'
 import { BlocksRenderer, afslutForladteKald, etiketterFraBlokke } from './BlocksRenderer'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { useFoldPosition } from './useFoldPosition'
+import { useFoldHukommelse } from '../../lib/foldHukommelse'
 import { BilledArbejdeAnimation, levendeBilledArbejde } from './ImageGeneration'
 import { JarvisRing } from '../shell/JarvisRing'
 import { RullendeTokens, RullendeUr } from '../feedback/RullendeTal'
@@ -394,7 +395,7 @@ function etiketFor(elementer: ArbejdsElement[], etiketter: Record<string, string
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, config, rundeEtiketter,
+  blocks, streaming, finalAnswerStarted = false, arbejdeEfterSvar = false, beskedId, runId, config, rundeEtiketter,
   elapsedMs = 0, tokens = 0, varighedSekunder = null,
   skjulAktivRunde = false,
 }: {
@@ -404,6 +405,9 @@ function RaekkeTranskriptImpl({
   /** Der er kommet arbejde efter svar-låsen — hovedet skal folde ud igen. */
   arbejdeEfterSvar?: boolean
   beskedId?: string
+  /** Run'et der skrev beskeden. Sammen med `beskedId` den nøgle folden huskes
+   *  på, så den overlever overgangen live → persisteret besked. */
+  runId?: string | null
   config?: ApiConfig
   rundeEtiketter?: Record<string, string>
   elapsedMs?: number
@@ -432,7 +436,12 @@ function RaekkeTranskriptImpl({
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
   // Fold først ved serverens bekræftede grænse, før det første svar-delta.
   // En mellemsyntese må aldrig få headeren til at hoppe ind og ud.
-  const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
+  // Folden huskes på beskedens identitet, ikke på komponentinstansen. Målt
+  // 30/10-2026 (`foldRemount.maaling.test.tsx`): et remount nulstillede den —
+  // og overgangen live → persisteret ER et remount. `runId` er den fælles
+  // nøgle: den levende række har `activeRunId`, den persisterede besked bærer
+  // samme id i `run_id`. Uden nøgle opfører den sig som før (rent lokal state).
+  const [aabenManuelt, setAabenManuelt] = useFoldHukommelse(runId ?? beskedId)
   // Låsen beskytter SVARET, ikke hovedets tilstand (Bjørn 29/10-2026). Er der
   // kommet arbejde efter låsen, kører turen stadig — og hovedet skal være
   // ÅBENT, så rundens tekst er synlig mens den skriver. Uden det andet led

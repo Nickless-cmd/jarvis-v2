@@ -1077,6 +1077,7 @@ export function ChatView({
             streaming={false}
             varighedSekunder={varighedForBesked.get(m.id) ?? null}
             createdAt={m.created_at}
+            runId={m.run_id}
             beskedId={m.id}
             sessionId={sessionId}
             canUndo={auth?.role === 'owner'}

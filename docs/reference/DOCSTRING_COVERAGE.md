@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9459/17782 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9460/17783 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9459/17782 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 858 | 1567 | 54% |
-| `core.services` | 6302 | 12084 | 52% |
+| `core.services` | 6303 | 12085 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1062,8 +1062,8 @@ Generated from source. 9459/17782 functions/methods documented (53%). The list b
 - `core/services/cluster_daemon_families.py` :: `memory_family` (L136)
 - `core/services/cluster_daemon_families.py` :: `projects_family` (L864)
 - `core/services/cluster_daemon_families.py` :: `relation_family` (L663)
-- `core/services/cluster_family_scheduler.py` :: `stop` (L226)
-- `core/services/cluster_family_scheduler.py` :: `stop_event` (L80)
+- `core/services/cluster_family_scheduler.py` :: `stop` (L267)
+- `core/services/cluster_family_scheduler.py` :: `stop_event` (L86)
 - `core/services/code_aesthetic_daemon.py` :: `build_code_aesthetic_surface` (L68)
 - `core/services/code_aesthetic_daemon.py` :: `get_latest_aesthetic_reflection` (L64)
 - `core/services/cognitive_episodes.py` :: `build_cognitive_episode_prompt_section` (L327)

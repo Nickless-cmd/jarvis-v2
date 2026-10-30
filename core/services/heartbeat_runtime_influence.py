@@ -724,7 +724,12 @@ def _build_influence_trace(
             _iv_cluster_result = _hb._daemon_tick_with_deadline(
                 "cluster_innervoice", tick_cluster_innervoice, deadline_seconds=25.0,
             )
-            _dm.record_daemon_tick("cluster_innervoice", _iv_cluster_result or {})
+            if _iv_cluster_result is not None:
+                # None = fristen ramte og tråden blev orphandet. Familien skriver
+                # sit eget spor selv (se cluster_family_scheduler), så vi må ikke
+                # overskrive det med en tom summary her. Samme rettelse som
+                # decision_review fik 18/9 (d6c9dd918).
+                _dm.record_daemon_tick("cluster_innervoice", _iv_cluster_result)
             # Surface the freshly-produced inner-voice outputs into the trace, as
             # the retired daemons' own tick blocks used to.
             try:

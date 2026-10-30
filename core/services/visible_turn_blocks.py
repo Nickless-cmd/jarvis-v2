@@ -128,17 +128,35 @@ def _mark_text_phases(blocks: list[dict]) -> list[dict]:
     sidste kald commentary, mens tekst efter sidste kald er slutsvaret. Den
     eksisterende rækkefølge-fallback for gamle beskeder kan dermed udfases
     gradvist uden en DB-migrering: fasen bor i ``content_json``.
+
+    30/10-2026: reglen var POSITIONS-baseret — en tekstblok blev kun
+    ``final_answer`` hvis den lå efter det sidste ``tool_use``. Målt 24 timer
+    efter ``b967bef32`` (slutblok-fixet på SSE-vejen, live fra 16:16:29Z):
+    9 af 169 completed ture (5,3 %, baseline 2,8 %) havde stadig ingen
+    slutblok, fordi værktøjskaldet kom EFTER svaret. Klientens
+    reload-fallback ekskluderer eksplicit ``commentary``
+    (``chatFlowModel.ts:186``), så svaret rendrede i arbejdsområdet — præcis
+    den fold Bjørn beskrev som «et tomrun».
+
+    Reglen er nu den samme som SSE-fixets: **turens SIDSTE tekstblok ER
+    svaret** — det er den brugeren læser. Er der slet ingen tekst, gøres
+    intet: en tur der kun kørte værktøjer skal ikke opfinde et svar.
+
+    Fasen sættes EFTER ``_med_interne_kald_foer_svaret`` har flyttet halen op
+    (se ``visible_turn_accumulator.build_blocks``), så blokkene står i den
+    rækkefølge klienten faktisk tegner. Uden det beskrev fasen en rækkefølge
+    der ikke findes længere.
     """
-    last_tool = max(
-        (index for index, block in enumerate(blocks) if block.get("type") == "tool_use"),
+    sidste_tekst = max(
+        (index for index, block in enumerate(blocks) if block.get("type") == "text"),
         default=-1,
     )
+    if sidste_tekst < 0:
+        return blocks
     for index, block in enumerate(blocks):
         if block.get("type") != "text":
             continue
-        block["phase"] = (
-            "final_answer" if last_tool < 0 or index > last_tool else "commentary"
-        )
+        block["phase"] = "final_answer" if index == sidste_tekst else "commentary"
     return blocks
 
 

@@ -18,6 +18,12 @@ from feltteori_research.experiment_002_live import (
     audit_live_candidate_scores,
     candidate_catalog,
 )
+from feltteori_research.experiment_003_change import (
+    Experiment003Config,
+    OperationalContextConfig,
+    analyze_experiment_003,
+    collect_operational_context,
+)
 from feltteori_research.live_visible_runs import (
     LiveExtractionConfig,
     extract_live_visible_runs,
@@ -44,6 +50,24 @@ def build_visible_runs_db(path: Path, rows: int = 240) -> None:
             user_id TEXT,
             workspace_name TEXT,
             profile_name TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE provider_model_epochs (
+            epoch_id TEXT, provider TEXT, requested_model TEXT,
+            observed_model TEXT, mismatch INTEGER, observation_count INTEGER,
+            first_seen_at TEXT, last_seen_at TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE central_incidents (
+            id INTEGER PRIMARY KEY, ts TEXT, cluster TEXT, kind TEXT,
+            severity TEXT, message TEXT, run_id TEXT, session_id TEXT,
+            resolved INTEGER
         )
         """
     )
@@ -76,6 +100,16 @@ def build_visible_runs_db(path: Path, rows: int = 240) -> None:
                 "visible-owner",
             ),
         )
+    connection.execute(
+        """INSERT INTO provider_model_epochs VALUES
+           ('private-epoch', 'alpha', 'm1', 'm1', 0, 12,
+            '2026-01-01T00:00:00+00:00', '2026-01-02T00:00:00+00:00')"""
+    )
+    connection.execute(
+        """INSERT INTO central_incidents VALUES
+           (1, '2026-01-02T00:00:00+00:00', 'runtime', 'test', 'low',
+            'private incident text', 'private-run', 'private-session', 1)"""
+    )
     connection.commit()
     connection.close()
 
@@ -169,3 +203,59 @@ def test_live_digest_tampering_is_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="digest"):
         load_verified_observations(output)
+
+
+def test_investigation_003_preserves_snapshot_and_writes_views(tmp_path: Path) -> None:
+    run = extract_fixture(tmp_path, 400)
+    output = tmp_path / "exp003"
+    result = analyze_experiment_003(
+        run,
+        output,
+        Path(__file__).resolve().parents[2],
+        Experiment003Config(
+            window_rows=80,
+            step_rows=40,
+            permutations=8,
+            sensitivity_window_rows=(40, 160),
+            discontinuity_block_rows=40,
+            transport_blocks=4,
+        ),
+    )
+    assert len(result["rolling_windows"]) == 9
+    assert len(result["transfers"]) == 3
+    assert result["observations_sha256_colon_hex"]
+    assert (output / "exp003_live_evolution.svg").exists()
+    assert (output / "exp003_live_rolling.csv").exists()
+    with pytest.raises(FileExistsError):
+        analyze_experiment_003(
+            run,
+            output,
+            Path(__file__).resolve().parents[2],
+            Experiment003Config(window_rows=80, step_rows=40, permutations=2),
+        )
+
+
+def test_investigation_003_context_is_host_gated_and_aggregate(tmp_path: Path) -> None:
+    run = extract_fixture(tmp_path, 80)
+    output = tmp_path / "context"
+    db_path = tmp_path / "jarvis.db"
+    with pytest.raises(RuntimeError, match="requires host"):
+        collect_operational_context(
+            run,
+            output,
+            Path(__file__).resolve().parents[2],
+            OperationalContextConfig(db_path=db_path, expected_host="not-this-host"),
+        )
+    context = collect_operational_context(
+        run,
+        output,
+        Path(__file__).resolve().parents[2],
+        OperationalContextConfig(db_path=db_path, expected_host=socket.gethostname()),
+    )
+    serialized = (output / "exp003_operational_context.json").read_text(
+        encoding="utf-8"
+    )
+    assert context["provider_model_epochs"]["coverage"]["rows"] == 1
+    assert context["central_incidents"]["coverage"]["rows"] == 1
+    assert "private incident text" not in serialized
+    assert "private-run" not in serialized

@@ -68,6 +68,27 @@ SAFETY_FLOOR: tuple[str, ...] = (
     "schedule_task", "list_initiatives",
     # Git
     "git_status", "git_log", "git_diff",
+    # ── Commit-vejen UDEN shell (30/10-2026) ────────────────────────────────
+    #
+    # `commit_attributed` tager beskeden som JSON-argument og skriver den til
+    # en temp-fil; `git` kaldes med argv, saa backticks, `$variabler` og
+    # citationstegn ikke kan fortolkes. Det er ikke en paamindelse — det er en
+    # anden handlingsvej.
+    #
+    # Maalt samme aften: beskeden ``fix(turn): `running` er ikke terminalt``
+    # mistede ordet `running` til bash-substitution, med reglen om praecis
+    # dette staaende i prompten den tur. Information var tilgaengelig; dens
+    # indflydelse paa handlingen udeblev. Reglen forsvandt ikke — den blev
+    # ikke omsat, fordi `bash` er den nemmeste vej naar værktøjet ikke er i
+    # arrayet.
+    #
+    # Derfor hoerer den her og ikke i routing: et værktøj der SKAL hentes med
+    # `load_more_tools` midt i en travl tur er et værktøj man ikke griber, og
+    # saa falder man tilbage paa den shell-vej hele aftenen handlede om at
+    # fjerne. Gulvet fylder dermed praecis loftet (56/56) — nul routing-plads
+    # tilbage til Tier 2. Det er bevidst: et værktøj der ikke kan kaldes er
+    # dyrere end en mistet routing-plads.
+    "commit_attributed",
 )
 
 

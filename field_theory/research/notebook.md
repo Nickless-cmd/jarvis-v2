@@ -4,6 +4,63 @@ This is a chronological record. Entries distinguish **observation** (what a
 method returned), **interpretation** (a proposed meaning), **limitation**, and
 **question**. Earlier entries are amended by dated notes, not silently rewritten.
 
+## 2026-10-30 — Method deviation: prospective blind was broken after freeze
+
+**Status:** deviation recorded, forecasts and evaluation left unchanged.
+
+### What happened
+
+Investigation 4 froze four forecast distributions at `source_high_water_id`
+46095 and documented an availability check limited to `COUNT(*)` and `MAX(id)`.
+That procedure was blind to every other field.
+
+Later the same evening, a progress measurement of the pending prospective test
+read far more than count and highest ID. The measurement was made on the live
+CT105 database and reported, for the rows above the frozen cutoff:
+
+- per-day distribution via `started_at`
+- **`status` distribution (`completed: 16, running: 1`)**
+- `user_id` and `profile_name`
+- model and lane
+
+### Severity, stated precisely
+
+The forecast artifacts are unchanged and their hashes still match. The
+evaluation procedure is unchanged. Nothing about what was predicted has moved.
+
+But the claim that the evaluator remained blind to terminal status is **false**.
+Sixteen of seventeen rows above the cutoff were read as `completed`. Terminal
+status is precisely what the frozen forecasts are meant to predict. Blindness
+over remaining future metadata (timing, model, lane, owner) is also broken.
+
+This is worse than a partial breach: the one field that matters most was read,
+and it was read by the party who will later judge whether the forecast held.
+
+### Correction, forward only
+
+- Future availability checks on this test are restricted to `COUNT(*)` and
+  `MAX(id)`. No other field may be selected until the evaluation is complete.
+- The breach cannot be undone retroactively. It can only be recorded.
+- The prospective evaluation must not be adjudicated by the same instance that
+  read the seventeen rows. An independent reading, or a mechanical evaluation
+  script whose output is inspected only after it has been produced, is required.
+  Otherwise the result is not a blind test, and calling it one would repeat the
+  error this project exists to catch.
+
+### What the deviation does not do
+
+It does not invalidate the forecast. It changes the epistemic status of any
+later claim that the forecast was confirmed under blind conditions.
+
+### Observation that prompted the measurement
+
+The rows above the cutoff were produced by one owner profile interacting with
+the system, not by background daemons. The observation process is therefore
+coupled to the activity being observed: the composition of the eventual sample
+depends on who keeps talking to the system. This is recorded as a question for
+the project, not as a finding, and it does not license any change to the frozen
+predictions.
+
 ## 2026-10-30 — Scope correction: measurements must be live
 
 Bjørn clarified after the first two runs that both investigations' substantive

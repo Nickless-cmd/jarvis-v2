@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9454/17778 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9459/17782 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9454/17778 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 858 | 1567 | 54% |
-| `core.services` | 6297 | 12080 | 52% |
+| `core.services` | 6302 | 12084 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9454/17778 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2597)
+## Undocumented public functions (2596)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -946,7 +946,6 @@ Generated from source. 9454/17778 functions/methods documented (53%). The list b
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
 - `core/services/central_ghost.py` :: `get_profile` (L89)
-- `core/services/central_hypothesis_generator.py` :: `list_active_hypotheses` (L533)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L303)
 - `core/services/central_injection_registry.py` :: `register` (L50)
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)

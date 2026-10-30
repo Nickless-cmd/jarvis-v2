@@ -17,8 +17,10 @@ Alt read-only, self-safe, kaster ALDRIG.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
+
+from core.services import central_hypothesis_governance as gov
 
 _WINDOW = 3000            # events der scannes
 _FOLLOW_S = 60            # Y skal følge X inden for dette vindue for at "tælle"
@@ -114,9 +116,19 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         from core.runtime.db import connect
         with connect() as c:
             rows = c.execute(
-                "SELECT hyp_id, provenance_json FROM central_hypotheses "
-                "WHERE status='active'").fetchall()
-        active = [(str(r["hyp_id"]), json.loads(r["provenance_json"] or "{}")) for r in rows]
+                "SELECT hyp_id, provenance_json, created_at, ttl_seconds "
+                "FROM central_hypotheses WHERE status='active'").fetchall()
+        # 30/10-2026: TTL-filteret manglede. Målt i den levende base: 478 af 872 aktive
+        # havde passeret deres frist, og sampler'en brugte kræfter på dem hvert 30. minut.
+        # Filtreringen sker i Python via SAMME `is_expired` som dødsdommen i evaluate()
+        # bruger — `created_at` er ISO med tidszone-offset, som SQLites strftime ikke
+        # læser ensartet, så et SQL-filter ville kunne svigte tavst.
+        _now = datetime.now(timezone.utc)
+        active = [
+            (str(r["hyp_id"]), json.loads(r["provenance_json"] or "{}"))
+            for r in rows
+            if not gov.is_expired(r["created_at"], r["ttl_seconds"], now=_now)
+        ]
     except Exception:
         active = []
     for hyp_id, prov in active:

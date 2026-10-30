@@ -64,6 +64,9 @@ function frame(ms = 16): number {
 const LANG = 'Jeg har målt det og rettet det, og her er hvad tallene faktisk viser om forløbet. '.repeat(25).slice(0, 2000)
 
 const svar: ContentBlock = { type: 'text', text: LANG, phase: 'final_answer' }
+/** Et værktøjskald, så hovedet er FOLDBART — ellers er `.rv-tur` en statisk
+ *  `<div>` uden `aria-expanded`, og fold-tilstanden kan ikke måles. */
+const arbejde: ContentBlock = { type: 'tool_use', id: 't1', name: 'read_file', input: {}, status: 'done' }
 
 function hovedStaar(container: HTMLElement): boolean {
   return container.querySelector('.rv-tur') !== null
@@ -118,23 +121,39 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     expect(hovedStaar(view.container)).toBe(true)
   })
 
-  it('B: status done + pace-gate — hovedet er væk fra første frame', () => {
+  it('B: status done + pace — hovedet BLIVER STÅENDE mens svaret rulles ud', () => {
+    // Samme props som `ChatView` sender (linje 1104): `turStart`/`turSlut`
+    // følger turen, og `paceFinalAnswer` holder pacen i live efter
+    // `message_stop`. Uden uret ville testen måle en tilstand appen ikke har.
     const view = render(
-      <ChatFlowPresentation blocks={[svar]} mode="living" density="compact"
+      <ChatFlowPresentation blocks={[arbejde, svar]} mode="living" density="compact"
         streaming={false} status="done" finalAnswerStarted runId="maaling-b"
-        paceFinalAnswer />,
+        turStart={Date.now() - 12_000} turSlut={Date.now()} paceFinalAnswer />,
     )
     frame()
 
-    // Her virker gaten: `pacerSvar` er sand, så hovedet er allerede væk mens
-    // pacen ruller. Det er den adfærd vinduet A MANGLER.
-    expect(hovedStaar(view.container)).toBe(false)
+    // MÅLT 30/10-2026, EFTER rettelsen: hovedet står fra første frame gennem
+    // hele pace-vinduet. FØR rettelsen var det væk (`pacerSvar`-gaten), og
+    // Bjørn beskrev det som «nu forsvinder turhoved og skill linjen indtil
+    // svaret er færdig».
+    //
+    // Det er den anden halvdel af kontrakten: hovedet står, MEN foldet er
+    // lukket, så pacen ruller uden for det. Målt på `data-aaben`, ikke på om
+    // elementet findes.
+    expect(hovedStaar(view.container)).toBe(true)
+    // Foldet skal være LUKKET (`aria-expanded` er den attribut `TurHoved`
+    // faktisk sætter — `.rv-tur` har ingen `data-aaben`, så en assertion på
+    // den ville være tom og altid sand).
+    expect(view.container.querySelector('.rv-tur')?.getAttribute('aria-expanded')).toBe('false')
     expect(vistTekst(view.container).length).toBeLessThan(LANG.length)
 
     rulTilPaceErFaerdig(view.container)
     // Længde, ikke eksakt streng: markdown-renderen kan kollapse whitespace,
     // så et `toContain` på hele teksten måler rendereren og ikke pacen.
     expect(vistTekst(view.container).length).toBeGreaterThan(LANG.length - 40)
+    // Også efter pacen står hovedet — det er turens skillestreg, ikke en
+    // statuslinje der forsvinder når arbejdet er gjort.
+    expect(hovedStaar(view.container)).toBe(true)
   })
 
   it('C: efterslæbet i sekunder for 2000 tegn', () => {

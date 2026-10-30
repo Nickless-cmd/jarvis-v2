@@ -275,17 +275,28 @@ describe('ChatFlowPresentation — aktiv rundelinje under pacing', () => {
   })
 })
 
-describe('ChatFlowPresentation — hovedet under pacen (Bjørn 29/10-2026)', () => {
-  // Bjørn: «pacen kører først inde i hoved efter foldet, og så går der indtil
-  // pacen er færdig inde i hoved, til den pacer for nyt uden for hoved».
+describe('ChatFlowPresentation — hovedet under pacen (30/10-2026)', () => {
+  // Bjørn 29/10-2026: «pacen kører først inde i hoved efter foldet, og så går
+  // der indtil pacen er færdig inde i hoved, til den pacer for nyt uden for
+  // hoved». Jeg læste det som «hovedet skal væk» og satte en gate foran hele
+  // `visTurhoved`. Det var den forkerte læsning.
   //
-  // Målt: `visTurhoved = harArbejde || streaming || sekunder !== null`, og
-  // `sekunder` er sat for enhver tur der har kørt. Så hovedet blev stående
-  // gennem HELE pace-vinduet — og pacen rullede inde i det.
+  // Bjørn 30/10-2026: «nu forsvinder turhoved og skill linjen indtil svaret er
+  // færdig». Gaten fjernede ikke et problem — den fjernede turens eneste
+  // vandrette streg midt i turen, så turen så ud som to.
   //
-  // Kontrakten: når svaret er begyndt (fold-signalet er sat), er hovedet
-  // foldet. Pacen skriver svaret uden for det, ikke inde i det.
-  it('har foldet hovedet mens pacen ruller svaret ud', () => {
+  // Den ægte kerne i 29/10-klagen var PLACERINGEN: teksten rullede inde i
+  // arbejdsvisningen under hovedet. Den vej er lukket (`restoredText` henter
+  // de bekræftede tekster fra de PACEDE arbejdsblokke og lægger dem i
+  // svar-lanen; `retainedWork` filtrerer dem ud af arbejdet). Så nu er begge
+  // krav opfyldt på én gang: hovedet står, og teksten ruller uden for det.
+  //
+  // Kontrakten er derfor:
+  //   1. `.rv-tur` STÅR gennem pace-vinduet.
+  //   2. Foldet er LUKKET (`aria-expanded="false"`).
+  //   3. Teksten ruller i `.chat-flow-answer`.
+  //   4. Teksten står IKKE i arbejdsvisningen.
+  it('beholder hovedet, men lukker foldet — teksten ruller uden for det', () => {
     const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
     const view = render(
       <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
@@ -295,24 +306,27 @@ describe('ChatFlowPresentation — hovedet under pacen (Bjørn 29/10-2026)', () 
     frame()
     frame()
 
-    // Pacen ruller stadig — teksten er ikke færdig.
+    // 1. Pacen ruller stadig — teksten er ikke færdig.
     expect(answerText(view.container).length).toBeLessThan(LANG.length)
 
-    // Og hovedet er væk — ikke bare foldet (29/10-2026: det stod over pacen).
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
-  })
-})
+    // 2. Hovedet STÅR. Det er turens skillestreg, ikke en statuslinje.
+    const hoved = view.container.querySelector('.rv-tur')
+    expect(hoved).not.toBeNull()
 
-describe('ChatFlowPresentation — hovedet naar KUN paceFinalAnswer baerer pacen', () => {
-  // Vejen hvor serveren ikke har sendt `final_answer_start` (eller hvor
-  // klienten har mistet signalet): `pacingFinal` bliver sand via
-  // `paceFinalAnswer && status === 'done'`, men `finalAnswerStarted` er FALSK.
-  // Så er `aaben = aabenManuelt ?? (streaming && !finalAnswerStarted)` = false
-  // ... men `visTurhoved` er stadig sand via `sekunder !== null`, og
-  // `aktiv = streaming && !finalAnswerStarted` = false.
-  //
-  // Spørgsmålet: står hovedet ÅBENT mens pacen ruller her?
-  it('folder hovedet ogsaa naar finalAnswerStarted er falsk', () => {
+    // 3. Foldet er lukket, så pacen ikke ruller inde i hovedet.
+    expect(hoved).toHaveAttribute('aria-expanded', 'false')
+
+    // 4. Arbejdsvisningen er ikke monteret — svaret har ingen vej ind i den.
+    expect(view.container.querySelector('.chat-flow-work-details')).toBeNull()
+    // Og teksten står i svar-lanen, som er en SØSKEN til hovedet.
+    expect(answerText(view.container).length).toBeGreaterThan(0)
+  })
+
+  it('står ogsaa naar KUN paceFinalAnswer baerer pacen (intet fold-signal)', () => {
+    // Vejen hvor serveren ikke har sendt `final_answer_start`: `pacingFinal`
+    // bliver sand via `paceFinalAnswer && status === 'done'`, men
+    // `finalAnswerStarted` er FALSK. Hovedet skal stadig stå — det er samme
+    // tur for øjet, uanset hvilket signal der satte pacen i gang.
     const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
     const view = render(
       <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
@@ -322,34 +336,23 @@ describe('ChatFlowPresentation — hovedet naar KUN paceFinalAnswer baerer pacen
     frame()
     frame()
     expect(answerText(view.container).length).toBeLessThan(LANG.length)
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
+    // Uden fold-signal er `arbejdeKoerer` falsk, så hovedet er ikke åbent.
+    expect(view.container.querySelector('.rv-tur')).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('hovedet bliver ogsaa staaende efter pacen er færdig', () => {
+    // Det modsatte yderpunkt: hvis hovedet forsvandt da pacen sluttede, ville
+    // turen skifte form midt for øjet på brugeren. Det må ikke ske.
+    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: 'Kort svar.' }]
+    const view = render(
+      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted runId="run-efter"
+        paceFinalAnswer turStart={Date.now() - 5000} />,
+    )
+    for (let i = 0; i < 60; i += 1) frame()
+    expect(answerText(view.container)).toBe('Kort svar.')
+    expect(view.container.querySelector('.rv-tur')).not.toBeNull()
   })
 })
 
-describe('ChatFlowPresentation — hovedet maa ikke staa over pacen (Bjørn 29/10-2026)', () => {
-  // Bjørn: «pacen kører først inde i hoved efter foldet, og så går der indtil
-  // pacen er færdig inde i hoved, til den pacer for nyt uden for hoved».
-  //
-  // MÅLT med den rigtige pacer: `data-aaben=false` (foldet er lukket), men
-  // `.rv-tur` stod stadig i DOM'en gennem HELE pace-vinduet — fordi
-  // `visTurhoved = harArbejde || streaming || sekunder !== null`, og `sekunder`
-  // er sat for enhver tur der har kørt. Så pacen rullede under et hoved der
-  // ikke var væk, og først da den var færdig, stod svaret alene.
-  //
-  // Kontrakten: ruller pacen, hører hovedet til det FÆRDIGE svar — det skal
-  // ikke stå over en tekst der stadig skriver sig.
-  it('fjerner turhovedet mens pacen ruller', () => {
-    const blokke: ContentBlock[] = [arbejde, { type: 'text', text: LANG }]
-    const view = render(
-      <ChatFlowPresentation blocks={blokke} mode="living" density="compact"
-        streaming={false} status="done" finalAnswerStarted runId="run-hoved2"
-        paceFinalAnswer turStart={Date.now() - 5000} />,
-    )
-    frame()
-    frame()
-    // Pacen ruller stadig.
-    expect(answerText(view.container).length).toBeLessThan(LANG.length)
-    // Og hovedet er væk — ikke bare foldet.
-    expect(view.container.querySelector('.rv-tur')).toBeNull()
-  })
-})

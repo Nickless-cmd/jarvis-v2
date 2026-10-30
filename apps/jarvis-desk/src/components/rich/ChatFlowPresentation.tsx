@@ -269,17 +269,27 @@ export function ChatFlowPresentation({
   // skal være der osse uden tool kald».) Derfor bæres det af tre ting: der er
   // arbejde at folde, turen kører, eller vi kender dens varighed.
   const harArbejde = model.hasObservableWork
-  // 29/10-2026 (Bjørn): «pacen kører først inde i hoved efter foldet … til den
-  // pacer for nyt uden for hoved». MÅLT med den rigtige pacer: foldet var
-  // lukket (`data-aaben=false`), men `.rv-tur` stod i DOM'en gennem HELE
-  // pace-vinduet, fordi `sekunder` er sat for enhver tur der har kørt. Så
-  // rullede svaret under et hoved der ikke var væk — og stod først alene da
-  // pacen var færdig.
+  // Hovedet bliver stående gennem HELE turen — også mens slutsvaret rulles ud
+  // efter `message_stop`.
   //
-  // Hovedet hører til det FÆRDIGE svar. Ruller pacen, er svaret ikke færdigt,
-  // og hovedet skal ikke stå over en tekst der stadig skriver sig.
-  const pacerSvar = paceFinalAnswer && status === 'done'
-  const visTurhoved = !pacerSvar && (harArbejde || streaming || sekunder !== null)
+  // 29/10-2026 fjernede jeg det i pace-vinduet (`pacerSvar`), fordi Bjørn
+  // beskrev at «pacen kører først inde i hoved». Det var den forkerte læsning
+  // af symptomet: teksten lå dengang i ARBEJDSVISNINGEN under hovedet, fordi
+  // de bekræftede tekster blev hentet fra de RÅ blokke. Den vej er lukket
+  // siden — `restoredText` henter dem fra de PACEDE arbejdsblokke og lægger
+  // dem i svar-lanen, og `retainedWork` filtrerer præcis de samme blokke ud af
+  // arbejdet. Så pacen ruller allerede UDEN FOR hovedet.
+  //
+  // Målt 30/10-2026 (Bjørn: «nu forsvinder turhoved og skill linjen indtil
+  // svaret er færdig»): gaten fjernede ikke et problem, den fjernede turens
+  // skillestreg midt i turen. `.rv-tur` var væk fra DOM'en gennem hele
+  // pace-vinduet og dukkede først op da svaret var færdigt. Hovedet er turens
+  // vandrette streg — det er dét der fortæller at turen er én tur — så det må
+  // ikke forsvinde mens turen stadig løber.
+  //
+  // Foldet er lukket under pacen (`arbejdeKoerer` er falsk når `streaming` er
+  // falsk), så hovedet står som en stille streg over et svar der skriver sig.
+  const visTurhoved = harArbejde || streaming || sekunder !== null
   // Rundelinjen må aldrig vise et internt tool-navn. Modellen filtrerer de
   // rå working_step-værdier; indtil den menneskelige etiket er klar, står en
   // rolig fallback i samme stabile celle UNDER syntesen — ikke i turhovedet.

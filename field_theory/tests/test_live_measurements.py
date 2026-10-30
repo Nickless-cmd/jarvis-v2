@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import socket
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,7 @@ from feltteori_research.experiment_001_live import (
 from feltteori_research.experiment_002_live import (
     LiveExperiment002Config,
     analyze_live_experiment_002,
+    audit_live_candidate_scores,
     candidate_catalog,
 )
 from feltteori_research.live_visible_runs import (
@@ -150,6 +152,13 @@ def test_live_experiment_002_freezes_candidates_on_later_rows(tmp_path: Path) ->
     assert (output / "exp002_live_opaque_summary.md").exists()
     assert (output / "exp002_live_revealed_summary.md").exists()
     assert (output / "exp002_live_selected.svg").exists()
+    audit_live_candidate_scores(output, Path(__file__).resolve().parents[2])
+    with (output / "exp002_live_candidate_scores.csv").open(
+        newline="", encoding="utf-8"
+    ) as handle:
+        audited = list(csv.DictReader(handle))
+    assert len(audited) == 4 * 31
+    assert sum(int(row["selected_in_primary"]) for row in audited) == 4
 
 
 def test_live_digest_tampering_is_rejected(tmp_path: Path) -> None:

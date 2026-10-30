@@ -8,6 +8,7 @@ import itertools
 import json
 import math
 import random
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -361,3 +362,66 @@ def _write_svg(path: Path, results: dict) -> None:
     svg.append("</svg>")
     with path.open("x", encoding="utf-8") as handle:
         handle.write("\n".join(svg) + "\n")
+
+
+def audit_live_candidate_scores(run_directory: Path, repo_root: Path) -> None:
+    """Preserve every candidate score after the primary analysis has completed."""
+    output = run_directory / "exp002_live_candidate_scores.csv"
+    audit_manifest = run_directory / "exp002_live_candidate_audit.json"
+    if output.exists() or audit_manifest.exists():
+        raise FileExistsError("live candidate audit already exists")
+    manifest, rows = load_verified_observations(run_directory)
+    primary = json.loads(
+        (run_directory / "exp002_live_results.json").read_text(encoding="utf-8")
+    )
+    config = primary["parameters"]
+    candidates = candidate_catalog(int(config["maximum_lag"]))
+    digest = manifest["observations"]["sha256_colon_hex"]
+    audit_rows: list[dict[str, object]] = []
+    for block_index, block in enumerate(_partition(rows, int(config["source_blocks"]))):
+        source_id = _source_id(digest, block_index)
+        midpoint = len(block) // 2
+        discovery, confirmation = block[:midpoint], block[midpoint:]
+        discovery_outcomes = [row["status"] for row in discovery]
+        confirmation_outcomes = [row["status"] for row in confirmation]
+        selected_name = primary["sources"][source_id]["selected_candidate"]["name"]
+        for candidate in candidates:
+            audit_rows.append(
+                {
+                    "source_id": source_id,
+                    "chronological_block": block_index + 1,
+                    "candidate": candidate.name,
+                    "family": candidate.family,
+                    "variables": ",".join(candidate.variables),
+                    "lag": candidate.lag or "",
+                    "selected_in_primary": int(candidate.name == selected_name),
+                    "discovery_mi_bits": _score(
+                        discovery, candidate, discovery_outcomes
+                    ),
+                    "confirmation_mi_bits": _score(
+                        confirmation, candidate, confirmation_outcomes
+                    ),
+                }
+            )
+    with output.open("x", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(audit_rows[0]))
+        writer.writeheader()
+        writer.writerows(audit_rows)
+    revision = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _write_json(
+        audit_manifest,
+        {
+            "method_version": "exp002.live.candidate-audit.1",
+            "status": "post-hoc after primary candidate selection and confirmation inspection",
+            "primary_method_version": primary["method_version"],
+            "observations_sha256_colon_hex": digest,
+            "candidate_rows": len(audit_rows),
+            "deployed_git_revision": revision,
+            "output": output.name,
+        },
+    )

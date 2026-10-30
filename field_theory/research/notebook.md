@@ -381,3 +381,109 @@ record deployment/routing revision at observation time, retain exact-date
 context, and distinguish failure from interruption. A null preserving weekly
 traffic and date-local clusters should be designed for that specific question,
 not retrofitted as confirmation on these rows.
+
+## 2026-10-30 — Investigation 4: relational continuity and expectation
+
+### Prompt and selected distinction
+
+Investigation 4 asked what distinguishes a relationship that appears in
+recorded information from one that remains useful across change. The selected
+distinction was structural similarity versus transition continuity: does a
+past state that resembles the present have a similar successor, and is that
+more useful than the chronologically nearest state?
+
+The historical snapshot was already inspected. The retrospective protocol
+therefore remained exploratory and reserved a separate prospective boundary
+for rows above high-water ID 46095.
+
+### Retrospective method
+
+Revision `32092ec71` was deployed before analysis. Twenty-five non-overlapping
+1,000-row blocks were represented independently as:
+
+- status proportions plus adjacent-status transitions;
+- operational relational features without explicit calendar fields;
+- the same relation with weekday contributions;
+- labeled model composition.
+
+No combined continuity score was created. Historical recurrence predictors
+could use only an analog state and its successor that both occurred before the
+current state. Log loss and Brier score were recorded separately.
+
+### Structural recurrence observation
+
+The closest non-adjacent state was closer than the closest chronological
+neighbor for 13/25 state/transition blocks, 12/25 operational blocks, 12/25
+calendar blocks, and 10/25 model-composition blocks. Distant relational
+recurrence therefore exists under these instruments.
+
+The result was perspective-sensitive. At 500 rows, non-adjacent model
+composition was closer in 50% of states; at 2,000 rows only 8%. State/transition
+recurrence remained common at 60–67%. A state boundary is part of the
+measurement, not an observer-neutral fact.
+
+Blocks 1 and 9 had zero operational and calendar distance because both had only
+`completed` outcomes. This was recorded as representational degeneracy rather
+than evidence that their generating systems were identical.
+
+Calendar and operational signatures chose exactly the same analog for all 22
+historical targets. Calendar information altered distances but did not add a
+new recurrence organization at this resolution.
+
+### Expectation observation
+
+The preceding-block predictor had the best mean historical scores: 0.390812
+bits log loss and 0.114384 Brier. Expanding prevalence scored 0.435067 bits.
+Recurrence predictors ranged from 0.442935 to 0.482410 bits.
+
+Recurrence sometimes helped, but made rare large errors. Before target block
+13, operational recurrence treated block 8 as analogous to block 12 and used
+block 9's all-completed successor. The July onset then produced 1.680037-bit
+loss versus 0.994010 for the preceding block. Similar current states did not
+have continuous transformations.
+
+After the July episode, the reverse occurred. For target block 15, expanding
+prevalence scored 0.206496 and state/transition recurrence 0.214097 versus
+0.347854 for the preceding block. Chronological proximity carried the episode
+forward after its termination.
+
+The finding revised continuity into at least four empirical meanings: state
+similarity, transition recurrence, chronological persistence, and predictive
+usefulness. None implied the others.
+
+### Prospective freeze
+
+Revision `05699cef6` added a separate prospective protocol and evaluator. The
+primary comparison was frozen as the previous 1,000-row distribution versus
+the expanding 25,000-row prevalence. Model-composition and operational
+recurrence were retained as secondary expectations. Additive 0.5 smoothing,
+an explicit `other` outcome, the first 1,000 rows above ID 46095, log loss, and
+Brier score were fixed.
+
+The forecast was generated on deployed CT105 using only historical rows, then
+committed as `fd2329ce7` and deployed before the availability query. The frozen
+previous-block expectation assigns 0.929177 to completion and 0.060349 to
+interruption. The expanding expectation assigns 0.946885 and 0.034657.
+
+### Genuine uncertainty preserved
+
+Only after forecast deployment did the evaluator query the live database. It
+found three rows above ID 46095 and current maximum ID 46103. The 1,000-row
+target was unavailable. The status record states `outcomes_read: false`; only
+`COUNT(*)` and `MAX(id)` were queried.
+
+No three-row interim result was inspected. The independent predictive question
+remains open. Experience has formed explicit expectations, but predictive
+success has not yet been observed.
+
+### New questions
+
+- Which context distinguishes states that look similar but have different
+  successors?
+- Can changes leading into a state be more informative than the state itself?
+- When does recent experience adapt, and when does it merely lag an abrupt
+  reversal?
+- Would duration or traffic intensity add information that event order lacks?
+- Does recurrence become useful in an independently understood non-Jarvis
+  process?
+- What will the frozen forecasts do on the first complete untouched target?

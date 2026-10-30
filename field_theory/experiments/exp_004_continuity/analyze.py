@@ -29,11 +29,14 @@ def main() -> int:
         REPO_ROOT,
         Experiment004Config(block_rows=args.block_rows),
     )
+    target_count = len(
+        {row["target_block"] for row in result["historical_expectations"]}
+    )
     print(
         "Investigation 4:",
         len(result["blocks"]),
         "states and",
-        len(result["historical_expectations"]),
+        target_count,
         "historical targets; output",
         args.output,
     )

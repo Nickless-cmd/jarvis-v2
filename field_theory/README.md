@@ -27,6 +27,9 @@ not established facts and not a destination built into the software.
 - [`research/investigation-003-findings.md`](research/investigation-003-findings.md)
   examines how the live model×weekday relationship changes across the preserved
   history, measurement perspectives, and adjacent-period transport.
+- [`research/investigation-004-findings.md`](research/investigation-004-findings.md)
+  separates state recurrence, transition continuity, chronology, and frozen
+  prospective expectation.
 - [`experiments/exp_001_perspective/PROTOCOL.md`](experiments/exp_001_perspective/PROTOCOL.md)
   documents the first method before its results.
 - [`experiments/exp_002_discovery/PROTOCOL.md`](experiments/exp_002_discovery/PROTOCOL.md)
@@ -123,3 +126,19 @@ python field_theory/experiments/exp_003_change/analyze.py \
 The preserved deployed result is
 `artifacts/exp_003_live/ct105_20261030_07906ebdd/`. Its post-hoc cell and
 day×model audits are explicitly marked as following primary-result inspection.
+
+Investigation 4's retrospective runner and prospective boundary are separate:
+
+```bash
+python field_theory/experiments/exp_004_continuity/analyze.py \
+  --run field_theory/artifacts/live_visible_runs/ct105_20261030_96c1f6a49 \
+  --output /tmp/<exp004-run>
+python field_theory/experiments/exp_004_continuity/prepare_forecast.py \
+  --run field_theory/artifacts/live_visible_runs/ct105_20261030_96c1f6a49 \
+  --analysis /tmp/<exp004-run> \
+  --output /tmp/<forecast.json>
+```
+
+The forecast must be committed and deployed before
+`evaluate_prospective.py` queries availability above the frozen high-water ID.
+The preserved run is `artifacts/exp_004_live/ct105_20261030_32092ec71/`.

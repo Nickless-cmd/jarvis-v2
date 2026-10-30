@@ -1,0 +1,9 @@
+block_rows,blocks,representation,nonadjacent_closer_count,nonadjacent_closer_fraction,mean_nonadjacent_gap_blocks
+500,50,state_transition,30,0.6,9.26
+500,50,operational_relation,26,0.52,7.7
+500,50,calendar_relation,26,0.52,7.68
+500,50,model_composition,25,0.5,4.3
+2000,12,state_transition,8,0.6666666666666666,3.4166666666666665
+2000,12,operational_relation,6,0.5,2.9166666666666665
+2000,12,calendar_relation,6,0.5,2.9166666666666665
+2000,12,model_composition,1,0.08333333333333333,3.6666666666666665

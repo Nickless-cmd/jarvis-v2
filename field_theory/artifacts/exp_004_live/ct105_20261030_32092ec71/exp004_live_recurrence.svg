@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="650" viewBox="0 0 1160 650">
+<rect width="100%" height="100%" fill="#fbfaf6"/>
+<style>text{font-family:system-ui,sans-serif;fill:#20242b}.title{font-size:21px;font-weight:700}.label{font-size:13px}.small{font-size:11px}</style>
+<text x="28" y="32" class="title">Investigation 4 — adjacency and relational recurrence</text>
+<text x="28" y="53" class="small">1,000-row database-ordered states; retrospective exploratory views</text>
+<rect x="90" y="84" width="1020" height="205" fill="none" stroke="#bbb7ae"/>
+<polyline points="90.0,289.0 132.5,289.0 175.0,289.0 217.5,289.0 260.0,241.9 302.5,244.4 345.0,276.8 387.5,272.3 430.0,289.0 472.5,274.9 515.0,202.9 557.5,236.5 600.0,95.4 642.5,123.6 685.0,238.1 727.5,207.1 770.0,262.1 812.5,214.2 855.0,171.7 897.5,100.6 940.0,84.0 982.5,131.9 1025.0,145.6 1067.5,202.6 1110.0,188.2" fill="none" stroke="#0f766e" stroke-width="2.5"/>
+<polyline points="90.0,289.0 132.5,289.0 175.0,289.0 217.5,289.0 260.0,271.7 302.5,270.1 345.0,275.4 387.5,274.0 430.0,289.0 472.5,263.7 515.0,193.1 557.5,234.5 600.0,126.5 642.5,84.0 685.0,217.2 727.5,183.1 770.0,256.8 812.5,255.2 855.0,186.4 897.5,215.6 940.0,209.4 982.5,213.2 1025.0,220.6 1067.5,233.6 1110.0,259.1" fill="none" stroke="#6d28d9" stroke-width="2.5"/>
+<text x="90" y="74" class="label">Status entropy (teal) and model×weekday MI (purple), independently scaled</text>
+<rect x="90" y="390" width="1020" height="205" fill="none" stroke="#bbb7ae"/>
+<polyline points="90.0,595.0 132.5,595.0 175.0,595.0 217.5,595.0 260.0,590.8 302.5,590.8 345.0,444.4 387.5,444.4 430.0,390.0 472.5,391.2 515.0,540.7 557.5,540.7 600.0,462.4 642.5,412.8 685.0,422.4 727.5,531.9 770.0,545.3 812.5,545.3 855.0,506.6 897.5,577.2 940.0,577.2 982.5,567.2 1025.0,567.2 1067.5,563.7 1110.0,563.7" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<polyline points="90.0,595.0 132.5,595.0 175.0,595.0 217.5,595.0 260.0,544.4 302.5,542.9 345.0,581.2 387.5,535.2 430.0,595.0 472.5,581.2 515.0,531.7 557.5,549.5 600.0,500.5 642.5,458.6 685.0,535.2 727.5,573.8 770.0,543.8 812.5,573.8 855.0,523.1 897.5,544.7 940.0,516.8 982.5,544.7 1025.0,557.1 1067.5,560.7 1110.0,563.7" fill="none" stroke="#d97706" stroke-width="2.5"/>
+<text x="90" y="380" class="label">Operational-relation distance: closest adjacent (blue), closest non-adjacent (orange)</text>
+<text x="90.0" y="630" class="small" text-anchor="middle">2026-03-22</text>
+<text x="600.0" y="630" class="small" text-anchor="middle">2026-07-05</text>
+<text x="1110.0" y="630" class="small" text-anchor="middle">2026-10-24</text>
+</svg>

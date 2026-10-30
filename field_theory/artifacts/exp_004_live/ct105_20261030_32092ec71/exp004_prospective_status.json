@@ -1,0 +1,18 @@
+{
+  "available_rows": 3,
+  "current_high_water_id": 46103,
+  "deployed_check_revision_colon_hex": "fd:23:29:ce:77:e6:6c:52:15:37:3a:dd:29:7e:06:2c:fc:0a:c7:f1",
+  "forecast_method_version": "exp004.prospective.forecast.1",
+  "forecast_sha256_colon_hex": "93:c0:1c:a0:bf:d7:c7:32:1a:1a:a8:51:f9:f1:ba:dd:a9:e4:25:54:e6:9f:b5:0b:d7:53:f2:c4:ef:d7:01:45",
+  "method_version": "exp004.prospective.evaluate.1",
+  "outcomes_read": false,
+  "required_rows": 1000,
+  "source": {
+    "database_path": "/home/bs/.jarvis-v2/state/jarvis.db",
+    "hostname": "Jarvis",
+    "queries": "COUNT(*) and MAX(id) only above frozen high-water",
+    "sqlite_mode": "mode=ro; PRAGMA query_only=ON"
+  },
+  "source_high_water_id": 46095,
+  "status": "pending_insufficient_rows"
+}

@@ -31,12 +31,12 @@
  *    code-modens gate ville fjerne stregen i præcis den fase hvor hovedet
  *    står og siger «Arbejder».
  *
- *    ⚠️ UMÅLT sidefund: fordi `data-skillelinje` er sand fra første render,
- *    fyrer `@keyframes` også ved MOUNT af historikken — et reload animerer
- *    alle persisterede tures streger ind samtidig. Det er ikke målt i en
- *    browser, og en gate ville ikke løse det (historik har tekst, så
- *    `harSynligTekst` er sand). Den rigtige rettelse ville være at binde
- *    animationen til den LEVENDE tur, ikke til mount.
+ *    MÅLT 30/10-2026 i Chromium og RETTET samme dag (c1e2cfc57): fordi
+ *    `data-skillelinje` er sand fra første render, fyrede `@keyframes` ved
+ *    HVER mount — reload af 20 persisterede ture gav 20 animationer, og én
+ *    React-remount gen-fyrede den midt i en samtale. Indglidningen er nu
+ *    bundet til `data-levende` (prop `levende={streaming}`), så kun den
+ *    streamende tur animerer og persisteret historik staar stille.
  * 4. `knapRef` — kun code sender den (`useFoldPosition` bruger den til at
  *    holde foldelinjen på skærmen). Chat har ingen scroll-anker.
  *
@@ -95,7 +95,7 @@ function argumenter(fil: string): Map<string, string> {
   // fra kontrakten; alt andet er indhold, ikke props.
   const KONTRAKT = new Set([
     'tekst', 'aaben', 'onToggle', 'koerer', 'sekunder', 'meta',
-    'skillelinje', 'foldbar', 'knapRef',
+    'skillelinje', 'levende', 'foldbar', 'knapRef',
   ])
   for (const linje of blok.split('\n')) {
     const m = /^\s{2,}([a-zA-Z][a-zA-Z0-9]*)(=\{|\s|$)/.exec(linje)
@@ -111,10 +111,10 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
   const chat = argumenter('ChatFlowPresentation.tsx')
   const code = argumenter('RaekkeTranskript.tsx')
 
-  it('begge flader sender de samme ni argumenter fra kontrakten', () => {
+  it('begge flader sender de samme ti argumenter fra kontrakten', () => {
     const kontrakt = [
       'tekst', 'aaben', 'onToggle', 'koerer', 'sekunder', 'meta',
-      'skillelinje', 'foldbar', 'knapRef',
+      'skillelinje', 'levende', 'foldbar', 'knapRef',
     ]
     const chatNavne = [...chat.keys()].sort()
     const codeNavne = [...code.keys()].sort()
@@ -131,6 +131,15 @@ describe('TurHoved-argumenter — de to flader sammenlignet', () => {
     // Testen står her som kontrast: den var FORSKELLIG før.
     expect(chat.get('koerer')).toBe('koerer={arbejdeKoerer}')
     expect(code.get('koerer')).toBe('koerer={arbejdeKoerer}')
+  })
+
+  it('levende er ens i begge flader — og driver indglidningen', () => {
+    // Tilføjet 30/10-2026 sammen med rettelsen (c1e2cfc57). `data-levende` er
+    // det ENESTE der starter `rv-skillelinje-ind`: uden denne prop ville
+    // stregen animere ved hvert reload af historikken (målt: 20 animationer
+    // for 20 persisterede ture).
+    expect(chat.get('levende')).toBe('levende={streaming}')
+    expect(code.get('levende')).toBe('levende={streaming}')
   })
 
   it('tekst er to sprog — og det er tilsigtet, ikke en divergens', () => {

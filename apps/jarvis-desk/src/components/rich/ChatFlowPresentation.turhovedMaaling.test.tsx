@@ -156,6 +156,29 @@ describe('MÅLING — turhovedets lukning mod pacens ur', () => {
     expect(hovedStaar(view.container)).toBe(true)
   })
 
+  it('D: kun den STREAMENDE tur bærer data-levende', () => {
+    // Rettelsen 30/10-2026 (c1e2cfc57): `data-levende` er det ENESTE der
+    // starter `rv-skillelinje-ind`. Uden den ville stregen animere ved hvert
+    // reload af persisteret historik — målt i Chromium: 20 animationer for 20
+    // ture, og én React-remount gen-fyrede den midt i en samtale.
+    const levende = render(
+      <ChatFlowPresentation blocks={[arbejde]} mode="living" density="compact"
+        streaming status="working" finalAnswerStarted={false} runId="levende-ja" />,
+    )
+    expect(levende.container.querySelector('.rv-tur')).toHaveAttribute('data-levende')
+    levende.unmount()
+
+    // Persisteret besked: ingen stream, så stregen står stille fra første frame.
+    const persisteret = render(
+      <ChatFlowPresentation blocks={[arbejde]} mode="living" density="compact"
+        streaming={false} status="done" finalAnswerStarted={false} runId="levende-nej" />,
+    )
+    expect(persisteret.container.querySelector('.rv-tur')).not.toHaveAttribute('data-levende')
+    // Stregen skal stadig være SYNLIG — attributten `data-skillelinje` er
+    // uændret; det er kun animationen der er slukket.
+    expect(persisteret.container.querySelector('.rv-tur')).toHaveAttribute('data-skillelinje')
+  })
+
   it('C: efterslæbet i sekunder for 2000 tegn', () => {
     const view = render(
       <ChatFlowPresentation blocks={[svar]} mode="living" density="compact"

@@ -110,3 +110,8 @@ and the immediately preceding and following non-overlapping row intervals.
 This audit is selected after seeing the primary result. It can show whether a
 peak is broad or cell-concentrated, but it is neither preregistered discovery
 nor confirmation.
+
+If that cell audit makes weekday look like a proxy for one or more individual
+dates, a second declared post-hoc audit may preserve day×model status counts
+inside the selected peak. Two occurrences can reveal recurrence within the
+window, but cannot establish a general weekly process.

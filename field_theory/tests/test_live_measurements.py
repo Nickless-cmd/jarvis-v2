@@ -23,6 +23,7 @@ from feltteori_research.experiment_003_change import (
     OperationalContextConfig,
     analyze_experiment_003,
     audit_peak_cells,
+    audit_peak_days,
     collect_operational_context,
 )
 from feltteori_research.live_visible_runs import (
@@ -235,6 +236,9 @@ def test_investigation_003_preserves_snapshot_and_writes_views(tmp_path: Path) -
     audit = audit_peak_cells(run, output, Path(__file__).resolve().parents[2])
     assert audit["evidence_status"].startswith("post-hoc")
     assert (output / "exp003_live_peak_cells.csv").exists()
+    day_audit = audit_peak_days(run, output, Path(__file__).resolve().parents[2])
+    assert day_audit["evidence_status"].startswith("post-hoc")
+    assert (output / "exp003_live_peak_day_models.csv").exists()
     with pytest.raises(FileExistsError):
         audit_peak_cells(run, output, Path(__file__).resolve().parents[2])
     with pytest.raises(FileExistsError):

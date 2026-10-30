@@ -693,6 +693,74 @@ def audit_peak_cells(
     return audit_manifest
 
 
+def audit_peak_days(
+    run_directory: Path, output_directory: Path, repo_root: Path
+) -> dict[str, object]:
+    """Preserve day/model counts after weekday cells motivate closer inspection."""
+    csv_path = output_directory / "exp003_live_peak_day_models.csv"
+    manifest_path = output_directory / "exp003_live_peak_day_models_manifest.json"
+    if csv_path.exists() or manifest_path.exists():
+        raise FileExistsError("Investigation 3 peak day audit already exists")
+    source_manifest, rows = load_verified_observations(run_directory)
+    primary = json.loads(
+        (output_directory / "exp003_live_results.json").read_text(encoding="utf-8")
+    )
+    peak_audit = json.loads(
+        (output_directory / "exp003_live_peak_cells_manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    digest = source_manifest["observations"]["sha256_colon_hex"]
+    if any(
+        value != digest
+        for value in (
+            primary["observations_sha256_colon_hex"],
+            peak_audit["observations_sha256_colon_hex"],
+        )
+    ):
+        raise ValueError("peak audit inputs reference different observation snapshots")
+    peak = peak_audit["selected_window"]
+    block = rows[int(peak["start_offset"]) : int(peak["end_offset_exclusive"])]
+    grouped: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
+    for row in block:
+        grouped[(row["observed_at_utc"][:10], row["weekday_utc"], row["model"])][
+            row["status"]
+        ] += 1
+    audit_rows: list[dict[str, object]] = []
+    for (date_utc, weekday, model), counts in sorted(grouped.items()):
+        total = sum(counts.values())
+        known = sum(
+            counts[name] for name in ("completed", "interrupted", "failed", "cancelled")
+        )
+        audit_rows.append(
+            {
+                "date_utc": date_utc,
+                "weekday_utc": weekday,
+                "model": model,
+                "rows": total,
+                "completed": counts["completed"],
+                "interrupted": counts["interrupted"],
+                "failed": counts["failed"],
+                "cancelled": counts["cancelled"],
+                "other_status": total - known,
+                "non_completed_fraction": (total - counts["completed"]) / total,
+            }
+        )
+    _write_csv(csv_path, audit_rows)
+    audit_manifest: dict[str, object] = {
+        "method_version": "exp003.live.peak-day-model-audit.1",
+        "evidence_status": "post-hoc after primary and peak-cell inspection",
+        "selection_rule": "dates inside the primary maximum model_weekday_mi_bits window",
+        "selected_window": peak,
+        "observations_sha256_colon_hex": digest,
+        "deployed_audit_revision_colon_hex": _revision_colon_hex(repo_root),
+        "output": csv_path.name,
+        "rows": len(audit_rows),
+    }
+    _write_json(manifest_path, audit_manifest)
+    return audit_manifest
+
+
 def _write_summary(path: Path, result: dict[str, object]) -> None:
     rolling = result["rolling_windows"]
     assert isinstance(rolling, list)

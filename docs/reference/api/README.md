@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17771 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17778 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -77,10 +77,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17771 functions/
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `identity_formation_monitor`
-- [`scripts.02`](scripts.02.md) — `injection_richness_check` … `navngiv_kode_sessioner`
-- [`scripts.03`](scripts.03.md) — `normalize_sensory_sources` … `verify_memory_status`
-- [`scripts.04`](scripts.04.md) — `verify_notes` … `verify_vagt_graenser`
+- [`scripts.01`](scripts.01.md) — `__init__` … `honesty_metrics`
+- [`scripts.02`](scripts.02.md) — `identity_formation_monitor` … `model_catalogue_sweep`
+- [`scripts.03`](scripts.03.md) — `navngiv_kode_sessioner` … `verify_history_reads`
+- [`scripts.04`](scripts.04.md) — `verify_memory_status` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

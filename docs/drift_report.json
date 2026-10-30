@@ -1,6 +1,37 @@
 {
-  "generated_at": "2026-10-25T17:44:11.004423+00:00",
-  "hard": [],
+  "generated_at": "2026-10-30T15:25:34.614898+00:00",
+  "hard": [
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/scripts.01.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/scripts.02.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/scripts.03.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/scripts.04.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/api/README.md"
+    },
+    {
+      "generator": "api_docs_gen",
+      "kind": "stale",
+      "path": "docs/reference/DOCSTRING_COVERAGE.md"
+    }
+  ],
   "soft": [
     {
       "kind": "requirement_missing",
@@ -76,6 +107,10 @@
     },
     {
       "kind": "requirement_missing",
+      "module": "docx"
+    },
+    {
+      "kind": "requirement_missing",
       "module": "dotenv"
     },
     {
@@ -136,11 +171,19 @@
     },
     {
       "kind": "requirement_missing",
+      "module": "openpyxl"
+    },
+    {
+      "kind": "requirement_missing",
       "module": "parse_tfm"
     },
     {
       "kind": "requirement_missing",
       "module": "pkg_resources"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "pptx"
     },
     {
       "kind": "requirement_missing",
@@ -157,6 +200,10 @@
     {
       "kind": "requirement_missing",
       "module": "readability"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "reportlab"
     },
     {
       "kind": "requirement_missing",
@@ -184,7 +231,7 @@
     }
   ],
   "counts": {
-    "hard": 0,
-    "soft": 45
+    "hard": 6,
+    "soft": 49
   }
 }

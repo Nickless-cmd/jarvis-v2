@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9448/17771 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9454/17778 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 9448/17771 functions/methods documented (53%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 300 | 633 | 47% |
+| `scripts` | 306 | 640 | 47% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2596)
+## Undocumented public functions (2597)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2462,6 +2462,7 @@ Generated from source. 9448/17771 functions/methods documented (53%). The list b
 - `scripts/cutoff_detector.py` :: `log` (L107)
 - `scripts/cutoff_detector.py` :: `main` (L370)
 - `scripts/cutoff_detector.py` :: `save_seen` (L120)
+- `scripts/db_backup_daglig.py` :: `main` (L157)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)
 - `scripts/db_decomposition_map.py` :: `find` (L36)
 - `scripts/db_decomposition_map.py` :: `union` (L40)

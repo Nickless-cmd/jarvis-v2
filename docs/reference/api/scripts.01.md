@@ -237,6 +237,19 @@ _Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
 | function | `svar_leveret_eksternt` | `(con, run_ids, tavs_ts)` | Laa der et PAENT afsluttet run i denne session da den gik tavs? | [src](../../../scripts/cutoff_detector.py#L335) |
 | function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L370) |
 
+## `scripts/db_backup_daglig.py`
+_Daglig konsistent backup af den LEVENDE jarvis.db + rotation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `backup_sti` | `(backup_dir, nu=…)` | Filnavn for en ny backup. Tidsstempel i UTC, sorterbart. | [src](../../../scripts/db_backup_daglig.py#L56) |
+| function | `eksisterende_backups` | `(backup_dir)` | Vores egne backups, nyeste først. Rører intet andet i mappen. | [src](../../../scripts/db_backup_daglig.py#L62) |
+| function | `ryd_sidefiler` | `(sti)` | Fjern `-shm`/`-wal` som verificeringen efterlader. | [src](../../../scripts/db_backup_daglig.py#L75) |
+| function | `verificer` | `(sti)` | Åbn backup-filen og bevis at den er en brugbar database. | [src](../../../scripts/db_backup_daglig.py#L90) |
+| function | `tag_backup` | `(kilde, maal)` | Konsistent kopi via sqlite3's backup-API (sikker under WAL). | [src](../../../scripts/db_backup_daglig.py#L124) |
+| function | `rotér` | `(backup_dir, behold, *, dry_run=…)` | Slet de ældste backups ud over `behold`. Returnerer de slettede stier. | [src](../../../scripts/db_backup_daglig.py#L144) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/db_backup_daglig.py#L157) |
+
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_
 
@@ -442,11 +455,4 @@ _Honesty-metrics — tæl hvor ofte hvert anti-løgn-lag fyrer (16. jun 2026)._
 |---|---|---|---|---|
 | function | `_journal` | `(unit, since)` | — | [src](../../../scripts/honesty_metrics.py#L34) |
 | function | `main` | `()` | — | [src](../../../scripts/honesty_metrics.py#L45) |
-
-## `scripts/identity_formation_monitor.py`
-_Identity formation monitor — daily snapshot of Jarvis' becoming._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/identity_formation_monitor.py#L36) |
 

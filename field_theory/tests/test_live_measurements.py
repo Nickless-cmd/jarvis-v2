@@ -26,6 +26,10 @@ from feltteori_research.experiment_003_change import (
     audit_peak_days,
     collect_operational_context,
 )
+from feltteori_research.experiment_004_continuity import (
+    Experiment004Config,
+    analyze_experiment_004,
+)
 from feltteori_research.live_visible_runs import (
     LiveExtractionConfig,
     extract_live_visible_runs,
@@ -274,3 +278,35 @@ def test_investigation_003_context_is_host_gated_and_aggregate(tmp_path: Path) -
     assert context["central_incidents"]["coverage"]["rows"] == 1
     assert "private incident text" not in serialized
     assert "private-run" not in serialized
+
+
+def test_investigation_004_compares_recurrence_without_target_leakage(
+    tmp_path: Path,
+) -> None:
+    run = extract_fixture(tmp_path, 480)
+    output = tmp_path / "exp004"
+    result = analyze_experiment_004(
+        run,
+        output,
+        Path(__file__).resolve().parents[2],
+        Experiment004Config(
+            block_rows=40,
+            sensitivity_block_rows=(30, 60),
+            smoothing_alpha=0.5,
+        ),
+    )
+    assert len(result["blocks"]) == 12
+    assert len(result["similarity"]) == 12 * 4
+    assert len(result["expectation_aggregates"]) == 6
+    for row in result["historical_expectations"]:
+        if str(row["predictor"]).startswith("recurrence_"):
+            assert int(row["analog_following_block"]) < int(row["target_block"])
+    assert (output / "exp004_live_recurrence.svg").exists()
+    assert (output / "exp004_live_expectations.csv").exists()
+    with pytest.raises(FileExistsError):
+        analyze_experiment_004(
+            run,
+            output,
+            Path(__file__).resolve().parents[2],
+            Experiment004Config(block_rows=40),
+        )

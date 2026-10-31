@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9480/17802 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9481/17802 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9480/17802 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 860 | 1568 | 54% |
-| `core.services` | 6311 | 12093 | 52% |
+| `core.services` | 6312 | 12093 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1511,8 +1511,8 @@ Generated from source. 9480/17802 functions/methods documented (53%). The list b
 - `core/services/notifikations_valg.py` :: `kanal_for` (L115)
 - `core/services/notifikations_valg.py` :: `saet` (L132)
 - `core/services/ntfy_gateway.py` :: `is_configured` (L31)
-- `core/services/oauth_flow.py` :: `is_known_provider` (L46)
-- `core/services/oauth_flow.py` :: `redirect_uri` (L50)
+- `core/services/oauth_flow.py` :: `is_known_provider` (L49)
+- `core/services/oauth_flow.py` :: `redirect_uri` (L53)
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_prompt_section` (L55)
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_surface` (L42)
 - `core/services/offline_recomposition_engine.py` :: `run_offline_recomposition` (L15)

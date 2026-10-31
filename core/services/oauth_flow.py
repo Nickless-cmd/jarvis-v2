@@ -10,9 +10,12 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 import urllib.parse
+
+logger = logging.getLogger(__name__)
 
 _PUBLIC_BASE = "https://api.srvlab.dk"
 _STATE_TTL = 600  # 10 min
@@ -52,10 +55,19 @@ def redirect_uri(provider: str) -> str:
 
 
 def _secret(key: str, default: str = "") -> str:
+    """Runtime-noegle, ellers `default`.
+
+    MAALT 31/10-2026: faldet var tavst, saa en noegle der FINDES men ikke kunne
+    laeses (rettigheder, korrupt runtime.json) var identisk med en noegle der
+    aldrig blev konfigureret — begge gav `default`, og fladen sagde «provider
+    ikke konfigureret» om en konfiguration der var der. Noeglens NAWN logges;
+    dens vaerdi aldrig.
+    """
     try:
         from core.runtime.secrets import read_runtime_key
         return str(read_runtime_key(key) or default)
     except Exception:
+        logger.warning("oauth: kunne ikke laese runtime-noeglen %r", key, exc_info=True)
         return default
 
 
@@ -106,6 +118,11 @@ def _verify_state_impl(state: str, *, now: float | None = None) -> tuple[str, st
         prov = str(payload.get("prov") or "")
         return (uid, prov) if uid and prov else None
     except Exception:
+        # Fail-CLOSED er rigtigt her (en ugyldig state skal afvises), men et internt
+        # sammenbrud — fx en `_state_key()` der kaster — afviser ALLE gyldige states
+        # og ser ud som om brugeren aldrig har et. MAALT 31/10-2026: sporet manglede.
+        # Selve state-strengen logges ALDRIG.
+        logger.warning("oauth: state-validering kastede — afviser (fail-closed)", exc_info=True)
         return None
 
 
@@ -187,6 +204,11 @@ def refresh_token(provider: str, refresh: str, *, now: float | None = None) -> d
             tok["expires_at"] = base + float(tok["expires_in"])
         return tok
     except Exception:
+        # MAALT 31/10-2026: `None` betoed BAADE «provideren afviste» (fx
+        # `invalid_grant` = doedt refresh-token) OG «netvaerket/fejlen gik i
+        # stykket». Kalderen kunne ikke skelne, saa et doedt token saa ud som
+        # en forbigaaende fejl og blev forsoegt igen i det uendelige.
+        logger.warning("oauth: refresh_token for %s kastede", prov, exc_info=True)
         return None
 
 
@@ -214,6 +236,9 @@ def exchange_code(provider: str, code: str, *, now: float | None = None) -> dict
             tok["expires_at"] = tok["obtained_at"] + float(tok["expires_in"])
         return tok
     except Exception:
+        # Samme sammenblanding som i `refresh_token`: en afvist code og et
+        # netvaerkssammenbrud gav begge `None`. MAALT 31/10-2026.
+        logger.warning("oauth: exchange_code for %s kastede", prov, exc_info=True)
         return None
 
 
@@ -237,4 +262,8 @@ def fetch_google_email(token: dict) -> str:
             return ""
         return str(data.get("email") or "")
     except Exception:
+        # Tom streng betoed BAADE «brugeren har ingen email» OG «kaldet gik i
+        # stykket» — Google-login ville afvise en konto der var i orden.
+        # MAALT 31/10-2026. Token/email logges ikke.
+        logger.warning("oauth: userinfo-kaldet kastede", exc_info=True)
         return ""

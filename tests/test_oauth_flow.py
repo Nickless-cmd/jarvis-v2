@@ -84,3 +84,78 @@ def test_revoke_remote_google(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda url, **k: (_post(url, **k), _R())[1])
     assert of.revoke_remote("google", {"access_token": "tok"}) is True
     assert "oauth2.googleapis.com/revoke" in calls["url"]
+
+
+# ── tavse fald skal efterlade et spor (31/10-2026) ────────────────────────
+#
+# MAALT paa den levende detektor: fem fald i denne fil returnerede `None`/`""`
+# uden at skrive noget. `refresh_token` var den vaerste — `None` betoed BAADE
+# «provideren afviste» (fx `invalid_grant` = doedt refresh-token) OG «kaldet
+# gik i stykket». Vagterne her beviser baade at fejlen logger OG at normal
+# adfaerd IKKE goer — ellers drukner de aegte fejl i stoej.
+
+def _logget(caplog, tekst):
+    return any(tekst in r.getMessage() for r in caplog.records)
+
+
+def test_secret_logger_naar_runtime_noeglen_ikke_kan_laeses(monkeypatch, caplog):
+    import core.runtime.secrets as secrets
+    def _braek(key):
+        raise OSError("runtime.json utilgaengelig")
+    monkeypatch.setattr(secrets, "read_runtime_key", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of._secret("github_oauth_client_id", "fallback") == "fallback"
+    assert _logget(caplog, "kunne ikke laese runtime-noeglen"), "tavst fald efterlod intet spor"
+
+
+def test_refresh_token_logger_naar_kaldet_kaster(monkeypatch, caplog):
+    import httpx
+    def _braek(*a, **k):
+        raise httpx.ConnectError("netvaerk nede")
+    monkeypatch.setattr(httpx, "post", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of.refresh_token("google", "refresh-abc") is None  # fail-soft bevaret
+    assert _logget(caplog, "refresh_token for google kastede"), "doedt token kunne ikke skelnes fra netvaerksfejl"
+
+
+def test_exchange_code_logger_naar_kaldet_kaster(monkeypatch, caplog):
+    import httpx
+    def _braek(*a, **k):
+        raise httpx.ConnectError("netvaerk nede")
+    monkeypatch.setattr(httpx, "post", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of.exchange_code("github", "code-123") is None
+    assert _logget(caplog, "exchange_code for github kastede")
+
+
+def test_fetch_google_email_logger_naar_kaldet_kaster(monkeypatch, caplog):
+    import httpx
+    def _braek(*a, **k):
+        raise httpx.ConnectError("netvaerk nede")
+    monkeypatch.setattr(httpx, "get", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of.fetch_google_email({"access_token": "tok"}) == ""
+    assert _logget(caplog, "userinfo-kaldet kastede")
+
+
+def test_state_validering_logger_men_forbliver_fail_closed(monkeypatch, caplog):
+    """Et internt sammenbrud maa ALDRIG aabne — men det skal ses."""
+    s = of.sign_state("u1", "github")  # signeret FOER sammenbruddet
+    def _braek():
+        raise RuntimeError("noeglen kunne ikke udledes")
+    monkeypatch.setattr(of, "_state_key", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of.verify_state(s) is None, "fail-closed brudt: en gyldig state blev accepteret"
+    assert _logget(caplog, "state-validering kastede")
+
+
+def test_normal_afvisning_stoejer_ikke(monkeypatch, caplog):
+    """401 fra provideren er et VALGT fald — ikke en fejl. Det maa ikke logge."""
+    import httpx
+    class _R:
+        status_code = 401
+        def json(self): return {"error": "invalid_grant"}
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
+    with caplog.at_level("WARNING", logger="core.services.oauth_flow"):
+        assert of.refresh_token("google", "doedt-refresh") is None
+    assert not _logget(caplog, "kastede"), "normal afvisning blev logget som fejl — loggen drukner"

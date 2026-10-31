@@ -79,6 +79,7 @@ import { svarPacingGate } from '../lib/svarPacing'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
 import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
+import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
 
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
@@ -594,7 +595,12 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
+  // Godkendelsen er ARBEJDE i turen, ikke en samtale-besked (31/10-2026).
+// `fletGodkendelser` grupperer pending+afgoerelse til ÉN linje og laegger den
+// ind i den assistent-tur den hørte til. En raekke hvis tur endnu ikke er
+// skrevet bliver staaende — den skal kunne besvares NU.
+  const flettede = fletGodkendelser(sessions.messages)
+  const transcriptMessages = flettede.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
   // Mens den levende sluttekst ruller færdig, findes samme svar allerede som
   // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
   // levende række melder færdig; ellers står hele svaret ved siden af pacingen
@@ -618,7 +624,7 @@ export function ChatView({
   // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
   // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
   const pendingIRækken = findesGodkendelseIRækken(
-    transcriptMessages,
+    sessions.messages,
     stream.pendingApproval?.approvalId ?? null,
   )
 
@@ -1253,16 +1259,3 @@ function liveGodkendelse(
   return { canApprove, expiresAt: pending.expiresAt, onApprove, onDeny }
 }
 
-function forsteGodkendelse(raa: unknown): GodkendelsesHaendelse {
-  const liste = Array.isArray(raa) ? raa : []
-  const blok = liste[0] as Partial<GodkendelsesHaendelse> | undefined
-  return {
-    approval_id: String(blok?.approval_id ?? ''),
-    tool: String(blok?.tool ?? 'godkendelse'),
-    action: String(blok?.action ?? ''),
-    status: String(blok?.status ?? 'pending'),
-    risk: blok?.risk ? String(blok.risk) : undefined,
-    decided_by: blok?.decided_by ? String(blok.decided_by) : undefined,
-    decided_at: blok?.decided_at ? String(blok.decided_at) : undefined,
-  }
-}

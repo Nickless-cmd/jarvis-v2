@@ -20,15 +20,12 @@ import { useState } from 'react'
  * De LEVENDE kort håndteres fortsat af `GodkendelsesKort` i composer-laget —
  * det er to flader med hver sin sandhed, og de skal ikke blandes sammen.
  */
-export interface GodkendelsesHaendelse {
-  approval_id: string
-  tool: string
-  action: string
-  status: string
-  risk?: string
-  decided_by?: string
-  decided_at?: string
-}
+import type { GodkendelsesHaendelse } from '../../lib/godkendelseIFolden'
+
+/* Typen har ÉT hjem: `lib/godkendelseIFolden.ts`, som ogsaa bruger den til at
+ * flette raekkerne ind i turen. Stod den to steder, ville en ny status kun
+ * blive tilfoejet det ene — og de to flader ville divergere tavst. */
+export type { GodkendelsesHaendelse }
 
 const STATUS: Record<string, { tekst: string; klasse: string }> = {
   pending: { tekst: 'Afventer', klasse: 'venter' },

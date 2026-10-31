@@ -185,6 +185,25 @@ export type ContentBlock =
    */
   | { type: 'thinking'; thinking: string; seconds?: number; startet?: number }
   | { type: 'skill_surface'; matches: SkillMatchInfo[]; primary: boolean }
+  /**
+   * Et godkendelses-kort, flettet ind i den TUR det hoerte til (31/10-2026).
+   *
+   * Blokken findes IKKE i serverens `content_json`. Den laegges paa af
+   * `lib/godkendelseIFolden.ts`, som grupperer de persisterede
+   * `approval_request`-raekker (pending + afgoerelse) til ÉN linje og flytter
+   * den ind i assistent-turens arbejde — saa den ligger i folden sammen med
+   * vaerktoejskaldene i stedet for som en selvstaendig besked midt i samtalen.
+   */
+  | {
+      type: 'approval'
+      approval_id: string
+      tool: string
+      action: string
+      status: string
+      risk?: string
+      decided_by?: string
+      decided_at?: string
+    }
   | {
       // Rundens sætning, gemt i beskeden — Claude Desktops egen form
       // (19/9-2026). Hæfter sig på sine kald via ids, ikke på en plads.

@@ -15,6 +15,7 @@ import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 import { useVisningen, type Visning } from '../../lib/visning'
 import { TankeResumeLinje } from './TankeResumeLinje'
 import { BilledArbejdeAnimation, GeneratedImageGallery, levendeBilledArbejde } from './ImageGeneration'
+import { HistoriskGodkendelse } from './HistoriskGodkendelse'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
@@ -224,6 +225,13 @@ function BlockView({
       // «Forløb (N)» er afløst af ændringskortet i MessageRow, så det også
       // vises når denne renderer kun får slutteksten i rækkevisning.
       return null
+    // Godkendelsen som ARBEJDE, ikke som samtale (31/10-2026, Bjørn:
+    // «burde disse 2 ikk have ligget inde i det foldet hovede»). Blokken
+    // lægges paa af `lib/godkendelseIFolden.ts`; her tegnes den bare som
+    // den samme linje historikken altid har brugt — uden knapper, med
+    // mindre den matcher den godkendelse der venter lige nu (se dens `live`).
+    case 'approval':
+      return <HistoriskGodkendelse data={block} />
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
     case 'tool_group':

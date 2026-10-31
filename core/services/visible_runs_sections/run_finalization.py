@@ -212,11 +212,17 @@ def finalize_in_flight(
 def _ejer_og_titel(session_id: str) -> tuple[str, str]:
     """(ejer, samtale-titel).
 
-    To ting maalt paa skemaet 21/9-2026, som planens foerste udkast tog fejl af:
-    noeglen hedder `session_id` (`id` er et autoincrement-HELTAL), og der findes
-    INGEN `user_id`-kolonne — samtaler er ikke bruger-scopede. Ejeren afgoeres
-    derfor som i godkendelses-stien (`visible_runs._godkendelses_ejer`): den
-    kaldende brugers id hvis der er et, ellers husets ejer.
+    Maalt 21/9-2026 og RETTET 30/10-2026: noeglen hedder `session_id` (`id` er et
+    autoincrement-HELTAL). Den gamle docstring skrev at der ikke fandtes en
+    ejer-kolonne — det er ikke laengere sandt: `chat_sessions.owner_user_id`
+    findes og er i SAMME id-rum som notifikationerne. Den skal vinde over
+    fallback'en, for i et autonomt rutine-koersel er `current_user_id()` tom, og
+    Mikkels og Michelles morgenbriefs endte derfor som push til husets ejer
+    (maalt 30/10-2026 kl. 06:01: tre `run_done` til Bjørn, nul til dem).
+    Fallback'en staar stadig som foer: kaldende bruger, ellers husets ejer.
+
+    Titlen dekrypteres: medlems-samtaler gemmer den som `enc:v1:…`, og uden
+    dekryptering fik modtageren ciffertekst som overskrift.
 
     Fanger IKKE DB-fejl. Kalderen har sit eget net og logger — men en fejl her
     betyder at DEN notifikation er tabt for altid, for run-raekker har ingen
@@ -224,11 +230,15 @@ def _ejer_og_titel(session_id: str) -> tuple[str, str]:
     """
     from core.identity.workspace_context import current_user_id
     from core.runtime.db import connect
+    from core.services.chat_session_private_metadata import decrypt_session_text
     from core.services.notifikations_emittere import _owner_id
 
-    uid = str(current_user_id() or "").strip() or (_owner_id() or "")
     with connect() as conn:
         raekke = conn.execute(
-            "SELECT title FROM chat_sessions WHERE session_id = ?",
+            "SELECT owner_user_id, title FROM chat_sessions WHERE session_id = ?",
             (session_id,)).fetchone()
-    return uid, (str(raekke[0]) if raekke and raekke[0] else "samtalen")
+    ejer = str(raekke[0] or "").strip() if raekke else ""
+    uid = ejer or str(current_user_id() or "").strip() or (_owner_id() or "")
+    raa_titel = str(raekke[1] or "") if raekke else ""
+    titel = decrypt_session_text(raa_titel, session_id) if raa_titel else "samtalen"
+    return uid, titel

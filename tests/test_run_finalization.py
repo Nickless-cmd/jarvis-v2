@@ -14,6 +14,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from core.services.visible_runs_sections.run_finalization import (
+    _ejer_og_titel,
     advance_tool_lifecycle,
     finalize_run,
 )
@@ -124,3 +125,76 @@ class TestBagudkompatibilitet:
         src = inspect.getsource(visible_runs)
         assert "_advance_tool_lifecycle(run.session_id)" not in src, \
             "gammelt gren-kald findes stadig — ejerskabet er delt"
+
+
+class _FalskRække:
+    """(owner_user_id, title) som den faktiske SELECT returnerer."""
+
+    def __init__(self, raekke):
+        self._raekke = raekke
+
+    def execute(self, sql, params):  # noqa: ARG002 - vi måler kolonne-rækkefølgen
+        assert "owner_user_id" in sql, f"SELECT'en mangler ejer-kolonnen: {sql}"
+        return self
+
+    def fetchone(self):
+        return self._raekke
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class TestEjerOgTitel:
+    """Målt 30/10-2026: alle tre morgenbriefs kørte korrekt, men ALLE tre
+    `run_done`-notifikationer gik til husets ejer — nul til Mikkel, nul til
+    Michelle. `current_user_id()` er tom i et autonomt rutine-kørsel, og
+    fallback'en pegede derfor på Bjørn hver gang.
+
+    Docstringen påstod at der ikke fandtes en ejer-kolonne. Det gjorde den:
+    `chat_sessions.owner_user_id`, i samme id-rum som notifikationerne.
+    """
+
+    def test_owner_user_id_vinder_over_husets_ejer(self):
+        with patch(
+            "core.runtime.db.connect",
+            return_value=_FalskRække(("238975101381378048", "Mikkels brief")),
+        ), patch(
+            "core.identity.workspace_context.current_user_id", return_value=None
+        ), patch(
+            "core.services.notifikations_emittere._owner_id",
+            return_value="1246415163603816499",
+        ):
+            ejer, titel = _ejer_og_titel("sess-mikkel")
+        assert ejer == "238975101381378048", "husets ejer vandt over sessionens"
+        assert titel == "Mikkels brief"
+
+    def test_uden_ejer_i_raekken_falder_den_tilbage_som_foer(self):
+        """Rækker uden ejer (system-samtaler) må ikke miste deres notifikation."""
+        with patch(
+            "core.runtime.db.connect", return_value=_FalskRække((None, "system"))
+        ), patch(
+            "core.identity.workspace_context.current_user_id",
+            return_value="1313522677369143429",
+        ), patch(
+            "core.services.notifikations_emittere._owner_id",
+            return_value="1246415163603816499",
+        ):
+            ejer, _ = _ejer_og_titel("sess-system")
+        assert ejer == "1313522677369143429"
+
+    def test_krypteret_titel_dekrypteres(self):
+        """Medlems-samtaler gemmer titlen som `enc:v1:…`. Uden dekryptering
+        fik modtageren ciffertekst som overskrift på sin egen brief."""
+        with patch(
+            "core.runtime.db.connect",
+            return_value=_FalskRække(("1313522677369143429", "enc:v1:abc")),
+        ), patch(
+            "core.services.chat_session_private_metadata.decrypt_session_text",
+            return_value=" Michelles brief ",
+        ) as dek:
+            _, titel = _ejer_og_titel("sess-michelle")
+        dek.assert_called_once_with("enc:v1:abc", "sess-michelle")
+        assert titel == " Michelles brief "

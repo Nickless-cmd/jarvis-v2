@@ -11,10 +11,13 @@ i override_store (DB), og kun en GYLDIG TOTP-kode kan aktivere den.
 """
 from __future__ import annotations
 
+import logging
 import re
 
 from core.services import override_store
 from core.services.totp_verifier import record_attempt, verify
+
+logger = logging.getLogger(__name__)
 
 _OVERRIDE_RE = re.compile(r"^\s*!override\s+(\d{6})\b", re.IGNORECASE)
 _REVOKE_RE = re.compile(r"^\s*!revoke-override\b", re.IGNORECASE)
@@ -99,8 +102,12 @@ def _handle_override_command_impl(
                          datetime.now(timezone.utc).isoformat()))
             security_guard.record_audit(sowner or "owner", "unlock", session_id=session_id,
                                         details="manual !unlock (TOTP)")
-        except Exception:
-            pass
+        except Exception as exc:
+            # Koden VAR gyldig, men oplåsningen fejlede. Uden sporet her er
+            # "kunne ikke låse op" identisk med "låst op" — og svaret nedenfor
+            # kvitterer allerede ok=True.
+            logger.warning("override_command: !unlock fejlede for session %s "
+                           "(koden var gyldig): %s", session_id, exc)
         return {"handled": True, "ok": True, "action": "unlocked",
                 "reply": "Session/konto låst op."}
 
@@ -125,8 +132,11 @@ def _handle_override_command_impl(
             from core.services import security_guard
             security_guard.record_audit("owner", "override_activated",
                                         session_id=session_id, details={"level": lvl})
-        except Exception:
-            pass
+        except Exception as exc:
+            # Override blev givet, men audit-sporet blev ikke skrevet. Uden dette
+            # er "aktiveret uden revisionsspor" identisk med "aktiveret korrekt".
+            logger.warning("override_command: audit-spor for override_activated "
+                           "kunne ikke skrives (session %s): %s", session_id, exc)
         return {"handled": True, "ok": True, "action": "granted", "level": lvl,
                 "reply": f"Owner-override aktiveret ({lvl}). Gyldig i denne session."}
 

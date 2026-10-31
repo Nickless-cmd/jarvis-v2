@@ -197,13 +197,13 @@ _attachment_service — download, store, and read channel attachments._
 | function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L326) |
 | function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L350) |
 | function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L374) |
-| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L396) |
-| function | `resolve_attachment_id` | `(vaerdi)` | Oversæt det brugeren SKREV til et rigtigt `attachment_id`. | [src](../../../core/services/attachment_service.py#L461) |
-| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L519) |
-| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L527) |
-| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L538) |
-| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L564) |
-| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L662) |
+| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L408) |
+| function | `resolve_attachment_id` | `(vaerdi)` | Oversæt det brugeren SKREV til et rigtigt `attachment_id`. | [src](../../../core/services/attachment_service.py#L473) |
+| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L531) |
+| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L549) |
+| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L568) |
+| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L594) |
+| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L711) |
 
 ## `core/services/attachment_topology_signal_tracking.py`
 _Attachment-topology signal tracking — migrated onto signal_tracking_framework._

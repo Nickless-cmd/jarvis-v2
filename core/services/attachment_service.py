@@ -381,11 +381,23 @@ def _vision_model() -> str:
         if cfg_model:
             return str(cfg_model)
     except Exception:
-        pass
+        # Falder videre til _DEFAULT_MODEL. Uden et spor kan man ikke se at
+        # runtime.json var ulaeselig — kun at den valgte model ikke blev brugt,
+        # hvilket ligner «Bjørn har ikke valgt nogen».
+        logger.warning(
+            "attachment_service: kunne ikke laese vision_model_name — falder "
+            "videre til standardmodellen", exc_info=True,
+        )
     try:
         from core.services.visual_memory import _DEFAULT_MODEL
         return _DEFAULT_MODEL
     except Exception:
+        # Baade config OG standarden fejlede, saa vi lander paa en hardkodet
+        # model der maaske slet ikke er installeret paa boksen.
+        logger.warning(
+            "attachment_service: kunne ikke laese _DEFAULT_MODEL — bruger "
+            "hardkodet 'qwen2.5vl:3b'", exc_info=True,
+        )
         return "qwen2.5vl:3b"
 
 
@@ -517,18 +529,36 @@ def resolve_attachment_id(vaerdi: str) -> str:
 
 
 def get_attachment(attachment_id: str) -> dict | None:
-    """Return attachment metadata dict, or None if not found."""
+    """Return attachment metadata dict, or None if not found.
+
+    ``None`` betyder «findes ikke» — men ogsaa «opslaget fejlede». Kalderen
+    kan ikke skelne de to, saa fejlen efterlader et spor her. Det er den
+    sammenblanding der goer en brudt DB identisk med en manglende fil.
+    """
     try:
         return _db_get(attachment_id)
     except Exception:
+        logger.warning(
+            "attachment_service: opslag af attachment %s fejlede — returnerer "
+            "None (kalderen kan ikke skelne det fra 'findes ikke')",
+            attachment_id, exc_info=True,
+        )
         return None
 
 
 def list_attachments(session_id: str, limit: int = 20) -> list[dict]:
-    """Return recent attachments for session, newest first."""
+    """Return recent attachments for session, newest first.
+
+    ``[]`` betyder «ingen vedhaeftninger» — men ogsaa «listen kunne ikke
+    laeses». Uden et spor ser en brudt session ud som en tom.
+    """
     try:
         return _db_list(session_id, limit)
     except Exception:
+        logger.warning(
+            "attachment_service: kunne ikke liste vedhaeftninger for session "
+            "%s — returnerer tom liste", session_id, exc_info=True,
+        )
         return []
 
 
@@ -625,6 +655,10 @@ def read_attachment_content(
                 "filename": filename,
             }
         except Exception as exc:
+            logger.warning(
+                "attachment_service: kunne ikke laese tekst-filen %s",
+                attachment_id, exc_info=True,
+            )
             return {"status": "error", "reason": f"read-failed: {exc}"}
 
     if mime == "application/pdf":
@@ -639,21 +673,36 @@ def read_attachment_content(
                 "filename": filename,
             }
         except Exception as exc:
+            logger.warning(
+                "attachment_service: kunne ikke laese PDF'en %s",
+                attachment_id, exc_info=True,
+            )
             return {"status": "error", "reason": f"read-failed: {exc}"}
 
     # Fallback: metadata + hex preview
+    #
+    # Status forbliver «ok»: metadata (navn, type, stoerrelse) ER gyldig, saa
+    # kontrakten er uaendret. Men previewen kan vaere tom fordi laesningen
+    # fejlede — ikke fordi filen er tom. Uden den skelnen ser en ulaeselig fil
+    # ud som en tom fil, og det var den tavse fejl her.
+    preview_note = ""
     try:
         data = Path(local_path).read_bytes()
         preview = data[:64].hex()
     except Exception:
+        logger.warning(
+            "attachment_service: kunne ikke laese binaer-filen %s — preview er "
+            "tom fordi laesningen fejlede", attachment_id, exc_info=True,
+        )
         preview = ""
+        preview_note = " [utilgaengelig: laesningen fejlede]"
     return {
         "status": "ok",
         "type": "binary",
         "content": (
             f"Fil: {filename}\nType: {mime}\n"
             f"Størrelse: {row.get('size_bytes', 0)} bytes\n"
-            f"Hex preview: {preview}"
+            f"Hex preview: {preview}{preview_note}"
         ),
         "filename": filename,
     }

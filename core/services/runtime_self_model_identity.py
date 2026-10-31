@@ -9,6 +9,10 @@ Re-exported via ``core.services.runtime_self_model`` for backward compatibility.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from core.services.runtime_self_model_state import (
     _browser_body_state_surface,
     _derive_mineness_ownership,
@@ -426,6 +430,7 @@ def build_self_insight_awareness_prompt_section() -> str | None:
             longing=longing,
         )
     except Exception:
+        logger.warning("self-model: self-insight-sektionen kunne ikke bygges", exc_info=True)
         return None
 
     state = str(insight.get("insight_state") or "quiet")
@@ -704,6 +709,7 @@ def build_narrative_identity_continuity_prompt_section() -> str | None:
             longing=longing,
         )
     except Exception:
+        logger.warning("self-model: narrativ kontinuitets-sektion kunne ikke bygges", exc_info=True)
         return None
 
     state = str(continuity.get("identity_continuity_state") or "quiet")
@@ -955,6 +961,7 @@ def build_dream_identity_carry_awareness_prompt_section() -> str | None:
             dream_articulation=_dream_articulation_surface(),
         )
     except Exception:
+        logger.warning("self-model: droemme-carry-sektionen kunne ikke bygges", exc_info=True)
         return None
 
     state = str(carry.get("dream_identity_carry_state") or "quiet")
@@ -980,6 +987,7 @@ def build_cognitive_core_experiment_awareness_prompt_section() -> str | None:
     try:
         experiments = _facade()._cognitive_core_experiments_surface()
     except Exception:
+        logger.warning("self-model: cognitive-core-eksperiment-sektionen kunne ikke bygges", exc_info=True)
         return None
 
     systems = experiments.get("systems") or {}
@@ -1029,6 +1037,9 @@ def _idle_consolidation_surface() -> dict[str, object]:
 
         return build_idle_consolidation_surface()
     except Exception:
+        # MAALT 31/10-2026: faldet returnerede `{"active": False}` — en FALSK
+        # sund tilstand. En fejl var strukturelt identisk med «der sker intet».
+        logger.warning("self-model: idle-consolidation-fladen kunne ikke bygges", exc_info=True)
         return {
             "active": False,
             "summary": {
@@ -1048,6 +1059,10 @@ def _epistemic_runtime_state_surface() -> dict[str, object]:
 
         return build_epistemic_runtime_state_surface()
     except Exception:
+        # MAALT 31/10-2026: faldet returnerede `{"wrongness_state": "clear"}`.
+        # En fejl rapporterede at ALT VAR I ORDEN — den farligste form for
+        # tavshed, fordi den aktive tilstand er den falske.
+        logger.warning("self-model: epistemisk runtime-flade kunne ikke bygges", exc_info=True)
         return {
             "wrongness_state": "clear",
             "regret_signal": "none",
@@ -1064,6 +1079,9 @@ def _subagent_ecology_surface() -> dict[str, object]:
 
         return build_subagent_ecology_surface()
     except Exception:
+        # MAALT 31/10-2026: faldet returnerede `{"roles": []}` — «ingen roller»
+        # var identisk med «fladen kunne ikke bygges».
+        logger.warning("self-model: subagent-oekologi-fladen kunne ikke bygges", exc_info=True)
         return {
             "roles": [],
             "summary": {

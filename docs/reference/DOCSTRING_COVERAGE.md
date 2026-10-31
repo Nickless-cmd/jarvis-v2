@@ -309,7 +309,7 @@ Generated from source. 9485/17805 functions/methods documented (53%). The list b
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
-- `core/identity/kode_adgang.py` :: `kode_tilladt` (L28)
+- `core/identity/kode_adgang.py` :: `kode_tilladt` (L35)
 - `core/identity/project_context.py` :: `reset_project_root` (L38)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L134)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L264)

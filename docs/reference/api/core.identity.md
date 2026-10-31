@@ -74,7 +74,7 @@ _Må den der spørger, bruge code mode? — reglen fra Codex' fjernstyring._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `kode_tilladt` | `()` | — | [src](../../../core/identity/kode_adgang.py#L28) |
+| function | `kode_tilladt` | `()` | — | [src](../../../core/identity/kode_adgang.py#L35) |
 
 ## `core/identity/owner_resolver.py`
 _Owner-identity resolution for autonomous dispatch._

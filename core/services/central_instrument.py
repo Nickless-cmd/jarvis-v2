@@ -176,14 +176,42 @@ def _doc_span_of(lineno: int, funcs: list[tuple[int, int, str, int]]) -> tuple[i
 _TODO_RE = re.compile(r"#\s*(TODO|FIXME|HACK)\b", re.IGNORECASE)
 
 
+_KRAV_TEGN = 20
+_KRAV_ORD = 3
+
+
+def _begrundelse_paa_linjen(lines: list[str], lineno: int) -> bool:
+    """True hvis selve `except`-linjen bærer en indholdsrig kommentar.
+
+    Målt 31/10-2026: kodebasen dokumenterer sine bevidste fald i fri prosa — 34
+    forskellige formuleringer i de 38 fund jeg gennemgik. En nøgleords-liste kan
+    strukturelt ikke følge det ordforråd, så
+    `# invalid caller budgets are returned as validation errors` blev flagget som
+    tavshed mens begrundelsen stod på linjen. Reglen her spørger i stedet: står der
+    en begrundelse? En bar `# ignore` (15 tegn, to ord) tæller ikke — den siger hvad
+    der sker, ikke hvorfor.
+    """
+    if not (1 <= lineno <= len(lines)):
+        return False
+    dele = lines[lineno - 1].split("#", 1)
+    if len(dele) != 2:
+        return False
+    tekst = dele[1].strip()
+    return (len(tekst) >= _KRAV_TEGN
+            and len(tekst.split()) >= _KRAV_ORD
+            and any(c.isalpha() for c in tekst))
+
+
 def _acknowledged(lines: list[str], start: int, end: int,
                   doc_span: tuple[int, int] = (0, 0)) -> bool:
     """True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end]
-    ELLER i den omsluttende funktions docstring.
+    ELLER i den omsluttende funktions docstring ELLER som fri prosa på `except`-linjen.
 
     Docstringen skal tælle: den er hvor kodebasen skriver «Selv-sikker → 0». Målt 4/10-2026
     bar 157 af 1098 proposal-værdige fund mærket dér — uden for de ±5 linjer vinduet så.
     """
+    if _begrundelse_paa_linjen(lines, start):
+        return True
     lo = max(0, start - 5)
     hi = min(len(lines), end + 1)
     dele = lines[lo:hi]

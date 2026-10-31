@@ -476,8 +476,8 @@ _Bounded, current-source grounding for explicit memory questions._
 | function | `needs_memory_grounding` | `(message)` | Return true only when the user is clearly invoking remembered context. | [src](../../../core/services/visible_memory_grounding.py#L47) |
 | function | `_search_current_workspace` | `(query, *, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L57) |
 | function | `_bounded_search` | `(query, *, limit, timeout_s, search_fn)` | Run the potentially embedding-backed lookup without stalling chat. | [src](../../../core/services/visible_memory_grounding.py#L63) |
-| function | `_clip` | `(value, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L86) |
-| function | `ground_memory_question` | `(message, *, limit=…, timeout_s=…, search_fn=…)` | Append bounded current-workspace evidence to an explicit memory query. | [src](../../../core/services/visible_memory_grounding.py#L91) |
+| function | `_clip` | `(value, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L91) |
+| function | `ground_memory_question` | `(message, *, limit=…, timeout_s=…, search_fn=…)` | Append bounded current-workspace evidence to an explicit memory query. | [src](../../../core/services/visible_memory_grounding.py#L96) |
 
 ## `core/services/visible_model.py`
 

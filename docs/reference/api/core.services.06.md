@@ -135,20 +135,21 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 | function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L134) |
 | function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L150) |
 | function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L160) |
-| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L179) |
-| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L198) |
-| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L278) |
-| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L302) |
-| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L307) |
-| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L326) |
-| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L341) |
-| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L355) |
-| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L395) |
-| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L417) |
-| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L439) |
-| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L496) |
-| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L517) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L588) |
+| function | `_begrundelse_paa_linjen` | `(lines, lineno)` | True hvis selve `except`-linjen bærer en indholdsrig kommentar. | [src](../../../core/services/central_instrument.py#L183) |
+| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L205) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L226) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L306) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L330) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L335) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L354) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L369) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L383) |
+| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L423) |
+| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L445) |
+| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L467) |
+| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L524) |
+| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L545) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L616) |
 
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._

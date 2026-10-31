@@ -74,9 +74,14 @@ def _bounded_search(
     try:
         return list(future.result(timeout=max(0.05, float(timeout_s))) or [])
     except TimeoutError:
+        # Tom liste = svar uden grounding, ikke et svar uden mening. Retningen er
+        # bevidst: chat maa ikke hange paa en embedding-soegning, og loftet er
+        # timeout_s (2,5 s), saa faldet kan ikke fortsaette i det uendelige.
         future.cancel()
         return []
     except Exception:
+        # Samme retning som ovenfor: en lookup der kaster, er ikke et svar. Vi
+        # fortsaetter uden grounding frem for at vaelte chat-turen.
         future.cancel()
         return []
     finally:

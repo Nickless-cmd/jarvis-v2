@@ -463,3 +463,36 @@ def test_bare_except_reddes_ikke_af_de_nye_former():
     bare = next(f for f in fs if f.kind == "bare_except")
     assert bare.acknowledged is False
     assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_fri_prosa_paa_except_linjen_daemper():
+    """MÅLT 31/10-2026: den vigtigste form manglede.
+
+    `core/services/side_tasks.py:328` bærer
+    `# invalid caller budgets are returned as validation errors` — en fuld
+    begrundelse — og blev alligevel flagget, fordi listen kun kendte bestemte ORD.
+    Kodebasen bruger 34 forskellige formuleringer; en ordliste kan strukturelt
+    ikke følge dem. Reglen er derfor: står der en indholdsrig kommentar på
+    `except`-linjen, er faldet en dokumenteret beslutning.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except (TypeError, ValueError):  # invalid caller budgets are returned as validation errors\n"
+           "        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is True
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_en_doven_kort_kommentar_daemper_ikke():
+    """Grænsen mod det modsatte: en kommentar der siger HVAD, ikke HVORFOR.
+
+    Uden den kunne reglen «enhver kommentar tæller» gøre instrumentet tandløst —
+    et ægte fund kunne dæmpes med `# midlertidigt`. Kravene er 20 tegn og tre ord.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except Exception:  # midlertidigt\n        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD

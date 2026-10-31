@@ -17,10 +17,10 @@ import logging
 import re
 import time
 
-logger = logging.getLogger(__name__)
-
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.services import security_guard
+
+logger = logging.getLogger(__name__)
 
 RATE_LIMIT_PER_MIN = security_guard.RATE_LIMIT_PER_MIN  # 20
 THROTTLES_FOR_LOCK = 3
@@ -48,7 +48,11 @@ def scan_for_injection(text: str) -> list[str]:
         try:
             if pat.search(t):
                 hits.append(name)
-        except Exception:
+        except Exception as exc:
+            # Et mønster der ikke kan evalueres må ikke gøre teksten "ren":
+            # uden sporet her er "scanningen fejlede" identisk med "intet fundet".
+            logger.warning("abuse_monitor: injection-mønster %r kunne ikke evalueres: %s",
+                           name, exc)
             continue
     return hits
 
@@ -82,7 +86,11 @@ def _throttle_count(user_id: str) -> int:
     try:
         rec = get_runtime_state_value(_rl_key((user_id or '').strip()), None)
         return int(rec.get("throttles", 0)) if isinstance(rec, dict) else 0
-    except Exception:
+    except Exception as exc:
+        # 0 betyder "ingen tidligere advarsler" — altså "eskalér ikke". En brudt
+        # state-læsning slår dermed lockdown fra i tavshed. Sporet gør den synlig.
+        logger.warning("abuse_monitor._throttle_count fejlede — eskalering kan ikke afgøres: %s",
+                       exc)
         return 0
 
 
@@ -96,8 +104,11 @@ def _notify_owner(summary: str) -> None:
         from core.services import notification_router
         notification_router.deliver_message(
             str(owner.discord_id), f"⚠️ Sikkerhed: {summary}", "reach_out", importance="high")
-    except Exception:
-        pass
+    except Exception as exc:
+        # Notifikationen ER sikkerhedskæden: fejler den, tror systemet at Bjørn
+        # er advaret. Uden dette spor er "kunne ikke sende" identisk med "sendt".
+        logger.warning("abuse_monitor._notify_owner fejlede — ejer blev IKKE advaret "
+                       "om: %s (%s)", summary, exc)
 
 
 # ── orkestrering (kaldes fra identity_guard.guard_incoming) ─────────────
@@ -149,6 +160,9 @@ def scan_tool_output(text: str, *, source: str = "tool") -> list[str]:
         try:
             security_guard.record_abuse("", "", "tool_output_injection", "medium",
                                         details={"source": source, "patterns": hits[:6]})
-        except Exception:
-            pass
+        except Exception as exc:
+            # Fundet er gjort — men abuse-eventet blev ikke skrevet. Uden sporet
+            # ser et registreret fund og et uregistreret ens ud i audit-loggen.
+            logger.warning("abuse_monitor: kunne ikke registrere tool_output_injection "
+                           "fra %s: %s", source, exc)
     return hits

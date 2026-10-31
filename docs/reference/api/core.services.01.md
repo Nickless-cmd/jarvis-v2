@@ -41,12 +41,12 @@ _Abuse-monitoring (spec 2026-06-21 §5): prompt-injection, manipulation,_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `scan_for_injection` | `(text)` | Returnér navne på matchede injection-mønstre (tom = rent). | [src](../../../core/services/abuse_monitor.py#L41) |
-| function | `_rl_key` | `(user_id)` | — | [src](../../../core/services/abuse_monitor.py#L57) |
-| function | `check_rate_limit` | `(user_id, *, now=…)` | True hvis brugeren ER inden for grænsen (må fortsætte). False = overskredet. | [src](../../../core/services/abuse_monitor.py#L61) |
-| function | `_throttle_count` | `(user_id)` | — | [src](../../../core/services/abuse_monitor.py#L81) |
-| function | `_notify_owner` | `(summary)` | — | [src](../../../core/services/abuse_monitor.py#L90) |
-| function | `process_incoming` | `(message, *, session_id, user_id)` | Rate-limit + injection-scan på en indgående besked. | [src](../../../core/services/abuse_monitor.py#L104) |
-| function | `scan_tool_output` | `(text, *, source=…)` | Scan eksternt tool-output (web_fetch/web_search) for indlejret injection. | [src](../../../core/services/abuse_monitor.py#L144) |
+| function | `_rl_key` | `(user_id)` | — | [src](../../../core/services/abuse_monitor.py#L61) |
+| function | `check_rate_limit` | `(user_id, *, now=…)` | True hvis brugeren ER inden for grænsen (må fortsætte). False = overskredet. | [src](../../../core/services/abuse_monitor.py#L65) |
+| function | `_throttle_count` | `(user_id)` | — | [src](../../../core/services/abuse_monitor.py#L85) |
+| function | `_notify_owner` | `(summary)` | — | [src](../../../core/services/abuse_monitor.py#L98) |
+| function | `process_incoming` | `(message, *, session_id, user_id)` | Rate-limit + injection-scan på en indgående besked. | [src](../../../core/services/abuse_monitor.py#L115) |
+| function | `scan_tool_output` | `(text, *, source=…)` | Scan eksternt tool-output (web_fetch/web_search) for indlejret injection. | [src](../../../core/services/abuse_monitor.py#L155) |
 
 ## `core/services/account_data_controls.py`
 _Brugerens egne data — tælle, eksportere, slette. Lagvis._

@@ -42,15 +42,22 @@ def register_builtin_channel_plugins() -> None:
     try:
         register_plugin(DISCORD_CHANNEL_MANIFEST)
     except Exception as exc:
-        # Registreringen er idempotent og må ikke vælte plugin-routen — men fejlen
-        # efterlod ingen spor, OG flaget blev sat alligevel: en fejlet registrering
-        # var derfor permanent i denne proces, og Discord-kanalen var tavst væk.
+        # Registreringen må ikke vælte plugin-routen — men fejlen efterlod heller
+        # intet spor, OG flaget blev sat alligevel: en fejlet registrering var
+        # derfor permanent i denne proces, og Discord-kanalen var tavst væk.
+        #
+        # Flaget sættes nu KUN ved succes (besluttet 31/10-2026). Retry er gratis:
+        # `register_plugin` er en ren dict-tildeling i `_REGISTRY`, fuldt idempotent,
+        # så et nyt forsøg kan hverken duplikere eller forgifte registret. Prisen for
+        # retry er én log-linje pr. kald der fejler; prisen for IKKE at retry var en
+        # kanal der var væk indtil næste processtart, uden en vej tilbage.
         logger.warning(
             "channel_inbound: indbygget kanal-plugin 'discord-local' blev IKKE "
-            "registreret: %s: %s — _BUILTINS_REGISTERED sættes alligevel, så "
-            "forsøget gentages ikke før næste processtart",
+            "registreret: %s: %s — _BUILTINS_REGISTERED forbliver False, så "
+            "næste kald prøver igen",
             type(exc).__name__, exc,
         )
+        return
     _BUILTINS_REGISTERED = True
 
 

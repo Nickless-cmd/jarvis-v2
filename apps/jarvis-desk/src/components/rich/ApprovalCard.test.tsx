@@ -17,7 +17,11 @@ describe('ApprovalCard', () => {
   it('renders action text inert and fires onApprove (owner)', async () => {
     const onApprove = vi.fn()
     render(<ApprovalCard approvalId="a1" tool="operator_bash" action={'<b>rm</b>'} risk="destructive" canApprove onApprove={onApprove} onDeny={() => {}} />)
-    expect(screen.getByText('<b>rm</b>')).toBeInTheDocument()
+    // `selector: 'pre'`: teksten står nu OGSÅ i resume-linjen (den er hele
+    // pointen med den faste højde), men kravet om at den vises INERT gælder
+    // `<pre>`-en. Uden selectoren fandt getByText to elementer og fejlede —
+    // ikke fordi kontrakten blev brudt, men fordi den blev målt for bredt.
+    expect(screen.getByText('<b>rm</b>', { selector: 'pre' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /godkend/i }))
     expect(onApprove).toHaveBeenCalledWith('a1')
   })

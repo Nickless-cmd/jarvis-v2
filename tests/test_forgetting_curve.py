@@ -142,3 +142,62 @@ def test_tikket_laaser_sig_ikke_selv_fast(monkeypatch):
     _hjerne(monkeypatch, [{"focus": "a", "summary": "noget"}])
     ud = F.tick(30.0)
     assert ud["registreret"] == 1
+
+
+# ── semantisk dedup (31/10-2026) ──────────────────────────────────────────
+#
+# MAALT paa den levende `forgetting_curve.json` (500 poster): fem grupper
+# delte ORDRET samme `content_preview` under forskellige noegler. Noeglen er
+# `sha256(focus|summary)`, saa samme udtraek med en anden `focus` fik en ny
+# noegle — og dermed frisk `decay_score`. Emnet kunne strukturelt ikke falme.
+#
+# HVORFOR DEDUP ER EKSAKT OG IKKE EN LIGHEDS-TAERSKEL: Jaccard over ord blev
+# maalt paa samme fil. Inden for ét emne (42 poster om «den afbrudte koersel»)
+# topper parrene paa 0,667. Paa tvaers naar tilfaeldige par 1,000, fordi
+# «somatisk tilstand: cpu 4% · 47°C · 11.2GB fri» og «… cpu 8% · 49°C · 12.2GB
+# fri» er samme skabelon med andre tal. Ved taerskel 0,50 fanges 13 aegte
+# emne-par — men ogsaa 92 tvaers-par: syv falske for hver aegte. En taerskel
+# der matcher alt er lige saa ubrugelig som ingen dedup.
+
+def test_samme_tanke_i_nye_ord_giver_EEN_post():
+    """KERNEN. To registreringer af samme udtraek maa ikke give to poster.
+
+    Fejler paa koden foer 31/10-2026: `register_memory` skrev altid en ny post,
+    saa emnet fik frisk henfald hver gang det blev formuleret igen.
+    """
+    F.register_memory(memory_key="noegle-a", content_preview="Den afbrudte kørsel hænger stadig")
+    F.register_memory(memory_key="noegle-b", content_preview="den afbrudte kørsel hænger stadig!")
+
+    reg = state_store.load_json("forgetting_curve", {})
+    assert len(reg) == 1, f"to poster om samme udtræk: {list(reg)}"
+    post = next(iter(reg.values()))
+    assert post["reinforcement_count"] >= 1, "den gensete post skal være forstærket"
+
+
+def test_forskellige_emner_smelter_IKKE_sammen():
+    """Den modsatte vej. En dedup der matcher alt gør kurven til én klump.
+
+    De to tekster deler skabelonen «somatisk tilstand: cpu N% · N°C · N.NGB
+    fri» — præcis den form der gav Jaccard 1,0 på tværs i den levende fil. De
+    er alligevel to forskellige målinger og skal blive to poster.
+    """
+    F.register_memory(memory_key="s1", content_preview="somatisk tilstand: cpu 4% · 47°C · 11.2GB fri")
+    F.register_memory(memory_key="s2", content_preview="somatisk tilstand: cpu 8% · 49°C · 12.2GB fri")
+
+    reg = state_store.load_json("forgetting_curve", {})
+    assert len(reg) == 2, f"to målinger blev smeltet sammen: {list(reg)}"
+
+
+def test_tikket_deduplikerer_ogsaa(monkeypatch):
+    """`tick()` har sin EGEN registrering — fixet skal ramme den vej der kører.
+
+    Samme udtraek med to forskellige `focus` giver to noegler. Uden dedup i
+    tikket blev det andet talt som nyt, og det er præcis den vej produktionen
+    bruger (hjerteslaget), ikke `register_memory`.
+    """
+    _hjerne(monkeypatch, [{"focus": "tankestrøm", "summary": "jeg tæller kolonner og værdier"},
+                          {"focus": "oplevelse", "summary": "jeg tæller kolonner og værdier"}])
+    ud = F.tick(30.0)
+    assert ud["registreret"] == 1, f"samme udtræk blev talt som nyt: {ud}"
+    assert ud["forstaerket"] == 1
+    assert state_store.load_json("forgetting_curve", {}).__len__() == 1

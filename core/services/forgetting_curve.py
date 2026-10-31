@@ -35,6 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -77,15 +78,74 @@ def noegle_for(focus: str, summary: str) -> str:
     return hashlib.sha256(raa.encode("utf-8")).hexdigest()[:16]
 
 
+#: Normalisering til dublet-genkendelse. MAALT 31/10-2026 paa den levende
+#: `forgetting_curve.json` (500 poster): fem grupper delte ORDRET samme
+#: `content_preview` under forskellige noegler — «tankestroem: Jeg vil foerst
+#: taelle kolonner og vaerdier …» laa tre gange. Det er ren dublet: samme
+#: udtraek registreret igen, fordi noeglen hasher `focus|summary` og udtraekket
+#: blev formuleret med en anden `focus`.
+#:
+#: HVORFOR IKKE EN LIGHEDS-TAERSKEL (Jaccard over ord): det blev maalt, og det
+#: kan ikke skelne i denne korpus. Inden for ét emne (de 42 poster om «den
+#: afbrudte koersel») topper parrene paa 0,667; paa tvaers af hele filen naar
+#: tilfaeldige par 1,000 — fordi «somatisk tilstand: cpu 4% · 47°C · 11.2GB fri»
+#: og «… cpu 8% · 49°C · 12.2GB fri» er samme skabelon med andre tal. Ved
+#: taerskel 0,50 fanges 13 aegte emne-par — men ogsaa 92 tvaers-par, altsaa syv
+#: falske for hver aegte. En taerskel der matcher alt er lige saa ubrugelig som
+#: ingen dedup: den ville goere glemselskurven til én klump.
+#:
+#: Derfor: KUN normaliseret eksakt match. Det fanger de fem maalte dubletter og
+#: kan pr. konstruktion ikke smelte to forskellige emner sammen.
+def _normaliser(preview: str) -> str:
+    """Sammenligningsform: smaa bogstaver, ingen tegnsaetning, eet mellemrum."""
+    tekst = str(preview or "").lower()
+    tekst = re.sub(r"[^a-zæøå0-9]+", " ", tekst)
+    return " ".join(tekst.split())
+
+
+def _find_dublet(reg: dict[str, dict[str, Any]], tekst: str) -> str | None:
+    """Noeglen paa en post med SAMME normaliserede indhold, hvis nogen.
+
+    Sammenligner mod postens `summary`-felt naar det findes. `content_preview`
+    baerer `focus` som praefiks («tankestroem: …»), saa to identiske udtraek
+    med forskelligt `focus` ville aldrig matche hinanden — og det er praecis
+    den form dubletterne har. Posten skriver derfor `summary` ved siden af.
+    """
+    noegle = _normaliser(tekst)
+    if not noegle:
+        return None
+    for eksisterende, post in reg.items():
+        sammenlign = post.get("summary")
+        if sammenlign is None:
+            sammenlign = post.get("content_preview") or ""
+        if _normaliser(str(sammenlign)) == noegle:
+            return eksisterende
+    return None
+
+
 def register_memory(
     *,
     memory_key: str,
     content_preview: str = "",
     initial_decay: float = 0.0,
 ) -> None:
-    """Register a memory for decay tracking."""
+    """Register a memory for decay tracking.
+
+    Er indholdet allerede sporet under en ANDEN noegle, forstaerkes den post i
+    stedet for at der oprettes en ny. Maalt 31/10-2026: fem grupper i den
+    levende fil havde ordret samme preview under forskellige noegler, saa
+    emnet fik frisk `decay_score` hver gang og strukturelt ikke kunne falme.
+    """
     with state_store.med_laas(_FIL):
         reg = _load()
+        dublet = _find_dublet(reg, content_preview)
+        if dublet is not None and dublet != memory_key:
+            post = reg[dublet]
+            post["decay_score"] = 0.0
+            post["reinforcement_count"] = int(post.get("reinforcement_count", 0)) + 1
+            post["last_referenced_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+            _save(reg)
+            return
         reg[memory_key] = {
             "decay_score": initial_decay,
             "reinforcement_count": 0,
@@ -229,10 +289,28 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
                 post["last_referenced_at"] = nu
                 genset += 1
             else:
+                preview = (f"{focus}: {summary}" if focus else summary)[:100]
+                # Samme udtraek under en ANDEN `focus` giver en anden noegle.
+                # Uden dette blev det talt som nyt og fik frisk henfald —
+                # maalt 31/10-2026 som fem dublet-grupper i den levende fil.
+                #
+                # Der sammenlignes paa `summary` ALENE, ikke paa `preview`:
+                # preview baerer `focus` som praefiks, saa to identiske udtraek
+                # med forskelligt `focus` ville aldrig matche hinanden — og det
+                # er praecis den form dubletterne har.
+                dublet = _find_dublet(reg, summary)
+                if dublet is not None:
+                    d_post = reg[dublet]
+                    d_post["decay_score"] = 0.0
+                    d_post["reinforcement_count"] = int(d_post.get("reinforcement_count", 0)) + 1
+                    d_post["last_referenced_at"] = nu
+                    genset += 1
+                    continue
                 reg[noegle] = {
                     "decay_score": 0.0,
                     "reinforcement_count": 0,
-                    "content_preview": (f"{focus}: {summary}" if focus else summary)[:100],
+                    "content_preview": preview,
+                    "summary": summary,
                     "registered_at": nu,
                     "last_referenced_at": nu,
                 }

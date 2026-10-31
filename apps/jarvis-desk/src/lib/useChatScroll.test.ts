@@ -418,6 +418,38 @@ describe('useChatScroll — composerens vækst er ikke en læserbevægelse', () 
     expect(hook.result.current.atBottom).toBe(false)
   })
 
+  it('composer-vækst tænder ikke scroll-til-bund-pilen — rullen i bund ER beslutningen', () => {
+    // MÅLT 31/10-2026 (side-9ac73a90fe) i ÆGTE Chromium 130, ikke i jsdom:
+    //   composer vokser 400→425→448 px  → scrollTop står STILLE (1801) mens
+    //                                     gulvet hæves til 1849 — INTET scroll-event
+    //   composer krymper 400→300 px     → ét scroll-event, rullen ender på gulvet
+    // Kæden «onScroll nulstiller viewportDelta → afregning konkluderer forlod
+    // bunden» kan altså ikke starte ved composer-vækst: der kommer ingen
+    // scroll-event. Pilen tændes ikke i drift.
+    //
+    // HULEN VAR VAGTEN, ikke koden. Testen «pinner når containeren krymper»
+    // asserterede kun `top === max` og rørte aldrig `atBottom` — den var grøn
+    // selv hvis beslutningen stod forkert. Her måles begge, ved hvert trin.
+    //
+    // MUTATION: fjern `if (foelgerRef.current) skrivTilBund()` i resize-grenen
+    // → rullen bliver stående 100 px over gulvet → fejler.
+    const maal = rude(2000, 500) // gulv = 1500; læseren står i bunden
+    const { hook } = opsæt(maal, { aktiv: false })
+    act(() => { MockRO.alle[0]!.fyr() }) // grundlinje — Chromium fyrer altid én initial callback
+    expect(hook.result.current.atBottom).toBe(true)
+
+    // 2. → 3. linje i composeren: to små trin, som den ægte måling.
+    maal.saetHoejde(425)
+    act(() => { MockRO.alle[0]!.fyr() })
+    expect(maal.top()).toBe(maal.max())
+    expect(hook.result.current.atBottom).toBe(true)
+
+    maal.saetHoejde(400)
+    act(() => { MockRO.alle[0]!.fyr() })
+    expect(maal.top()).toBe(maal.max())
+    expect(hook.result.current.atBottom).toBe(true)
+  })
+
   it('når afregningen siger «vi følger», bliver læseren STÅENDE — tolerancen må ikke skrive', () => {
     // MÅLT OG VENDT 20/10-2026 (Bjørn, i den kørende PWA): «fucker scroll hvis
     // du ikk scroller hurtigt forbi sidste assistentsvar — nulstiller scroll

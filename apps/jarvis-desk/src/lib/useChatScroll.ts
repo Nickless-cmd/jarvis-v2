@@ -303,6 +303,13 @@ export function useChatScroll(
     }
 
     // Læseren har flyttet sig: viewport-ændringer måles herfra, ikke fra før.
+    //
+    // MÅLT 31/10-2026 i ægte Chromium 130 (side-9ac73a90fe): ved composer-VÆKST
+    // fyrer der intet scroll-event, og `scrollTop` står stille (1801 mens gulvet
+    // hæves til 1849) — så denne gren nås slet ikke af den vej. Ved composer-
+    // KRYMPNING fyrer ét event, og rullen ender på gulvet, hvor `onScroll`
+    // rammer `m.top >= m.gulv` og følger med det samme. Der er altså ingen
+    // bevægelse at attribuere forkert, og en undtagelse her ville være død kode.
     viewportDeltaRef.current = 0
 
     if (m.top >= m.gulv) {

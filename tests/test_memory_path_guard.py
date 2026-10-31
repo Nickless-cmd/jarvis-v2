@@ -4,8 +4,6 @@ Kanonisk mappe = den per-bruger workspace prompten laeser fra (2026-09-05).
 Foer da pegede skrivningerne paa shared/, som prompten aldrig laeser."""
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 

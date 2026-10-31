@@ -15,9 +15,12 @@ selvmål-DoS.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 
 from core.runtime.db import connect
+
+logger = logging.getLogger(__name__)
 
 # ── tærskler (spec §4, §12) ─────────────────────────────────────────────
 PUSHBACK_LIMIT = 3            # 3x ignoreret pushback i samme session → session-lock
@@ -47,6 +50,16 @@ def is_owner(user_id: str) -> bool:
         owner = get_owner()
         return bool(owner and str(getattr(owner, "discord_id", "")).strip() == uid)
     except Exception:
+        # Retningen er bevidst (ukendt ejer maa ikke give exempt), men den er
+        # IKKE harmloes: svarer vi False om ejeren selv, kan §12.3's
+        # anti-self-lockout ikke holde, og et forbigaaende opslagsfejl laaser
+        # Bjorn ude i 24 timer. Maalt 31/10-2026: faldet var helt tavst.
+        logger.warning(
+            "security_guard: owner-opslag kastede — behandler %r som IKKE-ejer "
+            "(owner kan derfor rammes af account-lockdown, §12.3)",
+            uid,
+            exc_info=True,
+        )
         return False
 
 
@@ -86,7 +99,15 @@ def record_abuse(
         record_audit(user_id, "abuse_detected", session_id=session_id,
                      details={"type": event_type, "severity": severity})
     except Exception:
-        pass
+        # Et tabt abuse-event betyder at eskaleringen ikke sker. Tavshed her
+        # goer "ingen misbrug registreret" identisk med "registreringen fejlede".
+        logger.warning(
+            "security_guard: kunne ikke registrere abuse-event %r for %r (severity=%r)",
+            event_type,
+            user_id,
+            severity,
+            exc_info=True,
+        )
 
 
 # ── session-lås (mute) ──────────────────────────────────────────────────
@@ -102,7 +123,11 @@ def lock_session(session_id: str, reason: str, *, user_id: str = "") -> None:
             )
         record_audit(user_id, "session_locked", session_id=sid, details=reason)
     except Exception:
-        pass
+        # Kalderen faar ingen returvaerdi, saa et tavst fald betyder at
+        # sessionen ser laast ud for den der bad om det — men er aaben.
+        logger.warning(
+            "security_guard: kunne ikke laase session %r (aarsag=%r)", sid, reason, exc_info=True
+        )
 
 
 def unlock_session(session_id: str, *, user_id: str = "") -> None:
@@ -117,7 +142,9 @@ def unlock_session(session_id: str, *, user_id: str = "") -> None:
             )
         record_audit(user_id, "unlock", session_id=sid)
     except Exception:
-        pass
+        logger.warning(
+            "security_guard: kunne ikke laase session %r op", sid, exc_info=True
+        )
 
 
 def is_session_locked(session_id: str) -> bool:
@@ -173,7 +200,13 @@ def _lock_account(user_id: str, *, hours: int = LOCKDOWN_HOURS) -> None:
             )
         record_audit(uid, "account_lockdown", details={"hours": hours})
     except Exception:
-        pass
+        # Den groveste af dem: lockdown skulle stoppe misbrug, og et tavst
+        # fald betyder at den fortsatte uden at nogen kunne se det.
+        logger.warning(
+            "security_guard: account-lockdown for %r fejlede — brugeren er IKKE laast",
+            uid,
+            exc_info=True,
+        )
 
 
 # ── strikes / eskalering ────────────────────────────────────────────────
@@ -192,6 +225,14 @@ def _recent_session_lock_count(user_id: str, *, hours: int = 24) -> int:
             ).fetchone()
         return int(row[0] or 0) if row else 0
     except Exception:
+        # 0 betyder "ingen tidligere laase" og dermed "ingen eskalering".
+        # En brudt audit-tabel ophaever altsaa lockdown i tavshed.
+        logger.warning(
+            "security_guard: kunne ikke taelle tidligere session-laase for %r — "
+            "eskalering til account-lockdown udebliver",
+            uid,
+            exc_info=True,
+        )
         return 0
 
 

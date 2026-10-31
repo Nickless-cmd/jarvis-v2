@@ -123,7 +123,7 @@ export function CoworkView({
             <AccountSection config={config} />
           </CategorySection>
           <CategorySection title="Kvote"><KvoteSection config={config} /></CategorySection>
-          {isOwner && <CategorySection title="Ekstra bekræftelse"><TotpSetup config={config} /></CategorySection>}
+          <CategorySection title="Ekstra bekræftelse"><TotpSetup config={config} ejer={isOwner} /></CategorySection>
           <CategorySection id="privacy" title="Privatliv og tilladelser">
             <DataPrivacyPanel config={config} />
             <PermissionsSection config={config} />

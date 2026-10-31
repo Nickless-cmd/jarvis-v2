@@ -147,7 +147,7 @@ Generated from source. 9482/17802 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/routes/sensory.py` :: `summary` (L54)
 - `apps/api/jarvis_api/routes/system_health.py` :: `system_health` (L19)
 - `apps/api/jarvis_api/routes/tool_router.py` :: `get_state` (L25)
-- `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L30)
+- `apps/api/jarvis_api/routes/totp.py` :: `totp_status` (L62)
 - `apps/api/jarvis_api/routes/transcribe.py` :: `transcribe` (L22)
 - `apps/api/jarvis_api/routes/users.py` :: `delete_one` (L75)
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)

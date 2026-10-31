@@ -239,15 +239,15 @@ _MC observability for tool_router._
 | function | `get_state` | `()` | — | [src](../../../apps/api/jarvis_api/routes/tool_router.py#L25) |
 
 ## `apps/api/jarvis_api/routes/totp.py`
-_TOTP-setup for owner-override (spec §6.2). Armerer bagdøren: generér nøgle,_
+_TOTP-setup — hver bruger sætter sin EGEN anden faktor._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_owner_or_403` | `()` | Returnér owner-User eller rejs 403. Ubundet (no-auth) → owner. | [src](../../../apps/api/jarvis_api/routes/totp.py#L16) |
-| function | `totp_status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/totp.py#L30) |
-| function | `_do_setup` | `()` | — | [src](../../../apps/api/jarvis_api/routes/totp.py#L35) |
-| function | `totp_setup` | `()` | Generér + gem en ny TOTP-seed for owner. Returnér secret + otpauth-URI | [src](../../../apps/api/jarvis_api/routes/totp.py#L52) |
-| function | `totp_revoke` | `()` | Fjern owners TOTP-seed (deaktivér override til ny setup, §9 kompromittering). | [src](../../../apps/api/jarvis_api/routes/totp.py#L59) |
+| function | `_bruger_eller_403` | `()` | Returnér den indloggede bruger. Ubundet (no-auth) → owner. | [src](../../../apps/api/jarvis_api/routes/totp.py#L43) |
+| function | `totp_status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/totp.py#L62) |
+| function | `_do_setup` | `()` | — | [src](../../../apps/api/jarvis_api/routes/totp.py#L67) |
+| function | `totp_setup` | `()` | Generér + gem en ny TOTP-seed for den indloggede bruger. Returnér secret | [src](../../../apps/api/jarvis_api/routes/totp.py#L84) |
+| function | `totp_revoke` | `()` | Fjern kalderens EGEN TOTP-seed (deaktivér til ny setup, §9 kompromittering). | [src](../../../apps/api/jarvis_api/routes/totp.py#L92) |
 
 ## `apps/api/jarvis_api/routes/transcribe.py`
 _POST /transcribe — diktering-transskription til jarvis-desk's mic-knap._

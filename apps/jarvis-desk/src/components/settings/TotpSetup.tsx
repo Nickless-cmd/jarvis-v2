@@ -9,12 +9,22 @@ import {
 } from '../../lib/totpApi'
 
 /**
- * Owner-override 2FA-opsætning (spec §6.2). Genererer en TOTP-nøgle, viser QR
- * (renderet LOKALT — secret forlader aldrig maskinen) + secret til manuel
- * indtastning. Owner scanner ind i sin authenticator; derefter virker
- * `!override <kode>` fra fremmede sessioner. Bagdøren = kill-switch (§6.0).
+ * Totrinsbekræftelse (spec §6.2). Genererer en TOTP-nøgle, viser QR (renderet
+ * LOKALT — secret forlader aldrig maskinen) + secret til manuel indtastning.
+ *
+ * ## Hvorfor den ikke længere er owner-only (målt 31/10-2026)
+ *
+ * Komponenten var pakket i `{isOwner && …}`, mens `/auth/totp/setup` også var
+ * owner-only. Kæden imellem dem gjorde 2FA til en død ende for alle andre:
+ * uden en seed kan `kraev_totp` ikke verificere noget, og uden det kan et
+ * medlem ikke registrere sin egen enhed. Så snart enheds-reglen blev tændt
+ * 30/10, kunne et medlem derfor ikke bruge code mode — og beskeden bad dem
+ * slå 2FA til, hvilket var præcis det knappen ikke tillod.
+ *
+ * Teksten nedenfor er derfor rolletilpasset: ejeren får at vide at nøglen
+ * åbner `!override`, alle andre at den åbner vejen til deres egne enheder.
  */
-export function TotpSetup({ config }: { config: ApiConfig | undefined }) {
+export function TotpSetup({ config, ejer = false }: { config: ApiConfig | undefined; ejer?: boolean }) {
   const resource = useSettingsResource(config, getTotpStatus)
   const configured = resource.data?.configured
   const account = resource.data?.account
@@ -53,12 +63,22 @@ export function TotpSetup({ config }: { config: ApiConfig | undefined }) {
 
   return (
     <div className="totp-setup">
-      <h3>Totrinsbekræftelse for ejeren</h3>
+      <h3>{ejer ? 'Totrinsbekræftelse for ejeren' : 'Totrinsbekræftelse'}</h3>
       <SettingsState status={resource.status} label="totrinsbekræftelse" onRetry={resource.retry} />
       <SettingsActionError message={error} />
       <p className="totp-note">
-        Brug en engangskode fra din godkendelsesapp, når du skal bekræfte
-        ejeradgang fra en anden session. Skriv <code>!override &lt;kode&gt;</code> i den session.
+        {ejer ? (
+          <>
+            Brug en engangskode fra din godkendelsesapp, når du skal bekræfte
+            ejeradgang fra en anden session. Skriv <code>!override &lt;kode&gt;</code> i den session.
+          </>
+        ) : (
+          <>
+            Brug en engangskode fra din godkendelsesapp, når du skal tilføje en
+            enhed. Koden er den anden faktor — uden den kan en enhed ikke
+            registreres, og uden en registreret enhed er code mode lukket.
+          </>
+        )}
         Behandl opsætningsnøglen som en adgangskode.
       </p>
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 
-import pytest
 
 from core.services import gate_execution as G
 
@@ -23,7 +22,7 @@ def test_operator_grenen_RAPPORTERER_naar_vaernet_kaster(monkeypatch, caplog):
     monkeypatch.setattr(rbw, "check_operator_read_before_write",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("infra-blip")))
     with caplog.at_level(logging.WARNING):
-        v = G.execution_gate({"action": "operator", "path": "/x", "session_id": "s"})
+        G.execution_gate({"action": "operator", "path": "/x", "session_id": "s"})
     assert "fail-open" in caplog.text and "infra-blip" in caplog.text
 
 
@@ -77,20 +76,41 @@ def test_kaldestedets_rapportering_kaster_aldrig(monkeypatch):
 
 def test_der_er_ingen_TAVSE_gate_kald_tilbage():
     """Vagten mod tilbagefald: et `except: pass` omkring et gate-kald er
-    præcis det mønster der kostede synligheden."""
-    import pathlib, re
+    præcis det mønster der kostede synligheden.
+
+    MÅLT 31/10-2026 — denne vagt var GRØN mens fire fald stod i `execution_gate`
+    (linje 125, 163, 190, 263). Den havde TO blindheder, og begge skulle rettes:
+
+    1. MØNSTRET matchede kun `check_*`-hjælperne, men faldene sad omkring de
+       UNDERLIGGENDE værns kald (`check_bash_command_safe`,
+       `check_read_before_write`, `guard_code_write`).
+    2. `strip() == "pass"` matchede kun en bar `pass`. Faldene skrev
+       `pass  # infra-blip → ...` — altså præcis den form kodebasen bruger
+       overalt, og som vagten derfor var strukturelt blind for.
+
+    En grøn vagt er ikke bevis for at målet er i orden: den målte kun én af
+    flere former. Efterprøvet mod HEAD-filen, hvor den nu finder alle fire.
+    """
+    import pathlib
+    import re
     GATE = re.compile(r"\b(check_command|check_file|check_operator|"
-                      r"check_workspace_trust|check_upload)\b")
+                      r"check_workspace_trust|check_upload|"
+                      # de underliggende værn — det var HER faldene sad
+                      r"check_bash_command_safe|check_read_before_write|"
+                      r"check_operator_read_before_write|guard_code_write)\b")
+    EXCEPT = re.compile(r"\s*except\b.*:\s*$")
     fund = []
     for f in [pathlib.Path("core/tools/simple_tools_operator.py"),
               pathlib.Path("core/services/gate_execution.py")]:
         linjer = f.read_text().splitlines()
-        for i, l in enumerate(linjer):
-            if not GATE.search(l) or l.strip().startswith("#"):
+        for i, linje in enumerate(linjer):
+            if not GATE.search(linje) or linje.strip().startswith("#"):
                 continue
             for j in range(i, min(i + 14, len(linjer))):
-                if re.match(r"\s*except\b.*:\s*$", linjer[j]):
-                    if linjer[j + 1].strip() == "pass":
+                if EXCEPT.match(linjer[j]):
+                    # `pass  # begrundelse` er den form kodebasen FAKTISK
+                    # bruger — en bar `== "pass"` så den ikke.
+                    if linjer[j + 1].strip().startswith("pass"):
                         fund.append(f"{f.name}:{j+1}")
                     break
     assert not fund, f"tavse gate-kald: {fund}"

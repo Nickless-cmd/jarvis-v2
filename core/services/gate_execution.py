@@ -122,8 +122,12 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
                 ok, reason = check_bash_command_safe(command, session_id=session_id)
                 if not ok:
                     return _red("exec_command", reason, "guard_blocked")
-            except Exception:
-                pass  # infra-blip → fortsæt til classify (blocked blokerer stadig)
+            except Exception as exc:
+                # infra-blip → fortsæt til classify (blocked blokerer stadig).
+                # Retningen er bevidst: at blokere på et blip ville brick'e
+                # harmløse ejer-kommandoer. Men uden et spor er «rbw sagde nej»
+                # og «rbw kastede» identiske — og kun den ene er en politik.
+                _rapporter_fail_open("exec_command", "read-before-write-værnet", exc)
         from core.tools.simple_tools import classify_command
         cls = classify_command(command)
         if cls == "blocked":
@@ -160,8 +164,11 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
             ok, reason = check_read_before_write(path, session_id=session_id)
             if not ok:
                 return _red("exec_file", reason, "guard_blocked")
-        except Exception:
-            pass  # infra-blip → tillad (paritet med tidligere except:pass), men traced
+        except Exception as exc:  # fail-open bevidst: et blip må ikke brick'e ejer-skrivning
+            # infra-blip → tillad (paritet med tidligere except:pass).
+            # Kommentaren her lovede «men traced». Det var den ikke: der var
+            # hverken logning eller incident. Nu er der.
+            _rapporter_fail_open("exec_file", "read-before-write-værnet", exc)
         return _green("exec_file", "auto")
 
     # ── workspace-trust (skrive/exec i ikke-betroet code-workspace) ──
@@ -170,8 +177,13 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
         try:
             from core.services.workspace_trust import guard_code_write
             block = guard_code_write(tool_name)
-        except Exception:
-            block = None  # paritet med tidligere _trust_block=None (fail-open)
+        except Exception as exc:
+            # paritet med tidligere _trust_block=None (fail-open): et blip må
+            # ikke brick'e skrivning i et betroet workspace. Men «workspace er
+            # betroet» og «trust-tjekket kunne ikke køre» er IKKE det samme —
+            # og uden et spor var de identiske.
+            _rapporter_fail_open("exec_workspace_trust", "workspace-trust-værnet", exc)
+            block = None
         if block:
             return _red("exec_workspace_trust", block, "untrusted")
         return _green("exec_workspace_trust", "trusted")
@@ -187,7 +199,7 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
                 path, session_id=session_id, file_exists=file_exists)
             if not ok:
                 return _red("exec_operator", reason, "guard_blocked")
-        except Exception as exc:
+        except Exception as exc:  # fail-open bevidst: blip må ikke brick'e ejer-handling
             _rapporter_fail_open("exec_operator", "read-before-write-værnet", exc)
         return _green("exec_operator", "auto")
 
@@ -260,8 +272,21 @@ def _decide(nerve: str, ctx: dict[str, Any]) -> Verdict:
                     # af hvad der slap igennem.
                     run_id=_spor_run_id(), session_id=_spor_session_id(),
                 )
-            except Exception:
-                pass
+            except Exception as _spor_exc:
+                # Det HER er den mest ironiske af dem alle: koden findes
+                # udelukkende for at gøre et gate-kollaps LYD, og hvis selve
+                # incident-skrivningen fejler, bliver kollapset tavst igen.
+                # Log-stien kan ikke selv bruge record_central_incident, så
+                # den skriver til loggen — som er det eneste lag der er tilbage.
+                try:
+                    logger.error(
+                        "exec-gate kollaps kunne IKKE spores (incident-skrivning fejlede): "
+                        "%s: %s — original kollaps: %s: %s",
+                        type(_spor_exc).__name__, _spor_exc,
+                        type(_exec_exc).__name__, _exec_exc,
+                    )
+                except Exception:  # selv-sikker: en fejlende nødlog må aldrig vælte gaten
+                    pass
             return Verdict(nerve, Decision.GREEN, "exec-gate-error", klass=_SEC,
                            evidence={"classification": ""})
 

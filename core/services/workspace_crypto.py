@@ -24,9 +24,12 @@ Dekryptering sker KUN i memory (§16.5), aldrig skrevet i klartekst tilbage til 
 """
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _ENC = ".enc"
 
@@ -58,7 +61,13 @@ def should_encrypt(user_id: str) -> bool:
         if u is not None and u.role == "owner":
             return False
     except Exception:
-        pass
+        # Retningen er fail-SAFE (vi krypterer naar vi ikke ved bedre), men
+        # uden et spor kan man ikke se at owner-opslaget er brudt — og saa
+        # bliver Bjorns egne filer krypteret uden at nogen forstaar hvorfor.
+        logger.warning(
+            "workspace_crypto: kunne ikke slaa bruger %r op — behandler som "
+            "non-owner (krypterer)", uid, exc_info=True,
+        )
     # Kendt non-owner ELLER ukendt → krypter (fail-safe mod læk).
     return True
 
@@ -85,7 +94,13 @@ def write_workspace_file(path: str, content: str | bytes, user_id: str) -> str:
         if os.path.exists(path):
             os.remove(path)
     except OSError:
-        pass
+        # Den krypterede fil ER skrevet, men klartekst-udgaven ligger stadig
+        # ved siden af. Det er praecis den lækage §16 findes for at forhindre,
+        # saa den skal kunne ses — ikke bare fejle stille.
+        logger.warning(
+            "workspace_crypto: kunne ikke fjerne plaintext-rest %s efter "
+            "krypteret skrivning — data ligger i klartekst", path, exc_info=True,
+        )
     return enc_path
 
 
@@ -121,6 +136,9 @@ def member_user_id_for_path(path: str | os.PathLike) -> str | None:
     try:
         i = len(parts) - 1 - parts[::-1].index("workspaces")
     except ValueError:
+        # Ingen "workspaces"-komponent: stien er ikke en member-fil. Det er et
+        # gyldigt svar, ikke en fejl — ingen logning (ville stoeje paa hvert
+        # shared/-opslag).
         return None
     if i + 1 >= len(parts):
         return None
@@ -136,6 +154,13 @@ def member_user_id_for_path(path: str | os.PathLike) -> str | None:
         from core.identity.users import find_user_by_workspace
         u = find_user_by_workspace(ws_name)
     except Exception:
+        # FALDET ER FAIL-OPEN: vi gaar videre til SQLite-fallbacken, og hvis
+        # den ogsaa fejler, skrives filen i KLARTEKST. Det er den ene retning
+        # der aldrig maa vaere tavs.
+        logger.warning(
+            "workspace_crypto: users.json-opslag fejlede for workspace %r — "
+            "falder videre (risiko: plaintext)", ws_name, exc_info=True,
+        )
         u = None
     if u is not None:
         return None if u.role == "owner" else u.discord_id
@@ -147,7 +172,13 @@ def member_user_id_for_path(path: str | os.PathLike) -> str | None:
         if row:
             return None if str(row.get("role")) == "owner" else str(row.get("user_id"))
     except Exception:
-        pass
+        # Begge opslag er nu fejlet, og funktionen returnerer None = plaintext.
+        # En medlemsfil bliver altsaa skrevet ukrypteret fordi to opslag fejlede
+        # — uden dette spor er der intet at finde bagefter.
+        logger.warning(
+            "workspace_crypto: SQLite-member-opslag fejlede for workspace %r — "
+            "filen behandles som plaintext", ws_name, exc_info=True,
+        )
     return None  # ukendt projekt-mappe eller owner → plaintext
 
 
@@ -186,7 +217,10 @@ def write_text_for_path(path: str | os.PathLike, content: str | bytes) -> str:
             if os.path.exists(p):
                 os.remove(p)
         except OSError:
-            pass
+            logger.warning(
+                "workspace_crypto: kunne ikke fjerne plaintext-rest %s efter "
+                "krypteret skrivning — data ligger i klartekst", p, exc_info=True,
+            )
         return enc_path
     with open(p, "wb") as f:
         f.write(data)
@@ -228,12 +262,23 @@ def atomic_write_text_for_path(path: str | os.PathLike, content: str | bytes) ->
         try:
             os.unlink(tmp)
         except OSError:
-            pass  # temp-filen er allerede væk; den ægte fejl er den vi rejser nu
+            # Temp-filen er allerede væk; den ægte fejl er den vi rejser nu.
+            # Navngivet fordi et bart `pass` her ser ud som en slugt fejl.
+            logger.debug(
+                "workspace_crypto: temp-filen %s var allerede væk under oprydning",
+                tmp,
+            )
         raise
     # En .enc-skrivning må ikke efterlade en plaintext-rest ved siden af.
     if target.endswith(_ENC) and os.path.exists(p):
         try:
             os.remove(p)
         except OSError:
-            pass  # plaintext-resten kunne ikke fjernes; .enc er skrevet og er sandheden
+            # .enc er skrevet og er sandheden — men klartekst-udgaven ligger
+            # stadig ved siden af, og det er hele grunden til at §16 findes.
+            logger.warning(
+                "workspace_crypto: kunne ikke fjerne plaintext-rest %s efter "
+                "atomisk krypteret skrivning — data ligger i klartekst",
+                p, exc_info=True,
+            )
     return target

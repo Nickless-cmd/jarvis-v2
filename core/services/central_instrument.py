@@ -48,6 +48,42 @@ _ACK_MARKERS = (
     "må aldrig", "maa aldrig", "aldrig vælte", "aldrig kaste", "noop", "no-op", "no op",
     "ignore", "ignorér", "ignorer", "silent", "bevidst", "med vilje", "defensiv", "fail-open",
     "fail open", "swallow", "bedst-effort", "graceful",
+    # ── MÅLT 31/10-2026: de former kodebasen FAKTISK bruger ────────────────
+    # 43 pending instrument_fix blev gennemgået mod filerne på disk. 35 af de
+    # 39 der stadig pegede på en ægte `except` havde en skrevet begrundelse —
+    # men detektoren markede 0 af dem som acknowledged, fordi ordforrådet
+    # nedenfor ikke matchede. Fire ægte fund druknede i 35 falske alarmer.
+    #
+    # `fail closed` er den DOMINERENDE form (12 af 34 kommentarer). Den fandtes
+    # kun som `fail-open`, altså det modsatte fald. Det er ikke en detalje:
+    # fail-closed er den sikre retning, og detektoren straffede den.
+    "fail closed", "fail-closed", "failclosed",
+    "må ikke vælte", "maa ikke vaelte", "må ikke kaste", "maa ikke kaste",
+    "må ikke gøre", "maa ikke goere", "må ikke annoncere", "maa ikke annoncere",
+    "ikke en fejl", "ikke en hændelse", "ikke en haendelse",
+    "kalderens fejl", "kalderens ansvar",
+    "noqa",  # eksplicit tilsidesættelse er en bevidst beslutning
+    "behandl som", "behandles som", "falder tilbage", "falder igennem",
+    "frem for at kaste", "i stedet for at kaste",
+    "must fail closed", "must not", "prevents unsafe", "is not an error",
+    "falls through", "fall through", "treat as",
+    # ── MÅLT 31/10-2026, anden runde: formen «X = Y, ikke Z» ────────────────
+    # Efter første udvidelse var 15 tilbage. 13 af dem bar en kommentar, men
+    # som en FORKLARENDE LIGNING snarere end et nøgleord: «ikke en streng =
+    # ingen klokketid», «ikke JSON», «ikke cache-bar», «ikke et bevis paa liv».
+    # Det er samme slags begrundelse som «fail closed» — den siger hvad faldet
+    # BETYDER — men den kan ikke fanges af en enkelt fraseliste. Derfor matches
+    # nu også den grammatiske form: en negation der forklarer en konsekvens.
+    "ikke en streng", "ikke json", "ikke cache-bar", "ikke cachebar",
+    "ikke et bevis", "ikke et gaet", "ikke et gæt", "ikke et svar",
+    "ikke en fejl at", "ikke en hændelse", "ikke en haendelse",
+    "kan ikke bruges", "kan ikke skelnes", "kan ikke naas", "kan ikke nås",
+    "aldrig en kastet", "aldrig kaste", "aldrig en fejl",
+    "= 0 linjer", "= ingen", "= standarden", "= ukendt", "= tom",
+    "=> default", "=> fuld", "=> behandl",
+    "beskeden er svaret", "beskeden ER svaret",
+    "springer sektionen over", "springer over",
+    "means no", "is not cacheable", "not a proof", "not a guess",
 )
 
 

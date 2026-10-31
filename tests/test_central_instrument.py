@@ -394,3 +394,72 @@ def test_vaerd_at_foreslaa_fail_open_paa_MODUL_niveau():
     # Og med et navn der ikke læses, falder den — saa testen ovenfor maaler
     # NAVNETS fravaer og ikke blot at funktionen svarer ja til alt.
     assert ci._vaerd_at_foreslaa(_fund_d("x"), læste=set(), sikkerhed=set()) is False
+
+
+# ── De former kodebasen FAKTISK bruger (målt 31/10-2026) ─────────────────────
+# 43 pending instrument_fix blev gennemgået mod filerne på disk. 39 pegede stadig
+# på en ægte `except`, og 35 af dem bar en skrevet begrundelse — men detektoren
+# markede 0 som acknowledged. Ordforrådet i `_ACK_MARKERS` matchede ikke sproget
+# i koden: `fail closed` fandtes kun som `fail-open` (det MODSATTE fald), og
+# formerne «må ikke vælte», «noqa», «kalderens fejl» og ligningen «ikke en streng
+# = ingen klokketid» stod ingen steder.
+#
+# Konsekvensen var ikke kosmetisk: 35 falske alarmer pr. 4 ægte fund gjorde køen
+# ubrugelig, og de ægte druknede. Det er den fejlform hvor et instrument ser ud
+# som om det måler, men dets betingelse intet kan skelne.
+
+import pytest
+
+
+@pytest.mark.parametrize("kommentar", [
+    "fail-closed: uden bruger maa filen ikke havne i en faelles mappe",
+    "unreadable accounting must fail closed",
+    "korrupt state-fil må ikke vælte gaten — tom liste = ingen brud",
+    "ulaeselig fil = 0 linjer; kalderen springer sektionen over",
+    "et ugyldigt filnavn er kalderens fejl, ikke en hændelse",
+    "noqa: BLE001",
+    "ikke en streng = ingen klokketid",
+    "brudt eller fremmed cache → fuld re-embed, aldrig en kastet fejl",
+    "ugyldigt tidsstempel = ukendt alder, ikke et gæt",
+    "no verified owner session means no dispatch",
+])
+def test_de_malte_begrundelses_former_daemper(kommentar):
+    """Hver form er taget ORDRET fra en fil i kodebasen, ikke opfundet."""
+    src = (f"def f():\n    try:\n        return _hent()\n"
+           f"    except Exception:  # {kommentar}\n        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is True, f"formen blev ikke genkendt: {kommentar!r}"
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_en_UDOKUMENTERET_except_fanges_stadig():
+    """Modprøven — og den vigtigste.
+
+    Uden den ville en udvidelse af markør-listen kunne gøre detektoren blind, og
+    alle tests ovenfor ville stadig være grønne. Et `except` uden kommentar er
+    præcis det instrumentet findes for at fange.
+    """
+    src = "def f():\n    try:\n        return _hent()\n    except Exception:\n        return None\n"
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_en_tom_kommentar_taeller_ikke():
+    """`except Exception:  #` med intet efter er ikke en begrundelse."""
+    src = "def f():\n    try:\n        return _hent()\n    except Exception:  #\n        return None\n"
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+
+
+def test_bare_except_reddes_ikke_af_de_nye_former():
+    """Grænsen står: en markør — gammel eller ny — redder aldrig en bare except."""
+    src = ("def f():\n    try:\n        x()\n"
+           "    except:  # fail-closed: må ikke vælte\n        pass\n")
+    fs = ci.scan_source("core/x.py", src)
+    bare = next(f for f in fs if f.kind == "bare_except")
+    assert bare.acknowledged is False
+    assert ci.score_finding(bare, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD

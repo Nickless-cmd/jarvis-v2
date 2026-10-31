@@ -949,7 +949,7 @@ Generated from source. 9470/17792 functions/methods documented (53%). The list b
 - `core/services/central_injection_registry.py` :: `registered_keys` (L54)
 - `core/services/central_injection_registry.py` :: `set_injection_live` (L140)
 - `core/services/central_injection_units.py` :: `register_default_units` (L44)
-- `core/services/central_instrument.py` :: `Finding.signature` (L66)
+- `core/services/central_instrument.py` :: `Finding.signature` (L102)
 - `core/services/central_keymaker.py` :: `list_keys` (L256)
 - `core/services/central_learning.py` :: `learning_summary` (L239)
 - `core/services/central_lexicon.py` :: `active_terms` (L190)

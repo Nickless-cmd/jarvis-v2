@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9484/17804 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9485/17805 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 9484/17804 functions/methods documented (53%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 306 | 640 | 47% |
+| `scripts` | 307 | 641 | 47% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -309,7 +309,7 @@ Generated from source. 9484/17804 functions/methods documented (53%). The list b
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
-- `core/identity/kode_adgang.py` :: `kode_tilladt` (L25)
+- `core/identity/kode_adgang.py` :: `kode_tilladt` (L28)
 - `core/identity/project_context.py` :: `reset_project_root` (L38)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L134)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L264)
@@ -2456,7 +2456,7 @@ Generated from source. 9484/17804 functions/methods documented (53%). The list b
 - `scripts/commit_with_attribution.py` :: `main` (L58)
 - `scripts/cutoff_detector.py` :: `load_seen` (L113)
 - `scripts/cutoff_detector.py` :: `log` (L107)
-- `scripts/cutoff_detector.py` :: `main` (L370)
+- `scripts/cutoff_detector.py` :: `main` (L395)
 - `scripts/cutoff_detector.py` :: `save_seen` (L120)
 - `scripts/db_backup_daglig.py` :: `main` (L157)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)

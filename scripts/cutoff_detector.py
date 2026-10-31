@@ -367,6 +367,31 @@ def svar_leveret_eksternt(con, run_ids: list[str], tavs_ts: datetime) -> str | N
     return None
 
 
+def run_startet_for_session(con, sid: str, efter_ts: str) -> bool | None:
+    """Blev der overhovedet STARTET et run for denne session efter beskeden?
+
+    Målt 31/10-2026: Mikkels tur kl. 11:27:42 blev afvist med HTTP 403 af
+    enheds-reglen. Beskeden blev persisteret (channel.chat_message_appended),
+    men der blev aldrig oprettet et run — `visible_runs` havde nul rækker for
+    sessionen. Detektoren kaldte det «tavs cutoff: 0 værktøjskald, 0s» og
+    sendte fejlsøgningen efter en død stream i timevis.
+
+    True = et run blev startet (en kappet tur er stadig den rigtige dom).
+    False = intet run blev nogensinde oprettet — anmodningen blev afvist før
+            streamen, og Jarvis' loop var aldrig involveret.
+    None = kunne ikke afgøres; dommen må ikke blive skarpere end målingen.
+    """
+    try:
+        r = con.execute(
+            "SELECT 1 FROM events WHERE kind IN "
+            "('runtime.visible_run_tail', 'runtime.autonomous_run_started') "
+            "AND created_at > ? AND payload_json LIKE ? LIMIT 1",
+            (efter_ts, f'%"{sid}"%')).fetchone()
+        return r is not None
+    except Exception:  # skema-drift: hellere ingen dom end en gaettet
+        return None
+
+
 def main() -> int:
     if not os.path.exists(DB):
         return 0
@@ -460,6 +485,31 @@ def main() -> int:
                 break
         dur = int((last_at - started).total_seconds())
         restarted = api_restarted_near(last_at)
+
+        # 31/10-2026: blev turen overhovedet STARTET? En klient der afvises før
+        # streamen persisterer sin besked, men opretter intet run. Det er ikke
+        # en kappet tur, og at kalde det en «tavs cutoff» peger fejlsøgningen
+        # det forkerte sted hen — mod Jarvis' loop i stedet for klientens 403.
+        _startet = run_startet_for_session(con, sid, started.isoformat())
+        if _startet is False:
+            _msg = (f"turen blev ALDRIG STARTET: beskeden blev persisteret, men intet run "
+                    f"blev oprettet. Det er ikke en kappet stream — den mest sandsynlige "
+                    f"aarsag er at anmodningen blev afvist foer streamen (fx 403 fra "
+                    f"enheds-reglen). Tjek klientens HTTP-status, ikke Jarvis' loop. "
+                    f"tavs i {int(age)}s")
+            _msg = " ".join(_msg.split())
+            log(f"{sid} :: {_msg}")
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="runtime", nerve="turn_never_started",
+                    kind="turn_rejected_before_stream",
+                    severity="warning", message=_msg, session_id=sid, dedup=True)
+            except Exception as e:  # aldrig lade detektoren vaelte noget
+                log(f"kunne ikke skrive central incident: {e}")
+            seen.add(key)
+            found += 1
+            continue
 
         msg = (f"tavs cutoff: turen endte uden assistent-svar efter {tools} værktøjskald "
                f"({dur}s), sidste kald '{last_tool}', tavs i {int(age)}s. "

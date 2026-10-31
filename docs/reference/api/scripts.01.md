@@ -235,7 +235,8 @@ _Detektor for ture der ender uden assistent-svar ("tavse cutoffs")._
 | function | `_genstart_dom` | `(restarted)` | Teksten der gaar i fundet. `None` maa ikke lyde som et svar. | [src](../../../scripts/cutoff_detector.py#L295) |
 | function | `run_ids_pr_session` | `(con, cutoff_ts)` | session_id -> [run_id] for autonome runs startet i vinduet. | [src](../../../scripts/cutoff_detector.py#L304) |
 | function | `svar_leveret_eksternt` | `(con, run_ids, tavs_ts)` | Laa der et PAENT afsluttet run i denne session da den gik tavs? | [src](../../../scripts/cutoff_detector.py#L335) |
-| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L370) |
+| function | `run_startet_for_session` | `(con, sid, efter_ts)` | Blev der overhovedet STARTET et run for denne session efter beskeden? | [src](../../../scripts/cutoff_detector.py#L370) |
+| function | `main` | `()` | — | [src](../../../scripts/cutoff_detector.py#L395) |
 
 ## `scripts/db_backup_daglig.py`
 _Daglig konsistent backup af den LEVENDE jarvis.db + rotation._

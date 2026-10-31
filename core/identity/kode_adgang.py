@@ -17,8 +17,11 @@ from __future__ import annotations
 __all__ = ["kode_tilladt", "KODE_NAEGTET"]
 
 KODE_NAEGTET = (
-    "Code mode kræver at denne enhed er tilføjet i desk. Tilføj den under "
-    "Indstillinger → Konto → Enheder på computeren (med din totrinskode)."
+    "Code mode kræver at denne enhed er tilføjet. I desk: Indstillinger → "
+    "Konto → Enheder (med din totrinskode). Bruger du en anden klient — fx "
+    "jarvis-code — findes den flade ikke der: registrér enheden med din "
+    "totrinskode mod POST /auth/enheder/denne-computer, så får klienten et "
+    "token med det app_id som reglen matcher."
 )
 
 

@@ -165,3 +165,109 @@ def test_backfill_processes_historical_rows(tmp_db, monkeypatch):
     assert "sofa" in labels
     assert "skærm" in labels
     # audio rows ignored — no audio-only entities expected
+
+
+# ── Tavse fald skal efterlade et spor (31/10-2026) ───────────────────────
+#
+# MAALT 31/10-2026: fire `except` i denne fil returnerede `[]`. For kalderen
+# var «ingen entiteter observeret» og «databasen kunne ikke laeses» identiske,
+# saa `room_entities_section` tavst forsvandt ud af prompten uden at nogen
+# kunne se hvorfor. Fail-soft er bevaret — det der er tilfoejet er et spor.
+#
+# Vagterne beviser BEGGE ting: at fejlen logger, OG at returvaerdien stadig
+# er den tomme liste kalderne forventer. Uden den anden halvdel ville en
+# rettelse der kastede videre bestaa testen.
+
+
+def _braek_connect(monkeypatch, exc: Exception):
+    """Erstat `_connect` med noget der kaster."""
+    import core.services.spatial_entity_ledger as mod
+
+    def _boom():
+        raise exc
+
+    monkeypatch.setattr(mod, "_connect", _boom)
+
+
+def test_list_observed_entities_logger_men_returnerer_tom(monkeypatch, caplog):
+    import logging
+
+    import core.services.spatial_entity_ledger as mod
+
+    _braek_connect(monkeypatch, sqlite3.OperationalError("db locked"))
+    with caplog.at_level(logging.WARNING, logger="core.services.spatial_entity_ledger"):
+        out = mod.list_observed_entities()
+    assert out == []  # fail-soft bevaret
+    assert any(
+        "kunne ikke liste entiteter" in r.getMessage() for r in caplog.records
+    ), "et DB-sammenbrud efterlod intet spor"
+
+
+def test_co_entities_for_logger_men_returnerer_tom(monkeypatch, caplog):
+    import logging
+
+    import core.services.spatial_entity_ledger as mod
+
+    _braek_connect(monkeypatch, sqlite3.OperationalError("db locked"))
+    with caplog.at_level(logging.WARNING, logger="core.services.spatial_entity_ledger"):
+        out = mod.co_entities_for("sofa")
+    assert out == []
+    assert any("kunne ikke laese naboer" in r.getMessage() for r in caplog.records)
+
+
+def test_co_entities_for_logger_ugyldig_json(tmp_db, caplog):
+    """Ugyldig co_entities_json er ikke «ingen naboer» — det er korrupt data."""
+    import logging
+
+    import core.services.spatial_entity_ledger as mod
+
+    with mod._connect() as conn:
+        conn.execute(
+            "INSERT INTO room_entity_observations "
+            "(entity_label, observation_count, first_seen_at, last_seen_at, "
+            " co_entities_json, latest_excerpt) VALUES (?, 1, ?, ?, ?, ?)",
+            ("sofa", "2026-10-31T00:00:00+00:00", "2026-10-31T00:00:00+00:00",
+             "{ikke json", "en sofa"),
+        )
+        conn.commit()
+
+    with caplog.at_level(logging.WARNING, logger="core.services.spatial_entity_ledger"):
+        out = mod.co_entities_for("sofa")
+    assert out == []
+    assert any(
+        "ugyldig co_entities_json" in r.getMessage() for r in caplog.records
+    )
+
+
+def test_recently_observed_logger_men_returnerer_tom(monkeypatch, caplog):
+    import logging
+
+    import core.services.spatial_entity_ledger as mod
+
+    _braek_connect(monkeypatch, sqlite3.OperationalError("db locked"))
+    with caplog.at_level(logging.WARNING, logger="core.services.spatial_entity_ledger"):
+        out = mod.recently_observed()
+    assert out == []
+    assert any(
+        "kunne ikke laese seneste observationer" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_normal_tom_tilstand_stoejer_ikke(tmp_db, caplog):
+    """En TOM base er normal drift — den maa ikke fylde loggen.
+
+    Uden denne vagt ville de fire rettelser goere loggen ubrugelig: hver
+    tom laesning ved opstart ville se ud som en fejl.
+    """
+    import logging
+
+    import core.services.spatial_entity_ledger as mod
+
+    with caplog.at_level(logging.WARNING, logger="core.services.spatial_entity_ledger"):
+        assert mod.list_observed_entities() == []
+        assert mod.recently_observed() == []
+        assert mod.co_entities_for("sofa") == []
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == [], (
+        "normal tom tilstand loggede som fejl"
+    )

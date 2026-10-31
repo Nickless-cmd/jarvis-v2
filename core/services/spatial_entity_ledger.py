@@ -236,6 +236,10 @@ def list_observed_entities(*, limit: int = 20) -> list[dict[str, Any]]:
                 (limit,),
             ).fetchall()
     except Exception:
+        # Fail-soft: en tom liste er hvad kalderne forventer. Men uden et spor
+        # er «ingen entiteter observeret» og «databasen kunne ikke laeses»
+        # identiske for den der laeser fladen.
+        logger.warning("spatial_entity_ledger: kunne ikke liste entiteter", exc_info=True)
         return []
     return [dict(r) for r in rows]
 
@@ -250,12 +254,24 @@ def co_entities_for(entity_label: str, *, limit: int = 8) -> list[tuple[str, int
                 (entity_label,),
             ).fetchone()
     except Exception:
+        # Fail-soft bevaret — men et DB-sammenbrud maa ikke se ud som
+        # «denne entitet har ingen naboer».
+        logger.warning(
+            "spatial_entity_ledger: kunne ikke laese naboer for %r",
+            entity_label,
+            exc_info=True,
+        )
         return []
     if not row:
         return []
     try:
         co = json.loads(row["co_entities_json"] or "{}")
     except (ValueError, TypeError):
+        logger.warning(
+            "spatial_entity_ledger: ugyldig co_entities_json for %r",
+            entity_label,
+            exc_info=True,
+        )
         return []
     return sorted(co.items(), key=lambda kv: -int(kv[1]))[:limit]
 
@@ -272,6 +288,12 @@ def recently_observed(*, hours: int = 24, limit: int = 10) -> list[dict[str, Any
                 (cutoff, limit),
             ).fetchall()
     except Exception:
+        # Fail-soft: samme form som list_observed_entities — et tomt vindue
+        # og et laase-fejl maa ikke se ens ud.
+        logger.warning(
+            "spatial_entity_ledger: kunne ikke laese seneste observationer",
+            exc_info=True,
+        )
         return []
     return [dict(r) for r in rows]
 

@@ -164,8 +164,20 @@ def _load() -> list[dict[str, Any]]:
         data = json.loads(_GUARD_FILE.read_text())
         if isinstance(data, list):
             return data
+        # 31/10-2026: en fil der findes men ikke er en liste faldt foer til
+        # standard-fraserne uden et ord. Det ser identisk ud med «ingen
+        # tilpassede fraser» — saa en korrupt fil fjernede tavst enhver
+        # tilfoejet graense. Retningen er bevaret (standard er sikker), men
+        # den er ikke laengere usynlig.
+        logger.warning(
+            "comm_guard: %s indeholder ikke en liste (%s) — bruger standard-fraserne",
+            _GUARD_FILE, type(data).__name__,
+        )
     except (json.JSONDecodeError, OSError):
-        pass
+        logger.warning(
+            "comm_guard: kunne ikke laese %s — bruger standard-fraserne",
+            _GUARD_FILE, exc_info=True,
+        )
     return list(_DEFAULT_TRIGGERS)
 
 
@@ -265,7 +277,15 @@ def scan(text: str) -> dict[str, Any] | None:
                         if datetime.now(UTC) > until:
                             continue
                     except (ValueError, TypeError):
-                        pass
+                        # 31/10-2026: en ulaeselig ttl_until betoed foer at
+                        # triggeren blev behandlet som AKTIV for evigt. En
+                        # midlertidig irettesættelse blev dermed permanent —
+                        # det stik modsatte af hvad «ttl» lover.
+                        logger.warning(
+                            "comm_guard: ttl_until %r kunne ikke parses — "
+                            "triggeren behandles som udloebet", ttl_until,
+                        )
+                        continue
                 if ttl_turns is not None and ttl_turns <= 0:
                     continue
 
@@ -289,7 +309,14 @@ def _trigger_active(t: dict[str, Any], now: datetime) -> bool:
             if now > datetime.fromisoformat(ttl_until):
                 return False
         except (ValueError, TypeError):
-            pass
+            # 31/10-2026: samme fejlform som i `scan` — en ulaeselig
+            # ttl_until gjorde triggeren aktiv for evigt. Udloebet er den
+            # sikre retning for en TTL, og nu ogsaa den synlige.
+            logger.warning(
+                "comm_guard: ttl_until %r kunne ikke parses — "
+                "triggeren regnes som udloebet", ttl_until,
+            )
+            return False
     ttl_turns = t.get("ttl_turns")
     if ttl_turns is not None and ttl_turns <= 0:
         return False
@@ -387,7 +414,13 @@ def guard_channel_text(text: str | None, channel: str) -> str:
             central().observe({"cluster": "privacy", "nerve": "outbound_scrub",
                                "channel": channel, "removed_count": len(removed)})
         except Exception:
-            pass
+            # 31/10-2026: breachen ER allerede logget og teksten ER renset —
+            # kun Centralens synlighed mangler. Det skal ikke vaelte
+            # udsendelsen, men det skal kunne ses bagefter.
+            logger.warning(
+                "comm_guard: kunne ikke rapportere outbound_scrub til Centralen "
+                "(kanal %s, %d fjernet)", channel, len(removed), exc_info=True,
+            )
     return scrubbed
 
 
@@ -516,11 +549,21 @@ def cleanup_expired() -> int:
 
 
 def _safe_parse_iso(s: str | None, now: datetime) -> datetime:
+    """Parse en ISO-tid; ukendt/ulaeselig giver «langt ude i fremtiden».
+
+    Retningen er bevidst: en TTL vi ikke kan laese maa ikke fjernes ved et
+    uheld. Men 31/10-2026 var faldet helt tavst, saa en korrupt ttl_until
+    gjorde en midlertidig graense permanent uden at nogen kunne se hvorfor.
+    """
     if not s:
         return now + timedelta(days=365)
     try:
         return datetime.fromisoformat(s)
     except (ValueError, TypeError):
+        logger.warning(
+            "comm_guard: ttl_until %r kunne ikke parses — regner den som "
+            "langt ude i fremtiden (triggeren forbliver aktiv)", s,
+        )
         return now + timedelta(days=365)
 
 

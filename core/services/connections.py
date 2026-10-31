@@ -12,15 +12,20 @@ device/bruger. Self-safe; kaster aldrig.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def _observe(nerve: str, data: dict[str, Any]) -> None:
     try:
         from core.services.central_core import central
         central().observe({"cluster": "connections", "nerve": nerve, **data})
-    except Exception:
-        pass
+    except Exception as exc:
+        # Self-safe (kaster aldrig), men ikke længere stille: uden sporet her er
+        # "Centralen kunne ikke registrere forbindelsen" identisk med "ingen forbindelse".
+        logger.warning("connections._observe fejlede for nerve=%s: %s", nerve, exc)
 
 
 def note_presence(user_id: str, device_key: str, platform: str = "", **meta: Any) -> None:
@@ -89,8 +94,11 @@ def session_activity(session_id: str, *, limit: int = 300) -> dict[str, Any]:
             if c.get("status") not in ("ok", None, ""):
                 out["failed_tools"].append({"tool": t, "kind": c.get("kind"),
                                             "error": c.get("error")})
-    except Exception:
-        pass
+    except Exception as exc:
+        # Tom liste betyder "ingen fejlede tools" — altså "alt gik godt". En brudt
+        # tool_observer giver samme svar. Sporet skiller de to ad.
+        logger.warning("connections.session_activity: tool_observer kunne ikke læses "
+                       "for session %s: %s", session_id, exc)
     try:
         from core.services import central_trace
         for r in central_trace.sink().recent():
@@ -104,8 +112,10 @@ def session_activity(session_id: str, *, limit: int = 300) -> dict[str, Any]:
                 out["unauthorized"].append({"resource": p.get("resource"), "reason": p.get("reason")})
             elif r.nerve == "connection_error":
                 out["connection_errors"].append({"reason": p.get("reason")})
-    except Exception:
-        pass
+    except Exception as exc:
+        # Samme form: tomme unauthorized/connection_errors = "intet skete".
+        logger.warning("connections.session_activity: central_trace kunne ikke læses "
+                       "for session %s: %s", session_id, exc)
     return out
 
 

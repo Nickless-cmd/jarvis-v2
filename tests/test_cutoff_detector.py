@@ -259,6 +259,96 @@ class TestMainEndeTilEnde:
         assert cd.main() == 0
 
 
+# ── plet 4: compact_marker er ikke et manglende svar ───────────────────────
+
+class TestCompactMarker:
+    """REGRESSIONEN (maalt 30/10-2026): `compact_marker` skrives EFTER svaret.
+
+    Detektoren sprang kun over `assistant` som nyeste raekke, saa markoeren blev
+    laest som en tur uden svar. Maalt i den levende base: 2 sessioner havde
+    markoeren som nyeste raekke, og BEGGE var falske alarmer — svaret laa i
+    samme tur, blot aeldre end markoeren.
+
+    Rettelsen springer markoeren over, men KUN hvis der ligger et assistent-svar
+    i SAMME tur (baglaens til naermeste `user`). Ellers er turen reelt strandet,
+    og markoeren maa ikke skjule det.
+    """
+
+    @staticmethod
+    def _koer(tmp_path, monkeypatch, raekker):
+        """raekker = [(role, content)] i KRONOLOGISK orden (aeldste foerst)."""
+        p = tmp_path / "scratch.db"
+        con = sqlite3.connect(str(p))
+        con.execute("CREATE TABLE chat_messages (message_id TEXT, session_id TEXT, "
+                    "role TEXT, content TEXT, created_at TEXT)")
+        con.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, started_at TEXT, "
+                    "error TEXT, lane TEXT, provider TEXT, model TEXT)")
+        con.execute("CREATE TABLE runtime_state_kv (key TEXT, value_json TEXT, updated_at TEXT)")
+        base = datetime.now(UTC) - timedelta(minutes=40)
+        for i, (role, content) in enumerate(raekker):
+            ts = (base + timedelta(seconds=i * 10)).isoformat()
+            con.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?)",
+                        (f"m{i}", "chat-marker", role, content, ts))
+        con.commit()
+        con.close()
+
+        fundet = []
+        monkeypatch.setattr(cd, "DB", str(p))
+        monkeypatch.setattr(cd, "STATE", str(tmp_path / "seen.json"))
+        monkeypatch.setattr(cd, "LOG", str(tmp_path / "log.txt"))
+        monkeypatch.setattr(cd, "api_restarted_near", lambda w: None)
+        monkeypatch.setattr(
+            "core.runtime.db_central_incidents.record_central_incident",
+            lambda **kw: fundet.append(kw))
+        assert cd.main() == 0
+        return fundet
+
+    def test_svar_foer_markoer_er_ikke_et_fund(self, tmp_path, monkeypatch):
+        """RETNINGEN. user -> tool -> assistant -> compact_marker.
+
+        Markoeren er NYERE end svaret, saa svaret ligger i `rows[1:]` (aeldre).
+        Et snit paa `rows[:index]` kigger den forkerte vej og ser intet svar.
+        """
+        fundet = self._koer(tmp_path, monkeypatch, [
+            ("user", "spoergsmaal"),
+            ("tool", "[tool_result:abc]\n[bash]: 07:31:18 CEST"),
+            ("assistant", "her er svaret"),
+            ("compact_marker", "komprimeret"),
+        ])
+        assert fundet == [], f"FALSK ALARM — markoeren blev laest som et cut: {fundet}"
+
+    def test_strandet_tur_bag_markoeren_er_et_fund(self, tmp_path, monkeypatch):
+        """Den aegte: user -> tool -> compact_marker UDEN assistent.
+
+        Uden denne kontrol ville rettelsen skjule et reelt cut.
+        """
+        fundet = self._koer(tmp_path, monkeypatch, [
+            ("user", "spoergsmaal"),
+            ("tool", "[tool_result:abc]\n[bash]: 07:31:18 CEST"),
+            ("compact_marker", "komprimeret"),
+        ])
+        assert len(fundet) == 1, f"markoeren skjulte et reelt cut: {fundet}"
+        assert fundet[0]["kind"] == "turn_without_reply"
+
+    def test_vaerktoej_efter_svaret_er_valgt(self, tmp_path, monkeypatch):
+        """GRAENSEN. user -> assistant -> tool -> compact_marker.
+
+        Rettelsen GODKENDER denne, fordi assistenten findes laengere tilbage.
+        BEGRUNDELSE for at beholde det: maalt 30/10 har 1 af de historiske
+        tilfaelde (11/10 kl. 19:43) netop et vaerktoejskald mellem svaret og
+        markoeren. Strammer man til 'umiddelbar forgangger', ville den tur
+        blive meldt som cut paa trods af at den blev besvaret. Prisen for den
+        brede regel er nul falske alarmer i det maalte materiale.
+        """
+        fundet = self._koer(tmp_path, monkeypatch, [
+            ("user", "spoergsmaal"),
+            ("assistant", "her er svaret"),
+            ("tool", "[tool_result:abc]\n[bash]: efterarbejde"),
+            ("compact_marker", "komprimeret"),
+        ])
+        assert fundet == [], "svaret laa laengere tilbage og blev ikke fundet"
+
+
 # ── systemd-stien ───────────────────────────────────────────────────────────
 
 def test_systemd_enheden_peger_ind_i_repoet():

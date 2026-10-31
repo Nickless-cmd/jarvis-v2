@@ -406,6 +406,20 @@ def main() -> int:
         last = rows[0]
         if last["role"] == "assistant":
             continue  # turen sluttede pænt
+        if last["role"] == "compact_marker":
+            # En compact_marker skrives EFTER svaret (343 raekker i basen). Den er
+            # ikke et manglende svar — men den maa kun godkendes hvis der ligger et
+            # assistent-svar i SAMME tur. Ellers er turen reelt strandet, og
+            # markoeren maa ikke skjule det.
+            svarede = False
+            for _r in rows[1:]:
+                if _r["role"] == "user":
+                    break          # turen startede her — intet svar inden
+                if _r["role"] == "assistant":
+                    svarede = True
+                    break
+            if svarede:
+                continue  # turen svarede, markoeren kom bagefter
 
         last_at = til_utc(last["created_at"])
         if last_at is None:

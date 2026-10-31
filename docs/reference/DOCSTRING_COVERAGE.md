@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9482/17802 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9483/17803 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9482/17802 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 860 | 1568 | 54% |
-| `core.services` | 6313 | 12093 | 52% |
+| `core.services` | 6314 | 12094 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1005,10 +1005,10 @@ Generated from source. 9482/17802 functions/methods documented (53%). The list b
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L943)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1760)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1391)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1712)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1744)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1770)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1401)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1722)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1754)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -2296,18 +2296,18 @@ Generated from source. 9482/17802 functions/methods documented (53%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
 - `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L82)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
-- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L595)
-- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L601)
-- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L598)
-- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L608)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7128)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7153)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7191)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7187)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7124)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7086)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7208)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7139)
+- `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L610)
+- `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L616)
+- `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L613)
+- `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L623)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7143)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7168)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7206)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7202)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7139)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7101)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7223)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7154)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

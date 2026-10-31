@@ -21,6 +21,7 @@ import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
+import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -993,7 +994,7 @@ export function CodeView({
   const visLevendeTur = stream.status === 'working' || afslutterSvarPacing
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
   // Mens den levende sluttekst ruller faerdig, findes samme svar allerede som
   // persisteret serverraekke. Skjul KUN samme run indtil den levende raekke
   // melder faerdig — ellers staar hele svaret ved siden af pacingen.
@@ -1293,6 +1294,12 @@ export function CodeView({
             <div key={m.id} data-rail-id={m.id} className="msg-block">
               <CompactionNotice stats={compactionById.get(m.id)} />
             </div>
+          ) : m.role === 'approval_request' ? (
+            /* Godkendelsen som historik (31/10-2026) — samme gren som i
+             * ChatView. Uden den blev raekken vist som en af MINE beskeder. */
+            <div key={m.id} data-rail-id={m.id} className="msg-block">
+              <HistoriskGodkendelse data={forsteGodkendelse(m.content_json)} />
+            </div>
           ) : (
             <Fragment key={m.id}>
             {/* Samme boks som en besked — se ChatView. */}
@@ -1433,4 +1440,23 @@ export function CodeView({
     )}
     </VisningContext.Provider>
   )
+}
+
+/** Foerste godkendelses-blok fra en persisteret raekke.
+ *
+ *  Serveren gemmer `content_json` som en LISTE af blokke. En tom eller
+ *  ukendt form maa ikke kaste under render — en enkelt daarlig raekke ville
+ *  ellers tage hele transcriptet med sig. */
+function forsteGodkendelse(raa: unknown): GodkendelsesHaendelse {
+  const liste = Array.isArray(raa) ? raa : []
+  const blok = liste[0] as Partial<GodkendelsesHaendelse> | undefined
+  return {
+    approval_id: String(blok?.approval_id ?? ''),
+    tool: String(blok?.tool ?? 'godkendelse'),
+    action: String(blok?.action ?? ''),
+    status: String(blok?.status ?? 'pending'),
+    risk: blok?.risk ? String(blok.risk) : undefined,
+    decided_by: blok?.decided_by ? String(blok.decided_by) : undefined,
+    decided_at: blok?.decided_at ? String(blok.decided_at) : undefined,
+  }
 }

@@ -403,6 +403,21 @@ def _publicer_approval_requested(
     engang maalbar, og det var betingelsen for at turde roere de sidste
     uportede veje. Self-safe: telemetri maa aldrig kunne forhindre kortet.
     """
+    # ── Historikken (31/10-2026) ─────────────────────────────────────────
+    # Kortet levede KUN i klientens `pendingApproval` og var væk efter reload.
+    # Her — hvor BEGGE veje til et kort mødes, og hvor `_set_visible_approval_
+    # state` allerede har gemt det fulde kort — skrives anmodningen ind i
+    # samtalens historik. Self-safe: en fejlet persistering må aldrig forhindre
+    # at kortet bliver vist.
+    try:
+        from core.services.approval_runtime import persist_approval_message
+        _kort = _get_visible_approval_state(approval_id) or {}
+        if _kort:
+            persist_approval_message(
+                approval_id=approval_id, kort=_kort, status="pending",
+            )
+    except Exception:
+        logger.debug("kunne ikke persistere godkendelses-anmodning", exc_info=True)
     try:
         event_bus.publish("tool.approval_requested", {
             "approval_id": approval_id,

@@ -392,6 +392,13 @@ def _build_structured_transcript_messages(
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
+        # `approval_request` er en UI-raekke (godkendelses-kortet i
+        # transcriptet), ikke noget nogen sagde. Uden denne spring ville den
+        # falde i `else`-grenen nedenfor og blive laest som ASSISTANT-tekst —
+        # altsaa som noget jeg selv havde skrevet. Maalt 31/10-2026: grenen
+        # daekker alt der ikke er user/tool, saa den antagelse holdt ikke.
+        if raw_role == "approval_request":
+            continue
         # render_tool_result_for_prompt was being called for *all* roles with
         # max_chars=240, which silently chopped any user/assistant message
         # over 240 chars (Mini-Jarvis's 467-char replies showed up to Jarvis

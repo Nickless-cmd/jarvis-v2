@@ -22,6 +22,10 @@ type ClientStatus =
 
 export interface LocalMessage extends ChatMessage {
   clientStatus?: ClientStatus
+  /** Blokkene som SERVEREN gemte dem (31/10-2026). Baeres videre uaendret saa
+   *  en `approval_request`-raekke kan vise sin egen status i stedet for at
+   *  blive laest som en almindelig besked. */
+  content_json?: unknown
 }
 
 export interface SessionContextValue {

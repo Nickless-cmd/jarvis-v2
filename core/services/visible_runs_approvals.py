@@ -150,6 +150,13 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
         logger.warning("Fase 4: afviser UDLOEBET godkendelse %s (%s) — %s",
                        approval_id, pending.get("tool_name"), _for_gammel)
         _vr.fjern_godkendelse(approval_id)
+        try:
+            from core.services.approval_runtime import persist_approval_message
+            persist_approval_message(
+                approval_id=approval_id, kort=pending, status="expired",
+            )
+        except Exception:
+            logger.debug("kunne ikke persistere udloeb", exc_info=True)
         return {
             "status": "error",
             "tool": pending.get("tool_name") or "",
@@ -248,6 +255,14 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
             )
         except Exception:
             pass
+        try:
+            from core.services.approval_runtime import persist_approval_message
+            persist_approval_message(
+                approval_id=approval_id, kort=pending, status="denied",
+                decided_by=str(answered_by or ""),
+            )
+        except Exception:
+            logger.debug("kunne ikke persistere afvisning", exc_info=True)
         return {"status": "denied", "tool": pending["tool_name"]}
 
     # owner_approved: et menneske har set PRAECIS dette kald og klikket Godkend.
@@ -407,6 +422,15 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
             "chat_persisted": chat_persisted,
         },
     )
+
+    try:
+        from core.services.approval_runtime import persist_approval_message
+        persist_approval_message(
+            approval_id=approval_id, kort=pending, status="approved",
+            decided_by=str(answered_by or ""),
+        )
+    except Exception:
+        logger.debug("kunne ikke persistere godkendelse", exc_info=True)
 
     return {
         "status": result.get("status", "ok"),

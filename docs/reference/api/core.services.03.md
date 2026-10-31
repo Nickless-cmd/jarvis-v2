@@ -74,13 +74,14 @@ _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 |---|---|---|---|---|
 | function | `new_id` | `()` | — | [src](../../../core/services/approval_runtime.py#L41) |
 | function | `build_request` | `(*, tool_name, arguments, result, run, created_at=…)` | Byg et gyldigt godkendelses-kort. Det ENE sted formen bor. | [src](../../../core/services/approval_runtime.py#L45) |
-| function | `pending_for_session` | `(session_id)` | Det ventende godkendelses-kort for ÉN samtale — eller ``None``. | [src](../../../core/services/approval_runtime.py#L71) |
-| function | `pending_for_owner` | `(user_id)` | Det ventende kort for en EJER — uanset hvilken samtale det hører til. | [src](../../../core/services/approval_runtime.py#L104) |
-| function | `udloeb_tid` | `(kort)` | Hvornår kortet ikke længere må bruges — ISO-tid, eller ``""`` hvis ukendt. | [src](../../../core/services/approval_runtime.py#L137) |
-| function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L177) |
-| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L212) |
-| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L226) |
-| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L248) |
+| function | `persist_approval_message` | `(*, approval_id, kort, status, decided_by=…)` | Skriv en godkendelses-haendelse ind i samtalens historik. | [src](../../../core/services/approval_runtime.py#L87) |
+| function | `pending_for_session` | `(session_id)` | Det ventende godkendelses-kort for ÉN samtale — eller ``None``. | [src](../../../core/services/approval_runtime.py#L162) |
+| function | `pending_for_owner` | `(user_id)` | Det ventende kort for en EJER — uanset hvilken samtale det hører til. | [src](../../../core/services/approval_runtime.py#L195) |
+| function | `udloeb_tid` | `(kort)` | Hvornår kortet ikke længere må bruges — ISO-tid, eller ``""`` hvis ukendt. | [src](../../../core/services/approval_runtime.py#L228) |
+| function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L268) |
+| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L303) |
+| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L317) |
+| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L339) |
 
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._

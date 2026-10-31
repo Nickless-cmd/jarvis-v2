@@ -958,8 +958,18 @@ def append_chat_message(
     if not normalized_session:
         raise ValueError("session_id must not be empty")
     normalized_role = (role or "").strip()
-    if normalized_role not in {"user", "assistant", "tool", "compact_marker"}:
-        raise ValueError("role must be user, assistant, tool, or compact_marker")
+    # `approval_request` er UI-historik, ikke samtaletekst: et godkendelses-
+    # kort der bliver liggende i transcriptet efter reload. Den er bevidst
+    # IKKE en model-rolle — `transcript_sections` springer den over, saa den
+    # aldrig naar prompten (se den fil). Samme praecedens som `compact_marker`:
+    # en raekke i samme tabel, med en anden rolle.
+    if normalized_role not in {
+        "user", "assistant", "tool", "compact_marker", "approval_request",
+    }:
+        raise ValueError(
+            "role must be user, assistant, tool, compact_marker, "
+            "or approval_request"
+        )
     normalized_content = str(content or "").strip()
     if not normalized_content:
         raise ValueError("content must not be empty")

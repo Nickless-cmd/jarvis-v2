@@ -77,6 +77,7 @@ import { udenAktivRun, normaliseretTekst } from '../lib/transcriptFilter'
 import { svarPacingGate } from '../lib/svarPacing'
 import { ChatFlowOnboarding } from '../components/rich/ChatFlowOnboarding'
 import { ChatFlowSuggestion } from '../components/rich/ChatFlowSuggestion'
+import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
@@ -592,7 +593,7 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker' || m.role === 'approval_request')
   // Mens den levende sluttekst ruller færdig, findes samme svar allerede som
   // lokal bro eller persisteret serverbesked. Skjul KUN samme run indtil den
   // levende række melder færdig; ellers står hele svaret ved siden af pacingen
@@ -1059,6 +1060,14 @@ export function ChatView({
           <div key={m.id} data-rail-id={m.id} className="msg-block">
             <CompactionNotice stats={compactionById.get(m.id)} />
           </div>
+        ) : m.role === 'approval_request' ? (
+          /* Godkendelsen som historik (31/10-2026). Uden denne gren faldt
+           * rækken i assistant-grenen og blev vist som en af MINE beskeder —
+           * den samme forveksling som prompt-filteret forhindrer på
+           * server-siden, bare på skærmen i stedet for i konteksten. */
+          <div key={m.id} data-rail-id={m.id} className="msg-block">
+            <HistoriskGodkendelse data={forsteGodkendelse(m.content_json)} />
+          </div>
         ) : (
           <Fragment key={m.id}>
           {/* Samme boks som en besked. Stod den som en bar flex-soeskende af
@@ -1190,4 +1199,23 @@ export function ChatView({
     </div>
     </VisningContext.Provider>
   )
+}
+
+/** Foerste godkendelses-blok fra en persisteret raekke.
+ *
+ *  Serveren gemmer `content_json` som en LISTE af blokke. En tom eller
+ *  ukendt form maa ikke kaste under render — en enkelt daarlig raekke ville
+ *  ellers tage hele transcriptet med sig. */
+function forsteGodkendelse(raa: unknown): GodkendelsesHaendelse {
+  const liste = Array.isArray(raa) ? raa : []
+  const blok = liste[0] as Partial<GodkendelsesHaendelse> | undefined
+  return {
+    approval_id: String(blok?.approval_id ?? ''),
+    tool: String(blok?.tool ?? 'godkendelse'),
+    action: String(blok?.action ?? ''),
+    status: String(blok?.status ?? 'pending'),
+    risk: blok?.risk ? String(blok.risk) : undefined,
+    decided_by: blok?.decided_by ? String(blok.decided_by) : undefined,
+    decided_at: blok?.decided_at ? String(blok.decided_at) : undefined,
+  }
 }

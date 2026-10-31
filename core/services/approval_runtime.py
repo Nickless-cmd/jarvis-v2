@@ -68,6 +68,97 @@ def build_request(*, tool_name: str, arguments: dict[str, Any],
     }
 
 
+# ── Godkendelsen som historik ───────────────────────────────────────────────
+#
+# MAALT 31/10-2026: et godkendelses-kort levede KUN i `pendingApproval` i
+# klientens hukommelse. Efter en reload var det væk — og en afgjort godkendelse
+# blev aldrig til noget man kunne scrolle tilbage til. Bjoerns symptom:
+# «approval cards maa ikk kunne doe et run».
+#
+# Formen er bevidst APPEND-ONLY: anmodningen og afgoerelsen er TO haendelser,
+# ikke én raekke der opdateres. En UPDATE ville bryde ledgerens append-only-
+# invariant, hvor raekken ER en projektion af en haendelse der allerede er
+# skrevet. Klienten grupperer paa `approval_id` og viser den seneste status.
+#
+# Self-safe: en fejlet persistering maa ALDRIG vaelte godkendelses-flowet. Et
+# kort der ikke kan gemmes er daarligt; et kort der ikke kan VISES fordi
+# skrivningen kastede, er vaerre.
+
+def persist_approval_message(
+    *, approval_id: str, kort: dict[str, Any], status: str,
+    decided_by: str = "",
+) -> str | None:
+    """Skriv en godkendelses-haendelse ind i samtalens historik.
+
+    `status` er en af ``pending`` / ``approved`` / ``denied`` / ``expired``.
+    Returnerer raekkens message_id, eller ``None`` hvis den ikke kunne skrives.
+    """
+    import json
+
+    try:
+        sid = str(kort.get("session_id") or "").strip()
+        if not sid:
+            return None
+        tool = str(kort.get("tool_name") or "").strip()
+        args = kort.get("arguments")
+        handling = ""
+        if isinstance(args, dict):
+            handling = str(args.get("command") or args.get("path") or "")
+        if not handling:
+            handling = str((kort.get("result") or {}).get("command") or "")
+        foerste_linje = handling.splitlines()[0][:160] if handling else ""
+
+        _praefiks = {
+            "pending": "Godkendelse afventer",
+            "approved": "Godkendt",
+            "denied": "Afvist",
+            "expired": "Udløb uden svar",
+        }.get(status, status)
+        content = f"{_praefiks}: {tool}" + (f" — {foerste_linje}" if foerste_linje else "")
+
+        # Formen er en LISTE af blokke, ikke et objekt — maalt 31/10-2026:
+        # `_content_json_for_row` returnerer kun gemt JSON naar det er en liste,
+        # ellers rekonstruerer den blokke fra teksten, og saa ville de
+        # strukturelle felter vaere tabt for klienten. En blok-type er samtidig
+        # den form resten af transcriptet allerede taler.
+        content_json = json.dumps([{
+            "type": "approval",
+            "approval_id": str(approval_id),
+            "tool": tool,
+            "action": handling,
+            "status": status,
+            "risk": str((kort.get("result") or {}).get("classification") or ""),
+            "run_id": str(kort.get("run_id") or ""),
+            "created_at": str(kort.get("created_at") or ""),
+            "decided_by": str(decided_by or ""),
+            "decided_at": (
+                datetime.now(UTC).isoformat()
+                if status != "pending" else ""
+            ),
+        }], ensure_ascii=False)
+
+        from core.services.chat_sessions import append_chat_message
+
+        raekke = append_chat_message(
+            session_id=sid,
+            role="approval_request",
+            content=content,
+            content_json=content_json,
+            user_id=str(kort.get("owner_user_id") or ""),
+        )
+        # `append_chat_message` returnerer noeglen `id`, ikke `message_id` —
+        # maalt 31/10-2026. At laese det forkerte felt gav en raekke der BLEV
+        # skrevet og en funktion der svarede None: praecis den tavse fejlform
+        # hvor «skete det?» og «gik det galt?» ser ens ud.
+        return str((raekke or {}).get("id") or "") or None
+    except Exception:
+        logger.debug(
+            "kunne ikke persistere godkendelses-haendelse %s (%s)",
+            approval_id, status, exc_info=True,
+        )
+        return None
+
+
 def pending_for_session(session_id: str) -> dict[str, Any] | None:
     """Det ventende godkendelses-kort for ÉN samtale — eller ``None``.
 

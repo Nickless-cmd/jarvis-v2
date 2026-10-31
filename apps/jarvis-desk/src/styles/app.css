@@ -2421,6 +2421,29 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--fg-3); font-family: ui-monospace, monospace; font-size: 11.5px;
 }
+/* Historikkens status-badge (31/10-2026).
+ *
+ * En persisteret godkendelse har ingen knapper — den ER afgjort. Badgen er
+ * derfor det eneste der fortæller hvad der skete, og den skal kunne læses på
+ * et blik når man scroller tilbage. Farverne følger husets betydning:
+ * grøn = godkendt, rød = afvist, gul = afventer, grå = udløb (ingen mening,
+ * ingen dom — der kom bare ikke noget svar).
+ */
+.approvallinje-status {
+  flex: none; font-size: 11px; font-weight: 600;
+  padding: 1px 7px; border-radius: 9px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.approvallinje-status.status-godkendt { color: var(--ok-fg, #4ade80); border-color: currentColor; }
+.approvallinje-status.status-afvist { color: var(--error-fg, #f87171); border-color: currentColor; }
+.approvallinje-status.status-venter { color: var(--warn-fg, #fbbf24); border-color: currentColor; }
+.approvallinje-status.status-udloeb,
+.approvallinje-status.status-ukendt { color: var(--fg-3); border-color: currentColor; }
+
+/* Historik-kortet er ikke interaktivt og skal ikke se ud som om det er:
+ * ingen hover-løft, ingen markering af at det «venter på dig». */
+.approvalcard-historik { opacity: 0.9; }
+
 /* Folden. `grid-template-rows: 0fr → 1fr` animerer den FAKTISKE højde uden
  * at gætte px og uden `interpolate-size` (som Safari og Firefox ikke har —
  * desk-PWA'en kører også der). `overflow: hidden` på både ydre og indre er

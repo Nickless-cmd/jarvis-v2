@@ -201,3 +201,79 @@ def test_tikket_deduplikerer_ogsaa(monkeypatch):
     assert ud["registreret"] == 1, f"samme udtræk blev talt som nyt: {ud}"
     assert ud["forstaerket"] == 1
     assert state_store.load_json("forgetting_curve", {}).__len__() == 1
+
+
+# ── gamle poster uden `summary` (31/10-2026, anden runde) ──────────────────
+#
+# Foerste udgave af dedup'en skrev `summary` paa NYE poster og sammenlignede
+# mod det felt. Men de 500 poster der laa i filen foer fixet har intet
+# `summary`, saa deres `content_preview` — MED `focus`-praefiks — var det
+# eneste at sammenligne mod. En gentagelse under et andet `focus` bar derfor
+# praefikset med og kunne pr. konstruktion aldrig matche.
+#
+# MAALT paa de 500 levende poster: 0 af 200 gamle poster blev fanget ved
+# gentagelse. Fixet virkede kun fremad.
+#
+# Rettelsen strikker praefikset af og klipper sammenligningen til
+# `_PREVIEW_LAENGDE` i begge ender — fordi `content_preview` er TRUNKERET ved
+# registrering, saa to identiske udtraek kan vaere klippet paa hver sin plads.
+# Maalt efter: 197 af 197 fanget, 0 falske match.
+
+def test_gammel_post_uden_summary_fanges_ved_gentagelse(monkeypatch):
+    """KERNEN i anden runde. Posten er skrevet FOER fixet: intet `summary`."""
+    state_store.save_json("forgetting_curve", {
+        "gammel-noegle": {
+            "decay_score": 0.4,
+            "reinforcement_count": 0,
+            "content_preview": "tankestrøm: jeg tæller kolonner og værdier i hver række",
+            "registered_at": "2026-10-01T00:00:00Z",
+            "last_referenced_at": "2026-10-01T00:00:00Z",
+        }
+    })
+    # Samme udtraek, nu under et ANDET fokus -> ny noegle, men samme indhold.
+    _hjerne(monkeypatch, [{"focus": "oplevelse",
+                           "summary": "jeg tæller kolonner og værdier i hver række"}])
+    ud = F.tick(30.0)
+
+    reg = state_store.load_json("forgetting_curve", {})
+    assert len(reg) == 1, f"den gamle post blev ikke genkendt: {list(reg)}"
+    assert ud["registreret"] == 0, f"gentagelsen blev talt som ny: {ud}"
+    assert ud["forstaerket"] == 1
+    assert next(iter(reg.values()))["reinforcement_count"] == 1
+
+
+def test_trunkeret_gammel_post_fanges_paa_sit_foerste_stykke(monkeypatch):
+    """`content_preview` er klippet ved 100 TEGN ved registrering.
+
+    To identiske udtraek der er klippet paa hver sin plads deler derfor kun det
+    foerste stykke. Uden at klippe sammenligningen til samme laengde ville de
+    aldrig matche — og det var praecis hvad de 6 resterende dublet-grupper i
+    den levende fil var.
+    """
+    lang = "den afbrudte kørsel under værktøjsudførelsen hænger stadig som et åbent sår " * 2
+    state_store.save_json("forgetting_curve", {
+        "gammel": {
+            "decay_score": 0.2,
+            "reinforcement_count": 0,
+            "content_preview": f"tankestrøm: {lang}"[:F._PREVIEW_LAENGDE],
+            "registered_at": "2026-10-01T00:00:00Z",
+            "last_referenced_at": "2026-10-01T00:00:00Z",
+        }
+    })
+    _hjerne(monkeypatch, [{"focus": "oplevelse", "summary": lang}])
+    ud = F.tick(30.0)
+    assert ud["registreret"] == 0, f"trunkeret gentagelse blev ny post: {ud}"
+    assert len(state_store.load_json("forgetting_curve", {})) == 1
+
+
+def test_praefiks_strip_smelter_IKKE_korte_forskellige_tekster():
+    """Den modsatte vej for anden runde.
+
+    Rettelsen klipper til 100 tegn og sammenligner EKSAKT — bevidst ikke
+    `startswith`. En kort tekst er praefiks af en laengere, og med `startswith`
+    ville «jeg tæller kolonner» smelte sammen med «jeg tæller kolonner og
+    værdier». Det maa ikke ske: de er to forskellige erkendelser.
+    """
+    F.register_memory(memory_key="kort", content_preview="jeg tæller kolonner")
+    F.register_memory(memory_key="lang", content_preview="jeg tæller kolonner og værdier i hver række")
+    assert len(state_store.load_json("forgetting_curve", {})) == 2

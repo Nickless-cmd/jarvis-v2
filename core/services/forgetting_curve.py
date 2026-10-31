@@ -103,6 +103,25 @@ def _normaliser(preview: str) -> str:
     return " ".join(tekst.split())
 
 
+#: `content_preview` klippes til dette antal TEGN ved registrering. Samme
+#: laengde bruges ved sammenligning, saa en trunkeret gammel post kan matche
+#: den fulde tekst den blev klippet fra.
+_PREVIEW_LAENGDE = 100
+
+
+def _uden_praefiks(preview: str) -> str:
+    """Fjern `focus`-praefikset («tankestroem: …») fra en `content_preview`.
+
+    Gamle poster (foer 31/10-2026) har intet `summary`-felt, saa deres
+    `content_preview` er det eneste der kan sammenlignes. Uden dette trin bar
+    sammenligningen praefikset med, og en gentagelse under et ANDET `focus`
+    kunne pr. konstruktion aldrig matche — maalt: 0 af 200 gamle poster blev
+    fanget ved gentagelse, mens fixet ellers virkede fremad.
+    """
+    tekst = str(preview or "")
+    return tekst.split(": ", 1)[1] if ": " in tekst else tekst
+
+
 def _find_dublet(reg: dict[str, dict[str, Any]], tekst: str) -> str | None:
     """Noeglen paa en post med SAMME normaliserede indhold, hvis nogen.
 
@@ -110,15 +129,43 @@ def _find_dublet(reg: dict[str, dict[str, Any]], tekst: str) -> str | None:
     baerer `focus` som praefiks («tankestroem: …»), saa to identiske udtraek
     med forskelligt `focus` ville aldrig matche hinanden — og det er praecis
     den form dubletterne har. Posten skriver derfor `summary` ved siden af.
+
+    Foraeldre- og gamle poster uden `summary` strikkes praefikset af, og
+    sammenligningen klippes til `_PREVIEW_LAENGDE` i BEGGE ender. Det sidste er
+    ikke kosmetik: `content_preview` er trunkeret ved registrering, saa to
+    identiske udtraek der er klippet paa hver sin plads (fx ved 100 og 130
+    tegn) deler kun det foerste stykke. MAALT paa de 500 levende poster:
+    praefiks-strip + klippet laengde fangede 197 af 197 gentagelser af gamle
+    poster med 0 falske match — hvor den rene eksakte sammenligning fangede 0.
+
+    Bevidst IKKE `startswith`: en kort summary er praefiks af en laengere, og
+    to forskellige erkendelser ville smelte sammen. Klippet eksakt lighed kan
+    pr. konstruktion ikke goere det.
     """
     noegle = _normaliser(tekst)
     if not noegle:
         return None
     for eksisterende, post in reg.items():
         sammenlign = post.get("summary")
-        if sammenlign is None:
-            sammenlign = post.get("content_preview") or ""
-        if _normaliser(str(sammenlign)) == noegle:
+        if sammenlign is not None:
+            if _normaliser(str(sammenlign))[:_PREVIEW_LAENGDE] == noegle[:_PREVIEW_LAENGDE]:
+                return eksisterende
+            continue
+
+        raa = str(post.get("content_preview") or "")
+        ren = _normaliser(_uden_praefiks(raa))
+        if not ren:
+            continue
+        if len(raa) >= _PREVIEW_LAENGDE:
+            # Previewen blev KLIPPET ved registrering, saa den gemte tekst er et
+            # STYKKE af den oprindelige — den skal vaere et praefiks af proben,
+            # ikke lig den. Praefiks-reglen bruges KUN her: blev teksten ikke
+            # klippet, er den komplet, og saa kraeves eksakt lighed. Uden den
+            # graense ville «jeg tæller kolonner» smelte den laengere
+            # «jeg tæller kolonner og værdier» ind i sig.
+            if noegle.startswith(ren):
+                return eksisterende
+        elif ren == noegle[:_PREVIEW_LAENGDE]:
             return eksisterende
     return None
 

@@ -1,4 +1,6 @@
 """Tests for geolocation_tools — mocker HTTP så vi ikke rammer eksterne API'er."""
+import pytest
+
 import core.tools.geolocation_tools as g
 
 
@@ -189,3 +191,40 @@ def test_route_directions_source_osm_er_standard(monkeypatch):
     assert g.route_directions([55.0, 10.0], [55.1, 10.1])["source"] == "osm"
     google = g.route_directions([55.0, 10.0], [55.1, 10.1], "driving", "google")
     assert google["source"] == "google" and google["needs_key"] is True
+
+
+def test_compare_bruger_relativ_taerskel_ikke_absolut(monkeypatch):
+    """0.14 km er 9.1 % af en 1.54 km-rute — de to kilder er UENIGE.
+
+    Den tidligere absolutte tærskel (delta < 0.2 km) kaldte dem "enige" og
+    skjulte dermed den uenighed funktionen findes for at vise. Maalt 31/10-2026
+    mod den levende rute Graaesvej -> McDonald's: osm 1.68 km / google 1.54 km.
+    """
+    monkeypatch.setattr(
+        g, "_osm_route",
+        lambda f, t, p: {"status": "ok", "distance_km": 1.68, "duration_min": 3.3},
+    )
+    monkeypatch.setattr(
+        g, "google_route",
+        lambda f, t, p: {"status": "ok", "distance_km": 1.54, "duration_min": 4.1},
+    )
+    r = g.compare_routes([55.0, 10.0], [55.1, 10.1], "driving")
+    assert r["sources_agree"] is False, "9 % afvigelse skal ikke kaldes enighed"
+    assert r["distance_delta_pct"] == pytest.approx(-9.1, abs=0.1)
+
+
+def test_compare_korte_ruter_faar_absolut_gulv(monkeypatch):
+    """På en 200 m-rute er 0.05 km = 25 % — men 0.05 km er under 100 m-gulvet.
+
+    Uden gulvet ville en mikroskopisk rute blive kaldt uenig af støj.
+    """
+    monkeypatch.setattr(
+        g, "_osm_route",
+        lambda f, t, p: {"status": "ok", "distance_km": 0.20, "duration_min": 0.5},
+    )
+    monkeypatch.setattr(
+        g, "google_route",
+        lambda f, t, p: {"status": "ok", "distance_km": 0.15, "duration_min": 0.5},
+    )
+    r = g.compare_routes([55.0, 10.0], [55.1, 10.1], "walking")
+    assert r["sources_agree"] is True

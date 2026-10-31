@@ -294,8 +294,26 @@ def compare_routes(from_: Any, to: Any, profile: str = "driving") -> dict[str, A
         ud["duration_delta_min"] = round(
             float(google["duration_min"]) - float(osm["duration_min"]), 1
         )
+        # Relativ tærskel, ikke absolut: 0.14 km er 8 % af en 1.7 km-rute men
+        # 0.14 % af en 100 km-rute. En absolut grænse ville kalde begge "enige"
+        # og dermed skjule netop den uenighed funktionen findes for at vise.
+        afstand_ref = min(float(osm["distance_km"]), float(google["distance_km"])) or 1.0
+        tid_ref = min(float(osm["duration_min"]), float(google["duration_min"])) or 1.0
+        ud["distance_delta_pct"] = round(
+            100.0 * ud["distance_delta_km"] / afstand_ref, 1
+        )
+        ud["duration_delta_pct"] = round(
+            100.0 * ud["duration_delta_min"] / tid_ref, 1
+        )
+        # Tærsklen er KALIBRERET, ikke udledt: målt 31/10-2026 på fem ruter
+        # (1.7 km by -> 164 km landevej). De to lange ruter lå på 2.9 % afstand /
+        # 0.3-5.2 % tid; de korte byruter på 5.5-9.1 % afstand / 24-36 % tid,
+        # fordi Google er TRAFFIC_AWARE og OSM ikke er. 5 % / 15 % skelner de to
+        # grupper. Det er en konvention — procenterne rapporteres altid, saa
+        # dommen kan efterprøves uden at gætte tærsklen.
         ud["sources_agree"] = (
-            abs(ud["distance_delta_km"]) < 0.2 and abs(ud["duration_delta_min"]) < 1.0
+            abs(ud["distance_delta_km"]) < max(0.1, 0.05 * afstand_ref)
+            and abs(ud["duration_delta_min"]) < max(0.5, 0.15 * tid_ref)
         )
     else:
         ud["sources_agree"] = None

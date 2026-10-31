@@ -20,7 +20,6 @@ import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
-import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -1298,7 +1297,16 @@ export function CodeView({
             /* Godkendelsen som historik (31/10-2026) — samme gren som i
              * ChatView. Uden den blev raekken vist som en af MINE beskeder. */
             <div key={m.id} data-rail-id={m.id} className="msg-block">
-              <HistoriskGodkendelse data={forsteGodkendelse(m.content_json)} />
+              <HistoriskGodkendelse
+                data={forsteGodkendelse(m.content_json)}
+                live={liveGodkendelse(
+                  forsteGodkendelse(m.content_json),
+                  stream.pendingApproval,
+                  isOwner,
+                  (id) => stream.approve(id),
+                  (id) => stream.deny(id),
+                )}
+              />
             </div>
           ) : (
             <Fragment key={m.id}>
@@ -1355,7 +1363,8 @@ export function CodeView({
             </div>
           )}
           <div className="composer-notices">
-            <GodkendelsesKort sessionId={sessionId} />
+            {/* Flyttet ind i transcriptet 31/10-2026 (DEL 3) — se
+                `approval_request`-grenen ovenfor. */}
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
@@ -1447,6 +1456,27 @@ export function CodeView({
  *  Serveren gemmer `content_json` som en LISTE af blokke. En tom eller
  *  ukendt form maa ikke kaste under render — en enkelt daarlig raekke ville
  *  ellers tage hele transcriptet med sig. */
+/** Er denne historik-række den godkendelse der venter LIGE NU?
+ *
+ *  31/10-2026 — DEL 3. Kortet flyttede fra `.composer-area` ind i transcriptet.
+ *  En persisteret række er historik og kan ikke besvares — men den raekke der
+ *  matcher den ventende godkendelse ER ikke historik endnu. Den får knapperne.
+ *
+ *  Match paa `approval_id`, ikke paa vaerdier: to godkendelser kan have samme
+ *  kommando, og et match paa tekst ville give knapper paa den forkerte række.
+ */
+function liveGodkendelse(
+  data: GodkendelsesHaendelse,
+  pending: { approvalId: string; expiresAt?: string } | null,
+  canApprove: boolean,
+  onApprove: (id: string) => void,
+  onDeny: (id: string) => void,
+) {
+  if (!pending || !data.approval_id || pending.approvalId !== data.approval_id) return undefined
+  if (data.status !== 'pending') return undefined
+  return { canApprove, expiresAt: pending.expiresAt, onApprove, onDeny }
+}
+
 function forsteGodkendelse(raa: unknown): GodkendelsesHaendelse {
   const liste = Array.isArray(raa) ? raa : []
   const blok = liste[0] as Partial<GodkendelsesHaendelse> | undefined

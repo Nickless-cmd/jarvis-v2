@@ -49,11 +49,28 @@ describe('godkendelses-kortet', () => {
   it('vises paa hver flade der har en composer', () => {
     // En composer betyder at man kan bede om noget dér, og saa skal svaret
     // paa «maa jeg?» ogsaa kunne gives dér.
+    //
+    // 31/10-2026 — DEL 3: kortet flyttede fra `.composer-area` IND i
+    // transcriptet, saa det ikke skubber samtalen op. Kontrakten er den samme,
+    // men fladen der baerer den er nu `HistoriskGodkendelse` i
+    // `approval_request`-grenen. Testen maaler derfor den gren, ikke det
+    // flydende kort — ellers ville den kraeve den komponent vi netop fjernede.
     const mangler = tsxFiler(VIEWS)
       .filter((f) => jsxNavne(f).includes('Composer'))
-      .filter((f) => !jsxNavne(f).includes('GodkendelsesKort'))
+      .filter((f) => !jsxNavne(f).includes('HistoriskGodkendelse'))
       .map((f) => f.slice(VIEWS.length + 1))
     expect(mangler, 'en flade kan sende, men kan ikke svare paa en godkendelse '
       + '— saa ser den ud som om Jarvis er staaet af').toEqual([])
+  })
+
+  it('det flydende kort er ikke tilbage i composer-laget', () => {
+    // Den anden halvdel af DEL 3: naar raekken i transcriptet ER fladen, maa
+    // det flydende kort ikke ogsaa tegnes — saa ville den samme godkendelse
+    // staa to steder, og svaret kunne ses to gange.
+    const tilbage = tsxFiler(VIEWS)
+      .filter((f) => jsxNavne(f).includes('GodkendelsesKort'))
+      .map((f) => f.slice(VIEWS.length + 1))
+    expect(tilbage, 'kortet tegnes baade i transcriptet og i composer-laget '
+      + '— to flader for samme godkendelse').toEqual([])
   })
 })

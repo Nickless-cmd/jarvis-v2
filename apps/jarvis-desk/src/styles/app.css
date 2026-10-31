@@ -2434,7 +2434,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 1px 7px; border-radius: 9px;
   border: 1px solid transparent; white-space: nowrap;
 }
-.approvallinje-status.status-godkendt { color: var(--ok-fg, #4ade80); border-color: currentColor; }
+.approvallinje-status.status-godkendt { color: var(--ok); border-color: currentColor; }
 .approvallinje-status.status-afvist { color: var(--error-fg, #f87171); border-color: currentColor; }
 .approvallinje-status.status-venter { color: var(--warn-fg, #fbbf24); border-color: currentColor; }
 .approvallinje-status.status-udloeb,

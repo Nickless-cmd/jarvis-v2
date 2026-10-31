@@ -37,12 +37,39 @@ const STATUS: Record<string, { tekst: string; klasse: string }> = {
   expired: { tekst: 'Udløb uden svar', klasse: 'udloeb' },
 }
 
-export function HistoriskGodkendelse({ data }: { data: GodkendelsesHaendelse }) {
+export function HistoriskGodkendelse({
+  data,
+  live,
+}: {
+  data: GodkendelsesHaendelse
+  /** Sat naar denne række ER den godkendelse der venter lige nu.
+   *
+   *  31/10-2026 — DEL 3. Kortet laa i `.composer-area` og skubbede transcriptet
+   *  op. Nu ligger det hvor det hører: som en række i samtalen. Men en
+   *  persisteret række er historik og kan ikke besvares — så når rækken
+   *  matcher den ventende godkendelse, får den knapperne tilbage.
+   *
+   *  Det er ÉN flade, ikke to: uden dette ville den samme godkendelse stå to
+   *  steder (historik-rækken uden knapper + det flydende kort med), og man
+   *  ville kunne se sit eget svar stå to gange.
+   */
+  live?: {
+    canApprove: boolean
+    expiresAt?: string
+    onApprove: (id: string) => void
+    onDeny: (id: string) => void
+  }
+}) {
   const [aaben, setAaben] = useState(false)
   const status = STATUS[data.status] ?? { tekst: data.status, klasse: 'ukendt' }
+  // Baandet holdes HER, ikke kun hos kalderen: status er sandheden om hvorvidt
+  // der kan svares. En afgjort raekke maa aldrig faa knapper, heller ikke hvis
+  // en kalder sender `live` ved en fejl — saa ville et gammelt svar se ud som
+  // et aabent spoergsmaal.
+  const kanSvare = Boolean(live) && data.status === 'pending'
 
   return (
-    <div className={`approvalcard risk-${data.risk || ''} approvalcard-historik`}>
+    <div className={`approvalcard risk-${data.risk || ''}${kanSvare ? ' approvalcard-live' : ' approvalcard-historik'}`}>
       <div className="approvallinje">
         <button
           type="button"
@@ -50,15 +77,23 @@ export function HistoriskGodkendelse({ data }: { data: GodkendelsesHaendelse }) 
           aria-expanded={aaben}
           onClick={() => setAaben((v) => !v)}
           title={aaben ? 'Skjul kommandoen' : 'Vis kommandoen'}
+          aria-label={aaben ? 'Skjul kommandoen' : 'Vis kommandoen'}
         >
           <span className="approvallinje-pil" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
           <span className="approvallinje-tool">{data.tool}</span>
           <span className="approvallinje-resume">{resume(data.action)}</span>
         </button>
 
-        <span className={`approvallinje-status status-${status.klasse}`}>
-          {status.tekst}
-        </span>
+        {kanSvare && live ? (
+          <span className="approvalcard-actions">
+            <button type="button" onClick={() => live.onApprove(data.approval_id)}>Godkend</button>
+            <button type="button" onClick={() => live.onDeny(data.approval_id)}>Afvis</button>
+          </span>
+        ) : (
+          <span className={`approvallinje-status status-${status.klasse}`}>
+            {status.tekst}
+          </span>
+        )}
       </div>
 
       <div className="approvallinje-krop" data-aaben={aaben ? 'true' : 'false'}>

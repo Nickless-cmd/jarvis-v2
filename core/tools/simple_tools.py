@@ -718,10 +718,23 @@ def canonical_identity_file_path(name: str) -> Path:
     try:
         base = workspace_dir_or_owner()
     except Exception:
+        # Fail-soft med vilje — en skrivning maa ikke standse fordi opslaget
+        # fejlede. Men MAALT 31/10-2026 var faldet TAVST, og et tavst fald her
+        # genskaber praecis den bug docstringen ovenfor beskriver: MEMORY.md
+        # lander i shared/ mens prompten laeser workspaces/<bruger>/. Sporet
+        # goer den forkerte base synlig i det oeje blik den bruges.
+        logger.warning(
+            "simple_tools: workspace-opslag fejlede for %r — falder tilbage til shared/",
+            name, exc_info=True,
+        )
         base = WORKSPACE_DIR
     try:
         return _resolve_with_shared_fallback(Path(base) / name).resolve()
     except Exception:
+        logger.warning(
+            "simple_tools: shared-fallback fejlede for %r — bruger u-opløst sti",
+            name, exc_info=True,
+        )
         return (Path(base) / name).resolve()
 
 
@@ -1192,6 +1205,14 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _role = _eff_role()
         _scope = _cur_scope() or ""
     except Exception:
+        # Fail-OPEN med vilje (se kommentaren ovenfor), men ikke tavst: "" betyder
+        # «unbound» = betroet, saa et kast her giver MERE adgang, ikke mindre.
+        # Maalt 31/10-2026 var faldet tavst — en medlemssession ville glide gennem
+        # auth-gaten som owner uden at nogen kunne se hvorfor.
+        logger.warning(
+            "simple_tools: rolle/scope-opslag kastede — behandler som unbound (fail-open)",
+            exc_info=True,
+        )
         _role, _scope = "", ""
     if _role not in ("", "owner"):
         _auth_denied = False
@@ -1218,7 +1239,13 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                             f"{type(_auth_exc).__name__}: {_auth_exc}"[:300],
                 )
             except Exception:
-                pass
+                # Nød-fallback inde i en nød-fallback: kan incidenen ikke
+                # registreres, er der ellers INGEN vej til at se at auth-stien
+                # kollapsede. Loggen er den sidste flade der kan bære det.
+                logger.warning(
+                    "simple_tools: kunne ikke registrere auth-fail-open-incident for %r", name,
+                    exc_info=True,
+                )
         if _auth_denied:
             result = {
                 "status": "error", "error": "tool_not_permitted",
@@ -1228,7 +1255,11 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             try:
                 event_bus.publish("incident.tool_denied", {"tool": name, "role": _role})
             except Exception:
-                pass
+                # Event-bussen kan selv vaere nede — saa er loggen det eneste spor
+                # om at et værktøj blev naegtet.
+                logger.warning(
+                    "simple_tools: kunne ikke publicere tool_denied for %r", name, exc_info=True
+                )
             # Connections-cluster: uautoriseret tool-adgang → fang+flag (severe incident) +
             # bind til session, så vi ser hvem/hvad forsøgte uautoriseret hvor.
             try:
@@ -1253,6 +1284,12 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                         )
                         _ua_rid = str(_crid() or "")
                     except Exception:
+                        # Uden run-id kan deny'et ikke afgoeres bagefter — praecis
+                        # den maaling der 15/10-2026 viste 468 denies med `run=-`.
+                        logger.warning(
+                            "simple_tools: kunne ikke laese run-id til deny-flagning for %r", name,
+                            exc_info=True,
+                        )
                         _ua_rid = ""
                 if not _ua_sid:
                     try:
@@ -1261,17 +1298,30 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                         )
                         _ua_sid = str(_csid() or "")
                     except Exception:
+                        logger.warning(
+                            "simple_tools: kunne ikke laese session-id til deny-flagning for %r", name,
+                            exc_info=True,
+                        )
                         _ua_sid = ""
                 # Fang den ÆGTE bruger (ikke bare rollen "member") så signalet er handlingsbart.
                 try:
                     from core.identity.workspace_context import current_user_id as _cuid
                     _ua_uid = _cuid() or ""
                 except Exception:
+                    logger.warning(
+                        "simple_tools: kunne ikke laese bruger-id til deny-flagning for %r", name,
+                        exc_info=True,
+                    )
                     _ua_uid = ""
                 note_unauthorized(_ua_uid, _ua_sid, f"tool:{name}", "tool_not_permitted",
                                   role=_role, run_id=_ua_rid)
             except Exception:
-                pass
+                # Uautoriseret adgang der ikke blev flagget er en sikkerheds-
+                # haendelse uden spor. Loggen er den sidste flade.
+                logger.warning(
+                    "simple_tools: kunne ikke flagge uautoriseret adgang for %r", name,
+                    exc_info=True,
+                )
             _husk(result)
             return result
 
@@ -1282,6 +1332,13 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _wt = check_workspace_trust(name)
         _trust_block = _wt.reason if _wt.classification == "untrusted" else None
     except Exception:
+        # Fail-OPEN med vilje, men tavst var det farligt: None betyder «workspace
+        # er betroet», saa et kast her giver skrive-adgang til et workspace der
+        # aldrig blev vurderet. Maalt 31/10-2026 var faldet tavst.
+        logger.warning(
+            "simple_tools: trusted-folder-tjek kastede — behandler workspace som betroet (fail-open) for %r",
+            name, exc_info=True,
+        )
         _trust_block = None
     if _trust_block:
         result = {"error": _trust_block, "status": "error", "blocked": "untrusted_workspace"}
@@ -1324,6 +1381,12 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     try:
         result = handler(arguments)
     except Exception as exc:
+        # Fejlen bæres korrekt videre som status=error, men uden exc_info mistede
+        # vi stack-tracen — og force-stien er netop den vej hvor en handler kan
+        # kaste uden at nogen ser hvorfor. Maalt 31/10-2026 var faldet tavst.
+        logger.warning(
+            "simple_tools: handler for %r kastede i force-stien", name, exc_info=True
+        )
         result = {"error": str(exc), "status": "error"}
 
     # Defensive: tools may return None for pure side-effects; normalize
@@ -1516,7 +1579,13 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
                 _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
                 return result
     except Exception:
-        pass  # never block tool execution on emotional_controls errors
+        # Aldrig blokér — men heller ikke tavst: et kast her betyder at
+        # emotional_controls-gaten slet ikke blev vurderet, saa en blokering
+        # der SKULLE vaere sket, udebliver.
+        logger.warning(
+            "simple_tools: emotional_controls-gate kastede — kører uden gate for %r", name,
+            exc_info=True,
+        )
 
     event_bus.publish("tool.force_invoked", {
         "tool": name,
@@ -1526,6 +1595,12 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
     try:
         result = handler(arguments)
     except Exception as exc:
+        # Fejlen bæres korrekt videre som status=error, men uden exc_info mistede
+        # vi stack-tracen — og force-stien er netop den vej hvor en handler kan
+        # kaste uden at nogen ser hvorfor. Maalt 31/10-2026 var faldet tavst.
+        logger.warning(
+            "simple_tools: handler for %r kastede i force-stien", name, exc_info=True
+        )
         result = {"error": str(exc), "status": "error"}
 
     # Tools occasionally return None (e.g. from a pure side-effect handler);
@@ -1545,7 +1620,12 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
                 str(arguments.get("command", ""))
             )
         except Exception:
-            pass
+            # Uden flaget taeller R2 ikke kommandoen som mutation, saa en ægte
+            # mutation gaar under radaren i den maaling gaten doemmer efter.
+            logger.warning(
+                "simple_tools: kunne ikke afgoere om shell-kaldet muterer — taeller ikke som mutation",
+                exc_info=True,
+            )
     event_bus.publish("tool.completed", _completed_payload)
 
     # Outcome learning — same hook as execute_tool so force-path is observed too
@@ -2415,6 +2495,12 @@ def get_tool_definitions(
             from core.identity.workspace_context import effective_role as _eff_role
             effective_role = _eff_role()
         except Exception:
+            # Fail-OPEN: "" giver owner-adgang i filteret. Et kast her udvider
+            # altsaa værktøjslisten i stedet for at indsnævre den.
+            logger.warning(
+                "simple_tools: rolle-opslag kastede i get_tool_definitions — behandler som owner (fail-open)",
+                exc_info=True,
+            )
             effective_role = ""
 
     effective_scope = scope if scope is not None else current_tool_scope()

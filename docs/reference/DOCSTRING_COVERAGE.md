@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9483/17803 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9484/17804 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 9483/17803 functions/methods documented (53%). The list b
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 597 | 1147 | 52% |
+| `core.tools` | 598 | 1148 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -2404,7 +2404,7 @@ Generated from source. 9483/17803 functions/methods documented (53%). The list b
 - `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1257)
 - `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1244)
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1229)
-- `core/tools/security_predicates.py` :: `all_predicates` (L124)
+- `core/tools/security_predicates.py` :: `all_predicates` (L169)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
 - `core/tools/streaming_subprocess.py` :: `run_streaming` (L28)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)

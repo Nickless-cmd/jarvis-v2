@@ -39,15 +39,15 @@ BASH_PREDICATES: tuple[SecurityPredicate, ...] = (
     SecurityPredicate(7, "git-clean", "bash", "destructive", r"git\s+clean", "Sletter untracked filer"),
     SecurityPredicate(8, "git-push-force", "bash", "destructive", r"git\s+push\s+--force", "Overskriver remote-historik"),
     SecurityPredicate(9, "git-push-f", "bash", "destructive", r"git\s+push\s+-f\b", "Overskriver remote-historik"),
-    SecurityPredicate(10, "drop-table", "bash", "destructive", r"\bdrop\s+table\b", "Sletter database-tabel"),
-    SecurityPredicate(11, "drop-database", "bash", "destructive", r"\bdrop\s+database\b", "Sletter hel database"),
-    SecurityPredicate(12, "truncate", "bash", "destructive", r"\btruncate\b", "Tømmer tabel/fil"),
-    SecurityPredicate(13, "mkfs", "bash", "destructive", r"mkfs\b", "Formaterer filsystem"),
+    SecurityPredicate(10, "drop-table", "bash", "destructive", r"\bdrop\s+table\b", "Sletter database-tabel", quote_aware=True),
+    SecurityPredicate(11, "drop-database", "bash", "destructive", r"\bdrop\s+database\b", "Sletter hel database", quote_aware=True),
+    SecurityPredicate(12, "truncate", "bash", "destructive", r"\btruncate\b", "Tømmer tabel/fil", quote_aware=True),
+    SecurityPredicate(13, "mkfs", "bash", "destructive", r"mkfs\b", "Formaterer filsystem", quote_aware=True),
     SecurityPredicate(14, "dd-disk-write", "bash", "destructive", r"dd\s+if=", "Rå disk-skrivning"),
     SecurityPredicate(15, "fork-bomb", "bash", "destructive", r":\(\)\{ :\|:& \};:", "Fork-bomb (resurs-udmattelse)"),
-    SecurityPredicate(16, "shutdown", "bash", "destructive", r"\bshutdown\b", "Lukker maskinen ned"),
-    SecurityPredicate(17, "reboot", "bash", "destructive", r"\breboot\b", "Genstarter maskinen"),
-    SecurityPredicate(18, "poweroff", "bash", "destructive", r"\bpoweroff\b", "Slukker maskinen"),
+    SecurityPredicate(16, "shutdown", "bash", "destructive", r"\bshutdown\b", "Lukker maskinen ned", quote_aware=True),
+    SecurityPredicate(17, "reboot", "bash", "destructive", r"\breboot\b", "Genstarter maskinen", quote_aware=True),
+    SecurityPredicate(18, "poweroff", "bash", "destructive", r"\bpoweroff\b", "Slukker maskinen", quote_aware=True),
 )
 
 # Write-predikater (substring på resolved path). Alle blocked.
@@ -73,7 +73,44 @@ _SHELL_FORTOLKER_KODE = re.compile(
     r"\b(?:bash|sh|zsh|dash|ksh|fish)\b[^|;&]*\s(?:-c|--command)\b"
     r"|\beval\b"
     r"|\|\s*(?:bash|sh|zsh|dash|ksh|fish)\b"
+    # 31/10-2026: database- og fjern-klienter eksekverer quoted indhold som
+    # KODE. `psql -c "drop table users"` ER en sletning. Uden denne gren ville
+    # `quote_aware` på drop-table-predikatet gøre den til en ren læsning — et
+    # hul åbnet af præcis det fix der skulle lukke et andet.
+    r"|\b(?:psql|mysql|mariadb|sqlite3)\b[^|;&]*\s(?:-c|-e)\b"
+    r"|\bssh\b[^|;&]*\s"
+    r"|\b(?:docker|podman|kubectl)\s+exec\b"
 )
+
+#: Separatorer der gør kommandoen til MERE end ét segment — eller indlejret
+#: kode. Er en af dem til stede, er kommandoen ikke «én ren læsning», og så
+#: matcher predikaterne bredt igen. `&` tælles med som baggrunds-separator.
+_FLERE_SEGMENTER = re.compile(r"\|\||&&|[;|&\n`]|\$\(|\(")
+
+
+def _er_ren_laesning(command: str) -> bool:
+    """Er HELE kommandoen ét rent læse-segment?
+
+    Målt 31/10-2026: 9 af 26 kommandoer blev gated som det de NÆVNTE, ikke det
+    de GJORDE — `grep -i shutdown /var/log/syslog` blev `destructive`.
+
+    Indsnævringen kan ikke være en positions-regel (opgavens første forslag):
+    `systemctl reboot`, `ssh host reboot` og `xargs rm` har alle ordet som
+    ARGUMENT, så en positions-regel ville gøre dem til rene læsninger — fire
+    huller i en SECURITY-gate. Det der skiller dem fra `grep -i shutdown` er
+    PROGRAMMET: `grep` fortolker ikke sine argumenter, `systemctl` gør.
+
+    Derfor genbruges husets egen læser-regel (`_segment_er_laesende`), som
+    allerede er fail-closed: ukendt program, skrivende redirect, `-exec` og
+    programmer som `sed`/`awk`/`xargs`/`sudo` giver False.
+    """
+    try:
+        from core.tools.simple_tools import _segment_er_laesende
+    except Exception:
+        return False  # kan reglen ikke læses, matcher vi bredt: fail-closed
+    if _FLERE_SEGMENTER.search(command):
+        return False
+    return _segment_er_laesende(command)
 
 
 def evaluate_command(command: str) -> dict | None:
@@ -96,6 +133,14 @@ def evaluate_command(command: str) -> dict | None:
     except Exception:
         uden_quotes = normalized
     kode_i_quotes = bool(_SHELL_FORTOLKER_KODE.search(normalized))
+
+    # 31/10-2026: er HELE kommandoen ét rent læse-segment, er hvert ord i den
+    # en OMTALE — `grep -i shutdown /var/log/syslog` lukker ikke maskinen.
+    # Se `_er_ren_laesning` for hvorfor indsnævringen ikke kan være en
+    # positions-regel. Er svaret «ikke en ren læsning», matcher vi bredt som
+    # før: fail-closed, og det er den gren de 17 kontrakt-tilfælde ligger i.
+    if not kode_i_quotes and _er_ren_laesning(uden_quotes):
+        return None
 
     for want in ("blocked", "destructive"):
         for p in BASH_PREDICATES:

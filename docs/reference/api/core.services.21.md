@@ -466,28 +466,28 @@ _Read-before-write guard — prevents overwrite of existing files without prior 
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_cache_key` | `(session_id, abs_path)` | — | [src](../../../core/services/read_before_write_guard.py#L72) |
-| function | `record_read` | `(path, session_id=…)` | Record that a file has been read in this session. | [src](../../../core/services/read_before_write_guard.py#L76) |
-| function | `_was_read` | `(abs_path, session_id)` | True if `abs_path` was read in this session within the TTL window. | [src](../../../core/services/read_before_write_guard.py#L94) |
-| function | `is_protected` | `(path)` | True if the path's basename is in the protected set. | [src](../../../core/services/read_before_write_guard.py#L112) |
-| function | `_kraever_laesning` | `(target)` | True hvis denne fil kraever laesning foerst. | [src](../../../core/services/read_before_write_guard.py#L127) |
-| function | `was_read` | `(path, session_id=…)` | Offentlig, STI-baseret laese-status — uden navne-filter. | [src](../../../core/services/read_before_write_guard.py#L138) |
-| function | `check_read_before_write` | `(path, session_id=…)` | Check whether a file write should be allowed for this path. | [src](../../../core/services/read_before_write_guard.py#L154) |
-| function | `_normalize_path` | `(p, *, base=…)` | Best-effort resolve of a path token (may be ~/, relative, ./). | [src](../../../core/services/read_before_write_guard.py#L239) |
-| function | `_samme_navn_andetsteds` | `(target)` | Findes en AEGTE fil med samme beskyttede navn i et kendt workspace? | [src](../../../core/services/read_before_write_guard.py#L251) |
-| function | `check_bash_command_safe` | `(command, *, session_id=…, cwd=…)` | Sniff a bash command for protected-file overwrites without prior read. | [src](../../../core/services/read_before_write_guard.py#L277) |
-| function | `clear_session` | `(session_id=…)` | Clear all recent-read entries for a session in shared_cache. | [src](../../../core/services/read_before_write_guard.py#L433) |
-| function | `get_session_reads` | `(session_id=…)` | Return the set of paths read in this session (for debugging). | [src](../../../core/services/read_before_write_guard.py#L442) |
-| function | `build_read_before_write_guard_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/read_before_write_guard.py#L469) |
-| function | `_emit_read_before_write_guard_event` | `(kind, payload=…)` | Efterlad et spor for hvert udfald af vagtens dom. | [src](../../../core/services/read_before_write_guard.py#L481) |
-| function | `_normalize_operator_path` | `(path)` | Light normalization for cross-OS path consistency. | [src](../../../core/services/read_before_write_guard.py#L525) |
-| function | `_operator_cache_key` | `(session_id, norm_path)` | — | [src](../../../core/services/read_before_write_guard.py#L538) |
-| function | `record_operator_read` | `(path, session_id=…)` | Note that the operator side has read this path. Best-effort. | [src](../../../core/services/read_before_write_guard.py#L542) |
-| function | `_operator_was_read` | `(norm_path, session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L558) |
-| function | `check_operator_read_before_write` | `(path, session_id=…, file_exists=…)` | Block operator_write_file / operator_edit_file on existing files | [src](../../../core/services/read_before_write_guard.py#L572) |
-| function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L633) |
-| function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L637) |
-| function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L670) |
+| function | `_cache_key` | `(session_id, abs_path)` | — | [src](../../../core/services/read_before_write_guard.py#L71) |
+| function | `record_read` | `(path, session_id=…)` | Record that a file has been read in this session. | [src](../../../core/services/read_before_write_guard.py#L75) |
+| function | `_was_read` | `(abs_path, session_id)` | True if `abs_path` was read in this session within the TTL window. | [src](../../../core/services/read_before_write_guard.py#L93) |
+| function | `is_protected` | `(path)` | True if the path's basename is in the protected set. | [src](../../../core/services/read_before_write_guard.py#L117) |
+| function | `_kraever_laesning` | `(target)` | True hvis denne fil kraever laesning foerst. | [src](../../../core/services/read_before_write_guard.py#L132) |
+| function | `was_read` | `(path, session_id=…)` | Offentlig, STI-baseret laese-status — uden navne-filter. | [src](../../../core/services/read_before_write_guard.py#L143) |
+| function | `check_read_before_write` | `(path, session_id=…)` | Check whether a file write should be allowed for this path. | [src](../../../core/services/read_before_write_guard.py#L159) |
+| function | `_normalize_path` | `(p, *, base=…)` | Best-effort resolve of a path token (may be ~/, relative, ./). | [src](../../../core/services/read_before_write_guard.py#L250) |
+| function | `_samme_navn_andetsteds` | `(target)` | Findes en AEGTE fil med samme beskyttede navn i et kendt workspace? | [src](../../../core/services/read_before_write_guard.py#L262) |
+| function | `check_bash_command_safe` | `(command, *, session_id=…, cwd=…)` | Sniff a bash command for protected-file overwrites without prior read. | [src](../../../core/services/read_before_write_guard.py#L288) |
+| function | `clear_session` | `(session_id=…)` | Clear all recent-read entries for a session in shared_cache. | [src](../../../core/services/read_before_write_guard.py#L454) |
+| function | `get_session_reads` | `(session_id=…)` | Return the set of paths read in this session (for debugging). | [src](../../../core/services/read_before_write_guard.py#L463) |
+| function | `build_read_before_write_guard_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/read_before_write_guard.py#L490) |
+| function | `_emit_read_before_write_guard_event` | `(kind, payload=…)` | Efterlad et spor for hvert udfald af vagtens dom. | [src](../../../core/services/read_before_write_guard.py#L502) |
+| function | `_normalize_operator_path` | `(path)` | Light normalization for cross-OS path consistency. | [src](../../../core/services/read_before_write_guard.py#L546) |
+| function | `_operator_cache_key` | `(session_id, norm_path)` | — | [src](../../../core/services/read_before_write_guard.py#L559) |
+| function | `record_operator_read` | `(path, session_id=…)` | Note that the operator side has read this path. Best-effort. | [src](../../../core/services/read_before_write_guard.py#L563) |
+| function | `_operator_was_read` | `(norm_path, session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L579) |
+| function | `check_operator_read_before_write` | `(path, session_id=…, file_exists=…)` | Block operator_write_file / operator_edit_file on existing files | [src](../../../core/services/read_before_write_guard.py#L599) |
+| function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L660) |
+| function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L664) |
+| function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L697) |
 
 ## `core/services/reasoning_classifier.py`
 _Reasoning classifier — router that picks fast / reasoning / deep tier._

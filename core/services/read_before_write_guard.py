@@ -29,7 +29,6 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +104,13 @@ def _was_read(abs_path: str, session_id: str) -> bool:
         if session_id != "default" and _sc.get(_cache_key("default", abs_path)) is not None:
             return True
     except Exception:
-        pass
+        # Fail-CLOSED: vi svarer «ikke laest», saa skrivningen BLOKERES. Det er
+        # den sikre retning — men beskeden til kalderen siger «du har ikke laest
+        # filen», hvilket er en loegn naar aarsagen er at cachen er nede.
+        logger.warning(
+            "read_before_write_guard: cache-opslag fejlede for %s — behandler "
+            "som IKKE laest (blokerer skrivning)", abs_path, exc_info=True,
+        )
     return False
 
 
@@ -196,6 +201,12 @@ def check_read_before_write(
             f"Første 20 linjer:\n{preview}"
         )
     except Exception as e:
+        # Previewet staar i reason-strengen, men loggen viste kun «BLOCKED» —
+        # saa man kunne ikke se at det var PREVIEW-læsningen der fejlede.
+        logger.warning(
+            "read_before_write_guard: kunne ikke laese preview af %s (%s) — "
+            "blokeringen staar ved magt", target, e, exc_info=True,
+        )
         reason = (
             f"⚠️ READ-BEFORE-WRITE GUARD: {target.name} eksisterer men er ikke "
             f"blevet læst i denne session. Læs filen først. (Kunne ikke læse "
@@ -378,7 +389,13 @@ def check_bash_command_safe(
         try:
             findes = target.exists()
         except Exception:
-            findes = True          # i tvivl: bloker hellere end at gaette
+            # I tvivl: bloker hellere end at gaette. Retningen er rigtig, men
+            # uden et spor kan man ikke se at svaret er et GAET og ikke et fund.
+            logger.warning(
+                "read_before_write_guard: kunne ikke afgoere om %s findes — "
+                "antager at den findes (blokerer)", target, exc_info=True,
+            )
+            findes = True
         if not findes:
             andetsteds = _samme_navn_andetsteds(target)
             if andetsteds is None:
@@ -408,6 +425,10 @@ def check_bash_command_safe(
                 target.read_text(encoding="utf-8", errors="replace").split("\n")[:20]
             )
         except Exception:
+            logger.warning(
+                "read_before_write_guard: kunne ikke laese preview af %s i "
+                "bash-stien — blokeringen staar ved magt", target, exc_info=True,
+            )
             preview = "(could not read preview)"
         reason = (
             f"⚠️ READ-BEFORE-WRITE GUARD (bash): denne kommando vil "
@@ -565,7 +586,13 @@ def _operator_was_read(norm_path: str, session_id: str) -> bool:
         ) is not None:
             return True
     except Exception:
-        pass
+        # Samme fail-closed-form som _was_read: et cache-nedbrud blokerer
+        # operator-skrivninger og ligner «du har ikke laest filen».
+        logger.warning(
+            "read_before_write_guard: operator-cache-opslag fejlede for %s — "
+            "behandler som IKKE laest (blokerer skrivning)", norm_path,
+            exc_info=True,
+        )
     return False
 
 
@@ -682,5 +709,10 @@ def get_session_edit_summary(session_id: str = "default") -> dict:
                 "last_iso": data.get("last_iso"),
             }
     except Exception:
-        pass
+        # {} betyder «ingen redigeringer i denne session» — men ogsaa «cachen
+        # kunne ikke laeses». Uden et spor ser en brudt session ud som en ren.
+        logger.warning(
+            "read_before_write_guard: kunne ikke laese redigerings-oversigt "
+            "for session %s — returnerer tom", session_id, exc_info=True,
+        )
     return {}

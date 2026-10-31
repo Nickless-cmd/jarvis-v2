@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 
 from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
 from core.services.encryption import decrypt, encrypt
 from core.services.keyring_store import get_user_key
+
+logger = logging.getLogger(__name__)
 
 _KEY = "oauth_tokens"
 
@@ -43,6 +46,11 @@ def save_token(user_id: str, provider: str, token: dict) -> bool:
         set_runtime_state_value(_KEY, store)
         return True
     except Exception:
+        # Fail-soft er rigtigt — en manglende token maa ikke vaelte kalderen. Men
+        # `False` alene fortalte kun AT det gik galt, aldrig HVORFOR: en doed
+        # noegle, en laast DB og en fuld disk gav samme svar, og der laa intet
+        # spor nogen steder. Maalt 31/10-2026. Ingen token-indhold logges.
+        logger.warning("oauth: kunne ikke gemme token for %s/%s", uid, prov, exc_info=True)
         return False
 
 
@@ -63,6 +71,11 @@ def get_token(user_id: str, provider: str) -> dict | None:
         data = json.loads(raw.decode("utf-8"))
         return data if isinstance(data, dict) else None
     except Exception:
+        # `None` betyder BEGGE dele: «intet token» og «dekrypteringen fejlede».
+        # Det er den sammenblanding der goer et doedt refresh-token usynligt —
+        # fladen siger «ikke forbundet» om en forbindelse der findes men ikke
+        # kan laeses. Faldet bevares, aarsagen faar et spor.
+        logger.warning("oauth: kunne ikke laese token for %s/%s", uid, prov, exc_info=True)
         return None
 
 
@@ -85,6 +98,9 @@ def revoke_token(user_id: str, provider: str) -> bool:
             set_runtime_state_value(_KEY, store)
         return True
     except Exception:
+        # En tilbagekaldelse der fejler tavst lader tokenet ligge — og brugeren
+        # tror det er fjernet. Det er den ene retning der ikke maa vaere tavs.
+        logger.warning("oauth: kunne ikke tilbagekalde token for %s/%s", uid, prov, exc_info=True)
         return False
 
 
@@ -124,4 +140,7 @@ def list_providers(user_id: str) -> list[str]:
         bucket = store.get(uid) if isinstance(store, dict) else None
         return sorted(bucket.keys()) if isinstance(bucket, dict) else []
     except Exception:
+        # Tom liste betyder «ingen forbindelser» — men ogsaa «kunne ikke laese».
+        # Uden et spor ser en laast DB ud som en bruger uden connectors.
+        logger.warning("oauth: kunne ikke liste providere for %s", uid, exc_info=True)
         return []

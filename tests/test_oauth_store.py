@@ -92,3 +92,60 @@ def test_blank_inputs_safe(monkeypatch):
     assert ov.save_token("alice", "github", "not-a-dict") is False  # type: ignore[arg-type]
     assert ov.get_token("", "github") is None
     assert ov.list_providers("") == []
+
+
+# ── faldene skal efterlade et spor (31/10-2026) ──────────────────────────────
+#
+# MAALT 31/10-2026: fire `except Exception:` i denne fil returnerede en vaerdi
+# uden at logge. `get_token` gav `None` for BAADE «intet token» og «dekrypteringen
+# fejlede» — saa en doed refresh-token var strukturelt usynlig, og fladen sagde
+# «ikke forbundet» om en forbindelse der findes men ikke kan laeses.
+#
+# Fail-soft er RIGTIGT og er bevaret: returvaerdien er uaendret. Det der blev
+# tilfoejet er et spor, saa HVORFOR ikke forsvinder. Detektoren i
+# `central_instrument` klassificerer ikke laengere disse som `except_silent` —
+# maalt: et logget fald er slet ikke et fund.
+
+
+def test_get_token_logger_naar_dekryptering_fejler(monkeypatch, caplog):
+    """En token der FINDES men ikke kan laeses skal ikke se ud som ingen token."""
+    store = _setup(monkeypatch)
+    store["oauth_tokens"] = {"alice": {"github": " ikke-gyldig-base64 !!"}}
+    with caplog.at_level("WARNING", logger="core.services.oauth_store"):
+        assert ov.get_token("alice", "github") is None  # fail-soft bevaret
+    assert any("kunne ikke laese token" in r.getMessage() for r in caplog.records), \
+        "dekrypteringsfejl efterlod intet spor"
+
+
+def test_get_token_logger_IKKE_naar_der_bare_ikke_er_noget(monkeypatch, caplog):
+    """KONTROL: normal adfaerd maa ikke stoeje — ellers drukner de aegte fejl."""
+    _setup(monkeypatch)
+    with caplog.at_level("WARNING", logger="core.services.oauth_store"):
+        assert ov.get_token("alice", "github") is None
+    assert caplog.records == [], f"intet-token stoejede: {[r.message for r in caplog.records]}"
+
+
+def test_save_token_logger_naar_gemning_fejler(monkeypatch, caplog):
+    _setup(monkeypatch)
+
+    def _braek(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(ov, "set_runtime_state_value", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_store"):
+        assert ov.save_token("alice", "github", {"access_token": "x"}) is False
+    assert any("kunne ikke gemme token" in r.getMessage() for r in caplog.records), \
+        "gemme-fejl efterlod intet spor"
+
+
+def test_list_providers_logger_naar_laesning_fejler(monkeypatch, caplog):
+    _setup(monkeypatch)
+
+    def _braek(*a, **k):
+        raise OSError("db locked")
+
+    monkeypatch.setattr(ov, "get_runtime_state_value", _braek)
+    with caplog.at_level("WARNING", logger="core.services.oauth_store"):
+        assert ov.list_providers("alice") == []
+    assert any("kunne ikke liste providere" in r.getMessage() for r in caplog.records), \
+        "laase-fejl efterlod intet spor"

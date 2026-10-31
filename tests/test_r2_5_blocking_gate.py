@@ -158,3 +158,82 @@ def test_hoej_heed_rate_efterlader_spor_med_grund(monkeypatch):
     ev = next(p for k, p in seen if k == "r2_5_gate.evaluated")
     assert ev["blocked"] is False
     assert "heed_rate ok" in ev["reason"]
+
+
+# ── Tavse fallbacks skal efterlade et spor (31/10-2026) ──────────────────
+#
+# MAALT 31/10-2026: tre `except` i gaten faldt tilbage uden et ord.
+# `_live_thresholds` faldt til modul-konstanterne, `_heed_rate_24h` til
+# `None` (= «ikke nok data»), og `should_block_for_verification` til «bloker
+# ikke». Den sidste havde et spor i event-bussen — men det forsvinder hvis
+# bussen selv er nede.
+#
+# Vagterne beviser BEGGE ting: at fejlen logger, OG at returvaerdien er
+# praecis den fallback kalderne forventer. En rettelse der kastede videre
+# ville bestaa den foerste halvdel alene.
+
+
+def test_live_thresholds_logger_naar_settings_fejler(caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="core.services.r2_5_blocking_gate"):
+        with patch("core.runtime.settings.load_settings", side_effect=RuntimeError("no cfg")):
+            tiers, heed, ceiling = gate._live_thresholds()
+    # fallback uaendret
+    assert tiers == gate._UNVERIFIED_THRESHOLD_BY_TIER
+    assert heed == gate._HEED_RATE_THRESHOLD
+    assert ceiling == gate._ACTIVITY_CEILING
+    assert any(
+        "kunne ikke laese taerskler fra settings" in r.getMessage()
+        for r in caplog.records
+    ), "en settings-fejl efterlod intet spor"
+
+
+def test_heed_rate_logger_naar_telemetri_fejler(caplog):
+    """`None` betyder «ikke nok data» — en fejl maa ikke se ens ud med det."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="core.services.r2_5_blocking_gate"):
+        with patch(
+            "core.services.verification_gate_telemetry.get_telemetry_summary",
+            side_effect=RuntimeError("telemetry nede"),
+        ):
+            assert gate._heed_rate_24h() is None
+    assert any(
+        "kunne ikke laese heed-rate-telemetri" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_gate_fejl_logger_men_blokerer_ikke(monkeypatch, caplog):
+    """Fail-open er bevidst — men fejlen skal kunne ses i loggen."""
+    import logging
+
+    monkeypatch.setattr(gate, "_last_block_at", None)
+    with caplog.at_level(logging.WARNING, logger="core.services.r2_5_blocking_gate"):
+        with patch(
+            "core.services.verification_gate.evaluate_verification_gate",
+            side_effect=RuntimeError("gate nede"),
+        ):
+            out = gate.should_block_for_verification(reasoning_tier="deep")
+    assert out is None, "fail-open skal bevares"
+    assert any(
+        "verification_gate kastede" in r.getMessage() for r in caplog.records
+    )
+
+
+def test_sund_vej_stoejer_ikke(caplog):
+    """En laesbar settings-fil er normal drift — den maa ikke logge."""
+    import logging
+
+    class _S:
+        r2_5_unverified_threshold_deep = 2
+        r2_5_unverified_threshold_reasoning = 4
+        r2_5_unverified_threshold_fast = 9
+        r2_5_heed_rate_threshold = 0.55
+        r2_5_activity_ceiling = 6
+
+    with caplog.at_level(logging.WARNING, logger="core.services.r2_5_blocking_gate"):
+        with patch("core.runtime.settings.load_settings", return_value=_S()):
+            gate._live_thresholds()
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []

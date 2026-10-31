@@ -82,6 +82,13 @@ def _live_thresholds() -> tuple[dict[str, int], float, int]:
         return (tiers, float(s.r2_5_heed_rate_threshold),
                 int(s.r2_5_activity_ceiling))
     except Exception:
+        # Fallback er bevidst — men en TAVS fallback betyder at gaten kan
+        # koere med forkerte taerskler uden at nogen opdager at settings
+        # ikke kunne laeses.
+        logger.warning(
+            "R2.5: kunne ikke laese taerskler fra settings — bruger modul-konstanter",
+            exc_info=True,
+        )
         return (dict(_UNVERIFIED_THRESHOLD_BY_TIER), _HEED_RATE_THRESHOLD,
                 _ACTIVITY_CEILING)
 
@@ -98,6 +105,12 @@ def _heed_rate_24h() -> float | None:
             return None
         return s.get("heed_rate")
     except Exception:
+        # `None` betyder «ikke nok data — giv modellen benefit of the doubt».
+        # En telemetri-fejl maa ikke se identisk ud med den tilstand.
+        logger.warning(
+            "R2.5: kunne ikke laese heed-rate-telemetri — behandler som 'ikke nok data'",
+            exc_info=True,
+        )
         return None
 
 
@@ -160,6 +173,14 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
         from core.services.verification_gate import evaluate_verification_gate
         gate = evaluate_verification_gate()
     except Exception as _e:
+        # Fail-open er bevidst: en teknisk fejl maa ikke laase brugeren.
+        # Men `_publish_evaluation` alene forsvinder hvis event-bussen selv
+        # er nede — saa fejlen efterlader ogsaa et spor i loggen.
+        logger.warning(
+            "R2.5: verification_gate kastede — blokerer ikke (%s)",
+            type(_e).__name__,
+            exc_info=True,
+        )
         _publish_evaluation(
             tier=tier, threshold=None, unverified_effective=None, failed=None,
             heed_rate=None, blocked=False, reason=f"gate_fejl: {type(_e).__name__}",

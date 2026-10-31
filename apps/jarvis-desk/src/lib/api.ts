@@ -49,6 +49,18 @@ export interface ChatMessage {
    *  bro-kopien præcist i stedet for at sammenligne prosa serveren selv har
    *  omskrevet; se `mergeServer` og `core/services/besked_run_kobling.py`. */
   run_id?: string
+  /** Blokkene praecis som SERVEREN gemte dem (31/10-2026).
+   *
+   *  `content` er allerede normaliseret til render-blokke, og den
+   *  normalisering KAN ikke baere felter som `approval_id` og `status` —
+   *  den er bygget til tekst, billeder og vaerktoejskald. En
+   *  `approval_request`-raekke har derfor brug for den raa form ved siden af.
+   *
+   *  MAALT 31/10: uden dette felt faldt `m.content_json` til `undefined` i
+   *  BEGGE views. Historik-grenen tegnede et TOMT kort, og fallbacken blev
+   *  aldrig undertrykt — saa godkendelsen forsvandt fra PWA'en mens APK'en
+   *  (gamle bundle) stadig viste den. */
+  content_json?: unknown
 }
 
 export interface CompactionStats {
@@ -399,6 +411,9 @@ export async function getSession(
     created_at: m.created_at,
     parent_id: m.parent_id ?? null,
     content: messageToBlocks(m),
+    // Ra formen med videre. Uden den kan en `approval_request`-raekke ikke
+    // vise sin egen status, og fallbacken kan ikke se at raekken findes.
+    content_json: m.content_json,
   }))
   return { session, messages, etag }
 }

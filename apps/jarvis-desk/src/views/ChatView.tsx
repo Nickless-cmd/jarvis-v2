@@ -69,6 +69,8 @@ import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
+import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
+import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { useChatFlow } from '../hooks/useChatFlow'
 import { deriveChatFlow } from '../lib/chatFlowModel'
@@ -610,6 +612,14 @@ export function ChatView({
     transcriptMessages, stream.activeRunId, pacing.filterAktiv,
     // Samme faldback som CodeView: raekken kan mangle `run_id` et kort vindue.
     levendeTekst,
+  )
+
+  // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
+  // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
+  // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
+  const pendingIRækken = findesGodkendelseIRækken(
+    transcriptMessages,
+    stream.pendingApproval?.approvalId ?? null,
   )
 
   // Persisterede ture bærer ingen varighed i sig — men assistentrækken
@@ -1156,11 +1166,15 @@ export function ChatView({
           </div>
         )}
         <div className="composer-notices">
-          {/* Godkendelses-kortet stod HER indtil 31/10-2026 og skubbede
-              transcriptet op. Det er nu en raekke i samtalen (DEL 3) — se
-              `approval_request`-grenen ovenfor. Det flydende kort blev fjernet,
-              ikke dubleret: to flader for samme godkendelse ville vise svaret
-              to steder. */}
+          {/* FALLBACK (31/10-2026). Kortet bor i samtalen som en
+              `approval_request`-raekke (DEL 3, se grenen ovenfor). Men raekken
+              er ikke garanteret til stede: den hentes af `refreshMessages`, og
+              nogle godkendelser persisteres slet ikke. Saa længe den mangler,
+              bærer dette kort svaret — ellers forsvinder spoergsmaalet, og det
+              maalte vi: Bjoern saa intet kort i PWA'en. */}
+          {stream.pendingApproval && !pendingIRækken && (
+            <GodkendelsesKort sessionId={sessionId ?? null} />
+          )}
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

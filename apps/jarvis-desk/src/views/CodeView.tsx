@@ -22,6 +22,8 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
+import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
+import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -1002,6 +1004,15 @@ export function CodeView({
     // Faldback naar server-raekken endnu ikke baerer `run_id` (maalt 20/10).
     visLevendeTur ? normaliseretTekst(liveBlokke(stream)) : '',
   )
+
+  // 31/10-2026 — FALLBACK, ikke dublet. Se `lib/ventendeGodkendelse.ts` for
+  // hvorfor: raekken vinder naar den findes, ellers bærer det flydende kort
+  // svaret. Betingelsen er ÉN funktion, saa de to flader ikke kan divergere.
+  const pendingIRækken = findesGodkendelseIRækken(
+    transcriptMessages,
+    stream.pendingApproval?.approvalId ?? null,
+  )
+
   const varighedForBesked = useMemo(() => {
     const ud = new Map<string, number>()
     let sidsteBruger: string | null = null
@@ -1363,8 +1374,11 @@ export function CodeView({
             </div>
           )}
           <div className="composer-notices">
-            {/* Flyttet ind i transcriptet 31/10-2026 (DEL 3) — se
-                `approval_request`-grenen ovenfor. */}
+            {/* FALLBACK (31/10-2026) — se ChatView. Raekken i samtalen
+                vinder naar den findes; indtil da bærer dette kort svaret. */}
+            {stream.pendingApproval && !pendingIRækken && (
+              <GodkendelsesKort sessionId={sessionId ?? null} />
+            )}
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

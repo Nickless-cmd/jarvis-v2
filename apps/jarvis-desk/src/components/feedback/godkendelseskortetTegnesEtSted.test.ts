@@ -63,14 +63,30 @@ describe('godkendelses-kortet', () => {
       + '— saa ser den ud som om Jarvis er staaet af').toEqual([])
   })
 
-  it('det flydende kort er ikke tilbage i composer-laget', () => {
-    // Den anden halvdel af DEL 3: naar raekken i transcriptet ER fladen, maa
-    // det flydende kort ikke ogsaa tegnes — saa ville den samme godkendelse
-    // staa to steder, og svaret kunne ses to gange.
-    const tilbage = tsxFiler(VIEWS)
+  it('det flydende kort findes kun som betinget fallback', () => {
+    // 31/10-2026 — KONTRAKTEN BLEV AENDRET AF EN MAALING, ikke af en ide.
+    //
+    // Foerste version af DEL 3 forbød det flydende kort helt: «raekken ER
+    // fladen». Det holdt ikke. Raekken hentes af `refreshMessages`, og nogle
+    // godkendelser persisteres slet ikke — maalt samme dag sad Bjoern i
+    // PWA'en uden noget kort og maatte ind i APK'en (gamle bundle) for at
+    // svare. Spoergsmaalet forsvandt, og det er den tavse fejlform.
+    //
+    // Den nye kontrakt: raekken vinder naar den findes, ellers baerer det
+    // flydende kort svaret. Derfor maa komponenten GERNE optraede i et view —
+    // men kun bag negationen af den ENE betingelse. Den dybe maaling af
+    // gaten ligger i `lib/ventendeGodkendelse.test.ts` (AST + ren funktion);
+    // her maales at koblingen overhovedet er der.
+    const udenGate = tsxFiler(VIEWS)
       .filter((f) => jsxNavne(f).includes('GodkendelsesKort'))
+      .filter((f) => {
+        const kilde = readFileSync(f, 'utf-8')
+        return !kilde.includes('findesGodkendelseIRækken')
+          || !kilde.includes('!pendingIRækken')
+      })
       .map((f) => f.slice(VIEWS.length + 1))
-    expect(tilbage, 'kortet tegnes baade i transcriptet og i composer-laget '
-      + '— to flader for samme godkendelse').toEqual([])
+    expect(udenGate, 'det flydende kort tegnes uden betingelsen — saa kan den '
+      + 'samme godkendelse staa to steder, eller spoergsmaalet forsvinde')
+      .toEqual([])
   })
 })

@@ -27,6 +27,8 @@ import yaml
 
 from core.services import brain_vector_cache
 
+logger = logging.getLogger(__name__)
+
 # Prøv python-ulid først, fallback til lokal Crockford b32 generator.
 try:
     import ulid as _ulid_mod  # type: ignore
@@ -374,6 +376,14 @@ def _ensure_wal(conn: sqlite3.Connection, key: str) -> None:
     try:
         row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
     except sqlite3.OperationalError:
+        # Bevidst fallback (busy_timeout tager næste forsøg), men ikke tavst:
+        # uden WAL serialiseres alle læsere gennem én skrive-lock, og det var
+        # netop de 98 "database is locked" maalt 13/9-2026. Et kast her er
+        # derfor en advarsel om at den tilstand kan komme tilbage.
+        logger.warning(
+            "brain: kunne ikke slaa WAL til for %s — falder tilbage til "
+            "rullejournal (laasekonflikter mulige)", key, exc_info=True,
+        )
         return
     if row and str(row[0]).lower() == "wal":
         _WAL_READY.add(key)
@@ -460,7 +470,14 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             # brain_relations may not exist yet on a fresh DB — leave
             # default '[]' and let write_entry populate it going forward.
-            pass
+            # Logget fordi de to aarsager ikke er ens: en manglende tabel er
+            # harmloes, en laas betyder at backfill'en ikke skete og at
+            # `related` staar tom for alle eksisterende poster.
+            logger.warning(
+                "brain: kunne ikke backfille related fra brain_relations "
+                "(manglende tabel eller laas) — related staar '[]'",
+                exc_info=True,
+            )
     if "file_mtime_ns" not in cols:
         conn.execute("ALTER TABLE brain_index ADD COLUMN file_mtime_ns INTEGER")
     if "file_size" not in cols:
@@ -485,7 +502,12 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             # Et DROP der ikke kan tages nu (lås) er ikke værd at fejle på —
             # næste opstart tager den. Indekset koster plads, ikke korrekthed.
-            pass
+            # Men det er 59,3 MB der bliver liggende uden at nogen ved det,
+            # saa faldet faar et spor.
+            logger.warning(
+                "brain: kunne ikke droppe doedt indeks %s — bliver liggende "
+                "til naeste opstart", doedt_indeks, exc_info=True,
+            )
 
 
 def _slugify(s: str, max_len: int = 40) -> str:
@@ -583,8 +605,14 @@ def write_entry(
         try:
             infer_temporal_edges(new_id, now=now)
         except Exception:
-            # Never let inference failure block the write
-            pass
+            # Never let inference failure block the write — men posten bliver
+            # saa staaende uden kanter, og den staar i catch-up-saettet for
+            # evigt (maalt 25/9-2026: 126 advarsler/dag, 9 pr. post). Uden et
+            # spor her ser det ud som om inferensen aldrig var noedvendig.
+            logger.warning(
+                "brain: temporal-inferens fejlede for %s — posten skrevet, "
+                "men uden kanter", new_id, exc_info=True,
+            )
 
     # LivingNeuron HUKOMMELSE: Centralen ser nu at noget HUSKES (92k-rækkers private_brain, var 0 observe).
     # Egress-frit, kun metadata (kind + vigtighed — ALDRIG selve minde-teksten).
@@ -593,7 +621,13 @@ def write_entry(
         observe_hub("brain_write", meta={"kind": str(kind), "importance": round(float(importance), 2)},
                     cluster="memory")
     except Exception:
-        pass
+        # Egress-fri telemetri til Centralen. Et kast her betyder at skrivningen
+        # ikke blev SET — og den slags tavshed goer «Centralen ser at noget
+        # huskes» til en paastand ingen kan efterproeve.
+        logger.warning(
+            "brain: observe_hub('brain_write') kastede — skrivningen blev ikke "
+            "observeret i Centralen", exc_info=True,
+        )
     return new_id
 
 
@@ -775,6 +809,15 @@ def embed_pending_entries() -> int:
             try:
                 _, body = parse_frontmatter(full)
             except Exception:
+                # Posten bliver IKKE embeddet og bliver derfor liggende i
+                # pending-saettet for evigt — den er usynlig for vektor-soegning
+                # uden at nogen kan se hvorfor. Det er praecis samme form som
+                # `verify_brain_entry` blev bygget til at afdaekke: «findes» og
+                # «ulaeselig» maa ikke se ens ud.
+                logger.warning(
+                    "brain: kunne ikke laese %s for embedding — posten forbliver "
+                    "upaaagtet i pending-saettet", rel_path, exc_info=True,
+                )
                 continue
             text = f"{title}\n\n{body}"
             v = _embed_text(text)
@@ -885,6 +928,14 @@ def search_brain_scored(
         try:
             importance = float(row[9]) if len(row) > 9 and row[9] is not None else 1.0
         except (TypeError, ValueError):
+            # En raekke med en ikke-numerisk importance faar 1.0 — det HOEJESTE
+            # loft. En korrupt vaerdi loefter altsaa posten til maksimal vaegt
+            # i stedet for at falde tilbage til kind-defaulten. Retningen er
+            # bevaret (den er maalt), men den skal kunne ses.
+            logger.warning(
+                "brain: importance for %s er ikke numerisk (%r) — bruger 1.0",
+                row[0], row[9] if len(row) > 9 else None,
+            )
             importance = 1.0
         indexed_at = row[10] if len(row) > 10 else ""
         if _VIS_LEVEL[vis] > ceiling_lvl:
@@ -895,6 +946,13 @@ def search_brain_scored(
             try:
                 entry_tags = json.loads(entry_tags_raw) if isinstance(entry_tags_raw, str) else (entry_tags_raw or [])
             except (json.JSONDecodeError, TypeError):
+                # Uden et spor betyder en korrupt tags-kolonne «ingen tags», og
+                # posten falder UD af ethvert tag-filter — den bliver usynlig
+                # i praecis de soegninger hvor nogen bad om den.
+                logger.warning(
+                    "brain: tags for %s er ikke gyldig JSON (%r) — behandles "
+                    "som tom", entry_id, entry_tags_raw,
+                )
                 entry_tags = []
             if not all(t in entry_tags for t in tags):
                 continue
@@ -1219,7 +1277,14 @@ def prune_orphaned_index_rows(*, maks_andel: float = 0.10) -> dict[str, int]:
                     "(%.0f%%) — oprydning AFVIST, det ligner en utilgaengelig mappe "
                     "snarere end slettede poster", antal, i_alt, 100 * antal / i_alt)
             except Exception:
-                pass
+                # Logningen selv fejlede. Saa forsvinder det ENESTE spor om at
+                # oprydningen blev afvist — og afvisningen ser ud som en
+                # vellykket oprydning med nul slettede poster.
+                logger.warning(
+                    "brain: kunne ikke logge den afviste oprydning (%d/%d "
+                    "foraeldroese) — afvisningen skete stadig", antal, i_alt,
+                    exc_info=True,
+                )
             return {"fjernet": 0, "foraeldreloese": antal, "afvist": 1}
 
         conn.executemany("DELETE FROM brain_index WHERE id = ?",
@@ -1269,6 +1334,13 @@ def rebuild_index_from_files() -> int:
                 try:
                     fm, _body = parse_frontmatter(md_path)
                 except Exception:
+                    # Filen findes men kan ikke parses. Uden et spor ser det ud
+                    # som om den ikke var aendret — og indekset beholder en
+                    # foraeldet raekke der peger paa et indhold der ikke findes.
+                    logger.warning(
+                        "brain: kunne ikke parses under reindex — springer over: %s",
+                        md_path, exc_info=True,
+                    )
                     continue
                 text = md_path.read_text(encoding="utf-8")
                 fhash = _file_hash(text)
@@ -1605,6 +1677,14 @@ def infer_temporal_edges(
                 cand_id, rel_path=cand_path, title=cand_title
             )
         except (KeyError, FileNotFoundError, OSError, ValueError, yaml.YAMLError):
+            # Kandidaten kan ikke laeses. Den springes over — men uden et spor
+            # ser det ud som om den ikke havde noget tilfaelles med posten, og
+            # kanten bliver aldrig udledt. Maalt 25/9-2026: 2 af 7954 filer var
+            # misdannede og holdt 14 poster fast i catch-up-saettet for evigt.
+            logger.warning(
+                "brain: kunne ikke laese kandidat %s under temporal-inferens — "
+                "springer over", cand_id, exc_info=True,
+            )
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
 
@@ -1614,6 +1694,12 @@ def infer_temporal_edges(
             try:
                 cand_related = json.loads(cand_related_raw) if isinstance(cand_related_raw, str) else (cand_related_raw or [])
             except (json.JSONDecodeError, TypeError):
+                # En korrupt related-kolonne betyder «ingen kanter» — kandidaten
+                # faar derfor ingen chain-signal og kanten udledes aldrig.
+                logger.warning(
+                    "brain: related for kandidat %s er ikke gyldig JSON (%r) — "
+                    "behandles som tom", cand_id, cand_related_raw,
+                )
                 cand_related = []
         # 2026-06-09 (Claude): kind/visibility were hardcoded to ""
         # which fails BrainEntry.__post_init__ validation. Pull the

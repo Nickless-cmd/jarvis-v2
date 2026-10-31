@@ -65,9 +65,32 @@ def test_unrelated_file_not_redirected(workspace, tmp_path):
 
 
 def test_edit_memory_wrong_path_redirects(workspace, tmp_path):
-    # Seed canonical
+    """En forkert MEMORY.md-sti omdirigeres til den kanoniske fil — ved EDIT.
+
+    ## Hvorfor der læses først (målt 31/10-2026)
+
+    Testen blev skrevet 5/9-2026, da `edit` endnu ikke gik gennem
+    read-before-write. Den indkodede derfor at en redigering lykkedes på en fil
+    ingen havde læst. `edit` fik rbw 29/10, og så fejlede testen — ikke fordi
+    omdirigeringen var brudt, men fordi kontrakten den værnode var den gamle
+    frihed.
+
+    Målt: omdirigeringen sker FØRST (`_canonicalize_workspace_target`), derefter
+    kører guarden på det KANONISKE mål. Rækkefølgen er rigtig — den forkerte
+    sti bliver aldrig guardens emne. Det der manglede var en læsning.
+
+    At fjerne rbw for MEMORY.md for at få testen grøn ville være at sælge en
+    guard for at købe en grøn vagt. Læsningen er den rigtige pris: den er
+    også hvad der gør en kirurgisk redigering mulig i stedet for en blind
+    overskrivning.
+    """
     (workspace / "MEMORY.md").write_text("foo\n")
     wrong = tmp_path / "wrong" / "MEMORY.md"
+
+    # Læs den KANONISKE fil — det er den guardens nøgle peger på.
+    lest = simple_tools._exec_read_file({"path": str(workspace / "MEMORY.md")})
+    assert lest["status"] == "ok"
+
     result = simple_tools._exec_edit_file({
         "path": str(wrong), "old_text": "foo", "new_text": "bar",
     })
@@ -75,6 +98,25 @@ def test_edit_memory_wrong_path_redirects(workspace, tmp_path):
     assert result["path"] == str(workspace / "MEMORY.md")
     assert result["redirected_from"] == str(wrong.resolve())
     assert (workspace / "MEMORY.md").read_text() == "bar\n"
+    assert not wrong.exists(), "den forkerte sti blev oprettet alligevel"
+
+
+def test_edit_af_ulaest_memory_blokeres_med_en_brugbar_besked(workspace, tmp_path):
+    """Uden en læsning skal svaret være en VEJ VISERE, ikke en tavs blokering.
+
+    Det er den fejlform der ellers er usynlig: guarden har ret, men hvis
+    beskeden ikke siger hvad man skal gøre, leder den efter det forkerte.
+    Beskeden skal pege på den KANONISKE sti — ikke på den forkerte man kom med.
+    """
+    (workspace / "MEMORY.md").write_text("foo\n")
+    wrong = tmp_path / "wrong" / "MEMORY.md"
+    result = simple_tools._exec_edit_file({
+        "path": str(wrong), "old_text": "foo", "new_text": "bar",
+    })
+    assert result["status"] == "guard_blocked"
+    assert str(workspace / "MEMORY.md") in result["error"], "beskeden peger ikke på den kanoniske fil"
+    assert "read_file" in result["error"]
+    assert (workspace / "MEMORY.md").read_text() == "foo\n", "filen blev rørt trods blokering"
 
 
 def test_force_write_redirects(workspace, tmp_path):

@@ -555,7 +555,14 @@ def _adb_er_opsat() -> bool:
     try:
         from core.runtime.secrets import read_runtime_key
         return bool(str(read_runtime_key("phone_adb_address") or "").strip())
-    except Exception:
+    except Exception as exc:
+        # False skjuler adb-vaerktoejerne — den sikre retning for en udvidelse af
+        # overfladen. Men en ulæselig runtime.json er ikke det samme som «adresse
+        # ikke sat», og uden et spor kan man ikke se forskel.
+        logger.warning(
+            "tool_scoping: phone_adb_address kunne ikke læses → adb-værktøjer skjult: %s: %s",
+            type(exc).__name__, exc,
+        )
         return False
 
 

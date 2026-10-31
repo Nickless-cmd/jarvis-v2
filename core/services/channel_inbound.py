@@ -11,7 +11,11 @@ laget (best-effort), så gaten er testbar uden runtime.
 """
 from __future__ import annotations
 
+import logging
+
 from core.plugins.base_plugin import PluginManifest, register_plugin
+
+logger = logging.getLogger(__name__)
 
 # Indbygget Discord-kanal-plugin (lokal gateway). Token bor KLIENT-side.
 DISCORD_CHANNEL_MANIFEST = PluginManifest(
@@ -37,8 +41,16 @@ def register_builtin_channel_plugins() -> None:
         return
     try:
         register_plugin(DISCORD_CHANNEL_MANIFEST)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Registreringen er idempotent og må ikke vælte plugin-routen — men fejlen
+        # efterlod ingen spor, OG flaget blev sat alligevel: en fejlet registrering
+        # var derfor permanent i denne proces, og Discord-kanalen var tavst væk.
+        logger.warning(
+            "channel_inbound: indbygget kanal-plugin 'discord-local' blev IKKE "
+            "registreret: %s: %s — _BUILTINS_REGISTERED sættes alligevel, så "
+            "forsøget gentages ikke før næste processtart",
+            type(exc).__name__, exc,
+        )
     _BUILTINS_REGISTERED = True
 
 

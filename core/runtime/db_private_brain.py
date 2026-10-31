@@ -12,11 +12,14 @@ status/salience-update er bevidst uscopet (intern housekeeping pr. record_id).
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
 from core.runtime.db_core import connect
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
@@ -47,13 +50,23 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
     try:
         conn.execute("ALTER TABLE private_brain_records ADD COLUMN salience REAL NOT NULL DEFAULT 1.0")
         conn.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        # Forventet når kolonnen findes. Men en LÅST eller korrupt DB gav samme
+        # tavse udfald — og så mangler kolonnen mens alt ser normalt ud.
+        logger.warning(
+            "db_private_brain: ALTER salience fejlede (forventet hvis kolonnen "
+            "findes): %s: %s",
+            type(exc).__name__, exc,
+        )
     try:
         conn.execute("ALTER TABLE private_brain_records ADD COLUMN domain TEXT NOT NULL DEFAULT ''")
         conn.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "db_private_brain: ALTER domain fejlede (forventet hvis kolonnen "
+            "findes): %s: %s",
+            type(exc).__name__, exc,
+        )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_private_brain_records_status "
         "ON private_brain_records(status, id DESC)"

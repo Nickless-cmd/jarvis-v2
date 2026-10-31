@@ -377,19 +377,19 @@ _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer m
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ensure_private_brain_records_table` | `(conn)` | — | [src](../../../core/runtime/db_private_brain.py#L22) |
-| function | `_private_brain_record_from_row` | `(row)` | — | [src](../../../core/runtime/db_private_brain.py#L82) |
-| function | `_is_boilerplate_carry` | `(summary, detail)` | True hvis en record er ren skabelon uden informationsindhold ud over det der allerede | [src](../../../core/runtime/db_private_brain.py#L124) |
-| function | `insert_private_brain_record` | `(*, record_id, record_type, layer, session_id, run_id, focus, summary, detail, source_signals, confidence, created_at, domain=…)` | — | [src](../../../core/runtime/db_private_brain.py#L137) |
-| function | `list_private_brain_records` | `(*, limit=…, session_id=…, status=…, record_type=…)` | — | [src](../../../core/runtime/db_private_brain.py#L177) |
-| function | `list_private_brain_records_older_than` | `(*, status, older_than_iso, limit=…, max_salience=…)` | Records i ``status`` med ``created_at < older_than_iso``, ÆLDSTE først. | [src](../../../core/runtime/db_private_brain.py#L210) |
-| function | `search_private_brain_records` | `(query, *, limit=…, exclude_status=…)` | Tekst-søgning (LIKE) over HELE private_brain_records — focus/summary/detail. | [src](../../../core/runtime/db_private_brain.py#L244) |
-| function | `update_private_brain_record_status` | `(record_id, *, status, updated_at)` | Lifecycle-overgang (active|settling|fading|released). Non-destruktiv. | [src](../../../core/runtime/db_private_brain.py#L291) |
-| function | `get_private_brain_record` | `(record_id)` | — | [src](../../../core/runtime/db_private_brain.py#L308) |
-| function | `update_private_brain_record_salience` | `(record_id, salience)` | Sæt salience (0.0–1.0) for en private-brain-record. | [src](../../../core/runtime/db_private_brain.py#L328) |
-| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L340) |
-| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L363) |
-| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L384) |
+| function | `_ensure_private_brain_records_table` | `(conn)` | — | [src](../../../core/runtime/db_private_brain.py#L25) |
+| function | `_private_brain_record_from_row` | `(row)` | — | [src](../../../core/runtime/db_private_brain.py#L95) |
+| function | `_is_boilerplate_carry` | `(summary, detail)` | True hvis en record er ren skabelon uden informationsindhold ud over det der allerede | [src](../../../core/runtime/db_private_brain.py#L137) |
+| function | `insert_private_brain_record` | `(*, record_id, record_type, layer, session_id, run_id, focus, summary, detail, source_signals, confidence, created_at, domain=…)` | — | [src](../../../core/runtime/db_private_brain.py#L150) |
+| function | `list_private_brain_records` | `(*, limit=…, session_id=…, status=…, record_type=…)` | — | [src](../../../core/runtime/db_private_brain.py#L190) |
+| function | `list_private_brain_records_older_than` | `(*, status, older_than_iso, limit=…, max_salience=…)` | Records i ``status`` med ``created_at < older_than_iso``, ÆLDSTE først. | [src](../../../core/runtime/db_private_brain.py#L223) |
+| function | `search_private_brain_records` | `(query, *, limit=…, exclude_status=…)` | Tekst-søgning (LIKE) over HELE private_brain_records — focus/summary/detail. | [src](../../../core/runtime/db_private_brain.py#L257) |
+| function | `update_private_brain_record_status` | `(record_id, *, status, updated_at)` | Lifecycle-overgang (active|settling|fading|released). Non-destruktiv. | [src](../../../core/runtime/db_private_brain.py#L304) |
+| function | `get_private_brain_record` | `(record_id)` | — | [src](../../../core/runtime/db_private_brain.py#L321) |
+| function | `update_private_brain_record_salience` | `(record_id, salience)` | Sæt salience (0.0–1.0) for en private-brain-record. | [src](../../../core/runtime/db_private_brain.py#L341) |
+| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L353) |
+| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L376) |
+| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L397) |
 
 ## `core/runtime/db_private_notes.py`
 _Persistence for the private/protected inner-layer note tables._

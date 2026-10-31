@@ -6,7 +6,11 @@ Skrivning påvirkes ikke — kun læsning gates her.
 Spec: docs/superpowers/specs/2026-05-02-jarvis-brain-design.md sektion 6.
 """
 from __future__ import annotations
+
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 LEVEL = {"public_safe": 0, "personal": 1, "intimate": 2}
 
@@ -18,12 +22,23 @@ def _resolve_owner_id() -> str | None:
         oid = get_owner_discord_id()
         if oid:
             return str(oid)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Fallback til næste resolver er bevidst — men et tavst hop gør et brudt
+        # discord-opslag identisk med «der er ingen discord-id».
+        logger.warning(
+            "brain_visibility: discord-id-opslag fejlede, prøver user_id: %s: %s",
+            type(exc).__name__, exc,
+        )
     try:
         from core.identity.owner_resolver import get_owner_user_id  # type: ignore
         return get_owner_user_id()
-    except Exception:
+    except Exception as exc:
+        # None → public_safe (default deny) er den sikre retning, men uden et spor
+        # ser «ejeren kunne ikke slås op» ud som «der er ingen ejer».
+        logger.warning(
+            "brain_visibility: ejer-opslag fejlede → public_safe (default deny): %s: %s",
+            type(exc).__name__, exc,
+        )
         return None
 
 

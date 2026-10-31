@@ -2404,7 +2404,7 @@ Generated from source. 9483/17803 functions/methods documented (53%). The list b
 - `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1257)
 - `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1244)
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1229)
-- `core/tools/security_predicates.py` :: `all_predicates` (L86)
+- `core/tools/security_predicates.py` :: `all_predicates` (L124)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
 - `core/tools/streaming_subprocess.py` :: `run_streaming` (L28)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)

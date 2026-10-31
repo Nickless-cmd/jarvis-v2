@@ -18,6 +18,9 @@ class SecurityPredicate:
     decision: str    # "blocked" | "destructive"
     pattern: str     # regex (bash) eller substring (write)
     why: str
+    # Se `evaluate_command`: quoted indhold er en OMTALE af kommandoen, ikke
+    # kommandoen — medmindre kommandoen selv fortolker det som kode.
+    quote_aware: bool = False
 
 
 # Bash-predikater. blocked = hård afvisning; destructive = kræver approval.
@@ -25,9 +28,13 @@ class SecurityPredicate:
 BASH_PREDICATES: tuple[SecurityPredicate, ...] = (
     SecurityPredicate(1, "curl-pipe-bash", "bash", "blocked", r"\bcurl\b.*\|\s*bash", "Fjern-kode hentet og eksekveret direkte"),
     SecurityPredicate(2, "wget-pipe-bash", "bash", "blocked", r"\bwget\b.*\|\s*bash", "Fjern-kode hentet og eksekveret direkte"),
-    SecurityPredicate(3, "sudo-rm", "bash", "blocked", r"\bsudo\s+rm\b", "Privilegeret sletning"),
-    SecurityPredicate(4, "rm", "bash", "destructive", r"\brm\b", "Filsletning"),
-    SecurityPredicate(5, "rm-rf", "bash", "destructive", r"\brm\s+-rf\b", "Rekursiv tvungen sletning"),
+    # 31/10-2026: de tre rm-predikater er `quote_aware`. Målt samme dag:
+    # `classify_command('grep -c "rm" /tmp/x')` var `destructive` — en ren
+    # læsning der blot NÆVNER rm blev gated som filsletning. Mønstret matchede
+    # et STED i strengen, ikke kommandoen (samme fejlform som `;`-kæden 26/10).
+    SecurityPredicate(3, "sudo-rm", "bash", "blocked", r"\bsudo\s+rm\b", "Privilegeret sletning", quote_aware=True),
+    SecurityPredicate(4, "rm", "bash", "destructive", r"\brm\b", "Filsletning", quote_aware=True),
+    SecurityPredicate(5, "rm-rf", "bash", "destructive", r"\brm\s+-rf\b", "Rekursiv tvungen sletning", quote_aware=True),
     SecurityPredicate(6, "git-reset-hard", "bash", "destructive", r"git\s+reset\s+--hard", "Kasserer ucommittede ændringer"),
     SecurityPredicate(7, "git-clean", "bash", "destructive", r"git\s+clean", "Sletter untracked filer"),
     SecurityPredicate(8, "git-push-force", "bash", "destructive", r"git\s+push\s+--force", "Overskriver remote-historik"),
@@ -54,18 +61,49 @@ WRITE_PREDICATES: tuple[SecurityPredicate, ...] = (
 )
 
 
+#: Fortolker kommandoen quoted indhold som KODE? (31/10-2026)
+#:
+#: `grep -c "rm" fil` gør ikke — quoted er et mønster, og rm-predikaterne må
+#: ikke se det. Men `bash -c "rm -rf /"` gør — der ER quoted indhold et
+#: program. Uden denne gren ville quote-fixet åbne en dør: den mest direkte
+#: måde at skrive en sletning på ville slippe gennem som en ren læsning.
+#:
+#: `| bash` tælles med: `echo "rm -rf /" | bash` eksekverer teksten.
+_SHELL_FORTOLKER_KODE = re.compile(
+    r"\b(?:bash|sh|zsh|dash|ksh|fish)\b[^|;&]*\s(?:-c|--command)\b"
+    r"|\beval\b"
+    r"|\|\s*(?:bash|sh|zsh|dash|ksh|fish)\b"
+)
+
+
 def evaluate_command(command: str) -> dict | None:
     """Første matchende bash-predikat (blocked før destructive) på den normaliserede
-    kommando, ellers None. Returnerer {id, name, decision, why}."""
+    kommando, ellers None. Returnerer {id, name, decision, why}.
+
+    ``quote_aware``-predikater matcher på kommandoen UDEN for quoted strenge.
+    Se `_SHELL_FORTOLKER_KODE` for hvornår quoted indhold alligevel tælles med.
+    """
     normalized = str(command or "").strip().lower()
     if not normalized:
         return None
+
+    # Quoted indhold er en OMTALE — medmindre kommandoen fortolker det som kode.
+    # Kan hjælperen ikke importeres, falder vi tilbage til den RAA streng: flere
+    # godkendelses-kort er billigere end et hul i en SECURITY-gate.
+    try:
+        from core.tools.simple_tools import _uden_for_quotes
+        uden_quotes = _uden_for_quotes(normalized)
+    except Exception:
+        uden_quotes = normalized
+    kode_i_quotes = bool(_SHELL_FORTOLKER_KODE.search(normalized))
+
     for want in ("blocked", "destructive"):
         for p in BASH_PREDICATES:
             if p.decision != want:
                 continue
+            tekst = normalized if (not p.quote_aware or kode_i_quotes) else uden_quotes
             try:
-                if re.search(p.pattern, normalized):
+                if re.search(p.pattern, tekst):
                     return {"id": p.id, "name": p.name, "decision": p.decision, "why": p.why}
             except re.error:
                 continue

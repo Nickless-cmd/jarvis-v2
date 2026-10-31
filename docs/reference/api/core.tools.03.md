@@ -75,11 +75,11 @@ _Nummererede security-predikater (spec E, 2026-07-10)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `SecurityPredicate` | `` | — | [src](../../../core/tools/security_predicates.py#L14) |
-| function | `evaluate_command` | `(command)` | Første matchende bash-predikat (blocked før destructive) på den normaliserede | [src](../../../core/tools/security_predicates.py#L57) |
-| function | `evaluate_write` | `(resolved_path)` | Første matchende write-predikat (substring) på stien, ellers None. | [src](../../../core/tools/security_predicates.py#L75) |
-| function | `all_predicates` | `()` | — | [src](../../../core/tools/security_predicates.py#L86) |
-| function | `build_security_predicates_surface` | `()` | Central-CLI read-surface: jc raw /central/security-predicates. | [src](../../../core/tools/security_predicates.py#L90) |
-| function | `render_predicates_md` | `()` | Genererer docs/security_predicates.md fra registry'en (kilde = koden). | [src](../../../core/tools/security_predicates.py#L104) |
+| function | `evaluate_command` | `(command)` | Første matchende bash-predikat (blocked før destructive) på den normaliserede | [src](../../../core/tools/security_predicates.py#L79) |
+| function | `evaluate_write` | `(resolved_path)` | Første matchende write-predikat (substring) på stien, ellers None. | [src](../../../core/tools/security_predicates.py#L113) |
+| function | `all_predicates` | `()` | — | [src](../../../core/tools/security_predicates.py#L124) |
+| function | `build_security_predicates_surface` | `()` | Central-CLI read-surface: jc raw /central/security-predicates. | [src](../../../core/tools/security_predicates.py#L128) |
+| function | `render_predicates_md` | `()` | Genererer docs/security_predicates.md fra registry'en (kilde = koden). | [src](../../../core/tools/security_predicates.py#L142) |
 
 ## `core/tools/semantic_search_tools.py`
 _Semantic code search — natural language queries over the Jarvis codebase._

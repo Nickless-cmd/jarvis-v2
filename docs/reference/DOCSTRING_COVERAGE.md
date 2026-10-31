@@ -1335,7 +1335,7 @@ Generated from source. 9481/17802 functions/methods documented (53%). The list b
 - `core/services/hollow_promise_round.py` :: `note_detected` (L58)
 - `core/services/hollow_promise_round.py` :: `supports_forced_tool_choice` (L33)
 - `core/services/identity_drift_daemon.py` :: `build_identity_drift_surface` (L318)
-- `core/services/identity_guard.py` :: `reset_pushback` (L81)
+- `core/services/identity_guard.py` :: `reset_pushback` (L97)
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)

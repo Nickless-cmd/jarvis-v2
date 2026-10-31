@@ -15,10 +15,13 @@ forsøg kan lægges ovenpå senere; pattern fanger de åbenlyse spoofs.
 """
 from __future__ import annotations
 
+import logging
 import re
 
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.services import override_store, security_guard
+
+logger = logging.getLogger(__name__)
 
 # Stærke navne-erklæringer (lav falsk-positiv): kræver et eksplicit "hedder/navn".
 # "jeg er X" UDELADES bevidst — det rammer "jeg er træt" osv.
@@ -66,6 +69,12 @@ def _pushback_count(session_id: str) -> int:
         v = get_runtime_state_value(_PUSHBACK_KEY + session_id, None)
         return int(v.get("count", 0)) if isinstance(v, dict) else 0
     except Exception:
+        # 0 betyder bade "ingen tidligere pushback" og "tællingen kunne ikke
+        # laeses". Den anden betyder at eskaleringen aldrig naar sin graense.
+        logger.warning(
+            "identity_guard: kunne ikke laese pushback-tælling for %r — behandler som 0",
+            session_id, exc_info=True,
+        )
         return 0
 
 
@@ -74,7 +83,14 @@ def _bump_pushback(session_id: str) -> int:
     try:
         set_runtime_state_value(_PUSHBACK_KEY + session_id, {"count": n})
     except Exception:
-        pass
+        # Returnerer n som om tællingen blev gemt. Gør den ikke, naar
+        # PUSHBACK_LIMIT aldrig og session-lock fyrer aldrig — spoofing kan
+        # gentages i det uendelige med pushback som eneste reaktion.
+        logger.warning(
+            "identity_guard: kunne ikke gemme pushback-tælling %d for %r — "
+            "eskaleringen naar muligvis aldrig sin graense",
+            n, session_id, exc_info=True,
+        )
     return n
 
 
@@ -82,7 +98,13 @@ def reset_pushback(session_id: str) -> None:
     try:
         set_runtime_state_value(_PUSHBACK_KEY + session_id, {"count": 0})
     except Exception:
-        pass
+        # Står tællingen fast på PUSHBACK_LIMIT, fyrer næste besked lockdown
+        # igen uden en ny pushback — en falsk lockdown.
+        logger.warning(
+            "identity_guard: kunne ikke nulstille pushback for %r — næste besked "
+            "kan udloese lockdown uden ny pushback",
+            session_id, exc_info=True,
+        )
 
 
 def _display_name_for(user_id: str) -> str:
@@ -94,6 +116,13 @@ def _display_name_for(user_id: str) -> str:
         u = find_user_by_discord_id(uid)
         return str(getattr(u, "name", "") or "") if u else ""
     except Exception:
+        # Tomt navn betyder at ejerens EGET navn ikke matcher → ejeren faar
+        # pushback for at sige hvem han er.
+        logger.warning(
+            "identity_guard: kunne ikke slaa display-navn op for %r — "
+            "ejeren kan blive behandlet som en fremmed",
+            uid, exc_info=True,
+        )
         return ""
 
 
@@ -168,7 +197,14 @@ def check_identity(
         if override_store.is_active(sid):
             return None
     except Exception:
-        pass
+        # Override-tilstanden kunne ikke laeses. Vi behandler det som "ikke
+        # aktiv" (fail-closed), men en TOTP-verificeret ejer faar dermed
+        # pushback uden at nogen kan se hvorfor.
+        logger.warning(
+            "identity_guard: kunne ikke laese override-status for %r — "
+            "verificeret ejer kan faa pushback",
+            sid, exc_info=True,
+        )
 
     # Matcher claim'et sessionens egen ejer? Så er det ikke spoofing.
     owner_name = (session_display_name or "").strip().lower()
@@ -196,8 +232,8 @@ def check_identity(
             session_user_id, sid, reason=f"identity-spoof x{n} (claimed {claimed})")
         reset_pushback(sid)
         locked_msg = (
-            f"Denne session er nu låst efter gentagne uverificerede identitets-påstande. "
-            f"Start en ny session for at tale med Jarvis igen."
+            "Denne session er nu låst efter gentagne uverificerede identitets-påstande. "
+            "Start en ny session for at tale med Jarvis igen."
         )
         if result == "account_lockdown":
             locked_msg = (

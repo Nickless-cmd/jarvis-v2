@@ -1830,13 +1830,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "route_directions",
-            "description": "Get directions A -> B via OSRM. from/to may be addresses (geocoded automatically) or [lat,lon]. Returns distance_km, duration_min and turn-by-turn steps.",
+            "description": "Get directions A -> B. from/to may be addresses (geocoded automatically) or [lat,lon]. Returns distance_km, duration_min and turn-by-turn steps. source='osm' (default, free, no key) uses OSRM; source='google' uses Google Routes API (needs google_maps_api_key in runtime.json); source='compare' runs both and reports distance_delta_km / duration_delta_min / sources_agree. Use 'compare' when address quality is in doubt or the two sources may disagree.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "from": {"type": "string", "description": "Start: address string or 'lat,lon'."},
                     "to": {"type": "string", "description": "Destination: address string or 'lat,lon'."},
                     "profile": {"type": "string", "description": "driving | cycling | walking. Default driving.", "enum": ["driving", "cycling", "walking"]},
+                    "source": {"type": "string", "description": "osm (default, free) | google (needs key) | compare (both + delta).", "enum": ["osm", "google", "compare"]},
                 },
                 "required": ["from", "to"],
             },

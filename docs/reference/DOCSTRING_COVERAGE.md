@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9471/17793 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9477/17799 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 9471/17793 functions/methods documented (53%). The list b
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 591 | 1141 | 51% |
+| `core.tools` | 597 | 1147 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 9471/17793 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2594)
+## Undocumented public functions (2593)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2373,15 +2373,14 @@ Generated from source. 9471/17793 functions/methods documented (53%). The list b
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)
 - `core/tools/claude_dispatch/worktree.py` :: `create_worktree` (L9)
 - `core/tools/claude_dispatch/worktree.py` :: `worktree_diff` (L41)
-- `core/tools/geolocation_tools.py` :: `exec_geocode` (L282)
-- `core/tools/geolocation_tools.py` :: `exec_geolocation_lookup` (L271)
-- `core/tools/geolocation_tools.py` :: `exec_nearby_search` (L294)
-- `core/tools/geolocation_tools.py` :: `exec_reverse_geocode` (L286)
-- `core/tools/geolocation_tools.py` :: `exec_route_directions` (L290)
-- `core/tools/geolocation_tools.py` :: `geocode` (L48)
-- `core/tools/geolocation_tools.py` :: `nearby_search` (L182)
-- `core/tools/geolocation_tools.py` :: `reverse_geocode` (L70)
-- `core/tools/geolocation_tools.py` :: `route_directions` (L118)
+- `core/tools/geolocation_tools.py` :: `exec_geocode` (L448)
+- `core/tools/geolocation_tools.py` :: `exec_geolocation_lookup` (L437)
+- `core/tools/geolocation_tools.py` :: `exec_nearby_search` (L464)
+- `core/tools/geolocation_tools.py` :: `exec_reverse_geocode` (L452)
+- `core/tools/geolocation_tools.py` :: `exec_route_directions` (L456)
+- `core/tools/geolocation_tools.py` :: `geocode` (L114)
+- `core/tools/geolocation_tools.py` :: `nearby_search` (L348)
+- `core/tools/geolocation_tools.py` :: `reverse_geocode` (L136)
 - `core/tools/identity_pin_tools.py` :: `IdentityPinsState.to_dict` (L58)
 - `core/tools/identity_pin_tools.py` :: `add_pin` (L92)
 - `core/tools/identity_pin_tools.py` :: `list_pins` (L87)

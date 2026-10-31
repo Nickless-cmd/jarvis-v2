@@ -101,3 +101,91 @@ def test_geolocation_lookup_off_no_ip(monkeypatch):
 def test_exec_wrappers_route_args(monkeypatch):
     monkeypatch.setattr(g, "geocode", lambda a: {"status": "ok", "lat": 1.0, "lon": 2.0})
     assert g.exec_geocode({"address": "x"})["lat"] == 1.0
+
+
+# ── Google Routes som valgfri kilde (31/10-2026) ──────────────────────────────
+def test_google_route_uden_noegle_siger_det_hoejt(monkeypatch):
+    """Uden nøgle skal værktøjet svare ærligt — ikke gætte og ikke røre nettet."""
+    monkeypatch.setattr(g, "_google_maps_key", lambda: None)
+
+    def _boom(*a, **k):
+        raise AssertionError("Google må ikke kaldes uden nøgle")
+
+    monkeypatch.setattr(g, "_http_post_json", _boom)
+    r = g.google_route([55.06, 10.61], [55.4, 10.39], "driving")
+    assert r["status"] == "error"
+    assert r["needs_key"] is True
+    assert "google_maps_api_key" in r["error"]
+
+
+def test_google_route_bygger_request_rigtigt(monkeypatch):
+    """Nøgle, field mask, travelMode og protobuf-varighed ('144s') skal stemme."""
+    monkeypatch.setattr(g, "_google_maps_key", lambda: "test-noegle")
+    fanget = {}
+
+    def _fake_post(url, payload, headers=None, **k):
+        fanget["url"] = url
+        fanget["payload"] = payload
+        fanget["headers"] = headers or {}
+        return {"routes": [{
+            "distanceMeters": 1680,
+            "duration": "144s",
+            "legs": [{"steps": [{"navigationInstruction": {"instructions": "Kør mod nord"}}]}],
+        }]}
+
+    monkeypatch.setattr(g, "_http_post_json", _fake_post)
+    r = g.google_route([55.0606, 10.6002], [55.0591, 10.5657], "driving")
+
+    assert fanget["url"] == g._GOOGLE_ROUTES
+    assert fanget["headers"]["X-Goog-Api-Key"] == "test-noegle"
+    assert "routes.distanceMeters" in fanget["headers"]["X-Goog-FieldMask"]
+    assert fanget["payload"]["travelMode"] == "DRIVE"
+    assert fanget["payload"]["origin"]["location"]["latLng"]["latitude"] == 55.0606
+
+    assert r["status"] == "ok" and r["source"] == "google"
+    assert r["distance_km"] == 1.68
+    assert r["duration_min"] == 2.4          # '144s' → 144 s → 2,4 min
+    assert r["steps"] == ["Kør mod nord"]
+
+
+def test_google_route_cykel_bruger_bicycle(monkeypatch):
+    monkeypatch.setattr(g, "_google_maps_key", lambda: "k")
+    fanget = {}
+    monkeypatch.setattr(g, "_http_post_json",
+                        lambda u, p, h=None, **k: fanget.update(payload=p) or {"routes": []})
+    g.google_route([55.0, 10.0], [55.1, 10.1], "cykel")
+    assert fanget["payload"]["travelMode"] == "BICYCLE"
+
+
+def test_compare_rapporterer_delta(monkeypatch):
+    """De to kilder må ikke smelte sammen til ét svar — uenigheden skal frem."""
+    monkeypatch.setattr(g, "_osm_route", lambda f, t, p: {
+        "status": "ok", "source": "osm", "distance_km": 1.68, "duration_min": 3.3, "steps": []})
+    monkeypatch.setattr(g, "google_route", lambda f, t, p: {
+        "status": "ok", "source": "google", "distance_km": 1.9, "duration_min": 4.5, "steps": []})
+
+    r = g.compare_routes([55.0, 10.0], [55.1, 10.1], "driving")
+    assert r["status"] == "ok"
+    assert r["distance_delta_km"] == 0.22
+    assert r["duration_delta_min"] == 1.2
+    assert r["sources_agree"] is False
+
+
+def test_compare_er_aerlig_naar_en_kilde_fejler(monkeypatch):
+    """Manglende nøgle må ikke ligne enighed — agree skal være None, ikke True."""
+    monkeypatch.setattr(g, "_osm_route", lambda f, t, p: {
+        "status": "ok", "source": "osm", "distance_km": 1.68, "duration_min": 3.3, "steps": []})
+    monkeypatch.setattr(g, "_google_maps_key", lambda: None)
+    r = g.compare_routes([55.0, 10.0], [55.1, 10.1], "driving")
+    assert r["sources_agree"] is None
+    assert r["google"]["needs_key"] is True
+    assert "note" in r
+
+
+def test_route_directions_source_osm_er_standard(monkeypatch):
+    """Default er OSM (gratis, ingen nøgle) — også når source udelades helt."""
+    monkeypatch.setattr(g, "_osm_route", lambda f, t, p: {"status": "ok", "source": "osm"})
+    monkeypatch.setattr(g, "_google_maps_key", lambda: None)
+    assert g.route_directions([55.0, 10.0], [55.1, 10.1])["source"] == "osm"
+    google = g.route_directions([55.0, 10.0], [55.1, 10.1], "driving", "google")
+    assert google["source"] == "google" and google["needs_key"] is True

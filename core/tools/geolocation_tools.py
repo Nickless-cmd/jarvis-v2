@@ -13,11 +13,14 @@ returnér altid et dict med "status": "ok" | "error".
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
+
+logger = logging.getLogger(__name__)
 
 _USER_AGENT = "Jarvis-Mobile-Companion/1.0 (jarvis-v2; contact onkeladolf@gmail.com)"
 _NOMINATIM = "https://nominatim.openstreetmap.org"
@@ -28,12 +31,75 @@ _IP_API = "http://ip-api.com/json/?fields=status,city,regionName,lat,lon,query"
 # Nominatim-høflighed: max 1 req/sek. Vi serialiserer kald med en simpel throttle.
 _last_nominatim_at = 0.0
 
+# ── Google Routes (valgfri kilde ved siden af OSM — kræver nøgle) ──────────────
+# Målt 31/10-2026: Routes og Geocoding er Essentials-tier med 10.000 gratis
+# kald/md; først derefter koster en rute ~$5/1.000. Husets forbrug (15 ruter på
+# en uge) er 0,2 % af kvoten — der er reelt ingen pris. Det man køber er
+# adressekvaliteten: Nominatim gav to forskellige koordinater for samme adresse,
+# og DAWA er nedlagt (410).
+_GOOGLE_ROUTES = "https://routes.googleapis.com/directions/v2:computeRoutes"
+_GOOGLE_FIELD_MASK = ",".join((
+    "routes.distanceMeters",
+    "routes.duration",
+    "routes.legs.steps.navigationInstruction",
+    "routes.legs.steps.distanceMeters",
+))
+_GOOGLE_TRAVEL_MODE = {"driving": "DRIVE", "cycling": "BICYCLE", "walking": "WALK"}
+
 
 def _http_get_json(url: str, *, timeout: float = 12.0, data: bytes | None = None) -> Any:
     """GET (eller POST hvis data) JSON med Jarvis User-Agent. Kaster ved fejl."""
     req = urllib_request.Request(url, data=data, headers={"User-Agent": _USER_AGENT})
     with urllib_request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read())
+
+
+def _http_post_json(
+    url: str, payload: dict[str, Any], headers: dict[str, str] | None = None,
+    *, timeout: float = 15.0,
+) -> Any:
+    """POST JSON med ekstra headers (Google kræver X-Goog-Api-Key + field mask)."""
+    hdrs = {"User-Agent": _USER_AGENT, "Content-Type": "application/json"}
+    if headers:
+        hdrs.update(headers)
+    req = urllib_request.Request(
+        url, data=json.dumps(payload).encode("utf-8"), headers=hdrs, method="POST"
+    )
+    with urllib_request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def _google_maps_key() -> str | None:
+    """Nøglen, eller None når den ikke er sat.
+
+    Manglende nøgle er en NORMAL tilstand, ikke en fejl: værktøjet skal kunne
+    svare «ikke konfigureret» uden at vælte, og uden at lyve om at det har en
+    rute. Derfor fanges kun RuntimeError (det read_runtime_key kaster), ikke alt.
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+        return str(read_runtime_key(
+            "google_maps_api_key", env_override="JARVIS_GOOGLE_MAPS_API_KEY"
+        ))
+    except RuntimeError:  # noegle mangler = normal tilstand, ikke en fejl (se docstring)
+        return None
+
+
+def _google_seconds(value: object) -> float:
+    """Google sender varighed som '144s' (protobuf-duration), ikke som tal."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value or "").strip()
+    if text.endswith("s"):
+        text = text[:-1]
+    try:
+        return float(text)
+    except ValueError:
+        # Ukendt varighedsformat fra Google. 0.0 er en fallback der ser ud som
+        # en gyldig rute paa nul minutter, saa den logges: et format-skift skal
+        # kunne findes i loggen frem for at gemme sig som et pænt tal.
+        logger.warning("Google-rute: ukendt varighedsformat %r - bruger 0.0", value)
+        return 0.0
 
 
 def _throttle_nominatim() -> None:
@@ -115,7 +181,7 @@ def _resolve_point(point: Any) -> tuple[float, float] | None:
     return None
 
 
-def route_directions(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
+def _osm_route(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
     prof = _PROFILE_MAP.get((profile or "driving").strip().lower(), "driving")
     a = _resolve_point(from_)
     b = _resolve_point(to)
@@ -151,6 +217,106 @@ def route_directions(from_: Any, to: Any, profile: str = "driving") -> dict[str,
         "duration_min": round(dur_s / 60.0, 1),
         "steps": steps[:40],
     }
+
+
+# ── Google Routes (kræver nøgle) ───────────────────────────────────────────────
+def google_route(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
+    """Rute via Google Routes API v2. Svarer ærligt hvis nøglen mangler."""
+    key = _google_maps_key()
+    if not key:
+        return {
+            "status": "error",
+            "source": "google",
+            "needs_key": True,
+            "error": (
+                "google_maps_api_key mangler — sæt den som top-level key i "
+                "~/.jarvis-v2/config/runtime.json (eller JARVIS_GOOGLE_MAPS_API_KEY "
+                "i .env). Google-kilden er valgfri; OSM virker uden nøgle."
+            ),
+        }
+    prof = _PROFILE_MAP.get((profile or "driving").strip().lower(), "driving")
+    a = _resolve_point(from_)
+    b = _resolve_point(to)
+    if not a:
+        return {"status": "error", "error": f"Kunne ikke finde startpunkt: {from_!r}"}
+    if not b:
+        return {"status": "error", "error": f"Kunne ikke finde slutpunkt: {to!r}"}
+    payload = {
+        "origin": {"location": {"latLng": {"latitude": a[0], "longitude": a[1]}}},
+        "destination": {"location": {"latLng": {"latitude": b[0], "longitude": b[1]}}},
+        "travelMode": _GOOGLE_TRAVEL_MODE.get(prof, "DRIVE"),
+        "computeAlternativeRoutes": False,
+    }
+    try:
+        data = _http_post_json(
+            _GOOGLE_ROUTES,
+            payload,
+            {"X-Goog-Api-Key": key, "X-Goog-FieldMask": _GOOGLE_FIELD_MASK},
+        )
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+        # Fejlen returneres i "error" til kalderen - den forsvinder ikke her.
+        return {"status": "error", "source": "google", "error": f"Google-rute fejlede: {exc}"}
+    routes = data.get("routes") or []
+    if not routes:
+        return {"status": "error", "source": "google", "error": "Ingen rute fundet."}
+    route = routes[0]
+    steps: list[str] = []
+    for leg in route.get("legs", []):
+        for s in leg.get("steps", []):
+            instr = ((s.get("navigationInstruction") or {}).get("instructions") or "").strip()
+            if instr:
+                steps.append(instr)
+    dist_m = route.get("distanceMeters", 0) or 0
+    dur_s = _google_seconds(route.get("duration"))
+    return {
+        "status": "ok",
+        "source": "google",
+        "profile": prof,
+        "distance_km": round(float(dist_m) / 1000.0, 2),
+        "duration_min": round(dur_s / 60.0, 1),
+        "steps": steps[:40],
+    }
+
+
+def compare_routes(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
+    """Kør samme rute gennem begge kilder og vis hvor de er uenige.
+
+    Formålet er ikke at vælge en vinder automatisk — det er at gøre
+    uenigheden synlig, så et enkelt svar ikke får lov at se ud som en sandhed.
+    """
+    osm = _osm_route(from_, to, profile)
+    google = google_route(from_, to, profile)
+    ud: dict[str, Any] = {"status": "ok", "profile": profile, "osm": osm, "google": google}
+    if osm.get("status") == "ok" and google.get("status") == "ok":
+        ud["distance_delta_km"] = round(
+            float(google["distance_km"]) - float(osm["distance_km"]), 2
+        )
+        ud["duration_delta_min"] = round(
+            float(google["duration_min"]) - float(osm["duration_min"]), 1
+        )
+        ud["sources_agree"] = (
+            abs(ud["distance_delta_km"]) < 0.2 and abs(ud["duration_delta_min"]) < 1.0
+        )
+    else:
+        ud["sources_agree"] = None
+        ud["note"] = (
+            "Kunne ikke sammenligne — mindst én kilde fejlede. "
+            "Se de to kilders egen 'error'."
+        )
+    return ud
+
+
+# ── Rute (samlet indgang: osm | google | compare) ──────────────────────────────
+def route_directions(
+    from_: Any, to: Any, profile: str = "driving", source: str = "osm",
+) -> dict[str, Any]:
+    """Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'."""
+    valg = (source or "osm").strip().lower()
+    if valg in ("google", "gmaps"):
+        return google_route(from_, to, profile)
+    if valg in ("compare", "sammenlign", "both"):
+        return compare_routes(from_, to, profile)
+    return _osm_route(from_, to, profile)
 
 
 # ── Nearby search (steder i nærheden) ──────────────────────────────────────────
@@ -288,7 +454,11 @@ def exec_reverse_geocode(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def exec_route_directions(args: dict[str, Any]) -> dict[str, Any]:
-    return route_directions(args.get("from"), args.get("to"), str(args.get("profile") or "driving"))
+    return route_directions(
+        args.get("from"), args.get("to"),
+        str(args.get("profile") or "driving"),
+        str(args.get("source") or "osm"),
+    )
 
 
 def exec_nearby_search(args: dict[str, Any]) -> dict[str, Any]:

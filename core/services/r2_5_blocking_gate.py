@@ -36,7 +36,7 @@ Returns None when no block is needed.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -269,7 +269,7 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
         mut_name, mut_count = top_tool
         if mut_name in ("write_file", "edit_file", "publish_file", "stage_edit_file"):
             action_line = (
-                f"Næste move: read_file den fil du senest skrev til, "
+                "Næste move: read_file den fil du senest skrev til, "
                 "eller verify_file_contains(path='...', expected='...')."
             )
         elif mut_name in ("control_daemon", "restart_overdue_daemons"):

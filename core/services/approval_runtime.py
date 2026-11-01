@@ -84,6 +84,36 @@ def build_request(*, tool_name: str, arguments: dict[str, Any],
 # kort der ikke kan gemmes er daarligt; et kort der ikke kan VISES fordi
 # skrivningen kastede, er vaerre.
 
+def _handling_fra_historikken(session_id: str, approval_id: str) -> str:
+    """Kommandoen fra den række godkendelsen FØRST blev skrevet med.
+
+    Kun til udfalds-hændelser: de kommer bagefter, hvor `arguments` er væk.
+    Fejler opslaget, skrives rækken uden kommando — men ALDRIG uden status.
+    """
+    try:
+        import json as _json
+        import sqlite3
+
+        from core.runtime import db as runtime_db
+
+        conn = sqlite3.connect(str(runtime_db.DB_PATH))
+        try:
+            row = conn.execute(
+                "SELECT content_json FROM chat_messages "
+                "WHERE session_id = ? AND role = 'approval_request' "
+                "AND content_json LIKE ? ORDER BY id LIMIT 1",
+                (session_id, f"%{approval_id}%"),
+            ).fetchone()
+        finally:
+            conn.close()
+        if not row:
+            return ""
+        blokke = _json.loads(row[0] or "[]")
+        return str((blokke[0] if blokke else {}).get("action") or "")
+    except Exception:  # intet opslag = ingen kommando i teksten, ikke ingen række
+        return ""
+
+
 def persist_approval_message(
     *, approval_id: str, kort: dict[str, Any], status: str,
     decided_by: str = "",
@@ -106,6 +136,12 @@ def persist_approval_message(
             handling = str(args.get("command") or args.get("path") or "")
         if not handling:
             handling = str((kort.get("result") or {}).get("command") or "")
+        if not handling:
+            # Udfaldet skrives BAGEFTER (fx `failed` eller `outcome_unknown`),
+            # og dér findes argumenterne ikke længere — kun digesten. Men
+            # rækken fra `pending` bærer dem. Uden dette stod der «failed: bash»
+            # uden kommandoen, og så kan man ikke se HVAD der ikke skete.
+            handling = _handling_fra_historikken(sid, str(approval_id))
         foerste_linje = handling.splitlines()[0][:160] if handling else ""
 
         _praefiks = {

@@ -13,6 +13,11 @@ import { X } from 'lucide-react'
  * blev lavet, og `approved`/`denied`/`expired` da det blev afgjort. Formen er
  * append-only, så en afgørelse er en NY række, ikke en opdatering.
  *
+ * 1/11-2026: og nu også UDFALDET. `approved` betyder at Bjørn sagde ja —
+ * ikke at kommandoen kørte. `failed`/`outcome_unknown`/
+ * `aborted_before_dispatch` er de tilstande hvor de to ting ikke er det
+ * samme, og de skrives som en tredje række af `db_approval_bridge`.
+ *
  * HVORFOR INGEN KNAPPER — og hvorfor det er den rigtige grænse:
  * en persisteret række er historik. Et kort fra en tidligere session kan ikke
  * besvares: serveren har fejet posten, og både «Godkend» og «Afvis» ville
@@ -33,6 +38,17 @@ const STATUS: Record<string, { tekst: string; klasse: string }> = {
   approved: { tekst: 'Godkendt', klasse: 'godkendt' },
   denied: { tekst: 'Afvist', klasse: 'afvist' },
   expired: { tekst: 'Udløb uden svar', klasse: 'udloeb' },
+  /* UDFALDET, ikke afgørelsen (1/11-2026). Bjørn: «og hvis godkendelsen ikk
+   * gik igennem? det ved kun du = så skal det osse fikses».
+   *
+   * `approved` betyder at HAN sagde ja — ikke at kommandoen kørte. De tre
+   * nedenfor er præcis de tilstande hvor de to ting ikke er det samme, og de
+   * skal stå med deres egen tekst. Uden dem faldt de i `ukendt` og viste den
+   * rå engelske streng — en tilstand der så ud som en teknisk detalje midt i
+   * et svar han skal kunne læse. */
+  failed: { tekst: 'Kørte ikke igennem', klasse: 'fejlet' },
+  outcome_unknown: { tekst: 'Udfald ukendt', klasse: 'ukendt' },
+  aborted_before_dispatch: { tekst: 'Kørte aldrig', klasse: 'udloeb' },
 }
 
 export function HistoriskGodkendelse({

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9509/17840 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9511/17842 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 9509/17840 functions/methods documented (53%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 860 | 1568 | 54% |
-| `core.services` | 6325 | 12112 | 52% |
+| `core.runtime` | 861 | 1569 | 54% |
+| `core.services` | 6326 | 12113 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -411,7 +411,7 @@ Generated from source. 9509/17840 functions/methods documented (53%). The list b
 - `core/runtime/db_agent_route.py` :: `record_decision` (L47)
 - `core/runtime/db_agent_wait.py` :: `ensure_wait_tables` (L30)
 - `core/runtime/db_agent_wait.py` :: `get_contract` (L134)
-- `core/runtime/db_approval_bridge.py` :: `state` (L315)
+- `core/runtime/db_approval_bridge.py` :: `state` (L381)
 - `core/runtime/db_autonomy.py` :: `create_autonomy_proposal` (L82)
 - `core/runtime/db_autonomy.py` :: `get_autonomy_proposal` (L152)
 - `core/runtime/db_autonomy.py` :: `list_autonomy_proposals` (L123)

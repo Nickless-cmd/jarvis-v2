@@ -271,6 +271,63 @@ def claim(approval_id: str, *, tool_name: str,
     raise ApprovalRefused(f"kunne ikke overtages (tilstand {tilstand!r})")
 
 
+#: Tilstande hvor «godkendt» IKKE betyder «det skete». De skal nå samtalen:
+#: ellers står der «Godkendt» på skærmen mens udfaldet var et andet.
+DAARLIGT_UDFALD = frozenset({FAILED, OUTCOME_UNKNOWN, ABORTED_BEFORE_DISPATCH})
+
+
+def _varsl_samtalen(approval_id: str) -> None:
+    """Skriv udfaldet ind i samtalens historik — KUN når det ikke gik godt.
+
+    ## Hvorfor (1/11-2026)
+
+    Bjørn: «og hvis godkendelsen ikk gik igennem? det ved kun du = så skal
+    det osse fikses». Han havde ret, og beviset lå i basen:
+    `approval-c48e924bff23` blev godkendt 28/10 kl. 14:38:07 og erklæret
+    `outcome_unknown` kl. 16:43:15. I to timer stod der «Godkendt» i
+    samtalen mens ingen vidste om kommandoen havde kørt.
+
+    `approval_claims` HAR udfaldet; `chat_messages` fik det aldrig. To flader
+    med hver sin sandhed — og den ene var en løgn.
+
+    ## Hvorfor kun de dårlige udfald
+
+    En hændelse på den gode vej ville gøre tavshed meningsløs: så kan
+    «ingen række» ikke længere betyde «gik godt».
+
+    ## Hvorfor den aldrig kaster
+
+    Samtalen er en ANDEN skrivning end tilstands-skiftet. Fejler den, er
+    udfaldet stadig sandt i `approval_claims` — og et kast her ville få et
+    allerede afsluttet kald til at se ud som om det fejlede.
+    """
+    try:
+        info = state(approval_id)
+        if not info:
+            return
+        tilstand = str(info.get("state") or "")
+        if tilstand not in DAARLIGT_UDFALD:
+            return
+        sid = str(info.get("session_id") or "").strip()
+        if not sid:
+            return
+        from core.services.approval_runtime import persist_approval_message
+
+        persist_approval_message(
+            approval_id=str(approval_id),
+            kort={
+                "session_id": sid,
+                "tool_name": str(info.get("tool_name") or ""),
+                "run_id": str(info.get("run_id") or ""),
+                "created_at": str(info.get("created_at") or ""),
+            },
+            status=tilstand,
+        )
+    except Exception:  # samtalen er sekundaer — tilstanden er allerede skrevet
+        logger.debug("kunne ikke varsle samtalen om udfaldet af %s",
+                     approval_id, exc_info=True)
+
+
 def settle(approval_id: str, *, ok: bool, detail: str = "") -> bool:
     """Afslut efter afsendelsen. `dispatching` → `completed`/`failed`."""
     aid = str(approval_id or "").strip()
@@ -281,7 +338,12 @@ def settle(approval_id: str, *, ok: bool, detail: str = "") -> bool:
             "WHERE approval_id = ? AND state = ?",
             (COMPLETED if ok else FAILED, _nu(), str(detail or ""), aid, DISPATCHING),
         )
-        return cur.rowcount == 1
+        ramt = cur.rowcount == 1
+    # UDEN FOR transaktionen: samtalen er en anden skrivning, og en fejl deri
+    # må ikke rulle tilstands-skiftet tilbage.
+    if ramt and not ok:
+        _varsl_samtalen(aid)
+    return ramt
 
 
 def abandon(approval_id: str, *, detail: str = "") -> str:
@@ -309,7 +371,11 @@ def abandon(approval_id: str, *, detail: str = "") -> str:
             "WHERE approval_id = ? AND state = ?",
             (ny, _nu(), str(detail or ""), aid, tilstand),
         )
-        return ny
+    # Samme regel som i `settle`: uden for transaktionen, og kun naar udfaldet
+    # ikke er det gode. `aborted_before_dispatch` betyder at handlingen ALDRIG
+    # skete — også det skal stå i samtalen, ikke kun i basen.
+    _varsl_samtalen(aid)
+    return ny
 
 
 def state(approval_id: str) -> dict[str, Any] | None:

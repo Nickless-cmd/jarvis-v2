@@ -419,13 +419,14 @@ _Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
 | function | `prepare` | `(invocation_id, *, tool_name, arguments, run_id=…, session_id=…, ttl_s=…)` | Registrér en invokation der IKKE kraever godkendelse. | [src](../../../core/runtime/db_approval_bridge.py#L176) |
 | function | `decide` | `(approval_id, *, approved, detail=…)` | Mennesket har klikket. Flytter `pending` → `approved`/`denied`. | [src](../../../core/runtime/db_approval_bridge.py#L209) |
 | function | `claim` | `(approval_id, *, tool_name, arguments)` | Overtag godkendelsen OG commit `dispatching` — i ÉN sætning. | [src](../../../core/runtime/db_approval_bridge.py#L226) |
-| function | `settle` | `(approval_id, *, ok, detail=…)` | Afslut efter afsendelsen. `dispatching` → `completed`/`failed`. | [src](../../../core/runtime/db_approval_bridge.py#L274) |
-| function | `abandon` | `(approval_id, *, detail=…)` | Runnet døde. Sig HVAD vi ved — ikke hvad vi håber. | [src](../../../core/runtime/db_approval_bridge.py#L287) |
-| function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L315) |
-| function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L331) |
-| function | `abandon_orphaned_dispatching` | `(now=…, *, older_than_s=…)` | Afslut `dispatching`-poster hvis afsender er vaek. → `outcome_unknown`. | [src](../../../core/runtime/db_approval_bridge.py#L350) |
-| function | `abandon_run` | `(run_id, *, detail=…)` | Opgiv ALLE uafklarede poster for et doedt run — K6. | [src](../../../core/runtime/db_approval_bridge.py#L385) |
-| function | `prior_unknown_outcome` | `(tool_name, arguments)` | Har PRAECIS dette kald allerede efterladt et ukendt udfald? | [src](../../../core/runtime/db_approval_bridge.py#L415) |
+| function | `_varsl_samtalen` | `(approval_id)` | Skriv udfaldet ind i samtalens historik — KUN når det ikke gik godt. | [src](../../../core/runtime/db_approval_bridge.py#L279) |
+| function | `settle` | `(approval_id, *, ok, detail=…)` | Afslut efter afsendelsen. `dispatching` → `completed`/`failed`. | [src](../../../core/runtime/db_approval_bridge.py#L331) |
+| function | `abandon` | `(approval_id, *, detail=…)` | Runnet døde. Sig HVAD vi ved — ikke hvad vi håber. | [src](../../../core/runtime/db_approval_bridge.py#L349) |
+| function | `state` | `(approval_id)` | — | [src](../../../core/runtime/db_approval_bridge.py#L381) |
+| function | `expire_stale` | `(now=…)` | Marker udløbne, ikke-besluttede godkendelser. Rører ALDRIG `dispatching`: | [src](../../../core/runtime/db_approval_bridge.py#L397) |
+| function | `abandon_orphaned_dispatching` | `(now=…, *, older_than_s=…)` | Afslut `dispatching`-poster hvis afsender er vaek. → `outcome_unknown`. | [src](../../../core/runtime/db_approval_bridge.py#L416) |
+| function | `abandon_run` | `(run_id, *, detail=…)` | Opgiv ALLE uafklarede poster for et doedt run — K6. | [src](../../../core/runtime/db_approval_bridge.py#L451) |
+| function | `prior_unknown_outcome` | `(tool_name, arguments)` | Har PRAECIS dette kald allerede efterladt et ukendt udfald? | [src](../../../core/runtime/db_approval_bridge.py#L481) |
 
 ## `core/runtime/db_artifact_index.py`
 _Artefakter: de filer Jarvis har skrevet og rettet i en mappe, paa tvaers af samtaler._

@@ -2441,6 +2441,9 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .approvallinje-status.status-godkendt { color: var(--ok); border-color: currentColor; }
 .approvallinje-status.status-afvist { color: var(--error-fg, #f87171); border-color: currentColor; }
+/* Kommandoen KOERTE ikke efter godkendelsen (1/11-2026) — samme rode som
+   afvist, fordi det er samme besked: det du sagde ja til, skete ikke. */
+.approvallinje-status.status-fejlet { color: var(--error-fg, #f87171); border-color: currentColor; }
 .approvallinje-status.status-venter { color: var(--warn-fg, #fbbf24); border-color: currentColor; }
 .approvallinje-status.status-udloeb,
 .approvallinje-status.status-ukendt { color: var(--fg-3); border-color: currentColor; }

@@ -176,3 +176,38 @@ def test_heartbeat_uden_samtale_er_systemets_eget(monkeypatch):
     rta.dispatch_heartbeat_initiative(focus="f", initiative_id="i")
 
     assert kaldt[0]["session_id"] is None
+
+
+def test_heartbeat_afvisning_parkeres_i_stedet_for_at_forsvinde(monkeypatch):
+    """Et False fra run-starteren er en afvisning, ikke en levering."""
+    from core.services import routine_trigger_adapters as rta
+    import core.services.run_guard as run_guard
+    import core.services.visible_runs as vr
+
+    parkeret: list[dict] = []
+    monkeypatch.setattr(vr, "start_autonomous_run", lambda *_a, **_kw: False)
+    monkeypatch.setattr(
+        rta, "dispatch_system",
+        lambda _producer, _sid, *, trigger_inputs, legacy, adapters=None: (
+            legacy(), None
+        )[1],
+    )
+    monkeypatch.setattr(
+        run_guard,
+        "parker_forpligtelse",
+        lambda **kwargs: parkeret.append(kwargs) or {"status": "ok"},
+    )
+
+    result = rta.dispatch_heartbeat_initiative(
+        focus="undersoeg den konkrete driftstilstand",
+        initiative_id="init-fbcc10cadd",
+        session_id="auto-heartbeat-20261101",
+    )
+
+    assert result == {"status": "ok"}
+    assert parkeret == [{
+        "origin": "heartbeat",
+        "session_id": "auto-heartbeat-20261101",
+        "beskrivelse": "undersoeg den konkrete driftstilstand",
+        "kilde_id": "afvist-heartbeat-init-fbcc10cadd",
+    }]

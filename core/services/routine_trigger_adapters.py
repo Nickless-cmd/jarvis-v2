@@ -229,21 +229,41 @@ def dispatch_system(
 
 def dispatch_heartbeat_initiative(
     *, focus: str, initiative_id: str, session_id: str = "",
-) -> TriggerResult | None:
+) -> TriggerResult | Mapping[str, object] | None:
     """Extracted heartbeat execution boundary for the oversized runtime module.
 
     ``session_id`` (14/10-2026): initiativet kan bære den samtale det kom fra
     (fx et scheduled-job der lagde det i køen — se ``initiative_queue``). Tom =
     systemets eget initiativ; der findes ingen samtale at vende tilbage til.
     """
+    legacy_started: list[bool] = []
+
     def _legacy() -> None:
         from core.services.visible_runs import start_autonomous_run
 
-        start_autonomous_run(
+        legacy_started.append(bool(start_autonomous_run(
             focus, session_id=str(session_id or "") or None, origin="heartbeat",
-        )
+        )))
 
-    return dispatch_system(
+    dispatched = dispatch_system(
         "heartbeat", initiative_id,
         trigger_inputs={"focus": focus}, legacy=_legacy,
     )
+    if dispatched is not None:
+        return dispatched
+    if legacy_started and not legacy_started[0]:
+        # `start_autonomous_run` kan afvise før et run fødes (fx gut-gaten).
+        # Før 1/11-2026 blev bool-resultatet smidt væk her, mens heartbeatet
+        # allerede havde materialiseret arbejdet som en task. Signaturen i
+        # drift var derfor: task oprettet, nul run, nul Routine og nul inbox.
+        # En afvisning er ikke en levering; parkér samme forpligtelse med et
+        # stabilt kilde-id, så retry ikke producerer dubletter.
+        from core.services.run_guard import parker_forpligtelse
+
+        return parker_forpligtelse(
+            origin="heartbeat",
+            session_id=str(session_id or ""),
+            beskrivelse=str(focus or "")[:400],
+            kilde_id=f"afvist-heartbeat-{str(initiative_id or '').strip()}",
+        )
+    return None

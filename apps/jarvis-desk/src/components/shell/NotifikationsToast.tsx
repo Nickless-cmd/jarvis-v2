@@ -43,6 +43,7 @@ import { maaPolle } from '../../lib/ro'
 import { markNotificationsRead } from '../../lib/notificationAttention'
 import { spilToastKlang } from '../../lib/toastLyd'
 import { updatesBridge } from '../../lib/updatesBridge'
+import { beregnNotifBund } from './notifAnker'
 
 /** Samme mapping som NotifikationsFeed — en post skal se ens ud i listen og
  *  i toasten. Ukendte slags faar klokken, saa en ny router-slags aldrig
@@ -76,6 +77,18 @@ export const LEVETID_MS = 7000
 export const MAKS_SYNLIGE = 2
 /** Loft for køen — kun saa en fejlende kilde ikke kan æde hukommelsen. */
 export const MAKS_KOE = 50
+
+/** Geometrien ankeret regnes ud fra — SPEJLET af CSS'en, ikke en smagssag.
+ *
+ *  `.notif-toast` er 268 px bred med `max-width: calc(100vw - 44px)`, og
+ *  `.notif-toast-lag` staar `right: 22px; bottom: var(--notif-bund, 14px)`.
+ *  Ændrer man et af de tal i CSS'en uden at ændre det her, regner
+ *  overlap-detektionen forkert — og fejlen er usynlig, fordi den kun viser sig
+ *  paa skaermbredder hvor toasten lige netop rører skrivefeltet.
+ *  notifAnker.test.ts holder regnestykket; tokens.test.ts holder CSS'en. */
+export const TOAST_BREDDE = 268
+export const TOAST_HOEJRE_MARGIN = 22
+export const TOAST_BUND_GULV = 14
 
 /** Hvad en toast kan bære: en notifikations-post — eller et agent-kort der
  *  VENTER paa et svar.
@@ -323,17 +336,41 @@ export function NotifikationsToast({ config, onAabenSession }: {
 
     const maal = () => {
       const wrap = vaelg()
-      if (!wrap) { setNotifBund(null); return }
       if (wrap !== observeret) {
         ro?.disconnect()
         observeret = wrap
-        ro = new ResizeObserver(() => maal())
-        ro.observe(wrap)
+        if (wrap) {
+          ro = new ResizeObserver(() => maal())
+          ro.observe(wrap)
+        }
       }
-      const rect = wrap.getBoundingClientRect()
-      // Afstand fra viewport-bunden op til composerens overkant, plus 10px
-      // luft. Gulv paa 12px saa et felt aldrig kan ligge halvt uden for.
-      setNotifBund(Math.max(12, Math.round(window.innerHeight - rect.top) + 10))
+
+      // ── BUNDEN FOERST (Bjoern 1/11-2026) ──────────────────────────────
+      // Her stod ubetinget `innerHeight - rect.top + 10`. Det loftede toasten
+      // til skrivefeltets overkant OGSAA naar den laa ved siden af feltet, og
+      // resultatet var et felt der svaevede i tomt rum ~50px over composeren.
+      // Bjoerns ord: «de toast beskeder burde komme i bunden af appen i
+      // hjoernet, men traekkes op over composer-hoejden».
+      //
+      // Selve reglen bor i `notifAnker.ts` som en REN funktion, saa den kan
+      // testes uden layout-motor — jsdom svarer nuller paa alt geometrisk, og
+      // en DOM-test ville derfor bestaa af den forkerte grund.
+      const opm = document.querySelector('.opm-vaert') as HTMLElement | null
+      const opmR = opm && opm.offsetParent !== null ? opm.getBoundingClientRect() : null
+      const r = wrap ? wrap.getBoundingClientRect() : null
+
+      setNotifBund(beregnNotifBund({
+        innerHeight: window.innerHeight,
+        innerWidth: window.innerWidth,
+        composer: r ? { left: r.left, right: r.right, top: r.top } : null,
+        // CSS: `.notif-toast { width: 268px; max-width: calc(100vw - 44px) }`.
+        // Den faktiske bredde er derfor den mindste af de to — ellers regner
+        // vi overlap forkert paa en smal skaerm.
+        toastBredde: Math.min(TOAST_BREDDE, window.innerWidth - 44),
+        hoejreMargin: TOAST_HOEJRE_MARGIN,
+        bundGulv: TOAST_BUND_GULV,
+        opmHoejde: opmR ? opmR.height : 0,
+      }))
     }
     maal()
     window.addEventListener('resize', maal)

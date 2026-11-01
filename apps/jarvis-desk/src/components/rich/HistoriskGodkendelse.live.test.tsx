@@ -55,6 +55,17 @@ describe('HistoriskGodkendelse — live vs. historik', () => {
     expect(screen.getByRole('button', { name: /afvis/i })).toBeEnabled()
   })
 
+  it('viser ingen handlinger til en bruger uden godkendelsesret', () => {
+    render(
+      <HistoriskGodkendelse
+        data={venter}
+        live={{ canApprove: false, onApprove: vi.fn(), onDeny: vi.fn() }}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /godkend/i })).toBeNull()
+    expect(screen.getByText('Kun owner kan godkende')).toBeInTheDocument()
+  })
+
   it('knapperne sender det RIGTIGE approval_id', async () => {
     const onApprove = vi.fn()
     const onDeny = vi.fn()
@@ -82,20 +93,31 @@ describe('HistoriskGodkendelse — live vs. historik', () => {
     expect(screen.queryByRole('button', { name: /godkend/i })).toBeNull()
   })
 
-  it('kommandoen er i DOM men foldet sammen — linjen har fast højde', () => {
+  it('holder rå kommando helt ude af kortets layout', () => {
     render(<HistoriskGodkendelse data={venter} />)
-    const krop = document.querySelector('.approvallinje-krop')
-    expect(krop?.getAttribute('data-aaben')).toBe('false')
-    // Teksten skal kunne findes (skærmlæsere, tests) — ikke display:none.
-    // Opslaget er praeciseret til <pre>'en: kommandoen staar OGSAA i
-    // resume-linjen, og et bredt opslag rammer begge (samme fælde som
-    // ApprovalCard-testen).
-    expect(screen.getByText('rm -rf /tmp/x', { selector: 'pre' })).toBeInTheDocument()
+    expect(document.querySelector('.approval-details-dialog')).toBeNull()
+    expect(screen.queryByText('rm -rf /tmp/x', { selector: 'pre' })).toBeNull()
   })
 
-  it('folden aabner paa klik', async () => {
+  it('åbner kommandoen i en modal detalje-dialog', async () => {
     render(<HistoriskGodkendelse data={venter} />)
-    await userEvent.click(screen.getByRole('button', { name: /vis kommandoen/i }))
-    expect(document.querySelector('.approvallinje-krop')?.getAttribute('data-aaben')).toBe('true')
+    await userEvent.click(screen.getByRole('button', { name: /vis detaljer for bash/i }))
+    const dialog = screen.getByRole('dialog', { name: 'bash' })
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByText('rm -rf /tmp/x', { selector: 'pre' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Luk detaljer' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('lægger live-knapperne i en kompakt separat handlingsrække', () => {
+    const { container } = render(
+      <HistoriskGodkendelse
+        data={venter}
+        live={{ canApprove: true, onApprove: vi.fn(), onDeny: vi.fn() }}
+      />,
+    )
+    const actionbar = container.querySelector('.approvalcard-actionbar')!
+    expect(actionbar).toContainElement(screen.getByRole('button', { name: 'Godkend' }))
+    expect(container.querySelector('.approvallinje')).not.toContainElement(screen.getByRole('button', { name: 'Godkend' }))
   })
 })

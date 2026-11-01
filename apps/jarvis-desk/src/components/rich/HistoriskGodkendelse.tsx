@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 
 /** Et AFGJORT (eller forladt) godkendelses-kort, læst fra historikken.
  *
@@ -57,48 +58,97 @@ export function HistoriskGodkendelse({
     onDeny: (id: string) => void
   }
 }) {
-  const [aaben, setAaben] = useState(false)
+  const [visDetaljer, setVisDetaljer] = useState(false)
   const status = STATUS[data.status] ?? { tekst: data.status, klasse: 'ukendt' }
   // Baandet holdes HER, ikke kun hos kalderen: status er sandheden om hvorvidt
   // der kan svares. En afgjort raekke maa aldrig faa knapper, heller ikke hvis
   // en kalder sender `live` ved en fejl — saa ville et gammelt svar se ud som
   // et aabent spoergsmaal.
-  const kanSvare = Boolean(live) && data.status === 'pending'
+  const erLevende = Boolean(live) && data.status === 'pending'
+  const kanSvare = erLevende && Boolean(live?.canApprove)
 
   return (
-    <div className={`approvalcard risk-${data.risk || ''}${kanSvare ? ' approvalcard-live' : ' approvalcard-historik'}`}>
+    <div className={`approvalcard risk-${data.risk || ''}${erLevende ? ' approvalcard-live' : ' approvalcard-historik'}`}>
       <div className="approvallinje">
         <button
           type="button"
           className="approvallinje-aabn"
-          aria-expanded={aaben}
-          onClick={() => setAaben((v) => !v)}
-          title={aaben ? 'Skjul kommandoen' : 'Vis kommandoen'}
-          aria-label={aaben ? 'Skjul kommandoen' : 'Vis kommandoen'}
+          aria-haspopup="dialog"
+          onClick={() => setVisDetaljer(true)}
+          title="Vis detaljer"
+          aria-label={`Vis detaljer for ${data.tool}`}
         >
-          <span className="approvallinje-pil" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
           <span className="approvallinje-tool">{data.tool}</span>
           <span className="approvallinje-resume">{resume(data.action)}</span>
+          <span className="approvallinje-detaljer" aria-hidden="true">Detaljer</span>
         </button>
 
-        {kanSvare && live ? (
-          <span className="approvalcard-actions">
-            <button type="button" onClick={() => live.onApprove(data.approval_id)}>Godkend</button>
-            <button type="button" onClick={() => live.onDeny(data.approval_id)}>Afvis</button>
-          </span>
-        ) : (
+        {!erLevende ? (
           <span className={`approvallinje-status status-${status.klasse}`}>
             {status.tekst}
           </span>
-        )}
+        ) : null}
       </div>
 
-      <div className="approvallinje-krop" data-aaben={aaben ? 'true' : 'false'}>
-        <div className="approvallinje-indre">
-          <pre className="approvalcard-action" inert={!aaben}>{data.action}</pre>
+      {erLevende && live ? (
+        <div className="approvalcard-actionbar">
+          {kanSvare ? (
+            <span className="approvalcard-actions">
+              <button type="button" onClick={() => live.onDeny(data.approval_id)}>Afvis</button>
+              <button type="button" className="approvalcard-primary" onClick={() => live.onApprove(data.approval_id)}>Godkend</button>
+            </span>
+          ) : (
+            <span className="approvalcard-readonly">Kun owner kan godkende</span>
+          )}
         </div>
-      </div>
+      ) : null}
+
+      {visDetaljer ? (
+        <GodkendelsesDetaljer tool={data.tool} action={data.action} onClose={() => setVisDetaljer(false)} />
+      ) : null}
     </div>
+  )
+}
+
+function GodkendelsesDetaljer({ tool, action, onClose }: {
+  tool: string
+  action: string
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog?.showModal) dialog.showModal()
+    else dialog?.setAttribute('open', '')
+    return () => dialog?.close?.()
+  }, [])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="approval-details-dialog"
+      aria-labelledby={titleId}
+      onCancel={(event) => { event.preventDefault(); onClose() }}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
+      <div className="approval-details-content">
+        <header className="approval-details-head">
+          <div>
+            <span className="approval-details-kicker">Godkendelse</span>
+            <h2 id={titleId}>{tool}</h2>
+          </div>
+          <button type="button" className="approval-details-close" aria-label="Luk detaljer" onClick={onClose}>
+            <X size={17} />
+          </button>
+        </header>
+        <pre className="approvalcard-action">{action}</pre>
+        <footer className="approval-details-foot">
+          <button type="button" onClick={onClose}>Luk</button>
+        </footer>
+      </div>
+    </dialog>
   )
 }
 

@@ -2386,7 +2386,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * dermed den SAMME uanset kommandoens længde — det er hele pointen. */
 .approvalcard {
   border: 1px solid var(--line); border-left: 3px solid var(--warn-fg);
-  border-radius: var(--radius-sm); padding: 3px 8px; margin: 8px 0; background: var(--bg-2);
+  border-radius: var(--radius-sm); padding: 0; margin: 8px 0; background: var(--bg-2);
+  overflow: hidden;
 }
 .approvalcard.risk-destructive { border-left-color: var(--error-fg); }
 
@@ -2395,7 +2396,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * linjen ud af sin faste form. */
 .approvallinje {
   display: flex; align-items: center; gap: 8px;
-  min-height: 22px; font-size: 12.5px;
+  min-height: 30px; padding: 4px 8px; font-size: 12.5px;
 }
 /* Åbn-knappen er en knap for tastaturets skyld, men skal læses som en linje —
  * ikke som en knap der konkurrerer med Godkend/Afvis. Derfor ingen flade,
@@ -2421,6 +2422,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--fg-3); font-family: ui-monospace, monospace; font-size: 11.5px;
 }
+.approvallinje-detaljer {
+  flex: none; color: var(--fg-3); font-size: 11px; font-family: inherit;
+}
+.approvallinje-aabn:hover .approvallinje-detaljer { color: var(--fg-2); }
 /* Historikkens status-badge (31/10-2026).
  *
  * En persisteret godkendelse har ingen knapper — den ER afgjort. Badgen er
@@ -2485,13 +2490,67 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    * folden; knapperne sidder på linjen og kan ikke skubbes væk. */
   max-height: min(40vh, 260px); overflow: auto; scrollbar-color: var(--line) transparent;
 }
-.approvalcard-actions { display: flex; gap: 8px; }
+.approvalcard-actionbar {
+  display: flex; align-items: center; justify-content: flex-end;
+  min-height: 34px; padding: 5px 8px;
+  border-top: 1px solid var(--line);
+}
+.approvalcard-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .approvalcard-actions button {
   border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: 4px 14px; cursor: pointer; font-size: 12.5px;
+  min-height: 26px; padding: 3px 11px; cursor: pointer; font-size: 12px;
   background: var(--bg-3); color: var(--fg-1);
 }
+.approvalcard-actions button:hover { border-color: var(--fg-3); background: var(--bg-4); }
+.approvalcard-actions .approvalcard-primary {
+  color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-3));
+}
+.approvalcard-actions button:focus-visible,
+.approval-details-dialog button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .approvalcard-readonly { font-size: 12px; color: var(--fg-3); }
+.approvalcard > .approvalcard-readonly { padding: 0 8px 7px; }
+
+/* Rå kommandoer har uforudsigelig højde og hører derfor ikke hjemme i
+ * transcriptets layout. Native dialog giver fokusfælde, Escape og top-layer
+ * i både Electron og PWA; kortet beholder samme højde uanset kommandoen. */
+.approval-details-dialog {
+  width: min(680px, calc(100vw - 32px)); max-height: min(76vh, 720px);
+  margin: auto; padding: 0; border: 1px solid var(--line);
+  border-radius: var(--radius-lg); background: var(--bg-2); color: var(--fg-1);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 45%); overflow: hidden;
+}
+.approval-details-dialog::backdrop { background: rgb(4 7 12 / 68%); backdrop-filter: blur(2px); }
+.approval-details-content { display: flex; flex-direction: column; max-height: min(76vh, 720px); }
+.approval-details-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 18px;
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--line);
+}
+.approval-details-head h2 { margin: 2px 0 0; font: 600 15px/1.3 ui-monospace, monospace; }
+.approval-details-kicker {
+  color: var(--fg-3); font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase;
+}
+.approval-details-close {
+  display: grid; place-items: center; width: 28px; height: 28px; flex: none;
+  border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--fg-2); cursor: pointer;
+}
+.approval-details-close:hover { background: var(--bg-4); color: var(--fg-1); }
+.approval-details-dialog .approvalcard-action {
+  flex: 1 1 auto; margin: 0; padding: 18px 20px; max-height: none; min-height: 96px;
+  background: var(--bg-1); overflow: auto;
+}
+.approval-details-foot {
+  display: flex; justify-content: flex-end; padding: 8px 12px; border-top: 1px solid var(--line);
+}
+.approval-details-foot button {
+  min-height: 28px; padding: 3px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-3); color: var(--fg-1); cursor: pointer;
+}
+@media (max-width: 600px) {
+  .approval-details-dialog { width: calc(100vw - 20px); }
+  .approval-details-head { padding: 15px 16px 12px; }
+  .approval-details-dialog .approvalcard-action { padding: 15px 16px; }
+}
 
 /* AppActionCard — Jarvis foreslår mode/permission-skift */
 .appaction-host { padding: 8px 12px 0; }

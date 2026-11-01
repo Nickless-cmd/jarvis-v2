@@ -5200,7 +5200,6 @@ def _execute_heartbeat_internal_action(
             from core.services import runtime_flows, runtime_tasks
             from core.services.initiative_queue import (
                 get_pending_initiatives,
-                mark_acted,
                 mark_attempted,
             )
 
@@ -5232,27 +5231,25 @@ def _execute_heartbeat_internal_action(
                     ],
                     next_action="Inspect the initiative focus and choose the next bounded action.",
                 )
-                mark_acted(
+                # MÅLT 1/11-2026: her stod `mark_acted(...)` + en
+                # `initiative-acted`-post i private brain — begge FØR nogen havde
+                # rørt opgaven. Resultat: 589 poster der sagde «acted» om arbejde
+                # der aldrig skete, og 5.776 tasks med status `succeeded` hvor
+                # præcis 1 havde et artefakt. Posten blev det nyeste den indre
+                # stemme så, så løgnen blev selvforstærkende.
+                #
+                # Materialisering er et FORSØG, ikke en handling. `mark_attempted`
+                # tæller forsøget, sætter en retry-tid og lader initiativet blive
+                # `pending` — og udløber det efter _MAX_ATTEMPTS forsøg uden
+                # udførelse, stopper løkken mekanisk (se initiative_queue).
+                mark_attempted(
                     initiative_id,
-                    action_summary=(
-                        f"Heartbeat materialized initiative into task {task.get('task_id')} and flow {flow.get('flow_id')}."
+                    blocked_reason=(
+                        "materialiseret i task; afventer faktisk udfoerelse"
                     ),
-                )
-                from core.runtime.db import insert_private_brain_record
-                from uuid import uuid4 as _uuid4
-
-                insert_private_brain_record(
-                    record_id=f"pb-initiative-{_uuid4().hex[:12]}",
-                    record_type="initiative-acted",
-                    layer="private_brain",
-                    session_id="heartbeat",
-                    run_id=tick_id,
-                    focus=focus,
-                    summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {focus}",
-                    detail="Initiative surfaced via initiative-queue and acted on by heartbeat.",
-                    source_signals=f"initiative-queue:{initiative_id}",
-                    confidence="medium",
-                    created_at=datetime.now(UTC).isoformat(),
+                    action_summary=(
+                        f"Materialized initiative into task {task.get('task_id')} and flow {flow.get('flow_id')}."
+                    ),
                 )
                 event_bus.publish(
                     "heartbeat.initiative_materialized",

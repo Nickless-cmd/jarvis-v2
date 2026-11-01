@@ -199,9 +199,16 @@ def test_act_on_initiative_materializes_runtime_work(isolated_runtime, monkeypat
     assert task["kind"] == "initiative-followup"
     assert task["origin_ref"] == "heartbeat-tick:test"
 
+    # ÆNDRET 1/11-2026: testen krævede at initiativet lå i `recent_acted` straks
+    # efter materialiseringen — altså at et FORSØG blev bogført som en HANDLING.
+    # Målt: 589 `initiative-acted`-poster skrevet før noget arbejde, og 5.776
+    # "succeeded" tasks hvor 1 havde et artefakt. Nu bliver initiativet `pending`
+    # til nogen faktisk udfører det; efter _MAX_ATTEMPTS forsøg udløber det.
     queue_state = initiative_queue.get_initiative_queue_state()
-    assert not any(item["initiative_id"] == initiative_id for item in queue_state["pending"])
-    assert any(item["initiative_id"] == initiative_id for item in queue_state["recent_acted"])
+    assert any(item["initiative_id"] == initiative_id for item in queue_state["pending"]), (
+        "materialisering er et forsøg, ikke en handling — initiativet skal blive pending"
+    )
+    assert not any(item["initiative_id"] == initiative_id for item in queue_state["recent_acted"])
 
 
 def test_phase1_heartbeat_prefers_pending_initiative_when_execute_allowed(

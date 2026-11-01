@@ -48,19 +48,44 @@ def claim_next_task(
     return updated or task
 
 
-def _handle_initiative_followup(task: dict[str, Any]) -> str:
-    goal = str(task.get("goal") or "(no goal)")
-    return f"initiative-followup acknowledged: {goal[:300]}"
+#: Hvorfor followup-handlers melder `blocked` og ikke `succeeded`
+#:
+#: MÅLT 1/11-2026: 5.776 initiative-followup-tasks stod som `succeeded`, alle med
+#: en `... acknowledged: <goal>`-streng som resultat. Præcis 1 af dem havde en
+#: ikke-tom `artifact_ref`. 5.794 flows stod fast på trin 1 af 2. Samme mål blev
+#: gentaget 306 gange over 50 dage.
+#:
+#: En streng der gentager instruksen er et EKKO, ikke et resultat. Handlers her
+#: kan kun videresende et mål — de har ingen værktøjsadgang og kan ikke producere
+#: et artefakt. Den ægte udførelse sker i den autonome run som
+#: `dispatch_heartbeat_initiative` starter. Derfor: `blocked`, med grunden skrevet
+#: ned, så køen ikke lukkes på en løgn.
+_FOLLOWUP_BLOCKED = (
+    "ingen handler kan udføre dette mål — det kræver en kørende bane med "
+    "værktøjsadgang (se dispatch_heartbeat_initiative)"
+)
 
 
-def _handle_heartbeat_followup(task: dict[str, Any]) -> str:
-    goal = str(task.get("goal") or "(no goal)")
-    return f"heartbeat-followup acknowledged: {goal[:300]}"
+def _followup_result(kind: str, task: dict[str, Any]) -> dict[str, str]:
+    goal = str(task.get("goal") or "").strip()
+    return {
+        "status": "blocked",
+        "summary": f"{kind}: videresendt, ikke udført — {goal[:200]}",
+        "artifact_ref": "",
+        "blocked_reason": _FOLLOWUP_BLOCKED,
+    }
 
 
-def _handle_open_loop_followup(task: dict[str, Any]) -> str:
-    goal = str(task.get("goal") or "(no goal)")
-    return f"open-loop-follow-up acknowledged: {goal[:300]}"
+def _handle_initiative_followup(task: dict[str, Any]) -> dict[str, str]:
+    return _followup_result("initiative-followup", task)
+
+
+def _handle_heartbeat_followup(task: dict[str, Any]) -> dict[str, str]:
+    return _followup_result("heartbeat-followup", task)
+
+
+def _handle_open_loop_followup(task: dict[str, Any]) -> dict[str, str]:
+    return _followup_result("open-loop-follow-up", task)
 
 
 def _handle_agency_bridge_repair(task: dict[str, Any]) -> dict[str, str]:
@@ -180,11 +205,11 @@ def _execute_task(task: dict[str, Any]) -> None:
     task_id = str(task.get("task_id") or "")
     try:
         if kind == "initiative-followup":
-            summary = _handle_initiative_followup(task)
+            result = _handle_initiative_followup(task)
         elif kind == "heartbeat-followup":
-            summary = _handle_heartbeat_followup(task)
+            result = _handle_heartbeat_followup(task)
         elif kind == "open-loop-follow-up":
-            summary = _handle_open_loop_followup(task)
+            result = _handle_open_loop_followup(task)
         elif kind == "agency_bridge_repair":
             result = _handle_agency_bridge_repair(task)
             runtime_tasks.update_task(
@@ -222,6 +247,21 @@ def _execute_task(task: dict[str, Any]) -> None:
                 task_id,
                 status="failed",
                 result_summary=f"unknown kind: {kind}",
+            )
+            return
+        if kind in (
+            "initiative-followup",
+            "heartbeat-followup",
+            "open-loop-follow-up",
+        ):
+            # Disse tre kan ikke udfoere deres eget maal — de melder `blocked`
+            # med en grund i stedet for at lukke koen paa en loegn.
+            runtime_tasks.update_task(
+                task_id,
+                status=result["status"],
+                blocked_reason=result["blocked_reason"],
+                result_summary=result["summary"],
+                artifact_ref=result["artifact_ref"],
             )
             return
         runtime_tasks.update_task(

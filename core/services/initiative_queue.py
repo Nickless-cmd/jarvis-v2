@@ -26,6 +26,10 @@ _EXPIRE_MINUTES = 90
 # doegn; medium/high er uaendret, saa det haastende stadig er haastende.
 _EXPIRE_MINUTES_LOW = 24 * 60
 _RETRY_DELAY_MINUTES = 10
+#: Loft paa antal forsoeg uden udfoerelse. MAALT 1/11-2026: samme maal blev
+#: gentaget 306 gange over 50 dage fordi intet stoppede det. Uden dette loft
+#: erstatter `mark_attempted` blot én loekke med en langsommere.
+_MAX_ATTEMPTS = 3
 _LONG_TERM_REASSESS_DAYS = 14
 _MAX_ACTIVE_LONG_TERM_INTENTIONS = 3
 _QUEUE_LOCK = threading.Lock()
@@ -366,6 +370,30 @@ def mark_attempted(
         if str(existing.get("initiative_type") or "initiative") == "long_term_intention":
             retry_at = now + timedelta(days=_LONG_TERM_REASSESS_DAYS)
         attempt_count = int(existing.get("attempt_count") or 0) + 1
+        if attempt_count > _MAX_ATTEMPTS:
+            # Loftet: forsoegt nok gange uden at nogen kunne udfoere det. Udløb
+            # frem for endnu et forsoeg — ellers er det samme loekke, blot
+            # langsommere (maalt: 306 gentagelser over 50 dage).
+            runtime_db.update_runtime_initiative(
+                initiative_id,
+                attempt_count=attempt_count,
+                last_attempt_at=now.isoformat(),
+                status="expired",
+                next_attempt_at="",
+                blocked_reason=(
+                    f"udloebet efter {attempt_count} forsoeg uden udfoerelse"
+                )[:120],
+                updated_at=now.isoformat(),
+            )
+            event_bus.publish(
+                "heartbeat.initiative_expired",
+                {
+                    "initiative_id": initiative_id,
+                    "focus": str(existing.get("focus") or "")[:100],
+                    "attempt_count": attempt_count,
+                },
+            )
+            return True
         runtime_db.update_runtime_initiative(
             initiative_id,
             attempt_count=attempt_count,

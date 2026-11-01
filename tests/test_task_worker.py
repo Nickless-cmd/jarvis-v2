@@ -90,6 +90,14 @@ def test_tick_processes_up_to_budget(isolated_runtime) -> None:
 
 
 def test_tick_handles_initiative_and_heartbeat_followup(isolated_runtime) -> None:
+    """Followup-tasks bliver afviklet — men som `blocked`, ikke `succeeded`.
+
+    ÆNDRET 1/11-2026: testen krævede tidligere `succeeded == 2`, hvilket pinnede
+    den fejl den skulle værne imod. Målt: 5.776 initiative-followup-tasks stod
+    som `succeeded` med en ren gentagelse af målet som resultat, og præcis 1
+    havde et artefakt. En handler der kun videresender en instruks har ikke
+    udført noget, og må ikke sige at den har.
+    """
     runtime_tasks, task_worker = _import_modules()
     runtime_tasks.create_task(
         kind="initiative-followup",
@@ -107,7 +115,8 @@ def test_tick_handles_initiative_and_heartbeat_followup(isolated_runtime) -> Non
     result = task_worker.tick_task_worker(budget=5)
 
     assert result["processed"] == 2
-    assert result["succeeded"] == 2
+    assert result["blocked"] == 2, "followup-handlers har intet udført — de skal sige det"
+    assert result["succeeded"] == 0
     assert result["failed"] == 0
 
 

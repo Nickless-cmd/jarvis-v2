@@ -68,6 +68,32 @@ def test_revoke(monkeypatch):
     assert ov.get_token("alice", "github") is None
 
 
+def test_remove_legacy_alias_only_after_canonical_token_is_readable(monkeypatch):
+    store = _setup(monkeypatch)
+    ov.save_token("canonical-1", "google", {"access_token": "live", "scope": "a b"})
+    ov.save_token("old-name", "google", {"access_token": "stale"})
+
+    assert ov.remove_legacy_token_alias("old-name", "canonical-1", "google") is True
+    assert "old-name" not in store["oauth_tokens"]
+    assert ov.get_token("canonical-1", "google") == {"access_token": "live", "scope": "a b"}
+
+
+def test_remove_legacy_alias_refuses_when_canonical_token_is_missing(monkeypatch):
+    _setup(monkeypatch)
+    ov.save_token("old-name", "google", {"access_token": "stale"})
+
+    assert ov.remove_legacy_token_alias("old-name", "canonical-1", "google") is False
+    assert ov.get_token("old-name", "google") == {"access_token": "stale"}
+
+
+def test_remove_legacy_alias_refuses_same_identity(monkeypatch):
+    _setup(monkeypatch)
+    ov.save_token("canonical-1", "google", {"access_token": "live"})
+
+    assert ov.remove_legacy_token_alias("canonical-1", "canonical-1", "google") is False
+    assert ov.get_token("canonical-1", "google") == {"access_token": "live"}
+
+
 def test_get_fresh_token_refreshes_when_expired(monkeypatch):
     _setup(monkeypatch)  # in-memory store + distinkt nøgle
     import core.services.oauth_flow as of

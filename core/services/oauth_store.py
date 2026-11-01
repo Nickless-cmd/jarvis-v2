@@ -104,6 +104,67 @@ def revoke_token(user_id: str, provider: str) -> bool:
         return False
 
 
+def remove_legacy_token_alias(
+    legacy_user_id: str,
+    canonical_user_id: str,
+    provider: str,
+) -> bool:
+    """Fjern en lokal aliaspost, men kun når den kanoniske token kan læses.
+
+    Dette tilbagekalder *ikke* tokenet hos provideren. Funktionen er den smalle
+    oprydningsvej til gamle workspace-navne, der levede side om side med det
+    kanoniske bruger-id. Den sletter aldrig først og håber bagefter: den
+    kanoniske post skal kunne dekrypteres, og skrivningen verificeres ved
+    read-back før ``True`` returneres.
+    """
+    legacy_uid, prov = _norm(legacy_user_id, provider)
+    canonical_uid, _ = _norm(canonical_user_id, provider)
+    if not legacy_uid or not canonical_uid or not prov or legacy_uid == canonical_uid:
+        return False
+
+    # Bevis at erstatningen ikke blot findes som ciphertext, men faktisk kan
+    # bruges med den kanoniske brugers nøgle, før aliaset røres.
+    if get_token(canonical_uid, prov) is None:
+        logger.warning(
+            "oauth: afviser alias-oprydning for %s/%s; kanonisk token kan ikke laeses",
+            legacy_uid, prov,
+        )
+        return False
+
+    try:
+        store = get_runtime_state_value(_KEY, {}) or {}
+        if not isinstance(store, dict):
+            return False
+        canonical_bucket = store.get(canonical_uid)
+        canonical_ciphertext = (
+            canonical_bucket.get(prov) if isinstance(canonical_bucket, dict) else None
+        )
+        legacy_bucket = store.get(legacy_uid)
+        if not isinstance(legacy_bucket, dict) or prov not in legacy_bucket:
+            return True
+
+        del legacy_bucket[prov]
+        if legacy_bucket:
+            store[legacy_uid] = legacy_bucket
+        else:
+            store.pop(legacy_uid, None)
+        set_runtime_state_value(_KEY, store)
+
+        saved = get_runtime_state_value(_KEY, {}) or {}
+        saved_legacy = saved.get(legacy_uid) if isinstance(saved, dict) else None
+        saved_canonical = saved.get(canonical_uid) if isinstance(saved, dict) else None
+        legacy_gone = not isinstance(saved_legacy, dict) or prov not in saved_legacy
+        canonical_unchanged = (
+            isinstance(saved_canonical, dict)
+            and saved_canonical.get(prov) == canonical_ciphertext
+        )
+        if legacy_gone and canonical_unchanged:
+            return True
+        logger.error("oauth: alias-oprydning for %s/%s kunne ikke verificeres", legacy_uid, prov)
+        return False
+    except Exception:
+        logger.warning("oauth: kunne ikke rydde token-alias %s/%s", legacy_uid, prov, exc_info=True)
+        return False
 def get_fresh_token(user_id: str, provider: str, *, now: float | None = None) -> dict | None:
     """Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes.
 

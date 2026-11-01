@@ -57,8 +57,9 @@ _Per-bruger krypteret OAuth-token-hvælv — plugin-fundamentets privatlivs-spin
 | function | `get_token` | `(user_id, provider)` | Hent + dekrypter token for (bruger, provider). None hvis intet/fejl. Kan KUN | [src](../../../core/services/oauth_store.py#L57) |
 | function | `has_token` | `(user_id, provider)` | Er der en (dekrypterbar) token for brugeren hos provideren? | [src](../../../core/services/oauth_store.py#L82) |
 | function | `revoke_token` | `(user_id, provider)` | Fjern token for (bruger, provider). True hvis udført (eller intet at fjerne). | [src](../../../core/services/oauth_store.py#L87) |
-| function | `get_fresh_token` | `(user_id, provider, *, now=…)` | Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes. | [src](../../../core/services/oauth_store.py#L107) |
-| function | `list_providers` | `(user_id)` | Providere brugeren har forbundet (har en gemt token for). | [src](../../../core/services/oauth_store.py#L133) |
+| function | `remove_legacy_token_alias` | `(legacy_user_id, canonical_user_id, provider)` | Fjern en lokal aliaspost, men kun når den kanoniske token kan læses. | [src](../../../core/services/oauth_store.py#L107) |
+| function | `get_fresh_token` | `(user_id, provider, *, now=…)` | Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes. | [src](../../../core/services/oauth_store.py#L168) |
+| function | `list_providers` | `(user_id)` | Providere brugeren har forbundet (har en gemt token for). | [src](../../../core/services/oauth_store.py#L194) |
 
 ## `core/services/offline_recomposition_engine.py`
 _Offline recomposition: recombine recent cognitive material into candidates._

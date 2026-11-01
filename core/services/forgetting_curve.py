@@ -33,11 +33,9 @@ Noeglen er en stabil hash af `focus|summary` — udtraekkene baerer intet id.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import re
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from core.eventbus.bus import event_bus
@@ -52,6 +50,82 @@ _MAX_SPOR = 500
 #: Noeglen i `core/runtime/state_store`. Laa foer i
 #: `shared_dir()/runtime/forgetting_curve.json` med haandskrevet load/save.
 _FIL = "forgetting_curve"
+
+
+#: Loft pr. EMNE pr. doegn — det mekaniske svar paa en loekke der ikke kan
+#: deduples paa tekst.
+#:
+#: MAALT 1/11-2026 paa de 103 poster om «den afbrudte koersel» siden 31/10:
+#: **77 kom fra EN generator** (`inner-voice-daemon`), 64 af dem paa et enkelt
+#: doegn, med skiftende `focus` (tankestroem, oplevelse, meta-moensster,
+#: somatisk tilstand). Det er ikke syv kanaler der hver gentager sig — det er
+#: eet daemon der gentager sig gennem syv ordforraad. Derfor er KILDEN emnet.
+#:
+#: HVORFOR 8. Simulering paa de 500 levende poster: N=8 beholder 157 (31 %) —
+#: 69 % af stoefjen klippes, mens der stadig er et arbejdssaet tilbage. N=5
+#: beholdt 25 %, N=15 44 %. Medianen for (dato, generator) i den levende base
+#: er 32 poster/dag, saa 8 ligger under medianen og klipper kun outlierne.
+#: inner-voice-daemonens 64/dag bliver 8 — en 8:1 reduktion, nok til at emnet
+#: kan falme.
+#:
+#: HVORFOR IKKE 1. Et emne pr. doegn pr. kilde ville goere kurven til 18
+#: poster/dag og bryde dens egen praemis: «det jeg bliver ved at se, bliver».
+#: En traad der udvikler sig skal kunne registreres mere end én gang.
+_EMNE_LOFT = 8
+
+#: Vinduet loftet maales over. Et DOEGN, ikke evigt: en post fra i gaar maa
+#: ikke spaerre for i dag.
+_EMNE_VINDUE_SEK = 24 * 60 * 60
+
+
+def emne_for(source: str) -> str:
+    """Emne-noeglen er KILDEN, ikke teksten.
+
+    `source_signals` paa en private-brain-record har formen `generator:kontekst`
+    og baerer en sag naar den findes (`initiative-queue:init-e954bcf831`,
+    `diary:diary-synthesis-2778…`). Den er derfor saa praecis som systemet
+    tillader: naar der findes et sags-id, er noeglen praecis; ellers er den
+    generatoren.
+
+    HVORFOR IKKE TEKST (maalt 31/10-2026, gentaget 1/11): difflib paa alle
+    124.750 par af samme kind gav median 0,280. Emne-parene laa paa median
+    0,376, og kun 5,1 % over 0,60 — mod 4,0 % af ALLE par. Ingen adskillelse:
+    en 0,60-taerskel ville fange naesten lige saa meget fremmed som emne.
+    Teksten skifter med vilje; det er emnet der gentages.
+    """
+    return str(source or "").strip()
+
+
+def _ts(iso: object) -> float | None:
+    """ISO-tidsstempel -> epoch-sekunder. None naar det ikke kan laeses."""
+    tekst = str(iso or "").strip()
+    if not tekst:
+        return None
+    try:
+        return datetime.fromisoformat(tekst.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError):  # kan ikke laeses = intet tidsstempel; posten taelles ikke i loftet, den slettes ikke
+        return None
+
+
+def _emne_poster_indenfor(
+    reg: dict[str, dict[str, Any]], emne: str, nu_ts: float
+) -> list[tuple[float, str]]:
+    """(tidsstempel, noegle) for poster med SAMME emne inden for vinduet.
+
+    Poster uden `source` (alle foer 1/11-2026) har intet emne og kan pr.
+    konstruktion ikke taelle med — de skal ikke spaerre for nye.
+    """
+    if not emne:
+        return []
+    hits: list[tuple[float, str]] = []
+    for noegle, post in reg.items():
+        if str(post.get("source") or "") != emne:
+            continue
+        t = _ts(post.get("registered_at"))
+        if t is None or nu_ts - t > _EMNE_VINDUE_SEK:
+            continue
+        hits.append((t, noegle))
+    return hits
 
 
 def _load() -> dict[str, dict[str, Any]]:
@@ -175,6 +249,7 @@ def register_memory(
     memory_key: str,
     content_preview: str = "",
     initial_decay: float = 0.0,
+    source: str = "",
 ) -> None:
     """Register a memory for decay tracking.
 
@@ -182,23 +257,45 @@ def register_memory(
     stedet for at der oprettes en ny. Maalt 31/10-2026: fem grupper i den
     levende fil havde ordret samme preview under forskellige noegler, saa
     emnet fik frisk `decay_score` hver gang og strukturelt ikke kunne falme.
+
+    Er EMNET (`source`) allerede registreret `_EMNE_LOFT` gange inden for et
+    doegn, forstaerkes den AELDSTE post i stedet for at skrive en ny. Det er
+    det mekaniske svar paa en loekke der ikke kan deduples paa tekst: ordene
+    skifter, kilden goer ikke.
     """
     with state_store.med_laas(_FIL):
         reg = _load()
+        nu = datetime.now(UTC)
+        nu_iso = nu.isoformat().replace("+00:00", "Z")
+        emne = emne_for(source)
+
         dublet = _find_dublet(reg, content_preview)
         if dublet is not None and dublet != memory_key:
             post = reg[dublet]
             post["decay_score"] = 0.0
             post["reinforcement_count"] = int(post.get("reinforcement_count", 0)) + 1
-            post["last_referenced_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+            post["last_referenced_at"] = nu_iso
             _save(reg)
             return
+
+        if emne:
+            indenfor = _emne_poster_indenfor(reg, emne, nu.timestamp())
+            if len(indenfor) >= _EMNE_LOFT:
+                _, aeldste = min(indenfor)
+                post = reg[aeldste]
+                post["decay_score"] = 0.0
+                post["reinforcement_count"] = int(post.get("reinforcement_count", 0)) + 1
+                post["last_referenced_at"] = nu_iso
+                _save(reg)
+                return
+
         reg[memory_key] = {
             "decay_score": initial_decay,
             "reinforcement_count": 0,
             "content_preview": content_preview[:100],
-            "registered_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            "last_referenced_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "source": emne,
+            "registered_at": nu_iso,
+            "last_referenced_at": nu_iso,
         }
         _save(reg)
 
@@ -328,6 +425,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
             summary = str(udtraek.get("summary") or "")
             if not summary.strip():
                 continue
+            emne = emne_for(str(udtraek.get("source") or ""))
             noegle = noegle_for(focus, summary)
             post = reg.get(noegle)
             if post:
@@ -353,11 +451,29 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
                     d_post["last_referenced_at"] = nu
                     genset += 1
                     continue
+                # Emne-loftet. Tekst-dedup'en ovenfor fanger kun ORDRETTE
+                # gentagelser; loekken gentager EMMET i nye ord, og derfor
+                # skal den bremses paa kilden. Se `_EMNE_LOFT`.
+                if emne:
+                    indenfor = _emne_poster_indenfor(
+                        reg, emne, _ts(nu) or 0.0
+                    )
+                    if len(indenfor) >= _EMNE_LOFT:
+                        _, aeldste = min(indenfor)
+                        a_post = reg[aeldste]
+                        a_post["decay_score"] = 0.0
+                        a_post["reinforcement_count"] = int(
+                            a_post.get("reinforcement_count", 0)
+                        ) + 1
+                        a_post["last_referenced_at"] = nu
+                        genset += 1
+                        continue
                 reg[noegle] = {
                     "decay_score": 0.0,
                     "reinforcement_count": 0,
                     "content_preview": preview,
                     "summary": summary,
+                    "source": emne,
                     "registered_at": nu,
                     "last_referenced_at": nu,
                 }

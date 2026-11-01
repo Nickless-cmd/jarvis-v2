@@ -536,6 +536,12 @@ def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[st
             "focus": _scrub_continuity_text(str(record.get("focus") or "")),
             "summary": summary,
             "confidence": str(record.get("confidence") or "medium"),
+            # Kilden. `source_signals` har formen `generator:kontekst` og
+            # baerer en sag naar den findes. Glemselskurven bruger den som
+            # EMNE-NOEGLE: ordene skifter mellem to poster om samme sag, kilden
+            # goer ikke (maalt 1/11-2026: 77 af 103 poster om samme emne kom
+            # fra EN generator). Uden feltet her kan kurven ikke se forskel.
+            "source": str(record.get("source_signals") or ""),
         })
 
     # Build a readable one-line continuity summary.

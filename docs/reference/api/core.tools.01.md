@@ -474,22 +474,29 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 | function | `_google_maps_key` | `()` | Nøglen, eller None når den ikke er sat. | [src](../../../core/tools/geolocation_tools.py#L73) |
 | function | `_google_seconds` | `(value)` | Google sender varighed som '144s' (protobuf-duration), ikke som tal. | [src](../../../core/tools/geolocation_tools.py#L89) |
 | function | `_throttle_nominatim` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L106) |
-| function | `geocode` | `(address)` | — | [src](../../../core/tools/geolocation_tools.py#L115) |
-| function | `reverse_geocode` | `(lat, lon)` | — | [src](../../../core/tools/geolocation_tools.py#L137) |
-| function | `_resolve_point` | `(point)` | Accepter enten 'adresse'-streng eller [lat, lon] / {lat,lon}. | [src](../../../core/tools/geolocation_tools.py#L177) |
-| function | `_osm_route` | `(from_, to, profile=…)` | — | [src](../../../core/tools/geolocation_tools.py#L196) |
-| function | `google_route` | `(from_, to, profile=…)` | Rute via Google Routes API v2. Svarer ærligt hvis nøglen mangler. | [src](../../../core/tools/geolocation_tools.py#L247) |
-| function | `compare_routes` | `(from_, to, profile=…)` | Kør samme rute gennem begge kilder og vis hvor de er uenige. | [src](../../../core/tools/geolocation_tools.py#L305) |
-| function | `route_directions` | `(from_, to, profile=…, source=…)` | Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L352) |
-| function | `_haversine_m` | `(lat1, lon1, lat2, lon2)` | — | [src](../../../core/tools/geolocation_tools.py#L389) |
-| function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L398) |
-| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L438) |
-| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L451) |
-| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L487) |
-| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L498) |
-| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L502) |
-| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L506) |
-| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L514) |
+| function | `_google_geocode_kald` | `(params, kilde_navn)` | Fælles Google-geocode-kald. Normaliserer svaret til OSM-formen. | [src](../../../core/tools/geolocation_tools.py#L123) |
+| function | `_google_komponent` | `(raa, *typer)` | Træk ét felt ud af Googles address_components efter type. | [src](../../../core/tools/geolocation_tools.py#L169) |
+| function | `_google_geocode` | `(addr)` | — | [src](../../../core/tools/geolocation_tools.py#L185) |
+| function | `_google_reverse_geocode` | `(lat_f, lon_f)` | — | [src](../../../core/tools/geolocation_tools.py#L200) |
+| function | `_osm_geocode` | `(addr)` | — | [src](../../../core/tools/geolocation_tools.py#L217) |
+| function | `_osm_reverse_geocode` | `(lat_f, lon_f)` | — | [src](../../../core/tools/geolocation_tools.py#L236) |
+| function | `_kilde_valg` | `(source)` | Normalisér kilde-navnet. Ukendt input falder til osm, ikke til google. | [src](../../../core/tools/geolocation_tools.py#L259) |
+| function | `geocode` | `(address, source=…)` | Adresse → koordinater. ``source``: 'osm' (standard), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L269) |
+| function | `reverse_geocode` | `(lat, lon, source=…)` | Koordinater → adresse. Samme kildevalg som :func:`geocode`. | [src](../../../core/tools/geolocation_tools.py#L304) |
+| function | `_resolve_point` | `(point)` | Accepter enten 'adresse'-streng eller [lat, lon] / {lat,lon}. | [src](../../../core/tools/geolocation_tools.py#L353) |
+| function | `_osm_route` | `(from_, to, profile=…)` | — | [src](../../../core/tools/geolocation_tools.py#L372) |
+| function | `google_route` | `(from_, to, profile=…)` | Rute via Google Routes API v2. Svarer ærligt hvis nøglen mangler. | [src](../../../core/tools/geolocation_tools.py#L423) |
+| function | `compare_routes` | `(from_, to, profile=…)` | Kør samme rute gennem begge kilder og vis hvor de er uenige. | [src](../../../core/tools/geolocation_tools.py#L481) |
+| function | `route_directions` | `(from_, to, profile=…, source=…)` | Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L528) |
+| function | `_haversine_m` | `(lat1, lon1, lat2, lon2)` | — | [src](../../../core/tools/geolocation_tools.py#L565) |
+| function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L574) |
+| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L614) |
+| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L627) |
+| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L663) |
+| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L674) |
+| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L678) |
+| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L684) |
+| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L692) |
 
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._

@@ -112,50 +112,226 @@ def _throttle_nominatim() -> None:
 
 
 # ── Geocode (adresse → koordinater) ────────────────────────────────────────────
-def geocode(address: str) -> dict[str, Any]:
-    addr = (address or "").strip()
-    if not addr:
-        return {"status": "error", "error": "Ingen adresse angivet."}
+#: Google Geocoding, samme nøgle som Routes. Målt 1/11-2026: API'et var
+#: aktiveret og svarede `OK` — men INGEN i koden kaldte det. `geocode()` gik
+#: direkte til Nominatim og `exec_geocode` sendte ikke engang en kilde videre.
+#: En nøgle der ligger klar uden at blive brugt er den fejlform der ser ud som
+#: om den virker. Nu kan kilden vælges, og standarden er uændret (osm).
+_GOOGLE_GEOCODE = "https://maps.googleapis.com/maps/api/geocode/json"
+
+
+def _google_geocode_kald(params: dict[str, str], kilde_navn: str) -> dict[str, Any]:
+    """Fælles Google-geocode-kald. Normaliserer svaret til OSM-formen.
+
+    Google svarer 200 selv når det fejler — status står i kroppens ``status``
+    («REQUEST_DENIED», «OVER_QUERY_LIMIT», …). Derfor tjekkes kroppen, ikke
+    HTTP-koden. Det er samme fælde som deres Routes API undgår ved at bruge
+    rigtige HTTP-koder; her skal man selv læse den.
+    """
+    key = _google_maps_key()
+    if not key:
+        return {
+            "status": "error",
+            "source": "google",
+            "needs_key": True,
+            "error": (
+                "google_maps_api_key mangler — sæt den som top-level key i "
+                "~/.jarvis-v2/config/runtime.json (eller JARVIS_GOOGLE_MAPS_API_KEY "
+                "i .env). Kilden er valgfri; OSM virker uden nøgle."
+            ),
+        }
+    q = urllib_parse.urlencode({**params, "key": key})
+    try:
+        data = _http_get_json(f"{_GOOGLE_GEOCODE}?{q}")
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+        # Sluges ikke: fejlen gaar tilbage til kalderen i "error"-feltet, saa
+        # han ser HVORFOR der ikke kom et svar i stedet for et tomt resultat.
+        return {"status": "error", "source": "google",
+                "error": f"Google {kilde_navn} fejlede: {exc}"}
+    stat = str(data.get("status") or "")
+    if stat != "OK":
+        return {
+            "status": "error",
+            "source": "google",
+            "google_status": stat,
+            "error": (
+                f"Google {kilde_navn} svarede {stat or 'uden status'}"
+                + (f": {data['error_message']}" if data.get("error_message") else "")
+            ),
+        }
+    res = data.get("results") or []
+    if not res:
+        return {"status": "error", "source": "google",
+                "error": f"Google {kilde_navn} gav ingen resultater."}
+    return {"status": "ok", "source": "google", "_raa": res[0]}
+
+
+def _google_komponent(raa: dict[str, Any], *typer: str) -> str:
+    """Træk ét felt ud af Googles address_components efter type.
+
+    Rækkefølgen i ``typer`` er prioriteten: en dansk by kan stå som både
+    ``postal_town`` og ``locality``, og de er ikke altid ens.
+    """
+    komponenter = raa.get("address_components") or []
+    for typ in typer:
+        for k in komponenter:
+            if typ in (k.get("types") or []):
+                navn = str(k.get("long_name") or "").strip()
+                if navn:
+                    return navn
+    return ""
+
+
+def _google_geocode(addr: str) -> dict[str, Any]:
+    svar = _google_geocode_kald({"address": addr}, "geocode")
+    if svar.get("status") != "ok":
+        return svar
+    raa = svar.pop("_raa")
+    loc = ((raa.get("geometry") or {}).get("location") or {})
+    return {
+        "status": "ok",
+        "source": "google",
+        "lat": float(loc.get("lat")),
+        "lon": float(loc.get("lng")),
+        "display_name": str(raa.get("formatted_address") or ""),
+    }
+
+
+def _google_reverse_geocode(lat_f: float, lon_f: float) -> dict[str, Any]:
+    svar = _google_geocode_kald({"latlng": f"{lat_f},{lon_f}"}, "reverse-geocode")
+    if svar.get("status") != "ok":
+        return svar
+    raa = svar.pop("_raa")
+    return {
+        "status": "ok",
+        "source": "google",
+        "display_name": str(raa.get("formatted_address") or ""),
+        "road": _google_komponent(raa, "route"),
+        "city": _google_komponent(raa, "postal_town", "locality",
+                                  "administrative_area_level_2"),
+        "postcode": _google_komponent(raa, "postal_code"),
+        "country": _google_komponent(raa, "country"),
+    }
+
+
+def _osm_geocode(addr: str) -> dict[str, Any]:
     _throttle_nominatim()
     q = urllib_parse.urlencode({"q": addr, "format": "json", "limit": 1, "addressdetails": 1})
     try:
         rows = _http_get_json(f"{_NOMINATIM}/search?{q}")
     except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
-        return {"status": "error", "error": f"Geocode fejlede: {exc}"}
+        return {"status": "error", "source": "osm", "error": f"Geocode fejlede: {exc}"}
     if not rows:
-        return {"status": "error", "error": f"Ingen match for '{addr}'."}
+        return {"status": "error", "source": "osm", "error": f"Ingen match for '{addr}'."}
     r = rows[0]
     return {
         "status": "ok",
+        "source": "osm",
         "lat": float(r.get("lat")),
         "lon": float(r.get("lon")),
         "display_name": r.get("display_name", ""),
     }
 
 
-# ── Reverse-geocode (koordinater → adresse) ─────────────────────────────────────
-def reverse_geocode(lat: float, lon: float) -> dict[str, Any]:
-    try:
-        lat_f, lon_f = float(lat), float(lon)
-    except (TypeError, ValueError):
-        return {"status": "error", "error": "Ugyldige koordinater."}
+def _osm_reverse_geocode(lat_f: float, lon_f: float) -> dict[str, Any]:
     _throttle_nominatim()
     q = urllib_parse.urlencode({"lat": lat_f, "lon": lon_f, "format": "json", "addressdetails": 1})
     try:
         r = _http_get_json(f"{_NOMINATIM}/reverse?{q}")
     except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
-        return {"status": "error", "error": f"Reverse-geocode fejlede: {exc}"}
+        return {"status": "error", "source": "osm",
+                "error": f"Reverse-geocode fejlede: {exc}"}
     if not r or r.get("error"):
-        return {"status": "error", "error": "Ingen adresse fundet for koordinaterne."}
+        return {"status": "error", "source": "osm",
+                "error": "Ingen adresse fundet for koordinaterne."}
     a = r.get("address", {})
     return {
         "status": "ok",
+        "source": "osm",
         "display_name": r.get("display_name", ""),
         "road": a.get("road", ""),
         "city": a.get("city") or a.get("town") or a.get("village") or a.get("municipality", ""),
         "postcode": a.get("postcode", ""),
         "country": a.get("country", ""),
     }
+
+
+def _kilde_valg(source: str | None) -> str:
+    """Normalisér kilde-navnet. Ukendt input falder til osm, ikke til google."""
+    valg = (source or "osm").strip().lower()
+    if valg in ("google", "gmaps"):
+        return "google"
+    if valg in ("compare", "sammenlign", "both"):
+        return "compare"
+    return "osm"
+
+
+def geocode(address: str, source: str = "osm") -> dict[str, Any]:
+    """Adresse → koordinater. ``source``: 'osm' (standard), 'google' eller 'compare'.
+
+    Standarden er OSM med vilje: den kræver ingen nøgle og ingen kvote. Google
+    vælges når adressekvaliteten er i tvivl — og ved ``compare`` køres begge, så
+    uenigheden bliver synlig i stedet for at ét svar får lov at se ud som en
+    sandhed. Afvigelsen rapporteres i METER, ikke som et ja/nej: 30 meter er
+    ingenting på en landevej og meget i en baggård.
+    """
+    addr = (address or "").strip()
+    if not addr:
+        return {"status": "error", "error": "Ingen adresse angivet."}
+    valg = _kilde_valg(source)
+    if valg == "google":
+        return _google_geocode(addr)
+    if valg == "compare":
+        osm = _osm_geocode(addr)
+        goog = _google_geocode(addr)
+        ud: dict[str, Any] = {"status": "ok", "source": "compare",
+                              "osm": osm, "google": goog}
+        if osm.get("status") == "ok" and goog.get("status") == "ok":
+            ud["afvigelse_m"] = round(_haversine_m(
+                osm["lat"], osm["lon"], goog["lat"], goog["lon"]
+            ))
+            ud["lat"] = goog["lat"]
+            ud["lon"] = goog["lon"]
+            ud["display_name"] = goog["display_name"]
+        else:
+            ud["status"] = "error"
+            ud["error"] = "Kunne ikke sammenligne — mindst én kilde fejlede."
+        return ud
+    return _osm_geocode(addr)
+
+
+# ── Reverse-geocode (koordinater → adresse) ─────────────────────────────────────
+def reverse_geocode(lat: float, lon: float, source: str = "osm") -> dict[str, Any]:
+    """Koordinater → adresse. Samme kildevalg som :func:`geocode`."""
+    try:
+        lat_f, lon_f = float(lat), float(lon)
+    except (TypeError, ValueError):
+        return {"status": "error", "error": "Ugyldige koordinater."}
+    valg = _kilde_valg(source)
+    if valg == "google":
+        return _google_reverse_geocode(lat_f, lon_f)
+    if valg == "compare":
+        osm = _osm_reverse_geocode(lat_f, lon_f)
+        goog = _google_reverse_geocode(lat_f, lon_f)
+        ud: dict[str, Any] = {"status": "ok", "source": "compare",
+                              "osm": osm, "google": goog}
+        # Adresser sammenlignes som tekst — der er ingen afstand at måle når
+        # begge svarer på SAMME koordinat. Forskellen ligger i gadenavnet.
+        if osm.get("status") == "ok" and goog.get("status") == "ok":
+            ud["enige"] = (
+                (osm.get("road") or "").strip().lower()
+                == (goog.get("road") or "").strip().lower()
+                and (osm.get("postcode") or "").strip()
+                == (goog.get("postcode") or "").strip()
+            )
+            ud["road"] = goog.get("road") or osm.get("road")
+            ud["city"] = goog.get("city") or osm.get("city")
+            ud["postcode"] = goog.get("postcode") or osm.get("postcode")
+        else:
+            ud["status"] = "error"
+            ud["error"] = "Kunne ikke sammenligne — mindst én kilde fejlede."
+        return ud
+    return _osm_reverse_geocode(lat_f, lon_f)
 
 
 # ── Route directions (A → B) ────────────────────────────────────────────────────
@@ -496,11 +672,13 @@ def exec_geolocation_lookup(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def exec_geocode(args: dict[str, Any]) -> dict[str, Any]:
-    return geocode(str(args.get("address") or ""))
+    return geocode(str(args.get("address") or ""), str(args.get("source") or "osm"))
 
 
 def exec_reverse_geocode(args: dict[str, Any]) -> dict[str, Any]:
-    return reverse_geocode(args.get("lat"), args.get("lon"))
+    return reverse_geocode(
+        args.get("lat"), args.get("lon"), str(args.get("source") or "osm")
+    )
 
 
 def exec_route_directions(args: dict[str, Any]) -> dict[str, Any]:

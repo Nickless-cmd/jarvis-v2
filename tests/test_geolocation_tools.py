@@ -101,8 +101,16 @@ def test_geolocation_lookup_off_no_ip(monkeypatch):
 
 
 def test_exec_wrappers_route_args(monkeypatch):
-    monkeypatch.setattr(g, "geocode", lambda a: {"status": "ok", "lat": 1.0, "lon": 2.0})
+    # 1/11-2026: lambda'en tog kun ét argument. Det var korrekt indtil
+    # `geocode` fik en `source`-parameter — wrapperen videresender den nu, saa
+    # signaturen skal foelge med. Testens HENSIGT er uaendret: at `address`
+    # naar helt frem til funktionen og resultatet tilbage til kalderen.
+    monkeypatch.setattr(
+        g, "geocode",
+        lambda a, source="osm": {"status": "ok", "lat": 1.0, "lon": 2.0, "source": source},
+    )
     assert g.exec_geocode({"address": "x"})["lat"] == 1.0
+    assert g.exec_geocode({"address": "x", "source": "google"})["source"] == "google"
 
 
 # ── Google Routes som valgfri kilde (31/10-2026) ──────────────────────────────

@@ -1801,11 +1801,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "geocode",
-            "description": "Convert an address to coordinates (lat/lon) via OpenStreetMap Nominatim. E.g. 'Toftegårdsvej 12, Svendborg' -> {lat, lon, display_name}.",
+            "description": "Convert an address to coordinates (lat/lon). source='osm' (default, free, no key) uses OpenStreetMap Nominatim; source='google' uses Google Geocoding API (needs google_maps_api_key, 10k free calls/month) and is more accurate on Danish addresses; source='compare' runs both and reports afvigelse_m — the distance between the two answers in METRES, so you can judge whether they actually disagree. Use 'compare' when an address is ambiguous.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "address": {"type": "string", "description": "Free-form address or place name."},
+                    "source": {"type": "string", "enum": ["osm", "google", "compare"], "description": "Which geocoder. Default 'osm' (free, no key)."},
                 },
                 "required": ["address"],
             },
@@ -1815,12 +1816,13 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "reverse_geocode",
-            "description": "Convert coordinates to a street address via Nominatim. E.g. (55.86, 10.39) -> 'Toftegårdsvej, 5700 Svendborg'.",
+            "description": "Convert coordinates to a street address. source='osm' (default, free) uses Nominatim; source='google' uses Google Geocoding API (needs key, better on Danish addresses); source='compare' runs both and reports whether they agree on road and postcode. E.g. (55.86, 10.39) -> 'Toftegårdsvej, 5700 Svendborg'.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "lat": {"type": "number", "description": "Latitude."},
                     "lon": {"type": "number", "description": "Longitude."},
+                    "source": {"type": "string", "enum": ["osm", "google", "compare"], "description": "Which geocoder. Default 'osm' (free, no key)."},
                 },
                 "required": ["lat", "lon"],
             },

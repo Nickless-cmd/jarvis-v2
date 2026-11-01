@@ -1849,16 +1849,47 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "nearby_search",
-            "description": "Find places near coordinates via OpenStreetMap Overpass. E.g. nearest fuel/pharmacy/supermarket/restaurant/atm. Returns name, type, distance_m, sorted nearest-first.",
+            "description": "Find places near coordinates. source='osm' (default, free, no key) uses OpenStreetMap Overpass — but that public endpoint is often at capacity (HTTP 502) and then returns an error; source='google' uses Google Places API (New, needs key, unlimited free on the IDs-Only SKU) and is far more reliable plus knows 200M places; source='compare' runs both and reports fælles/kun_osm/kun_google — how many places they agree on. E.g. nearest fuel/pharmacy/supermarket/restaurant/atm/train station. Returns name, type, distance_m, sorted nearest-first.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "lat": {"type": "number", "description": "Latitude of the search center."},
                     "lon": {"type": "number", "description": "Longitude of the search center."},
-                    "query": {"type": "string", "description": "What to find: e.g. 'tankstation', 'pharmacy', 'supermarket', or a place name."},
-                    "radius": {"type": "integer", "description": "Search radius in meters (default 1500, max 20000)."},
+                    "query": {"type": "string", "description": "What to find: e.g. 'tankstation', 'pharmacy', 'supermarket', 'apotek', 'togstation', or a place name."},
+                    "radius": {"type": "integer", "description": "Search radius in meters (default 1500, max 20000 for osm / 50000 for google)."},
+                    "source": {"type": "string", "enum": ["osm", "google", "compare"], "description": "Which source. Default 'osm' (free, no key, but often 502). 'google' is the reliable one."},
                 },
                 "required": ["lat", "lon", "query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "google_weather",
+            "description": "Current weather from Google Weather API for a coordinate (needs google_maps_api_key; 10k free calls/month, then $0.15/1000 — 33x cheaper than geocoding). Returns temp_c, feels_like_c, description, wind_ms, wind_gust_ms, humidity_pct, precip_prob_pct, timezone. Use when you want the same numbers Google itself shows; get_weather (Open-Meteo) is the free default and needs no key.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lat": {"type": "number", "description": "Latitude."},
+                    "lon": {"type": "number", "description": "Longitude."},
+                },
+                "required": ["lat", "lon"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "google_air_quality",
+            "description": "Current air quality from Google Air Quality API for a coordinate (needs key; 10k free calls/month). Returns the Universal AQI (aqi), its category in Danish, the dominant pollutant, and all available indexes. Use for 'is the air bad today' / pollen-adjacent questions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lat": {"type": "number", "description": "Latitude."},
+                    "lon": {"type": "number", "description": "Longitude."},
+                },
+                "required": ["lat", "lon"],
             },
         },
     },

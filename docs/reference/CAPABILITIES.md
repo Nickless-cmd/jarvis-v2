@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-10-30 — 518 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-01 — 520 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -155,6 +155,8 @@
 | `goal_list` | native | no |
 | `goal_update` | native | no |
 | `goal_update_status` | native | no |
+| `google_air_quality` | native | no |
+| `google_weather` | native | no |
 | `gpu_status` | native | no |
 | `health_check` | native | no |
 | `health_history` | native | no |

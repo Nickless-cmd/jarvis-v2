@@ -1991,6 +1991,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "reverse_geocode": _geo_tools.exec_reverse_geocode,
     "route_directions": _geo_tools.exec_route_directions,
     "nearby_search": _geo_tools.exec_nearby_search,
+    "google_weather": _geo_tools.exec_google_weather,
+    "google_air_quality": _geo_tools.exec_google_air_quality,
     "get_exchange_rate": _exec_get_exchange_rate,
     "madopskrift": _exec_madopskrift,
     "get_news": _exec_get_news,

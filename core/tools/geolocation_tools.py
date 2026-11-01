@@ -219,7 +219,7 @@ def _osm_geocode(addr: str) -> dict[str, Any]:
     q = urllib_parse.urlencode({"q": addr, "format": "json", "limit": 1, "addressdetails": 1})
     try:
         rows = _http_get_json(f"{_NOMINATIM}/search?{q}")
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:  # netvaerksfejl = svar til kalderen, ikke en tavs tom liste
         return {"status": "error", "source": "osm", "error": f"Geocode fejlede: {exc}"}
     if not rows:
         return {"status": "error", "source": "osm", "error": f"Ingen match for '{addr}'."}
@@ -238,7 +238,7 @@ def _osm_reverse_geocode(lat_f: float, lon_f: float) -> dict[str, Any]:
     q = urllib_parse.urlencode({"lat": lat_f, "lon": lon_f, "format": "json", "addressdetails": 1})
     try:
         r = _http_get_json(f"{_NOMINATIM}/reverse?{q}")
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:  # netvaerksfejl = svar til kalderen, ikke en tavs tom adresse
         return {"status": "error", "source": "osm",
                 "error": f"Reverse-geocode fejlede: {exc}"}
     if not r or r.get("error"):
@@ -305,7 +305,7 @@ def reverse_geocode(lat: float, lon: float, source: str = "osm") -> dict[str, An
     """Koordinater → adresse. Samme kildevalg som :func:`geocode`."""
     try:
         lat_f, lon_f = float(lat), float(lon)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # ugyldig koordinat = svar til kalderen, ikke en tavs default
         return {"status": "error", "error": "Ugyldige koordinater."}
     valg = _kilde_valg(source)
     if valg == "google":
@@ -394,7 +394,7 @@ def _osm_route(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
     url = f"{_OSRM}/route/v1/{prof}/{coords}?overview=false&steps=true"
     try:
         data = _http_get_json(url, timeout=15.0)
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:  # netvaerksfejl = svar til kalderen, ikke en tom rute
         return {"status": "error", "error": f"Ruteberegning fejlede: {exc}"}
     routes = data.get("routes") or []
     if not routes:
@@ -571,11 +571,8 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r * asin(sqrt(a))
 
 
-def nearby_search(lat: float, lon: float, query: str, radius: int = 1500) -> dict[str, Any]:
-    try:
-        lat_f, lon_f = float(lat), float(lon)
-    except (TypeError, ValueError):
-        return {"status": "error", "error": "Ugyldige koordinater."}
+def _osm_nearby(lat_f: float, lon_f: float, query: str, radius: int = 1500) -> dict[str, Any]:
+    """Steder i nærheden via Overpass (OSM). Gratis, ingen nøgle."""
     try:
         rad = max(50, min(int(radius), 20000))
     except (TypeError, ValueError):
@@ -591,8 +588,9 @@ def nearby_search(lat: float, lon: float, query: str, radius: int = 1500) -> dic
     ql = f"[out:json][timeout:20];({selector}(around:{rad},{lat_f},{lon_f}););out center 30;"
     try:
         data = _http_get_json(_OVERPASS, timeout=25.0, data=urllib_parse.urlencode({"data": ql}).encode())
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
-        return {"status": "error", "error": f"Nærheds-søgning fejlede: {exc}"}
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:  # 502 fra Overpass = svar til kalderen, ikke "ingen steder fundet"
+        return {"status": "error", "source": "osm",
+                "error": f"Nærheds-søgning fejlede: {exc}"}
     results = []
     for el in data.get("elements", []):
         elat = el.get("lat") or (el.get("center") or {}).get("lat")
@@ -607,7 +605,275 @@ def nearby_search(lat: float, lon: float, query: str, radius: int = 1500) -> dic
             "lat": float(elat), "lon": float(elon),
         })
     results.sort(key=lambda r: r["distance_m"])
-    return {"status": "ok", "count": len(results), "results": results[:15]}
+    return {"status": "ok", "source": "osm", "count": len(results),
+            "results": results[:15]}
+
+
+# ── Google Places (New) — steder i nærheden ────────────────────────────────────
+#: Målt 1/11-2026: Places API (New) var aktiveret og svarede 200 — men INGEN
+#: kode kaldte den. `nearby_search` gik kun til Overpass. Samme fejlform som
+#: geocoding havde samme morgen: nøglen ligger klar, API'et svarer pænt, og
+#: ingen rører det.
+#:
+#: PRISEN er grunden til at feltmasket er så smal som den er: Places
+#: «IDs Only»-SKU'en er den ENESTE på hele Maps-listen uden loft — ubegrænset
+#: gratis. Man betaler først når man vil have indholdet (telefon, åbningstider,
+#: anmeldelser). Derfor hentes kun id, navn og koordinat: nok til at finde
+#: stedet, ikke nok til at koste noget.
+_GOOGLE_PLACES = "https://places.googleapis.com/v1/places:searchNearby"
+_GOOGLE_PLACES_FIELDS = "places.id,places.displayName,places.location,places.types"
+
+#: Fritekst → Googles place-typer. Google kender ikke «apotek» som dansk ord,
+#: så oversættelsen skal ske her og ikke i modellen.
+_PLACES_TYPE_MAP = {
+    "tankstation": "gas_station", "benzin": "gas_station", "fuel": "gas_station",
+    "supermarked": "supermarket", "supermarket": "supermarket",
+    "apotek": "pharmacy", "pharmacy": "pharmacy",
+    "restaurant": "restaurant", "cafe": "cafe", "café": "cafe",
+    "hospital": "hospital", "sygehus": "hospital",
+    "atm": "atm", "hæveautomat": "atm", "bank": "bank",
+    "parkering": "parking", "parking": "parking",
+    "toilet": "toilet", "bibliotek": "library",
+    "togstation": "train_station", "station": "train_station",
+    "busstoppested": "bus_station",
+}
+
+
+def _google_places(lat_f: float, lon_f: float, query: str, radius: int = 1500) -> dict[str, Any]:
+    """Steder i nærheden via Places API (New). Kræver nøgle; fejler højt uden."""
+    key = _google_maps_key()
+    if not key:
+        return {
+            "status": "error",
+            "source": "google",
+            "needs_key": True,
+            "error": (
+                "google_maps_api_key mangler — sæt den som top-level key i "
+                "~/.jarvis-v2/config/runtime.json (eller JARVIS_GOOGLE_MAPS_API_KEY "
+                "i .env). Kilden er valgfri; OSM virker uden nøgle."
+            ),
+        }
+    try:
+        rad = max(50, min(int(radius), 50000))
+    except (TypeError, ValueError):
+        rad = 1500
+    q = (query or "").strip().lower()
+    typ = _PLACES_TYPE_MAP.get(q)
+    payload: dict[str, Any] = {
+        "locationRestriction": {
+            "circle": {
+                "center": {"latitude": lat_f, "longitude": lon_f},
+                "radius": float(rad),
+            }
+        },
+        "maxResultCount": 15,
+        "languageCode": "da",
+    }
+    if typ:
+        payload["includedTypes"] = [typ]
+    else:
+        # Ukendt term: Google har ingen fritekst-søgning i searchNearby, så
+        # termen sendes som tekst-søgning i stedet. Det er en ANDEN SKU
+        # (Text Search), og det siges i svaret så prisen ikke er skjult.
+        payload["textQuery"] = q
+    try:
+        data = _http_post_json(
+            _GOOGLE_PLACES, payload,
+            {"X-Goog-Api-Key": key, "X-Goog-FieldMask": _GOOGLE_PLACES_FIELDS},
+        )
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+        # Fejlen gaar tilbage til kalderen i "error" - den forsvinder ikke her.
+        return {"status": "error", "source": "google",
+                "error": f"Google Places fejlede: {exc}"}
+    results = []
+    for p in data.get("places") or []:
+        loc = p.get("location") or {}
+        plat, plon = loc.get("latitude"), loc.get("longitude")
+        if plat is None or plon is None:
+            continue
+        results.append({
+            "name": ((p.get("displayName") or {}).get("text") or "(uden navn)"),
+            "type": (p.get("types") or [""])[0],
+            "place_id": p.get("id", ""),
+            "distance_m": round(_haversine_m(lat_f, lon_f, float(plat), float(plon))),
+            "lat": float(plat), "lon": float(plon),
+        })
+    results.sort(key=lambda r: r["distance_m"])
+    ud: dict[str, Any] = {"status": "ok", "source": "google",
+                          "count": len(results), "results": results[:15]}
+    if not typ:
+        ud["note"] = ("Ukendt søgeterm — brugt Text Search i stedet for Nearby. "
+                      "Det er en anden SKU end IDs-Only.")
+    return ud
+
+
+def nearby_search(
+    lat: float, lon: float, query: str, radius: int = 1500, source: str = "osm",
+) -> dict[str, Any]:
+    """Steder i nærheden. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'.
+
+    Standarden er OSM med vilje — ingen nøgle, ingen kvote. Google vælges når
+    stedets NAVN og id betyder noget (Places kender 200 mio. steder, Overpass
+    kender det der er tagget i OSM). Ved ``compare`` køres begge, og enigheden
+    rapporteres som et TAL — hvor mange steder de to kilder deler navn på.
+    """
+    try:
+        lat_f, lon_f = float(lat), float(lon)
+    except (TypeError, ValueError):  # ugyldig koordinat = svar til kalderen, ikke en tavs default
+        return {"status": "error", "error": "Ugyldige koordinater."}
+    valg = _kilde_valg(source)
+    if valg == "google":
+        return _google_places(lat_f, lon_f, query, radius)
+    if valg == "compare":
+        osm = _osm_nearby(lat_f, lon_f, query, radius)
+        goog = _google_places(lat_f, lon_f, query, radius)
+        ud: dict[str, Any] = {"status": "ok", "source": "compare",
+                              "osm": osm, "google": goog}
+        if osm.get("status") == "ok" and goog.get("status") == "ok":
+            def _norm(n: object) -> str:
+                return " ".join(str(n or "").lower().split())
+            osm_navne = {_norm(r.get("name")) for r in osm.get("results") or []}
+            goog_navne = {_norm(r.get("name")) for r in goog.get("results") or []}
+            ud["fælles"] = len(osm_navne & goog_navne)
+            ud["kun_osm"] = len(osm_navne - goog_navne)
+            ud["kun_google"] = len(goog_navne - osm_navne)
+        else:
+            ud["status"] = "error"
+            ud["error"] = "Kunne ikke sammenligne — mindst én kilde fejlede."
+        return ud
+    return _osm_nearby(lat_f, lon_f, query, radius)
+
+
+# ── Google Weather (kræver nøgle) ──────────────────────────────────────────────
+#: Målt 1/11-2026: Weather API var aktiveret og svarede 200 med timeZone,
+#: weatherCondition og temperatur — men intet værktøj kaldte den. Prisen er
+#: $0,15/1.000 efter 10.000 gratis kald, altså 33x billigere end geocoding.
+#: Open-Meteo bruges stadig som standard (gratis, ingen nøgle); denne findes
+#: fordi Google er den kilde der matcher det Google selv viser på telefonen.
+_GOOGLE_WEATHER = "https://weather.googleapis.com/v1/currentConditions:lookup"
+
+
+def google_weather(lat: float, lon: float) -> dict[str, Any]:
+    """Aktuelt vejr fra Google Weather API. Normaliseret til geo-familiens form."""
+    key = _google_maps_key()
+    if not key:
+        return {
+            "status": "error",
+            "source": "google",
+            "needs_key": True,
+            "error": (
+                "google_maps_api_key mangler — sæt den som top-level key i "
+                "~/.jarvis-v2/config/runtime.json (eller JARVIS_GOOGLE_MAPS_API_KEY "
+                "i .env). Open-Meteo virker uden nøgle."
+            ),
+        }
+    try:
+        lat_f, lon_f = float(lat), float(lon)
+    except (TypeError, ValueError):  # ugyldig koordinat = svar til kalderen, ikke en tavs default
+        return {"status": "error", "error": "Ugyldige koordinater."}
+    q = urllib_parse.urlencode({
+        "key": key, "location.latitude": lat_f, "location.longitude": lon_f,
+        "languageCode": "da",
+    })
+    try:
+        data = _http_get_json(f"{_GOOGLE_WEATHER}?{q}")
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+        # Fejlen gaar tilbage til kalderen i "error" - den forsvinder ikke her.
+        return {"status": "error", "source": "google",
+                "error": f"Google Weather fejlede: {exc}"}
+
+    def _grader(blok: object) -> float | None:
+        if isinstance(blok, dict) and blok.get("degrees") is not None:
+            try:
+                return float(blok["degrees"])
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def _tal(blok: object, felt: str = "value") -> float | None:
+        if isinstance(blok, dict) and blok.get(felt) is not None:
+            try:
+                return float(blok[felt])
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    kond = data.get("weatherCondition") or {}
+    return {
+        "status": "ok",
+        "source": "google",
+        "temp_c": _grader(data.get("temperature")),
+        "feels_like_c": _grader(data.get("feelsLikeTemperature")),
+        "description": str((kond.get("description") or {}).get("text") or ""),
+        "condition_type": str(kond.get("type") or ""),
+        "wind_ms": _tal(data.get("wind", {}).get("speed")),
+        "wind_gust_ms": _tal(data.get("wind", {}).get("gust")),
+        "humidity_pct": data.get("relativeHumidity"),
+        "precip_prob_pct": _tal(
+            (data.get("precipitation") or {}).get("probability"), "percent"
+        ),
+        "timezone": str((data.get("timeZone") or {}).get("id") or ""),
+    }
+
+
+# ── Google Air Quality (kræver nøgle) ──────────────────────────────────────────
+#: Målt 1/11-2026: Air Quality svarede 200 med uaqi=78 for Odense. 10.000
+#: gratis kald/md. Den er den eneste af de tre nye der giver noget Open-Meteo
+#: ikke allerede har i morgenbriefen — og den bruger samme UAQI-skala som
+#: Google viser i sine egne produkter.
+_GOOGLE_AIR = "https://airquality.googleapis.com/v1/currentConditions:lookup"
+
+
+def google_air_quality(lat: float, lon: float) -> dict[str, Any]:
+    """Aktuel luftkvalitet fra Google Air Quality API."""
+    key = _google_maps_key()
+    if not key:
+        return {
+            "status": "error",
+            "source": "google",
+            "needs_key": True,
+            "error": (
+                "google_maps_api_key mangler — sæt den som top-level key i "
+                "~/.jarvis-v2/config/runtime.json (eller JARVIS_GOOGLE_MAPS_API_KEY "
+                "i .env)."
+            ),
+        }
+    try:
+        lat_f, lon_f = float(lat), float(lon)
+    except (TypeError, ValueError):  # ugyldig koordinat = svar til kalderen, ikke en tavs default
+        return {"status": "error", "error": "Ugyldige koordinater."}
+    payload = {
+        "location": {"latitude": lat_f, "longitude": lon_f},
+        "languageCode": "da",
+    }
+    try:
+        data = _http_post_json(
+            _GOOGLE_AIR, payload,
+            {"X-Goog-Api-Key": key,
+             "X-Goog-FieldMask": "indexes,pollutants"},
+        )
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError, ValueError) as exc:
+        # Fejlen gaar tilbage til kalderen i "error" - den forsvinder ikke her.
+        return {"status": "error", "source": "google",
+                "error": f"Google Air Quality fejlede: {exc}"}
+    indexes = data.get("indexes") or []
+    uaqi = next((i for i in indexes if i.get("code") == "uaqi"), indexes[0] if indexes else {})
+    pm25 = next(
+        (p for p in (data.get("pollutants") or []) if p.get("code") == "pm25"), {}
+    )
+    return {
+        "status": "ok",
+        "source": "google",
+        "aqi": uaqi.get("aqi"),
+        "kategori": str(uaqi.get("category") or ""),
+        "dominerende": str(uaqi.get("dominantPollutant") or ""),
+        "pm25": (pm25.get("concentration") or {}).get("value"),
+        "alle_indexes": [
+            {"kode": i.get("code"), "aqi": i.get("aqi"),
+             "kategori": i.get("category")}
+            for i in indexes
+        ],
+    }
 
 
 # ── IP-baseret lokation (fallback) ─────────────────────────────────────────────
@@ -691,4 +957,13 @@ def exec_route_directions(args: dict[str, Any]) -> dict[str, Any]:
 
 def exec_nearby_search(args: dict[str, Any]) -> dict[str, Any]:
     return nearby_search(args.get("lat"), args.get("lon"), str(args.get("query") or ""),
-                         args.get("radius") or 1500)
+                         args.get("radius") or 1500,
+                         str(args.get("source") or "osm"))
+
+
+def exec_google_weather(args: dict[str, Any]) -> dict[str, Any]:
+    return google_weather(args.get("lat"), args.get("lon"))
+
+
+def exec_google_air_quality(args: dict[str, Any]) -> dict[str, Any]:
+    return google_air_quality(args.get("lat"), args.get("lon"))

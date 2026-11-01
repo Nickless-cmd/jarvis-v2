@@ -240,6 +240,11 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "madopskrift",
     # Geolocation (read-only eksterne opslag)
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
+    # Google-kilderne (1/11-2026). De hører i KERNEN af samme grund som
+    # geocode: read-only opslag, og kilden er valgfri — uden nøgle svarer de
+    # ærligt i stedet for at fejle. `nearby_search` er med vilje listet ÉN
+    # gang: source er et parameter, ikke et selvstændigt værktøj.
+    "google_weather", "google_air_quality",
     # Vision — at SE et billede
     "analyze_image",
     # …og at TEGNE et. Vaerktoejerne blev bygget 13/9-2026 og stod i INGEN

@@ -489,14 +489,20 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 | function | `compare_routes` | `(from_, to, profile=…)` | Kør samme rute gennem begge kilder og vis hvor de er uenige. | [src](../../../core/tools/geolocation_tools.py#L481) |
 | function | `route_directions` | `(from_, to, profile=…, source=…)` | Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L528) |
 | function | `_haversine_m` | `(lat1, lon1, lat2, lon2)` | — | [src](../../../core/tools/geolocation_tools.py#L565) |
-| function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L574) |
-| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L614) |
-| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L627) |
-| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L663) |
-| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L674) |
-| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L678) |
-| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L684) |
-| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L692) |
+| function | `_osm_nearby` | `(lat_f, lon_f, query, radius=…)` | Steder i nærheden via Overpass (OSM). Gratis, ingen nøgle. | [src](../../../core/tools/geolocation_tools.py#L574) |
+| function | `_google_places` | `(lat_f, lon_f, query, radius=…)` | Steder i nærheden via Places API (New). Kræver nøgle; fejler højt uden. | [src](../../../core/tools/geolocation_tools.py#L642) |
+| function | `nearby_search` | `(lat, lon, query, radius=…, source=…)` | Steder i nærheden. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L710) |
+| function | `google_weather` | `(lat, lon)` | Aktuelt vejr fra Google Weather API. Normaliseret til geo-familiens form. | [src](../../../core/tools/geolocation_tools.py#L756) |
+| function | `google_air_quality` | `(lat, lon)` | Aktuel luftkvalitet fra Google Air Quality API. | [src](../../../core/tools/geolocation_tools.py#L827) |
+| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L880) |
+| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L893) |
+| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L929) |
+| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L940) |
+| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L944) |
+| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L950) |
+| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L958) |
+| function | `exec_google_weather` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L964) |
+| function | `exec_google_air_quality` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L968) |
 
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._

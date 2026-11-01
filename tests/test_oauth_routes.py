@@ -1,10 +1,26 @@
 """OAuth-routes: /start (auth) + /callback (public, signeret state)."""
 from __future__ import annotations
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from apps.api.jarvis_api.routes.oauth import router
 
 app = FastAPI(); app.include_router(router); client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _oauth_state_secret(monkeypatch):
+    import core.services.oauth_flow as of
+
+    virkelig_secret = of._secret
+    monkeypatch.setattr(
+        of,
+        "_secret",
+        lambda key, default="": (
+            "test-oauth-state-secret" if key == "oauth_state_secret"
+            else virkelig_secret(key, default)
+        ),
+    )
 
 
 def test_start_requires_auth(monkeypatch):
@@ -17,7 +33,15 @@ def test_start_returns_authorize_url(monkeypatch):
     import core.identity.workspace_context as wc
     import core.services.oauth_flow as of
     monkeypatch.setattr(wc, "current_user_id", lambda: "u1")
-    monkeypatch.setattr(of, "_secret", lambda k, d="": "CID" if k.endswith("client_id") else d)
+    monkeypatch.setattr(
+        of,
+        "_secret",
+        lambda k, d="": (
+            "CID" if k.endswith("client_id")
+            else "test-oauth-state-secret" if k == "oauth_state_secret"
+            else d
+        ),
+    )
     r = client.get("/api/oauth/github/start")
     assert r.status_code == 200 and "github.com/login/oauth/authorize" in r.json()["authorize_url"]
 

@@ -1,6 +1,21 @@
 """OAuth-flow: signeret state + authorize-URL + code-bytte."""
 from __future__ import annotations
+import pytest
 import core.services.oauth_flow as of
+
+
+@pytest.fixture(autouse=True)
+def _oauth_state_secret(monkeypatch):
+    """State-tests må aldrig afhænge af maskinens rigtige runtime-secret."""
+    virkelig_secret = of._secret
+    monkeypatch.setattr(
+        of,
+        "_secret",
+        lambda key, default="": (
+            "test-oauth-state-secret" if key == "oauth_state_secret"
+            else virkelig_secret(key, default)
+        ),
+    )
 
 
 def test_state_roundtrip():
@@ -19,8 +34,22 @@ def test_state_expired_rejected():
     assert of.verify_state(s, now=1000.0 + 10000) is None
 
 
+def test_state_signering_naegter_offentlig_fallback(monkeypatch):
+    monkeypatch.setattr(of, "_secret", lambda _key, default="": default)
+    with pytest.raises(RuntimeError, match="oauth_state_secret"):
+        of.sign_state("u1", "github")
+
+
 def test_build_authorize_url(monkeypatch):
-    monkeypatch.setattr(of, "_secret", lambda k, d="": "CID123" if k.endswith("client_id") else d)
+    monkeypatch.setattr(
+        of,
+        "_secret",
+        lambda k, d="": (
+            "CID123" if k.endswith("client_id")
+            else "test-oauth-state-secret" if k == "oauth_state_secret"
+            else d
+        ),
+    )
     url = of.build_authorize_url("github", "u1")
     assert url and "client_id=CID123" in url and "state=" in url and "response_type=code" in url
     assert "redirect_uri=https%3A%2F%2Fapi.srvlab.dk%2Fapi%2Foauth%2Fgithub%2Fcallback" in url

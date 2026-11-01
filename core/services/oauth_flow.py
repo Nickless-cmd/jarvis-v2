@@ -72,7 +72,13 @@ def _secret(key: str, default: str = "") -> str:
 
 
 def _state_key() -> bytes:
-    base = _secret("user_email_pepper", "jarvis-oauth-state-v1") or "jarvis-oauth-state-v1"
+    # OAuth-state og deterministiske email-opslag har forskellig levetid og
+    # rotationskontrakt. De delte før `user_email_pepper`; da den manglede,
+    # signerede begge sider med en offentlig streng fra kildekoden. En separat
+    # nøgle kan roteres uden at gøre eksisterende email-hashes ufindelige.
+    base = _secret("oauth_state_secret")
+    if not base:
+        raise RuntimeError("oauth_state_secret mangler i runtime.json")
     return hashlib.sha256(("oauth-state:" + base).encode("utf-8")).digest()
 
 

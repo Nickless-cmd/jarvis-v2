@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-01 — 520 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-01 — 521 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -379,6 +379,7 @@
 | `set_notification_preferences` | native | no |
 | `set_process_watch_enabled` | native | no |
 | `set_recurring_channel` | native | no |
+| `set_recurring_weekday_times` | native | no |
 | `set_recurring_weekdays` | native | no |
 | `sheets_create` | native | no |
 | `sheets_read` | native | no |

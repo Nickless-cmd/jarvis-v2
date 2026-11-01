@@ -116,6 +116,25 @@ def _ensure_table() -> None:
             conn.execute(
                 "ALTER TABLE recurring_tasks ADD COLUMN execution_mode TEXT NOT NULL DEFAULT 'background'"
             )
+        # KLOKKESLAET PR. UGEDAG (1/11-2026). Bjørn: «slå morgen medicin sammen
+        # med min morgen brief ... 06:15 i hverdage og 07:30 i weekender».
+        #
+        # Skemaet kunne kun ÉT klokkeslaet: `interval_minutes` bevarer tiden paa
+        # dagen, og `weekdays` filtrerer kun hvilke dage der maa fyre. Uden
+        # denne kolonne var den eneste vej to opgaver med duplikeret fokus-tekst
+        # — og to kopier driver fra hinanden, saa den ene dag mangler medicinen.
+        #
+        # JSON: {"1": "06:15", ..., "6": "07:30", "7": "07:30"} med ISO-ugedage
+        # (mandag = 1). Klokkeslaettet er DANSK tid, ikke UTC: gemte man UTC,
+        # ville 06:15 blive 05:15 ved sommertidsskiftet. Konverteringen sker i
+        # `_klokkeslaet_paa_dag`, som regner i DK_ZONE.
+        #
+        # '' = ingen tidsplan — ALLE raekker fra foer kolonnen fandtes bevarer
+        # deres adfaerd praecis som `weekdays` og `channel` gjorde det.
+        if "weekday_times" not in cols:
+            conn.execute(
+                "ALTER TABLE recurring_tasks ADD COLUMN weekday_times TEXT NOT NULL DEFAULT ''"
+            )
         conn.commit()
 
 
@@ -197,6 +216,121 @@ def set_weekdays(task_id: str, weekdays: str) -> bool:
         cur = conn.execute(
             "UPDATE recurring_tasks SET weekdays = ?, updated_at = ? WHERE task_id = ?",
             (ud, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def parse_weekday_times(raw: object) -> str:
+    """Normalisér en tidsplan til JSON med ISO-ugedage som nøgler.
+
+    Tager imod det man naturligt skriver::
+
+        {"hverdage": "06:15", "weekend": "07:30"}
+        {"man-fre": "06:15", "6,7": "07:30"}
+        {"1": "06:15"}                      # kun mandag
+
+    Returnerer ``'{"1": "06:15", "2": "06:15", ..., "6": "07:30"}'`` — altså
+    ÉN nøgle pr. ugedag, så opslaget i ``_klokkeslaet_paa_dag`` er et rent
+    ``dict.get(ugedag)``. ``{}`` eller ``None`` giver ``''`` = ingen tidsplan.
+
+    KASTER på et ugyldigt klokkeslæt. En tastefejl må ikke tavst blive til
+    «ingen tid»: så fyrer opgaven på det gamle klokkeslæt, og fejlen er
+    usynlig indtil nogen mangler en påmindelse.
+    """
+    if raw in (None, "", {}):
+        return ""
+    if isinstance(raw, str):
+        import json
+
+        try:
+            raw = json.loads(raw)
+        except ValueError as exc:
+            raise ValueError(f"ugyldig tidsplan {raw!r} — forventede JSON") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"ugyldig tidsplan {raw!r} — forventede et objekt")
+
+    ud: dict[str, str] = {}
+    for noegle, klok in raw.items():
+        dage = _ugedage(parse_weekdays(noegle))
+        if not dage:
+            # '' / 'alle' er et gyldigt svar i parse_weekdays, men som NØGLE i
+            # en tidsplan er det tvetydigt: «alle dage kl. 06:15» hører i
+            # `next_fire_at`, ikke her. Vi afviser frem for at gætte.
+            raise ValueError(
+                f"ugyldig tidsplan-nøgle {noegle!r} — brug fx 'man-fre' eller 'weekend'"
+            )
+        tekst = str(klok or "").strip()
+        try:
+            t, m = tekst.split(":")
+            time_t, min_t = int(t), int(m)
+        except (ValueError, AttributeError) as exc:
+            raise ValueError(f"ugyldigt klokkeslæt {klok!r} — forventede 'HH:MM'") from exc
+        if not (0 <= time_t <= 23 and 0 <= min_t <= 59):
+            raise ValueError(f"ugyldigt klokkeslæt {klok!r} — uden for 00:00-23:59")
+        for d in dage:
+            ud[str(d)] = f"{time_t:02d}:{min_t:02d}"
+    if not ud:
+        return ""
+    import json
+
+    return json.dumps({k: ud[k] for k in sorted(ud, key=int)}, ensure_ascii=False)
+
+
+def _weekday_tider(raw: object) -> dict[int, tuple[int, int]]:
+    """Læs den gemte JSON til ``{ugedag: (time, minut)}``. Skrald → tom.
+
+    Fail-soft med vilje: en række fra før kolonnen fandtes er ``''``, og en
+    håndredigeret værdi må ikke kunne vælte hele polleren. En TOM plan betyder
+    «ét klokkeslæt for alle dage», altså den gamle adfærd.
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return {}
+    import json
+
+    try:
+        data = json.loads(s)
+    except ValueError:  # skrald i den gemte kolonne — se docstring
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    ud: dict[int, tuple[int, int]] = {}
+    for noegle, klok in data.items():
+        try:
+            dag = int(noegle)
+            t, m = str(klok).split(":")
+            time_t, min_t = int(t), int(m)
+        except (ValueError, TypeError):  # én dårlig nøgle i den gemte plan springes over, så resten af ugen stadig kan læses — alternativet er at kaste og gøre HELE planen ubrugelig på grund af ét skævt felt
+            continue
+        if 1 <= dag <= 7 and 0 <= time_t <= 23 and 0 <= min_t <= 59:
+            ud[dag] = (time_t, min_t)
+    return ud
+
+
+def set_weekday_times(task_id: str, spec: object) -> bool:
+    """Sæt forskellige klokkeslæt på forskellige ugedage.
+
+    Bjørn 1/11-2026: «slå morgen medicin sammen med min morgen brief ... 06:15
+    i hverdage og 07:30 i weekender». Uden denne kolonne krævede det to opgaver
+    med duplikeret tekst — og to kopier driver fra hinanden.
+
+    ``spec`` tages imod som ``{"hverdage": "06:15", "weekend": "07:30"}`` (se
+    ``parse_weekday_times``). ``{}`` nulstiller til ét klokkeslæt for alle dage.
+
+    Klokkeslættet er DANSK tid. ``next_fire_at`` regnes IKKE her — den rykkes
+    ved næste affyring, så en kørende opgave ikke springer over. Sætter man
+    tiden for en opgave der allerede har en forfalden tid, retter næste
+    ``_advance`` den ind efter planen.
+
+    Returnerer ``True`` hvis rækken findes. Kaster på en ugyldig plan.
+    """
+    _ensure_table()
+    gemt = parse_weekday_times(spec)
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET weekday_times = ?, updated_at = ? WHERE task_id = ?",
+            (gemt, datetime.now(UTC).isoformat(), str(task_id)),
         )
         conn.commit()
         return cur.rowcount > 0
@@ -465,6 +599,8 @@ def _row_to_dict(row) -> dict:
         "session_id": (row["session_id"] if "session_id" in keys else ""),
         # 0 = ingen indbakke-post (raekker fra foer 15/10-2026).
         "inbox_on_complete": (int(row["inbox_on_complete"]) if "inbox_on_complete" in keys else 0),
+        # '' = ét klokkeslaet for alle dage (raekker fra foer 1/11-2026).
+        "weekday_times": (row["weekday_times"] if "weekday_times" in keys else ""),
     }
 
 
@@ -591,8 +727,42 @@ def _ryk_til_ugedag(tid: datetime, trin: timedelta, ugedage: set[int] | None) ->
     return tid
 
 
+def _klokkeslaet_paa_dag(tid: datetime, now: datetime,
+                         ugedage: set[int] | None,
+                         weekday_tider: dict[int, tuple[int, int]] | None) -> datetime:
+    """Flyt et tidspunkt til den klokke ugedagen har i tidsplanen.
+
+    Regner i DANSK tid (``DK_ZONE``) og konverterer tilbage til UTC. Det er
+    ikke kosmetik: gemte man klokken som UTC, ville 06:15 blive 05:15 ved
+    sommertidsskiftet — og påmindelsen ville flytte sig en time uden at nogen
+    havde rørt den.
+
+    Løkken håndterer den farlige gren: 07:30 søndag → 06:15 mandag kan lande
+    FØR ``now`` når opgaven plukkes sent. Uden det led ville tiden være
+    forfalden i samme sekund den blev sat, og opgaven fyre en ekstra gang.
+    """
+    if not weekday_tider:
+        return tid
+    from core.util.timezone import DK_ZONE
+
+    kandidat = tid
+    for _ in range(400):
+        lokal = kandidat.astimezone(DK_ZONE)
+        hm = weekday_tider.get(lokal.isoweekday())
+        if hm is None:
+            # Ugedagen har ingen tid i planen — lad det gamle klokkeslæt stå.
+            return kandidat
+        sat = lokal.replace(hour=hm[0], minute=hm[1], second=0, microsecond=0)
+        kandidat = sat.astimezone(UTC)
+        if kandidat > now and (not ugedage or sat.isoweekday() in ugedage):
+            return kandidat
+        kandidat = kandidat + timedelta(days=1)
+    return kandidat
+
+
 def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime,
-                ugedage: set[int] | None = None) -> datetime:
+                ugedage: set[int] | None = None,
+                weekday_tider: dict[int, tuple[int, int]] | None = None) -> datetime:
     """Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske.
 
     ## Hvorfor det ikke er det samme
@@ -614,26 +784,37 @@ def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime,
     alle skulle indhentes. Vi springer derfor frem i hele intervaller til det
     første tidspunkt der ligger i fremtiden: tidspunktet PÅ DAGEN holdes, og
     der affyres én gang.
+
+    ## ``weekday_tider`` (1/11-2026)
+
+    Er den sat, overskrives klokkeslættet bagefter med den valgte ugedags tid —
+    se ``_klokkeslaet_paa_dag``. Er den TOM, er beregningen nøjagtig som før,
+    så alle opgaver fra før kolonnen fandtes er upåvirkede.
     """
     trin = timedelta(minutes=max(1, int(interval_minutes)))
     try:
         naeste = datetime.fromisoformat(str(planlagt_iso))
     except Exception:
         # Ukendt planlagt tid — så er det bedste vi kan gøre det gamle.
-        return _ryk_til_ugedag(now + trin, trin, ugedage)
+        kandidat = _ryk_til_ugedag(now + trin, trin, ugedage)
+        return _klokkeslaet_paa_dag(kandidat, now, ugedage, weekday_tider)
     if naeste.tzinfo is None:
         naeste = naeste.replace(tzinfo=UTC)
     if naeste > now:
         # Fyrede før tid (eller uret gik baglæns): rør ikke ved planen.
-        return _ryk_til_ugedag(naeste + trin, trin, ugedage)
-    # Spring frem i hele intervaller — bevarer tidspunktet på dagen.
-    spring = int((now - naeste) / trin) + 1
-    return _ryk_til_ugedag(naeste + trin * spring, trin, ugedage)
+        kandidat = _ryk_til_ugedag(naeste + trin, trin, ugedage)
+    else:
+        # Spring frem i hele intervaller — bevarer tidspunktet på dagen.
+        spring = int((now - naeste) / trin) + 1
+        kandidat = _ryk_til_ugedag(naeste + trin * spring, trin, ugedage)
+    return _klokkeslaet_paa_dag(kandidat, now, ugedage, weekday_tider)
 
 
 def _advance(task_id: str, interval_minutes: int, now: datetime,
-             planlagt_iso: str = "", ugedage: set[int] | None = None) -> None:
-    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now, ugedage).isoformat()
+             planlagt_iso: str = "", ugedage: set[int] | None = None,
+             weekday_tider: dict[int, tuple[int, int]] | None = None) -> None:
+    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now, ugedage,
+                            weekday_tider).isoformat()
     now_iso = now.isoformat()
     with runtime_db.connect() as conn:
         conn.execute(
@@ -846,13 +1027,16 @@ def _fire_due() -> None:
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
         ugedage = _ugedage(task.get("weekdays"))
+        # Klokkeslæt pr. ugedag (1/11-2026). Tom plan = ét klokkeslæt for alle
+        # dage, altså præcis den gamle adfærd for alle rækker fra før kolonnen.
+        weekday_tider = _weekday_tider(task.get("weekday_times"))
         if ugedage and now.isoweekday() not in ugedage:
             # I dag er ikke en valgt ugedag. Ryk videre UDEN at fyre: en
             # paamindelse der fyrer loerdag fordi maskinen var nede fredag er
             # praecis den stoej brugeren bad os undgaa. Uden dette led ville
             # raekken desuden blive ved med at vaere forfalden og fylde koen.
             _advance(task_id, interval_minutes, now,
-                     str(task.get('next_fire_at') or ''), ugedage)
+                     str(task.get('next_fire_at') or ''), ugedage, weekday_tider)
             logger.info("recurring_tasks: %s springer over — ugedag %s ikke i %r",
                         task_id, now.isoweekday(), task.get("weekdays"))
             continue
@@ -908,7 +1092,7 @@ def _fire_due() -> None:
             # nu i `_legacy`s returværdi. Vi kan ikke se den herfra, så vi
             # avancerer som før og lader `_legacy` logge sin egen afvisning.
             _advance(task_id, interval_minutes, now,
-                     str(task.get('next_fire_at') or ''), ugedage)
+                     str(task.get('next_fire_at') or ''), ugedage, weekday_tider)
             logger.info(
                 "recurring_tasks: fired %s as autonomous run (every %dm) user=%s",
                 task_id, interval_minutes, task.get("user_id") or "-",

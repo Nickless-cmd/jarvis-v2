@@ -9637,7 +9637,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {
@@ -18275,7 +18275,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "emergent_patterns": {
@@ -27064,7 +27064,7 @@
       ]
     },
     "recurring_tasks": {
-      "digest": "1d:0b:83:f4:06:39:e4:47:ef:82:0f:1b:dd:f6:6d:87:5c:bd:14:ad:db:f9:99:b2:98:ac:06:b5:33:bd:e9:1d",
+      "digest": "f5:1c:06:3e:aa:d8:e4:e3:6c:3c:f1:b6:1e:a7:21:b0:55:b1:cc:7b:7e:c9:de:e9:b5:8b:19:00:0e:49:18:47",
       "schema": {
         "columns": [
           {
@@ -27197,6 +27197,14 @@
           },
           {
             "name": "verified_owner_user_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "weekday_times",
             "type": "TEXT",
             "nullable": false,
             "default": "''",

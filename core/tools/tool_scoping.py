@@ -103,6 +103,12 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "Task", "followup_agent", "wait_agents", "interrupt_agent", "close_agent",
     "integrate_agent_work", "convene_agent_council", "review_agent_work",
     "cancel_recurring",
+    # Klokkeslaet pr. ugedag (1/11-2026) — samme gruppe som de øvrige
+    # scheduler-vaerktoejer: en husstandsmedlem maa ikke kunne flytte BJØRNS
+    # morgenbrief, og en autonom koersel maa ikke kunne ændre sit eget skema.
+    "set_recurring_weekday_times",
+    "set_recurring_weekdays",
+    "set_recurring_channel",
     "cancel_self_wakeup",
     "cancel_task",
     "list_recurring",

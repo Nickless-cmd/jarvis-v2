@@ -30,6 +30,7 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
     unit = str(args.get("unit") or "minutes").strip().lower()
     delay_minutes = int(args.get("delay_minutes") or 0)
     weekdays = str(args.get("weekdays") or "")
+    weekday_times = args.get("weekday_times")
 
     if not focus:
         return {"status": "error", "error": "focus is required"}
@@ -50,6 +51,12 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
             delay_minutes=delay_minutes,
             weekdays=weekdays,
         )
+        # Klokkeslaet pr. ugedag (1/11-2026). Saettes EFTER oprettelsen, fordi
+        # foerste affyring allerede er regnet; naeste `_advance` retter den ind.
+        # En ugyldig plan kastes videre som en fejl — den maa ikke blive tavs.
+        if weekday_times:
+            from core.services.recurring_tasks import set_weekday_times
+            set_weekday_times(task["task_id"], weekday_times)
         unit_display = f"{interval} {unit}"
         ug_display = task.get("weekdays") or "alle dage"
         from core.services.peak_hours import (
@@ -157,6 +164,16 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "not listed instead of moving."
                         ),
                     },
+                    "weekday_times": {
+                        "type": "object",
+                        "description": (
+                            "Different clock times on different weekdays, in DANISH "
+                            "time. Keys are weekday groups ('hverdage'/'man-fre', "
+                            "'weekend', '1'..'7'); values are 'HH:MM'. Example: "
+                            "{'hverdage': '06:15', 'weekend': '07:30'}. Omit = one "
+                            "clock time for every day."
+                        ),
+                    },
                 },
                 "required": ["focus", "interval"],
             },
@@ -234,6 +251,33 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_recurring_weekday_times",
+            "description": (
+                "Give an existing recurring task DIFFERENT clock times on different "
+                "weekdays — e.g. 06:15 on workdays and 07:30 in the weekend. Times "
+                "are Danish local time and survive daylight saving. Pass {} to go "
+                "back to one clock time for every day."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "task_id from list_recurring."},
+                    "weekday_times": {
+                        "type": "object",
+                        "description": (
+                            "Keys: weekday groups ('hverdage', 'weekend', '1'..'7'); "
+                            "values: 'HH:MM'. Example: {'hverdage': '06:15', "
+                            "'weekend': '07:30'}."
+                        ),
+                    },
+                },
+                "required": ["task_id", "weekday_times"],
+            },
+        },
+    },
 ]
 
 
@@ -254,6 +298,40 @@ def _exec_set_recurring_channel(args: dict[str, Any]) -> dict[str, Any]:
     except ValueError as e:
         return {"status": "error", "error": str(e)}
     except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+def _exec_set_recurring_weekday_times(args: dict[str, Any]) -> dict[str, Any]:
+    """Forskellige klokkeslaet paa forskellige ugedage.
+
+    Args: task_id, weekday_times ({'hverdage': '06:15', 'weekend': '07:30'}).
+    Bjoern 1/11-2026: «06:15 i hverdage og 07:30 i weekender».
+    """
+    task_id = str(args.get("task_id") or "").strip()
+    if not task_id:
+        return {"status": "error", "error": "task_id is required"}
+    spec = args.get("weekday_times")
+    try:
+        from core.services.recurring_tasks import set_weekday_times
+        ok = set_weekday_times(task_id, spec)
+        if not ok:
+            return {"status": "error", "error": f"Task {task_id!r} not found"}
+        from core.services.recurring_tasks import get_recurring_tasks_state
+        gemt = ""
+        for t in get_recurring_tasks_state().get("active", []):
+            if t.get("task_id") == task_id:
+                gemt = t.get("weekday_times") or ""
+        return {
+            "status": "ok",
+            "task_id": task_id,
+            "weekday_times": gemt,
+            "text": (
+                f"Recurring task {task_id} har nu klokkeslaet pr. ugedag: {gemt or 'ét for alle dage'}."
+            ),
+        }
+    except ValueError as e:  # ugyldigt klokkeslaet — svar med fejlen frem for at kaste
+        return {"status": "error", "error": str(e)}
+    except Exception as e:  # et vaerktoej maa ikke kaste ind i dispatcheren
         return {"status": "error", "error": str(e)}
 
 

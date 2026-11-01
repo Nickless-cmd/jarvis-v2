@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9498/17822 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9503/17827 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9498/17822 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 860 | 1568 | 54% |
-| `core.services` | 6317 | 12098 | 52% |
+| `core.services` | 6321 | 12102 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 137 | 215 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 608 | 1161 | 52% |
+| `core.tools` | 609 | 1162 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1693,10 +1693,10 @@ Generated from source. 9498/17822 functions/methods documented (53%). The list b
 - `core/services/recall_ownership_migration.py` :: `ensure_recall_ownership_migration_tables` (L96)
 - `core/services/recall_ownership_migration.py` :: `report_path` (L142)
 - `core/services/recall_ownership_migration.py` :: `rollback_report` (L502)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L797)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L805)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L965)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L974)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L978)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L986)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L1149)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L1158)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -2410,11 +2410,11 @@ Generated from source. 9498/17822 functions/methods documented (53%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_local_exec` (L456)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L434)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L452)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L430)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L461)
+- `core/tools/tool_scoping.py` :: `reset_local_exec` (L462)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L440)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L458)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L436)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L467)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

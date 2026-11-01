@@ -1,11 +1,14 @@
 [Unit]
-Description=Detektér ture der ender uden assistent-svar (tavse cutoffs)
+Description=Tavs-cutoff scan (oneshot; inactive mellem timer-kørsler)
 Documentation=https://github.com/Nickless-cmd/jarvis-v2
 
 [Service]
 Type=oneshot
 User=bs
 Environment=PYTHONPATH=/media/projects/jarvis-v2
+# `inactive (dead)` efter status=0 er den forventede hviletilstand for en
+# oneshot. Driftshelbredet læses på jarvis-cutoff-detector.timer, som skal være
+# `active (waiting)` og bære et friskt LastTriggerUSec.
 # INGEN AmbientCapabilities: de arves ind i bubblewrap/bwrap, som afviser
 # capabilities uden setuid og dermed gør hele bash-sandkassen ubrugelig.
 # Flyttet ind i repoet 14/10-2026. Stod foer som /usr/local/sbin/jarvis-cutoff-detector.py

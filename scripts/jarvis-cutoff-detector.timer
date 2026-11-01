@@ -1,5 +1,5 @@
 [Unit]
-Description=Tjek hvert 2. minut for ture der endte uden svar
+Description=Aktiv timer for tavse cutoffs (service hviler inactive mellem scans)
 
 [Timer]
 OnBootSec=3min

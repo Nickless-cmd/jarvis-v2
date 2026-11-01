@@ -617,100 +617,12 @@ def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
-    """Schedule a task to fire after delay_minutes."""
-    focus = str(args.get("focus") or "").strip()
-    if not focus:
-        return {"status": "error", "error": "focus is required"}
-    try:
-        delay_minutes = int(args.get("delay_minutes") or 0)
-    except (TypeError, ValueError):
-        return {"status": "error", "error": "delay_minutes must be an integer"}
-    if delay_minutes < 1:
-        return {"status": "error", "error": "delay_minutes must be at least 1"}
-    try:
-        from core.services.scheduled_tasks import push_scheduled_task
-        task = push_scheduled_task(focus=focus, delay_minutes=delay_minutes)
-        run_at = task.get("run_at", "")
-        from core.services.peak_hours import tilfoej_booking_varsel
-        return tilfoej_booking_varsel({
-            "status": "ok",
-            "task_id": task.get("task_id"),
-            "focus": focus,
-            "delay_minutes": delay_minutes,
-            "run_at": run_at,
-            "text": f"Scheduled in {delay_minutes} min: {focus} (fires at {run_at[:16]}Z)",
-        }, run_at)
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-
-
-def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
-    """List scheduled tasks (pending + recently fired)."""
-    try:
-        from core.services.scheduled_tasks import get_scheduled_tasks_state
-        state = get_scheduled_tasks_state()
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-
-    pending = state.get("pending") or []
-    fired = state.get("recently_fired") or []
-
-    lines = []
-    if pending:
-        lines.append(f"Pending ({len(pending)}):")
-        for t in pending:
-            lines.append(f"  [{t.get('task_id','')}] {t.get('focus','')} — fires at {str(t.get('run_at',''))[:16]}Z")
-    else:
-        lines.append("No pending scheduled tasks.")
-    if fired:
-        lines.append(f"Recently fired ({len(fired)}):")
-        for t in fired:
-            lines.append(f"  [{t.get('task_id','')}] {t.get('focus','')} — fired at {str(t.get('fired_at',''))[:16]}Z")
-
-    return {
-        "status": "ok",
-        "pending_count": len(pending),
-        "pending": pending,
-        "recently_fired": fired,
-        "text": "\n".join(lines),
-    }
-
-
-def _exec_cancel_task(args: dict[str, Any]) -> dict[str, Any]:
-    """Cancel a pending scheduled task."""
-    task_id = str(args.get("task_id") or "").strip()
-    if not task_id:
-        return {"status": "error", "error": "task_id is required"}
-    try:
-        from core.services.scheduled_tasks import cancel_scheduled_task
-        cancelled = cancel_scheduled_task(task_id)
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-    if cancelled:
-        return {"status": "ok", "task_id": task_id, "text": f"Task {task_id} cancelled."}
-    return {"status": "error", "error": f"Task {task_id!r} not found or not pending"}
-
-
-def _exec_edit_task(args: dict[str, Any]) -> dict[str, Any]:
-    """Edit a pending scheduled task."""
-    task_id = str(args.get("task_id") or "").strip()
-    if not task_id:
-        return {"status": "error", "error": "task_id is required"}
-    focus = args.get("focus")
-    delay_minutes = args.get("delay_minutes")
-    if focus is None and delay_minutes is None:
-        return {"status": "error", "error": "Provide at least one of: focus, delay_minutes"}
-    try:
-        from core.services.scheduled_tasks import edit_scheduled_task
-        result = edit_scheduled_task(
-            task_id,
-            focus=str(focus).strip() if focus is not None else None,
-            delay_minutes=int(delay_minutes) if delay_minutes is not None else None,
-        )
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-    return result
+from core.tools.scheduled_task_tools import (  # noqa: E402,F401
+    _exec_cancel_task,
+    _exec_edit_task,
+    _exec_list_scheduled_tasks,
+    _exec_schedule_task,
+)
 
 
 def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:

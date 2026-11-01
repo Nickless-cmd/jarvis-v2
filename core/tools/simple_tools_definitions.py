@@ -2281,7 +2281,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "schedule_task",
-            "description": "Schedule a reminder or task to fire at a future time. After delay_minutes, a notification will appear in your chat session so you can act on it. Use this to set future reminders, follow-ups, or time-delayed actions.",
+            "description": "Schedule a reminder or task to fire at a future time. It is stored locally and, when Google Tasks is connected, mirrored there so the reminder remains visible if Jarvis is offline. Google failures are reported without discarding the local reminder.",
             "parameters": {
                 "type": "object",
                 "properties": {

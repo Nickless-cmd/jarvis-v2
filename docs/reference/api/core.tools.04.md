@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/tool_schema_contract.py`
+_Kanoniske argumenter mod versionerede skemaer — Fase 3, K2._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Brud` | `` | Ét skema-brud. `haard` siger om det er sikkert at afvise paa. | [src](../../../core/tools/tool_schema_contract.py#L65) |
+| method | `Brud.haard` | `(self)` | — | [src](../../../core/tools/tool_schema_contract.py#L72) |
+| function | `_indlaes` | `()` | — | [src](../../../core/tools/tool_schema_contract.py#L76) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/tools/tool_schema_contract.py#L89) |
+| function | `kendt` | `(tool_name)` | Har vaerktoejet overhovedet et skema at maale imod? | [src](../../../core/tools/tool_schema_contract.py#L96) |
+| function | `schema_version` | `(tool_name)` | Indholds-hash over skemaet. Aendrer skemaet sig, aendrer versionen sig. | [src](../../../core/tools/tool_schema_contract.py#L101) |
+| function | `canonical_arguments` | `(tool_name, arguments)` | Argumenterne som SKEMAET ser dem. | [src](../../../core/tools/tool_schema_contract.py#L115) |
+| function | `_validator` | `(tool_name)` | — | [src](../../../core/tools/tool_schema_contract.py#L127) |
+| function | `_kun_bloedt` | `(tool_name, besked)` | Er det manglende felt et af dem der kun er krævet for modellens skyld? | [src](../../../core/tools/tool_schema_contract.py#L145) |
+| function | `violations` | `(tool_name, arguments)` | Hvilke skema-brud har dette kald? Tom liste = ingen. | [src](../../../core/tools/tool_schema_contract.py#L152) |
+| function | `haarde` | `(brud)` | — | [src](../../../core/tools/tool_schema_contract.py#L177) |
+| function | `afvisning` | `(tool_name, brud)` | Svaret et afvist kald skal have. | [src](../../../core/tools/tool_schema_contract.py#L181) |
+
 ## `core/tools/tool_scoping.py`
 _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17828 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17840 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,24 +43,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17828 functions/
 - [`core.services.11`](core.services.11.md) — `decision_ghosts` … `dream_articulation`
 - [`core.services.12`](core.services.12.md) — `dream_bias_engine` … `env_block`
 - [`core.services.13`](core.services.13.md) — `epistemic_pragmatic` … `gate_commit`
-- [`core.services.14`](core.services.14.md) — `gate_enforcement` … `handover_tools`
-- [`core.services.15`](core.services.15.md) — `hardware_body` … `initiative_queue`
-- [`core.services.16`](core.services.16.md) — `inner_dialectic_engine` … `living_executive`
-- [`core.services.17`](core.services.17.md) — `living_heartbeat_cycle` … `meta_cognition_daemon`
-- [`core.services.18`](core.services.18.md) — `meta_learning_aggregator` … `notifikations_valg`
-- [`core.services.19`](core.services.19.md) — `ntfy_gateway` … `plugin_ruleset`
-- [`core.services.20`](core.services.20.md) — `plugin_ruleset_store` … `prompt_evolution_runtime`
-- [`core.services.21`](core.services.21.md) — `prompt_heartbeat_self_knowledge` … `recall`
-- [`core.services.22`](core.services.22.md) — `recall_observability` … `round_budget_notice`
-- [`core.services.23`](core.services.23.md) — `routine_authorization` … `runtime_self_knowledge`
-- [`core.services.24`](core.services.24.md) — `runtime_self_model` … `self_repair_engine`
-- [`core.services.25`](core.services.25.md) — `self_review_cadence_signal_tracking` … `shadow_scan_daemon`
-- [`core.services.26`](core.services.26.md) — `share_guard_store` … `state_file_retention`
-- [`core.services.27`](core.services.27.md) — `state_flag_store` … `tick_cache`
-- [`core.services.28`](core.services.28.md) — `tiny_webchat_execution_pilot` … `user_emotional_resonance`
-- [`core.services.29`](core.services.29.md) — `user_hensyn` … `visible_run_abandonment`
-- [`core.services.30`](core.services.30.md) — `visible_run_cost` … `voice_curator`
-- [`core.services.31`](core.services.31.md) — `voice_daemon` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `gate_enforcement` … `hallucination_guard`
+- [`core.services.15`](core.services.15.md) — `handover_tools` … `initiative_accumulator`
+- [`core.services.16`](core.services.16.md) — `initiative_queue` … `liveness_registry`
+- [`core.services.17`](core.services.17.md) — `living_executive` … `message_feedback`
+- [`core.services.18`](core.services.18.md) — `meta_cognition_daemon` … `notifikations_opstart`
+- [`core.services.19`](core.services.19.md) — `notifikations_valg` … `plan_proposals`
+- [`core.services.20`](core.services.20.md) — `plugin_ruleset` … `prompt_evolution`
+- [`core.services.21`](core.services.21.md) — `prompt_evolution_runtime` … `reboot_awareness_daemon`
+- [`core.services.22`](core.services.22.md) — `recall` … `role_registry`
+- [`core.services.23`](core.services.23.md) — `round_budget_notice` … `runtime_resource_signal`
+- [`core.services.24`](core.services.24.md) — `runtime_self_knowledge` … `self_narrative_self_model_review_bridge`
+- [`core.services.25`](core.services.25.md) — `self_repair_engine` … `shadow_ledger_writer`
+- [`core.services.26`](core.services.26.md) — `shadow_scan_daemon` … `standing_orders_registry`
+- [`core.services.27`](core.services.27.md) — `state_file_retention` … `thought_thread`
+- [`core.services.28`](core.services.28.md) — `tick_cache` … `user_contradiction_tracker`
+- [`core.services.29`](core.services.29.md) — `user_emotional_resonance` … `visible_preview_crypto`
+- [`core.services.30`](core.services.30.md) — `visible_run_abandonment` … `voice_anchor`
+- [`core.services.31`](core.services.31.md) — `voice_curator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -71,8 +71,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17828 functions/
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `graf_tools`
 - [`core.tools.02`](core.tools.02.md) — `health_monitor_tools` … `py_source_guard`
-- [`core.tools.03`](core.tools.03.md) — `reasoning_store_tools` … `tool_schema_contract`
-- [`core.tools.04`](core.tools.04.md) — `tool_scoping` … `world_model_tools`
+- [`core.tools.03`](core.tools.03.md) — `reasoning_store_tools` … `tool_result_format`
+- [`core.tools.04`](core.tools.04.md) — `tool_schema_contract` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

@@ -370,6 +370,21 @@ _Google app-login (§12) — kort-levende login-resultat-store + orkestrering._
 | function | `complete` | `(state_uid, google_email, *, now=…)` | Kaldt af callbacken med den VERIFICEREDE Google-email. Returnerer en kort | [src](../../../core/services/google_login.py#L74) |
 | function | `take_result` | `(nonce, *, now=…)` | Engangs-hent af login-resultatet (fjernes ved hentning når det er færdigt). | [src](../../../core/services/google_login.py#L118) |
 
+## `core/services/google_tasks_mirror.py`
+_Best-effort Google Tasks-spejl for Jarvis' lokale planlagte opgaver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `(user_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L26) |
+| function | `_headers` | `(token)` | — | [src](../../../core/services/google_tasks_mirror.py#L31) |
+| function | `_mapping` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L35) |
+| function | `_record` | `(user_id, local_task_id, remote_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L42) |
+| function | `_forget` | `(user_id, local_task_id)` | — | [src](../../../core/services/google_tasks_mirror.py#L62) |
+| function | `_http_error` | `(status_code)` | — | [src](../../../core/services/google_tasks_mirror.py#L77) |
+| function | `create_task_mirror` | `(user_id, task)` | Opret en Google Task for en allerede gemt lokal opgave. | [src](../../../core/services/google_tasks_mirror.py#L85) |
+| function | `update_task_mirror` | `(user_id, task)` | Opdatér Google-kopien efter en vellykket lokal redigering. | [src](../../../core/services/google_tasks_mirror.py#L125) |
+| function | `cancel_task_mirror` | `(user_id, local_task_id)` | Slet Google-kopien efter en vellykket lokal annullering. | [src](../../../core/services/google_tasks_mirror.py#L157) |
+
 ## `core/services/governance_bootstrap.py`
 _Governance bootstrap — idempotent setup of default windows, jobs handlers, automations._
 
@@ -534,11 +549,4 @@ _Hallucination Guard — forced memory-check before answering._
 | function | `_extract_relevant_sections` | `(memory_text, keywords, max_chars=…)` | Find MEMORY.md-sektioner der matcher keywords, returnér som tekst. | [src](../../../core/services/hallucination_guard.py#L241) |
 | function | `_observe_guard_decision` | `(*, activated, reason)` | Egress-frit Central-observe af hallucination-guardens beslutning (§7.2). | [src](../../../core/services/hallucination_guard.py#L325) |
 | function | `inject_memory_into_prompt` | `(message, chat_messages, *, memory_path=…)` | Inject relevant memory as a system-role message into the prompt. | [src](../../../core/services/hallucination_guard.py#L349) |
-
-## `core/services/handover_tools.py`
-_write_handover — værktøjet der lader mig skrive min egen overdragelse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_write_handover` | `(args)` | — | [src](../../../core/services/handover_tools.py#L20) |
 

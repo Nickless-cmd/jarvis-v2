@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recall.py`
+_One recall path over every memory source (memory repair 2026-09-04, R5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L63) |
+| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L68) |
+| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L73) |
+| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L85) |
+| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L93) |
+| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L103) |
+| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L119) |
+| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L145) |
+| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L170) |
+| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L188) |
+| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L195) |
+| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L209) |
+| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L223) |
+| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L253) |
+| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L297) |
+| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…, deadline_s=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L301) |
+
 ## `core/services/recall_observability.py`
 _Scalar-only outcome telemetry for scoped recall._
 
@@ -710,11 +732,4 @@ _Role registry — runtime-extensible agent roles._
 | function | `register_custom_role` | `(*, role, title, system_prompt, default_tool_policy=…, extends=…, tags=…)` | Persist a new custom role to disk. Idempotent on (role) name. | [src](../../../core/services/role_registry.py#L79) |
 | function | `_exec_list_roles` | `(args)` | — | [src](../../../core/services/role_registry.py#L119) |
 | function | `_exec_register_custom_role` | `(args)` | — | [src](../../../core/services/role_registry.py#L138) |
-
-## `core/services/round_budget_notice.py`
-_Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
 

@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_evolution_runtime.py`
+_Bounded runtime prompt evolution / self-authored prompt proposals light._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_prompt_evolution_runtime` | `(*, trigger=…, last_visible_at=…)` | Run one bounded prompt-evolution proposal pass. | [src](../../../core/services/prompt_evolution_runtime.py#L33) |
+| function | `build_prompt_evolution_from_inputs` | `(*, dream_articulation, dream_influence, self_model_surface, inner_voice_state, emergent_surface, embodied_state, loop_runtime, adaptive_learning, guided_learning, adaptive_reasoning, now=…)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L229) |
+| function | `build_prompt_evolution_runtime_surface` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L474) |
+| function | `_load_runtime_inputs` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L536) |
+| function | `_adjacent_producer_block` | `(*, now, trigger)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L574) |
+| function | `_latest_prompt_evolution_proposal` | `()` | — | [src](../../../core/services/prompt_evolution_runtime.py#L598) |
+| function | `_choose_proposal_type` | `(*, dream_articulation, dream_influence, self_model_surface, embodied_state, loop_runtime, adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L605) |
+| function | `_target_asset_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L651) |
+| function | `_prompt_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L661) |
+| function | `_build_anchor` | `(*, dream_articulation, self_model_surface, loop_runtime)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L671) |
+| function | `_build_rationale` | `(*, proposal_type, target_asset, learning_influence, dream_influence, candidate_fragment, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L701) |
+| function | `_proposal_state_from_type` | `(proposal_type)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L755) |
+| function | `_confidence_from_inputs` | `(*, proposal_type, source_input_count, self_model_surface)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L763) |
+| function | `_build_learning_influence` | `(adaptive_learning)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L778) |
+| function | `_build_dream_influence_summary` | `(dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L788) |
+| function | `_build_fragment_co_influence` | `(*, adaptive_learning, dream_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L798) |
+| function | `_build_candidate_fragment` | `(*, proposal_type, target_asset, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L822) |
+| function | `_build_fragment_grounding` | `(*, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L893) |
+| function | `_build_review_light` | `(*, proposal_type, prompt_target, adaptive_learning, dream_influence, guided_learning, adaptive_reasoning, embodied_state, fragment_co_influence)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L924) |
+| function | `_sanitize_fragment` | `(text)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1031) |
+| function | `_support_fields_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1035) |
+| function | `_learning_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1048) |
+| function | `_fragment_grounding_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1061) |
+| function | `_dream_influence_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1074) |
+| function | `_review_light_from_latest` | `(latest)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1086) |
+| function | `_blocked` | `(*, reason, cadence_state, trigger, now, reference)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1098) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/prompt_evolution_runtime.py#L1127) |
+
 ## `core/services/prompt_heartbeat_self_knowledge.py`
 _Heartbeat self-knowledge section builder._
 
@@ -589,26 +622,4 @@ _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
 | function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L227) |
 | function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L264) |
 | function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L287) |
-
-## `core/services/recall.py`
-_One recall path over every memory source (memory repair 2026-09-04, R5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L63) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L68) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L73) |
-| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L85) |
-| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L93) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L103) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L119) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L145) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L170) |
-| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L188) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L195) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L209) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L223) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L253) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L297) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…, deadline_s=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L301) |
 

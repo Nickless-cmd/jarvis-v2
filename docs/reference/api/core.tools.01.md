@@ -469,27 +469,27 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_http_get_json` | `(url, *, timeout=…, data=…)` | GET (eller POST hvis data) JSON med Jarvis User-Agent. Kaster ved fejl. | [src](../../../core/tools/geolocation_tools.py#L50) |
-| function | `_http_post_json` | `(url, payload, headers=…, *, timeout=…)` | POST JSON med ekstra headers (Google kræver X-Goog-Api-Key + field mask). | [src](../../../core/tools/geolocation_tools.py#L57) |
-| function | `_google_maps_key` | `()` | Nøglen, eller None når den ikke er sat. | [src](../../../core/tools/geolocation_tools.py#L72) |
-| function | `_google_seconds` | `(value)` | Google sender varighed som '144s' (protobuf-duration), ikke som tal. | [src](../../../core/tools/geolocation_tools.py#L88) |
-| function | `_throttle_nominatim` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L105) |
-| function | `geocode` | `(address)` | — | [src](../../../core/tools/geolocation_tools.py#L114) |
-| function | `reverse_geocode` | `(lat, lon)` | — | [src](../../../core/tools/geolocation_tools.py#L136) |
-| function | `_resolve_point` | `(point)` | Accepter enten 'adresse'-streng eller [lat, lon] / {lat,lon}. | [src](../../../core/tools/geolocation_tools.py#L165) |
-| function | `_osm_route` | `(from_, to, profile=…)` | — | [src](../../../core/tools/geolocation_tools.py#L184) |
-| function | `google_route` | `(from_, to, profile=…)` | Rute via Google Routes API v2. Svarer ærligt hvis nøglen mangler. | [src](../../../core/tools/geolocation_tools.py#L223) |
-| function | `compare_routes` | `(from_, to, profile=…)` | Kør samme rute gennem begge kilder og vis hvor de er uenige. | [src](../../../core/tools/geolocation_tools.py#L281) |
-| function | `route_directions` | `(from_, to, profile=…, source=…)` | Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L328) |
-| function | `_haversine_m` | `(lat1, lon1, lat2, lon2)` | — | [src](../../../core/tools/geolocation_tools.py#L357) |
-| function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L366) |
-| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L406) |
-| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L419) |
-| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L455) |
-| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L466) |
-| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L470) |
-| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L474) |
-| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L482) |
+| function | `_http_get_json` | `(url, *, timeout=…, data=…)` | GET (eller POST hvis data) JSON med Jarvis User-Agent. Kaster ved fejl. | [src](../../../core/tools/geolocation_tools.py#L51) |
+| function | `_http_post_json` | `(url, payload, headers=…, *, timeout=…)` | POST JSON med ekstra headers (Google kræver X-Goog-Api-Key + field mask). | [src](../../../core/tools/geolocation_tools.py#L58) |
+| function | `_google_maps_key` | `()` | Nøglen, eller None når den ikke er sat. | [src](../../../core/tools/geolocation_tools.py#L73) |
+| function | `_google_seconds` | `(value)` | Google sender varighed som '144s' (protobuf-duration), ikke som tal. | [src](../../../core/tools/geolocation_tools.py#L89) |
+| function | `_throttle_nominatim` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L106) |
+| function | `geocode` | `(address)` | — | [src](../../../core/tools/geolocation_tools.py#L115) |
+| function | `reverse_geocode` | `(lat, lon)` | — | [src](../../../core/tools/geolocation_tools.py#L137) |
+| function | `_resolve_point` | `(point)` | Accepter enten 'adresse'-streng eller [lat, lon] / {lat,lon}. | [src](../../../core/tools/geolocation_tools.py#L177) |
+| function | `_osm_route` | `(from_, to, profile=…)` | — | [src](../../../core/tools/geolocation_tools.py#L196) |
+| function | `google_route` | `(from_, to, profile=…)` | Rute via Google Routes API v2. Svarer ærligt hvis nøglen mangler. | [src](../../../core/tools/geolocation_tools.py#L247) |
+| function | `compare_routes` | `(from_, to, profile=…)` | Kør samme rute gennem begge kilder og vis hvor de er uenige. | [src](../../../core/tools/geolocation_tools.py#L305) |
+| function | `route_directions` | `(from_, to, profile=…, source=…)` | Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'. | [src](../../../core/tools/geolocation_tools.py#L352) |
+| function | `_haversine_m` | `(lat1, lon1, lat2, lon2)` | — | [src](../../../core/tools/geolocation_tools.py#L389) |
+| function | `nearby_search` | `(lat, lon, query, radius=…)` | — | [src](../../../core/tools/geolocation_tools.py#L398) |
+| function | `_ip_location` | `()` | — | [src](../../../core/tools/geolocation_tools.py#L438) |
+| function | `geolocation_lookup` | `(user_id=…)` | Find en brugers nuværende lokation. Læser delt presence-lokation først; | [src](../../../core/tools/geolocation_tools.py#L451) |
+| function | `exec_geolocation_lookup` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L487) |
+| function | `exec_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L498) |
+| function | `exec_reverse_geocode` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L502) |
+| function | `exec_route_directions` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L506) |
+| function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L514) |
 
 ## `core/tools/github_tools.py`
 _Git introspection tools — operates on the Jarvis v2 repo._

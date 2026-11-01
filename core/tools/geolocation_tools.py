@@ -44,7 +44,8 @@ _GOOGLE_FIELD_MASK = ",".join((
     "routes.legs.steps.navigationInstruction",
     "routes.legs.steps.distanceMeters",
 ))
-_GOOGLE_TRAVEL_MODE = {"driving": "DRIVE", "cycling": "BICYCLE", "walking": "WALK"}
+_GOOGLE_TRAVEL_MODE = {"driving": "DRIVE", "cycling": "BICYCLE", "walking": "WALK",
+                       "transit": "TRANSIT"}
 
 
 def _http_get_json(url: str, *, timeout: float = 12.0, data: bytes | None = None) -> Any:
@@ -158,8 +159,19 @@ def reverse_geocode(lat: float, lon: float) -> dict[str, Any]:
 
 
 # ── Route directions (A → B) ────────────────────────────────────────────────────
+#: ``transit`` er med vilje med (1/11-2026). Uden den faldt ``profile="transit"``
+#: tilbage til ``driving`` — og svarede med bilafstand og billetid uden at sige
+#: det. Målt: transit gav 46,45 km / 33,6 min, præcis som driving, mens den
+#: faktiske togrejse Svendborg-Odense tager ~54 min. Et svar der ser rigtigt ud
+#: men svarer på et andet spørgsmål er værre end en fejl.
 _PROFILE_MAP = {"driving": "driving", "cycling": "cycling", "walking": "walking",
-                "bil": "driving", "cykel": "cycling", "gang": "walking", "gå": "walking"}
+                "transit": "transit",
+                "bil": "driving", "cykel": "cycling", "gang": "walking", "gå": "walking",
+                "tog": "transit", "bus": "transit", "offentlig": "transit"}
+
+#: OSRM (den gratis OSM-ruter) har INGEN transit-profil — den kender kun veje.
+#: Så en transit-rute kan kun komme fra Google. Det skal siges, ikke gættes.
+_OSM_KAN_IKKE = frozenset({"transit"})
 
 
 def _resolve_point(point: Any) -> tuple[float, float] | None:
@@ -183,6 +195,18 @@ def _resolve_point(point: Any) -> tuple[float, float] | None:
 
 def _osm_route(from_: Any, to: Any, profile: str = "driving") -> dict[str, Any]:
     prof = _PROFILE_MAP.get((profile or "driving").strip().lower(), "driving")
+    if prof in _OSM_KAN_IKKE:
+        # OSRM ruter ad VEJE. Den har ingen tog- eller busplan, så et svar her
+        # ville være en bilrute med et andet navn. Sig det i stedet.
+        return {
+            "status": "error",
+            "source": "osm",
+            "profile": prof,
+            "error": (
+                f"OSM/OSRM kan ikke rute '{prof}' — den kender kun veje. "
+                "Brug source='google' for tog og bus."
+            ),
+        }
     a = _resolve_point(from_)
     b = _resolve_point(to)
     if not a:
@@ -328,8 +352,16 @@ def compare_routes(from_: Any, to: Any, profile: str = "driving") -> dict[str, A
 def route_directions(
     from_: Any, to: Any, profile: str = "driving", source: str = "osm",
 ) -> dict[str, Any]:
-    """Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'."""
+    """Rute A → B. ``source``: 'osm' (standard, gratis), 'google' eller 'compare'.
+
+    ``profile='transit'`` (tog/bus) kan KUN besvares af Google — OSM ruter ad
+    veje. Derfor sendes transit dertil automatisk, også når kilden ikke er
+    angivet: alternativet ville være en bilrute der udgiver sig for en togrejse.
+    """
     valg = (source or "osm").strip().lower()
+    prof = _PROFILE_MAP.get((profile or "driving").strip().lower(), "driving")
+    if prof in _OSM_KAN_IKKE and valg in ("osm", ""):
+        valg = "google"
     if valg in ("google", "gmaps"):
         return google_route(from_, to, profile)
     if valg in ("compare", "sammenlign", "both"):

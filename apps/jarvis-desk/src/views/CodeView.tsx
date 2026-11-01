@@ -4,7 +4,7 @@ import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo } from 'lucide-react'
-import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
+import { onPauseSvar } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -22,7 +22,6 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { HistoriskGodkendelse, type GodkendelsesHaendelse } from '../components/rich/HistoriskGodkendelse'
 import { fletGodkendelser, forsteGodkendelse } from '../lib/godkendelseIFolden'
-import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -833,11 +832,19 @@ export function CodeView({
   }
 
 
-  // Et klik paa en pause_and_ask-knap skal blive den NAESTE bruger-besked,
-  // praecis som vaerktoejets kontrakt lover. Ref fordi resend gendannes hver
-  // render — ellers rives abonnementet ned og op konstant.
-  const pauseSvarRef = useRef(resend)
-  pauseSvarRef.current = resend
+  // Et levende pause_and_ask-run kan ikke afslutte før svaret kommer. Send
+  // derfor direkte ind i run'et; den almindelige sendekø ville først blive
+  // tømt efter afslutningen og dermed låse begge sider fast.
+  const pauseSvarRef = useRef<(svar: string) => void>(() => {})
+  pauseSvarRef.current = (svar) => {
+    const runId = stream.activeRunId
+    if (runId) {
+      if (!config) return
+      void steerRun(config, runId, svar)
+      return
+    }
+    resend(svar)
+  }
   useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
 
   const trustBanner = trusted === false ? (
@@ -1041,32 +1048,6 @@ export function CodeView({
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null,
     sessionId, sessions.messages, stream.status === 'idle', fastgjorte.pins,
   )
-
-  let setPauseAsk: PauseAsk | null = null
-  for (const message of visibleMessages) {
-    if (message.role === 'user') setPauseAsk = null
-    else setPauseAsk = pauseAskIn(message.content) ?? setPauseAsk
-  }
-  if (stream.status === 'working') setPauseAsk = pauseAskIn(stream.blocks) ?? setPauseAsk
-  if (stream.status !== 'working' && bgActive && followState.status === 'working') {
-    setPauseAsk = pauseAskIn(followState.blocks) ?? setPauseAsk
-  }
-
-  // Samme fastholdelse som i ChatView — se noten dér. Kortet var afledt og
-  // forsvandt naar stroemmen sluttede; nu holdes det til der kommer en NY
-  // bruger-besked, og svaret er selv en bruger-besked.
-  const brugerAntal = visibleMessages.reduce((n, m) => n + (m.role === 'user' ? 1 : 0), 0)
-  const [fastholdtPause, setFastholdtPause] = useState<
-    { ask: PauseAsk; vedBrugerAntal: number } | null
-  >(null)
-  const pauseNoegle = setPauseAsk ? `${setPauseAsk.question}|${setPauseAsk.options.join('|')}` : ''
-  useEffect(() => {
-    if (!setPauseAsk) return
-    setFastholdtPause({ ask: setPauseAsk, vedBrugerAntal: brugerAntal })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pauseNoegle, brugerAntal])
-  const pendingPauseAsk =
-    fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
   // Nye beskeder: HVAD der skete meldes her — om der må flyttes på rullen afgør
   // koordinatoren. Code-mode husker sin session og skifter den sjældent, så der
@@ -1334,7 +1315,7 @@ export function CodeView({
             <MessageRow
               presentation="code"
               role={m.role === 'user' ? 'user' : 'assistant'}
-              blocks={withoutPauseAsk(m.content)}
+              blocks={m.content}
               density="compact"
               streaming={false}
               varighedSekunder={varighedForBesked.get(m.id) ?? null}
@@ -1353,14 +1334,14 @@ export function CodeView({
             </Fragment>
           ))}
           {visLevendeTur && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
+            <MessageRow presentation="code" role="assistant" blocks={liveBlokke(stream)} density="compact" streaming={stream.status === 'working'} finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} config={config}
               runId={stream.activeRunId} onAnswerPaced={markerSvarPacet}
               elapsedMs={stream.elapsedMs} tokens={stream.usage.output} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {stream.status !== 'working' && bgActive && followState.status === 'working' && (
-            <MessageRow presentation="code" role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
+            <MessageRow presentation="code" role="assistant" blocks={liveBlokke(followState)} density="compact" streaming finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} config={config}
               runId={followState.activeRunId}
               elapsedMs={bgElapsedMs} tokens={followState.usage.output} />
           )}
@@ -1374,11 +1355,6 @@ export function CodeView({
         </div>
         <div className="composer-area">
         <GenoptagelsesVarsel />
-          {pendingPauseAsk && (
-            <div className="composer-notices pauseask-notice">
-              <PauseAndAskCard ask={pendingPauseAsk} />
-            </div>
-          )}
           <div className="composer-notices">
             {/* FALLBACK (31/10-2026) — se ChatView. Raekken i samtalen
                 vinder naar den findes; indtil da bærer dette kort svaret. */}

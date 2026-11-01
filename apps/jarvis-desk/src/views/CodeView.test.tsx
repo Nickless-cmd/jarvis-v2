@@ -56,6 +56,7 @@ vi.mock('../lib/api', () => ({
   hentVentendeGodkendelseOveralt: vi.fn(async () => null),
   warmSession: vi.fn().mockResolvedValue(undefined),
   getGitStatus: vi.fn().mockResolvedValue({ branch: 'main', dirty: 0, added: 0, removed: 0, is_git: true }),
+  steerRun: vi.fn().mockResolvedValue(undefined),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
@@ -199,7 +200,7 @@ describe('CodeView', () => {
     expect(screen.queryByText('Min computer')).not.toBeInTheDocument()
   })
 
-  it('viser pause_and_ask sammen med approvals over Code-transcriptet', async () => {
+  it('viser pause_and_ask inline i Code-transcriptet og styrer svaret ind i runet', async () => {
     const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
     await userEvent.type(screen.getByRole('textbox'), 'fortsæt{Enter}')
     const result = JSON.stringify({
@@ -216,10 +217,13 @@ describe('CodeView', () => {
     // Stream-events anvendes én gang pr. frame (lib/useRammeReducer).
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
-    const pauseCard = container.querySelector('.composer-notices .pauseask')
+    const pauseCard = container.querySelector('.transcript .pauseask')
     expect(pauseCard).toBeInTheDocument()
-    expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
+    expect(container.querySelector('.composer-notices .pauseask')).not.toBeInTheDocument()
     expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'A' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send svar' }))
+    await waitFor(() => expect(api.steerRun).toHaveBeenCalledWith(cfg, 'r1', 'A'))
   })
 
   it('fører historiske kilder fra transcriptet ind i den fælles inspector', async () => {

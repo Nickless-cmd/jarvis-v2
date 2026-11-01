@@ -14,7 +14,7 @@ import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { useRefPanelLytting } from '../lib/refAabn'
 import { registrerSkaerm } from '../lib/skaermRegister'
-import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
+import { onPauseSvar } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveChatBlokke } from '../lib/streamReducer'
 import { varighedFraTider } from '../lib/turTid'
@@ -68,7 +68,6 @@ import { WidgetPrompt } from '../components/rich/WidgetBlock'
 import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
-import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { findesGodkendelseIRækken } from '../lib/ventendeGodkendelse'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
@@ -518,13 +517,6 @@ export function ChatView({
   })
 
 
-  // Et klik paa en pause_and_ask-knap skal blive den NAESTE bruger-besked,
-  // praecis som vaerktoejets kontrakt lover. Ref fordi resend gendannes hver
-  // render — ellers rives abonnementet ned og op konstant.
-  const pauseSvarRef = useRef(resend)
-  pauseSvarRef.current = resend
-  useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
-
   const streaming = stream.status === 'working'
   const historicalChatMode = chatFlow.state.preference === 'calm' ? 'calm' : 'living'
   const primaryChatMode = stream.activeRunId
@@ -576,6 +568,21 @@ export function ChatView({
     },
     kanSteer: !!stream.activeRunId,
   })
+  // pause_and_ask holder det aktuelle run åbent og venter på svaret. Det må
+  // derfor aldrig ende i den almindelige kø, som først tømmes NÅR run'et er
+  // færdigt. Et levende run får svaret via steer; et historisk kort starter
+  // fortsat en almindelig brugerbesked.
+  const pauseSvarRef = useRef<(svar: string) => void>(() => {})
+  pauseSvarRef.current = (svar) => {
+    const runId = stream.activeRunId
+    if (runId) {
+      if (!settings) return
+      void steerRun({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, runId, svar)
+      return
+    }
+    resend(svar)
+  }
+  useEffect(() => onPauseSvar((svar) => pauseSvarRef.current(svar)), [])
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
@@ -647,47 +654,6 @@ export function ChatView({
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
-
-  // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
-  // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
-  // transcript ligesom approvals og øvrige handlinger over composeren.
-  let setPauseAsk: PauseAsk | null = null
-  for (const message of visibleMessages) {
-    if (message.role === 'user') setPauseAsk = null
-    else setPauseAsk = pauseAskIn(message.content) ?? setPauseAsk
-  }
-  if (streaming) setPauseAsk = pauseAskIn(stream.blocks) ?? setPauseAsk
-  if (!streaming && bgActive && followState.status === 'working') {
-    setPauseAsk = pauseAskIn(followState.blocks) ?? setPauseAsk
-  }
-
-  // Kortet skal BLIVE STAAENDE til man har trykket (Bjoern 18/9-2026: «det
-  // forsvinder efter faa sekunder»).
-  //
-  // Vaerdien ovenfor er AFLEDT og genberegnes ved hver render. Under streaming
-  // kommer den fra `stream.blocks`; naar stroemmen slutter, konsulteres de ikke
-  // laengere. Ligger tool-blokken saa ikke i den persisterede besked, falder
-  // vaerdien til null og spoergsmaalet forsvinder for oejnene af én — praecis
-  // naar man skal svare paa det.
-  //
-  // Derfor holdes den i tilstand: vi fanger den naar vi ser den, og slipper den
-  // foerst naar der kommer en NY bruger-besked. Svaret bliver selv en
-  // bruger-besked (se pauseSvarRef -> resend), saa et klik rydder den af sig
-  // selv — uden at vi skal gaette paa hvornaar stroemmen er faerdig.
-  const brugerAntal = visibleMessages.reduce((n, m) => n + (m.role === 'user' ? 1 : 0), 0)
-  const [fastholdtPause, setFastholdtPause] = useState<
-    { ask: PauseAsk; vedBrugerAntal: number } | null
-  >(null)
-  const pauseNoegle = setPauseAsk ? `${setPauseAsk.question}|${setPauseAsk.options.join('|')}` : ''
-  useEffect(() => {
-    if (!setPauseAsk) return
-    setFastholdtPause({ ask: setPauseAsk, vedBrugerAntal: brugerAntal })
-    // Noeglen er indholdet, ikke objekt-identiteten: den afledte vaerdi er et
-    // nyt objekt ved hver render, og uden dette ville effekten loebe evigt.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pauseNoegle, brugerAntal])
-  const pendingPauseAsk =
-    fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
   // ÉN kilde pr. run (Bjørn 2026-06-29, "3 svar"): når et fulgt run's svar
   // ALLEREDE står i transcript'en (serveren har persisteret det, eller bro-kopien
@@ -1105,7 +1071,7 @@ export function ChatView({
             chatMode={historicalChatMode}
             status="done"
             role={m.role === 'user' ? 'user' : 'assistant'}
-            blocks={withoutPauseAsk(m.content)}
+            blocks={m.content}
             density="compact"
             streaming={false}
             varighedSekunder={varighedForBesked.get(m.id) ?? null}
@@ -1134,7 +1100,7 @@ export function ChatView({
             <MessageRow presentation="chat" chatMode={primaryChatMode} status={stream.status}
               workingStep={stream.workingStep} runId={stream.activeRunId} turStart={stream.turStart} turSlut={stream.turSlut}
               onWorkExpanded={() => { if (stream.activeRunId) expandedChatRuns.current.add(stream.activeRunId) }}
-              role="assistant" blocks={withoutPauseAsk(liveChatBlokke(stream))} density="compact" streaming={streaming}
+              role="assistant" blocks={liveChatBlokke(stream)} density="compact" streaming={streaming}
               finalAnswerStarted={stream.finalAnswerStarted || stream.svarLaast} arbejdeEfterSvar={stream.arbejdeEfterSvar} rundeEtiketter={stream.rundeEtiketter}
               tankeResumeer={stream.tankeResumeer} config={raekkeConfig}
               tokens={stream.usage.output}
@@ -1148,7 +1114,7 @@ export function ChatView({
         {!streaming && bgActive && followState.status === 'working' && (followState.blocks.length > 0 || !!followState.provisionalText) && !followAlreadyInTranscript && (
           <MessageRow presentation="chat" chatMode={followedChatMode} status={followState.status}
             workingStep={followState.workingStep} runId={followedRunId} turStart={followState.turStart} turSlut={followState.turSlut}
-            role="assistant" blocks={withoutPauseAsk(liveChatBlokke(followState))} density="compact" streaming
+            role="assistant" blocks={liveChatBlokke(followState)} density="compact" streaming
             finalAnswerStarted={followState.finalAnswerStarted || followState.svarLaast} arbejdeEfterSvar={followState.arbejdeEfterSvar} rundeEtiketter={followState.rundeEtiketter}
             tankeResumeer={followState.tankeResumeer} config={raekkeConfig}
             tokens={followState.usage.output} />
@@ -1166,11 +1132,6 @@ export function ChatView({
 
       <div className="composer-area">
         <GenoptagelsesVarsel />
-        {pendingPauseAsk && (
-          <div className="composer-notices pauseask-notice">
-            <PauseAndAskCard ask={pendingPauseAsk} />
-          </div>
-        )}
         <div className="composer-notices">
           {/* FALLBACK (31/10-2026). Kortet bor i samtalen som en
               `approval_request`-raekke (DEL 3, se grenen ovenfor). Men raekken

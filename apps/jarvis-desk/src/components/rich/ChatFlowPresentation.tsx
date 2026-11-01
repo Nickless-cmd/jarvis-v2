@@ -149,6 +149,14 @@ export function ChatFlowPresentation({
     ? model.workBlocks.filter((block) => block.type !== 'text'
         || !confirmedTexts.some((text) => text === block.text || text.startsWith(block.text) || block.text.startsWith(text)))
     : model.workBlocks
+  // Et blokerende spørgsmål er ikke en arbejdsdetalje der må gemmes bag
+  // turhovedets fold. Det er en samtalebesked med et svarfelt og skal stå
+  // inline, synligt og tastaturtilgængeligt mens resten af arbejdet fortsat
+  // kan være kompakt.
+  const inlineQuestions = retainedWork.filter((block) =>
+    block.type === 'tool_use' && block.name === 'pause_and_ask')
+  const foldWork = retainedWork.filter((block) =>
+    block.type !== 'tool_use' || block.name !== 'pause_and_ask')
   // Bjørn 20/10-2026: «det hurtige svar skal aldrig vises».
   //
   // `confirmedTexts` er den RÅ tekst fra serveren. Da den blev lagt foran
@@ -336,7 +344,7 @@ export function ChatFlowPresentation({
   // have > i ende og kunne foldes ud»). Efter turen følger de turhovedets
   // fold, som før.
   const arbejdeAabent = aktiv ? aabenManuelt === true : aaben
-  const visArbejdsdetaljer = retainedWork.length > 0 && arbejdeAabent
+  const visArbejdsdetaljer = foldWork.length > 0 && arbejdeAabent
 
   return (
     <div className="chat-flow" data-chat-flow-mode={mode}>
@@ -394,7 +402,7 @@ export function ChatFlowPresentation({
                         <LabelSkift tekst={rundeTekst} arbejder className="shimmer" fastIkon />
                       </span>
                     </div>
-                    {retainedWork.length > 0 ? (
+                    {foldWork.length > 0 ? (
                       <button
                         type="button"
                         className="chat-flow-round-fold"
@@ -413,7 +421,7 @@ export function ChatFlowPresentation({
 
             {visArbejdsdetaljer ? (
               <div className="chat-flow-work-details">
-                <BlocksRenderer blocks={retainedWork} density={density} streaming={streaming}
+                <BlocksRenderer blocks={foldWork} density={density} streaming={streaming}
                   rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer}
                   visTankeResumeer
                   beskedId={beskedId} config={config} />
@@ -422,6 +430,13 @@ export function ChatFlowPresentation({
             </div>
           </div>
         </>
+      ) : null}
+
+      {inlineQuestions.length > 0 ? (
+        <div className="chat-flow-inline-question">
+          <BlocksRenderer blocks={inlineQuestions} density={density} streaming={streaming}
+            beskedId={beskedId} config={config} />
+        </div>
       ) : null}
 
       {synligeSvar.length > 0 ? (

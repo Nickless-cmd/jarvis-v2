@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { PauseAndAskCard } from './PauseAndAskCard'
 import { ToolCard } from './ToolCard'
 import { BlocksRenderer } from './BlocksRenderer'
+import { RaekkeTranskript } from './RaekkeTranskript'
 import { onPauseSvar } from '../../lib/pauseAsk'
 
 const ask = {
@@ -28,6 +29,8 @@ describe('PauseAndAskCard', () => {
     expect(set).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Send svar' }))
     expect(set).toHaveBeenCalledWith('Ja, split først')
+    expect(screen.getByRole('status')).toHaveTextContent('Dit svar: Ja, split først')
+    expect(screen.getByRole('button', { name: 'Svar sendt' })).toBeDisabled()
     af()
   })
 
@@ -87,5 +90,16 @@ describe('ToolCard · pause_and_ask', () => {
 
     expect(screen.getByText(ask.question)).toBeTruthy()
     expect(container.querySelector('.toolgroup')).toBeNull()
+  })
+
+  it('står uden for Code-visningens sammenfoldede arbejdsspor', () => {
+    const json = JSON.stringify({ kind: 'pause_and_ask', ...ask })
+    const { container } = render(
+      <RaekkeTranskript blocks={[blok(json) as never]} streaming />,
+    )
+
+    expect(screen.getByText(ask.question)).toBeVisible()
+    expect(container.querySelector('.rv-inline-question')).toBeTruthy()
+    expect(container.querySelector('.rv-gruppe')).toBeNull()
   })
 })

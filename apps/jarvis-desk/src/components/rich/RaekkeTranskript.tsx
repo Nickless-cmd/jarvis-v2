@@ -415,7 +415,14 @@ function RaekkeTranskriptImpl({
   varighedSekunder?: number | null
   skjulAktivRunde?: boolean
 }) {
-  const { arbejde, svar, kald } = opdel(blocks, streaming && !finalAnswerStarted)
+  // `pause_and_ask` er en besked til brugeren, ikke skjult arbejdsdiagnostik.
+  // Hold den derfor ude af arbejdsfolden og stående i transkriptet, mens resten
+  // af værktøjssporet stadig kan foldes sammen.
+  const inlineQuestions = blocks.filter((blok) => blok.type === 'tool_use' && blok.name === 'pause_and_ask')
+  const transcriptBlocks = inlineQuestions.length > 0
+    ? blocks.filter((blok) => !(blok.type === 'tool_use' && blok.name === 'pause_and_ask'))
+    : blocks
+  const { arbejde, svar, kald } = opdel(transcriptBlocks, streaming && !finalAnswerStarted)
   const billedArbejde = streaming
     ? levendeBilledArbejde(afslutForladteKald(blocks, true).flatMap((b) => b.type === 'tool_use' ? [b] : []))
     : null
@@ -507,6 +514,14 @@ function RaekkeTranskriptImpl({
         </>
       )}
       {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
+      {inlineQuestions.length > 0 ? (
+        <div className="rv-inline-question">
+          <BlocksRenderer
+            blocks={inlineQuestions} density="compact" streaming={streaming}
+            beskedId={beskedId} config={config}
+          />
+        </div>
+      ) : null}
       {/* Svar-containeren findes fra FØRSTE frame (målt 19/10-2026).
           FØR: den var betinget af `svar.length > 0`, så den opstod i samme
           øjeblik grænsen faldt — og slutsvarets node fik dermed både ny

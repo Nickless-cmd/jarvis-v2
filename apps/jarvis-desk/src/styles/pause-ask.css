@@ -1,4 +1,4 @@
-/* Active question lives above the composer in both Desk and its PWA build. */
+/* Spørgsmålet er en varig blok i transcriptet i både Desk og PWA. */
 .pauseask {
   display: flex;
   flex-direction: column;
@@ -113,3 +113,10 @@
   cursor: pointer;
 }
 .pauseask-send:disabled { opacity: .48; cursor: default; }
+.pauseask-sent {
+  margin: 10px 0 0;
+  color: var(--fg-3);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}

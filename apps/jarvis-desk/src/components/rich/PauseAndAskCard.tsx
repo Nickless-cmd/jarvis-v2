@@ -6,14 +6,15 @@ import '../../styles/pause-ask.css'
 export function PauseAndAskCard({ ask }: { ask: PauseAsk }) {
   const [selected, setSelected] = useState<string[]>([])
   const [ownAnswer, setOwnAnswer] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [submittedAnswer, setSubmittedAnswer] = useState('')
+  const submitted = submittedAnswer.length > 0
   const ownId = useId()
   const identity = JSON.stringify([ask.question, ask.options, ask.allowMultiple])
 
   useEffect(() => {
     setSelected([])
     setOwnAnswer('')
-    setSubmitted(false)
+    setSubmittedAnswer('')
   }, [identity])
 
   const choose = (option: string) => {
@@ -30,7 +31,7 @@ export function PauseAndAskCard({ ask }: { ask: PauseAsk }) {
       ? selected.length ? `Jeg vælger:\n${ask.options.filter((o) => selected.includes(o)).map((o) => `- ${o}`).join('\n')}` : ''
       : selected[0] || '')
     if (!answer) return
-    setSubmitted(true)
+    setSubmittedAnswer(answer)
     emitPauseSvar(answer)
   }
 
@@ -54,9 +55,10 @@ export function PauseAndAskCard({ ask }: { ask: PauseAsk }) {
       <input id={ownId} className="pauseask-own" value={ownAnswer} onChange={(event) => setOwnAnswer(event.target.value)} disabled={submitted} placeholder="Dit svar…" />
       <div className="pauseask-actions">
         <button type="button" className="pauseask-send" onClick={send} disabled={submitted || (!ownAnswer.trim() && selected.length === 0)}>
-          {submitted ? 'Sender…' : 'Send svar'}
+          {submitted ? 'Svar sendt' : 'Send svar'}
         </button>
       </div>
+      {submitted && <p className="pauseask-sent" role="status">Dit svar: {submittedAnswer}</p>}
     </section>
   )
 }

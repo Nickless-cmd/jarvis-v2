@@ -54,6 +54,7 @@ vi.mock('../lib/api', () => ({
   presencePing: vi.fn().mockResolvedValue(undefined),
   fetchPendingNotifications: vi.fn().mockResolvedValue([]),
   ackNotification: vi.fn().mockResolvedValue(undefined),
+  steerRun: vi.fn().mockResolvedValue(undefined),
 }))
 
 // Sideopgaverne (spec desk-sideopgaver): tom liste som standard, saa de
@@ -365,7 +366,7 @@ describe('ChatView integration', () => {
     }
   }, 6000)
 
-  it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {
+  it('viser pause_and_ask inline i transcriptet og ikke over composeren', async () => {
     const { container } = render(
       <SettingsProvider initialConfig={cfg}>
         <SessionProvider config={cfg}>
@@ -394,11 +395,14 @@ describe('ChatView integration', () => {
     // Stream-events anvendes én gang pr. frame (lib/useRammeReducer).
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
-    const pauseCard = container.querySelector('.composer-notices .pauseask')
+    const pauseCard = container.querySelector('.transcript .pauseask')
     expect(pauseCard).toBeInTheDocument()
-    expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
+    expect(container.querySelector('.composer-notices .pauseask')).not.toBeInTheDocument()
     expect(container.querySelector('.composer-area .liveness')).not.toBeInTheDocument()
     expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'A' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send svar' }))
+    await waitFor(() => expect(api.steerRun).toHaveBeenCalledWith(cfg, 'r1', 'A'))
   })
 
   // ── Varslet om arbejde der aldrig blev faerdigt (24/9-2026) ──────────────

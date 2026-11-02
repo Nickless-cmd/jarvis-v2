@@ -20,6 +20,11 @@ def test_code_contract_covers_the_end_to_end_working_model() -> None:
         "Planer og løfter skal lukkes",
         "Review er fund før resumé",
         "Aflever beviseligt",
+        "Skeln samtidig mellem en handlebestilling og en vurdering",
+        "Skriv kun en kodekommentar",
+        "beviserne støtte netop den handling",
+        "Slutleverancen skal kunne stå alene",
+        "En afvist approval, policy-vagt eller hook er feedback",
     )
     for phrase in expected:
         assert phrase in text
@@ -37,6 +42,8 @@ def test_code_contract_is_injected_only_in_code_scope() -> None:
     assert "Fortsæt til et færdigt resultat" in code
     assert "## Code mode: arbejdsadfærd" not in chat
     assert "Fortsæt til et færdigt resultat" not in chat
+    assert "handlebestilling og en vurdering" not in chat
+    assert "Skriv kun en kodekommentar" not in chat
     assert "## Code mode: arbejdsadfærd" not in unbound
     assert "Fortsæt til et færdigt resultat" not in unbound
 
@@ -50,6 +57,9 @@ def test_compact_code_contract_keeps_the_critical_path() -> None:
     assert "Beskyt worktree og data" in text
     assert "Verificér efter risiko" in text
     assert "Aflever beviseligt" in text
+    assert "Skriv kun en kodekommentar" in text
+    assert "Slutleverancen skal kunne stå alene" in text
+    assert "policy-vagt eller hook er feedback" in text
 
 
 def test_code_contract_function_returns_none_outside_code() -> None:

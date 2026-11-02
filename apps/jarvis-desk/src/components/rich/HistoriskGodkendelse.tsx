@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 
 /** Et AFGJORT (eller forladt) godkendelses-kort, læst fra historikken.
  *
@@ -110,8 +110,24 @@ export function HistoriskGodkendelse({
         <div className="approvalcard-actionbar">
           {kanSvare ? (
             <span className="approvalcard-actions">
-              <button type="button" onClick={() => live.onDeny(data.approval_id)}>Afvis</button>
-              <button type="button" className="approvalcard-primary" onClick={() => live.onApprove(data.approval_id)}>Godkend</button>
+              <button
+                type="button"
+                className="approval-knap approval-knap-nej"
+                aria-label="Afvis"
+                title="Afvis"
+                onClick={() => live.onDeny(data.approval_id)}
+              >
+                <X size={14} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="approval-knap approval-knap-ja"
+                aria-label="Godkend"
+                title="Godkend"
+                onClick={() => live.onApprove(data.approval_id)}
+              >
+                <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+              </button>
             </span>
           ) : (
             <span className="approvalcard-readonly">Kun owner kan godkende</span>

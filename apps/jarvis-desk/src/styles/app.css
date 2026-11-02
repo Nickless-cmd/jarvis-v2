@@ -2385,11 +2385,21 @@ button.sidebar-group svg { flex: none; opacity: .7; }
  * kommandoen ligger i en fold der er 0 px når den er lukket. Højden er
  * dermed den SAMME uanset kommandoens længde — det er hele pointen. */
 .approvalcard {
-  border: 1px solid var(--line); border-left: 3px solid var(--warn-fg);
-  border-radius: var(--radius-sm); padding: 0; margin: 8px 0; background: var(--bg-2);
+  /* RING, ikke venstrekant (2/11-2026). Toasten er facit: den bruger
+     --accent som standard-ring (~5377) og en color-mix-ring hele vejen
+     rundt. Venstrekanten var fast --warn-fg og skiftede derfor hverken med
+     data-theme eller data-accent — Bjoern: «soerg for det foelger appens
+     tema og farve palette som vaelges af bruger».
+     Ringen er en custom property, saa tonen skifter uden at flytte
+     indholdet et eneste pixel. */
+  --ring: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--ring) 42%, var(--line));
+  border-radius: 11px; padding: 0; margin: 8px 0;
+  background: color-mix(in srgb, var(--bg-2) 74%, transparent);
   overflow: hidden;
 }
-.approvalcard.risk-destructive { border-left-color: var(--error-fg); }
+.approvalcard.risk-destructive,
+.approvalcard.destruktiv { --ring: var(--error-fg); }
 
 /* Linjen. `min-height` i stedet for `height`: knapperne må ikke klippes hvis
  * en fremtidig ændring gør dem højere, men de skal heller ikke kunne trække
@@ -2511,6 +2521,22 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .approvalcard-actions button:focus-visible,
 .approval-details-dialog button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Ikonknapper (2/11-2026, variant C). 24x24, transparent bund, farvet glyf.
+   Farverne er TOKENS — de skifter med data-theme og data-accent fra Generelt.
+   Ingen #4ade80/#f87171: de findes ikke i paletten og skifter ikke med temaet. */
+.approvalcard-actions .approval-knap {
+  width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  cursor: pointer;
+}
+.approvalcard-actions .approval-knap:hover { background: var(--bg-4); }
+.approvalcard-actions .approval-knap:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.approvalcard-actions .approval-knap-ja { color: var(--ok); }
+.approvalcard-actions .approval-knap-nej { color: var(--error-fg); }
+
 .approvalcard-readonly { font-size: 12px; color: var(--fg-3); }
 .approvalcard > .approvalcard-readonly { padding: 0 8px 7px; }
 
@@ -5350,7 +5376,7 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   background: color-mix(in srgb, var(--bg-2) 74%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--toast-ring) 22%, transparent),
-    0 14px 34px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.35);
+    var(--overlay-shadow);
   cursor: pointer;
   /* Indgang: skub fra hoejre OG lidt mindre. cubic-bezier(.16,.84,.44,1) er
      haard start og bloed landing — feltet bliver SKUBBET ind. */

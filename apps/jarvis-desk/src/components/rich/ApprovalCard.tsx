@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Check, X } from 'lucide-react'
 
 /** Interaktivt approval-kort. Approve/Deny er ÆGTE UI-knapper (ikke renderet fra
  *  model/tool-tekst). Action-teksten vises inert via <pre> så fjendtligt indhold
@@ -90,8 +91,29 @@ export function ApprovalCard({
 
         {udloebet ? null : canApprove ? (
           <span className="approvalcard-actions">
-            <button type="button" onClick={() => onApprove(approvalId)}>Godkend</button>
-            <button type="button" onClick={() => onDeny(approvalId)}>Afvis</button>
+            {/* Ikoner, ikke tekst (2/11-2026, variant C efter Bjørns valg).
+                Farven baerer betydningen: --ok er grøn, --error-fg er rød, og
+                begge skifter med data-theme og data-accent fra Generelt.
+                aria-label bevarer det tilgaengelige navn, saa skaermlaesere
+                og de eksisterende tests stadig finder «Godkend»/«Afvis». */}
+            <button
+              type="button"
+              className="approval-knap approval-knap-ja"
+              aria-label="Godkend"
+              title="Godkend"
+              onClick={() => onApprove(approvalId)}
+            >
+              <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="approval-knap approval-knap-nej"
+              aria-label="Afvis"
+              title="Afvis"
+              onClick={() => onDeny(approvalId)}
+            >
+              <X size={14} strokeWidth={2.5} aria-hidden="true" />
+            </button>
           </span>
         ) : (
           <span className="approvalcard-readonly">Kun owner kan godkende</span>

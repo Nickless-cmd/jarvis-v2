@@ -59,6 +59,21 @@ def test_tom_scope_faar_intet():
     assert _tone("") is None
 
 
+def test_memory_vaern_er_chat_only():
+    chat = _tone("chat") or ""
+    code = _tone("code") or ""
+
+    for phrase in (
+        "Relevant hukommelse må hjælpe mig med at forstå intentionen",
+        "opfinder ikke en brugerfakta",
+        "Følsomme og identificerende ting venter",
+        "konto- og ID-numre gengives aldrig fra hukommelsen",
+        "aktuelle besked overtrumfer gemte antagelser",
+    ):
+        assert phrase in chat
+        assert phrase not in code
+
+
 def test_compact_er_kortere_men_ikke_tom():
     fuld = _tone("chat", compact=True)
     assert fuld, "compact-lanen mistede tonen helt"
@@ -158,7 +173,7 @@ def test_sidste_samtale_regel_naar_prompten():
             session_id="test-chat-tone-hale",
         )
     tekst = out.prompt if hasattr(out, "prompt") else str(out)
-    assert "Lad energien kunne mærkes" in tekst, (
+    assert "Brugerens aktuelle besked overtrumfer" in tekst, (
         "den sidste samtale-regel nåede ikke den faktiske prompt — sektionen "
         "bliver klippet et sted mellem funktionen og assembly"
     )

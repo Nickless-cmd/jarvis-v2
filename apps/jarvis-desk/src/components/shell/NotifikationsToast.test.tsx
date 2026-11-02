@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { _saetUr, _nulstil, vaagn, maaPolle, ROLIG_EFTER_MS } from '../../lib/ro'
+import { _saetUr, _nulstil, vaagn, ROLIG_EFTER_MS } from '../../lib/ro'
 
 const hent = vi.fn()
 const afgoer = vi.fn()
@@ -296,9 +296,20 @@ describe('NotifikationsToast', () => {
     await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
     expect(screen.queryByText('Svar klar')).toBeNull()
 
-    // Bevis at loftet reelt blokerer NU.
-    expect(maaPolle('notifikationer', 8000)).toBe(false)
-
+    // ── RETTET 2/11-2026: loftet er ikke laengere i spil for toasten ─────
+    // Her stod `expect(maaPolle('notifikationer', 8000)).toBe(false)` som
+    // bevis paa at loftet blokerede. Det bevis er ikke laengere gyldigt:
+    // toastens POLL gaar nu ogsaa uden om loftet (se kommentaren ved `hent`),
+    // saa stemplet bliver aldrig sat af denne komponent, og kaldet svarer
+    // «ja». Det er ikke en svækkelse af testen — det er den nye kontrakt.
+    //
+    // Maalt i en koerende browser 2/11-2026: Klokke.tsx:68 og toasten delte
+    // noeglen 'notifikationer' med samme 8000 ms-vindue, og klokken vandt
+    // naesten hver gang. Posten laa i feedet med kan_afgoere=True og blev
+    // ALDRIG en toast. Derfor er den gatede vej fjernet helt.
+    //
+    // Det der stadig skal bevises: at en haendelse naar frem UANSET hvad
+    // ro-tilstanden er. Det goer kaldet nedenfor.
     sockets[sockets.length - 1]!.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
 
     expect(await screen.findByText('Svar klar')).toBeInTheDocument()

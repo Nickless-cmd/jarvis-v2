@@ -144,8 +144,16 @@ def _forslag_er_foraeldet(forslag: dict[str, Any]) -> bool:
     try:
         import hashlib
         from pathlib import Path
-        raa = Path(sti).read_bytes()
-        return hashlib.sha256(raa).hexdigest()[:16] != base
+        # SHA1 paa TEKST, ikke SHA256 paa bytes (rettet 2/11-2026):
+        # `autonomy_proposal_queue._fp` skriver `sha1(text)[:16]` ind i
+        # `base_fingerprint`. Brugte jeg sha256 her, kunne de to ALDRIG
+        # matche — og saa blev HVERT source-edit-forslag markeret foraeldet,
+        # ogsaa de gyldige. Maalt i en koerende browser: to friske forslag
+        # med korrekt fingerprint blev begge skjult af toasten, fordi
+        # `!p.foraeldet` filtrerede dem fra. En detektion der altid siger
+        # «foraeldet» er ikke forsigtig, den er doed.
+        raa = Path(sti).read_text(encoding="utf-8", errors="replace")
+        return hashlib.sha1(raa.encode("utf-8"), usedforsecurity=False).hexdigest()[:16] != base
     except Exception:
         # Kan filen ikke laeses, er ankeret ikke bevist frisk. Vi siger
         # foraeldet frem for at paastaa det modsatte — en forkert

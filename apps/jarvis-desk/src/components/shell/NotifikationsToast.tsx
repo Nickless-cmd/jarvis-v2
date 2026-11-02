@@ -39,7 +39,8 @@ import {
 } from '../../lib/notifikationerApi'
 import { getKontraktFeed, ventendeGodkendelser, type FeedCard } from '../../lib/agentContractApi'
 import { AgentFeedCardBody, agentKortIkon } from './AgentFeedCard'
-import { maaPolle } from '../../lib/ro'
+// maaPolle er ikke laengere brugt her (2/11-2026): toastens poll skal ikke
+// gennem ro-loftet — se kommentaren ved `hent` nedenfor.
 import { markNotificationsRead } from '../../lib/notificationAttention'
 import { spilToastKlang } from '../../lib/toastLyd'
 import { updatesBridge } from '../../lib/updatesBridge'
@@ -244,14 +245,32 @@ export function NotifikationsToast({ config, onAabenSession }: {
       .catch(() => { /* pollet daekker; en fejlet hentning maa ikke stoeje */ })
   }, [apiBaseUrl, authToken])
 
-  // Pollet — det er SIKKERHEDSNETTET, og her er ro-loftet rigtigt: ingen
-  // grund til at spoerge hvert ottende sekund naar ingen kigger.
+  // Pollet — det er SIKKERHEDSNETTET.
   //
-  // To noegler, to lofter: notifikationer og agent-approvals er to kilder, og
-  // en faelles noegle ville lade den ene kildes poll blokere den anden.
+  // ── RO-LOFTET BLEV FJERNET HER (maalt 2/11-2026) ──────────────────────
+  // Her stod `if (maaPolle('notifikationer', 8000)) hentNu()`. Det SAA
+  // rigtigt ud — kommentaren ovenfor advarer endda om praecis denne fejl —
+  // men intervallet kaldte den gatede vej alligevel, og derfor var advarslen
+  // virkningsloes.
+  //
+  // Maalt i en koerende browser: `Klokke.tsx:68` spoerger `maaPolle(
+  // 'notifikationer', 8000)` og poller selv hvert 8000 ms. To komponenter,
+  // SAMME noegle, SAMME vindue. Klokken naar foerst naesten hver gang, toasten
+  // faar «nej», og posten bliver aldrig en toast. Resultatet var at forslag
+  // (og alle andre nye poster) laa i feedet med `kan_afgoere: True` og aldrig
+  // dukkede op i fladen — praecis den tavshed hele dagen handlede om.
+  //
+  // Ro-loftet har stadig en opgave: det skal holde PresenceHost og andre
+  // baggrunds-kilder i skak. Men TOASTEN er ikke en baggrundskilde — den ER
+  // varselet. En post der aldrig bliver vist fordi en anden komponent lige
+  // spurgte, er ikke «ro», det er et tabt varsel.
+  //
+  // Derfor: pollingen gaar nu direkte til `hentNu`/`hentKontraktNu`. Begge
+  // har deres egen versions-taeller, saa overlappende kald annullerer
+  // hinanden i stedet for at give dobbelte toasts.
   const hent = useCallback(() => {
-    if (maaPolle('notifikationer', 8000)) hentNu()
-    if (maaPolle('agent-kontrakt', 8000)) hentKontraktNu()
+    hentNu()
+    hentKontraktNu()
   }, [hentNu, hentKontraktNu])
 
   useEffect(() => {

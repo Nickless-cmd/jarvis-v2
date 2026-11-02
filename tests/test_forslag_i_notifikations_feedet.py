@@ -45,7 +45,12 @@ def test_source_edit_med_forkert_fingerprint_er_foraeldet(tmp_path: Path):
 def test_source_edit_med_korrekt_fingerprint_er_ikke_foraeldet(tmp_path: Path):
     fil = tmp_path / "ting.py"
     fil.write_text("x = 1\n")
-    korrekt = hashlib.sha256(fil.read_bytes()).hexdigest()[:16]
+    # SHA1 paa TEKST — samme algoritme som `autonomy_proposal_queue._fp`
+    # skriver ind i `base_fingerprint`. Brugte testen sha256, kunne de to
+    # aldrig matche, og testen ville vogte den forkerte kontrakt.
+    korrekt = hashlib.sha1(
+        fil.read_text(encoding="utf-8").encode("utf-8"), usedforsecurity=False
+    ).hexdigest()[:16]
     forslag = {
         "kind": "source-edit",
         "payload": {"target_path": str(fil), "base_fingerprint": korrekt},

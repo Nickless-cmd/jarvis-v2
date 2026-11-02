@@ -129,6 +129,34 @@ def _skygge() -> bool:
         return True
 
 
+def _er_auto_session(session_id: str) -> bool:
+    """Er dette mit eget maskineri frem for en samtale med Bjørn?
+
+    MÅLT 1/11-2026: 525 events siden 19/10, hvoraf 112 nåede en prompt
+    (``gate=true``). **58 af de 112** faldt i en ``auto-*``-silo —
+    ``auto-heartbeat`` fik besked på at prøve `write_handover`,
+    `heartbeat_status` og `trigger_heartbeat_tick`. Auto-sessionerne var kun
+    18 % af events men over halvdelen af injektionerne.
+
+    Det er ikke opdagelse: der er ingen der kan handle på forslaget. Sektionen
+    findes for at pege Bjørn på et værktøj han ikke vidste fandtes — ikke for
+    at foreslå mit eget heartbeat hvad det skal gøre.
+
+    Reglen genbruger ``session_binding.er_auto_session`` frem for at gentage
+    ``startswith("auto-")``: den definition ejes ét sted, og en kopi her ville
+    drive fra den den dag silo-navnene ændrer sig.
+
+    Self-safe: kan modulet ikke importeres, er svaret ``False`` — så falder vi
+    tilbage til den gamle adfærd frem for at slukke sektionen ved et uheld.
+    """
+    try:
+        from core.services.session_binding import er_auto_session
+        return bool(er_auto_session(session_id))
+    except Exception as exc:  # self-safe: en import-fejl må ikke slukke sektionen
+        logger.debug("tool_discovery_nudge: kunne ikke afgøre auto-session: %s", exc)
+        return False
+
+
 def _er_prewarm(session_id: str) -> bool:
     """Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald.
 
@@ -496,6 +524,10 @@ def tool_discovery_nudge_section(
     # ét sted, saa hverken suppression eller event-payloaden ser et None.
     sid = str(session_id or "")
     if _er_prewarm(sid):
+        return ""
+    # Auto-siloer FOER opslaget: mit eget heartbeat skal ikke foreslås
+    # værktøjer. Se `_er_auto_session` for målingen bag.
+    if _er_auto_session(sid):
         return ""
     if not _enabled() and not _skygge():
         return ""

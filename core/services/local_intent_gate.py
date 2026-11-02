@@ -80,9 +80,20 @@ _SKABELON = (
 )
 
 
-def _cache_noegle(besked: str, navn: str) -> str:
+def _cache_noegle(besked: str, navn: str, beskrivelse: str = "") -> str:
+    """Cache-noegle der daekker ALT modellen faar at se.
+
+    MÅLT 1/11-2026: noeglen var ``sha1(navn + besked)`` — men ``beskrivelse``
+    gaar ind i ``_SKABELON`` og PA AVGOER svaret. Ændrede et værktøjs
+    beskrivelse sig, fik samme navn+besked den gamle dom i op til 15 minutter
+    (``_CACHE_TTL_S``). Koden saa rigtig ud og svarede forkert.
+
+    Beskrivelsen trunkeres til de samme 150 tegn som skabelonen bruger: er to
+    beskrivelser ens i det uddrag modellen ser, ER de samme input, og saa skal
+    de dele dom. En længere nøgle ville bare dele cache uden at ændre svaret.
+    """
     fingeraftryk = hashlib.sha1(  # noqa: S324 - cache-noegle, ikke sikkerhed
-        f"{navn}\x00{besked}".encode()
+        f"{navn}\x00{besked}\x00{(beskrivelse or '')[:150]}".encode()
     ).hexdigest()[:16]
     return f"local_intent_gate:{fingeraftryk}"
 
@@ -98,7 +109,7 @@ def er_bestilt(besked: str, navn: str, beskrivelse: str = "") -> bool:
     if not besked or not navn:
         return False
 
-    noegle = _cache_noegle(besked, navn)
+    noegle = _cache_noegle(besked, navn, beskrivelse)
     try:
         from core.services import shared_cache
         cachet = shared_cache.get(noegle)

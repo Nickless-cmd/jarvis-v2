@@ -121,3 +121,26 @@ def test_eksemplerne_i_prompten_roerer_ikke_maalesaettet():
         assert lukket not in _SKABELON.lower(), (
             "%s er baade eksempel og maalt fejl — gaten maaler paa sig selv" % lukket
         )
+
+
+def test_cache_noeglen_skelner_beskrivelser():
+    """To vaerktoejer med samme navn men forskellig beskrivelse deler ikke dom.
+
+    `_cache_noegle` var ``sha1(navn + besked)``, men beskrivelsen gaar ind i
+    skabelonen og PA AVGOER svaret. Aendrede et vaerktoejs beskrivelse sig,
+    fik samme navn+besked den gamle dom — koden saa rigtig ud og svarede
+    forkert. Latent i dag (beskrivelser skifter sjaeldent), men den er der.
+    """
+    from core.services.local_intent_gate import _cache_noegle
+
+    a = _cache_noegle("laeg et moede ind", "calendar_create", "Opret begivenhed")
+    b = _cache_noegle("laeg et moede ind", "calendar_create", "Slet begivenhed")
+    assert a != b, "forskellige beskrivelser maa ikke dele cache-dom"
+
+
+def test_cache_noeglen_er_stabil_for_samme_input():
+    """Ens input skal give ens noegle — ellers rammer cachen aldrig."""
+    from core.services.local_intent_gate import _cache_noegle
+
+    assert _cache_noegle("laeg et moede ind", "x", "beskrivelse") == \
+        _cache_noegle("laeg et moede ind", "x", "beskrivelse")

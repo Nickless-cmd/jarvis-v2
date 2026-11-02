@@ -387,25 +387,26 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 |---|---|---|---|---|
 | function | `_enabled` | `()` | Kill-switch. **Default OFF** — se maalingen nedenfor. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L48) |
 | function | `_skygge` | `()` | Skygge-tilstand: REGN nudgen ud og LOG den, men injicér den ikke. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L88) |
-| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L132) |
-| function | `_er_internt` | `(beskrivelse)` | Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L195) |
-| function | `_er_social` | `(besked)` | Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L201) |
-| function | `_har_handleverbum` | `(besked)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L219) |
-| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L224) |
-| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L247) |
-| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L257) |
-| function | `_kernens_navne` | `()` | De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L277) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L325) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L335) |
-| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L347) |
-| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L368) |
-| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L392) |
-| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L423) |
-| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L469) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L485) |
-| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L580) |
-| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L586) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L591) |
+| function | `_er_auto_session` | `(session_id)` | Er dette mit eget maskineri frem for en samtale med Bjørn? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L132) |
+| function | `_er_prewarm` | `(session_id)` | Prewarm-ture varmer cachen — de skal ikke koste et embedding-kald. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L160) |
+| function | `_er_internt` | `(beskrivelse)` | Handler vaerktoejet om HANS indre maskineri frem for Bjoerns verden? | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L223) |
+| function | `_er_social` | `(besked)` | Kort OG socialt. Laengden alene raekker ikke — «send en mail til bjorn og | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L229) |
+| function | `_har_handleverbum` | `(besked)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L247) |
+| function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L252) |
+| function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L275) |
+| function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L285) |
+| function | `_kernens_navne` | `()` | De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L305) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L353) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L363) |
+| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L375) |
+| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L396) |
+| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L420) |
+| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L451) |
+| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L497) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L513) |
+| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L612) |
+| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L618) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L623) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

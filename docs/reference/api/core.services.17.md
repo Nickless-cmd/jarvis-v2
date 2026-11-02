@@ -75,8 +75,8 @@ _Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_cache_noegle` | `(besked, navn)` | — | [src](../../../core/services/local_intent_gate.py#L83) |
-| function | `er_bestilt` | `(besked, navn, beskrivelse=…)` | Beder brugeren om noget hvor ``navn`` ville blive kaldt? | [src](../../../core/services/local_intent_gate.py#L90) |
+| function | `_cache_noegle` | `(besked, navn, beskrivelse=…)` | Cache-noegle der daekker ALT modellen faar at se. | [src](../../../core/services/local_intent_gate.py#L83) |
+| function | `er_bestilt` | `(besked, navn, beskrivelse=…)` | Beder brugeren om noget hvor ``navn`` ville blive kaldt? | [src](../../../core/services/local_intent_gate.py#L101) |
 
 ## `core/services/local_small_model.py`
 _Ét-ords-spoergsmaal til den lille lokale model paa Jarvis' eget kort._

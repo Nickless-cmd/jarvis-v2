@@ -833,3 +833,34 @@ def test_peger_STADIG_naar_det_bedste_svar_er_usynligt(monkeypatch):
     # blev sprunget over foer opslaget, saa testen maalte laengden og ikke reglen.
     ud = T.tool_discovery_nudge_section("kan du godkende planen", "s1")
     assert "approve_plan" in ud
+
+
+# ---------------------------------------------------------------------------
+# Auto-sessioner (2/11-2026)
+# ---------------------------------------------------------------------------
+
+
+def test_auto_session_faar_aldrig_en_nudge(monkeypatch):
+    """Nudgen taler til Bjørn, ikke til mit eget maskineri.
+
+    Målt 1/11-2026: 58 af 112 injektioner siden 19/10 faldt i en
+    ``auto-*``-silo — mit eget heartbeat fik besked på at prøve
+    `write_handover` og `heartbeat_status`. Det er ikke opdagelse, det er
+    støj i den prompt ingen læser. Auto-sessionerne var 18 % af events men
+    over halvdelen af det der faktisk nåede en prompt.
+    """
+    _stub(monkeypatch, [("calendar_create_event", 0.91)])
+    _maa_ikke_slaa_op(monkeypatch)
+    for silo in ("auto-heartbeat-20261101", "auto-recurring", "auto-wakeup"):
+        assert T.tool_discovery_nudge_section(BESKED, silo) == ""
+
+
+def test_rigtig_session_faar_stadig_sin_nudge(monkeypatch):
+    """Modstykket: filteret må ikke sluge den samtale det hele findes for.
+
+    Uden denne ville en for bred regel (fx «alt uden auto-») bestå den
+    test ovenfor og gøre sektionen død i produktion.
+    """
+    _stub(monkeypatch, [("calendar_create_event", 0.91)])
+    ud = T.tool_discovery_nudge_section(BESKED, "chat-00f95aa5958342aabe")
+    assert "calendar_create_event" in ud

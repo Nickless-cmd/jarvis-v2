@@ -350,6 +350,10 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # `recall` selv ikke staar i denne liste — memory-soegning er i dag kun
     # naaelig i chat-scope. Det er en separat mangel, ikke aendret her.)
     "repo_recall",
+    # Plan mode afslutter med et forslag, ikke med implementering. De tre
+    # værktøjer findes kun på code-fladen; selve Plan mode indsnævrer derefter
+    # kataloget og tillader netop denne ene plan-mutation.
+    "list_plans", "propose_plan", "revise_plan",
     # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # Madopskrifter (25/10-2026): nøglefri, read-only eksterne opslag. Samme
@@ -783,4 +787,19 @@ def filter_tool_definitions(
         locked = set(locked) | set(hidden_contract_tools())
     except Exception:
         logger.warning("agent-kapabilitetsfilteret kunne ikke koere", exc_info=True)
-    return [d for d in defs if _fn_name(d) in allow and _fn_name(d) not in locked]
+    filtered = [d for d in defs if _fn_name(d) in allow and _fn_name(d) not in locked]
+    # Plan mode er en smallere code-mode profil. Filtreringen her er UX-laget;
+    # eksekveringsporten håndhæver samme regel igen, så en gammel session-lock
+    # eller et håndskrevet tool-call ikke kan genoplive mutationer.
+    try:
+        from core.services.plan_mode import filter_definitions as _plan_filter
+
+        return _plan_filter(filtered)
+    except Exception:
+        logger.warning("plan-mode tool-filter fejlede — skjuler alle tools", exc_info=True)
+        try:
+            from core.services.plan_mode import is_active as _plan_active
+
+            return [] if _plan_active() else filtered
+        except Exception:
+            return filtered

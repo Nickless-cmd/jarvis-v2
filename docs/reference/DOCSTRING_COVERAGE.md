@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9532/17866 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9536/17874 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6342 | 12132 | 52% |
+| `core.services` | 6346 | 12140 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 139 | 217 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2595)
+## Undocumented public functions (2599)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -619,7 +619,7 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L431)
+- `core/runtime/db_schema.py` :: `init_db` (L443)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -1003,12 +1003,12 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 - `core/services/chat_flow_preferences.py` :: `set_chat_flow_state` (L81)
 - `core/services/chat_session_private_metadata.py` :: `decrypt_session_text` (L23)
 - `core/services/chat_session_private_metadata.py` :: `encrypt_session_text` (L8)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L943)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L945)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L67)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1770)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1401)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1722)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1754)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1791)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1407)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1728)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1760)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1567,6 +1567,10 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 - `core/services/personal_project.py` :: `pause_project` (L363)
 - `core/services/personal_project.py` :: `resume_project` (L387)
 - `core/services/pfsense_syslog.py` :: `syslog_stats` (L221)
+- `core/services/plan_mode.py` :: `filter_definitions` (L124)
+- `core/services/plan_mode.py` :: `prompt_section` (L135)
+- `core/services/plan_mode.py` :: `session_plan_mode` (L54)
+- `core/services/plan_mode.py` :: `stream_context` (L87)
 - `core/services/plan_proposals.py` :: `list_session_plans` (L545)
 - `core/services/plan_proposals.py` :: `propose_plan` (L110)
 - `core/services/plan_proposals.py` :: `resolve_plan` (L196)
@@ -2413,11 +2417,11 @@ Generated from source. 9532/17866 functions/methods documented (53%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_local_exec` (L462)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L440)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L458)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L436)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L467)
+- `core/tools/tool_scoping.py` :: `reset_local_exec` (L466)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L444)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L462)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L440)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L471)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

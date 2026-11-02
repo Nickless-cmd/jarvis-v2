@@ -12,9 +12,6 @@ om et halvt år som er lavet, er det denne fils skyld — ikke læserens.
 - **Plugins i `[+]`-menuen** (`Composer.tsx:730`) er en ren attrap:
   `onClick={() => setMenuOpen(false)}`. Knappen lukker menuen og gør intet
   andet.
-- **Planlægningstilstand** (`[+]`-menuen) lever kun i klienten. `planMode`
-  sendes ikke med i `streamClient.ts`, og serveren kender ikke feltet — målt
-  21/9-2026: nul forekomster i `routes/chat.py`.
 - **Pin som kapitel** (`MessageActions.tsx`) er en lokal visuel markering.
   Der findes intet kapitel-begreb i backenden at hænge den op på.
 - **Virtualisering af transcript**: ikke implementeret. Store samtaler

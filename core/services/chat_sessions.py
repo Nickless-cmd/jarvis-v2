@@ -75,6 +75,7 @@ def create_chat_session(
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
+    title_origin = "auto" if _er_pladsholder(normalized_title) else "explicit"
     # Hvem bad om denne samtale? Spørgsmålet stilles HER, hvor svaret findes —
     # ikke bagefter ud fra hvem der tilfældigvis skrev sidst (19/10-2026).
     # Tom streng er et ærligt «ved det ikke»: en oprettelse uden for en
@@ -98,11 +99,12 @@ def create_chat_session(
             """
             INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
                                        workspace_kind, workspace_root, kind,
-                                       owner_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                       owner_user_id, title_origin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, normalized_title, created_at, created_at,
-             (workspace_kind or None), (workspace_root or None), art, opretter),
+             (workspace_kind or None), (workspace_root or None), art, opretter,
+             title_origin),
         )
     # Ledger-kanariefugl (fase 11): er den armet, baerer DENNE session
     # observationsvinduet. Fail-safe — en kanariefugl maa aldrig kunne vaelte
@@ -1074,7 +1076,7 @@ def append_chat_message(
     def _skriv_raekken() -> tuple[bool, str, str]:
         with connect() as conn:
             exists = conn.execute(
-                "SELECT session_id, title FROM chat_sessions WHERE session_id = ?",
+                "SELECT session_id, title, title_origin FROM chat_sessions WHERE session_id = ?",
                 (normalized_session,),
             ).fetchone()
             if exists is None:
@@ -1152,8 +1154,10 @@ def append_chat_message(
                 )
 
             next_title = str(exists["title"])
+            next_title_origin = str(exists["title_origin"] or "legacy")
             if normalized_role == "user" and next_title == "New chat":
                 next_title = _normalize_title(normalized_content) or next_title
+                next_title_origin = "first_message"
                 next_title = encrypt_session_text(
                     next_title, normalized_session,
                     user_id=_user_id, workspace_name=_workspace_name,
@@ -1162,10 +1166,10 @@ def append_chat_message(
             conn.execute(
                 """
                 UPDATE chat_sessions
-                SET title = ?, updated_at = ?
+                SET title = ?, title_origin = ?, updated_at = ?
                 WHERE session_id = ?
                 """,
-                (next_title, timestamp, normalized_session),
+                (next_title, next_title_origin, timestamp, normalized_session),
             )
 
         return _kanonisk, _user_id, _workspace_name
@@ -1293,7 +1297,9 @@ def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
             if not _er_pladsholder(row["title"]):
                 return
             conn.execute(
-                "UPDATE chat_sessions SET title = ? WHERE session_id = ?",
+                """UPDATE chat_sessions
+                   SET title = ?, title_origin = 'first_message'
+                   WHERE session_id = ?""",
                 (encrypt_session_text(_normalize_title(tekst), session_id), session_id))
             conn.commit()
     except Exception as exc:
@@ -1751,7 +1757,10 @@ def recent_chat_tool_messages(session_id: str, *, limit: int = 6) -> list[dict[s
     )
 
 
-def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | None:
+def rename_chat_session(
+    session_id: str, *, title: str, origin: str = "user",
+    expected_title: str | None = None, expected_origin: str | None = None,
+) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     new_title = _normalize_title(title) or "New chat"
     if not normalized:
@@ -1759,11 +1768,23 @@ def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | N
     if new_title != "New chat":
         new_title = encrypt_session_text(new_title, normalized)
     now = datetime.now(UTC).isoformat()
+    title_origin = str(origin or "user").strip() or "user"
     with connect() as conn:
-        conn.execute(
-            "UPDATE chat_sessions SET title = ?, updated_at = ? WHERE session_id = ?",
-            (new_title, now, normalized),
+        where = ["session_id = ?"]
+        params: list[object] = [new_title, title_origin, now, normalized]
+        if expected_title is not None:
+            where.append("title = ?")
+            params.append(expected_title)
+        if expected_origin is not None:
+            where.append("title_origin = ?")
+            params.append(expected_origin)
+        cursor = conn.execute(
+            "UPDATE chat_sessions SET title = ?, title_origin = ?, updated_at = ? "
+            f"WHERE {' AND '.join(where)}",
+            tuple(params),
         )
+        if cursor.rowcount == 0:
+            return None
     return get_chat_session(normalized)
 
 

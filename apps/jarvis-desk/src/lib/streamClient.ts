@@ -192,6 +192,8 @@ export interface StreamRequest {
   /** Konkret model-id + provider-valg (rolle-bevidst routing). */
   model?: string
   providerChoice?: string
+  /** Server-authoritative Plan mode; valid only together with mode='code'. */
+  planMode?: boolean
   /** R1: default false for chat-lane. Blind auto-reconnect re-POSTer beskeden →
    *  duplikerer user-message + nyt run. Kun true hvis serveren understøtter
    *  ægte resume (fremtidig). */
@@ -505,6 +507,7 @@ export function startStream(
           workspace_root: request.workspaceRoot ?? '',
           model: request.model ?? '',
           provider_choice: request.providerChoice ?? '',
+          plan_mode: request.planMode ?? false,
         }),
         signal: abortController.signal,
       })

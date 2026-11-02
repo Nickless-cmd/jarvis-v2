@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/vision_preview.py`
+_Hvilket billede må en klient hente — og hvad gør vi når svaret er «ingen»?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../core/services/vision_preview.py#L75) |
+| function | `maa_vises` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../core/services/vision_preview.py#L83) |
+| function | `_kopinavn` | `(fuld)` | Et navn udledt af filen selv, så samme billede giver samme kopi. | [src](../../../core/services/vision_preview.py#L109) |
+| function | `visnings_sti` | `(sti)` | Den sti en klient kan HENTE billedet på. Tom streng hvis ingen findes. | [src](../../../core/services/vision_preview.py#L120) |
+
 ## `core/services/visual_memory.py`
 _Visual memory — webcam snapshots beskrevet af vision-model._
 

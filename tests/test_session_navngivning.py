@@ -112,6 +112,76 @@ def test_modellens_svar_renses_til_en_titel(raa, forventet):
     assert _rens_titel(raa) == forventet
 
 
+def test_nye_raadetitler_markeres_og_forbedres_af_sweepet(isolated_runtime):
+    """En meningsfuld førstebesked er stadig en rå fallback, ikke brugerens navn."""
+    from core.services.chat_sessions import append_chat_message, create_chat_session
+    from core.services.session_titling import _kandidater
+
+    session = create_chat_session(kind="code")
+    sid = str(session["id"])
+    append_chat_message(
+        session_id=sid,
+        role="user",
+        content="kan du undersøge hvorfor plan mode ikke håndhæves på serveren?",
+    )
+
+    kandidat = next(k for k in _kandidater() if k["session_id"] == sid)
+    assert kandidat["title_origin"] == "first_message"
+
+
+def test_manuelt_navn_falder_ud_af_titelkoeen(isolated_runtime):
+    from core.services.chat_sessions import (
+        create_chat_session,
+        rename_chat_session,
+        append_chat_message,
+    )
+    from core.services.session_titling import _kandidater
+
+    session = create_chat_session()
+    sid = str(session["id"])
+    append_chat_message(session_id=sid, role="user", content="hej")
+    rename_chat_session(sid, title="Mit eget projektnavn")
+
+    assert all(k["session_id"] != sid for k in _kandidater())
+
+
+def test_sweeper_overskriver_ikke_et_navn_der_aendres_under_modelkaldet(
+    isolated_runtime, monkeypatch,
+):
+    from core.services.chat_sessions import (
+        create_chat_session,
+        get_chat_session,
+        rename_chat_session,
+        append_chat_message,
+    )
+    from core.services import session_titling
+
+    session = create_chat_session()
+    sid = str(session["id"])
+    append_chat_message(session_id=sid, role="user", content="hej")
+    kandidat = next(k for k in session_titling._kandidater() if k["session_id"] == sid)
+    monkeypatch.setattr(session_titling, "_kandidater", lambda: [kandidat])
+    monkeypatch.setattr(session_titling, "_samtale_tekst", lambda _sid: "Bjørn: hej")
+
+    def _titel(_samtale):
+        rename_chat_session(sid, title="Brugerens navn")
+        return "Modelnavn"
+
+    monkeypatch.setattr(session_titling, "generer_titel", _titel)
+    session_titling.sweep(limit=1)
+
+    assert get_chat_session(sid)["title"] == "Brugerens navn"
+
+
+def test_titelprompten_bevarer_identifikatorer_og_skiller_opgave_fra_spoergsmaal():
+    from core.services.session_titling import _PROMPT
+
+    assert "højst 36 tegn" in _PROMPT
+    assert "ticket-id'er" in _PROMPT
+    assert "ændringsopgave" in _PROMPT
+    assert "spørgsmål eller en undersøgelse" in _PROMPT
+
+
 def test_sweepet_feiler_aldrig_hoejt():
     """Det koerer fra heartbeat-stien. En tom ko er ikke en fejl."""
     from core.services import session_titling

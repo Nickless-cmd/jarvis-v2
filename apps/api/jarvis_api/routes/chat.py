@@ -959,6 +959,9 @@ class ChatStreamRequest(BaseModel):
     # låser kode-tools op (tool_scope="code"). "" = ubegrænset (rolle-filter
     # gælder stadig). Sættes af jarvis-desk pr. mode.
     mode: str = ""
+    # Server-authoritative collaboration mode. Honoured only when effective
+    # tool scope is code; chat mode can never inherit the planning contract.
+    plan_mode: bool = False
     # Code-mode workspace (hvor Jarvis' fil-tools arbejder).
     workspace_kind: str = ""   # "container" | "workstation" | ""
     workspace_root: str = ""

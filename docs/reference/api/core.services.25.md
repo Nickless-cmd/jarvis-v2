@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_mutation_lineage.py`
+_Runtime self-awareness of self-change and code mutation lineage._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/self_mutation_lineage.py#L33) |
+| function | `_categorize_path` | `(path)` | Return category if path is a Jarvis self-file, else None. | [src](../../../core/services/self_mutation_lineage.py#L60) |
+| function | `_relative_path` | `(path)` | — | [src](../../../core/services/self_mutation_lineage.py#L74) |
+| function | `record_self_mutation` | `(*, target_path, change_type, session_id=…)` | Record a completed file mutation to a Jarvis self-file. | [src](../../../core/services/self_mutation_lineage.py#L81) |
+| function | `build_self_mutation_lineage_surface` | `(*, limit=…)` | Returns recent self-mutations as a runtime-truth surface. | [src](../../../core/services/self_mutation_lineage.py#L112) |
+| function | `build_self_mutation_prompt_lines` | `(*, limit=…)` | Returns compact prompt lines for recent self-mutations. | [src](../../../core/services/self_mutation_lineage.py#L157) |
+| function | `_emit_self_mutation_lineage_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/self_mutation_lineage.py#L170) |
+
 ## `core/services/self_narrative_continuity_signal_tracking.py`
 _Self-narrative continuity signal tracking — migrated onto signal_tracking_framework._
 
@@ -646,14 +659,14 @@ _Session titling — giv sessionerne rigtige titler i sidebaren._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_rens` | `(titel)` | Renset sammenligningsform: små bogstaver, ingen haler, ét mellemrum. | [src](../../../core/services/session_titling.py#L97) |
-| function | `er_ubrugelig_titel` | `(titel)` | Er titlen værdiløs i sidebaren — en pladsholder eller en hilsen? | [src](../../../core/services/session_titling.py#L104) |
-| function | `_kandidater` | `(*, limit=…)` | Seneste sessioner hvis titel er ubrugelig OG som vi må læse. | [src](../../../core/services/session_titling.py#L118) |
-| function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L156) |
-| function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L205) |
-| function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L223) |
-| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L266) |
-| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en ubrugelig titel. | [src](../../../core/services/session_titling.py#L300) |
+| function | `_rens` | `(titel)` | Renset sammenligningsform: små bogstaver, ingen haler, ét mellemrum. | [src](../../../core/services/session_titling.py#L98) |
+| function | `er_ubrugelig_titel` | `(titel)` | Er titlen værdiløs i sidebaren — en pladsholder eller en hilsen? | [src](../../../core/services/session_titling.py#L105) |
+| function | `_kandidater` | `(*, limit=…)` | Seneste auto-navngivne eller ubrugelige sessioner som vi må læse. | [src](../../../core/services/session_titling.py#L119) |
+| function | `_samtale_tekst` | `(session_id)` | Et bundet vindue af samtalen, klar til at give modellen. | [src](../../../core/services/session_titling.py#L162) |
+| function | `_rens_titel` | `(raa)` | Gør modellens svar til noget der kan stå i en sidebar. | [src](../../../core/services/session_titling.py#L214) |
+| function | `_ollama_lane_titel` | `(samtale)` | Spørg ollama-lanen (routerens local-lane) om en titel. | [src](../../../core/services/session_titling.py#L233) |
+| function | `generer_titel` | `(samtale)` | Spørg ollama-lanen om en titel, med billig-lanen som reserve. | [src](../../../core/services/session_titling.py#L276) |
+| function | `sweep` | `(*, limit=…)` | Navngiv op til `limit` sessioner med en automatisk eller ubrugelig titel. | [src](../../../core/services/session_titling.py#L310) |
 
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
@@ -724,11 +737,4 @@ _Skygge-sammenligning: er den nye afregning enig med den kørende kode?_
 | function | `_puls` | `()` | Gør tællerne aflæselige udefra, og sig dem højt med jævne mellemrum. | [src](../../../core/services/settlement_shadow.py#L131) |
 | function | `taellere_fra_cache` | `()` | Læs tællerne UDEN at være den proces der skrev dem. | [src](../../../core/services/settlement_shadow.py#L141) |
 | function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix=…, cancelled=…, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L151) |
-
-## `core/services/shadow_counters.py`
-_Skygge-taellere der overlever en genstart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `flet` | `(noegle, aktuelle, sidst_gemt, *, ekstra=…, ttl=…)` | Laeg dette runs tilvaekst oveni det der allerede staar i cachen. | [src](../../../core/services/shadow_counters.py#L28) |
 

@@ -29,7 +29,7 @@ function applySmileys(text) {
   }
   return result
 }
-import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor, FileText } from 'lucide-react'
+import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Activity, Check, X, Monitor, FileText } from 'lucide-react'
 import { backend } from '../../lib/adapters'
 import { useFileMentions } from './useFileMentions'
 import { QueuedFollowups } from './QueuedFollowups'
@@ -106,7 +106,6 @@ export function Composer({
     })
   }
 
-  const [planMode, setPlanMode] = useState(false)
   const [approvalMode, setApprovalMode] = useState('auto')
   // Thinking mode for reasoning-capable models (deepseek-v4-flash et al.).
   // Persists last choice across reloads. Models that ignore the param
@@ -236,7 +235,7 @@ export function Composer({
 
   function handleSend() {
     if (!canSend) return
-    const msg = planMode ? `[Plan mode] ${value.trim()}` : value.trim()
+    const msg = value.trim()
     const attachmentIds = doneAttachments.map((a) => a.serverId)
     const attachmentMeta = doneAttachments.map((a) => ({
       id: a.serverId,
@@ -514,9 +513,7 @@ export function Composer({
               ? 'Add another follow-up…'
               : isStreaming
                 ? 'Type a follow-up — sends when Jarvis is done…'
-                : planMode
-                  ? 'Describe what to plan…'
-                  : 'Message Jarvis…'
+                : 'Message Jarvis…'
           }
           rows={1}
         />
@@ -606,16 +603,6 @@ export function Composer({
           )}
         </div>
         <div className="composer-footer-right">
-          <button
-            className={`composer-plan-btn${planMode ? ' active' : ''}`}
-            onClick={() => setPlanMode(!planMode)}
-            title={planMode ? 'Plan mode on — click to disable' : 'Enable plan mode'}
-            type="button"
-          >
-            <Layers size={11} strokeWidth={1.8} />
-            <span>Plan</span>
-          </button>
-
           {tokenLabel && (
             <div className="composer-token-count mono"
               title={lastRunTokens ? `In: ${lastRunTokens.input} / Out: ${lastRunTokens.output}` : ''}>

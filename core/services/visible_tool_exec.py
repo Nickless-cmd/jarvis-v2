@@ -209,6 +209,23 @@ async def run_tool_batch(
     # paa sin egen plads, saa modellen faar at vide HVORFOR frem for at vente paa
     # et svar der aldrig kommer.
     _blokeret: dict[int, str] = {}
+    # Plan mode håndhæves FØR announce-loopet. Det er særligt vigtigt for
+    # Path B: et lokalt tool_call sendes til klienten i announce-loopet, og en
+    # gate efter dette punkt ville være korrekt på serveren men for sen på
+    # brugerens maskine.
+    from core.services.plan_mode import tool_allowed as _plan_tool_allowed
+
+    for _i, _tc0 in enumerate(tool_calls):
+        _n0 = str((_tc0.get("function") or {}).get("name")
+                  or _tc0.get("name") or "")
+        _a0 = _parse_tc_args(_tc0)
+        if not _plan_tool_allowed(
+            _n0, _a0, session_id=getattr(run, "session_id", "") or ""
+        ):
+            _blokeret[_i] = (
+                "Plan mode er read-only. Forlad Plan mode før dette "
+                f"værktøj kan udføres: {_n0}."
+            )
     try:
         from core.services import lifecycle_hooks as _lh
         if "PreToolUse" in _lh.WIRED_EVENTS and _lh.hooks_for("PreToolUse"):

@@ -276,6 +276,7 @@ def start_user_run_detached(
     run_id: str | None = None,
     local_tool_exec: bool = False,
     research_mode: bool = False,
+    plan_mode: bool | None = None,
     # Genoptagelse (opgave 4): hvilken OPGAVE denne kørsel fortsætter, og
     # hvilken generation af kravet den hører til. Uden dem ville fortsættelsen
     # være en ny, løsrevet kørsel, og journalen kunne ikke se at opgaven blev
@@ -348,6 +349,18 @@ def start_user_run_detached(
     if legacy_iter is None:
         from core.services.visible_runs import start_visible_run
         legacy_iter = start_visible_run(**visible_args)
+    from core.services.plan_mode import (
+        session_plan_mode as _session_plan_mode,
+        wrap_stream as _plan_wrap_stream,
+    )
+    # Recovery/auto-continuation har ingen klient-request at læse flaget fra.
+    # I den vej er den persistente sessionsværdi sandheden; databasefejl
+    # lukker konservativt for mutationer frem for at genvinde skriveadgang.
+    _plan_enabled = (
+        _session_plan_mode(sid, fail_closed=True)
+        if plan_mode is None else bool(plan_mode)
+    )
+    legacy_iter = _plan_wrap_stream(legacy_iter, enabled=_plan_enabled)
 
     # Ny tur: den forrige turs udfald maa ikke kunne arves (auto_continuation).
     try:

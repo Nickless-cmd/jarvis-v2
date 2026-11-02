@@ -110,6 +110,7 @@ export interface SendOpts {
   model?: string
   /** Provider-valg (KUN owner: "deepseek"|"ollama"). Member ignoreres server-side. */
   providerChoice?: string
+  planMode?: boolean
 }
 
 export interface PendingApproval {
@@ -420,6 +421,7 @@ export function StreamProvider({
         workspaceRoot: opts.workspaceRoot,
         model: opts.model,
         providerChoice: opts.providerChoice,
+        planMode: opts.planMode,
         autoReconnect: false,
       },
       {

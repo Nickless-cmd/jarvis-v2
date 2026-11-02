@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_outcome_text.py`
+_Small text helpers shared by visible-run outcome persistence._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `preview_text` | `(text, limit=…)` | — | [src](../../../core/services/visible_outcome_text.py#L5) |
+| function | `mark_mid_word_truncation` | `(text)` | Mark a likely sentence cut off in the middle of its final word. | [src](../../../core/services/visible_outcome_text.py#L12) |
+| function | `origin_of_session` | `(session_id)` | «auto-dream-20260902» → «dream»; empty for ordinary chats. | [src](../../../core/services/visible_outcome_text.py#L27) |
+
 ## `core/services/visible_post_tool_synthesis.py`
 _Stream the existing tool-free final synthesis without buffering its deltas._
 
@@ -498,14 +507,4 @@ _Hvilke øjne bruger han? — valg af vision-model (2026-09-05)._
 | function | `_record_cost` | `(usage, *, model, run_id)` | — | [src](../../../core/services/vision_backend.py#L197) |
 | function | `describe` | `(image_bytes=…, *, image_b64=…, model, prompt, run_id=…, provider=…)` | Beskriv/besvar et billede med den valgte backend. | [src](../../../core/services/vision_backend.py#L220) |
 | function | `build_vision_backend_surface` | `()` | — | [src](../../../core/services/vision_backend.py#L243) |
-
-## `core/services/vision_preview.py`
-_Hvilket billede må en klient hente — og hvad gør vi når svaret er «ingen»?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../core/services/vision_preview.py#L75) |
-| function | `maa_vises` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../core/services/vision_preview.py#L83) |
-| function | `_kopinavn` | `(fuld)` | Et navn udledt af filen selv, så samme billede giver samme kopi. | [src](../../../core/services/vision_preview.py#L109) |
-| function | `visnings_sti` | `(sti)` | Den sti en klient kan HENTE billedet på. Tom streng hvis ingen findes. | [src](../../../core/services/vision_preview.py#L120) |
 

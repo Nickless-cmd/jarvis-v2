@@ -136,6 +136,7 @@ export function Composer({
   config,
   getSessionId,
   showPermissions = true,
+  showPlanMode = false,
   contextTokens = 0,
   onGauge,
   overheadTokens = 0,
@@ -171,6 +172,9 @@ export function Composer({
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
    *  (cowork/code). I ren chat mode er den skjult. Default true. */
   showPermissions?: boolean
+  /** Plan mode findes kun på code-fladen; chat må ikke vise en kontrol som
+   * serveren med vilje afviser. */
+  showPlanMode?: boolean
   /** Context-ring (#9): tokens i konteksten + autocompact-tærskel. Ringen vises
    *  altid når compactAt > 0 (tom ved 0 tokens). */
   contextTokens?: number
@@ -468,7 +472,8 @@ export function Composer({
       rydText()
       setAttachments([])
       setPendingPastes([])
-      onSend(finalText, {        planMode,
+      onSend(finalText, {
+        planMode,
         permission,
         attachments: readyAttachments,
         model: sendModel,
@@ -799,10 +804,12 @@ export function Composer({
                 <button type="button" onClick={() => { fileRef.current?.click(); setMenuOpen(false) }}>
                   <Paperclip size={14} /> Tilføj billeder og filer
                 </button>
-                <button type="button" className="menu-toggle-row" onClick={() => setPlanMode((p) => !p)}>
-                  <ListChecks size={14} /> Planlægningstilstand
-                  <span className={`toggle ${planMode ? 'on' : ''}`}><span className="knob" /></span>
-                </button>
+                {showPlanMode && (
+                  <button type="button" className="menu-toggle-row" onClick={() => setPlanMode((p) => !p)}>
+                    <ListChecks size={14} /> Planlægningstilstand
+                    <span className={`toggle ${planMode ? 'on' : ''}`}><span className="knob" /></span>
+                  </button>
+                )}
                 <button type="button" onClick={() => setMenuOpen(false)}>
                   <Puzzle size={14} /> Plugins <ChevronRight size={14} className="menu-chevron" />
                 </button>

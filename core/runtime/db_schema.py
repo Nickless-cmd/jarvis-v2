@@ -281,13 +281,25 @@ def _ensure_skill_usage_table(conn: sqlite3.Connection) -> None:
 
 
 def _ensure_chat_session_workspace_columns(conn) -> None:
-    """Tilføj nullable workspace-kolonner til chat_sessions (Code-mode binding).
-    Idempotent — kan kaldes ved hver init/connect."""
+    """Tilføj nyere sessionfelter idempotent.
+
+    Workspace-felterne binder code mode til et arbejdstræ. ``plan_mode``
+    bærer den serverstyrede samarbejdstilstand gennem reconnect/recovery, og
+    ``title_origin`` skelner et automatisk rånavn fra brugerens eget navn.
+    """
     cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
     if "workspace_kind" not in cols:
         conn.execute("ALTER TABLE chat_sessions ADD COLUMN workspace_kind TEXT")
     if "workspace_root" not in cols:
         conn.execute("ALTER TABLE chat_sessions ADD COLUMN workspace_root TEXT")
+    if "plan_mode" not in cols:
+        conn.execute(
+            "ALTER TABLE chat_sessions ADD COLUMN plan_mode INTEGER NOT NULL DEFAULT 0"
+        )
+    if "title_origin" not in cols:
+        conn.execute(
+            "ALTER TABLE chat_sessions ADD COLUMN title_origin TEXT NOT NULL DEFAULT 'legacy'"
+        )
 
 
 def _ensure_notification_tables(conn) -> None:
@@ -619,7 +631,9 @@ def init_db() -> None:
                 session_id TEXT NOT NULL UNIQUE,
                 title TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                plan_mode INTEGER NOT NULL DEFAULT 0,
+                title_origin TEXT NOT NULL DEFAULT 'legacy'
             )
             """
         )

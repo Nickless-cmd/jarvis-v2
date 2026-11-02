@@ -66,6 +66,19 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             pass
     if not name:
         return ("skip", None)
+    # Defense in depth: visible_tool_exec stopper kaldet før et lokalt tool-call
+    # annonceres. Denne port dækker direkte executor-kald og ældre serverveje.
+    from core.services.plan_mode import tool_allowed as _plan_tool_allowed
+
+    if not _plan_tool_allowed(name, arguments, session_id=session_id):
+        reason = f"Plan mode er read-only; '{name}' blev ikke udført."
+        return ("result", {
+            "tool_name": name, "arguments": arguments,
+            "result": {"status": "gate_blocked", "gate_type": "plan_mode",
+                       "message": reason},
+            "result_text": f"[plan_mode] {reason}",
+            "status": "gate_blocked",
+        })
     # The model may name an old/pinned tool or wrap it in call_loaded_tool.
     # Check the resolved name before cache lookup, gate evaluation or execute.
     from core.tools.autonomous_tool_policy import is_allowed as _autonomous_allowed

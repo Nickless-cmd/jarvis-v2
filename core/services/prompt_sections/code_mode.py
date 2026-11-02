@@ -105,7 +105,10 @@ def section(*, compact: bool = False) -> str | None:
             lines[0], lines[1], lines[2], lines[3], lines[5], lines[6],
             lines[7], lines[10],
         ]
-    return "\n".join(lines)
+    from core.services.plan_mode import prompt_section
+
+    plan = prompt_section()
+    return "\n\n".join(part for part in ("\n".join(lines), plan) if part)
 
 
 __all__ = ["section"]

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17866 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17874 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -49,18 +49,18 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17866 functions/
 - [`core.services.17`](core.services.17.md) — `live_job_sources` … `memory_write_queue`
 - [`core.services.18`](core.services.18.md) — `mermaid_render` … `notifikationer_hydrering`
 - [`core.services.19`](core.services.19.md) — `notifikations_emittere` … `pfsense_syslog`
-- [`core.services.20`](core.services.20.md) — `phone_wake` … `prompt_contract`
-- [`core.services.21`](core.services.21.md) — `prompt_dump` … `reasoning_prefilter`
-- [`core.services.22`](core.services.22.md) — `reasoning_store` … `rhythm_engine`
-- [`core.services.23`](core.services.23.md) — `role_model_resolver` … `runtime_learning_signals`
-- [`core.services.24`](core.services.24.md) — `runtime_operational_memory` … `self_mutation_lineage`
-- [`core.services.25`](core.services.25.md) — `self_narrative_continuity_signal_tracking` … `shadow_counters`
-- [`core.services.26`](core.services.26.md) — `shadow_experiment_registry` … `spild`
-- [`core.services.27`](core.services.27.md) — `staged_edits` … `thought_leak_guard`
-- [`core.services.28`](core.services.28.md) — `thought_stream_daemon` … `upload_sandbox`
-- [`core.services.29`](core.services.29.md) — `user_activity` … `visible_outcome_text`
-- [`core.services.30`](core.services.30.md) — `visible_post_tool_synthesis` … `vision_preview`
-- [`core.services.31`](core.services.31.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `phone_wake` … `prompt_cache_probe`
+- [`core.services.21`](core.services.21.md) — `prompt_contract` … `reasoning_interceptor`
+- [`core.services.22`](core.services.22.md) — `reasoning_prefilter` … `retry_runtime`
+- [`core.services.23`](core.services.23.md) — `rhythm_engine` … `runtime_hooks`
+- [`core.services.24`](core.services.24.md) — `runtime_learning_signals` … `self_monitor`
+- [`core.services.25`](core.services.25.md) — `self_mutation_lineage` … `settlement_shadow`
+- [`core.services.26`](core.services.26.md) — `shadow_counters` … `spatial_entity_ledger`
+- [`core.services.27`](core.services.27.md) — `spild` … `thought_action_proposal_daemon`
+- [`core.services.28`](core.services.28.md) — `thought_leak_guard` … `untrusted_fencing`
+- [`core.services.29`](core.services.29.md) — `upload_sandbox` … `visible_model_types`
+- [`core.services.30`](core.services.30.md) — `visible_outcome_text` … `vision_backend`
+- [`core.services.31`](core.services.31.md) — `vision_preview` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

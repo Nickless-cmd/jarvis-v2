@@ -786,6 +786,7 @@ export function CodeView({
       model: opts.model,
       providerChoice: opts.providerChoice,
       thinkingMode: opts.thinkingMode,
+      planMode: opts.planMode,
     })
   }
 
@@ -959,6 +960,7 @@ export function CodeView({
       getSessionId={async () => sessionId ?? sessions.activeId ?? (await sessions.create('Kode-session', 'code')).id}
       sessionId={sessionId}
       showPermissions={true}
+      showPlanMode={true}
       contextTokens={contextTokens}
       onGauge={setGauge}
       overheadTokens={overheadTokens}

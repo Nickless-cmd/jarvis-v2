@@ -9,16 +9,17 @@ skriver, og den bærer ingen information om hvad samtalen handlede om.
 Titlen sættes ÉN gang, fra besked nummer ét. Informationen om emnet kommer
 senere, og der er ingen der samler den op.
 
-LØSNINGEN: en sweeper der finder sessioner hvis titel stadig er ubrugelig,
-læser et BUNDET vindue af samtalen, og beder OLLAMA-LANEN om en rigtig titel
-(billig-lanen kun som reserve, hvis ollama ikke svarer). Den rører ikke
-besked-skrivevejen — et modelkald må aldrig kunne blokere en besked — og den
-retter de eksisterende sessioner med, ikke kun fremtidige.
+LØSNINGEN: første besked giver stadig en øjeblikkelig fallback, men rækken
+stemples ``title_origin=first_message``. En sweeper finder både de stempler og
+gamle, beviseligt ubrugelige titler, læser et BUNDET vindue af samtalen og
+beder OLLAMA-LANEN om en rigtig titel (billig-lanen kun som reserve). Den
+rører ikke besked-skrivevejen — et modelkald må aldrig kunne blokere en besked.
 
 VÆRN:
-  * Kun titler der er pladsholdere eller hilsen-stubbe røres. Har brugeren
-    selv navngivet sessionen, eller bærer den en maskin-titel med betydning
-    («Autonom · Drømme · …», «Discord DM — …»), står den.
+  * Kun automatisk stemplerede råtitler samt gamle pladsholdere/hilsen-stubbe
+    røres. Har brugeren selv navngivet sessionen, eller bærer den en
+    maskin-titel med betydning («Autonom · Drømme · …», «Discord DM — …»),
+    står den. En betinget UPDATE beskytter også mod samtidige omdøbninger.
   * Krypterede titler springes over. De tilhører et medlem, ikke ejeren, og
     en titel-generering på ciffertekst ville være volapyk.
   * Alt er tavst: en session uden navn er et skønhedsproblem, en brækket
@@ -116,7 +117,7 @@ def er_ubrugelig_titel(titel: str) -> bool:
 
 
 def _kandidater(*, limit: int = MAX_KANDIDATER) -> list[dict[str, str]]:
-    """Seneste sessioner hvis titel er ubrugelig OG som vi må læse.
+    """Seneste auto-navngivne eller ubrugelige sessioner som vi må læse.
 
     Krypterede titler springes over: de tilhører et medlem, og en titel
     udledt af ciffertekst ville være volapyk skrevet ind i deres sidebar.
@@ -125,7 +126,7 @@ def _kandidater(*, limit: int = MAX_KANDIDATER) -> list[dict[str, str]]:
         with connect() as conn:
             rows = conn.execute(
                 """
-                SELECT session_id, title, updated_at
+                SELECT session_id, title, title_origin, updated_at
                 FROM chat_sessions
                 ORDER BY updated_at DESC
                 LIMIT ?
@@ -141,11 +142,16 @@ def _kandidater(*, limit: int = MAX_KANDIDATER) -> list[dict[str, str]]:
         raa_titel = str(row["title"] or "")
         if er_krypteret(raa_titel):
             continue
-        if not er_ubrugelig_titel(raa_titel):
+        origin = str(row["title_origin"] or "legacy")
+        # Nye rå førstebesked-titler er kun en midlertidig fallback. Legacy-
+        # rækker røres fortsat kun når titlen beviseligt er ubrugelig, så en
+        # gammel manuel titel aldrig overskrives på et gæt.
+        if not er_ubrugelig_titel(raa_titel) and origin != "first_message":
             continue
         ud.append({
             "session_id": str(row["session_id"] or ""),
             "title": raa_titel,
+            "title_origin": origin,
             "updated_at": str(row["updated_at"] or ""),
         })
         if len(ud) >= limit:
@@ -188,17 +194,20 @@ def _samtale_tekst(session_id: str) -> str:
     return "\n".join(linjer)
 
 
-#: Ollama-lanens timeout. Titlen er fire ord; svarer lanen ikke inden for
+#: Ollama-lanens timeout. Titlen er højst 36 tegn; svarer lanen ikke inden for
 #: dette, er den ikke værd at vente på i heartbeat-stien.
 OLLAMA_TIMEOUT = 45.0
 
 _PROMPT = (
-    "Du får et uddrag af en samtale mellem Bjørn og Jarvis.\n\n"
+    "Du navngiver en chat ud fra et samtaleuddrag.\n\n"
     "{samtale}\n\n"
-    "Skriv en kort titel på samtalen — på almindeligt dansk, højst 4 ord.\n"
-    "Titlen skal sige hvad samtalen HANDLEDE om, ikke hvordan den begyndte.\n"
-    "Brug de ord der faktisk står i samtalen. Digt ikke nye ord, og skriv "
-    "ikke en sætning. Svar KUN med titlen — intet andet."
+    "Skriv én præcis titel på højst 36 tegn i samtalens sprog. Fang brugerens "
+    "egentlige mål eller det konkrete problem — aldrig hilsenen eller svarets "
+    "form. Er det en ændringsopgave, brug en kort handlingsform; er det et "
+    "spørgsmål eller en undersøgelse, navngiv emnet uden at foregive at noget "
+    "blev ændret. Bevar ticket-id'er, filnavne og tekniske navne nøjagtigt. "
+    "Undgå generiske titler som 'Hjælp med' og 'Samtale om'. Ingen anførselstegn, "
+    "markdown, punktum eller forklaring. Svar kun med titlen."
 )
 
 
@@ -210,14 +219,15 @@ def _rens_titel(raa: str) -> str:
     for langt, er det ikke en titel — så hellere ingen end en forkert.
     """
     t = " ".join(str(raa or "").split()).strip()
+    t = re.sub(r"^(?:#{1,6}|[-*])\s*", "", t).strip()
     for praefiks in ("titel:", "title:", "titel -", "title -"):
         if t.lower().startswith(praefiks):
             t = t[len(praefiks):].strip()
     t = t.strip('"\'`“”«»').strip()
     t = t.rstrip(".")
-    if not t or len(t) > 60:
+    if not t or len(t) > 36:
         return ""
-    return t[:48]
+    return t
 
 
 def _ollama_lane_titel(samtale: str) -> str:
@@ -298,7 +308,7 @@ def generer_titel(samtale: str) -> str:
 
 
 def sweep(*, limit: int = MAX_PR_SWEEP) -> dict[str, object]:
-    """Navngiv op til `limit` sessioner med en ubrugelig titel.
+    """Navngiv op til `limit` sessioner med en automatisk eller ubrugelig titel.
 
     Returnerer en tavs kvittering — hvem der blev rettet, hvem der ikke
     kunne. Kaldes fra heartbeat-stien, så den fejler aldrig højt.
@@ -324,12 +334,26 @@ def sweep(*, limit: int = MAX_PR_SWEEP) -> dict[str, object]:
         if not titel:
             sprunget_over += 1
             continue
-        if not er_ubrugelig_titel(kandidat["title"]):
-            # En anden nåede at navngive den imens vi spurgte.
+        if (
+            not er_ubrugelig_titel(kandidat["title"])
+            and kandidat.get("title_origin") != "first_message"
+        ):
+            # Kun en automatisk råtitel eller en ubrugelig legacy-titel må
+            # nå hertil. Den atomiske UPDATE nedenfor beskytter desuden mod,
+            # at brugeren omdøber sessionen mens modelkaldet er i gang.
             sprunget_over += 1
             continue
         try:
-            rename_chat_session(session_id, title=titel)
+            omdoebning = rename_chat_session(
+                session_id,
+                title=titel,
+                origin="generated",
+                expected_title=kandidat["title"],
+                expected_origin=kandidat.get("title_origin"),
+            )
+            if omdoebning is None:
+                sprunget_over += 1
+                continue
         except Exception as exc:
             logger.debug("session_titling: kunne ikke omdoebe %s: %s", session_id, exc)
             sprunget_over += 1

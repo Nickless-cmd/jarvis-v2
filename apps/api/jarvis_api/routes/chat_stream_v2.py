@@ -413,6 +413,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # OFF everywhere → existing clients are byte-identical.
     _local_exec = bool(getattr(request, "local_tool_exec", False)) and _tool_scope == "code"
 
+    # Plan mode er en code-mode-undertilstand, ikke tekst i brugerbeskeden.
+    # Afvis et forkert scope tydeligt i stedet for at lade UI'et love en mode
+    # serveren ikke håndhæver. Valget persisteres pr. session, så reconnect og
+    # recovery ikke genvinder skriveadgang midt i samme planforløb.
+    if bool(request.plan_mode) and _tool_scope != "code":
+        raise HTTPException(status_code=400, detail="Plan mode kræver code mode")
+    _plan_mode = bool(request.plan_mode) and _tool_scope == "code"
+    if _tool_scope == "code":
+        from core.services.plan_mode import set_session_plan_mode
+
+        set_session_plan_mode(session_id, _plan_mode)
+
     # Persistér code-mode workspace-binding på sessionen, så run-enforcement
     # (trusted-folder gate i visible_runs) læser den AKTUELLE workspace — ikke en
     # tom/stale binding fra da sessionen blev oprettet. Også det der tænder
@@ -495,6 +507,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             lane=settings.primary_model_lane,
             local_tool_exec=_local_exec,
             research_mode=bool(request.research_mode),
+            plan_mode=_plan_mode,
             surface=getattr(request, "surface", "") or "",
         )
         if not _attached:
@@ -675,6 +688,9 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         ) if research_enabled() else start_visible_run(**_legacy_args)
     else:
         legacy_iter = start_visible_run(**_legacy_args)
+
+    from core.services.plan_mode import wrap_stream as _plan_wrap_stream
+    legacy_iter = _plan_wrap_stream(legacy_iter, enabled=_plan_mode)
 
     v2_stream = translate_to_v2(
         legacy_iter,

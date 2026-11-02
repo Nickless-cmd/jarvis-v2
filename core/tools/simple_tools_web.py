@@ -1056,6 +1056,30 @@ def _ref_for_url(url: str) -> str:
     return "ref-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:8]
 
 
+def _resultat_linjer(results: list[dict[str, Any]], *, summary: str = "") -> str:
+    """Den ENE tekstform modellen læser — med ref-id foran hver kilde.
+
+    2/11-2026. Formen stod tre steder (Tavily, SerpAPI, Exa). Jeg rettede de
+    to første og glemte den tredje — så Exa, den FORETRUKNE provider, var den
+    eneste hvor modellen ikke kunne se et id at citere. Tre kopier er tre
+    chancer for at glemme én, og det blev den ene der blev glemt.
+
+    ``test_ref_id_bygges_praecis_ét_sted`` værner invarianten: ethvert nyt
+    kald til ``_ref_for_url`` uden for denne funktion vækker den.
+    """
+    linjer: list[str] = []
+    if summary:
+        linjer.append(f"**Summary:** {summary}\n")
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        title = str(r.get("title") or "")
+        url = str(r.get("url") or "")
+        content = str(r.get("content") or "")[:300]
+        linjer.append(f"[{_ref_for_url(url)}] **{title}**\n   {content}\n   {url}")
+    return "\n\n".join(linjer)
+
+
 def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
     """Raw Tavily API call — no caching."""
     api_key = _read_api_key("tavily_api_key")
@@ -1079,17 +1103,11 @@ def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
     except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
         return {"error": f"Search failed: {exc}", "status": "error"}
 
-    lines: list[str] = []
-    if data.get("answer"):
-        lines.append(f"**Summary:** {data['answer']}\n")
-    for i, r in enumerate(data.get("results", []), 1):
-        title = r.get("title", "")
-        url = r.get("url", "")
-        content = r.get("content", "")[:300]
-        lines.append(f"[{_ref_for_url(url)}] **{title}**\n   {content}\n   {url}")
-    text = "\n\n".join(lines) if lines else "[no results]"
-    return {
-        "text": text,
+    text = _resultat_linjer(
+        [r for r in data.get("results", []) if isinstance(r, dict)],
+        summary=str(data.get("answer") or ""),
+    ) or "[no results]"
+    return {        "text": text,
         "results": [dict(item) for item in data.get("results", []) if isinstance(item, dict)],
         "result_count": len(data.get("results", [])),
         "query": query,
@@ -1129,16 +1147,12 @@ def _fetch_serpapi(query: str, max_results: int) -> dict[str, Any]:
          "content": (r.get("snippet") or "")[:300]}
         for r in data.get("organic_results", [])
     ]
-    lines: list[str] = []
     svar = data.get("answer_box") or {}
-    if svar.get("answer") or svar.get("snippet"):
-        lines.append(f"**Summary:** {svar.get('answer') or svar.get('snippet')}\n")
-    for i, r in enumerate(results, 1):
-        lines.append(
-            f"[{_ref_for_url(r['url'])}] **{r['title']}**\n   {r['content']}\n   {r['url']}"
-        )
+    tekst = _resultat_linjer(
+        results, summary=str(svar.get("answer") or svar.get("snippet") or "")
+    )
     return {
-        "text": "\n\n".join(lines) if lines else "[no results]",
+        "text": tekst or "[no results]",
         "results": results,
         "result_count": len(results),
         "query": query,
@@ -1239,6 +1253,11 @@ def _fetch_exa(query: str, max_results: int) -> dict[str, Any]:
         if t and u:
             results.append({"title": t.group(1).strip(), "url": u.group(1).strip(),
                             "content": blok[:300]})
+    if results:
+        # 2/11-2026: Exa var den ENESTE provider der sendte sin rå markdown
+        # videre uden ref-id — og den er den foretrukne (70 % top-1 mod
+        # Tavilys 20 %). Modellen kunne derfor ikke citere det den oftest fik.
+        tekst = _resultat_linjer(results)
     return {
         "text": tekst,
         "results": results,

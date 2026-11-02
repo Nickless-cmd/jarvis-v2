@@ -166,6 +166,88 @@ def test_andre_vaerktoejer_end_web_registrerer_intet():
     )
 
 
+def test_resultatlinjer_barer_ref_id_for_hver_kilde():
+    """Den ENE linjebygger — så en provider ikke kan glemme ref-id'et.
+
+    MÅLT 2/11-2026: formatet stod tre steder (Tavily, SerpAPI, Exa). Jeg
+    rettede de to første og glemte den tredje, så Exa — den FORETRUKNE
+    provider — var den eneste hvor modellen ikke kunne se et id at citere.
+    Tre kopier er tre chancer for at glemme én.
+    """
+    from core.tools.simple_tools_web import _ref_for_url, _resultat_linjer
+
+    tekst = _resultat_linjer(
+        [{"title": "DR", "url": "https://www.dr.dk/a", "content": "noget"}]
+    )
+    ref = _ref_for_url("https://www.dr.dk/a")
+    assert f"[{ref}]" in tekst, f"ref-id'et mangler i linjen: {tekst!r}"
+    assert "**DR**" in tekst
+    assert "https://www.dr.dk/a" in tekst
+
+
+def test_ref_id_bygges_praecis_ét_sted():
+    """Invarianten der forhindrer at en fjerde provider glemmer den igen."""
+    import pathlib
+
+    src = pathlib.Path("core/tools/simple_tools_web.py").read_text()
+    # 1 definition + 1 kaldested (inde i _resultat_linjer). Ethvert ekstra
+    # kaldested betyder at nogen har bygget sit eget format ved siden af.
+    antal = src.count("_ref_for_url(")
+    assert antal == 2, (
+        f"_ref_for_url kaldes {antal} steder — ref-id'et skal bygges ÉT sted "
+        f"(_resultat_linjer), ellers driver providerne fra hinanden"
+    )
+
+
+def test_exa_soegning_giver_modellen_et_ref_id(monkeypatch):
+    """Den foretrukne provider skal også levere id'et — det er hele pointen.
+
+    MÅLT 2/11-2026: Tavily og SerpAPI fik ref-id'et, Exa gjorde ikke. Exa
+    vinder top-1 i 70 % af tilfældene mod Tavilys 20 %, så det var præcis den
+    kilde modellen oftest fik — og den eneste den ikke kunne citere.
+
+    Testen kalder den RIGTIGE ``_fetch_exa`` med fake netværk, så den fejler
+    hvis nogen fjerner koblingen til ``_resultat_linjer``.
+    """
+    import json as _json
+
+    from core.tools import simple_tools_web as w
+
+    kald = {"n": 0}
+
+    class _Svar:
+        def __init__(self, data: bytes, headers: dict | None = None):
+            self._data = data
+            self.headers = headers or {}
+
+        def read(self) -> bytes:
+            return self._data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _fake_urlopen(req, timeout=None):
+        kald["n"] += 1
+        if kald["n"] == 1:  # MCP-handtryk
+            return _Svar(b"{}", {"Mcp-Session-Id": "sess-1"})
+        tekst = "Title: DR Nyheder\nURL: https://www.dr.dk/nyheder\nIndhold her\n"
+        raa = _json.dumps({"result": {"content": [{"type": "text", "text": tekst}]}})
+        return _Svar(f"event: message\ndata: {raa}\n".encode())
+
+    monkeypatch.setattr(w.urllib_request, "urlopen", _fake_urlopen)
+    svar = w._fetch_exa("nyheder", 5)
+
+    assert svar.get("status") == "ok", svar
+    ref = w._ref_for_url("https://www.dr.dk/nyheder")
+    assert f"[{ref}]" in svar["text"], (
+        f"Exa-teksten bærer ikke ref-id'et, så modellen kan ikke citere den: "
+        f"{svar['text']!r}"
+    )
+
+
 def test_et_fejlet_web_kald_registrerer_intet():
     """`status: error` bærer ingen brugbare kilder."""
     from core.services.visible_turn_accumulator import TurnAccumulator

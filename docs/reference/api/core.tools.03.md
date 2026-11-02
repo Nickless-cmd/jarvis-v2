@@ -386,25 +386,26 @@ _Web/search/system-info tool executors for Jarvis' native lane._
 | function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L1013) |
 | function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L1032) |
 | function | `_ref_for_url` | `(url)` | Et stabilt, læsbart ref-id for én web-kilde. | [src](../../../core/tools/simple_tools_web.py#L1042) |
-| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1059) |
-| function | `_fetch_serpapi` | `(query, max_results)` | Raw SerpAPI (Google SERP) call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1100) |
-| function | `_fetch_exa` | `(query, max_results)` | Raw Exa MCP search — no caching. Bruges som tredje kandidat. | [src](../../../core/tools/simple_tools_web.py#L1149) |
-| function | `_fetch_alle_providers` | `(query, max_results)` | Exa først — de to andre som fallback. IKKE en dommer (målt 18/10-2026). | [src](../../../core/tools/simple_tools_web.py#L1251) |
-| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L1373) |
-| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L1380) |
-| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L1394) |
-| function | `_er_dato` | `(tekst)` | Sandt hvis ``tekst`` er en gyldig YYYY-MM-DD-dato. | [src](../../../core/tools/simple_tools_web.py#L1422) |
-| function | `_owm_get` | `(path, params, api_key, timeout=…)` | Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``. | [src](../../../core/tools/simple_tools_web.py#L1434) |
-| function | `_owm_local` | `(epoch, offset_s)` | Epoch → ISO-lokal tid for STEDET. | [src](../../../core/tools/simple_tools_web.py#L1445) |
-| function | `_owm_precip_mm` | `(punkt)` | Regn + sne i mm. Current bruger ``1h``, forecast bruger ``3h`` — vi summer alt. | [src](../../../core/tools/simple_tools_web.py#L1461) |
-| function | `_owm_daily` | `(punkter, offset_s, antal)` | Gruppér 3-timers-punkter i lokale døgn og opsummer hvert døgn. | [src](../../../core/tools/simple_tools_web.py#L1475) |
-| function | `_exec_get_weather` | `(args)` | Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet. | [src](../../../core/tools/simple_tools_web.py#L1533) |
-| function | `_exec_get_exchange_rate` | `(args)` | Valutakurser via exchangerate.host — med lokal konvertering. | [src](../../../core/tools/simple_tools_web.py#L1698) |
-| function | `_exec_get_news` | `(args)` | Nyheder via NewsAPI — bred dansk søgning som standard. | [src](../../../core/tools/simple_tools_web.py#L1749) |
-| function | `_stage_image_preview` | `(image_bytes, source_path)` | Den sti desk kan hente billedet paa — uden at aabne hvidlisten. | [src](../../../core/tools/simple_tools_web.py#L1832) |
-| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L1854) |
-| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1980) |
-| function | `_exec_wolfram_query` | `(args)` | Wolfram Alpha — kort svar eller de fulde pods. | [src](../../../core/tools/simple_tools_web.py#L2050) |
+| function | `_resultat_linjer` | `(results, *, summary=…)` | Den ENE tekstform modellen læser — med ref-id foran hver kilde. | [src](../../../core/tools/simple_tools_web.py#L1059) |
+| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1083) |
+| function | `_fetch_serpapi` | `(query, max_results)` | Raw SerpAPI (Google SERP) call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1118) |
+| function | `_fetch_exa` | `(query, max_results)` | Raw Exa MCP search — no caching. Bruges som tredje kandidat. | [src](../../../core/tools/simple_tools_web.py#L1163) |
+| function | `_fetch_alle_providers` | `(query, max_results)` | Exa først — de to andre som fallback. IKKE en dommer (målt 18/10-2026). | [src](../../../core/tools/simple_tools_web.py#L1270) |
+| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L1392) |
+| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L1399) |
+| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L1413) |
+| function | `_er_dato` | `(tekst)` | Sandt hvis ``tekst`` er en gyldig YYYY-MM-DD-dato. | [src](../../../core/tools/simple_tools_web.py#L1441) |
+| function | `_owm_get` | `(path, params, api_key, timeout=…)` | Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``. | [src](../../../core/tools/simple_tools_web.py#L1453) |
+| function | `_owm_local` | `(epoch, offset_s)` | Epoch → ISO-lokal tid for STEDET. | [src](../../../core/tools/simple_tools_web.py#L1464) |
+| function | `_owm_precip_mm` | `(punkt)` | Regn + sne i mm. Current bruger ``1h``, forecast bruger ``3h`` — vi summer alt. | [src](../../../core/tools/simple_tools_web.py#L1480) |
+| function | `_owm_daily` | `(punkter, offset_s, antal)` | Gruppér 3-timers-punkter i lokale døgn og opsummer hvert døgn. | [src](../../../core/tools/simple_tools_web.py#L1494) |
+| function | `_exec_get_weather` | `(args)` | Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet. | [src](../../../core/tools/simple_tools_web.py#L1552) |
+| function | `_exec_get_exchange_rate` | `(args)` | Valutakurser via exchangerate.host — med lokal konvertering. | [src](../../../core/tools/simple_tools_web.py#L1717) |
+| function | `_exec_get_news` | `(args)` | Nyheder via NewsAPI — bred dansk søgning som standard. | [src](../../../core/tools/simple_tools_web.py#L1768) |
+| function | `_stage_image_preview` | `(image_bytes, source_path)` | Den sti desk kan hente billedet paa — uden at aabne hvidlisten. | [src](../../../core/tools/simple_tools_web.py#L1851) |
+| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L1873) |
+| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1999) |
+| function | `_exec_wolfram_query` | `(args)` | Wolfram Alpha — kort svar eller de fulde pods. | [src](../../../core/tools/simple_tools_web.py#L2069) |
 
 ## `core/tools/skill_chain_propose_tool.py`
 _propose_skill_chain tool — Skill Chain Phase 2 (AGI track #10)._

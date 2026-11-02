@@ -10,6 +10,10 @@ def test_context_is_scoped_and_resets():
         assert "RESEARCH CONTRACT" in section
         assert "Use primary sources" in section
         assert "7" in section
+        assert "immediately after the sentence or paragraph" in section
+        assert "current, explicitly dated source" in section
+        assert "navigation materially helps" in section
+        assert "Never invent citations" in section
     assert research_prompt_section() == ""
 
 

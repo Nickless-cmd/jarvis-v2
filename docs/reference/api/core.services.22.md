@@ -513,17 +513,17 @@ _Typed contracts and source normalization for explicit research runs._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L17) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L31) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L51) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L57) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L70) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L79) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L86) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
+| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L24) |
+| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L38) |
+| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L51) |
+| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L58) |
+| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L64) |
+| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L77) |
+| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L86) |
+| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L93) |
+| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L97) |
+| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L114) |
+| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L131) |
 
 ## `core/services/research_evidence_collector.py`
 _Capture structured web-tool evidence for the active research run._

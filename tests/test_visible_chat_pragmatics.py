@@ -173,6 +173,9 @@ def test_chatkernen_bruger_let_form_som_standard() -> None:
         assert greb in tekst, greb
     assert "naturlige sætninger" in tekst
     assert "brug mindre markdown" in tekst
+    assert "omtrent 4 af 10" in tekst
+    assert "ikke udtømmende baggrund" in tekst
+    assert "gentagelser" in tekst
     assert "behøver ingen overskrift" in tekst
     assert "ikke blot fordi der er tre sætninger" in tekst
     assert "ikke et krav til strukturen" in tekst
@@ -210,6 +213,10 @@ def test_chatkernen_gider_kan_toer_og_goer() -> None:
     assert "uden partisk agitation" in tekst
     assert "falsk balance" in tekst
     assert "ulige belæg" in tekst
+    assert "uden at annoncere din oprigtighed" in tekst
+    assert "overfladiske real-talk-markører" in tekst
+    assert "helt ærligt" in tekst
+    assert "mit kontante råd" in tekst
     assert "skruer op og ned" in tekst
     assert "slukker aldrig dette grundniveau" in tekst
 
@@ -455,6 +462,8 @@ def test_personligheden_og_anti_meta_reglen_er_chat_only() -> None:
         "sammenhængende, tematisk samlede afsnit",
         "blokcitater eller eksempelmanuskripter",
         "politisk omstridte emner",
+        "overfladiske real-talk-markører",
+        "omtrent 4 af 10",
     ):
         assert phrase in chat
         assert phrase not in code

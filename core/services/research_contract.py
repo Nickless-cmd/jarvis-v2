@@ -8,9 +8,16 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 _TRACKING_PARAMS = {
     "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source",
 }
-_MINIMUM_INSTRUCTIONS = """Use primary and authoritative sources when available.
+_BASE_INSTRUCTIONS = """Use primary and authoritative sources when available.
 Keep facts separate from inference, preserve source URLs, check freshness, and
-state material uncertainty. Never invent citations or claim coverage you do not have."""
+state material uncertainty. Cite factual claims derived or quoted from web sources
+in the final answer, placing each citation immediately after the sentence or
+paragraph it supports. For time-sensitive claims, include a current source with an
+explicit publication date matching the requested period; prefer sources that are
+authoritative, directly relevant, and fresh. Surface a link when navigation to the
+destination materially helps the user. Never invent citations, reference IDs, link
+formats, or coverage you do not have, and do not emit a special citation syntax
+unless the active tool/runtime explicitly supplies and supports that syntax."""
 
 
 @dataclass(frozen=True)
@@ -143,6 +150,7 @@ def load_research_contract(query: str = "") -> ResearchContract:
     except Exception:
         pass
     if available:
-        return ResearchContract(ResearchPolicy(), str(result["instructions"]), True)
+        instructions = f"{_BASE_INSTRUCTIONS}\n\n{str(result['instructions']).strip()}"
+        return ResearchContract(ResearchPolicy(), instructions, True)
     warning = str(result.get("error") or "deep-research skill unavailable")
-    return ResearchContract(ResearchPolicy(), _MINIMUM_INSTRUCTIONS, False, (warning,))
+    return ResearchContract(ResearchPolicy(), _BASE_INSTRUCTIONS, False, (warning,))

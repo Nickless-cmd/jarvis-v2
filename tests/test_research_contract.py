@@ -31,5 +31,27 @@ def test_skill_load_is_explicit_and_has_safe_fallback(monkeypatch):
     contract = load_research_contract("find sources")
     assert contract.policy == ResearchPolicy()
     assert "primary" in contract.instructions.lower()
+    assert "placing each citation immediately after" in contract.instructions
+    assert "explicit publication date" in contract.instructions
+    assert "authoritative, directly relevant, and fresh" in contract.instructions
+    assert "destination materially helps" in contract.instructions
+    assert "do not emit a special citation syntax" in contract.instructions
     assert contract.skill_available is False
     assert calls[0][1]["source"] == "explicit_research_mode"
+
+
+def test_available_skill_cannot_replace_base_source_discipline(monkeypatch):
+    monkeypatch.setattr(
+        "core.services.skill_engine.get_skill_instructions",
+        lambda name: {"status": "ok", "instructions": "SPECIALIST INSTRUCTIONS"},
+    )
+    monkeypatch.setattr(
+        "core.services.skill_engine.record_skill_usage", lambda *args, **kwargs: None,
+    )
+
+    contract = load_research_contract("latest developments")
+
+    assert contract.skill_available is True
+    assert "Cite factual claims derived or quoted from web sources" in contract.instructions
+    assert "Never invent citations" in contract.instructions
+    assert contract.instructions.endswith("SPECIALIST INSTRUCTIONS")

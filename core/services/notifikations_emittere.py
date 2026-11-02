@@ -117,6 +117,98 @@ def system(slags: str, titel: str, tekst: str = "", *, ref: str | None = None,
           ref=ref, data=data)
 
 
+def _forslag_er_foraeldet(forslag: dict[str, Any]) -> bool:
+    """Er forslagets anker stadig i koden? (Bjørn 2/11-2026)
+
+    MAALT 2/11-2026: 57 forslag laa `pending`, og 0 af 14 source-edit
+    matchede deres `base_fingerprint`. Fire af dem ville slette 69-152 linjer
+    — inklusive `_MAX_ATTEMPTS`-loftet i initiative_queue.py, altsaa rulle
+    fixet fra 1/11 tilbage. Uden denne markering ser en raadden aendring ud
+    som en godkendelsesklar forbedring, og den kan godkendes blindt fra en
+    toast. Det er praecis den fejlform Bjørn kalder teater.
+
+    Kun source-edit baerer et fingerprint. Andre kinds (instrument_fix,
+    git-commit, memory-rewrite) har intet anker at maale mod og regnes
+    derfor ikke som foraeldede her — de skal ikke skjules, blot ikke
+    paastaa en friskhed de ikke har.
+    """
+    if str(forslag.get("kind") or "") != "source-edit":
+        return False
+    payload = forslag.get("payload") or {}
+    if not isinstance(payload, dict):
+        return False
+    base = str(payload.get("base_fingerprint") or "")
+    sti = str(payload.get("target_path") or "")
+    if not base or not sti:
+        return False
+    try:
+        import hashlib
+        from pathlib import Path
+        raa = Path(sti).read_bytes()
+        return hashlib.sha256(raa).hexdigest()[:16] != base
+    except Exception:
+        # Kan filen ikke laeses, er ankeret ikke bevist frisk. Vi siger
+        # foraeldet frem for at paastaa det modsatte — en forkert
+        # «godkendelsesklar» er den dyre fejl.
+        return True
+
+
+def paa_forslag(forslag: dict[str, Any], *, user_id: str) -> None:
+    """Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()`
+    afdublerer af sig selv og en gen-koersel ikke giver dobbelte raekker."""
+    pid = str(forslag.get("proposal_id") or "")
+    if not pid:
+        return
+    kind = str(forslag.get("kind") or "forslag")
+    titel_tekst = str(forslag.get("title") or "").strip() or "(uden titel)"
+    foraeldet = _forslag_er_foraeldet(forslag)
+    payload = forslag.get("payload") or {}
+    sti = str(payload.get("target_path") or "") if isinstance(payload, dict) else ""
+    tekst = f"{kind}"
+    if sti:
+        tekst += f" · {sti.rsplit('/', 1)[-1]}"
+    tekst += " · FORÆLDET — ankeret findes ikke i koden længere" if foraeldet else " · afventer afgørelse"
+    _foed(user_id=user_id, slags="proposal", kilde="proposal", ref=pid,
+          titel=titel_tekst, tekst=tekst,
+          data={"proposal_id": pid, "proposal_kind": kind,
+                "target_path": sti, "foraeldet": foraeldet})
+
+
+def afstem_forslag(user_id: str) -> int:
+    """Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal
+    nye/genaabnede.
+
+    Samme begrundelse som `afstem_godkendelser`: afstemning frem for en krog
+    ved foedslen. Forslag bliver til i mindst fire forskellige daemons
+    (instrument_fix, source-edit, git-commit, memory-rewrite), og en krog pr.
+    kilde ville blive glemt i mindst én af dem — det er maalt: 57 forslag laa
+    usynlige, det aeldste fra 22/10.
+
+    `opret()` afdublerer paa (slags, ref), saa den er idempotent.
+    """
+    try:
+        from core.services.autonomy_proposal_queue import list_pending_proposals
+        forslag_liste = list_pending_proposals(limit=200)
+    except Exception:
+        _log.warning("kunne ikke liste ventende forslag", exc_info=True)
+        return 0
+    if not forslag_liste:
+        return 0
+    aabne_refs = {str(r["ref"]) for r in _lager.aabne(user_id, er_owner=False)
+                  if str(r["slags"]) == "proposal"}
+    talt = 0
+    for forslag in forslag_liste:
+        pid = str(forslag.get("proposal_id") or "")
+        if not pid or pid in aabne_refs:
+            continue
+        if _lager.genaabn("proposal", pid):
+            talt += 1
+            continue
+        paa_forslag(forslag, user_id=user_id)
+        talt += 1
+    return talt
+
+
 def afstem_godkendelser(user_id: str) -> int:
     """Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer
     antal nye/genaabnede.

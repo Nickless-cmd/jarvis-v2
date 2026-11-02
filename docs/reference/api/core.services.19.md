@@ -15,7 +15,10 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 | function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L100) |
 | function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L106) |
 | function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L111) |
-| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L120) |
+| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L120) |
+| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L156) |
+| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L177) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L212) |
 
 ## `core/services/notifikations_opstart.py`
 _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._

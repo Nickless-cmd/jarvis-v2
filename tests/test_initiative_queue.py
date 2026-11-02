@@ -133,6 +133,93 @@ def test_aegte_initiativer_slipper_igennem():
         assert _port(aegte) == "", "afviste et ægte initiativ: %s" % aegte
 
 
+# ---------------------------------------------------------------------------
+# Gentagelses-porten: samme PÅSTAND i ny ordlyd
+#
+# Målt 2/11-2026: 59 inner-voice-initiativer siden 1/11 handlede om «den
+# afbrudte kørsel», mens præmissen var målt falsk. Den eksakte tekst-dedup
+# fangede ingen af dem, fordi den indre stemme omformulerer hver gang.
+# ---------------------------------------------------------------------------
+
+
+class TestGentagelsesPort:
+    @staticmethod
+    def _poster(focus: str, *, detected_at: str, status: str = "acted"):
+        def _list(**kwargs):
+            if kwargs.get("status") == status:
+                return [{"initiative_id": "init-gammel", "focus": focus,
+                         "detected_at": detected_at}]
+            return []
+        return _list
+
+    def test_samme_emne_i_ny_ordlyd_afvises(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        nylig = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+        monkeypatch.setattr(
+            iq.runtime_db, "list_runtime_initiatives",
+            self._poster("Afklar om den afbrudte kørsel skal genoptages, før nyt",
+                         detected_at=nylig),
+        )
+        grund = iq._gentaget_paastand(
+            "Inspicér hvad den bruger-afbrudte værktøjskørsel efterlod af tilstand",
+            source="inner-voice",
+        )
+        assert grund, "samme emne i ny ordlyd slap igennem"
+        assert "gentaget-paastand" in grund
+
+    def test_nyt_emne_slipper_igennem(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        nylig = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+        monkeypatch.setattr(
+            iq.runtime_db, "list_runtime_initiatives",
+            self._poster("Afklar om den afbrudte kørsel skal genoptages",
+                         detected_at=nylig),
+        )
+        assert iq._gentaget_paastand(
+            "Undersøg om Gmail-tokenet stadig virker efter rotationen",
+            source="inner-voice",
+        ) == ""
+
+    def test_post_uden_for_vinduet_taelles_ikke(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        gammel = (datetime.now(UTC) - timedelta(hours=48)).isoformat()
+        monkeypatch.setattr(
+            iq.runtime_db, "list_runtime_initiatives",
+            self._poster("Afklar om den afbrudte kørsel skal genoptages",
+                         detected_at=gammel),
+        )
+        assert iq._gentaget_paastand(
+            "Inspicér hvad den afbrudte værktøjskørsel efterlod",
+            source="inner-voice",
+        ) == ""
+
+    def test_menneske_kilde_gaar_fri(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        nylig = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        monkeypatch.setattr(
+            iq.runtime_db, "list_runtime_initiatives",
+            self._poster("Afklar om den afbrudte kørsel skal genoptages",
+                         detected_at=nylig),
+        )
+        assert iq._gentaget_paastand(
+            "Inspicér hvad den afbrudte værktøjskørsel efterlod",
+            source="manual",
+        ) == ""
+
+    def test_db_fejl_er_self_safe(self, monkeypatch):
+        def _boom(**kwargs):
+            raise RuntimeError("db nede")
+        monkeypatch.setattr(iq.runtime_db, "list_runtime_initiatives", _boom)
+        assert iq._gentaget_paastand(
+            "Inspicér hvad den afbrudte værktøjskørsel efterlod",
+            source="inner-voice",
+        ) == ""
+
+
 def test_afvisning_returnerer_tom_id_uden_at_kaste(monkeypatch):
     from core.services import initiative_queue as Q
 

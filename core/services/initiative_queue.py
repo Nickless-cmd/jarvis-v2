@@ -93,6 +93,85 @@ def _er_ikke_et_initiativ(focus: str) -> str:
     return ""
 
 
+# ── Gentagelses-port: samme PÅSTAND i ny ordlyd ──
+#
+# Målt 2026-10-30 og bekræftet 2/11-2026: 249 initiativer siden 29. maj handlede
+# om "den afbrudte kørsel" — og 60+ alene siden 1/11, hvor præmissen var målt
+# FALSK (ingen afbrudt kørsel fandtes). Dedup'en i push_initiative matcher
+# `find_pending_runtime_initiative_by_focus`, altså EKSAKT tekst, mens den indre
+# stemme omformulerer den samme påstand hver gang. Median ord-overlap mellem ti
+# på hinanden følgende: 0,14 — men alle delte kerneordene "afbrudt" og "kørsel".
+#
+# Porten kræver derfor ikke ens ordlyd men SAMME EMNE: mindst to fælles
+# indholdsord mod et initiativ fra samme kilde inden for 6 timer. Den rammer
+# kun `inner-voice`; menneske-godkendte forslag og long_term_intentions går fri,
+# og tekster med under to indholdsord slipper igennem som før.
+
+# Vinduet er 24 timer, ikke 6: målt på de 59 faktiske inner-voice-initiativer
+# siden 1/11 stoppede 6 timer 38 af dem, mens 24 timer stoppede 43. Et initiativ
+# lever selv op til et døgn (se _EXPIRE_MINUTES_LOW) — porten skal dække den
+# levetid, ellers kan den samme påstand rejses igen efter midnat.
+_GENTAGELSE_VINDUE_TIMER = 24
+_GENTAGELSE_MIN_FAELLES = 2
+#: Mindste længde for delstreng-match. Dansk sammensætter ("værktøjskørsel"
+#: bærer "kørsel"), så hele ord alene tabte gentagelser der var samme emne.
+_GENTAGELSE_MIN_DEL = 5
+_GENTAGELSE_STOPORD = frozenset("""
+    den det der som for foer hvad hvor om paa til og at er en et af med uden
+    kun ikke lige skal bliver blive se efter find finde laes tjek tjekke
+    afklar afklare inspicer inspicere noget nogen faktisk eller fra ved
+    dette disse saadan vaere have har varer vaeret goer goere foerste foer
+""".split())
+
+
+def _kerneord(tekst: str) -> set[str]:
+    """Indholdsord i en fokus-tekst — til emne-sammenligning, ikke til visning."""
+    renset = str(tekst or "").lower()
+    for tegn in ".,;:!?()[]{}'\"—-/\\|*":
+        renset = renset.replace(tegn, " ")
+    return {o for o in renset.split() if len(o) >= 4 and o not in _GENTAGELSE_STOPORD}
+
+
+def _faelles_emneord(nye: set[str], gamle: set[str]) -> set[str]:
+    """Ord der bærer samme emne — også når det ene er en sammensætning."""
+    faelles = nye & gamle
+    for nyt in nye - faelles:
+        for gammelt in gamle - faelles:
+            if (
+                len(nyt) >= _GENTAGELSE_MIN_DEL
+                and len(gammelt) >= _GENTAGELSE_MIN_DEL
+                and (nyt in gammelt or gammelt in nyt)
+            ):
+                faelles.add(nyt)
+                break
+    return faelles
+
+
+def _gentaget_paastand(focus: str, *, source: str) -> str:
+    """Returnér en grund hvis samme emne allerede ligger i køen. Tom = behold."""
+    if source != "inner-voice":
+        return ""
+    nye = _kerneord(focus)
+    if len(nye) < _GENTAGELSE_MIN_FAELLES:
+        return ""
+    graense = datetime.now(UTC) - timedelta(hours=_GENTAGELSE_VINDUE_TIMER)
+    for status in ("pending", "acted"):
+        try:
+            poster = runtime_db.list_runtime_initiatives(
+                status=status, initiative_type="initiative", limit=40,
+            )
+        except Exception:  # db-fejl må ikke blokere en ægte indskydelse — slip hellere igennem
+            continue
+        for post in poster or []:
+            ts = _parse_iso(str(post.get("detected_at") or ""))
+            if not ts or ts < graense:
+                continue
+            faelles = _faelles_emneord(nye, _kerneord(str(post.get("focus") or "")))
+            if len(faelles) >= _GENTAGELSE_MIN_FAELLES:
+                return f"gentaget-paastand ({', '.join(sorted(faelles)[:3])})"
+    return ""
+
+
 def push_initiative(
     *,
     focus: str,
@@ -127,6 +206,21 @@ def push_initiative(
         except Exception:
             pass
         return ""
+
+    # Gentagelses-porten: samme PÅSTAND i ny ordlyd er ikke en ny indskydelse.
+    # Uden den blev "den afbrudte kørsel" rejst 60+ gange på to døgn, selv efter
+    # præmissen var målt falsk — hver gang i en ny formulering der slap gennem
+    # den eksakte tekst-dedup.
+    _gentaget = _gentaget_paastand(normalized_focus, source=source)
+    if _gentaget:
+        try:
+            event_bus.publish("heartbeat.initiative_rejected", {
+                "focus": normalized_focus[:120], "reason": _gentaget, "source": source,
+            })
+        except Exception:  # observabilitet, ikke kontrol — afvisningen gælder uanset
+            pass
+        return ""
+
     normalized_priority = (
         priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
     )

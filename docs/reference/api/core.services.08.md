@@ -553,16 +553,17 @@ _Citation-markører — kontrolsyntaks der aldrig må nå skærmen._
 |---|---|---|---|---|
 | class | `Kilder` | `` | Turens kilder — det eneste en ``cite``/``url``-ref kan pege på. | [src](../../../core/services/citation_markorer.py#L68) |
 | method | `Kilder.url_for` | `(self, ref)` | — | [src](../../../core/services/citation_markorer.py#L79) |
-| class | `Fund` | `` | Én markør der blev fundet — godkendt eller afvist. | [src](../../../core/services/citation_markorer.py#L84) |
-| function | `_gyldig_url` | `(url)` | Kun absolutte HTTP(S)-URL'er med et host. Alt andet afvises. | [src](../../../core/services/citation_markorer.py#L99) |
-| function | `_find_lukker` | `(tekst, start)` | Indeks for den LUKKENDE klamme der hører til åbneren ved ``start``. | [src](../../../core/services/citation_markorer.py#L112) |
-| function | `_tyd` | `(raa, kilder)` | Fortolk én markørs indhold. ``None`` = ikke en markør vi kender. | [src](../../../core/services/citation_markorer.py#L130) |
-| function | `_render` | `(fund)` | Markørens tekstfallback — hvad der står hvis den ikke kan blive et link. | [src](../../../core/services/citation_markorer.py#L162) |
-| function | `parse_markorer` | `(tekst, kilder)` | Fjern alle markører fra ``tekst`` og returnér (ren tekst, fundne). | [src](../../../core/services/citation_markorer.py#L178) |
-| class | `CitationKontrakt` | `` | Strøm-sikker markør-fjerner — samme form som ``StroemSkrubber``. | [src](../../../core/services/citation_markorer.py#L218) |
-| method | `CitationKontrakt.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/citation_markorer.py#L226) |
-| method | `CitationKontrakt.feed` | `(self, tekst)` | — | [src](../../../core/services/citation_markorer.py#L231) |
-| method | `CitationKontrakt.flush` | `(self)` | — | [src](../../../core/services/citation_markorer.py#L256) |
+| method | `Kilder.tilfoej` | `(self, ref, url)` | Registrér én kilde — mens turen kører. | [src](../../../core/services/citation_markorer.py#L82) |
+| class | `Fund` | `` | Én markør der blev fundet — godkendt eller afvist. | [src](../../../core/services/citation_markorer.py#L95) |
+| function | `_gyldig_url` | `(url)` | Kun absolutte HTTP(S)-URL'er med et host. Alt andet afvises. | [src](../../../core/services/citation_markorer.py#L110) |
+| function | `_find_lukker` | `(tekst, start)` | Indeks for den LUKKENDE klamme der hører til åbneren ved ``start``. | [src](../../../core/services/citation_markorer.py#L123) |
+| function | `_tyd` | `(raa, kilder)` | Fortolk én markørs indhold. ``None`` = ikke en markør vi kender. | [src](../../../core/services/citation_markorer.py#L141) |
+| function | `_render` | `(fund)` | Markørens tekstfallback — hvad der står hvis den ikke kan blive et link. | [src](../../../core/services/citation_markorer.py#L173) |
+| function | `parse_markorer` | `(tekst, kilder)` | Fjern alle markører fra ``tekst`` og returnér (ren tekst, fundne). | [src](../../../core/services/citation_markorer.py#L189) |
+| class | `CitationKontrakt` | `` | Strøm-sikker markør-fjerner — samme form som ``StroemSkrubber``. | [src](../../../core/services/citation_markorer.py#L229) |
+| method | `CitationKontrakt.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/citation_markorer.py#L237) |
+| method | `CitationKontrakt.feed` | `(self, tekst)` | — | [src](../../../core/services/citation_markorer.py#L242) |
+| method | `CitationKontrakt.flush` | `(self)` | — | [src](../../../core/services/citation_markorer.py#L267) |
 
 ## `core/services/claim_scanner.py`
 _Claim Scanner — output gate for the Lying Engine (Layer 2)._

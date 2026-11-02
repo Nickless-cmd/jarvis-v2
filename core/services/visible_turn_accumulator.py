@@ -26,12 +26,24 @@ import json
 from dataclasses import dataclass, field
 
 
+def _ny_kilder():
+    """Én tom `Kilder` — importeret lokalt saa modulet ikke laaser sig fast."""
+    from core.services.citation_markorer import Kilder
+
+    return Kilder()
+
+
 @dataclass
 class TurnAccumulator:
     """Samler tekst-segmenter, værktøjskald og deres rækkefølge for én tur."""
 
     tool_calls: list[dict] = field(default_factory=list)
     tool_results: list[dict] = field(default_factory=list)
+    #: Turens web-kilder — ref-id → URL. Samme instans gives til
+    #: `FirstPassOutputFilter`, saa citationer kan valideres mens turen skriver.
+    #: 2/11-2026: uden den blev `Kilder()` tom, og ALLE `cite`-markører afvist
+    #: fail-closed — kontrakten virkede, men kæden var åben i den anden ende.
+    kilder: "Kilder" = field(default_factory=lambda: _ny_kilder())
     #: 'text' / 'tool' i den orden de kom under streamen.
     interleave: list[str] = field(default_factory=list)
     #: Ét element pr. sammenhængende stykke tekst mellem værktøjskald.
@@ -145,6 +157,7 @@ class TurnAccumulator:
             # stod «done»/False hardkodet: 4.885 af 4.885 gemte resultater paa
             # CT105 var succeser (maalt 18/9-2026).
             from core.services.visible_followup_events import er_fejlstatus
+            _navne = {c["id"]: c["name"] for c in self.tool_calls if c.get("id")}
             for r in (results or []):
                 fejl = er_fejlstatus(getattr(r, "status", ""))
                 self.tool_results.append({
@@ -153,8 +166,51 @@ class TurnAccumulator:
                     "content": str(getattr(r, "content", "") or ""),
                     "is_error": fejl,
                 })
+                # Kilden registreres hvor resultatet passerer, saa begge
+                # kaldesteder af add_tools daekkes af ét sted.
+                _navn = _navne.get(str(getattr(r, "tool_call_id", "") or ""), "")
+                if _navn.startswith("web_"):
+                    try:
+                        import json as _json
+
+                        self.registrer_web_kilder(
+                            _navn, _json.loads(str(getattr(r, "content", "") or "") or "{}")
+                        )
+                    except Exception:
+                        # Indholdet er ikke JSON (fx en rå fejltekst) — der er
+                        # ingen kilder at hente, og det er ikke en fejl.
+                        pass
         except Exception:
             pass
+
+    # ── kilder ───────────────────────────────────────────────────────────
+    def registrer_web_kilder(self, tool_name: str, result: object) -> None:
+        """Registrér web-kilder fra ét tool-resultat. Kaster ALDRIG.
+
+        Kun web-værktøjer kan være kilder: en `bash`-kommando eller et
+        `read_file` er arbejde, ikke proveniens. En fejlet søgning bærer
+        ingen brugbare kilder, og en URL der ikke kan linkes til må ikke
+        kunne citeres som om den kan — ellers arver en opdigtet ref en
+        andens troværdighed.
+        """
+        try:
+            if not str(tool_name or "").startswith("web_"):
+                return
+            if not isinstance(result, dict) or result.get("status") == "error":
+                return
+            from core.tools.simple_tools_web import _ref_for_url
+
+            for r in result.get("results") or []:
+                if not isinstance(r, dict):
+                    continue
+                url = str(r.get("url") or "").strip()
+                ref = _ref_for_url(url)
+                if ref and url.lower().startswith(("http://", "https://")):
+                    self.kilder.tilfoej(ref, url)
+        except Exception:
+            # En kilde der ikke kunne registreres må aldrig kunne vælte turen.
+            # Konsekvensen er kun at citationen afvises — som den gjorde før.
+            return
 
     # ── tænkning ─────────────────────────────────────────────────────────
     def add_thinking(self, chunk: str) -> None:

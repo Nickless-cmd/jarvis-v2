@@ -79,6 +79,17 @@ class Kilder:
     def url_for(self, ref: str) -> str | None:
         return self.web.get(ref)
 
+    def tilfoej(self, ref: str, url: str) -> None:
+        """Registrér én kilde — mens turen kører.
+
+        2/11-2026. Filteret laves ved run-start, FØR nogen søgning er kørt, så
+        kilderne kan ikke kendes ved instansiering. De skal derfor kunne fyldes
+        bagefter. ``frozen=True`` forhindrer ombinding af attributten, ikke
+        mutation af dict'en — så beholderen er bevidst delt og levende.
+        """
+        if ref and url:
+            self.web[ref] = url
+
 
 @dataclass(frozen=True)
 class Fund:

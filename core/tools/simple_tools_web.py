@@ -22,6 +22,7 @@ import threading as _threading_for_bash
 import time
 from pathlib import Path
 from typing import Any
+import hashlib
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
@@ -1038,6 +1039,23 @@ def _read_api_key(key: str) -> str:
         return ""
 
 
+def _ref_for_url(url: str) -> str:
+    """Et stabilt, læsbart ref-id for én web-kilde.
+
+    2/11-2026. `citation_markorer` kunne validere `cite`-refs, men intet
+    leverede dem: `web_search` gav `title`/`url`/`content` uden id, så enhver
+    `【cite|...】` blev afvist fail-closed. Kæden var lukket i den forkerte ende.
+
+    Id'et udledes af URL'en og ikke af rækkefølgen, fordi rækkefølgen ikke er
+    stabil: `ref1` ville være to forskellige kilder alt efter hvilken søgning
+    der kom først, og en gemt samtale ville citere det forkerte. Samme kilde
+    hedder det samme i næste tur og i en genkørt samtale.
+    """
+    if not url:
+        return ""
+    return "ref-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:8]
+
+
 def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
     """Raw Tavily API call — no caching."""
     api_key = _read_api_key("tavily_api_key")
@@ -1068,7 +1086,7 @@ def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
         title = r.get("title", "")
         url = r.get("url", "")
         content = r.get("content", "")[:300]
-        lines.append(f"{i}. **{title}**\n   {content}\n   {url}")
+        lines.append(f"[{_ref_for_url(url)}] **{title}**\n   {content}\n   {url}")
     text = "\n\n".join(lines) if lines else "[no results]"
     return {
         "text": text,
@@ -1116,7 +1134,9 @@ def _fetch_serpapi(query: str, max_results: int) -> dict[str, Any]:
     if svar.get("answer") or svar.get("snippet"):
         lines.append(f"**Summary:** {svar.get('answer') or svar.get('snippet')}\n")
     for i, r in enumerate(results, 1):
-        lines.append(f"{i}. **{r['title']}**\n   {r['content']}\n   {r['url']}")
+        lines.append(
+            f"[{_ref_for_url(r['url'])}] **{r['title']}**\n   {r['content']}\n   {r['url']}"
+        )
     return {
         "text": "\n\n".join(lines) if lines else "[no results]",
         "results": results,

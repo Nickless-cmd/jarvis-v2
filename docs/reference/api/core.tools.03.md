@@ -365,45 +365,46 @@ _Web/search/system-info tool executors for Jarvis' native lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_glob_to_regex` | `(pattern)` | Oversæt et glob-mønster (POSIX-relativt) til en regex med KORREKT sti-semantik: | [src](../../../core/tools/simple_tools_web.py#L65) |
-| function | `_st` | `()` | Lazy accessor til simple_tools (facade-søm for _cached_web_search_fn). | [src](../../../core/tools/simple_tools_web.py#L86) |
-| function | `_cached_web_search_fn` | `(*, query, max_results, fetch_fn)` | Facade → simple_tools._cached_web_search_fn (honorér test-patch-søm). | [src](../../../core/tools/simple_tools_web.py#L92) |
-| function | `_observe_research_result` | `(tool_name, result)` | Best-effort observer; ordinary web calls never depend on research state. | [src](../../../core/tools/simple_tools_web.py#L97) |
-| function | `_exec_search` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L106) |
-| function | `_exec_find_files` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L235) |
-| function | `_get_or_open_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L330) |
-| function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L366) |
-| function | `_exec_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L372) |
-| function | `_html_to_text` | `(raw)` | Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift). | [src](../../../core/tools/simple_tools_web.py#L761) |
-| function | `_egress_blokeret` | `(url)` | Fejl-svaret hvis destinationen er intern, ellers None. | [src](../../../core/tools/simple_tools_web.py#L800) |
-| function | `_fetch_cache_get` | `(url)` | — | [src](../../../core/tools/simple_tools_web.py#L841) |
-| function | `_fetch_cache_put` | `(url, raw)` | — | [src](../../../core/tools/simple_tools_web.py#L852) |
-| class | `_RevaliderendeRedirect` | `` | Stopper en omdirigering mod et internt maal, hop for hop. | [src](../../../core/tools/simple_tools_web.py#L870) |
-| method | `_RevaliderendeRedirect.redirect_request` | `(self, req, fp, code, msg, headers, newurl)` | — | [src](../../../core/tools/simple_tools_web.py#L873) |
-| function | `_hent_side` | `(url)` | Hent en side med redirect-revalidering og kort cache. | [src](../../../core/tools/simple_tools_web.py#L888) |
-| function | `_hent_side_via_exa` | `(url)` | Hent en side gennem Exas MCP-server. ``None`` hvis den ikke kan. | [src](../../../core/tools/simple_tools_web.py#L915) |
-| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L945) |
-| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L1012) |
-| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L1031) |
-| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1041) |
-| function | `_fetch_serpapi` | `(query, max_results)` | Raw SerpAPI (Google SERP) call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1082) |
-| function | `_fetch_exa` | `(query, max_results)` | Raw Exa MCP search — no caching. Bruges som tredje kandidat. | [src](../../../core/tools/simple_tools_web.py#L1129) |
-| function | `_fetch_alle_providers` | `(query, max_results)` | Exa først — de to andre som fallback. IKKE en dommer (målt 18/10-2026). | [src](../../../core/tools/simple_tools_web.py#L1231) |
-| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L1353) |
-| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L1360) |
-| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L1374) |
-| function | `_er_dato` | `(tekst)` | Sandt hvis ``tekst`` er en gyldig YYYY-MM-DD-dato. | [src](../../../core/tools/simple_tools_web.py#L1402) |
-| function | `_owm_get` | `(path, params, api_key, timeout=…)` | Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``. | [src](../../../core/tools/simple_tools_web.py#L1414) |
-| function | `_owm_local` | `(epoch, offset_s)` | Epoch → ISO-lokal tid for STEDET. | [src](../../../core/tools/simple_tools_web.py#L1425) |
-| function | `_owm_precip_mm` | `(punkt)` | Regn + sne i mm. Current bruger ``1h``, forecast bruger ``3h`` — vi summer alt. | [src](../../../core/tools/simple_tools_web.py#L1441) |
-| function | `_owm_daily` | `(punkter, offset_s, antal)` | Gruppér 3-timers-punkter i lokale døgn og opsummer hvert døgn. | [src](../../../core/tools/simple_tools_web.py#L1455) |
-| function | `_exec_get_weather` | `(args)` | Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet. | [src](../../../core/tools/simple_tools_web.py#L1513) |
-| function | `_exec_get_exchange_rate` | `(args)` | Valutakurser via exchangerate.host — med lokal konvertering. | [src](../../../core/tools/simple_tools_web.py#L1678) |
-| function | `_exec_get_news` | `(args)` | Nyheder via NewsAPI — bred dansk søgning som standard. | [src](../../../core/tools/simple_tools_web.py#L1729) |
-| function | `_stage_image_preview` | `(image_bytes, source_path)` | Den sti desk kan hente billedet paa — uden at aabne hvidlisten. | [src](../../../core/tools/simple_tools_web.py#L1812) |
-| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L1834) |
-| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1960) |
-| function | `_exec_wolfram_query` | `(args)` | Wolfram Alpha — kort svar eller de fulde pods. | [src](../../../core/tools/simple_tools_web.py#L2030) |
+| function | `_glob_to_regex` | `(pattern)` | Oversæt et glob-mønster (POSIX-relativt) til en regex med KORREKT sti-semantik: | [src](../../../core/tools/simple_tools_web.py#L66) |
+| function | `_st` | `()` | Lazy accessor til simple_tools (facade-søm for _cached_web_search_fn). | [src](../../../core/tools/simple_tools_web.py#L87) |
+| function | `_cached_web_search_fn` | `(*, query, max_results, fetch_fn)` | Facade → simple_tools._cached_web_search_fn (honorér test-patch-søm). | [src](../../../core/tools/simple_tools_web.py#L93) |
+| function | `_observe_research_result` | `(tool_name, result)` | Best-effort observer; ordinary web calls never depend on research state. | [src](../../../core/tools/simple_tools_web.py#L98) |
+| function | `_exec_search` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L107) |
+| function | `_exec_find_files` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L236) |
+| function | `_get_or_open_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L331) |
+| function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/simple_tools_web.py#L367) |
+| function | `_exec_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L373) |
+| function | `_html_to_text` | `(raw)` | Grov HTML→tekst der BEVARER afsnits-struktur (blok-tags → linjeskift). | [src](../../../core/tools/simple_tools_web.py#L762) |
+| function | `_egress_blokeret` | `(url)` | Fejl-svaret hvis destinationen er intern, ellers None. | [src](../../../core/tools/simple_tools_web.py#L801) |
+| function | `_fetch_cache_get` | `(url)` | — | [src](../../../core/tools/simple_tools_web.py#L842) |
+| function | `_fetch_cache_put` | `(url, raw)` | — | [src](../../../core/tools/simple_tools_web.py#L853) |
+| class | `_RevaliderendeRedirect` | `` | Stopper en omdirigering mod et internt maal, hop for hop. | [src](../../../core/tools/simple_tools_web.py#L871) |
+| method | `_RevaliderendeRedirect.redirect_request` | `(self, req, fp, code, msg, headers, newurl)` | — | [src](../../../core/tools/simple_tools_web.py#L874) |
+| function | `_hent_side` | `(url)` | Hent en side med redirect-revalidering og kort cache. | [src](../../../core/tools/simple_tools_web.py#L889) |
+| function | `_hent_side_via_exa` | `(url)` | Hent en side gennem Exas MCP-server. ``None`` hvis den ikke kan. | [src](../../../core/tools/simple_tools_web.py#L916) |
+| function | `_exec_web_fetch` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L946) |
+| function | `_exec_web_scrape` | `(args)` | — | [src](../../../core/tools/simple_tools_web.py#L1013) |
+| function | `_read_api_key` | `(key)` | Read an API key directly from runtime.json. | [src](../../../core/tools/simple_tools_web.py#L1032) |
+| function | `_ref_for_url` | `(url)` | Et stabilt, læsbart ref-id for én web-kilde. | [src](../../../core/tools/simple_tools_web.py#L1042) |
+| function | `_fetch_tavily` | `(query, max_results)` | Raw Tavily API call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1059) |
+| function | `_fetch_serpapi` | `(query, max_results)` | Raw SerpAPI (Google SERP) call — no caching. | [src](../../../core/tools/simple_tools_web.py#L1100) |
+| function | `_fetch_exa` | `(query, max_results)` | Raw Exa MCP search — no caching. Bruges som tredje kandidat. | [src](../../../core/tools/simple_tools_web.py#L1149) |
+| function | `_fetch_alle_providers` | `(query, max_results)` | Exa først — de to andre som fallback. IKKE en dommer (målt 18/10-2026). | [src](../../../core/tools/simple_tools_web.py#L1251) |
+| function | `_cached_web_search_fn_impl` | `(*, query, max_results, fetch_fn)` | Wrapper so tests can monkeypatch the cache layer (real impl). | [src](../../../core/tools/simple_tools_web.py#L1373) |
+| function | `_exec_web_search` | `(args)` | Web search via Tavily API with result caching. | [src](../../../core/tools/simple_tools_web.py#L1380) |
+| function | `_read_user_location` | `()` | Read Location from the live workspace USER.md. | [src](../../../core/tools/simple_tools_web.py#L1394) |
+| function | `_er_dato` | `(tekst)` | Sandt hvis ``tekst`` er en gyldig YYYY-MM-DD-dato. | [src](../../../core/tools/simple_tools_web.py#L1422) |
+| function | `_owm_get` | `(path, params, api_key, timeout=…)` | Ét OpenWeatherMap-kald. Kaster aldrig — fejl returneres som ``_error``. | [src](../../../core/tools/simple_tools_web.py#L1434) |
+| function | `_owm_local` | `(epoch, offset_s)` | Epoch → ISO-lokal tid for STEDET. | [src](../../../core/tools/simple_tools_web.py#L1445) |
+| function | `_owm_precip_mm` | `(punkt)` | Regn + sne i mm. Current bruger ``1h``, forecast bruger ``3h`` — vi summer alt. | [src](../../../core/tools/simple_tools_web.py#L1461) |
+| function | `_owm_daily` | `(punkter, offset_s, antal)` | Gruppér 3-timers-punkter i lokale døgn og opsummer hvert døgn. | [src](../../../core/tools/simple_tools_web.py#L1475) |
+| function | `_exec_get_weather` | `(args)` | Vejr via OpenWeatherMap — nu, prognose, døgn og luftkvalitet. | [src](../../../core/tools/simple_tools_web.py#L1533) |
+| function | `_exec_get_exchange_rate` | `(args)` | Valutakurser via exchangerate.host — med lokal konvertering. | [src](../../../core/tools/simple_tools_web.py#L1698) |
+| function | `_exec_get_news` | `(args)` | Nyheder via NewsAPI — bred dansk søgning som standard. | [src](../../../core/tools/simple_tools_web.py#L1749) |
+| function | `_stage_image_preview` | `(image_bytes, source_path)` | Den sti desk kan hente billedet paa — uden at aabne hvidlisten. | [src](../../../core/tools/simple_tools_web.py#L1832) |
+| function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L1854) |
+| function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1980) |
+| function | `_exec_wolfram_query` | `(args)` | Wolfram Alpha — kort svar eller de fulde pods. | [src](../../../core/tools/simple_tools_web.py#L2050) |
 
 ## `core/tools/skill_chain_propose_tool.py`
 _propose_skill_chain tool — Skill Chain Phase 2 (AGI track #10)._

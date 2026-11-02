@@ -31,7 +31,24 @@ def test_first_pass_bevarer_capability_filteret():
 
 
 def test_filteret_er_koblet_paa_first_pass_i_runtime():
+    """Filteret skal være monteret — og det skal have turens kilder med.
+
+    2/11-2026: her stod den ordrette streng `FirstPassOutputFilter()`. Den
+    matcher ikke længere, fordi filteret nu får kilder med — og det er hele
+    pointen: uden dem er `Kilder()` tom, og så afvises ALLE citationer
+    fail-closed. Vagten måler derfor koblingen og argumentet, ikke
+    parentesens indhold.
+    """
     source = pathlib.Path("core/services/visible_runs.py").read_text()
-    assert "markup_buffer = FirstPassOutputFilter()" in source
+    assert "markup_buffer = FirstPassOutputFilter(" in source
     assert "safe_text = markup_buffer.feed(item.delta)" in source
     assert "remaining = markup_buffer.flush()" in source
+    # Kilderne skal være den SAMME beholder som turen fylder — ellers fyldes
+    # en tom instans ved siden af den filteret læser.
+    assert "_turn_kilder" in source, "filteret får ikke turens kilder"
+    assert "FirstPassOutputFilter(_turn_kilder)" in source, (
+        "filteret instantieres uden kilder — så afvises alle citationer"
+    )
+    assert "TurnAccumulator(kilder=_turn_kilder)" in source, (
+        "turen og filteret deler ikke kilder — de to beholdere divergerer"
+    )

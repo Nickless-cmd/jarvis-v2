@@ -1456,7 +1456,14 @@ async def _stream_visible_run(
     # [CUTOFF-TRACE] Livscyklus-breadcrumb: opdateres ved hver fase så finally-downgrade
     # kan vise HVOR CancelledError ramte (tool-exec / agentic-runde / finalisering).
     _run_stage = "init"
-    markup_buffer = FirstPassOutputFilter()
+    # 2/11-2026: filteret og turen deler ÉN Kilder-instans. Filteret laves her,
+    # FØR nogen søgning er kørt, saa kilderne kan ikke kendes nu — de fyldes af
+    # `TurnAccumulator.registrer_web_kilder` mens turen kører, og filteret ser
+    # dem fordi det holder den samme beholder.
+    from core.services.citation_markorer import Kilder as _Kilder
+
+    _turn_kilder = _Kilder()
+    markup_buffer = FirstPassOutputFilter(_turn_kilder)
     _collected_native_tool_calls: list[dict] = []
     # Tur-niveau blok-akkumulatorer (spec: content_json). _a_tool_calls/_a_parts
     # nulstilles pr. runde → holder kun SIDSTE runde. Disse samler HELE turens
@@ -1467,7 +1474,7 @@ async def _stream_visible_run(
     # (core/services/visible_turn_accumulator.py). Udskilt 2026-09-09 efter Boy
     # Scout-reglen — fem loese variabler og fire lukninger blev ét objekt.
     from core.services.visible_turn_accumulator import TurnAccumulator
-    _turn = TurnAccumulator()
+    _turn = TurnAccumulator(kilder=_turn_kilder)
 
     # Akkumuleret first-pass-tekst + degenerations-vagt i ét objekt
     # (core/services/visible_first_pass_text.py).

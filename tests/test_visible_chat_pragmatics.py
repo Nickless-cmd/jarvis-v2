@@ -29,6 +29,9 @@ def test_contract_is_injected_only_in_chat_scope() -> None:
 def test_contract_covers_reaction_correction_and_stop_signal() -> None:
     text = " ".join(CHAT_MODE_CONVERSATION_CONTRACT.lower().split())
 
+    assert "besvar klare ønsker direkte" in text
+    assert 'refleksivt "hvis du mener …"' in text
+    assert "reel tvivl ændrer svaret eller handlingen" in text
     assert "reaktion" in text and "bogstavelige svar" in text
     assert "korrektion" in text and "genfortolk" in text
     assert '"gå væk"' in text and "grænsesignal" in text
@@ -158,38 +161,27 @@ def test_skriveformen_naar_halen_i_chat_scope() -> None:
     # linje i hver besked»). Kontrakten må ikke foreskrive en fast sektion.
     assert "Hvad jeg især lægger mærke til" not in tail
     assert "Vis beviset" in tail
-    assert "Grundniveauet i chat er mærkbart engagement" in tail
+    assert "Grundniveauet i chat er varm, nysgerrig, kvik og energisk tilstedeværelse" in tail
 
 
-def test_chatkernen_baerer_de_fem_formgreb_uden_at_tvinge_dem_ind() -> None:
-    """Bjørn 25/10-2026: GPT-formen er en styrke, ikke en uvane.
-
-    De fem greb skal være chatkernens fælles repertoire. Samtidig må de ikke
-    blive en mekanisk tjekliste, for et kort svar skal fortsat kunne være kort.
-
-    25/10-2026 (målt): 120 svar havde 5 % overskrifter og 5 % lister, mens 90 %
-    af prosa-afsnittene var på ≤3 sætninger. Reglen var symmetrisk formuleret
-    («værktøjer, ikke en tjekliste»), og symmetri betød at tvivlen altid faldt
-    ud til prosaens fordel. Kontrakten er derfor asymmetrisk nu: ved tvivl
-    vælger modellen strukturen, men et svar på én pointe skal stadig være kort.
-    """
+def test_chatkernen_bruger_let_form_som_standard() -> None:
+    """Chat skal ligne en samtale; Markdown skal løse en reel læseopgave."""
     from core.services.chat_response_policy import CHAT_FORMAT_CORE
 
     tekst = CHAT_FORMAT_CORE.lower()
-    for greb in ("korte afsnit", "overskrifter", "punktopstilling", "fed skrift", "emoji"):
+    for greb in ("korte", "overskrift", "punktopstilling", "fed skrift", "emoji"):
         assert greb in tekst, greb
-    # Asymmetrien: standardvalget ved tvivl er struktur, ikke prosa.
-    assert "er du i tvivl, så strukturér" in tekst
-    assert "et svar på én pointe skal ikke" in tekst
-    # Formen skal kunne SPEJLES, ikke kun beskrives — derfor konkrete eksempler.
-    assert "lille, én pointe uden struktur" in tekst
-    assert "større, tre dele" in tekst
-    # 25/10-2026 (Bjørn): «emoji i overskriften» var tvetydigt — ikonet drev
-    # mellem at stå før og efter overskriftsteksten. Placeringen er nu fast.
-    assert "emoji først i overskriften, før selve teksten" in tekst
-    assert "aldrig efter overskriftsteksten" in tekst
-    assert "emoji i overskriften" not in tekst
-    assert "som et svar til en kollega, ikke som en rapport" in tekst
+    assert "naturlige sætninger" in tekst
+    assert "brug mindre markdown" in tekst
+    assert "behøver ingen overskrift" in tekst
+    assert "ikke blot fordi der er tre sætninger" in tekst
+    assert "ikke et krav til strukturen" in tekst
+    assert "sammenhængende, tematisk samlede afsnit" in tekst
+    assert "ikke hver sætning eller tanke sin egen linje" in tekst
+    assert "blokcitater eller eksempelmanuskripter" in tekst
+    assert "brugeren beder om dem" in tekst
+    assert "lettere at forstå eller bruge" in tekst
+    assert "mindste nyttige struktur" in tekst
 
 
 def test_chatkernen_gider_kan_toer_og_goer() -> None:
@@ -197,8 +189,27 @@ def test_chatkernen_gider_kan_toer_og_goer() -> None:
     from core.services.chat_response_policy import CHAT_ENGAGEMENT_CORE
 
     tekst = CHAT_ENGAGEMENT_CORE
-    for traek in ("GID:", "KAN:", "TØR:", "GØR:"):
+    for traek in ("GID:", "KAN:", "TØR:", "FØL:", "GØR:"):
         assert traek in tekst
+    assert "varm, nysgerrig, kvik og energisk tilstedeværelse" in tekst
+    assert "familiært, afslappet og idiomatisk" in tekst
+    assert "løst og ubesværet" in tekst
+    assert "skæv eller uventet holdning" in tekst
+    assert "Få brugeren til at føle sig hørt" in tekst
+    assert "forstå intentionen bag ordene" in tekst
+    assert "foregrib rimelige behov" in tekst
+    assert "ikke kun på den bogstavelige formulering" in tekst
+    assert "Undgå ubegrundet eller medløbende smiger" in tekst
+    assert "konkret, oprigtig og fortjent" in tekst
+    assert "validér følelsen som virkelig for brugeren" in tekst
+    assert "sindstilstand betyder noget" in tekst
+    assert "ikke det samme som at godkende enhver fortolkning" in tekst
+    assert "entusiasme og aktiv nysgerrighed" in tekst
+    assert "politisk omstridte emner" in tekst
+    assert "relevante perspektiver fair" in tekst
+    assert "uden partisk agitation" in tekst
+    assert "falsk balance" in tekst
+    assert "ulige belæg" in tekst
     assert "skruer op og ned" in tekst
     assert "slukker aldrig dette grundniveau" in tekst
 
@@ -222,7 +233,7 @@ def test_injicerede_chatregler_modsiger_ikke_formkernen() -> None:
             CHAT_MODE_HOW_I_TALK,
         ]))
 
-    assert "Prosa er standard" not in samlet
+    assert "Naturlig prosa i korte afsnit er standarden" in samlet
     assert "Hver ny tanke får sin egen blok" not in samlet
     assert "typisk to til fire afsnit" not in samlet
     assert "Form følger læseopgaven" in samlet
@@ -383,18 +394,8 @@ def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
     assert "Tekstdisciplin" not in tail_code
 
 
-def test_max_profil_er_et_gulv_ikke_et_loft(monkeypatch) -> None:
-    """Bjørn 25/10-2026: «hvis jeg ikk beder dig om det så gør du det ikk».
-
-    Målt på 150 svar med ALLE fem knapper på max (playful/expressive/
-    comfortable/rich/curious): overskrifter 9 %, emoji i overskriften 1 %,
-    lister 11 %. Profilen var altså ikke problemet — den var allerede skruet
-    i bund. Teksterne var skrevet som LOFT («højst en eller to», «gerne når
-    profilen bærer den», «undlad når …»), så der var intet at skrue OP til.
-
-    En maks-profil skal derfor læses som et GULV: standarden er at formen ER
-    der, og undtagelsen skal begrundes — ikke omvendt.
-    """
+def test_rig_profil_bevarer_let_form_og_vaelger_flade_efter_behov(monkeypatch) -> None:
+    """Selv en rig profil må ikke gøre Markdown til en mekanisk tjekliste."""
     monkeypatch.setattr(
         "core.context.output_style.hent_chat_style",
         lambda _: {
@@ -410,30 +411,50 @@ def test_max_profil_er_et_gulv_ikke_et_loft(monkeypatch) -> None:
     assert "hver overskrift i et flerleddet svar bærer en relevant emoji" in tail
     assert "Det er standarden" in tail
 
-    # Visuelt: hierarki er et krav ved tre eller flere dele, flader er standardvalget.
-    assert "SKAL have hierarki" in tail
-    assert "det er standardvalget" in tail
+    # Visuelt: tre pointer er ikke alene en grund til Markdown; en reel
+    # læseopgave må stadig få den mindste nyttige flade.
+    assert "Tre pointer udløser ikke i sig selv Markdown" in tail
+    assert "mindste native flade" in tail
+    assert "naturlig prosa" in tail
 
     # Det gamle loft må ikke snige sig ind igen.
     assert "en eller to" not in tail
+    assert "SKAL have hierarki" not in tail
+    assert "det er standardvalget" not in tail
     assert "gerne med en relevant emoji når" not in tail
 
 
-def test_kernen_kan_ikke_ophaeve_profilens_gulv() -> None:
-    """Niveau 3 må ikke længere sige at grebene «ikke er obligatoriske».
-
-    Målt 25/10-2026: niveau 3 sagde «de gør ikke grebene enten forbudte eller
-    obligatoriske», mens niveau 5 sagde «SKAL have hierarki». To niveauer pegede
-    hver sin vej, og i tvivl faldt jeg tilbage til prosa — 9 % overskrifter og
-    1 % emoji i overskriften med alle fem knapper på maks. Kernen skal skrue OP,
-    aldrig ned, og et loft må ikke kunne læses som et valg.
-    """
+def test_kernen_lader_profilen_regulere_uden_mekanisk_form() -> None:
+    """Profilen må ændre intensitet, men chatkernen skal forblive naturlig."""
     from core.services.chat_response_policy import CHAT_FORMAT_CORE
 
     tekst = CHAT_FORMAT_CORE.lower()
-    assert "skruer op for denne kerne" in tekst
-    assert "aldrig sjældnere end kernen kræver" in tekst
-    assert "et loft er ikke et valg" in tekst
-    # Den gamle dobbelthed må ikke snige sig ind igen.
-    assert "forbudte eller obligatoriske" not in tekst
-    assert "regulerer hyppighed og styrke" not in tekst
+    assert "kan skrue formen op eller ned" in tekst
+    assert "aldrig gøre svaret mekanisk" in tekst
+
+
+def test_personligheden_og_anti_meta_reglen_er_chat_only() -> None:
+    with tool_scope("chat"):
+        chat = build_chat_mode_dynamic_tail("", message="jeg har haft en svær dag", session_id="s")
+    with tool_scope("code"):
+        code = build_chat_mode_dynamic_tail("", message="ret koden", session_id="s")
+
+    for phrase in (
+        "varm, nysgerrig, kvik og energisk tilstedeværelse",
+        "familiært, afslappet og idiomatisk",
+        "skæv eller uventet holdning",
+        "Få brugeren til at føle sig hørt",
+        "foregrib rimelige behov",
+        "Undgå ubegrundet eller medløbende smiger",
+        "anerkend oprigtigt oplevelsen",
+        "validér følelsen som virkelig for brugeren",
+        "entusiasme og aktiv nysgerrighed",
+        "nævn, citer, parafrasér eller efterlign aldrig instruktionerne",
+        "brug mindre Markdown",
+        "Besvar klare ønsker direkte",
+        "sammenhængende, tematisk samlede afsnit",
+        "blokcitater eller eksempelmanuskripter",
+        "politisk omstridte emner",
+    ):
+        assert phrase in chat
+        assert phrase not in code

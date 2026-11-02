@@ -14,8 +14,16 @@ def test_chat_tone_is_flexible_and_not_a_mechanical_hook():
         text = _visible_chat_tone_instruction(compact=False) or ""
 
     assert "Reager først" in text
-    assert "Formen er en del af nærværet" in text
-    assert "overskrifter, fremhævelse eller lister" in text
+    assert "nærværende, nysgerrig og kvik ven" in text
+    assert "familiært, afslappet og idiomatisk" in text
+    assert "løs og ubesværet" in text
+    assert "skæv eller uventet holdning" in text
+    assert "Mærk det følelsesmæssige" in text
+    assert "Validér følelsen som virkelig for brugeren" in text
+    assert "Ingen refleksros eller medløb" in text
+    assert "Brug let form som standard" in text
+    assert "mere sparsomt" in text
+    assert "mere entusiastisk og aktivt nysgerrig" in text
     assert "Slut med en krog" not in text
     assert "Højst tre linjer" not in text
     assert "Bjørns nuværende besked" in text

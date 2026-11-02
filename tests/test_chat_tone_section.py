@@ -158,7 +158,7 @@ def test_sidste_samtale_regel_naar_prompten():
             session_id="test-chat-tone-hale",
         )
     tekst = out.prompt if hasattr(out, "prompt") else str(out)
-    assert "Begejstring skal" in tekst, (
+    assert "Lad energien kunne mærkes" in tekst, (
         "den sidste samtale-regel nåede ikke den faktiske prompt — sektionen "
         "bliver klippet et sted mellem funktionen og assembly"
     )

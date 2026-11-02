@@ -102,10 +102,11 @@ BUDGET_VISIBLE_FULL = AttentionBudget(
     # Se noten i visible_compact: must_include, prioritet 0, rigelig plads.
     mode_orientation=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=0),
     # Se noten i visible_compact: kun chat mode har indhold her.
-    # 1400 → 2400 (22/10-2026): sektionen er nu tone + samtale-regler = 2270
-    # tegn. Et loft under det klipper reglerne midt i en sætning, og så lover
-    # overskriften mere end kroppen holder — værre end ingen sektion.
-    chat_tone=SectionBudget(max_chars=2400, max_items=12, must_include=False, priority=1),
+    # 1400 → 2400 (22/10-2026): sektionen blev tone + samtale-regler. 2700 og
+    # 20 linjer (2/11-2026) giver plads til den varmere baseline og den lettere
+    # form uden at klippe den sidste regel af. Et loft under hele sektionen
+    # lover mere end kroppen holder — værre end ingen sektion.
+    chat_tone=SectionBudget(max_chars=2700, max_items=20, must_include=False, priority=1),
 )
 
 BUDGET_HEARTBEAT = AttentionBudget(

@@ -99,6 +99,13 @@ export function opdelArbejdsrunder(arbejde: readonly ArbejdsElement[]): ArbejdsS
 function erArbejdsBlok(b: ContentBlock): boolean {
   return b.type === 'tool_use' || b.type === 'thinking'
     || b.type === 'skill_surface' || b.type === 'progress'
+    // `approval` hører til ARBEJDET (2/11-2026). Uden den faldt en godkendelse
+    // der stod efter sidste værktøjskald i `svar` — og blev tegnet som en del
+    // af replikken, nederst i beskeden under slutteksten. Målt på Bjørns
+    // skærmbillede af code mode: «Hvorfor vises de i bunden af din besked?»
+    // `chatFlowModel` havde reglen; denne model havde den ikke, så fixet i
+    // `fletGodkendelser` blev kun synligt i chat mode.
+    || b.type === 'approval'
 }
 
 /** En LEVERANCE — noget Jarvis lægger frem TIL brugeren: et billede han har

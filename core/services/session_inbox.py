@@ -80,11 +80,20 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
     # end den samme besked leveret direkte — en tavs dataaendring i praecis den
     # tabel vi er ved at rydde op i. ALTER er idempotent via try/except: sqlite
     # har ingen "ADD COLUMN IF NOT EXISTS".
-    for _kolonne in ("user_id", "workspace_name"):
+    for _kolonne, _type in (
+        ("user_id", "TEXT"),
+        ("workspace_name", "TEXT"),
+        ("importance", "TEXT NOT NULL DEFAULT 'normal'"),
+        ("dedupe_key", "TEXT NOT NULL DEFAULT ''"),
+    ):
         try:
-            conn.execute(f"ALTER TABLE session_inbox ADD COLUMN {_kolonne} TEXT")
+            conn.execute(f"ALTER TABLE session_inbox ADD COLUMN {_kolonne} {_type}")
         except sqlite3.OperationalError:
             pass  # kolonnen findes allerede — den eneste fejl ALTER kan give her
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_session_inbox_dedupe "
+        "ON session_inbox(session_id, dedupe_key) WHERE dedupe_key != ''"
+    )
 
 
 def _connect() -> sqlite3.Connection:
@@ -161,6 +170,8 @@ def enqueue(
     urgent: bool = False,
     user_id: str | None = None,
     workspace_name: str | None = None,
+    importance: str = "normal",
+    dedupe_key: str = "",
 ) -> dict[str, Any]:
     """Add a daemon notification to the inbox for later delivery.
 
@@ -170,26 +181,47 @@ def enqueue(
     """
     if not session_id or not content.strip():
         return {"status": "error", "error": "session_id and content required"}
+    from core.services.inbox_importance import normalize_importance
+    importance_n = normalize_importance(importance)
+    dedupe_n = str(dedupe_key or "").strip()[:300]
     now_iso = datetime.now(UTC).isoformat()
     try:
         with _connect() as conn:
-            cur = conn.execute(
-                """INSERT INTO session_inbox
+            try:
+                cur = conn.execute(
+                    """INSERT INTO session_inbox
                    (session_id, content, source, urgent, queued_at, status,
-                    user_id, workspace_name)
-                   VALUES (?, ?, ?, ?, ?, 'queued', ?, ?)""",
-                (session_id, content.strip(), source, int(urgent), now_iso,
-                 (user_id or "").strip() or None,
-                 (workspace_name or "").strip() or None),
-            )
+                    user_id, workspace_name, importance, dedupe_key)
+                   VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)""",
+                    (session_id, content.strip(), source, int(urgent), now_iso,
+                     (user_id or "").strip() or None,
+                     (workspace_name or "").strip() or None,
+                     importance_n, dedupe_n),
+                )
+            except sqlite3.IntegrityError:
+                if not dedupe_n:
+                    raise
+                row = conn.execute(
+                    "SELECT id, status FROM session_inbox WHERE session_id=? "
+                    "AND dedupe_key=?", (session_id, dedupe_n),
+                ).fetchone()
+                return {
+                    # Accepted idempotently. Returning the old terminal status
+                    # would make notification_bridge fall through to a NEW
+                    # direct delivery and defeat the dedupe guarantee.
+                    "status": "queued",
+                    "id": int(row["id"]) if row else None,
+                    "deduplicated": True,
+                    "existing_status": str(row["status"] if row else "queued"),
+                }
             conn.commit()
             inbox_id = cur.lastrowid
     except Exception as exc:
         logger.exception("session_inbox: enqueue failed")
         return {"status": "error", "error": str(exc)}
     logger.info(
-        "session_inbox: queued [%s] for session %s (urgent=%s)",
-        source, session_id, urgent,
+        "session_inbox: queued [%s] for session %s (urgent=%s importance=%s)",
+        source, session_id, urgent, importance_n,
     )
     return {"status": "queued", "id": inbox_id}
 
@@ -202,10 +234,12 @@ def pending_for_session(session_id: str) -> list[dict[str, Any]]:
         with _connect() as conn:
             rows = conn.execute(
                 """SELECT id, content, source, urgent, queued_at,
-                          user_id, workspace_name
+                          user_id, workspace_name, importance, dedupe_key
                    FROM session_inbox
                    WHERE session_id = ? AND status = 'queued'
-                   ORDER BY id ASC""",
+                   ORDER BY CASE importance WHEN 'critical' THEN 0
+                            WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
+                            id ASC""",
                 (session_id,),
             ).fetchall()
         return [dict(r) for r in rows]
@@ -324,6 +358,9 @@ def flush_session(session_id: str) -> dict[str, Any]:
                     titel=_titel,
                     tekst=_maerket_tekst,
                     session_id=session_id,
+                    ref=(str(item.get("dedupe_key") or "").strip()
+                         or f"session-inbox:{int(item['id'])}"),
+                    data={"importance": str(item.get("importance") or "normal")},
                 )
                 # 11/10-2026: `message` bar `_raa` — den UMAERKEDE tekst — mens
                 # feeden fik den maerkede. Eventet herunder er den vej der
@@ -457,11 +494,17 @@ def _listener_loop() -> None:
             cutoff = (
                 datetime.now(UTC) - timedelta(minutes=_FALLBACK_FLUSH_MINUTES)
             ).isoformat()
+            high_cutoff = (datetime.now(UTC) - timedelta(seconds=60)).isoformat()
+            critical_cutoff = (datetime.now(UTC) - timedelta(seconds=5)).isoformat()
             with _connect() as conn:
                 stale_sessions = conn.execute(
                     """SELECT DISTINCT session_id FROM session_inbox
-                       WHERE status='queued' AND queued_at < ?""",
-                    (cutoff,),
+                       WHERE status='queued' AND (
+                         (importance='critical' AND queued_at < ?) OR
+                         (importance='high' AND queued_at < ?) OR
+                         (importance IN ('normal','low') AND queued_at < ?)
+                       )""",
+                    (critical_cutoff, high_cutoff, cutoff),
                 ).fetchall()
             for r in stale_sessions:
                 sid = str(r["session_id"])

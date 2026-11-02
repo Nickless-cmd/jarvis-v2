@@ -87,6 +87,7 @@ class RoutineInboxService:
                     + (f" (run {run_id})" if run_id else "")
                 ),
                 bloker=blocks,
+                importance=importance,
             )
         except Exception:
             # Inbox delivery is a projection after the authoritative lifecycle

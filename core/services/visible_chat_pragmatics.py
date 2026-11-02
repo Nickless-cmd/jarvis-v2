@@ -138,16 +138,31 @@ def build_chat_mode_dynamic_tail(
 ) -> str:
     """Append the active mode's large contract after the cache boundary."""
     from core.tools.tool_scoping import current_tool_scope
+    from core.services.prompt_mode_layout import mode_layout_v2_enabled, recency_anchor
 
     base = str(tail or "").strip()
     scope = current_tool_scope()
     if scope == "code":
+        if mode_layout_v2_enabled():
+            from core.services.plan_mode import prompt_section
+
+            return "\n\n".join(part for part in (
+                base,
+                prompt_section(),
+                recency_anchor(scope="code"),
+            ) if part)
         from core.services.prompt_sections.code_mode import section as code_section
 
         contract = code_section(compact=False)
         return "\n\n".join(part for part in (base, contract) if part)
     if scope != "chat":
         return base
+    if mode_layout_v2_enabled():
+        additions = [
+            _chat_style_contract(message, session_id).strip(),
+            recency_anchor(scope="chat"),
+        ]
+        return "\n\n".join(part for part in [base, *additions] if part)
     additions = [
         CHAT_MODE_HOW_I_TALK.strip(),
         _chat_style_contract(message, session_id).strip(),

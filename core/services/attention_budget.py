@@ -12,7 +12,7 @@ Design constraints:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +126,23 @@ BUDGET_HEARTBEAT = AttentionBudget(
     cognitive_state=SectionBudget(max_chars=400, max_items=5, must_include=False, priority=3),
 )
 
+# V2 enlarges only the selector envelope needed by the stable mode contract.
+# The legacy constants remain byte/behavior compatible behind the kill switch.
+BUDGET_VISIBLE_COMPACT_V2 = replace(
+    BUDGET_VISIBLE_COMPACT,
+    total_char_target=16000,
+    mode_orientation=SectionBudget(
+        max_chars=14500, max_items=40, must_include=True, priority=0,
+    ),
+)
+BUDGET_VISIBLE_FULL_V2 = replace(
+    BUDGET_VISIBLE_FULL,
+    total_char_target=22000,
+    mode_orientation=SectionBudget(
+        max_chars=19000, max_items=60, must_include=True, priority=0,
+    ),
+)
+
 _PROFILES: dict[str, AttentionBudget] = {
     "visible_compact": BUDGET_VISIBLE_COMPACT,
     "visible_full": BUDGET_VISIBLE_FULL,
@@ -135,6 +152,14 @@ _PROFILES: dict[str, AttentionBudget] = {
 
 def get_attention_budget(profile: str) -> AttentionBudget:
     """Get a named attention budget profile."""
+    if profile in {"visible_compact", "visible_full"}:
+        try:
+            from core.services.prompt_mode_layout import mode_layout_v2_enabled
+            if mode_layout_v2_enabled():
+                return (BUDGET_VISIBLE_COMPACT_V2 if profile == "visible_compact"
+                        else BUDGET_VISIBLE_FULL_V2)
+        except Exception:  # A switch-read failure must not break prompt assembly; use legacy limits.
+            pass
     return _PROFILES.get(profile, BUDGET_VISIBLE_FULL)
 
 

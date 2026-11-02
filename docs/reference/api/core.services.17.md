@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/live_job_events.py`
+_Bounded, process-local live projection of background-job events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_timestamp` | `()` | — | [src](../../../core/services/live_job_events.py#L23) |
+| class | `JobEvent` | `` | — | [src](../../../core/services/live_job_events.py#L28) |
+| method | `JobEvent.as_dict` | `(self)` | — | [src](../../../core/services/live_job_events.py#L37) |
+| class | `JobSubscription` | `` | — | [src](../../../core/services/live_job_events.py#L49) |
+| method | `JobSubscription.__init__` | `(self, owner, *, session_id, initial_events, needs_snapshot, snapshot_cursor, queue_size)` | — | [src](../../../core/services/live_job_events.py#L50) |
+| method | `JobSubscription.close` | `(self)` | — | [src](../../../core/services/live_job_events.py#L73) |
+| method | `JobSubscription._deliver` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L79) |
+| method | `JobSubscription._enqueue` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L87) |
+| class | `LiveJobEventHub` | `` | — | [src](../../../core/services/live_job_events.py#L130) |
+| method | `LiveJobEventHub.__init__` | `(self, *, replay_size=…)` | — | [src](../../../core/services/live_job_events.py#L131) |
+| method | `LiveJobEventHub.publish` | `(self, event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L139) |
+| method | `LiveJobEventHub.subscribe` | `(self, *, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L166) |
+| method | `LiveJobEventHub._unsubscribe` | `(self, subscription)` | — | [src](../../../core/services/live_job_events.py#L197) |
+| method | `LiveJobEventHub.snapshot_cursor` | `(self)` | — | [src](../../../core/services/live_job_events.py#L201) |
+| function | `publish` | `(event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L209) |
+| function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L226) |
+| function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L232) |
+| function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L236) |
+
 ## `core/services/live_job_sources.py`
 _Incremental adapters from canonical background jobs to live job events._
 
@@ -631,25 +655,4 @@ _Memory Write Policy — gating + review queue for inferred memory writes._
 | function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
 | function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
 | function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
-
-## `core/services/memory_write_queue.py`
-_Memory Write Queue — async write queue for sensory/brain memories._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/memory_write_queue.py#L62) |
-| function | `enqueue_write` | `(queue_type, payload, priority=…)` | Enqueue a memory write for async processing. | [src](../../../core/services/memory_write_queue.py#L98) |
-| function | `process_queue` | `(batch_size=…)` | Process pending write queue items. Called by the daemon tick. | [src](../../../core/services/memory_write_queue.py#L158) |
-| function | `requeue_orphaned_processing` | `(now=…)` | Frigoer `processing`-poster hvis ejer er vaek. → `pending` eller `failed`. | [src](../../../core/services/memory_write_queue.py#L261) |
-| function | `queue_size` | `()` | Return counts by status. | [src](../../../core/services/memory_write_queue.py#L337) |
-| function | `build_memory_write_queue_surface` | `()` | Mission Control surface. | [src](../../../core/services/memory_write_queue.py#L359) |
-| function | `_run_queue_drain` | `(started_at)` | Drain the queue outside the heartbeat thread, one worker at a time. | [src](../../../core/services/memory_write_queue.py#L382) |
-| function | `tick_memory_write_queue_daemon` | `(now=…)` | Start one non-blocking queue drain at most every 120 seconds. | [src](../../../core/services/memory_write_queue.py#L416) |
-| function | `_max_retries_for` | `(queue_type)` | — | [src](../../../core/services/memory_write_queue.py#L461) |
-| function | `_process_item` | `(queue_type, payload, retry_count)` | Execute one write. Returns (ok, error_message). | [src](../../../core/services/memory_write_queue.py#L469) |
-| function | `_process_sensory` | `(payload, retry_count)` | Process a sensory memory write. | [src](../../../core/services/memory_write_queue.py#L503) |
-| function | `_process_brain` | `(payload, retry_count)` | Process a brain entry write. | [src](../../../core/services/memory_write_queue.py#L522) |
-| function | `_process_sidecar` | `(payload, retry_count)` | Process a MEMORY.md sidecar: mood capture + graph ingestion. | [src](../../../core/services/memory_write_queue.py#L555) |
-| function | `retry_failed` | `(limit=…)` | Reset failed items back to pending for retry. | [src](../../../core/services/memory_write_queue.py#L592) |
-| function | `clean_old_done` | `(hours=…)` | Delete 'done' items older than N hours. | [src](../../../core/services/memory_write_queue.py#L616) |
 

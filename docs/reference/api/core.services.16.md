@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/infra_weather_daemon.py`
+_Infra Weather Daemon — "The atmosphere of my system"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L35) |
+| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L43) |
+| function | `_disk_pressure` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L58) |
+| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L78) |
+| function | `_api_cost_today` | `()` | Sum of TODAY's API costs. | [src](../../../core/services/infra_weather_daemon.py#L121) |
+| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L148) |
+| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L167) |
+| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L184) |
+| function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L220) |
+| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L275) |
+| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L284) |
+| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L297) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L313) |
+| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L322) |
+
 ## `core/services/inheritance_seed.py`
 _Inheritance seed — writes near-thoughts before version transition or shutdown._
 
@@ -694,28 +714,4 @@ _Livscyklus-hooks server-side — paritet med jarvis-code._
 | function | `run_hook` | `(event, hook, context, user_id=…)` | Koer ÉN hook. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L313) |
 | function | `_advar_om_uvirksom_dom` | `(event, dom)` | Sig det hoejt naar en hook doemmer paa en haendelse der ikke kan handle. | [src](../../../core/services/lifecycle_hooks.py#L332) |
 | function | `fire` | `(event, context, user_id=…)` | Fyr alle hooks for en haendelse og saml dommen. Self-safe → allow. | [src](../../../core/services/lifecycle_hooks.py#L345) |
-
-## `core/services/live_job_events.py`
-_Bounded, process-local live projection of background-job events._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_timestamp` | `()` | — | [src](../../../core/services/live_job_events.py#L23) |
-| class | `JobEvent` | `` | — | [src](../../../core/services/live_job_events.py#L28) |
-| method | `JobEvent.as_dict` | `(self)` | — | [src](../../../core/services/live_job_events.py#L37) |
-| class | `JobSubscription` | `` | — | [src](../../../core/services/live_job_events.py#L49) |
-| method | `JobSubscription.__init__` | `(self, owner, *, session_id, initial_events, needs_snapshot, snapshot_cursor, queue_size)` | — | [src](../../../core/services/live_job_events.py#L50) |
-| method | `JobSubscription.close` | `(self)` | — | [src](../../../core/services/live_job_events.py#L73) |
-| method | `JobSubscription._deliver` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L79) |
-| method | `JobSubscription._enqueue` | `(self, event)` | — | [src](../../../core/services/live_job_events.py#L87) |
-| class | `LiveJobEventHub` | `` | — | [src](../../../core/services/live_job_events.py#L130) |
-| method | `LiveJobEventHub.__init__` | `(self, *, replay_size=…)` | — | [src](../../../core/services/live_job_events.py#L131) |
-| method | `LiveJobEventHub.publish` | `(self, event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L139) |
-| method | `LiveJobEventHub.subscribe` | `(self, *, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L166) |
-| method | `LiveJobEventHub._unsubscribe` | `(self, subscription)` | — | [src](../../../core/services/live_job_events.py#L197) |
-| method | `LiveJobEventHub.snapshot_cursor` | `(self)` | — | [src](../../../core/services/live_job_events.py#L201) |
-| function | `publish` | `(event_type, *, job_key, session_id, source, payload)` | — | [src](../../../core/services/live_job_events.py#L209) |
-| function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L226) |
-| function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L232) |
-| function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L236) |
 

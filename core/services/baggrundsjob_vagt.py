@@ -143,7 +143,12 @@ def _meld(job: dict[str, Any]) -> tuple[bool, str]:
             delivery_succeeded,
             send_session_notification,
         )
-        svar = send_session_notification(tekst, source="baggrundsjob-vagt")
+        svar = send_session_notification(
+            tekst,
+            source="baggrundsjob-vagt",
+            importance=("normal" if job.get("exit_code") in (0, "0") else "high"),
+            dedupe_key=f"background-job:{job.get('id') or job.get('pid') or ''}",
+        )
     except Exception:
         logger.warning("baggrundsjob_vagt: kunne ikke levere melding", exc_info=True)
         return False, "fejl"

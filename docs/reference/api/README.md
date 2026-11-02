@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17882 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17893 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -44,23 +44,23 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17882 functions/
 - [`core.services.12`](core.services.12.md) — `dream_adoption_candidate_tracking` … `end_of_run_memory_consolidation`
 - [`core.services.13`](core.services.13.md) — `endpoint_usage_store` … `gate_adapters`
 - [`core.services.14`](core.services.14.md) — `gate_auth` … `habit_tracker`
-- [`core.services.15`](core.services.15.md) — `habits_pipeline` … `infra_weather_daemon`
-- [`core.services.16`](core.services.16.md) — `inheritance_seed` … `live_job_events`
-- [`core.services.17`](core.services.17.md) — `live_job_sources` … `memory_write_queue`
-- [`core.services.18`](core.services.18.md) — `mermaid_render` … `notifikationer_hydrering`
-- [`core.services.19`](core.services.19.md) — `notifikations_emittere` … `pfsense_syslog`
-- [`core.services.20`](core.services.20.md) — `phone_wake` … `prompt_cache_probe`
-- [`core.services.21`](core.services.21.md) — `prompt_contract` … `reasoning_interceptor`
-- [`core.services.22`](core.services.22.md) — `reasoning_prefilter` … `retry_runtime`
-- [`core.services.23`](core.services.23.md) — `rhythm_engine` … `runtime_hooks`
-- [`core.services.24`](core.services.24.md) — `runtime_learning_signals` … `self_monitor`
-- [`core.services.25`](core.services.25.md) — `self_mutation_lineage` … `settlement_shadow`
-- [`core.services.26`](core.services.26.md) — `shadow_counters` … `spatial_entity_ledger`
-- [`core.services.27`](core.services.27.md) — `spild` … `thought_action_proposal_daemon`
-- [`core.services.28`](core.services.28.md) — `thought_leak_guard` … `untrusted_fencing`
-- [`core.services.29`](core.services.29.md) — `upload_sandbox` … `visible_model_types`
-- [`core.services.30`](core.services.30.md) — `visible_outcome_text` … `vision_backend`
-- [`core.services.31`](core.services.31.md) — `vision_preview` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `habits_pipeline` … `infra_sense`
+- [`core.services.16`](core.services.16.md) — `infra_weather_daemon` … `lifecycle_hooks`
+- [`core.services.17`](core.services.17.md) — `live_job_events` … `memory_write_policy`
+- [`core.services.18`](core.services.18.md) — `memory_write_queue` … `notifikationer`
+- [`core.services.19`](core.services.19.md) — `notifikationer_hydrering` … `personality_vector`
+- [`core.services.20`](core.services.20.md) — `pfsense_syslog` … `prompt_assembly_turn_cache`
+- [`core.services.21`](core.services.21.md) — `prompt_cache_probe` … `reasoning_detectors`
+- [`core.services.22`](core.services.22.md) — `reasoning_escalation` … `retention_coverage`
+- [`core.services.23`](core.services.23.md) — `retry_admissibility` … `runtime_guard`
+- [`core.services.24`](core.services.24.md) — `runtime_hook_runtime` … `self_model_predictive`
+- [`core.services.25`](core.services.25.md) — `self_model_signal_tracking` … `session_view`
+- [`core.services.26`](core.services.26.md) — `session_wakeup` … `source_confidence_gate`
+- [`core.services.27`](core.services.27.md) — `spaced_repetition` … `theory_of_mind_engine`
+- [`core.services.28`](core.services.28.md) — `think_language` … `unconscious_temperature_field`
+- [`core.services.29`](core.services.29.md) — `unfinished_intent` … `visible_model_prompt`
+- [`core.services.30`](core.services.30.md) — `visible_model_sse` … `visible_turn_blocks`
+- [`core.services.31`](core.services.31.md) — `visible_work_surfaces` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

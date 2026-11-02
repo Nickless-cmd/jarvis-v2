@@ -96,16 +96,18 @@ _Stable, scope-specific orientation and conversational baseline._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L17) |
-| function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L25) |
-| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L58) |
+| function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L18) |
+| function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L26) |
+| function | `_chat_tone_content` | `(*, compact)` | Build the stable chat baseline without deciding its placement. | [src](../../../core/services/prompt_sections/chat_mode.py#L73) |
+| function | `_visible_chat_tone_instruction` | `(*, compact)` | Legacy standalone tone block; V2 folds it into mode orientation. | [src](../../../core/services/prompt_sections/chat_mode.py#L100) |
 
 ## `core/services/prompt_sections/code_mode.py`
 _Code-mode-only working contract for the visible engineering lane._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `section` | `(*, compact=…)` | Return the engineering contract only for an explicit code scope. | [src](../../../core/services/prompt_sections/code_mode.py#L12) |
+| function | `base_section` | `(*, compact=…)` | Return the stable engineering contract for an explicit code scope. | [src](../../../core/services/prompt_sections/code_mode.py#L12) |
+| function | `section` | `(*, compact=…)` | Return the complete legacy contract, including current plan state. | [src](../../../core/services/prompt_sections/code_mode.py#L156) |
 
 ## `core/services/prompt_sections/cross_session_arc.py`
 _Cross-session arc — surface recent named conversations as a temporal arc._
@@ -439,6 +441,16 @@ _Transcript rendering + session compaction for prompts._
 | function | `_make_structured_summariser` | `(focus=…, *, session_id=…)` | — | [src](../../../core/services/prompt_sections/transcript_sections.py#L719) |
 | function | `_run_session_compaction` | `(session_id, keep_recent, *, low_water_tokens=…, focus=…)` | Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session; | [src](../../../core/services/prompt_sections/transcript_sections.py#L724) |
 | function | `_maybe_auto_compact_session` | `(session_id, current_messages, settings)` | Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN. | [src](../../../core/services/prompt_sections/transcript_sections.py#L760) |
+
+## `core/services/prompt_sections/visible_capability_truth.py`
+_Scope-aware capability truth for visible prompts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L18) |
+| function | `_legacy_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L26) |
+| function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L47) |
+| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L79) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

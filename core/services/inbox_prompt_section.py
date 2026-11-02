@@ -176,8 +176,14 @@ def inbox_prompt_section() -> str | None:
         # GATENDE foerst, derefter resten — begge i den orden visningen gav
         # dem (aeldste foerst). Saa kan loftet aldrig skjule en blokering,
         # hvilket var hele grunden til at Opgave 10 undtog sektionen.
-        ordnet = ([p for p in poster if p.get("kraever_handling")]
-                  + [p for p in poster if not p.get("kraever_handling")])
+        from core.services.inbox_importance import prompt_order
+        # Unseen rows always precede repeats. Within each class importance
+        # wins. This makes the six-line window a fair queue instead of a wall
+        # where the same six open rows can starve every later arrival forever.
+        ordnet = sorted(poster, key=lambda p: (
+            0 if p.get("kraever_handling") else 1,
+            *prompt_order(p),
+        ))
         vist = ordnet[:_PROMPT_LOFT]
         skjult = (i_alt - len(vist)) + int(v.get(f"{noegle}_skjult") or 0)
         linjer.append(f"{titel} ({i_alt})" if i_alt > 1 else titel)

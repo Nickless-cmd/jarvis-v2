@@ -400,6 +400,9 @@ def _post(
     tid_tekst: str = "",
     bloker: bool = False,
     udloebet: bool = False,
+    importance: str = "normal",
+    vist_at: str = "",
+    created_at: str = "",
 ) -> dict[str, Any]:
     """Byg én post med de seks felter — og ÉN linje, uden payload.
 
@@ -408,7 +411,11 @@ def _post(
     en outputfil der ikke findes.
     """
     maerke = EJER_MAERKE.get(ejer, EJER_MAERKE[db_inbox.EJER_UKENDT])
+    from core.services.inbox_importance import normalize_importance
+    importance_n = normalize_importance(importance)
     dele = [post_id, status]
+    if importance_n in {"high", "critical"}:
+        dele.append(importance_n.upper())
     if tid_tekst:
         dele.append(tid_tekst)
     if forfalden_dage is not None and forfalden_dage > 0:
@@ -432,6 +439,9 @@ def _post(
         "ejer_maerke": maerke,
         "forfalden_dage": forfalden_dage,
         "alder_dage": alder_dage,
+        "importance": importance_n,
+        "vist_at": str(vist_at or ""),
+        "created_at": str(created_at or ""),
         # Bruger-poster gater kun naar `bloker` er sat. Uden `bloker`-leddet
         # ville visningen sige «kraever handling: nej» om en post gaten
         # faktisk naegter paa — to svar om samme post.
@@ -780,6 +790,9 @@ def byg_indbakke(
             # hinanden på præcis samme måde som to definitioner af «venter»
             # gjorde det 4/10.
             udloebet=bool(p.get("udloebet")) or db_inbox.er_udloebet(p),
+            importance=str(p.get("importance") or "normal"),
+            vist_at=str(p.get("vist_at") or ""),
+            created_at=str(p.get("created_at") or ""),
             nu_ts=nu,
         )
         if post["id"] == turens_wake:

@@ -9,8 +9,8 @@ from __future__ import annotations
 from core.tools import tool_scoping
 
 
-def section(*, compact: bool = False) -> str | None:
-    """Return the engineering contract only for an explicit code scope."""
+def base_section(*, compact: bool = False) -> str | None:
+    """Return the stable engineering contract for an explicit code scope."""
     if str(tool_scoping.current_tool_scope() or "").strip().lower() != "code":
         return None
 
@@ -150,10 +150,17 @@ def section(*, compact: bool = False) -> str | None:
             lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6],
             lines[7], lines[10], lines[11], lines[12], lines[13], lines[14],
         ]
+    return "\n".join(lines)
+
+
+def section(*, compact: bool = False) -> str | None:
+    """Return the complete legacy contract, including current plan state."""
+    base = base_section(compact=compact)
+    if not base:
+        return None
     from core.services.plan_mode import prompt_section
 
-    plan = prompt_section()
-    return "\n\n".join(part for part in ("\n".join(lines), plan) if part)
+    return "\n\n".join(part for part in (base, prompt_section()) if part)
 
 
-__all__ = ["section"]
+__all__ = ["base_section", "section"]

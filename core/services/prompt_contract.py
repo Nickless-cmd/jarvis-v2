@@ -232,7 +232,6 @@ from core.runtime.db import (
     recent_visible_runs,
     visible_session_continuity,
 )
-from core.runtime.config import PROJECT_ROOT
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
 DEFAULT_EXCLUDED_FILES = (
@@ -4221,12 +4220,19 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
     # deploy, UI. Filen er nu 35 linjer, så loftet på 30 klippede fem regler
     # væk uden en lyd. `max_chars` er pr. LINJE, ikke total (målt i
     # _workspace_file_section), så 2000 er rigeligt til én regel.
-    return _workspace_optional_file_section(
+    text = _workspace_optional_file_section(
         workspace_dir / "VISIBLE_CHAT_RULES.md",
         fallback_path=TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md",
         label="Visible chat guidance rules",
         max_lines=60,
         max_chars=2000,
+    )
+    from core.services.prompt_mode_layout import filter_visible_rules
+    from core.tools.tool_scoping import current_tool_scope
+
+    return filter_visible_rules(
+        text,
+        scope=str(current_tool_scope() or "").strip().lower(),
     )
 
 
@@ -4295,42 +4301,10 @@ from core.services.prompt_sections.chat_mode import (  # noqa: E402,F401
 )
 
 
-def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
-    lines = [
-        "Runtime tool calling:",
-        "- You have tools available via native function calling. Use them directly.",
-        "- Core tools include read_file, write_file, edit_file, search, find_files, bash, web_fetch, and web_search.",
-        "- CRITICAL: ALWAYS use the actual tool call mechanism. NEVER simulate tool usage in text.",
-        "- When you need to write a file, CALL write_file. Do NOT say 'I will write' — just call the tool.",
-        "- When you need to run a command, CALL bash. Do NOT describe the command — call it.",
-        "- Safe workspace paths are auto-approved by runtime; blocked or risky paths require user approval or return error.",
-        "- The runtime handles all permissions and approvals automatically. You never need to ask the user.",
-        "- If you need information, use tools proactively. Do not guess from fragments.",
-        "- BATCH independent calls: when your next steps do not depend on each "
-        "other's results, emit them as SEVERAL tool calls in the SAME round. Several "
-        "read-only bash commands, several read_file, a search plus a read — one round, "
-        "not one round each.",
-        "- Go one call per round ONLY when the next call's arguments depend on the "
-        "previous call's result. Anything that waits for nothing should travel together.",
-        "- Continue autonomously instead of asking permission.",
-        "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",
-        "- Project root (source code): " + str(PROJECT_ROOT),
-        "- IMPORTANT: Your live workspace files (SOUL.md, MEMORY.md, USER.md, STANDING_ORDERS.md, SKILLS.md, etc.) "
-        "are at ~/.jarvis-v2/shared/ — NOT inside the project root. "
-        "The project contains a workspace/ template directory but those are NOT your live files. "
-        "Always use ~/.jarvis-v2/shared/ when reading or writing your own identity/memory files.",
-    ]
-    return "\n".join(lines)
-
-
-def _visible_capability_id_summary() -> str | None:
-    lines = [
-        "Available tools: read_file, write_file, edit_file, search, find_files, bash, web_fetch, web_search.",
-        "Batch independent tool calls into one round; sequence only what depends on a "
-        "previous result.",
-        "Continue autonomously for read-only tasks.",
-    ]
-    return "\n".join(lines)
+from core.services.prompt_sections.visible_capability_truth import (  # noqa: E402,F401
+    _visible_capability_id_summary,
+    _visible_capability_truth_instruction,
+)
 
 
 def _local_model_behavior_instruction(*, workspace_dir: Path) -> str | None:

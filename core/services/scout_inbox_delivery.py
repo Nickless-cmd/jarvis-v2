@@ -85,5 +85,6 @@ def record_scout_completion(surface: dict[str, object]) -> bool:
         kilde_ejer="jarvis", beskrivelse=description,
         output_sti=str(svar_fil) if fil_findes else "",
         output_bytes=svar_fil.stat().st_size if fil_findes else None,
+        importance="high" if status == "completed" else "critical",
     )
     return str(result.get("status") or "") == "ok"

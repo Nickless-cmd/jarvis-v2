@@ -476,6 +476,7 @@ def registrer_kilde(
     afsluttet_ved_registrering: bool = False,
     bloker: bool = False,
     session_id: str = "",
+    importance: str = "normal",
 ) -> dict[str, Any]:
     """Registrér en kilde i indbakken. Idempotent per (bruger, kildetype, kilde_id).
 
@@ -534,6 +535,7 @@ def registrer_kilde(
         # Samtalen forpligtelsen hørte til, så vækkeren kan vække DEN og ikke
         # en `auto-*`-silo (se `inbox_idle_waker._maal_session`).
         session_id=str(session_id or ""),
+        importance=importance,
     )
     if r.get("status") != "ok":
         # Spec'ens Global Constraint: en handlingskrævende post der ikke blev
@@ -611,6 +613,24 @@ def registrer_kilde(
         _spor("inbox.registreret", {
             "bruger_id": bruger_id, "kildetype": kildetype_n, "kilde_id": kilde_id,
             "verificeret_ejer": ejer, "kraever_handling": kraever_handling})
+    # Critical findings arriving during an active turn must have an end-of-turn
+    # address even if no further model round occurs. The durable inbox remains
+    # truth; session_inbox is only the deduplicated delivery queue.
+    if (str(post.get("importance") or "") == "critical"
+            and str(session_id or "").strip()
+            and not str(post.get("vist_at") or "").strip()):
+        try:
+            from core.services.session_inbox import enqueue
+            enqueue(
+                session_id=str(session_id),
+                content=(f"Kritisk inbox-post: {kilde_id}\n{beskrivelse}"),
+                source="durable-inbox-critical",
+                importance="critical",
+                dedupe_key=f"inbox:{bruger_id}:{kilde_id}",
+                user_id=bruger_id,
+            )
+        except Exception as exc:  # durable row is still safe; delivery failure is visible
+            logger.warning("inbox_state: critical end-of-turn delivery failed: %s", exc)
     return r
 
 

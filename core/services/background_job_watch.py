@@ -317,6 +317,10 @@ def tik(*, uid: str = "") -> dict[str, Any]:
             tekst[:2000],
             source="background-job-watch",
             push=False,
+            importance=("high" if any(
+                str(j.get("status") or "").lower() in {"failed", "error", "blocked"}
+                or int(j.get("exit_code") or 0) != 0 for j in nye
+            ) else "normal"),
         )
     except Exception as exc:
         logger.warning("background_job_watch: kunne ikke sende besked: %s", exc)

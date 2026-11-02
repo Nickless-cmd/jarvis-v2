@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from core.tools import tool_scoping
+from core.services.prompt_mode_layout import mode_layout_v2_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,16 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
         ]
         if compact:
             lines = [lines[0], lines[1], lines[4]]
+        if mode_layout_v2_enabled():
+            # Stable mode behavior belongs before the cache boundary. Import
+            # locally to avoid a module cycle: pragmatics also calls this file.
+            from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+            return "\n\n".join((
+                "\n".join(lines),
+                _chat_tone_content(compact=compact),
+                CHAT_MODE_HOW_I_TALK,
+            ))
         return "\n".join(lines)
     if scope == "code":
         lines = [
@@ -43,10 +54,14 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
             "- Du har fil- og shell-adgang i det workspace samtalen hører til.",
             "- Skriv korte mellemregninger mellem kaldene; saml resultatet til sidst.",
         ]
-        # Den fulde, store Code-kontrakt ligger cache-sent i den dynamiske hale.
-        # Her hører kun den korte mode-orientering hjemme; ellers bliver kontrakten
-        # enten budget-trimmet eller forskellig mellem prompt-warmer og live-kald.
-        return "\n".join(lines[:2] if compact else lines)
+        orientation = "\n".join(lines[:2] if compact else lines)
+        if mode_layout_v2_enabled():
+            from core.services.prompt_sections.code_mode import base_section
+
+            return "\n\n".join(part for part in (
+                orientation, base_section(compact=compact),
+            ) if part)
+        return orientation
     lines = [
         "Du er i en samtale UDEN mode-signal (ældre klient eller mobil uden mode).",
         "- Behandl den som chat mode: samtalen først, kode når det er dét der bliver spurgt om.",
@@ -55,10 +70,8 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
     return "\n".join(lines[:2] if compact else lines)
 
 
-def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
-    """A flexible chat baseline; per-user/current-turn nuance is cache-late."""
-    if _scope() != "chat":
-        return None
+def _chat_tone_content(*, compact: bool) -> str:
+    """Build the stable chat baseline without deciding its placement."""
     lines = [
         "## Tone (chat)",
         "- **Vær varm i samtalen.** Mød brugeren som en nærværende, nysgerrig og kvik ven: Reager først, når en reaktion giver mening, og gå så til pointen. Lad oprigtig energi, humor og en lejlighedsvis skæv eller uventet holdning få plads i lette samtaler uden at tvinge dem ind.",
@@ -82,6 +95,13 @@ def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
     if conversation_rules:
         lines.extend(["", conversation_rules])
     return "\n".join(lines)
+
+
+def _visible_chat_tone_instruction(*, compact: bool) -> str | None:
+    """Legacy standalone tone block; V2 folds it into mode orientation."""
+    if _scope() != "chat" or mode_layout_v2_enabled():
+        return None
+    return _chat_tone_content(compact=compact)
 
 
 __all__ = ["_visible_mode_orientation_instruction", "_visible_chat_tone_instruction"]

@@ -164,6 +164,7 @@ def report_background_outcome(
             + (f" Evidens: {str(evidence_ref)[:300]}" if evidence_ref else "")
         )[:1600],
         session_id=str(session_id or ""),
+        importance=severity_n,
     )
     result["inbox"] = str(inbox_result.get("status") or "error")
 

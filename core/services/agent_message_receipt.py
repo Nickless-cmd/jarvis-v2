@@ -124,7 +124,13 @@ def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
                 delivery_succeeded,
                 send_session_notification,
             )
-            svar = send_session_notification(besked, source="agent-completion")
+            svar = send_session_notification(
+                besked,
+                source="agent-completion",
+                importance=("high" if str(resultat.get("status") or "").lower()
+                            in {"ok", "completed", "success"} else "critical"),
+                dedupe_key=f"agent-completion:{agent_id}",
+            )
             if not delivery_succeeded(svar):
                 logger.warning("completion-levering afvist for %s: %s", agent_id, svar)
             else:

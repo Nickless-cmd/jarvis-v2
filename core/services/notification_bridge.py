@@ -125,6 +125,8 @@ def send_session_notification(
     user_id: str | None = None,
     workspace_name: str | None = None,
     push: bool = True,
+    importance: str = "normal",
+    dedupe_key: str = "",
 ) -> dict[str, object]:
     """Append a proactive message to the most recently active chat session.
 
@@ -276,6 +278,8 @@ def send_session_notification(
                     content=content,
                     source=source,
                     urgent=False,
+                    importance=importance,
+                    dedupe_key=dedupe_key,
                     **_koe_afsender(user_id, workspace_name),
                 )
                 if result.get("status") == "queued":
@@ -394,7 +398,6 @@ def _reset_boredom_level_listener_loop() -> None:
             if not isinstance(item, dict):
                 continue
             kind = item.get("kind", "")
-            payload = item.get("payload") or {}
             if kind == "cognitive_state.boredom_productive":
                 continue
             # Any heartbeat tick completion resets guard so next productive episode fires again

@@ -166,6 +166,11 @@ _SENERE_KOLONNER: Final[tuple[tuple[str, str], ...]] = (
     #
     # Tom streng = aldrig vist. Det er den tilstand fejeren IKKE må røre.
     ("vist_at", "TEXT NOT NULL DEFAULT ''"),
+    # Leveringsprioritet og kvittering. ``vist_at`` beviser prompt-visning;
+    # disse to beviser en aktiv-runde-levering uden at lukke selve posten.
+    ("importance", "TEXT NOT NULL DEFAULT 'normal'"),
+    ("leveret_til_run_id", "TEXT NOT NULL DEFAULT ''"),
+    ("leveret_at", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -218,6 +223,9 @@ def _post_fra_raekke(r: sqlite3.Row) -> dict[str, Any]:
         "bloker": _felt(r, "bloker") in ("1", "True", "true"),
         "session_id": _felt(r, "session_id"),
         "vist_at": _felt(r, "vist_at"),
+        "importance": _felt(r, "importance") or "normal",
+        "leveret_til_run_id": _felt(r, "leveret_til_run_id"),
+        "leveret_at": _felt(r, "leveret_at"),
     }
     # ── Opgave 8: udløb er en BEREGNET tilstand ─────────────────────────────
     #
@@ -277,6 +285,7 @@ def opret_eller_hent(
     bloker: bool = False,
     expires_at: str = "",
     session_id: str = "",
+    importance: str = "normal",
 ) -> dict[str, Any]:
     """Idempotent registrering. Findes posten, returneres DEN — urørt.
 
@@ -310,6 +319,8 @@ def opret_eller_hent(
     # `genaabn_af_kilde` — posten ville udløbe og blive genåbnet i ét væk.
     if not str(expires_at or "").strip() and (kraever_handling or bloker):
         expires_at = (datetime.now(UTC) + timedelta(days=_FRIST_DAGE)).isoformat()
+    from core.services.inbox_importance import normalize_importance
+    importance_n = normalize_importance(importance)
     with connect() as conn:
         _ensure_skema(conn)
         conn.execute(
@@ -318,14 +329,24 @@ def opret_eller_hent(
                 bruger_id, kildetype, kilde_id, oprettende_run_id,
                 verificeret_ejer, kraever_handling, status, beskrivelse,
                 output_sti, output_bytes, created_at, bloker, expires_at,
-                session_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                session_id, importance
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (bruger_id, kildetype, kilde_id, str(oprettende_run_id or ""),
              str(verificeret_ejer or EJER_UKENDT), 1 if kraever_handling else 0,
              STATUS_AABEN, str(beskrivelse or ""), str(output_sti or ""),
              output_bytes, _nu(), 1 if bloker else 0, str(expires_at or ""),
-             str(session_id or "")),
+             str(session_id or ""), importance_n),
+        )
+        # A source may learn that an existing open finding is more important.
+        # Never downgrade: critical/high must not be erased by a later default.
+        conn.execute(
+            "UPDATE inbox_items SET importance = ? WHERE bruger_id = ? "
+            "AND kildetype = ? AND kilde_id = ? AND status = ? "
+            "AND CASE importance WHEN 'critical' THEN 3 WHEN 'high' THEN 2 "
+            "WHEN 'normal' THEN 1 ELSE 0 END < ?",
+            (importance_n, bruger_id, kildetype, kilde_id, STATUS_AABEN,
+             {"low": 0, "normal": 1, "high": 2, "critical": 3}[importance_n]),
         )
         r = conn.execute(
             "SELECT * FROM inbox_items WHERE bruger_id = ? AND kildetype = ? "
@@ -920,6 +941,47 @@ def marker_vist(poster: list[str], *, bruger_id: str = "") -> int:
                     (nu, kilde_id))
             n += int(cur.rowcount or 0)
     return n
+
+
+def claim_high_for_run(
+    *, bruger_id: str, session_id: str, run_id: str, maks: int = 8,
+) -> list[dict[str, Any]]:
+    """Atomically claim unseen high/critical items for one visible run.
+
+    Claiming stamps both delivery and ``vist_at``: the model actually receives
+    the rows in its next request, so this is a real view, not a projection.
+    The item remains open until its owner or source resolves it.
+    """
+    bruger = str(bruger_id or "").strip()
+    run = str(run_id or "").strip()
+    session = str(session_id or "").strip()
+    if not bruger or not run:
+        return []
+    with connect() as conn:
+        _ensure_skema(conn)
+        rows = conn.execute(
+            "SELECT * FROM inbox_items WHERE bruger_id = ? AND status = ? "
+            "AND importance IN ('high','critical') AND vist_at = '' "
+            "AND (session_id = '' OR session_id = ?) "
+            "ORDER BY CASE importance WHEN 'critical' THEN 0 ELSE 1 END, id ASC "
+            "LIMIT ?",
+            (bruger, STATUS_AABEN, session, max(1, int(maks))),
+        ).fetchall()
+        claimed: list[dict[str, Any]] = []
+        now = _nu()
+        for row in rows:
+            cur = conn.execute(
+                "UPDATE inbox_items SET leveret_til_run_id = ?, leveret_at = ?, "
+                "vist_at = ? WHERE id = ? AND status = ? AND vist_at = ''",
+                (run, now, now, int(row["id"]), STATUS_AABEN),
+            )
+            if cur.rowcount:
+                fresh = conn.execute(
+                    "SELECT * FROM inbox_items WHERE id = ?", (int(row["id"]),)
+                ).fetchone()
+                if fresh is not None:
+                    claimed.append(_post_fra_raekke(fresh))
+    return claimed
 
 
 def luk_forældede_informerende(

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9544/17882 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9551/17893 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,10 +24,10 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 | `core.identity` | 79 | 172 | 45% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6354 | 12148 | 52% |
+| `core.runtime` | 863 | 1571 | 54% |
+| `core.services` | 6358 | 12152 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
-| `core.services.prompt_sections` | 139 | 217 | 64% |
+| `core.services.prompt_sections` | 141 | 223 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
@@ -42,7 +42,7 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2599)
+## Undocumented public functions (2601)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -847,10 +847,10 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 - `core/services/attachment_topology_signal_tracking.py` :: `build_runtime_attachment_topology_signal_surface` (L85)
 - `core/services/attachment_topology_signal_tracking.py` :: `refresh_runtime_attachment_topology_signal_statuses` (L81)
 - `core/services/attachment_topology_signal_tracking.py` :: `track_runtime_attachment_topology_signals_for_visible_turn` (L44)
-- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L171)
-- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L175)
-- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L182)
-- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L179)
+- `core/services/attention_budget.py` :: `AttentionTrace.included_sections` (L196)
+- `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L200)
+- `core/services/attention_budget.py` :: `AttentionTrace.summary` (L207)
+- `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L204)
 - `core/services/attention_contour.py` :: `build_attention_contour_surface` (L122)
 - `core/services/attention_contour.py` :: `describe_attention` (L114)
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
@@ -1343,6 +1343,8 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
 - `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L1079)
+- `core/services/inbox_importance.py` :: `is_round_worthy` (L16)
+- `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L275)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L676)
@@ -1640,13 +1642,13 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3633)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3481)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3770)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3632)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3480)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3769)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4737)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4711)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -1794,7 +1796,7 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 - `core/services/routine_inbox.py` :: `RoutineInboxService.project_event_to_inbox` (L55)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_override` (L27)
 - `core/services/routine_inbox.py` :: `RoutineInboxService.set_user_defaults` (L20)
-- `core/services/routine_inbox.py` :: `project_event_to_inbox` (L98)
+- `core/services/routine_inbox.py` :: `project_event_to_inbox` (L99)
 - `core/services/routine_migration.py` :: `MigrationReport.assigned_count` (L57)
 - `core/services/routine_migration.py` :: `MigrationReport.quarantine_count` (L61)
 - `core/services/routine_migration.py` :: `report_path` (L148)
@@ -2067,8 +2069,8 @@ Generated from source. 9544/17882 functions/methods documented (53%). The list b
 - `core/services/sensory_archive.py` :: `search` (L467)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
-- `core/services/session_inbox.py` :: `pending_count` (L365)
-- `core/services/session_inbox.py` :: `stop_session_inbox` (L491)
+- `core/services/session_inbox.py` :: `pending_count` (L402)
+- `core/services/session_inbox.py` :: `stop_session_inbox` (L534)
 - `core/services/session_permission.py` :: `saet_permission` (L82)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L217)
 - `core/services/session_tool_pin.py` :: `clear` (L120)

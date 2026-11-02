@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9514/17844 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9519/17853 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9514/17844 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6327 | 12113 | 52% |
+| `core.services` | 6332 | 12122 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 138 | 216 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9514/17844 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2592)
+## Undocumented public functions (2595)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1048,6 +1048,9 @@ Generated from source. 9514/17844 functions/methods documented (53%). The list b
 - `core/services/chronicle_consolidation_signal_tracking.py` :: `track_runtime_chronicle_consolidation_signals_for_visible_turn` (L51)
 - `core/services/chronicle_engine.py` :: `build_chronicle_surface` (L236)
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
+- `core/services/citation_markorer.py` :: `CitationKontrakt.feed` (L231)
+- `core/services/citation_markorer.py` :: `CitationKontrakt.flush` (L256)
+- `core/services/citation_markorer.py` :: `Kilder.url_for` (L79)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
 - `core/services/cluster_daemon.py` :: `affect_family` (L1166)
@@ -2267,8 +2270,8 @@ Generated from source. 9514/17844 functions/methods documented (53%). The list b
 - `core/services/user_understanding_signal_tracking.py` :: `track_runtime_user_understanding_signals_for_visible_turn` (L33)
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
-- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.feed` (L110)
-- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L117)
+- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.feed` (L117)
+- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L130)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
 - `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1471)

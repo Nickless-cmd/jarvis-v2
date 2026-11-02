@@ -546,6 +546,24 @@ _CI-status — set, ikke gættet._
 | function | `_sekunder_siden` | `(sidste)` | Sekunder siden forrige tjek — eller None når stemplet mangler eller er | [src](../../../core/services/ci_status_watch.py#L243) |
 | function | `tik` | `()` | Tjek CI på `main` og læg én followup for nye røde kørsler. | [src](../../../core/services/ci_status_watch.py#L255) |
 
+## `core/services/citation_markorer.py`
+_Citation-markører — kontrolsyntaks der aldrig må nå skærmen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Kilder` | `` | Turens kilder — det eneste en ``cite``/``url``-ref kan pege på. | [src](../../../core/services/citation_markorer.py#L68) |
+| method | `Kilder.url_for` | `(self, ref)` | — | [src](../../../core/services/citation_markorer.py#L79) |
+| class | `Fund` | `` | Én markør der blev fundet — godkendt eller afvist. | [src](../../../core/services/citation_markorer.py#L84) |
+| function | `_gyldig_url` | `(url)` | Kun absolutte HTTP(S)-URL'er med et host. Alt andet afvises. | [src](../../../core/services/citation_markorer.py#L99) |
+| function | `_find_lukker` | `(tekst, start)` | Indeks for den LUKKENDE klamme der hører til åbneren ved ``start``. | [src](../../../core/services/citation_markorer.py#L112) |
+| function | `_tyd` | `(raa, kilder)` | Fortolk én markørs indhold. ``None`` = ikke en markør vi kender. | [src](../../../core/services/citation_markorer.py#L130) |
+| function | `_render` | `(fund)` | Markørens tekstfallback — hvad der står hvis den ikke kan blive et link. | [src](../../../core/services/citation_markorer.py#L162) |
+| function | `parse_markorer` | `(tekst, kilder)` | Fjern alle markører fra ``tekst`` og returnér (ren tekst, fundne). | [src](../../../core/services/citation_markorer.py#L178) |
+| class | `CitationKontrakt` | `` | Strøm-sikker markør-fjerner — samme form som ``StroemSkrubber``. | [src](../../../core/services/citation_markorer.py#L218) |
+| method | `CitationKontrakt.__init__` | `(self, kilder=…)` | — | [src](../../../core/services/citation_markorer.py#L226) |
+| method | `CitationKontrakt.feed` | `(self, tekst)` | — | [src](../../../core/services/citation_markorer.py#L231) |
+| method | `CitationKontrakt.flush` | `(self)` | — | [src](../../../core/services/citation_markorer.py#L256) |
+
 ## `core/services/claim_scanner.py`
 _Claim Scanner — output gate for the Lying Engine (Layer 2)._
 
@@ -776,18 +794,4 @@ _Cognitive Chronicle — user-scoped read layer for chronicle entries._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `query_chronicle_for_user` | `(limit=…)` | Return chronicle entries visible to the current user. | [src](../../../core/services/cognitive_chronicle.py#L15) |
-
-## `core/services/cognitive_core_experiments.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_safe_build` | `(builder, system_id, label)` | Call a builder function, returning a disabled-stub on any error. | [src](../../../core/services/cognitive_core_experiments.py#L6) |
-| function | `build_cognitive_core_experiments_surface` | `()` | Build shared runtime truth for the bounded cognitive-core experiment state. | [src](../../../core/services/cognitive_core_experiments.py#L31) |
-| function | `_build_recurrence_state` | `()` | — | [src](../../../core/services/cognitive_core_experiments.py#L110) |
-| function | `_build_global_workspace_state` | `()` | — | [src](../../../core/services/cognitive_core_experiments.py#L137) |
-| function | `_build_hot_meta_cognition_state` | `()` | — | [src](../../../core/services/cognitive_core_experiments.py#L165) |
-| function | `_build_surprise_afterimage_state` | `()` | — | [src](../../../core/services/cognitive_core_experiments.py#L192) |
-| function | `_build_attention_blink_state` | `()` | — | [src](../../../core/services/cognitive_core_experiments.py#L222) |
-| function | `_activity_state` | `(*, enabled, active)` | — | [src](../../../core/services/cognitive_core_experiments.py#L249) |
-| function | `_strongest_carry_item` | `(items)` | — | [src](../../../core/services/cognitive_core_experiments.py#L257) |
 

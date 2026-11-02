@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 
 from core.services.cheap_provider_runtime_adapters import _strip_dsml_leak
+from core.services.citation_markorer import CitationKontrakt, Kilder
 from core.services.prompt_sections.capability_markup import _CapabilityMarkupBuffer
 from core.services.visible_text_scrub import StroemSkrubber
 
@@ -49,9 +50,15 @@ _PARAM_TAG_RE = re.compile(r"</?(?:parameter|invoke)[^>]*>")
 class FirstPassOutputFilter:
     """Filtrér capability-markup, DSML og synlige runtime-markører — i den rækkefølge."""
 
-    def __init__(self) -> None:
+    def __init__(self, kilder: Kilder | None = None) -> None:
         self._markup = _CapabilityMarkupBuffer()
         self._synlig = StroemSkrubber()
+        # Citation-markører (2/11-2026): `【memcite】`, `【cite|ref1】`,
+        # `【url|anker|ref】`. De hører HER fordi denne klasse allerede er den
+        # ene synlige grænse og allerede har den hale-mekanik et delvist token
+        # kræver. Kilderne er turens egne — uden dem validerer ingen ref, og
+        # så afvises citationen frem for at blive opdigtet.
+        self._citations = CitationKontrakt(kilder)
         # DSML-stripperens tilstand: en åbner kan komme før sin closer, og en
         # hale kan være starten på en åbner vi ikke har set færdig endnu.
         self._dsml_hale = ""
@@ -112,7 +119,13 @@ class FirstPassOutputFilter:
         # indhold, og kører DSML-leddet først, ser det `</invoke>` inde i den
         # halve blok som en åbner og æder alt til næste closer — målt 30/10-2026:
         # 1.671 tegn ægte svar forsvandt på besked 236732.
-        return self._synlig.foed(self._markup.feed(self._dsml(self._halv(text))))
+        #
+        # Citationerne ligger yderst: de er den eneste markør der kan RENDRE
+        # noget (et link), og de skal se teksten efter de andre lag har fjernet
+        # deres markup — ellers kunne en DSML-rest stå inde i et anker.
+        return self._citations.feed(
+            self._synlig.foed(self._markup.feed(self._dsml(self._halv(text))))
+        )
 
     def flush(self) -> str:
         dele: list[str] = []
@@ -130,6 +143,9 @@ class FirstPassOutputFilter:
         if markup_rest:
             dele.append(self._synlig.foed(markup_rest))
         dele.append(self._synlig.skyl())
+        # Citationernes egen hale til sidst: en uafsluttet markør er prosa og
+        # skal slippes som den står — ikke tie resten af svaret ihjel.
+        dele.append(self._citations.flush())
         return "".join(dele)
 
 

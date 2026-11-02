@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17844 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17853 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -37,30 +37,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17844 functions/
 - [`core.services.05`](core.services.05.md) — `central_analyst` … `central_hypothesis_generator`
 - [`core.services.06`](core.services.06.md) — `central_hypothesis_governance` … `central_realtime`
 - [`core.services.07`](core.services.07.md) — `central_red_dress` … `chat_session_private_metadata`
-- [`core.services.08`](core.services.08.md) — `chat_sessions` … `cognitive_core_experiments`
-- [`core.services.09`](core.services.09.md) — `cognitive_episodes` … `council_memory_service`
-- [`core.services.10`](core.services.10.md) — `council_runtime` … `decision_gate`
-- [`core.services.11`](core.services.11.md) — `decision_ghosts` … `dream_articulation`
-- [`core.services.12`](core.services.12.md) — `dream_bias_engine` … `env_block`
-- [`core.services.13`](core.services.13.md) — `epistemic_pragmatic` … `gate_commit`
-- [`core.services.14`](core.services.14.md) — `gate_enforcement` … `hallucination_guard`
-- [`core.services.15`](core.services.15.md) — `handover_tools` … `initiative_accumulator`
-- [`core.services.16`](core.services.16.md) — `initiative_queue` … `liveness_registry`
-- [`core.services.17`](core.services.17.md) — `living_executive` … `message_feedback`
-- [`core.services.18`](core.services.18.md) — `meta_cognition_daemon` … `notifikations_opstart`
-- [`core.services.19`](core.services.19.md) — `notifikations_valg` … `plan_proposals`
-- [`core.services.20`](core.services.20.md) — `plugin_ruleset` … `prompt_evolution`
-- [`core.services.21`](core.services.21.md) — `prompt_evolution_runtime` … `reboot_awareness_daemon`
-- [`core.services.22`](core.services.22.md) — `recall` … `role_registry`
-- [`core.services.23`](core.services.23.md) — `round_budget_notice` … `runtime_resource_signal`
-- [`core.services.24`](core.services.24.md) — `runtime_self_knowledge` … `self_narrative_self_model_review_bridge`
-- [`core.services.25`](core.services.25.md) — `self_repair_engine` … `shadow_ledger_writer`
-- [`core.services.26`](core.services.26.md) — `shadow_scan_daemon` … `standing_orders_registry`
-- [`core.services.27`](core.services.27.md) — `state_file_retention` … `thought_thread`
-- [`core.services.28`](core.services.28.md) — `tick_cache` … `user_contradiction_tracker`
-- [`core.services.29`](core.services.29.md) — `user_emotional_resonance` … `visible_preview_crypto`
-- [`core.services.30`](core.services.30.md) — `visible_run_abandonment` … `voice_anchor`
-- [`core.services.31`](core.services.31.md) — `voice_curator` … `world_model_signal_tracking`
+- [`core.services.08`](core.services.08.md) — `chat_sessions` … `cognitive_chronicle`
+- [`core.services.09`](core.services.09.md) — `cognitive_core_experiments` … `council_deliberation_controller`
+- [`core.services.10`](core.services.10.md) — `council_memory_service` … `decision_evidence`
+- [`core.services.11`](core.services.11.md) — `decision_gate` … `dream_adoption_candidate_tracking`
+- [`core.services.12`](core.services.12.md) — `dream_articulation` … `endpoint_usage_store`
+- [`core.services.13`](core.services.13.md) — `env_block` … `gate_auth`
+- [`core.services.14`](core.services.14.md) — `gate_commit` … `habits_pipeline`
+- [`core.services.15`](core.services.15.md) — `hallucination_guard` … `inheritance_seed`
+- [`core.services.16`](core.services.16.md) — `initiative_accumulator` … `live_job_sources`
+- [`core.services.17`](core.services.17.md) — `liveness_registry` … `mermaid_render`
+- [`core.services.18`](core.services.18.md) — `message_feedback` … `notifikations_emittere`
+- [`core.services.19`](core.services.19.md) — `notifikations_opstart` … `phone_wake`
+- [`core.services.20`](core.services.20.md) — `plan_proposals` … `prompt_dump`
+- [`core.services.21`](core.services.21.md) — `prompt_evolution` … `reasoning_store`
+- [`core.services.22`](core.services.22.md) — `reboot_awareness_daemon` … `role_model_resolver`
+- [`core.services.23`](core.services.23.md) — `role_registry` … `runtime_operational_memory`
+- [`core.services.24`](core.services.24.md) — `runtime_resource_signal` … `self_narrative_continuity_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `self_narrative_self_model_review_bridge` … `shadow_experiment_registry`
+- [`core.services.26`](core.services.26.md) — `shadow_ledger_writer` … `staged_edits`
+- [`core.services.27`](core.services.27.md) — `standing_orders_registry` … `thought_stream_daemon`
+- [`core.services.28`](core.services.28.md) — `thought_thread` … `user_activity`
+- [`core.services.29`](core.services.29.md) — `user_contradiction_tracker` … `visible_post_tool_synthesis`
+- [`core.services.30`](core.services.30.md) — `visible_preview_crypto` … `visual_memory`
+- [`core.services.31`](core.services.31.md) — `voice_anchor` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

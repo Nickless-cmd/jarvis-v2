@@ -43,7 +43,11 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
             "- Du har fil- og shell-adgang i det workspace samtalen hører til.",
             "- Skriv korte mellemregninger mellem kaldene; saml resultatet til sidst.",
         ]
-        return "\n".join(lines[:2] if compact else lines)
+        from core.services.prompt_sections.code_mode import section as code_section
+
+        orientation = "\n".join(lines[:2] if compact else lines)
+        contract = code_section(compact=compact)
+        return "\n\n".join(part for part in (orientation, contract) if part)
     lines = [
         "Du er i en samtale UDEN mode-signal (ældre klient eller mobil uden mode).",
         "- Behandl den som chat mode: samtalen først, kode når det er dét der bliver spurgt om.",

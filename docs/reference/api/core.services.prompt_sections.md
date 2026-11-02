@@ -98,7 +98,14 @@ _Stable, scope-specific orientation and conversational baseline._
 |---|---|---|---|---|
 | function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L17) |
 | function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L25) |
-| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L55) |
+| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L59) |
+
+## `core/services/prompt_sections/code_mode.py`
+_Code-mode-only working contract for the visible engineering lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `section` | `(*, compact=…)` | Return the engineering contract only for an explicit code scope. | [src](../../../core/services/prompt_sections/code_mode.py#L12) |
 
 ## `core/services/prompt_sections/cross_session_arc.py`
 _Cross-session arc — surface recent named conversations as a temporal arc._

@@ -9,6 +9,7 @@ prompt_contract.<navn> fortsat virker. Kun ren flytning.
 """
 from __future__ import annotations
 
+from core.identity.workspace_context import current_workspace_name
 from core.runtime.db import visible_session_continuity
 
 
@@ -309,7 +310,7 @@ def _heartbeat_living_context_line() -> str:
             format_forgetting_section_for_heartbeat,
         )
         forgetting_line = format_forgetting_section_for_heartbeat(
-            workspace_id="default"
+            workspace_id=current_workspace_name()
         )
         if forgetting_line:
             parts.append(forgetting_line)
@@ -321,7 +322,7 @@ def _heartbeat_living_context_line() -> str:
         from core.services.dream_bias_engine import (
             format_dream_bias_for_heartbeat,
         )
-        dream_bias_line = format_dream_bias_for_heartbeat(workspace_id="default")
+        dream_bias_line = format_dream_bias_for_heartbeat(workspace_id=current_workspace_name())
         if dream_bias_line:
             parts.append(dream_bias_line)
     except Exception:

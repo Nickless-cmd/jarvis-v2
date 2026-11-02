@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from core.identity.workspace_context import current_workspace_name
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.config import PROJECT_ROOT
@@ -41,7 +42,7 @@ def _resolve_self_critique_interval_days() -> int:
     base = _SELF_CRITIQUE_INTERVAL_DAYS_BASE
     try:
         from core.services.dream_bias_engine import get_active_dream_bias
-        bias = get_active_dream_bias(workspace_id="default")
+        bias = get_active_dream_bias(workspace_id=current_workspace_name())
         if bias:
             mod = float(bias["threshold_bias"].get("self_critique_volume", 0.0))
             intensity = float(bias.get("intensity") or 0.0)

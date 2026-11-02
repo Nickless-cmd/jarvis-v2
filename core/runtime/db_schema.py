@@ -172,6 +172,61 @@ def _ensure_user_scope_154(conn: sqlite3.Connection) -> None:
             )
 
 
+#: Tabeller hvor per-bruger-felter blev skrevet under det GAMLE workspace-navn
+#: ``default``. Målt 2/11-2026: alle syv havde rækker under ``default`` og NUL
+#: under ``bjorn`` — mens ``workspace_context.current_workspace_name()`` har
+#: returneret ``bjorn`` siden Task 5. Navnene har altså været uenige hele tiden.
+_WORKSPACE_DEFAULT_TABLES = (
+    "user_temperature_active",
+    "dream_bias_active",
+    "counterfactuals",
+    "workspace_prompt_versions",
+    "prospective_seeds",
+    "absence_traces",
+    "generalized_policies",
+)
+
+
+def _migrate_default_workspace_to_bjorn(conn: sqlite3.Connection) -> None:
+    """Flyt rækker skrevet under ``default`` til ``bjorn`` — ejerens workspace.
+
+    MÅLT 2/11-2026 (side-c7f338f7b5). Baggrunden er en tavs fejl der blev
+    synlig da de hardkodede kaldesteder blev rettet: koden spurgte på ``bjorn``
+    (det navn resolveren altid har returneret), men data lå under ``default``
+    (det navn kaldestederne skrev). Resultatet var ikke en lækage men noget
+    værre at se: **felterne blev tomme**. ``get_active_field`` svarede ``None``
+    for den bruger der ejede data.
+
+    ``default`` er enbruger-æraens navn — rækkerne er derfor ejerens, og der
+    findes ingen medlems-data under det (målt: nul medlemmer har nogensinde
+    haft en code-samtale, og alle enheder i registret er ejerens).
+
+    Idempotent og konservativ: en tabel springes HELT over hvis der allerede
+    findes en ``bjorn``-række, så en gentagen kørsel aldrig overskriver nyere
+    data med gammel.
+    """
+    for tbl in _WORKSPACE_DEFAULT_TABLES:
+        try:
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})")}
+        except Exception:  # tabellen findes ikke endnu — der er intet at flytte
+            continue
+        if "workspace_id" not in cols:
+            continue
+        try:
+            har_bjorn = conn.execute(
+                f"SELECT 1 FROM {tbl} WHERE workspace_id = 'bjorn' LIMIT 1"
+            ).fetchone()
+            if har_bjorn:
+                continue
+            conn.execute(
+                f"UPDATE {tbl} SET workspace_id = 'bjorn' WHERE workspace_id = 'default'"
+            )
+        except Exception as exc:  # en manglende tabel maa ikke vaelte init_db
+            _logger.warning(
+                "workspace-migrering sprang %s over: %s", tbl, str(exc)[:120]
+            )
+
+
 def _ensure_skill_audit_table(conn: sqlite3.Connection) -> None:
     """Create skill_audit_log table for skills versionering (C1)."""
     conn.execute(
@@ -1048,6 +1103,9 @@ def init_db() -> None:
         _ensure_multiuser_columns(conn)
         # SECURITY #154: streng per-bruger-scope + backfill på private tabeller
         _ensure_user_scope_154(conn)
+        # 2/11-2026: workspace-navnet "default" (enbruger-æraen) → "bjorn".
+        # Uden denne ville felterne være TOMNE for den bruger der ejer data.
+        _migrate_default_workspace_to_bjorn(conn)
         _ensure_skill_audit_table(conn)
         _ensure_skill_usage_table(conn)
         # 2026-09-04 (memory repair, R5): FTS5 over session_summaries + chat_messages.

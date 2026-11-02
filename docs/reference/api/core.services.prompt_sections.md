@@ -152,18 +152,18 @@ _Heartbeat + future-agent + epistemic prompt sections._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_epistemic_layers_line` | `()` | Build compact line summarizing epistemic layer-distribution + wrongness. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L15) |
-| function | `_heartbeat_capability_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L46) |
-| function | `_future_agent_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L61) |
-| function | `_heartbeat_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L75) |
-| function | `_heartbeat_living_context_line` | `()` | Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L209) |
-| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L557) |
-| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L580) |
-| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L598) |
-| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L626) |
-| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L645) |
-| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L658) |
-| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L693) |
+| function | `_build_epistemic_layers_line` | `()` | Build compact line summarizing epistemic layer-distribution + wrongness. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L16) |
+| function | `_heartbeat_capability_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L47) |
+| function | `_future_agent_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L62) |
+| function | `_heartbeat_runtime_truth_instruction` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L76) |
+| function | `_heartbeat_living_context_line` | `()` | Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L210) |
+| function | `_lane_identity_clause` | `(lane)` | 0.5 Multi-model identity contract — who is the entity in each lane? | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L558) |
+| function | `_heartbeat_due_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L581) |
+| function | `_heartbeat_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L599) |
+| function | `_heartbeat_liveness_summary` | `(context)` | — | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L627) |
+| function | `_heartbeat_self_knowledge_section` | `()` | Heartbeat self-knowledge collector. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L646) |
+| function | `_heartbeat_private_brain_section` | `(context)` | Build a bounded private brain excerpt for the heartbeat prompt. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L659) |
+| function | `format_journal_for_heartbeat` | `(*, max_words=…)` | Format the latest creative journal entry for awareness-block injection. | [src](../../../core/services/prompt_sections/heartbeat_sections.py#L694) |
 
 ## `core/services/prompt_sections/jarvis_brain.py`
 _Always-on Jarvis Brain summary injection for prompt_contract._

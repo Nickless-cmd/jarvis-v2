@@ -16,6 +16,7 @@ prompt-input builders from ``visible_model`` at top — safe because by the time
 
 from __future__ import annotations
 
+from core.identity.workspace_context import current_workspace_name
 import json
 import logging
 
@@ -361,7 +362,7 @@ def _stream_openai_compatible_model(
     _mod_temp, _mod_top_p = compute_unconscious_modulation(
         base_temperature=None,
         base_top_p=None,
-        workspace_id="default",
+        workspace_id=current_workspace_name(),
     )
 
     # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump): skriver HELE
@@ -661,7 +662,7 @@ def _run_openai_compatible_visible(
     _mod_temp, _mod_top_p = compute_unconscious_modulation(
         base_temperature=None,
         base_top_p=None,
-        workspace_id="default",
+        workspace_id=current_workspace_name(),
     )
     # Gated fuld-payload-dump (touch /tmp/jarvis-prompt-dump): se prompt_dump.py.
     try:

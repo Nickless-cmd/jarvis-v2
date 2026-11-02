@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.identity.workspace_context import current_workspace_name
 import asyncio
 import json
 import logging
@@ -2406,7 +2407,7 @@ async def _stream_visible_run(
                     _oneiric_control_day = False
                 try:
                     from core.services.dream_bias_engine import get_active_dream_bias
-                    _bias = get_active_dream_bias(workspace_id="default")
+                    _bias = get_active_dream_bias(workspace_id=current_workspace_name())
                     if _bias and not _oneiric_control_day:
                         _persistence_mod = float(_bias["threshold_bias"].get("loop_persistence", 0.0))
                         _intensity = float(_bias.get("intensity") or 0.0)

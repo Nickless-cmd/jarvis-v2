@@ -6,6 +6,8 @@ function signatures so existing callers (prompt_contract, mission-control)
 continue to work without changes.
 """
 from __future__ import annotations
+from core.identity.workspace_context import current_workspace_name
+
 
 from typing import Any
 
@@ -19,7 +21,7 @@ def build_unconscious_temperature_hint() -> str | None:
         from core.services.user_temperature_engine import (
             format_temperature_field_for_heartbeat,
         )
-        out = format_temperature_field_for_heartbeat(workspace_id="default")
+        out = format_temperature_field_for_heartbeat(workspace_id=current_workspace_name())
         return out or None
     except Exception:
         return None
@@ -36,7 +38,7 @@ def build_unconscious_temperature_field_surface(
     try:
         from core.services.user_temperature_engine import get_active_field_surface
         return get_active_field_surface(
-            workspace_id="default", force_refresh=force_refresh,
+            workspace_id=current_workspace_name(), force_refresh=force_refresh,
         )
     except Exception:
         return {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.identity.workspace_context import current_workspace_name
 from core.services.runtime_surface_cache import (
     get_timed_runtime_surface,
 )
@@ -146,7 +147,7 @@ def _build_runtime_open_loop_signal_surface_uncached(
     # surface. ±40% modulation at intensity=1.0 (limit floor 4, cap 16).
     try:
         from core.services.dream_bias_engine import get_active_dream_bias
-        _bias = get_active_dream_bias(workspace_id="default")
+        _bias = get_active_dream_bias(workspace_id=current_workspace_name())
         if _bias:
             _modifier = float(_bias["attention_bias"].get("unfinished_business", 0.0))
             _intensity = float(_bias.get("intensity") or 0.0)

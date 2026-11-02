@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+from core.identity.workspace_context import current_workspace_name
 from core.services.internal_opposition_signal_tracking import (
     build_runtime_internal_opposition_signal_surface,
 )
@@ -84,7 +85,7 @@ def build_runtime_self_review_outcome_surface(*, limit: int = 8) -> dict[str, ob
     # ±40% modulation at intensity=1.0 (limit floor 4, cap 16).
     try:
         from core.services.dream_bias_engine import get_active_dream_bias
-        _bias = get_active_dream_bias(workspace_id="default")
+        _bias = get_active_dream_bias(workspace_id=current_workspace_name())
         if _bias:
             _modifier = float(_bias["attention_bias"].get("regret_threads", 0.0))
             _intensity = float(_bias.get("intensity") or 0.0)

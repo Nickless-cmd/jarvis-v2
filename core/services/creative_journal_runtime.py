@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from core.identity.workspace_context import current_workspace_name
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
@@ -534,12 +535,12 @@ def _fetch_affective_klangbraet() -> dict[str, object]:
     }
     try:
         from core.services.dream_bias_engine import format_dream_bias_for_heartbeat
-        out["dream_bias"] = (format_dream_bias_for_heartbeat(workspace_id="default") or "").strip()
+        out["dream_bias"] = (format_dream_bias_for_heartbeat(workspace_id=current_workspace_name()) or "").strip()
     except Exception:
         pass
     try:
         from core.services.user_temperature_engine import get_response_style_modifiers
-        mods = get_response_style_modifiers(workspace_id="default") or {}
+        mods = get_response_style_modifiers(workspace_id=current_workspace_name()) or {}
         texture = "; ".join(f"{k}: {v}" for k, v in mods.items() if v)
         out["user_temperature"] = texture
     except Exception:

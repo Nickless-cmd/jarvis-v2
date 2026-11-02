@@ -1026,7 +1026,7 @@ def append_chat_message(
         try:
             from core.services.user_temperature_engine import run_structural_stream
             run_structural_stream(
-                workspace_id="default",
+                workspace_id=current_workspace_name(),
                 message=normalized_content,
                 message_at=timestamp,
             )

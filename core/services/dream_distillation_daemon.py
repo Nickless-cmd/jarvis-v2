@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.identity.workspace_context import current_workspace_name
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -32,7 +33,7 @@ def _run_bias_pipeline_safe() -> dict:
     """
     try:
         from core.services.dream_bias_engine import run_dream_bias_distillation
-        return run_dream_bias_distillation(workspace_id="default")
+        return run_dream_bias_distillation(workspace_id=current_workspace_name())
     except Exception as exc:
         logger.warning("dream_distillation_daemon: bias call failed: %s", exc)
         return {"status": "error", "reason": str(exc)[:120]}

@@ -81,8 +81,8 @@ def test_kort_afsnit_flagges_ikke() -> None:
 def test_kodeblok_med_kommentar_er_ikke_en_sektion() -> None:
     """`# kommentar` i et bash-eksempel er ikke en overskrift i svaret.
 
-    MUTATION: fjern fence-sporet i `_sektioner` → kommentaren bliver overskrift
-    og den efterfølgende prosa måles under den → fejler.
+    MUTATION: fjern fence-sporet i `_blokke_med_overskrift` → kommentaren
+    bliver overskrift og den efterfølgende prosa måles under den → fejler.
     """
     tekst = (
         "## Koden\n\n"
@@ -167,3 +167,172 @@ def test_fed_overskrift_taelles_som_sektion() -> None:
 def test_tom_tekst_giver_ingen_fejl() -> None:
     assert g.fejl_i_prosa("") == []
     assert g.fejl_i_prosa("bare en linje uden struktur") == []
+
+
+# ── 5. De tre former Bjørn pegede på 2/11-2026 ────────────────────────────
+#
+# «det sværeste er faktisk at få dig til at formatere din tekst beder.. altså
+# i chat mode.. prøv og læg mærke til under den sidste kode boks». Han pegede
+# på tre ting i samme svar: fed tekst i overskriftens plads, fem tal i to
+# sætninger, og en kodeblok der indeholdt commits som løbende prosa.
+
+
+def test_pseudo_overskrift_flagges() -> None:
+    """Fed tekst der indleder et afsnit og fortsætter som brødtekst.
+
+    MUTATION: fjern `_pseudo_overskrift`-gaten → intet flag → fejler.
+    """
+    tekst = (
+        "## Hvad dagen viser\n\n"
+        "**Så et hul på to timer.** 17:00 til 19:16 blev der ikke committet "
+        "noget — det var mens vi læste prompt-filerne igennem sammen.\n"
+    )
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "pseudo-overskrift" in fejl[0]
+    assert "Så et hul på to timer" in fejl[0]
+
+
+def test_fedt_enkeltord_er_ikke_en_pseudo_overskrift() -> None:
+    """«**Nej.** Det holder ikke.» er fremhævning, ikke en overskrift.
+
+    MUTATION: fjern `len(fed.split()) < 3`-gaten → flagges → fejler.
+    """
+    tekst = (
+        "## Svar\n\n"
+        "**Nej.** Det holder ikke, og det er der en grund til som jeg kan vise "
+        "dig hvis du vil se den.\n"
+    )
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_talmur_flagges() -> None:
+    """Fem tal i én sætning uden liste eller tabel at aflæse dem i.
+
+    MUTATION: sæt MIN_TAL = 99 → intet flag → fejler.
+    """
+    tekst = (
+        "## Status\n\n"
+        "Systemet kører på 8 kerner med 32 GB hukommelse fordelt over 4 "
+        "containere hvor den største bruger 12 GB og den mindste kun 2 GB mens "
+        "resten står stille.\n"
+    )
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "talmur" in fejl[0]
+
+
+def test_klokkeslaet_er_ikke_en_talmur() -> None:
+    """«kl. 12:38:27» er ét klokkeslæt, ikke tre tal.
+
+    MUTATION: fjern `_TIDSSTEMPEL_RE`-oprydningen → de to tidsstempler tæller
+    som seks tal → afsnittet når MIN_TAL → fejler.
+    """
+    tekst = (
+        "## Kørsel\n\n"
+        "Kørslen startede kl. 12:38:27 og sluttede kl. 12:40:50 uden en "
+        "enkelt fejl undervejs i det forløb som du bad mig om at følge helt "
+        "til dørs her.\n"
+    )
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_kodeblok_uden_kode_flagges() -> None:
+    """En fence der bærer prosa er en terminal-attrap, ikke kode.
+
+    MUTATION: fjern `_indeholder_kode`-gaten → intet flag → fejler.
+    """
+    tekst = (
+        "## Commits\n\n"
+        "```\n"
+        "16:01 8d862890d fix(nudge): auto-sessioner fik 58 af 112 injektioner\n"
+        "16:03 27ff5569b feat(desk): godkendelses-kortet følger tema og accent\n"
+        "```\n"
+    )
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "kodeblok" in fejl[0]
+
+
+def test_rigtig_kodeblok_flagges_ikke() -> None:
+    """Ægte kode må ikke «rettes» til prosa.
+
+    MUTATION: fjern `_STI_RE`/`_KODE_TEGN_RE`/`_KODE_ORD_RE` fra
+    `_indeholder_kode` → bash-eksemplet flagges → fejler.
+    """
+    tekst = (
+        "## Koden\n\n"
+        "```bash\n"
+        "export DB_PATH=/home/bs/.jarvis-v2/state/jarvis.db\n"
+        'echo "$DB_PATH"\n'
+        "```\n"
+    )
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_pseudo_overskrift_uden_overskrift_over_sig_flagges() -> None:
+    """Reglen må ikke være død i det tilfælde den findes for.
+
+    Målt 2/11-2026 på mit eget svar: det havde tre pseudo-overskrifter og nul
+    `#`-overskrifter, fordi den fede tekst VAR overskrifterne. Da regel 1–3
+    blev målt inde i `_sektioner`, fandtes der ingen sektioner — og guarden
+    fandt kun kodeblokken. Det er den vigtigste test i denne fil.
+
+    MUTATION: mål blokkene med `_sektioner` i stedet for
+    `_blokke_med_overskrift` → intet fund → fejler.
+    """
+    tekst = (
+        "**Så et hul på to timer.** 17:00 til 19:16 blev der ikke committet "
+        "noget — det var mens vi læste prompt-filerne igennem sammen.\n"
+    )
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "pseudo-overskrift" in fejl[0]
+
+
+def test_etiket_paa_to_ord_med_kolon_flagges() -> None:
+    """«**Aften: chat-kontrakten** (19:16–19:58)» er en etiket, ikke prosa.
+
+    Dansk giver et helt emne på to ord, så et tre-ords-krav slap den igennem.
+
+    MUTATION: fjern `and ":" not in fed` → intet fund → fejler.
+    """
+    tekst = (
+        "**Aften: chat-kontrakten** (19:16–19:58, alle codex) og derefter "
+        "blev der ikke committet mere den aften.\n"
+    )
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "pseudo-overskrift" in fejl[0]
+
+
+def test_kort_pseudo_overskrift_flagges() -> None:
+    """En pseudo-overskrift er kort af natur — længde-gaten må ikke dræbe den.
+
+    MUTATION: flyt `MIN_AFSNIT_TEGN`-gaten op FØR pseudo-reglen → afsnittet på
+    117 tegn filtreres væk → fejler.
+    """
+    tekst = (
+        "**Så et hul på to timer.** 17:00 til 19:16 blev der ikke committet "
+        "noget — det var mens vi læste prompt-filerne.\n"
+    )
+    assert len(tekst.split("\n")[0]) < g.MIN_AFSNIT_TEGN
+    assert g.fejl_i_prosa(tekst) != []
+
+
+def test_en_blok_giver_hoejst_et_fund() -> None:
+    """Fakta-tungt afsnit må ikke flagges både som opremsning og talmur.
+
+    MUTATION: fjern `continue` efter opremsnings-grenen → to fund for samme
+    tekst → fejler.
+    """
+    tekst = (
+        "## Dagen\n\n"
+        "Doc-regenereringen står for 80 af de rørte filer og er ikke arbejde. "
+        "Det egentlige ligger i 31 filer under core/services og 20 tests, og "
+        "fordelingen 11/7 er tæt på de 33/16 fra september.\n"
+    )
+    fund = g.find_prosa_punkter(tekst)
+    assert len(fund) == 1, f"forventede ét fund, fik {len(fund)}"
+    assert fund[0].slags == "opremsning"
+

@@ -9360,7 +9360,7 @@
       ]
     },
     "chat_sessions": {
-      "digest": "03:67:75:c8:6c:b8:94:ca:7b:54:3e:16:80:10:c7:e2:de:c4:7b:53:11:18:fc:f2:c7:18:10:75:1a:e6:24:d1",
+      "digest": "d3:17:6a:1b:8b:36:a1:f0:60:3d:1f:46:f6:b8:67:f0:65:32:2d:a9:08:bb:d3:ea:dd:2f:5c:9d:57:ab:bb:3e",
       "schema": {
         "columns": [
           {
@@ -9452,6 +9452,14 @@
             "hidden": 0
           },
           {
+            "name": "plan_mode",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "session_id",
             "type": "TEXT",
             "nullable": false,
@@ -9480,6 +9488,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "title_origin",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'legacy'",
             "pk": 0,
             "hidden": 0
           },

@@ -300,26 +300,29 @@ _Ret prosa-opremsninger FØR svaret vises — ikke som et flag bagefter._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L70) |
-| function | `_led_i_afsnit` | `(samlet)` | Del et afsnit i de led der hver især bærer én selvstændig oplysning. | [src](../../../core/services/prosa_korrektion.py#L101) |
-| function | `_mekanisk_opstil` | `(tekst, punkter)` | Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model. | [src](../../../core/services/prosa_korrektion.py#L126) |
-| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L177) |
-| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L196) |
-| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L214) |
+| function | `_baerende_tokens` | `(tekst)` | De ord i et afsnit der ikke må forsvinde: tal, hashes og stier. | [src](../../../core/services/prosa_korrektion.py#L74) |
+| function | `_led_i_afsnit` | `(samlet)` | Del et afsnit i de led der hver især bærer én selvstændig oplysning. | [src](../../../core/services/prosa_korrektion.py#L109) |
+| function | `_mekanisk_opstil` | `(tekst, punkter)` | Sæt hvert led i et fakta-tungt afsnit på sin egen linje — uden model. | [src](../../../core/services/prosa_korrektion.py#L134) |
+| function | `_afsnit_tekst` | `(tekst, punkt)` | Find det rå afsnit i teksten som ``punkt`` peger på. | [src](../../../core/services/prosa_korrektion.py#L191) |
+| function | `_del_svar` | `(tekst, dele)` | Sæt de returnerede afsnit tilbage i teksten, ét ad gangen. | [src](../../../core/services/prosa_korrektion.py#L210) |
+| function | `korriger_prosa` | `(tekst, fejl, *, stream_followup, provider, model, base_messages, run_id=…, session_id=…)` | Bed modellen rette prosa-opremsninger. Returnerer ny tekst. | [src](../../../core/services/prosa_korrektion.py#L228) |
 
 ## `core/services/prosa_struktur_guard.py`
-_Mekanisk kontrol: et afsnit under en overskrift der opremser tre eller flere_
+_Mekanisk kontrol af fire former for formfejl i et synligt svar._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ProsaPunkt` | `` | Ét afsnit der bærer en opremsning som prosa i stedet for en liste. | [src](../../../core/services/prosa_struktur_guard.py#L63) |
-| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L71) |
-| function | `_sektioner` | `(text)` | Del teksten i (overskrift, linjer) — kun sektioner der HAR en overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L80) |
-| function | `_blokke` | `(linjer)` | Del en sektion i afsnit (blank-linje-adskilte) og fjern strukturerede blokke. | [src](../../../core/services/prosa_struktur_guard.py#L112) |
-| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L141) |
-| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L147) |
-| function | `find_prosa_punkter` | `(text)` | Find afsnit under en overskrift der opremser parallelle led som prosa. | [src](../../../core/services/prosa_struktur_guard.py#L163) |
-| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for prosa-opremsninger — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L202) |
+| class | `ProsaPunkt` | `` | Ét afsnit (eller én fence) der bærer en formfejl. | [src](../../../core/services/prosa_struktur_guard.py#L115) |
+| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L128) |
+| function | `_blokke_med_overskrift` | `(text)` | (nærmeste overskrift, blok) for hvert afsnit i hele teksten. | [src](../../../core/services/prosa_struktur_guard.py#L152) |
+| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L200) |
+| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L206) |
+| function | `_antal_tal` | `(afsnit)` | Antal selvstændige tal i et afsnit, efter klokkeslæt og hashes er fjernet. | [src](../../../core/services/prosa_struktur_guard.py#L222) |
+| function | `_pseudo_overskrift` | `(blok)` | Returnér den fede tekst hvis blokken indledes af en pseudo-overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L233) |
+| function | `_indeholder_kode` | `(krop)` | Afgør om en fence-krop faktisk er kode. | [src](../../../core/services/prosa_struktur_guard.py#L250) |
+| function | `_kodeblokke` | `(text)` | Find fences uden kode. Returnerer (overskrift, krop, linjer). | [src](../../../core/services/prosa_struktur_guard.py#L259) |
+| function | `find_prosa_punkter` | `(text)` | Find formfejl i et svar. Én blok giver højst ét fund. | [src](../../../core/services/prosa_struktur_guard.py#L290) |
+| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L389) |
 
 ## `core/services/prose_tool_calls.py`
 _Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._

@@ -47,22 +47,26 @@ _MAX_AFSNIT = 4
 _MAX_KONTEKST = 6000
 
 _KORREKTIONS_INSTRUKS = """\
-Dit svar er allerede skrevet og vist for brugeren. Nogle afsnit under en \
-overskrift opremser flere parallelle ting som løbende prosa, hvor de skulle \
-have stået som punktopstilling. Brugeren skal kunne skimme svaret.
+Dit svar er allerede skrevet og vist for brugeren. Nogle afsnit bærer en \
+formfejl: enten opremser de flere parallelle ting som løbende prosa, eller de \
+læsser mange tal af i én sætning, eller de står i en kodeblok der ikke \
+indeholder kode. Brugeren skal kunne skimme svaret.
 
 Ret KUN de afsnit der er listet nedenfor. Regler:
 
 1. Returnér præcis ÉT afsnit pr. nummer, i samme rækkefølge, adskilt af en \
 linje med kun `---`. Skriv INGEN overskrift, ingen indledning, ingen \
 afslutning, ingen forklaring.
-2. Hvert afsnit skal være en punktopstilling: én linje pr. selvstændigt led, \
-med `- ` foran. Bær hvert led over ORDRET — samme ord, samme tal, samme \
-hash, samme sti. Ændr ikke indholdet, kun opstillingen.
-3. Har et led en naturlig etiket (fx «Commit», «Filen», «Tests»), sæt den \
+2. Bær hvert led over ORDRET — samme ord, samme tal, samme hash, samme sti. \
+Ændr ikke indholdet, kun opstillingen.
+3. Vælg den mindste struktur der passer: er afsnittet en opremsning, brug \
+punktopstilling med `- ` foran hvert led. Er det primært tal der skal \
+sammenlignes, brug en markdown-tabel. Er det log- eller kommandolinjer, brug \
+en liste — ikke en kodeblok.
+4. Har et led en naturlig etiket (fx «Commit», «Filen», «Tests»), sæt den \
 foran med en tankestreg: `- Commit — e4036a383, kl. 12:38:27, pushet`.
-4. Er et afsnit allerede velstruktureret, returnér det uændret.
-5. Opfind aldrig et led, et tal eller en etiket der ikke stod i afsnittet. \
+5. Er et afsnit allerede velstruktureret, returnér det uændret.
+6. Opfind aldrig et led, et tal eller en etiket der ikke stod i afsnittet. \
 Kan et afsnit ikke deles uden at opfinde data, returnér det uændret.
 """
 
@@ -96,6 +100,10 @@ def _baerende_tokens(tekst: str) -> list[str]:
 #: En forkortelse er ikke en sætning, og et tal efter punktum er ikke et nyt led.
 _SAETNING_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-ZÆØÅ])")
 _KOMMA_SPLIT = re.compile(r"[,;]")
+
+#: En tabel-linje i markdown. Bruges til at afgøre om et model-svar faktisk
+#: leverede struktur — en talmur rettes naturligt til en tabel, ikke en liste.
+_TABEL_LINJE_RE = re.compile(r"^\s*\|.*\|\s*$")
 
 
 def _led_i_afsnit(samlet: str) -> list[str]:
@@ -151,6 +159,12 @@ def _mekanisk_opstil(tekst: str, punkter: list) -> tuple[str, list]:
     nyt = tekst
     uloeste: list = []
     for punkt in punkter:
+        # Kun en opremsning kan løses ved at sætte hvert led på sin egen linje.
+        # En kodeblok eller en talmur ville blive revet fra hinanden af samme
+        # split — de hører i model-korridoren, hvor der kan laves en tabel.
+        if getattr(punkt, "slags", "opremsning") != "opremsning":
+            uloeste.append(punkt)
+            continue
         original = _afsnit_tekst(nyt, punkt).strip("\n")
         if not original:
             uloeste.append(punkt)
@@ -326,9 +340,17 @@ def korriger_prosa(
 
     erstatninger: list[tuple[str, str]] = []
     for (original, _punkt), stykke in zip(par, stykker):
-        # Kun punktopstilling tæller som en korrektion. Returnerer modellen
-        # prosa igen, er der intet vundet — og vi rører ikke teksten.
-        if not any(l.lstrip().startswith(("- ", "* ")) for l in stykke.split("\n")):
+        # Kun struktur tæller som en korrektion: punktopstilling ELLER en
+        # tabel. Returnerer modellen prosa igen, er der intet vundet — og vi
+        # rører ikke teksten. (Tabel-grenen tilføjet 2/11-2026: en talmur
+        # rettes naturligt til en tabel, og uden grenen blev den korrektion
+        # fanget og straks forkastet — et værn der så fejlen uden at kunne
+        # løse den.)
+        _har_struktur = any(
+            l.lstrip().startswith(("- ", "* ")) or _TABEL_LINJE_RE.match(l)
+            for l in stykke.split("\n")
+        )
+        if not _har_struktur:
             logger.debug("prosa_korrektion: svaret var ikke en liste — forkastet")
             return tekst
         # Indholdet skal bæres over. Målt 25/10-2026: en model der svarer med

@@ -286,6 +286,17 @@ def _ensure_chat_session_workspace_columns(conn) -> None:
     Workspace-felterne binder code mode til et arbejdstræ. ``plan_mode``
     bærer den serverstyrede samarbejdstilstand gennem reconnect/recovery, og
     ``title_origin`` skelner et automatisk rånavn fra brugerens eget navn.
+
+    ``owner_user_id`` hører HER og ikke kun i ``core.services.chat_sessions``
+    (målt 2/11-2026). Kolonnen blev oprindeligt tilføjet af en ALTER inde i
+    service-modulet, som kun kører når nogen åbner samtalelisten. Konsekvensen
+    var usynlig i drift men skarp: den LEVENDE base havde kolonnen fordi
+    modulet for længst havde kørt, mens enhver FRISK base — tests, en ny
+    installation — ikke havde den. ``run_finalization._ejer_og_titel`` slår
+    ``SELECT owner_user_id … FROM chat_sessions`` op, så to tests fejlede med
+    ``no such column: owner_user_id``, og en ny installation ville tabe
+    ejerskabet på hver afsluttet kørsel. Schema-hjælperen kører ved bootstrap
+    og er den autoritative vej; ALTER'en i service-modulet er nu redundant.
     """
     cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
     if "workspace_kind" not in cols:
@@ -299,6 +310,14 @@ def _ensure_chat_session_workspace_columns(conn) -> None:
     if "title_origin" not in cols:
         conn.execute(
             "ALTER TABLE chat_sessions ADD COLUMN title_origin TEXT NOT NULL DEFAULT 'legacy'"
+        )
+    if "owner_user_id" not in cols:
+        # Stemplet ved OPRETTELSEN (19/10-2026), ikke udledt af seneste besked:
+        # et autonomt run skriver ejerens id på sin egen prompt, så en udledning
+        # ville give den forkerte modtager af notifikationen. Tom streng =
+        # rækker fra før kolonnen fandtes; de falder tilbage til den gamle vej.
+        conn.execute(
+            "ALTER TABLE chat_sessions ADD COLUMN owner_user_id TEXT NOT NULL DEFAULT ''"
         )
 
 

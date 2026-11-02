@@ -8,6 +8,8 @@ besvaret.
 """
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -133,6 +135,23 @@ async def afgoer(notif_id: str, body: AfgoerBody) -> dict:
         # samtalen, ikke med ja/nej. Fladen sender dig derhen i stedet.
         return {"ok": False, "fejl": "Den slags kan ikke godkendes eller afvises."}
     ref = str(raekke["ref"] or "")
+    if slags == "proposal":
+        # Forslag (prop-xxxxxx) afgoeres af autonomy_proposal_queue, ikke af
+        # approval_runtime — de to har hver sin resolver. `_resolve_item` i
+        # cowork proever allerede begge, saa vi genbruger den frem for at
+        # bygge en tredje vej. (Bjoern 2/11-2026: forslag havde ingen flade
+        # overhovedet — 57 laa usynlige.)
+        from apps.api.jarvis_api.routes.cowork import _resolve_item
+        try:
+            resultat = await asyncio.to_thread(
+                _resolve_item, ref, "approve" if body.approved else "reject")
+        except Exception as fejl:  # resolveren kan fejle paa DB/netvaerk — svar brugeren i stedet for et bart 500
+            return {"ok": False, "fejl": f"Svaret kunne ikke sendes: {fejl}"}
+        if not isinstance(resultat, dict) or resultat.get("status") != "ok":
+            aarsag = str((resultat or {}).get("reason") or "ukendt")
+            return {"ok": False, "fejl": f"Forslaget kunne ikke afgøres ({aarsag})."}
+        _lager.luk(notif_id, "godkendt" if body.approved else "afvist")
+        return {"ok": True, "fejl": ""}
     from core.services import approval_runtime
     try:
         resultat = approval_runtime.decide(ref, approved=body.approved, answered_by=uid)

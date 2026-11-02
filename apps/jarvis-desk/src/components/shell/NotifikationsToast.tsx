@@ -58,6 +58,9 @@ const IKON: Record<string, typeof Bell> = {
   infra_security: Radar,
   keymaker_key_earned: Key,
   moltbook_mention: AtSign,
+  // Forslag (prop-xxxxxx) — samme ikon som godkendelser: begge venter paa et
+  // ja/nej fra Bjoern. (2/11-2026: forslag havde ingen flade overhovedet.)
+  proposal: ShieldAlert,
 }
 
 /** Tonen pr. slags — fejl skal lyde som fejl, ikke som «alt er fint». */
@@ -404,7 +407,6 @@ export function NotifikationsToast({ config, onAabenSession }: {
     luk(nogle)
     void kald.catch(() => { /* naeste hentning genopretter sandheden */ })
   }, [config, luk])
-
   // KØEN ER IKKE EN VISNING (28/10-2026). Her stod `koe.map` over ALLE poster,
   // mens `slice(-3)` ved indsættelse havde kastet alt over tre væk. To fejl i
   // samme mekanisme: post 4-6 blev smidt ud (brugeren fik aldrig sit varsel),

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9551/17893 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9555/17897 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9551/17893 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6358 | 12152 | 52% |
+| `core.services` | 6362 | 12156 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 141 | 223 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -111,8 +111,8 @@ Generated from source. 9551/17893 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py` :: `mc_skills` (L14)
 - `apps/api/jarvis_api/routes/mobile_update.py` :: `mobile_download` (L45)
 - `apps/api/jarvis_api/routes/mobile_update.py` :: `mobile_latest` (L29)
-- `apps/api/jarvis_api/routes/notifikationer.py` :: `afgoer` (L123)
-- `apps/api/jarvis_api/routes/notifikationer.py` :: `set_` (L170)
+- `apps/api/jarvis_api/routes/notifikationer.py` :: `afgoer` (L125)
+- `apps/api/jarvis_api/routes/notifikationer.py` :: `set_` (L189)
 - `apps/api/jarvis_api/routes/notifikations_valg.py` :: `hent` (L24)
 - `apps/api/jarvis_api/routes/notifikations_valg.py` :: `saet` (L35)
 - `apps/api/jarvis_api/routes/openai_auth.py` :: `openai_oauth_callback` (L29)
@@ -619,7 +619,7 @@ Generated from source. 9551/17893 functions/methods documented (53%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L443)
+- `core/runtime/db_schema.py` :: `init_db` (L462)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)

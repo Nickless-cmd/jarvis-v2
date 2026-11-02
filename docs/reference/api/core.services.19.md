@@ -9,9 +9,10 @@ _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
 |---|---|---|---|---|
 | function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L42) |
 | function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L59) |
-| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L96) |
-| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L115) |
-| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L161) |
+| function | `_hydrer_proposal` | `(raekke)` | None = forslaget er afgjort, luk raekken. | [src](../../../core/services/notifikationer_hydrering.py#L96) |
+| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L121) |
+| function | `feed` | `(user_id, *, er_owner, aktiv_session=…)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L147) |
+| function | `tidligere` | `(user_id, *, er_owner, dage=…)` | KLAREDE notifikationer — ren laesning, ingen hydrering. | [src](../../../core/services/notifikationer_hydrering.py#L201) |
 
 ## `core/services/notifikations_emittere.py`
 _Hvor notifikationer foedes (spec 2026-09-21)._
@@ -26,7 +27,10 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 | function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L100) |
 | function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L106) |
 | function | `system` | `(slags, titel, tekst=…, *, ref=…, data=…)` | — | [src](../../../core/services/notifikations_emittere.py#L111) |
-| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L120) |
+| function | `_forslag_er_foraeldet` | `(forslag)` | Er forslagets anker stadig i koden? (Bjørn 2/11-2026) | [src](../../../core/services/notifikations_emittere.py#L120) |
+| function | `paa_forslag` | `(forslag, *, user_id)` | Én raekke pr. ventende forslag. `ref` = proposal_id, saa `opret()` | [src](../../../core/services/notifikations_emittere.py#L156) |
+| function | `afstem_forslag` | `(user_id)` | Laeg raekker for ALLE ventende forslag der mangler. Returnerer antal | [src](../../../core/services/notifikations_emittere.py#L177) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer | [src](../../../core/services/notifikations_emittere.py#L212) |
 
 ## `core/services/notifikations_opstart.py`
 _Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._

@@ -23,7 +23,7 @@ _log = logging.getLogger(__name__)
 #: Jarvis' egne valg, sendt som en besked i samtalen — der findes ingen
 #: server-side afgoerelse at kalde. Spoergsmaals-raekken foerer i stedet hen til
 #: samtalen. Specen sagde oprindeligt begge; kaldestedet sagde noget andet.
-AFGOERBARE = {"approval"}
+AFGOERBARE = {"approval", "proposal"}
 
 #: Udfald -> den saetning fladen viser i historikken.
 #:
@@ -93,6 +93,31 @@ def _hydrer_run(raekke: dict[str, Any]) -> dict[str, Any] | None:
     return {"titel": raekke["titel"], "tekst": raekke["tekst"]}
 
 
+def _hydrer_proposal(raekke: dict[str, Any]) -> dict[str, Any] | None:
+    """None = forslaget er afgjort, luk raekken.
+
+    Raekken PEGER paa sit forslag, den kopierer det ikke: bliver forslaget
+    godkendt eller afvist fra Desk, fra en toast eller af Jarvis selv, lukker
+    posten sig ved naeste laesning. Det er samme kontrakt som godkendelserne.
+
+    Foraeldet-markeringen laeses HER og ikke kun ved foedslen: et forslag kan
+    blive foraeldet efter det blev lagt i feeden, og en post der stadig ser
+    godkendelsesklar ud er praecis den fejl vi bygger imod.
+    """
+    from core.services.autonomy_proposal_queue import get_autonomy_proposal
+    forslag = get_autonomy_proposal(str(raekke["ref"] or ""))
+    if not forslag:
+        return None
+    if str(forslag.get("status") or "") != "pending":
+        return None
+    from core.services.notifikations_emittere import _forslag_er_foraeldet
+    foraeldet = _forslag_er_foraeldet(forslag)
+    tekst = str(raekke["tekst"] or "")
+    if foraeldet and "FORÆLDET" not in tekst:
+        tekst += " · FORÆLDET — ankeret findes ikke i koden længere"
+    return {"titel": raekke["titel"], "tekst": tekst}
+
+
 def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     """(felter, foraeldet). felter=None betyder «luk raekken»."""
     kilde = str(raekke["kilde"])
@@ -103,6 +128,13 @@ def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
             return _hydrer_approval(raekke), False
         if kilde == "run":
             return _hydrer_run(raekke), False
+        if kilde == "proposal":
+            felter = _hydrer_proposal(raekke)
+            if felter is None:
+                return None, False
+            # `foraeldet` styrer om Godkend-knappen tilbydes. En raadden
+            # source-edit maa ikke kunne godkendes blindt fra en toast.
+            return felter, "FORÆLDET" in str(felter.get("tekst") or "")
         # `event` hydreres senere. Indtil da staar den paa sin gemte tekst
         # frem for at forsvinde.
         return {"titel": raekke["titel"], "tekst": raekke["tekst"]}, False
@@ -133,6 +165,14 @@ def feed(user_id: str, *, er_owner: bool,
     except Exception:
         # En afstemning der fejler maa ikke tomme feeden for alt det andet.
         _log.warning("godkendelser kunne ikke afstemmes for %s", user_id, exc_info=True)
+    # Forslag (prop-xxxxxx) har ingen krog ved foedslen — de bliver til i fire
+    # forskellige daemons. Maalt 2/11-2026: 57 laa usynlige i op til 11 dage,
+    # og 0 af 14 source-edit matchede deres base_fingerprint.
+    try:
+        from core.services.notifikations_emittere import afstem_forslag
+        afstem_forslag(user_id)
+    except Exception:
+        _log.warning("forslag kunne ikke afstemmes for %s", user_id, exc_info=True)
     ud: list[dict[str, Any]] = []
     for raekke in _lager.aabne(user_id, er_owner=er_owner):
         # Filtreringen ligger FOER hydreringen: den er billig, og et svar vi

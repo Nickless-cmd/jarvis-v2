@@ -619,7 +619,7 @@ Generated from source. 9548/17886 functions/methods documented (53%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L443)
+- `core/runtime/db_schema.py` :: `init_db` (L462)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)

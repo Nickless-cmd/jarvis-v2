@@ -105,6 +105,24 @@ def test_pending_count(tmp_db):
     assert pending_count() == 3
 
 
+def test_importance_orders_delivery_and_dedupe_is_idempotent(tmp_db):
+    from core.services.session_inbox import enqueue, pending_for_session
+
+    enqueue(session_id="s1", content="normal", source="d", importance="normal")
+    first = enqueue(
+        session_id="s1", content="critical", source="d",
+        importance="critical", dedupe_key="critical:1",
+    )
+    second = enqueue(
+        session_id="s1", content="critical duplicate", source="d",
+        importance="critical", dedupe_key="critical:1",
+    )
+    pending = pending_for_session("s1")
+    assert [p["importance"] for p in pending] == ["critical", "normal"]
+    assert first["id"] == second["id"]
+    assert second["deduplicated"] is True
+
+
 # ── flush_session ────────────────────────────────────────────────────────
 
 
@@ -183,8 +201,6 @@ def test_notifikationen_gaar_i_FEEDEN_og_IKKE_i_chatview(tmp_path, monkeypatch):
     from unittest.mock import patch
 
     from core.services import session_inbox
-    from core.services.visible_run_guard_notices import SYSTEM_MAERKE
-
     feed: list[dict] = []
     chat: list[dict] = []
     monkeypatch.setattr(session_inbox, "pending_for_session", lambda s: [

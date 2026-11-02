@@ -3,12 +3,20 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from core.services.prompt_sections.chat_mode import (
     _visible_chat_tone_instruction,
     _visible_mode_orientation_instruction,
 )
 from core.services.prompt_sections.learned_about_user import build_learned_section
 from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+
+
+@pytest.fixture(autouse=True)
+def _legacy_layout(monkeypatch):
+    """These tests preserve the exact behavior behind the V2 kill switch."""
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "0")
 
 
 def test_chat_tone_is_flexible_and_not_a_mechanical_hook():

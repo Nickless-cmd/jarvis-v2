@@ -159,7 +159,8 @@ def test_ingen_levende_tal_i_sektionen():
 @pytest.mark.parametrize("scope", ["chat", "code", ""])
 def test_sektionen_er_ikke_tom_og_under_loftet(scope):
     text = _section(scope)
-    assert 100 < len(text) < 900, f"scope={scope!r} gav {len(text)} tegn"
+    upper = 20000 if scope in ("chat", "code") else 900
+    assert 100 < len(text) < upper, f"scope={scope!r} gav {len(text)} tegn"
 
 
 def test_warmeren_bygger_samme_orientering_som_live():

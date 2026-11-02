@@ -30,6 +30,12 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _legacy_layout(monkeypatch):
+    """Standalone tone remains covered as the operational rollback path."""
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "0")
+
+
 def _tone(scope: str, *, compact: bool = False) -> str | None:
     from core.services.prompt_contract import _visible_chat_tone_instruction
     from core.tools.tool_scoping import reset_tool_scope, set_tool_scope

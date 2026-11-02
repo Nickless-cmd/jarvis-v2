@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from core.services.prompt_sections.code_mode import section
+from core.services.prompt_sections.chat_mode import _visible_mode_orientation_instruction
 from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
 from core.tools.tool_scoping import tool_scope
 
@@ -32,20 +33,24 @@ def test_code_contract_covers_the_end_to_end_working_model() -> None:
 
 def test_code_contract_is_injected_only_in_code_scope() -> None:
     with tool_scope("code"):
+        code_prefix = _visible_mode_orientation_instruction(compact=False) or ""
         code = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
     with tool_scope("chat"):
+        chat_prefix = _visible_mode_orientation_instruction(compact=False) or ""
         chat = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
     with tool_scope(""):
+        unbound_prefix = _visible_mode_orientation_instruction(compact=False) or ""
         unbound = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
 
-    assert "## Code mode: arbejdsadfærd" in code
-    assert "Fortsæt til et færdigt resultat" in code
-    assert "## Code mode: arbejdsadfærd" not in chat
-    assert "Fortsæt til et færdigt resultat" not in chat
-    assert "handlebestilling og en vurdering" not in chat
-    assert "Skriv kun en kodekommentar" not in chat
-    assert "## Code mode: arbejdsadfærd" not in unbound
-    assert "Fortsæt til et færdigt resultat" not in unbound
+    assert "## Code mode: arbejdsadfærd" in code_prefix
+    assert "Fortsæt til et færdigt resultat" in code_prefix
+    assert "## Code mode: arbejdsadfærd" not in code
+    assert "## Code mode: arbejdsadfærd" not in chat_prefix + chat
+    assert "Fortsæt til et færdigt resultat" not in chat_prefix + chat
+    assert "handlebestilling og en vurdering" not in chat_prefix + chat
+    assert "Skriv kun en kodekommentar" not in chat_prefix + chat
+    assert "## Code mode: arbejdsadfærd" not in unbound_prefix + unbound
+    assert "Fortsæt til et færdigt resultat" not in unbound_prefix + unbound
 
 
 def test_compact_code_contract_keeps_the_critical_path() -> None:

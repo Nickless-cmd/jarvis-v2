@@ -60,7 +60,7 @@ def rig(monkeypatch, tmp_path, isolated_runtime):
             raise BroTier("broen svarede ikke")
         return list(tilstand["jobs"])
 
-    def fake_send(tekst, *, source="", urgent=False):
+    def fake_send(tekst, *, source="", urgent=False, **_delivery):
         tilstand["sendt"].append((tekst, source))
         return dict(tilstand["send_svar"])
 

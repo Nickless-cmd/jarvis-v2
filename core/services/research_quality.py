@@ -32,6 +32,11 @@ def evaluate_research_report(
     lowered = text.lower()
     coverage = all(str(facet).lower() in lowered for facet in requested_facets)
     source_quality = all(bool(source.canonical_url) for source in sources) and bool(sources)
+    source_authority = bool(sources) and any(
+        source.authority.lower() in {"primary", "official", "authoritative", "high"}
+        or source.source_type.lower() in {"primary", "official", "documentation", "paper"}
+        for source in sources
+    )
     conflicts = contradictions or []
     calibrated_words = ("uncertain", "usikker", "conflict", "uenig", "cannot verify", "kunne ikke verificere")
     calibration = not conflicts or any(word in lowered for word in calibrated_words)
@@ -52,10 +57,19 @@ def evaluate_research_report(
         "citation_validity": citation_validity,
         "coverage": coverage,
         "source_quality": source_quality,
+        "source_authority": source_authority,
         "contradiction_handling": contradiction_handling,
         "freshness": freshness,
         "calibration": calibration,
         "tool_efficiency": tool_efficiency,
     }
-    failures = tuple(name for name, passed in gates.items() if not passed)
+    # Authority metadata is not consistently supplied by every web provider yet.
+    # Surface the gate for inspection, but do not turn otherwise cited research
+    # red solely because a provider omitted that label.  Freshness and the other
+    # mechanically verifiable gates remain hard requirements.
+    advisory_gates = {"source_authority"}
+    failures = tuple(
+        name for name, passed in gates.items()
+        if not passed and name not in advisory_gates
+    )
     return ResearchQualityResult(not failures, gates, failures)

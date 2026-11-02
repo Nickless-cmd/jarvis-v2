@@ -7,6 +7,8 @@ from core.services.prompt_sections.chat_mode import (
     _visible_chat_tone_instruction,
     _visible_mode_orientation_instruction,
 )
+from core.services.prompt_sections.learned_about_user import build_learned_section
+from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
 
 
 def test_chat_tone_is_flexible_and_not_a_mechanical_hook():
@@ -38,6 +40,29 @@ def test_code_mode_keeps_chat_tone_out_but_retains_orientation():
     with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):
         assert _visible_chat_tone_instruction(compact=False) is None
         orientation = _visible_mode_orientation_instruction(compact=False) or ""
+        tail = build_chat_mode_dynamic_tail(
+            "eksisterende hale", message="ret fejlen", session_id="s1",
+        )
 
     assert "CODE MODE" in orientation
     assert "CHAT MODE" not in orientation
+    assert "Code mode: arbejdsadfærd" not in orientation
+    assert "Code mode: arbejdsadfærd" in tail
+    assert "eksisterende hale" in tail
+
+
+def test_memory_brief_is_chat_only(tmp_path):
+    (tmp_path / "USER.md").write_text(
+        "## Lært\n- Foretrækker korte svar (2026-11-01, sagt eksplicit)\n",
+        encoding="utf-8",
+    )
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="chat"):
+        chat = build_learned_section("korte svar", workspace_dir=tmp_path)
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):
+        code = build_learned_section("korte svar", workspace_dir=tmp_path)
+
+    assert "CHAT MEMORY BRIEF" in chat
+    assert "confidence=høj" in chat
+    assert "kilde=sagt eksplicit" in chat
+    assert "CHAT MEMORY BRIEF" not in code
+    assert "Lært om Bjørn" in code

@@ -64,6 +64,36 @@ def test_inline_research_does_not_spawn_agents(monkeypatch):
     assert statuses == ["planning", "researching", "verifying", "synthesizing", "completed"]
 
 
+def test_vague_research_asks_once_before_creating_run(monkeypatch):
+    created = []
+    spawned = []
+    prompts = []
+    monkeypatch.setattr(
+        orchestrator.store, "create_run",
+        lambda **kwargs: created.append(kwargs) or {"id": "should-not-exist"},
+    )
+
+    async def visible(**_kwargs):
+        from core.services.research_prompt_context import research_prompt_section
+
+        prompts.append(research_prompt_section())
+        yield _legacy("delta", {"text": "Hvad skal jeg undersøge?"})
+        yield _legacy("done", {})
+
+    events = _events(orchestrator.stream_research_run(
+        message="undersøg det",
+        session_id="s1",
+        visible_factory=visible,
+        worker_factory=lambda **kwargs: spawned.append(kwargs),
+        orchestrator_enabled=True,
+    ))
+
+    assert created == []
+    assert spawned == []
+    assert "Ask exactly one natural clarification question" in prompts[0]
+    assert any("event: delta" in event for event in events)
+
+
 def test_orchestrated_research_bounds_worker_concurrency(monkeypatch):
     _fake_store(monkeypatch)
     active = 0

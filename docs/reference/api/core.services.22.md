@@ -558,17 +558,17 @@ _Typed contracts and source normalization for explicit research runs._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L24) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L38) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L51) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L58) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L64) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L77) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L86) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L93) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L97) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L114) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L131) |
+| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L30) |
+| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L44) |
+| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L57) |
+| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L64) |
+| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L70) |
+| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L83) |
+| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L92) |
+| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L99) |
+| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L103) |
+| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L120) |
+| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L137) |
 
 ## `core/services/research_evidence_collector.py`
 _Capture structured web-tool evidence for the active research run._
@@ -595,34 +595,34 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L29) |
-| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L33) |
-| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L47) |
-| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L55) |
-| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L77) |
-| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L108) |
-| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L151) |
-| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L176) |
-| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L192) |
-| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L203) |
-| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L207) |
-| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L212) |
-| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L229) |
-| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L303) |
-| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L320) |
-| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L354) |
-| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L392) |
-| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L438) |
-| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L488) |
-| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L512) |
-| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L550) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L582) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L623) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L649) |
-| class | `ResearchRecoverableError` | `` | Der er intet at syntetisere på — forælderen må tage sig af det. | [src](../../../core/services/research_orchestrator.py#L952) |
-| method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L960) |
-| function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L967) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1042) |
+| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L30) |
+| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L34) |
+| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L48) |
+| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L56) |
+| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L78) |
+| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L109) |
+| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L152) |
+| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L177) |
+| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L193) |
+| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L204) |
+| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L208) |
+| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L213) |
+| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L230) |
+| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L304) |
+| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L321) |
+| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L355) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L393) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L439) |
+| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L490) |
+| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L514) |
+| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L552) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L584) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L625) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L651) |
+| class | `ResearchRecoverableError` | `` | Der er intet at syntetisere på — forælderen må tage sig af det. | [src](../../../core/services/research_orchestrator.py#L971) |
+| method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L979) |
+| function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L986) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1061) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
@@ -630,8 +630,8 @@ _Request-scoped research instructions consumed by prompt assembly surfaces._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
-| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…)` | — | [src](../../../core/services/research_prompt_context.py#L23) |
-| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L36) |
+| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
+| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
 
 ## `core/services/research_quality.py`
 _Deterministic, inspectable quality gates for research synthesis._
@@ -646,8 +646,10 @@ _Conservative and explainable inline/orchestrated research routing._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L37) |
-| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L42) |
+| function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L47) |
+| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L52) |
+| function | `clarification_needed` | `(message)` | One conservative preflight question, or ``""`` when research can start. | [src](../../../core/services/research_router.py#L105) |
+| function | `requires_freshness` | `(message)` | Whether the query itself makes current, dated evidence mandatory. | [src](../../../core/services/research_router.py#L117) |
 
 ## `core/services/research_store.py`
 _Durable SQLite state for research runs, tasks, sources, and steering._

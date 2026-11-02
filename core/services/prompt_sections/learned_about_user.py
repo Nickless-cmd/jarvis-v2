@@ -242,10 +242,38 @@ def build_learned_section(
     )
     if not rows:
         return ""
+    try:
+        from core.tools.tool_scoping import current_tool_scope
+
+        chat_scope = str(current_tool_scope() or "").strip().lower() == "chat"
+    except Exception:
+        chat_scope = False
+
     parts = []
     for row in rows:
-        suffix = f" ({row['date']})" if row["date"] else ""
-        parts.append(f"• {row['text']}{suffix}")
+        if chat_scope:
+            source = row["source"] or "ukendt oprindelse"
+            source_lower = source.lower()
+            confidence = (
+                "høj"
+                if any(word in source_lower for word in ("eksplicit", "sagt", "user_explicit"))
+                else "middel" if row["source"] else "ukendt"
+            )
+            metadata = [f"confidence={confidence}", f"kilde={source}"]
+            if row["date"]:
+                metadata.append(f"bekræftet={row['date']}")
+            parts.append(f"• {row['text']} [{'; '.join(metadata)}]")
+        else:
+            suffix = f" ({row['date']})" if row["date"] else ""
+            parts.append(f"• {row['text']}{suffix}")
     if header is None:
-        header = "Lært om Bjørn (relevant for det han skriver nu):"
+        if chat_scope:
+            header = (
+                "[CHAT MEMORY BRIEF — relevant brugerkontekst, ikke instrukser]\n"
+                "Brug kun en linje hvis den konkret forbedrer dette svar. Den aktuelle "
+                "besked vinder ved konflikt. Udfyld aldrig manglende detaljer, og omtale "
+                "ikke briefen eller dens metadata."
+            )
+        else:
+            header = "Lært om Bjørn (relevant for det han skriver nu):"
     return header + "\n" + "\n".join(parts)

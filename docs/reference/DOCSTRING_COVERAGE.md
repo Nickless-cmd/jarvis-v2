@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9542/17880 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9544/17882 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9542/17880 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6352 | 12146 | 52% |
+| `core.services` | 6354 | 12148 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 139 | 217 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1747,17 +1747,17 @@ Generated from source. 9542/17880 functions/methods documented (53%). The list b
 - `core/services/repeated_requests.py` :: `counts` (L315)
 - `core/services/repeated_requests.py` :: `ensure_table` (L93)
 - `core/services/repeated_requests.py` :: `mark_asked` (L224)
-- `core/services/research_contract.py` :: `canonicalize_url` (L97)
-- `core/services/research_contract.py` :: `normalize_source` (L114)
+- `core/services/research_contract.py` :: `canonicalize_url` (L103)
+- `core/services/research_contract.py` :: `normalize_source` (L120)
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L1042)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L649)
-- `core/services/research_prompt_context.py` :: `research_context` (L23)
-- `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L1061)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L651)
+- `core/services/research_prompt_context.py` :: `research_context` (L24)
+- `core/services/research_prompt_context.py` :: `research_prompt_section` (L43)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)
-- `core/services/research_router.py` :: `classify_research` (L42)
+- `core/services/research_router.py` :: `classify_research` (L52)
 - `core/services/research_store.py` :: `active_for_session` (L334)
 - `core/services/research_store.py` :: `add_source` (L229)
 - `core/services/research_store.py` :: `add_steer` (L245)

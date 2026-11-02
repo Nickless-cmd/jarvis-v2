@@ -28,3 +28,25 @@ def test_conflicting_language_requires_calibration():
         contradictions=["release date"],
     )
     assert result.gates["calibration"] is True
+
+
+def test_authority_is_a_real_gate_not_just_a_url():
+    unknown = [normalize_source({"url": "https://example.com/post"})]
+    official = [normalize_source({
+        "url": "https://example.com/docs",
+        "authority": "official",
+        "source_type": "documentation",
+    })]
+    assert evaluate_research_report("Claim [1]", unknown, []).gates["source_authority"] is False
+    assert evaluate_research_report("Claim [1]", official, []).gates["source_authority"] is True
+
+
+def test_freshness_gate_rejects_undated_evidence_when_required():
+    sources = [normalize_source({"url": "https://example.com/latest"})]
+    result = evaluate_research_report(
+        "Latest release is X [1].",
+        sources,
+        [],
+        requires_freshness=True,
+    )
+    assert result.gates["freshness"] is False

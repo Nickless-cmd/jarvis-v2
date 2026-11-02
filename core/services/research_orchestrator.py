@@ -24,6 +24,7 @@ from core.services.research_contract import (
 from core.services.research_evidence_collector import collecting_for
 from core.services.research_prompt_context import research_context
 from core.services.research_router import classify_research
+from core.services.research_router import clarification_needed, requires_freshness
 
 
 def _event(kind: str, payload: dict) -> str:
@@ -452,6 +453,7 @@ def _evaluate_quality(run_id: str, query: str, report: str, policy: ResearchPoli
             report,
             sources,
             _facets(query),
+            requires_freshness=requires_freshness(query),
             tool_calls=used,
             max_tool_calls=policy.max_tool_calls,
         )
@@ -660,6 +662,23 @@ async def stream_research_run(
 ) -> AsyncIterator[str]:
     query = str(original_query if original_query is not None else message)
     contract = load_research_contract(query)
+    clarification = clarification_needed(query)
+    if clarification:
+        if visible_factory is None:
+            from core.services.visible_runs import start_visible_run
+            visible_factory = start_visible_run
+        with research_context(
+            contract.policy,
+            skill_instructions=contract.instructions,
+            clarification=clarification,
+        ):
+            async for frame in visible_factory(
+                message=message,
+                session_id=session_id,
+                **visible_kwargs,
+            ):
+                yield frame
+        return
     decision = decision or classify_research(query, policy=contract.policy)
     if orchestrator_enabled is None:
         orchestrator_enabled = _setting("research_orchestrator_enabled", False)

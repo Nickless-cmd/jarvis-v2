@@ -136,11 +136,17 @@ def _chat_style_contract(message: str, session_id: str | None) -> str:
 def build_chat_mode_dynamic_tail(
     tail: str, *, message: str, session_id: str | None,
 ) -> str:
-    """Append the chat-only hierarchy after the prompt cache boundary."""
+    """Append the active mode's large contract after the cache boundary."""
     from core.tools.tool_scoping import current_tool_scope
 
     base = str(tail or "").strip()
-    if current_tool_scope() != "chat":
+    scope = current_tool_scope()
+    if scope == "code":
+        from core.services.prompt_sections.code_mode import section as code_section
+
+        contract = code_section(compact=False)
+        return "\n\n".join(part for part in (base, contract) if part)
+    if scope != "chat":
         return base
     additions = [
         CHAT_MODE_HOW_I_TALK.strip(),

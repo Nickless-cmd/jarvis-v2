@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from core.services.prompt_sections.code_mode import section
-from core.services.prompt_sections.chat_mode import (
-    _visible_mode_orientation_instruction,
-)
+from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
 from core.tools.tool_scoping import tool_scope
 
 
@@ -29,11 +27,11 @@ def test_code_contract_covers_the_end_to_end_working_model() -> None:
 
 def test_code_contract_is_injected_only_in_code_scope() -> None:
     with tool_scope("code"):
-        code = _visible_mode_orientation_instruction(compact=False) or ""
+        code = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
     with tool_scope("chat"):
-        chat = _visible_mode_orientation_instruction(compact=False) or ""
+        chat = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
     with tool_scope(""):
-        unbound = _visible_mode_orientation_instruction(compact=False) or ""
+        unbound = build_chat_mode_dynamic_tail("", message="ret den", session_id="s1")
 
     assert "## Code mode: arbejdsadfærd" in code
     assert "Fortsæt til et færdigt resultat" in code
@@ -45,7 +43,7 @@ def test_code_contract_is_injected_only_in_code_scope() -> None:
 
 def test_compact_code_contract_keeps_the_critical_path() -> None:
     with tool_scope("code"):
-        text = _visible_mode_orientation_instruction(compact=True) or ""
+        text = section(compact=True) or ""
 
     assert "Opgaven betyder handling" in text
     assert "Undersøg før du ændrer" in text

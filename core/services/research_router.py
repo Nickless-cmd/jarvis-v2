@@ -10,6 +10,16 @@ _BREADTH = re.compile(r"\b(sammenlign|compare|versus|vs\.?|leverandører|vendors
 _MULTI_ENTITY = re.compile(r"\b(tre|fire|fem|seks|3|4|5|6)\b", re.I)
 _MULTI_FACET = re.compile(r"\b(pris|price|sikkerhed|security|drift|operations|ydelse|performance|funktioner|features)\b", re.I)
 _REPORT = re.compile(r"\b(grundig|omfattende|deep research|rapport|report|landscape|due diligence)\b", re.I)
+_VAGUE_ONLY = re.compile(
+    r"^\s*(?:research|undersøg|undersøgelse|find ud af|look into|research this|"
+    r"undersøg (?:det|dette)|kig på (?:det|dette))\s*[?.!]*\s*$",
+    re.I,
+)
+_FRESHNESS = re.compile(
+    r"\b(?:seneste|nyeste|aktuelt|aktuel|i dag|lige nu|latest|newest|current|today|"
+    r"this (?:week|month|year))\b",
+    re.I,
+)
 
 # Fase C2 (13/9-2026): indsats efter signalstyrke.
 #
@@ -90,3 +100,20 @@ def classify_research(
         wall_time_seconds=min(240, max(30, policy.wall_time_seconds)),
         source_target=min(6, max(2, policy.source_target)),
     )
+
+
+def clarification_needed(message: str) -> str:
+    """One conservative preflight question, or ``""`` when research can start.
+
+    This intentionally catches only requests with no usable subject.  A broad but
+    named topic is researchable; the preflight must not become a questionnaire.
+    """
+    text = " ".join(str(message or "").split()).strip()
+    if not text or _VAGUE_ONLY.fullmatch(text):
+        return "Hvad skal jeg undersøge, og hvilken beslutning skal resultatet hjælpe dig med?"
+    return ""
+
+
+def requires_freshness(message: str) -> bool:
+    """Whether the query itself makes current, dated evidence mandatory."""
+    return bool(_FRESHNESS.search(str(message or "")))

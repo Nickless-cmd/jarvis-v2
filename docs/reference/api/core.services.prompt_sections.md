@@ -98,7 +98,7 @@ _Stable, scope-specific orientation and conversational baseline._
 |---|---|---|---|---|
 | function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L17) |
 | function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L25) |
-| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L59) |
+| function | `_visible_chat_tone_instruction` | `(*, compact)` | A flexible chat baseline; per-user/current-turn nuance is cache-late. | [src](../../../core/services/prompt_sections/chat_mode.py#L58) |
 
 ## `core/services/prompt_sections/code_mode.py`
 _Code-mode-only working contract for the visible engineering lane._

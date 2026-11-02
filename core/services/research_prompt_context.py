@@ -14,6 +14,7 @@ class _PromptResearch:
     policy: ResearchPolicy
     skill_instructions: str
     evidence: str
+    clarification: str
 
 
 _ACTIVE: ContextVar[_PromptResearch | None] = ContextVar("research_prompt_context", default=None)
@@ -25,8 +26,14 @@ def research_context(
     *,
     skill_instructions: str = "",
     evidence: str = "",
+    clarification: str = "",
 ):
-    token = _ACTIVE.set(_PromptResearch(policy, skill_instructions.strip(), evidence.strip()))
+    token = _ACTIVE.set(_PromptResearch(
+        policy,
+        skill_instructions.strip(),
+        evidence.strip(),
+        clarification.strip(),
+    ))
     try:
         yield
     finally:
@@ -38,9 +45,27 @@ def research_prompt_section() -> str:
     if active is None:
         return ""
     policy = active.policy
+    try:
+        from core.tools.tool_scoping import current_tool_scope
+
+        scope = str(current_tool_scope() or "").strip().lower()
+    except Exception:
+        scope = ""
+    if scope == "code":
+        hierarchy = (
+            "This research contract is subordinate to the active CODE MODE contract. "
+            "Research may establish technical facts and sources, but it does not "
+            "replace repository instructions, implementation verification, or mutation policy."
+        )
+    else:
+        hierarchy = (
+            "This is a temporary research lane inside CHAT MODE. Preserve the natural "
+            "chat voice, but let evidence, source coverage and uncertainty govern the answer."
+        )
     lines = [
         "[RESEARCH CONTRACT]",
         "Research mode was explicitly selected by the user.",
+        hierarchy,
         f"Source target: {policy.source_target}; tool-call budget: {policy.max_tool_calls}; "
         f"wall time: {policy.wall_time_seconds}s.",
         "Use structured web results as evidence. Prefer primary, authoritative, directly "
@@ -49,7 +74,16 @@ def research_prompt_section() -> str:
         "paragraph they support. Time-sensitive claims require a current, explicitly dated "
         "source matching the requested period. Surface links when navigation materially "
         "helps. Never invent citations, reference IDs or special citation syntax.",
+        "Capability boundary: orchestrated workers can access public web sources only. "
+        "Do not imply authenticated, private-account or connector coverage unless that "
+        "source was actually supplied by the active runtime.",
     ]
+    if active.clarification:
+        lines.extend((
+            "Research preflight found a material ambiguity. Do not start or simulate "
+            "the research yet. Ask exactly one natural clarification question:",
+            active.clarification,
+        ))
     if active.skill_instructions:
         lines.extend(("Canonical deep-research skill:", active.skill_instructions))
     if active.evidence:

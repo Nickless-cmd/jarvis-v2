@@ -17,7 +17,13 @@ explicit publication date matching the requested period; prefer sources that are
 authoritative, directly relevant, and fresh. Surface a link when navigation to the
 destination materially helps the user. Never invent citations, reference IDs, link
 formats, or coverage you do not have, and do not emit a special citation syntax
-unless the active tool/runtime explicitly supplies and supports that syntax."""
+unless the active tool/runtime explicitly supplies and supports that syntax.
+
+Capability boundary: orchestrated research workers can read public web sources only.
+They cannot sign in, use private accounts, or silently treat authenticated pages as
+covered. Uploaded files and connected services are available only when the active
+visible runtime explicitly exposes them. State a material coverage gap instead of
+implying access you did not have."""
 
 
 @dataclass(frozen=True)

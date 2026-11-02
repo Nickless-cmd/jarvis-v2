@@ -1,5 +1,9 @@
 from core.services.research_contract import ResearchPolicy
-from core.services.research_router import classify_research
+from core.services.research_router import (
+    clarification_needed,
+    classify_research,
+    requires_freshness,
+)
 
 
 def test_latest_single_lookup_stays_inline():
@@ -83,3 +87,13 @@ def test_C2_inline_faar_intet_worker_budget():
     assert decision.tier == "inline"
     assert decision.worker_token_budget == 0
     assert decision.max_workers == 1
+
+
+def test_preflight_spoerger_kun_nar_emnet_mangler():
+    assert clarification_needed("undersøg dette")
+    assert clarification_needed("Sammenlign varmepumper i Danmark") == ""
+
+
+def test_freshness_kommer_fra_spoergsmaalet():
+    assert requires_freshness("Hvad er den seneste WLED-version?") is True
+    assert requires_freshness("Forklar hvordan WLED virker") is False

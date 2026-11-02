@@ -89,7 +89,7 @@ export function fletGodkendelser<T extends ChatMessage>(messages: readonly T[]):
   if (grupper.size === 0) return ind
 
   const fjern = new Set<number>()
-  const tilfoej = new Map<number, ContentBlock[]>()
+  const tilfoej = new Map<number, GodkendelsesHaendelse[]>()
 
   for (const gruppe of grupper.values()) {
     const sidste = gruppe.indeks[gruppe.indeks.length - 1]
@@ -102,26 +102,95 @@ export function fletGodkendelser<T extends ChatMessage>(messages: readonly T[]):
     // Turen kører stadig: rækken bliver stående, så kortet kan besvares.
     if (maal < 0) continue
 
-    const blok = { type: 'approval', ...gruppe.haendelse } as ContentBlock
     const liste = tilfoej.get(maal)
-    if (liste) liste.push(blok)
-    else tilfoej.set(maal, [blok])
+    if (liste) liste.push(gruppe.haendelse)
+    else tilfoej.set(maal, [gruppe.haendelse])
 
     for (const i of gruppe.indeks) fjern.add(i)
   }
 
-  // ── 2. Læg blokken SIDST i turens arbejde. `deriveChatFlow` sender alt der
-  // ikke er tekst til `workBlocks`, så den havner i folden — og sidst betyder
-  // «det sidste der skete i arbejdet», hvilket er sandt for en godkendelse. ──
+  // ── 2. Læg blokken VED DET KALD DEN GJALDT (2/11-2026).
+  //
+  // FØR: blokken blev lagt SIDST i turens indhold. Den havnede dermed i folden,
+  // men ved den forkerte runde — og i code mode slet ikke i folden, fordi
+  // `opdel` kalder alt efter sidste værktøjskald for svar. Bjørn så derfor
+  // kortene nederst i beskeden: «Du burde ligge inde i turhoved ved de runde
+  // linjer de høre til?»
+  //
+  // MÅLT mod `chat_messages` 2/11-2026: godkendelsens `action` er ordret lig
+  // `input.command` (eller `input.path`) på det kald den gjaldt — 326 og 365
+  // tegn, eksakt match ved indeks [9] og [13] i samme tur. Placeringen er
+  // derfor ikke et gæt: den udledes af hvilket kald der blev godkendt.
   const ud: T[] = []
   ind.forEach((m, i) => {
     const ekstra = tilfoej.get(i)
     if (ekstra) {
-      ud.push({ ...m, content: [...m.content, ...ekstra] })
+      ud.push({ ...m, content: indsaetVedKald(m.content, ekstra) })
       return
     }
     if (fjern.has(i)) return
     ud.push(m)
   })
+  return ud
+}
+
+/**
+ * Find indekset for det `tool_use` en godkendelse gjaldt.
+ *
+ * Returnerer -1 når intet kald matcher. Så ved vi det ikke — og så må blokken
+ * lægges sidst i arbejdet frem for foran et tilfældigt kald. Et gæt ville være
+ * værre end en ærlig placering: kortet ville påstå at høre til en runde det
+ * ikke hørte til.
+ */
+function kaldIndeks(
+  blokke: readonly ContentBlock[],
+  haendelse: GodkendelsesHaendelse,
+  brugte: ReadonlySet<number>,
+): number {
+  const handling = haendelse.action.trim()
+  if (!handling) return -1
+  for (let i = 0; i < blokke.length; i += 1) {
+    if (brugte.has(i)) continue
+    const b = blokke[i]
+    if (!b || b.type !== 'tool_use') continue
+    if (b.name !== haendelse.tool) continue
+    const input = b.input ?? {}
+    const kommando = typeof input.command === 'string' ? input.command.trim() : ''
+    const sti = typeof input.path === 'string' ? input.path.trim() : ''
+    if (kommando === handling || sti === handling) return i
+  }
+  return -1
+}
+
+/** Indsæt hver godkendelse umiddelbart FØR sit eget kald. */
+function indsaetVedKald(
+  blokke: readonly ContentBlock[],
+  haendelser: readonly GodkendelsesHaendelse[],
+): ContentBlock[] {
+  const foer = new Map<number, ContentBlock[]>()
+  const brugte = new Set<number>()
+  const loese: ContentBlock[] = []
+
+  for (const haendelse of haendelser) {
+    const blok = { type: 'approval', ...haendelse } as ContentBlock
+    const i = kaldIndeks(blokke, haendelse, brugte)
+    if (i < 0) {
+      loese.push(blok)
+      continue
+    }
+    brugte.add(i)
+    const liste = foer.get(i)
+    if (liste) liste.push(blok)
+    else foer.set(i, [blok])
+  }
+
+  const ud: ContentBlock[] = []
+  blokke.forEach((b, i) => {
+    const liste = foer.get(i)
+    if (liste) ud.push(...liste)
+    ud.push(b)
+  })
+  // Intet match: blokken bliver i arbejdet, men uden en påstand om hvilken runde.
+  ud.push(...loese)
   return ud
 }

@@ -349,7 +349,8 @@ _Én synlig grænse for første modelsvar._
 | method | `FirstPassOutputFilter._dsml` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L70) |
 | method | `FirstPassOutputFilter._halv` | `(self, text)` | Fjern den halve DSL-form: navnet og de rå tags — men BEHOLD indholdet. | [src](../../../core/services/visible_first_pass_output.py#L82) |
 | method | `FirstPassOutputFilter.feed` | `(self, text)` | — | [src](../../../core/services/visible_first_pass_output.py#L117) |
-| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L130) |
+| method | `FirstPassOutputFilter.fundet` | `(self)` | Citation-markører fundet i strømmen. | [src](../../../core/services/visible_first_pass_output.py#L131) |
+| method | `FirstPassOutputFilter.flush` | `(self)` | — | [src](../../../core/services/visible_first_pass_output.py#L140) |
 
 ## `core/services/visible_first_pass_pump.py`
 _Worker-thread pump for the first visible model stream._

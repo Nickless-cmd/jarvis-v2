@@ -30,6 +30,20 @@ def test_first_pass_bevarer_capability_filteret():
     assert "før" in shown and "efter" in shown
 
 
+def test_first_pass_udstiller_fundne_citationer_til_turens_metadata():
+    """Regression: visible_runs må kunne læse fundene uden AttributeError."""
+    from core.services.citation_markorer import Kilder
+
+    output = FirstPassOutputFilter(
+        Kilder(web={"ref-a": "https://example.dk/a"})
+    )
+    assert output.feed("Se kilden 【cite|ref-a】.") == "Se kilden ."
+    output.flush()
+
+    assert len(output.fundet) == 1
+    assert output.fundet[0].refs == ("ref-a",)
+
+
 def test_filteret_er_koblet_paa_first_pass_i_runtime():
     """Filteret skal være monteret — og det skal have turens kilder med.
 

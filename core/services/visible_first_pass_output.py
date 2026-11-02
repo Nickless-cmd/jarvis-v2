@@ -127,6 +127,16 @@ class FirstPassOutputFilter:
             self._synlig.foed(self._markup.feed(self._dsml(self._halv(text))))
         )
 
+    @property
+    def fundet(self):
+        """Citation-markører fundet i strømmen.
+
+        ``visible_runs`` afleverer listen til turens observability-metadata.
+        Listen ejes fortsat af ``CitationKontrakt``; egenskaben er den
+        offentlige bro, så kalderen ikke skal kende filterets interne lag.
+        """
+        return self._citations.fundet
+
     def flush(self) -> str:
         dele: list[str] = []
         # En hale der stadig venter på sin closer er en uafsluttet DSML-blok:

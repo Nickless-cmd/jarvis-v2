@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9531/17865 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9532/17866 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9531/17865 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6341 | 12131 | 52% |
+| `core.services` | 6342 | 12132 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 139 | 217 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2271,7 +2271,7 @@ Generated from source. 9531/17865 functions/methods documented (53%). The list b
 - `core/services/value_formation.py` :: `build_formed_values_surface` (L60)
 - `core/services/value_formation.py` :: `track_value_from_experience` (L12)
 - `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.feed` (L117)
-- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L130)
+- `core/services/visible_first_pass_output.py` :: `FirstPassOutputFilter.flush` (L140)
 - `core/services/visible_first_pass_pump.py` :: `pump_first_pass` (L10)
 - `core/services/visible_first_pass_text.py` :: `FirstPassText.text` (L39)
 - `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1471)

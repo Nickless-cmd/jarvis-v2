@@ -43,6 +43,7 @@ leverandør er harmløs, en leverandør uden parser lækker.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
@@ -76,8 +77,33 @@ class Kilder:
 
     web: dict[str, str] = field(default_factory=dict)
 
+    #: Sandheden om memory var i den byggede prompt — en CALLABLE, ikke et flag.
+    #:
+    #: 2/11-2026. `memcite` blev godkendt ubetinget, med en kommentar der
+    #: påstod at «runtime afgjorde» det. Runtime afgjorde intet: der fandtes
+    #: ingen at spørge. Det her er den nogen.
+    #:
+    #: Hvorfor callable: `FirstPassOutputFilter` laves ved run-start, FØR
+    #: prompten findes. En bool læst ved instansiering ville være `False` for
+    #: evigt — præcis den rækkefølge-fælde der gjorde kæden død. Proben
+    #: aflæses ved OPSLAGET, så den rammer den rækkefølge der faktisk gælder.
+    #:
+    #: `None` = ingen viden = ingen godkendelse (fail-closed).
+    memory_probe: Callable[[], bool] | None = None
+
     def url_for(self, ref: str) -> str | None:
         return self.web.get(ref)
+
+    def memory_i_kontekst(self) -> bool:
+        """Var der memory i den prompt turen faktisk fik? Fail-closed."""
+        if self.memory_probe is None:
+            return False
+        try:
+            return bool(self.memory_probe())
+        except Exception:
+            # En probe der kaster er ikke et ja. Samme regel som for refs:
+            # hellere ingen citation end en der ikke kan dokumenteres.
+            return False
 
     def tilfoej(self, ref: str, url: str) -> None:
         """Registrér én kilde — mens turen kører.
@@ -103,8 +129,39 @@ class Fund:
     refs: tuple[str, ...] = ()
     anker: str = ""
     url: str = ""
+    #: De URL'er markøren faktisk pegede på, frosset ved parse-tid.
+    #:
+    #: 2/11-2026: uden dette kunne `til_metadata()` ikke sige HVAD et `cite`
+    #: citerede — kun hvilke ref-id'er der stod i teksten, og et ref-id er
+    #: ikke en kilde nogen kan følge. Frosset fordi `Kilder` er levende og
+    #: vokser mens turen kører: metadata skal beskrive det der blev skrevet,
+    #: ikke det der tilfældigvis er i beholderen bagefter.
+    urls: tuple[str, ...] = ()
     godkendt: bool = False
     raa: str = ""
+
+    def til_metadata(self, kilder: "Kilder | None" = None) -> dict[str, object]:
+        """JSON-egnet form til UI/observability.
+
+        2/11-2026. `CitationKontrakt.fundet` blev fyldt ved hver ``feed()``,
+        men havde NUL læsere — metadata blev ikke «ikke afleveret», de lå i en
+        død liste. Det her er den form der kan afleveres: rene typer, og de
+        URL'er markøren faktisk pegede på.
+        """
+        urls = list(self.urls)
+        if not urls and kilder is not None:
+            # Fallback for et fund dannet før `urls` blev frosset.
+            urls = [u for u in (kilder.url_for(r) for r in self.refs) if u]
+        if not urls and self.url:
+            urls = [self.url]
+        return {
+            "slags": self.slags,
+            "godkendt": self.godkendt,
+            "refs": list(self.refs),
+            "urls": urls,
+            "anker": self.anker,
+        }
+
 
 
 def _gyldig_url(url: str) -> bool:
@@ -145,16 +202,24 @@ def _tyd(raa: str, kilder: Kilder) -> Fund | None:
 
     if slags == "memcite" and len(dele) == 1:
         # Memory-citation: markøren siger «dette bygger på brugerkontekst».
-        # Den bærer ingen ref — kilden er hukommelsen selv, og det er
-        # runtime der afgjorde at den var i konteksten.
-        return Fund(slags="memcite", godkendt=True, raa=raa)
+        # Den bærer ingen ref — kilden er hukommelsen selv.
+        #
+        # 2/11-2026: her stod `godkendt=True` med en kommentar om at «runtime
+        # afgjorde at den var i konteksten». Det var en påstand uden dækning:
+        # ingen spurgte, og markøren blev derfor godkendt i alle ture — også
+        # dem hvor [HUKOMMELSE] var tom. Nu spørges den byggede prompt.
+        return Fund(
+            slags="memcite", godkendt=kilder.memory_i_kontekst(), raa=raa
+        )
 
     if slags == "cite" and len(dele) >= 2:
         refs = tuple(d.strip() for d in dele[1:] if d.strip())
         if not refs:
             return None
         godkendt = all(kilder.url_for(r) for r in refs)
-        return Fund(slags="cite", refs=refs, godkendt=godkendt, raa=raa)
+        # URL'erne fryses HER: et ref-id er ikke en kilde nogen kan følge.
+        urls = tuple(u for u in (kilder.url_for(r) for r in refs) if u)
+        return Fund(slags="cite", refs=refs, urls=urls, godkendt=godkendt, raa=raa)
 
     if slags == "url" and len(dele) == 3:
         anker = dele[1].strip()
@@ -164,7 +229,12 @@ def _tyd(raa: str, kilder: Kilder) -> Fund | None:
         # Målet er enten et kendt ref-id eller en kvalificeret URL.
         url = kilder.url_for(maal) or (maal if _gyldig_url(maal) else "")
         return Fund(
-            slags="url", anker=anker, url=url, godkendt=bool(url), raa=raa
+            slags="url",
+            anker=anker,
+            url=url,
+            urls=(url,) if url else (),
+            godkendt=bool(url),
+            raa=raa,
         )
 
     return None

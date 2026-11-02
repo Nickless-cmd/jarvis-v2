@@ -44,6 +44,13 @@ class TurnAccumulator:
     #: 2/11-2026: uden den blev `Kilder()` tom, og ALLE `cite`-markører afvist
     #: fail-closed — kontrakten virkede, men kæden var åben i den anden ende.
     kilder: "Kilder" = field(default_factory=lambda: _ny_kilder())
+    #: Markører fundet i turens tekst — godkendte OG afviste, som ren metadata.
+    #:
+    #: 2/11-2026: `CitationKontrakt.fundet` blev fyldt ved hver feed(), men
+    #: havde NUL laesere: `visible_runs` tog strengen og kastede fundene vaek.
+    #: Metadata var derfor ikke «ikke afleveret» — de laa i en doed liste.
+    #: Herfra kan de naa observability uden at den raa syntaks staar i teksten.
+    citationer: list[dict] = field(default_factory=list)
     #: 'text' / 'tool' i den orden de kom under streamen.
     interleave: list[str] = field(default_factory=list)
     #: Ét element pr. sammenhængende stykke tekst mellem værktøjskald.
@@ -181,7 +188,27 @@ class TurnAccumulator:
                         # ingen kilder at hente, og det er ikke en fejl.
                         pass
         except Exception:
+            # Blok-opsamlingen er kosmetisk: fejler den, er konsekvensen kun at
+            # et vaerktoejskald mangler sin blok — aldrig at svaret vaelter.
             pass
+
+    def registrer_citationer(self, fundet: object) -> None:
+        """Saml filterets fund i turen. Kaster ALDRIG.
+
+        Kaldes fra `visible_runs` EFTER filterets feed/flush. En fejl her maa
+        aldrig kunne vaelte et svar der ellers virkede — konsekvensen er kun at
+        en citation ikke bliver sporet.
+        """
+        try:
+            for fund in fundet or []:
+                til_metadata = getattr(fund, "til_metadata", None)
+                if til_metadata is None:
+                    continue
+                post = til_metadata(self.kilder)
+                if isinstance(post, dict):
+                    self.citationer.append(post)
+        except Exception:  # sporing må aldrig vælte et svar der ellers virkede
+            return
 
     # ── kilder ───────────────────────────────────────────────────────────
     def registrer_web_kilder(self, tool_name: str, result: object) -> None:

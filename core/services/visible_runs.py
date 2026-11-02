@@ -1461,8 +1461,17 @@ async def _stream_visible_run(
     # `TurnAccumulator.registrer_web_kilder` mens turen kører, og filteret ser
     # dem fordi det holder den samme beholder.
     from core.services.citation_markorer import Kilder as _Kilder
+    from core.services.context_proveniens import memory_i_kontekst as _mem_i_kontekst
 
-    _turn_kilder = _Kilder()
+    # 2/11-2026: `memcite` blev godkendt uden kontrol af om memory overhovedet
+    # var i den aktuelle modelkontekst — kommentaren paastod at «runtime
+    # afgjorde det», men der fandtes ingen at spoerge. Proben spoerger
+    # `context_proveniens`, som `prompt_contract` registrerer i naar den
+    # bygger [HUKOMMELSE]. En CALLABLE og ikke et flag: prompten bygges EFTER
+    # dette punkt, saa en bool ville vaere False for evigt.
+    _turn_kilder = _Kilder(
+        memory_probe=lambda: _mem_i_kontekst(run.session_id or "")
+    )
     markup_buffer = FirstPassOutputFilter(_turn_kilder)
     _collected_native_tool_calls: list[dict] = []
     # Tur-niveau blok-akkumulatorer (spec: content_json). _a_tool_calls/_a_parts
@@ -1680,6 +1689,9 @@ async def _stream_visible_run(
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
                     remaining = markup_buffer.flush()
+                    # 2/11-2026: fundene blev samlet i kontrakten og kastet
+                    # vaek her. Nu foelger de med turen videre til tracet.
+                    _turn.registrer_citationer(markup_buffer.fundet)
                     if remaining:
                         yield _sse(
                             "delta",
@@ -1696,6 +1708,15 @@ async def _stream_visible_run(
                             "provider_call_count": 1,
                             "first_pass_input_tokens": item.result.input_tokens,
                             "first_pass_output_tokens": item.result.output_tokens,
+                            # 2/11-2026: citationerne laa i en liste uden
+                            # laesere. Her er sporet der faktisk bliver laest
+                            # — kun sat naar der ER noget at vise, saa en
+                            # almindelig tur ikke faar et tomt felt med.
+                            **(
+                                {"citationer": list(_turn.citationer)}
+                                if _turn.citationer
+                                else {}
+                            ),
                         },
                     )
                     break

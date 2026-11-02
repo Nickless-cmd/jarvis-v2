@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/user_activity.py`
+_Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og hvordan"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_q1` | `(conn, sql, params)` | — | [src](../../../core/services/user_activity.py#L17) |
+| function | `build_user_activity_surface` | `(*, active_within_s=…)` | Pr. registreret bruger: sidst aktiv (flettet fra alle kilder), via hvad, aktiv nu, | [src](../../../core/services/user_activity.py#L25) |
+
 ## `core/services/user_contradiction_tracker.py`
 _User Contradiction Tracker — detects when the user contradicts themselves._
 
@@ -650,13 +658,4 @@ _Small text helpers shared by visible-run outcome persistence._
 | function | `preview_text` | `(text, limit=…)` | — | [src](../../../core/services/visible_outcome_text.py#L5) |
 | function | `mark_mid_word_truncation` | `(text)` | Mark a likely sentence cut off in the middle of its final word. | [src](../../../core/services/visible_outcome_text.py#L12) |
 | function | `origin_of_session` | `(session_id)` | «auto-dream-20260902» → «dream»; empty for ordinary chats. | [src](../../../core/services/visible_outcome_text.py#L27) |
-
-## `core/services/visible_post_tool_synthesis.py`
-_Stream the existing tool-free final synthesis without buffering its deltas._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SynthesisDelta` | `` | — | [src](../../../core/services/visible_post_tool_synthesis.py#L17) |
-| class | `SynthesisDone` | `` | — | [src](../../../core/services/visible_post_tool_synthesis.py#L22) |
-| function | `stream_final_synthesis` | `(*, provider, model, base_messages, exchanges, min_chars=…)` | Yield clean text deltas, then the exact text the caller should persist. | [src](../../../core/services/visible_post_tool_synthesis.py#L26) |
 

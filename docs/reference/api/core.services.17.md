@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/live_job_sources.py`
+_Incremental adapters from canonical background jobs to live job events._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run` | `(coro)` | Run one bridge coroutine from the pump's synchronous worker context. | [src](../../../core/services/live_job_sources.py#L16) |
+| class | `LiveJobSourcePump` | `` | Sample server/operator logs while a live Desk subscriber exists. | [src](../../../core/services/live_job_sources.py#L39) |
+| method | `LiveJobSourcePump.__init__` | `(self, *, snapshot_reader, user_id, operator_reader=…)` | — | [src](../../../core/services/live_job_sources.py#L42) |
+| method | `LiveJobSourcePump._publish` | `(self, event_type, source, job, payload)` | — | [src](../../../core/services/live_job_sources.py#L65) |
+| method | `LiveJobSourcePump._reconcile` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L75) |
+| method | `LiveJobSourcePump._terminal` | `(job, *, running=…)` | — | [src](../../../core/services/live_job_sources.py#L110) |
+| method | `LiveJobSourcePump._finish` | `(self, key, job, exit_code)` | — | [src](../../../core/services/live_job_sources.py#L115) |
+| method | `LiveJobSourcePump._sample_server` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L126) |
+| method | `LiveJobSourcePump._sample_operator` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L145) |
+| method | `LiveJobSourcePump.sample_once` | `(self)` | Force one reconciliation and one sample of both machine sources. | [src](../../../core/services/live_job_sources.py#L188) |
+| method | `LiveJobSourcePump.add_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L194) |
+| method | `LiveJobSourcePump.remove_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L205) |
+| method | `LiveJobSourcePump._loop` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L211) |
+
 ## `core/services/liveness_registry.py`
 _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
@@ -633,19 +652,4 @@ _Memory Write Queue — async write queue for sensory/brain memories._
 | function | `_process_sidecar` | `(payload, retry_count)` | Process a MEMORY.md sidecar: mood capture + graph ingestion. | [src](../../../core/services/memory_write_queue.py#L555) |
 | function | `retry_failed` | `(limit=…)` | Reset failed items back to pending for retry. | [src](../../../core/services/memory_write_queue.py#L592) |
 | function | `clean_old_done` | `(hours=…)` | Delete 'done' items older than N hours. | [src](../../../core/services/memory_write_queue.py#L616) |
-
-## `core/services/mermaid_render.py`
-_Mermaid → SVG, server-side. Så diagrammer også når mobilen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MermaidFejl` | `` | Kunne ikke rende diagrammet — med en årsag der kan handles på. | [src](../../../core/services/mermaid_render.py#L74) |
-| function | `find_chrome` | `()` | Første kørende chromium-binær, eller None. | [src](../../../core/services/mermaid_render.py#L78) |
-| function | `find_mermaid` | `()` | — | [src](../../../core/services/mermaid_render.py#L86) |
-| function | `tilgaengelig` | `()` | Kan serveren rende mermaid lige nu? (ja/nej, grund). | [src](../../../core/services/mermaid_render.py#L93) |
-| function | `_side` | `(kilde, mermaid_js)` | HTML-siden der rendrer diagrammet og lægger SVG'en i titlen. | [src](../../../core/services/mermaid_render.py#L102) |
-| function | `render` | `(kilde, *, timeout=…)` | Mermaid-kilde → SVG. Rejser `MermaidFejl` hvis det ikke kan lade sig gøre. | [src](../../../core/services/mermaid_render.py#L122) |
-| function | `_svg_side` | `(svg)` | En side der viser en faerdig SVG — klar til screenshot. | [src](../../../core/services/mermaid_render.py#L193) |
-| function | `_maal` | `(svg)` | SVG'ens sande forhold. | [src](../../../core/services/mermaid_render.py#L206) |
-| function | `rasteriser` | `(svg, *, bredde, maks_hoejde, timeout=…)` | SVG → PNG, tegnet af chromium. | [src](../../../core/services/mermaid_render.py#L223) |
 

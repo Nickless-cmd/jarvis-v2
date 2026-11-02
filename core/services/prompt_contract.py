@@ -3217,6 +3217,17 @@ def _build_visible_chat_prompt_assembly_impl(
     if _dyn_memory_recall:
         _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)
+    # 2/11-2026: HER dannes [HUKOMMELSE], og her er derfor den eneste ægte
+    # kilde til om memory var i konteksten. `memcite` blev foer godkendt
+    # ubetinget; nu spoerger citation-kontrakten dette register. Ogsaa nul
+    # registreres: «ingen memory i denne prompt» er en sandhed der skal kunne
+    # slaa en tidligere turs godkendelse ud.
+    try:
+        from core.services.context_proveniens import marker_memory_i_kontekst
+
+        marker_memory_i_kontekst(session_id or "", len(_dyn_memory_recall))
+    except Exception as _e:
+        _sec_err("memory context provenance", _e)
     # ── OPERATIONAL group: per-turn dynamic ops (model-pools, subagent completions,
     # recent self-changes, daily notes, background events) + device presence (below).
     # Grouped here so operational context reads as one block, not scattered.

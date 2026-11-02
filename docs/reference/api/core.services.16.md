@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/inheritance_seed.py`
+_Inheritance seed — writes near-thoughts before version transition or shutdown._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `write_inheritance_seed` | `()` | Collect near-thoughts from active daemons and write to workspace. | [src](../../../core/services/inheritance_seed.py#L23) |
+| function | `read_inheritance_seed` | `()` | Read inheritance seed from workspace. Returns empty string if not found. | [src](../../../core/services/inheritance_seed.py#L67) |
+| function | `_collect_sections` | `()` | — | [src](../../../core/services/inheritance_seed.py#L84) |
+| function | `_collect_pending_proposals` | `()` | — | [src](../../../core/services/inheritance_seed.py#L94) |
+| function | `_collect_open_curiosity` | `()` | — | [src](../../../core/services/inheritance_seed.py#L104) |
+| function | `_collect_creative_drift` | `()` | — | [src](../../../core/services/inheritance_seed.py#L114) |
+| function | `_collect_unresolved_tensions` | `()` | — | [src](../../../core/services/inheritance_seed.py#L124) |
+| function | `_collect_thought_stream` | `()` | — | [src](../../../core/services/inheritance_seed.py#L135) |
+
 ## `core/services/initiative_accumulator.py`
 _Initiative Accumulator — proactive wants that accumulate between ticks._
 
@@ -701,23 +715,4 @@ _Bounded, process-local live projection of background-job events._
 | function | `subscribe` | `(*, session_id, after, queue_size=…)` | — | [src](../../../core/services/live_job_events.py#L226) |
 | function | `snapshot_cursor` | `()` | — | [src](../../../core/services/live_job_events.py#L232) |
 | function | `reset_for_tests` | `()` | — | [src](../../../core/services/live_job_events.py#L236) |
-
-## `core/services/live_job_sources.py`
-_Incremental adapters from canonical background jobs to live job events._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_run` | `(coro)` | Run one bridge coroutine from the pump's synchronous worker context. | [src](../../../core/services/live_job_sources.py#L16) |
-| class | `LiveJobSourcePump` | `` | Sample server/operator logs while a live Desk subscriber exists. | [src](../../../core/services/live_job_sources.py#L39) |
-| method | `LiveJobSourcePump.__init__` | `(self, *, snapshot_reader, user_id, operator_reader=…)` | — | [src](../../../core/services/live_job_sources.py#L42) |
-| method | `LiveJobSourcePump._publish` | `(self, event_type, source, job, payload)` | — | [src](../../../core/services/live_job_sources.py#L65) |
-| method | `LiveJobSourcePump._reconcile` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L75) |
-| method | `LiveJobSourcePump._terminal` | `(job, *, running=…)` | — | [src](../../../core/services/live_job_sources.py#L110) |
-| method | `LiveJobSourcePump._finish` | `(self, key, job, exit_code)` | — | [src](../../../core/services/live_job_sources.py#L115) |
-| method | `LiveJobSourcePump._sample_server` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L126) |
-| method | `LiveJobSourcePump._sample_operator` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L145) |
-| method | `LiveJobSourcePump.sample_once` | `(self)` | Force one reconciliation and one sample of both machine sources. | [src](../../../core/services/live_job_sources.py#L188) |
-| method | `LiveJobSourcePump.add_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L194) |
-| method | `LiveJobSourcePump.remove_subscriber` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L205) |
-| method | `LiveJobSourcePump._loop` | `(self)` | — | [src](../../../core/services/live_job_sources.py#L211) |
 

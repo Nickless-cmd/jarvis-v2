@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9525/17859 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9531/17865 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9525/17859 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 862 | 1570 | 54% |
-| `core.services` | 6335 | 12125 | 52% |
+| `core.services` | 6341 | 12131 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 139 | 217 | 64% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1048,9 +1048,9 @@ Generated from source. 9525/17859 functions/methods documented (53%). The list b
 - `core/services/chronicle_consolidation_signal_tracking.py` :: `track_runtime_chronicle_consolidation_signals_for_visible_turn` (L51)
 - `core/services/chronicle_engine.py` :: `build_chronicle_surface` (L236)
 - `core/services/chronicle_engine.py` :: `project_entry_to_markdown` (L483)
-- `core/services/citation_markorer.py` :: `CitationKontrakt.feed` (L242)
-- `core/services/citation_markorer.py` :: `CitationKontrakt.flush` (L267)
-- `core/services/citation_markorer.py` :: `Kilder.url_for` (L79)
+- `core/services/citation_markorer.py` :: `CitationKontrakt.feed` (L312)
+- `core/services/citation_markorer.py` :: `CitationKontrakt.flush` (L337)
+- `core/services/citation_markorer.py` :: `Kilder.url_for` (L94)
 - `core/services/clarification_classifier.py` :: `clarification_prompt_section` (L78)
 - `core/services/clarification_classifier.py` :: `score_message` (L39)
 - `core/services/cluster_daemon.py` :: `affect_family` (L1166)
@@ -1636,13 +1636,13 @@ Generated from source. 9525/17859 functions/methods documented (53%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3622)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3470)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3759)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3633)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3481)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3770)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4726)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4737)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2303,14 +2303,14 @@ Generated from source. 9525/17859 functions/methods documented (53%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L617)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L614)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L624)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7151)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7176)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7214)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7210)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7147)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7109)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7231)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7162)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7172)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7197)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7235)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7231)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7168)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7130)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7252)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7183)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)
@@ -2322,10 +2322,10 @@ Generated from source. 9525/17859 functions/methods documented (53%). The list b
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L52)
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L65)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L180)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L95)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L271)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L99)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L103)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L102)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L298)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L106)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L110)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_item` (L111)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_note` (L163)
 - `core/services/visible_work_surfaces.py` :: `get_visible_selected_work_surface` (L80)

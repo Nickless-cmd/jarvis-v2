@@ -436,6 +436,15 @@ _Rene content-blok-funktioner: tekst-projektion + serve-on-read rekonstruktion._
 | function | `content_blocks_to_text` | `(blocks)` | Flad en content-blok-array til markdown-tekst-projektionen. KUN text-blokke | [src](../../../core/services/content_blocks.py#L17) |
 | function | `reconstruct_blocks_from_legacy` | `(role, content, *, load_result)` | Serve-on-read: byg blok-array for en GAMMEL besked (uden content_json). | [src](../../../core/services/content_blocks.py#L24) |
 
+## `core/services/context_proveniens.py`
+_Kontekst-proveniens: hvad var FAKTISK i den prompt der blev bygget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `marker_memory_i_kontekst` | `(session_id, antal_linjer)` | Registrér at `[HUKOMMELSE]` blev bygget med `antal_linjer` linjer. | [src](../../../core/services/context_proveniens.py#L47) |
+| function | `memory_i_kontekst` | `(session_id)` | Var der memory-linjer i den seneste byggede prompt for sessionen? | [src](../../../core/services/context_proveniens.py#L60) |
+| function | `ryd_register` | `()` | Tøm registeret. Kun til tests — ellers lever det som en lille dict. | [src](../../../core/services/context_proveniens.py#L80) |
+
 ## `core/services/context_window_manager.py`
 _Context window manager — strategies for keeping prompts within budget._
 
@@ -576,22 +585,4 @@ _D5 — Cost optimization daemon._
 | function | `_load_budgets` | `()` | Read cost budget settings from runtime.json `extra` dict. | [src](../../../core/services/cost_optimization_daemon.py#L118) |
 | function | `_emit` | `(kind, payload)` | Emit an eventbus event — defensive, never blocks. | [src](../../../core/services/cost_optimization_daemon.py#L133) |
 | function | `_emit_savings_estimate` | `()` | Estimate potential savings from routing more calls to cheap lane. | [src](../../../core/services/cost_optimization_daemon.py#L142) |
-
-## `core/services/council_deliberation_controller.py`
-_Council Deliberation Controller — active agent dynamics inside deliberation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DeliberationResult` | `` | — | [src](../../../core/services/council_deliberation_controller.py#L30) |
-| function | `_cosine_similarity` | `(a, b)` | Bag-of-words cosine similarity between two strings. Returns 0.0–1.0. | [src](../../../core/services/council_deliberation_controller.py#L39) |
-| function | `_is_deadlocked` | `(round_outputs)` | Return True if round N is semantically similar to round N-2 (1-indexed rounds). | [src](../../../core/services/council_deliberation_controller.py#L56) |
-| function | `_check_witness_escalation` | `(witness_output)` | Return True if the witness is requesting to escalate to active participant. | [src](../../../core/services/council_deliberation_controller.py#L65) |
-| function | `build_witness_prompt` | `(*, transcript)` | Build the system prompt for the witness agent. | [src](../../../core/services/council_deliberation_controller.py#L70) |
-| function | `_call_recruitment_llm` | `(*, topic, transcript)` | — | [src](../../../core/services/council_deliberation_controller.py#L81) |
-| function | `_analyze_recruitment_need` | `(*, topic, transcript, active_members)` | Ask LLM if a new role is needed. Returns role name or None. | [src](../../../core/services/council_deliberation_controller.py#L93) |
-| class | `DeliberationController` | `` | Manages a deliberation with witness escalation, recruitment, and deadlock handling. | [src](../../../core/services/council_deliberation_controller.py#L112) |
-| method | `DeliberationController.__init__` | `(self, *, topic, members, max_rounds=…)` | — | [src](../../../core/services/council_deliberation_controller.py#L115) |
-| method | `DeliberationController.run` | `(self)` | Run the full deliberation. Returns DeliberationResult. | [src](../../../core/services/council_deliberation_controller.py#L132) |
-| method | `DeliberationController._run_round` | `(self)` | Run one round of deliberation. Override in subclasses for real agent execution. | [src](../../../core/services/council_deliberation_controller.py#L209) |
-| method | `DeliberationController._synthesize` | `(self, *, forced=…)` | Produce council conclusion. Override in real integration. | [src](../../../core/services/council_deliberation_controller.py#L213) |
 

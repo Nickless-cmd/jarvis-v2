@@ -1523,6 +1523,19 @@ def isolated_runtime(
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )
 
+    # ── In-memory kørselstilstand må ikke overleve en test ────────────────
+    # `_LAST_VISIBLE_RUN_OUTCOME` er en modul-global i core.services.visible_runs,
+    # som bevidst ALDRIG reloades (klasse-identitets-ankret, se blokken ovenfor).
+    # En test der kalder `set_last_visible_run_outcome` efterlader derfor en FRISK
+    # outcome — `_FRISK_HUKOMMELSE_S` er 30 s — og næste test læser den i stedet
+    # for sin egen DB-række. Målt 2/11-2026: test_notifikations_kobling satte
+    # run_id "r-1" med tom text_preview, hvorefter tre hydrerings-tests der bruger
+    # samme id fik "" i stedet for svaret fra DB. Nulstilles her, så hver test
+    # starter uden en fremmed kørsel i hukommelsen.
+    _vr_mod = sys.modules.get("core.services.visible_runs")
+    if _vr_mod is not None:
+        _vr_mod._LAST_VISIBLE_RUN_OUTCOME = None
+
     try:
         yield _ns
     finally:

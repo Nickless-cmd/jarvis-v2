@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from core.services.chat_response_policy import CHAT_CLOSURES, surface_for_reading_task
+from core.services.chat_response_policy import (
+    CHAT_CLOSURES,
+    CHAT_ENGAGEMENT_CORE,
+    CHAT_FORMAT_CORE,
+    CHAT_RESPONSE_DECISION,
+    surface_for_reading_task,
+)
 
 
 def test_presentation_eval_cases_cover_thresholds_and_closures() -> None:
@@ -58,3 +64,46 @@ def test_kravet_naar_chat_halen_og_ikke_code_mode() -> None:
     finally:
         reset_tool_scope(token)
     assert "vaelg_flade" not in code_tail
+
+
+def test_chat_core_har_proportionalitet_uden_psykoanalyse() -> None:
+    engagement = " ".join(CHAT_ENGAGEMENT_CORE.lower().split())
+    format_core = " ".join(CHAT_FORMAT_CORE.lower().split())
+
+    assert "kompetent voksen" in engagement
+    assert "opfind ikke en diagnose" in engagement
+    assert "psykologisk årsag" in engagement
+    assert "moraliser ikke" in engagement
+    assert "konsekvens for andre" in engagement
+    assert "ét præcist spørgsmål" in engagement
+    assert "én ændring" in format_core
+    assert "ikke hele materialet igen" in format_core
+    assert "al tænkelig information" in format_core
+
+
+def test_chat_core_kraever_et_reelt_svar_efter_vaerktoejer() -> None:
+    decision = " ".join(CHAT_RESPONSE_DECISION.lower().split())
+
+    assert "efter sidste værktøjskald" in decision
+    assert "aldrig kun en status som 'færdig'" in decision
+    assert "gentag ikke statusopdateringer" in decision
+
+
+def test_nye_regler_naar_chat_halen_men_ikke_code_mode() -> None:
+    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
+    from core.tools.tool_scoping import tool_scope
+
+    with tool_scope("chat"):
+        chat_tail = build_chat_mode_dynamic_tail(
+            "", message="ret kun overskriften", session_id=None,
+        )
+    with tool_scope("code"):
+        code_tail = build_chat_mode_dynamic_tail(
+            "", message="ret kun overskriften", session_id=None,
+        )
+
+    assert "kompetent voksen" in chat_tail
+    assert "Efter sidste værktøjskald" in chat_tail
+    assert "ikke hele materialet igen" in chat_tail
+    assert "kompetent voksen" not in code_tail
+    assert "Efter sidste værktøjskald" not in code_tail

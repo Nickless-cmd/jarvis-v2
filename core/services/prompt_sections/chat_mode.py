@@ -23,6 +23,25 @@ def _scope() -> str:
         return ""
 
 
+def _scope_stable_blocks() -> str:
+    """V3 blocks proven stable inside the separately warmed mode prefix."""
+    from core.services.prompt_mode_layout import scope_stable_blocks_v3_enabled
+
+    scope = _scope()
+    if not scope_stable_blocks_v3_enabled(scope=scope):
+        return ""
+    from core.services.tool_catalog import stable_catalog_text
+
+    blocks = [stable_catalog_text()]
+    if scope == "code":
+        from core.services.prompt_sections.agent_orchestration import (
+            stable_orchestrator_section,
+        )
+
+        blocks.append(stable_orchestrator_section())
+    return "\n\n".join(block for block in blocks if block)
+
+
 def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
     """Describe the effective room without inventing capabilities."""
     scope = _scope()
@@ -41,11 +60,12 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
             # locally to avoid a module cycle: pragmatics also calls this file.
             from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
 
-            return "\n\n".join((
+            return "\n\n".join(part for part in (
                 "\n".join(lines),
                 _chat_tone_content(compact=compact),
                 CHAT_MODE_HOW_I_TALK,
-            ))
+                _scope_stable_blocks(),
+            ) if part)
         return "\n".join(lines)
     if scope == "code":
         lines = [
@@ -59,7 +79,7 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
             from core.services.prompt_sections.code_mode import base_section
 
             return "\n\n".join(part for part in (
-                orientation, base_section(compact=compact),
+                orientation, base_section(compact=compact), _scope_stable_blocks(),
             ) if part)
         return orientation
     lines = [

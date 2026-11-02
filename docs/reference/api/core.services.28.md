@@ -110,9 +110,11 @@ _Compact tool catalog for system prompt._
 |---|---|---|---|---|
 | function | `_short_desc` | `(tool_def)` | — | [src](../../../core/services/tool_catalog.py#L149) |
 | function | `_registry_hash` | `()` | — | [src](../../../core/services/tool_catalog.py#L163) |
-| function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L178) |
-| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L214) |
-| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L219) |
+| function | `_render_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L178) |
+| function | `build_catalog_text` | `()` | Return the cache-late catalog, or empty when V3 moved it cache-first. | [src](../../../core/services/tool_catalog.py#L214) |
+| function | `stable_catalog_text` | `()` | Return the catalog only for a V3-warmed, scope-specific prefix. | [src](../../../core/services/tool_catalog.py#L223) |
+| function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L232) |
+| function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L237) |
 
 ## `core/services/tool_chip_payload.py`
 _Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._

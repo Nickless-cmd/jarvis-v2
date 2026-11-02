@@ -144,9 +144,10 @@ _Reversible prompt-layout policy for the visible chat and code lanes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `mode_layout_v2_enabled` | `()` | Return whether the cache-first mode layout is active. | [src](../../../core/services/prompt_mode_layout.py#L19) |
-| function | `filter_visible_rules` | `(text, *, scope)` | Keep universal rules in code mode and conversational rules in chat. | [src](../../../core/services/prompt_mode_layout.py#L41) |
-| function | `recency_anchor` | `(*, scope)` | A short cache-late reminder; stable contracts live cache-first in V2. | [src](../../../core/services/prompt_mode_layout.py#L64) |
+| function | `mode_layout_v2_enabled` | `()` | Return whether the cache-first mode layout is active. | [src](../../../core/services/prompt_mode_layout.py#L21) |
+| function | `scope_stable_blocks_v3_enabled` | `(*, scope=…)` | Route proven-stable blocks into the warmed chat/code prefix. | [src](../../../core/services/prompt_mode_layout.py#L43) |
+| function | `filter_visible_rules` | `(text, *, scope)` | Keep universal rules in code mode and conversational rules in chat. | [src](../../../core/services/prompt_mode_layout.py#L76) |
+| function | `recency_anchor` | `(*, scope)` | A short cache-late reminder; stable contracts live cache-first in V2. | [src](../../../core/services/prompt_mode_layout.py#L99) |
 
 ## `core/services/prompt_mutation_loop.py`
 _Prompt Mutation Loop — apply, score, auto-rollback on negative score._

@@ -28,10 +28,10 @@ _HEADER = (
 # dispatcherens beskrivelse siger det — men begge kommer FOERST naar han
 # allerede har hentet. Kataloget laerte ham kun halvdelen af flowet.
 #
-# Det koster ingenting at skrive her: kataloget blev flyttet til prompt-HALEN
-# samme dag, saa det bygges pr. tur efter cache-graensen. I morges ville de
-# samme tre linjer have aendret systemblokkens laengde og kasseret hele
-# vaerktoejsarrayet OG samtalen.
+# Ved legacy-placeringen koster en tekstændring ingen prefix-cache: kataloget
+# bygges efter cache-grænsen. V3 kan lægge det i de separat varmede chat/code-
+# prefixer; dér kræver en registry-/tekstændring én ny warm per scope. Det er
+# acceptabelt, fordi ændringen er deploy-sjælden, og V3 har egen kill switch.
 
 # 30/9-2026: linjen ovenfor er tilføjet efter en maaling. Over 30 dage blev der
 # hentet 541 vaerktoejsnavne, og ~80 af dem (15 %) var vaerktoejer der ALLEREDE
@@ -175,7 +175,7 @@ def _registry_hash() -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def build_catalog_text() -> str:
+def _render_catalog_text() -> str:
     """Return cached catalog text; rebuild only if tool registry changed."""
     global _cached_text, _cached_hash
     h = _registry_hash()
@@ -211,9 +211,27 @@ def build_catalog_text() -> str:
     return text
 
 
+def build_catalog_text() -> str:
+    """Return the cache-late catalog, or empty when V3 moved it cache-first."""
+    from core.services.prompt_mode_layout import scope_stable_blocks_v3_enabled
+
+    if scope_stable_blocks_v3_enabled():
+        return ""
+    return _render_catalog_text()
+
+
+def stable_catalog_text() -> str:
+    """Return the catalog only for a V3-warmed, scope-specific prefix."""
+    from core.services.prompt_mode_layout import scope_stable_blocks_v3_enabled
+
+    if not scope_stable_blocks_v3_enabled():
+        return ""
+    return _render_catalog_text()
+
+
 def catalog_token_estimate() -> int:
     """Rough char/4 token estimate of the current catalog."""
-    return max(1, len(build_catalog_text()) // 4)
+    return max(1, len(_render_catalog_text()) // 4)
 
 
 def invalidate_cache() -> None:

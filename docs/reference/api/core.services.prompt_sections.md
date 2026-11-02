@@ -25,8 +25,10 @@ _Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `orchestrator_section` | `()` | Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed). | [src](../../../core/services/prompt_sections/agent_orchestration.py#L46) |
-| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L61) |
+| function | `_render_orchestrator_section` | `()` | Render den konstante instruktion, hvis motoren er aktiv. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L46) |
+| function | `orchestrator_section` | `()` | Den cache-sene kontrakt; tom når V3 har flyttet eller scope-fravalgt den. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L58) |
+| function | `stable_orchestrator_section` | `()` | Den konstante kontrakt i V3-prefixet; kun code har agentværktøjerne. | [src](../../../core/services/prompt_sections/agent_orchestration.py#L70) |
+| function | `orchestrator_state` | `(*, owner_user_id, session_id)` | Levende, ren LAESE-status for netop denne ejers og sessions agentarbejde, eller "". | [src](../../../core/services/prompt_sections/agent_orchestration.py#L84) |
 
 ## `core/services/prompt_sections/attention_frame.py`
 _Cognitive-frame cache + attention-budget selection for prompts._
@@ -97,9 +99,10 @@ _Stable, scope-specific orientation and conversational baseline._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/chat_mode.py#L18) |
-| function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L26) |
-| function | `_chat_tone_content` | `(*, compact)` | Build the stable chat baseline without deciding its placement. | [src](../../../core/services/prompt_sections/chat_mode.py#L73) |
-| function | `_visible_chat_tone_instruction` | `(*, compact)` | Legacy standalone tone block; V2 folds it into mode orientation. | [src](../../../core/services/prompt_sections/chat_mode.py#L100) |
+| function | `_scope_stable_blocks` | `()` | V3 blocks proven stable inside the separately warmed mode prefix. | [src](../../../core/services/prompt_sections/chat_mode.py#L26) |
+| function | `_visible_mode_orientation_instruction` | `(*, compact)` | Describe the effective room without inventing capabilities. | [src](../../../core/services/prompt_sections/chat_mode.py#L45) |
+| function | `_chat_tone_content` | `(*, compact)` | Build the stable chat baseline without deciding its placement. | [src](../../../core/services/prompt_sections/chat_mode.py#L93) |
+| function | `_visible_chat_tone_instruction` | `(*, compact)` | Legacy standalone tone block; V2 folds it into mode orientation. | [src](../../../core/services/prompt_sections/chat_mode.py#L120) |
 
 ## `core/services/prompt_sections/code_mode.py`
 _Code-mode-only working contract for the visible engineering lane._

@@ -12,6 +12,8 @@ import os
 
 _ENV_NAME = "JARVIS_PROMPT_MODE_LAYOUT_V2"
 _CONFIG_NAME = "prompt_mode_layout_v2_enabled"
+_V3_ENV_NAME = "JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3"
+_V3_CONFIG_NAME = "prompt_scope_stable_blocks_v3_enabled"
 _TRUTHY = frozenset(("1", "true", "yes", "on"))
 _FALSY = frozenset(("0", "false", "no", "off"))
 
@@ -36,6 +38,39 @@ def mode_layout_v2_enabled() -> bool:
         return bool(load_settings().extra.get(_CONFIG_NAME, True))
     except Exception:  # Config failure keeps the V2 default; the env kill switch still works.
         return True
+
+
+def scope_stable_blocks_v3_enabled(*, scope: str | None = None) -> bool:
+    """Route proven-stable blocks into the warmed chat/code prefix.
+
+    V3 is independent and defaults off until an operator has measured and
+    prewarmed both scope variants.  It cannot activate when V2 is disabled,
+    so the existing kill switch still restores the complete legacy layout.
+    """
+    if not mode_layout_v2_enabled():
+        return False
+    if scope is None:
+        try:
+            from core.tools.tool_scoping import current_tool_scope
+
+            scope = str(current_tool_scope() or "").strip().lower()
+        except Exception:  # Unknown scope is never safe to move cache-late blocks from.
+            return False
+    if str(scope or "").strip().lower() not in {"chat", "code"}:
+        return False
+    raw = os.environ.get(_V3_ENV_NAME)
+    if raw is not None:
+        value = raw.strip().lower()
+        if value in _TRUTHY:
+            return True
+        if value in _FALSY:
+            return False
+    try:
+        from core.runtime.settings import load_settings
+
+        return bool(load_settings().extra.get(_V3_CONFIG_NAME, False))
+    except Exception:  # A new optimization stays off if its config cannot be proven.
+        return False
 
 
 def filter_visible_rules(text: str | None, *, scope: str) -> str | None:
@@ -83,4 +118,5 @@ __all__ = [
     "filter_visible_rules",
     "mode_layout_v2_enabled",
     "recency_anchor",
+    "scope_stable_blocks_v3_enabled",
 ]

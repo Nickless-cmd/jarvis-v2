@@ -1,11 +1,11 @@
 """Jarvis' orkestratorprompt for agenter (leverance F3, spec 7.3).
 
-To dele, og kun den foerste ligger i systemblokken:
+To dele. V3 lægger kun den første i code-scopets varmede systemprefix:
 
-* ``orchestrator_section()`` - KONSTANT tekst (versionsmaerket), tom naar motoren er
-  slukket. Konstant bevidst: systemblokken ligger foran hele vaerktoejsarrayet og
-  samtalen, saa en tekst der skifter fra tur til tur ville koste hele prefikset
-  (se section_placement). Den skifter kun naar kapabilitetsflaget skifter.
+* ``orchestrator_section()`` / ``stable_orchestrator_section()`` - samme KONSTANTE,
+  versionsmærkede tekst, tom når motoren er slukket. Legacy-ruten beholder den
+  cache-sent; V3 flytter den til code-prefixet og udelader den fra chat, hvor
+  agent-dispatch ikke findes. Den skifter kun når kapabilitetsflaget skifter.
 * ``orchestrator_state()`` - den DYNAMISKE, sessionbundne del: levende status ved turstart (aktive boern
   med model og forsoeg, ulaeste resultater og tilstandsbeskeder, afventende approvals, ventekontrakter, uafklarede
   udfald). Ren laesning. Den hoerer aldrig i systemblokken/praefikset: ``prompt_contract`` lagger den i den uncachede
@@ -43,8 +43,8 @@ _TEXT = (
 )
 
 
-def orchestrator_section() -> str:
-    """Den konstante instruktion, eller "" naar motoren ikke er aktiv (fail-closed)."""
+def _render_orchestrator_section() -> str:
+    """Render den konstante instruktion, hvis motoren er aktiv."""
     try:
         from core.services.agent_contract_service import PROMPT_VERSION, capability_enabled
         if not capability_enabled():
@@ -53,6 +53,29 @@ def orchestrator_section() -> str:
     except Exception:
         logger.warning("kunne ikke bygge orkestratorsektionen - udelades", exc_info=True)
         return ""
+
+
+def orchestrator_section() -> str:
+    """Den cache-sene kontrakt; tom når V3 har flyttet eller scope-fravalgt den."""
+    from core.services.prompt_mode_layout import scope_stable_blocks_v3_enabled
+    from core.tools.tool_scoping import current_tool_scope
+
+    scope = str(current_tool_scope() or "").strip().lower()
+    if scope_stable_blocks_v3_enabled(scope=scope):
+        # Chat har ingen agent-dispatch. Code får den samme tekst cache-first.
+        return ""
+    return _render_orchestrator_section()
+
+
+def stable_orchestrator_section() -> str:
+    """Den konstante kontrakt i V3-prefixet; kun code har agentværktøjerne."""
+    from core.services.prompt_mode_layout import scope_stable_blocks_v3_enabled
+    from core.tools.tool_scoping import current_tool_scope
+
+    scope = str(current_tool_scope() or "").strip().lower()
+    if scope != "code" or not scope_stable_blocks_v3_enabled(scope=scope):
+        return ""
+    return _render_orchestrator_section()
 
 
 MAX_STATE_ROWS = 10

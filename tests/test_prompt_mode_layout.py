@@ -5,6 +5,7 @@ from unittest.mock import patch
 from core.services.prompt_mode_layout import (
     filter_visible_rules,
     mode_layout_v2_enabled,
+    scope_stable_blocks_v3_enabled,
 )
 from core.services.prompt_sections.chat_mode import (
     _visible_chat_tone_instruction,
@@ -36,6 +37,56 @@ def test_kill_switch_restores_legacy_attention_envelope(monkeypatch):
     monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
     assert get_attention_budget("visible_full").total_char_target == 22000
     assert get_attention_budget("visible_full").mode_orientation.max_chars == 19000
+
+
+def test_v3_has_an_independent_kill_switch_and_requires_v2(monkeypatch):
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "1")
+    assert scope_stable_blocks_v3_enabled(scope="chat") is True
+    assert scope_stable_blocks_v3_enabled(scope="code") is True
+    assert scope_stable_blocks_v3_enabled(scope="cowork") is False
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "0")
+    assert scope_stable_blocks_v3_enabled(scope="code") is False
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "1")
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "0")
+    assert scope_stable_blocks_v3_enabled(scope="code") is False
+
+
+def test_v3_moves_catalog_and_code_orchestrator_without_duplicates(monkeypatch):
+    from core.services.prompt_sections.agent_orchestration import _TEXT
+
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "1")
+    monkeypatch.setattr(
+        "core.services.agent_contract_service.capability_enabled", lambda: True,
+    )
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="chat"):
+        chat = _visible_mode_orientation_instruction(compact=False) or ""
+        from core.services.tool_catalog import build_catalog_text
+        assert "KERNE-VÆRKTØJER" in chat
+        assert build_catalog_text() == ""
+        assert "Agenter (orchestrator-v2)" not in chat
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):
+        code = _visible_mode_orientation_instruction(compact=False) or ""
+        from core.services.prompt_sections.agent_orchestration import orchestrator_section
+        assert "KERNE-VÆRKTØJER" in code
+        assert _TEXT.format(version="orchestrator-v2") in code
+        assert orchestrator_section() == ""
+
+
+def test_v3_off_keeps_catalog_and_orchestrator_cache_late(monkeypatch):
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "0")
+    monkeypatch.setattr(
+        "core.services.agent_contract_service.capability_enabled", lambda: True,
+    )
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):
+        orientation = _visible_mode_orientation_instruction(compact=False) or ""
+        from core.services.prompt_sections.agent_orchestration import orchestrator_section
+        from core.services.tool_catalog import build_catalog_text
+        assert "KERNE-VÆRKTØJER" not in orientation
+        assert "KERNE-VÆRKTØJER" in build_catalog_text()
+        assert "Agenter (orchestrator-v2)" in orchestrator_section()
 
 
 def test_v2_chat_contract_is_cache_first_not_duplicated_in_tail(monkeypatch):

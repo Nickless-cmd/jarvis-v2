@@ -111,7 +111,7 @@ def test_vaekke_blokken_bygges_ind_i_halen_og_ikke_i_praefikset():
             f"bryder DeepSeeks cache — den hoerer i _dyn_tail.")
 
 
-def test_tool_kataloget_ligger_i_halen_og_ikke_i_praefikset():
+def test_tool_kataloget_ligger_i_halen_med_v3_slukket(monkeypatch):
     """Fjerde sag (30/9-2026): katalogets laengde ER tool-scopet.
 
     Maalt FOER flytningen: praefiks 34.439 / 31.936 / 32.687 / 34.439 tegn for
@@ -119,9 +119,12 @@ def test_tool_kataloget_ligger_i_halen_og_ikke_i_praefikset():
     mellem to af dem laa paa tegn 30.441, inde i kataloget. EFTER: 30.206 tegn
     og samme sha for alle fire.
 
-    Testen laaser begge halvdele: kataloget skal BLIVE i prompten (modellen skal
-    stadig kunne se hvad der findes og kan hentes), men ligge EFTER markoeren.
+    Legacy-vagten låser begge halvdele: kataloget skal BLIVE i prompten
+    (modellen skal stadig kunne se hvad der findes og kan hentes), men ligge
+    EFTER markøren. En separat V3-test nedenfor tillader kun flytningen for de
+    chat/code-prefixer som nu er scope-nøglede og varmes hver for sig.
     """
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "0")
     from core.services.prompt_contract import build_visible_chat_prompt_assembly
 
     a = build_visible_chat_prompt_assembly(
@@ -133,6 +136,34 @@ def test_tool_kataloget_ligger_i_halen_og_ikke_i_praefikset():
     assert "KERNE-VÆRKTØJER" not in _praefiks(tekst), (
         "kataloget staar i praefikset igen — dets laengde foelger tool-scopet, "
         "saa et scope-skift braekker hele vaerktoejs-arrayet + samtalen")
+
+
+def test_tool_kataloget_er_scope_noeglet_i_v3_praefikset(monkeypatch):
+    """V3 må kun genåbne flytningen for de to separat varmede scopes."""
+    from unittest.mock import patch
+
+    from core.services.prompt_contract import build_visible_chat_prompt_assembly
+
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    monkeypatch.setenv("JARVIS_PROMPT_SCOPE_STABLE_BLOCKS_V3", "1")
+    for scope in ("chat", "code"):
+        with patch("core.tools.tool_scoping.current_tool_scope", return_value=scope):
+            tekst = build_visible_chat_prompt_assembly(
+                provider="deepseek", model="deepseek-v4-flash",
+                user_message="hej", session_id=None,
+            ).text or ""
+        prefix, tail = tekst.split(DYNAMIC_TAIL_SENTINEL, 1)
+        assert "KERNE-VÆRKTØJER" in prefix
+        assert "KERNE-VÆRKTØJER" not in tail
+
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="cowork"):
+        legacy = build_visible_chat_prompt_assembly(
+            provider="deepseek", model="deepseek-v4-flash",
+            user_message="hej", session_id=None,
+        ).text or ""
+    prefix, tail = legacy.split(DYNAMIC_TAIL_SENTINEL, 1)
+    assert "KERNE-VÆRKTØJER" not in prefix
+    assert "KERNE-VÆRKTØJER" in tail
 
 
 def test_support_signals_ligger_i_halen_og_ikke_i_praefikset(monkeypatch):

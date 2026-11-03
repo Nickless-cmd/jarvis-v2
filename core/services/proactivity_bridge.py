@@ -1,5 +1,5 @@
 # core/services/proactivity_bridge.py
-"""Proaktivitets-broen — samler Jarvis' indre spørgsmål/initiativer/undren og overflader dem til
+"""Proaktivitets-broen — samler initiativer og konkrete proaktive signaler til
 Bjørn gennem en presence-bevidst contact-gate + delte caps. Hybrid: urgent-item straks, ellers
 'mens du var væk'-digest, ellers observe-suppressed (synlig, ikke sendt). Live-governed via
 kill-switch; fail-closed for afsendelse. Self-safe — kaster aldrig i cadence-hot-path."""
@@ -16,7 +16,7 @@ _URGENT_KINDS = {"critical_impulse"}
 # Dedikeret session hvor proaktive spørgsmål persisteres som RIGTIGE chat-beskeder,
 # så Bjørn kan se og svare på dem i companion — ikke kun en forsvindende notifikation.
 _PROACTIVITY_SESSION_ID = "proactivity-bridge"
-_PROACTIVITY_SESSION_TITLE = "💭 Proaktive spørgsmål"
+_PROACTIVITY_SESSION_TITLE = "Proaktive signaler"
 
 
 def classify(candidate: dict[str, Any]) -> str:
@@ -68,8 +68,8 @@ def build_urgent(item: dict[str, Any]) -> str:
 
 
 def build_digest(normal: list[dict[str, Any]]) -> str:
-    """'Mens du var væk'-digest af normale items (kort, prioriteret)."""
-    lines = ["💭 Mens du var væk tænkte jeg på:"]
+    """Sand, kildemærket fraværs-digest af normale items."""
+    lines = ["Mens du var væk blev dette flagget:"]
     try:
         from core.services.thought_leak_guard import ligner_ikke_en_tanke
     except Exception:
@@ -81,7 +81,9 @@ def build_digest(normal: list[dict[str, Any]]) -> str:
         # det Bjoern faktisk laeser, og en post der er kommet ind ad en anden vej
         # (eller foer vaernet fandtes) maa ikke naa ud herfra.
         if text and not ligner_ikke_en_tanke(text):
-            lines.append(f"  • {text}")
+            source = str(c.get("source") or "ukendt").strip() or "ukendt"
+            kind = str(c.get("kind") or "signal").strip() or "signal"
+            lines.append(f"  • [{source}/{kind}] {text}")
     if len(lines) == 1:
         return ""      # kun overskriften tilbage → send ingenting
     return "\n".join(lines)
@@ -95,8 +97,8 @@ def _norm_digest(text: str) -> str:
 def _digest_is_repeat(text: str) -> bool:
     """True hvis digest-teksten ~= den sidst postede assistant-besked i proactivity-sessionen.
 
-    Broen dedup'er på source_id INDEN for ét tik, men upstream-undren er statisk i dagevis
-    → samme "💭 Mens du var væk…" genpostes (aug 2026: ~40× på 5 dage). Denne gate stopper
+    Broen dedup'er på source_id INDEN for ét tik, men upstream-poster kan være
+    statiske i dagevis. Denne gate stopper
     at sende/persistere en digest der er identisk med den forrige. Self-safe → False."""
     want = _norm_digest(text)
     if not want:
@@ -191,15 +193,8 @@ def collect_candidates() -> list[dict[str, Any]]:
         out.extend(bridge_candidates(_owner_uid()))
     except Exception:
         pass
-    try:
-        from core.services.existential_wonder_daemon import get_latest_wonder
-        w = (get_latest_wonder() or "").strip()
-        if w:
-            out.append({"kind": "wonder", "text": w, "priority": "medium",
-                        "source": "existential_wonder", "source_id": f"wonder:{hash(w) & 0xffff}",
-                        "ts": datetime.now(UTC).isoformat()})
-    except Exception:
-        pass
+    # Eksistentiel undren er privat hjerneindhold, ikke en fraværsnotifikation.
+    # Den behandles i sin egen vurderingskæde og må aldrig blandes i digesten.
     return [c for c in out if c.get("text")]
 
 

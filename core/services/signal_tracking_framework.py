@@ -333,6 +333,65 @@ def _sweep_older_than(spec: SignalTrackingSpec, table: str, days: int) -> int | 
     return len(rows)
 
 
+def sweep_stale_rows(
+    *,
+    table: str,
+    statuses: tuple[str, ...],
+    stale_after_days: int,
+    stale_status: str = "stale",
+    stale_reason: str = "",
+    batch: int = 2000,
+) -> int | None:
+    """Generisk stale-sweep for tabeller der IKKE er signal-specs.
+
+    3/11-2026: den blinde vinkel som :func:`refresh_statuses` blev rettet for,
+    fandtes ogsaa i fem outcome-tabeller (``self_review_outcomes``,
+    ``self_review_cadence_signals``, ``private_state_snapshots``,
+    ``self_model_signals``, ``self_review_runs``). De scannede alle
+    ``list_fn(limit=40)`` — altsaa de NYESTE raekker, som pr. definition er
+    friske. Maalt: 153.147 aktive raekker i ``runtime_self_review_outcomes`` var
+    aeldre end syv dage og kunne aldrig markeres, fordi de laa uden for
+    top-40-vinduet.
+
+    Returnerer antal markerede raekker, eller ``None`` hvis sweep ikke kunne
+    udfoeres (ukendt tabel / SQL-fejl) — saa falder kalderen tilbage til sin scan.
+    """
+    if not _SWEEP_TABLE_RE.match(str(table or "")):
+        logger.warning("stale-sweep: afviser tabelnavn %r", table)
+        return None
+    wanted = sorted(s for s in statuses if s)
+    if not wanted:
+        return 0
+    now = datetime.now(UTC)
+    placeholders = ", ".join("?" for _ in wanted)
+    sql = (
+        f"UPDATE {table} SET status = ?, status_reason = ?, updated_at = ? "
+        f"WHERE rowid IN ("
+        f"SELECT rowid FROM {table} "
+        f"WHERE status IN ({placeholders}) "
+        f"AND datetime(COALESCE(NULLIF(updated_at, ''), created_at)) < datetime(?) "
+        f"ORDER BY rowid LIMIT ?"
+        f")"
+    )
+    params: list[object] = [
+        stale_status,
+        stale_reason,
+        now.isoformat(),
+        *wanted,
+        (now - timedelta(days=stale_after_days)).isoformat(),
+        max(int(batch), 1),
+    ]
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            cur = conn.execute(sql, params)
+            return int(cur.rowcount or 0)
+    except Exception:
+        logger.warning("stale-sweep fejlede for %s — falder tilbage til scan", table, exc_info=True)
+        return None
+
+
 def _sweep_early_retire(spec: SignalTrackingSpec, table: str) -> int:
     """Apply the early-retire predicate inside the narrow window between the two
     windows. Bounded by ``stale_sweep_batch``; rows outside the window are left

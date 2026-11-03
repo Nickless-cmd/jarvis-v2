@@ -50,6 +50,20 @@ def track_runtime_private_state_snapshots_for_visible_turn(
 
 
 def refresh_runtime_private_state_snapshot_statuses() -> dict[str, int]:
+    # 3/11-2026: den tidligere form scannede `list_fn(limit=40)` — altsaa de
+    # NYESTE raekker, som pr. definition er friske. Stale-grenen var derfor
+    # strukturelt uopnaaelig i en tabel stoerre end 40. Sweep'en spoerger i
+    # stedet efter FOR GAMLE AKTIVE i SQL og rammer uanset tabelstoerrelse.
+    from core.services.signal_tracking_framework import sweep_stale_rows
+
+    swept = sweep_stale_rows(
+        table="runtime_private_state_snapshots",
+        statuses=("active",),
+        stale_after_days=_STALE_AFTER_DAYS,
+        stale_reason="Marked stale after bounded private-state snapshot inactivity window.",
+    )
+    if swept is not None:
+        return {"stale_marked": swept}
     now = datetime.now(UTC)
     refreshed = 0
     for item in list_runtime_private_state_snapshots(limit=40):

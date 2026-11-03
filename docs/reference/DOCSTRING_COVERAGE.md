@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9632/17981 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9633/17982 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9632/17981 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6433 | 12234 | 52% |
+| `core.services` | 6434 | 12235 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1591,7 +1591,7 @@ Generated from source. 9632/17981 functions/methods documented (53%). The list b
 - `core/services/private_inner_note_signal_tracking.py` :: `build_runtime_private_inner_note_signal_surface` (L77)
 - `core/services/private_inner_note_signal_tracking.py` :: `refresh_runtime_private_inner_note_signal_statuses` (L73)
 - `core/services/private_inner_note_signal_tracking.py` :: `track_runtime_private_inner_note_signals_for_visible_turn` (L38)
-- `core/services/private_state_snapshot_tracking.py` :: `build_runtime_private_state_snapshot_surface` (L85)
+- `core/services/private_state_snapshot_tracking.py` :: `build_runtime_private_state_snapshot_surface` (L99)
 - `core/services/private_state_snapshot_tracking.py` :: `refresh_runtime_private_state_snapshot_statuses` (L52)
 - `core/services/private_state_snapshot_tracking.py` :: `track_runtime_private_state_snapshots_for_visible_turn` (L20)
 - `core/services/private_temporal_curiosity_state_tracking.py` :: `build_runtime_private_temporal_curiosity_state_surface` (L82)
@@ -2014,7 +2014,7 @@ Generated from source. 9632/17981 functions/methods documented (53%). The list b
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
 - `core/services/self_experiments.py` :: `build_self_experiments_surface` (L456)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
-- `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L155)
+- `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L169)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)
 - `core/services/self_model_signal_tracking.py` :: `track_runtime_self_model_signals_for_visible_turn` (L28)
 - `core/services/self_narrative_continuity_signal_tracking.py` :: `build_runtime_self_narrative_continuity_signal_surface` (L68)
@@ -2026,16 +2026,16 @@ Generated from source. 9632/17981 functions/methods documented (53%). The list b
 - `core/services/self_repair_engine.py` :: `enable_pattern` (L297)
 - `core/services/self_repair_engine.py` :: `list_patterns` (L287)
 - `core/services/self_repair_engine.py` :: `list_recent_attempts` (L309)
-- `core/services/self_review_cadence_signal_tracking.py` :: `build_runtime_self_review_cadence_signal_surface` (L95)
+- `core/services/self_review_cadence_signal_tracking.py` :: `build_runtime_self_review_cadence_signal_surface` (L109)
 - `core/services/self_review_cadence_signal_tracking.py` :: `refresh_runtime_self_review_cadence_signal_statuses` (L64)
 - `core/services/self_review_cadence_signal_tracking.py` :: `track_runtime_self_review_cadence_signals_for_visible_turn` (L22)
-- `core/services/self_review_outcome_tracking.py` :: `build_runtime_self_review_outcome_surface` (L83)
+- `core/services/self_review_outcome_tracking.py` :: `build_runtime_self_review_outcome_surface` (L97)
 - `core/services/self_review_outcome_tracking.py` :: `refresh_runtime_self_review_outcome_statuses` (L52)
 - `core/services/self_review_outcome_tracking.py` :: `track_runtime_self_review_outcomes_for_visible_turn` (L30)
 - `core/services/self_review_record_tracking.py` :: `build_runtime_self_review_record_surface` (L83)
 - `core/services/self_review_record_tracking.py` :: `refresh_runtime_self_review_record_statuses` (L52)
 - `core/services/self_review_record_tracking.py` :: `track_runtime_self_review_records_for_visible_turn` (L30)
-- `core/services/self_review_run_tracking.py` :: `build_runtime_self_review_run_surface` (L85)
+- `core/services/self_review_run_tracking.py` :: `build_runtime_self_review_run_surface` (L99)
 - `core/services/self_review_run_tracking.py` :: `refresh_runtime_self_review_run_statuses` (L54)
 - `core/services/self_review_run_tracking.py` :: `track_runtime_self_review_runs_for_visible_turn` (L32)
 - `core/services/self_review_signal_tracking.py` :: `build_runtime_self_review_signal_surface` (L53)

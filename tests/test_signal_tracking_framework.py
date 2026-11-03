@@ -172,3 +172,93 @@ def test_build_surface_buckets_and_summary():
     assert surface["summary"]["softening_count"] == 1
     assert surface["summary"]["stale_count"] == 1
     assert surface["summary"]["current_status"] == "active"
+
+
+# ── generisk sweep for outcome-tabeller (3/11-2026) ──────────────────────────
+def test_sweep_stale_rows_rammer_uden_for_top_40(isolated_runtime):
+    """Den blinde vinkel: 60 gamle rækker + 40 friske.
+
+    Den gamle form scannede ``list_fn(limit=40)`` — altså de NYESTE 40, som alle
+    er friske — og kunne derfor aldrig markere de 60 gamle. Sweep'en spørger i
+    SQL og skal ramme dem alle uanset rækkefølge.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_core import connect
+
+    gammel = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    frisk = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS runtime_sweep_probe ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT, status_reason TEXT, "
+            "updated_at TEXT, created_at TEXT)"
+        )
+        conn.execute("DELETE FROM runtime_sweep_probe")
+        for _ in range(60):
+            conn.execute(
+                "INSERT INTO runtime_sweep_probe (status, status_reason, updated_at, created_at) "
+                "VALUES ('active', '', ?, ?)",
+                (gammel, gammel),
+            )
+        for _ in range(40):
+            conn.execute(
+                "INSERT INTO runtime_sweep_probe (status, status_reason, updated_at, created_at) "
+                "VALUES ('active', '', ?, ?)",
+                (frisk, frisk),
+            )
+
+    markeret = f.sweep_stale_rows(
+        table="runtime_sweep_probe",
+        statuses=("active",),
+        stale_after_days=7,
+        stale_reason="test",
+        batch=2000,
+    )
+    assert markeret == 60, f"forventede 60 markerede, fik {markeret}"
+
+    with connect() as conn:
+        tilbage = conn.execute(
+            "SELECT COUNT(*) FROM runtime_sweep_probe WHERE status = 'active'"
+        ).fetchone()[0]
+    assert tilbage == 40, "de friske rækker må ikke røres"
+
+
+def test_sweep_stale_rows_er_bounded(isolated_runtime):
+    """Batch-loftet skal holde — sweep'en må ikke låse DB'en i ét stort hug."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_core import connect
+
+    gammel = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+    with connect() as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS runtime_sweep_probe2 ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT, status_reason TEXT, "
+            "updated_at TEXT, created_at TEXT)"
+        )
+        conn.execute("DELETE FROM runtime_sweep_probe2")
+        for _ in range(25):
+            conn.execute(
+                "INSERT INTO runtime_sweep_probe2 (status, status_reason, updated_at, created_at) "
+                "VALUES ('active', '', ?, ?)",
+                (gammel, gammel),
+            )
+
+    foerste = f.sweep_stale_rows(
+        table="runtime_sweep_probe2", statuses=("active",), stale_after_days=7, batch=10
+    )
+    anden = f.sweep_stale_rows(
+        table="runtime_sweep_probe2", statuses=("active",), stale_after_days=7, batch=10
+    )
+    tredje = f.sweep_stale_rows(
+        table="runtime_sweep_probe2", statuses=("active",), stale_after_days=7, batch=10
+    )
+    assert (foerste, anden, tredje) == (10, 10, 5), "batchen skal tage 10 ad gangen"
+
+
+def test_sweep_stale_rows_afviser_ukendt_tabel():
+    """Et tabelnavn uden for mønstret må aldrig interpoleres i SQL."""
+    assert f.sweep_stale_rows(
+        table="users; DROP TABLE x", statuses=("active",), stale_after_days=7
+    ) is None

@@ -352,15 +352,16 @@ _Spec-driven framework for the ``*_signal_tracking`` family._
 | function | `_resolve_sweep_table` | `(spec)` | Table name for the sweep, verified against sqlite_master (never guessed). | [src](../../../core/services/signal_tracking_framework.py#L233) |
 | function | `_sweep_stale_signals` | `(spec)` | SQL set-operation: mark old *active* rows stale, bounded per call. | [src](../../../core/services/signal_tracking_framework.py#L265) |
 | function | `_sweep_older_than` | `(spec, table, days)` | — | [src](../../../core/services/signal_tracking_framework.py#L291) |
-| function | `_sweep_early_retire` | `(spec, table)` | Apply the early-retire predicate inside the narrow window between the two | [src](../../../core/services/signal_tracking_framework.py#L336) |
-| function | `_refresh_via_scan` | `(spec)` | Legacy bounded scan — only reached for early-retire specs or when the | [src](../../../core/services/signal_tracking_framework.py#L397) |
-| function | `build_surface` | `(spec, *, limit=…)` | Refresh, list, bucket by status, summarise — the read surface. | [src](../../../core/services/signal_tracking_framework.py#L435) |
-| function | `persist_signals` | `(spec, *, signals, session_id, run_id)` | Upsert candidates, supersede same-group siblings, publish events. | [src](../../../core/services/signal_tracking_framework.py#L473) |
-| function | `_supersede_and_publish` | `(spec, *, signal, item, now)` | — | [src](../../../core/services/signal_tracking_framework.py#L510) |
-| function | `_publish_lifecycle` | `(spec, *, item)` | — | [src](../../../core/services/signal_tracking_framework.py#L536) |
-| function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L560) |
-| function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L614) |
-| function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L626) |
+| function | `sweep_stale_rows` | `(*, table, statuses, stale_after_days, stale_status=…, stale_reason=…, batch=…)` | Generisk stale-sweep for tabeller der IKKE er signal-specs. | [src](../../../core/services/signal_tracking_framework.py#L336) |
+| function | `_sweep_early_retire` | `(spec, table)` | Apply the early-retire predicate inside the narrow window between the two | [src](../../../core/services/signal_tracking_framework.py#L395) |
+| function | `_refresh_via_scan` | `(spec)` | Legacy bounded scan — only reached for early-retire specs or when the | [src](../../../core/services/signal_tracking_framework.py#L456) |
+| function | `build_surface` | `(spec, *, limit=…)` | Refresh, list, bucket by status, summarise — the read surface. | [src](../../../core/services/signal_tracking_framework.py#L494) |
+| function | `persist_signals` | `(spec, *, signals, session_id, run_id)` | Upsert candidates, supersede same-group siblings, publish events. | [src](../../../core/services/signal_tracking_framework.py#L532) |
+| function | `_supersede_and_publish` | `(spec, *, signal, item, now)` | — | [src](../../../core/services/signal_tracking_framework.py#L569) |
+| function | `_publish_lifecycle` | `(spec, *, item)` | — | [src](../../../core/services/signal_tracking_framework.py#L595) |
+| function | `make_candidate` | `(spec, *, signal_type, discriminator, key, status, title, summary, rationale, status_reason, source_items=…, confidence=…, group_value=…, source_kind=…, fragment_cap=…)` | Build a candidate dict with a spec-formatted canonical_key. | [src](../../../core/services/signal_tracking_framework.py#L619) |
+| function | `stronger_confidence` | `(*values, ranks=…)` | Highest-ranked confidence among ``values`` (S-family merge). | [src](../../../core/services/signal_tracking_framework.py#L673) |
+| function | `_publish` | `(event_name, payload)` | — | [src](../../../core/services/signal_tracking_framework.py#L685) |
 
 ## `core/services/silence_detector.py`
 _Silence Detector — what is the user NOT saying?_

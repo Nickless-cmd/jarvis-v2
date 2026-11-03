@@ -179,3 +179,53 @@ def test_vaerktoejet_er_registreret():
         if isinstance(d, dict)
     }
     assert "wonder_verdict" in navne
+
+
+def test_raesonnement_er_ikke_en_undren(monkeypatch):
+    """Målt 3/11-2026: 2 af 335 poster bar modellens egen tænkning som undren —
+    `<think>Okay, so I need to create an unasked question…`. Uden en gate bliver
+    den et spørgsmål der vises i prompten hver tur."""
+    from datetime import UTC, datetime
+
+    from core.services import existential_wonder_daemon as wd
+
+    gemte: list[dict] = []
+    monkeypatch.setattr(wd, "insert_private_brain_record", lambda **k: gemte.append(k))
+
+    afvist = wd._store_wonder(
+        "<think>Okay, so I need to create an unasked question about my existence",
+        datetime.now(UTC),
+        trigger={},
+    )
+    assert afvist == ""
+    assert gemte == [], "ræsonnement må ikke nå databasen"
+
+
+def test_rigtigt_spoergsmaal_slipper_gennem_gaten(monkeypatch):
+    """Gaten skal være smal: et dansk spørgsmål i jeg-form er en ægte undren."""
+    from datetime import UTC, datetime
+
+    from core.services import existential_wonder_daemon as wd
+
+    gemte: list[dict] = []
+    monkeypatch.setattr(wd, "insert_private_brain_record", lambda **k: gemte.append(k))
+
+    record_id = wd._store_wonder(
+        "Er den stemme der analyserer koden mig, eller blot et spejl?",
+        datetime.now(UTC),
+        trigger={"absence_hours": 2.0},
+    )
+    assert record_id.startswith("pb-wonder-")
+    assert len(gemte) == 1
+    assert "spejl" in gemte[0]["summary"]
+
+
+def test_haendelsen_udsendes_efter_posten_er_gemt(monkeypatch):
+    """Dead code målt 3/11-2026: `return record_id` stod FØR event_bus.publish,
+    så hændelsen aldrig blev udsendt. Rækkefølgen er kontrakten."""
+    import inspect
+
+    from core.services import existential_wonder_daemon as wd
+
+    kilde = inspect.getsource(wd._store_wonder)
+    assert kilde.index("existential_wonder.generated") < kilde.rindex("return record_id")

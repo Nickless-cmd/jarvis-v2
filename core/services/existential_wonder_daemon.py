@@ -18,6 +18,10 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.provider_error_guard import (
+    looks_like_protocol_leak,
+    looks_like_reasoning_leak,
+)
 from core.runtime.db import insert_private_brain_record
 from core.services.identity_composer import build_identity_preamble
 
@@ -396,6 +400,22 @@ def _store_wonder(wonder: str, now: datetime, *, trigger: dict | None = None) ->
 
     Returnerer record_id ('' hvis skrivningen blev afvist).
     """
+    # Maalt 3/11-2026: 2 af 335 poster bar modellens RAESONNEMENT som undren —
+    # "<think>Okay, so I need to create an unasked question...". Det er samme
+    # fejlform som protokol-token-laekagen: modellen svarer med sin taenkning i
+    # stedet for sit svar, og uden en gate bliver den et spoergsmaal der vises i
+    # prompten hver tur. En undren skal vaere et spoergsmaal, ikke et spor af
+    # hvordan den blev til.
+    if looks_like_protocol_leak(wonder) or looks_like_reasoning_leak(wonder):
+        try:
+            event_bus.publish(
+                "existential_wonder.rejected",
+                {"reason": "reasoning-leak", "preview": str(wonder)[:120]},
+            )
+        except Exception:  # afvisningen er allerede sket; haendelsen er kosmetisk
+            pass
+        return ""
+
     now_iso = now.isoformat()
     record_id = f"pb-wonder-{uuid4().hex[:12]}"
     detail = json.dumps(
@@ -430,13 +450,13 @@ def _store_wonder(wonder: str, now: datetime, *, trigger: dict | None = None) ->
             created_at=now_iso,
             domain="undren",
         )
-    except Exception:
+    except Exception:  # en skrivning der fejler maa ikke vaelte daemonen — '' = intet at vurdere
         return ""
-    return record_id
     try:
         event_bus.publish(
             "existential_wonder.generated",
             {"wonder": wonder, "generated_at": now_iso},
         )
-    except Exception:
+    except Exception:  # posten ER gemt; en haendelse der ikke kan sendes aendrer ikke det
         pass
+    return record_id

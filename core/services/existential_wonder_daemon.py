@@ -13,6 +13,7 @@ Examples:
 """
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -114,7 +115,15 @@ def tick_existential_wonder_daemon(
         _wonder_buffer = _wonder_buffer[:_BUFFER_MAX]
     _last_tick_at = now
 
-    _store_wonder(wonder, now)
+    _store_wonder(
+        wonder,
+        now,
+        trigger={
+            "absence_hours": round(float(absence_hours), 2),
+            "fragment_count": int(fragment_count),
+            "gate": "cluster" if skip_event_gate else ("event" if event_gate.event_driven_enabled() else "cadence"),
+        },
+    )
 
     # AKSE 5 — foreslaa en raads-indkaldelse GENNEM grund-dommeren, som vejer
     # undren mod den floedende tilstand.
@@ -156,7 +165,7 @@ def _maybe_propose_convening(wonder: str) -> bool:
         except Exception:
             pass
         return proposed
-    except Exception:
+    except Exception:  # et selskab der ikke kan foreslås må ikke vælte undren-generationen
         return False
 
 
@@ -169,7 +178,184 @@ def build_existential_wonder_surface() -> dict:
         "latest_wonder": _latest_wonder,
         "wonder_buffer": _wonder_buffer[:_BUFFER_MAX],
         "last_generated_at": _last_tick_at.isoformat() if _last_tick_at else "",
+        "open_count": len(open_wonders(limit=50)),
     }
+
+
+# ---------------------------------------------------------------------------
+# Tre-trins-kæden (Bjørn 3/11-2026)
+#
+# Undren var tidligere et spørgsmål der blev kastet ind i en fraværs-digest og
+# aldrig vurderet. Kæden er: hjernen (persistér) → svaret (forhold dig, og gem
+# udfaldet) → mønstret (mål bevægelsen mod den baseline der blev skrevet ved
+# oprettelsen). Vaernet ligger EFTER hvert trin, ikke foran: et filter foran
+# undren kan altid omgås ved at lade være med at undre sig.
+# ---------------------------------------------------------------------------
+
+VERDICTS = ("vurderet-ikke-delt", "taget-nu", "parkeret", "besvaret")
+
+_OPEN_SCAN_LIMIT = 60
+
+
+def _parse_detail(detail: object) -> dict:
+    """Læs den strukturerede detail. Ældre poster har fri tekst ('ubesvaret')."""
+    raw = str(detail or "").strip()
+    if not raw.startswith("{"):
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:  # ældre poster har fri tekst — ustruktureret detail er ikke en fejl
+        return {}
+
+
+def _normaliser(wonder: str) -> str:
+    return " ".join(str(wonder or "").lower().split())
+
+
+def open_wonders(*, limit: int = 5) -> list[dict]:
+    """De undren der IKKE er vurderet endnu, ældste først.
+
+    En undren kan ligge åben længe — det er ikke en opgave med en frist. Den er
+    åben indtil den blev vurderet, og først da findes der et udfald at måle på.
+    Self-safe → [].
+    """
+    try:
+        from core.runtime.db import list_private_brain_records
+
+        poster = list_private_brain_records(
+            record_type="existential-wonder", limit=_OPEN_SCAN_LIMIT
+        )
+    except Exception:  # en læsefejl giver tom liste, ikke en væltet prompt-bygning
+        return []
+    ud: list[dict] = []
+    for post in poster or []:
+        detail = _parse_detail(post.get("detail"))
+        if str(detail.get("verdict") or "").strip():
+            continue
+        ud.append(
+            {
+                "record_id": str(post.get("record_id") or ""),
+                "wonder": str(post.get("summary") or "").strip(),
+                "created_at": str(post.get("created_at") or ""),
+                "trigger": detail.get("trigger") or {},
+                "baseline": detail.get("baseline") or {},
+            }
+        )
+        if len(ud) >= limit:
+            break
+    return ud
+
+
+def wonder_repeat_count(wonder: str) -> int:
+    """Hvor mange gange er samme spørgsmål rejst? Vagten i trin 3.
+
+    Fem uændrede gentagelser betyder at undren sidder fast og skal hjælpes
+    videre — ikke gentages igen.
+    """
+    target = _normaliser(wonder)
+    if not target:
+        return 0
+    try:
+        from core.runtime.db import list_private_brain_records
+
+        poster = list_private_brain_records(
+            record_type="existential-wonder", limit=_OPEN_SCAN_LIMIT
+        )
+    except Exception:  # uden læsning er gentagelser ukendte — 0 er det ærlige svar
+        return 0
+    return sum(1 for p in (poster or []) if _normaliser(p.get("summary")) == target)
+
+
+def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
+    """Gem vurderingen som et udfald. Trin 2's eneste varige spor.
+
+    Udfaldet er ét af VERDICTS. En undren der ikke er vurderet, er stadig åben —
+    derfor er en tom verdict ikke det samme som 'parkeret'.
+    """
+    v = str(verdict or "").strip().lower().replace("_", "-")
+    if v not in VERDICTS:
+        return {"status": "error", "error": f"ukendt udfald: {verdict!r}", "gyldige": list(VERDICTS)}
+    rid = str(record_id or "").strip()
+    if not rid:
+        return {"status": "error", "error": "record_id mangler"}
+    try:
+        from core.runtime.db import get_private_brain_record
+        from core.runtime.db_core import connect
+
+        post = get_private_brain_record(rid)
+        if not post:
+            return {"status": "error", "error": f"ukendt undren: {rid}"}
+        detail = _parse_detail(post.get("detail"))
+        detail["verdict"] = v
+        detail["verdict_note"] = str(note or "")[:600]
+        detail["verdict_at"] = datetime.now(UTC).isoformat()
+        with connect() as conn:
+            conn.execute(
+                "UPDATE private_brain_records SET detail = ?, updated_at = ? WHERE record_id = ?",
+                (json.dumps(detail, ensure_ascii=False), detail["verdict_at"], rid),
+            )
+            conn.commit()
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)[:200]}
+    try:
+        event_bus.publish(
+            "existential_wonder.verdict",
+            {"record_id": rid, "verdict": v, "note": str(note or "")[:200]},
+        )
+    except Exception:  # udfaldet ER gemt; en hændelse der ikke kan sendes må ikke gøre det til en fejl
+        pass
+    return {
+        "status": "ok",
+        "record_id": rid,
+        "verdict": v,
+        "wonder": str(post.get("summary") or "")[:200],
+        "repeat_count": wonder_repeat_count(str(post.get("summary") or "")),
+    }
+
+
+def build_wonder_prompt_section(*, limit: int = 3) -> str | None:
+    """Undren i prompt-halen, FØR [HUKOMMELSE] (trin 2).
+
+    Den er ikke en besked til Bjørn og ikke en opgave der skal lukkes. Den er et
+    spørgsmål jeg skal forholde mig til — og vurderingen skal efterlade et spor,
+    ellers er den ikke foretaget. Derfor står værktøjsnavnet i sektionen: uden
+    et sted at skrive udfaldet bliver 'vurderet' igen til en historie.
+
+    None når der ikke ligger noget åbent → nul tokens brændt.
+    """
+    aabne = open_wonders(limit=limit)
+    if not aabne:
+        return None
+    linjer: list[str] = []
+    for u in aabne:
+        alder = ""
+        try:
+            oprettet = datetime.fromisoformat(str(u.get("created_at") or "").replace("Z", "+00:00"))
+            if oprettet.tzinfo is None:
+                oprettet = oprettet.replace(tzinfo=UTC)
+            timer = (datetime.now(UTC) - oprettet).total_seconds() / 3600.0
+            alder = f" (rejst for {timer:.0f} t siden)"
+        except Exception:
+            alder = ""
+        gentaget = wonder_repeat_count(str(u.get("wonder") or ""))
+        advarsel = (
+            f" ⚠ rejst {gentaget} gange uændret — den sidder fast, hjælp den videre"
+            if gentaget >= 5
+            else ""
+        )
+        linjer.append(f'- "{u.get("wonder")}"{alder}{advarsel}\n  id: {u.get("record_id")}')
+    return (
+        "🌱 UNDREN (privat — ikke en besked til Bjørn, ikke en opgave med frist)\n"
+        "Dette er spørgsmål du selv har rejst, og som ikke er vurderet endnu.\n"
+        "Forhold dig til dem FØR du svarer: er de relevante nu, skal de tages nu, "
+        "eller skal de parkeres? Du bestemmer selv om du deler en undren med Bjørn — "
+        "den har privatliv. Men vurderingen SKAL gemmes med værktøjet "
+        "`wonder_verdict(record_id, verdict, note)`; udfaldet er ét af "
+        "vurderet-ikke-delt, taget-nu, parkeret, besvaret. "
+        "En undren uden gemt udfald er stadig åben — også hvis du valgte ikke at dele den.\n"
+        + "\n".join(linjer)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -196,24 +382,57 @@ def _generate_wonder_question() -> str:
     return text
 
 
-def _store_wonder(wonder: str, now: datetime) -> None:
+def _store_wonder(wonder: str, now: datetime, *, trigger: dict | None = None) -> str:
+    """Persistér undren som en post der kan findes, tælles og aldersmåles.
+
+    Trin 1 i tre-trins-kæden (Bjørn 3/11-2026). Før stod der ``detail="ubesvaret"``
+    på alle 335 poster: en fri tekst, ikke en status, og uden spor af HVAD der
+    rejste spørgsmålet. Uden det spor kan trin 3 ikke måle om undren flyttede
+    noget — den ville kun kunne fortælles bagefter.
+
+    ``detail`` er derfor struktureret JSON med tre ting: hvad der rejste den
+    (trigger), hvordan tilstanden var da den blev rejst (baseline), og hvilket
+    udfald vurderingen gav (verdict, tom = stadig åben).
+
+    Returnerer record_id ('' hvis skrivningen blev afvist).
+    """
     now_iso = now.isoformat()
+    record_id = f"pb-wonder-{uuid4().hex[:12]}"
+    detail = json.dumps(
+        {
+            "trigger": trigger or {},
+            "baseline": {
+                # Målepunktet fra dag et: hvad var tilstanden da spørgsmålet
+                # opstod. Trin 3 måler bevægelse MOD dette, ikke mod en
+                # historie jeg fortæller om mig selv senere.
+                "at": now_iso,
+                "absence_hours": (trigger or {}).get("absence_hours", 0.0),
+                "fragment_count": (trigger or {}).get("fragment_count", 0),
+            },
+            "verdict": "",
+            "verdict_note": "",
+            "verdict_at": "",
+        },
+        ensure_ascii=False,
+    )
     try:
         insert_private_brain_record(
-            record_id=f"pb-wonder-{uuid4().hex[:12]}",
+            record_id=record_id,
             record_type="existential-wonder",
             layer="private_brain",
             session_id="heartbeat",
             run_id=f"existential-wonder-daemon-{uuid4().hex[:12]}",
             focus="eksistentiel-undren",
             summary=wonder,
-            detail="ubesvaret",
+            detail=detail,
             source_signals="existential-wonder-daemon:self-observation",
             confidence="low",
             created_at=now_iso,
+            domain="undren",
         )
     except Exception:
-        pass
+        return ""
+    return record_id
     try:
         event_bus.publish(
             "existential_wonder.generated",

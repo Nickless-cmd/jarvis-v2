@@ -3213,6 +3213,20 @@ def _build_visible_chat_prompt_assembly_impl(
             )
     except Exception as _e:
         _sec_err("current-turn decision action", _e)
+    # Trin 2 i undren-kaeden (Bjoern 3/11-2026): spoergsmaalet skal MOEDES, ikke
+    # sendes. Det ligger her — foer hukommelsesgruppen — fordi det er en
+    # vurdering jeg skal foretage FOER jeg svarer, ikke et minde jeg slaar op.
+    # Blokken er cache-stabil: den aendrer sig kun naar en undren rejses eller
+    # vurderes, ikke med brugerens besked. Self-safe → ingen sektion.
+    try:
+        from core.services.existential_wonder_daemon import build_wonder_prompt_section
+
+        _wonder_text = build_wonder_prompt_section()
+        if _wonder_text:
+            _dyn_tail.append(_wonder_text)
+            derived_inputs.append("undren (user-msg tail)")
+    except Exception as _e:
+        _sec_err("undren", _e)
     if _dyn_memory_recall:
         _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)

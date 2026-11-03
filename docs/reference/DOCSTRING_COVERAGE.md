@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9570/17921 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9577/17928 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 9570/17921 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6372 | 12175 | 52% |
+| `core.services` | 6378 | 12181 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 613 | 1167 | 52% |
+| `core.tools` | 614 | 1168 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1257,8 +1257,8 @@ Generated from source. 9570/17921 functions/methods documented (53%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L66)
 - `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L62)
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
-- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L167)
-- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L163)
+- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L176)
+- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L172)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L61)
@@ -1642,13 +1642,13 @@ Generated from source. 9570/17921 functions/methods documented (53%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3632)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3480)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3769)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3646)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3494)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3783)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4711)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4725)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)

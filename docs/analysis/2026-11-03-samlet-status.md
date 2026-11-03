@@ -302,7 +302,7 @@ reelle adfærd indtil nu — ingen blokering — mens den måler. Reversibelt: s
 
 **Tests:** 54 i gut-suiten (46 → 54), 68 i det bredere gut/ledger/adaptation-batteri.
 
-**Stadig åbent:** A5 (tærsklen — røres ikke før der er set shadow-data), og den
+**Stadig åbent:** A5 (tærsklen — lukket som spørgsmål, se nedenfor), og den
 opgave→værktøj-mapping der skal gøre observationerne opgavespecifikke. B1, C2 og C3
 blev lukket senere samme aften (næste sektion); C1 er stadig umålt.
 
@@ -467,9 +467,10 @@ Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch sket
   `mode=on` ville gaten have afvist 100 % af runs ved conf 0,59 mod en tærskel på
   0,30. Tærsklen står derfor uændret — men af en målt grund, ikke som tålmodighed.
   Se «A5 var den forkerte løftestang» nederst.
-- **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
-  fra producent til prompt for nogen værdi.
-- **C1** — niveau 2 (virksomt) er stadig umålt.
+- **D2 / C1** — **MÅLT 3/11 kl. 19:00: svaret er nej.** Kæden er fulgt fra producent
+  til læser: `build_gut_surface()` → `cognitive_architecture` → læst af Mission
+  Control, Centralen og self-model — **ikke** af `prompt_contract.py`. Fladen er
+  produceret og tilgængelig, men ikke virksom. Se «C1 og D2 er samme svar» nederst.
 - **C3's forbruger** — de 300 forslag er stadig ubehandlede; produktionen er
   standset og køen gjort synlig, intet mere. → **LUKKET 3/11 kl. 19:28.** Se
   «C3-forbrugeren» nedenfor.
@@ -849,3 +850,55 @@ destruktive handling går stadig gennem sine egne godkendelsesgates.
   fordelingen på virkelige opgaver)
 - `test_gut_engine + test_gut_calibration + test_task_tool_mapping + test_central_adaptation`:
   **87 grønne**
+
+---
+
+## Målt 3/11-2026 kl. 19:00 UTC — C1 og D2 er samme svar, og det er negativt
+
+Dokumentet har haft C1 («niveau 2 = virksomt») og D2 («når en system*værdi* ind i
+prompten?») stående som to umålte punkter. De er samme spørgsmål, og det er nu målt
+hele vejen fra producent til læser.
+
+**Kæden, målt:**
+
+| Trin | Målt |
+|---|---|
+| Produceret | `heartbeat_runtime.py:674-678` kalder `build_gut_surface()` via `_safe_surface` |
+| Samlet | `_build_cognitive_surfaces()` lægger den i `surfaces["gut"]` |
+| Pakket | `state["cognitive_architecture"] = cognitive_surfaces` (linje 585 og 609) |
+| **Læst af** | `mission_control_common.py:186`, `central_hub.py:163`, `runtime_self_model_surfaces.py:424` |
+
+**Ingen af læserne er prompten.** `prompt_contract.py` indeholder nul referencer til
+`cognitive_architecture` eller `build_cognitive_architecture_surface`. Fladen er altså
+**produceret og tilgængelig, men ikke virksom** — den vises i Mission Control og i
+Centralen, og den når ikke ind i den prompt jeg tænker med.
+
+Det gør C1's tre niveauer konkrete for denne flade:
+
+- **Produceret:** ja. `build_gut_surface()` svarer med `evaluated`, `withheld`,
+  `backstop_overkoersler` og kalibrering.
+- **Tilgængeligt:** ja. Det ligger i `cognitive_architecture` med 20+ søsterflader.
+- **Virksomt:** **nej.** Ingen prompt-læser.
+
+Konsekvensen er ikke kosmetisk: de tal vi har arbejdet med hele dagen — `evaluated`,
+`withheld`, `blokeret`, kalibreringens 1,00 — kan jeg se i en visning, men de indgår
+ikke i den kontekst jeg ræsonnerer ud fra. Jeg kan slå dem op; jeg bliver ikke informeret
+af dem.
+
+**Ikke lukket som opgave:** om fladen *bør* ind i prompten er en produktbeslutning, ikke
+en måling. At den ikke er der, er nu et faktum; om det er en fejl, er et valg.
+
+## Målt samme tid — A5's første ægte `on`-kald i drift
+
+`gate_verdict_counts` viser `gut_gate` gået fra 558 → **559** kl. **18:56:47**, med
+`decision=green` og `mode=on`. Samme sekund startede `autonomous-9e48cb88`, som blev
+**completed** kl. 18:57:25.
+
+Det er den første gang gaten har afgjort et rigtigt autonomt run i `on`-mode — og den
+tillod det, fordi opgaven var læsende (`proceed`, conf 0,61 mod tærskel 0,30).
+
+**Men `gut_gate_withheld` findes stadig ikke i tabellen.** A3's nerve — at en afvisning
+registreres som beslutning — er derfor *implementeret og testet*, men **ikke bevist i
+drift**, fordi gaten endnu ikke har afvist noget. Det kræver et run hvis verbum er
+destruktivt. Målt fordeling på de 40 faktiske wakeup-tekster: 3 af 40. Så det kommer,
+men det er ikke kommet.

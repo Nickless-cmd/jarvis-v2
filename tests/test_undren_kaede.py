@@ -272,3 +272,94 @@ def test_haendelsen_udsendes_efter_posten_er_gemt(monkeypatch):
 
     kilde = inspect.getsource(wd._store_wonder)
     assert kilde.index("existential_wonder.generated") < kilde.rindex("return record_id")
+
+
+# ── håndtaget: et id skal kunne føres tilbage til sin række ─────────────
+
+
+def test_praecist_id_gaar_uaendret_igennem(monkeypatch):
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(
+        brain_db,
+        "get_private_brain_record",
+        lambda rid: {"record_id": rid, "record_type": "existential-wonder"},
+    )
+    rid, kandidater = wd._resolve_wonder_id("pb-wonder-abc123def456")
+    assert rid == "pb-wonder-abc123def456"
+    assert kandidater == []
+
+
+def test_haandtag_med_forkert_praefiks_foeres_tilbage(monkeypatch):
+    """Målt 3/11-2026: et håndtag der ikke matchede præcist gav en blindgyde, så
+    dommen gik tabt. Bærer håndtaget den rigtige hex under et forkert præfiks,
+    skal det stadig ramme rækken — hex-halen er det entydige."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(brain_db, "get_private_brain_record", lambda rid: None)
+    monkeypatch.setattr(
+        wd,
+        "_wonder_handle_rows",
+        lambda **k: [{"record_id": "pb-wonder-3850f34973b8", "wonder": "Er jeg bevidst?"}],
+    )
+    rid, kandidater = wd._resolve_wonder_id("und-3850f34973b8")
+    assert rid == "pb-wonder-3850f34973b8"
+    assert kandidater == []
+
+
+def test_tvetydig_hex_hale_afvises(monkeypatch):
+    """To rækker der deler halen må ikke gættes imellem — så rammer dommen forkert."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(brain_db, "get_private_brain_record", lambda rid: None)
+    monkeypatch.setattr(
+        wd,
+        "_wonder_handle_rows",
+        lambda **k: [
+            {"record_id": "pb-wonder-aa1234567890", "wonder": "A?"},
+            {"record_id": "pb-wonder-bb1234567890", "wonder": "B?"},
+        ],
+    )
+    rid, _ = wd._resolve_wonder_id("und-1234567890")
+    assert rid == "", "en tvetydig hale må ikke føre til en vilkårlig række"
+
+
+def test_ukendt_haandtag_svarer_med_kandidater(monkeypatch):
+    """Et ukendt id skal fortælle hvad der FINDES. Uden det er svaret en blindgyde
+    der efterlader undren åben uden at nogen kan se hvorfor."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(brain_db, "get_private_brain_record", lambda rid: None)
+    monkeypatch.setattr(wd, "_wonder_handle_rows", lambda **k: [])
+    monkeypatch.setattr(
+        wd,
+        "open_wonders",
+        lambda **k: [
+            {
+                "record_id": "pb-wonder-aabent1",
+                "wonder": "Er jeg bevidst?",
+                "created_at": "",
+                "trigger": {},
+                "baseline": {},
+            }
+        ],
+    )
+    svar = wd.set_wonder_verdict("und-zzzzzzzzzz", "parkeret")
+    assert svar["status"] == "error"
+    assert svar["aabne"][0]["record_id"] == "pb-wonder-aabent1"
+    assert "pb-wonder-" in svar["hint"]
+
+
+def test_en_raekke_der_ikke_er_en_undren_afvises(monkeypatch):
+    """Opslaget må ikke acceptere en vilkårlig private-brain-række som undren."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(
+        brain_db,
+        "get_private_brain_record",
+        lambda rid: {"record_id": rid, "record_type": "reflection"},
+    )
+    monkeypatch.setattr(wd, "_wonder_handle_rows", lambda **k: [])
+    monkeypatch.setattr(wd, "open_wonders", lambda **k: [])
+    rid, _ = wd._resolve_wonder_id("pb-reflection-abc")
+    assert rid == ""

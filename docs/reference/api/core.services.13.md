@@ -227,18 +227,20 @@ _Existential wonder daemon — open, unresolved questions from self-observation.
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count, *, skip_event_gate=…)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L50) |
-| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L145) |
-| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L176) |
-| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L180) |
-| function | `_parse_detail` | `(detail)` | Læs den strukturerede detail. Ældre poster har fri tekst ('ubesvaret'). | [src](../../../core/services/existential_wonder_daemon.py#L204) |
-| function | `_normaliser` | `(wonder)` | — | [src](../../../core/services/existential_wonder_daemon.py#L216) |
-| function | `open_wonders` | `(*, limit=…)` | De undren der IKKE er vurderet endnu, nyeste først. | [src](../../../core/services/existential_wonder_daemon.py#L220) |
-| function | `wonder_repeat_count` | `(wonder)` | Hvor mange gange er samme spørgsmål rejst? Vagten i trin 3. | [src](../../../core/services/existential_wonder_daemon.py#L261) |
-| function | `set_wonder_verdict` | `(record_id, verdict, *, note=…)` | Gem vurderingen som et udfald. Trin 2's eneste varige spor. | [src](../../../core/services/existential_wonder_daemon.py#L281) |
-| function | `build_wonder_prompt_section` | `(*, limit=…)` | Undren i prompt-halen, FØR [HUKOMMELSE] (trin 2). | [src](../../../core/services/existential_wonder_daemon.py#L328) |
-| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L377) |
-| function | `_store_wonder` | `(wonder, now, *, trigger=…)` | Persistér undren som en post der kan findes, tælles og aldersmåles. | [src](../../../core/services/existential_wonder_daemon.py#L396) |
+| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count, *, skip_event_gate=…)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L51) |
+| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L146) |
+| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L177) |
+| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L181) |
+| function | `_parse_detail` | `(detail)` | Læs den strukturerede detail. Ældre poster har fri tekst ('ubesvaret'). | [src](../../../core/services/existential_wonder_daemon.py#L205) |
+| function | `_normaliser` | `(wonder)` | — | [src](../../../core/services/existential_wonder_daemon.py#L217) |
+| function | `open_wonders` | `(*, limit=…)` | De undren der IKKE er vurderet endnu, nyeste først. | [src](../../../core/services/existential_wonder_daemon.py#L221) |
+| function | `wonder_repeat_count` | `(wonder)` | Hvor mange gange er samme spørgsmål rejst? Vagten i trin 3. | [src](../../../core/services/existential_wonder_daemon.py#L262) |
+| function | `_wonder_handle_rows` | `(*, limit=…)` | Alle wonder-håndtag, nyeste først — grundlaget for at føre et håndtag tilbage. | [src](../../../core/services/existential_wonder_daemon.py#L282) |
+| function | `_resolve_wonder_id` | `(record_id)` | Før et håndtag tilbage til sin række. Returnerer (record_id, kandidater). | [src](../../../core/services/existential_wonder_daemon.py#L300) |
+| function | `set_wonder_verdict` | `(record_id, verdict, *, note=…)` | Gem vurderingen som et udfald. Trin 2's eneste varige spor. | [src](../../../core/services/existential_wonder_daemon.py#L328) |
+| function | `build_wonder_prompt_section` | `(*, limit=…)` | Undren i prompt-halen, FØR [HUKOMMELSE] (trin 2). | [src](../../../core/services/existential_wonder_daemon.py#L386) |
+| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L435) |
+| function | `_store_wonder` | `(wonder, now, *, trigger=…)` | Persistér undren som en post der kan findes, tælles og aldersmåles. | [src](../../../core/services/existential_wonder_daemon.py#L454) |
 
 ## `core/services/experience_correction_listener.py`
 _Experience-episode correction enrichment — closes the negative-signal loop._

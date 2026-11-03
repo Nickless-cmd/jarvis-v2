@@ -14,6 +14,7 @@ Examples:
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -278,6 +279,52 @@ def wonder_repeat_count(wonder: str) -> int:
     return sum(1 for p in (poster or []) if _normaliser(p.get("summary")) == target)
 
 
+def _wonder_handle_rows(*, limit: int = 200) -> list[dict]:
+    """Alle wonder-håndtag, nyeste først — grundlaget for at føre et håndtag tilbage."""
+    try:
+        from core.runtime.db import list_private_brain_records
+
+        poster = list_private_brain_records(record_type="existential-wonder", limit=limit)
+    except Exception:  # en læsefejl giver tom liste — opslaget fejler pænt i stedet for at vælte
+        return []
+    return [
+        {
+            "record_id": str(p.get("record_id") or ""),
+            "wonder": str(p.get("summary") or "").strip(),
+        }
+        for p in poster or []
+        if str(p.get("record_id") or "").strip()
+    ]
+
+
+def _resolve_wonder_id(record_id: str) -> tuple[str, list[dict]]:
+    """Før et håndtag tilbage til sin række. Returnerer (record_id, kandidater).
+
+    Håndtaget kan være præcist (``pb-wonder-…``) eller bære den rigtige hex under
+    et forkert præfiks. Målt 3/11-2026: et håndtag der ikke matchede gav en
+    blindgyde uden kandidater, så dommen gik tabt uden at nogen kunne se hvad den
+    skulle have ramt. Et ukendt håndtag svarer derfor nu med de åbne undren.
+    """
+    rid = str(record_id or "").strip()
+    if not rid:
+        return "", []
+    try:
+        from core.runtime.db import get_private_brain_record
+
+        post = get_private_brain_record(rid)
+    except Exception:  # opslaget er en læsning; fejler den, prøver vi hale-matchet i stedet
+        post = None
+    if post and str(post.get("record_type") or "") == "existential-wonder":
+        return rid, []
+    match = re.search(r"([0-9a-f]{6,})", rid.lower())
+    if match:
+        hale = match.group(1)
+        hits = [r for r in _wonder_handle_rows() if r["record_id"].lower().endswith(hale)]
+        if len(hits) == 1:
+            return hits[0]["record_id"], []
+    return "", open_wonders(limit=5)
+
+
 def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
     """Gem vurderingen som et udfald. Trin 2's eneste varige spor.
 
@@ -290,6 +337,17 @@ def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
     rid = str(record_id or "").strip()
     if not rid:
         return {"status": "error", "error": "record_id mangler"}
+    rid, kandidater = _resolve_wonder_id(rid)
+    if not rid:
+        return {
+            "status": "error",
+            "error": f"ukendt undren: {record_id}",
+            "aabne": [
+                {"record_id": k.get("record_id"), "wonder": str(k.get("wonder") or "")[:120]}
+                for k in kandidater
+            ],
+            "hint": "brug record_id fra listen — formen er pb-wonder-<12 hex>",
+        }
     try:
         from core.runtime.db import get_private_brain_record
         from core.runtime.db_core import connect

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9578/17929 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9580/17931 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9578/17929 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6379 | 12182 | 52% |
+| `core.services` | 6381 | 12184 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1257,8 +1257,8 @@ Generated from source. 9578/17929 functions/methods documented (53%). The list b
 - `core/services/executive_contradiction_signal_tracking.py` :: `build_runtime_executive_contradiction_signal_surface` (L66)
 - `core/services/executive_contradiction_signal_tracking.py` :: `refresh_runtime_executive_contradiction_signal_statuses` (L62)
 - `core/services/executive_contradiction_signal_tracking.py` :: `track_runtime_executive_contradiction_signals_for_visible_turn` (L36)
-- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L180)
-- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L176)
+- `core/services/existential_wonder_daemon.py` :: `build_existential_wonder_surface` (L181)
+- `core/services/existential_wonder_daemon.py` :: `get_latest_wonder` (L177)
 - `core/services/experience_correction_listener.py` :: `stop_listener` (L358)
 - `core/services/experienced_time_daemon.py` :: `build_experienced_time_surface` (L149)
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_context_from_surfaces` (L61)

@@ -137,7 +137,7 @@ _Supplementary non-blocking recall during visible prompt assembly._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L17) |
+| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L18) |
 
 ## `core/services/prompt_mode_layout.py`
 _Reversible prompt-layout policy for the visible chat and code lanes._

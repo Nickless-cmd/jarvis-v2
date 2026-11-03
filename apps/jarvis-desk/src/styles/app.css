@@ -3306,6 +3306,20 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   color: var(--fg-2); cursor: pointer; font-size: 13px; }
 .jm-tab:hover { background: var(--bg-2); }
 .jm-tab.active { background: var(--bg-3); color: var(--fg-1); font-weight: 600; }
+/* Undertabs (3/11-2026): det gamle MC's underfaner — Sind -> Bevidsthed/Sjael/
+   Kognition. Bevidst en anden visuel vaegt end hovedfanerne: de vaelger GRUPPE,
+   ikke destination, og skal ikke konkurrere med dem om opmaerksomheden. */
+.jm-subtabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 10px; margin: -4px 0 8px; }
+.jm-subtab { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--fg-3); cursor: pointer; font-size: 12px; }
+.jm-subtab:hover { color: var(--fg-1); border-color: var(--fg-3); }
+.jm-subtab.active { background: var(--bg-3); color: var(--fg-1); border-color: var(--fg-3); font-weight: 600; }
+/* Label/vaerdi-raekker i et overflade-kort — det gamle MC's KV-moenster: label
+   daempet til venstre, vaerdien til hoejre, een raekke pr. felt. */
+.jm-kv { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.jm-kv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px;
+  line-height: 1.45; }
+.jm-kv-row > b { font-weight: 500; text-align: right; overflow-wrap: anywhere; }
 .jm-body { flex: 1; min-height: 0; }
 .jm-section { display: flex; flex-direction: column; gap: 12px; }
 .jm-section-head { display: flex; justify-content: space-between; align-items: center;

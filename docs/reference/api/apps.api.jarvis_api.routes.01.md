@@ -234,10 +234,10 @@ _Real-time Central-vindue til owner (jarvis-desk code mode)._
 | function | `central_council` | `(window=…)` | Council-observabilitet (B3): convocations/deadlocks/roller/event-vs-ondemand- | [src](../../../apps/api/jarvis_api/routes/central.py#L200) |
 | function | `central_shadow_review` | `()` | Shadow-eksperiment-register: hvilke shadow-vinduer kører, og hvilke er MODNE | [src](../../../apps/api/jarvis_api/routes/central.py#L209) |
 | function | `central_command` | `(payload)` | Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/ | [src](../../../apps/api/jarvis_api/routes/central.py#L220) |
-| function | `central_mind` | `(section=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L231) |
-| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L245) |
-| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L275) |
-| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L312) |
+| function | `central_mind` | `(section=…, tab=…)` | Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L231) |
+| function | `central_stream` | `()` | SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only. | [src](../../../apps/api/jarvis_api/routes/central.py#L247) |
+| function | `central_nerve_detail` | `(nerve)` | Lag 5: én nerves spor + kode-lokation + cluster + live tænd/sluk-tilstand. | [src](../../../apps/api/jarvis_api/routes/central.py#L277) |
+| function | `central_nerve_toggle` | `(nerve, enabled=…)` | Owner kill-switch: tænd/sluk en nerve LIVE (Lag 5). Sikkerheds-nerver kan IKKE | [src](../../../apps/api/jarvis_api/routes/central.py#L314) |
 
 ## `apps/api/jarvis_api/routes/central_absorb_routes.py`
 _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._

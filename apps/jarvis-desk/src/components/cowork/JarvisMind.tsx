@@ -27,6 +27,13 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
   const sections: MindIndexEntry[] = idx?.index ?? FALLBACK_TABS
   const [tab, setTab] = useState<string>('mind')
   const active = sections.find((s) => s.section === tab) ?? sections[0]
+  // Undertabs (3/11-2026): det gamle MC havde underfaner med felt-kategorier —
+  // Sind → Bevidsthed / Sjæl / Kognition. Strukturen kommer FRA hub-indexet, så
+  // fane-træet kun findes ét sted; ellers kan de to lister drive fra hinanden.
+  // Tom subTab = sektionens default; en ukendt værdi falder tilbage på den første.
+  const [subTab, setSubTab] = useState<string>('')
+  const tabs = active?.tabs ?? []
+  const effektivTab = tabs.some((t) => t.tab === subTab) ? subTab : (tabs[0]?.tab ?? '')
 
   // `live` ændrer sig SJÆLDENT (connect/disconnect) → drives op fra pulse-linjen, så de KONSTANTE
   // nerve-fyringer (items) bliver isoleret i LivePulseLine og IKKE re-renderer sektionerne.
@@ -57,9 +64,31 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
           </button>
         ))}
       </nav>
+      {tabs.length > 0 && (
+        <nav className="jm-subtabs" role="tablist" aria-label={`${active?.label ?? ''} undertabs`}>
+          {tabs.map((t) => (
+            <button
+              key={t.tab}
+              type="button"
+              role="tab"
+              aria-selected={effektivTab === t.tab}
+              className={`jm-subtab ${effektivTab === t.tab ? 'active' : ''}`}
+              onClick={() => setSubTab(t.tab)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      )}
       <LivePulseLine config={config} onLive={setLive} />
       <div className="jm-body">
-        <Section key={tab} config={config} section={tab} ready={active?.ready ?? false} />
+        <Section
+          key={`${tab}:${effektivTab}`}
+          config={config}
+          section={tab}
+          tab={effektivTab}
+          ready={active?.ready ?? false}
+        />
       </div>
     </div>
   )
@@ -94,11 +123,18 @@ function LivePulseLine({ config, onLive }: { config?: ApiConfig; onLive: (v: boo
   )
 }
 
-/** Én sektion: ren visning + AVANCERET-toggle (rå projektion). */
-function Section({ config, section, ready }: { config?: ApiConfig; section: string; ready: boolean }) {
+/** Én sektion: ren visning + AVANCERET-toggle (rå projektion). `tab` vælger en
+ *  undertab — hver undertab er sin egen gruppe på serveren, så payloaden bliver
+ *  2-36 KB i stedet for hele surfaces-dicten. */
+function Section({ config, section, tab, ready }: {
+  config?: ApiConfig
+  section: string
+  tab?: string
+  ready: boolean
+}) {
   const [advanced, setAdvanced] = useState(false)
   const { data, loading, error, refresh } = usePollWhenVisible(
-    () => getMindSection(config!, section), POLL_MS, !!config && ready,
+    () => getMindSection(config!, section, tab), POLL_MS, !!config && ready,
   )
   if (!ready) return <Placeholder section={section} />
   if (error) return <div className="jm-section jm-error">Kunne ikke hente: {error}</div>
@@ -230,21 +266,12 @@ function SectionView({ section, data, config, onActed }: {
   if (section === 'decisions') {
     return <DecisionsView data={data} config={config} onActed={onActed} />
   }
-  if (section === 'mind') {
-    const systems = (data.systems as { system: string; active: boolean; summary?: string }[]) ?? []
-    return (
-      <>
-        <div className="jm-section-sub">{String(data.summary ?? `${systems.length} systemer`)}</div>
-        <div className="jm-grid">
-          {systems.map((s) => (
-            <div key={s.system} className={`jm-card ${s.active ? 'on' : 'off'}`}>
-              <div className="jm-card-title"><span className={`jm-dot ${s.active ? 'on' : 'off'}`} />{s.system.replace(/_/g, ' ')}</div>
-              {s.summary && <div className="jm-card-sub">{s.summary}</div>}
-            </div>
-          ))}
-        </div>
-      </>
-    )
+  // Overflade-grupper (Sind → Bevidsthed/Sjæl/Kognition, plus Kroppen, Tråde,
+  // Relation): de samme 72 kognitive overflader som det gamle MC's underfaner
+  // viste, delt op så én hentning er 2-36 KB i stedet for 110 KB. Detektion på
+  // FORMEN, ikke på sektionsnavnet — en ny gruppe virker uden at røre denne fil.
+  if (data.surfaces && typeof data.surfaces === 'object') {
+    return <SurfacesView data={data} />
   }
   if (section === 'overview') {
     const cov = (data.coverage as Record<string, number>) ?? {}
@@ -831,6 +858,81 @@ function HardeningView({ data }: { data: Record<string, unknown> }) {
   )
 }
 
+interface SurfaceData {
+  active?: boolean
+  summary?: string
+  [k: string]: unknown
+}
+
+/** Én gruppe kognitive overflader — det gamle MC's Sjæl/Kognition-kort genopstået.
+ *
+ *  Hver overflade er et fladt dict med `active` + `summary` + en håndfuld tal.
+ *  Det gamle UI viste dem som `Section` med `KV`-rækker; her er den samme form,
+ *  fordi det er den der gør 20 kategorier læsbare uden at folde rå-laget ud.
+ *
+ *  `mangler` vises frem: forsvinder en overflade fra kilden, skal det kunne ses
+ *  som et navn — ikke bare blive et hul der ser ud som om der aldrig var noget.
+ */
+function SurfacesView({ data }: { data: Record<string, unknown> }) {
+  const surfaces = (data.surfaces ?? {}) as Record<string, SurfaceData>
+  const mangler = (Array.isArray(data.mangler) ? data.mangler : []) as string[]
+  const navne = Object.keys(surfaces)
+  if (navne.length === 0) {
+    return <div className="jm-section-sub">Ingen overflader i denne gruppe.</div>
+  }
+  return (
+    <>
+      <div className="jm-section-sub">
+        {navne.length} overflader
+        {mangler.length > 0 && (
+          <span className="jm-dim"> · mangler: {mangler.join(', ')}</span>
+        )}
+      </div>
+      <div className="jm-grid">
+        {navne.map((navn) => {
+          const s = surfaces[navn] ?? {}
+          const aktiv = s.active !== false
+          const felter = Object.entries(s)
+            .filter(([k, v]) => k !== 'summary' && k !== 'active'
+              && v !== null && v !== undefined && v !== '')
+            .slice(0, 12)
+          return (
+            <div key={navn} className={`jm-card ${aktiv ? 'on' : 'off'}`}>
+              <div className="jm-card-title">
+                <span className={`jm-dot ${aktiv ? 'on' : 'off'}`} />
+                {navn.replace(/_/g, ' ')}
+                {!aktiv && <span className="jm-dim">idle</span>}
+              </div>
+              {s.summary && <div className="jm-card-sub">{String(s.summary)}</div>}
+              {felter.length > 0 && (
+                <div className="jm-kv">
+                  {felter.map(([k, v]) => (
+                    <div key={k} className="jm-kv-row">
+                      <span className="jm-dim">{k.replace(/_/g, ' ')}</span>
+                      <b>{formatVaerdi(v)}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+/** Kort, ærlig formatering: tal uden unødig præcision, og samlinger som ANTAL
+ *  i stedet for en udskrift der ville sprænge kortet. */
+function formatVaerdi(v: unknown): string {
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(3)
+  if (typeof v === 'boolean') return v ? 'ja' : 'nej'
+  if (typeof v === 'string') return v.length > 160 ? `${v.slice(0, 160)}…` : v
+  if (Array.isArray(v)) return `${v.length} elementer`
+  if (v && typeof v === 'object') return `{${Object.keys(v as object).length} felter}`
+  return String(v)
+}
+
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className={`jm-stat ${tone ? `tone-${tone}` : ''}`}>
@@ -851,6 +953,15 @@ function Placeholder({ section }: { section: string }) {
 
 const FALLBACK_TABS: MindIndexEntry[] = [
   { section: 'overview', label: 'Oversigt', ready: true },
-  { section: 'mind', label: 'Sind', ready: true },
+  {
+    section: 'mind',
+    label: 'Sind',
+    ready: true,
+    tabs: [
+      { tab: 'bevidsthed', label: 'Bevidsthed' },
+      { tab: 'sjael', label: 'Sjæl' },
+      { tab: 'kognition', label: 'Kognition' },
+    ],
+  },
   { section: 'observability', label: 'Observabilitet', ready: true },
 ]

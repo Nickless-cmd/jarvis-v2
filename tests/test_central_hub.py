@@ -50,12 +50,15 @@ def test_unknown_section_is_error():
 
 
 def test_section_is_self_safe_on_builder_crash(monkeypatch):
-    # en byggers fejl må aldrig vælte hub'en — sektionen returnerer {error}
-    monkeypatch.setitem(h._BUILDERS, "mind",
+    # en byggers fejl må aldrig vælte hub'en — sektionen returnerer {error}.
+    # 3/11-2026: `mind` er ikke længere en ren bygger-sektion — den har undertabs
+    # og går gennem _surface_group, så byggeren aldrig kaldes. Testen skal ramme
+    # den sti den påstår at dække, ellers grønner den på ingenting.
+    monkeypatch.setitem(h._BUILDERS, "overview",
                         lambda: (_ for _ in ()).throw(RuntimeError("surface nede")))
-    r = h.mind_section("mind")
+    r = h.mind_section("overview")
     assert "surface nede" in r["error"] and r["active"] is False
-    assert r["section"] == "mind"
+    assert r["section"] == "overview"
 
 
 def test_snapshot_default_is_index_only():

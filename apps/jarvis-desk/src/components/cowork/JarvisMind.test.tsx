@@ -5,7 +5,11 @@ vi.mock('../../lib/api', () => ({
   getMindIndex: vi.fn().mockResolvedValue({
     index: [
       { section: 'overview', label: 'Oversigt', ready: true },
-      { section: 'mind', label: 'Sind', ready: true },
+      { section: 'mind', label: 'Sind', ready: true, tabs: [
+        { tab: 'bevidsthed', label: 'Bevidsthed' },
+        { tab: 'sjael', label: 'Sjæl' },
+        { tab: 'kognition', label: 'Kognition' },
+      ] },
       { section: 'decisions', label: 'Beslutninger', ready: true },
       { section: 'observability', label: 'Observabilitet', ready: true },
       { section: 'agency', label: 'Agentur', ready: true },
@@ -18,12 +22,30 @@ vi.mock('../../lib/api', () => ({
       { section: 'fremtidig', label: 'Fremtidig', ready: false },
     ],
   }),
-  getMindSection: vi.fn().mockImplementation((_c, section: string) => {
+  getMindSection: vi.fn().mockImplementation((_c, section: string, tab?: string) => {
     if (section === 'mind') {
-      return Promise.resolve({ summary: '2/3 systemer aktive', systems: [
-        { system: 'inner_voice', active: true, summary: 'taler' },
-        { system: 'dreams', active: false },
-      ] })
+      // Maalt fra central_hub.mind_section('mind', <tab>) 3/11-2026: hver undertab
+      // er sin EGEN gruppe, saa én hentning er 2-36 KB i stedet for de 110 KB hele
+      // surfaces-dicten fylder. Formen er producentens, ikke en forestilling om den.
+      if (tab === 'sjael') {
+        return Promise.resolve({
+          active: true, antal: 2, mangler: [],
+          surfaces: {
+            valence_trajectory: { active: true, score: 0.047, delta: -0.016,
+              trend: 'neutral', window_size: 2000, dominant_driver: 'mixed',
+              summary: 'Neutral trajektorie (score=0.047)' },
+            calm_anchor: { active: true, has_anchor: true,
+              distance_from_anchor: 0.093, buffer_size: 120, summary: 'Jeg er hjemme' },
+          },
+        })
+      }
+      return Promise.resolve({
+        active: true, antal: 2, mangler: ['some_missing_surface'],
+        surfaces: {
+          inner_voice: { active: true, count: 1, summary: 'taler' },
+          thought_thread: { active: false, count: 3, summary: 'tre traade loeber' },
+        },
+      })
     }
     if (section === 'decisions') {
       // Formen er taget fra det levende endpoint 2026-09-05, ikke gættet.
@@ -189,8 +211,30 @@ describe('JarvisMind', () => {
 
   it('default-fanen Sind henter sektion fra hub og viser surfaces', async () => {
     render(<JarvisMind config={CFG} />)
-    await waitFor(() => expect(getMindSection).toHaveBeenCalledWith(CFG, 'mind'))
+    await waitFor(() => expect(getMindSection).toHaveBeenCalledWith(CFG, 'mind', 'bevidsthed'))
     await waitFor(() => expect(screen.getByText(/inner voice/i)).toBeTruthy())
+  })
+
+  // Undertabs (3/11-2026): det gamle MC havde underfaner — Sind -> Bevidsthed/
+  // Sjael/Kognition — og hver undertab var sin egen gruppe. Uden dem sendte én
+  // hentning alle 110 KB, eller ogsaa viste fanen kun taellere.
+  it('hver undertab hentes som sin EGEN gruppe — ikke hele surfaces-dicten', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    render(<JarvisMind config={CFG} />)
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Sjæl' })).toBeTruthy())
+    await userEvent.click(screen.getByRole('tab', { name: 'Sjæl' }))
+    await waitFor(() => expect(getMindSection).toHaveBeenCalledWith(CFG, 'mind', 'sjael'))
+    await waitFor(() => expect(screen.getByText(/Jeg er hjemme/)).toBeTruthy())
+    // Sjael-gruppen maa ikke baere bevidsthedens overflader
+    expect(screen.queryByText(/tre traade loeber/)).toBeNull()
+    expect(document.querySelector('.jm-raw')).toBeNull()
+  })
+
+  // En overflade der forsvinder fra kilden skal kunne SES som et navn — ellers
+  // bliver den et hul der ser ud som om der aldrig var noget.
+  it('viser hvilke overflader der mangler fra kilden', async () => {
+    render(<JarvisMind config={CFG} />)
+    await waitFor(() => expect(screen.getByText(/mangler: some_missing_surface/)).toBeTruthy())
   })
 
   // Beslutnings-fanen er den ENESTE der ikke bare informerer. Uden knapper var

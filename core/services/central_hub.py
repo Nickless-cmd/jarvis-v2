@@ -32,13 +32,71 @@ _SECTION_ORDER: list[tuple[str, str]] = [
     ("mind", "Sind"),
     ("observability", "Observabilitet"),
     ("agency", "Agentur"),
+    # 3/11-2026: tre af det gamle MC's faner genopstaar her — de havde ingen
+    # projektion, men kilderne fandtes hele tiden i cognitive_architecture.
+    # Proprioception var fane 6, Threads fane 7, Relationship fane 10.
+    ("proprioception", "Kroppen"),
+    ("threads", "Tråde"),
     ("memory", "Hukommelse"),
     ("council", "Council"),
+    ("relationship", "Relation"),
     ("skills", "Skills"),
     ("reflection", "Refleksion"),
     ("lab", "Lab"),
     ("hardening", "Hærdning"),
 ]
+
+# ── undertabs: det gamle MC's underfaner (3/11-2026) ─────────────────────────────
+# Det gamle MC havde underfaner med felt-kategorier: Bevidsthed (48 kategorier),
+# Sjæl (9), Kognition (11). Kilderne findes ALLEREDE i
+# cognitive_architecture_surface()["surfaces"] — 72 navngivne overflader, 110 KB
+# samlet — men hub'en kastede dem væk og sendte kun tællere. «Sind» viste 72
+# systemnavne og intet af indholdet. Bjørn 3/11: «jeg mangler stadig meget af det
+# hvert fane indeholdt».
+#
+# Poll-storm-svaret ligger i opdelingen: ÉN gruppe ad gangen. Sjæl er 2,4 KB,
+# Bevidsthed 36 KB — ikke 110 KB pr. poll. Én hentning pr. undertab-valg, cachet
+# 12 s nedenfor, og SSE-streamen giver pulsen. Det gamle MC's CognitiveStateTab
+# lavede ~30 parallelle /mc/*-kald hvert 60. sekund; her er det ét.
+_SECTION_TABS: dict[str, list[tuple[str, str]]] = {
+    "mind": [
+        ("bevidsthed", "Bevidsthed"),
+        ("sjael", "Sjæl"),
+        ("kognition", "Kognition"),
+    ],
+}
+
+# Hvilke af de 72 overflader der hører til hvilken gruppe. Målt 3/11-2026: alle
+# grupper er komplette (0 mangler) — de er navne på data der faktisk svarer.
+_SURFACE_GROUPS: dict[str, list[str]] = {
+    "bevidsthed": [
+        "thought_thread", "mood_oscillator", "existential_drift", "creative_impulse",
+        "creative_instinct", "attention_contour", "sustained_attention",
+        "boredom_curiosity_bridge", "initiative_accumulator", "deep_reflection",
+        "seeds", "gut", "gut_counterfactual", "habits", "learning_curriculum",
+        "life_phase", "experiential_memory", "chronicle", "avoidance_detector",
+        "decision_ghosts",
+    ],
+    "sjael": [
+        "valence_trajectory", "developmental_valence", "desperation_awareness",
+        "calm_anchor", "temporal_rhythm", "text_resonance", "relational_warmth",
+        "mortality_awareness", "shadow_scan",
+    ],
+    "kognition": [
+        "personality_vector", "compass", "rhythm", "paradox_tracker",
+        "cognitive_core_experiments", "taste_profile", "mirror", "silence_listener",
+        "forgetting_curve", "self_experiments",
+    ],
+    "proprioception": [
+        "proprioception_metrics", "file_watch", "reboot_awareness", "infra_weather",
+        "temporal_body", "day_shape_memory", "body_memory",
+    ],
+    "threads": [
+        "cross_session_threads", "ghost_networks", "parallel_selves",
+        "collective_pulse", "continuity_kernel", "dream_continuum",
+    ],
+    "relationship": ["relation_dynamics", "relationship_texture", "relational_warmth"],
+}
 
 
 def _safe(builder: Callable[[], Any]) -> dict[str, Any]:
@@ -91,21 +149,53 @@ def _build_observability() -> dict[str, Any]:
     return ud
 
 
-def _build_mind() -> dict[str, Any]:
-    """De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems-
-    liste + tællere), IKKE den fulde 140KB surfaces-dict (Bjørn: 'lidt tung'). Den underliggende
-    build er server-cachet 75s; her trimmer vi payloaden så fanen er let at hente+rendere."""
+def _surface_group(names: list[str]) -> dict[str, Any]:
+    """Projicerer et udsnit af `cognitive_architecture_surface()["surfaces"]`.
+
+    Kilden har sin egen cachede builder; her VÆLGES kun de overflader gruppen
+    ejer, så payloaden bliver 2-36 KB i stedet for 110 KB. `mangler` er ikke
+    pynt: en overflade der forsvinder fra kilden skal kunne ses som et navn, ikke
+    bare blive et hul i visningen.
+    """
     from core.services.cognitive_architecture_surface import (
         build_cognitive_architecture_surface,
     )
-    s = build_cognitive_architecture_surface()
-    return {
-        "systems": s.get("systems"),
-        "active_count": s.get("active_count"),
-        "total_count": s.get("total_count"),
-        "summary": s.get("summary"),
-        "active": True,
-    }
+    surf = build_cognitive_architecture_surface().get("surfaces") or {}
+    ud: dict[str, Any] = {"active": True, "surfaces": {}}
+    for navn in names:
+        if navn in surf:
+            ud["surfaces"][navn] = surf[navn]
+    ud["antal"] = len(ud["surfaces"])
+    ud["mangler"] = [n for n in names if n not in surf]
+    return ud
+
+
+def _build_mind() -> dict[str, Any]:
+    """Sind — bevidstheds-gruppen (default undertab; se `_SECTION_TABS`).
+
+    Indtil 3/11-2026 sendte denne fane kun tællere (`systems`, `active_count`),
+    fordi de 110 KB surfaces blev anset for tunge. Resultatet var at fanen viste
+    72 navne og intet af hvad der stod i dem. Opdelingen i undertabs gør det
+    muligt at vise indholdet uden at sende det hele.
+    """
+    return _surface_group(_SURFACE_GROUPS["bevidsthed"])
+
+
+def _build_proprioception() -> dict[str, Any]:
+    """Kroppen (gammel MC-fane 6): fil-overvågning, genstart-bevidsthed,
+    proces-krop, infra-vejr og dag-form."""
+    return _surface_group(_SURFACE_GROUPS["proprioception"])
+
+
+def _build_threads() -> dict[str, Any]:
+    """Tråde (gammel MC-fane 7): de kognitive overflader der løber på tværs af
+    sessioner. Read-only — nul mutationer, som i det gamle UI."""
+    return _surface_group(_SURFACE_GROUPS["threads"])
+
+
+def _build_relationship() -> dict[str, Any]:
+    """Relation (gammel MC-fane 10): den relationelle model — tillid over tid."""
+    return _surface_group(_SURFACE_GROUPS["relationship"])
 
 
 def _build_agency() -> dict[str, Any]:
@@ -120,6 +210,60 @@ def _build_skills() -> dict[str, Any]:
     return build_skill_engine_surface()
 
 
+# Hvad Agentur-fanen ejer (gammel AgencyMapTab). Resten af kortet bliver i kilden.
+_AGENCY_MAP_FELTER = (
+    "nodes", "bridges", "darkEdges", "questions", "nextMoves",
+    "repairBriefs", "theaterRefactorBriefs", "summary", "cartographer",
+)
+_AGENCY_AUDIT_FINDINGS = 20
+_AGENCY_AUDIT_FILES = 10
+_AGENCY_ROSTER = 60
+
+
+def _trim_agency_map(m: dict[str, Any]) -> dict[str, Any]:
+    """Skær agency-kortet til det Agentur-fanen viser — og bevar totalerne.
+
+    Målt 3/11-2026: hele kortet var 933 KB, heraf `systemCartographer.nodes`
+    alene 718 KB (et fuldt kode-kort) og 1130 kanter 113 KB. Det er ikke hvad
+    fane viser (gammel AgencyMapTab: noder, broer, mørke kanter, åbne spørgsmål,
+    theater-audit, system-health), og ~1 MB pr. poll hvert 20. sekund er præcis
+    den storm der skal undgås. Felterne her VÆLGES; kilden beholder resten til
+    den der spørger efter det.
+
+    `fund_total`/`filer_total` er ikke pynt: uden dem ser en liste afkortet til
+    20 ud som om der kun findes 20 fund. Det er samme fejlform som et slukt
+    fejlkald — tomheden skal kunne læses som en grænse, ikke som sandheden.
+    """
+    ud: dict[str, Any] = {k: m[k] for k in _AGENCY_MAP_FELTER if k in m}
+    sc = m.get("systemCartographer")
+    if isinstance(sc, dict):
+        trimmet: dict[str, Any] = {}
+        for k in ("systemHealth", "summary"):
+            if k in sc:
+                trimmet[k] = sc[k]
+        cov = sc.get("coverage")
+        if isinstance(cov, dict):
+            trimmet["coverage"] = {
+                "avg_score": cov.get("avg_score"),
+                "low_count": cov.get("low_count"),
+            }
+        ta = sc.get("theaterAudit")
+        if isinstance(ta, dict):
+            findings = ta.get("findings") or []
+            filer = ta.get("files") or []
+            trimmet["theaterAudit"] = {
+                "summary": ta.get("summary"),
+                "criteria": ta.get("criteria"),
+                "recommendedTheaterTask": ta.get("recommendedTheaterTask"),
+                "findings": findings[:_AGENCY_AUDIT_FINDINGS],
+                "files": filer[:_AGENCY_AUDIT_FILES],
+                "fund_total": len(findings),
+                "filer_total": len(filer),
+            }
+        ud["systemCartographer"] = trimmet
+    return ud
+
+
 def _build_agency_agents() -> dict[str, Any]:
     """Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald
     (status/costs, lane in agent/council). Fletter de to eksisterende projektioner —
@@ -128,11 +272,16 @@ def _build_agency_agents() -> dict[str, Any]:
     from core.services.central_agents_surface import build_agents_surface
     out: dict[str, Any] = {"active": True}
     try:
-        out["map"] = build_agency_map_surface()
+        out["map"] = _trim_agency_map(build_agency_map_surface())
     except Exception as exc:
         out["map"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
     try:
-        out["agents"] = build_agents_surface()
+        ag = build_agents_surface()
+        roster = ag.get("roster")
+        if isinstance(roster, list):
+            ag["roster"] = roster[:_AGENCY_ROSTER]
+            ag["roster_total"] = len(roster)
+        out["agents"] = ag
     except Exception as exc:
         out["agents"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
     return out
@@ -305,7 +454,10 @@ _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "observability": _build_observability,
     "mind": _build_mind,
     "agency": _build_agency_agents,
+    "proprioception": _build_proprioception,
+    "threads": _build_threads,
     "council": _build_council,
+    "relationship": _build_relationship,
     "skills": _build_skills,
     "memory": _build_memory,
     "reflection": _build_reflection,
@@ -315,9 +467,19 @@ _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
 
 
 def mind_index() -> list[dict[str, Any]]:
-    """Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe."""
+    """Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe.
+
+    `tabs` bærer undertab-strukturen (tom liste for sektioner uden). Den sendes med
+    indexet i stedet for at UI'et skal kende den: ellers ville fane-strukturen bo to
+    steder og kunne drive fra hinanden.
+    """
     return [
-        {"section": key, "label": label, "ready": key in _BUILDERS}
+        {
+            "section": key,
+            "label": label,
+            "ready": key in _BUILDERS,
+            "tabs": [{"tab": t, "label": l} for t, l in _SECTION_TABS.get(key, [])],
+        }
         for key, label in _SECTION_ORDER
     ]
 
@@ -331,10 +493,24 @@ _section_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _section_cache_lock = threading.Lock()
 
 
-def mind_section(section: str) -> dict[str, Any]:
-    """Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe.
-    Ukendt/endnu-ikke-projiceret sektion → {pending:True}."""
+def mind_section(section: str, tab: str = "") -> dict[str, Any]:
+    """Projektionen for ÉN sektion — eller ÉN undertab i den (læser den cachede
+    kilde, TTL-capped). Self-safe. Ukendt/endnu-ikke-projiceret → {pending:True}.
+
+    `tab` er kun gyldig for sektioner der har undertabs; en ukendt undertab afvises
+    frem for at falde tavst tilbage på den første, så en tastefejl i UI'et ikke
+    ligner «fanen er tom».
+    """
     key = str(section or "").strip()
+    tab_key = str(tab or "").strip()
+    tabs = _SECTION_TABS.get(key) or []
+    if tabs:
+        gyldige = {t for t, _ in tabs}
+        if not tab_key:
+            tab_key = tabs[0][0]
+        elif tab_key not in gyldige:
+            return {"section": key, "error": f"ukendt undertab: {tab_key}", "active": False}
+
     builder = _BUILDERS.get(key)
     if builder is None:
         known = {k for k, _ in _SECTION_ORDER}
@@ -342,15 +518,18 @@ def mind_section(section: str) -> dict[str, Any]:
             return {"section": key, "pending": True, "active": False}
         return {"section": key, "error": "ukendt sektion", "active": False}
 
+    cache_key = f"{key}:{tab_key}" if tab_key else key
     now = time.monotonic()
     with _section_cache_lock:
-        hit = _section_cache.get(key)
+        hit = _section_cache.get(cache_key)
         if hit and hit[0] > now:
             return hit[1]
-    data = _safe(builder)
+    data = _safe(lambda: _surface_group(_SURFACE_GROUPS[tab_key])) if tab_key else _safe(builder)
     data.setdefault("section", key)
+    if tab_key:
+        data.setdefault("tab", tab_key)
     with _section_cache_lock:
-        _section_cache[key] = (now + _SECTION_TTL, data)
+        _section_cache[cache_key] = (now + _SECTION_TTL, data)
     return data
 
 

@@ -462,8 +462,9 @@ Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch sket
 
 ### Stadig åbent efter fase D
 
-- **A5** — tærsklen. Røres ikke før shadow-data findes. **Men blokeringen er ikke
-  tålmodighed — den er strukturel. Se «A5's kæde er brudt» nedenfor.**
+- **A5** — tærsklen. Røres ikke før der er set nok shadow-data. Blokeringen var
+  strukturel indtil kl. 18:36:25 UTC, hvor gaten blev kaldt for første gang siden
+  16:33. **Ventetiden løber nu.** Se «A5's kæde VAR brudt — den virker nu» nedenfor.
 - **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
   fra producent til prompt for nogen værdi.
 - **C1** — niveau 2 (virksomt) er stadig umålt.
@@ -615,12 +616,17 @@ gaten.
 
 ---
 
-## Målt 3/11-2026 kl. 19:35 — A5's kæde er brudt, ikke blot ventende
+## Målt 3/11-2026 kl. 19:35 — A5's kæde VAR brudt. Den virker nu.
 
-Dokumentet har hidtil sagt at A5 «venter på shadow-data». Målingen viser noget
-andet: **der kommer ingen shadow-data, fordi der ikke kører autonome runs.**
+> **OPDATERET kl. 18:40 UTC (19:40 lokal).** Målingen nedenfor var sand kl. 19:35
+> og er det ikke længere. Kl. **18:36:25 UTC** startede
+> `autonomous-1ab9aff248864f929988d94001894318`, og gaten blev kaldt for første
+> gang siden 16:33. Se «Kæden virker» nederst i dette afsnit.
 
-### Kæden, som den faktisk ser ud
+Dokumentet har hidtil sagt at A5 «venter på shadow-data». Målingen viste noget
+andet: **der kom ingen shadow-data, fordi der ikke kørte autonome runs.**
+
+### Kæden, som den så ud kl. 19:35
 
 ```
 tick-dispatch  →  ???  →  autonomt run  →  preflight_gut_gate  →  shadow-data  →  A5
@@ -631,36 +637,45 @@ tick-dispatch  →  ???  →  autonomt run  →  preflight_gut_gate  →  shadow
 fra to steder: `autonomous_stream_run.py:97` og `visible_autonomous_run.py:276`.
 Det er autonome run-startere — ikke tick-dispatchen.
 
-### Hvad der er målt
+### Hvad der blev målt kl. 19:35
 
 | Måling | Resultat |
 |---|---|
 | `central_gut_consumer_mode` | `"shadow"` (sat 17:51) |
 | `gate_verdict_counts`: `gut_gate` | 558 tællinger, **sidst 16:33:43**, `last_reason` = `mode=on conf=0.610` |
-| `gut_gate_shadow` | **findes ikke** i tabellen |
-| `gut_gate_withheld` | **findes ikke** i tabellen |
+| `gut_gate_shadow` | **fandtes ikke** i tabellen |
+| `gut_gate_withheld` | **fandtes ikke** i tabellen |
 | `visible_runs` siden 17:00 | 14 runs — **alle** `lane=primary`, `capability_id=None` |
 | `build_gut_surface()` | `evaluated=4301`, `withheld=0`, `backstop_overkoersler=0`, uændret siden 16:34 |
 
-De 14 runs er **mine egne synlige ture** i samtalen, ikke autonome runs. Ingen af
+De 14 runs var **mine egne synlige ture** i samtalen, ikke autonome runs. Ingen af
 dem går gennem gaten — hvilket er korrekt, for gaten er kun for autonome runs.
 
-### Konsekvensen for A5
+### Kæden virker — målt kl. 18:36:25 UTC
 
-A5 kan **ikke** besvares ved at vente. Der er tre mulige årsager, og de skal
-skelnes før nogen tærskel røres:
+Kl. 18:36:25 startede et ægte autonomt run
+(`autonomous-1ab9aff248864f929988d94001894318`), og gaten blev kaldt:
 
-1. **Ingen autonom run-starter fyrer.** `wakeup_dispatcher`,
-   `inbox_idle_waker`, `routine_dispatch` og `autonomous_side_task_dispatcher`
-   er de fire veje ind. Ingen af dem har startet et run siden 16:33.
-2. **Starterne fyrer, men fejler før `preflight_allows`.** Så ville der være spor
-   i `visible_runs` — der er ingen med en anden lane.
-3. **Gaten kaldes, men fejler stille.** `preflight_allows` er fail-open: en
-   `ImportError` eller exception giver `True` uden at tælle. Det ville se ud som
-   om gaten aldrig blev kaldt. **Denne er ikke udelukket.**
+| Nerve | Afgørelse | `last_reason` |
+|---|---|---|
+| `gut_gate_shadow` | **red** | `mode=shadow conf=0.590 thr=0.30` |
+| `gut_gate_uden_bias_shadow` | **red** | `hunch=caution conf=0.700 thr=0.30` |
 
-Årsag 1 og 3 ser identiske ud i data. Forskellen er om der kommer en
-`gut_gate`-tælling når et autonomt run først starter — og det er endnu ikke set.
+Tre ting står klart af det ene datapunkt:
+
+1. **Gaten blev kaldt.** `gut_gate_shadow` findes nu i tabellen — den gjorde ikke
+   kl. 19:35. Årsag 1 og 3 fra listen ovenfor er dermed afgjort: starteren fyrer,
+   og gaten fejler ikke stille.
+2. **Den ville have afvist.** `red` betyder at `confidence` lå under tærsklen. I
+   `shadow` slap runnet igennem alligevel — præcis den adfærd `shadow` skal have.
+3. **Bias trak ned, ikke op.** Uden bias var `confidence` 0,700; med bias 0,590.
+   Forskellen er 0,11, hvilket matcher `central_gut_proceed_bias` = 0,1109 målt
+   samme dag. Bias sænker tilliden — den gør gaten mere forsigtig, ikke mindre.
+
+**Det ændrer ikke A5's svar, men dets begrundelse.** A5 kan stadig ikke besvares
+på ét datapunkt: tærsklen skal først justeres når der er set nok shadow-data til
+at vide hvad gaten *ville* have gjort over tid. Forskellen er at ventetiden nu
+løber — den var før uendelig.
 
 ### Hvad der ellers stadig står åbent
 
@@ -669,10 +684,77 @@ skelnes før nogen tærskel røres:
 - **C1** — niveau 2 (virksomt). Målbar nu.
 - **C2's overlap** — 0 af 9 rækker matcher registeret. Korrekt wiring, nul
   praktisk effekt indtil noget registrerer samme erindring i begge systemer.
-- **C3's udøver** — køen er ryddet (300 → 2) og produktionen standser nu ved fuld
-  kø, men *hvem udfører* et research-forslag findes stadig ikke. Forbrugeren
-  behandler køen; den udfører ikke arbejdet.
+- **C3's udøver** — bygget 3/11 kl. 19:4x. Se «Udøveren» nedenfor. Den udfører
+  hvad policyen tillader og siger højt hvad den ikke må; den research-post der
+  står tilbage er blokeret af `web_search`, ikke af mig.
 - **Kalibreringens 0,998** — `4292/4301 correct` er målt mens hunch altid var
   `proceed`. Tallet måler run-succesraten, ikke om maven havde ret. Det bliver
   først meningsfuldt når `caution` faktisk forekommer i drift — hvilket kræver
   samme kæde som A5.
+
+---
+
+## Bygget 3/11-2026 kl. 19:4x — C3's udøver, og to forslag der aldrig ventede
+
+Forbrugeren lukkede det døde. Men målt kl. 19:36 stod **to forslag stadig
+`pending`** — deres grundlag levede, og ingen ville nogensinde gøre noget ved
+dem. Forbrugeren var halvdelen af en mekanisme.
+
+### Det jeg fandt, før jeg byggede den
+
+Begge de to overlevende forslag viste sig **allerede udført ad andre veje**:
+
+| Forslag | Målt | Konklusion |
+|---|---|---|
+| `memory_consolidate` for 2026-11-02 | `2026-11-02-daily.md` lå i `jarvis_brain/observation/` | kvittering, ikke arbejde |
+| `research` på `seed-616b2bc12b` | `web_search` er **ikke** i `AUTONOMOUS_TOOLS` (målt: `False`) | kan ikke udføres autonomt |
+
+Det er tredje gang samme mønster i dag: `incubator_seed` var også en kvittering
+(`ci_tick` kaldes på linjen ovenover `_file_proposal`). `pending` var i alle tre
+tilfælde en løgn om at noget ventede.
+
+### Hvad udøveren gør
+
+Den deler efter hvad policyen **faktisk** tillader, ikke efter hvad der ville
+være pænt:
+
+- **`memory_consolidate`** → intern. `synthesize_daily_journal(day)` skriver en
+  lokal fil. Er journalen der allerede, lukkes forslaget som `completed` med
+  stien som bevis — **uden** at kalde modellen forgæves.
+- **`research`** → kræver `web_search`, som ikke er autonomt tilladt. Forslaget
+  bliver `pending` med et `blocked_by`-felt der bærer den faktiske grund.
+
+Et forslag hvis grundlag **ikke kan måles** lukkes ikke. En manglende udfører må
+ikke ligne en afvisning.
+
+### Målt på den ægte log
+
+| | Før | Efter |
+|---|---|---|
+| `pending` | 2 | **1** |
+| Udført | 0 | **1** (`completed`, journalen fandtes) |
+| Blokeret med grund | 0 | **1** (`web_search` ikke autonomt tilladt) |
+
+Fladen siger nu: *«1 afventende, 1 unikke, ældste 6 dage. 299 behandlet. 1 af dem
+er BLOKERET (research) — de venter på en tilladelse, ikke på mig.»*
+
+### Prompt-sektionen løj også
+
+Målt: den skrev «Consolidate **today's** memory notes» om et forslag der gjaldt
+**2. november**, og nævnte ét af to forslag. Titlen var skrevet den dag forslaget
+blev fil'et; «today» blev aldrig oversat til en dato.
+
+Nu bærer linjen den faktiske dato, viser op til tre forslag, og siger `BLOKERET`
+med grunden når der er en.
+
+### Bevis
+
+- `test_autonomous_work_daemon.py`: **25 grønne** (17 → 25, otte nye vagter)
+- Bredt batteri (autonomous/heartbeat/experiential/gut/forgetting): **126 grønne**
+
+### Den ærlige grænse
+
+Udøveren **løser ikke** hvem der kører et research-forslag. Den gør køen ærlig
+og udfører det interne arbejde. Et research-forslag skal køres som et **synligt
+run** — det er en beslutning om at handle i omverdenen, og den kræver at nogen
+ser det. Det er ikke en mangel i udøveren; det er hvad policyen bestemmer.

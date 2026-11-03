@@ -321,3 +321,162 @@ def test_flade_skelner_unikke_fra_dubletter(butik):
     assert overflade["pending_count"] == 11
     assert overflade["pending_unique"] == 2
     assert "dubletter" in overflade["summary"]
+
+
+# ── Udøveren (3/11-2026) ────────────────────────────────────────────────────
+#
+# Forbrugeren lukker det døde. Målt kl. 19:36 stod to forslag stadig `pending`
+# fordi deres grundlag LEVEDE — og ingen ville nogensinde gøre noget ved dem.
+# Udøveren er den anden halvdel. Den udfører hvad policyen tillader og siger
+# højt hvad den ikke må.
+
+@pytest.fixture
+def journal(monkeypatch):
+    """Stub for daily_journal. Returnerer en dict vi kan styre fra testen."""
+    state = {"findes": False, "svar": {"status": "written", "path": "/tmp/x-daily.md"}, "kaldt": []}
+
+    def _exists(day):
+        return state["findes"]
+
+    def _synthesize(day, *, force=False):
+        state["kaldt"].append(day.isoformat())
+        return state["svar"]
+
+    monkeypatch.setattr(
+        "core.services.daily_journal.journal_exists_for", _exists, raising=False
+    )
+    monkeypatch.setattr(
+        "core.services.daily_journal.synthesize_daily_journal", _synthesize, raising=False
+    )
+    return state
+
+
+def test_udfoerer_lukker_konsolidering_naar_journalen_findes(butik, journal):
+    """Findes journalen, er arbejdet gjort — luk som `completed`, ikke `rejected`.
+
+    Målt 3/11: forslaget om 2. november stod `pending` i timevis mens
+    `2026-11-02-daily.md` allerede lå i `jarvis_brain/observation/`. Det var
+    en kvittering, ikke ventende arbejde.
+    """
+    log, _ = butik
+    journal["findes"] = True
+    log.append(_entry(0, typ="memory_consolidate", details={"date": "2026-11-02"}))
+
+    res = aw.execute_proposals()
+
+    assert res["executed"] == 1
+    assert log[0]["status"] == "completed"
+    assert "fandtes allerede" in log[0]["resolution_note"]
+    assert journal["kaldt"] == []  # syntesen må IKKE kaldes forgæves
+
+
+def test_udfoerer_skriver_journal_naar_den_mangler(butik, journal):
+    """Mangler journalen, skal udøveren faktisk skrive den."""
+    log, _ = butik
+    journal["findes"] = False
+    log.append(_entry(0, typ="memory_consolidate", details={"date": "2026-11-02"}))
+
+    aw.execute_proposals()
+
+    assert journal["kaldt"] == ["2026-11-02"]
+    assert log[0]["status"] == "completed"
+    assert "journal skrevet" in log[0]["resolution_note"]
+
+
+def test_udfoerer_lukker_dag_uden_indhold(butik, journal):
+    """Ingen indhold at konsolidere er et ægte svar — forslaget skal lukkes."""
+    log, _ = butik
+    journal["findes"] = False
+    journal["svar"] = {"status": "no-content", "path": "/tmp/y"}
+    log.append(_entry(0, typ="memory_consolidate", details={"date": "2026-11-02"}))
+
+    aw.execute_proposals()
+
+    assert log[0]["status"] == "rejected"
+    assert "ingen indhold" in log[0]["resolution_note"]
+
+
+def test_udfoerer_blokerer_research_med_den_faktiske_grund(butik):
+    """`web_search` er ikke autonomt tilladt — forslaget skal sige det.
+
+    Uden `blocked_by` ser et blokeret forslag ud som arbejde der bare ikke er
+    taget endnu. Det er præcis den løgn vi har jagtet hele dagen.
+    """
+    log, _ = butik
+    log.append(_entry(0, typ="research", details={"seed_id": "seed-levende"}))
+
+    res = aw.execute_proposals()
+
+    assert res["blocked"] == 1
+    assert log[0]["status"] == "pending"  # må IKKE lukkes: det er ikke dødt
+    assert "web_search" in log[0]["blocked_by"]
+    assert "synligt run" in log[0]["blocked_by"]
+
+
+def test_udfoerer_taaler_at_syntesen_kaster(butik, journal, monkeypatch):
+    """Kaster syntesen, er forslaget UAFKLARET — det må ikke lukkes."""
+    log, _ = butik
+    journal["findes"] = False
+
+    def _braek(day, *, force=False):
+        raise RuntimeError("model nede")
+
+    # monkeypatch, ikke direkte tildeling: en rå mutation af modulet lækker
+    # ind i de suiter der kører bagefter.
+    monkeypatch.setattr(
+        "core.services.daily_journal.synthesize_daily_journal", _braek, raising=False
+    )
+    log.append(_entry(0, typ="memory_consolidate", details={"date": "2026-11-02"}))
+
+    res = aw.execute_proposals()
+
+    assert res["blocked"] == 1
+    assert log[0]["status"] == "pending"
+    assert "fejlede" in log[0]["blocked_by"]
+
+
+def test_udfoerer_lukker_ikke_ukendt_type(butik):
+    """En type uden udfører må ikke lukkes — den skal meldes blokeret."""
+    log, _ = butik
+    log.append(_entry(0, typ="blog_draft"))
+
+    aw.execute_proposals()
+
+    assert log[0]["status"] == "pending"
+    assert "ingen udfører" in log[0]["blocked_by"]
+
+
+def test_tick_koerer_udfoereren(monkeypatch, butik):
+    """Udøveren skal faktisk kaldes fra tick — ellers er den død kode."""
+    log, _ = butik
+    kaldt: list[int] = []
+    monkeypatch.setattr(aw, "_is_low_activity", lambda: (True, "stub-idle"))
+    monkeypatch.setattr(aw, "_proposals_last_hour", lambda: 0)
+    monkeypatch.setattr(aw, "_plan_once", lambda: [])
+    monkeypatch.setattr(aw, "execute_proposals", lambda: kaldt.append(1) or {"executed": 0, "blocked": 0})
+
+    resultat = aw.tick()
+
+    assert kaldt == [1]
+    assert "executed" in resultat
+
+
+def test_prompt_sektion_siger_dato_og_blokering(butik):
+    """Prompten må ikke sige «today» om et forslag fra i forgårs.
+
+    Målt 3/11: sektionen skrev «Consolidate today's memory notes» om et forslag
+    der gjaldt 2. november, og nævnte ét af to forslag.
+    """
+    log, _ = butik
+    log.append(_entry(0, typ="memory_consolidate", details={"date": "2026-11-02"}))
+    blokeret = _entry(1, typ="research", details={"seed_id": "seed-levende"})
+    blokeret["blocked_by"] = "kræver web_search, som ikke er autonomt tilladt"
+    log.append(blokeret)
+
+    tekst = aw.build_autonomous_work_prompt_section()
+
+    assert tekst is not None
+    assert "2026-11-02" in tekst  # datoen, ikke ordet «today»
+    assert "today" not in tekst
+    assert "seed-levende" in tekst  # begge forslag, ikke kun det sidste
+    assert "BLOKERET" in tekst

@@ -452,6 +452,138 @@ def consume_proposals(*, max_age_days: int = 14) -> dict[str, Any]:
         return {"closed": 0, "kept": 0, "duplicates": 0, "error": str(exc)[:200]}
 
 
+# --- Udøver (C3, 3/11-2026) ------------------------------------------------
+#
+# Forbrugeren ovenfor lukker det DØDE. Men målt kl. 19:36 stod to forslag
+# stadig `pending` — deres grundlag levede, og ingen ville nogensinde gøre
+# noget ved dem. Forbrugeren var halvdelen af en mekanisme.
+#
+# Udøveren deler efter hvad policyen FAKTISK tillader, ikke efter hvad der
+# ville være pænt:
+#
+#   * `memory_consolidate` — intern. `synthesize_daily_journal` skriver en
+#     lokal fil med et lokalt modelkald. Må gerne køre autonomt.
+#   * `research` — kræver `web_search`, som IKKE står i `AUTONOMOUS_TOOLS`
+#     (målt: False). Et autonomt run må ikke handle i omverdenen. Forslaget
+#     udføres derfor ikke; det bærer nu den grund, så fladen kan sige hvorfor.
+#
+# Målt før den blev bygget, og grunden til at den ER en udøver og ikke bare
+# endnu en tæller: begge de to overlevende forslag viste sig allerede udført
+# ad andre veje — `2026-11-02-daily.md` lå i `jarvis_brain/observation/`, og
+# `incubator_seed` kalder `ci_tick` før posten skrives. `pending` var i begge
+# tilfælde en løgn om at noget ventede.
+
+def _udfoer_memory_consolidate(entry: dict[str, Any]) -> tuple[str, str]:
+    """Konsolidér den dag forslaget peger på. Returnerer (status, note).
+
+    Idempotent: findes journalen, er arbejdet allerede gjort — så lukkes
+    forslaget som `completed` med stien som bevis, ikke som `rejected`.
+    """
+    from datetime import date as _date
+
+    details = entry.get("details") or {}
+    dato = str(details.get("date") or "")
+    try:
+        day = _date.fromisoformat(dato)
+    except Exception:  # utolkbar dato: forslaget kan ikke udføres, og skal sige hvorfor
+        return "rejected", f"datoen '{dato}' kunne ikke tolkes"
+
+    try:
+        from core.services.daily_journal import journal_exists_for, synthesize_daily_journal
+    except Exception as exc:  # modulet mangler: forslaget er UDFØRT-uafklaret, ikke dødt
+        return "pending", f"daily_journal kunne ikke importeres ({type(exc).__name__})"
+
+    if journal_exists_for(day):
+        return "completed", f"journalen for {dato} fandtes allerede — intet at gøre"
+
+    try:
+        result = synthesize_daily_journal(day)
+    except Exception as exc:  # syntesen kastede: forslaget bliver staaende, nu med grunden
+        return "pending", f"syntesen fejlede ({type(exc).__name__}: {str(exc)[:120]})"
+
+    status = str(result.get("status") or "")
+    if status == "written":
+        return "completed", f"journal skrevet: {result.get('path')}"
+    if status == "skipped":
+        return "completed", f"allerede skrevet ({result.get('reason')})"
+    if status == "no-content":
+        return "rejected", f"ingen indhold for {dato} at konsolidere"
+    return "pending", f"syntesen svarede '{status}': {result.get('reason')}"
+
+
+def _udfoer_research(entry: dict[str, Any]) -> tuple[str, str]:
+    """Research kan ikke udføres autonomt — sig det med den faktiske grund."""
+    try:
+        from core.tools.autonomous_tool_policy import AUTONOMOUS_TOOLS
+    except Exception:  # policyen kan ikke læses: antag det STRENGE svar
+        return "pending", "kunne ikke afgøre om web_search er autonomt tilladt"
+    if "web_search" in AUTONOMOUS_TOOLS:
+        return "pending", "web_search er autonomt tilladt, men ingen udfører er koblet på"
+    return "pending", (
+        "kræver web_search, som ikke er autonomt tilladt — "
+        "et research-forslag skal køres som et synligt run"
+    )
+
+
+def execute_proposals() -> dict[str, Any]:
+    """Udfør de forslag hvis grundlag OG policy tillader det nu.
+
+    Kaldes fra `tick()` efter `consume_proposals()`. Kaster ALDRIG — en fejl
+    her må ikke standse hjerteslaget.
+
+    Forslag der ikke kan udføres bliver `pending` med et `blocked_by`-felt, så
+    de stadig er synlige. En manglende udfører må ikke ligne en afvisning.
+    """
+    udfoert: dict[str, int] = {}
+    blokeret: dict[str, int] = {}
+    try:
+        items = _load()
+        pending = [e for e in items if e.get("status") == "pending"]
+        if not pending:
+            return {"executed": 0, "blocked": 0}
+
+        handlers = {
+            "memory_consolidate": _udfoer_memory_consolidate,
+            "research": _udfoer_research,
+        }
+        aendret = False
+        nu = datetime.now(UTC)
+
+        for entry in pending:
+            typ = str(entry.get("type") or "")
+            handler = handlers.get(typ)
+            if handler is None:
+                entry["blocked_by"] = f"typen '{typ}' har ingen udfører"
+                blokeret[typ] = blokeret.get(typ, 0) + 1
+                aendret = True
+                continue
+
+            status, note = handler(entry)
+            if status == "pending":
+                # Stadig blokeret — men nu med den faktiske grund, ikke tavshed.
+                if entry.get("blocked_by") != note:
+                    entry["blocked_by"] = note
+                    aendret = True
+                blokeret[typ] = blokeret.get(typ, 0) + 1
+                continue
+
+            entry["status"] = status
+            entry["resolved_at"] = nu.isoformat()
+            entry["resolution_note"] = note
+            entry.pop("blocked_by", None)
+            udfoert[status] = udfoert.get(status, 0) + 1
+            aendret = True
+
+        if aendret:
+            _save(items)
+        if udfoert:
+            logger.info("autonomous_work: udfører lukkede %s", udfoert)
+        return {"executed": sum(udfoert.values()), "blocked": sum(blokeret.values())}
+    except Exception as exc:
+        logger.warning("autonomous_work: execute failed: %s", exc)
+        return {"executed": 0, "blocked": 0, "error": str(exc)[:200]}
+
+
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
     """Plan work proposals during low activity.
 
@@ -477,8 +609,17 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     # tømmes, og daemonen ville stå fast for evigt på «queue-full-unconsumed».
     forbrug = consume_proposals()
 
+    # Udøveren kører efter forbrugeren: forbrugeren fjerner det døde, udøveren
+    # gør det levende. Uden den anden halvdel var forbrugeren en tæller.
+    udfoersel = execute_proposals()
+
     if _proposals_last_hour() >= _MAX_PROPOSALS_PER_HOUR:
-        return {"skipped": True, "reason": "rate-limited", "consumed": forbrug}
+        return {
+            "skipped": True,
+            "reason": "rate-limited",
+            "consumed": forbrug,
+            "executed": udfoersel,
+        }
 
     ventende = _pending_count()
     if ventende >= _LOG_MAX:
@@ -487,6 +628,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
             "reason": "queue-full-unconsumed",
             "pending": ventende,
             "consumed": forbrug,
+            "executed": udfoersel,
         }
 
     created = _plan_once()
@@ -496,6 +638,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
         "proposals_created": len(created),
         "proposal_ids": created,
         "consumed": forbrug,
+        "executed": udfoersel,
     }
 
 
@@ -534,10 +677,16 @@ def build_autonomous_work_surface() -> dict[str, Any]:
     # Unikke forslag vs. dubletter — køen kan se stor ud uden at indeholde
     # mange forskellige spørgsmål.
     unikke = len({_forslag_noegle(e) for e in pending})
+    # Blokerede forslag venter ikke på mig — de venter på en tilladelse eller
+    # en udfører der ikke findes. Det skal fladen kunne sige.
+    blokerede = {str(e.get("type") or ""): str(e.get("blocked_by") or "")
+                 for e in pending if e.get("blocked_by")}
     return {
         "active": len(items) > 0,
         "pending_count": len(pending),
         "pending_unique": unikke,
+        "blocked_count": len(blokerede),
+        "blocked_by": blokerede,
         "rejected_count": len(rejected),
         "completed_count": len(completed),
         "total_proposals": len(items),
@@ -590,20 +739,55 @@ def _surface_summary(pending: list[dict[str, Any]], all_items: list[dict[str, An
     if pending:
         alder = f", ældste {aeldste_dage} dage" if aeldste_dage is not None else ""
         dup = f" ({len(pending) - unikke} er dubletter)" if len(pending) > unikke else ""
+        # Blokerede forslag venter ikke på mig — de venter på en tilladelse
+        # eller en udfører der ikke findes. Uden denne sætning ser de ud som
+        # arbejde der bare ikke er blevet taget endnu.
+        blokeret = [e for e in pending if e.get("blocked_by")]
+        blok = ""
+        if blokeret:
+            typer = sorted({str(e.get("type") or "") for e in blokeret})
+            blok = (
+                f" {len(blokeret)} af dem er BLOKERET ({', '.join(typer)}) — "
+                "de venter på en tilladelse, ikke på mig."
+            )
         return (
             f"{len(pending)} afventende, {unikke} unikke{dup}{alder}. "
-            f"{lukket} behandlet."
+            f"{lukket} behandlet.{blok}"
         )
     return f"0 afventende — {lukket} forslag behandlet"
 
 
 def build_autonomous_work_prompt_section() -> str | None:
+    """Sig hvad der venter — med type, dato og hvad der blokerer.
+
+    ⚠️ RETTET 3/11-2026. Før: `pending[-1]` (det NYESTE forslag) og titlen
+    gengivet råt. Målt: sektionen sagde «Consolidate today's memory notes» om
+    et forslag der gjaldt 2. november, og nævnte ét af to forslag som om det
+    andet ikke fandtes. Titlen var skrevet den dag forslaget blev fil'et;
+    «today» blev aldrig oversat til en dato.
+
+    Nu bærer linjen den faktiske dato, og et forslag der er blokeret af
+    policyen siger det — ellers ser det ud som om det venter på mig.
+    """
     items = _load()
     pending = [e for e in items if e.get("status") == "pending"]
     if not pending:
         return None
-    top = pending[-1]
-    return (
-        f"Mens du var væk foreslog jeg: '{top.get('title')}' "
-        f"({top.get('type')}). {len(pending)} forslag afventer."
-    )
+
+    linjer: list[str] = []
+    for e in pending[:3]:
+        typ = str(e.get("type") or "")
+        details = e.get("details") or {}
+        if not isinstance(details, dict):
+            details = {}
+        if typ == "memory_consolidate" and details.get("date"):
+            hvad = f"konsolidér noterne for {details['date']}"
+        elif typ == "research" and details.get("seed_id"):
+            hvad = f"research på {details['seed_id']}"
+        else:
+            hvad = str(e.get("title") or "")[:80]
+        blok = e.get("blocked_by")
+        linjer.append(f"- {hvad} ({typ})" + (f" — BLOKERET: {blok}" if blok else ""))
+
+    flere = f" (+{len(pending) - len(linjer)} mere)" if len(pending) > len(linjer) else ""
+    return "Mens du var væk filede jeg disse forslag:\n" + "\n".join(linjer) + flere

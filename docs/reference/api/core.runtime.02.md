@@ -60,23 +60,23 @@ _Core infrastructure for core.runtime.db modulet._
 | function | `_note_pool_death` | `()` | Registrér at DENNE tråds pool-forbindelse blev lukket rigtigt. Self-safe. | [src](../../../core/runtime/db_core.py#L206) |
 | function | `_sweep_orphaned_pool_connections` | `()` | Ryd bogholderiet for døde trådes poster. Self-safe. | [src](../../../core/runtime/db_core.py#L222) |
 | function | `pool_connection_stats` | `()` | Øjebliksbillede: hvilke LEVENDE tråde ejer en pool-forbindelse. | [src](../../../core/runtime/db_core.py#L273) |
-| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L296) |
-| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L308) |
-| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L352) |
-| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L356) |
-| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L362) |
-| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L377) |
-| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L548) |
-| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L553) |
-| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L559) |
-| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L579) |
-| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L612) |
-| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L644) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L663) |
-| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L712) |
-| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L736) |
-| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L746) |
-| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L764) |
+| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L304) |
+| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L316) |
+| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L360) |
+| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L364) |
+| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L370) |
+| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L385) |
+| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L556) |
+| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L561) |
+| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L567) |
+| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L587) |
+| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L620) |
+| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L652) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L671) |
+| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L720) |
+| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L744) |
+| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L754) |
+| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L772) |
 
 ## `core/runtime/db_credit_assignment.py`
 _Credit assignment — schema migration, choice recording, and outcome querying._

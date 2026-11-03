@@ -321,10 +321,10 @@ _Central 'db-pool' route — gør DB-forbindelses-poolen læsbar i drift._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L32) |
-| function | `_own_pool` | `()` | Denne proces' pool-attribution. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L37) |
-| function | `_runtime_pool` | `()` | Runtime-processens pool over 8011. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L46) |
-| function | `get_db_pool` | `()` | DB-forbindelses-poolen i begge processer (owner-only, read-only, self-safe). | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L56) |
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L33) |
+| function | `_own_pool` | `()` | Denne proces' pool-attribution. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L38) |
+| function | `_runtime_pool` | `()` | Runtime-processens pool over 8011. Self-safe → {}. | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L47) |
+| function | `get_db_pool` | `()` | DB-forbindelses-poolen i begge processer (owner-only, read-only, self-safe). | [src](../../../apps/api/jarvis_api/routes/central_db_pool.py#L57) |
 
 ## `apps/api/jarvis_api/routes/central_decentralization.py`
 _Central 'decentralization' route — chokepoint-skat + sikre decentraliserings-kandidater (owner)._

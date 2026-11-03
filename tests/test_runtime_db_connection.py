@@ -109,6 +109,59 @@ def test_doed_traads_forbindelse_meldes_som_foraeldreloes(monkeypatch, tmp_path)
     assert stats["orphaned"][ident["vaerdi"]]["thread_name"] == "doed-probe"
 
 
+def test_levende_og_kumulativt_pooltal_kan_skilles(monkeypatch, tmp_path) -> None:
+    """`pooled` er bogholderiets størrelse — ikke svaret på om der lækkes.
+
+    Målt 3/11-2026: `pooled` steg monotont fra 1 til 89 over 22 minutter, fordi
+    daemon-tråde aldrig dør, og jeg læste det som en lækage. Det ægte tal er
+    `pooled_live`: forbindelser hvis ejer-tråd findes NU. Testen her værner at
+    de to kan skilles — ellers er den samme fejllæsning mulig igen.
+    """
+    _ren_pool(monkeypatch, tmp_path)
+
+    def _arbejde():
+        with runtime_db.connect() as conn:
+            conn.execute("SELECT 1")
+
+    # Én levende tråd: de to tal skal være ENS — intet forældreløst.
+    klar, slip = threading.Event(), threading.Event()
+
+    def _levende():
+        with runtime_db.connect() as conn:
+            conn.execute("SELECT 1")
+        klar.set()
+        slip.wait(5)
+
+    t = threading.Thread(target=_levende, name="levende-probe")
+    t.start()
+    try:
+        assert klar.wait(5)
+        stats = db_core.pool_connection_stats()
+        assert stats["pooled_live"] == stats["pooled"] == 1
+        assert stats["orphaned_count"] == 0
+
+        # Én død tråd VED SIDEN AF, mens den levende stadig holder sin forbindelse.
+        # Rækkefølgen er afgørende: thread-ident genbruges efter en død, så en død
+        # tråd der startes EFTER den levende er væk, kan overtage dens ident og
+        # skjule posten (den dokumenterede begrænsning i db_core).
+        d = threading.Thread(target=_arbejde, name="doed-probe-2")
+        d.start()
+        d.join()
+
+        efter = db_core.pool_connection_stats()
+    finally:
+        slip.set()
+        t.join()
+
+    assert efter["pooled"] == 2, "bogholderiet tæller begge identer"
+    assert efter["pooled_live"] == 1, "kun den levende tråds forbindelse ejes nu"
+    assert efter["orphaned_count"] == 1
+    assert efter["pooled"] - efter["pooled_live"] == efter["orphaned_count"], (
+        "forskellen mellem de to tal SKAL være de forældreløse — ellers "
+        "beskriver de ikke samme virkelighed"
+    )
+
+
 def test_genbrug_taeller_ikke_som_ny_foedsel(monkeypatch, tmp_path) -> None:
     """Tre kald i SAMME tråd = ÉN fødsel. Uden dette målte vi genbrug som vækst."""
     _ren_pool(monkeypatch, tmp_path)

@@ -250,7 +250,7 @@ _Internal runtime-surface endpoint — proxy-mål for Centralens self/mind-flade
 | function | `_autonomous_history` | `()` | Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L148) |
 | function | `_gate_verdicts` | `()` | Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed → | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L156) |
 | function | `_db_pool` | `()` | DB-forbindelses-poolen i DENNE proces — gjort læsbar i drift (15/10-2026). | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L164) |
-| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L200) |
+| function | `get_runtime_surface` | `(name, request)` | Return the named runtime-surface builder's output (raw). Loopback-only, self-safe. | [src](../../../apps/api/jarvis_api/routes/internal_runtime_surface.py#L202) |
 
 ## `apps/api/jarvis_api/routes/jarvisx.py`
 _JarvisX-specific routes — small endpoints used by the desktop app._

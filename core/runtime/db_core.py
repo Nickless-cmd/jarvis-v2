@@ -273,9 +273,11 @@ def _sweep_orphaned_pool_connections() -> dict:
 def pool_connection_stats() -> dict:
     """Øjebliksbillede: hvilke LEVENDE tråde ejer en pool-forbindelse.
 
-    `orphaned` er svaret på det åbne spørgsmål: poster hvis tråd-ident ikke
-    længere findes blandt de kørende tråde. Er den tom, ejer hver forbindelse
-    en levende tråd — og så er tallet poolens leje, ikke en læk.
+    Det afgørende tal er `pooled_live` — forbindelser hvis ejer-tråd findes nu.
+    `pooled` er bogholderiets størrelse (unikke identer set siden start, minus
+    eksplicit lukkede) og kan kun stige i en proces med daemon-tråde; det blev
+    læst som en lækage 3/11-2026. `orphaned_count`/`orphaned` er den klasse der
+    faktisk kan vokse monotont: poster hvis tråd er død.
     """
     with _pool_events_lock:
         births = dict(_pool_births)
@@ -284,8 +286,14 @@ def pool_connection_stats() -> dict:
     foraeldreloese = {
         ident: rec for ident, rec in births.items() if ident not in levende
     }
+    # `pooled` er bogholderiets størrelse — unikke tråd-identer set siden start,
+    # minus dem der blev lukket eksplicit. Da daemon-tråde sjældent dør, kan det
+    # tal kun stige, og det blev læst som en lækage 3/11-2026. Det ægte tal er
+    # `pooled_live`: forbindelser hvis ejer-tråd findes NU.
     return {
+        "pooled_live": len(births) - len(foraeldreloese),
         "pooled": len(births),
+        "orphaned_count": len(foraeldreloese),
         "births_total": seq_b,
         "deaths_total": seq_d,
         "threads_alive": len(levende),

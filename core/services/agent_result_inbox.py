@@ -66,13 +66,12 @@ def _render_approvals(rows: list[dict[str, Any]]) -> str:
             "agenten vil goere og hvorfor - brugeren afgoer det i Desk (Venter paa dig).\n" + "\n".join(linjer))
 
 
-def claim_for_model_step(*, owner_user_id: str, session_id: str) -> str:
-    """Claim alle ubehandlede resultater OG nye ventende approvals for (ejer, session) og returner teksten til
-    modelrequesten, eller "" naar der intet er. Kaster aldrig."""
+def _claim_for_model_step_parts(*, owner_user_id: str, session_id: str) -> tuple[str, str]:
+    """Claim nye leverancer og returnér ``(varigt indhold, aktuel status)``."""
     owner = (owner_user_id or "").strip()
     session = (session_id or "").strip()
     if not owner or not session:
-        return ""
+        return "", ""
     try:
         from core.runtime import db_agent_approvals as appr
         from core.runtime import db_agent_contract as c
@@ -80,14 +79,24 @@ def claim_for_model_step(*, owner_user_id: str, session_id: str) -> str:
         claimed = c.claim_pending_results(owner_user_id=owner, origin_session_id=session)
         approvals = appr.claim_announcements(owner_user_id=owner, origin_session_id=session)
         if not claimed and not approvals:
-            return ""
+            return "", ""
         from core.services.prompt_sections.agent_orchestration import orchestrator_state
         state = orchestrator_state(owner_user_id=owner, session_id=session)
         parts = [p for p in (_render(claimed) if claimed else "", _render_approvals(approvals) if approvals else "") if p]
-        return "\n\n".join(parts) + (f"\n{state}" if state else "")
+        return "\n\n".join(parts), state
     except Exception:
         logger.warning("kunne ikke claime agent-resultater for session %s", session, exc_info=True)
+        return "", ""
+
+
+def claim_for_model_step(*, owner_user_id: str, session_id: str) -> str:
+    """Claim alle ubehandlede resultater og render den bagudkompatible blok."""
+    indhold, status = _claim_for_model_step_parts(
+        owner_user_id=owner_user_id, session_id=session_id,
+    )
+    if not indhold:
         return ""
+    return indhold + (f"\n{status}" if status else "")
 
 
 def add_to_turn_tail(tur_hale: object, *, owner_user_id: str, session_id: str) -> bool:
@@ -97,9 +106,21 @@ def add_to_turn_tail(tur_hale: object, *, owner_user_id: str, session_id: str) -
     brod det praefiks-cachen. Det er ikke en loekke-gate (dem forbyder ``test_run_trailing`` at bruge
     ``vedvarende``) - kaldet bor derfor her og ikke i ``visible_runs``. Returnerer om noget blev tilfoejet."""
     added = False
-    text = claim_for_model_step(owner_user_id=owner_user_id, session_id=session_id)
-    if text:
-        tur_hale.tilfoej_vedvarende(text)      # type: ignore[attr-defined]
+    indhold, status = _claim_for_model_step_parts(
+        owner_user_id=owner_user_id, session_id=session_id,
+    )
+    if indhold:
+        opdater = getattr(tur_hale, "opdater_vedvarende", None)
+        if callable(opdater):
+            opdater(
+                "agent_result_inbox",
+                nyt_indhold=indhold,
+                aktuel_status=status,
+            )
+        else:
+            # Kompatibilitet med sma test doubles og tredjeparts-haler.
+            text = indhold + (f"\n{status}" if status else "")
+            tur_hale.tilfoej_vedvarende(text)  # type: ignore[attr-defined]
         added = True
 
     # The durable owner inbox is broader than the agent outbox. Claim unseen

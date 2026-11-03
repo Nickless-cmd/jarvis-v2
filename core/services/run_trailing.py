@@ -102,10 +102,11 @@ def runtime_instruction_message(text: str) -> dict[str, str]:
 class RundeHale:
     """Turens hale. Ikke en liste, fordi de tre slags har hver sin levetid."""
 
-    __slots__ = ("_vedvarende", "_naeste", "_runde")
+    __slots__ = ("_vedvarende", "_vedvarende_kilder", "_naeste", "_runde")
 
     def __init__(self) -> None:
         self._vedvarende: list[dict[str, Any]] = []
+        self._vedvarende_kilder: dict[str, dict[str, Any]] = {}
         self._naeste: list[dict[str, Any]] = []
         self._runde: list[dict[str, Any]] = []
 
@@ -120,6 +121,45 @@ class RundeHale:
         if rolle == "system":
             tekst = _RUNTIME_FRAME + tekst
         self._vedvarende.append({"role": rolle, "content": tekst, "art": art})
+
+    def opdater_vedvarende(
+        self,
+        noegle: str,
+        *,
+        nyt_indhold: str = "",
+        aktuel_status: str = "",
+        rolle: str = "system",
+        art: str = FORPLIGTELSE,
+    ) -> None:
+        """Hold én vedvarende blok pr. kilde og opdatér den mellem runder.
+
+        Nyt indhold bevares, fordi et claimet resultat ellers ville forsvinde
+        fra resten af turen. ``aktuel_status`` erstatter derimod kildens gamle
+        status; levende snapshots skal ikke ophobes som historik. Identiske
+        indholdsdele ignoreres defensivt.
+        """
+        kilde = str(noegle or "").strip()
+        indhold = str(nyt_indhold or "").strip()
+        status = str(aktuel_status or "").strip()
+        if not kilde or (not indhold and not status):
+            return
+
+        post = self._vedvarende_kilder.get(kilde)
+        if post is None:
+            post = {"index": len(self._vedvarende), "dele": []}
+            self._vedvarende_kilder[kilde] = post
+            self._vedvarende.append({"role": rolle, "content": "", "art": art})
+        dele = post["dele"]
+        if indhold and indhold not in dele:
+            dele.append(indhold)
+        tekst = "\n\n".join([*dele, status] if status else dele)
+        if rolle == "system":
+            tekst = _RUNTIME_FRAME + tekst
+        self._vedvarende[post["index"]] = {
+            "role": rolle,
+            "content": tekst,
+            "art": art,
+        }
 
     def tilfoej_naeste(
         self, indhold: str, *, rolle: str = "system", art: str = FORPLIGTELSE

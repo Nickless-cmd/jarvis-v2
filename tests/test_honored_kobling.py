@@ -197,3 +197,59 @@ def test_r2_5_foeler_ikke_som_pushback_og_taersklen_naas_derfor_ikke():
         "r2_5_gate optræder nu som en pushback-følelse — så er nøglen måske "
         "koblet på beslutningsvejen; mål det og opdatér denne test"
     )
+
+
+def test_operative_feelings_er_praecis_de_pushback_kan_producere():
+    """`authority: "decision"` må ikke meldes for en følelse der ikke findes.
+
+    `veto_gate.threshold_summary` sætter `authority="decision"` når
+    `feeling in _OPERATIVE_FEELINGS` og værktøjet ikke er gate-exempt. Den
+    påstand er kun sand hvis listen indeholder PRÆCIS de følelser
+    `pushback._affective_pressure` kan producere — ellers står der «denne
+    tærskel afgør noget» om en følelse ingen beslutning kan slå op med.
+
+    Målt 3/11-2026: listerne var identiske, men ingen test refererede
+    `_OPERATIVE_FEELINGS`. En tilføjelse til den liste — eller en ny gren i
+    `_affective_pressure` — ville derfor flytte påstanden uden at nogen
+    opdagede det. Testen binder dem i begge retninger, og læser koden
+    dynamisk frem for en hardkodet streng: ændrer man kontrakten med vilje,
+    skal testen opdateres med vilje.
+    """
+    from core.services import pushback, veto_gate
+
+    class _S:
+        def __init__(self, **kw):
+            self.frustration = kw.get("frustration", 0.0)
+            self.confidence = kw.get("confidence", 1.0)
+            self.fatigue = kw.get("fatigue", 0.0)
+            self.primary_mood = kw.get("mood", "")
+            self.intensity = kw.get("intensity", 0.0)
+
+    producerbare: set[str] = set()
+    for snap in (
+        _S(frustration=0.9),
+        _S(confidence=0.2),
+        _S(fatigue=0.9),
+        _S(mood="distressed", intensity=0.8),
+        _S(mood="melancholic", intensity=0.8),
+    ):
+        par = pushback._affective_pressure(snap)
+        if par:
+            producerbare.add(par[0])
+
+    operative = set(veto_gate._OPERATIVE_FEELINGS)
+    kun_i_operative = operative - producerbare
+    kun_i_pushback = producerbare - operative
+
+    assert not kun_i_operative, (
+        f"{sorted(kun_i_operative)} står i _OPERATIVE_FEELINGS, men "
+        "_affective_pressure kan ikke producere dem — så melder "
+        "threshold_summary 'authority: decision' for en følelse der aldrig "
+        "kan nå beslutningsvejen. Fjern dem fra listen, eller tilføj grenen "
+        "i pushback og mål at den fyrer."
+    )
+    assert not kun_i_pushback, (
+        f"{sorted(kun_i_pushback)} kan _affective_pressure producere, men står "
+        "ikke i _OPERATIVE_FEELINGS — så beregnes deres tærskel og meldes som "
+        "'telemetry_only', selv om de faktisk gates."
+    )

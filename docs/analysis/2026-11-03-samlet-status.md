@@ -1065,7 +1065,8 @@ en fast basis (0,75) og clampе til 0,98.
 **Rettelse:** stigningen er aftagende — `ceiling × n/(n+3)` med ceiling 0,20.
 n=1 → +0,05 (**uændret**), n=2 → +0,08 (var +0,10), n=3 → +0,10 (var +0,15),
 n=7 → +0,14 (var +0,35), n→∞ → +0,20.
-En 0,75-basis kan dermed maksimalt nå **0,9494**, aldrig 0,98. En høj basis (fx
+En 0,75-basis har en **matematisk grænse på 0,95** (0,75 + 0,20 når n→∞), så den kan aldrig
+nå clamp-loftet 0,98. Ved n=1000 er værdien 0,9494 — det er en målt værdi, ikke grænsen. En høj basis (fx
 `restart`+`irritation` = 0,95) rammer loftet **allerede ved første override** (0,95+0,05 = 1,00
 → clamp 0,98) — men det er en eksplicit tabel-beslutning, ikke akkumulering.
 
@@ -1154,7 +1155,7 @@ bagudkompatibel ved **første** override, ikke ved tredje.
 
 ### Blindhed er nu umulig for base 0,75
 
-Målt med simuleret tælling: base 0,75 når **0,9494** ved n=1000 og kan aldrig nå 0,98. Og målt mod de faktiske 37 par med overrides i drift: **ingen har base ≥ 0,90** — alle står på 0,75. Så loftet er ikke længere en praktisk risiko.
+Målt med simuleret tælling: base 0,75 giver **0,9494** ved n=1000, og den matematiske grænse er **0,95** (n→∞) — så den kan aldrig nå 0,98. Og målt mod de faktiske 37 par med overrides i drift: **ingen har base ≥ 0,90** — alle står på 0,75. Så loftet er ikke længere en praktisk risiko.
 
 **Forbehold, målt:** base 0,95 (`restart`+`irritation`) rammer loftet **ved én** override, ikke fem — 0,95 + 0,05 = 1,00, clampet til 0,98. Det par har nul overrides i drift, så det er latent, ikke aktuelt. Rettelsen dækker de baser der findes — ikke en hypotetisk høj base.
 
@@ -1172,7 +1173,7 @@ Kun **n=1** er uændret (+0,050). At testen blev opdateret fra 0,90 til 0,85 er 
 at kontrakten blev brudt ved n=3 — jeg skrev «bagudkompatibel» i samme sætning som jeg beskrev
 en testændring der viste det modsatte.
 
-Hovedresultatet holder: en 0,75-basis når maksimalt **0,9494**, aldrig 0,98. Men den latente
+Hovedresultatet holder: en 0,75-basis har en matematisk grænse på **0,95**, aldrig 0,98. Men den latente
 risiko er skarpere end jeg skrev — en base på 0,95 bliver blind efter **én** override, ikke fem.
 
 **Fejlklassen er den femte i samme familie:** jeg skrev hvad kurven *måtte* give ud fra dens
@@ -1239,3 +1240,29 @@ Mutation bevist: fjernes `_kvitter_adlydt`-kaldet, falder to af vagterne; efter 
 **De 504 historiske rækker.** Jeg kan ikke rekonstruere om de blev adlydt — der findes intet spor fra dengang. De bliver stående `pending`, og det er den ærlige tilstand, ikke en gæld der kan ryddes.
 
 **`honored` er stadig død for veto-gaten selv.** Denne rettelse lukker asymmetrien for r2_5, fordi r2_5 har en observerbar «jeg kiggede tilbage»-hændelse. Den almindelige veto-gate har ingen tilsvarende kvittering — der findes intet tidspunkt hvor man kan sige «brugeren adlød vetoet». Det kræver en anden mekanisme, ikke samme rettelse.
+
+### KORREKTION 6 (3/11, ekstern gennemgang) — en målt værdi er ikke en grænse
+
+Jeg skrev tre steder at en 0,75-basis «maksimalt kan nå **0,9494**». Det er forkert, og fejlen er
+beregnelig:
+
+| n | lift = 0,20 × n/(n+3) | tærskel = 0,75 + lift |
+|---|---|---|
+| 1 | 0,050000 | 0,800000 |
+| 3 | 0,100000 | 0,850000 |
+| 1.000 | 0,199402 | **0,949402** |
+| 10.000 | 0,199940 | 0,949940 |
+| 1.000.000.000 | 0,200000 | **0,950000** |
+
+**Den matematiske grænse er 0,95** — fordi `n/(n+3) → 1`, så lift → `_OVERRIDE_CEILING` = 0,20.
+0,9494 er værdien **ved n=1000**, altså et punkt på kurven, ikke dens loft.
+
+Det ændrer ikke hovedresultatet: 0,95 < 0,98, så en 0,75-basis kan aldrig blive blind. Men det er
+en anden slags fejl end de fem foregående — og en mere grundlæggende:
+
+**Jeg forvekslede et målt punkt med en egenskab ved funktionen.** De fem første korrektioner
+handlede om at læse data forkert. Denne handler om at jeg ikke skelnede mellem *hvad jeg havde
+regnet* og *hvad formlen kan*. Et endeligt n kan aldrig vise en asymptote.
+
+Konsekvensen for formuleringen er, at grænsen nu skrives som `0,95 (n→∞)`, og 0,9494 kun optræder
+sammen med «ved n=1000».

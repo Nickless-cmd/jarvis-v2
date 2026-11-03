@@ -758,7 +758,7 @@ Generated from source. 9589/17940 functions/methods documented (53%). The list b
 - `core/services/agent_sandbox.py` :: `bwrap_path` (L58)
 - `core/services/agent_sandbox.py` :: `pids_limit_disabled` (L136)
 - `core/services/agent_sandbox.py` :: `python_prefixes` (L65)
-- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L517)
+- `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L539)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
 - `core/services/agent_task_facade.py` :: `derive` (L66)

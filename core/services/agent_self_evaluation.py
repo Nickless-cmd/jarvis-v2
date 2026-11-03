@@ -53,6 +53,16 @@ _FULL_DETAIL_KEPT = 50
 # slagets arbejde. Alle led læses nu af `tick_result`: slagets EGET svar.
 _SWEEP_POINT = 10            # daemon-sweepet kørte (koert > 0)
 _PER_DAEMON_FAILURE = 8      # træk pr. fejlet daemon, gulv 0 for leddet
+# 3/11-2026 (aften): kun `executed` blev godkendt, men produktionen skriver
+# også `sent`. Målt i heartbeat_runtime_ticks: 681 rækker med `sent`, heraf
+# 195 webchat-heartbeat-ping og 173 discord-heartbeat-ping — pings der FAKTISK
+# blev afsendt og alligevel blev dømt som resultatløse. `recorded` er bevidst
+# IKKE med: det er `recorded-preview` (heartbeat_runtime.py:4474) med TOM
+# `action_type`, hvor intet blev sendt. Husets feedback-domæne i
+# `runtime_operational_memory.py:209` regner også `recorded` som succes, men
+# dér måles om posten blev registreret — her måles om handlingen blev
+# effektueret, og det er et andet spørgsmål.
+_EFFECTUERENDE_STATUS = frozenset({"executed", "sent"})
 _REACTION_MAX = 45           # så noget → dannede prioritet → handlede
 _REACTION_NO_ACTION = 15     # prioriterede, men udrettede intet
 _IDLE_WITH_ACTION = 20       # intet at reagere på; ledig drift udrettede noget
@@ -126,7 +136,7 @@ def _dispatch_udrettede(act: dict[str, Any]) -> tuple[bool, str]:
     outcome fra `HeartbeatExecutionResult.tick` (persisteret i
     heartbeat_runtime_ticks). Formen er målt i produktion, ikke opfundet:
 
-        action_status = "executed" | "blocked" | ""
+        action_status = "executed" | "sent" | "blocked" | "recorded" | ""
         action_type   = "productive_idle" | "ping" | ...
         blocked_reason = "active-chat-gate" | ""
 
@@ -141,7 +151,7 @@ def _dispatch_udrettede(act: dict[str, Any]) -> tuple[bool, str]:
     blocked = str(result.get("blocked_reason") or "").strip()
     if blocked:
         return False, f"dispatch blokeret ({blocked})"
-    if status != "executed":
+    if status not in _EFFECTUERENDE_STATUS:
         return False, f"dispatch uden udført handling (status={status or 'tom'})"
     if action_type in ("", "productive_idle"):
         return False, "dispatch udførte kun ledig drift"
@@ -151,7 +161,7 @@ def _dispatch_udrettede(act: dict[str, Any]) -> tuple[bool, str]:
 def _score_reaktion(
     signals: dict[str, Any], priorities: list[Any], actions: list[str],
     *, act: dict[str, Any] | None = None,
-) -> tuple[int, str]:
+) -> tuple[int, str, list[str]]:
     """0-45: så slaget noget der krævede handling — og handlede det?
 
     Grundene er præcis de signaler `_identify_priorities` bygger prioriteter af,
@@ -160,6 +170,12 @@ def _score_reaktion(
     `actions` findes kun i `productive_idle`-grenen. Et `tick_dispatched` bærer
     sit outcome i `act["result"]` i stedet, og det læses nu — ellers kunne et
     resultatløst dispatch ikke skelnes fra et vellykket.
+
+    Returnerer de EFFEKTIVE handlinger sammen med point og note (3/11-2026,
+    aften): den syntetiske dispatch-handling blev før kun dannet lokalt her, så
+    nyheds-leddet og historikken stadig så en tom liste — hvert dispatch blev
+    gemt med `actions: []` og fik 0 nyhedspoint, selv når handlingstypen var
+    ny. Kalderen skal bruge den samme liste hele vejen igennem.
     """
     act = act or {}
     dispatch_note = ""
@@ -188,17 +204,20 @@ def _score_reaktion(
     if grunde:
         hvad = ", ".join(grunde)
         if priorities and actions:
-            return _REACTION_MAX, f"reagerede på {hvad}"
+            # Noten skal sige HVAD der blev gjort, ikke kun hvad der blev set —
+            # ellers kan man ikke læse af historikken hvad slaget udrettede.
+            udrettet = actions[0] if len(actions) == 1 else f"{len(actions)} handlinger"
+            return _REACTION_MAX, f"reagerede på {hvad} ({udrettet})", actions
         if priorities:
             if dispatch_note:
-                return _REACTION_NO_ACTION, f"så {hvad}, men {dispatch_note}"
-            return _REACTION_NO_ACTION, f"så {hvad}, men udrettede intet"
-        return 0, f"så {hvad}, dannede ingen prioritet"
+                return _REACTION_NO_ACTION, f"så {hvad}, men {dispatch_note}", actions
+            return _REACTION_NO_ACTION, f"så {hvad}, men udrettede intet", actions
+        return 0, f"så {hvad}, dannede ingen prioritet", actions
     if actions:
-        return _IDLE_WITH_ACTION, "intet at reagere på; ledig drift udrettede noget"
+        return _IDLE_WITH_ACTION, "intet at reagere på; ledig drift udrettede noget", actions
     if dispatch_note:
-        return 0, f"intet at reagere på; {dispatch_note}"
-    return 0, "intet at reagere på, intet udrettet"
+        return 0, f"intet at reagere på; {dispatch_note}", actions
+    return 0, "intet at reagere på, intet udrettet", actions
 
 
 def _previous_eval() -> dict[str, Any] | None:
@@ -303,7 +322,10 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
     notes.append(f"{daemon_note} → {daemon_point}p")
 
     # 3. Reaktion — signal → prioritet → handling.
-    reaktion_point, reaktion_note = _score_reaktion(
+    #    `actions` REBINDES med de effektive handlinger: et dispatch bærer sit
+    #    outcome i `act["result"]` og ikke som en liste, så uden dette så
+    #    nyheds-leddet og historikken en tom liste for hvert dispatch.
+    reaktion_point, reaktion_note, actions = _score_reaktion(
         sense, priorities, actions, act=act
     )
     score += reaktion_point

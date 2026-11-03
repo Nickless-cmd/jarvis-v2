@@ -160,6 +160,69 @@ def test_dispatch_med_tom_status_taelles_ikke_som_handling():
     assert any("uden udført handling" in n for n in tom["notes"])
 
 
+def test_afsendt_handling_taelles_som_udfoert():
+    """Codex 3/11-2026: kun `executed` blev godkendt, men målt i
+    heartbeat_runtime_ticks har 681 rækker `action_status="sent"` — heraf 195
+    webchat-heartbeat-ping og 173 discord-heartbeat-ping. En ping der faktisk
+    blev afsendt er en effektueret handling, og blev dømt som resultatløs.
+    """
+    afsendt = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="webchat-heartbeat-ping"))
+    blokeret = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="blocked", action_type="webchat-heartbeat-ping",
+        blocked_reason="active-chat-gate"))
+    assert afsendt["score"] > blokeret["score"]
+    assert any("webchat-heartbeat-ping" in n for n in afsendt["notes"])
+
+
+def test_recorded_er_ikke_en_effektueret_handling():
+    """`recorded` er `recorded-preview` (heartbeat_runtime.py:4474) med TOM
+    `action_type` — intet blev sendt. Husets feedback-domæne i
+    `runtime_operational_memory.py:209` regner den som succes, men dér måles om
+    posten blev REGISTRERET; her måles om handlingen blev EFFEKTUERET.
+    """
+    r = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="recorded", action_type=""))
+    assert any("uden udført handling" in n for n in r["notes"])
+
+
+def test_dispatch_handlingen_foeres_videre_til_nyhed_og_historik():
+    """Codex' anden indvending: `_score_reaktion` dannede den syntetiske
+    dispatch-handling LOKALT, så kalderens liste forblev tom — hvert dispatch
+    blev gemt med `actions: []` og fik 0 nyhedspoint, selv når handlingstypen
+    var ny. Handlingen skal både gemmes og kunne være ny næste gang.
+    """
+    foerste = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="discord-heartbeat-ping"))
+    assert foerste["actions"], "dispatch-handlingen blev ikke gemt i posten"
+
+    forrige = [{
+        "evaluated_at": datetime.now(UTC).isoformat(), "score": 40,
+        "actions": ["dispatch udførte discord-heartbeat-ping"],
+    }]
+    gentaget = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="discord-heartbeat-ping"),
+        forrige=forrige)
+    nyt = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="webchat-heartbeat-proposal"),
+        forrige=forrige)
+    assert nyt["score"] > gentaget["score"], (
+        "en ny handlingstype gav ingen nyhed — handlingen føres ikke videre"
+    )
+
+
 def test_et_ledigt_slag_kan_ikke_laengere_score_90():
     """Kernen i indvendingen (3/11-2026): et slag der kører den samme runde
     igen fik 90-100, fordi spor-leddet talte baggrundsstøj. Nu måler nyheds-

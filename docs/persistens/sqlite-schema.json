@@ -9653,7 +9653,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -20768,7 +20768,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "89:64:76:78:2b:9f:58:6f:45:4a:14:d8:48:27:96:44:12:2f:18:d5:e2:40:7c:78:54:45:ab:78:22:4c:60:dc",
+      "digest": "9c:f1:f3:a1:f2:60:32:2f:a0:9d:0a:30:50:ee:93:49:bf:a3:20:f0:93:53:00:e8:39:b5:32:a4:7b:ac:79:07",
       "schema": {
         "columns": [
           {
@@ -20836,6 +20836,14 @@
             "hidden": 0
           },
           {
+            "name": "importance",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'normal'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "kilde_id",
             "type": "TEXT",
             "nullable": false,
@@ -20856,6 +20864,22 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "leveret_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "leveret_til_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -45852,7 +45876,7 @@
       ]
     },
     "session_inbox": {
-      "digest": "94:99:ac:d3:6d:46:f9:6b:f9:a5:69:49:73:b3:a7:42:ed:7b:c3:13:63:9e:57:b5:a7:49:10:01:ab:27:69:f5",
+      "digest": "00:6e:57:30:14:14:a5:67:d2:06:0b:61:12:ff:89:50:df:59:d2:33:3d:ae:b0:b5:87:c8:ea:fe:03:3e:3b:21",
       "schema": {
         "columns": [
           {
@@ -45860,6 +45884,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dedupe_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -45877,6 +45909,14 @@
             "nullable": true,
             "default": null,
             "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "importance",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'normal'",
+            "pk": 0,
             "hidden": 0
           },
           {
@@ -45960,6 +46000,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_inbox_session_status ON session_inbox(session_id, status)"
+          },
+          {
+            "name": "ux_session_inbox_dedupe",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "dedupe_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX ux_session_inbox_dedupe ON session_inbox(session_id, dedupe_key) WHERE dedupe_key != ''"
           }
         ]
       },

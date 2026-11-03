@@ -218,17 +218,24 @@ def _normaliser(wonder: str) -> str:
 
 
 def open_wonders(*, limit: int = 5) -> list[dict]:
-    """De undren der IKKE er vurderet endnu, ældste først.
+    """De undren der IKKE er vurderet endnu, nyeste først.
 
     En undren kan ligge åben længe — det er ikke en opgave med en frist. Den er
     åben indtil den blev vurderet, og først da findes der et udfald at måle på.
     Self-safe → [].
+
+    Målt 3/11-2026: scanningen tog 60 poster uden status-filter. Livscyklussen
+    havde arkiveret eller frigivet 271 af de 335 wonder-poster, og de fyldte
+    vinduet — så et reelt åbent spørgsmål kunne ligge uden for det og aldrig
+    blive vist. Kun ``active`` er i live; resten er historik.
     """
     try:
         from core.runtime.db import list_private_brain_records
 
         poster = list_private_brain_records(
-            record_type="existential-wonder", limit=_OPEN_SCAN_LIMIT
+            record_type="existential-wonder",
+            status="active",
+            limit=_OPEN_SCAN_LIMIT,
         )
     except Exception:  # en læsefejl giver tom liste, ikke en væltet prompt-bygning
         return []

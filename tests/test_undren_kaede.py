@@ -74,6 +74,49 @@ def test_udfald_accepterer_bindestreg_variant():
     assert "ukendt udfald" not in str(svar.get("error", ""))
 
 
+# ── trin 2: hvem der overhovedet kommer i betragtning ───────────────────
+
+
+def test_scanningen_ser_kun_aktive_poster(monkeypatch):
+    """Målt 3/11-2026: 271 arkiverede/frigivne wonder-poster fyldte de 60
+    scan-pladser. Et reelt åbent spørgsmål kunne ligge uden for vinduet og
+    aldrig blive vist — kæden var derfor tavs uden at fejle."""
+    from core.runtime import db as brain_db
+
+    fanget: dict = {}
+
+    def fake_list(**kwargs):
+        fanget.update(kwargs)
+        return []
+
+    monkeypatch.setattr(brain_db, "list_private_brain_records", fake_list)
+    wd.open_wonders(limit=3)
+
+    assert fanget.get("status") == "active", "historik må ikke fylde scan-vinduet"
+    assert fanget.get("record_type") == "existential-wonder"
+
+
+def test_poster_med_udfald_er_ikke_aabne(monkeypatch):
+    """En legacy-post blev migreret med verdict='parkeret' og ærlig grund.
+    Den er arkiveret som historik — ikke vurderet — og skal ikke vises igen."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(
+        brain_db,
+        "list_private_brain_records",
+        lambda **k: [
+            {
+                "record_id": "pb-wonder-gammel",
+                "summary": "Er jeg kun en simulation?",
+                "created_at": "2026-10-20T10:00:00+00:00",
+                "status": "active",
+                "detail": '{"legacy": true, "verdict": "parkeret"}',
+            }
+        ],
+    )
+    assert wd.open_wonders(limit=3) == []
+
+
 # ── trin 2: blokken i halen ─────────────────────────────────────────────
 
 

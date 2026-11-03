@@ -194,5 +194,41 @@ def test_et_orphaned_bord_er_DOEDT():
     from core.services.liveness_registry import is_alive
 
     for bord in ("cadence_idempotency_keys", "runtime_world_facts",
-                 "composer_jarvis_forslag", "cheap_lane_quota_observations"):
+                 "cognitive_epistemic_claims", "cheap_lane_quota_observations"):
         assert is_alive(bord) is False, bord
+
+
+def test_en_post_der_paastaar_ingen_skrivesti_skal_vaere_sand():
+    """3/11-2026: `composer_jarvis_forslag`, `session_write_leases` og
+    `user_flags` stod alle som orphaned med «INGEN skrivesti i kilden» — og
+    alle tre havde en skriver, koblet paa efter 25/9-auditen. Klassifikationen
+    var foraeldet, og intet fangede det, fordi registret er statisk.
+
+    ⚠️ Graensen er vigtig: `orphaned` betyder IKKE «ingen skriver». Det betyder
+    «skriveren findes, men har ingen live-kalder» — saa en INSERT i kilden er
+    forventet og beviser intet. Det der kan afgoeres statisk er den haardeste
+    form: en post der paastaar at der slet ikke findes en skrivefunktion.
+    """
+    import pathlib
+    import re
+
+    from core.services.liveness_registry import _REGISTRY
+
+    rod = pathlib.Path(__file__).resolve().parent.parent
+    tekst = "\n".join(
+        p.read_text(encoding="utf-8", errors="ignore")
+        for p in (rod / "core").rglob("*.py")
+        if p.name != "liveness_registry.py"
+    )
+    inserts = {m.group(1) for m in
+               re.finditer(r"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+([^\s(]+)", tekst)}
+
+    for bord, post in _REGISTRY.items():
+        if "INGEN skrivesti" not in str(post.get("producer") or ""):
+            continue
+        ramte = [t for t in inserts if bord in t]
+        assert not ramte, (
+            f"{bord} staar som «INGEN skrivesti», men der findes en INSERT mod "
+            f"{ramte}. Klassifikationen er foraeldet — find skriveren og dens "
+            "kaldere, og afgoer om den er live, betinget eller reelt doed."
+        )

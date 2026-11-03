@@ -854,9 +854,42 @@ producent-navn. Men registret læses kun af én API-rute
 auditen 25/9, og `classify_table` slår op i den — der er ingen dynamisk
 klassificering, ingen INSERT-detektion, ingen liveness-måling. Den kan fortælle
 hvad en tabel blev klassificeret som **den 25/9**; den opdager ikke at en ny
-forbindelse er oprettet, eller at en producent er holdt op med at fyre. Prøven:
-`composer_jarvis_forslag` står stadig `orphaned` i registret, men har 22 rækker i
-dag — klassifikationen er forældet, og registret kan ikke selv se det.
+forbindelse er oprettet, eller at en producent er holdt op med at fyre.
+
+**Prøven — og min egen fejl i den (målt 3/11 kl. 21:2x).** Jeg skrev at
+`composer_jarvis_forslag` «har 22 rækker i dag, så klassifikationen er forældet».
+Indvendingen var rigtig: rækker der findes i dag beviser ikke at nogen skriver i
+dag. Men målingen falder den anden vej end indvendingen antog — der **er** en
+skrivesti, og den er live:
+
+| Led | Målt |
+|---|---|
+| Skriver | `core/runtime/db_composer_jarvis.py:100` `gem_forslag()` → `INSERT INTO composer_jarvis_forslag` |
+| Kaldt fra | `core/tools/composer_suggest_tools.py:55` — `suggest_next_task`-værktøjet |
+| Rækker skrevet | 22, fordelt 30/9 → **2/11**, ikke én klump |
+| Hentet af klient | 13 af 22 har `vist_at`; **9 har ingen `composer_choices`-række** |
+
+Så registrets post («INGEN skrivesti i kilden», «intet sted i koden skriver i
+den») er **beviseligt forkert**, ikke bare gammel. Klassifikationen er forældet —
+men grunden er at skriveren blev koblet på efter 25/9-auditen, ikke at rækkerne
+er historiske rester. Det er den samme fejlklasse som `false_positive`: en
+status-literal der ikke længere dækker virkeligheden.
+
+**Og den var ikke enlig.** Da jeg byggede en vagt mod netop den påstand — at en
+post ikke må sige «INGEN skrivesti» hvis der findes en INSERT i kilden — fandt
+den to mere med det samme:
+
+| Bord | Stod som | Er målt | Skriver |
+|---|---|---|---|
+| `composer_jarvis_forslag` | orphaned / «INGEN skrivesti» | **wired** | `db_composer_jarvis.gem_forslag` ← `suggest_next_task` |
+| `session_write_leases` | orphaned / «INGEN skrivesti» | **manual_only** | `db_session_ledger.acquire_write_lease` ← `ledger_canary` ← `chat_sessions:113`, betinget af `is_armed()` (False nu) |
+| `user_flags` | orphaned / «INGEN skrivesti» | **manual_only** | `security_guard._lock_account` — kun ved account-lockdown |
+
+Tre forældede poster i samme mønster, alle med en skriver der blev koblet på
+efter auditen. **Grænsen er vigtig:** `orphaned` betyder ikke «ingen skriver» —
+det betyder «skriveren findes, men har ingen live-kalder». En INSERT i kilden er
+derfor forventet og beviser intet. Kun den hårdeste form af påstanden, «INGEN
+skrivesti», kan afgøres statisk — og det er præcis hvad vagten måler.
 
 Så det præcise fund er todelt, ikke ét: **kataloget er statisk, og intet læser det
 aktivt.** Det er samme fejlform som `honored`-stien og de 293 dubletter, blot i

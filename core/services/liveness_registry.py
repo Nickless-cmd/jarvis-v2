@@ -83,16 +83,42 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         ),
     },
     "composer_jarvis_forslag": {
-        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
-        "note": "Tabellen findes i den koerende DB; intet sted i koden skriver i den.",
+        "status": "wired",
+        "producer": "db_composer_jarvis.gem_forslag ← composer_suggest_tools (suggest_next_task)",
+        "note": (
+            "RETTET 3/11-2026: stod som orphaned med «INGEN skrivesti i kilden». "
+            "Det var forkert. `core/runtime/db_composer_jarvis.py:100` skriver via "
+            "`gem_forslag()`, kaldt fra `suggest_next_task`-vaerktoejet "
+            "(`core/tools/composer_suggest_tools.py:55`). Maalt: 22 raekker skrevet "
+            "30/9 -> 2/11, altsaa loebende og ikke en historisk rest. 13 af 22 blev "
+            "hentet af en klient; 9 har ingen `composer_choices`-raekke og blev "
+            "aldrig vist. Klassifikationen var foraeldet fordi skriveren blev "
+            "koblet paa EFTER 25/9-auditen — ikke fordi raekkerne er gamle."
+        ),
     },
     "session_write_leases": {
-        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
-        "note": "Som ovenfor: bord uden nogen der kan daekke det.",
+        "status": "manual_only",
+        "producer": "db_session_ledger.acquire_write_lease ← ledger_canary.enable_shadow "
+                    "← maybe_enroll_new_session ← chat_sessions (kræver is_armed())",
+        "note": (
+            "RETTET 3/11-2026: stod som orphaned med «INGEN skrivesti i kilden». "
+            "Det var forkert — `core/runtime/db_session_ledger.py:137` skriver, og "
+            "vejen er live helt op til `chat_sessions.py:113`. Men den fyrer kun "
+            "naar kanariefuglen er ARMERET (`is_armed()`), og den disarmerer sig "
+            "selv efter ÉN session. Maalt 3/11: `is_armed()` = False, 0 raekker. "
+            "Tom betyder «ingen kanarie er indrullet», ikke «ingen vej til en raekke»."
+        ),
     },
     "user_flags": {
-        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
-        "note": "Som ovenfor.",
+        "status": "manual_only",
+        "producer": "security_guard._lock_account (account-lockdown, sikkerhedshandling)",
+        "note": (
+            "RETTET 3/11-2026: stod som orphaned med «INGEN skrivesti i kilden». "
+            "Det var forkert — `core/services/security_guard.py:197` skriver, og "
+            "laesningen (`is_account_locked`) er koblet paa. Men skrivningen sker "
+            "KUN ved en account-lockdown, altsaa en bevidst sikkerhedshandling. "
+            "0 raekker betyder «ingen er nogensinde laast ude», ikke «ingen vej»."
+        ),
     },
 
     # — Kun en bevidst handling skriver —

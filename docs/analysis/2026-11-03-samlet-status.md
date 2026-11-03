@@ -22,7 +22,7 @@ Formålet er at svare på ét spørgsmål: hvad står stadig åbent efter dagens
 
 ## Åbent — målt åbent lige nu
 
-### A. Gut-kæden (seks huller, i rækkefølge)
+### A. Gut-kæden (syv huller, i rækkefølge)
 
 **A1. Preflight sender ingen observationer.**
 `preflight_gut_gate` kalder `derive_gut_signal(task_description=…)` — intet
@@ -80,23 +80,39 @@ havde ret. Definition B fjerner inversionen, men ikke cirklen.
 **A5. Tærsklen er stadig 0,30 og bør ikke røres endnu.**
 Hæves den før A1–A4, afvises alle opgaver blot **ens**.
 
-**A6. Backstop kan overkøre gatens nej — og forskellen bevares ingen steder.**
+**A6. Backstop kan overkøre gatens nej — sporet er aggregeret, ikke per-run.**
 `preflight_gut_gate` har et blokerings-budget (`_MAX_BLOK_PER_TIME = 3` pr.
-time). Er det brugt, slipper runnet igennem med `backstop: True` — også når
-gaten sagde nej. Målt:
+rullende time). Er det brugt, slipper runnet igennem med `backstop: True` —
+også når gaten sagde nej. Målt:
 
-- `backstop`-flaget **læses ingen steder**. Begge produktionskaldesteder
-  (`autonomous_stream_run.py:97`, `visible_autonomous_run.py:276`) bruger
-  `preflight_allows()`, som kun returnerer `bool` og kaster hele returværdien
-  (`confidence`, `hunch`, `backstop`) væk.
-- `_blok_tider` er en **in-memory modul-global liste** (`gut_engine.py:279`).
-  Budgettet nulstilles ved hver genstart — og backenden er genstartet to gange
-  i dag. «3 pr. time» er derfor reelt ubegrænset over tid.
-- `gut_gate_backstop` og `gut_gate_withhold` har **nul rækker** i
-  `gate_verdict_counts`. Ingen af stierne er nogensinde udløst.
+- **Der FINDES et aggregeret spor.** `_record_backstop` (`gut_engine.py:290`)
+  skriver `gut_gate_backstop`/`yellow` til den persistente ledger. En tidligere
+  formulering her kaldte overkørslen «usynlig» — det var for stærkt.
+- **Men sporet har nul rækker** i `gate_verdict_counts`, ligesom
+  `gut_gate_withhold`. Ingen af stierne er nogensinde udløst. Sporet er kodet,
+  ikke observeret.
+- **Det sammenkædes ikke med det enkelte run.** `backstop`-flaget læses ingen
+  steder: begge produktionskaldesteder (`autonomous_stream_run.py:97`,
+  `visible_autonomous_run.py:276`) bruger `preflight_allows()`, som kun
+  returnerer `bool` og kaster `confidence`, `hunch` og `backstop` væk. Bagefter
+  kan man tælle *at* der blev overkørt — ikke *hvilket* run.
+- **Budgettet er 3 pr. rullende time pr. proceslevetid**, ikke ubegrænset.
+  `_blok_tider` er en in-memory modul-global liste (`gut_engine.py:279`), så
+  tælleren nulstilles ved genstart. Under normal drift er grænsen reel;
+  gentagne genstarter kan omgå den.
 
-Konsekvens: en overkørsel er usynlig bagefter. Udfaldet kalibrerer den hunch
-`_on_started` dannede — ikke den gatens anbefaling backstop overkørte.
+**A6b. `blokeret` tæller gatens nej — ikke faktisk stoppede runs.**
+`build_gut_counterfactual_surface` beregner `blokeret = total - pass_med`
+(`gut_engine.py:412`), hvor `pass_med` er *gatens* grønne. En backstop-
+overkørsel står derfor som «stoppet» i samme flade, mens `backstop_overkoersler`
+ved siden af viser den som «sluppet igennem». Summary-linjen kan derfor sige
+«4 stoppet, 1 sluppet igennem af bagkanten» om fire runs hvor kun tre blev
+stoppet. Matematisk korrekt for gate-nej, forkert som beskrivelse af
+handlingen. Ingen faktiske overkørsler er observeret (0 rækker), så fejlen er
+påvist i koden, ikke i driften.
+
+Konsekvens: udfaldet kalibrerer den hunch `_on_started` dannede — ikke den
+gatens anbefaling backstop overkørte.
 
 **De fire størrelser der skal holdes adskilt** (GPT, 3/11):
 
@@ -155,8 +171,9 @@ følges til ende — og det er ikke gjort for nogen af de to.
 ## Rækkefølgen der giver mening
 
 1. **A2** — én forudsigelse hele vejen (mindst arbejde, størst ærlighed)
-2. **A6** — bevar gate-anbefalingen og den endelige beslutning som to felter,
-   så en backstop-overkørsel kan ses bagefter
+2. **A6 + A6b** — bevar gate-anbefalingen og den endelige beslutning som to
+   felter, så en backstop-overkørsel kan ses bagefter; og lad `blokeret` trække
+   overkørslerne fra, så fladen ikke kalder en sluppet kørsel «stoppet»
 3. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
 4. **A1** — kobl observationer på, målt i shadow-mode
 5. **A4** — gør kalibreringen til noget der kan tage fejl

@@ -551,7 +551,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="focus_key",
     extract_fn=lambda spec, ctx: [c] if (c := _extract_candidate_for_run(run_id=str(ctx.get("run_id") or ""))) else [],
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active"}),
     stale_status_reason="Marked stale after bounded inner-visible support inactivity window.",
     surface_status_order=("active", "stale", "superseded"),

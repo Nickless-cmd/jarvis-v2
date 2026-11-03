@@ -1870,3 +1870,109 @@ ligger tilbage. Kontrakten er derefter kaldt mod den kørende kode i tre grene:
 
 Det er den skelnen `status` alene ikke kunne bære: de to første er begge `error`, men
 kun den anden har rørt disken. Kontrakten er dermed **levende**, ikke kun committet.
+
+---
+
+## Rettet 3/11-2026 kl. 22:0x — stale-mekanismen kunne ikke nå sit eget mål
+
+**Målt, ikke udledt.** `refresh_statuses` i `signal_tracking_framework.py` gjorde dette:
+
+```python
+for item in spec.list_fn(limit=spec.refresh_scan_limit):   # ← de NYESTE N
+    if item["status"] not in spec.refreshable_statuses: continue
+    if updated_at > now - timedelta(days=stale_after_days): continue
+    ...markér stale
+```
+
+`list_fn` er `ORDER BY id DESC`. De nyeste N rækker er pr. definition friske. **Stale-grenen
+kunne derfor aldrig nås i en tabel større end N.**
+
+### Omfanget, målt på 25 signal-tabeller (~180.000 rækker)
+
+| Tabel | Rækker | `stale` nogensinde |
+|---|---:|---:|
+| `runtime_metabolism_state_signals` | 34.211 | **0** |
+| `runtime_self_review_signals` | 24.663 | **0** |
+| `runtime_self_narrative_continuity_signals` | 24.649 | **0** |
+| `runtime_release_marker_signals` | 23.307 | **0** |
+| `runtime_private_initiative_tension_signals` | 2.207 | **0** |
+
+24 moduler satte `refresh_scan_limit=40`; frameworkets egen default er 3.000, og de fire
+moduler der *virkede* brugte 3.000/5.000. Så det var ikke en designbeslutning — det var
+en grænse der blev kopieret 24 gange og aldrig genovervejet da tabellerne voksede forbi 40.
+
+**Det er ikke en refactor-regression.** Jeg tjekkede den gamle kode: den brugte også
+`limit=40`. Migrationen kopierede den trofast, så committens «behaviour preserved» er sand.
+Fejlen er ældre end migrationen.
+
+### Rettelsen: spørg efter FOR GAMLE AKTIVE, ikke efter de nyeste
+
+```sql
+UPDATE {table} SET status = 'stale', ... WHERE rowid IN (
+  SELECT rowid FROM {table}
+   WHERE status IN ('active','softening')
+     AND datetime(COALESCE(NULLIF(updated_at,''), created_at)) < datetime(?)
+   ORDER BY rowid LIMIT ?          -- stale_sweep_batch = 2000, bounded
+) RETURNING signal_id, signal_type, status, summary
+```
+
+`datetime()` på begge sider: en række med et ulæseligt tidsstempel giver NULL, og
+`NULL < x` er falsk — så vi markerer **ikke** det vi ikke forstår. Sikret retning.
+
+To trin, fordi early-retire er et per-item Python-prædikat:
+
+1. alt ældre end `stale_after_days` — én UPDATE, uanset tabelstørrelse;
+2. for specs med `early_retire_days`: det smalle vindue mellem de to grænser læses
+   bounded, og prædikatet afgør.
+
+Uden trin 2 ville reflection/dream/goal beholde præcis den top-N-blindhed der motiverede
+hele ændringen — målt: `runtime_goal_signals`, 1.744 rækker, nul stale, nyeste 8. juli.
+
+### Hvad der sker i drift — tør-målt før den gik live
+
+Sweep'en vil markere **135.740 rækker** stale, fordelt sådan:
+
+| Tabel | Rækker |
+|---|---:|
+| metabolism_state | 32.899 |
+| self_narrative_continuity | 23.703 |
+| self_review | 22.571 |
+| release_marker | 22.409 |
+| consolidation_target | 9.153 |
+| chronicle_consolidation | 8.542 |
+| resten (6 tabeller) | 16.463 |
+
+Det er en **mærkbar adfærdsændring**, og den er tilsigtet: signaler der ikke er opdateret
+i 7–14 dage er ikke aktive. Fladerne læses af `affective_meta_state`,
+`runtime_self_model_identity` og `runtime_cognitive_conductor` — altså indirekte i
+prompten via selvmodellen. Effekten er at gamle signaler holder op med at fremstå som
+nutid. Oprydningen er gradvis (2.000 pr. kald), så den sker over tid, ikke som et chok.
+
+### Testen, mutationstestet i seks retninger
+
+`tests/test_signal_stale_sweep.py` kalder den ÆGTE `refresh_statuses` mod en rigtig
+SQLite-tabel — ingen mock af DB-laget. En fake-forbindelse der returnerer samme rækker
+uanset SQL kan pr. konstruktion ikke skelne en top-40-scan fra en mængdeoperation.
+
+| Mutation | Fanges af |
+|---|---|
+| sweep falder altid tilbage til scan | 5 tests |
+| batch-loftet fjernet | `test_sweep_er_bounded_pr_kald` |
+| early-retire-kaldet fjernet | `test_early_retire_praedikat_virker_i_vinduet` |
+| prædikatet ignoreret (altid True) | `test_early_retire_praedikat_falsk_roerer_ikke_vinduet` |
+| status-filteret fjernet | 7 tests |
+| tidligere: `disk_changed` hardcodet | begge retninger |
+
+**Den negative tvilling er nødvendig:** `test_scan_formen_kan_ikke_se_dem_negativ_tvilling`
+viser at den GAMLE form markerer **nul** på præcis samme data. Uden den kunne kernetesten
+bestå af den forkerte grund.
+
+10 grønne i filen, 159 i hele signal-tracking-familien, 334 i de øvrige tests der rammer
+fladerne.
+
+### Grænsen der stadig står
+
+`refresh_statuses` kaldes fra `build_surface`, altså ved **læsning**. Hvert surface-build
+laver nu en UPDATE. Det var også sandt før (scan-formen kaldte `update_status_fn`), men
+nu rammer den reelt noget. Batch-loftet holder skrivningen bounded; jeg har ikke målt
+omkostningen ved hyppige surface-builds under oprydningen.

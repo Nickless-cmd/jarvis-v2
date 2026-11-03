@@ -554,7 +554,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="focus_key",
     extract_fn=lambda spec, ctx: _extract_temperament_tendency_candidates(run_id=str(ctx.get("run_id") or "")),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded temperament-tendency inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

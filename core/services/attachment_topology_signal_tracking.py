@@ -464,7 +464,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=lambda spec, ctx: _extract_attachment_topology_candidates(run_id=str(ctx.get("run_id") or "")),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded attachment-topology inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

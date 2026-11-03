@@ -337,6 +337,16 @@ faktisk skete.
 **Målt efter:** tomt mål-loft → `['goal_starvation']` → dispatch. Levende
 sansning giver nu `['verify_recent_mutations', 'goal_starvation']`.
 
+**BEVIST I DRIFT kl. 18:22 UTC.** Efter otte timers `productive_idle` kom der
+**to dispatches i træk** — `18:16:03` og `18:18:02` — begge med
+`action_type=tick_dispatched`, og det første blev efterfulgt af
+`run_mirror_reflection` med et ægte resultat kl. `18:16:05`.
+`heartbeat_runtime_state` står på `last_result: tick_dispatched`,
+`scheduler_active: 1`, trigger `self-wakeup-fire`. Og `long_horizon_goals` har
+**stadig nul aktive mål** (8 abandoned, 7 completed) — så det var
+`goal_starvation` der udløste dispatch, ikke et nyt mål. Det er præcis den
+betingelse rettelsen skulle fange.
+
 ### C2 — glemsels-filteret var en no-op
 
 `get_relevant_experiential_memories` filtrerede på `WHERE decay_score < 0.9` i
@@ -435,29 +445,23 @@ er blind for dem.
 Det gør D1 færdig: påstanden er **bekræftet for to af tre kilder**, og den
 tredje er målt til at være strukturelt ude af stand til at bekræfte den.
 
-### B1's rettelse er ikke bevist i drift endnu
+### B1's rettelse — bevist i drift
 
-**Målt kl. 18:09:14 UTC:** `heartbeat_runtime_ticks` har **nul** rækker efter
-genstartet (proces startet 18:04:23, commit 19:03:30 lokal = 18:03:30 UTC).
-Seneste tick er 18:03:50 — altså **før** både commit og genstart.
+**Målt kl. 18:22 UTC.** Dette afsnit hed tidligere «ikke bevist i drift endnu»,
+og det var sandt kl. 18:09:14, hvor der var nul ticks efter genstartet. Det er
+ikke sandt længere.
 
-Det er ikke en fejl: `heartbeat_runtime_state` viser `scheduler_active: 1`,
-`schedule_state: scheduled`, `currently_ticking: 0` og
-`next_tick_at: 2026-11-03T18:18:52` — ni minutter ude.
+Forløbet var: seneste tick før genstartet `18:03:50`, altså **før** både commit
+(18:03:30) og processtart (18:04:23). Scheduleren stod korrekt `active` med
+`next_tick_at 18:18:52`. Så kom `18:16:03` — `tick_dispatched` — og `18:18:02`
+igen, begge efter den nye kode var levende.
 
-Konsekvensen er alligevel vigtig: **`goal_starvation`-rettelsen er målt i den
-kørende proces (funktionskald svarer korrekt), men ikke observeret i et faktisk
-tick.** Det første tick efter 18:18:52 er den ægte prøve. `long_horizon_goals`
-har stadig 8 `abandoned` + 7 `completed` og **nul aktive**, så betingelsen er
-til stede: tiken skal give `goal_starvation` og dispatch i stedet for
-`productive_idle`.
+Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch skete
+**fordi** mål-loftet er tomt, ikke på trods af det.
 
 ### Stadig åbent efter fase D
 
 - **A5** — tærsklen. Røres ikke før shadow-data findes.
-- **Opgave→værktøj-mapping** — den ægte mangel. `confidence` er stadig 0,5 fordi
-  intet kobler `task_description` til de værktøjer opgaven vil bruge. Det er
-  samme hul som D-sporets tredje punkt, set fra to sider.
 - **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
   fra producent til prompt for nogen værdi.
 - **C1** — niveau 2 (virksomt) er stadig umålt.
@@ -465,6 +469,9 @@ til stede: tiken skal give `goal_starvation` og dispatch i stedet for
   standset og køen gjort synlig, intet mere.
 - **C2's overlap** — 0 af 9 rækker matcher registeret; korrekt wiring, ingen
   praktisk effekt endnu.
+
+**Lukket siden:** opgave→værktøj-mappingen var det største punkt her og er nu
+bygget — se «A7» nedenfor.
 
 ---
 
@@ -529,4 +536,4 @@ og `_on_started` regnede en ny. Testen var kun grøn fordi begge sider tilfældi
 `proceed`. Nu lægges en frisk slot, og fokus-teksten er bevidst i `proceed`-klassen, så
 testen faktisk beviser at slotten bruges.
 
-**Tests:** 54 i gut-suiten (54 → 54, én rettet), 12 nye i `test_task_tool_mapping.py`.
+**Tests:** 54 i gut-suiten (54 → 54, én rettet), 17 nye i `test_task_tool_mapping.py`.

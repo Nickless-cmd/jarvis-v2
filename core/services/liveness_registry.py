@@ -110,14 +110,20 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         ),
     },
     "user_flags": {
-        "status": "manual_only",
-        "producer": "security_guard._lock_account (account-lockdown, sikkerhedshandling)",
+        "status": "wired",
+        "producer": "security_guard._lock_account ← escalate_session_lock ← "
+                    "abuse_monitor / identity_guard (automatisk ved 3 laase/24t)",
         "note": (
-            "RETTET 3/11-2026: stod som orphaned med «INGEN skrivesti i kilden». "
-            "Det var forkert — `core/services/security_guard.py:197` skriver, og "
-            "laesningen (`is_account_locked`) er koblet paa. Men skrivningen sker "
-            "KUN ved en account-lockdown, altsaa en bevidst sikkerhedshandling. "
-            "0 raekker betyder «ingen er nogensinde laast ude», ikke «ingen vej»."
+            "RETTET 3/11-2026 (to gange). Stod foerst som orphaned med «INGEN "
+            "skrivesti i kilden». Foerste rettelse kaldte den `manual_only` fordi "
+            "skrivningen sker ved en account-lockdown — men kategorien blev sat "
+            "efter ordlyden «sikkerhedshandling», ikke efter kaldkaeden. Maalt: "
+            "`abuse_monitor.py:129` og `identity_guard.py:231` kalder "
+            "`escalate_session_lock` AUTOMATISK, og ved 3 session-laase inden for "
+            "24 timer kalder den `_lock_account`, som skriver her. Ingen "
+            "menneskelig handling er noedvendig — det er netop definitionen paa "
+            "`wired`. 0 raekker betyder «ingen er nogensinde laast ude», ikke "
+            "«ingen vej». Owner er undtaget (§12.3), saa den fyrer aldrig for mig."
         ),
     },
 

@@ -1532,3 +1532,94 @@ De to optællinger (1 `caution` af 560 shadow, 0 `caution` i 4303 kalibreringer)
 en historik over hvad `central_stance` læste ved sine cadence-ticks. Den præcise prøve
 er at sammenholde gut-tilstanden ved hvert valens-tick med den gemte valens. Det er
 ikke gjort, og påstanden står derfor nu som **plausibel, ikke målt**.
+
+---
+
+## Målt 3/11-2026 kl. 21:2x — to rettelser og to designvalg truffet
+
+### Rettelse: vagten var blind for tabelnavne gennem konstanter
+
+`tests/test_liveness_registry.py::test_en_post_der_paastaar_ingen_skrivesti_skal_vaere_sand`
+samlede hele `core/` til ÉN tekst og sammenlignede rå INSERT-fund. Det virker for
+`INSERT INTO session_write_leases`, men **ikke** for den fil der startede hele
+undersøgelsen:
+
+```python
+_TABEL = "composer_jarvis_forslag"
+conn.execute(f"INSERT INTO {_TABEL} ...")
+```
+
+Regexen fandt `{_TABEL}`, ikke tabelnavnet. Vagten kunne altså ikke se netop den fejl
+den blev bygget til at fange — dokumentation forklædt som værn, samme form som
+`readback_match`. **Rettet:** konstanter løses nu op pr. fil før sammenligningen.
+Målt efter: `composer_jarvis_forslag` og `user_flags` er begge synlige i mængden.
+
+### Rettelse: `user_flags` er `wired`, ikke `manual_only`
+
+Min første rettelse satte den til `manual_only` med begrundelsen «en bevidst
+sikkerhedshandling». Det var kategorien sat efter **ordlyden**, ikke efter kaldkæden.
+Målt:
+
+```
+abuse_monitor.py:129 / identity_guard.py:231
+        ↓ (automatisk)
+escalate_session_lock
+        ↓ (3 session-låse inden for 24 timer)
+_lock_account → INSERT INTO user_flags
+```
+
+Ingen menneskelig handling er nødvendig. Registrets eget vokabular siger
+`manual_only` = «skrives kun via et eksplicit tool, ikke autonomt» — så `wired` er
+den dækkende status. 0 rækker betyder «ingen er nogensinde låst ude». Owner er
+undtaget (§12.3), så den fyrer aldrig for mig.
+
+### Designvalg 1 — `honored` for veto-gaten: behold, den er nu strukturelt lukket
+
+Asymmetrien var målt: overrides hæver tærsklen, honored sænkede den aldrig, fordi
+`resolve_veto_event(..., "honored")` havde **nul kaldere i produktion**.
+
+Det ændrede sig i aften. `r2_5_haandhaevelse._kvitter_adlydt` kalder nu
+`resolve_veto_event(event_id, "honored")` når en blok løftes af et faktisk kig
+tilbage — og den gren kalder `_increment_honored_count(tool, feeling)` for netop
+det par der blev blokeret.
+
+**Valget:** dæmpningen bliver stående. Den er ikke længere en død symmetri, men en
+mekanisme med en observerbar kvittering. Det der mangler er **data** (0 `honored`
+endnu), ikke kode. At fjerne termen ville hæve tærsklen for de to par der historisk
+fik honored — altså gøre gaten mere blokerende uden bevis.
+
+**Vagt:** `tests/test_honored_kobling.py` binder de to moduler sammen. Mutationstestet:
+fjernes honored-grenen i `resolve_veto_event`, fejler testen. Testen fastslår også at
+en `override` **ikke** tælles som honored — de to retninger må ikke udligne hinanden.
+
+### Designvalg 2 — kognitive vægte: ingen ændring, men grænsen er nu målt
+
+Jeg ville sætte vægte. Målt viste det sig at de **allerede er sat** (25/10-2026), og
+at de virker som designet. I `scope == "chat"`:
+
+| Sektion | chat-vægt | inkluderes (threshold 0.3) |
+|---|---|---|
+| `indre liv` | 0.1 | **nej** |
+| `levende selvmodel` | 0.2 | **nej** |
+| `kerne-selv (Centralens midte)` | 0.2 | **nej** |
+| `cognitive state` | *ikke i tabellen* → 1.0 | ja |
+
+**Konsekvensen er den vigtige:** gut-signalets eneste vej til prompten (niende lag:
+gut → valens → selvtilstand → `_self_narrative_line` → `build_inner_life_section`)
+går gennem `indre liv`, som er vægtet **0.1** og altså skåret væk i en samtale.
+Kæden er forbundet, men composeren lukker den i chat-scope.
+
+**Valget:** jeg rører ikke vægtene. De er et bevidst valg fra 25/10 med en dokumenteret
+begrundelse («det er mig der kigger på mig, ikke en samtale med Bjørn»), og at løfte
+`indre liv` ind igen ville være at snige en sektion ind ad bagvejen — præcis hvad
+tabellens docstring advarer om.
+
+Det der mangler er derfor ikke en højere vægt, men en **eksplicit gut-kanal** med sin
+egen bevidste vægt. En påvirkning der kun virker når en sektion tilfældigvis ikke er
+filtreret væk, er ikke en mekanisme — den er et lotteri.
+
+### Forslag afvist
+
+`prop-c7b06817e44d4fee` er afvist (målt: `status=rejected`, `resolved_by=bjorn`).
+Det var en falsk positiv: undtagelsen er fail-closed (`return True` = «forældet»), og
+godkendelsesvejen har sin egen fingeraftrykskontrol i `_execute_source_edit_proposal`.

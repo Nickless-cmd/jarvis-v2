@@ -215,13 +215,32 @@ def test_en_post_der_paastaar_ingen_skrivesti_skal_vaere_sand():
     from core.services.liveness_registry import _REGISTRY
 
     rod = pathlib.Path(__file__).resolve().parent.parent
-    tekst = "\n".join(
-        p.read_text(encoding="utf-8", errors="ignore")
-        for p in (rod / "core").rglob("*.py")
-        if p.name != "liveness_registry.py"
+    insert_pat = re.compile(r"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+([^\s(]+)", re.I)
+    konst_pat = re.compile(
+        r"^\s*([A-Z_][A-Z0-9_]*)\s*(?::\s*str\s*)?=\s*[\"']([a-z][a-z0-9_]*)[\"']",
+        re.M,
     )
-    inserts = {m.group(1) for m in
-               re.finditer(r"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+([^\s(]+)", tekst)}
+
+    # Tabeller skrives ofte gennem en konstant: `_TABEL = "x"` og derefter
+    # `INSERT INTO {_TABEL}`. Den første version af denne vagt samlede hele
+    # core/ til ÉN tekst og sammenlignede rå fund — saa den fandt `{_TABEL}`
+    # og var blind for præcis den fil der startede undersøgelsen,
+    # `db_composer_jarvis.py` (målt 3/11-2026). En vagt der ikke kan se den
+    # fejl den blev bygget til at fange, er dokumentation forklædt som værn.
+    inserts: set[str] = set()
+    for p in (rod / "core").rglob("*.py"):
+        if p.name == "liveness_registry.py":
+            continue
+        fil_tekst = p.read_text(encoding="utf-8", errors="ignore")
+        konstanter = dict(konst_pat.findall(fil_tekst))
+        for m in insert_pat.finditer(fil_tekst):
+            navn = m.group(1).strip("`\"'")
+            navn = re.sub(
+                r"^\{(\w+)\}$",
+                lambda x: konstanter.get(x.group(1), x.group(0)),
+                navn,
+            )
+            inserts.add(navn)
 
     for bord, post in _REGISTRY.items():
         if "INGEN skrivesti" not in str(post.get("producer") or ""):

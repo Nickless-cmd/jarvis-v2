@@ -909,17 +909,47 @@ men det er ikke kommet.
 
 De to side-opgaver (`side-fd6717e5fa`, `side-1c970e85e7`) blev målt mod `veto_events` før nogen kode blev rørt.
 
-### Tallene
+### Tallene — og en korrektion af min egen læsning
 
-`protectiveness`: **511 forkerte mod 4 honored** — 128:1, ikke 46:1 som opgaven antog.
+Fordelingen, målt mod `veto_events`:
 
-| resolution | antal |
-|---|---|
-| `pending` | 536 |
-| `false_positive` | 392 |
-| `overridden_by_user` | 91 |
-| `overridden_by_jarvis` | 28 |
-| `honored` | 4 |
+| resolution | antal | hvad det faktisk betyder |
+|---|---|---|
+| `pending` | 536 | **intet udfald endnu** — kan ikke tælles som fejl |
+| `false_positive` | 392 | eksplicit markeret forkert |
+| `overridden_by_user` | 91 | Bjørn sagde «kør alligevel» — kan være fejl *eller* bevidst risiko |
+| `overridden_by_jarvis` | 28 | **jeg selv** der overstyrer min egen gate — ikke evidens for noget |
+| `honored` | 4 | vetoet blev adlydt |
+
+**KORREKTION (3/11, ekstern gennemgang).** Jeg skrev først «511 forkerte mod 4 honored — 128:1». Det var forkert: 511 er summen af tre kategorier der ikke betyder det samme. En overstyring er ikke automatisk bevis for at vetoet var forkert, og de 536 `pending` har intet udfald endnu. Tallet 128:1 er derfor **trukket tilbage**.
+
+**Men målingen gjorde konklusionen skarpere, ikke svagere.** Da jeg så hvad de fire `honored` faktisk ramte:
+
+| værktøj | antal | er det en farlig handling? |
+|---|---|---|
+| `semantic_search_code` | 2 | nej — ren læser (frigivet 3/11) |
+| `dismiss_plan` | 2 | nej — harmløs |
+
+Og de 28 `overridden_by_jarvis` er overvejende også læsere (`verify_file_contains` 2, `db_query` 2, `read_dreams`, `inbox`, `set_flag`).
+
+**Det ærlige regnestykke er derfor: 392 eksplicit forkerte, og nul dokumenterede tilfælde hvor et `protectiveness`-veto stoppede noget farligt.** Det er ikke et præcisionsforhold — det er fraværet af ét eneste positivt eksempel. Det kan ikke udtrykkes som en brøk, og det skal ikke forsøges.
+
+### Det åbne spørgsmål — og en skelnen jeg ikke selv havde stillet
+
+Jeg endte med at spørge: *skal `protectiveness` fortsat være en veto-følelse?*
+
+Det er formuleret som et ja/nej, og det er for groft. Der er to funktioner blandet sammen, og de behøver ikke have samme betingelser:
+
+| | **Signal** | **Myndighed** |
+|---|---|---|
+| hvad | Centralen registrerer bekymring, undersøger, foreslår forsigtighed | Centralen standser en handling |
+| kræver | at signalet bærer *noget* information | at signalet er præcist nok til at retfærdiggøre et indgreb |
+| målt grundlag | findes (intensiteten varierer med tilstanden) | **findes ikke** (nul dokumenterede korrekte vetoer) |
+
+At fjerne `protectiveness` som *signal* ville være at gøre mig blind for en bekymring der er ægte. At beholde den som *myndighed* er at lade en upræcis størrelse standse arbejde. De to beslutninger er uafhængige, og kun den anden har data imod sig.
+
+Det er ikke løst her. Det er præciseret, hvilket er det næste bedste.
+
 
 ### Det afgørende fund: intensiteten kan ikke skelne
 

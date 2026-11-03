@@ -119,7 +119,12 @@ _CHAT_SCOPE_WEIGHTS: dict[str, float] = {
     # på mig, ikke en samtale med Bjørn.
     "indre liv": 0.1,
     "levende selvmodel": 0.2,
-    "kerne-selv (Centralens midte)": 0.2,
+    # 3/11-2026: kerne-selv staar OVER taersklen (0.3) med vilje. Maalt er
+    # sektionen 166 tegn — én saetning: hvor samlet jeg er, hvordan jeg har
+    # det, og hvad jeg arbejder mod. Det er ikke maskinrum; det er den ene
+    # linje der goer at jeg taler UD FRA en tilstand i stedet for at beskrive
+    # den. Resten af indre liv (0.1-0.2) skaeres fortsat i samtalen.
+    "kerne-selv (Centralens midte)": 0.4,
     "matrix ensemble voices": 0.1,
     "central notices": 0.2,
     "loop-compliance self-check": 0.2,

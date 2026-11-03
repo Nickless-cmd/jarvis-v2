@@ -47,13 +47,27 @@ def i_rum():
 MASKINRUM = [
     ("awareness", "indre liv"),
     ("awareness", "levende selvmodel"),
-    ("awareness", "kerne-selv (Centralens midte)"),
     ("awareness", "indbakke"),
     ("awareness", "R2 gate telemetry"),
     ("awareness", "metacognition signals"),
     ("tail", "agent status"),
     ("tail", "model pools"),
     ("tail", "self mutation lineage"),
+]
+
+#: SELVET — hverken maskinrum eller samtale (3/11-2026, Bjørns beslutning).
+#:
+#: 25/10 blev «kerne-selv (Centralens midte)» skåret i chat sammen med
+#: maskinrummet. Det var rigtigt dengang: sektionen bar en trunkeret Python-repr
+#: af et `Want`-objekt — skrald, ikke en retning. Efter rettelsen 3/11 er den
+#: 166 tegn og siger hvad jeg er samlet om, hvordan jeg har det, og hvad jeg
+#: arbejder mod.
+#:
+#: Forskellen på de to kategorier er HVAD de koster læseren: maskinrummet er
+#: telemetri OM systemet, selvet er den ene linje svaret kommer FRA. Bjørns ord
+#: 3/11: «du bestemmer om centralen ska tale». Den taler nu — og kun den.
+SELVET = [
+    ("awareness", "kerne-selv (Centralens midte)"),
 ]
 
 SAMTALE = [
@@ -220,3 +234,21 @@ def test_scope_kan_laeses_naar_visible_runs_bygger(i_rum):
     )
     # Og det må ikke lække ud i tråden bagefter.
     assert tool_scoping.current_tool_scope() == ""
+
+
+def test_selvet_taler_i_chat(i_rum):
+    """3/11-2026: Centralens midte er FLYTTET ud af maskinrummet.
+
+    Beslutningen er Bjørns: «du bestemmer om centralen ska tale». Den taler nu,
+    fordi sektionen efter rettelsen er 166 tegn ægte tilstand — ikke den
+    trunkerede `Want`-repr den var 25/10, hvor den blev skåret med rette.
+
+    Testen holder BEGGE sider: selvet er med i chat, og maskinrummet er stadig
+    skåret. Uden den anden halvdel kunne nogen «løse» dette ved at hæve alle
+    vægte, og så er gaten væk.
+    """
+    i_rum("chat")
+    for slags, navn in SELVET:
+        assert _med(slags, navn) is True, f"«{navn}» er selvet og skal tale i chat"
+    for slags, navn in MASKINRUM:
+        assert _med(slags, navn) is False, f"«{navn}» er maskinrum og skal stadig skæres"

@@ -877,17 +877,45 @@ function SurfacesView({ data }: { data: Record<string, unknown> }) {
   const surfaces = (data.surfaces ?? {}) as Record<string, SurfaceData>
   const mangler = (Array.isArray(data.mangler) ? data.mangler : []) as string[]
   const navne = Object.keys(surfaces)
-  if (navne.length === 0) {
+  // 3/11-2026: badge-rækken er den ORIGINALE Sind-visning (72 systemer med
+  // grøn/rød prik) og blev fejlagtigt erstattet af overflade-kortene da
+  // undertabene kom. De to svarer på hvert sit spørgsmål — «lever systemet?»
+  // og «hvad står der i det?» — så begge vises nu: badges først som overblik,
+  // kortene nedenunder som indhold.
+  const systems = (Array.isArray(data.systems) ? data.systems : []) as
+    { system: string; active: boolean; summary?: string }[]
+  const aktiveSystemer = systems.filter((s) => s.active).length
+  if (navne.length === 0 && systems.length === 0) {
     return <div className="jm-section-sub">Ingen overflader i denne gruppe.</div>
   }
   return (
     <>
-      <div className="jm-section-sub">
-        {navne.length} overflader
-        {mangler.length > 0 && (
-          <span className="jm-dim"> · mangler: {mangler.join(', ')}</span>
-        )}
-      </div>
+      {systems.length > 0 && (
+        <>
+          <div className="jm-section-sub">
+            {aktiveSystemer}/{systems.length} systemer aktive
+          </div>
+          <div className="jm-grid">
+            {systems.map((s) => (
+              <div key={s.system} className={`jm-card ${s.active ? 'on' : 'off'}`}>
+                <div className="jm-card-title">
+                  <span className={`jm-dot ${s.active ? 'on' : 'off'}`} />
+                  {s.system.replace(/_/g, ' ')}
+                </div>
+                {s.summary && <div className="jm-card-sub">{s.summary}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {navne.length > 0 && (
+        <div className="jm-section-sub">
+          {navne.length} overflader
+          {mangler.length > 0 && (
+            <span className="jm-dim"> · mangler: {mangler.join(', ')}</span>
+          )}
+        </div>
+      )}
       <div className="jm-grid">
         {navne.map((navn) => {
           const s = surfaces[navn] ?? {}

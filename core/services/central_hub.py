@@ -160,13 +160,24 @@ def _surface_group(names: list[str]) -> dict[str, Any]:
     from core.services.cognitive_architecture_surface import (
         build_cognitive_architecture_surface,
     )
-    surf = build_cognitive_architecture_surface().get("surfaces") or {}
+    hel = build_cognitive_architecture_surface()
+    surf = hel.get("surfaces") or {}
     ud: dict[str, Any] = {"active": True, "surfaces": {}}
     for navn in names:
         if navn in surf:
             ud["surfaces"][navn] = surf[navn]
     ud["antal"] = len(ud["surfaces"])
     ud["mangler"] = [n for n in names if n not in surf]
+    # 3/11-2026: `systems` er den FLADE navne+status-liste (72 rækker à ~60 tegn
+    # ≈ 4 KB) som Sind-fanen viste som badges FØR undertabene. Den blev tabt da
+    # grupperne blev indført, så fanen gik fra 72 synlige systemer til kun de
+    # overflader gruppen ejer. Badges og overflade-kort svarer på to forskellige
+    # spørgsmål — «lever systemet?» og «hvad står der i det?» — så begge skal med.
+    # Listen er bevidst UFILTRERET: en gruppe der kun viste sine egne systemer
+    # ville skjule at et system er dødt.
+    ud["systems"] = hel.get("systems") or []
+    ud["active_count"] = hel.get("active_count")
+    ud["total_count"] = hel.get("total_count")
     return ud
 
 

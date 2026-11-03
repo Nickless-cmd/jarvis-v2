@@ -41,6 +41,14 @@ vi.mock('../../lib/api', () => ({
       }
       return Promise.resolve({
         active: true, antal: 2, mangler: ['some_missing_surface'],
+        // `systems` er den FLADE navne+status-liste (maalt 3/11-2026: 72 raekker,
+        // 70 aktive). Den var fanens oprindelige badge-visning og blev tabt da
+        // undertabene kom; begge dele skal nu vises samtidigt.
+        systems: [
+          { system: 'inner_voice', active: true, summary: 'taler' },
+          { system: 'dreams', active: false, summary: '' },
+        ],
+        active_count: 1, total_count: 2,
         surfaces: {
           inner_voice: { active: true, count: 1, summary: 'taler' },
           thought_thread: { active: false, count: 3, summary: 'tre traade loeber' },
@@ -212,7 +220,8 @@ describe('JarvisMind', () => {
   it('default-fanen Sind henter sektion fra hub og viser surfaces', async () => {
     render(<JarvisMind config={CFG} />)
     await waitFor(() => expect(getMindSection).toHaveBeenCalledWith(CFG, 'mind', 'bevidsthed'))
-    await waitFor(() => expect(screen.getByText(/inner voice/i)).toBeTruthy())
+    // Navnet staar nu BEGGE steder — som system-badge OG som overflade-kort.
+    await waitFor(() => expect(screen.getAllByText(/inner voice/i).length).toBeGreaterThan(0))
   })
 
   // Undertabs (3/11-2026): det gamle MC havde underfaner — Sind -> Bevidsthed/
@@ -228,6 +237,22 @@ describe('JarvisMind', () => {
     // Sjael-gruppen maa ikke baere bevidsthedens overflader
     expect(screen.queryByText(/tre traade loeber/)).toBeNull()
     expect(document.querySelector('.jm-raw')).toBeNull()
+  })
+
+  // 3/11-2026: badge-raekken (72 systemer med groen/roed prik) var fanens
+  // ORIGINALE visning og blev fejlagtigt ERSTATTET af overflade-kortene da
+  // undertabene kom. Bjorn: «det var for at undgaa mere gik tabt ... problemet
+  // er det du fjernede». De to svarer paa hvert sit spoergsmaal — «lever
+  // systemet?» og «hvad staar der i det?» — saa begge skal vises SAMTIDIGT.
+  it('viser baade system-badges og overflade-kort — ikke det ene i stedet for det andet', async () => {
+    render(<JarvisMind config={CFG} />)
+    // badge-raekken: systemnavnene fra `systems`
+    await waitFor(() => expect(screen.getByText('1/2 systemer aktive')).toBeTruthy())
+    expect(screen.getByText('dreams')).toBeTruthy()
+    // og overflade-kortene nedenunder — `inner voice` staar nu to steder
+    // (badge + kort), hvilket ER beviset paa at begge dele vises.
+    expect(screen.getAllByText(/inner voice/i).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText(/tre traade loeber/)).toBeTruthy()
   })
 
   // En overflade der forsvinder fra kilden skal kunne SES som et navn — ellers

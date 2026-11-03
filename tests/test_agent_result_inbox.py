@@ -196,6 +196,31 @@ def test_add_to_turn_tail_claims_once_and_appends_persistently_not_as_next_round
     assert len(hale.vedvarende) == 1
 
 
+def test_add_to_turn_tail_reuses_one_source_block_across_rounds(monkeypatch):
+    from core.services import agent_result_inbox as inbox
+    from core.services.run_trailing import RundeHale
+
+    svar = iter([
+        ("resultat et", "1 aktiv"),
+        ("resultat et", "2 aktive"),
+        ("resultat to", "0 aktive"),
+    ])
+    monkeypatch.setattr(inbox, "_claim_for_model_step_parts", lambda **_: next(svar))
+    monkeypatch.setattr("core.runtime.db_inbox.claim_high_for_run", lambda **_: [])
+
+    hale = RundeHale()
+    for _ in range(3):
+        hale.ny_runde()
+        assert inbox.add_to_turn_tail(
+            hale, owner_user_id="bjorn", session_id="s1",
+        ) is True
+
+    assert hale.antal_vedvarende == 1
+    tekst = hale.som_liste()[0]["content"]
+    assert tekst.count("resultat et") == 1
+    assert "resultat to" in tekst and "0 aktive" in tekst
+
+
 def test_the_visible_run_uses_the_inbox_helper_and_no_loop_gate_is_persistent():
     import pathlib
     src = pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")

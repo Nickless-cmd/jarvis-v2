@@ -310,6 +310,22 @@ def test_raekkefoelgen_inden_for_hver_slags_bevares():
     assert [m["content"] for m in h.som_liste()] == ["en", "to", "tre"]
 
 
+def test_vedvarende_kilde_bevarer_nye_fund_men_erstatter_levende_status():
+    h = RundeHale()
+    h.opdater_vedvarende("agent-inbox", nyt_indhold="resultat et", aktuel_status="1 aktiv")
+    h.ny_runde()
+    h.opdater_vedvarende("agent-inbox", nyt_indhold="resultat et", aktuel_status="2 aktive")
+    h.ny_runde()
+    h.opdater_vedvarende("agent-inbox", nyt_indhold="resultat to", aktuel_status="0 aktive")
+
+    assert h.antal_vedvarende == 1
+    tekst = h.som_liste()[0]["content"]
+    assert tekst.count("resultat et") == 1
+    assert "resultat to" in tekst
+    assert "0 aktive" in tekst
+    assert "1 aktiv" not in tekst and "2 aktive" not in tekst
+
+
 def test_interne_beskeder_er_system_og_aegte_styringer_er_user():
     h = RundeHale()
     h.tilfoej_vedvarende("Du lovede lige at handle")

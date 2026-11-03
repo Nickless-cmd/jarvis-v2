@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9561/17903 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9563/17905 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9561/17903 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6365 | 12159 | 52% |
+| `core.services` | 6367 | 12161 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 144 | 226 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1888,8 +1888,8 @@ Generated from source. 9561/17903 functions/methods documented (53%). The list b
 - `core/services/run_event_log.py` :: `subscriber_closed` (L516)
 - `core/services/run_event_log.py` :: `subscriber_opened` (L509)
 - `core/services/run_stream_proxy.py` :: `stream_error` (L19)
-- `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L187)
-- `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L183)
+- `core/services/run_trailing.py` :: `RundeHale.antal_naeste` (L227)
+- `core/services/run_trailing.py` :: `RundeHale.antal_vedvarende` (L223)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L481)
 - `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L323)
 - `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L371)

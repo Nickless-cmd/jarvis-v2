@@ -389,3 +389,80 @@ def test_surface_rapporterer_blokeringer_og_overkoersler(monkeypatch):
     assert surf["counterfactual_delta"] == -3      # negativ: bias'en trak FRA
     assert surf["blokeret"] == 3
     assert surf["backstop_overkoersler"] == 2
+
+
+# ── Definition B (3/11-2026, Bjørn): confidence = styrken af RETNINGEN ────
+#
+# Før 3/11 læste gaten `confidence` som «hvor sandsynligt er det at opgaven lykkes»,
+# men `derive_gut_signal` producerede «hvor stærkt er signalet». Da caution fik 0,6–0,7
+# og proceed 0,5, slap en ADVARSEL lettere igennem end en TILLADELSE. Disse tests holder
+# retningen som en del af afgørelsen, så den inversion ikke kan snige sig ind igen.
+
+
+def test_caution_med_hoej_styrke_blokeres(monkeypatch):
+    """Kernen i rettelsen: en stærk advarsel må ALDRIG passere på sin styrke alene."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    # 0.70 er over tærsklen — før 3/11 gav det PASS. Nu er retningen afgørende.
+    assert ge.gut_gate(0.70, hunch="caution") is False
+    assert ge.gut_gate(0.70, hunch="proceed") is True
+
+
+def test_caution_blokeres_uanset_styrke(monkeypatch):
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
+    _capture_private(monkeypatch)
+    for conf in (0.0, 0.30, 0.60, 0.99, 1.0):
+        assert ge.gut_gate(conf, hunch="caution") is False, f"caution slap igennem ved {conf}"
+
+
+def test_proceed_under_taerskel_blokeres_stadig(monkeypatch):
+    """Retningen må ikke gøre tærsklen virkningsløs i den anden retning."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    assert ge.gut_gate(0.29, hunch="proceed") is False
+    assert ge.gut_gate(0.30, hunch="proceed") is True
+
+
+def test_uden_hunch_er_bagudkompatibel(monkeypatch):
+    """Gamle kaldesteder sender ingen hunch — de skal opføre sig som før (antaget proceed)."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    assert ge.gut_gate(0.61) is True
+    assert ge.gut_gate(0.25) is False
+
+
+def test_observationen_baerer_retningen(monkeypatch):
+    """Uden hunch i meta kan man ikke bagefter se HVORFOR gaten afviste."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
+    calls = _capture_private(monkeypatch)
+    ge.gut_gate(0.70, hunch="caution")
+    assert calls[0]["meta"]["hunch"] == "caution"
+    assert calls[0]["meta"]["would_pass"] is False
+
+
+def test_preflight_sender_hunch_til_gaten(monkeypatch):
+    """Preflight skal videregive retningen — ellers er rettelsen død kode i produktion."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    # confidence=0.1 → caution med hunch_confidence 0.6 (over tærsklen 0.30).
+    monkeypatch.setattr(ge, "derive_gut_signal",
+                        lambda *, task_description: {
+                            "hunch": "caution", "confidence": 0.60,
+                            "confidence_no_bias": 0.60},
+                        raising=False)
+    ud = ge.preflight_gut_gate(task_description="t")
+    assert ud["allowed"] is False, "en advarsel over tærsklen må ikke slippe igennem"
+    assert ud["hunch"] == "caution"
+
+
+def test_derive_dokumenterer_definition_b(monkeypatch):
+    """Kilden skal selv sige hvad feltet betyder — ellers glider det tilbage."""
+    import inspect
+    kilde = inspect.getsource(ge.derive_gut_signal)
+    assert "Definition B" in kilde
+    assert "RETNING" in kilde

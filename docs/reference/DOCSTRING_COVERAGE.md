@@ -1316,7 +1316,7 @@ Generated from source. 9600/17951 functions/methods documented (53%). The list b
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_prompt_section` (L150)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_from_sources` (L32)
 - `core/services/guided_learning_runtime.py` :: `build_guided_learning_runtime_surface` (L11)
-- `core/services/gut_engine.py` :: `build_gut_surface` (L347)
+- `core/services/gut_engine.py` :: `build_gut_surface` (L368)
 - `core/services/habit_tracker.py` :: `build_habit_surface` (L69)
 - `core/services/habits_pipeline.py` :: `accept_suggestion` (L413)
 - `core/services/habits_pipeline.py` :: `build_habits_pipeline_surface` (L459)

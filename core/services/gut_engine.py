@@ -36,11 +36,21 @@ def derive_gut_signal(
     recent_error_count: int = 0,
     recent_success_count: int = 0,
 ) -> dict[str, object]:
-    """Generate a gut-feel hunch about a task."""
+    """Generate a gut-feel hunch about a task.
+
+    Definition B (3/11-2026, Bjørn): `confidence` betyder «hvor sikker er jeg på den
+    RETNING jeg peger i» — ikke «hvor sandsynligt er det at opgaven lykkes».
+
+    Før 3/11 var de to blandet sammen: `hunch_confidence` var 0,5 for proceed og 0,6–0,7
+    for caution, altså signalSTYRKE, men `gut_gate` læste tallet som tilladelsesGRAD.
+    Resultatet var at en advarsel per konstruktion slap lettere igennem end en tilladelse
+    (målt: caution 0,70 mod proceed 0,50 uden bias). Med definition B bærer `hunch`
+    retningen og `confidence` styrken, og gaten SKAL se begge — se `gut_gate`.
+    """
     gut_state = get_cognitive_gut_state()
     calibration = float(gut_state.get("calibration_score", 0.5)) if gut_state else 0.5
 
-    # Heuristic gut signal
+    # Heuristic gut signal. `hunch_confidence` = styrken af den retning vi peger i.
     if recent_error_count > 3 and confidence < 0.6:
         hunch = "caution"
         hunch_confidence = 0.7
@@ -181,6 +191,7 @@ def gut_gate(
     *,
     context: str = "",
     no_bias_confidence: float | None = None,
+    hunch: str | None = None,
 ) -> bool:
     """Beslut om et proceed-valg må fortsætte, gated på gut-confidence.
 
@@ -188,9 +199,15 @@ def gut_gate(
     lærte bias). Self-safe: kaster ALDRIG, fejler ALTID open (returnér True) — en fejl
     her må aldrig blokere et autonomt run.
 
+    Definition B (3/11-2026): `confidence` er STYRKEN af den retning `hunch` peger i.
+    Derfor er tilladelse en to-delt betingelse: retningen skal være "proceed" OG styrken
+    skal være ≥ tærsklen. Uden `hunch` (bagudkompatibelt kald) antages "proceed", så
+    gamle kaldesteder ikke ændrer adfærd — men de kan heller ikke længere slippe en
+    advarsel igennem ved høj styrke, fordi de ikke sender en advarsel.
+
     off    → True (confidence ignoreres, dagens adfærd)
     shadow → beregn would-gate + observér, men returnér True (handl ikke)
-    on      → returnér (confidence >= threshold)
+    on      → returnér (hunch == "proceed" AND confidence >= threshold)
     """
     try:
         conf = float(proceed_confidence)
@@ -201,8 +218,10 @@ def gut_gate(
     if mode == "off":
         return True
 
+    retning = str(hunch or "proceed").strip().lower()
     threshold = _gate_threshold()
-    would_pass = conf >= threshold
+    # Retningen er en DEL af afgørelsen: en advarsel kan aldrig passere på høj styrke.
+    would_pass = retning == "proceed" and conf >= threshold
 
     # Counterfactual-tælling (12/10-2026): registrér BÅDE den faktiske afgørelse (med den
     # lærte bias) og hvad gaten ville have afgjort UDEN den. Forskellen er det eneste der
@@ -220,6 +239,7 @@ def gut_gate(
                 "mode": mode,
                 "confidence": round(conf, 3),
                 "threshold": round(threshold, 3),
+                "hunch": retning,
                 "would_pass": would_pass,
                 "context": str(context)[:40],
             },
@@ -288,7 +308,8 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     hunch = str(signal.get("hunch") or "proceed")
     try:
         tillad = gut_gate(conf, context="autonomous_run_preflight",
-                          no_bias_confidence=signal.get("confidence_no_bias"))
+                          no_bias_confidence=signal.get("confidence_no_bias"),
+                          hunch=hunch)
     except Exception:  # gaten er rådgivende — en fejl her må ALDRIG stoppe et run
         return {"allowed": True, "reason": "gate-fejl", "confidence": conf}
 

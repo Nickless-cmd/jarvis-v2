@@ -148,3 +148,35 @@ blot **ens** — samme tautologi i modsat fortegn.
 - `core/runtime/db_cognitive.py` — `update_cognitive_gut_state` (1197–1227)
 - `tests/test_gut_engine.py` — 30 tests, alle grønne; ingen af dem måler om gaten
   kan skelne mellem opgaver
+
+---
+
+## BESLUTTET 3/11-2026: Definition B er valgt og implementeret
+
+Bjørn valgte definition B. Rettelsen er inde i `core/services/gut_engine.py`:
+
+1. **`derive_gut_signal`** dokumenterer nu at `confidence` er styrken af den RETNING
+   `hunch` peger i — ikke en sandsynlighed for succes.
+2. **`gut_gate`** tager `hunch` som parameter, og tilladelse kræver nu BEGGE dele:
+   `hunch == "proceed"` OG `confidence >= threshold`. En advarsel kan ikke længere
+   passere på høj styrke.
+3. **`preflight_gut_gate`** sender `hunch` videre — ellers var rettelsen død kode.
+
+### Målt før/efter (mode=on, tærskel 0,30)
+
+| hunch | conf | FØR | EFTER |
+|---|---:|---|---|
+| proceed | 0,61 | PASS | PASS |
+| caution | 0,70 | **PASS** | **BLOCK** |
+| caution | 0,60 | **PASS** | **BLOCK** |
+| proceed | 0,91 | PASS | PASS |
+| proceed | 0,25 | BLOCK | BLOCK |
+
+Uden `hunch` (bagudkompatible kald) antages `proceed`, så gamle kaldesteder er uændrede.
+
+### Hvad der stadig IKKE er løst
+
+Punkt 3–5 fra rækkefølgen står åbne: én forudsigelse hele vejen (preflight gemmer ikke
+sin hunch; `_on_started` beregner en ny), afviste runs logges ikke som afviste
+(survivorship bias i kalibreringen), og de situationsbestemte observationer er stadig
+ikke koblet på. Tærsklen er stadig 0,30 og bør først justeres når de tre er på plads.

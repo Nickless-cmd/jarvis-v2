@@ -61,3 +61,45 @@ def test_rate_cap_blocks_pool_and_returns_floor(monkeypatch):
     assert r["lane"] == "floor"
     assert r["reason"] == "rate-capped"
     assert called["pool"] is False
+
+
+def test_protokol_token_laekage_falder_videre_uden_udbyder(monkeypatch):
+    """Målt 3/11-2026: poolen validerede HTTP-status, ikke indhold. En gratis
+    coding-model skrev sine værktøjskald som rå protokol-tokens, og teksten gik
+    videre som et «fuldført» svar. Et ubrugeligt svar er en fejl — kæden skal
+    videre til næste udbyder, ikke stoppe med skraldet."""
+    from core.services import non_visible_fallback as f
+    monkeypatch.setattr(f, "_fallback_enabled", lambda: True)
+    kald = []
+
+    def pool(**k):
+        kald.append(k)
+        if len(kald) == 1:
+            return {"text": "]<]minimax[>[<tool_call>{analysis: We need",
+                    "lane": "cheap", "provider": "aihubmix"}
+        return {"text": "Et rigtigt svar.", "lane": "cheap", "provider": "groq"}
+
+    monkeypatch.setattr(f, "execute_cheap_lane_via_pool", pool)
+
+    def boom(): raise RuntimeError("credits-exhausted")
+    r = f.run_non_visible_with_fallback(message="x", primary_call=boom, run_is_autonomous=True)
+
+    assert r["provider"] == "groq"
+    assert r["text"] == "Et rigtigt svar."
+    assert len(kald) == 2
+    assert kald[1]["skip_providers"] == frozenset({"aihubmix"})
+
+
+def test_protokol_token_laekage_hele_vejen_giver_floor(monkeypatch):
+    from core.services import non_visible_fallback as f
+    monkeypatch.setattr(f, "_fallback_enabled", lambda: True)
+    monkeypatch.setattr(f, "execute_cheap_lane_via_pool",
+                        lambda **k: {"text": "<|im_start|>tool_call",
+                                     "lane": "cheap", "provider": "aihubmix"})
+    monkeypatch.setattr(f, "attempt_floor",
+                        lambda **k: {"lane": "floor", "reason": k.get("reason")})
+
+    def boom(): raise RuntimeError("q")
+    r = f.run_non_visible_with_fallback(message="x", primary_call=boom, run_is_autonomous=True)
+    assert r["lane"] == "floor"
+    assert r["reason"] == "bad-content"

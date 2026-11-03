@@ -222,6 +222,7 @@ from core.services.visible_model import (
 # model-stream fejler. Importeres på modul-niveau så testen kan monkeypatche
 # core.services.visible_runs.run_non_visible_with_fallback direkte.
 from core.services.non_visible_fallback import run_non_visible_with_fallback
+from core.services.provider_error_guard import looks_like_protocol_leak
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
@@ -6843,28 +6844,14 @@ _TOOL_CALL_LEAK_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-#: Protokol-token-lækage fra en model der ikke taler vores værktøjs-protokol.
+#: Protokol-token-lækage (målt 3/11-2026, se `provider_error_guard`): en model
+#: skrev sine værktøjskald som RÅ TEKST i sit eget token-format, og 536 tegn
+#: token-skov gik direkte i chatten. `_TOOL_CALL_LEAK_PATTERN` ovenfor leder efter
+#: `[navn]: {` og var blind for `<]minimax[>` og `[<tool_call>{`.
 #:
-#: Målt 3/11-2026: et autonomt ROUTINE WAKEUP-run startede på
-#: `ollama/deepseek-v4.1-flash:cloud`, ollama svarede `credits-exhausted`, og
-#: fallback-kaskaden landede på `aihubmix/coding-minimax-m3-free` — en gratis
-#: model uden værktøjsstøtte. Den skrev sine værktøjskald som RÅ TEKST i sit
-#: eget token-format, og 536 tegn token-skov gik direkte i chatten.
-#:
-#: `_TOOL_CALL_LEAK_PATTERN` ovenfor leder efter `[navn]: {` og var blind for
-#: `<]minimax[>` og `[<tool_call>{`. Vagten fandtes altså — den så bare ikke
-#: formatet, fordi den var skrevet til ÉN models token-syntaks.
-_PROTOKOL_TOKEN_LEAK_PATTERN = re.compile(
-    r"<\|[a-z_]{2,40}\|>"           # <|im_start|>, <|endoftext|>, <|tool_call|>
-    r"|<\]\w{2,40}\[>"              # <]minimax[>
-    r"|\[\s*<\s*tool_call\s*>"      # [<tool_call>
-    r"|<\s*/?\s*tool_call\s*>",     # <tool_call> / </tool_call>
-    re.IGNORECASE,
-)
-
-#: Fencede kodeblokke må gerne VISE protokol-tokens — det er en forklaring,
-#: ikke en lækage. Derfor testes kun teksten uden for fences.
-_FENCE_BLOKKE = re.compile(r"```.*?```", re.S)
+#: Detektoren bor nu i `provider_error_guard.looks_like_protocol_leak`, fordi
+#: failover-kæden skal bruge PRÆCIS samme dom — og den kan ikke importere denne
+#: fil, som selv importerer fallback-modulet. Én definition, to brugere.
 
 
 def _assert_presentation_invariant(text: str) -> None:
@@ -6890,10 +6877,9 @@ def _assert_presentation_invariant(text: str) -> None:
             f"tool-call emitted as prose instead of structured tool_calls: "
             f"{stripped[:120]!r}"
         )
-    # Protokol-token-lækage (3/11-2026). Testes UDEN for fencede kodeblokke, så
-    # en forklaring der viser et token ikke bliver offer for sin egen vagt.
-    _uden_fences = _FENCE_BLOKKE.sub("", stripped)
-    if _PROTOKOL_TOKEN_LEAK_PATTERN.search(_uden_fences):
+    # Protokol-token-lækage (3/11-2026). Detektoren bor i provider_error_guard,
+    # så failover-kæden bruger PRÆCIS samme dom uden at importere denne fil.
+    if looks_like_protocol_leak(stripped):
         logger.warning(
             "presentation-invariant-leak kind=protokol-token preview=%r",
             stripped[:200],

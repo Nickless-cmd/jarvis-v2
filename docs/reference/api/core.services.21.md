@@ -409,6 +409,7 @@ _Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
 |---|---|---|---|---|
 | function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
 | function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
+| function | `looks_like_protocol_leak` | `(text)` | True hvis `text` bærer en models rå protokol-tokens. | [src](../../../core/services/provider_error_guard.py#L132) |
 
 ## `core/services/provider_health_check.py`
 _Provider health check — periodic ping to detect outages early._

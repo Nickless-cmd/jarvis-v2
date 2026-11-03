@@ -100,3 +100,45 @@ def describe(text: str) -> str:
         return (t[:157] + "…") if len(t) > 158 else t
     except Exception:
         return "(kunne ikke beskrive)"
+
+
+#: Protokol-token-lækage: en model skriver sit EGET værktøjskald-format som rå
+#: tekst, fordi den ikke taler vores protokol — typisk fordi den fik et tomt
+#: `tools`-array og alligevel er trænet til at kalde værktøjer.
+#:
+#: Målt 3/11-2026: et autonomt run startede på `ollama/deepseek-v4.1-flash:cloud`,
+#: ollama svarede `credits-exhausted`, og fallback-kaskaden landede på
+#: `aihubmix/coding-minimax-m3-free`. Den skrev sine værktøjskald som rå tekst i
+#: sit eget token-format, og 536 tegn token-skov gik i chatten som et «fuldført»
+#: svar. `_TOOL_CALL_LEAK_PATTERN` i `visible_runs` leder efter `[navn]: {` og var
+#: blind for `<]minimax[>` og `[<tool_call>{`.
+#:
+#: Detektoren bor HER og ikke i `visible_runs`, fordi failover-kæden
+#: (`non_visible_fallback`) skal bruge PRÆCIS samme dom — og den kan ikke
+#: importere `visible_runs`, som selv importerer fallback-modulet.
+_PROTOKOL_TOKEN_LEAK_PATTERN = re.compile(
+    r"<\|[a-z_]{2,40}\|>"           # <|im_start|>, <|endoftext|>, <|tool_call|>
+    r"|<\]\w{2,40}\[>"              # <]minimax[>
+    r"|\[\s*<\s*tool_call\s*>"      # [<tool_call>
+    r"|<\s*/?\s*tool_call\s*>",     # <tool_call> / </tool_call>
+    re.IGNORECASE,
+)
+
+#: Fencede kodeblokke må gerne VISE protokol-tokens — det er en forklaring, ikke
+#: en lækage. Derfor testes kun teksten uden for fences.
+_FENCE_BLOKKE = re.compile(r"```.*?```", re.S)
+
+
+def looks_like_protocol_leak(text: str) -> bool:
+    """True hvis `text` bærer en models rå protokol-tokens.
+
+    Self-safe — kaster aldrig. Fencede kodeblokke ignoreres, så en forklaring der
+    viser et token ikke bliver offer for sin egen vagt.
+    """
+    try:
+        if not text:
+            return False
+        uden_fences = _FENCE_BLOKKE.sub("", str(text))
+        return bool(_PROTOKOL_TOKEN_LEAK_PATTERN.search(uden_fences))
+    except Exception:  # en detektor der kaster ville selv være fejlen — sig «ikke lækage»
+        return False

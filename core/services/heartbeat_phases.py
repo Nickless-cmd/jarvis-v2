@@ -761,18 +761,44 @@ def act_phase(
             # productive_idle so baseline rhythms keep firing.
             if tick_status == "blocked":
                 idle_result = productive_idle()
+                tick_dict = getattr(tick_result, "tick", None) or {}
                 return {
                     "kind": "tick_blocked_then_idle",
                     "trigger": trigger,
                     "had_priorities": bool(priorities),
                     "tick_status": tick_status,
+                    "result": {
+                        "tick_status": tick_status,
+                        "action_status": str(tick_dict.get("action_status") or ""),
+                        "action_type": str(tick_dict.get("action_type") or ""),
+                        "action_summary": str(tick_dict.get("action_summary") or ""),
+                        "decision_type": str(tick_dict.get("decision_type") or ""),
+                        "blocked_reason": str(tick_dict.get("blocked_reason") or ""),
+                    },
                     "idle_result": idle_result,
                 }
+            # 3/11-2026: dispatch-grenen returnerede KUN `tick_status`. Scoren
+            # læser `actions`, så et dispatch kunne ikke skelnes fra et
+            # resultatløst et — den fik 0 reaktionspoint uanset udfald, mens
+            # testen brugte en fixture med `actions` som produktionen aldrig
+            # leverer. `HeartbeatExecutionResult.tick` bærer det ægte outcome
+            # (action_status/action_type/action_summary), persisteret i
+            # heartbeat_runtime_ticks. Det bæres nu videre som `result`.
+            tick_dict = getattr(tick_result, "tick", None) or {}
+            outcome = {
+                "tick_status": tick_status,
+                "action_status": str(tick_dict.get("action_status") or ""),
+                "action_type": str(tick_dict.get("action_type") or ""),
+                "action_summary": str(tick_dict.get("action_summary") or ""),
+                "decision_type": str(tick_dict.get("decision_type") or ""),
+                "blocked_reason": str(tick_dict.get("blocked_reason") or ""),
+            }
             return {
                 "kind": "tick_dispatched",
                 "trigger": trigger,
                 "had_priorities": bool(priorities),
                 "tick_status": tick_status,
+                "result": outcome,
             }
         except Exception as exc:
             logger.warning("act_phase: tick dispatch failed: %s", exc)

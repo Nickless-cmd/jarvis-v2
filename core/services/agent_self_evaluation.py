@@ -118,14 +118,61 @@ def _score_daemons(indre: dict[str, Any]) -> tuple[int, str]:
     return point, note
 
 
+def _dispatch_udrettede(act: dict[str, Any]) -> tuple[bool, str]:
+    """Udleder om et dispatch faktisk udrettede noget — af dets EGNE felter.
+
+    3/11-2026: `tick_dispatched` returnerede kun `tick_status`, så reaktions-
+    leddet så nul handlinger uanset udfald. `act_phase` bærer nu det ægte
+    outcome fra `HeartbeatExecutionResult.tick` (persisteret i
+    heartbeat_runtime_ticks). Formen er målt i produktion, ikke opfundet:
+
+        action_status = "executed" | "blocked" | ""
+        action_type   = "productive_idle" | "ping" | ...
+        blocked_reason = "active-chat-gate" | ""
+
+    Et dispatch der blev blokeret, eller hvis handling var `productive_idle`,
+    udrettede intet — uanset at `tick_status` er "ok".
+    """
+    result = act.get("result") or {}
+    if not isinstance(result, dict):
+        return False, "dispatch uden læsbart resultat"
+    status = str(result.get("action_status") or "").strip().lower()
+    action_type = str(result.get("action_type") or "").strip().lower()
+    blocked = str(result.get("blocked_reason") or "").strip()
+    if blocked:
+        return False, f"dispatch blokeret ({blocked})"
+    if status != "executed":
+        return False, f"dispatch uden udført handling (status={status or 'tom'})"
+    if action_type in ("", "productive_idle"):
+        return False, "dispatch udførte kun ledig drift"
+    return True, f"dispatch udførte {action_type}"
+
+
 def _score_reaktion(
     signals: dict[str, Any], priorities: list[Any], actions: list[str],
+    *, act: dict[str, Any] | None = None,
 ) -> tuple[int, str]:
     """0-45: så slaget noget der krævede handling — og handlede det?
 
     Grundene er præcis de signaler `_identify_priorities` bygger prioriteter af,
     så leddet måler om kæden signal → prioritet → handling holdt hele vejen.
+
+    `actions` findes kun i `productive_idle`-grenen. Et `tick_dispatched` bærer
+    sit outcome i `act["result"]` i stedet, og det læses nu — ellers kunne et
+    resultatløst dispatch ikke skelnes fra et vellykket.
     """
+    act = act or {}
+    dispatch_note = ""
+    if not actions and str(act.get("kind") or "") in (
+        "tick_dispatched", "tick_blocked_then_idle",
+    ):
+        udrettede, hvorfor = _dispatch_udrettede(act)
+        if udrettede:
+            actions = [hvorfor]
+        else:
+            # Årsagen skal med i noten — ellers kan et resultatløst dispatch
+            # ikke skelnes fra et der slet ikke forsøgte.
+            dispatch_note = hvorfor
     grunde: list[str] = []
     if _som_int(signals.get("failed_verifies")) >= 1:
         grunde.append("failed_verifies")
@@ -143,10 +190,14 @@ def _score_reaktion(
         if priorities and actions:
             return _REACTION_MAX, f"reagerede på {hvad}"
         if priorities:
+            if dispatch_note:
+                return _REACTION_NO_ACTION, f"så {hvad}, men {dispatch_note}"
             return _REACTION_NO_ACTION, f"så {hvad}, men udrettede intet"
         return 0, f"så {hvad}, dannede ingen prioritet"
     if actions:
         return _IDLE_WITH_ACTION, "intet at reagere på; ledig drift udrettede noget"
+    if dispatch_note:
+        return 0, f"intet at reagere på; {dispatch_note}"
     return 0, "intet at reagere på, intet udrettet"
 
 
@@ -252,7 +303,9 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
     notes.append(f"{daemon_note} → {daemon_point}p")
 
     # 3. Reaktion — signal → prioritet → handling.
-    reaktion_point, reaktion_note = _score_reaktion(sense, priorities, actions)
+    reaktion_point, reaktion_note = _score_reaktion(
+        sense, priorities, actions, act=act
+    )
     score += reaktion_point
     notes.append(f"reaktion: {reaktion_note} → {reaktion_point}p")
 

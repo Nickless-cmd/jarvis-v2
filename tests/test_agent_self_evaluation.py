@@ -22,22 +22,44 @@ def _fake_tick(
     elapsed_ms=1000,
     koert=30,
     fejlet=0,
+    action_status=None,
+    action_type=None,
+    blocked_reason="",
     **signals,
 ):
-    """Et tick-resultat med samme form som ``tick_with_phases`` returnerer."""
+    """Et tick-resultat med samme form som ``tick_with_phases`` returnerer.
+
+    3/11-2026 (Codex' indvending): fixturen gav `tick_dispatched` en `actions`-
+    liste, men den ægte dispatch-gren returnerer kun `tick_status` — så testen
+    beviste en datastruktur produktionen aldrig leverer. Formen herunder er
+    målt i `heartbeat_runtime_ticks`: `action_status`, `action_type`,
+    `action_summary`, `decision_type`, `blocked_reason`.
+    """
     sense = {
         "mood_name": "x", "active_goals": [], "events_last_hour": 0,
         "context_pressure_level": "comfortable", "errors_last_hour": 0,
         "failed_verifies": 0, "unverified_mutations": 0,
     }
     sense.update(signals)
+    if act_kind in ("tick_dispatched", "tick_blocked_then_idle"):
+        # Dispatch-formen: outcome i `result`, ingen `actions`.
+        result = {
+            "tick_status": "ok",
+            "action_status": action_status if action_status is not None else "executed",
+            "action_type": action_type if action_type is not None else "ping",
+            "action_summary": "",
+            "decision_type": "",
+            "blocked_reason": blocked_reason,
+        }
+    else:
+        result = {"actions": actions or []}
     return {
         "elapsed_ms": elapsed_ms,
         "indre_daemoner": {"koert": koert, "fejlet": fejlet, "brugere": 1},
         "phases": {
             "sense": sense,
             "reflect": {"priorities": priorities or []},
-            "act": {"kind": act_kind, "result": {"actions": actions or []}},
+            "act": {"kind": act_kind, "result": result},
         },
     }
 
@@ -86,19 +108,56 @@ def test_daemon_fejl_traekker_ned():
 
 
 def test_reaktion_beloenner_kaeden_signal_prioritet_handling():
-    """Kæden skal holdes hele vejen — ellers er prioriteringen teater."""
+    """Kæden skal holdes hele vejen — ellers er prioriteringen teater.
+
+    Bruger den ÆGTE dispatch-form: outcome i `result`, ingen `actions`.
+    """
     handlede = _eval(_fake_tick(
         act_kind="tick_dispatched", failed_verifies=2,
-        priorities=["address_failed_verifications"], actions=["verify:fixed"]))
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="ping"))
     så_men_uden_handling = _eval(_fake_tick(
         act_kind="tick_dispatched", failed_verifies=2,
-        priorities=["address_failed_verifications"], actions=[]))
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="productive_idle"))
     uden_prioritet = _eval(_fake_tick(
         act_kind="tick_dispatched", failed_verifies=2,
-        priorities=[], actions=[]))
+        priorities=[], action_status="executed", action_type="ping"))
     assert handlede["score"] > så_men_uden_handling["score"]
     assert så_men_uden_handling["score"] > uden_prioritet["score"]
     assert any("dannede ingen prioritet" in n for n in uden_prioritet["notes"])
+
+
+def test_dispatch_uden_udfoert_handling_faar_ingen_reaktionspoint():
+    """Kernen i Codex' indvending: et dispatch der ikke udrettede noget må
+    ikke kunne score som et der gjorde. `tick_status=ok` er ikke nok."""
+    udrettede = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="ping"))
+    blokeret = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="blocked", action_type="ping",
+        blocked_reason="active-chat-gate"))
+    kun_idle = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="productive_idle"))
+    assert udrettede["score"] > blokeret["score"]
+    assert udrettede["score"] > kun_idle["score"]
+    assert any("blokeret" in n for n in blokeret["notes"])
+    assert any("ledig drift" in n for n in kun_idle["notes"])
+
+
+def test_dispatch_med_tom_status_taelles_ikke_som_handling():
+    """Målt i produktion: felterne kan være tomme strenge. Tom status er
+    ikke bevis for at noget skete."""
+    tom = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="", action_type=""))
+    assert any("uden udført handling" in n for n in tom["notes"])
 
 
 def test_et_ledigt_slag_kan_ikke_laengere_score_90():

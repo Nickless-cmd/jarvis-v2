@@ -200,25 +200,26 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 |---|---|---|---|---|
 | function | `_som_int` | `(vaerdi)` | Læs et tælletal fra et signal — 0 hvis det ikke kan læses. | [src](../../../core/services/agent_self_evaluation.py#L90) |
 | function | `_score_daemons` | `(indre)` | 0-10: kørte daemon-sweepet, og hvad kostede fejlene? | [src](../../../core/services/agent_self_evaluation.py#L105) |
-| function | `_score_reaktion` | `(signals, priorities, actions)` | 0-45: så slaget noget der krævede handling — og handlede det? | [src](../../../core/services/agent_self_evaluation.py#L121) |
-| function | `_previous_eval` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L153) |
-| function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L164) |
-| function | `_slim_history` | `(evals)` | Behold fuld detalje i de nyeste poster, skær den af de ældre. | [src](../../../core/services/agent_self_evaluation.py#L189) |
-| function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad SLAGET SELV rapporterede — intet globalt opslag. | [src](../../../core/services/agent_self_evaluation.py#L210) |
-| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L298) |
-| function | `_parse_ts` | `(raw)` | Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/agent_self_evaluation.py#L363) |
-| function | `_load_active_and_progress` | `()` | (aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning. | [src](../../../core/services/agent_self_evaluation.py#L388) |
-| function | `_active_with_last_progress` | `()` | Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et. | [src](../../../core/services/agent_self_evaluation.py#L397) |
-| function | `detect_stale_goals` | `(*, stale_days=…)` | Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``. | [src](../../../core/services/agent_self_evaluation.py#L408) |
-| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L464) |
-| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L480) |
-| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L579) |
-| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L583) |
-| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L613) |
-| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L641) |
-| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L718) |
-| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L722) |
-| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L727) |
+| function | `_dispatch_udrettede` | `(act)` | Udleder om et dispatch faktisk udrettede noget — af dets EGNE felter. | [src](../../../core/services/agent_self_evaluation.py#L121) |
+| function | `_score_reaktion` | `(signals, priorities, actions, *, act=…)` | 0-45: så slaget noget der krævede handling — og handlede det? | [src](../../../core/services/agent_self_evaluation.py#L151) |
+| function | `_previous_eval` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L204) |
+| function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L215) |
+| function | `_slim_history` | `(evals)` | Behold fuld detalje i de nyeste poster, skær den af de ældre. | [src](../../../core/services/agent_self_evaluation.py#L240) |
+| function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad SLAGET SELV rapporterede — intet globalt opslag. | [src](../../../core/services/agent_self_evaluation.py#L261) |
+| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L351) |
+| function | `_parse_ts` | `(raw)` | Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/agent_self_evaluation.py#L416) |
+| function | `_load_active_and_progress` | `()` | (aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning. | [src](../../../core/services/agent_self_evaluation.py#L441) |
+| function | `_active_with_last_progress` | `()` | Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et. | [src](../../../core/services/agent_self_evaluation.py#L450) |
+| function | `detect_stale_goals` | `(*, stale_days=…)` | Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``. | [src](../../../core/services/agent_self_evaluation.py#L461) |
+| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L517) |
+| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L533) |
+| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L632) |
+| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L636) |
+| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L666) |
+| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L694) |
+| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L771) |
+| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L775) |
+| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L780) |
 
 ## `core/services/agent_skill_distiller.py`
 _Agent skill distillation — turns observed outcomes into principles._

@@ -246,3 +246,37 @@ def test_list_proposals_viser_FULD_noegle():
         out = _exec_list_proposals({})
 
     assert fuld in str(out.get("text") or ""), "noeglen er klippet — approve svarer not-found"
+
+
+def test_afvisning_lukker_fundet(monkeypatch):
+    """Målt 3/11-2026: 75 afviste instrument-forslag efterlod deres fund `open`.
+
+    Godkendelse lukkede fundet; afvisning gjorde ikke — så daemonen filede det
+    igen, og næste runde afviste det igen. Et «nej» der ikke lukker sagen er et
+    spørgsmål der bliver stillet for evigt.
+    """
+    from core.services import autonomy_proposal_queue as apq
+    import core.runtime.db_instrument as dbi
+
+    lukket: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(apq, "get_autonomy_proposal", lambda pid: {
+        "proposal_id": pid,
+        "kind": "instrument_fix",
+        "status": "pending",
+        "payload": {"finding": {"signature": "except_silent:abc123"}},
+    })
+    monkeypatch.setattr(
+        apq, "resolve_autonomy_proposal",
+        lambda pid, **kw: {"proposal_id": pid, "status": kw.get("status")},
+    )
+    monkeypatch.setattr(
+        dbi, "set_finding_status",
+        lambda sig, st: lukket.append((sig, st)) or True,
+    )
+
+    out = apq.reject_proposal("prop-1", resolution_note="forældet fund")
+
+    assert out["status"] == "rejected"
+    # `dismissed`, ikke `accepted`: afslag betyder «ret det ikke».
+    assert lukket == [("except_silent:abc123", "dismissed")]

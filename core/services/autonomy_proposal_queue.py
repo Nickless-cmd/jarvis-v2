@@ -296,6 +296,29 @@ def reject_proposal(
         resolved_by="bjorn",
         resolution_note=resolution_note or "Rejected",
     )
+    # AFVISNING SKAL LUKKE FUNDET (målt 3/11-2026).
+    #
+    # Godkendelse lukker fundet via _execute_instrument_fix_proposal. Afvisning
+    # gjorde ikke: fundet blev staaende `open`, daemonen filede det igen, og
+    # naeste runde afviste det igen. Maalt: 75 afviste instrument-forslag havde
+    # stadig deres fund `open` — mens 734 afviste (dismissed) havde lukket dem.
+    # Et «nej» der ikke lukker sagen, er et spoergsmaal der bliver stillet for
+    # evigt. Status er `dismissed`, ikke `accepted`: et afslag betyder «ret det
+    # ikke», ikke «moensteret er godkendt».
+    if str(proposal.get("kind") or "") == "instrument_fix":
+        try:
+            import json as _json
+
+            from core.runtime import db_instrument as _dbi
+
+            _payload = proposal.get("payload") or proposal.get("payload_json") or {}
+            if isinstance(_payload, str):
+                _payload = _json.loads(_payload or "{}")
+            _sig = str(((_payload.get("finding") or {}).get("signature")) or "").strip()
+            if _sig:
+                _dbi.set_finding_status(_sig, "dismissed")
+        except Exception as exc:  # self-safe: en lukke-fejl maa ikke vaelte afvisningen
+            logger.warning("reject_proposal: kunne ikke lukke fund for %s: %s", proposal_id, exc)
     try:
         event_bus.publish(
             "autonomy_proposal.rejected",

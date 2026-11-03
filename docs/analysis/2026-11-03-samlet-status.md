@@ -934,6 +934,21 @@ Og de 28 `overridden_by_jarvis` er overvejende også læsere (`verify_file_conta
 
 **Det ærlige regnestykke er derfor: 392 eksplicit forkerte, og nul dokumenterede tilfælde hvor et `protectiveness`-veto stoppede noget farligt.** Det er ikke et præcisionsforhold — det er fraværet af ét eneste positivt eksempel. Det kan ikke udtrykkes som en brøk, og det skal ikke forsøges.
 
+**KORREKTION NR. 2 (3/11, samme eksterne gennemgang).** Også «392 eksplicit forkerte» var for stærkt. Jeg læste `check_veto()` og målte hvad kategorien faktisk betyder:
+
+`false_positive` skrives **kun ét sted** i koden — `veto_gate.py:784`, inde i `if not user_present:`-grenen. Den gren er en **abstention**: der findes ingen bruger i autonome ture, så gaten afstår fra at blokere og logger hvorfor. `resolve_veto_event()` kaldes kun med `overridden_by_jarvis` (målt: `gate_override.py:241` er den eneste kaldesti) — der findes **ingen kodevej der sætter `false_positive` som en efterfølgende vurdering**.
+
+Målt fordeling af de 392:
+
+| `veto_result` | antal | hvad det betyder |
+|---|---|---|
+| `allowed` | **206** | gaten blokerede **aldrig** — den abstainede. Ikke et forkert veto; intet veto. |
+| `blocked` | **186** | gaten blokerede faktisk, og rækken blev markeret `false_positive` ved hændelsen |
+
+Og de 186 fordeler sig med **93 rækker med tomt `tool_name`, alle dateret 13/9** — præcis den dag `user_present`-grenen blev indført. 117 `false_positive` er fra før 13/9, 308 fra og med.
+
+**Den korrigerede konklusion:** kategorien `false_positive` er ikke en vurdering af om risikoen var ægte. Den er en **klassifikation af om gaten måtte håndhæve**. Vi har derfor intet valideret mål for `protectiveness`-vetoets præcision — hverken 128:1, 392, eller noget andet tal i tabellen. Det der står tilbage er kun: **nul dokumenterede tilfælde hvor et `protectiveness`-veto stoppede noget farligt**, og det er et fravær, ikke en måling.
+
 ### Det åbne spørgsmål — og en skelnen jeg ikke selv havde stillet
 
 Jeg endte med at spørge: *skal `protectiveness` fortsat være en veto-følelse?*

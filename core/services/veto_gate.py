@@ -402,6 +402,17 @@ _BASE_THRESHOLDS: dict[str, dict[str, float]] = {
     },
 }
 
+# De følelser en BESLUTNING kan slå op med.
+#
+# `_affective_pressure` (pushback.py) er den eneste producent af `feeling` på
+# beslutningsvejen — `check_veto` → `_extract_feeling(section)` → her — og den
+# kan kun returnere disse fem. Alt andet der havner i `veto_events.feeling` er
+# skrevet af en anden kalder (fx `r2_5_haandhaevelse`, der sender sin NERVE
+# `r2_5_gate`) og bliver aldrig læst af en beslutning.
+_OPERATIVE_FEELINGS = frozenset({
+    "irritation", "unease", "fatigue", "protectiveness", "hesitation",
+})
+
 # Adjustment per outcome. Override = false positive, raise threshold.
 # Honored = correct gate, lower threshold (resensitize).
 #
@@ -974,20 +985,47 @@ def build_veto_gate_surface() -> dict[str, object]:
     except Exception:
         recent_events = []
 
-    # Collect adaptive threshold summary for recently-blocked tools
-    threshold_summary: dict[str, dict[str, float]] = {}
+    # Collect adaptive threshold summary for recently-seen (tool, feeling) pairs.
+    #
+    # 3/11-2026: nøglen var `tool` ALENE — `if t not in threshold_summary` lod
+    # den første hændelse for et værktøj bestemme hvilken feeling der blev vist,
+    # og dermed hvilken tærskel. `_adaptive_threshold` er defineret pr.
+    # (tool, feeling), så oversigten mistede en dimension. Målt: 31 af 81
+    # værktøjer har mere end én feeling i `veto_events`; `edit_file` har fire
+    # operative plus `r2_5_gate`.
+    #
+    # Hver post bærer nu sin egen `authority`. En tærskel er kun
+    # beslutningsgrundlag når feelingen er en `check_veto` faktisk kan slå op
+    # med, OG værktøjet ikke står i `_ALWAYS_ALLOWED_TOOLS`. Ellers er den
+    # telemetri: tællingerne er ægte, virkningen findes ikke. Målt eksempel før
+    # rettelsen: `bash → threshold 0.73, honored 1` — en nerve-feeling på et
+    # værktøj der aldrig gates.
+    threshold_summary: dict[str, dict[str, object]] = {}
     for ev in recent_events:
-        t = ev.get("tool_name", "")
-        f = ev.get("feeling", "")
-        if t and f and t not in threshold_summary:
-            threshold_summary[t] = {
-                "threshold": _adaptive_threshold(t, f, 1.0),
-                "overrides": _get_override_count(t, f),
-                # 3/11-2026: honored blev aldrig vist, og asymmetrien var derfor
-                # usynlig — overrides akkumulerer, honored gør ikke (den eneste
-                # kalder af resolve_veto_event sender «overridden_by_jarvis»).
-                "honored": _get_honored_count(t, f),
-            }
+        t = str(ev.get("tool_name") or "")
+        f = str(ev.get("feeling") or "")
+        if not (t and f):
+            continue
+        key = f"{t}/{f}"
+        if key in threshold_summary:
+            continue
+        operative = f in _OPERATIVE_FEELINGS
+        gate_exempt = t in _ALWAYS_ALLOWED_TOOLS
+        threshold_summary[key] = {
+            "tool_name": t,
+            "feeling": f,
+            "threshold": _adaptive_threshold(t, f, 1.0),
+            "overrides": _get_override_count(t, f),
+            # 3/11-2026: honored blev aldrig vist, og asymmetrien var derfor
+            # usynlig — overrides akkumulerer, honored gør ikke (den eneste
+            # kalder af resolve_veto_event sender «overridden_by_jarvis»).
+            "honored": _get_honored_count(t, f),
+            "operative": operative,
+            "gate_exempt": gate_exempt,
+            "authority": (
+                "decision" if (operative and not gate_exempt) else "telemetry_only"
+            ),
+        }
 
     return {
         "active": True,

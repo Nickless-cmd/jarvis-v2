@@ -364,3 +364,89 @@ def test_rene_laesere_kan_ikke_gated(monkeypatch):
     # frigivet.
     allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
     assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"
+
+
+# ── Fladens nøgle: (tool, feeling), ikke tool alene (3/11-2026) ───────────────
+# Baggrund: `build_veto_gate_surface` nøglede `adaptive_thresholds` på værktøj
+# ALENE. `_adaptive_threshold` er defineret pr. (tool, feeling), så første
+# hændelse for et værktøj bestemte hvilken feeling — og dermed hvilken tærskel —
+# der blev vist. Målt i drift: 31 af 81 værktøjer har mere end én feeling, og
+# oversigten viste `bash → threshold 0.73` for `(bash, r2_5_gate)`, hvor `bash`
+# står i `_ALWAYS_ALLOWED_TOOLS` og `r2_5_gate` aldrig er en beslutningsfølelse.
+#
+# Kontrakten: hver post bærer sin egen `authority`. En tærskel er kun
+# beslutningsgrundlag når feelingen kan slås op af `check_veto` OG værktøjet
+# ikke er gate-exempt.
+#
+# MUTATIONER der skal fanges:
+#   M15 — nøglen tilbage til `t` alene      -> testen for de to feelings falder
+#   M16 — `authority` hardcodet "decision"  -> telemetri-testen falder
+#   M17 — `gate_exempt` altid False         -> exempt-testen falder
+
+def _flade_med(monkeypatch, events):
+    from core.services import veto_gate as vg
+
+    monkeypatch.setattr(vg, "veto_event_stats", lambda limit=5: events)
+    monkeypatch.setattr(vg, "_get_override_count", lambda t, f: 0)
+    monkeypatch.setattr(vg, "_get_honored_count", lambda t, f: 0)
+    return vg.build_veto_gate_surface()
+
+
+def test_fladen_beholder_begge_feelings_for_samme_vaerktoej(monkeypatch):
+    """To feelings på ét værktøj må ikke kollapse til én post."""
+    events = [
+        {"tool_name": "edit_file", "feeling": "protectiveness"},
+        {"tool_name": "edit_file", "feeling": "r2_5_gate"},
+    ]
+    flade = _flade_med(monkeypatch, events)
+    th = flade["adaptive_thresholds"]
+
+    assert "edit_file/protectiveness" in th, f"nøglen kollapsede: {sorted(th)}"
+    assert "edit_file/r2_5_gate" in th, f"nøglen kollapsede: {sorted(th)}"
+    assert len(th) == 2, f"forventede 2 poster, fik {len(th)}: {sorted(th)}"
+
+
+def test_nerve_feeling_er_telemetri_ikke_beslutning(monkeypatch):
+    """`r2_5_gate` er en nerve, ikke en følelse `check_veto` kan slå op med."""
+    events = [{"tool_name": "edit_file", "feeling": "r2_5_gate"}]
+    th = _flade_med(monkeypatch, events)["adaptive_thresholds"]
+
+    post = th["edit_file/r2_5_gate"]
+    assert post["operative"] is False
+    assert post["authority"] == "telemetry_only", (
+        "en tærskel for en nerve blev vist som beslutningsgrundlag"
+    )
+
+
+def test_gate_exempt_vaerktoej_er_telemetri_selv_med_operativ_folelse(monkeypatch):
+    """`bash` står i _ALWAYS_ALLOWED_TOOLS — dens tærskel gates aldrig."""
+    from core.services.veto_gate import _ALWAYS_ALLOWED_TOOLS
+
+    assert "bash" in _ALWAYS_ALLOWED_TOOLS, "forudsætningen for testen er ændret"
+
+    events = [{"tool_name": "bash", "feeling": "protectiveness"}]
+    th = _flade_med(monkeypatch, events)["adaptive_thresholds"]
+
+    post = th["bash/protectiveness"]
+    assert post["operative"] is True, "protectiveness ER en operativ følelse"
+    assert post["gate_exempt"] is True
+    assert post["authority"] == "telemetry_only", (
+        "et altid-tilladt værktøjs tærskel blev vist som virksom"
+    )
+
+
+def test_operativ_folelse_paa_gated_vaerktoej_er_beslutning(monkeypatch):
+    """Den positive tvilling: uden den kunne alt bare markeres telemetri."""
+    from core.services.veto_gate import _ALWAYS_ALLOWED_TOOLS
+
+    assert "edit_file" not in _ALWAYS_ALLOWED_TOOLS
+
+    events = [{"tool_name": "edit_file", "feeling": "protectiveness"}]
+    th = _flade_med(monkeypatch, events)["adaptive_thresholds"]
+
+    post = th["edit_file/protectiveness"]
+    assert post["operative"] is True
+    assert post["gate_exempt"] is False
+    assert post["authority"] == "decision", (
+        "en ægte beslutningstærskel blev degraderet til telemetri"
+    )

@@ -1638,10 +1638,54 @@ at gaten blokerer ofte for netop det værktøj, og det skal være synligt — me
 ikke gøre gaten blind, og tærsklen bør ikke kaldes en tærskel for r2.5, fordi r2.5
 ikke har nogen.
 
-**Konsekvens der ikke er rettet:** `threshold_summary` beregner og viser stadig en
-tærskel for `(tool, "r2_5_gate")` som om den var virksom. Det er kosmetisk
-misvisende, men ikke farligt — den gates ikke. Ret det når nogen faktisk læser
-fladen og tror på tallet; indtil da står det her som den målte grænse.
+**Konsekvens — RETTET 3/11-2026 (ekstern gennemgang pegede på den, jeg havde selv
+kun set halvdelen).** `threshold_summary` viste en tærskel for `(tool, "r2_5_gate")`
+som om den var virksom. Det var ikke kun kosmetik, og det var værre end jeg skrev:
+
+Nøglen var `tool` **alene** — `if t and f and t not in threshold_summary` — mens
+`_adaptive_threshold` er defineret pr. `(tool, feeling)`. Første hændelse for et
+værktøj bestemte altså hvilken feeling der blev vist, og dermed hvilken tærskel.
+**Målt:** 31 af 81 værktøjer har mere end én feeling i `veto_events`; `edit_file` har
+fire operative (`protectiveness` 77, `hesitation` 19, `irritation` 8, `fatigue` 5)
+plus `r2_5_gate` 54.
+
+Og det målte eksempel var skarpere end forventet. Fladen viste:
+
+```
+bash → threshold 0.73, overrides 0, honored 1
+```
+
+Den eneste post i hele oversigten med en ikke-triviel tælling var præcis den der
+ikke havde nogen beslutning bag sig: `bash` står i `_ALWAYS_ALLOWED_TOOLS` og gates
+aldrig, og `r2_5_gate` er en nerve, ikke en følelse `check_veto` kan slå op med.
+
+Rettelsen er ikke at fjerne tællingerne — de er ægte. Det er at **skelne** dem.
+`_OPERATIVE_FEELINGS` er nu de fem `_affective_pressure` kan producere, og hver post
+bærer `operative`, `gate_exempt` og `authority` (`decision` kun når feelingen er
+operativ OG værktøjet ikke er exempt). Nøglen er `(tool, feeling)`.
+
+Efter rettelsen, samme levende data:
+
+| Nøgle | authority |
+|---|---|
+| `bash/r2_5_gate` | `telemetry_only` |
+| `vaelg_flade/protectiveness` | `decision` |
+| `close_agent/protectiveness` | `decision` |
+| `schedule_self_wakeup/protectiveness` | `decision` |
+| `Task/protectiveness` | `decision` |
+
+Fire nye tests, mutationstestet i tre retninger: nøglen tilbage til `tool` alene
+fælder 4, `authority` hardcodet `decision` fælder 2, `gate_exempt` altid `False`
+fælder 1. Den positive tvilling (`operativ følelse på gated værktøj` → `decision`)
+er nødvendig — uden den kunne alt bare markeres telemetri og testene ville stadig
+være grønne.
+
+**Grænse der stadig står:** `_OPERATIVE_FEELINGS` er en håndholdt liste. Tilføjer
+nogen en sjette følelse til `_affective_pressure` uden at opdatere den, vil dens
+tærskel blive vist som telemetri — altså det modsatte af fejlen, men stadig forkert.
+Listens eneste vagt er at `protectiveness` og `hesitation` blev tilføjet til
+`_BASE_THRESHOLDS` tidligere samme dag; der findes ingen test der binder de to
+lister sammen.
 
 ### Designvalg 2 — kognitive vægte: ingen ændring, men grænsen er nu målt
 

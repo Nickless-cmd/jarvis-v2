@@ -1806,5 +1806,17 @@ noget en test kan svare på for én.
 ### Det der stadig ikke er målt
 
 Om et mismatch nogensinde har ramt i drift. Den gamle kode skrev ikke mismatch som
-fejl, så fraværet af historiske rækker er ikke bevis. Og koden er **ikke levende** —
-den kræver en genstart, og den er ikke booket i denne runde.
+fejl, så fraværet af historiske rækker er ikke bevis.
+
+**Genstarten er landet (målt 3/11 kl. 21:43Z):** proces-start 21:38:04 mod commit
+21:37:16 — processen er 48 s yngre end koden, og ingen `pending_restart_confirmation`
+ligger tilbage. Kontrakten er derefter kaldt mod den kørende kode i tre grene:
+
+| Gren | Resultat |
+|---|---|
+| `write_text` gør intet | `status=error`, `write_attempted=true`, `disk_changed=false` |
+| `write_text` skriver noget andet | `status=error`, `readback_match=false`, `disk_changed=true` |
+| ægte skrivning | `status=executed`, `readback_match=true` |
+
+Det er den skelnen `status` alene ikke kunne bære: de to første er begge `error`, men
+kun den anden har rørt disken. Kontrakten er dermed **levende**, ikke kun committet.

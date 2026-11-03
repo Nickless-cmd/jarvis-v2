@@ -1,4 +1,5 @@
 """Tests for heartbeat provider fallback load-spreading (2026-06-22)."""
+import time
 from unittest.mock import patch
 
 import core.services.cheap_provider_runtime as cpr
@@ -22,7 +23,7 @@ def test_skips_blocked_and_rotates_among_usable():
     def _quota(c):
         return {"blocked": c["provider"] == "deepseek"}
 
-    def _exec(*, prompt, target):
+    def _exec(*, prompt, target, **kwargs):
         used.append(target["provider"])
         return {"text": "ok"}
 
@@ -47,7 +48,7 @@ def test_returns_none_when_no_usable():
 def test_falls_through_on_provider_error():
     cands = [_cand("mistral"), _cand("opencode")]
 
-    def _exec(*, prompt, target):
+    def _exec(*, prompt, target, **kwargs):
         if target["provider"] == "mistral":
             raise RuntimeError("mistral down")
         return {"text": "ok"}
@@ -235,3 +236,56 @@ def test_run_opslag_der_KASTER_vaelter_ikke_kaldet(monkeypatch):
     ud = _koer(monkeypatch, bogfoert, usage={"prompt_tokens": 5, "completion_tokens": 1})
     assert ud["text"] == "resume"
     assert bogfoert and bogfoert[0]["run_id"] == ""
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Kædens samlede budget (målt 3/11-2026)
+#
+# Hver kandidat havde sin egen 45 s-grænse, men kæden havde INTET samlet loft.
+# 34 kandidater (kun 18 unikke) kunne i værste fald bruge 25 minutter inde i en
+# cadence-producer, hvis hårde grænse er 75 s. To fejlende kandidater var nok
+# til at sprænge den — `inner_voice_daemon` timede ud 9 gange i døgnet på det.
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_kaeden_respekterer_sit_samlede_budget(monkeypatch):
+    cands = [_cand("mistral", f"m{i}") for i in range(8)]
+    tried: list[str] = []
+
+    def _exec(*, prompt, target, **kwargs):
+        tried.append(target["model"])
+        time.sleep(0.2)
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(hpf, "_MIN_ATTEMPT_S", 0.05)
+    with patch.object(cpr, "_configured_cheap_candidates", return_value=cands), \
+         patch.object(cpr, "_candidate_quota_snapshot", return_value={"blocked": False}), \
+         patch.object(hpf, "execute_openai_compat_heartbeat_prompt", side_effect=_exec):
+        t0 = time.monotonic()
+        assert hpf.try_heartbeat_cheap_fallback("hi", budget_s=0.5) is None
+        elapsed = time.monotonic() - t0
+
+    # Otte kandidater à 0,2 s ville tage 1,6 s. Budgettet skal stoppe den.
+    assert elapsed < 1.5, elapsed
+    assert len(tried) < len(cands), tried
+
+
+def test_samme_model_forsoeges_kun_en_gang():
+    cands = [
+        _cand("mistral", "m"),
+        _cand("mistral", "m"),
+        _cand("opencode", "o"),
+        _cand("opencode", "o"),
+    ]
+    tried: list[tuple[str, str]] = []
+
+    def _exec(*, prompt, target, **kwargs):
+        tried.append((target["provider"], target["model"]))
+        raise RuntimeError("down")
+
+    with patch.object(cpr, "_configured_cheap_candidates", return_value=cands), \
+         patch.object(cpr, "_candidate_quota_snapshot", return_value={"blocked": False}), \
+         patch.object(hpf, "execute_openai_compat_heartbeat_prompt", side_effect=_exec):
+        assert hpf.try_heartbeat_cheap_fallback("hi") is None
+
+    assert tried.count(("mistral", "m")) == 1, tried
+    assert tried.count(("opencode", "o")) == 1, tried

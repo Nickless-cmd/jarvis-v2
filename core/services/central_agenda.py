@@ -107,14 +107,46 @@ def _read_initiatives() -> list[dict[str, Any]]:
     return out[:5]
 
 
+def render_want_text(w: Any) -> str:
+    """Et ønskes tekst, læst fra dets EGNE felter — aldrig fra dets repr.
+
+    Målt 3/11-2026: ``Want`` bærer ``want_type``/``topic``/``strength``/``life_phase``
+    og har hverken ``text`` eller ``summary``. Fallbacken ``str(w)`` skrev derfor en
+    trunkeret Python-repr ind i Centralens forgrund — og derfra videre ind i prompten
+    som «jeg arbejder mod: Want(want_id='want-11871', want_type='growth', …», afskåret
+    midt i ``life_phase``. En repr er ikke en retning: den kan ikke læses, ikke
+    citeres og ikke handles på.
+
+    Selve formuleringen ejes af :func:`initiative_accumulator.render_want_text`, så
+    Centralens forgrund taler samme sprog som resten af huset. Kan intet læsbart
+    udledes, returneres tom streng — så kalderen kan tie frem for at sende skrald
+    videre. Det er den samme regel som ``disk_changed``: kun det observerede, aldrig
+    en slutning der ser ud som data.
+    """
+    if isinstance(w, dict):
+        for key in ("text", "summary", "topic", "title"):
+            val = w.get(key)
+            if val and str(val).strip():
+                return str(val).strip()[:200]
+        return ""
+    try:
+        from core.services.initiative_accumulator import render_want_text as _render
+        return _render(w, with_strength=True)
+    except Exception:
+        return ""
+
+
 def _top_want() -> dict[str, Any] | None:
     try:
         from core.services.initiative_accumulator import get_top_want
         w = get_top_want()
         if w is not None:
-            txt = getattr(w, "text", None) or getattr(w, "summary", None) or str(w)
-            return {"text": str(txt)[:160], "source": "want",
-                    "want_type": getattr(w, "want_type", None)}
+            txt = render_want_text(w)
+            if not txt:
+                return None
+            return {"text": txt[:160], "source": "want",
+                    "want_type": (w.get("want_type") if isinstance(w, dict)
+                                  else getattr(w, "want_type", None))}
     except Exception:
         pass
     return None

@@ -107,3 +107,57 @@ def test_autonomous_void_fill_only_when_live_and_blank(isolated_runtime):
     # live → fill-værdien er der
     a._kv_set(a._AUTHORITATIVE_FLAG, True)
     assert a.authoritative_next_intention()["text"] == "Centralens retning"
+
+
+# ── C1/D2: Centralens forgrund må bære en VÆRDI, ikke en Python-repr (3/11-2026) ─────
+def test_want_rendres_fra_sine_egne_felter():
+    """`Want` har hverken `text` eller `summary` — så den gamle fallback skrev `str(w)`.
+
+    Målt 3/11-2026: Centralens forgrund var «Want(want_id='want-11871', want_type='growth',
+    …, life_phase='deep_» — en repr afskåret midt i et ord, som derefter gik videre ind i
+    prompten som «jeg arbejder mod: …». En repr kan ikke læses, citeres eller handles på.
+    """
+    from core.services.initiative_accumulator import Want
+
+    w = Want(want_id="w1", want_type="growth", topic="self_improvement",
+             strength=0.4612692276, created_at="2026-11-03T10:51:35+00:00",
+             life_phase="deep_work")
+    tekst = ag.render_want_text(w)
+
+    assert "Want(" not in tekst, "en repr er ikke en retning"
+    assert "want_id" not in tekst
+    assert "self_improvement" in tekst and "vokse" in tekst
+    assert "0.46" in tekst and "deep_work" in tekst
+
+
+def test_want_uden_laesbart_indhold_giver_tom_streng():
+    """Kan intet udledes, tømmes feltet — så kalderen kan tie frem for at vise skrald."""
+    from core.services.initiative_accumulator import Want
+
+    tomt = Want(want_id="w2", want_type="", topic="", strength=0.0,
+                created_at="", life_phase="")
+    assert ag.render_want_text(tomt) == ""
+
+
+def test_want_som_dict_laeses_som_tekst():
+    """Den positive tvilling: en dict med reel tekst går uændret igennem.
+
+    Uden den kunne `render_want_text` bestå ved at returnere tomt for ALT.
+    """
+    assert ag.render_want_text({"text": "skriv til Bjørn"}) == "skriv til Bjørn"
+    assert ag.render_want_text({"topic": "rydde op"}) == "rydde op"
+
+
+def test_top_want_skriver_aldrig_en_repr(monkeypatch, isolated_runtime):
+    """_top_want er kilden til Centralens forgrund — den må ikke lække en repr videre."""
+    import core.services.initiative_accumulator as ia
+
+    monkeypatch.setattr(ia, "get_top_want", lambda: ia.Want(
+        want_id="want-11871", want_type="growth", topic="self_improvement",
+        strength=0.46, created_at="2026-11-03T10:51:35+00:00", life_phase="deep_work",
+    ))
+    w = ag._top_want()
+    assert w is not None
+    assert "Want(" not in w["text"]
+    assert w["text"] == "Jeg vil gerne vokse om self_improvement (styrke 0.46, fase deep_work)"
+    assert w["want_type"] == "growth"

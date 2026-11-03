@@ -6843,6 +6843,29 @@ _TOOL_CALL_LEAK_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+#: Protokol-token-lækage fra en model der ikke taler vores værktøjs-protokol.
+#:
+#: Målt 3/11-2026: et autonomt ROUTINE WAKEUP-run startede på
+#: `ollama/deepseek-v4.1-flash:cloud`, ollama svarede `credits-exhausted`, og
+#: fallback-kaskaden landede på `aihubmix/coding-minimax-m3-free` — en gratis
+#: model uden værktøjsstøtte. Den skrev sine værktøjskald som RÅ TEKST i sit
+#: eget token-format, og 536 tegn token-skov gik direkte i chatten.
+#:
+#: `_TOOL_CALL_LEAK_PATTERN` ovenfor leder efter `[navn]: {` og var blind for
+#: `<]minimax[>` og `[<tool_call>{`. Vagten fandtes altså — den så bare ikke
+#: formatet, fordi den var skrevet til ÉN models token-syntaks.
+_PROTOKOL_TOKEN_LEAK_PATTERN = re.compile(
+    r"<\|[a-z_]{2,40}\|>"           # <|im_start|>, <|endoftext|>, <|tool_call|>
+    r"|<\]\w{2,40}\[>"              # <]minimax[>
+    r"|\[\s*<\s*tool_call\s*>"      # [<tool_call>
+    r"|<\s*/?\s*tool_call\s*>",     # <tool_call> / </tool_call>
+    re.IGNORECASE,
+)
+
+#: Fencede kodeblokke må gerne VISE protokol-tokens — det er en forklaring,
+#: ikke en lækage. Derfor testes kun teksten uden for fences.
+_FENCE_BLOKKE = re.compile(r"```.*?```", re.S)
+
 
 def _assert_presentation_invariant(text: str) -> None:
     stripped = (text or "").lstrip()
@@ -6865,6 +6888,18 @@ def _assert_presentation_invariant(text: str) -> None:
         )
         raise PresentationInvariantError(
             f"tool-call emitted as prose instead of structured tool_calls: "
+            f"{stripped[:120]!r}"
+        )
+    # Protokol-token-lækage (3/11-2026). Testes UDEN for fencede kodeblokke, så
+    # en forklaring der viser et token ikke bliver offer for sin egen vagt.
+    _uden_fences = _FENCE_BLOKKE.sub("", stripped)
+    if _PROTOKOL_TOKEN_LEAK_PATTERN.search(_uden_fences):
+        logger.warning(
+            "presentation-invariant-leak kind=protokol-token preview=%r",
+            stripped[:200],
+        )
+        raise PresentationInvariantError(
+            f"model protocol tokens leaked into user-visible text: "
             f"{stripped[:120]!r}"
         )
 

@@ -455,24 +455,40 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     # der ikke afgoer udfaldet. Status er derfor «error», saa fejl-grenen i
     # `approve_proposal` rammer og commit-stien aldrig naas.
     if not readback_match:
-        # RESTTILSTAND (3/11-2026): «error» betyder IKKE «disken er uændret».
-        # `write_text` lykkedes — det er readback'en der viser at indholdet ikke
-        # er det forventede (fx en anden skrev samtidig, eller et filter skrev
-        # noget andet). Filen ER altsaa roert. Det skal staa eksplicit, saa et
-        # efterfoelgende forsoeg undersoeger disken frem for at antage at intet
-        # skete — og saa det kan skelnes fra «stale», hvor intet blev skrevet.
+        # RESTTILSTAND (3/11-2026, rettet samme aften): jeg skrev foerst
+        # «filen ER skrevet» og satte `disk_touched: True`. Det var en SLUTNING,
+        # ikke en maaling: `write_text` returnerede uden exception, men det
+        # beviser kun at kaldet blev gjort — ikke at disken aendrede sig.
+        # Beviset imod stod i min egen test: den patchede `write_text` til at
+        # goere INTET og kraevede alligevel `disk_touched is True`. En groen
+        # test der bekraeftede det modsatte af hvad den selv forhindrede.
+        #
+        # Det eneste der kan afgoeres her er:
+        #   write_attempted  = kaldet returnerede uden exception (observeret)
+        #   readback_match   = disken baerer ikke det skrevne (observeret)
+        #   disk_changed     = readback afviger fra den foer laeste tilstand
+        #                      (observeret — men siger INTET om hvor mange
+        #                      mellemliggende skrivninger der er sket)
+        # Konklusionen «undersoeg filen» er derfor et KRAV til naeste forsoeg,
+        # ikke en paastand om diskens tilstand.
+        disk_changed = readback_fingerprint != current_fingerprint
         return {
             "status": "error",
             "error": (
-                "readback mismatch: filen ER skrevet, men disken baerer ikke det "
-                f"skrevne indhold — undersoeg filen foer et nyt forsoeg "
-                f"(wanted={new_fingerprint} got={readback_fingerprint})"
+                "readback mismatch: skrivningen blev FORSOEGT, men disken baerer "
+                "ikke det skrevne indhold — undersoeg filens faktiske tilstand "
+                "foer et nyt forsoeg (antag hverken at den blev skrevet eller at "
+                f"den er uaendret; wanted={new_fingerprint} "
+                f"got={readback_fingerprint})"
             ),
             "target_path": target_path,
-            "disk_touched": True,
+            "write_attempted": True,
+            "readback_match": False,
+            "disk_changed": disk_changed,
+            "requires_inspection": True,
+            "current_fingerprint": current_fingerprint,
             "new_fingerprint": new_fingerprint,
             "readback_fingerprint": readback_fingerprint,
-            "readback_match": False,
         }
 
     return {

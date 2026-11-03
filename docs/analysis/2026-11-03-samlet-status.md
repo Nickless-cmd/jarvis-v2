@@ -1750,6 +1750,59 @@ skelnes af et efterfølgende forsøg.
 filen ER skrevet og skal undersøges før et nyt forsøg. Mutationstestet: fjernes feltet,
 fejler `test_en_skrivning_der_ikke_landede_er_ikke_en_succes`.
 
+### Korrektion 13 — kontrollen håndhævede en antagelse der ikke var sand
+
+**Det GPT fandt, og det er den skarpeste indvending i aften:** rettelsen ovenfor var selv
+en overfortolkning. Jeg skrev «filen ER skrevet» og satte `disk_touched: True`. Men det
+eneste jeg havde observeret var at `write_text` returnerede uden exception. Det beviser at
+**kaldet blev gjort** — ikke at disken ændrede sig.
+
+Beviset imod stod i min egen test, og den var grøn:
+
+```python
+with patch("pathlib.Path.write_text", return_value=None):   # gør INTET
+    res = _execute_source_edit_proposal(...)
+assert res["disk_touched"] is True                          # ...og alligevel:
+assert "ER skrevet" in res["error"]
+```
+
+Testen forhindrede skrivningen og bekræftede samtidig at den var sket. En grøn test der
+assert'ede sin egen modsætning — og den var mutationstestet, så den fangede sin egen
+mutation. Mutationstest svarer på *«kan testen opdage at kontrollen brydes?»*, ikke på
+*«er det kontrollen kræver faktisk sandt?»*.
+
+**Rettet til tre observerede felter, hver for sig:**
+
+| Felt | Hvad det er | Hvad det ikke er |
+|---|---|---|
+| `write_attempted` | kaldet returnerede uden exception | ikke bevis for at disken ændredes |
+| `readback_match` | disken bærer ikke det skrevne | — |
+| `disk_changed` | readback afviger fra den **før** læste tilstand | siger intet om mellemliggende skrivninger |
+| `requires_inspection` | et **krav** til næste forsøg | ikke en påstand om diskens tilstand |
+
+Fejlteksten siger nu «skrivningen blev FORSØGT … antag hverken at den blev skrevet eller
+at den er uændret». `disk_touched` er fjernet — målt: det havde **nul læsere** uden for
+kommentarerne, så det var også et felt ingen brugte.
+
+**Den gren jeg helt manglede:** `test_en_skrivning_der_landede_FORKERT_markerer_disk_changed`
+skriver noget *andet* end det forventede og kræver `disk_changed is True`. Uden den kunne
+`disk_changed` være hardcoded til `False` og hele kontrakten stadig se rigtig ud — samme
+fejlklasse som `readback_match` selv.
+
+**Mutationstestet i begge retninger (målt):**
+
+| Mutation | Test der fangede den |
+|---|---|
+| `disk_changed = False` hardcoded | `test_en_skrivning_der_landede_FORKERT_markerer_disk_changed` |
+| `disk_changed = True` hardcoded | `test_en_skrivning_der_ikke_landede_er_ikke_en_succes` |
+
+14 grønne i filen, 66 i de fire berørte testfiler.
+
+**Det generelle:** en kontrol kan være virksom (1), testet mod mutation (2) — og stadig
+håndhæve en forkert antagelse (3). Mutationstest dækker kun det andet spørgsmål. Det
+tredje kræver at man spørger hvad det observerede faktum *faktisk* er, og det er ikke
+noget en test kan svare på for én.
+
 ### Det der stadig ikke er målt
 
 Om et mismatch nogensinde har ramt i drift. Den gamle kode skrev ikke mismatch som

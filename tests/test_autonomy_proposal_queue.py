@@ -315,13 +315,63 @@ def test_en_skrivning_der_ikke_landede_er_ikke_en_succes(tmp_path):
     assert res["status"] == "error"
     assert "readback" in res["error"]
     assert res["readback_match"] is False
-    # RESTTILSTAND (3/11-2026): et mismatch betyder at `write_text` LYKKEDES —
-    # det er kun indholdet der er forkert. Resultatet skal sige det hoejt, saa
-    # et nyt forsoeg undersoeger disken i stedet for at antage at intet skete.
-    # Det kan ikke ses paa `status` alene, for «stale» giver samme status uden
-    # at have roert filen.
-    assert res["disk_touched"] is True
-    assert "ER skrevet" in res["error"]
+    # RESTTILSTAND (3/11-2026, rettet samme aften): jeg skrev først
+    # `disk_touched is True` og «filen ER skrevet». Men denne test patcher
+    # `write_text` til at gøre INTET — så den beviste at disken var uændret,
+    # mens den assert'ede det modsatte. En grøn test der bekræftede sin egen
+    # modsætning. Det der kan observeres er tre ting, og de står nu hver for sig:
+    assert res["write_attempted"] is True, "kaldet blev gjort — det er observeret"
+    assert res["disk_changed"] is False, (
+        "write_text gjorde intet, så disken bærer stadig originalen — "
+        "disk_changed skal være False, ikke True"
+    )
+    assert res["requires_inspection"] is True, (
+        "et nyt forsøg skal undersøge filen, ikke antage noget om den"
+    )
+
+
+def test_en_skrivning_der_landede_FORKERT_markerer_disk_changed(tmp_path):
+    """Den anden gren — og den jeg helt manglede.
+
+    `disk_changed` er sand når readback afviger fra den FØR læste tilstand.
+    Det siger intet om hvor mange mellemliggende skrivninger der er sket, men
+    det gør resttilstanden målbar: filen er reelt ændret, og et nyt forsøg må
+    ikke antage at den er som før.
+
+    Uden denne test kunne `disk_changed` være hardcoded til False og hele
+    kontrakten stadig se rigtig ud — samme fejlklasse som `readback_match`.
+    """
+    from unittest.mock import patch as _patch
+
+    from core.services.autonomy_proposal_queue import _execute_source_edit_proposal
+
+    target = tmp_path / "core" / "halvskrevet.py"
+    target.parent.mkdir()
+    target.write_text("original = True\n", encoding="utf-8")
+
+    def _skriv_noget_andet(self, data, **kwargs):
+        # Skrivningen LANDER, men disken bærer ikke det forventede indhold —
+        # fx fordi et filter eller en anden skriver kom imellem.
+        with open(self, "w", encoding="utf-8") as fh:
+            fh.write("noget_helt_andet = True\n")
+
+    with _patch("pathlib.Path.write_text", _skriv_noget_andet):
+        res = _execute_source_edit_proposal(
+            {
+                "target_path": str(target),
+                "new_content": "nyt = True\n",
+            }
+        )
+
+    assert res["status"] == "error"
+    assert res["readback_match"] is False
+    assert res["write_attempted"] is True
+    assert res["disk_changed"] is True, (
+        "filen blev reelt ændret — disk_changed skal være True så næste forsøg "
+        "ved at den skal undersøges"
+    )
+    assert res["current_fingerprint"] != res["readback_fingerprint"]
+    assert target.read_text(encoding="utf-8") == "noget_helt_andet = True\n"
 
 
 def _koer_godkendelse(monkeypatch, *, executor_svar):

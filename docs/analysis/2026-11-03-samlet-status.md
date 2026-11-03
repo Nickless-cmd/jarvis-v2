@@ -1680,6 +1680,12 @@ fælder 1. Den positive tvilling (`operativ følelse på gated værktøj` → `d
 er nødvendig — uden den kunne alt bare markeres telemetri og testene ville stadig
 være grønne.
 
+**Målt levende 3/11 kl. 21:50** (proces startet 21:48:57, commit `72e6ce1c2` var
+21:48:02 — processen er 55 s yngre og bærer koden): `build_veto_gate_surface()`
+svarer med fem `tool/feeling`-nøgler, nul uden `/`, og `bash/r2_5_gate` bærer
+`operative=False, gate_exempt=True, authority=telemetry_only`. Tabellen ovenfor er
+altså ikke en forventning men den kørende proces' faktiske svar.
+
 **Grænse der stadig står:** `_OPERATIVE_FEELINGS` er en håndholdt liste. Tilføjer
 nogen en sjette følelse til `_affective_pressure` uden at opdatere den, vil dens
 tærskel blive vist som telemetri — altså det modsatte af fejlen, men stadig forkert.

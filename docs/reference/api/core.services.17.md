@@ -615,28 +615,28 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ollama_base` | `()` | Hvor embeddings skal hen — SAMME sandhed som resten af systemet. | [src](../../../core/services/memory_search.py#L23) |
-| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L65) |
-| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L71) |
-| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L153) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L188) |
-| function | `_chunk_markdown` | `(text, source)` | Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten. | [src](../../../core/services/memory_search.py#L203) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L275) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L351) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L363) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L371) |
-| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L402) |
-| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L410) |
-| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L427) |
-| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L450) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L513) |
-| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L544) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L588) |
-| function | `_candidate_er_primaer` | `(text)` | True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold. | [src](../../../core/services/memory_search.py#L607) |
-| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L644) |
-| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L651) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L732) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L741) |
+| function | `_ollama_base` | `()` | Hvor embeddings skal hen — SAMME sandhed som resten af systemet. | [src](../../../core/services/memory_search.py#L25) |
+| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L67) |
+| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L73) |
+| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L155) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L190) |
+| function | `_chunk_markdown` | `(text, source)` | Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten. | [src](../../../core/services/memory_search.py#L205) |
+| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L277) |
+| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L353) |
+| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L365) |
+| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L373) |
+| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L404) |
+| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L412) |
+| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L429) |
+| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L452) |
+| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L530) |
+| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L561) |
+| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L616) |
+| function | `_candidate_er_primaer` | `(text)` | True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold. | [src](../../../core/services/memory_search.py#L635) |
+| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L672) |
+| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L679) |
+| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L760) |
+| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L769) |
 
 ## `core/services/memory_tattoos.py`
 _Memory Tattoos — de mærker der bliver siddende._

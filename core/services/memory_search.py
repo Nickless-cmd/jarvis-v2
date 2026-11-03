@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pickle
 import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -498,12 +500,27 @@ def _build_and_cache_index(
     try:
         cache = _cache_path(ws) if ws is not None else _cache_path()
         cache.parent.mkdir(parents=True, exist_ok=True)
-        with open(cache, "wb") as fh:
-            pickle.dump({
-                "chunks": all_chunks, "embeddings": embeddings,
-                "mtimes": current_mtimes, "model": _EMBED_MODEL,
-                "built_at": datetime.now(UTC).isoformat(),
-            }, fh)
+        # ATOMISK (3/11-2026). Før blev den LEVENDE cache skrevet direkte med
+        # open(cache, "wb") + pickle.dump. Rebuild'en kører i en daemon-tråd, så
+        # en proces der stopper midt i skrivningen efterlod en AFKORTET pickle —
+        # og hver efterfølgende søgning fejlede med "Ran out of input" og faldt
+        # til tfidf, indtil nogen slettede filen i hånden. Målt 3/11: 12.953
+        # chunks / 29,5 min spildt, og fejlen var usynlig i svaret.
+        # Nu: skriv til en tmp-fil i SAMME mappe, fsync, og omdøb atomisk. En
+        # læser ser enten den gamle eller den nye fil — aldrig en halv.
+        tmp = cache.with_name(f"{cache.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
+        try:
+            with open(tmp, "wb") as fh:
+                pickle.dump({
+                    "chunks": all_chunks, "embeddings": embeddings,
+                    "mtimes": current_mtimes, "model": _EMBED_MODEL,
+                    "built_at": datetime.now(UTC).isoformat(),
+                }, fh)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, cache)
+        finally:
+            tmp.unlink(missing_ok=True)
         logger.info("memory_search: index rebuilt in bg (%d chunks, embeddings=%s)",
                     len(all_chunks), embeddings is not None)
     except Exception as exc:
@@ -579,6 +596,17 @@ def _load_or_build_index(
             return cached.get("chunks", []), cached.get("embeddings"), cached.get("mtimes", current_mtimes)
         except Exception as exc:
             logger.warning("memory_search: cache load failed: %s", exc)
+            # Læg den brudte fil til side ÉN gang (3/11-2026). Uden dette blev den
+            # samme afkortede pickle forsøgt indlæst ved HVER søgning: log-støj,
+            # tfidf-fallback — og rebuild'en blev aldrig færdig, fordi filen stadig
+            # "fandtes" og hvert kald fejlede på den. Navnet bevares til undersøgelse.
+            try:
+                _MEM_INDEX.pop(str(cache), None)
+                cache.replace(cache.with_name(
+                    f"{cache.name}.corrupt-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+                ))
+            except Exception as exc2:
+                logger.warning("memory_search: kunne ikke flytte brudt cache: %s", exc2)
     # Ingen/brudt cache: chunk hurtigt (ingen embed) → tfidf-fallback nu; embed i baggrunden.
     all_chunks = _chunk_all_files(files, ws)
     _schedule_background_rebuild(files, current_mtimes, ws)

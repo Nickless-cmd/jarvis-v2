@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/retention_coverage.py`
+_Vagt: hvilke store tabeller i `jarvis.db` har ingen aftale om oprydning?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `har_politik` | `()` | Tabeller med en alders-politik, og hvor den står. Kilden er én. | [src](../../../core/services/retention_coverage.py#L129) |
+| function | `_stoerrelser` | `(conn)` | Bytes pr. tabel via dbstat. Tom dict hvis dbstat ikke er bygget ind. | [src](../../../core/services/retention_coverage.py#L149) |
+| function | `tabeller_uden_politik` | `(*, conn=…, min_bytes=…, min_raekker=…)` | De store tabeller der hverken har en politik eller en skreven grund. | [src](../../../core/services/retention_coverage.py#L165) |
+| function | `rapport` | `(fund)` | Én linje til loggen. Tom streng når der intet er at sige. | [src](../../../core/services/retention_coverage.py#L225) |
+
 ## `core/services/retry_admissibility.py`
 _Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
 
@@ -632,21 +642,4 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 | function | `list_flows` | `(*, status=…, task_id=…, limit=…)` | — | [src](../../../core/services/runtime_flows.py#L48) |
 | function | `update_flow` | `(flow_id, *, status=…, current_step=…, step_state=…, plan=…, next_action=…, last_error=…, attempt_count=…)` | — | [src](../../../core/services/runtime_flows.py#L68) |
 | function | `_decode_flow` | `(flow)` | — | [src](../../../core/services/runtime_flows.py#L103) |
-
-## `core/services/runtime_guard.py`
-_Vagt: rejs `jarvis-runtime` når den er død._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/runtime_guard.py#L97) |
-| function | `probe_health` | `(port=…, timeout=…)` | Svarer runtime'ens `/health`? Netværksfejl betyder NEJ, ikke «ved det ikke». | [src](../../../core/services/runtime_guard.py#L101) |
-| function | `systemd_tilstand` | `(service=…)` | `active`, `inactive`, `activating`, `deactivating` eller `unknown`. | [src](../../../core/services/runtime_guard.py#L117) |
-| function | `beslut` | `(aktiv, sund)` | Ren beslutningsfunktion — ingen I/O, så den kan testes uden systemd. | [src](../../../core/services/runtime_guard.py#L135) |
-| function | `_laes_state` | `()` | — | [src](../../../core/services/runtime_guard.py#L161) |
-| function | `_skriv_state` | `(state)` | — | [src](../../../core/services/runtime_guard.py#L168) |
-| function | `_log` | `(linje)` | Skriv ALTID en linje — også ved «alt er fint». | [src](../../../core/services/runtime_guard.py#L178) |
-| function | `_varsl` | `(besked, titel, *, state, noegle)` | Send til Bjørns telefon — men ikke oftere end cooldown tillader. | [src](../../../core/services/runtime_guard.py#L192) |
-| function | `_rejs` | `(handling, service=…)` | Kør systemctl. `sudo -n` fordi oneshot-servicen ikke må hænge på en prompt. | [src](../../../core/services/runtime_guard.py#L219) |
-| function | `tjek_og_rejs` | `(*, tør_handle=…)` | Én kørsel af vagten. Returnerer hvad den så og hvad den gjorde. | [src](../../../core/services/runtime_guard.py#L235) |
-| function | `main` | `()` | Entry point for oneshot-servicen. Exit 0 uanset — en vagt må ikke crashe. | [src](../../../core/services/runtime_guard.py#L357) |
 

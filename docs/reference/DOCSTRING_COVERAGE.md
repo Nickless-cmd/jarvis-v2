@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9563/17905 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9565/17907 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,9 +25,9 @@ Generated from source. 9563/17905 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6367 | 12161 | 52% |
+| `core.services` | 6368 | 12162 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
-| `core.services.prompt_sections` | 144 | 226 | 63% |
+| `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
@@ -2287,10 +2287,10 @@ Generated from source. 9563/17905 functions/methods documented (53%). The list b
 - `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
 - `core/services/visible_followup_results.py` :: `to_followup_results` (L39)
 - `core/services/visible_member_prompt.py` :: `build_member_prompt` (L30)
-- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L403)
-- `core/services/visible_model.py` :: `available_provider_models` (L176)
-- `core/services/visible_model.py` :: `execute_visible_model` (L268)
-- `core/services/visible_model.py` :: `stream_visible_model` (L329)
+- `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L404)
+- `core/services/visible_model.py` :: `available_provider_models` (L177)
+- `core/services/visible_model.py` :: `execute_visible_model` (L269)
+- `core/services/visible_model.py` :: `stream_visible_model` (L330)
 - `core/services/visible_model_adapters.py` :: `visible_execution_readiness` (L717)
 - `core/services/visible_model_prompt.py` :: `visible_capability_continuity_summary` (L314)
 - `core/services/visible_model_prompt.py` :: `visible_continuity_summary` (L355)

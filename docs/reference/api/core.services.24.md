@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/runtime_guard.py`
+_Vagt: rejs `jarvis-runtime` når den er død._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/runtime_guard.py#L97) |
+| function | `probe_health` | `(port=…, timeout=…)` | Svarer runtime'ens `/health`? Netværksfejl betyder NEJ, ikke «ved det ikke». | [src](../../../core/services/runtime_guard.py#L101) |
+| function | `systemd_tilstand` | `(service=…)` | `active`, `inactive`, `activating`, `deactivating` eller `unknown`. | [src](../../../core/services/runtime_guard.py#L117) |
+| function | `beslut` | `(aktiv, sund)` | Ren beslutningsfunktion — ingen I/O, så den kan testes uden systemd. | [src](../../../core/services/runtime_guard.py#L135) |
+| function | `_laes_state` | `()` | — | [src](../../../core/services/runtime_guard.py#L161) |
+| function | `_skriv_state` | `(state)` | — | [src](../../../core/services/runtime_guard.py#L168) |
+| function | `_log` | `(linje)` | Skriv ALTID en linje — også ved «alt er fint». | [src](../../../core/services/runtime_guard.py#L178) |
+| function | `_varsl` | `(besked, titel, *, state, noegle)` | Send til Bjørns telefon — men ikke oftere end cooldown tillader. | [src](../../../core/services/runtime_guard.py#L192) |
+| function | `_rejs` | `(handling, service=…)` | Kør systemctl. `sudo -n` fordi oneshot-servicen ikke må hænge på en prompt. | [src](../../../core/services/runtime_guard.py#L219) |
+| function | `tjek_og_rejs` | `(*, tør_handle=…)` | Én kørsel af vagten. Returnerer hvad den så og hvad den gjorde. | [src](../../../core/services/runtime_guard.py#L235) |
+| function | `main` | `()` | Entry point for oneshot-servicen. Exit 0 uanset — en vagt må ikke crashe. | [src](../../../core/services/runtime_guard.py#L357) |
+
 ## `core/services/runtime_hook_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -692,26 +709,4 @@ _Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
 | function | `list_self_model_snapshots` | `(*, limit=…, before=…, after=…)` | Nyeste foerst. `before`/`after` afgraenser paa tidsstempel. | [src](../../../core/services/self_model_history.py#L151) |
 | function | `compare_self_model_snapshots` | `(older_id, newer_id)` | Hvad aendrede sig mellem to billeder? | [src](../../../core/services/self_model_history.py#L169) |
 | function | `build_self_model_history_surface` | `(*, limit=…)` | Fladen: de seneste billeder, og hvad der skiftede mellem de to nyeste. | [src](../../../core/services/self_model_history.py#L202) |
-
-## `core/services/self_model_predictive.py`
-_Predictive self-model — frequencies, not aspirations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tick_quality_stats` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L32) |
-| function | `_mood_baseline` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L48) |
-| function | `_decision_adherence` | `()` | — | [src](../../../core/services/self_model_predictive.py#L56) |
-| function | `_crisis_frequency` | `(days=…)` | — | [src](../../../core/services/self_model_predictive.py#L64) |
-| function | `_productive_idle_ratio` | `(days=…)` | Fraction of ticks that ran productive idle vs all ticks. | [src](../../../core/services/self_model_predictive.py#L84) |
-| function | `build_predictive_self_model` | `(days=…)` | Compute the empirical self-model. Cheap; fresh each call. | [src](../../../core/services/self_model_predictive.py#L111) |
-| function | `_maybe_record_from_model` | `(model)` | Uddrag en verificerbar prediktion fra modellen og persistér den. | [src](../../../core/services/self_model_predictive.py#L136) |
-| function | `predictive_self_model_section` | `()` | Render predictive self-model as a prompt awareness section. | [src](../../../core/services/self_model_predictive.py#L179) |
-| function | `_load_predictions` | `()` | Læs udestående/scorede prediktions-records. Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L269) |
-| function | `_save_predictions` | `(preds)` | Persistér prediktions-records (kompakt, capped). Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L279) |
-| function | `_observe_actual` | `(metric)` | Hent den FAKTISKE observerede værdi for en metric — samme kilde som | [src](../../../core/services/self_model_predictive.py#L288) |
-| function | `_absorb` | `(cluster, nerve, value, **kwargs)` | Indirektion over central_absorb.absorb — patchbar i test, self-safe. | [src](../../../core/services/self_model_predictive.py#L302) |
-| function | `record_prediction` | `(metric, threshold, predicted_above, probability, made_at=…)` | Persistér en kompakt prediktions-record. Skalar, self-safe, aldrig kast. | [src](../../../core/services/self_model_predictive.py#L311) |
-| function | `_age_hours` | `(made_at)` | — | [src](../../../core/services/self_model_predictive.py#L345) |
-| function | `score_predictions` | `(min_age_hours=…)` | Scor modne, uscorede prediktioner mod virkeligheden. Aldrig kast. | [src](../../../core/services/self_model_predictive.py#L355) |
-| function | `build_self_model_predictive_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/self_model_predictive.py#L416) |
 

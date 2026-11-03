@@ -34,11 +34,35 @@ forskellige opgaver giver identisk 0,61.
 `payload.get("focus")`. To beregninger, to input, den ene kasseres. Verificeret:
 `preflight_gut_gate` skriver intet til state.
 
-**A3. Afviste runs logges ikke.**
-`gut_calibration` lytter på `started`, `completed`, `failed`, `interrupted`.
-Ingen `rejected`. Afviser gaten et run, starter det aldrig — intet event, intet
-udfald. Kalibreringen ser **kun de tilladte**. Jo bedre gaten bliver, jo mere
-optimistisk bliver dens eget tal.
+**A3. Afvisningen registreres — men den når ikke kalibreringen.**
+
+Rettet 3/11 efter GPT's indvending, som holdt i kilden: `preflight_gut_gate`
+skriver faktisk `record_private("cognition", "gut_gate_withhold", …)` ved en
+afvisning (`gut_engine.py:330`), og `gut_gate` tæller sin afgørelse i
+counterfactual-ledgeren. Min tidligere formulering «logges ikke» var forkert.
+
+Det præcise billede, målt:
+
+| Lag | Findes? | Når kalibreringen? |
+|---|---|---|
+| `record_private("gut_gate_withhold")` → trace + tidsserie | ja, i koden | **nej** |
+| `gate_verdict_ledger` → `gate_verdict_counts` (persisteret) | ja | **nej** |
+| `gut_calibration` (lytter på started/completed/failed/interrupted) | — | kun de tilladte |
+
+Målt i DB: `gut_gate_withhold` findes **nul steder**. Begge nerves står på
+558 green, sidst 16:33:43 — gaten har aldrig afvist, så registreringen er
+aldrig blevet udløst.
+
+**Og den dybere pointe (GPT, 3/11):** at registrere en afvisning beviser ikke at
+afvisningen var rigtig. Et afvist run har intet observeret udfald — vi ved ikke
+om det ville være lykkedes. Derfor skal tre lag holdes adskilt:
+
+- **Beslutningen:** tillod eller afviste gaten opgaven?
+- **Forudsigelsen:** hvad forventede den ville ske?
+- **Udfaldet:** hvad skete der faktisk, hvis opgaven blev udført?
+
+Kun det tredje kan kalibrere maven. En afvisning kan derfor aldrig blive et
+sandhedsbevis for sig selv — kun et datapunkt om gatens adfærd.
 
 **A4. Kalibreringen er stadig selvbekræftende.**
 `record_gut_outcome` gør `predicted_success = (hunch == "proceed")`. Hunch er
@@ -74,6 +98,11 @@ decay-system ligger i `associative_recall` med egen rate.
 300 rækker, alle `pending`. Tabellen `autonomy_proposals` har 1 pending,
 397 executed, 1.133 dismissed. To systemer, samme navn, ingen forbindelse.
 
+**Forbehold (GPT, 3/11 — taget til efterretning):** C2 og C3 påviser
+**forskellige kilder bag beslægtede statusbegreber**. De beviser ikke at nogen
+af kilderne er død eller irrelevant. Det kræver at den konkrete forbrugskæde
+følges til ende — og det er ikke gjort for nogen af de to.
+
 ### D. Ikke-målte påstande fra GPT
 
 - At reboot-awareness, silence-listener og continuity-kernel beskriver **samme**
@@ -88,7 +117,7 @@ decay-system ligger i `associative_recall` med egen rate.
 ## Rækkefølgen der giver mening
 
 1. **A2** — én forudsigelse hele vejen (mindst arbejde, størst ærlighed)
-2. **A3** — log afviste runs som afviste
+2. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
 3. **A1** — kobl observationer på, målt i shadow-mode
 4. **A4** — gør kalibreringen til noget der kan tage fejl
 5. **A5** — først da en tærskel

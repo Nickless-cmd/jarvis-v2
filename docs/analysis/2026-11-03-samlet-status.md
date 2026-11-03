@@ -111,6 +111,34 @@ stoppet. Matematisk korrekt for gate-nej, forkert som beskrivelse af
 handlingen. Ingen faktiske overkørsler er observeret (0 rækker), så fejlen er
 påvist i koden, ikke i driften.
 
+**Udvidet 3/11 (GPT's tredje indvending, verificeret i kilden):** `blokeret`
+blander **tre** forhold, ikke to. `_record_counterfactual` kaldes i `gut_gate`
+**før** `if mode == "on"` (`gut_engine.py:230` mod `:253`), så i `shadow`-mode
+registreres en simuleret afvisning som `red` — og gaten returnerer alligevel
+`True`. Derfor:
+
+| Hændelse | Gate-tælling | Faktisk handling |
+|---|---|---|
+| `on`, gaten afviser | RED | blokeret |
+| `on`, backstop overkører | RED | **tilladt** |
+| `shadow`, gaten ville afvise | RED | **tilladt** |
+
+At trække `backstop` fra er derfor **nødvendigt, men ikke tilstrækkeligt** — den
+tredje række har ingen bagkant at trække fra.
+
+**Og den strukturelle grund, målt i kilden:** akkumulatoren i
+`gate_verdict_ledger.py` er nøglet på `(nerve, decision)`. `mode` findes **ikke
+som dimension** — den lever kun som fri tekst i `last_reason`, som overskrives
+ved hvert nyt kald. `gate_verdict_counts` har kolonnerne `nerve, cluster,
+decision, count, last_ts, last_reason`; ingen mode-kolonne. Så de tre forhold er
+smeltet sammen **før** de når tabellen, og informationen kan ikke gendannes
+bagefter. Det er samme fejlform som resten af dagen: data registreres i et
+fritekstfelt og går tabt i den aggregering der læses.
+
+Rettelsen er derfor at gøre `mode` (og senere `backstop`) til en **dimension i
+ledgerens nøgle**, ikke at justere regnestykket i fladen. Ellers flyttes fejlen
+blot fra én tæller til en anden.
+
 Konsekvens: udfaldet kalibrerer den hunch `_on_started` dannede — ikke den
 gatens anbefaling backstop overkørte.
 
@@ -171,9 +199,11 @@ følges til ende — og det er ikke gjort for nogen af de to.
 ## Rækkefølgen der giver mening
 
 1. **A2** — én forudsigelse hele vejen (mindst arbejde, størst ærlighed)
-2. **A6 + A6b** — bevar gate-anbefalingen og den endelige beslutning som to
-   felter, så en backstop-overkørsel kan ses bagefter; og lad `blokeret` trække
-   overkørslerne fra, så fladen ikke kalder en sluppet kørsel «stoppet»
+2. **A6 + A6b** — gør `mode` og `backstop` til **dimensioner i ledgerens nøgle**
+   (i dag er nøglen `(nerve, decision)`, så shadow-simulerede og håndhævede
+   afvisninger er smeltet sammen før tabellen). Bevar samtidig gate-anbefalingen
+   og den endelige beslutning som to felter, så en overkørsel kan ses bagefter.
+   Først da kan `blokeret` trække overkørslerne fra uden at flytte fejlen
 3. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
 4. **A1** — kobl observationer på, målt i shadow-mode
 5. **A4** — gør kalibreringen til noget der kan tage fejl

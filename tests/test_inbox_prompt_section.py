@@ -211,8 +211,22 @@ def test_antallet_i_overskriften_er_det_SANDE_antal_ikke_de_viste():
 
 
 def test_backlog_er_et_TAL_med_en_adresse():
-    t = _kald(_v(i_gang=[_p("j-1")], backlog_tal=1896)) or ""
+    t = _kald(_v(i_gang=[_p("j-1")], backlog_tal=1896,
+                 backlog_handling_tal=0)) or ""
     assert "1896" in t and "/central/candidates" in t
+
+
+def test_backlog_linjen_skelner_kendte_fra_handling():
+    """Et tal der ser ud som en ko paa 1896 opgaver, naar nul kraever noget,
+    er samme tavshed som et nul der skjuler en backlog — spejlvendt."""
+    t = _kald(_v(i_gang=[_p("j-1")], backlog_tal=2516,
+                 backlog_handling_tal=0)) or ""
+    assert "2516" in t, "de kendte forsvandt ud af linjen"
+    assert "0 kræver handling" in t, "en tom ko blev meldt fuld"
+
+    t2 = _kald(_v(i_gang=[_p("j-1")], backlog_tal=2516,
+                  backlog_handling_tal=6)) or ""
+    assert "6 kræver handling" in t2, "handlings-tallet blev ikke vist"
 
 
 def test_sektionen_er_koblet_paa_prompt_assemblyen():

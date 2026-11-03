@@ -317,6 +317,37 @@ def _aegte_backlog_tal() -> int:
         return 0
 
 
+def _aegte_backlog_handling_tal() -> int:
+    """Hvor mange af backloggen der FAKTISK kræver handling.
+
+    Målt 3/11-2026: linjen sagde «Backlog: 2516 kandidat-forslag», mens
+    instrumentets egen beslutning var at 0 af dem krævede handling — kun
+    score >= `_PROPOSAL_THRESHOLD` bliver et forslag, resten er bevidst
+    «note». Tallet var ikke forkert, men dets betydning var: en linje der
+    ser ud som en kø paa 2516 opgaver, naar koen er tom, er samme slags
+    tavshed som et nul der skjuler en backlog — bare spejlvendt.
+
+    Derfor to tal: hvor mange der findes, og hvor mange der kraever noget.
+    Tærsklen læses fra instrumentet selv, saa de to ikke kan drive fra
+    hinanden.
+    """
+    try:
+        from core.services.central_instrument import _PROPOSAL_THRESHOLD
+        taerskel = int(_PROPOSAL_THRESHOLD)
+    except Exception:  # noqa: BLE001
+        taerskel = 3
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT count(*) FROM central_instrument_findings "
+                "WHERE status = 'open' AND score >= ?", (taerskel,)).fetchone()
+        return int(r[0] or 0) if r else 0
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbox_view: kunne ikke taelle handlings-backloggen: %s", exc)
+        return 0
+
+
 def _aegte_proces_lever(pid: int | None) -> bool | None:
     """Lever processen? `None` = kan ikke afgøres HER.
 
@@ -375,6 +406,11 @@ class Kilder:
     turens_wakeup_id: Callable[[], str] = lambda: ""
     backlog_tal: Callable[[], int] = field(
         default=lambda: _aegte_backlog_tal())
+    #: Hvor mange af backloggen der kraever handling (score over taersklen).
+    #: `backlog_tal` er hvor mange der FINDES — to tal, fordi et enkelt tal
+    #: ikke kan sige begge ting uden at lyve om den ene.
+    backlog_handling_tal: Callable[[], int] = field(
+        default=lambda: _aegte_backlog_handling_tal())
     planlagte: Callable[[str], list[dict[str, Any]]] = field(
         default=lambda _b: [])
     gentagende: Callable[[str], list[dict[str, Any]]] = field(
@@ -965,6 +1001,7 @@ def byg_indbakke(
         # «VAKTE» har pr. definition nul eller én linje og behoever intet loft.
         "vakte": vakte,
         "backlog_tal": int(k.backlog_tal() or 0),
+        "backlog_handling_tal": int(k.backlog_handling_tal() or 0),
     }
     # Faktiske opgaver grupperes ikke på titel: to ens titler kan have hver
     # sin kilde og afgørelse. Dedupe sker ved finding_key ved oprettelsen.

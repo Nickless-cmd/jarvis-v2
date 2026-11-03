@@ -46,7 +46,8 @@ def _kilder(**kw) -> Kilder:
         "jobs": lambda _b: [], "godkendelser": lambda _b: [],
         "planlagte": lambda _b: [], "gentagende": lambda _b: [],
         "proces_lever": lambda _p: True, "turens_wakeup_id": lambda: "",
-        "backlog_tal": lambda: 0, "side_opgaver": lambda _b: [],
+        "backlog_tal": lambda: 0, "backlog_handling_tal": lambda: 0,
+        "side_opgaver": lambda _b: [],
     }
     for n, v in kw.items():
         if n in ("poster", "vaekninger", "jobs", "godkendelser",
@@ -54,7 +55,7 @@ def _kilder(**kw) -> Kilder:
             tom[n] = (lambda vv: (lambda _b: vv))(v)
         elif n == "proces_lever":
             tom[n] = (lambda vv: (lambda _p: vv))(v)
-        elif n in ("turens_wakeup_id", "backlog_tal"):
+        elif n in ("turens_wakeup_id", "backlog_tal", "backlog_handling_tal"):
             tom[n] = (lambda vv: (lambda: vv))(v)
         else:
             raise AssertionError(f"ukendt kilde: {n}")
@@ -501,6 +502,25 @@ def test_backlog_er_ET_TAL_og_ikke_1896_linjer():
     assert v["backlog_tal"] == 1896
     assert all(not isinstance(v.get(s), list) or len(v[s]) == 0
                for s in ("venter_paa_dig", "paa_vej"))
+
+
+def test_backloggen_har_TO_tal_fordi_et_ikke_kan_sige_begge():
+    """Målt 3/11-2026: linjen sagde «2516 kandidat-forslag» mens instrumentets
+    egen beslutning var at 0 af dem kraevede handling. Tallet var sandt, men
+    dets betydning var ikke: det saa ud som en ko paa 2516 opgaver.
+
+    Vaernet: de to tal skal kunne vaere forskellige. Et enkelt tal kan ikke
+    baade sige «der findes 2516» og «ingen kraever noget» — og hvis det ene
+    blev udledt af det andet, ville en tom ko se fuld ud igen."""
+    v = byg_indbakke(BJORN, nu_ts=TID,
+                     kilder=_kilder(backlog_tal=2516, backlog_handling_tal=0))
+    assert v["backlog_tal"] == 2516, "de kendte forsvandt — det er tavshed"
+    assert v["backlog_handling_tal"] == 0, "en tom ko blev meldt fuld"
+
+    v2 = byg_indbakke(BJORN, nu_ts=TID,
+                      kilder=_kilder(backlog_tal=2516, backlog_handling_tal=6))
+    assert (v2["backlog_tal"], v2["backlog_handling_tal"]) == (2516, 6), \
+        "de to tal kan ikke baere hver sin betydning"
 
 
 def test_alle_OTTE_sektioner_findes_altid():
@@ -980,6 +1000,44 @@ def test_BACKLOG_tallet_er_koblet_til_en_rigtig_kilde(monkeypatch, tmp_path):
     assert iv._aegte_backlog_tal() == 7
     assert iv.Kilder().backlog_tal() == 7, \
         "standarden er ikke bundet til kilden — tallet er tilbage paa 0"
+
+
+def test_handlings_tallet_taeller_kun_over_taersklen(monkeypatch, tmp_path):
+    """Instrumentets egen beslutning er at score under `_PROPOSAL_THRESHOLD`
+    er «note», ikke et forslag. Handlings-tallet skal foelge den taerskel —
+    ellers kan de to tal aldrig blive enige om hvad et fund ER."""
+    import sqlite3
+    from contextlib import contextmanager
+
+    import core.runtime.db_core as core_db
+    from core.services import inbox_view as iv
+    from core.services.central_instrument import _PROPOSAL_THRESHOLD as T
+
+    sti = tmp_path / "b.db"
+    c = sqlite3.connect(sti)
+    c.execute("CREATE TABLE central_instrument_findings "
+              "(signature TEXT, status TEXT, score INTEGER)")
+    rows = [(f"h{i}", "open", T) for i in range(4)]          # over taersklen
+    rows += [(f"n{i}", "open", T - 1) for i in range(9)]     # bevidst «note»
+    rows += [("lukket", "resolved", 9)]
+    c.executemany("INSERT INTO central_instrument_findings VALUES (?,?,?)", rows)
+    c.commit()
+    c.close()
+
+    @contextmanager
+    def _connect():
+        k = sqlite3.connect(sti)
+        k.row_factory = sqlite3.Row
+        try:
+            yield k
+        finally:
+            k.close()
+
+    monkeypatch.setattr(core_db, "connect", _connect)
+    assert iv._aegte_backlog_handling_tal() == 4, \
+        "note-fundene blev talt som handlingspunkter"
+    assert iv._aegte_backlog_tal() == 13, \
+        "de kendte forsvandt — de skal stadig taelles"
 
 
 def test_et_ULAESELIGT_backlog_tal_bliver_0_og_logges(monkeypatch, caplog):

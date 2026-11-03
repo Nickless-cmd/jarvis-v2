@@ -213,8 +213,14 @@ def inbox_prompt_section() -> str | None:
             logger.warning("inbox_prompt_section: kunne ikke stemple viste poster: %s", exc)
 
     tal = int(v.get("backlog_tal") or 0)
+    handling = int(v.get("backlog_handling_tal") or 0)
     if tal:
-        linjer.append(f"\nBacklog: {tal} kandidat-forslag → GET /central/candidates")
+        # To tal, ikke ét: hvor mange der findes, og hvor mange der kraever
+        # noget. Et enkelt tal sagde «2516 venter» mens nul kraevede
+        # handling — en ko der ser fuld ud, men er tom.
+        linjer.append(
+            f"\nBacklog: {tal} kendte fund · {handling} kræver handling "
+            "→ GET /central/candidates")
 
     hoved = ["📥 DIN INDBAKKE — det du selv har startet, samlet."]
     if gater:

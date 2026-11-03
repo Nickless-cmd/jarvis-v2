@@ -945,7 +945,26 @@ Målt fordeling af de 392:
 | `allowed` | **206** | gaten blokerede **aldrig** — den abstainede. Ikke et forkert veto; intet veto. |
 | `blocked` | **186** | gaten blokerede faktisk, og rækken blev markeret `false_positive` ved hændelsen |
 
-Og de 186 fordeler sig med **93 rækker med tomt `tool_name`, alle dateret 13/9** — præcis den dag `user_present`-grenen blev indført. 117 `false_positive` er fra før 13/9, 308 fra og med.
+Og de 186 fordeler sig med **93 rækker med tomt `tool_name`, alle dateret 13/9** — præcis den dag `user_present`-grenen blev indført.
+
+**KORREKTION 2 (3/11, ekstern gennemgang).** Jeg skrev «117 `false_positive` er fra før 13/9, 308 fra og med». Det var forkert: 117 + 308 = **425**, som er antallet for **alle feelings** (`protectiveness` 392 + `fatigue` 33). De 392 er kun `protectiveness`. Målt igen, opdelt korrekt: **89 før 13/9, 303 fra og med** (89 + 303 = 392). Jeg blandede to populationer i én sætning — samme fejlklasse som de to foregående, nu på datasættet i stedet for på kategorierne.
+
+### Den historiske modsigelse — og hvad den faktisk var
+
+Den eksterne gennemgang påpegede en reel modsigelse: den nuværende kode sætter `false_positive` **kun** sammen med `veto_result="allowed"` (linje 784, `user_present=False`-grenen), men 186 rækker har `blocked` + `false_positive`. De kan altså ikke være skrevet af den kode der kører nu.
+
+Målt, og det forklarer dem:
+
+| Gruppe | Antal | Datoer | Skrevet af |
+|---|---|---|---|
+| `allowed` + `false_positive` | 206 | **alle** 13/9 og frem | den nuværende `user_present`-gren |
+| `blocked` + `false_positive` | 186 | **89 i juni**, 97 på 13/9 (17:13–18:02) | en **tidligere** kodeversion |
+
+Commit `41d8e076c` (13/9 kl. **20:47**) indførte `user_present`-grenen og skriver i sin besked at `false_positive` «lå allerede i skemaet, **ubrugt**». De 97 rækker fra 13/9 er tidsstemplet **før** commit'en. Og den gamle kode (læst i `41d8e076c^`) skrev `blocked` med `resolution='pending'` — så de 89 juni-rækker er blevet opdateret **efter** indsættelsen.
+
+**Hvem opdaterede dem, kan jeg ikke svare på.** Der findes ingen kodevej i dag der gør det: `resolve_veto_event` kaldes kun med `overridden_by_jarvis` (`gate_override.py:241`), og en søgning i hele repoet finder kun to skrivestier til `false_positive` — begge i `veto_gate.py`, begge ved hændelsen. Forklaringen er derfor enten en engangs-opdatering der ikke ligger i git, eller en kodeversion der er væk. **Det er en åben tråd, ikke et svar.**
+
+Det ændrer ikke konklusionen, men det ændrer hvor sikkert jeg kan sige den: jeg kan ikke hævde at *alle* 392 blev klassificeret ved oprettelsen. Jeg kan kun sige at den kode der kører nu ikke kan have skrevet de 186.
 
 **Den korrigerede konklusion:** kategorien `false_positive` er ikke en vurdering af om risikoen var ægte. Den er en **klassifikation af om gaten måtte håndhæve**. Vi har derfor intet valideret mål for `protectiveness`-vetoets præcision — hverken 128:1, 392, eller noget andet tal i tabellen. Det der står tilbage er kun: **nul dokumenterede tilfælde hvor et `protectiveness`-veto stoppede noget farligt**, og det er et fravær, ikke en måling.
 

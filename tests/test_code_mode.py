@@ -26,6 +26,11 @@ def test_code_contract_covers_the_end_to_end_working_model() -> None:
         "beviserne støtte netop den handling",
         "Slutleverancen skal kunne stå alene",
         "En afvist approval, policy-vagt eller hook er feedback",
+        "følge den faktiske datastrøm fra producent",
+        "opfind ikke felter",
+        "forskellige bevisniveauer",
+        "en grøn unit-test beviser ikke den deployede runtime",
+        "kun `målt` om konkret observerede data",
     )
     for phrase in expected:
         assert phrase in text
@@ -65,6 +70,9 @@ def test_compact_code_contract_keeps_the_critical_path() -> None:
     assert "Skriv kun en kodekommentar" in text
     assert "Slutleverancen skal kunne stå alene" in text
     assert "policy-vagt eller hook er feedback" in text
+    assert "følge den faktiske datastrøm fra producent" in text
+    assert "en grøn unit-test beviser ikke den deployede runtime" in text
+    assert "kun `målt` om konkret observerede data" in text
 
 
 def test_code_contract_function_returns_none_outside_code() -> None:

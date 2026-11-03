@@ -110,7 +110,7 @@ _Code-mode-only working contract for the visible engineering lane._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `base_section` | `(*, compact=…)` | Return the stable engineering contract for an explicit code scope. | [src](../../../core/services/prompt_sections/code_mode.py#L12) |
-| function | `section` | `(*, compact=…)` | Return the complete legacy contract, including current plan state. | [src](../../../core/services/prompt_sections/code_mode.py#L156) |
+| function | `section` | `(*, compact=…)` | Return the complete legacy contract, including current plan state. | [src](../../../core/services/prompt_sections/code_mode.py#L171) |
 
 ## `core/services/prompt_sections/cross_session_arc.py`
 _Cross-session arc — surface recent named conversations as a temporal arc._

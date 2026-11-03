@@ -1622,6 +1622,27 @@ egen tærskel (så honored får effekt), eller skal tærskel-tællingerne for `r
 anerkendes som ren telemetri? Det første ændrer r2.5's beslutningsgrundlag fra
 blok-tælling til tærskel — et designvalg, ikke en rettelse.
 
+### Designvalg 3 — `r2_5_gate`-tærsklerne er telemetri, ikke beslutningsgrundlag
+
+**Truffet 3/11-2026.** r2.5 skal **ikke** begynde at læse sin egen tærskel.
+
+Begrundelsen er ikke at det er svært, men at det ville modvirke gatens formål. r2.5
+findes fordi heed-raten var for lav (19/9: «stop og verificér» kunne læses og
+ignoreres). Dens signal er binært: *du har ikke kigget tilbage endnu*. En adaptiv
+tærskel ville gøre den **mere eftergivende** hver gang jeg overstyrede den — altså
+belønne præcis den adfærd gaten blev bygget til at stoppe. Det er den samme
+baglæns-logik som 0,98-loftet i veto-gaten, hvor syv overrides gjorde et par blindt.
+
+Så: `(edit_file, r2_5_gate, overrides, 7)` er **telemetri**. Det er et ægte signal om
+at gaten blokerer ofte for netop det værktøj, og det skal være synligt — men det må
+ikke gøre gaten blind, og tærsklen bør ikke kaldes en tærskel for r2.5, fordi r2.5
+ikke har nogen.
+
+**Konsekvens der ikke er rettet:** `threshold_summary` beregner og viser stadig en
+tærskel for `(tool, "r2_5_gate")` som om den var virksom. Det er kosmetisk
+misvisende, men ikke farligt — den gates ikke. Ret det når nogen faktisk læser
+fladen og tror på tallet; indtil da står det her som den målte grænse.
+
 ### Designvalg 2 — kognitive vægte: ingen ændring, men grænsen er nu målt
 
 Jeg ville sætte vægte. Målt viste det sig at de **allerede er sat** (25/10-2026), og

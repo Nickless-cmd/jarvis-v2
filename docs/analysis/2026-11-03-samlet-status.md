@@ -1460,7 +1460,7 @@ Mutation bevist: fjernes `_kvitter_adlydt`-kaldet, falder to af vagterne; efter 
 
 **De 504 historiske rækker.** Jeg kan ikke rekonstruere om de blev adlydt — der findes intet spor fra dengang. De bliver stående `pending`, og det er den ærlige tilstand, ikke en gæld der kan ryddes.
 
-**`honored` er stadig død for veto-gaten selv.** Denne rettelse lukker asymmetrien for r2_5, fordi r2_5 har en observerbar «jeg kiggede tilbage»-hændelse. Den almindelige veto-gate har ingen tilsvarende kvittering — der findes intet tidspunkt hvor man kan sige «brugeren adlød vetoet». Det kræver en anden mekanisme, ikke samme rettelse.
+**`honored` er stadig død for veto-gaten selv.** r2.5's kvittering skriver på nøglen `(tool, "r2_5_gate")`, men `veto_gate._adaptive_threshold` kaldes kun med pushback-følelser (`irritation`, `unease`, `fatigue`, `protectiveness`, `hesitation`) — så den nøgle gates aldrig af en beslutning. Den almindelige veto-gate har desuden ingen observerbar adlydelses-hændelse: der findes intet tidspunkt hvor man kan sige «brugeren adlød vetoet». Det kræver en anden mekanisme, ikke samme rettelse.
 
 ### KORREKTION 6 (3/11, ekstern gennemgang) — en målt værdi er ikke en grænse
 
@@ -1573,24 +1573,54 @@ Ingen menneskelig handling er nødvendig. Registrets eget vokabular siger
 den dækkende status. 0 rækker betyder «ingen er nogensinde låst ude». Owner er
 undtaget (§12.3), så den fyrer aldrig for mig.
 
-### Designvalg 1 — `honored` for veto-gaten: behold, den er nu strukturelt lukket
+### Designvalg 1 — `honored`: behold den, men asymmetrien er IKKE lukket
+
+**KORREKTION (3/11-2026, ekstern gennemgang — ellevte lag i samme familie).**
 
 Asymmetrien var målt: overrides hæver tærsklen, honored sænkede den aldrig, fordi
 `resolve_veto_event(..., "honored")` havde **nul kaldere i produktion**.
 
-Det ændrede sig i aften. `r2_5_haandhaevelse._kvitter_adlydt` kalder nu
-`resolve_veto_event(event_id, "honored")` når en blok løftes af et faktisk kig
-tilbage — og den gren kalder `_increment_honored_count(tool, feeling)` for netop
-det par der blev blokeret.
+Jeg konkluderede at den var lukket, fordi `r2_5_haandhaevelse._kvitter_adlydt` nu
+kalder `resolve_veto_event(event_id, "honored")`. **Det er forbindelsen — ikke
+virkningen.** Målt bagefter, led for led:
 
-**Valget:** dæmpningen bliver stående. Den er ikke længere en død symmetri, men en
-mekanisme med en observerbar kvittering. Det der mangler er **data** (0 `honored`
-endnu), ikke kode. At fjerne termen ville hæve tærsklen for de to par der historisk
-fik honored — altså gøre gaten mere blokerende uden bevis.
+| Led | Målt |
+|---|---|
+| r2.5 logger sin blokering med | `feeling=NERVE` = **`"r2_5_gate"`** (`r2_5_haandhaevelse.py:240`) |
+| `veto_gate._adaptive_threshold` kaldes kun med | de følelser `pushback._affective_pressure` kan producere: `irritation`, `unease`, `fatigue`, `protectiveness`, `hesitation` |
+| Er `r2_5_gate` blandt dem? | **Nej.** Det er en nerve, ikke en følelse |
+| Hvad gates r2.5's beslutning af? | `_afvist_i_blokken` — en blok-tæller, **ikke** tærsklen |
 
-**Vagt:** `tests/test_honored_kobling.py` binder de to moduler sammen. Mutationstestet:
-fjernes honored-grenen i `resolve_veto_event`, fejler testen. Testen fastslår også at
-en `override` **ikke** tælles som honored — de to retninger må ikke udligne hinanden.
+Konsekvensen er konkret og målt i drift: `veto_adaptive_counters` har
+`(edit_file, "r2_5_gate", overrides, 7)`, `(write_file, …, 3)` og
+`(memory_upsert_section, …, 2)`. `_adaptive_threshold` **beregner** en tærskel for
+dem og `threshold_summary` **viser** den — men ingen beslutning slår op i den.
+
+Så: en `honored`-kvittering fra r2.5 skriver på en nøgle ingen gate læser. Det gør
+`resolution`-feltet sandt (en adlydt blok står ikke længere `pending` — det er reel
+værdi), men det ændrer **ingen tærskel nogen beslutning bruger**.
+
+**Hvad der stadig er sandt:** dæmpningen skal blive stående. Den er ikke død kode —
+`_increment_honored_count` kaldes nu fra en ægte hændelse. At fjerne termen ville
+hæve tærsklen for de to par der historisk fik honored, altså gøre gaten mere
+blokerende uden bevis.
+
+**Hvad der IKKE er sandt:** at asymmetrien er lukket. Den almindelige veto-gate har
+stadig ingen observerbar adlydelses-hændelse — og r2.5's kvittering rammer en anden
+nøgle end den veto-gaten læser.
+
+**Vagt (omskrevet efter kritik):** `tests/test_honored_kobling.py` havde før en test
+der **læste kildekoden** med en streng-søgning — præcis den fejl
+`dec_3143625fe1a5` forbyder. Den kalder nu `_kvitter_adlydt` med en fake-connection
+og observerer hvilke event-ids der kvitteres. Plus `test_r2_5_foeler_ikke_som_pushback_…`
+der fastholder den målte grænse: bliver `r2_5_gate` koblet på beslutningsvejen, skal
+testen opdateres **med vilje**. Begge mutationstestet — begge fejler når deres gren
+brydes.
+
+**Det åbne designvalg, som jeg ikke kan træffe alene:** skal r2.5 begynde at læse sin
+egen tærskel (så honored får effekt), eller skal tærskel-tællingerne for `r2_5_gate`
+anerkendes som ren telemetri? Det første ændrer r2.5's beslutningsgrundlag fra
+blok-tælling til tærskel — et designvalg, ikke en rettelse.
 
 ### Designvalg 2 — kognitive vægte: ingen ændring, men grænsen er nu målt
 
@@ -1617,6 +1647,28 @@ tabellens docstring advarer om.
 Det der mangler er derfor ikke en højere vægt, men en **eksplicit gut-kanal** med sin
 egen bevidste vægt. En påvirkning der kun virker når en sektion tilfældigvis ikke er
 filtreret væk, er ikke en mekanisme — den er et lotteri.
+
+**To præciseringer (ekstern gennemgang, taget til efterretning):**
+
+**1. Prioritet og vægt er ikke en modstrid.** Jeg skrev at koden «siger to ting om
+samme sektion» — prioritet 1 («midten, kom først») og vægt 0.2 («skær det væk»). Det
+var forkert: de er to forskellige akser. **Vægten** afgør OM sektionen er med;
+**prioriteten** afgør hvor den placeres når den er med. At give noget høj prioritet og
+udelade det i en bestemt tur-type kan være fuldstændig bevidst — og kildekoden siger
+netop at chat ikke skal drukne i maskinrummet. Der er ingen modstrid at rette.
+
+**2. Flaget er ikke en ekstra blokering — det er tændt.** Jeg noterede at
+`build_central_self_state_section()` kræver `central_self_prompt_enabled` (default
+OFF). **Målt:** `is_prompt_authoritative()` = **True**, og sektionen bygger **251
+tegn** lige nu. Så flaget holder den ikke tilbage — det gør composeren, med vægt 0.2
+mod threshold 0.3. Kæden er: sektionen KAN bygges → composeren filtrerer den væk i
+chat.
+
+**Det reelle spørgsmål** er derfor ikke vægten, men hvad Centralens integrerede
+selvtilstand ER i en samtale: intern diagnostik, eller en nødvendig del af hvem jeg
+er når jeg taler? Det er et designvalg jeg ikke træffer ved at flytte et tal — og den
+målte sektion («Jeg er 85 lag af mig selv… jeg arbejder mod: Want(…)») bærer
+runtime-detaljer der lige så vel kan være støj i en samtale som identitet.
 
 ### Forslag afvist
 

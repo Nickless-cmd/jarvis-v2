@@ -119,11 +119,22 @@ def _kvitter_adlydt(siden: datetime) -> None:
     """Blokeringen blev adlydt — skriv det som et udfald, lad den ikke stå åben.
 
     Målt 3/11-2026: 504 `pending`, 68 `overridden_by_user`, **0 `honored`**.
-    `resolve_veto_event(..., "honored")` havde nul kaldere i produktion, så
-    `veto_adaptive_counters` kunne kun bevæge sig én vej: overrides hæver
-    tærsklen, honored sænker den aldrig. Gaten blev altså gradvist mere
-    eftergivende uden at nogen havde besluttet det — samme asymmetri som blev
-    rettet i `veto_gate` samme aften, bare i den anden ende af samme regnskab.
+    `resolve_veto_event(..., "honored")` havde nul kaldere i produktion.
+
+    ⚠️ MEN (målt samme aften, EFTER funktionen var skrevet): dette lukker IKKE
+    asymmetrien i tærskel-læringen. r2.5 logger sin blokering med
+    ``feeling=NERVE`` (``"r2_5_gate"``), og ``veto_gate._adaptive_threshold``
+    kaldes kun med de følelser ``pushback._affective_pressure`` kan producere
+    (irritation, unease, fatigue, protectiveness, hesitation). ``r2_5_gate`` er
+    ikke blandt dem — det er en nerve, ikke en følelse. Tærsklen for
+    ``(edit_file, "r2_5_gate")`` (7 overrides i drift) bliver beregnet og vist
+    i summaries, men aldrig brugt til at afvise noget: r2.5 træffer sin
+    beslutning på ``_afvist_i_blokken``, ikke på tærsklen.
+
+    Hvad funktionen DERIMOD gør, og som er sandt: en blok der blev løftet af et
+    faktisk kig tilbage registreres som ``honored`` i stedet for at stå
+    ``pending`` for evigt. Det er en korrekt udfalds-registrering — ikke en
+    tærskel-effekt. Se ``tests/test_honored_kobling.py`` der fastholder begge.
 
     Sættes KUN når blokken løftes af et faktisk kig tilbage. En udløbet blok er
     ikke en adlydelse, og en læsefejl er ikke en adlydelse — de bliver stående

@@ -687,9 +687,17 @@ løber — den var før uendelig.
 - **C1** — niveau 2 (virksomt). Målbar nu.
 - **C2's overlap** — 0 af 9 rækker matcher registeret. Korrekt wiring, nul
   praktisk effekt indtil noget registrerer samme erindring i begge systemer.
-- **C3's udøver** — bygget 3/11 kl. 19:4x. Se «Udøveren» nedenfor. Den udfører
-  hvad policyen tillader og siger højt hvad den ikke må; den research-post der
-  står tilbage er blokeret af `web_search`, ikke af mig.
+- **C3's udøver** — bygget 3/11 kl. 19:4x og **målt forbrugt 3/11 kl. 20:50**.
+  Køen er 300 poster: **298 `rejected`, 1 `completed`, 1 `pending`**. De 298 er
+  ikke 298 sager — de er opløst i deres dele: **293 er dubletter af ÉT eneste
+  forslag** (`aw-a4a46f29cbf1`), fordi `_maybe_propose_research` tog
+  `list_seeds(status="maturing")[:1]` — altid det første element i en usorteret
+  liste — og filede et identisk forslag hvert 15. minut i seks dage. De sidste
+  **5 er alders-lukkede dag-noter** (28/10–1/11 «ligger N dage tilbage»).
+  Den ene `pending` er research-forslaget, og det er blokeret af `web_search`
+  (ikke autonomt tilladt), ikke af udøveren — det kræver et synligt run.
+  Så «300 afventende» var 294 kopier af ét spørgsmål, 5 forældede datoer og
+  **1 ægte ubehandleligt forslag**.
 - **Kalibreringens 0,998** — `4292/4301 correct` er målt mens hunch altid var
   `proceed`. Tallet måler run-succesraten, ikke om maven havde ret. Det bliver
   først meningsfuldt når `caution` faktisk forekommer i drift — hvilket kræver

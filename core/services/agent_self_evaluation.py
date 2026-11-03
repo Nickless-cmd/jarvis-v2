@@ -24,7 +24,6 @@ surfaces the data; user decides if/how to act.
 from __future__ import annotations
 
 import logging
-import math
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
@@ -47,11 +46,17 @@ _MAX_TICK_EVALS_KEPT = 3000
 # 324 — uden klipning ville 3.000 poster veje ~4,8 MB og blive parset ved
 # hvert slag.
 _FULL_DETAIL_KEPT = 50
-# Spor-kurvens reference: den målte maksimum-bredde (3/11-2026: 120 arter
-# over 29 vinduer, median 82). Fuld kredit kræver at slagets arbejde rørte
-# hele fladen — ikke at det ramte seks arter.
-_TRACE_FULL_CREDIT = 120
-_TRACE_MAX_POINT = 50
+# 3/11-2026 (aften): spor-leddet er FJERNET. Det læste `events` globalt, og
+# tabellen har ingen kolonne der binder et event til det slag der målte det.
+# Målt: et typisk 90-sekunders vindue havde 48.821 events fra 279 arter —
+# 17.860 af dem fra én forgetting-daemon. Scoren belønnede systemets puls, ikke
+# slagets arbejde. Alle led læses nu af `tick_result`: slagets EGET svar.
+_SWEEP_POINT = 10            # daemon-sweepet kørte (koert > 0)
+_PER_DAEMON_FAILURE = 8      # træk pr. fejlet daemon, gulv 0 for leddet
+_REACTION_MAX = 45           # så noget → dannede prioritet → handlede
+_REACTION_NO_ACTION = 15     # prioriterede, men udrettede intet
+_IDLE_WITH_ACTION = 20       # intet at reagere på; ledig drift udrettede noget
+_NOVELTY_MAX = 35
 _GOAL_STALE_DAYS = 14
 # 28/10-2026: var 3. Et LANGTIDSMÅL er pr. definition noget der strækker sig
 # over uger — med 3 dage var alle fem aktive mål altid «stale», og så
@@ -64,55 +69,85 @@ _GOAL_STALE_DAYS = 14
 
 
 
-# ── Tick-spor: hvad efterlod slaget i verden ──────────────────────
+# ── Tick-kvalitet: kun slagets eget svar ──────────────────────────
 #
 # 2026-09-05: den gamle scoring gav 70 til 199 af 200 tick. Den målte formen på
 # et tick, ikke udbyttet: +10 for at sanse fem signaltyper (sker altid), +40 for
-# ≥2 idle-handlinger (sker altid — de samme syv hver gang), +20 for sund tid
-# (sker altid). De to poster der KUNNE variere, +15 for priorities og +30 for at
-# dispatche på dem, fyrede aldrig, fordi der aldrig er priorities. 70 var loftet
-# for et tomt slag, og «stable» betød «kan ikke bevæge sig».
+# ≥2 idle-handlinger (sker altid), +20 for sund tid (sker altid).
 #
-# To kørsler af productive_idle i træk gav præcis den samme handlingsliste
-# (personality_snapshot, personality_drift_tick, tick_elapsed, dreams, wants,
-# boredom, idle_daemon:event_trigger_shadow). At tælle dem måler ingenting.
+# 2026-11-03 formiddag: spor-leddet blev indført — antallet af ikke-strukturelle
+# event-arter skrevet mellem to slag. Samme defekt i ny indpakning, målt om
+# aftenen: `events` har fire kolonner (id, kind, payload_json, created_at), og
+# ingen af dem binder et event til det slag der målte det. Et 90-sekunders
+# vindue indeholdt 48.821 events fra 279 arter — 17.860 af dem skrevet af
+# `forgetting_curve.py`, ikke af slaget. Et slag kunne altså score 100 ved at
+# sove mens en baggrundsdaemon arbejdede.
 #
-# Derfor måler vi nu SPOR: hvilke ikke-strukturelle event-arter der blev skrevet
-# i vinduet mellem dette slag og det forrige. Et slag der får credit_assignment,
-# learning_pipeline og thought_stream til at skrive, har udrettet noget. Et slag
-# hvor kun heartbeat-bogholderiet rører sig, har ikke — og skal kunne ses.
-
-# Arter der hører til bogholderiet eller til Bjørns egne ture — ikke til slagets
-# udbytte. Alt andet tæller som et spor.
-_STRUCTURAL_EVENT_PREFIXES = (
-    "heartbeat.",
-    "prompt.",
-    "tool.",
-    "tool_router.",
-    "runtime.visible_run",
-    "runtime.agentic_round",
-)
+# Alle fire led læses nu af `tick_result`, som `tick_with_phases` returnerer.
+# Intet led rører en global tabel.
 
 
-def _trace_kinds_since(since: datetime, until: datetime) -> list[str]:
-    """Ikke-strukturelle event-arter skrevet i vinduet. Self-safe: [] ved fejl."""
+def _som_int(vaerdi: Any) -> int:
+    """Læs et tælletal fra et signal — 0 hvis det ikke kan læses.
+
+    Signal-felterne kommer fra `sense_phase` og er normalt int. Ændrer et felt
+    form, må det ikke vælte scoringen — men det må heller ikke forsvinde som et
+    stille nul: derfor logges det, så en ændret signalform kan ses i drift.
+    """
     try:
-        from core.runtime.db import connect
+        return int(vaerdi or 0)
+    except (TypeError, ValueError) as exc:
+        logger.debug("tick_quality: signal kunne ikke laeses som tal: %r (%s)",
+                     vaerdi, exc)
+        return 0
 
-        with connect() as conn:
-            rows = conn.execute(
-                "SELECT DISTINCT kind FROM events WHERE created_at > ? AND created_at <= ?",
-                (since.isoformat(), until.isoformat()),
-            ).fetchall()
-    except Exception as exc:
-        logger.debug("tick_quality: kunne ikke laese spor: %s", exc)
-        return []
-    ud = []
-    for row in rows:
-        kind = str(row["kind"] or "")
-        if kind and not kind.startswith(_STRUCTURAL_EVENT_PREFIXES):
-            ud.append(kind)
-    return sorted(ud)
+
+def _score_daemons(indre: dict[str, Any]) -> tuple[int, str]:
+    """0-10: kørte daemon-sweepet, og hvad kostede fejlene?
+
+    `tik_indre_daemoner()` svarer `{koert, fejlet, brugere}` — slagets egen
+    rapport om de ~30 indre daemoner. Leddet giver point for at sweepet kørte
+    (det sker ikke af sig selv) og trækker for hver daemon der fejlede.
+    """
+    koert = _som_int(indre.get("koert"))
+    fejlet = _som_int(indre.get("fejlet"))
+    if koert <= 0:
+        return 0, "daemon-sweepet kørte ikke"
+    point = max(0, _SWEEP_POINT - _PER_DAEMON_FAILURE * fejlet)
+    note = f"{koert} daemoner kørt" + (f", {fejlet} fejlet" if fejlet else "")
+    return point, note
+
+
+def _score_reaktion(
+    signals: dict[str, Any], priorities: list[Any], actions: list[str],
+) -> tuple[int, str]:
+    """0-45: så slaget noget der krævede handling — og handlede det?
+
+    Grundene er præcis de signaler `_identify_priorities` bygger prioriteter af,
+    så leddet måler om kæden signal → prioritet → handling holdt hele vejen.
+    """
+    grunde: list[str] = []
+    if _som_int(signals.get("failed_verifies")) >= 1:
+        grunde.append("failed_verifies")
+    if _som_int(signals.get("unverified_mutations")) >= 3:
+        grunde.append("unverified_mutations")
+    if _som_int(signals.get("errors_last_hour")) >= 5:
+        grunde.append("errors")
+    if str(signals.get("context_pressure_level") or "") in ("high", "critical"):
+        grunde.append("context_pressure")
+    if signals.get("active_goals"):
+        grunde.append("active_goals")
+
+    if grunde:
+        hvad = ", ".join(grunde)
+        if priorities and actions:
+            return _REACTION_MAX, f"reagerede på {hvad}"
+        if priorities:
+            return _REACTION_NO_ACTION, f"så {hvad}, men udrettede intet"
+        return 0, f"så {hvad}, dannede ingen prioritet"
+    if actions:
+        return _IDLE_WITH_ACTION, "intet at reagere på; ledig drift udrettede noget"
+    return 0, "intet at reagere på, intet udrettet"
 
 
 def _previous_eval() -> dict[str, Any] | None:
@@ -126,39 +161,29 @@ def _previous_eval() -> dict[str, Any] | None:
     return None
 
 
-def _score_traces(antal: int) -> int:
-    """Bredden af spor — logaritmisk, så leddet ikke mætter.
-
-    3/11-2026: trappen gav 50 point ved >5 arter, og ALLE 200 slag havde
-    14-120. Leddets bidrag var konstant, så scoren kunne reelt kun svinge
-    mellem 75 og 90 — de 100-point var en binær skala forklædt som en
-    kvalitetsmåling. Logaritmen bevarer at de første arter betyder mest
-    (diminishing returns) uden at gøre alt over seks til det samme tal.
-    """
-    if antal <= 0:
-        return 0
-    andel = math.log1p(antal) / math.log1p(_TRACE_FULL_CREDIT)
-    return int(round(_TRACE_MAX_POINT * min(1.0, andel)))
-
-
 def _score_novelty(nu: list[str], foer: list[str]) -> tuple[int, str]:
     """Gav dette slag noget ANDET end det forrige?
 
     Et system der gør præcis det samme hver gang, er ikke produktivt — det
-    kører bare. Uden et forrige slag at måle mod giver vi fuld kredit; vi
-    straffer ikke det første.
+    kører bare. Sammenligningen bruger slagets EGNE handlinger (3/11-2026: før
+    event-arter fra en global tabel, som slaget ikke kunne henføre til sig
+    selv). Uden et forrige slag at måle mod gives fuld kredit; det første
+    straffes ikke.
     """
     if not foer:
-        return 30, "intet forrige slag at sammenligne med"
+        # 3/11-2026: gav før fuld kredit. Målt: et helt tomt slag (intet sweep,
+        # intet at reagere på, ingen handlinger) scorede 45 alene på dette led.
+        # Kan vi ikke måle, giver vi hverken credit eller straf — leddet er 0.
+        return 0, "intet forrige slag at sammenligne med"
     if not nu:
-        return 0, "ingen spor at være ny med"
+        return 0, "ingen handlinger at være ny med"
     nye = set(nu) - set(foer)
     andel = len(nye) / max(len(set(nu)), 1)
     if andel >= 0.5:
-        return 30, f"{len(nye)} af {len(set(nu))} spor var nye"
+        return _NOVELTY_MAX, f"{len(nye)} af {len(set(nu))} handlinger var nye"
     if andel > 0:
-        return 15, f"kun {len(nye)} af {len(set(nu))} spor var nye"
-    return 0, "samme spor som forrige slag"
+        return _NOVELTY_MAX // 2, f"kun {len(nye)} af {len(set(nu))} handlinger var nye"
+    return 0, "samme handlinger som forrige slag"
 
 
 def _slim_history(evals: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -175,35 +200,43 @@ def _slim_history(evals: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for i, post in enumerate(evals):
         if i < graense and isinstance(post, dict):
             post = {
-                k: v for k, v in post.items() if k not in ("trace_kinds", "actions")
+                k: v for k, v in post.items()
+                if k not in ("trace_kinds", "actions", "priorities")
             }
         ud.append(post)
     return ud
 
 
 def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
-    """Score et slag på hvad det EFTERLOD — ikke på hvilken form det havde.
+    """Score et slag på hvad SLAGET SELV rapporterede — intet globalt opslag.
 
     Fire led, max 100:
-      +10  sund tid (0 < elapsed < 180s)
-      +10  slaget handlede overhovedet (≥1 handling)
-      0-50 spor: bredden af ikke-strukturelle event-arter i vinduet siden
-           forrige slag — dvs. hvad slagets arbejde faktisk fik skrevet
-      0-30 nyhed: adskiller sporene sig fra forrige slag, eller kører den
-           samme runde igen?
+      +10  sund tid (0 < elapsed < 180s) — ren fornuftskontrol, ikke en dom
+      0-10 daemon-sweepet kørte, minus 8 pr. fejlet daemon
+      0-45 reaktion: så slaget noget der krævede handling, og handlede det?
+      0-35 nyhed: er slagets egne handlinger anderledes end sidste slags?
 
-    Ingen LLM. Se kommentaren over _STRUCTURAL_EVENT_PREFIXES for hvorfor den
-    gamle formbaserede scoring altid gav 70.
+    3/11-2026 (aften): det tidligere spor-led læste `events` globalt, men
+    tabellen har ingen kolonne der binder et event til det slag der målte det.
+    Målt: 17.860 af 48.821 events i ét vindue kom fra én forgetting-daemon, så
+    leddet belønnede baggrundsstøj. Se kommentaren over `_score_daemons`.
+
+    Konsekvensen er bevidst: et ledigt slag med de samme syv handlinger som
+    sidst kan ikke længere score 90-100. Det udrettede intet nyt, og scoren
+    siger det nu.
     """
     score = 0
     notes: list[str] = []
     phases = tick_result.get("phases") or {}
 
+    sense = phases.get("sense") or {}
     reflect = phases.get("reflect") or {}
-    priorities = reflect.get("priorities") or []
+    priorities = list(reflect.get("priorities") or [])
     act = phases.get("act") or {}
     act_kind = str(act.get("kind") or "")
-    actions = (act.get("result") or {}).get("actions") or act.get("actions") or []
+    raw_actions = (act.get("result") or {}).get("actions") or act.get("actions") or []
+    actions = [str(a) for a in raw_actions]
+    indre = tick_result.get("indre_daemoner") or {}
 
     # 1. Sund tid — ren fornuftskontrol, ikke en kvalitetsdom.
     elapsed_ms = int(tick_result.get("elapsed_ms") or 0)
@@ -213,42 +246,26 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
     elif elapsed_ms >= 180_000:
         notes.append(f"SLAGET HANG ({elapsed_ms}ms)")
 
-    # 2. Handlede den overhovedet.
-    if actions:
-        score += 10
-        notes.append(f"{len(actions)} handlinger")
-    else:
-        notes.append("ingen handlinger")
+    # 2. Daemon-sweepet — slagets egen rapport om de indre daemoner.
+    daemon_point, daemon_note = _score_daemons(indre)
+    score += daemon_point
+    notes.append(f"{daemon_note} → {daemon_point}p")
 
-    # 3. Spor — vinduet går fra forrige slags evaluering, så alt der skete
-    #    mellem to slag tilskrives dette. Falder tilbage til elapsed hvis der
-    #    ikke er et forrige slag at måle fra.
-    nu = datetime.now(UTC)
+    # 3. Reaktion — signal → prioritet → handling.
+    reaktion_point, reaktion_note = _score_reaktion(sense, priorities, actions)
+    score += reaktion_point
+    notes.append(f"reaktion: {reaktion_note} → {reaktion_point}p")
+
+    # 4. Nyhed — slagets egne handlinger mod det forrigeslags.
     forrige = _previous_eval()
-    vindue_start = None
-    if forrige:
-        try:
-            vindue_start = datetime.fromisoformat(
-                str(forrige.get("evaluated_at") or "").replace("Z", "+00:00")
-            ).astimezone(UTC)
-        except Exception:
-            vindue_start = None
-    if vindue_start is None or vindue_start >= nu:
-        vindue_start = nu - timedelta(milliseconds=max(elapsed_ms, 1000))
-
-    trace_kinds = _trace_kinds_since(vindue_start, nu)
-    spor_point = _score_traces(len(trace_kinds))
-    score += spor_point
-    notes.append(f"{len(trace_kinds)} spor-arter → {spor_point}p")
-
-    # 4. Nyhed — gør slaget noget andet end sidst?
     nyhed_point, nyhed_note = _score_novelty(
-        trace_kinds, list((forrige or {}).get("trace_kinds") or [])
+        actions, [str(a) for a in ((forrige or {}).get("actions") or [])]
     )
     score += nyhed_point
     notes.append(f"nyhed: {nyhed_note} → {nyhed_point}p")
 
     score = max(0, min(100, score))
+    nu = datetime.now(UTC)
     eval_record = {
         "eval_id": f"teval-{uuid4().hex[:10]}",
         "evaluated_at": nu.isoformat(),
@@ -259,12 +276,10 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
         "elapsed_ms": elapsed_ms,
         # Gemmes så nyheds-målingen har noget at sammenligne med NÆSTE gang —
         # og så en senere analyse kan se HVAD slaget udrettede, ikke kun et tal.
-        # 3/11-2026: var `[:40]`, men den målte bredde er 14-120, så 120 af 200
-        # poster var klippede og nyheds-målingen så kun de første 40 alfabetisk.
-        "actions": [str(a)[:80] for a in actions][:20],
-        "trace_kinds": trace_kinds[:200],
-        "trace_kind_count": len(trace_kinds),
-        "window_seconds": round((nu - vindue_start).total_seconds(), 1),
+        "actions": [a[:80] for a in actions][:20],
+        "priorities": [str(p)[:60] for p in priorities][:10],
+        "daemon_koert": int(indre.get("koert") or 0),
+        "daemon_fejlet": int(indre.get("fejlet") or 0),
     }
 
     # Persist (rolling window)

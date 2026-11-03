@@ -15,101 +15,166 @@ from core.services.agent_self_evaluation import (
 )
 
 
-def _fake_tick(act_kind="productive_idle", priorities=None, actions=None, elapsed_ms=1000):
+def _fake_tick(
+    act_kind="productive_idle",
+    priorities=None,
+    actions=None,
+    elapsed_ms=1000,
+    koert=30,
+    fejlet=0,
+    **signals,
+):
+    """Et tick-resultat med samme form som ``tick_with_phases`` returnerer."""
+    sense = {
+        "mood_name": "x", "active_goals": [], "events_last_hour": 0,
+        "context_pressure_level": "comfortable", "errors_last_hour": 0,
+        "failed_verifies": 0, "unverified_mutations": 0,
+    }
+    sense.update(signals)
     return {
         "elapsed_ms": elapsed_ms,
+        "indre_daemoner": {"koert": koert, "fejlet": fejlet, "brugere": 1},
         "phases": {
-            "sense": {
-                "mood_name": "x", "active_goals": [], "events_last_hour": 0,
-                "context_pressure_level": "comfortable", "errors_last_hour": 0,
-            },
+            "sense": sense,
             "reflect": {"priorities": priorities or []},
-            "act": {
-                "kind": act_kind,
-                "result": {"actions": actions or []},
-            },
+            "act": {"kind": act_kind, "result": {"actions": actions or []}},
         },
     }
 
 
-# 2026-09-05: scoringen måler nu SPOR, ikke form. De tre tests herunder holdt
-# tidligere fast i formen (havde slaget priorities? hvor mange handlinger?), og
-# netop den form gav 70 til 199 af 200 slag. Et slag med priorities der ikke
-# efterlader noget, skal kunne score lavt — det er hele pointen.
+# 3/11-2026 (aften): spor-leddet blev fjernet. Det læste `events` globalt, men
+# tabellen har ingen kolonne der binder et event til det slag der målte det —
+# målt: 17.860 af 48.821 events i ét vindue kom fra én forgetting-daemon. Et
+# slag kunne altså score 100 ved at sove mens en baggrundsdaemon arbejdede.
+# Alle led læses nu af `tick_result`. Testene herunder værner det.
+
+_IDLE_HANDLINGER = [
+    "personality_snapshot", "personality_drift_tick", "tick_elapsed",
+    "dreams", "wants", "boredom", "idle_daemon:event_trigger_shadow",
+]
 
 
-def _uden_spor(monkeypatch=None):
-    """Patch spor-opslaget til tomt, så testen ikke afhænger af en levende DB."""
-    return patch("core.services.agent_self_evaluation._trace_kinds_since",
-                 return_value=[])
+def _eval(tick, forrige=None):
+    """Kør scoringen isoleret fra den levende historik."""
+    with patch("core.services.agent_self_evaluation.load_json",
+               return_value=forrige or []), \
+         patch("core.services.agent_self_evaluation.save_json"):
+        return evaluate_tick_quality(tick_result=tick)
 
 
-def _med_spor(*kinds):
-    return patch("core.services.agent_self_evaluation._trace_kinds_since",
-                 return_value=list(kinds))
+def test_tomt_slag_scorer_lavt():
+    """Intet sweep, intet at reagere på, ingen handlinger: kun tiden er sund."""
+    r = _eval(_fake_tick(koert=0, actions=[]))
+    assert "score" in r and "evaluated_at" in r
+    assert r["score"] < 30
 
 
-def test_slag_uden_spor_scorer_lavt():
-    """Ingen handlinger, ingen spor: kun tiden er sund."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick())
-    assert "score" in result and "evaluated_at" in result
-    assert result["score"] < 60
+def test_daemon_sweepet_er_et_led_der_kan_mangle():
+    """Sweepet sker ikke af sig selv — og det skal kunne ses i scoren."""
+    uden = _eval(_fake_tick(koert=0, actions=[]))
+    med = _eval(_fake_tick(koert=30, actions=[]))
+    assert med["score"] > uden["score"]
+    assert any("daemon-sweepet kørte ikke" in n for n in uden["notes"])
 
 
-def test_priorities_alene_giver_ikke_hoej_score():
-    """Den gamle scoring gav +45 for priorities + dispatch uanset udbytte."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick(
-            act_kind="tick_dispatched",
-            priorities=["compact_context", "verify_mutations"],
-            elapsed_ms=2000,
-        ))
-    assert result["score"] < 60, "form uden spor må ikke give høj score"
+def test_daemon_fejl_traekker_ned():
+    """De fejlende daemoner er et ægte kvalitetssignal — ikke pynt."""
+    rent = _eval(_fake_tick(koert=30, fejlet=0, actions=[]))
+    fejl = _eval(_fake_tick(koert=27, fejlet=3, actions=[]))
+    assert fejl["score"] < rent["score"]
+    assert any("3 fejlet" in n for n in fejl["notes"])
 
 
-def _score_med_spor(antal: int) -> dict:
-    """Kør ét slag med præcis ``antal`` spor-arter og intet forrige slag."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor(*[f"spor.art{i}" for i in range(antal)]):
-        return evaluate_tick_quality(tick_result=_fake_tick(
-            act_kind="productive_idle",
-            actions=["personality_snapshot", "composite_candidates:2"],
-            elapsed_ms=5000,
-        ))
+def test_reaktion_beloenner_kaeden_signal_prioritet_handling():
+    """Kæden skal holdes hele vejen — ellers er prioriteringen teater."""
+    handlede = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"], actions=["verify:fixed"]))
+    så_men_uden_handling = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"], actions=[]))
+    uden_prioritet = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=[], actions=[]))
+    assert handlede["score"] > så_men_uden_handling["score"]
+    assert så_men_uden_handling["score"] > uden_prioritet["score"]
+    assert any("dannede ingen prioritet" in n for n in uden_prioritet["notes"])
 
 
-def test_spor_loefter_scoren():
-    """Spor skal løfte — og leddet må ikke mætte ved seks arter.
-
-    3/11-2026: denne test krævede ≥80 ved seks arter. Niveauet var kalibreret
-    til en virkelighed hvor seks var meget; målt samme dag er medianen 82 og
-    ALLE 200 slag lå på 14-120, så trappen gav 50 point til hvert eneste slag
-    og scoren kunne reelt kun være 75 eller 90. Kravet låste altså netop den
-    mætning der skulle fjernes. Nu værner testen FORMEN i stedet for ét
-    niveau: flere arter giver mere, hele vejen op.
+def test_et_ledigt_slag_kan_ikke_laengere_score_90():
+    """Kernen i indvendingen (3/11-2026): et slag der kører den samme runde
+    igen fik 90-100, fordi spor-leddet talte baggrundsstøj. Nu måler nyheds-
+    leddet slagets EGNE handlinger — og de syv gentagne giver nul nyhed.
     """
-    seks = _score_med_spor(6)
-    fyrre = _score_med_spor(40)
-    hel = _score_med_spor(120)
-
-    assert seks["score"] > 60, "seks spor-arter skal stadig løfte slaget"
-    assert fyrre["score"] > seks["score"], "40 arter må ikke give det samme som 6"
-    assert hel["score"] > fyrre["score"], "120 arter må ikke give det samme som 40"
-    assert hel["score"] >= 90
+    forrige = [{"evaluated_at": datetime.now(UTC).isoformat(), "score": 90,
+                "actions": list(_IDLE_HANDLINGER)}]
+    r = _eval(_fake_tick(actions=list(_IDLE_HANDLINGER)), forrige=forrige)
+    assert r["score"] <= 70, f"et gentaget ledigt slag scorer {r['score']}"
+    assert any("samme handlinger" in n for n in r["notes"])
 
 
-def test_spor_listen_klippes_ikke_ved_fyrre():
-    """3/11-2026: ``trace_kinds[:40]`` gjorde nyheds-målingen halvblind — den
-    målte bredde er 14-120, så 120 af 200 poster var klippede og næste slag
-    blev sammenlignet mod de første 40 alfabetisk i stedet for mod alle.
+def test_nye_handlinger_giver_nyhed():
+    """Et system der kører den samme runde igen, er ikke produktivt."""
+    forrige = [{"evaluated_at": datetime.now(UTC).isoformat(), "score": 40,
+                "actions": list(_IDLE_HANDLINGER)}]
+    gentaget = _eval(_fake_tick(actions=list(_IDLE_HANDLINGER)), forrige=forrige)
+    nyt = _eval(_fake_tick(actions=["memory.written", "dream.recorded"]),
+                forrige=forrige)
+    assert nyt["score"] > gentaget["score"]
+
+
+def test_scoringen_laeser_ikke_globale_events():
+    """Selve rettelsen, som AST — en vagt mod at koblingen sniger sig ind igen.
+
+    Målt 3/11-2026: `events` har fire kolonner, og ingen af dem henfører et
+    event til det slag der målte det. Læser scoringen den tabel igen, er
+    scoren tilbage til at måle systemets puls i stedet for slagets arbejde.
     """
-    result = _score_med_spor(90)
-    assert len(result["trace_kinds"]) == 90
-    assert result["trace_kind_count"] == 90
+    import ast
+    import inspect
+    import textwrap
+
+    from core.services import agent_self_evaluation as ase
+
+    # Vagtens omfang er SCORINGS-STIEN, ikke hele modulet: adhærence-måleren
+    # længere nede læser beslutninger fra DB med rette.
+    for navn in ("evaluate_tick_quality", "_score_daemons", "_score_reaktion",
+                 "_score_novelty", "_previous_eval"):
+        fn = getattr(ase, navn)
+        trae = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+        moduler = set()
+        for n in ast.walk(trae):
+            if isinstance(n, ast.ImportFrom) and n.module:
+                moduler.add(n.module)
+            elif isinstance(n, ast.Import):
+                moduler.update(a.name for a in n.names)
+        assert not any(m.startswith("core.runtime.db") for m in moduler), (
+            f"{navn} importerer databasen igen: {sorted(moduler)}"
+        )
+        sql = [
+            n.value for n in ast.walk(trae)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            and "FROM EVENTS" in n.value.upper()
+        ]
+        assert sql == [], f"{navn} har stadig en SQL der læser events: {sql}"
+    assert not hasattr(ase, "_trace_kinds_since"), (
+        "det globale spor-opslag er tilbage"
+    )
+
+
+def test_posten_gemmer_hvad_slaget_udrettede():
+    """Uden handlinger og prioriteter kan nyheds-målingen ikke virke næste gang."""
+    r = _eval(_fake_tick(actions=["a", "b"], priorities=["p1"],
+                         koert=29, fejlet=1))
+    assert r["actions"] == ["a", "b"]
+    assert r["priorities"] == ["p1"]
+    assert r["daemon_koert"] == 29
+    assert r["daemon_fejlet"] == 1
+
+
+def test_haengende_slag_faar_ingen_tidspoint():
+    r = _eval(_fake_tick(elapsed_ms=200_000))
+    assert any("HANG" in n for n in r["notes"])
 
 
 def test_historikken_raekker_til_vinduet():
@@ -124,21 +189,24 @@ def test_historikken_raekker_til_vinduet():
 
 
 def test_komprimering_bevarer_tal_men_skærer_detaljer():
-    """Ældre poster behøver tal, ikke hvilke event-arter der skrev den gang."""
+    """Ældre poster behøver tal, ikke hvilke handlinger der skrev den gang."""
     from core.services import agent_self_evaluation as ase
 
     evals = [
         {"evaluated_at": f"2026-{1 + i // 28:02d}-{1 + i % 28:02d}T00:00:00+00:00",
-         "score": 80, "trace_kinds": [f"art{i}"] * 120, "actions": ["b"] * 20}
+         "score": 80, "actions": ["b"] * 20, "priorities": ["p"] * 10}
         for i in range(300)
     ]
     slim = ase._slim_history(evals)
 
     assert len(slim) == 300, "ingen poster må forsvinde"
     assert all(p["score"] == 80 for p in slim), "scoren skal bevares"
-    assert slim[-1]["trace_kinds"] and slim[-1]["actions"], "de nyeste beholder detaljen"
-    assert "trace_kinds" not in slim[0], "de ældste skal være skåret"
-    assert len(json.dumps(slim)) < len(json.dumps(evals)) / 3
+    assert slim[-1]["actions"] and slim[-1]["priorities"], "de nyeste beholder detaljen"
+    assert "actions" not in slim[0], "de ældste skal være skåret"
+    # 3/11-2026: posten er blevet mindre (spor-listen på op til 200 arter er
+    # væk), så den gamle 1/3-tærskel målte noget andet. Halvdelen er grænsen
+    # for at komprimeringen stadig gør sit arbejde.
+    assert len(json.dumps(slim)) < len(json.dumps(evals)) / 2
 
 
 def test_opsummeringen_siger_hvor_langt_historikken_raekker():
@@ -153,39 +221,6 @@ def test_opsummeringen_siger_hvor_langt_historikken_raekker():
     assert kort["window_covered"] is False
     assert "ikke dækket" in kort["coverage_warning"]
     assert daekket["window_covered"] is True
-
-
-def test_samme_spor_som_sidst_giver_ingen_nyhed():
-    """Et system der kører den samme runde igen, er ikke produktivt."""
-    forrige = [{"evaluated_at": (datetime.now(UTC) - timedelta(seconds=30)).isoformat(),
-                "score": 40, "trace_kinds": ["memory.written", "dream.recorded"]}]
-    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written", "dream.recorded"):
-        gentaget = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
-    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("noget.helt_nyt", "og_et_til.ogsaa_nyt"):
-        nyt = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
-    assert nyt["score"] > gentaget["score"], "nye spor skal score højere end en gentagelse"
-
-
-def test_haengende_slag_faar_ingen_tidspoint():
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick(elapsed_ms=200_000))
-    assert any("HANG" in n for n in result["notes"])
-
-
-def test_posten_gemmer_hvad_slaget_udrettede():
-    """Uden actions/trace_kinds i posten kan nyheds-målingen ikke virke næste gang."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written"):
-        result = evaluate_tick_quality(tick_result=_fake_tick(actions=["a", "b"]))
-    assert result["actions"] == ["a", "b"]
-    assert result["trace_kinds"] == ["memory.written"]
-    assert result["window_seconds"] >= 0
 
 
 def test_laast_maaling_raabes_op_i_opsummeringen():

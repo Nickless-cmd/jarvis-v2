@@ -612,6 +612,13 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     "list_self_wakeups", "list_events",
     # Read-only git operations — observability into the repo, no mutation.
     "git_log", "git_diff", "git_status",
+    # 3/11-2026: rene læsere der blev blokeret af protectiveness. Målt i
+    # veto_events: db_query 20, verify_file_contains 17, read_mood 11,
+    # eventbus_recent 9, read_dreams 5, read_self_state 3, recall 3,
+    # semantic_search_code 2. En gate kan ikke beskytte noget ved at blokere
+    # en SELECT eller en fillæsning — den gør blot arbejdet blindt.
+    "db_query", "verify_file_contains", "read_mood", "eventbus_recent",
+    "read_dreams", "read_self_state", "semantic_search_code",
     # bash — arbitrary shell exec. Owner-calibrated trust: Bjørn
     # explicitly enabled this 2026-05-03 ("han har haft det hele tiden").
     # Side effects are Jarvis's responsibility; veto_gate doesn't gate it.

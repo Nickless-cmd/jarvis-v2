@@ -902,3 +902,48 @@ registreres som beslutning — er derfor *implementeret og testet*, men **ikke b
 drift**, fordi gaten endnu ikke har afvist noget. Det kræver et run hvis verbum er
 destruktivt. Målt fordeling på de 40 faktiske wakeup-tekster: 3 af 40. Så det kommer,
 men det er ikke kommet.
+
+---
+
+## Målt 3/11-2026 kl. 20:0x — veto-gaten: tallene er værre end opgaven antog, og rettelsen er en anden
+
+De to side-opgaver (`side-fd6717e5fa`, `side-1c970e85e7`) blev målt mod `veto_events` før nogen kode blev rørt.
+
+### Tallene
+
+`protectiveness`: **511 forkerte mod 4 honored** — 128:1, ikke 46:1 som opgaven antog.
+
+| resolution | antal |
+|---|---|
+| `pending` | 536 |
+| `false_positive` | 392 |
+| `overridden_by_user` | 91 |
+| `overridden_by_jarvis` | 28 |
+| `honored` | 4 |
+
+### Det afgørende fund: intensiteten kan ikke skelne
+
+Opgaven foreslår at tilføje `protectiveness` til `_BASE_THRESHOLDS` «med et domæne der matcher rå intensity (0,69–0,92)». Målt:
+
+| | n | min | median | max |
+|---|---|---|---|---|
+| `false_positive` | 392 | 0,75 | **0,95** | 1,00 |
+| `honored` | 4 | 0,81 | **0,91** | 1,00 |
+
+Falske positiver ligger **højere** end de ægte. Nul af de fire honored ligger over max(false_positive). Enhver tærskel ville ramme begge klasser nogenlunde lige hårdt — den ville flytte fordelingen, ikke forbedre den.
+
+**Konsekvens: forslaget er ikke en løsning.** Det er tuning af et signal der ikke bærer information om hvorvidt blokeringen var rigtig. Til sammenligning virker `irritation`: 8 blokeret, 6 honored, **0** false_positive.
+
+### Punkt 2 er overvurderet
+
+Opgaven siger at generiske targets som «en blokering» gør gaten mere blokerende jo flere forpligtelser der skrives. Målt: **14 af 2045 events (1 %)** bærer en generisk target. Mekanismen er ægte, effekten er marginal. Den er ikke prioritet.
+
+### Hvad der blev rettet
+
+`_ALWAYS_ALLOWED_TOOLS` manglede rene læsere. Målt blokeret af protectiveness: `db_query` 20, `verify_file_contains` 17, `read_mood` 11, `eventbus_recent` 9, `read_dreams` 5, `read_self_state` 3, `semantic_search_code` 2. Alle syv er nu frigivet (listen 65 → 72).
+
+Vagten `test_rene_laesere_kan_ikke_gated` er **bevist ved mutation**: fjernes `db_query` fra listen, falder testen med `rene læsere mangler i frigivelsen: ['db_query']`. Kontrollen i samme test kræver at `write_file` stadig blokeres, så testen ikke kan bestå fordi gaten blev harmløs.
+
+### Stadig åbent — og hvorfor det er en beslutning
+
+Om `protectiveness` fortsat skal være en veto-følelse. Dataene siger nej: 4 honored ud af 515 er støj, og intensiteten korrelerer ikke med udfaldet. Men at fjerne en følelse fra gaten ændrer hvad gaten *er* — det er ikke en tuning, og det skal ikke gøres i en side-opgave.

@@ -329,3 +329,38 @@ def test_frigivelseskaeden_er_komplet(monkeypatch):
     for navn in kaede:
         allowed, reason = vg.check_veto(navn, "jeg pusher nu", record_event=False)
         assert allowed is True, f"{navn} blev gatet: {reason}"
+
+
+# ── Rene læsere må ikke gated (3/11-2026) ────────────────────────────────────
+#
+# Målt i veto_events: protectiveness blokerede 511 gange mod 4 honored — 128:1.
+# Blandt blokeringerne var rene læsere: db_query 20, verify_file_contains 17,
+# read_mood 11, eventbus_recent 9, read_dreams 5, read_self_state 3,
+# semantic_search_code 2. En gate kan ikke beskytte noget ved at blokere en
+# SELECT eller en fillæsning — den gør blot arbejdet blindt.
+#
+# MUTATION der skal fanges:
+#   M14 — fjern en af de syv fra _ALWAYS_ALLOWED_TOOLS -> testen falder
+
+def test_rene_laesere_kan_ikke_gated(monkeypatch):
+    """db_query er SELECT-only; de øvrige læser. Ingen af dem må blokeres."""
+    from core.services.veto_gate import _ALWAYS_ALLOWED_TOOLS
+
+    laesere = (
+        "db_query", "verify_file_contains", "read_mood", "eventbus_recent",
+        "read_dreams", "read_self_state", "semantic_search_code",
+    )
+    manglende = [n for n in laesere if n not in _ALWAYS_ALLOWED_TOOLS]
+    assert not manglende, f"rene læsere mangler i frigivelsen: {manglende}"
+
+    vg, written = _hermetic(monkeypatch, _FIRM_SECTION)
+    for navn in laesere:
+        allowed, reason = vg.check_veto(navn, "jeg pusher nu", record_event=True)
+        assert allowed is True, f"{navn} blev gatet: {reason}"
+    assert written == [], "rene læsere må ikke skrive blocked-rækker"
+
+    # Kontrollen: gaten vetoer stadig en rigtig handling. Uden den kunne testen
+    # bestå fordi sektionen var blevet harmløs i stedet for fordi læserne blev
+    # frigivet.
+    allowed, _ = vg.check_veto("write_file", "jeg pusher nu", record_event=True)
+    assert allowed is False, "kontrollen fejler: sektionen vetoer ikke længere"

@@ -22752,6 +22752,122 @@
       },
       "created_at_formats": []
     },
+    "memory_hygiene_snapshots": {
+      "digest": "5a:53:61:1c:21:86:e1:3b:1d:99:f0:6f:75:90:e9:bc:f3:e6:f2:0c:60:a5:c0:13:02:aa:bf:8a:44:82:89:16",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dated_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "duplicate_groups",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "file_bytes",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "operational_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "section_count",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tracked_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "undated_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_memory_hygiene_snapshots_workspace",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "workspace",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "id",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_memory_hygiene_snapshots_workspace ON memory_hygiene_snapshots(workspace, id DESC)"
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_offset"
+      ]
+    },
     "memory_resurfacing_log": {
       "digest": "73:c9:ac:69:ae:a5:cd:01:98:58:70:68:bd:60:4d:1d:8f:92:7e:e6:04:db:bd:cf:aa:cf:78:65:6c:81:5b:bb",
       "schema": {
@@ -22816,6 +22932,88 @@
               }
             ],
             "sql": "CREATE INDEX idx_resurfacing_at ON memory_resurfacing_log(resurfaced_at)"
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
+    "memory_section_usage": {
+      "digest": "77:9f:1f:83:7b:b2:f8:e5:39:77:d8:cb:67:bd:93:ce:e2:0f:32:c2:3c:bd:2d:37:04:64:9a:df:c1:4e:43:35",
+      "schema": {
+        "columns": [
+          {
+            "name": "first_selected_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "heading",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_selected_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "section_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "selection_count",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_memory_section_usage_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "workspace",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "section_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
           }
         ]
       },

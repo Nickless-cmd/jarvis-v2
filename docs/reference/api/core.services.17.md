@@ -490,6 +490,24 @@ _Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
 | function | `_exec_warm_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L252) |
 | function | `_exec_cold_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L256) |
 
+## `core/services/memory_hygiene.py`
+_Measured, reversible hygiene for per-user ``MEMORY.md`` files._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/memory_hygiene.py#L45) |
+| function | `_section_key` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L49) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/services/memory_hygiene.py#L54) |
+| function | `record_section_selections` | `(workspace, headings, *, selected_at=…)` | Persist actual prompt selections; one transaction per prompt build. | [src](../../../core/services/memory_hygiene.py#L90) |
+| function | `auto_write_allowed` | `(workspace, *, path=…)` | Backpressure only: candidates remain proposed when the file is over cap. | [src](../../../core/services/memory_hygiene.py#L125) |
+| function | `_workspace_memory_path` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L152) |
+| function | `_parse_h2_sections` | `(text)` | — | [src](../../../core/services/memory_hygiene.py#L158) |
+| function | `_normalize_heading` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L180) |
+| function | `_usage_summary` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L184) |
+| function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
+| function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
+| function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
+
 ## `core/services/memory_maintenance_daemon.py`
 _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.md._
 
@@ -498,13 +516,13 @@ _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.
 | function | `_memory_md` | `(workspace)` | Stien til ÉN brugers MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L50) |
 | function | `_target_workspaces` | `()` | Alle registrerede brugeres workspace-navne. | [src](../../../core/services/memory_maintenance_daemon.py#L61) |
 | function | `tick_memory_maintenance_daemon` | `(now=…)` | Run the 12h maintenance cycle on EVERY registered user's MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L97) |
-| function | `_maintain_workspace` | `(workspace)` | Tier A + Tier B for ÉN brugers MEMORY.md. Tom dict = intet at gøre. | [src](../../../core/services/memory_maintenance_daemon.py#L158) |
-| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L189) |
-| function | `_read_memory` | `(workspace)` | — | [src](../../../core/services/memory_maintenance_daemon.py#L201) |
-| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L208) |
-| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L246) |
-| function | `_tier_a_auto_merge` | `(sections, text, workspace)` | Auto-merge TOPNIVEAU-sektioner med samme eller næsten samme overskrift. | [src](../../../core/services/memory_maintenance_daemon.py#L255) |
-| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L340) |
+| function | `_maintain_workspace` | `(workspace)` | Tier A + Tier B for ÉN brugers MEMORY.md. Tom dict = intet at gøre. | [src](../../../core/services/memory_maintenance_daemon.py#L162) |
+| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L201) |
+| function | `_read_memory` | `(workspace)` | — | [src](../../../core/services/memory_maintenance_daemon.py#L213) |
+| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L220) |
+| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L258) |
+| function | `_tier_a_duplicate_candidates` | `(sections)` | Find duplicate top-level headings without mutating ``MEMORY.md``. | [src](../../../core/services/memory_maintenance_daemon.py#L267) |
+| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L320) |
 
 ## `core/services/memory_md_update_proposal_tracking.py`
 
@@ -634,25 +652,4 @@ _Memory Tattoos — de mærker der bliver siddende._
 | function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L164) |
 | function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L169) |
 | function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L173) |
-
-## `core/services/memory_write_policy.py`
-_Memory Write Policy — gating + review queue for inferred memory writes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
-| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
-| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
-| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
-| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
-| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
-| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
-| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
-| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
-| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
-| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
-| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
-| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
-| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
-| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
 

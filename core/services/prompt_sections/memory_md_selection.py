@@ -337,6 +337,7 @@ def select_memory_md_sections(
 
     per_line_cap = max(200, max_chars // 2)
     out: list[str] = []
+    selected_headings: list[str] = []
     seen: set[str] = set()
     used = 0
     ranked_hits = sorted(
@@ -363,7 +364,16 @@ def select_memory_md_sections(
             break
         seen.add(key)
         out.append(line)
+        selected_headings.append(section)
         used += len(line)
         if len(out) >= max_sections:
             break
+    if selected_headings:
+        try:
+            from core.services.memory_hygiene import record_section_selections
+
+            record_section_selections(workspace_dir.name, selected_headings)
+        except Exception:
+            # Selection telemetry must never delay or suppress prompt memory.
+            logger.debug("memory section usage telemetry failed", exc_info=True)
     return out

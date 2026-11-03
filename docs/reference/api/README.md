@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17907 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17920 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,21 +46,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17907 functions/
 - [`core.services.14`](core.services.14.md) — `gate_auth` … `habit_tracker`
 - [`core.services.15`](core.services.15.md) — `habits_pipeline` … `infra_sense`
 - [`core.services.16`](core.services.16.md) — `infra_weather_daemon` … `lifecycle_hooks`
-- [`core.services.17`](core.services.17.md) — `live_job_events` … `memory_write_policy`
-- [`core.services.18`](core.services.18.md) — `memory_write_queue` … `notifikationer`
-- [`core.services.19`](core.services.19.md) — `notifikationer_hydrering` … `personality_vector`
-- [`core.services.20`](core.services.20.md) — `pfsense_syslog` … `prompt_assembly_turn_cache`
-- [`core.services.21`](core.services.21.md) — `prompt_cache_probe` … `reasoning_classifier`
-- [`core.services.22`](core.services.22.md) — `reasoning_detectors` … `retention`
-- [`core.services.23`](core.services.23.md) — `retention_coverage` … `runtime_flows`
-- [`core.services.24`](core.services.24.md) — `runtime_guard` … `self_model_history`
-- [`core.services.25`](core.services.25.md) — `self_model_predictive` … `session_topic_tracker`
-- [`core.services.26`](core.services.26.md) — `session_view` … `somatic_runtime_body`
-- [`core.services.27`](core.services.27.md) — `source_confidence_gate` … `theory_of_mind`
-- [`core.services.28`](core.services.28.md) — `theory_of_mind_engine` … `unconscious_modulation`
-- [`core.services.29`](core.services.29.md) — `unconscious_temperature_field` … `visible_model_ollama`
-- [`core.services.30`](core.services.30.md) — `visible_model_prompt` … `visible_turn_accumulator`
-- [`core.services.31`](core.services.31.md) — `visible_turn_blocks` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `live_job_events` … `memory_tattoos`
+- [`core.services.18`](core.services.18.md) — `memory_write_policy` … `notification_router`
+- [`core.services.19`](core.services.19.md) — `notifikationer` … `personality_drift`
+- [`core.services.20`](core.services.20.md) — `personality_vector` … `prompt_assembly_telemetri`
+- [`core.services.21`](core.services.21.md) — `prompt_assembly_turn_cache` … `read_before_write_guard`
+- [`core.services.22`](core.services.22.md) — `reasoning_classifier` … `resonance_decay`
+- [`core.services.23`](core.services.23.md) — `retention` … `runtime_decision_engine`
+- [`core.services.24`](core.services.24.md) — `runtime_flows` … `self_model_distiller`
+- [`core.services.25`](core.services.25.md) — `self_model_history` … `session_tool_pin`
+- [`core.services.26`](core.services.26.md) — `session_topic_tracker` … `somatic_daemon`
+- [`core.services.27`](core.services.27.md) — `somatic_runtime_body` … `theater_audit`
+- [`core.services.28`](core.services.28.md) — `theory_of_mind` … `ui_panel_store`
+- [`core.services.29`](core.services.29.md) — `unconscious_modulation` … `visible_model_observe`
+- [`core.services.30`](core.services.30.md) — `visible_model_ollama` … `visible_tool_labels`
+- [`core.services.31`](core.services.31.md) — `visible_turn_accumulator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_assembly_turn_cache.py`
+_Small process-local cache for reusing one prompt assembly within a turn._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CacheLookup` | `` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L20) |
+| function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
+| function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
+| function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
+
 ## `core/services/prompt_cache_probe.py`
 _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
 
@@ -632,16 +642,4 @@ _Read-before-write guard — prevents overwrite of existing files without prior 
 | function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L660) |
 | function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L664) |
 | function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L697) |
-
-## `core/services/reasoning_classifier.py`
-_Reasoning classifier — router that picks fast / reasoning / deep tier._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_score_patterns` | `(text, patterns)` | — | [src](../../../core/services/reasoning_classifier.py#L65) |
-| function | `classify_reasoning_tier` | `(message, *, task_hint=…)` | Pick reasoning tier for a user message (or task description). | [src](../../../core/services/reasoning_classifier.py#L75) |
-| function | `reasoning_tier_section` | `(message)` | Format tier verdict as a prompt-awareness section. None for fast tier | [src](../../../core/services/reasoning_classifier.py#L210) |
-| function | `_exec_reasoning_classify` | `(args)` | — | [src](../../../core/services/reasoning_classifier.py#L227) |
-| function | `build_reasoning_classifier_surface` | `()` | — | [src](../../../core/services/reasoning_classifier.py#L275) |
-| function | `_emit_tier_event` | `(tier, score)` | — | [src](../../../core/services/reasoning_classifier.py#L284) |
 

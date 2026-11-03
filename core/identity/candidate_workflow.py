@@ -34,7 +34,6 @@ _AUTO_APPLY_EVIDENCE_CLASSES = {
     "explicit_assistant_confirmation",
     "repeated_cross_session",
 }
-_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
     "workspace-memory:remembered-fact:project-anchor",
     "workspace-memory:remembered-fact:repo-context",
@@ -280,6 +279,7 @@ def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
     considered = 0
     auto_applied = 0
     skipped = 0
+    backpressured = 0
     items: list[dict[str, object]] = []
 
     for candidate in list_runtime_contract_candidates(
@@ -291,6 +291,11 @@ def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
         considered += 1
         if not _should_auto_apply(candidate, "memory_md"):
             skipped += 1
+            continue
+        if not _memory_auto_write_allowed(candidate):
+            # Keep the candidate proposed.  The cap is backpressure, never loss.
+            skipped += 1
+            backpressured += 1
             continue
         approved = approve_runtime_contract_candidate(
             str(candidate["candidate_id"]),
@@ -307,13 +312,32 @@ def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
         "considered": considered,
         "auto_applied": auto_applied,
         "skipped": skipped,
+        "backpressured": backpressured,
         "items": items,
         "summary": (
             f"Auto-applied {auto_applied} safe MEMORY.md candidates."
             if auto_applied
-            else "No safe MEMORY.md candidates were eligible for auto-apply."
+            else (
+                f"Held {backpressured} MEMORY.md candidates in review because the "
+                "workspace memory exceeded its hygiene cap."
+                if backpressured
+                else "No safe MEMORY.md candidates were eligible for auto-apply."
+            )
         ),
     }
+
+
+def _memory_auto_write_allowed(candidate: dict[str, object]) -> bool:
+    """Resolve the candidate's real workspace path before applying backpressure."""
+    try:
+        from core.services.memory_hygiene import auto_write_allowed
+
+        workspace = str(candidate.get("owner_workspace") or "bjorn").strip() or "bjorn"
+        path = ensure_default_workspace(name=workspace) / "MEMORY.md"
+        return auto_write_allowed(workspace, path=path)
+    except Exception:
+        # A hygiene probe outage must fail closed for an automatic identity write.
+        return False
 
 
 def apply_approved_runtime_contract_candidates(
@@ -473,12 +497,7 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
     source_kind = str(candidate.get("source_kind") or "")
     evidence_class = str(candidate.get("evidence_class") or "")
     readiness = candidate_apply_readiness(candidate)
-    if canonical_key.startswith(_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX):
-        if str(readiness.get("apply_readiness") or "") != "medium":
-            return False
-        if str(readiness.get("apply_reason") or "") != "needs-review":
-            return False
-    elif canonical_key in _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS:
+    if canonical_key in _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS:
         if str(readiness.get("apply_readiness") or "") != "medium":
             return False
         if str(readiness.get("apply_reason") or "") != "factual-memory":
@@ -493,35 +512,6 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
             return False
         if str(readiness.get("apply_reason") or "") != "factual-memory":
             return False
-    elif (
-        # Broaden: medium-confidence facts from end-of-run consolidation
-        # that aren't explicit-user-statement but are runtime-derived or
-        # assistant-confirmed — these are commonly dropped today
-        canonical_key.startswith("workspace-memory:remembered-fact:llm-")
-        and source_mode == "end_of_run_memory_consolidation"
-        and confidence == "medium"
-        and evidence_class in {"runtime-inference", "explicit_assistant_confirmation"}
-    ):
-        pass  # eligible — fall through to duplicate check
-    elif (
-        # 2026-06-09 (Bjørn's "han husker ikke en halvdags arbejde" dig):
-        # Åbner pipen for HIGH-confidence single_session_pattern proposals
-        # fra end_of_run consolidation med llm-* canonical keys. Det var
-        # 657+ candidates i backlog (98% af alle proposed MEMORY.md
-        # candidates). Indholdet er konkrete commits, beslutninger og
-        # arbejds-checkpoints — præcis det Jarvis skal huske til næste
-        # session. Ratio'en (98% gated) gjorde pipen i praksis død.
-        #
-        # Vi holder os til HIGH confidence + single_session_pattern (=
-        # assistant confirmed med eksplicit evidens i session). Lavere
-        # tillids-classes (runtime_support_only, low/medium-confidence)
-        # forbliver gated indtil videre.
-        canonical_key.startswith("workspace-memory:remembered-fact:llm-")
-        and source_mode == "end_of_run_memory_consolidation"
-        and confidence == "high"
-        and evidence_class == "single_session_pattern"
-    ):
-        pass  # eligible — fall through to duplicate check
     else:
         return False
     for other in list_runtime_contract_candidates(

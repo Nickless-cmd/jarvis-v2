@@ -33,6 +33,12 @@ def _sandkasse(monkeypatch, tmp_path: Path, filer: dict[str, str]) -> Path:
         mm, "_memory_md", lambda workspace: ws_root / workspace / "MEMORY.md"
     )
     monkeypatch.setattr(mm, "_last_tick_at", None)
+    from core.services import memory_hygiene
+    monkeypatch.setattr(
+        memory_hygiene,
+        "audit_workspace",
+        lambda *args, **kwargs: {"soft_cap_breached": False},
+    )
     return ws_root
 
 
@@ -111,18 +117,20 @@ def test_containment_reglen_er_væk(monkeypatch, tmp_path):
     assert res["tier_a_merged"] == 0
 
 
-def test_eksakt_dublet_paa_topniveau_merges_og_bevarer_indhold(monkeypatch, tmp_path):
-    """Den ægte dublet skal stadig fanges — uden at tabe en linje."""
+def test_eksakt_dublet_paa_topniveau_rapporteres_uden_mutation(monkeypatch, tmp_path):
+    """En ægte dublet skal fanges, men identitetshukommelsen må ikke omskrives."""
     ws_root = _sandkasse(monkeypatch, tmp_path, {
         "u": "## Dup\n\nalpha linje\n\n## Dup\n\nbeta linje\n",
     })
+    path = ws_root / "u" / "MEMORY.md"
+    before = path.read_bytes()
 
     res = mm._maintain_workspace("u")
 
-    assert res["tier_a_merged"] == 1
-    tekst = (ws_root / "u" / "MEMORY.md").read_text(encoding="utf-8")
-    assert "alpha linje" in tekst
-    assert "beta linje" in tekst
+    assert res["tier_a_merged"] == 0
+    assert res["tier_a_candidates"] == 1
+    assert res["report_only"] is True
+    assert path.read_bytes() == before
 
 
 def test_indhold_med_backslash_crasher_ikke(monkeypatch, tmp_path):
@@ -131,12 +139,13 @@ def test_indhold_med_backslash_crasher_ikke(monkeypatch, tmp_path):
         "u": "## Dup\n\nsti C:\\x\\y og mere\n\n## Dup\n\nanden linje\n",
     })
 
+    path = ws_root / "u" / "MEMORY.md"
+    before = path.read_bytes()
     res = mm._maintain_workspace("u")
 
-    assert res["tier_a_merged"] == 1
-    tekst = (ws_root / "u" / "MEMORY.md").read_text(encoding="utf-8")
-    assert "C:\\x\\y" in tekst
-    assert "anden linje" in tekst
+    assert res["tier_a_merged"] == 0
+    assert res["tier_a_candidates"] == 1
+    assert path.read_bytes() == before
 
 
 def test_tier_b_springes_over_paa_store_filer_og_rapporteres(monkeypatch, tmp_path):

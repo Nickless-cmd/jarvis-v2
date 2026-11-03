@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/notifikationer.py`
+_Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_udsend` | `(slags_haendelse, nid, user_id, slags)` | Live-vejen til klokken. Fejler den, skal FEEDEN stadig virke — men den | [src](../../../core/services/notifikationer.py#L27) |
+| function | `_nu` | `()` | — | [src](../../../core/services/notifikationer.py#L44) |
+| function | `opret` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | Laeg en notifikation. Returnerer id. | [src](../../../core/services/notifikationer.py#L48) |
+| function | `aabne` | `(user_id, *, er_owner)` | Aabne raekker for denne bruger. RAA — se hydreringen for den rigtige feed. | [src](../../../core/services/notifikationer.py#L100) |
+| function | `afsluttede` | `(user_id, *, dage=…)` | KLAREDE raekker for denne bruger — de sidste `dage`. RAA. | [src](../../../core/services/notifikationer.py#L123) |
+| function | `_med_data` | `(raekke)` | — | [src](../../../core/services/notifikationer.py#L150) |
+| function | `opdater` | `(slags, ref, *, titel, tekst=…, data=…)` | Opdater den samme feed-post, fx mens et release gaar gennem CI. | [src](../../../core/services/notifikationer.py#L159) |
+| function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L178) |
+| function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L196) |
+| function | `luk_foraeldede` | `(dage=…, *, slags=…)` | Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede. | [src](../../../core/services/notifikationer.py#L224) |
+| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L255) |
+
 ## `core/services/notifikationer_hydrering.py`
 _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
 
@@ -575,26 +592,4 @@ _Personality drift detection — has Jarvis' baseline shifted?_
 | function | `personality_drift_section` | `()` | Awareness section when drift detected — surfaces in prompt. | [src](../../../core/services/personality_drift.py#L143) |
 | function | `_exec_personality_drift_check` | `(args)` | — | [src](../../../core/services/personality_drift.py#L159) |
 | function | `_exec_personality_drift_snapshot` | `(args)` | — | [src](../../../core/services/personality_drift.py#L167) |
-
-## `core/services/personality_vector.py`
-_Personality Vector — cumulative personality that grows over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_should_apply_decay` | `()` | Return True if enough time has passed since the last decay application. | [src](../../../core/services/personality_vector.py#L34) |
-| function | `_get_evolved_baseline` | `()` | Compute long-term baseline targets from accumulated snapshots. | [src](../../../core/services/personality_vector.py#L43) |
-| function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
-| function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
-| function | `update_personality_vector_from_run` | `(*, run_id, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L112) |
-| function | `update_personality_vector_async` | `(*, run_id, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L196) |
-| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L217) |
-| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L249) |
-| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L256) |
-| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L277) |
-| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L406) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L449) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L463) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L476) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L487) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L553) |
 

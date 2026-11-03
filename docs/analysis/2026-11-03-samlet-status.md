@@ -135,9 +135,19 @@ smeltet sammen **før** de når tabellen, og informationen kan ikke gendannes
 bagefter. Det er samme fejlform som resten af dagen: data registreres i et
 fritekstfelt og går tabt i den aggregering der læses.
 
-Rettelsen er derfor at gøre `mode` (og senere `backstop`) til en **dimension i
-ledgerens nøgle**, ikke at justere regnestykket i fladen. Ellers flyttes fejlen
-blot fra én tæller til en anden.
+Rettelsen er at gøre `mode` til en **dimension i ledgerens nøgle** — `mode` er
+kendt på registreringstidspunktet, så den kan indgå. Men `backstop` kan **ikke**:
+den beslutning eksisterer ikke endnu. Målt rækkefølge i `preflight_gut_gate`
+(`gut_engine.py:300-341`): `derive_gut_signal` → `gut_gate(...)` (registrerer
+counterfactual inde i sig selv) → `if tillad: return` → `if
+_blok_budget_brugt(): _record_backstop(...)`. Altså registreres counterfactual
+**før** backstop-vurderingen findes (GPT, 3/11 — han havde ret, og min første
+formulering var forkert).
+
+`backstop` skal derfor være en **særskilt hændelse efter** den endelige
+beslutning — ikke et felt i den første nøgle. `_record_backstop` er allerede en
+separat registrering; det der mangler er at den kobles til counterfactual-tællingen
+og til det enkelte run. Ellers flyttes fejlen blot fra én tæller til en anden.
 
 Konsekvens: udfaldet kalibrerer den hunch `_on_started` dannede — ikke den
 gatens anbefaling backstop overkørte.
@@ -199,11 +209,12 @@ følges til ende — og det er ikke gjort for nogen af de to.
 ## Rækkefølgen der giver mening
 
 1. **A2** — én forudsigelse hele vejen (mindst arbejde, størst ærlighed)
-2. **A6 + A6b** — gør `mode` og `backstop` til **dimensioner i ledgerens nøgle**
-   (i dag er nøglen `(nerve, decision)`, så shadow-simulerede og håndhævede
-   afvisninger er smeltet sammen før tabellen). Bevar samtidig gate-anbefalingen
-   og den endelige beslutning som to felter, så en overkørsel kan ses bagefter.
-   Først da kan `blokeret` trække overkørslerne fra uden at flytte fejlen
+2. **A6 + A6b** — gør `mode` til **dimension i ledgerens nøgle** (i dag er nøglen
+   `(nerve, decision)`, så shadow-simulerede og håndhævede afvisninger er smeltet
+   sammen før tabellen). `backstop` kan **ikke** være i samme nøgle — den opstår
+   efter `gut_gate` har returneret. Den skal registreres som en **særskilt
+   hændelse efter** den endelige beslutning, koblet til runnet. Først da kan
+   `blokeret` trække overkørslerne fra uden at flytte fejlen
 3. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
 4. **A1** — kobl observationer på, målt i shadow-mode
 5. **A4** — gør kalibreringen til noget der kan tage fejl

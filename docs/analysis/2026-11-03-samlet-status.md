@@ -811,8 +811,37 @@ gange, `hunch` 0, `caution` 0, `withheld` 0. Og `prompt_contract.py`,
 `prompt_sections/*.py` og `prompt_support_signals.py` indeholder tilsammen nul
 referencer til `gut_surface`/`hunch`.
 
-Så: modellen får kognitiv kontekst — men ikke mavens vurdering. Det er ikke et
-hul i «det kognitive lag», det er et hul på præcis ét signal.
+**RETTET 3/11-2026 kl. 21:1x — der ER en indirekte vej, og den er verificeret
+led for led.** GPT pegede på den, og hvert led holder:
+
+| # | Led | Målt |
+|---|---|---|
+| 1 | `central_stance._classify_gut()` | importerer `gut_engine.build_gut_surface()`, læser `last_hunch` |
+| 2 | `build_central_stance_surface()` | returnerer `stances["gut"]` = `proceed`/`caution` |
+| 3 | `central_valence._read_stance()` | læser stance-fladen |
+| 4 | `integrate_valence()` | `if st.get("gut") == "caution": score -= 0.10` |
+| 5 | `run_valence_tick()` | gemmer resultatet i durabel KV |
+| 6 | `central_self_state._valence()` | `get_valence_state()` — læser den KV |
+| 7 | `synthesize_self_state()` | bærer `valence.score` ind i selvtilstanden |
+| 8 | `run_self_state_tick()` | gemmer selvtilstanden + registrerer sig som cadence-runner |
+| 9 | `describe_self()` | læses af `visible_inner_life._self_narrative_line()` |
+| 10 | `build_inner_life_section()` | `prompt_contract.py:1381` |
+| 11 | `build_central_self_state_section()` | `prompt_contract.py:1481` — egen sektion |
+
+Så maven påvirker prompten **gennem en afledt tilstand**, ikke som et navngivet
+signal. Det er præcis den arkitektur Bjørn beskrev: Centralen bearbejder, modellen
+får syntesen.
+
+**Men påvirkningen er betinget, og det er målt:** `-0,10` flytter kun `tone`-label
+hvis scoren ligger inden for 0,10 over en tærskel (`0,25` = opløftet, `0,05` = let).
+Og grenen udløses kun ved `gut == "caution"` — målt i drift: **1 gang af 560**
+(`gut_gate_uden_bias_shadow`, 18:36). Kalibreringen har **4303 `proceed`, nul
+`caution`**. Vejen er åben og forbundet; den bærer i praksis intet, fordi
+betingelsen næsten aldrig er sand. Det er den præcise form — ikke «der er ingen
+vej».
+
+Det er **niende lag** i samme fejlklasse: jeg greppede efter et variabelnavn i
+prompt-laget og konkluderede om en *kæde af afledte tilstande*.
 
 ### Det vigtigste
 
@@ -1016,21 +1045,25 @@ hele vejen fra producent til læser.
 
 **Ingen af læserne er prompten.** `prompt_contract.py` indeholder nul referencer til
 `cognitive_architecture` eller `build_cognitive_architecture_surface`. Fladen er altså
-**produceret og tilgængelig, men ikke virksom** — den vises i Mission Control og i
-Centralen, og den når ikke ind i prompten.
+**produceret og tilgængelig, men ikke virksom som flade** — den vises i Mission Control
+og i Centralen, og den læses ikke direkte ind i prompten.
 
-**Forbehold (målt 3/11 kl. 21:0x):** det betyder *ikke* at prompten er uden kognitiv
-kontekst. `cognitive_state`-injektionen leverer 800 tegn live, og 8 af 11
-support-sektioner lever. Det er specifikt **denne flade** — og dermed gut-tallene —
-der ikke når frem: `gut`/`hunch`/`caution`/`withheld` står 0 gange i både
-`cognitive_state`-teksten og i prompt-laget. Se rettelsen ovenfor.
+**Forbehold (målt 3/11 kl. 21:0x, udvidet 21:1x):** det betyder *ikke* at prompten er
+uden kognitiv kontekst. `cognitive_state`-injektionen leverer 800 tegn live, og 8 af 11
+support-sektioner lever. Og for gut-tallene specifikt: de når frem **ad en indirekte
+vej** — `build_gut_surface → central_stance → central_valence (-0,10 ved caution) →
+central_self_state → describe_self → build_inner_life_section` — verificeret led for led.
+Det der står tilbage som målt sandt er ikke «ingen vej», men: vejen er **betinget**
+(kræver `caution`, målt 1 af 560) og **forsinket** (går gennem durabel KV mellem
+cadence-ticks, ikke live per request).
 
 Det gør C1's tre niveauer konkrete for denne flade:
 
 - **Produceret:** ja. `build_gut_surface()` svarer med `evaluated`, `withheld`,
   `backstop_overkoersler` og kalibrering.
 - **Tilgængeligt:** ja. Det ligger i `cognitive_architecture` med 20+ søsterflader.
-- **Virksomt:** **nej.** Ingen prompt-læser.
+- **Virksomt:** **delvist.** Ingen direkte prompt-læser; én indirekte, betinget vej
+  gennem valens → selvtilstand → indre liv.
 
 Konsekvensen er ikke kosmetisk: de tal vi har arbejdet med hele dagen — `evaluated`,
 `withheld`, `blokeret`, kalibreringens 1,00 — kan jeg se i en visning, men de indgår

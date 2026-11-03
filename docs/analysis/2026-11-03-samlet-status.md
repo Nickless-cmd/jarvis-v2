@@ -391,8 +391,9 @@ total» som om det var en travl kø.
    dage. Intet forslag er behandlet.»* Og en ikke-fuld kø viser også den ældstes
    alder, fordi alderen er det der afslører om køen behandles eller bare fyldes.
 
-**Ikke løst:** der er stadig ingen forbruger. Rettelsen standser kun
-produktionen og gør tilstanden synlig — den behandler ikke de 300.
+**Ikke løst (på dette tidspunkt):** der var stadig ingen forbruger. Rettelsen
+standsede kun produktionen og gjorde tilstanden synlig. **Forbrugeren blev bygget
+senere samme aften — se «fase C3» nederst.**
 
 ### Teste
 
@@ -461,7 +462,8 @@ Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch sket
 
 ### Stadig åbent efter fase D
 
-- **A5** — tærsklen. Røres ikke før shadow-data findes.
+- **A5** — tærsklen. Røres ikke før shadow-data findes. **Men blokeringen er ikke
+  tålmodighed — den er strukturel. Se «A5's kæde er brudt» nedenfor.**
 - **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
   fra producent til prompt for nogen værdi.
 - **C1** — niveau 2 (virksomt) er stadig umålt.
@@ -610,3 +612,67 @@ de passerer 14 dage.
 batteri. Fixturen til kø-gaten stubbede `_grundlag_findes`, fordi de gamle
 test-poster ingen seeds har — uden stubben målte testen forbrugeren i stedet for
 gaten.
+
+---
+
+## Målt 3/11-2026 kl. 19:35 — A5's kæde er brudt, ikke blot ventende
+
+Dokumentet har hidtil sagt at A5 «venter på shadow-data». Målingen viser noget
+andet: **der kommer ingen shadow-data, fordi der ikke kører autonome runs.**
+
+### Kæden, som den faktisk ser ud
+
+```
+tick-dispatch  →  ???  →  autonomt run  →  preflight_gut_gate  →  shadow-data  →  A5
+     ✅ virker              ❌ ingen            ❌ nul kald
+```
+
+`preflight_gut_gate` kaldes **kun** fra `preflight_allows()`, og den kaldes kun
+fra to steder: `autonomous_stream_run.py:97` og `visible_autonomous_run.py:276`.
+Det er autonome run-startere — ikke tick-dispatchen.
+
+### Hvad der er målt
+
+| Måling | Resultat |
+|---|---|
+| `central_gut_consumer_mode` | `"shadow"` (sat 17:51) |
+| `gate_verdict_counts`: `gut_gate` | 558 tællinger, **sidst 16:33:43**, `last_reason` = `mode=on conf=0.610` |
+| `gut_gate_shadow` | **findes ikke** i tabellen |
+| `gut_gate_withheld` | **findes ikke** i tabellen |
+| `visible_runs` siden 17:00 | 14 runs — **alle** `lane=primary`, `capability_id=None` |
+| `build_gut_surface()` | `evaluated=4301`, `withheld=0`, `backstop_overkoersler=0`, uændret siden 16:34 |
+
+De 14 runs er **mine egne synlige ture** i samtalen, ikke autonome runs. Ingen af
+dem går gennem gaten — hvilket er korrekt, for gaten er kun for autonome runs.
+
+### Konsekvensen for A5
+
+A5 kan **ikke** besvares ved at vente. Der er tre mulige årsager, og de skal
+skelnes før nogen tærskel røres:
+
+1. **Ingen autonom run-starter fyrer.** `wakeup_dispatcher`,
+   `inbox_idle_waker`, `routine_dispatch` og `autonomous_side_task_dispatcher`
+   er de fire veje ind. Ingen af dem har startet et run siden 16:33.
+2. **Starterne fyrer, men fejler før `preflight_allows`.** Så ville der være spor
+   i `visible_runs` — der er ingen med en anden lane.
+3. **Gaten kaldes, men fejler stille.** `preflight_allows` er fail-open: en
+   `ImportError` eller exception giver `True` uden at tælle. Det ville se ud som
+   om gaten aldrig blev kaldt. **Denne er ikke udelukket.**
+
+Årsag 1 og 3 ser identiske ud i data. Forskellen er om der kommer en
+`gut_gate`-tælling når et autonomt run først starter — og det er endnu ikke set.
+
+### Hvad der ellers stadig står åbent
+
+- **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Målbar nu;
+  ingen værdi er fulgt fra producent til prompt.
+- **C1** — niveau 2 (virksomt). Målbar nu.
+- **C2's overlap** — 0 af 9 rækker matcher registeret. Korrekt wiring, nul
+  praktisk effekt indtil noget registrerer samme erindring i begge systemer.
+- **C3's udøver** — køen er ryddet (300 → 2) og produktionen standser nu ved fuld
+  kø, men *hvem udfører* et research-forslag findes stadig ikke. Forbrugeren
+  behandler køen; den udfører ikke arbejdet.
+- **Kalibreringens 0,998** — `4292/4301 correct` er målt mens hunch altid var
+  `proceed`. Tallet måler run-succesraten, ikke om maven havde ret. Det bliver
+  først meningsfuldt når `caution` faktisk forekommer i drift — hvilket kræver
+  samme kæde som A5.

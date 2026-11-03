@@ -533,15 +533,18 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `_file_proposal` | `(*, proposal_type, title, details, rationale)` | Record a work proposal for later execution/approval. | [src](../../../core/services/autonomous_work_daemon.py#L131) |
 | function | `_maybe_propose_memory_consolidate` | `()` | Propose a daily memory consolidation when ~end of day locally. | [src](../../../core/services/autonomous_work_daemon.py#L169) |
 | function | `_maybe_nudge_incubator` | `()` | If incubator is sparse, nudge creative_instinct to generate. | [src](../../../core/services/autonomous_work_daemon.py#L189) |
-| function | `_maybe_propose_research` | `()` | Pick one maturing incubator seed and propose a research topic for it. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
-| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L231) |
-| function | `_pending_count` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L253) |
-| function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L257) |
-| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L297) |
-| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L304) |
-| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L320) |
-| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L339) |
-| function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L377) |
+| function | `_maybe_propose_research` | `()` | Vælg ét maturing seed der IKKE allerede har et ventende forslag. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
+| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L251) |
+| function | `_pending_count` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L273) |
+| function | `_forslag_noegle` | `(entry)` | Stabil identitet for et forslag. To forslag med samme nøgle er dubletter. | [src](../../../core/services/autonomous_work_daemon.py#L297) |
+| function | `_grundlag_findes` | `(entry)` | Lever forslagets grundlag stadig? Returnerer (ok, begrundelse). | [src](../../../core/services/autonomous_work_daemon.py#L315) |
+| function | `consume_proposals` | `(*, max_age_days=…)` | Behandl køen: luk det døde med begrundelse, bevar det levende. | [src](../../../core/services/autonomous_work_daemon.py#L369) |
+| function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L455) |
+| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L502) |
+| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L509) |
+| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L525) |
+| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L552) |
+| function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L600) |
 
 ## `core/services/autonomy_budget.py`
 _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._

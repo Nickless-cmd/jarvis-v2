@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9613/17962 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9616/17965 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9613/17962 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 863 | 1571 | 54% |
-| `core.services` | 6414 | 12215 | 52% |
+| `core.services` | 6417 | 12218 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -869,9 +869,9 @@ Generated from source. 9613/17962 functions/methods documented (53%). The list b
 - `core/services/autonomous_run_failures.py` :: `mark_retried` (L141)
 - `core/services/autonomous_run_failures.py` :: `pending_retries` (L137)
 - `core/services/autonomous_sessions.py` :: `normalize_origin` (L38)
-- `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_prompt_section` (L377)
-- `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_surface` (L320)
-- `core/services/autonomous_work_daemon.py` :: `list_proposals` (L297)
+- `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_prompt_section` (L600)
+- `core/services/autonomous_work_daemon.py` :: `build_autonomous_work_surface` (L525)
+- `core/services/autonomous_work_daemon.py` :: `list_proposals` (L502)
 - `core/services/autonomy_budget.py` :: `build_autonomy_budget_surface` (L190)
 - `core/services/autonomy_budget.py` :: `daily_budget` (L58)
 - `core/services/autonomy_budget.py` :: `remaining` (L86)

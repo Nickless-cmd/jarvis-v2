@@ -211,18 +211,38 @@ def _maybe_nudge_incubator() -> str | None:
 
 
 def _maybe_propose_research() -> str | None:
-    """Pick one maturing incubator seed and propose a research topic for it."""
+    """Vælg ét maturing seed der IKKE allerede har et ventende forslag.
+
+    ⚠️ RETTET 3/11-2026. Før: `list_seeds(status="maturing")[:1]` — altid det
+    første element i en usorteret liste. Målt: 294 identiske forslag om
+    `seed-616b2bc12b` over seks dage, mens de 11 andre maturing seeds aldrig
+    blev foreslået. Planneren var ikke «ivrig», den var fastlåst.
+    """
     try:
         from core.services.creative_instinct_daemon import list_seeds
-        maturing = [s for s in list_seeds(status="maturing")][:1]
+        maturing = list(list_seeds(status="maturing"))
     except Exception:
         return None
     if not maturing:
         return None
-    seed = maturing[0]
+
+    # Hvilke seeds har allerede et ventende forslag? Dem springer vi over —
+    # ellers får det samme seed et nyt forslag hvert tick.
+    optagede = {
+        str((e.get("details") or {}).get("seed_id"))
+        for e in _load()
+        if e.get("status") == "pending" and e.get("type") == "research"
+    }
+    ledige = [s for s in maturing if str(s.get("seed_id")) not in optagede]
+    if not ledige:
+        # Alle maturing seeds har et ventende forslag. Det er IKKE et signal om
+        # at producere et mere — det er køen der venter på behandling.
+        return None
+
+    seed = ledige[0]
     return _file_proposal(
         proposal_type="research",
-        title=f"Research for seed: {seed.get('spark', '')[:80]}",
+        title=f"Research for seed: {str(seed.get('spark', ''))[:80]}",
         details={"seed_id": seed.get("seed_id"), "spark": seed.get("spark")},
         rationale="Maturing seed would benefit from external research.",
     )
@@ -254,6 +274,184 @@ def _pending_count() -> int:
     return sum(1 for e in _load() if e.get("status") == "pending")
 
 
+# --- Forbruger (C3, 3/11-2026) ---------------------------------------------
+#
+# Målt før denne blev bygget: 300 poster, ALLE `pending`. 294 af dem var det
+# SAMME forslag om det SAMME seed — `_maybe_propose_research` tog
+# `list_seeds(status="maturing")[:1]`, altså altid det første element i en
+# usorteret liste, og filede et nyt identisk forslag hvert 15. minut i seks
+# dage. De 11 andre maturing seeds blev aldrig foreslået.
+#
+# Forbrugeren gør tre ting, og kun det den kan gøre ærligt:
+#   1. DEDUPLIKERER — én repræsentant per (type, nøgle), resten lukkes som
+#      `rejected` med en note der peger på repræsentanten.
+#   2. VERIFICERER GRUNDLAGET — findes seed'et? er datoen passeret? blev
+#      handlingen allerede udført ved oprettelsen? Et forslag hvis grundlag er
+#      væk lukkes som `rejected` med den faktiske grund.
+#   3. BEVARER det levende — men nu som ÉT synligt forslag i stedet for 294.
+#
+# Den UDFØRER ikke netværksarbejde (research) automatisk. Et research-forslag er
+# en beslutning om hvad der er værd at undersøge, ikke en rutine — og et
+# automatisk web_search ville være en ekstern handling ingen har set.
+
+def _forslag_noegle(entry: dict[str, Any]) -> str:
+    """Stabil identitet for et forslag. To forslag med samme nøgle er dubletter.
+
+    Nøglen er (type, grundlag) — ikke titlen, som kan variere i længde for det
+    samme seed. `details` bærer grundlaget: `seed_id` for research, `date` for
+    memory_consolidate.
+    """
+    typ = str(entry.get("type") or "")
+    details = entry.get("details") or {}
+    if not isinstance(details, dict):
+        details = {}
+    if typ == "research":
+        return f"research|{details.get('seed_id') or entry.get('title') or ''}"
+    if typ == "memory_consolidate":
+        return f"memory_consolidate|{details.get('date') or ''}"
+    return f"{typ}|{entry.get('title') or ''}"
+
+
+def _grundlag_findes(entry: dict[str, Any]) -> tuple[bool, str]:
+    """Lever forslagets grundlag stadig? Returnerer (ok, begrundelse).
+
+    `ok=False` betyder at forslaget beskriver noget der ikke længere er sandt —
+    og så skal det lukkes, ikke blive liggende som om det venter på noget.
+    """
+    typ = str(entry.get("type") or "")
+    details = entry.get("details") or {}
+    if not isinstance(details, dict):
+        details = {}
+
+    if typ == "research":
+        seed_id = details.get("seed_id")
+        if not seed_id:
+            return False, "forslaget bærer intet seed_id"
+        try:
+            from core.services.creative_instinct_daemon import list_seeds
+            seed = next((s for s in list_seeds() if s.get("seed_id") == seed_id), None)
+        except Exception as exc:  # butikken kan ikke læses: grundlaget er UBEKRÆFTET, ikke dødt — en manglende måling må ikke ligne en afvisning
+            return True, f"seed-opslag fejlede ({type(exc).__name__}), grundlag uafklaret"
+        if seed is None:
+            return False, f"seed {seed_id} findes ikke længere"
+        status = str(seed.get("status") or "")
+        if status == "withered":
+            return False, f"seed {seed_id} er withered"
+        if status == "adopted":
+            return False, f"seed {seed_id} er allerede adopted"
+        return True, f"seed {seed_id} er {status}"
+
+    if typ == "memory_consolidate":
+        dato = str(details.get("date") or "")
+        if not dato:
+            return False, "forslaget bærer ingen dato"
+        try:
+            from datetime import date as _date
+            d = _date.fromisoformat(dato)
+        except Exception:  # utolkbar dato: behandl som aktuel — en dårlig gætning må ikke lukke et forslag
+            return True, f"datoen '{dato}' kunne ikke tolkes"
+        # En konsolidering for en dag der er passeret med mere end et døgn er
+        # forældet: noterne for den dag er ikke længere «i dag».
+        alder = (datetime.now(UTC).date() - d).days
+        if alder > 1:
+            return False, f"dagen {dato} ligger {alder} dage tilbage"
+        return True, f"dagen {dato} er aktuel"
+
+    if typ == "incubator_seed":
+        # Handlingen blev udført i `_maybe_nudge_incubator` FØR forslaget blev
+        # fil'et — `ci_tick` kaldes på linjen ovenover. Forslaget er derfor en
+        # KVITTERING, ikke ventende arbejde, og `pending` var en løgn.
+        return False, "handlingen blev udført ved oprettelsen (ci_tick)"
+
+    return True, "typen har intet automatisk grundlagstjek"
+
+
+def consume_proposals(*, max_age_days: int = 14) -> dict[str, Any]:
+    """Behandl køen: luk det døde med begrundelse, bevar det levende.
+
+    Kaldes fra `tick()` FØR produktions-gaten, så køen ikke kan stå fast.
+    Kaster ALDRIG — en fejl i bookkeeping må ikke standse hjerteslaget.
+    """
+    try:
+        items = _load()
+        pending = [e for e in items if e.get("status") == "pending"]
+        if not pending:
+            return {"closed": 0, "kept": 0, "duplicates": 0}
+
+        nu = datetime.now(UTC)
+        grupper: dict[str, list[dict[str, Any]]] = {}
+        for e in pending:
+            grupper.setdefault(_forslag_noegle(e), []).append(e)
+
+        lukket = 0
+        dubletter = 0
+        bevaret = 0
+        grunde: dict[str, int] = {}
+
+        for noegle, gruppe in grupper.items():
+            gruppe.sort(key=lambda e: str(e.get("at") or ""))
+            rep = gruppe[0]
+
+            # 1. Dubletter — alt efter den ældste i gruppen.
+            for dup in gruppe[1:]:
+                dup["status"] = "rejected"
+                dup["resolved_at"] = nu.isoformat()
+                dup["resolution_note"] = (
+                    f"dublet af {rep.get('proposal_id')} — samme forslag fil'et "
+                    f"{len(gruppe)} gange"
+                )
+                lukket += 1
+                dubletter += 1
+                grunde["dublet"] = grunde.get("dublet", 0) + 1
+
+            # 2. Grundlaget for repræsentanten.
+            ok, grund = _grundlag_findes(rep)
+            if not ok:
+                rep["status"] = "rejected"
+                rep["resolved_at"] = nu.isoformat()
+                rep["resolution_note"] = grund
+                lukket += 1
+                grunde[grund[:40]] = grunde.get(grund[:40], 0) + 1
+                continue
+
+            # 3. Alder — et forslag der har ventet for længe er ikke længere
+            #    det samme spørgsmål. Luk det med alderen som grund.
+            try:
+                alder_dage = (nu - datetime.fromisoformat(
+                    str(rep.get("at") or "").replace("Z", "+00:00")
+                )).days
+            except Exception:  # utolkbart tidsstempel: alder 0 betyder «behold», den sikre side
+                alder_dage = 0
+            if alder_dage > max_age_days:
+                rep["status"] = "rejected"
+                rep["resolved_at"] = nu.isoformat()
+                rep["resolution_note"] = (
+                    f"forældet: ventede {alder_dage} dage (grænse {max_age_days}); "
+                    f"grundlaget var '{grund}'"
+                )
+                lukket += 1
+                grunde["forældet"] = grunde.get("forældet", 0) + 1
+                continue
+
+            bevaret += 1
+
+        if lukket:
+            _save(items)
+            logger.info(
+                "autonomous_work: forbruger lukkede %d forslag (%d dubletter), beholdt %d",
+                lukket, dubletter, bevaret,
+            )
+        return {
+            "closed": lukket,
+            "kept": bevaret,
+            "duplicates": dubletter,
+            "reasons": grunde,
+        }
+    except Exception as exc:
+        logger.warning("autonomous_work: consume failed: %s", exc)
+        return {"closed": 0, "kept": 0, "duplicates": 0, "error": str(exc)[:200]}
+
+
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
     """Plan work proposals during low activity.
 
@@ -274,8 +472,13 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     low, reason = _is_low_activity()
     if not low:
         return {"skipped": True, "reason": reason}
+
+    # C3-forbrugeren kører FØR produktions-gaten: ellers kan køen aldrig
+    # tømmes, og daemonen ville stå fast for evigt på «queue-full-unconsumed».
+    forbrug = consume_proposals()
+
     if _proposals_last_hour() >= _MAX_PROPOSALS_PER_HOUR:
-        return {"skipped": True, "reason": "rate-limited"}
+        return {"skipped": True, "reason": "rate-limited", "consumed": forbrug}
 
     ventende = _pending_count()
     if ventende >= _LOG_MAX:
@@ -283,6 +486,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
             "skipped": True,
             "reason": "queue-full-unconsumed",
             "pending": ventende,
+            "consumed": forbrug,
         }
 
     created = _plan_once()
@@ -291,6 +495,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
         "activity_reason": reason,
         "proposals_created": len(created),
         "proposal_ids": created,
+        "consumed": forbrug,
     }
 
 
@@ -320,13 +525,21 @@ def resolve_proposal(proposal_id: str, *, outcome: str, note: str = "") -> bool:
 def build_autonomous_work_surface() -> dict[str, Any]:
     items = _load()
     pending = [e for e in items if e.get("status") == "pending"]
+    rejected = [e for e in items if e.get("status") == "rejected"]
+    completed = [e for e in items if e.get("status") == "completed"]
     by_type: dict[str, int] = {}
     for e in pending:
         t = str(e.get("type") or "")
         by_type[t] = by_type.get(t, 0) + 1
+    # Unikke forslag vs. dubletter — køen kan se stor ud uden at indeholde
+    # mange forskellige spørgsmål.
+    unikke = len({_forslag_noegle(e) for e in pending})
     return {
         "active": len(items) > 0,
         "pending_count": len(pending),
+        "pending_unique": unikke,
+        "rejected_count": len(rejected),
+        "completed_count": len(completed),
         "total_proposals": len(items),
         "by_type_pending": by_type,
         "allowed_types": list(_ALLOWED_TYPES),
@@ -342,10 +555,10 @@ def _surface_summary(pending: list[dict[str, Any]], all_items: list[dict[str, An
     3/11-2026: fladen skrev «300 afventende forslag af 300 total» som om det var
     en travl kø. Maalt var det en log der var loebet fuld: alle 300 `pending`,
     aeldste 28/10, og `_save` trimmede de aeldste vaek ved rotation saa de ikke
-    blev afvist — de blev kasseret uden spor. `resolve_proposal` findes, men
-    kaldes kun manuelt, saa der er ingen forbruger.
+    blev afvist — de blev kasseret uden spor.
 
-    Nu siger den det hoejt i stedet for at se sund ud.
+    Nu findes der en forbruger (`consume_proposals`), og fladen siger baade hvor
+    mange der venter, hvor mange UNIKKE de er, og hvad forbrugeren har lukket.
     """
     if not all_items:
         return "Ingen autonomous-work forslag endnu"
@@ -361,17 +574,27 @@ def _surface_summary(pending: list[dict[str, Any]], all_items: list[dict[str, An
         except Exception:  # utolkbart tidsstempel — alderen er en berigelse, ikke et krav
             aeldste_dage = None
 
+    lukket = sum(
+        1 for e in all_items
+        if e.get("status") in ("rejected", "completed", "approved")
+    )
+    unikke = len({_forslag_noegle(e) for e in pending})
+
     if pending and len(pending) >= _LOG_MAX:
         alder = f", ældste {aeldste_dage} dage" if aeldste_dage is not None else ""
         return (
-            f"Køen er FULD og uforbrugt: {len(pending)} afventende{ alder }. "
-            "Intet forslag er behandlet — produktionen er standset indtil nogen "
-            "resolve'er dem."
+            f"Køen er FULD: {len(pending)} afventende ({unikke} unikke){alder}. "
+            f"{lukket} er behandlet. Forbrugeren kører ved hvert tick — bliver den "
+            "ved med at stå fuld, kan den ikke afgøre grundlaget for forslagene."
         )
     if pending:
         alder = f", ældste {aeldste_dage} dage" if aeldste_dage is not None else ""
-        return f"{len(pending)} afventende forslag af {len(all_items)} total{alder}"
-    return f"0 afventende ({len(all_items)} behandlet)"
+        dup = f" ({len(pending) - unikke} er dubletter)" if len(pending) > unikke else ""
+        return (
+            f"{len(pending)} afventende, {unikke} unikke{dup}{alder}. "
+            f"{lukket} behandlet."
+        )
+    return f"0 afventende — {lukket} forslag behandlet"
 
 
 def build_autonomous_work_prompt_section() -> str | None:

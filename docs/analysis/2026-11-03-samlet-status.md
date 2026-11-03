@@ -466,7 +466,8 @@ Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch sket
   fra producent til prompt for nogen værdi.
 - **C1** — niveau 2 (virksomt) er stadig umålt.
 - **C3's forbruger** — de 300 forslag er stadig ubehandlede; produktionen er
-  standset og køen gjort synlig, intet mere.
+  standset og køen gjort synlig, intet mere. → **LUKKET 3/11 kl. 19:28.** Se
+  «C3-forbrugeren» nedenfor.
 - **C2's overlap** — 0 af 9 rækker matcher registeret; korrekt wiring, ingen
   praktisk effekt endnu.
 
@@ -537,3 +538,75 @@ og `_on_started` regnede en ny. Testen var kun grøn fordi begge sider tilfældi
 testen faktisk beviser at slotten bruges.
 
 **Tests:** 54 i gut-suiten (54 → 54, én rettet), 17 nye i `test_task_tool_mapping.py`.
+
+---
+
+## Lukket 3/11-2026 (aften, fase C3) — forbrugeren til de autonome forslag
+
+### Det jeg troede, og det der faktisk stod
+
+Jeg havde skrevet at der lå «300 forslag uden forbruger». Det var sandt, men det
+skjulte den vigtigste detalje. **Målt før forbrugeren blev bygget: de 300 poster
+var 7 unikke forslag.** 294 af dem var det SAMME research-forslag om
+`seed-616b2bc12b`, fil'et hvert 15. minut i seks dage.
+
+Årsagen var ikke iver. `_maybe_propose_research` tog
+`list_seeds(status="maturing")[:1]` — **altid det første element i en usorteret
+liste**. Der var 12 maturing seeds; de 11 andre blev aldrig foreslået. Planneren
+var fastlåst, og loggen skjulte det ved at se travl ud.
+
+Så der var to fejl, ikke én: ingen forbruger, og ingen deduplikering.
+
+### Forbrugeren (`consume_proposals`)
+
+Kaldes fra `tick()` **før** produktions-gaten — ellers kan en fuld kø af dubletter
+låse daemonen fast for evigt. Den gør tre ting, og kun det den kan gøre ærligt:
+
+1. **Deduplikere** — én repræsentant per `(type, grundlag)`, resten lukkes som
+   `rejected` med en note der peger på repræsentanten.
+2. **Verificere grundlaget** — findes seed'et? er det `withered`/`adopted`? ligger
+   konsolideringsdagen mere end et døgn tilbage? blev handlingen allerede udført?
+3. **Bevare det levende** — men nu som ÉT synligt forslag i stedet for 294.
+
+Et grundlag der **ikke kan måles** (seed-butikken kaster) lukker ikke forslaget:
+en manglende måling må ikke ligne en afvisning.
+
+### `incubator_seed` var en løgn
+
+`_maybe_nudge_incubator` kalder `ci_tick` på linjen **ovenover** `_file_proposal`.
+Handlingen var altså udført *før* posten blev skrevet — `pending` var forkert fra
+fødslen. Forbrugeren lukker dem som afvist med grunden «handlingen blev udført ved
+oprettelsen».
+
+### Målt på den levende log
+
+| | Før | Efter |
+|---|---|---|
+| Poster | 300 | 300 |
+| `pending` | 300 | **2** |
+| Unikke | 7 | 2 |
+| Lukket med begrundelse | 0 | **298** (293 dubletter + 5 forældede dags-konsolideringer) |
+
+De to overlevende er ét research-forslag om et seed der stadig er `maturing`, og
+ét `memory_consolidate` for i går. Fladen siger nu: *«2 afventende, 2 unikke,
+ældste 6 dage. 298 behandlet.»* Backup af den oprindelige fil ligger ved siden af
+(`autonomous_work_log.json.bak-20261103-1928`).
+
+### Planneren blev frigjort
+
+`_maybe_propose_research` vælger nu et maturing seed **uden** et ventende forslag.
+Har alle 12 et forslag, svarer den `None` — det er ikke et signal om at producere
+et mere, det er køen der venter på behandling.
+
+### Den ærlige grænse
+
+Forbrugeren **udfører ikke** netværksarbejde. Et `research`-forslag er en
+beslutning om hvad der er værd at undersøge, ikke en rutine — et automatisk
+`web_search` ville være en ekstern handling ingen har set. De to overlevende
+forslag bliver derfor stående, nu synlige i prompten, og lukkes som forældede hvis
+de passerer 14 dage.
+
+**Tests:** 17 i `test_autonomous_work_daemon.py` (4 → 17), 114 i det berørte
+batteri. Fixturen til kø-gaten stubbede `_grundlag_findes`, fordi de gamle
+test-poster ingen seeds har — uden stubben målte testen forbrugeren i stedet for
+gaten.

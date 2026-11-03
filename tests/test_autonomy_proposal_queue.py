@@ -315,22 +315,77 @@ def test_en_skrivning_der_ikke_landede_er_ikke_en_succes(tmp_path):
     assert res["status"] == "error"
     assert "readback" in res["error"]
     assert res["readback_match"] is False
+    # RESTTILSTAND (3/11-2026): et mismatch betyder at `write_text` LYKKEDES —
+    # det er kun indholdet der er forkert. Resultatet skal sige det hoejt, saa
+    # et nyt forsoeg undersoeger disken i stedet for at antage at intet skete.
+    # Det kan ikke ses paa `status` alene, for «stale» giver samme status uden
+    # at have roert filen.
+    assert res["disk_touched"] is True
+    assert "ER skrevet" in res["error"]
 
 
-def test_et_mismatch_naar_aldrig_commit_grenen():
-    """«executed» er den ENESTE status der fører til auto-commit.
+def _koer_godkendelse(monkeypatch, *, executor_svar):
+    """Kør `approve_proposal` HELT igennem med en source-edit-executor.
 
-    Bekræfter koblingen: fejl-grenen i `approve_proposal` fanger «error», og
-    commit-betingelsen kræver præcis «executed».
+    Returnerer (resultat, commit_kaldt, resolved_status). Bruges af begge
+    retnings-tests nedenfor, saa den ene ikke kan bestaa ved at commit aldrig
+    kaldes for noget som helst.
     """
     from core.services import autonomy_proposal_queue as apq
 
-    kilde = apq.approve_proposal.__doc__ or ""
-    # Status-grenen: fejlstatusser må ikke være «executed».
-    assert "error" not in ("executed",)
-    # Commit-betingelsen læser status fra resultatet — ikke fra et flag.
-    import inspect
+    commit_kald: list[tuple] = []
+    resolved: list[dict] = []
 
-    tekst = inspect.getsource(apq.approve_proposal)
-    assert 'result.get("status") == "executed"' in tekst
-    assert '"error", "stale", "failed"' in tekst
+    monkeypatch.setattr(apq, "get_autonomy_proposal", lambda pid: {
+        "proposal_id": pid,
+        "kind": "source-edit",
+        "status": "pending",
+        "payload": {"target_path": "/tmp/x.py", "relative_path": "x.py"},
+    })
+    monkeypatch.setattr(
+        apq, "resolve_autonomy_proposal",
+        lambda pid, **kw: resolved.append({"status": kw.get("status")}) or {"proposal_id": pid},
+    )
+    monkeypatch.setitem(apq._PROPOSAL_EXECUTORS, "source-edit", lambda payload: executor_svar)
+    monkeypatch.setattr(
+        apq, "_auto_commit_after_source_edit",
+        lambda proposal, result: commit_kald.append((proposal, result)),
+    )
+
+    out = apq.approve_proposal("prop-1")
+    return out, commit_kald, resolved[-1]["status"] if resolved else None
+
+
+def test_et_mismatch_naar_aldrig_commit_grenen(monkeypatch):
+    """En readback der ikke matcher maa ikke blive en commit.
+
+    3/11-2026: den foerste udgave af denne test var en grep i kildekoden —
+    `inspect.getsource` plus `assert "error" not in ("executed",)`, som er en
+    tautologi mellem to konstanter testen selv skrev. Den kunde ALDRIG fejle,
+    uanset hvad koden gjorde. Maalt af GPT: den udfoerte ikke engang
+    `approve_proposal`. Her kaldes hele kaeden, og commit-funktionen er en spy.
+    """
+    out, commit_kald, status = _koer_godkendelse(
+        monkeypatch,
+        executor_svar={"status": "error", "readback_match": False, "error": "readback mismatch"},
+    )
+
+    assert out["status"] == "failed", out
+    assert status == "failed"
+    assert commit_kald == [], f"en ikke-landet skrivning blev committet: {commit_kald}"
+
+
+def test_en_landet_skrivning_naar_commit_grenen(monkeypatch):
+    """Positiv kontrol: uden den beviser testen ovenfor intet.
+
+    En «executed» fra executoren SKAL naa commit-grenen. Ellers kunne den
+    negative test bestaa af den forkerte grund — at commit aldrig kaldes.
+    """
+    out, commit_kald, status = _koer_godkendelse(
+        monkeypatch,
+        executor_svar={"status": "executed", "readback_match": True},
+    )
+
+    assert out["status"] == "executed", out
+    assert status == "executed"
+    assert len(commit_kald) == 1, "en landet skrivning naaede ikke commit-grenen"

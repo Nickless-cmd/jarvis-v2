@@ -1623,3 +1623,62 @@ filtreret væk, er ikke en mekanisme — den er et lotteri.
 `prop-c7b06817e44d4fee` er afvist (målt: `status=rejected`, `resolved_by=bjorn`).
 Det var en falsk positiv: undtagelsen er fail-closed (`return True` = «forældet»), og
 godkendelsesvejen har sin egen fingeraftrykskontrol i `_execute_source_edit_proposal`.
+
+
+---
+
+## Målt 3/11-2026 kl. 21:3x — den falske test, og resttilstanden
+
+### Testen der så ud som en integrationstest
+
+Jeg skrev i aften `test_et_mismatch_naar_aldrig_commit_grenen` og kaldte den en vagt
+for hele kæden. **Målt: den var en grep i kildekoden.** Den gjorde dette:
+
+```python
+assert "error" not in ("executed",)          # tautologi mellem to konstanter
+tekst = inspect.getsource(apq.approve_proposal)
+assert 'result.get("status") == "executed"' in tekst
+assert '"error", "stale", "failed"' in tekst
+```
+
+Den kaldte aldrig `approve_proposal`. Den første assertion sammenligner to konstanter
+testen selv skriver og kan **aldrig** fejle. De to andre består så længe strengene står
+i filen — også hvis nogen ændrede betingelsen så `error` OGSÅ blev committet.
+
+Det er samme fejlklasse som aftenen igennem er blevet fanget: **en kontrol der ser ud
+som en måling af adfærd, men måler tekst.** Og den er værre end de øvrige, fordi jeg
+selv skrev den *som* rettelsen af netop den fejltype.
+
+**Rettet.** Testen kalder nu `approve_proposal` med en rigtig executor i
+`_PROPOSAL_EXECUTORS` og `_auto_commit_after_source_edit` som spy. Plus dens
+nødvendige tvilling: `test_en_landet_skrivning_naar_commit_grenen`, der kræver at en
+`executed` FAKTISK når commit-grenen. Uden den positive kontrol kunne den negative
+bestå af den forkerte grund — at commit aldrig kaldes for noget som helst.
+
+**Mutationstestet i begge retninger (målt):**
+
+| Mutation | Test der fangede den |
+|---|---|
+| `"error"` fjernet fra fejl-grenen | `test_et_mismatch_naar_aldrig_commit_grenen` **+** `test_executorens_ERROR_svar_meldes_IKKE_som_success` |
+| commit-betingelsen gjort uopnåelig (`if False:`) | `test_en_landet_skrivning_naar_commit_grenen` |
+
+13 grønne i filen.
+
+### Resttilstanden: «error» betyder ikke «disken er uændret»
+
+GPT's anden indvending: ved et readback-mismatch er `write_text` **lykkedes**. Filen er
+skrevet — det er kun indholdet der ikke er det forventede. Så `error` betyder her noget
+andet end `stale`, hvor intet blev rørt.
+
+**Målt før rettelsen:** begge grene returnerede `status="error"`, og kunne derfor ikke
+skelnes af et efterfølgende forsøg.
+
+**Rettet:** mismatch-grenen bærer nu `disk_touched: True` og en fejltekst der siger at
+filen ER skrevet og skal undersøges før et nyt forsøg. Mutationstestet: fjernes feltet,
+fejler `test_en_skrivning_der_ikke_landede_er_ikke_en_succes`.
+
+### Det der stadig ikke er målt
+
+Om et mismatch nogensinde har ramt i drift. Den gamle kode skrev ikke mismatch som
+fejl, så fraværet af historiske rækker er ikke bevis. Og koden er **ikke levende** —
+den kræver en genstart, og den er ikke booket i denne runde.

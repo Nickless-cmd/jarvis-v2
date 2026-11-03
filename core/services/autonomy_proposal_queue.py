@@ -455,13 +455,21 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     # der ikke afgoer udfaldet. Status er derfor «error», saa fejl-grenen i
     # `approve_proposal` rammer og commit-stien aldrig naas.
     if not readback_match:
+        # RESTTILSTAND (3/11-2026): «error» betyder IKKE «disken er uændret».
+        # `write_text` lykkedes — det er readback'en der viser at indholdet ikke
+        # er det forventede (fx en anden skrev samtidig, eller et filter skrev
+        # noget andet). Filen ER altsaa roert. Det skal staa eksplicit, saa et
+        # efterfoelgende forsoeg undersoeger disken frem for at antage at intet
+        # skete — og saa det kan skelnes fra «stale», hvor intet blev skrevet.
         return {
             "status": "error",
             "error": (
-                "readback mismatch: disk bærer ikke det skrevne indhold "
+                "readback mismatch: filen ER skrevet, men disken baerer ikke det "
+                f"skrevne indhold — undersoeg filen foer et nyt forsoeg "
                 f"(wanted={new_fingerprint} got={readback_fingerprint})"
             ),
             "target_path": target_path,
+            "disk_touched": True,
             "new_fingerprint": new_fingerprint,
             "readback_fingerprint": readback_fingerprint,
             "readback_match": False,

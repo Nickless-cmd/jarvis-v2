@@ -411,8 +411,12 @@ _BASE_THRESHOLDS: dict[str, dict[str, float]] = {
 # enhver intensitet under 0,98. Syv overrides fordelt over fire måneder er
 # ikke bevis for at værktøjet aldrig skal gates igen — det er en bivirkning
 # af at lægge et fast beløb oven på en fast basis. Stigningen er nu aftagende
-# og nærmer sig `_OVERRIDE_CEILING` asymptotisk, så intet par bliver blindt.
-# Første override giver stadig +0,05, og tre giver stadig +0,10.
+# og nærmer sig `_OVERRIDE_CEILING` asymptotisk.
+# Første override giver stadig +0,05; tredje giver +0,10 hvor den før gav +0,15.
+# En 0,75-basis kan derfor højst nå 0,9494. En basis på 0,95 eller derover
+# rammer stadig loftet ved FØRSTE override (0,95+0,05 = 1,00 → 0,98) — kurven
+# dækker de baser der findes (alle i drift står på 0,75), ikke en hypotetisk
+# høj basis.
 _OVERRIDE_BUMP = 0.05
 _OVERRIDE_CEILING = 0.20
 _OVERRIDE_HALF = 3.0

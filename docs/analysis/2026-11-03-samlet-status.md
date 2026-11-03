@@ -1063,10 +1063,11 @@ beslutning nogen havde taget; det var bivirkningen af at lægge et fast beløb (
 en fast basis (0,75) og clampе til 0,98.
 
 **Rettelse:** stigningen er aftagende — `ceiling × n/(n+3)` med ceiling 0,20.
-n=1 → +0,05 (uændret), n=3 → +0,10 (uændret), n=7 → +0,14, n→∞ → +0,20.
-En 0,75-basis kan dermed maksimalt nå **0,95**, aldrig 0,98. En høj basis (fx
-`restart`+`irritation` = 0,95) kan stadig nå loftet — men det er en eksplicit tabel-beslutning,
-ikke akkumulering.
+n=1 → +0,05 (**uændret**), n=2 → +0,08 (var +0,10), n=3 → +0,10 (var +0,15),
+n=7 → +0,14 (var +0,35), n→∞ → +0,20.
+En 0,75-basis kan dermed maksimalt nå **0,9494**, aldrig 0,98. En høj basis (fx
+`restart`+`irritation` = 0,95) rammer loftet **allerede ved første override** (0,95+0,05 = 1,00
+→ clamp 0,98) — men det er en eksplicit tabel-beslutning, ikke akkumulering.
 
 **Punkt 2a blev bevidst IKKE gjort.** Opgaven beder om at tilføje `protectiveness` og
 `r2_5_gate` til `_BASE_THRESHOLDS` «med et domæne der matcher rå intensity (0,69-0,92)».
@@ -1138,7 +1139,9 @@ Genstarten gik igennem: processtart **20:25:31**, commit `4c0b45301` er **20:23:
 |---|---|---|---|---|---|---|---|---|
 | lift | 0,000 | 0,050 | 0,080 | 0,100 | 0,114 | 0,125 | 0,140 | 0,154 |
 
-Bagudkompatibel ved n=1 (+0,05) og n=3 (+0,10) — de eksisterende testkontrakter holder.
+**Kun n=1 er uændret** (+0,050). Ved n=3 ændres lift fra +0,150 til +0,100 — en forskel på
+−0,050, og testen blev derfor opdateret fra forventet tærskel 0,90 til 0,85. Kurven er
+bagudkompatibel ved **første** override, ikke ved tredje.
 
 ### De fire par der var ramt
 
@@ -1153,7 +1156,28 @@ Bagudkompatibel ved n=1 (+0,05) og n=3 (+0,10) — de eksisterende testkontrakte
 
 Målt med simuleret tælling: base 0,75 når **0,9494** ved n=1000 og kan aldrig nå 0,98. Og målt mod de faktiske 37 par med overrides i drift: **ingen har base ≥ 0,90** — alle står på 0,75. Så loftet er ikke længere en praktisk risiko.
 
-**Forbehold, målt:** base 0,95 (`restart`+`irritation`) rammer stadig 0,98 ved fem overrides. Det par har nul overrides i drift, så det er latent, ikke aktuelt. Rettelsen dækker de baser der findes — ikke en hypotetisk høj base.
+**Forbehold, målt:** base 0,95 (`restart`+`irritation`) rammer loftet **ved én** override, ikke fem — 0,95 + 0,05 = 1,00, clampet til 0,98. Det par har nul overrides i drift, så det er latent, ikke aktuelt. Rettelsen dækker de baser der findes — ikke en hypotetisk høj base.
+
+### KORREKTION 5 (3/11, ekstern gennemgang) — to regnefejl i min egen dokumentation
+
+Jeg skrev «bagudkompatibel ved n=1 (+0,05) og n=3 (+0,10)» og «base 0,95 rammer 0,98 ved fem
+overrides». **Begge var forkerte, og begge var beregnelige:**
+
+| påstand | den faktiske beregning |
+|---|---|
+| bagudkompatibel ved n=3 | gammel: 3 × 0,05 = **+0,150**; ny: 0,20 × 3/6 = **+0,100**. Ændring **−0,050** |
+| base 0,95 ved fem overrides | 0,95 + 0,05 = **1,00** ved **n=1** → clamp 0,98 |
+
+Kun **n=1** er uændret (+0,050). At testen blev opdateret fra 0,90 til 0,85 er netop beviset på
+at kontrakten blev brudt ved n=3 — jeg skrev «bagudkompatibel» i samme sætning som jeg beskrev
+en testændring der viste det modsatte.
+
+Hovedresultatet holder: en 0,75-basis når maksimalt **0,9494**, aldrig 0,98. Men den latente
+risiko er skarpere end jeg skrev — en base på 0,95 bliver blind efter **én** override, ikke fem.
+
+**Fejlklassen er den femte i samme familie:** jeg skrev hvad kurven *måtte* give ud fra dens
+form, i stedet for at regne den. Det er samme fejl som «128:1» — en påstand der ser beregnet ud,
+men ikke er det.
 
 ### Honored-dæmpningen virker, men er stadig frosset
 

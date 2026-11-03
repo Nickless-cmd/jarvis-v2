@@ -199,10 +199,15 @@ def test_et_fund_fileres_kun_en_gang(isolated_runtime):
     assert len(forslag) == 1
     q.reject_proposal(forslag[0]["proposal_id"], resolution_note="nej")
 
-    # Fundet er STADIG åbent — koden er ikke rettet. Men anmodningen er afvist,
-    # og en anmodning der er afvist skal ikke gentages.
+    # 3/11-2026: afslaget lukker nu fundet. Før stod det `open` for evigt, så et
+    # nej var usynligt i tilstanden og backlog-tallet voksede uden at nogen kunne
+    # se hvorfor (målt: 75 afviste forslag efterlod deres fund åbne).
+    # Status er `dismissed`, ikke `accepted` — et afslag betyder «ret det ikke».
+    assert not any(r["signature"] == "sig-a"
+                   for r in dbi.list_findings(status="open", min_score=3, limit=10))
     assert any(r["signature"] == "sig-a"
-               for r in dbi.list_findings(status="open", min_score=3, limit=10))
+               for r in dbi.list_findings(status="dismissed", min_score=3, limit=10))
+    # Den oprindelige pointe står uændret: et afvist fund må ikke filéres igen.
     assert ci._file_proposals(max_new=10) == 0
 
 

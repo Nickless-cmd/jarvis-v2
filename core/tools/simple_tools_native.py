@@ -131,11 +131,12 @@ def _exec_wonder_verdict(args: dict[str, Any]) -> dict[str, Any]:
     record_id = str(args.get("record_id") or "").strip()
     verdict = str(args.get("verdict") or "").strip()
     note = str(args.get("note") or "").strip()
+    closed_by = str(args.get("closed_by") or "").strip()
     if not record_id:
         return {"status": "error", "error": "record_id is required"}
     try:
         from core.services.existential_wonder_daemon import set_wonder_verdict
-        res = set_wonder_verdict(record_id, verdict, note=note)
+        res = set_wonder_verdict(record_id, verdict, note=note, closed_by=closed_by)
     except Exception as exc:
         return {"status": "error", "error": str(exc)[:200]}
     if res.get("status") == "ok":

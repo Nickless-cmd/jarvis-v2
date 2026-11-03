@@ -2079,6 +2079,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": "Kort om hvad du kom frem til — isaer ved besvaret/taget-nu",
                     },
+                    "closed_by": {
+                        "type": "string",
+                        "description": (
+                            "Hvem/hvad lukkede undren: 'bjorn' (han svarede), "
+                            "'minde' (et minde flyttede den) eller 'selv' (du "
+                            "lukkede den selv). Paakraevet for alle udfald undtagen "
+                            "vurderet-ikke-delt. Selv-lukning af besvaret/taget-nu "
+                            "kraever desuden en note der peger paa hvad der aendrede sig."
+                        ),
+                    },
                 },
                 "required": ["record_id", "verdict"],
             },

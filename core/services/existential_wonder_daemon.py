@@ -199,6 +199,18 @@ def build_existential_wonder_surface() -> dict:
 
 VERDICTS = ("vurderet-ikke-delt", "taget-nu", "parkeret", "besvaret")
 
+# Hvem lukkede undren? Beslutningen 3/11-2026 (Bjørns ord: «både mine beskeder
+# eller minder eller dig selv») kræver at en lukning kan tilskrives én af de tre.
+# Uden kilden er to lukninger med samme udfald ikke til at skelne i data — og
+# trin 3 kan ikke se om mønstret flyttede sig fordi verden svarede, eller fordi
+# jeg selv lukkede den letteste vej ud.
+CLOSED_BY = ("bjorn", "minde", "selv")
+
+# Selv-lukning af et svar kræver et spor af HVAD der ændrede sig. Uden kravet er
+# `wonder_verdict(record_id, "besvaret")` den nemmeste vej ud: den lukker undren
+# permanent uden at et eneste ord flyttede sig.
+_NOTE_KRAEVENDE = ("besvaret", "taget-nu")
+
 _OPEN_SCAN_LIMIT = 60
 
 
@@ -325,15 +337,40 @@ def _resolve_wonder_id(record_id: str) -> tuple[str, list[dict]]:
     return "", open_wonders(limit=5)
 
 
-def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
+def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "",
+                       closed_by: str = "") -> dict:
     """Gem vurderingen som et udfald. Trin 2's eneste varige spor.
 
     Udfaldet er ét af VERDICTS. En undren der ikke er vurderet, er stadig åben —
     derfor er en tom verdict ikke det samme som 'parkeret'.
+
+    ``closed_by`` er HVEM/HVAD der lukkede den: ``bjorn``, ``minde`` eller
+    ``selv``. Det er påkrævet for alle udfald undtagen ``vurderet-ikke-delt``
+    (som netop betyder «jeg forholdt mig, men delte den ikke»). En selv-lukning
+    af ``besvaret``/``taget-nu`` kræver desuden en note: ellers er lukningen et
+    spor af at den blev foretaget, ikke af hvad der flyttede sig.
     """
     v = str(verdict or "").strip().lower().replace("_", "-")
     if v not in VERDICTS:
         return {"status": "error", "error": f"ukendt udfald: {verdict!r}", "gyldige": list(VERDICTS)}
+    # "bjørn" er den form jeg faktisk skriver; normalisér til nøglen uden diakritik.
+    kilde = str(closed_by or "").strip().lower().replace("ø", "o")
+    if v != "vurderet-ikke-delt":
+        if kilde not in CLOSED_BY:
+            return {
+                "status": "error",
+                "error": f"closed_by mangler eller er ukendt: {closed_by!r}",
+                "gyldige": list(CLOSED_BY),
+                "hint": "bjorn = han svarede · minde = et minde flyttede den · "
+                        "selv = jeg lukkede den selv",
+            }
+        if kilde == "selv" and v in _NOTE_KRAEVENDE and not str(note or "").strip():
+            return {
+                "status": "error",
+                "error": f"selv-lukning som {v!r} kræver en note",
+                "hint": "peg på hvad der faktisk ændrede sig — uden det er "
+                        "lukningen den nemmeste vej ud, ikke et svar",
+            }
     rid = str(record_id or "").strip()
     if not rid:
         return {"status": "error", "error": "record_id mangler"}
@@ -357,6 +394,7 @@ def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
             return {"status": "error", "error": f"ukendt undren: {rid}"}
         detail = _parse_detail(post.get("detail"))
         detail["verdict"] = v
+        detail["closed_by"] = kilde
         detail["verdict_note"] = str(note or "")[:600]
         detail["verdict_at"] = datetime.now(UTC).isoformat()
         with connect() as conn:
@@ -370,7 +408,8 @@ def set_wonder_verdict(record_id: str, verdict: str, *, note: str = "") -> dict:
     try:
         event_bus.publish(
             "existential_wonder.verdict",
-            {"record_id": rid, "verdict": v, "note": str(note or "")[:200]},
+            {"record_id": rid, "verdict": v, "closed_by": kilde,
+             "note": str(note or "")[:200]},
         )
     except Exception:  # udfaldet ER gemt; en hændelse der ikke kan sendes må ikke gøre det til en fejl
         pass
@@ -451,6 +490,30 @@ def _generate_wonder_question() -> str:
     return text
 
 
+def _baseline_kendskab(wonder: str, *, limit: int = 3) -> list[dict]:
+    """Hvad jeg vidste om emnet i det øjeblik spørgsmålet blev rejst.
+
+    Trin 3's målepunkt. Uden det kan «mønstret flyttede sig» kun fortælles
+    bagefter — der findes intet at måle bevægelsen mod, og fortællingen bliver
+    altid sand fordi den er skrevet af den der gerne vil have den til at være
+    det. Self-safe → [] (en undren uden målepunkt er stadig en gyldig undren).
+    """
+    try:
+        from core.services.memory_search import search_memory
+
+        hits = search_memory(wonder, limit=limit)
+    except Exception:  # uden en baseline mangler posten et maalepunkt, ikke sin gyldighed
+        return []
+    return [
+        {
+            "source": str(h.get("source") or ""),
+            "section": str(h.get("section") or "")[:160],
+            "score": round(float(h.get("score") or 0.0), 3),
+        }
+        for h in hits or []
+    ]
+
+
 def _store_wonder(wonder: str, now: datetime, *, trigger: dict | None = None) -> str:
     """Persistér undren som en post der kan findes, tælles og aldersmåles.
 
@@ -493,6 +556,10 @@ def _store_wonder(wonder: str, now: datetime, *, trigger: dict | None = None) ->
                 "at": now_iso,
                 "absence_hours": (trigger or {}).get("absence_hours", 0.0),
                 "fragment_count": (trigger or {}).get("fragment_count", 0),
+                # Hvad jeg vidste om EMNET, ikke bare hvordan sindstilstanden var.
+                # Målt 3/11-2026: uden dette havde trin 3 kun et tidsstempel at
+                # måle mod, så «mønstret flyttede sig» var en påstand uden grundlag.
+                "known": _baseline_kendskab(wonder),
             },
             "verdict": "",
             "verdict_note": "",

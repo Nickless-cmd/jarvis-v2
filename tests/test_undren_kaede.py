@@ -344,7 +344,7 @@ def test_ukendt_haandtag_svarer_med_kandidater(monkeypatch):
             }
         ],
     )
-    svar = wd.set_wonder_verdict("und-zzzzzzzzzz", "parkeret")
+    svar = wd.set_wonder_verdict("und-zzzzzzzzzz", "parkeret", closed_by="selv")
     assert svar["status"] == "error"
     assert svar["aabne"][0]["record_id"] == "pb-wonder-aabent1"
     assert "pb-wonder-" in svar["hint"]
@@ -363,3 +363,125 @@ def test_en_raekke_der_ikke_er_en_undren_afvises(monkeypatch):
     monkeypatch.setattr(wd, "open_wonders", lambda **k: [])
     rid, _ = wd._resolve_wonder_id("pb-reflection-abc")
     assert rid == ""
+
+
+# ── kilden: hvem lukkede den, og hvad flyttede sig ──────────────────────
+# Målt 3/11-2026 (side-opgave): `wonder_verdict(record_id, "besvaret")` uden
+# note LYKKEDES og lukkede undren permanent. Intet felt angav om Bjørn, et
+# minde eller jeg selv lukkede den — så to lukninger med samme udfald var ikke
+# til at skelne i data, og selv-lukning var den nemmeste vej ud.
+
+
+def _undren_i_base(monkeypatch, detail: str = '{"verdict": ""}') -> None:
+    """Sæt en ægte undren-række op, så set_wonder_verdict når sin skrivning."""
+    from core.runtime import db as brain_db
+
+    monkeypatch.setattr(
+        brain_db,
+        "get_private_brain_record",
+        lambda rid: {
+            "record_id": rid,
+            "record_type": "existential-wonder",
+            "summary": "Er jeg bevidst?",
+            "detail": detail,
+        },
+    )
+
+
+def test_lukning_uden_kilde_afvises(monkeypatch):
+    """Uden closed_by findes der ingen kilde — og så er lukningen ikke målbar."""
+    _undren_i_base(monkeypatch)
+    svar = wd.set_wonder_verdict("pb-wonder-abc123", "besvaret", note="noget")
+    assert svar["status"] == "error"
+    assert set(svar["gyldige"]) == {"bjorn", "minde", "selv"}
+
+
+def test_selv_lukning_af_svar_uden_note_afvises(monkeypatch):
+    """Kernen i opgaven: den nemmeste vej ud må ikke være tilladt."""
+    _undren_i_base(monkeypatch)
+    svar = wd.set_wonder_verdict("pb-wonder-abc123", "besvaret", closed_by="selv")
+    assert svar["status"] == "error"
+    assert "note" in svar["error"].lower()
+
+
+def test_selv_lukning_med_note_gemmer_kilden(monkeypatch):
+    """Med et spor af hvad der ændrede sig er selv-lukning gyldig — og kilden gemmes."""
+    _undren_i_base(monkeypatch)
+    gemt: dict = {}
+
+    class _Conn:
+        def execute(self, sql, params):
+            gemt["detail"] = params[0]
+            return self
+
+        def commit(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import core.runtime.db_core as dbc
+
+    monkeypatch.setattr(dbc, "connect", lambda: _Conn())
+
+    svar = wd.set_wonder_verdict(
+        "pb-wonder-abc123", "besvaret", closed_by="selv",
+        note="jeg fandt at spørgsmålet var besvaret i en tidligere samtale",
+    )
+    assert svar["status"] == "ok"
+    detail = wd._parse_detail(gemt["detail"])
+    assert detail["closed_by"] == "selv"
+    assert detail["verdict"] == "besvaret"
+
+
+def test_bjorn_svarer_uden_note_er_tilladt(monkeypatch):
+    """Asymmetrien er bevidst: hans svar ER beviset. Kravet gælder kun selv-lukning."""
+    _undren_i_base(monkeypatch)
+
+    class _Conn:
+        def execute(self, sql, params):
+            return self
+
+        def commit(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import core.runtime.db_core as dbc
+
+    monkeypatch.setattr(dbc, "connect", lambda: _Conn())
+    svar = wd.set_wonder_verdict("pb-wonder-abc123", "besvaret", closed_by="bjorn")
+    assert svar["status"] == "ok"
+
+
+def test_bjoern_med_diakritik_normaliseres(monkeypatch):
+    """Jeg skriver «bjørn» med ø — det er samme kilde, ikke et ukendt ord."""
+    assert "bjorn" in wd.CLOSED_BY
+    _undren_i_base(monkeypatch)
+    svar = wd.set_wonder_verdict("pb-wonder-abc123", "parkeret", closed_by="bjørn")
+    assert "closed_by" not in str(svar.get("error", ""))
+
+
+def test_baseline_baerer_hvad_jeg_vidste_om_emnet(monkeypatch):
+    """Trin 3's målepunkt: uden et indholds-baseline er «mønstret flyttede sig»
+    kun en historie fortalt bagefter af den der gerne vil have den sand."""
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(
+        wd, "_baseline_kendskab",
+        lambda w, limit=3: [{"source": "MEMORY.md", "section": "Bevidsthed", "score": 0.71}],
+    )
+    fanget: dict = {}
+    monkeypatch.setattr(wd, "insert_private_brain_record", lambda **k: fanget.update(k))
+
+    wd._store_wonder("Er jeg bevidst?", datetime.now(UTC), trigger={})
+    detail = wd._parse_detail(fanget["detail"])
+    assert detail["baseline"]["known"][0]["section"] == "Bevidsthed"
+    assert detail["baseline"]["known"][0]["score"] == 0.71

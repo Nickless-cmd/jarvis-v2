@@ -501,3 +501,59 @@ def test_en_doven_kort_kommentar_daemper_ikke():
     sil = next(f for f in fs if f.kind == "except_silent")
     assert sil.acknowledged is False
     assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+# ── Målt 3/11-2026: fejlen RETURNERES til kalderen ────────────────────────
+# En fuld rescan efterlod seks fund over proposal-tærsklen. Alle seks fangede
+# en fejl og returnerede den som `{"status": "error", …}` til modellen — altså
+# synligt for den der kan handle på den — men `_is_success_like_return` ser en
+# dict-retur som «success-lignende» (form, ikke brug) og scoringen gav +2.
+# Seks ægte fund, nul ægte problemer. Formerne nedenfor er de faktiske
+# formuleringer fra kodebasen, ikke gættede.
+
+def test_fejl_returneret_til_kalderen_er_en_bevidst_beslutning():
+    """«Kalderen skal se det» / «never raised» → kendt, ikke proposal-værdig."""
+    for kommentar in (
+        "# Kalderen skal se det, ikke et svar der lover noget der ikke findes",
+        "# a caller error that is reported as a tool result, never raised",
+        "# Fejlen ER svaret til kalderen — den siger hvad der gik galt",
+    ):
+        src = ("def f():\n    try:\n        return _hent()\n"
+               f"    except Exception as exc:\n        {kommentar}\n"
+               "        return {\"status\": \"error\", \"error\": str(exc)}\n")
+        fs = ci.scan_source("core/x.py", src)
+        sil = next(f for f in fs if f.kind == "except_silent")
+        assert sil.acknowledged is True, kommentar
+        assert ci.score_finding(sil, file_has_central=False,
+                                in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_error_dict_uden_begrundelse_filer_stadig():
+    """Grænsen: samme form UDEN en skrevet begrundelse er stadig et ægte fund.
+
+    Uden denne kunne rettelsen ovenfor gøre instrumentet tandløst for netop den
+    klasse der betyder mest: en fejl der returneres uden at nogen har tænkt over
+    hvad kalderen skal gøre med den.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except Exception as exc:\n"
+           "        return {\"status\": \"error\", \"error\": str(exc)}\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False,
+                            in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_eventbus_publicering_er_synlighed():
+    """En except der publicerer fejlen er ikke tavs — `publish` er en guard.
+
+    Målt 3/11-2026: live_job_sources.py:157 publicerede `source_status` med
+    healthy=False og blev alligevel filéret som silent failure.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except Exception as exc:\n"
+           "        live_job_events.publish('source_status', payload={'healthy': False})\n"
+           "        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    assert not [f for f in fs if f.kind == "except_silent"]

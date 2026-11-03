@@ -37,6 +37,12 @@ _GUARD_SUBSTRINGS = (
     "observe", "decide", "safe_call", "record_", "note_", "capture",
     "logger", "log.", "logging", "warning", "error", "exception", "critical",
     "send_notification", "_record_error", "raise", "report", "emit",
+    # ── MÅLT 3/11-2026 ────────────────────────────────────────────────────
+    # `publish` manglede. En eventbus-publicering ER synlighed — den er den
+    # kanal Centralen læser — men uden ordet her blev en except der melder
+    # `source_status: healthy=False` til eventbussen scoret som tavshed.
+    # Målt: live_job_sources.py:157 publicerer fejlen og blev alligevel filéret.
+    "publish",
 )
 
 
@@ -84,6 +90,16 @@ _ACK_MARKERS = (
     "beskeden er svaret", "beskeden ER svaret",
     "springer sektionen over", "springer over",
     "means no", "is not cacheable", "not a proof", "not a guess",
+    # ── MÅLT 3/11-2026, tredje runde: fejlen RETURNERES til kalderen ───────
+    # Et værktøj der fanger en fejl og returnerer `{"status": "error", …}` til
+    # modellen skjuler den ikke — modellen ser den og kan rette. Detektoren
+    # scorede dem alligevel som tavshed, fordi `_is_success_like_return` ser en
+    # dict-retur som «success-lignende» (form, ikke brug). Seks ægte fund stod
+    # tilbage efter en fuld rescan; alle seks havde en skrevet begrundelse som
+    # ordforrådet ikke kendte. Formerne nedenfor er de faktiske, ikke gættede.
+    "caller error", "reported as a tool result", "never raised",
+    "kaster aldrig", "er svaret til kalderen", "vælt ikke turen",
+    "vaelt ikke turen", "den dyre fejl", "kalderen skal se det",
 )
 
 

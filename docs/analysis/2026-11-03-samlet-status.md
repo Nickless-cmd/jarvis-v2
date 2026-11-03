@@ -1123,3 +1123,42 @@ Opgaven bad om at undersøge om den skulle med i samme rettelse. Målt:
 Den rammer `bash` — en muterende handling, ikke en ren læser — så
 `_ALWAYS_ALLOWED_TOOLS`-rettelsen rører den ikke. Det er et selvstændigt spor med sin egen
 mekanisme og sin egen målte skævhed, og det er ikke undersøgt til bunds her.
+
+---
+
+## Målt 3/11-2026 kl. 19:26 UTC — tærskel-rettelsen er levende, og blindhed er umulig for de baser vi har
+
+Genstarten gik igennem: processtart **20:25:31**, commit `4c0b45301` er **20:23:17**. Rettelsen kører.
+
+### Kurven i drift
+
+`_override_lift(n) = 0,20 × n/(n+3)`, loft `_OVERRIDE_CEILING = 0,20`:
+
+| n | 0 | 1 | 2 | 3 | 4 | 5 | 7 | 10 |
+|---|---|---|---|---|---|---|---|---|
+| lift | 0,000 | 0,050 | 0,080 | 0,100 | 0,114 | 0,125 | 0,140 | 0,154 |
+
+Bagudkompatibel ved n=1 (+0,05) og n=3 (+0,10) — de eksisterende testkontrakter holder.
+
+### De fire par der var ramt
+
+| par | overrides | før | nu |
+|---|---|---|---|
+| `restart_self` + `protectiveness` | 7 | **0,98** | 0,89 |
+| `edit_file` + `r2_5_gate` | 7 | **0,98** | 0,89 |
+| `edit_file` + `protectiveness` | 4 | 0,95 | 0,8643 |
+| `write_file` + `r2_5_gate` | 3 | 0,90 | 0,85 |
+
+### Blindhed er nu umulig for base 0,75
+
+Målt med simuleret tælling: base 0,75 når **0,9494** ved n=1000 og kan aldrig nå 0,98. Og målt mod de faktiske 37 par med overrides i drift: **ingen har base ≥ 0,90** — alle står på 0,75. Så loftet er ikke længere en praktisk risiko.
+
+**Forbehold, målt:** base 0,95 (`restart`+`irritation`) rammer stadig 0,98 ved fem overrides. Det par har nul overrides i drift, så det er latent, ikke aktuelt. Rettelsen dækker de baser der findes — ikke en hypotetisk høj base.
+
+### Honored-dæmpningen virker, men er stadig frosset
+
+`_HONORED_DAMPEN = 0,02` pr. honored, gulv `_THRESHOLD_MIN = 0,30`. Målt: `edit_file`+`irritation` står på **0,68** — under sin base på 0,75 — fordi den har 6 honored-tællinger. Men alle 6 er skrevet 13/9 kl. 19:05:48 som legacy-migrering, ikke optjent. Overrides: 63 og voksende. Honored: 10, alle fra én import. Asymmetrien står uændret; kun loftet er rettet.
+
+### A3 er stadig ikke bevist
+
+`gate_verdict_counts` (ikke `gate_verdict_ledger` — det navn fandt jeg på): `gut_gate` = **559**, uændret siden 18:56:47. Ingen `gut_gate_withheld`-række findes. Gaten har ikke afvist noget endnu, fordi der ikke er kørt et autonomt run siden. Implementeret, ikke bevist.

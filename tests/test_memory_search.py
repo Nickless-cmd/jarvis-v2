@@ -135,20 +135,51 @@ class TestInkrementelReindex:
         ms._build_and_cache_index([], {"f": 2.0})
         assert calls2 == [["alfa", "beta"]], "modelskift skal give fuld re-embed"
 
-    def test_embed_fejl_falder_tilbage_til_fuld(self, monkeypatch, tmp_path):
+    def test_embed_fejl_skriver_ingen_halv_cache(self, monkeypatch, tmp_path):
+        """En fejlet portion må ALDRIG efterlade en cache med huller: hullerne ville
+        matche mtimes og aldrig blive bygget om — altså usøgbare for evigt.
+        (3/11-2026: den gamle sti faldt tilbage til fuld rebuild; nu bevares
+        checkpointet i stedet, så næste rebuild kun mangler det der fejlede.)"""
+        import pickle
         ms, _ = self._setup(monkeypatch, tmp_path, ["alfa", "beta"])
         ms._build_and_cache_index([], {"f": 1.0})
-        ms, calls2 = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "ny"])
-        seen: list[list[str]] = []
-
-        def _fail_once(texts):
-            seen.append(list(texts))
-            return None if len(seen) == 1 else __import__("numpy").zeros((len(texts), 2), dtype="float32")
-
-        monkeypatch.setattr(ms, "_embed_ollama", _fail_once)
+        with open(tmp_path / "idx.pkl", "rb") as fh:
+            foer = pickle.load(fh)["embeddings"]
+        ms, _ = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "ny"])
+        monkeypatch.setattr(ms, "_embed_ollama", lambda texts: None)
         ms._build_and_cache_index([], {"f": 2.0})
-        assert seen[0] == ["ny"] and seen[1] == ["alfa", "beta", "ny"], \
-            "fejlet delvis-embed skal falde tilbage til fuld rebuild"
+        with open(tmp_path / "idx.pkl", "rb") as fh:
+            efter = pickle.load(fh)["embeddings"]
+        assert (efter == foer).all(), "fejlet rebuild må ikke overskrive en brugbar cache"
+        ms, calls3 = self._setup(monkeypatch, tmp_path, ["alfa", "beta", "ny"])
+        ms._build_and_cache_index([], {"f": 3.0})
+        assert calls3 == [["ny"]], f"genoptagelsen skulle kun mangle 'ny', fik {calls3}"
+
+    def test_afbrudt_rebuild_genoptages_fra_checkpoint(self, monkeypatch, tmp_path):
+        """Kernen i 3/11-fixet. Med portioner à 2: portion 1 lykkes, portion 2 fejler.
+        Næste rebuild skal så KUN embedde det der manglede — ikke starte forfra.
+        Uden dette kostede en dræbt tråd (~30 min for 12.953 chunks) alt arbejdet."""
+        import numpy as _np
+        ms, _ = self._setup(monkeypatch, tmp_path, ["a1", "a2", "a3", "a4"])
+        monkeypatch.setattr(ms, "_REBUILD_CHECKPOINT_EVERY", 2)
+        kald: list[list[str]] = []
+
+        def _doer_midt_i(texts):
+            kald.append(list(texts))
+            if len(kald) == 2:
+                return None  # portion 2 fejler → rebuild dør
+            return _np.array([[float(len(t)), 1.0] for t in texts], dtype=_np.float32)
+
+        monkeypatch.setattr(ms, "_embed_ollama", _doer_midt_i)
+        ms._build_and_cache_index([], {"f": 1.0})
+        assert not (tmp_path / "idx.pkl").exists(), "afbrudt rebuild må ikke skrive cache"
+        assert (tmp_path / "idx.pkl.progress").exists(), "checkpointet skal være bevaret"
+
+        ms, calls2 = self._setup(monkeypatch, tmp_path, ["a1", "a2", "a3", "a4"])
+        monkeypatch.setattr(ms, "_REBUILD_CHECKPOINT_EVERY", 2)
+        ms._build_and_cache_index([], {"f": 2.0})
+        assert calls2 == [["a3", "a4"]], f"kun de manglende skulle embeddes, fik {calls2}"
+        assert not (tmp_path / "idx.pkl.progress").exists(), "checkpointet skal ryddes ved succes"
 
 
 # ── Chunkeren baerer sin overskrifts-sti (5/10-2026) ────────────────────────

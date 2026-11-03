@@ -725,6 +725,16 @@ aldrig få data.**
 
 Plus **10 modul-poster** hvor **9 står `bygget`** og 1 `projektion`.
 
+**Rettet 3/11-2026 kl. 21:1x — `bygget` er ikke en fejl.** Jeg skrev de ni
+`bygget`-poster som om de var ni mangler. Målt i registrets egen definition:
+`_MODUL_LEVENDE = {"koerende", "bygget", "afloest"}`, og `bygget` betyder
+**«Bygget 25/9-2026: persistering + målt indhold + en kalder»** — altså et modul
+der blev **repareret**, ikke et der står ubrugt. Noterne bærer det: `body_memory`
+gik fra `random.choice(["varm","kold",…])` til `embodied_state`; `decision_ghosts`
+fra `random.uniform(0.1, 0.6)` til `adherence_score`. Det er modsatte fortegn af
+hvad jeg skrev. Det er samme fejlklasse som `false_positive`: jeg læste en
+status-kolonne som dens betydning uden at finde den kodevej der SKRIVER den.
+
 ### De 11 orphaned-tabeller, målt indhold
 
 **10 af 11 er helt tomme (0 rækker):** `cadence_idempotency_keys`,
@@ -806,13 +816,30 @@ hul i «det kognitive lag», det er et hul på præcis ét signal.
 
 ### Det vigtigste
 
-`liveness_registry` **ved det hele allerede** — den kalder dem `orphaned` med
+`liveness_registry` **beskrev det allerede** — den kalder dem `orphaned` med
 producent-navn. Men registret læses kun af én API-rute
 (`mission_control_runs_ops.py`). **Ingen kode handler på det.**
 
-Registret er en gravsten, ikke en vagt. Det er samme fejlform som
-`honored`-stien og de 293 dubletter, blot i systemisk skala: beskrivelsen af
-problemet er bygget, og forbindelsen fra beskrivelse til handling mangler.
+**Rettet 3/11-2026 kl. 21:1x — registret er ikke en detektor.** Jeg skrev at det
+«ved det hele allerede». Målt: `_REGISTRY` er en **hardcoded dict** kurateret ved
+auditen 25/9, og `classify_table` slår op i den — der er ingen dynamisk
+klassificering, ingen INSERT-detektion, ingen liveness-måling. Den kan fortælle
+hvad en tabel blev klassificeret som **den 25/9**; den opdager ikke at en ny
+forbindelse er oprettet, eller at en producent er holdt op med at fyre. Prøven:
+`composer_jarvis_forslag` står stadig `orphaned` i registret, men har 22 rækker i
+dag — klassifikationen er forældet, og registret kan ikke selv se det.
+
+Så det præcise fund er todelt, ikke ét: **kataloget er statisk, og intet læser det
+aktivt.** Det er samme fejlform som `honored`-stien og de 293 dubletter, blot i
+systemisk skala: beskrivelsen af problemet er bygget, og forbindelsen fra
+beskrivelse til handling mangler — *og* beskrivelsen ældes uden at nogen opdager
+det.
+
+Det jeg bad om, er derfor ikke «forbind alt hvad registret peger på». Det er at
+skelne de tre situationer: **forældet klassifikation** (som
+`composer_jarvis_forslag`), **bevidst manuel** (`manual_only`), og **reelt
+frakoblet** (`orphaned` hvor skriveren har nul kaldere). Kun den tredje er en
+mangel — og kun en måling i dag kan afgøre hvilken der er hvilken.
 
 ---
 

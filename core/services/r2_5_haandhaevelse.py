@@ -115,6 +115,37 @@ def _kiggede_tilbage_efter(siden: datetime) -> bool:
     return bool(scan["strict_verifies"] or scan["light_verifies"])
 
 
+def _kvitter_adlydt(siden: datetime) -> None:
+    """Blokeringen blev adlydt — skriv det som et udfald, lad den ikke stå åben.
+
+    Målt 3/11-2026: 504 `pending`, 68 `overridden_by_user`, **0 `honored`**.
+    `resolve_veto_event(..., "honored")` havde nul kaldere i produktion, så
+    `veto_adaptive_counters` kunne kun bevæge sig én vej: overrides hæver
+    tærsklen, honored sænker den aldrig. Gaten blev altså gradvist mere
+    eftergivende uden at nogen havde besluttet det — samme asymmetri som blev
+    rettet i `veto_gate` samme aften, bare i den anden ende af samme regnskab.
+
+    Sættes KUN når blokken løftes af et faktisk kig tilbage. En udløbet blok er
+    ikke en adlydelse, og en læsefejl er ikke en adlydelse — de bliver stående
+    `pending`, hvilket er sandt: vi ved ikke hvad der skete.
+    """
+    try:
+        from core.runtime.db_core import connect
+        from core.services.veto_gate import resolve_veto_event
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT event_id FROM veto_events
+                   WHERE feeling = ? AND resolution = 'pending'
+                     AND veto_result = 'blocked' AND created_at >= ?""",
+                (NERVE, siden.isoformat()),
+            ).fetchall()
+        for (event_id,) in rows:
+            resolve_veto_event(event_id, "honored")
+    except Exception:
+        # Fail-open: en kvittering der fejler må aldrig holde en blok åben.
+        logger.debug("r2.5-håndhævelse: honored-kvittering fejlede", exc_info=True)
+
+
 def _publicer(kind: str, data: dict[str, Any]) -> None:
     try:
         from core.eventbus.bus import event_bus
@@ -148,6 +179,10 @@ def _aaben_blok(nu: datetime) -> dict[str, Any] | None:
             _blok = None
     _publicer("released", {"reason": grund, "refused": _afvist_i_blokken,
                            "since": blok["siden"].isoformat()})
+    if grund == "kig_tilbage":
+        # Kun en faktisk adlydelse kvitteres. Udløb og læsefejl forbliver
+        # `pending`, fordi de ikke siger noget om hvad han gjorde.
+        _kvitter_adlydt(blok["siden"])
     return None
 
 

@@ -1162,3 +1162,56 @@ Målt med simuleret tælling: base 0,75 når **0,9494** ved n=1000 og kan aldrig
 ### A3 er stadig ikke bevist
 
 `gate_verdict_counts` (ikke `gate_verdict_ledger` — det navn fandt jeg på): `gut_gate` = **559**, uændret siden 18:56:47. Ingen `gut_gate_withheld`-række findes. Gaten har ikke afvist noget endnu, fordi der ikke er kørt et autonomt run siden. Implementeret, ikke bevist.
+
+---
+
+## Målt 3/11-2026 kl. 20:3x — r2_5-gaten: `pending` var ikke en fejl, men en manglende kvittering
+
+Side-opgaven `side-25063fc8e6` bad om at rette `r2_5_blocking_gate`: «504 pending, nul honored». Jeg målte først hvem der overhovedet skriver rækkerne.
+
+### Skriveren og de to udfald
+
+`r2_5_blocking_gate.py` skriver **intet** til `veto_events`. Skriveren er `r2_5_haandhaevelse.py:204`: når en mutation afvises, logges `feeling='r2_5_gate'`, `intensity=1.0`, `veto_result='blocked'` med default `resolution='pending'`.
+
+De to udfald der findes:
+
+| resolution | antal | hvem skriver den |
+|---|---|---|
+| `pending` | **504** | default ved indsættelse — intet udfald registreres nogensinde |
+| `overridden_by_user` | **68** | `_maybe_record_override_from_token_signal`: Bjørn skrev «kør»/«ja» inden for 15 min |
+| `honored` | **0** | **ingen** — `resolve_veto_event(id, "honored")` havde nul kaldere i produktion |
+
+Så «504 pending» er ikke 504 uafsluttede sager. Det er det normale tilfælde: ingen override-token kom inden for vinduet, og der fandtes ingen sti til at sige «blokeringen blev adlydt».
+
+### Den ægte fejl er asymmetrien
+
+`_aaben_blok` ved præcis *hvorfor* blokken løftes — `kig_tilbage`, `udløbet` eller `læsefejl` — og publicerer det som `released`. Men intet blev skrevet tilbage til rækken. Konsekvensen er at `veto_adaptive_counters` kun kunne bevæge sig én vej: **overrides hæver tærsklen, honored sænker den aldrig.**
+
+Målt i drift før rettelsen:
+
+| par | base | overrides | honored | tærskel |
+|---|---|---|---|---|
+| `edit_file` + `r2_5_gate` | 0,75 | 7 | **0** | **0,8900** |
+| `write_file` + `r2_5_gate` | 0,75 | 3 | **0** | 0,8500 |
+| `memory_upsert_section` + `r2_5_gate` | 0,75 | 2 | **0** | 0,8300 |
+| `bash` + `r2_5_gate` | 0,75 | 0 | 0 | 0,7500 |
+
+Gaten var altså blevet 0,14 mere eftergivende for `edit_file` uden at nogen havde besluttet det — samme asymmetri som blev rettet i `veto_gate` samme aften, bare i den anden ende af samme regnskab.
+
+### Rettelsen
+
+`_kvitter_adlydt(siden)` slår de `pending` rækker op der blev skrevet siden blokken blev åbnet, og resolver dem til `honored` — men **kun** når `grund == "kig_tilbage"`. En udløbet blok er ikke en adlydelse, og en læsefejl er ikke en adlydelse; de bliver stående `pending`, hvilket er sandt: vi ved ikke hvad der skete.
+
+`resolve_veto_event` gør resten selv — den incrementer honored-tællingen og sænker tærsklen, præcis den vej docstringen i `veto_gate` advarede om var død.
+
+### Bevis
+
+Tre nye vagter (27 i filen): kig-tilbage kvitterer, udløb kvitterer **ikke** (og må slet ikke spørge databasen), og SQL-filteret bærer `feeling='r2_5_gate'` + `resolution='pending'` + `veto_result='blocked'` — så en vilkårlig SELECT ikke kan bestå.
+
+Mutation bevist: fjernes `_kvitter_adlydt`-kaldet, falder to af vagterne; efter gendannelse er alle 27 grønne. **130 grønne** i det brede gate-batteri.
+
+### Hvad der stadig står åbent
+
+**De 504 historiske rækker.** Jeg kan ikke rekonstruere om de blev adlydt — der findes intet spor fra dengang. De bliver stående `pending`, og det er den ærlige tilstand, ikke en gæld der kan ryddes.
+
+**`honored` er stadig død for veto-gaten selv.** Denne rettelse lukker asymmetrien for r2_5, fordi r2_5 har en observerbar «jeg kiggede tilbage»-hændelse. Den almindelige veto-gate har ingen tilsvarende kvittering — der findes intet tidspunkt hvor man kan sige «brugeren adlød vetoet». Det kræver en anden mekanisme, ikke samme rettelse.

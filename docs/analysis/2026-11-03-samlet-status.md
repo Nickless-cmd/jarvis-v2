@@ -22,7 +22,7 @@ Formålet er at svare på ét spørgsmål: hvad står stadig åbent efter dagens
 
 ## Åbent — målt åbent lige nu
 
-### A. Gut-kæden (fem huller, i rækkefølge)
+### A. Gut-kæden (seks huller, i rækkefølge)
 
 **A1. Preflight sender ingen observationer.**
 `preflight_gut_gate` kalder `derive_gut_signal(task_description=…)` — intet
@@ -61,8 +61,16 @@ om det ville være lykkedes. Derfor skal tre lag holdes adskilt:
 - **Forudsigelsen:** hvad forventede den ville ske?
 - **Udfaldet:** hvad skete der faktisk, hvis opgaven blev udført?
 
-Kun det tredje kan kalibrere maven. En afvisning kan derfor aldrig blive et
-sandhedsbevis for sig selv — kun et datapunkt om gatens adfærd.
+**Præciseret (GPT, 3/11):** kalibrering kræver en forudsigelse der er **låst før
+handlingen**, sammenholdt med et senere observeret udfald. Et udfald alene
+fortæller ikke om forudsigelsen var god — og i dag er forudsigelsen slet ikke
+låst før handlingen: `_on_started` dannes ved `runtime.autonomous_run_started`,
+altså *efter* runnet er begyndt, fra `payload.get("focus")` — et andet input end
+gaten brugte (se A2).
+
+Kun forudsigelse + udfald tilsammen kan kalibrere maven. En afvisning kan
+derfor aldrig blive et sandhedsbevis for sig selv — kun et datapunkt om gatens
+adfærd.
 
 **A4. Kalibreringen er stadig selvbekræftende.**
 `record_gut_outcome` gør `predicted_success = (hunch == "proceed")`. Hunch er
@@ -71,6 +79,36 @@ havde ret. Definition B fjerner inversionen, men ikke cirklen.
 
 **A5. Tærsklen er stadig 0,30 og bør ikke røres endnu.**
 Hæves den før A1–A4, afvises alle opgaver blot **ens**.
+
+**A6. Backstop kan overkøre gatens nej — og forskellen bevares ingen steder.**
+`preflight_gut_gate` har et blokerings-budget (`_MAX_BLOK_PER_TIME = 3` pr.
+time). Er det brugt, slipper runnet igennem med `backstop: True` — også når
+gaten sagde nej. Målt:
+
+- `backstop`-flaget **læses ingen steder**. Begge produktionskaldesteder
+  (`autonomous_stream_run.py:97`, `visible_autonomous_run.py:276`) bruger
+  `preflight_allows()`, som kun returnerer `bool` og kaster hele returværdien
+  (`confidence`, `hunch`, `backstop`) væk.
+- `_blok_tider` er en **in-memory modul-global liste** (`gut_engine.py:279`).
+  Budgettet nulstilles ved hver genstart — og backenden er genstartet to gange
+  i dag. «3 pr. time» er derfor reelt ubegrænset over tid.
+- `gut_gate_backstop` og `gut_gate_withhold` har **nul rækker** i
+  `gate_verdict_counts`. Ingen af stierne er nogensinde udløst.
+
+Konsekvens: en overkørsel er usynlig bagefter. Udfaldet kalibrerer den hunch
+`_on_started` dannede — ikke den gatens anbefaling backstop overkørte.
+
+**De fire størrelser der skal holdes adskilt** (GPT, 3/11):
+
+| Størrelse | Hvad den fortæller | Findes adskilt i dag? |
+|---|---|---|
+| Forudsigelse | hvad forventede Jarvis? | nej — dannes efter start, fra andet input |
+| Gate-vurdering | hvad anbefalede intuitionen? | nej — kasseres af `preflight_allows` |
+| Endelig beslutning | hvad fik lov at ske? | nej — `backstop`-flaget læses ikke |
+| Observeret udfald | hvad skete der bagefter? | ja |
+
+Først når de fire er kædet sammen, kan man måle om intuitionen **forbedrer**
+beslutningerne — ikke bare om den svarer.
 
 ### B. Tick-dispatchen
 
@@ -117,10 +155,16 @@ følges til ende — og det er ikke gjort for nogen af de to.
 ## Rækkefølgen der giver mening
 
 1. **A2** — én forudsigelse hele vejen (mindst arbejde, størst ærlighed)
-2. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
-3. **A1** — kobl observationer på, målt i shadow-mode
-4. **A4** — gør kalibreringen til noget der kan tage fejl
-5. **A5** — først da en tærskel
+2. **A6** — bevar gate-anbefalingen og den endelige beslutning som to felter,
+   så en backstop-overkørsel kan ses bagefter
+3. **A3** — registrér afvisningen i kalibreringslivscyklussen, adskilt fra udfaldet
+4. **A1** — kobl observationer på, målt i shadow-mode
+5. **A4** — gør kalibreringen til noget der kan tage fejl
+6. **A5** — først da en tærskel
+
+A6 kommer før A3 fordi den rydder den samme livscyklus: uden et felt for
+«gaten sagde nej, bagkanten sagde ja» kan A3's registrering ikke skelne en
+ægte afvisning fra en overkørt.
 
 C1–C3 er et selvstændigt spor: de er navnekollisioner og forbrugshuller, ikke
 gut-kæden. De skal ikke blandes ind i den rækkefølge.

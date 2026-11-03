@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17956 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 17962 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -56,11 +56,11 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17956 functions/
 - [`core.services.24`](core.services.24.md) — `runtime_flows` … `self_model_distiller`
 - [`core.services.25`](core.services.25.md) — `self_model_history` … `session_tool_pin`
 - [`core.services.26`](core.services.26.md) — `session_topic_tracker` … `somatic_daemon`
-- [`core.services.27`](core.services.27.md) — `somatic_runtime_body` … `theater_audit`
-- [`core.services.28`](core.services.28.md) — `theory_of_mind` … `ui_panel_store`
-- [`core.services.29`](core.services.29.md) — `unconscious_modulation` … `visible_model_observe`
-- [`core.services.30`](core.services.30.md) — `visible_model_ollama` … `visible_tool_labels`
-- [`core.services.31`](core.services.31.md) — `visible_turn_accumulator` … `world_model_signal_tracking`
+- [`core.services.27`](core.services.27.md) — `somatic_runtime_body` … `text_resonance`
+- [`core.services.28`](core.services.28.md) — `theater_audit` … `turn_trace`
+- [`core.services.29`](core.services.29.md) — `ui_panel_store` … `visible_model_adapters`
+- [`core.services.30`](core.services.30.md) — `visible_model_observe` … `visible_tool_exec`
+- [`core.services.31`](core.services.31.md) — `visible_tool_labels` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

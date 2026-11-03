@@ -455,10 +455,18 @@ def test_preflight_forudsigelse_overlever_til_kalibrering(monkeypatch):
     assert str(pred["task"]).startswith("kritisk migration")
     assert ge.take_preflight_prediction() is None   # forbrugt præcis én gang
 
-    # _on_started tager slotten frem for at regne en ny fra et andet input
+    # _on_started tager slotten frem for at regne en ny fra et andet input.
+    #
+    # 3/11-2026: denne del var brudt — den kørte EFTER at del 1 havde forbrugt slotten,
+    # så der var intet at tage, og `_on_started` regnede en ny fra `focus`. Testen var
+    # kun grøn fordi begge sider tilfældigt gav «proceed». Nu lægges en FRISK slot, og
+    # fokus-teksten er bevidst i `proceed`-klassen, så testen beviser forskellen:
+    # tages slotten, er svaret `caution`; regnes der en ny, er det `proceed`.
+    ge.preflight_gut_gate(task_description="kritisk migration af prod-database")
     monkeypatch.setattr(gc, "_pending", {}, raising=False)
     gc._on_started({"run_id": "run-xyz", "focus": "en helt anden tekst"})
-    assert gc._pending["run-xyz"] == udfald["hunch"]
+    assert gc._pending["run-xyz"] == "caution", \
+        "kalibreringen regnede en ny forudsigelse i stedet for at tage gaten's"
 
 
 # ── Definition B (3/11-2026, Bjørn): confidence = styrken af RETNINGEN ────

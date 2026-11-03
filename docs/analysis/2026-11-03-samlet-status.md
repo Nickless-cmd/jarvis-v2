@@ -465,3 +465,68 @@ til stede: tiken skal give `goal_starvation` og dispatch i stedet for
   standset og køen gjort synlig, intet mere.
 - **C2's overlap** — 0 af 9 rækker matcher registeret; korrekt wiring, ingen
   praktisk effekt endnu.
+
+---
+
+## Lukket 3/11-2026 (aften, fase A7) — opgave → værktøj-mappingen
+
+Dette var dokumentets «ægte mangel»: `confidence` var 0,5 for enhver opgave, fordi
+`task_description` kun blev klippet til en label. Nu findes koblingen.
+
+### Hvad der blev målt FØR den blev bygget
+
+To nærliggende veje blev målt og forkastet — det er grunden til at løsningen er kurateret:
+
+| Vej | Måling | Konklusion |
+|---|---|---|
+| `tool_embeddings.top_k_similar()` | 0,09–0,19 s, men «læs logfilen og find fejlen» → `phone_location`; simulariteter i et snævert 0,60–0,69-bånd | **Ubrugelig.** Modellen kan ikke skelne; indekset har 800 poster mod 514 katalognavne |
+| `heartbeat_runtime_ticks` som indlært historik | `action_type` findes, men **ikke hvilke værktøjer**; `action_summary` er for de fleste `productive_idle` | **Umulig** med de data der findes |
+| `AUTONOMOUS_TOOLS` som risiko-akse | 414 af 514 katalognavne står udenfor, inkl. harmløse `analyze_image` | Det er en **tilladelses**-akse, ikke en risiko-akse |
+
+### Hvad den gør
+
+`core/services/task_tool_mapping.py` klassificerer opgavens tekst i tre tiers —
+`read` / `mutate` / `irreversible` — og giver en `confidence_delta` (+0,05 / −0,05 /
+−0,15). Ukendt tekst giver `unknown` med delta 0,0, ikke en gættet neutralværdi.
+
+Koblet i `derive_gut_signal`: delta'et justerer den RÅ confidence (før grenene), og en
+`irreversible` opgave tvinger `hunch = "caution"`.
+
+**Målt effekt** (`recent_error_count=0`, altså sund drift — den svære prøve):
+
+| Opgave | Tier | hunch |
+|---|---|---|
+| kritisk migration af produktionsdatabase | irreversible | **caution** |
+| deploy til produktion | irreversible | **caution** |
+| opret en ny testfil | mutate | proceed |
+| læs logfilen og find fejlen | read | proceed |
+
+Før denne ændring blev en migration klassificeret som `proceed` når blot døgnet havde
+haft nul fejl — den globale fejlrate afgjorde retningen, ikke opgaven.
+
+### Grænsen, som skal siges højt
+
+**Der er BEVIDST ingen kontinuert skalering af styrken.** Jeg prøvede
+`adjusted_confidence * (confidence / 0.5)` og målte den: den gav fire opgaver fire
+forskellige tal — men tallene var **opdigtede**. Der findes ingen data der siger at en
+læseopgave er 0,66 sikker og en skriveopgave 0,52; det var multiplikatoren der opfandt
+dem, og ved rå 0,1 gjorde den styrken næsten nul. Den blev fjernet igen.
+
+Opgavespecificiteten bæres derfor af **retningen** (caution/proceed) og af delta'et på
+den rå confidence, som flytter grenvalget ved 0,6 og 0,3 — ikke af en skala jeg ikke kan
+forsvare. Det er den ærlige grænse: jeg ved **om** opgaven er farlig, ikke **hvor** farlig
+den er på en kontinuert skala.
+
+Klassifikationen er desuden en heuristik over *teksten*, ikke en forudsigelse af hvilke
+værktøjer runnet faktisk kalder. Den kan narres af en opgavebeskrivelse der lyder harmløs.
+A5 (tærsklen) er stadig urørt.
+
+### En test der ikke testede det den hed
+
+`test_preflight_forudsigelse_overlever_til_kalibrering` forbrugte slotten med
+`take_preflight_prediction()` **før** den kaldte `_on_started` — så der var intet at tage,
+og `_on_started` regnede en ny. Testen var kun grøn fordi begge sider tilfældigt gav
+`proceed`. Nu lægges en frisk slot, og fokus-teksten er bevidst i `proceed`-klassen, så
+testen faktisk beviser at slotten bruges.
+
+**Tests:** 54 i gut-suiten (54 → 54, én rettet), 12 nye i `test_task_tool_mapping.py`.

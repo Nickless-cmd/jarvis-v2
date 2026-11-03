@@ -29,6 +29,20 @@ def _gut_bias() -> float:
         return 0.0
 
 
+def _task_mapping(task_description: str) -> dict[str, object]:
+    """Opgave → værktøjs-risiko. Kaster ALDRIG: en fejl her må ikke ændre en hunch.
+
+    Svarer et tomt `unknown`-resultat hvis modulet mangler eller fejler — det er den
+    sikre side, fordi delta 0,0 betyder «uændret adfærd», ikke «ufarlig opgave».
+    """
+    try:
+        from core.services.task_tool_mapping import map_task_to_tools
+        return map_task_to_tools(task_description)
+    except Exception:
+        return {"tools": [], "tier": "unknown", "signals": [],
+                "method": "none", "confidence_delta": 0.0}
+
+
 def derive_gut_signal(
     *,
     task_description: str,
@@ -46,9 +60,22 @@ def derive_gut_signal(
     Resultatet var at en advarsel per konstruktion slap lettere igennem end en tilladelse
     (målt: caution 0,70 mod proceed 0,50 uden bias). Med definition B bærer `hunch`
     retningen og `confidence` styrken, og gaten SKAL se begge — se `gut_gate`.
+
+    A7 (3/11-2026): `confidence` er nu OPGAVESPECIFIK. Indtil i dag blev
+    `task_description` kun klippet til en label (`task_hint`), så tre vidt forskellige
+    opgaver fik identisk rå 0,5. `task_tool_mapping` klassificerer opgaven som
+    læsende/skrivende/irreversibel og justerer den RÅ confidence, før hunch-grenene
+    læses — så en migration eller en sletning lettere ender i `caution`.
     """
     gut_state = get_cognitive_gut_state()
     calibration = float(gut_state.get("calibration_score", 0.5)) if gut_state else 0.5
+
+    # A7: opgavens risiko ind i den RÅ confidence — ikke bagefter, fordi grenene nedenfor
+    # læser netop dette tal. Mappingen kaster aldrig og svarer `unknown`/0,0 når teksten
+    # intet signal bærer, så en uklar opgave opfører sig som før.
+    task_map = _task_mapping(task_description)
+    if task_map.get("confidence_delta"):
+        confidence = min(1.0, max(0.0, confidence + float(task_map["confidence_delta"])))
 
     # Heuristic gut signal. `hunch_confidence` = styrken af den retning vi peger i.
     if recent_error_count > 3 and confidence < 0.6:
@@ -64,8 +91,27 @@ def derive_gut_signal(
         hunch = "proceed"
         hunch_confidence = 0.5
 
+    # A7 (3/11-2026): en irreversibel opgave er ALDRIG et «proceed» på global statistik.
+    # Målt før denne gren fandtes: med nul fejl i døgnet blev «kritisk migration af
+    # produktionsdatabase» klassificeret som `proceed` — den globale fejlrate afgjorde
+    # retningen, ikke opgaven. En sletning, en udgivelse eller en migration kan ikke
+    # rulles tilbage, så retningen skal være caution uanset hvor sund driften ser ud.
+    # (Dette er en RETNING, ikke en styrke: tærsklen og A5 er stadig urørt.)
+    if task_map.get("tier") == "irreversible":
+        hunch = "caution"
+        hunch_confidence = max(hunch_confidence, 0.7)
+
     # Weight by calibration — if gut has been wrong, reduce confidence
     adjusted_confidence = hunch_confidence * calibration
+    # A7: BEVIDST INGEN kontinuert skalering af styrken efter opgavens rå confidence.
+    # Jeg prøvede `adjusted_confidence * (confidence / 0.5)` og målte den: den gav fire
+    # opgaver fire forskellige tal — men tallene var OPDIGTEDE. Der findes ingen data der
+    # siger at en læseopgave er 0,66 sikker og en skriveopgave 0,52; det var min
+    # multiplikator der opfandt dem, og ved rå 0,1 gjorde den styrken næsten nul.
+    # Opgavespecificiteten bæres derfor af RETNINGEN (se `irreversible`-grenen ovenfor) og
+    # af delta'et på den RÅ confidence, som flytter grenvalget ved 0,6 og 0,3 — ikke af en
+    # skala jeg ikke kan forsvare. Det er den ærlige grænse: jeg ved OM opgaven er farlig,
+    # ikke hvor farlig den er på en kontinuert skala.
     # Bias-FRI baseline (12/10-2026): bevares FØR Lag-4 lægges oveni, så counterfactual-
     # tællingen kan svare på hvad gaten VILLE afgøre uden den lærte bias. Uden dette led
     # findes svaret ikke — gaten ser kun den justerede værdi og kan ikke sammenlignes med sig selv.
@@ -96,6 +142,13 @@ def derive_gut_signal(
         "calibration_score": calibration,
         "raw_confidence": confidence,
         "task_hint": task_description[:80],
+        # A7 (3/11-2026): de fire felter gør det efterprøveligt HVORFOR confidence er
+        # hvad den er. Uden dem ville en opgavespecifik justering være usynlig i ledgeren
+        # — og så kunne ingen se om mappingen faktisk klassificerede opgaven rigtigt.
+        "task_tier": task_map.get("tier"),
+        "task_signals": list(task_map.get("signals") or []),
+        "task_method": task_map.get("method"),
+        "task_confidence_delta": task_map.get("confidence_delta"),
     }
 
 
@@ -346,11 +399,12 @@ def _record_withheld_decision(conf: float, hunch: str, task_description: str) ->
 # ægte observationer om hvordan systemet kører lige nu (målt 3/11: 23 blocked mod 270
 # ok/completed det seneste døgn).
 #
-# GRÆNSE, som skal siges højt: det er GLOBALE observationer, ikke opgavespecifikke. Der
-# findes ingen mapping fra en `task_description` til hvilke værktøjer den vil bruge, så
-# gaten kan ikke vide om NETOP denne opgave er risikabel. `confidence` er derfor stadig
-# 0,5 — vi har ingen opgavespecifik tillid at måle. Den mapping er separat arbejde; at
-# lade som om den findes ville være den slags teater dagen har handlet om.
+# GRÆNSE, som skal siges højt: de to tællere er GLOBALE observationer, ikke
+# opgavespecifikke. De siger hvordan systemet kører lige nu, ikke om NETOP denne opgave
+# er risikabel. Den del bæres fra 3/11-2026 af `task_tool_mapping` (A7), som klassificerer
+# opgavens tekst — men den er en kurateret, deterministisk heuristik, ikke en måling af
+# opgavens faktiske værktøjsbrug. `confidence` er derfor opgavespecifik i RETNING, ikke i
+# sandsynlighed: vi ved om opgaven er læsende eller irreversibel, ikke om den lykkes.
 _SIGNAL_WINDOW_HOURS = 24
 _SIGNAL_CACHE_SECONDS = 60.0
 _signal_cache: dict[str, object] = {}
@@ -430,6 +484,10 @@ def _stash_preflight_prediction(
             "raw_confidence": signal.get("raw_confidence"),
             "recent_error_count": signal.get("recent_error_count"),
             "recent_success_count": signal.get("recent_success_count"),
+            # A7: hvilken risikoklasse opgaven blev læst som — så kalibreringen kan se
+            # om en afvist/lupket opgave var irreversibel eller læsende.
+            "task_tier": signal.get("task_tier"),
+            "task_signals": signal.get("task_signals"),
             "allowed": bool(udfald.get("allowed", True)),
             "backstop": bool(udfald.get("backstop", False)),
             "task": str(task_description or "")[:80],

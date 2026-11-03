@@ -362,6 +362,17 @@ _Én linje om hvad Jarvis TÆNKTE i en runde — til visningstilstanden «Tænkn
 | function | `_ryd` | `(s)` | — | [src](../../../core/services/tanke_resume.py#L61) |
 | function | `tanke_resume` | `(tanke, hensigt=…)` | Én linje om rundens tænkning, eller `""`. | [src](../../../core/services/tanke_resume.py#L75) |
 
+## `core/services/task_tool_mapping.py`
+_Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_catalog` | `()` | Katalognavne, eller et tomt sæt hvis kataloget ikke kan læses. | [src](../../../core/services/task_tool_mapping.py#L133) |
+| function | `_tier_for_tool_name` | `(name)` | Klassificér et konkret værktøj ud fra dets navn. | [src](../../../core/services/task_tool_mapping.py#L158) |
+| function | `_matcher` | `(noegleord, tekst)` | Match et nøgleord mod teksten — enkeltord med ordgrænse, fraser som substring. | [src](../../../core/services/task_tool_mapping.py#L174) |
+| function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L187) |
+| function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L246) |
+
 ## `core/services/task_worker.py`
 _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 
@@ -615,21 +626,4 @@ _Text Resonance — I feel what I read, before I analyze it._
 | function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L195) |
 | function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L229) |
 | function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L246) |
-
-## `core/services/theater_audit.py`
-_Theater Audit -- find narrative-first inner-life patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
 

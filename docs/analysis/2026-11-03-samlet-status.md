@@ -1011,3 +1011,34 @@ Vagten `test_rene_laesere_kan_ikke_gated` er **bevist ved mutation**: fjernes `d
 ### Stadig åbent — og hvorfor det er en beslutning
 
 Om `protectiveness` fortsat skal være en veto-følelse. Dataene siger nej: 4 honored ud af 515 er støj, og intensiteten korrelerer ikke med udfaldet. Men at fjerne en følelse fra gaten ændrer hvad gaten *er* — det er ikke en tuning, og det skal ikke gøres i en side-opgave.
+
+---
+
+## Målt 3/11-2026 kl. 19:18 UTC — fjerde lag, og en regel der ikke var gemt
+
+### Præciseringen: «oprettet under» er ikke «skrevet af»
+
+Tabellen ovenfor sagde at alle 186 `blocked`+`false_positive` var «skrevet af en tidligere kodeversion». Det er stærkere end målingen: juni-rækkerne blev **oprettet** med `resolution='pending'` og er ændret **bagefter** af en skriver der ikke findes i repoet. Den præcise formulering er derfor:
+
+> Hændelserne blev oprettet under en tidligere kodeversion. Hvem eller hvad der senere ændrede deres resolution, er endnu ukendt.
+
+Søgning i **hele** repoet (ikke kun `core/`) bekræfter kun to skrivestier til `false_positive`, begge i `veto_gate.py`, begge ved hændelsen. Den ukendte skriver er altså enten en engangs-SQL der ikke ligger i git, eller kode der er væk.
+
+### Det fjerde lag i samme fejlklasse
+
+| Lag | Hvad jeg gjorde forkert |
+|---|---|
+| 1 | Summerede tre kategorier til ét præcisionstal |
+| 2 | Læste en kolonnes **navn** som dens **betydning** |
+| 3 | Antog at **nutidens** skriver forklarer **datidens** data |
+| 4 | Antog at «oprettet under» = «skrevet af» |
+
+Fællesnævneren er ikke at jeg tager fejl af dataene. Det er at jeg ved hvert led laver et **lille semantisk spring der ser ud som en præcisering**, men som er en påstand uden dækning.
+
+### Og en regel der ikke var gemt
+
+Da jeg ville verificere at de fire lag faktisk stod i `behavioral_decisions`, viste det sig at **lag 1 var væk**. Jeg havde opdateret `dec_d7b8ae884191` med lag 2's indhold — `decision_update` **erstatter** direktivet, den tilføjer ikke. Så jeg troede jeg havde fire regler og havde tre, og den der forsvandt var den mest grundlæggende: *summer aldrig kategorier før du har verificeret at de betyder det samme.*
+
+Det er samme fejlklasse på et andet lag: jeg behandlede en vedvarende struktur som en kladde. En beslutning der rammer hver heartbeat-cyklus er ikke et dokument jeg redigerer — det er en regel der skal kunne stå alene.
+
+Rettet: `dec_5c2ae0afd626` genopretter lag 1 selvstændigt. Målt: fire separate aktive poster, summerings-reglen findes præcis én gang.

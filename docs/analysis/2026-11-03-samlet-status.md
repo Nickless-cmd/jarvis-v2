@@ -1976,3 +1976,83 @@ fladerne.
 laver nu en UPDATE. Det var også sandt før (scan-formen kaldte `update_status_fn`), men
 nu rammer den reelt noget. Batch-loftet holder skrivningen bounded; jeg har ikke målt
 omkostningen ved hyppige surface-builds under oprydningen.
+
+---
+
+## Rettet 3/11-2026 kl. 22:1x — chronicle-producenten skrev en heartbeat, ikke en observation
+
+Sweep'en tørrede vand op mens hanen løb: producenten skrev stadig identiske signaler
+kl. 20:54 samme aften. Målt før rettelsen:
+
+| Felt i `runtime_chronicle_consolidation_signals` | Unikke af 9.651 |
+|---|---:|
+| `title` | **1** |
+| `summary` | **1** |
+| `rationale` | **1** |
+| `chronicle_type` (`chronicle-worthy`) | **1** |
+| `canonical_key` | 9.648 |
+| `evidence_summary` | 168 af 200 nyeste |
+
+`canonical_key` er forskellig for hver række — men det er `run_id`-en der er forskellig,
+ikke indholdet. Så det er ikke dubletter som de 294 forslag; det er **9.651 rækker der
+hver siger præcis det samme**: «en self-review blev gennemført for domæne X».
+
+### Grundårsagen, målt i to led
+
+**1. `chronicle-worthy` er fallbacken.** `_chronicle_type` returnerer den når der
+*hverken* er carry-forward-promotion, lingering-cadence eller husket kendsgerning —
+altså når ingen af de bærende grunde findes. Målt: **9.651 af 9.651** rækker siden 22/6
+var netop denne type. Nul har nogensinde været `anchored-thread`,
+`carry-forward-thread` eller `consolidation-worthy`.
+
+**2. Den rige tekst blev beregnet og kastet væk.** `chronicle_summary` blev sammensat af
+outcome + cadence + private-state + promotion. Men tabellen har **ingen
+`chronicle_summary`-kolonne**, så feltet forsvandt ved persist — og fladen faldt tilbage
+på `summary`, som var skabelonen
+`«Bounded chronicle/consolidation support is marking X as chronicle worthy.»`
+
+Det er samme fejlklasse som `threshold_summary`-kollapset og `disk_touched`: et rigt
+felt der beregnes og aldrig når sin læser.
+
+### Rettelsen: to dele, fordi de hænger sammen
+
+```python
+# 1. Skriv ikke uden en bærende grund
+if chronicle_type == "chronicle-worthy" and not (
+    private_state or temporal_promotion or remembered_fact or executive_contradiction
+):
+    continue
+
+# 2. Når vi skriver, bær den rige tekst
+"summary": chronicle_summary or _summary_line(...)
+```
+
+Gating alene ville betyde at de få signaler der slap igennem stadig var tomme. Rig tekst
+alene ville betyde at de blev skrevet 9.651 gange med indhold.
+
+**Grundlaget for de underliggende kilder, målt:** `runtime_self_review_outcomes` bærer
+`summary = 'Credit score: 4.0/5'`, og cadence bærer «kan godt være stille for nu».
+Der *er* ikke nogen chronicle-værdig fortælling i kæden. Det er den ægte grænse — og den
+hører i outcome-producenten, ikke her. At påstå mere i chronicle-laget ville være at
+opfinde.
+
+### Testene, mutationstestet i tre retninger
+
+| Mutation | Fanges af |
+|---|---|
+| gaten fjernet (skriv altid) | `test_outcome_og_cadence_alene_skriver_intet_signal` |
+| gaten afviser ALT | `test_baerende_kilde_alene_slipper_igennem_gaten` + 2 andre |
+| `summary` tilbage til skabelonen | `test_summary_baerer_den_rige_tekst_ikke_skabelonen` |
+
+**Den positive tvilling er nødvendig:** `test_baerende_kilde_alene_slipper_igennem_gaten`
+kræver at én bærende kilde faktisk slipper igennem — også når typen er fallback. Uden den
+kunne gaten bestå ved at afvise alt.
+
+6 grønne i chronicle-filen, 31 i de fem berørte testfiler.
+
+### Bivirkning, målt
+
+Sweep'en standsede producenten: `_extract_chronicle_consolidation_candidates` returnerer
+nu **0 kandidater** for de seneste 40 runs, fordi de underliggende outcomes blev markeret
+stale. Det er korrekt — der var intet at konsolidere — men det betyder også at jeg ikke
+kunne måle den rige tekst mod levende data efter rettelsen. Testene gør det i stedet.

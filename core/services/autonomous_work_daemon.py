@@ -250,12 +250,41 @@ def _plan_once() -> list[str]:
     return created
 
 
+def _pending_count() -> int:
+    return sum(1 for e in _load() if e.get("status") == "pending")
+
+
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
+    """Plan work proposals during low activity.
+
+    ⚠️ RETTET 3/11-2026 — daemonen producerede i det uendelige ind i en log
+    ingen forbruger. Målt: 300 poster (loggens loft), ALLE `pending`, ældste
+    28/10. `_save` trimmer til de nyeste 300, så gamle forslag ikke blev
+    afvist — de blev **stille kasseret** ved rotation, mens fladen fortsat
+    meldte «300 afventende af 300 total».
+
+    `resolve_proposal` findes og virker, men kaldes kun manuelt. Der er altså
+    ingen automatisk forbruger: hvert tick fyldte loggen op og skubbede et
+    gammelt forslag ud, uden at nogen nogensinde så det.
+
+    Nu standses produktionen når køen er fuld af ubehandlede forslag. Det er
+    ærligere at sige «jeg har 300 ubesvarede forslag og laver ikke flere» end
+    at blive ved med at skrive dem ind i en roterende fil der skjuler dem.
+    """
     low, reason = _is_low_activity()
     if not low:
         return {"skipped": True, "reason": reason}
     if _proposals_last_hour() >= _MAX_PROPOSALS_PER_HOUR:
         return {"skipped": True, "reason": "rate-limited"}
+
+    ventende = _pending_count()
+    if ventende >= _LOG_MAX:
+        return {
+            "skipped": True,
+            "reason": "queue-full-unconsumed",
+            "pending": ventende,
+        }
+
     created = _plan_once()
     return {
         "skipped": False,
@@ -308,10 +337,40 @@ def build_autonomous_work_surface() -> dict[str, Any]:
 
 
 def _surface_summary(pending: list[dict[str, Any]], all_items: list[dict[str, Any]]) -> str:
+    """Summarise the queue — og sig naar den ikke bliver forbruget.
+
+    3/11-2026: fladen skrev «300 afventende forslag af 300 total» som om det var
+    en travl kø. Maalt var det en log der var loebet fuld: alle 300 `pending`,
+    aeldste 28/10, og `_save` trimmede de aeldste vaek ved rotation saa de ikke
+    blev afvist — de blev kasseret uden spor. `resolve_proposal` findes, men
+    kaldes kun manuelt, saa der er ingen forbruger.
+
+    Nu siger den det hoejt i stedet for at se sund ud.
+    """
     if not all_items:
         return "Ingen autonomous-work forslag endnu"
+
+    # Alder paa det aeldste ventende forslag — det er dét der afsloerer om
+    # koeen bliver behandlet eller bare fyldt op.
+    aeldste_dage: int | None = None
+    ats = sorted(str(e.get("at")) for e in pending if e.get("at"))
+    if ats:
+        try:
+            aeldste = datetime.fromisoformat(ats[0].replace("Z", "+00:00"))
+            aeldste_dage = max(0, (datetime.now(UTC) - aeldste).days)
+        except Exception:  # utolkbart tidsstempel — alderen er en berigelse, ikke et krav
+            aeldste_dage = None
+
+    if pending and len(pending) >= _LOG_MAX:
+        alder = f", ældste {aeldste_dage} dage" if aeldste_dage is not None else ""
+        return (
+            f"Køen er FULD og uforbrugt: {len(pending)} afventende{ alder }. "
+            "Intet forslag er behandlet — produktionen er standset indtil nogen "
+            "resolve'er dem."
+        )
     if pending:
-        return f"{len(pending)} afventende forslag af {len(all_items)} total"
+        alder = f", ældste {aeldste_dage} dage" if aeldste_dage is not None else ""
+        return f"{len(pending)} afventende forslag af {len(all_items)} total{alder}"
     return f"0 afventende ({len(all_items)} behandlet)"
 
 

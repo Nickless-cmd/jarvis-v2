@@ -226,6 +226,24 @@ def _identify_priorities(signals: dict[str, Any]) -> list[str]:
         priorities.append("compact_context")
     if signals.get("active_goals"):
         priorities.append("advance_goals")
+    else:
+        # 3/11-2026: et TOMT maal-loft er selv et signal.
+        #
+        # Maalt: `long_horizon_goals` havde 8 abandoned + 7 completed og NUL
+        # aktive. Det sidste blev abandoned 09:50:27, og `tick_dispatched`
+        # stoppede samtidig — sidste dispatch kl. 09:49. Derefter var hvert
+        # eneste tik `productive_idle` i otte timer: ikke fordi der intet var
+        # at lave, men fordi dispatch-grenen kraever en prioritet, og den
+        # eneste prioritetskilde der altid var der, var et aktivt maal.
+        #
+        # Koden antog det modsatte. Kommentaren ved `advance_goals`-grenen
+        # nedenfor sagde at `active_goals` "altid er ikke-tom (eet aktivt
+        # maal)" — og den antagelse holdt indtil maalene loeb ud. Saa faldt
+        # hele dispatch-stien tavst tilbage til tomgang uden at nogen sagde
+        # til, og den gren der skulle foreslaa arbejde blev uopnaaelig.
+        #
+        # At maalene er loebet ud er praecis noget der skal handles paa.
+        priorities.append("goal_starvation")
     if int(signals.get("errors_last_hour") or 0) >= 5:
         priorities.append("investigate_errors")
     return priorities
@@ -730,15 +748,23 @@ def act_phase(
                 "idle_result": idle_result,
             }
 
-        # C3 — forslag til aktive mål (29/10-2026, MÅLT).
+        # C3 — forslag til aktive mål (29/10-2026, MÅLT; præmis rettet 3/11).
         #
-        # Grenen lå i `productive_idle`, og den er nu UOPNÅELIG: `active_goals`
-        # er altid ikke-tom (ét aktivt mål), så `_identify_priorities` tilføjer
+        # Grenen lå oprindeligt i `productive_idle`. 29/10 blev den flyttet her
+        # med begrundelsen at den var UOPNÅELIG der: `active_goals` var "altid
+        # ikke-tom (ét aktivt mål)", så `_identify_priorities` tilføjede
         # `advance_goals` hver gang — og `if priorities:` vinder altid over
-        # `productive_idle`. Målt i databasen: `productive_idle` fyrede 3-4
-        # gange i timen i et helt døgn og stoppede HELT kl. 19, samme time som
-        # fixet gjorde målene synlige. Grenen skal ligge der hvor betingelsen
-        # faktisk opstår, ikke der hvor den engang gjorde.
+        # `productive_idle`.
+        #
+        # Den præmis brød 3/11-2026 kl. 09:50:27, hvor det sidste aktive mål
+        # blev `abandoned`. Siden da var `active_goals` tom, `priorities` tom,
+        # og hvert tik gik til `productive_idle` — otte timer i træk. Så
+        # grenen var ikke uopnåelig; den var afhængig af en antagelse der
+        # kunne holde op med at gælde, uden at nogen opdagede det.
+        #
+        # Rettelsen er i `_identify_priorities`: et tomt mål-loft giver nu
+        # prioriteten `goal_starvation`, så dispatch-stien ikke kan falde
+        # permanent tilbage til tomgang.
         #
         # Gaten i `_propose_skill_chains_in_idle` gør kaldet til ét pr. NYT
         # mål: denne linje koster en DB-læsning pr. tick og en LLM kun når et

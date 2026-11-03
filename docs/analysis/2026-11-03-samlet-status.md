@@ -298,3 +298,96 @@ reelle adfærd indtil nu — ingen blokering — mens den måler. Reversibelt: s
 **Stadig åbent:** A5 (tærsklen — røres ikke før der er set shadow-data), og den
 opgave→værktøj-mapping der skal gøre observationerne opgavespecifikke. B1 og C1–C3 er
 uændrede; de er et selvstændigt spor.
+
+---
+
+## Lukket 3/11-2026 (aften, faser B + C) — B1, C2, C3
+
+### B1 — tick-dispatch var ikke «historisk», den var brudt
+
+Den oprindelige formulering var forkert. `tick_dispatched` havde **128
+forekomster i døgnet**, ikke nul — men de stoppede brat.
+
+**Målt:** dispatch kørte hvert 16. minut fra 00:08 til **09:49**, derefter intet.
+Siden da er hvert eneste tik `productive_idle` (12 i træk målt).
+
+**Rod-årsag, med tidsstempel:** `long_horizon_goals` har 8 `abandoned` + 7
+`completed` og **nul aktive**. Det sidste aktive mål blev `abandoned`
+**09:50:27** — mindre end et minut efter den sidste dispatch.
+
+`_identify_priorities` tilføjede `advance_goals` **kun** hvis `active_goals` var
+ikke-tom. Uden mål → tom prioritetsliste → `productive_idle`. Og koden antog det
+modsatte: kommentaren ved `advance_goals`-grenen sagde at `active_goals` «altid
+er ikke-tom (ét aktivt mål)». Den antagelse holdt indtil målene løb ud — så faldt
+hele dispatch-stien tavst tilbage til tomgang, og den gren der skulle foreslå
+arbejde blev uopnåelig.
+
+**Rettelse:** et tomt mål-loft giver nu prioriteten `goal_starvation`. Et tomt
+mål-loft er et signal om at der skal handles, ikke bevis på at der intet er at
+lave. Kommentaren der bar den falske antagelse er rettet til at sige hvad der
+faktisk skete.
+
+**Målt efter:** tomt mål-loft → `['goal_starvation']` → dispatch. Levende
+sansning giver nu `['verify_recent_mutations', 'goal_starvation']`.
+
+### C2 — glemsels-filteret var en no-op
+
+`get_relevant_experiential_memories` filtrerede på `WHERE decay_score < 0.9` i
+`cognitive_experiential_memories`. Kolonnen skrives **kun ét sted** i hele koden
+(`db_experiential_memory.py:71`), og den sætter den til `0.0` ved forstærkning.
+
+**Målt:** 9 rækker, **nul** med `decay_score > 0`, max 0,0. Filteret matchede
+hver eneste række og udelukkede intet — det påstod en glemsel der ikke fandtes i
+den tabel.
+
+Den ægte henfald bor i `forgetting_curve`-registret: 500 poster, **301 faldet**
+(≥ 0,9), nøglet på `sha256(focus|summary)[:16]` med `content_preview` som første
+100 tegn.
+
+**Rettelse:** recall læser nu registeret og bruger den ægte decay. Broen er
+`content_preview` matchet mod rækkens egen tekst; en post med decay ≥ 0,9
+udelades for alvor, og den returnerede `decay_score` er registerets tal.
+
+**Forbehold, målt:** **0 af 9** SQL-rækker matcher et register-preview. De to
+systemer sporer helt forskellige erindringer — registeret har content-hashes,
+tabellen har `exp-`-id'er. Rettelsen er korrekt wiring, men udelukker **intet i
+praksis** før noget begynder at registrere de samme erindringer i begge.
+Det ændrer ikke konklusionen: filteret løj før, det gør det ikke nu.
+
+### C3 — 300 forslag uden forbruger
+
+`autonomous_work_daemon.tick` kaldes ved hvert heartbeat og skriver forslag ind i
+`autonomous_work_log.json`. `resolve_proposal` findes og virker, men kaldes kun
+manuelt — der er **ingen automatisk forbruger**.
+
+**Målt:** 300 poster (loggens loft), **alle** `pending`, ældste 28/10 (6 dage).
+`_save` trimmer til de nyeste 300, så gamle forslag blev ikke afvist — de blev
+**stille kasseret** ved rotation, mens fladen meldte «300 afventende af 300
+total» som om det var en travl kø.
+
+**Rettelse:** to dele.
+
+1. `tick` standser når køen er fuld af ubehandlede forslag (`queue-full-unconsumed`).
+   Det er ærligere at sige «jeg har 300 ubesvarede og laver ikke flere» end at
+   blive ved med at skrive dem ind i en roterende fil der skjuler dem.
+2. Fladen siger det højt: *«Køen er FULD og uforbrugt: 300 afventende, ældste 6
+   dage. Intet forslag er behandlet.»* Og en ikke-fuld kø viser også den ældstes
+   alder, fordi alderen er det der afslører om køen behandles eller bare fyldes.
+
+**Ikke løst:** der er stadig ingen forbruger. Rettelsen standser kun
+produktionen og gør tilstanden synlig — den behandler ikke de 300.
+
+### Teste
+
+- `tests/test_heartbeat_phases.py` — 27 grønne; `test_priorities_empty_when_calm`
+  erstattet af to der udtrykker den nye semantik (rolig *med* mål → `advance_goals`,
+  rolig *uden* mål → `goal_starvation`). Den gamle test håndhævede præcis den
+  antagelse der brød.
+- `tests/test_autonomous_work_daemon.py` — ny, 4 vagter: kø-grænse, produktion
+  under loftet, fuld-kø-rapportering, alders-rapportering.
+- `tests/test_experiential_decay_wiring.py` — ny, 4 vagter: faldet post udelades,
+  decay kommer fra registeret, usporet række får 0, manglende register gør ikke
+  recall blind.
+- Bredt batteri (heartbeat/forgetting/experiential/autonomous/gut): **647 grønne**.
+  Én fejl er netværksvagten der stoppede en test der ville kalde en rigtig model —
+  miljømæssig, ikke fra disse ændringer.

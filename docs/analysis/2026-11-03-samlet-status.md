@@ -768,17 +768,41 @@ aldrig opstå.
 | `_world_model_support_signal_instruction` | **TOM** — læser den tomme `runtime_world_facts` |
 | `build_world_fact_prompt_section` | **TOM** — samme tabel |
 
-### Og de kognitive flader når aldrig modellen
+### De kognitive flader når ikke modellen — men kognitiv kontekst gør
 
-`cognitive_architecture` (72 navngivne overflader, 110 KB) læses af
-`central_hub.py` og `mission_control_common.py` — altså **Desk**, via API-ruten
-`/central`. `prompt_contract.py` nævner den **nul gange**, og nævner heller ikke
-`gut_surface`, `self_model_surface`, `affective_state` eller
-`continuity_kernel`.
+**Rettet 3/11-2026 kl. 21:0x efter en indvending der holdt.** Jeg skrev først at
+«de kognitive flader aldrig når modellen». Det var for bredt, og målingen viser
+hvorfor: der findes **to** kognitive kanaler til prompten, og begge leverer.
 
-Det er ikke fordi der ingen kognitiv kontekst er i prompten — de 17
-support-sektioner findes og 8 af dem lever. Men de henter fra **signaler**, ikke
-fra fladerne. To parallelle kanaler, hvoraf den ene kun Desk ser.
+| Kanal | Målt |
+|---|---|
+| `cognitive_state` (injektionsenhed) | **live** — `injection_live("cognitive_state")` = `True`, `read_injection` svarede **800 tegn** |
+| 17 support-signal-sektioner | 8 af 11 byggere lever mod levende data |
+
+`cognitive_state` registreres i `central_injection_units.py:52` og læses i
+`prompt_contract.py` fire steder: 868–883 (build/injection-valg), 2687–2695
+(hentning), 2714–2716 (`_awareness_add(40, …)`) og 2732 (flushet der rettede at
+sektionen blev bygget men tabt). Den bygger fra `cognitive_state_assembly.py`:
+narrativizer, `affective_meta_state`, `embodied_state`, `associative_recall` og
+ti `build_*_prompt_section`-funktioner (theory-of-mind, perception,
+counterfactual, drive-arbitration, temporal-self, curiosity-debt,
+inner-dialectic, somatic, offline-recomposition, learning-policy).
+
+**Det der stadig holder er det snævre:** `cognitive_architecture`-fladen
+(72 overflader, 110 KB, inkl. `build_gut_surface()`) har ingen prompt-læser. Den
+læses af `central_hub.py`, `mission_control_common.py` og
+`runtime_self_model_surfaces.py` — altså Desk via `/central`. Og
+`cognitive_state_assembly.py` nævner hverken `gut_surface` eller
+`cognitive_architecture` (grep: nul træf).
+
+**Det konkrete hul, målt:** gut-signalet findes hverken i `cognitive_state` eller
+i support-signalerne. I den fulde 800-tegns `cognitive_state`-tekst står `gut` 0
+gange, `hunch` 0, `caution` 0, `withheld` 0. Og `prompt_contract.py`,
+`prompt_sections/*.py` og `prompt_support_signals.py` indeholder tilsammen nul
+referencer til `gut_surface`/`hunch`.
+
+Så: modellen får kognitiv kontekst — men ikke mavens vurdering. Det er ikke et
+hul i «det kognitive lag», det er et hul på præcis ét signal.
 
 ### Det vigtigste
 
@@ -966,7 +990,13 @@ hele vejen fra producent til læser.
 **Ingen af læserne er prompten.** `prompt_contract.py` indeholder nul referencer til
 `cognitive_architecture` eller `build_cognitive_architecture_surface`. Fladen er altså
 **produceret og tilgængelig, men ikke virksom** — den vises i Mission Control og i
-Centralen, og den når ikke ind i den prompt jeg tænker med.
+Centralen, og den når ikke ind i prompten.
+
+**Forbehold (målt 3/11 kl. 21:0x):** det betyder *ikke* at prompten er uden kognitiv
+kontekst. `cognitive_state`-injektionen leverer 800 tegn live, og 8 af 11
+support-sektioner lever. Det er specifikt **denne flade** — og dermed gut-tallene —
+der ikke når frem: `gut`/`hunch`/`caution`/`withheld` står 0 gange i både
+`cognitive_state`-teksten og i prompt-laget. Se rettelsen ovenfor.
 
 Det gør C1's tre niveauer konkrete for denne flade:
 

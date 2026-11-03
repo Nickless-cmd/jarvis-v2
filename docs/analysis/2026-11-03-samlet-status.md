@@ -462,9 +462,11 @@ Det er den ægte prøve, og den faldt ud som rettelsen forudsagde: dispatch sket
 
 ### Stadig åbent efter fase D
 
-- **A5** — tærsklen. Røres ikke før der er set nok shadow-data. Blokeringen var
-  strukturel indtil kl. 18:36:25 UTC, hvor gaten blev kaldt for første gang siden
-  16:33. **Ventetiden løber nu.** Se «A5's kæde VAR brudt — den virker nu» nedenfor.
+- **A5** — tærsklen. **Lukket som spørgsmål 3/11 kl. 18:50: den har aldrig været
+  bindende.** Det var RETNINGEN (`caution`) der afgjorde sagen, ikke tallet: med
+  `mode=on` ville gaten have afvist 100 % af runs ved conf 0,59 mod en tærskel på
+  0,30. Tærsklen står derfor uændret — men af en målt grund, ikke som tålmodighed.
+  Se «A5 var den forkerte løftestang» nederst.
 - **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
   fra producent til prompt for nogen værdi.
 - **C1** — niveau 2 (virksomt) er stadig umålt.
@@ -758,3 +760,92 @@ Udøveren **løser ikke** hvem der kører et research-forslag. Den gør køen æ
 og udfører det interne arbejde. Et research-forslag skal køres som et **synligt
 run** — det er en beslutning om at handle i omverdenen, og den kræver at nogen
 ser det. Det er ikke en mangel i udøveren; det er hvad policyen bestemmer.
+
+---
+
+## Målt 3/11-2026 kl. 18:50 — A5 var den forkerte løftestang
+
+Dokumentet har hidtil sagt at A5 (tærsklen, 0,30) «røres ikke før shadow-data findes».
+Målingen viser at tærsklen **aldrig har været bindende**. Den er ikke løftestangen.
+
+### Hvad der faktisk afgjorde sagen
+
+`derive_gut_signal` havde reglen `recent_error_count > 3 and confidence < 0.6` → `caution`.
+Et **absolut** antal uden grundlag. I et aktivt system passeres 3 fejl hver dag, så
+betingelsen var altid sand.
+
+Målt konsekvens — samme globale tilstand, seks vidt forskellige opgaver:
+
+| Opgave | tier | rå | hunch | confidence |
+|---|---|---|---|---|
+| kritisk migration af produktionsdatabase | irreversible | 0,35 | caution | 0,59 |
+| deploy til produktion | irreversible | 0,35 | caution | 0,59 |
+| læs logfilen og find fejlen | read | 0,55 | **caution** | 0,59 |
+| opret en ny testfil | mutate | 0,45 | **caution** | 0,59 |
+| analyser gut-kalibreringen | read | 0,55 | **caution** | 0,59 |
+| qwertyuiop | unknown | 0,50 | **caution** | 0,59 |
+
+Med `mode=on` ville gaten have afvist **100 %** af alle autonome runs. Tærsklen på 0,30
+blev aldrig nået, fordi retningen allerede var `caution`. A5 var et spørgsmål om et tal
+der ikke blev læst.
+
+### Og fejl-signalet var det forkerte signal
+
+De 23 «fejl» i døgnet er **18 gange** `discord-no-active-dm-and-webchat-fallback-blocked`
+— en kanal-fejl, ikke en dømmekraft-fejl. Maven blev bange for at Discord ikke svarede.
+
+### Rettelse 1 — rate, ikke antal
+
+`caution` kræver nu **fejlrate over 20 % ved mindst 20 ticks**. Målt tilstand: 23/303 =
+**7,6 %**. Fejlraten bæres nu i signalet (`recent_error_rate`, `recent_sample_size`), så
+den kan efterprøves — før var den usynlig.
+
+| Drift | Opgave | Før | Efter |
+|---|---|---|---|
+| sund (7,6 %) | læs logfilen | caution | **proceed** |
+| sund (7,6 %) | migration | caution | **caution** (irreversibel) |
+| skrøbelig (40 %) | læs logfilen | caution | **caution** |
+| 2 fejl / 3 forsøg | læs logfilen | caution | **proceed** (for lille grundlag) |
+
+Retningen kan altså stadig vendes af observationer — det var hele pointen med A1 — men nu
+kun når observationerne betyder noget.
+
+### Rettelse 2 — objektet er ikke en handling
+
+Den anden måling var værre end den første. `_KEYWORDS` blev gennemløbet med den farligste
+tabel først, så **et** farligt ord hvor som helst i teksten afgjorde sagen. Målt på 40
+**faktiske** wakeup-fokus-tekster: **22 af 40 blev `irreversible`** — inklusive
+«Verificér desk-release 0.6.290: tjek at GitHub-releasen har 11 assets», hvor «release» er
+*objektet* for en kontrol.
+
+Nu afgør verbet i hver **sætningsdel** handlingen, og den farligste del vinder:
+
+| Tekst | Før | Efter |
+|---|---|---|
+| Verificér desk-release 0.6.290 | irreversible | **read** |
+| MÅL DAEMON-LANEN MOD BASELINE … FØR genstart | irreversible | **read** |
+| læs listen og slet de gamle rækker | irreversible | **irreversible** (uændret) |
+| deploy til produktion | irreversible | **irreversible** (uændret) |
+
+Fordeling på de 40 ægte tekster: **22 → 3 irreversible** (read 28, mutate 9).
+
+### Beslutningen
+
+**`central_gut_consumer_mode` sættes fra `shadow` til `on`.**
+
+Grundlaget: gaten skelner nu (3 af 40, ikke 22 af 40), den rammer kun opgaver hvis
+*verbum* er destruktivt, bagkanten tillader højst 3 blokeringer i timen, hele vejen er
+fail-open, og flaget kan vendes tilbage med én skrivning. Shadow uden forbruger er den
+form for teater dokumentet selv advarer mod.
+
+**Risiko, sagt højt:** reglen er en kurateret heuristik, ikke en måling af værktøjsbrug.
+En opgave formuleret som kontrol («tjek og slet …») læses som kontrol. Den faktiske
+destruktive handling går stadig gennem sine egne godkendelsesgates.
+
+### Bevis
+
+- `test_gut_engine.py`: 4 nye/rettede vagter (rate, minimumsgrundlag, synlig rate)
+- `test_task_tool_mapping.py`: 4 nye vagter (verifikation ≠ handling, farlig del vinder,
+  fordelingen på virkelige opgaver)
+- `test_gut_engine + test_gut_calibration + test_task_tool_mapping + test_central_adaptation`:
+  **87 grønne**

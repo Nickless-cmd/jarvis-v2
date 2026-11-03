@@ -92,8 +92,17 @@ _KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "grep", "status", "oversigt", "overview", "rapportér", "report",
         "undersøg", "investigate", "mål", "measure", "se på", "look at",
         "hvor mange", "how many", "hvad er", "what is",
+        # 3/11-2026: kontrol-verberne manglede. Uden dem blev «Verificér desk-release
+        # 0.6.290: tjek at GitHub-releasen har 11 assets» klassificeret som en
+        # UDGIVELSE, fordi ordet «release» stod i teksten — opgaven er en kontrol AF en
+        # udgivelse. Målt: 22 af 40 faktiske wakeup-tekster blev irreversible af den grund.
+        "verificér", "verify", "kontrollér", "confirm", "bekræft", "gennemgå",
+        "review", "evaluer", "evaluate",
     )),
 )
+
+#: Første ord i opgaven — verbet. `[\w]` dækker æ/ø/å via re.UNICODE.
+_LEADING_WORD_RE = re.compile(r"^\s*([\wæøåéü]+)", re.UNICODE)
 
 #: Præfikser der gør et værktøjsnavn læsende, uanset hvad resten af navnet indeholder.
 #: Målt 3/11-2026: 93 katalognavne bærer et mutations-ord, og mange er falske positiver —
@@ -184,6 +193,53 @@ def _matcher(noegleord: str, tekst: str) -> bool:
     return re.search(rf"\b{re.escape(noegleord)}", tekst) is not None
 
 
+def _leading_tier(lav: str) -> tuple[str | None, str | None]:
+    """Tier for opgavens FØRSTE ord — verbet — og ordet selv.
+
+    Returnerer `(None, None)` når første ord ikke er et handlingsord; så afgør
+    nøgleordsscanningen i resten af teksten.
+
+    HVORFOR (3/11-2026, målt): `_KEYWORDS` blev gennemløbet tabel for tabel med den
+    farligste først, så et hvilket som helst farligt ord i teksten afgjorde sagen. Målt
+    på 40 faktiske wakeup-tekster: **22 blev `irreversible`** — bl.a. «Verificér
+    desk-release 0.6.290: tjek at GitHub-releasen har 11 assets», hvor «release» er
+    objektet for en kontrol, ikke en handling. Med `mode=on` ville gaten have afvist
+    55 % af alle autonome runs, inklusive ren læsning.
+
+    Reglen er derfor: det FØRSTE ord er handlingen, resten er objektet. En opgave der
+    begynder med et kontrol-verbum er en kontrol — også når den nævner noget farligt.
+    """
+    m = _LEADING_WORD_RE.match(lav)
+    if not m:
+        return None, None
+    ord_ = m.group(1)
+    for tier, ordliste in _KEYWORDS:
+        for o in ordliste:
+            if " " in o or "-" in o:
+                continue
+            # Præfiks-match, ikke lighed: dansk bøjer («slet» → «sletning», «verificér»
+            # → «verificering»), og de bøjede former står ikke i tabellen.
+            if ord_.startswith(o):
+                return tier, o
+    return None, None
+
+
+#: Sætningsdele. En opgave kan bære FLERE handlinger: «læs listen og slet de gamle
+#: rækker» er en sletning, ikke en læsning. Derfor afgøres hver del for sig, og den
+#: farligste vinder — men kun verbet i hver del, så objektet ikke bliver en handling.
+_CLAUSE_SPLIT_RE = re.compile(r"[.,;:&]|\bog\b|\bsamt\b|\bderefter\b", re.UNICODE)
+
+
+def _clause_tiers(lav: str) -> list[tuple[str, str]]:
+    """(tier, ord) for hver sætningsdels ledende verbum. Tom liste = intet handlingsord."""
+    ud: list[tuple[str, str]] = []
+    for del_ in _CLAUSE_SPLIT_RE.split(lav):
+        tier, ord_ = _leading_tier(del_ or "")
+        if tier:
+            ud.append((tier, ord_))
+    return ud
+
+
 def map_task_to_tools(task_description: str) -> dict[str, Any]:
     """Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er.
 
@@ -227,7 +283,26 @@ def map_task_to_tools(task_description: str) -> dict[str, Any]:
             "confidence_delta": _DELTA[tier],
         }
 
-    # 2) NØGLEORD: opgavens handlingstalende. Farligste tabel først.
+    # 2) NØGLEORD: opgavens handlingstalende — pr. SÆTNINGSDEL.
+    #
+    # 3/11-2026: rækkefølgen var «farligste tabel først», så ET farligt ord hvor som helst
+    # i teksten afgjorde sagen. Det gjorde 22 af 40 faktiske wakeup-tekster irreversible —
+    # inklusive rene kontroller som «Verificér desk-release 0.6.290», hvor «release» er
+    # OBJEKTET for en kontrol. Nu afgør verbet i hver sætningsdel handlingen, og den
+    # farligste del vinder — så «læs listen og slet de gamle rækker» stadig er en sletning.
+    dele = _clause_tiers(lav)
+    if dele:
+        tier = _vaerste([t for t, _ in dele])
+        return {
+            "tools": [],
+            "tier": tier,
+            "signals": [o for _, o in dele][:3],
+            "method": "keyword",
+            "confidence_delta": _DELTA[tier],
+        }
+
+    # 3) INTET LEDENDE HANDLINGSORD («kritisk migration af produktionsdatabase») →
+    # farligste tabel først, som før. Rækkefølgen i `_KEYWORDS` bærer den regel.
     for tier, ord in _KEYWORDS:
         ramte = [o for o in ord if _matcher(o, lav)]
         if ramte:

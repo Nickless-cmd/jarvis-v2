@@ -367,11 +367,13 @@ _Opgave → værktøj-mapping: hvad vil denne opgave sandsynligvis røre?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_catalog` | `()` | Katalognavne, eller et tomt sæt hvis kataloget ikke kan læses. | [src](../../../core/services/task_tool_mapping.py#L133) |
-| function | `_tier_for_tool_name` | `(name)` | Klassificér et konkret værktøj ud fra dets navn. | [src](../../../core/services/task_tool_mapping.py#L158) |
-| function | `_matcher` | `(noegleord, tekst)` | Match et nøgleord mod teksten — enkeltord med ordgrænse, fraser som substring. | [src](../../../core/services/task_tool_mapping.py#L174) |
-| function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L187) |
-| function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L246) |
+| function | `_catalog` | `()` | Katalognavne, eller et tomt sæt hvis kataloget ikke kan læses. | [src](../../../core/services/task_tool_mapping.py#L142) |
+| function | `_tier_for_tool_name` | `(name)` | Klassificér et konkret værktøj ud fra dets navn. | [src](../../../core/services/task_tool_mapping.py#L167) |
+| function | `_matcher` | `(noegleord, tekst)` | Match et nøgleord mod teksten — enkeltord med ordgrænse, fraser som substring. | [src](../../../core/services/task_tool_mapping.py#L183) |
+| function | `_leading_tier` | `(lav)` | Tier for opgavens FØRSTE ord — verbet — og ordet selv. | [src](../../../core/services/task_tool_mapping.py#L196) |
+| function | `_clause_tiers` | `(lav)` | (tier, ord) for hver sætningsdels ledende verbum. Tom liste = intet handlingsord. | [src](../../../core/services/task_tool_mapping.py#L233) |
+| function | `map_task_to_tools` | `(task_description)` | Svar på hvad denne opgave sandsynligvis vil røre, og hvor risikabel den er. | [src](../../../core/services/task_tool_mapping.py#L243) |
+| function | `_vaerste` | `(tiers)` | Den mest risikable tier vinder. En opgave er så farlig som sit farligste led. | [src](../../../core/services/task_tool_mapping.py#L321) |
 
 ## `core/services/task_worker.py`
 _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._

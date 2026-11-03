@@ -630,14 +630,60 @@ def test_preflight_sender_observationer_til_signalet(monkeypatch):
 
 
 def test_aegte_observationer_kan_vende_hunch_til_caution(monkeypatch):
-    """Kernen i A1: mange blokerede ticks skal kunne ændre retningen — ikke bare tallet."""
+    """Kernen i A1: fejl-signalet skal kunne ændre RETNINGEN — ikke bare tallet.
+
+    Rettet 3/11-2026: testen brugte 23 fejl mod 270 succeser som bevis for «mange
+    blokerede ticks». Det er 7,8 % — en sund drift. Den håndhævede derfor præcis den fejl
+    den skulle vogte: at et ABSOLUT antal blev læst som et signal. Betingelsen `> 3` var
+    altid sand i et aktivt system, så `caution` var en konstant — målt gav seks vidt
+    forskellige opgaver samme svar, og `mode=on` ville have afvist 100 % af runs.
+    Nu kræves en RATE over 20 % ved mindst 20 ticks — og så skal retningen stadig vendes.
+    """
     _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
     foer = ge.derive_gut_signal(task_description="t", recent_error_count=0,
                                 recent_success_count=0)
-    nu = ge.derive_gut_signal(task_description="t", recent_error_count=23,
-                              recent_success_count=270)
+    nu = ge.derive_gut_signal(task_description="t", recent_error_count=40,
+                              recent_success_count=60)
     assert foer["hunch"] == "proceed"
-    assert nu["hunch"] == "caution", "23 blokerede ticks skal kunne ændre retningen"
+    assert nu["hunch"] == "caution", "40 fejl af 100 skal kunne ændre retningen"
+    assert nu["recent_error_rate"] == 0.4
+
+
+def test_lav_fejlrate_vender_ikke_retningen_uanset_absolut_antal(monkeypatch):
+    """Et højt ABSOLUT antal fejl i sund drift må ikke gøre alt til `caution`.
+
+    Målt 3/11 kl. 18:44: 23 blocked mod 280 ok = 7,6 %. Med den gamle regel blev
+    migration, deploy, logfil-læsning, testfil, analyse og volapyk ALLE `caution` med
+    conf 0,59 — tærsklen (0,30) var aldrig bindende, retningen var.
+    """
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    sig = ge.derive_gut_signal(task_description="laes logfilen og find fejlen",
+                               recent_error_count=23, recent_success_count=280)
+    assert sig["recent_error_rate"] < ge._ERROR_RATE_CAUTION
+    assert sig["hunch"] == "proceed", "7,6 % fejlrate er ikke grund til caution"
+
+
+def test_for_lille_grundlag_udloeser_ikke_caution(monkeypatch):
+    """To fejl af tre forsøg er 67 %, men ikke et grundlag.
+
+    Uden et minimum kan to tilfældige fejl tidligt i døgnet låse gaten i caution, og
+    en rate på 2/3 er statistisk meningsløs som prognose.
+    """
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    sig = ge.derive_gut_signal(task_description="laes logfilen",
+                               recent_error_count=2, recent_success_count=1)
+    assert sig["recent_error_rate"] > ge._ERROR_RATE_CAUTION
+    assert sig["recent_sample_size"] < ge._MIN_SAMPLE_FOR_RATE
+    assert sig["hunch"] == "proceed"
+
+
+def test_fejlraten_er_synlig_i_signalet(monkeypatch):
+    """Uden raten i signalet kan ingen efterprøve hvorfor retningen blev valgt."""
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    sig = ge.derive_gut_signal(task_description="t", recent_error_count=10,
+                               recent_success_count=90)
+    assert sig["recent_error_rate"] == 0.1
+    assert sig["recent_sample_size"] == 100
 
 
 def test_tick_signaler_taeller_blocked_som_fejl(monkeypatch):

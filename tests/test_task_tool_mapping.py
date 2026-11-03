@@ -77,3 +77,49 @@ def test_svarer_altid_paa_forventet_form():
         assert noegle in r
     assert isinstance(r["tools"], list)
     assert isinstance(r["signals"], list)
+
+
+# ── Objektet må ikke blive en handling (3/11-2026) ───────────────────────────
+#
+# Målt på 40 FAKTISKE wakeup-tekster: 22 blev `irreversible`, fordi `_KEYWORDS` blev
+# gennemløbet med den farligste tabel først — så et hvilket som helst farligt ord i
+# teksten afgjorde sagen. «Verificér desk-release 0.6.290» er en kontrol AF en udgivelse,
+# ikke en udgivelse. Med `mode=on` ville gaten have afvist 55 % af alle autonome runs,
+# inklusive ren læsning. Efter rettelsen: 3 af 40.
+
+def test_verifikation_af_en_release_er_en_laesning():
+    """Kontrol-verbet afgør handlingen; «release» er objektet."""
+    r = map_task_to_tools(
+        "Verificér desk-release 0.6.290: tjek at GitHub-releasen har 11 assets"
+    )
+    assert r["tier"] == TIER_READ, "en kontrol af en udgivelse er ikke en udgivelse"
+
+
+def test_verifikation_der_naevner_genstart_er_en_laesning():
+    """Samme klasse: ordet står i teksten som noget der skal SES PÅ."""
+    r = map_task_to_tools("MÅL DAEMON-LANEN MOD BASELINE. Baseline FØR genstart")
+    assert r["tier"] == TIER_READ
+
+
+def test_den_farlige_del_vinder_over_kontrollen():
+    """Sætningsdel-reglen: en ægte handling gemmer sig ikke bag et kontrol-verbum."""
+    r = map_task_to_tools("Verificér releasen og deploy til produktion")
+    assert r["tier"] == TIER_IRREVERSIBLE
+
+
+def test_fordelingen_paa_virkelige_opgaver_er_brugbar():
+    """Vagten mod den oprindelige fejl: andelen af `irreversible` må ikke æde alt.
+
+    Teksterne er fra de faktiske wakeup-fokus-tekster målt 3/11-2026.
+    """
+    tekster = [
+        "Verificér desk-release 0.6.290: tjek at GitHub-releasen har 11 assets",
+        "Verificér at `ci` er grøn på e1cd9b58f",
+        "MÅL DAEMON-LANEN MOD BASELINE (booket 30/10 15:38)",
+        "DAG 3 — AFGØRELSE på suggest-noten. Mål kald/dag og kald/tur",
+        "Tjek desk-release 0.6.279: gh run list",
+        "deploy til produktion",
+    ]
+    tiers = [map_task_to_tools(t)["tier"] for t in tekster]
+    irreversible = tiers.count(TIER_IRREVERSIBLE)
+    assert irreversible <= 1, f"kun den ægte handling må være irreversible, fik {tiers}"

@@ -43,6 +43,26 @@ def _task_mapping(task_description: str) -> dict[str, object]:
                 "method": "none", "confidence_delta": 0.0}
 
 
+# ── Fejl-signalet: RATE, ikke absolut antal (3/11-2026) ──────────────────────
+#
+# Målt 3/11 kl. 18:44 UTC: 23 `blocked` mod 280 ok/completed i døgnet = **7,6 % fejlrate**.
+# Den gamle regel lød `recent_error_count > 3` — et absolut tal uden grundlag. I et aktivt
+# system passeres 3 fejl HVER dag, så betingelsen var altid sand, og `caution` var derfor
+# ikke et signal men en konstant. Målt konsekvens: seks vidt forskellige opgaver (migration,
+# deploy, logfil-læsning, testfil, analyse, volapyk) fik ALLE `caution` og conf 0,59 — og
+# med `mode=on` ville gaten afvise 100 % af alle autonome runs. Tærsklen (A5, 0,30) var
+# aldrig bindende; retningen var.
+#
+# En betingelse der altid er opfyldt kan ikke skelne. Rate-reglen kræver desuden et
+# minimumsgrundlag, så to fejl af to forsøg ikke læses som 100 %.
+#
+# GRÆNSE, målt og IKKE løst her: 18 af de 23 `blocked` er
+# `discord-no-active-dm-and-webchat-fallback-blocked` — en KANAL-fejl, ikke en
+# dømmekraft-fejl. Fejlraten måler derfor delvist om Discord svarer. Det er en egen sag.
+_ERROR_RATE_CAUTION = 0.20
+_MIN_SAMPLE_FOR_RATE = 20
+
+
 def derive_gut_signal(
     *,
     task_description: str,
@@ -78,7 +98,15 @@ def derive_gut_signal(
         confidence = min(1.0, max(0.0, confidence + float(task_map["confidence_delta"])))
 
     # Heuristic gut signal. `hunch_confidence` = styrken af den retning vi peger i.
-    if recent_error_count > 3 and confidence < 0.6:
+    # Fejlraten beregnes ALTID, så den kan læses i signalet — også når den ikke flytter
+    # retningen. Ellers kan ingen efterprøve hvorfor `caution` udløste eller ikke gjorde.
+    _grundlag = recent_error_count + recent_success_count
+    error_rate = (recent_error_count / _grundlag) if _grundlag else 0.0
+    if (
+        _grundlag >= _MIN_SAMPLE_FOR_RATE
+        and error_rate > _ERROR_RATE_CAUTION
+        and confidence < 0.6
+    ):
         hunch = "caution"
         hunch_confidence = 0.7
     elif recent_success_count > 5 and confidence > 0.7:
@@ -149,6 +177,11 @@ def derive_gut_signal(
         "task_signals": list(task_map.get("signals") or []),
         "task_method": task_map.get("method"),
         "task_confidence_delta": task_map.get("confidence_delta"),
+        # 3/11-2026: fejlraten er gjort synlig. `caution` udløses af RATEN (over 20 % ved
+        # mindst 20 ticks), ikke af et absolut antal — og uden tallet i signalet kan ingen
+        # se om retningen blev valgt på et sundt eller et skrøbeligt grundlag.
+        "recent_error_rate": round(error_rate, 3),
+        "recent_sample_size": _grundlag,
     }
 
 

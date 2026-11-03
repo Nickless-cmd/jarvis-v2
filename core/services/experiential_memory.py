@@ -15,7 +15,7 @@ from urllib import request as urllib_request
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
-from core.services.scoped_recall_policy import require_private_scope
+from core.services.scoped_recall_policy import MissingRecallScope, require_private_scope
 from core.runtime.db import (
     get_relevant_experiential_memories,
     insert_cognitive_experiential_memory,
@@ -23,6 +23,41 @@ from core.runtime.db import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_memory_owner(
+    *, user_id: str | None, session_id: str, run_id: str,
+) -> str:
+    """Resolve the owner before work crosses a thread boundary.
+
+    Visible-run post-processing runs in a fresh thread, so request ContextVars
+    are no longer present there.  Prefer an explicit principal, then the
+    session's stamped owner, and finally the persisted visible-run owner for
+    legacy callers that only pass ``run_id``.  If none exists, fail closed.
+    """
+    explicit = str(user_id or "").strip()
+    if explicit:
+        return explicit
+    try:
+        return str(require_private_scope(str(session_id or "")))
+    except MissingRecallScope as scope_exc:
+        if not str(run_id or "").strip():
+            raise
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT user_id FROM visible_runs WHERE run_id=?", (run_id,),
+            ).fetchone()
+        owner = str(row[0] or "").strip() if row else ""
+        if not owner:
+            raise scope_exc
+        try:
+            from core.services.routine_migration import resolve_canonical_identity
+
+            return str(resolve_canonical_identity(owner) or owner)
+        except Exception:  # Migration lookup is optional; the persisted owner remains authoritative.
+            return owner
 
 
 def create_experiential_memory_from_run(
@@ -82,7 +117,11 @@ def create_experiential_memory_from_run(
         emotion_arc=emotion_arc,
         topic=topic,
         importance=importance,
-        user_id=str(user_id or require_private_scope()),
+        user_id=_resolve_memory_owner(
+            user_id=user_id,
+            session_id=session_id,
+            run_id=run_id,
+        ),
     )
 
     event_bus.publish(
@@ -98,7 +137,11 @@ def create_experiential_memory_from_run(
 def create_experiential_memory_async(**kwargs) -> None:
     """Fire-and-forget wrapper."""
     captured = dict(kwargs)
-    captured["user_id"] = str(captured.get("user_id") or require_private_scope())
+    captured["user_id"] = _resolve_memory_owner(
+        user_id=captured.get("user_id"),
+        session_id=str(captured.get("session_id") or ""),
+        run_id=str(captured.get("run_id") or ""),
+    )
     threading.Thread(
         target=lambda: _safe(create_experiential_memory_from_run, **captured),
         daemon=True,
@@ -133,8 +176,16 @@ def build_experiential_memory_surface() -> dict[str, object]:
     from core.services.scoped_recall_policy import MissingRecallScope
     try:
         memories = list_cognitive_experiential_memories(limit=15)
-    except MissingRecallScope:
-        memories = []
+    except MissingRecallScope:  # Fail closed: Mission Control must not cross private owners.
+        return {
+            "active": False,
+            "status": "unscoped",
+            "memories": [],
+            "total_count": 0,
+            "mood_distribution": {},
+            "topics": [],
+            "summary": "Experiential memory requires an authenticated user scope",
+        }
     mood_counts: dict[str, int] = {}
     for m in memories:
         mood = m.get("user_mood", "neutral")
@@ -143,7 +194,10 @@ def build_experiential_memory_surface() -> dict[str, object]:
     topics = list({m.get("topic", "") for m in memories if m.get("topic")})[:10]
 
     return {
-        "active": bool(memories),
+        # Empty is a valid online state.  ``active = bool(memories)`` made
+        # Mission Control label a healthy but not-yet-populated store offline.
+        "active": True,
+        "status": "ready" if memories else "empty",
         "memories": memories,
         "total_count": len(memories),
         "mood_distribution": mood_counts,

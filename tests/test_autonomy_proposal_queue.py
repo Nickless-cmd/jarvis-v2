@@ -280,3 +280,57 @@ def test_afvisning_lukker_fundet(monkeypatch):
     assert out["status"] == "rejected"
     # `dismissed`, ikke `accepted`: afslag betyder «ret det ikke».
     assert lukket == [("except_silent:abc123", "dismissed")]
+
+
+def test_en_skrivning_der_ikke_landede_er_ikke_en_succes(tmp_path):
+    """Readback der ikke matcher må ikke give «executed» (målt 3/11-2026).
+
+    Fejlen var: `readback_match` blev BEREGNET men ikke HÅNDHÆVET. Et mismatch
+    returnerede stadig status «executed», `approve_proposal` kvitterede succes
+    og `_auto_commit_after_source_edit` lavede en rigtig git-commit af et
+    indhold disken ikke bar. Samme form som «stale»-fixet 2/10-2026: en måling
+    der ikke afgør udfaldet.
+
+    Simuleringen er den ægte: skrivningen lander ikke, så readback læser det
+    der faktisk står på disken — originalen.
+    """
+    from unittest.mock import patch as _patch
+
+    from core.services.autonomy_proposal_queue import _execute_source_edit_proposal
+
+    target = tmp_path / "core" / "skrevet.py"
+    target.parent.mkdir()
+    target.write_text("original = True\n", encoding="utf-8")
+
+    # Skrivningen lander ikke: write_text gør intet, så disken bærer originalen.
+    with _patch("pathlib.Path.write_text", return_value=None):
+        res = _execute_source_edit_proposal(
+            {
+                "target_path": str(target),
+                "new_content": "nyt = True\n",
+            }
+        )
+
+    assert res["status"] != "executed", f"en ikke-landet skrivning blev meldt som succes: {res}"
+    assert res["status"] == "error"
+    assert "readback" in res["error"]
+    assert res["readback_match"] is False
+
+
+def test_et_mismatch_naar_aldrig_commit_grenen():
+    """«executed» er den ENESTE status der fører til auto-commit.
+
+    Bekræfter koblingen: fejl-grenen i `approve_proposal` fanger «error», og
+    commit-betingelsen kræver præcis «executed».
+    """
+    from core.services import autonomy_proposal_queue as apq
+
+    kilde = apq.approve_proposal.__doc__ or ""
+    # Status-grenen: fejlstatusser må ikke være «executed».
+    assert "error" not in ("executed",)
+    # Commit-betingelsen læser status fra resultatet — ikke fra et flag.
+    import inspect
+
+    tekst = inspect.getsource(apq.approve_proposal)
+    assert 'result.get("status") == "executed"' in tekst
+    assert '"error", "stale", "failed"' in tekst

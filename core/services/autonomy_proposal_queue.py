@@ -448,6 +448,25 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     new_fingerprint = _fp(new_content)
     readback_match = readback_fingerprint == new_fingerprint
 
+    # 3/11-2026: readback'en blev BEREGNET men ikke HANDHÆVET. Et mismatch gik
+    # videre som «executed», `approve_proposal` kvitterede succes og
+    # `_auto_commit_after_source_edit` lavede en rigtig git-commit af et
+    # indhold disken ikke bar. Samme form som «stale»-fixet 2/10: en maaling
+    # der ikke afgoer udfaldet. Status er derfor «error», saa fejl-grenen i
+    # `approve_proposal` rammer og commit-stien aldrig naas.
+    if not readback_match:
+        return {
+            "status": "error",
+            "error": (
+                "readback mismatch: disk bærer ikke det skrevne indhold "
+                f"(wanted={new_fingerprint} got={readback_fingerprint})"
+            ),
+            "target_path": target_path,
+            "new_fingerprint": new_fingerprint,
+            "readback_fingerprint": readback_fingerprint,
+            "readback_match": False,
+        }
+
     return {
         "status": "executed",
         "target_path": target_path,

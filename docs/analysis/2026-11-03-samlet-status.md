@@ -833,7 +833,10 @@ signal. Det er præcis den arkitektur Bjørn beskrev: Centralen bearbejder, mode
 får syntesen.
 
 **Men påvirkningen er betinget, og det er målt:** `-0,10` flytter kun `tone`-label
-hvis scoren ligger inden for 0,10 over en tærskel (`0,25` = opløftet, `0,05` = let).
+hvis scoren ligger inden for 0,10 over en tærskel. `_tone_label()` har **fire**
+grænser, ikke to: `0,25` (opløftet), `0,05` (let), `-0,05` (tung) og `-0,20`
+(belastet). Rettet 3/11-2026 — jeg skrev først kun de to positive. Og en ændring
+af den numeriske score er reel selv når tone-ordet ikke skifter.
 Og grenen udløses kun ved `gut == "caution"` — målt i drift: **1 gang af 560**
 (`gut_gate_uden_bias_shadow`, 18:36). Kalibreringen har **4303 `proceed`, nul
 `caution`**. Vejen er åben og forbundet; den bærer i praksis intet, fordi
@@ -1484,3 +1487,48 @@ regnet* og *hvad formlen kan*. Et endeligt n kan aldrig vise en asymptote.
 
 Konsekvensen for formuleringen er, at grænsen nu skrives som `0,95 (n→∞)`, og 0,9494 kun optræder
 sammen med «ved n=1000».
+
+---
+
+## Rettet 3/11-2026 kl. 21:1x — readback'en blev målt, men ikke håndhævet
+
+**Målt i kilden, ikke udledt.** `_execute_source_edit_proposal`
+(`core/services/autonomy_proposal_queue.py`) beregnede `readback_match` og
+returnerede den som et *felt* — men status var hårdt «executed» uanset værdien:
+
+```python
+readback_match = readback_fingerprint == new_fingerprint
+return {"status": "executed", ..., "readback_match": readback_match}
+```
+
+Kæden der gør det farligt:
+
+| Led | Målt |
+|---|---|
+| `approve_proposal` | sætter proposalen til `executed` og kvitterer `{"status": "executed"}` |
+| auto-commit-grenen | `if kind == "source-edit" and result.get("status") == "executed"` |
+| `_auto_commit_after_source_edit` | laver en **rigtig** `git add` + `git commit` med attribution |
+
+Så en skrivning der ikke landede på disken blev meldt som succes **og committet**.
+Det er samme form som `stale`-fixet 2/10-2026 — en måling der ikke afgør udfaldet —
+og samme form som `false_positive` og `honored`: kontrollen findes, resultatet bruges ikke.
+
+**Rettelse:** mismatch returnerer nu `status="error"`, som rammer fejl-grenen i
+`approve_proposal` (`("error", "stale", "failed")`), så commit-stien aldrig nås.
+
+**Vagt:** `tests/test_autonomy_proposal_queue.py::test_en_skrivning_der_ikke_landede_er_ikke_en_succes`
+simulerer at `write_text` ikke skriver, så readback læser originalen. Mutationstestet:
+sættes grenen tilbage til den gamle adfærd, fejler vagten med den ægte fejl i output
+(`readback_match: False` sammen med `status: executed`).
+
+**Ikke målt:** om fejlen har ramt i drift. Der findes ingen `readback_match: false` i
+de historiske execution_result-rækker — men det er ikke det samme som at det ikke er
+sket, for den gamle kode skrev ikke mismatch som fejl.
+
+### Forbehold rejst mod min egen gut-konklusion
+
+Jeg skrev at gut-påvirkningen er «nul i praksis». Det er ikke målt — kun plausibelt.
+De to optællinger (1 `caution` af 560 shadow, 0 `caution` i 4303 kalibreringer) er ikke
+en historik over hvad `central_stance` læste ved sine cadence-ticks. Den præcise prøve
+er at sammenholde gut-tilstanden ved hvert valens-tick med den gemte valens. Det er
+ikke gjort, og påstanden står derfor nu som **plausibel, ikke målt**.

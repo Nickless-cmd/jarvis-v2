@@ -605,11 +605,11 @@ _Autonomy proposal queue — Niveau 2 fundament._
 | function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
 | function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L355) |
 | function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L380) |
-| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L464) |
-| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L555) |
-| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L658) |
-| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L704) |
-| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L816) |
+| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L483) |
+| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L574) |
+| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L677) |
+| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L723) |
+| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L835) |
 
 ## `core/services/avoidance_detector.py`
 _Avoidance Detector — unbidden self-observation of patterns over time._

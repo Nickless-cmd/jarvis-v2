@@ -160,6 +160,7 @@ def _record_counterfactual(
     no_bias_confidence: float | None,
     threshold: float,
     mode: str,
+    hunch: str = "proceed",
 ) -> None:
     """Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG.
 
@@ -181,9 +182,13 @@ def _record_counterfactual(
         nb = float(no_bias_confidence)
     except (TypeError, ValueError):  # utolkbar baseline → kun med-bias tælles
         return
+    # Definition B: bias flytter kun STYRKEN, aldrig retningen. No-bias-siden skal derfor
+    # bruge samme retningsregel som den faktiske afgørelse — ellers rapporterer ledgeren
+    # at erfaringen flyttede en beslutning, når det var retningsreglen der gjorde det.
+    nb_would_pass = str(hunch or "proceed").strip().lower() == "proceed" and nb >= threshold
     _safe_record(ledger, _COUNTERFACTUAL_NERVE_NO_BIAS,
-                 "green" if nb >= threshold else "red",
-                 f"conf={nb:.3f} thr={threshold:.2f}")
+                 "green" if nb_would_pass else "red",
+                 f"hunch={str(hunch or 'proceed').strip().lower()} conf={nb:.3f} thr={threshold:.2f}")
 
 
 def gut_gate(
@@ -227,7 +232,7 @@ def gut_gate(
     # lærte bias) og hvad gaten ville have afgjort UDEN den. Forskellen er det eneste der
     # kan svare på om erfaringen faktisk flytter en beslutning — uden den findes svaret ikke,
     # fordi bias'en er positiv-only og derfor aldrig efterlader et withhold-spor.
-    _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode)
+    _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode, retning)
 
     # Egress-fri observation (shadow OG on) — kun skalarer, aldrig egress.
     try:

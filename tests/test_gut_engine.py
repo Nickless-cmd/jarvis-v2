@@ -410,6 +410,13 @@ def test_caution_med_hoej_styrke_blokeres(monkeypatch):
 
 
 def test_caution_blokeres_uanset_styrke(monkeypatch):
+    """BEVIDST POLITIK (Definition B, 3/11-2026): enhver `caution` har vetoret.
+
+    Selv confidence=0.00 — altså «jeg har ingen tillid til min egen advarsel» — blokerer.
+    Det er en forsigtigheds-politik, ikke en konsekvens af styrkeberegningen: retningen
+    alene afgør om noget må fortsætte. Politikken står her, så den ikke glider tilbage
+    til «høj styrke slipper igennem» uden at nogen opdager det.
+    """
     _install_kv(monkeypatch, {"central_gut_consumer_mode": "on"})
     _capture_private(monkeypatch)
     for conf in (0.0, 0.30, 0.60, 0.99, 1.0):
@@ -466,3 +473,48 @@ def test_derive_dokumenterer_definition_b(monkeypatch):
     kilde = inspect.getsource(ge.derive_gut_signal)
     assert "Definition B" in kilde
     assert "RETNING" in kilde
+
+
+# ── Definition B i counterfactual-målingen (3/11-2026) ───────────────────
+#
+# Rettelsen af gaten var halv: `_record_counterfactual` beregnede no-bias-siden som
+# `nb >= threshold` uden at se retningen. En `caution` med nb over tærsklen blev derfor
+# talt som GREEN, mens den faktiske afgørelse var RED — og ledgeren rapporterede et
+# delta der ikke kom fra bias, men fra retningsreglen.
+
+def test_counterfactual_caution_giver_nul_delta(monkeypatch):
+    """Bias flytter kun styrken. En caution er afvist med OG uden bias → delta = 0."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    ge.gut_gate(0.70, hunch="caution", no_bias_confidence=0.70)
+    assert [(c["nerve"], c["decision"]) for c in calls] == [
+        ("gut_gate", "red"),
+        ("gut_gate_uden_bias", "red"),
+    ], "caution skal være RED på BEGGE sider — ellers opfinder ledgeren et falsk delta"
+
+
+def test_counterfactual_caution_kan_ikke_blive_green_uden_bias(monkeypatch):
+    """Selv når no-bias-styrken er maksimal, må en caution ikke tælles som grøn."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    ge.gut_gate(0.99, hunch="caution", no_bias_confidence=1.0)
+    decisions = {c["nerve"]: c["decision"] for c in calls}
+    assert decisions["gut_gate_uden_bias"] == "red"
+
+
+def test_counterfactual_bias_flytter_stadig_en_proceed(monkeypatch):
+    """Rettelsen må ikke gøre maalingen blind: ægte bias-forskydning skal stadig ses."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    # proceed: 0.3524 passerer, uden bias 0.25 gør ikke → erfaringen flyttede afgørelsen.
+    ge.gut_gate(0.3524, hunch="proceed", no_bias_confidence=0.25)
+    assert [(c["nerve"], c["decision"]) for c in calls] == [
+        ("gut_gate", "green"),
+        ("gut_gate_uden_bias", "red"),
+    ]

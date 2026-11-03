@@ -180,3 +180,40 @@ Punkt 3–5 fra rækkefølgen står åbne: én forudsigelse hele vejen (prefligh
 sin hunch; `_on_started` beregner en ny), afviste runs logges ikke som afviste
 (survivorship bias i kalibreringen), og de situationsbestemte observationer er stadig
 ikke koblet på. Tærsklen er stadig 0,30 og bør først justeres når de tre er på plads.
+
+---
+
+## LUKKET 3/11-2026: counterfactual-målingen fulgte ikke med
+
+GPT fandt hullet i commit `7a0d33b50`: gaten var rettet, men `_record_counterfactual()`
+beregnede no-bias-siden som `nb >= threshold` — **uden** at se retningen. En `caution`
+med nb over tærsklen blev derfor talt GREEN mens den faktiske afgørelse var RED, og
+ledgeren rapporterede et delta der kom fra retningsreglen, ikke fra bias.
+
+Rettet: `_record_counterfactual` tager nu `hunch` og anvender **samme retningsregel på
+begge sider**. Målt:
+
+| Situation | Med bias | Uden bias | Delta |
+|---|---|---|---|
+| `caution` 0,70 / nb 0,70 | RED | RED | **0** (før: falsk +1) |
+| `proceed` 0,61 / nb 0,50 | GREEN | GREEN | 0 |
+| `proceed` 0,3524 / nb 0,25 | GREEN | RED | +1 (ægte bias-forskydning) |
+
+Den sidste række er vagten mod at rettelsen gjorde målingen blind: ægte bias-forskydning
+skal stadig kunne ses.
+
+## BEVIDST POLITIK: enhver caution har vetoret
+
+Definition B gør `confidence` til **styrken af retningen**. Men `caution` med
+confidence 0,00 betyder «jeg har ingen tillid til min egen advarsel» — og blokerer
+alligevel. Det er ikke en konsekvens af styrkeberegningen; det er en
+**forsigtigheds-politik**: retningen alene afgør om noget må fortsætte.
+
+Politikken er nu dokumenteret i testen `test_caution_blokeres_uanset_styrke`, så den
+ikke kan glide tilbage til «høj styrke slipper igennem» uden at nogen opdager det.
+
+**Fravalgt:** at lade lav caution-styrke passere. Det ville kræve at gaten skelnede
+mellem «svag advarsel» og «stærk advarsel» — men der findes ingen kalibrering der gør
+`caution`-styrke meningsfuld endnu (hunch_confidence er en fast konstant 0,6–0,7).
+En politik der blokerer på retning alene er ærligere end en der foregiver at veje noget
+den ikke kan måle.

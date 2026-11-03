@@ -1042,3 +1042,84 @@ Da jeg ville verificere at de fire lag faktisk stod i `behavioral_decisions`, vi
 Det er samme fejlklasse på et andet lag: jeg behandlede en vedvarende struktur som en kladde. En beslutning der rammer hver heartbeat-cyklus er ikke et dokument jeg redigerer — det er en regel der skal kunne stå alene.
 
 Rettet: `dec_5c2ae0afd626` genopretter lag 1 selvstændigt. Målt: fire separate aktive poster, summerings-reglen findes præcis én gang.
+
+---
+
+## Målt 3/11-2026 kl. 20:2x — de to side-opgaver: den ene var løsbar, den anden var forkert stillet
+
+### `side-1c970e85e7` — «Veto-læringen rammer loftet» — **løst**
+
+Målt i `veto_adaptive_counters` (41 rækker, 38 overrides + 3 honored):
+
+| par | overrides | honored | effektiv tærskel FØR | NU |
+|---|---|---|---|---|
+| `restart_self` + `protectiveness` | 7 | 0 | **0,98 — på loftet** | 0,89 |
+| `edit_file` + `r2_5_gate` | 7 | 0 | **0,98 — på loftet** | 0,89 |
+| `edit_file` + `protectiveness` | 4 | 0 | 0,95 | 0,86 |
+| `write_file` + `r2_5_gate` | 3 | 0 | 0,90 | 0,85 |
+
+Ved 0,98 blev intet under intensitet 0,98 afvist — parret var reelt ugadet. Det var ikke en
+beslutning nogen havde taget; det var bivirkningen af at lægge et fast beløb (+0,05) oven på
+en fast basis (0,75) og clampе til 0,98.
+
+**Rettelse:** stigningen er aftagende — `ceiling × n/(n+3)` med ceiling 0,20.
+n=1 → +0,05 (uændret), n=3 → +0,10 (uændret), n=7 → +0,14, n→∞ → +0,20.
+En 0,75-basis kan dermed maksimalt nå **0,95**, aldrig 0,98. En høj basis (fx
+`restart`+`irritation` = 0,95) kan stadig nå loftet — men det er en eksplicit tabel-beslutning,
+ikke akkumulering.
+
+**Punkt 2a blev bevidst IKKE gjort.** Opgaven beder om at tilføje `protectiveness` og
+`r2_5_gate` til `_BASE_THRESHOLDS` «med et domæne der matcher rå intensity (0,69-0,92)».
+Det er ikke dækket: målt i aften kan intensiteten **ikke** skelne falske positiver (median
+0,95) fra ægte (median 0,91). At vælge en base der «matcher fordelingen» er at vælge et
+vilkårligt tal midt i den, ikke at gøre gaten klogere.
+
+**Punkt 2c blev bevidst IKKE gjort.** Nøglen er `(tool_name, feeling)`, ikke handlingstypen,
+så en dokumentations-commit og en risikabel kommando med samme værktøj deler skæbne. Det er
+ægte — men det kræver en definition af «handlingstype», som er samme uløste grænse som
+A1's opgave→værktøj-mapping.
+
+**Punkt 3 var allerede gjort** i commit `70550cd15` (syv rene læsere frigivet, 65 → 72).
+
+**Det største fund er ikke loftet, men asymmetrien.** `_increment_honored_count` kaldes kun
+fra `resolve_veto_event(event_id, "honored")` — og hele repoet har **præcis én kalder**:
+`gate_override.py:241`, som altid sender `"overridden_by_jarvis"`. Så `resolution == "honored"`-
+grenen er koded men **uopnåelig**, og `_HONORED_DAMPEN` er død kode. De 10 honored-tællinger
+blev alle skrevet 13/9 kl. 19:05:48 inden for millisekunder — det er legacy-KV-migreringen
+(`veto_gate.py:484`), ikke optjente hændelser.
+
+Docstringen i `resolve_veto_event` advarer selv mod præcis den tilstand vi stod i:
+*«Without this, the gate could only ever desensitize via override, never resensitize via
+honored.»* Mekanismen blev bygget for at forhindre den, og er aldrig blevet kaldt.
+
+Overfladen viser nu `honored` ved siden af `overrides`, så asymmetrien er synlig og ikke tavs.
+At give honored-stien en ægte kalder er **ikke** gjort: enhver automatisk «dette veto blev
+adlydt»-detektor ville være en proxy (adlød Jarvis, eller opgav han af andre grunde?), og det
+er præcis den fejlklasse — at læse en registrering som en vurdering — der er blevet rettet
+fire gange i dag.
+
+**Tests:** 37 i `tests/test_gates.py` (34 → 37). Vagten er mutationsbevist: med kurven sat
+tilbage til lineær falder `test_intet_par_kan_blive_blindt_ved_akkumulering` og
+`test_stigningen_er_aftagende`; efter gendannelse er alle 37 grønne. 128 grønne i hele
+veto/pushback/gate-batteriet.
+
+### `side-fd6717e5fa` — «protectiveness blokerer 46:1 forkert» — **præmissen er målt forkert**
+
+Opgaven bygger på 46:1, som allerede er tilbagevist i aften (se «128:1 var en sammenlægning»).
+Punkt 1's løsning er ikke dækket (se 2a ovenfor). Punkt 2 er målt marginal: generiske targets
+rammer **14 af 2045** events — 1 %. Punkt 3 var gjort i `70550cd15`.
+
+### `r2_5_gate` er en ANDEN gate — og den har samme sygdom
+
+Opgaven bad om at undersøge om den skulle med i samme rettelse. Målt:
+
+| | |
+|---|---|
+| fil | `core/services/r2_5_blocking_gate.py` — ikke `veto_gate.py` |
+| fordeling | **504 `pending`**, 68 `overridden_by_user`, **nul honored** |
+| værktøjer | `bash` 497, `edit_file` 54, `memory_upsert_section` 14 |
+| aktiv i dag | **18 blokeringer 3/11**, senest 18:50 |
+
+Den rammer `bash` — en muterende handling, ikke en ren læser — så
+`_ALWAYS_ALLOWED_TOOLS`-rettelsen rører den ikke. Det er et selvstændigt spor med sin egen
+mekanisme og sin egen målte skævhed, og det er ikke undersøgt til bunds her.

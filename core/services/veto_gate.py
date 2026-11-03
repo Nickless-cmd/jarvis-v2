@@ -404,7 +404,18 @@ _BASE_THRESHOLDS: dict[str, dict[str, float]] = {
 
 # Adjustment per outcome. Override = false positive, raise threshold.
 # Honored = correct gate, lower threshold (resensitize).
+#
+# 3/11-2026: bumpen var lineær (+0,05 pr. override) og ramte 0,98 efter fem.
+# Målt i veto_adaptive_counters: restart_self+protectiveness og
+# edit_file+r2_5_gate stod BEGGE på loftet med 7 overrides, altså blinde for
+# enhver intensitet under 0,98. Syv overrides fordelt over fire måneder er
+# ikke bevis for at værktøjet aldrig skal gates igen — det er en bivirkning
+# af at lægge et fast beløb oven på en fast basis. Stigningen er nu aftagende
+# og nærmer sig `_OVERRIDE_CEILING` asymptotisk, så intet par bliver blindt.
+# Første override giver stadig +0,05, og tre giver stadig +0,10.
 _OVERRIDE_BUMP = 0.05
+_OVERRIDE_CEILING = 0.20
+_OVERRIDE_HALF = 3.0
 _HONORED_DAMPEN = 0.02
 
 # Hard clamp per spec
@@ -574,17 +585,29 @@ def _base_threshold(tool_name: str, feeling: str) -> float:
     return tool_table.get(feeling, _BASE_THRESHOLDS["default"].get(feeling, 0.75))
 
 
+def _override_lift(overrides: int) -> float:
+    """Aftagende stigning pr. override: ceiling * n/(n+half).
+
+    n=0 → 0, n=1 → +0,05, n=3 → +0,10, n=7 → +0,14, n→∞ → +0,20.
+    Kurven gør at et par aldrig kan nå 0,98 fra en 0,75-basis, uanset hvor
+    mange gange nogen har sagt «kør alligevel».
+    """
+    if overrides <= 0:
+        return 0.0
+    return _OVERRIDE_CEILING * (overrides / (overrides + _OVERRIDE_HALF))
+
+
 def _adaptive_threshold(tool_name: str, feeling: str, intensity: float) -> float:
     """Compute the effective veto threshold for this (tool, feeling) pair.
 
     base = per-(tool, feeling) value from _BASE_THRESHOLDS
-    adjustment = (overrides * +0.05) - (honored * -0.02)
+    adjustment = _override_lift(overrides) - (honored * 0.02)
     clamped to [0.30, 0.98]
     """
     base = _base_threshold(tool_name, feeling)
     overrides = _get_override_count(tool_name, feeling)
     honored = _get_honored_count(tool_name, feeling)
-    adjustment = (overrides * _OVERRIDE_BUMP) - (honored * _HONORED_DAMPEN)
+    adjustment = _override_lift(overrides) - (honored * _HONORED_DAMPEN)
     effective = base + adjustment
     return max(_THRESHOLD_MIN, min(_THRESHOLD_MAX, effective))
 
@@ -954,6 +977,10 @@ def build_veto_gate_surface() -> dict[str, object]:
             threshold_summary[t] = {
                 "threshold": _adaptive_threshold(t, f, 1.0),
                 "overrides": _get_override_count(t, f),
+                # 3/11-2026: honored blev aldrig vist, og asymmetrien var derfor
+                # usynlig — overrides akkumulerer, honored gør ikke (den eneste
+                # kalder af resolve_veto_event sender «overridden_by_jarvis»).
+                "honored": _get_honored_count(t, f),
             }
 
     return {

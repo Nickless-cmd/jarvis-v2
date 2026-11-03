@@ -958,7 +958,7 @@ Målt, og det forklarer dem:
 | Gruppe | Antal | Datoer | Skrevet af |
 |---|---|---|---|
 | `allowed` + `false_positive` | 206 | **alle** 13/9 og frem | den nuværende `user_present`-gren |
-| `blocked` + `false_positive` | 186 | **89 i juni**, 97 på 13/9 (17:13–18:02) | en **tidligere** kodeversion |
+| `blocked` + `false_positive` | 186 | **89 i juni**, 97 på 13/9 (17:13–18:02) | **oprettet** under en tidligere kodeversion — men juni-rækkerne blev oprettet med `pending` og er ændret **bagefter** af en skriver jeg ikke har fundet |
 
 Commit `41d8e076c` (13/9 kl. **20:47**) indførte `user_present`-grenen og skriver i sin besked at `false_positive` «lå allerede i skemaet, **ubrugt**». De 97 rækker fra 13/9 er tidsstemplet **før** commit'en. Og den gamle kode (læst i `41d8e076c^`) skrev `blocked` med `resolution='pending'` — så de 89 juni-rækker er blevet opdateret **efter** indsættelsen.
 

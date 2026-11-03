@@ -51,11 +51,12 @@ def _candidates(default_key: str) -> list[tuple[str, int]]:
     (byg kontrast hvor den er tyndest). Returnerer [(model_key, samples)]. Self-safe."""
     try:
         from core.services.central_model_meta import aggregate_model_outcomes
-        from core.services.central_router_adapt import _is_never_tier
+        from core.services.central_router_adapt import _is_never_tier, _is_real_model_key
         rows = []
         for k, d in aggregate_model_outcomes().items():
             n = int(d.get("samples") or 0)
-            if n >= _MIN_SAMPLES_CONFIGURED and k != default_key and not _is_never_tier(k):
+            if (n >= _MIN_SAMPLES_CONFIGURED and k != default_key
+                    and not _is_never_tier(k) and _is_real_model_key(k)):
                 rows.append((k, n))
         rows.sort(key=lambda kv: kv[1])   # færrest samples først
         return rows

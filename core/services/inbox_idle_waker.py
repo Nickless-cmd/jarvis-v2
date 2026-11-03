@@ -185,7 +185,7 @@ def kandidater(bruger_id: str) -> list[dict[str, Any]]:
 
 
 def _noget_koerer() -> bool:
-    """Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl.
+    """Kører der et run lige nu? Sensorfejl blokerer konservativt en vækning.
 
     Guarden er `wakeup_dispatcher._active_turn_blocks`, som tjekker BÅDE et
     levende run i sessionen (via run-loggen) OG karantænen efter Bjørns seneste
@@ -193,14 +193,35 @@ def _noget_koerer() -> bool:
     nu» driver fra hinanden, og så bliver det ene filter stille virkningsløst.
     """
     try:
-        from core.services.wakeup_dispatcher import _active_turn_blocks
         from core.identity.owner_resolver import resolve_owner_target_session
 
         session = resolve_owner_target_session() or ""
-        return bool(_active_turn_blocks(session))
+        return _session_er_aktiv(session)
     except Exception as exc:  # noqa: BLE001
-        logger.debug("inbox_idle_waker: kunne ikke afgoere aktiv-tilstand: %s", exc)
-        return False
+        logger.warning("inbox_idle_waker: kunne ikke afgoere aktiv-tilstand: %s", exc)
+        return True
+
+
+def _session_er_aktiv(session_id: str) -> bool:
+    """Tjek den konkrete målsamtale, ikke kun ejerens aktuelle standardsession.
+
+    En inbox-post kan bære sin egen session.  Preflight-tjekket brugte tidligere
+    ejerens resolver før posten var valgt; derefter kunne ``_maal_session`` pege
+    på en anden, netop aktiv samtale.  Sådan landede wake-4b2bdb004f midt i en
+    synlig tur 3/11-2026.  Sensorfejl er konservativt en blokering her.
+    """
+    if not str(session_id or "").strip():
+        return True
+    try:
+        from core.services.wakeup_dispatcher import _active_turn_blocks
+
+        return bool(_active_turn_blocks(str(session_id)))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "inbox_idle_waker: kunne ikke afgoere maal-sessionens aktivitet: %s",
+            exc,
+        )
+        return True
 
 
 def _maal_session(post: dict[str, Any]) -> str:
@@ -249,7 +270,7 @@ def _maal_session(post: dict[str, Any]) -> str:
     ) or ""
 
 
-def _start_run(tekst: str, *, session_id: str) -> bool | None:
+def _start_run(tekst: str, *, session_id: str, user_id: str) -> bool | None:
     """Start det autonome run i den samtale posten hører til. Adskilt, så
     testen kan bytte den ud ét sted.
 
@@ -275,7 +296,12 @@ def _start_run(tekst: str, *, session_id: str) -> bool | None:
                 session_id[:28], reservation.reason,
             )
             return False
-        return start_autonomous_run(tekst, session_id=session_id, origin="inbox")
+        return start_autonomous_run(
+            tekst,
+            session_id=session_id,
+            origin="inbox",
+            force_user_id=str(user_id or ""),
+        )
 
 
 def _direktiv(post: dict[str, Any]) -> str:
@@ -359,6 +385,16 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
                 "inbox_idle_waker: %s/%s har ingen samtale at vække i — venter",
                 post.get("kildetype"), kilde_id)
             continue
+        # Det første tjek ligger før vi kender postens adresse og kan derfor
+        # have undersøgt en anden session.  Genkontrollér den faktiske adresse
+        # før vækkesporet skrives; en aktiv samtale må hverken afbrydes eller
+        # få posten brændt af som allerede vækket.
+        if _session_er_aktiv(session_id):
+            logger.info(
+                "inbox_idle_waker: maal-session %s er aktiv — posten venter",
+                session_id[:28],
+            )
+            continue
         # Sporet skrives FØR run'et startes: kaster starten, må posten ikke stå
         # som vækket — så prøves den igen i næste runde.
         try:
@@ -369,7 +405,7 @@ def vaek_paa_aabne_poster(*, bruger_id: str) -> dict[str, Any]:
             continue
         tekst = _dispatch_tekst(post)
         try:
-            startet = _start_run(tekst, session_id=session_id)
+            startet = _start_run(tekst, session_id=session_id, user_id=bruger_id)
             # TAVS AFVISNING (14/10-2026). `start_autonomous_run` returnerede
             # foer `None` ogsaa naar run-guarden eller gut-gaten afviste — og
             # vaekkeren talte det som en vaekning. Posten stod som vaekket, mens

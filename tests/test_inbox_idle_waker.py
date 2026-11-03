@@ -70,6 +70,7 @@ def _samtale(monkeypatch):
     from core.services import inbox_idle_waker as w
 
     monkeypatch.setattr(w, "_maal_session", lambda post: "chat-1")
+    monkeypatch.setattr(w, "_session_er_aktiv", lambda session_id: False)
 
 
 # ── hvem må vække ───────────────────────────────────────────────────────────
@@ -330,9 +331,27 @@ def test_runnet_faar_postens_samtale_ikke_en_auto_session(inbox_db, monkeypatch)
 
     assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 1
     assert kaldt[0]["session_id"] == "chat-1"
+    assert kaldt[0]["user_id"] == "bjorn"
     assert not kaldt[0]["session_id"].startswith("auto-"), (
         "et autonomt run i auto-* er præcis den silo Bjørn pegede på"
     )
+
+
+def test_postens_egen_aktive_session_blokerer_foer_vaekkespor(
+    inbox_db, monkeypatch,
+):
+    """Preflight kan have tjekket en anden ejersession end postens mål."""
+    from core.services import inbox_idle_waker as w
+
+    _post(id="min", ejer=db_inbox.EJER_JARVIS, kraever_handling=True)
+    monkeypatch.setattr(w, "_noget_koerer", lambda: False)
+    monkeypatch.setattr(w, "_session_er_aktiv", lambda sid: sid == "chat-1")
+    startet = []
+    monkeypatch.setattr(w, "_start_run", lambda tekst, **kw: startet.append(tekst))
+
+    assert w.vaek_paa_aabne_poster(bruger_id="bjorn")["vaekket"] == 0
+    assert startet == []
+    assert db_inbox.hent(bruger_id="bjorn", kilde_id="min")["sidste_vaekning_tur"] == ""
 
 
 def test_maal_session_er_dispatcherens_egen_definition():

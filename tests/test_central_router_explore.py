@@ -45,6 +45,22 @@ def test_candidates_exclude_default_and_prefer_least_sampled(isolated_runtime):
     assert keys and keys[0] == "ollama/glm-5.2:cloud"      # mindst-samplede først
 
 
+def test_candidates_exclude_synthetic_test_routes(isolated_runtime):
+    _seed_models()
+    from core.runtime.db import connect
+    with connect() as c:
+        c.execute(
+            "INSERT INTO visible_runs (run_id, lane, provider, model, status, started_at, "
+            "finished_at) VALUES (?,?,?,?,?,?,?)",
+            ("leaked-test", "primary", "test-auto-provider", "test-auto-model",
+             "completed", "2026-07-02T10:00:00+00:00", "2026-07-02T10:00:01+00:00"),
+        )
+        c.commit()
+
+    keys = [key for key, _ in ex._candidates("deepseek/deepseek-v4-flash")]
+    assert "test-auto-provider/test-auto-model" not in keys
+
+
 def test_rate_bounded_every_kth_run(isolated_runtime):
     _seed_models()
     ex._kv_set(ex._EXPLORE_FLAG, True)

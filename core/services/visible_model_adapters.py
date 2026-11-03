@@ -385,20 +385,11 @@ def _stream_openai_compatible_model(
         _tt = None
     _tt_first_tok = True
     # ── ÉT NYT FORSOEG NAAR UDBYDEREN TAV (15/9-2026) ────────────────────
-    # Bjoern 14/9: seks koersler doede efter 906-940 sekunder uden ét tegn paa
-    # skaermen. Kl. 22:27 sendte han det SAMME spoergsmaal igen og fik svar paa
-    # fem sekunder, mens det foerste forsoeg stadig hang. Han leverede altsaa
-    # selv beviset for at et genforsoeg virker.
-    #
-    # Kun paa _vf.STALL_KODE, som stroem-funktionen kun rejser naar den ikke
-    # har sendt ét eneste event. Hver `yield` herunder drives af et `ev`, saa
-    # den kode er samtidig beviset for at intet er naaet skaermen.
-    #
-    # ÉT forsoeg. Samme regel som bro-failoveren: en aerlig fejl er bedre end
-    # en langsom. Genforsoeget staar FOER observationen i handleren, saa den
-    # endelige fejl stadig bliver bogfoert i Centralen.
+    # Samme-provider retry er kun sikkert før første event. Politikken nedenfor
+    # dækker både tavshed og korte DeepSeek-503-overbelastninger.
     from core.services import visible_run_firstpass as _vf
-    for _forsoeg in range(_vf.MAKS_GENFORSOEG + 1):
+    for _forsoeg in range(_vf.MAKS_FOERSTE_KALD_GENFORSOEG + 1):
+        _har_streamet_event = False
         try:
             for ev in _iter_openai_compatible_chat_events(
                 provider=provider,
@@ -411,6 +402,7 @@ def _stream_openai_compatible_model(
                 top_p=_mod_top_p,
                 extra_body=_thinking_body or None,
             ):
+                _har_streamet_event = True
                 if controller is not None and controller.is_cancelled():
                     raise VisibleModelStreamCancelled("visible-run-cancelled")
                 kind = ev.get("kind")
@@ -579,14 +571,22 @@ def _stream_openai_compatible_model(
         except Exception as _prov_exc:
             if controller is not None and controller.is_cancelled():
                 raise VisibleModelStreamCancelled("visible-run-cancelled")
-            if (getattr(_prov_exc, "code", "") == _vf.STALL_KODE
-                    and _forsoeg < _vf.MAKS_GENFORSOEG):
-                # Udbyderen tav FOER sit foerste event, saa intet er naaet
-                # skaermen og et nyt forsoeg kan ikke gentage tekst.
+            _ventetid = _vf.genforsoeg_ventetid_s(
+                provider=provider,
+                status_code=getattr(_prov_exc, "status_code", None),
+                error_code=str(getattr(_prov_exc, "code", "")),
+                forsoeg=_forsoeg,
+                har_streamet_event=_har_streamet_event,
+            )
+            if _ventetid is not None:
                 logger.warning(
-                    "[stille-udbyder] %s/%s tav — proever igen (forsoeg %s): %s",
-                    provider, model, _forsoeg + 2, _prov_exc,
+                    "[provider-retry] %s/%s fejlede før output — "
+                    "prøver igen om %.1fs (forsøg %s): %s",
+                    provider, model, _ventetid, _forsoeg + 2, _prov_exc,
                 )
+                if _ventetid:
+                    import time as _time
+                    _time.sleep(_ventetid)
                 continue
             # Stream-cluster: visible-lanens DEFAULT-provider-sti (deepseek/glm/openai-
             # compat) var blind — en 429/4xx/timeout her forsvandt mod visible_runs uden

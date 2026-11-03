@@ -115,9 +115,10 @@ _Ventetiden foer modellens FOERSTE element — livstegn, sandhed og et loft._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L100) |
-| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L113) |
-| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L118) |
+| function | `genforsoeg_ventetid_s` | `(*, provider, status_code, error_code, forsoeg, har_streamet_event)` | Ventetid for et sikkert nyt first-pass-kald, ellers ``None``. | [src](../../../core/services/visible_run_firstpass.py#L106) |
+| function | `hjerteslag_fase` | `(ventet_s)` | Hvad hjerteslaget skal sige at den laver. | [src](../../../core/services/visible_run_firstpass.py#L132) |
+| function | `loft_naaet` | `(ventet_s)` | Har vi ventet laengere end nogen sund koersel nogensinde har gjort? | [src](../../../core/services/visible_run_firstpass.py#L145) |
+| function | `opgiv_tekst` | `(ventet_s, *, provider, model)` | Den besked brugeren faar. Den skal sige HVAD der skete og HVOR. | [src](../../../core/services/visible_run_firstpass.py#L150) |
 
 ## `core/services/visible_run_guard_notices.py`
 _Værns-noterne — hvad Bjørn ser, og hvad modellen må se._

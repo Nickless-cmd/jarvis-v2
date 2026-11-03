@@ -20,7 +20,12 @@ Formålet er at svare på ét spørgsmål: hvad står stadig åbent efter dagens
 
 ---
 
-## Åbent — målt åbent lige nu
+## Åbent kl. 18:16 — det oprindelige billede
+
+> **Læs dette som historik, ikke som nutid.** Sektionen er hvad der var åbent da
+> gennemgangen blev skrevet. Siden da er A2, A6, A6b, A3, A1, A4, B1, C2, C3 og
+> D1 lukket — se de fire «Lukket»-sektioner nedenfor. Det der stadig står åbent
+> er opsummeret i **«Stadig åbent efter fase D»** i bunden af dokumentet.
 
 ### A. Gut-kæden (syv huller, i rækkefølge)
 
@@ -197,12 +202,14 @@ følges til ende — og det er ikke gjort for nogen af de to.
 
 ### D. Ikke-målte påstande fra GPT
 
-- At reboot-awareness, silence-listener og continuity-kernel beskriver **samme**
-  afbrydelse. Kræver tidsstempel-sammenligning på tværs af tre tabeller. Ikke gjort.
-- Om en systemværdi (ikke bare navnet) når ind i prompten. Ikke gjort.
-- Om der findes en opgave→værktøj-mapping. `pattern_strength` giver data pr.
-  værktøj, men ingen kobling fra en opgavebeskrivelse til hvilke værktøjer den
-  vil bruge.
+- ~~At reboot-awareness, silence-listener og continuity-kernel beskriver **samme**
+  afbrydelse.~~ **MÅLT 3/11 kl. 19:0x — påstanden holder.** Se «Fase D» nedenfor.
+- Om en systemværdi (ikke bare navnet) når ind i prompten. **Ikke gjort.**
+  `prompt_contract.py` nævner 22 forekomster af «system», men det er ikke det
+  samme som at en system*værdi* følges fra producent til prompt.
+- Om der findes en opgave→værktøj-mapping. **Ikke gjort — og det er den samme
+  mangel som A5's forudsætning.** `pattern_strength` giver data pr. værktøj, men
+  ingen kobling fra en opgavebeskrivelse til hvilke værktøjer den vil bruge.
 
 ---
 
@@ -296,8 +303,8 @@ reelle adfærd indtil nu — ingen blokering — mens den måler. Reversibelt: s
 **Tests:** 54 i gut-suiten (46 → 54), 68 i det bredere gut/ledger/adaptation-batteri.
 
 **Stadig åbent:** A5 (tærsklen — røres ikke før der er set shadow-data), og den
-opgave→værktøj-mapping der skal gøre observationerne opgavespecifikke. B1 og C1–C3 er
-uændrede; de er et selvstændigt spor.
+opgave→værktøj-mapping der skal gøre observationerne opgavespecifikke. B1, C2 og C3
+blev lukket senere samme aften (næste sektion); C1 er stadig umålt.
 
 ---
 
@@ -391,3 +398,70 @@ produktionen og gør tilstanden synlig — den behandler ikke de 300.
 - Bredt batteri (heartbeat/forgetting/experiential/autonomous/gut): **647 grønne**.
   Én fejl er netværksvagten der stoppede en test der ville kalde en rigtig model —
   miljømæssig, ikke fra disse ændringer.
+
+---
+
+## Lukket 3/11-2026 (aften, fase D) — D1 målt
+
+D-sporet var det eneste der stod helt urørt. Det første af de tre punkter er nu
+målt, og resultatet er skarpere end «de tre er enige».
+
+### D1 — de tre kilder beskriver samme afbrydelse (påstanden holder, med en nuance)
+
+| Kilde | Felt | Værdi |
+|---|---|---|
+| `reboot_markers.json` | `last_boot_event` | `reboot.unexpected`, `downtime_seconds: 904`, `graceful: false` |
+| | `at` | **2026-11-03T17:59:14.409630+00:00** |
+| | `prev_pid` → `current_pid` | 1665026 → 1683093 |
+| `silence_listener.json` | post | `duration: 904.5`, `texture: "fyldt"` |
+| | `timestamp` | **2026-11-03T17:59:14.909182+00:00** |
+| `continuity_kernel.json` | `last_tick_at` | **2026-11-03T18:03:52.197640+00:00** |
+| | `tick_count` | 6762 |
+| | `last_gap_seconds` | **0.0487** |
+
+**Målt:** reboot-awareness og silence-listener mødes på **samme sekund**
+(17:59:14, adskilt af 0,5 s) med **samme varighed** (904 s). To uafhængige
+systemer har registreret samme afbrydelse med samme tal. GPT's påstand holder
+for deres vedkommende.
+
+**Nuancen der skal siges højt:** continuity-kernen beskriver **ikke** afbrydelsen
+— den beskriver **genopstarten**. `last_tick_at` ligger 4 minutter efter, og
+`last_gap_seconds` er **0,05 s**, altså så den slet ikke nedetiden. Det er ikke
+en fejl i continuity-kernen (den måler gap mellem ticks i sin egen levetid), men
+det betyder at den **ikke kan bruges som vidne om nedetid**. Skal man måle
+afbrydelser, er `reboot_markers` og `silence_listener` kilderne; continuity-kernen
+er blind for dem.
+
+Det gør D1 færdig: påstanden er **bekræftet for to af tre kilder**, og den
+tredje er målt til at være strukturelt ude af stand til at bekræfte den.
+
+### B1's rettelse er ikke bevist i drift endnu
+
+**Målt kl. 18:09:14 UTC:** `heartbeat_runtime_ticks` har **nul** rækker efter
+genstartet (proces startet 18:04:23, commit 19:03:30 lokal = 18:03:30 UTC).
+Seneste tick er 18:03:50 — altså **før** både commit og genstart.
+
+Det er ikke en fejl: `heartbeat_runtime_state` viser `scheduler_active: 1`,
+`schedule_state: scheduled`, `currently_ticking: 0` og
+`next_tick_at: 2026-11-03T18:18:52` — ni minutter ude.
+
+Konsekvensen er alligevel vigtig: **`goal_starvation`-rettelsen er målt i den
+kørende proces (funktionskald svarer korrekt), men ikke observeret i et faktisk
+tick.** Det første tick efter 18:18:52 er den ægte prøve. `long_horizon_goals`
+har stadig 8 `abandoned` + 7 `completed` og **nul aktive**, så betingelsen er
+til stede: tiken skal give `goal_starvation` og dispatch i stedet for
+`productive_idle`.
+
+### Stadig åbent efter fase D
+
+- **A5** — tærsklen. Røres ikke før shadow-data findes.
+- **Opgave→værktøj-mapping** — den ægte mangel. `confidence` er stadig 0,5 fordi
+  intet kobler `task_description` til de værktøjer opgaven vil bruge. Det er
+  samme hul som D-sporets tredje punkt, set fra to sider.
+- **D2** — om en system*værdi* (ikke bare navnet) når ind i prompten. Ikke fulgt
+  fra producent til prompt for nogen værdi.
+- **C1** — niveau 2 (virksomt) er stadig umålt.
+- **C3's forbruger** — de 300 forslag er stadig ubehandlede; produktionen er
+  standset og køen gjort synlig, intet mere.
+- **C2's overlap** — 0 af 9 rækker matcher registeret; korrekt wiring, ingen
+  praktisk effekt endnu.

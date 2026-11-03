@@ -515,9 +515,13 @@ _Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
 | function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L123) |
 | function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L141) |
 | function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L149) |
-| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L245) |
-| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L262) |
-| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L285) |
+| function | `_build_memory` | `()` | Hukommelse — hvad han husker, og hvad der er på vej til at blive glemt. | [src](../../../core/services/central_hub.py#L232) |
+| function | `_build_reflection` | `()` | Refleksion — dagens refleksions-slot og hvad den må røre. | [src](../../../core/services/central_hub.py#L267) |
+| function | `_build_lab` | `()` | Lab — hvad det koster, og hvad der er tilbage at købe for. | [src](../../../core/services/central_hub.py#L277) |
+| function | `_build_hardening` | `()` | Hærdning — governance-flag og hvad de værner. | [src](../../../core/services/central_hub.py#L285) |
+| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L317) |
+| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L334) |
+| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L357) |
 
 ## `core/services/central_hypothesis_generator.py`
 _core/services/central_hypothesis_generator.py_

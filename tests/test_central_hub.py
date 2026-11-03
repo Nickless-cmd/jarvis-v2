@@ -27,12 +27,18 @@ def test_index_lists_all_sections():
     # ready-flag matcher byggerne (udvides efterhånden som faner fyldes)
     ready = {s["section"] for s in idx if s["ready"]}
     assert {"overview", "mind", "observability"} <= ready
-    # 2026-09-05: var "council", men den fik en bygger uden at testen fulgte med
-    # — den har fejlet i et stykke tid. Bruger nu en fane der faktisk er pending.
-    assert "hardening" not in ready  # endnu pending
+    # 3/11-2026: alle 11 sektioner har nu en bygger. Testen holdt fast i at
+    # "hardening" SKULLE mangle — den slags vagt bliver en løgn der holder
+    # fremskridtet ude. Den håndhæver nu det modsatte: hver sektion i
+    # _SECTION_ORDER skal have en bygger, så en fane ikke kan forsvinde tavst.
+    assert ready == {k for k, _ in _SECTION_ORDER}
 
 
-def test_pending_section_is_marked_not_error():
+def test_pending_section_is_marked_not_error(monkeypatch):
+    # Pending-grenen testes ved at fjerne en bygger — ikke ved at antage at en
+    # bestemt fane aldrig bliver færdig. Ellers dør vagten i samme øjeblik
+    # sektionen fyldes, hvilket er præcis det der skete med "hardening".
+    monkeypatch.delitem(h._BUILDERS, "hardening")
     r = h.mind_section("hardening")
     assert r["pending"] is True and r["active"] is False
     assert "error" not in r

@@ -3376,6 +3376,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jm-feed-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 12px; color: var(--fg-2); }
 .jm-feed-row:hover { background: var(--bg-1); }
 
+/* Søgefelt (Skills) — 70 skills kan ikke overskues uden et filter */
+.jm-search { width: 100%; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--bg-1); color: var(--fg-1); font-size: 13px; font-family: inherit; }
+.jm-search:focus { outline: none; border-color: var(--bg-4); }
+.jm-search::placeholder { color: var(--fg-3); }
+
 /* ── Marketplace ───────────────────────────────────────────────────────── */
 .marketplace { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 .marketplace-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }

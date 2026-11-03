@@ -229,6 +229,76 @@ def _build_decisions() -> dict[str, Any]:
     }
 
 
+def _build_memory() -> dict[str, Any]:
+    """Hukommelse — hvad han husker, og hvad der er på vej til at blive glemt.
+
+    Fletter fire eksisterende projektioner (ingen ny sandhed): krops-hukommelse
+    (seneste fornemmelse), density-noter (hvad der er modent til forfremmelse),
+    recall-telemetri (huller i søgningen) og erfariings-hukommelse. Self-safe pr.
+    del — én tom kilde må ikke skjule de tre andre. Målt 3/11-2026: body har 200
+    snapshots, density er tom men ærlig, experiential kræver bruger-scope.
+    """
+    out: dict[str, Any] = {"active": True}
+    try:
+        from core.services.body_memory import build_body_memory_surface
+        out["body"] = build_body_memory_surface()
+    except Exception as exc:
+        out["body"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    try:
+        from core.services.memory_density import build_memory_density_surface
+        out["density"] = build_memory_density_surface()
+    except Exception as exc:
+        out["density"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    try:
+        from core.services.memory_recall_telemetry import (
+            build_memory_recall_telemetry_surface,
+        )
+        out["recall"] = build_memory_recall_telemetry_surface()
+    except Exception as exc:
+        out["recall"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    try:
+        from core.services.experiential_memory import build_experiential_memory_surface
+        out["experiential"] = build_experiential_memory_surface()
+    except Exception as exc:
+        out["experiential"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+    return out
+
+
+def _build_reflection() -> dict[str, Any]:
+    """Refleksion — dagens refleksions-slot og hvad den må røre."""
+    from core.services.jarvis_brain_reflection import (
+        build_jarvis_brain_reflection_surface,
+    )
+    out = build_jarvis_brain_reflection_surface()
+    out.setdefault("active", True)
+    return out
+
+
+def _build_lab() -> dict[str, Any]:
+    """Lab — hvad det koster, og hvad der er tilbage at købe for."""
+    from core.services.central_cost_surface import build_cost_surface
+    out = build_cost_surface()
+    out.setdefault("active", True)
+    return out
+
+
+def _build_hardening() -> dict[str, Any]:
+    """Hærdning — governance-flag og hvad de værner.
+
+    `list_flags()` er den ægte indgang (målt 3/11-2026: 10 flag med
+    key/label/kind/dangerous/value). `dangerous` vises frem: et flag der kan
+    slå lag-4-adaptation til er ikke en indstilling som alle andre.
+    """
+    from core.services.central_governance import list_flags
+    flags = list_flags()
+    return {
+        "active": True,
+        "count": len(flags),
+        "dangerous_count": sum(1 for f in flags if f.get("dangerous")),
+        "flags": flags,
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "overview": _build_overview,
     "decisions": _build_decisions,
@@ -237,8 +307,10 @@ _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "agency": _build_agency_agents,
     "council": _build_council,
     "skills": _build_skills,
-    # memory/reflection/lab/hardening: fyldes tab-for-tab (læser deres eksisterende
-    # service-surface-builders), så hub'en forbliver ét ground truth.
+    "memory": _build_memory,
+    "reflection": _build_reflection,
+    "lab": _build_lab,
+    "hardening": _build_hardening,
 }
 
 

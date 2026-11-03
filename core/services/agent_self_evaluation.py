@@ -24,6 +24,7 @@ surfaces the data; user decides if/how to act.
 from __future__ import annotations
 
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
@@ -35,7 +36,22 @@ logger = logging.getLogger(__name__)
 
 _TICK_EVAL_KEY = "tick_quality_evaluations"
 _GOAL_PROGRESS_KEY = "goal_progress_tracking"
-_MAX_TICK_EVALS_KEPT = 200
+# 3/11-2026: var 200. Ved ~90 slag i døgnet rakte det 2,2 døgn, så
+# `tick_quality_summary(days=7)`, `(14)` og `(30)` returnerede PRÆCIS samme
+# tal — et vindue der ikke kan rumme sin egen etiket. Målt samme dag: 200
+# poster dækkede 1/11 09:56 → 3/11 14:11. 3000 dækker 30+ døgn.
+_MAX_TICK_EVALS_KEPT = 3000
+# Kun de nyeste poster bruges til nyheds-sammenligningen (den læser `[-1]`),
+# og en måned gammel historik behøver tal, ikke hvilke event-arter der skrev
+# den gang. Målt: en fuld post er 1.629 bytes, en uden trace_kinds/actions er
+# 324 — uden klipning ville 3.000 poster veje ~4,8 MB og blive parset ved
+# hvert slag.
+_FULL_DETAIL_KEPT = 50
+# Spor-kurvens reference: den målte maksimum-bredde (3/11-2026: 120 arter
+# over 29 vinduer, median 82). Fuld kredit kræver at slagets arbejde rørte
+# hele fladen — ikke at det ramte seks arter.
+_TRACE_FULL_CREDIT = 120
+_TRACE_MAX_POINT = 50
 _GOAL_STALE_DAYS = 14
 # 28/10-2026: var 3. Et LANGTIDSMÅL er pr. definition noget der strækker sig
 # over uger — med 3 dage var alle fem aktive mål altid «stale», og så
@@ -111,14 +127,18 @@ def _previous_eval() -> dict[str, Any] | None:
 
 
 def _score_traces(antal: int) -> int:
-    """Bredden af spor. Trapper frem for lineær, så små udsving ikke støjer."""
+    """Bredden af spor — logaritmisk, så leddet ikke mætter.
+
+    3/11-2026: trappen gav 50 point ved >5 arter, og ALLE 200 slag havde
+    14-120. Leddets bidrag var konstant, så scoren kunne reelt kun svinge
+    mellem 75 og 90 — de 100-point var en binær skala forklædt som en
+    kvalitetsmåling. Logaritmen bevarer at de første arter betyder mest
+    (diminishing returns) uden at gøre alt over seks til det samme tal.
+    """
     if antal <= 0:
         return 0
-    if antal <= 2:
-        return 20
-    if antal <= 5:
-        return 35
-    return 50
+    andel = math.log1p(antal) / math.log1p(_TRACE_FULL_CREDIT)
+    return int(round(_TRACE_MAX_POINT * min(1.0, andel)))
 
 
 def _score_novelty(nu: list[str], foer: list[str]) -> tuple[int, str]:
@@ -139,6 +159,26 @@ def _score_novelty(nu: list[str], foer: list[str]) -> tuple[int, str]:
     if andel > 0:
         return 15, f"kun {len(nye)} af {len(set(nu))} spor var nye"
     return 0, "samme spor som forrige slag"
+
+
+def _slim_history(evals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Behold fuld detalje i de nyeste poster, skær den af de ældre.
+
+    Nyheds-målingen læser kun den sidste post, og et 30-dages vindue behøver
+    kun score og tidsstempel. Uden klipningen vejer 3.000 fulde poster ~4,8 MB
+    og parses ved hvert slag — med klipningen ~1 MB.
+    """
+    if len(evals) <= _FULL_DETAIL_KEPT:
+        return evals
+    graense = len(evals) - _FULL_DETAIL_KEPT
+    ud: list[dict[str, Any]] = []
+    for i, post in enumerate(evals):
+        if i < graense and isinstance(post, dict):
+            post = {
+                k: v for k, v in post.items() if k not in ("trace_kinds", "actions")
+            }
+        ud.append(post)
+    return ud
 
 
 def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
@@ -219,8 +259,11 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
         "elapsed_ms": elapsed_ms,
         # Gemmes så nyheds-målingen har noget at sammenligne med NÆSTE gang —
         # og så en senere analyse kan se HVAD slaget udrettede, ikke kun et tal.
+        # 3/11-2026: var `[:40]`, men den målte bredde er 14-120, så 120 af 200
+        # poster var klippede og nyheds-målingen så kun de første 40 alfabetisk.
         "actions": [str(a)[:80] for a in actions][:20],
-        "trace_kinds": trace_kinds[:40],
+        "trace_kinds": trace_kinds[:200],
+        "trace_kind_count": len(trace_kinds),
         "window_seconds": round((nu - vindue_start).total_seconds(), 1),
     }
 
@@ -230,7 +273,7 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(existing, list):
             existing = []
         existing.append(eval_record)
-        save_json(_TICK_EVAL_KEY, existing[-_MAX_TICK_EVALS_KEPT:])
+        save_json(_TICK_EVAL_KEY, _slim_history(existing[-_MAX_TICK_EVALS_KEPT:]))
     except Exception as exc:
         logger.debug("tick eval persist failed: %s", exc)
 
@@ -263,6 +306,17 @@ def tick_quality_summary(*, days: int = 7) -> dict[str, Any]:
     scores = [int(e.get("score") or 0) for e in recent]
     distinct = sorted(set(scores))
     laast = len(distinct) == 1 and len(recent) >= 10
+    # 3/11-2026: et 30-dages vindue over 2,2 døgns historik er en etiket, ikke
+    # en måling — de tre kald gav identiske tal. Nu står det i svaret hvor
+    # langt historikken rækker, og om vinduet faktisk er dækket.
+    stamps = [
+        ts for ts in (_parse_ts(e.get("evaluated_at")) for e in evals if isinstance(e, dict))
+        if ts is not None
+    ]
+    historik_dage = None
+    if len(stamps) >= 2:
+        historik_dage = round((max(stamps) - min(stamps)).total_seconds() / 86400, 1)
+    daekket = historik_dage is not None and historik_dage >= days - 0.5
     ud = {
         "status": "ok",
         "count": len(recent),
@@ -272,7 +326,14 @@ def tick_quality_summary(*, days: int = 7) -> dict[str, Any]:
         "window_days": days,
         "distinct_scores": len(distinct),
         "score_range": [min(scores), max(scores)],
+        "history_days": historik_dage,
+        "window_covered": daekket,
     }
+    if not daekket:
+        ud["coverage_warning"] = (
+            f"historikken rækker {historik_dage} døgn — vinduet på {days} dage "
+            "er ikke dækket, og tallet gælder kun den del der findes"
+        )
     if laast:
         ud["warning"] = (
             "alle %d slag scorede %d — målingen er låst og siger intet"

@@ -1,6 +1,7 @@
 """Unit tests for agent_self_evaluation."""
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -69,20 +70,89 @@ def test_priorities_alene_giver_ikke_hoej_score():
     assert result["score"] < 60, "form uden spor må ikke give høj score"
 
 
-def test_spor_loefter_scoren():
-    """Samme slag, men denne gang efterlod det noget."""
+def _score_med_spor(antal: int) -> dict:
+    """Kør ét slag med præcis ``antal`` spor-arter og intet forrige slag."""
     with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
          patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written", "credit_assignment.choice_recorded",
-                   "thought_stream.fragment_generated", "learning_pipeline.cycle_completed",
-                   "runtime.emergent_signal_created", "dream.recorded"):
-        result = evaluate_tick_quality(tick_result=_fake_tick(
+         _med_spor(*[f"spor.art{i}" for i in range(antal)]):
+        return evaluate_tick_quality(tick_result=_fake_tick(
             act_kind="productive_idle",
             actions=["personality_snapshot", "composite_candidates:2"],
             elapsed_ms=5000,
         ))
-    assert result["score"] >= 80
-    assert len(result["trace_kinds"]) == 6
+
+
+def test_spor_loefter_scoren():
+    """Spor skal løfte — og leddet må ikke mætte ved seks arter.
+
+    3/11-2026: denne test krævede ≥80 ved seks arter. Niveauet var kalibreret
+    til en virkelighed hvor seks var meget; målt samme dag er medianen 82 og
+    ALLE 200 slag lå på 14-120, så trappen gav 50 point til hvert eneste slag
+    og scoren kunne reelt kun være 75 eller 90. Kravet låste altså netop den
+    mætning der skulle fjernes. Nu værner testen FORMEN i stedet for ét
+    niveau: flere arter giver mere, hele vejen op.
+    """
+    seks = _score_med_spor(6)
+    fyrre = _score_med_spor(40)
+    hel = _score_med_spor(120)
+
+    assert seks["score"] > 60, "seks spor-arter skal stadig løfte slaget"
+    assert fyrre["score"] > seks["score"], "40 arter må ikke give det samme som 6"
+    assert hel["score"] > fyrre["score"], "120 arter må ikke give det samme som 40"
+    assert hel["score"] >= 90
+
+
+def test_spor_listen_klippes_ikke_ved_fyrre():
+    """3/11-2026: ``trace_kinds[:40]`` gjorde nyheds-målingen halvblind — den
+    målte bredde er 14-120, så 120 af 200 poster var klippede og næste slag
+    blev sammenlignet mod de første 40 alfabetisk i stedet for mod alle.
+    """
+    result = _score_med_spor(90)
+    assert len(result["trace_kinds"]) == 90
+    assert result["trace_kind_count"] == 90
+
+
+def test_historikken_raekker_til_vinduet():
+    """3/11-2026: 200 poster dækkede 2,2 døgn, så ``days=7``, ``(14)`` og
+    ``(30)`` gav identiske tal — et vindue der ikke kan rumme sin egen etiket.
+    """
+    from core.services import agent_self_evaluation as ase
+
+    assert ase._MAX_TICK_EVALS_KEPT >= 30 * 90, (
+        "loftet skal dække 30 døgn ved ~90 slag i døgnet"
+    )
+
+
+def test_komprimering_bevarer_tal_men_skærer_detaljer():
+    """Ældre poster behøver tal, ikke hvilke event-arter der skrev den gang."""
+    from core.services import agent_self_evaluation as ase
+
+    evals = [
+        {"evaluated_at": f"2026-{1 + i // 28:02d}-{1 + i % 28:02d}T00:00:00+00:00",
+         "score": 80, "trace_kinds": [f"art{i}"] * 120, "actions": ["b"] * 20}
+        for i in range(300)
+    ]
+    slim = ase._slim_history(evals)
+
+    assert len(slim) == 300, "ingen poster må forsvinde"
+    assert all(p["score"] == 80 for p in slim), "scoren skal bevares"
+    assert slim[-1]["trace_kinds"] and slim[-1]["actions"], "de nyeste beholder detaljen"
+    assert "trace_kinds" not in slim[0], "de ældste skal være skåret"
+    assert len(json.dumps(slim)) < len(json.dumps(evals)) / 3
+
+
+def test_opsummeringen_siger_hvor_langt_historikken_raekker():
+    """Et 30-dages vindue over 2 døgn er en etiket, ikke en måling."""
+    nu = datetime.now(UTC)
+    evals = [{"evaluated_at": (nu - timedelta(hours=h)).isoformat(), "score": 80}
+             for h in range(48)]
+    with patch("core.services.agent_self_evaluation.load_json", return_value=evals):
+        kort = tick_quality_summary(days=30)
+        daekket = tick_quality_summary(days=1)
+
+    assert kort["window_covered"] is False
+    assert "ikke dækket" in kort["coverage_warning"]
+    assert daekket["window_covered"] is True
 
 
 def test_samme_spor_som_sidst_giver_ingen_nyhed():

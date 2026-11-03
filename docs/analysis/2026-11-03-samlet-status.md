@@ -226,3 +226,75 @@ A6 kommer før A3 fordi den rydder den samme livscyklus: uden et felt for
 
 C1–C3 er et selvstændigt spor: de er navnekollisioner og forbrugshuller, ikke
 gut-kæden. De skal ikke blandes ind i den rækkefølge.
+
+---
+
+## Lukket 3/11-2026 (aften) — faserne A2 → A6 → A6b → A3 → A1 → A4
+
+Rækkefølgen fra afsnittet ovenfor blev fulgt. Alt nedenstående er målt i den kørende
+kode, ikke planlagt.
+
+**Fase 1 — forudsigelsens livscyklus (A2 + A6 + A6b)**
+
+| Hvad | Hvordan | Bevis |
+|---|---|---|
+| A2: én forudsigelse hele vejen | `preflight_gut_gate` lægger sin hunch + beslutning i en TTL-begrænset FIFO (`_stash_preflight_prediction`); `gut_calibration._on_started` tager den via `take_preflight_prediction()` | Målt: samme hunch og samme task-tekst før og efter; slotten tømmes ved forbrug |
+| A6b: `mode` skelnes i ledgeren | Shadow-afgørelser tælles på deres EGEN nerve (`gut_gate_shadow`, `gut_gate_uden_bias_shadow`), fordi ledgerens nøgle er `(nerve, decision)` | Målt: akkumulatoren får seks nøgler hvor shadow står separat |
+| A6: `blokeret` er faktisk stoppede runs | `blokeret = max(0, total − pass_med − backstop)`; `shadow_afgoerelser` vises særskilt | Målt: 3 nej − 2 overkørt = 1; uden backstop = 4 |
+
+At gøre `mode` til en rigtig nøgle-dimension ville kræve en migrering af
+`gate_verdict_counts`. Nerve-navnet løser samme problem reversibelt og uden skemaændring.
+
+**Fase 2 — A3: afvisningen som beslutning**
+
+`_record_withheld_decision` skriver nu `gut_gate_withheld`/`withheld` til ledgeren, adskilt
+fra de evaluerede udfald. `build_gut_surface` viser de tre lag side om side:
+
+```
+Calibration: 1.00 (4292/4301 correct); 4 afvist (intet udfald), 1 overkørt af bagkanten
+```
+
+En afvisning kan aldrig kalibrere maven — den har intet udfald at måles mod.
+
+**Fase 3 — A1: ægte observationer**
+
+`_recent_tick_signals()` læser `blocked` / `ok`+`completed` fra `heartbeat_runtime_ticks`
+(24 t, 60 s cache) og sender dem til `derive_gut_signal`. Målt 3/11 kl. 18:5x:
+**23 blocked mod 270 ok/completed**.
+
+Effekt, målt på samme opgave:
+
+| Input | hunch | confidence |
+|---|---|---|
+| Før: hårdkodede nuller | `proceed` | 0,61 |
+| Nu: ægte observationer | **`caution`** | 0,59 |
+
+**Grænse, som skal stå her:** det er GLOBALE observationer, ikke opgavespecifikke.
+`confidence` er stadig 0,5, fordi der ikke findes en mapping fra `task_description` til
+hvilke værktøjer opgaven vil bruge. Gaten kan altså se *at* systemet har mange blokeringer
+— ikke *om netop denne opgave* er risikabel.
+
+**Fase 4 — A4: kalibreringen kan nu tage fejl**
+
+Med `caution` mulig kan `record_gut_outcome` producere alle fire kombinationer:
+
+| hunch | udfald | correct |
+|---|---|---|
+| proceed | completed | ✓ |
+| proceed | failed | ✗ |
+| caution | completed | **✗** |
+| caution | failed | **✓** |
+
+De to nederste rækker fandtes ikke før A1, fordi hunch altid var `proceed`.
+
+**Driftsændring foretaget:** `central_gut_consumer_mode` er sat fra `on` til **`shadow`**.
+Grund: med A1 kan hunch blive `caution`, og med `on` ville gaten afvise **alle** autonome
+runs (målt: `gut_gate` returnerede `False` for den testede opgave). `shadow` bevarer den
+reelle adfærd indtil nu — ingen blokering — mens den måler. Reversibelt: sæt flaget til
+`on` når data er set.
+
+**Tests:** 54 i gut-suiten (46 → 54), 68 i det bredere gut/ledger/adaptation-batteri.
+
+**Stadig åbent:** A5 (tærsklen — røres ikke før der er set shadow-data), og den
+opgave→værktøj-mapping der skal gøre observationerne opgavespecifikke. B1 og C1–C3 er
+uændrede; de er et selvstændigt spor.

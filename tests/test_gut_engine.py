@@ -15,6 +15,12 @@ def _stub_ledger(monkeypatch):
     # Blokerings-budgettet er også modul-globalt — ryddet pr. test, så testrækkefølgen
     # ikke afgør om en pre-flight-test ser et brugt budget.
     monkeypatch.setattr(ge, "_blok_tider", [], raising=False)
+    # A2 (3/11-2026): preflight-forudsigelserne ligger også i en modul-global FIFO.
+    # Uden denne reset lækker en tests forudsigelse ind i den næste `_on_started`.
+    monkeypatch.setattr(ge, "_preflight_pending", [], raising=False)
+    # A1 (3/11-2026): signal-cachen er også modul-global — ryddet, så en test der stubber
+    # DB-laget ikke læser den forrige tests tal.
+    monkeypatch.setattr(ge, "_signal_cache", {}, raising=False)
 
 
 # ── kv + record_private stubs ────────────────────────────────────────────
@@ -335,7 +341,7 @@ def test_preflight_fail_open_naar_derive_kaster(monkeypatch):
 
 def test_preflight_fail_open_naar_gaten_kaster(monkeypatch):
     monkeypatch.setattr(ge, "derive_gut_signal",
-                        lambda *, task_description: {"hunch": "proceed", "confidence": 0.1},
+                        lambda **kwargs: {"hunch": "proceed", "confidence": 0.1},
                         raising=False)
 
     def _boom(*a, **k):
@@ -376,6 +382,12 @@ def test_begge_run_start_stier_kalder_preflight():
 
 
 def test_surface_rapporterer_blokeringer_og_overkoersler(monkeypatch):
+    """A6b (3/11-2026): `blokeret` er FAKTISK stoppede runs — ikke gatens nej.
+
+    Før talte fladen `total - pass_med`, så en backstop-overkørsel stod som «stoppet» i
+    samme flade der ved siden af viste den som «sluppet igennem». Med 3 nej hvoraf 2 blev
+    overkørt er der 1 reelt stoppet run, ikke 3.
+    """
     monkeypatch.setattr(
         "core.services.gate_verdict_ledger.summary",
         lambda: {
@@ -387,8 +399,66 @@ def test_surface_rapporterer_blokeringer_og_overkoersler(monkeypatch):
     )
     surf = ge.build_gut_counterfactual_surface()
     assert surf["counterfactual_delta"] == -3      # negativ: bias'en trak FRA
-    assert surf["blokeret"] == 3
+    assert surf["blokeret"] == 1                   # 3 nej − 2 overkørt af bagkanten
     assert surf["backstop_overkoersler"] == 2
+
+
+def test_surface_holder_shadow_ude_af_blokeret(monkeypatch):
+    """A6b: en shadow-simuleret afvisning er ikke en blokering — runnet startede.
+
+    Shadow-afgørelser tælles på deres EGEN nerve, så de kan ikke snige sig ind i
+    `blokeret` via den fælles tælling.
+    """
+    monkeypatch.setattr(
+        "core.services.gate_verdict_ledger.summary",
+        lambda: {
+            "gut_gate": {"total": 4, "green": 4},
+            "gut_gate_uden_bias": {"total": 4, "green": 4},
+            "gut_gate_shadow": {"total": 9, "green": 1},
+        },
+        raising=False,
+    )
+    surf = ge.build_gut_counterfactual_surface()
+    assert surf["blokeret"] == 0                   # ingen håndhævet afvisning
+    assert surf["shadow_afgoerelser"] == 9         # de simulerede tælles særskilt
+
+
+def test_shadow_taelles_paa_egen_nerve(monkeypatch):
+    """A6b i registreringen: mode skal kunne skelnes i den aggregering fladen læser."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "shadow",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    ge.gut_gate(0.10, no_bias_confidence=0.10)      # ville afvise — men shadow slipper
+    nerver = [c["nerve"] for c in calls]
+    assert "gut_gate" not in nerver, "en shadow-afgørelse må ikke tælles som håndhævet"
+    assert "gut_gate_shadow" in nerver
+
+
+def test_preflight_forudsigelse_overlever_til_kalibrering(monkeypatch):
+    """A2 (3/11-2026): kalibreringen skal evaluere DEN forudsigelse gaten brugte.
+
+    Før kastede preflight sin hunch, og `_on_started` dannede en ny fra et andet input —
+    så udfaldet kalibrerede en anden forudsigelse end den der lå bag startbeslutningen.
+    """
+    import core.services.gut_calibration as gc
+
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+
+    udfald = ge.preflight_gut_gate(task_description="kritisk migration af prod-database")
+    pred = ge.take_preflight_prediction()
+    assert pred is not None
+    assert pred["hunch"] == udfald["hunch"]
+    assert str(pred["task"]).startswith("kritisk migration")
+    assert ge.take_preflight_prediction() is None   # forbrugt præcis én gang
+
+    # _on_started tager slotten frem for at regne en ny fra et andet input
+    monkeypatch.setattr(gc, "_pending", {}, raising=False)
+    gc._on_started({"run_id": "run-xyz", "focus": "en helt anden tekst"})
+    assert gc._pending["run-xyz"] == udfald["hunch"]
 
 
 # ── Definition B (3/11-2026, Bjørn): confidence = styrken af RETNINGEN ────
@@ -458,7 +528,7 @@ def test_preflight_sender_hunch_til_gaten(monkeypatch):
     _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
     # confidence=0.1 → caution med hunch_confidence 0.6 (over tærsklen 0.30).
     monkeypatch.setattr(ge, "derive_gut_signal",
-                        lambda *, task_description: {
+                        lambda **kwargs: {
                             "hunch": "caution", "confidence": 0.60,
                             "confidence_no_bias": 0.60},
                         raising=False)
@@ -518,3 +588,95 @@ def test_counterfactual_bias_flytter_stadig_en_proceed(monkeypatch):
         ("gut_gate", "green"),
         ("gut_gate_uden_bias", "red"),
     ]
+
+
+# ── A1 (3/11-2026): ægte observationer i stedet for hårdkodede nuller ────────
+#
+# Før kaldte preflight `derive_gut_signal(task_description=…)` — intet andet. Så var
+# confidence/error/success ALTID defaults, og tre vidt forskellige opgaver gav identisk
+# 0,61. Disse tests holder koblingen åben: gaten skal se noget der faktisk er målt.
+
+
+def test_preflight_sender_observationer_til_signalet(monkeypatch):
+    """Preflight skal videregive de målte tick-signaler — ellers er A1 død kode."""
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "shadow",
+                              "central_gut_gate_threshold": 0.30})
+    _capture_private(monkeypatch)
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    monkeypatch.setattr(ge, "_recent_tick_signals", lambda: (7, 42), raising=False)
+
+    set_input = {}
+    ægte_derive = ge.derive_gut_signal
+
+    def _fang(*, task_description, confidence=0.5,
+              recent_error_count=0, recent_success_count=0):
+        set_input["err"] = recent_error_count
+        set_input["ok"] = recent_success_count
+        return ægte_derive(task_description=task_description, confidence=confidence,
+                           recent_error_count=recent_error_count,
+                           recent_success_count=recent_success_count)
+
+    monkeypatch.setattr(ge, "derive_gut_signal", _fang, raising=False)
+    ge.preflight_gut_gate(task_description="t")
+    assert set_input == {"err": 7, "ok": 42}, "gaten fik ikke de målte observationer"
+
+
+def test_aegte_observationer_kan_vende_hunch_til_caution(monkeypatch):
+    """Kernen i A1: mange blokerede ticks skal kunne ændre retningen — ikke bare tallet."""
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    foer = ge.derive_gut_signal(task_description="t", recent_error_count=0,
+                                recent_success_count=0)
+    nu = ge.derive_gut_signal(task_description="t", recent_error_count=23,
+                              recent_success_count=270)
+    assert foer["hunch"] == "proceed"
+    assert nu["hunch"] == "caution", "23 blokerede ticks skal kunne ændre retningen"
+
+
+def test_tick_signaler_taeller_blocked_som_fejl(monkeypatch):
+    """`blocked` er den eneste status der betyder «kom ikke igennem»."""
+    class _Row(dict):
+        pass
+
+    rows = [_Row(tick_status="blocked", n=4), _Row(tick_status="ok", n=9),
+            _Row(tick_status="completed", n=3)]
+
+    class _Conn:
+        def execute(self, *_a, **_k):
+            return self
+        def fetchall(self):
+            return rows
+        def __enter__(self):
+            return self
+        def __exit__(self, *_a):
+            return False
+
+    monkeypatch.setattr("core.runtime.db_core.connect", lambda: _Conn(), raising=False)
+    err, ok = ge._recent_tick_signals()
+    assert (err, ok) == (4, 12)
+
+
+def test_tick_signaler_fejler_til_nuller(monkeypatch):
+    """Uden DB-adgang falder vi tilbage til dagens adfærd — ikke til en gættet værdi."""
+    def _boom():
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr("core.runtime.db_core.connect", _boom, raising=False)
+    assert ge._recent_tick_signals() == (0, 0)
+
+
+def test_afvisning_registreres_som_beslutning(monkeypatch):
+    """A3: en afvisning skal stå i ledgeren som BESLUTNING — på sin egen nerve.
+
+    Den må ikke blande sig med de evaluerede udfald: et afvist run har intet udfald,
+    så det kan aldrig kalibrere maven.
+    """
+    _install_kv(monkeypatch, {"central_gut_consumer_mode": "on",
+                              "central_gut_gate_threshold": 0.95})
+    _capture_private(monkeypatch)
+    calls = _capture_ledger(monkeypatch)
+    _fast_mave(monkeypatch, kalibrering=1.0, bias=0.0)
+    ud = ge.preflight_gut_gate(task_description="kritisk migration")
+    assert ud["allowed"] is False
+    withheld = [c for c in calls if c["nerve"] == "gut_gate_withheld"]
+    assert withheld, "afvisningen blev ikke registreret som beslutning"
+    assert withheld[0]["decision"] == "withheld"

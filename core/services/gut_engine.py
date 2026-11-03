@@ -129,7 +129,7 @@ def _consumer_mode() -> str:
         v = get_runtime_state_value(_CONSUMER_MODE_KEY, "off")
         mode = str(v or "off").strip().lower()
         return mode if mode in ("off", "shadow", "on") else "off"
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return "off"
 
 
@@ -137,13 +137,35 @@ def _gate_threshold() -> float:
     try:
         from core.runtime.db_core import get_runtime_state_value
         return float(get_runtime_state_value(_GATE_THRESHOLD_KEY, _DEFAULT_THRESHOLD))
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return _DEFAULT_THRESHOLD
 
 
 # Counterfactual-tælling (12/10-2026). To nerves i den EKSISTERENDE ledger — ingen ny tabel.
 _COUNTERFACTUAL_NERVE = "gut_gate"
 _COUNTERFACTUAL_NERVE_NO_BIAS = "gut_gate_uden_bias"
+
+# A6b (3/11-2026): `mode` var ikke en dimension i ledgerens nøgle. Den levede kun som fri
+# tekst i `last_reason`, som overskrives ved hvert nyt kald — så en shadow-simuleret
+# afvisning blev smeltet sammen med en håndhævet, og fladen talte begge som «stoppet».
+# Nøglen er `(nerve, decision)`, så mode bæres nu af NERVE-NAVNET: en shadow-afgørelse
+# tælles på sin egen nerve og kan trækkes fra uden at røre den fælles ledger eller skemaet.
+# (At gøre mode til en rigtig nøgle-dimension ville kræve en migrering af
+# `gate_verdict_counts`; nerve-navnet løser samme problem reversibelt.)
+_COUNTERFACTUAL_NERVE_SHADOW = "gut_gate_shadow"
+_COUNTERFACTUAL_NERVE_NO_BIAS_SHADOW = "gut_gate_uden_bias_shadow"
+
+# A3 (3/11-2026): en afvisning er en BESLUTNING, ikke et udfald.
+#
+# Før endte den kun i en egress-fri trace (`record_private("gut_gate_withhold")`), som
+# kalibreringen ikke læser. Den tælles nu i den samme ledger som de øvrige gate-afgørelser
+# — men på sin EGEN nerve, så den aldrig kan forveksles med et evalueret udfald.
+#
+# Den kan ALDRIG kalibrere maven: et afvist run har intet observeret udfald, og vi ved
+# ikke om det ville være lykkedes. Kun forudsigelse + udfald tilsammen kan det. En
+# registreret afvisning er derfor et datapunkt om gatens ADFÆRD — ikke et bevis for at
+# afvisningen var rigtig.
+_WITHHELD_NERVE = "gut_gate_withheld"
 
 
 def _safe_record(ledger: object, nerve: str, decision: str, reason: str) -> None:
@@ -173,7 +195,11 @@ def _record_counterfactual(
     except Exception:  # ledgeren er valgfri — uden den tæller vi bare ikke
         return
 
-    _safe_record(ledger, _COUNTERFACTUAL_NERVE,
+    shadow = str(mode or "").strip().lower() == "shadow"
+    nerve = _COUNTERFACTUAL_NERVE_SHADOW if shadow else _COUNTERFACTUAL_NERVE
+    nerve_nb = _COUNTERFACTUAL_NERVE_NO_BIAS_SHADOW if shadow else _COUNTERFACTUAL_NERVE_NO_BIAS
+
+    _safe_record(ledger, nerve,
                  "green" if would_pass else "red",
                  f"mode={mode} conf={conf:.3f} thr={threshold:.2f}")
     if no_bias_confidence is None:
@@ -186,7 +212,7 @@ def _record_counterfactual(
     # bruge samme retningsregel som den faktiske afgørelse — ellers rapporterer ledgeren
     # at erfaringen flyttede en beslutning, når det var retningsreglen der gjorde det.
     nb_would_pass = str(hunch or "proceed").strip().lower() == "proceed" and nb >= threshold
-    _safe_record(ledger, _COUNTERFACTUAL_NERVE_NO_BIAS,
+    _safe_record(ledger, nerve_nb,
                  "green" if nb_would_pass else "red",
                  f"hunch={str(hunch or 'proceed').strip().lower()} conf={nb:.3f} thr={threshold:.2f}")
 
@@ -216,7 +242,7 @@ def gut_gate(
     """
     try:
         conf = float(proceed_confidence)
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return True  # kan ikke tolke → fail open
 
     mode = _consumer_mode()
@@ -250,7 +276,7 @@ def gut_gate(
             },
             reason="gut_gate",
         )
-    except Exception:
+    except Exception:  # ledgeren er valgfri — uden den tæller vi bare ikke
         pass
 
     if mode == "on":
@@ -297,6 +323,142 @@ def _record_backstop(conf: float, hunch: str) -> None:
                  f"backstop conf={conf:.3f} hunch={hunch}")
 
 
+def _record_withheld_decision(conf: float, hunch: str, task_description: str) -> None:
+    """A3: registrér en afvisning som BESLUTNING — adskilt fra enhver udfaldskalibrering.
+
+    Kaster ALDRIG: en tæller må ikke kunne påvirke om et run stoppes.
+    """
+    try:
+        from core.services import gate_verdict_ledger as ledger
+    except Exception:  # ledgeren er valgfri — en tæller må ALDRIG påvirke beslutningen
+        return
+    _safe_record(ledger, _WITHHELD_NERVE, "withheld",
+                 f"conf={conf:.3f} hunch={hunch} task={str(task_description or '')[:40]}")
+
+
+# ── A1 (3/11-2026): ægte observationer i stedet for hårdkodede nuller ────────
+#
+# Før: `preflight_gut_gate` kaldte `derive_gut_signal(task_description=…)` — intet andet.
+# Så var `confidence=0,5`, `recent_error_count=0` og `recent_success_count=0` ALTID
+# defaults, og tre vidt forskellige opgaver gav identisk 0,61. Gaten kunne ikke skelne.
+#
+# Nu: de to tællere læses fra `heartbeat_runtime_ticks` — de seneste tick-udfald. Det er
+# ægte observationer om hvordan systemet kører lige nu (målt 3/11: 23 blocked mod 270
+# ok/completed det seneste døgn).
+#
+# GRÆNSE, som skal siges højt: det er GLOBALE observationer, ikke opgavespecifikke. Der
+# findes ingen mapping fra en `task_description` til hvilke værktøjer den vil bruge, så
+# gaten kan ikke vide om NETOP denne opgave er risikabel. `confidence` er derfor stadig
+# 0,5 — vi har ingen opgavespecifik tillid at måle. Den mapping er separat arbejde; at
+# lade som om den findes ville være den slags teater dagen har handlet om.
+_SIGNAL_WINDOW_HOURS = 24
+_SIGNAL_CACHE_SECONDS = 60.0
+_signal_cache: dict[str, object] = {}
+
+
+def _recent_tick_signals() -> tuple[int, int]:
+    """(error_count, success_count) fra de seneste ticks. Fail-safe: (0, 0) ved fejl.
+
+    `blocked` tælles som fejl; `ok` og `completed` som succes. Caches i 60 s, så et
+    run-start ikke betaler en DB-forespørgsel hver gang.
+    """
+    try:
+        now = time.time()
+        cached_at = float(_signal_cache.get("at") or 0.0)
+        if now - cached_at < _SIGNAL_CACHE_SECONDS and "err" in _signal_cache:
+            return int(_signal_cache["err"]), int(_signal_cache["ok"])  # type: ignore[arg-type]
+
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT tick_status, COUNT(*) AS n
+                     FROM heartbeat_runtime_ticks
+                    WHERE started_at > datetime('now', ?)
+                    GROUP BY tick_status""",
+                (f"-{_SIGNAL_WINDOW_HOURS} hours",),
+            ).fetchall()
+        err = 0
+        ok = 0
+        for row in rows:
+            status = str(row["tick_status"] or "").strip().lower()
+            n = int(row["n"] or 0)
+            if status == "blocked":
+                err += n
+            elif status in ("ok", "completed"):
+                ok += n
+        _signal_cache.update({"at": now, "err": err, "ok": ok})
+        return err, ok
+    except Exception:  # uden observationer falder vi tilbage til dagens adfærd: (0, 0)
+        return 0, 0
+
+
+# ── A2 (3/11-2026): forudsigelsens livscyklus ────────────────────────────────
+#
+# Før: `preflight_gut_gate` dannede en hunch og kastede den. `gut_calibration._on_started`
+# dannede derefter en NY — fra `payload.get("focus")`, altså et andet input end det gaten
+# så på, og først EFTER at runnet var begyndt. Kalibreringen evaluerede derfor en anden
+# forudsigelse end den der lå bag startbeslutningen. To beregninger, den ene kasseret.
+#
+# Nu: preflight lægger sin forudsigelse i en kortlivet FIFO, og `_on_started` tager den
+# ældste ikke-forbrugte. Slotten er per proces og TTL-begrænset, fordi preflight og
+# run-start ligger millisekunder fra hinanden i samme proces; findes der ingen slot
+# (fx et run startet ad en anden vej), falder kalibreringen tilbage til at danne sin egen
+# — og siger det i `source`-feltet, så det kan ses bagefter hvilken vej der blev brugt.
+_PREFLIGHT_TTL_SECONDS = 120.0
+_PREFLIGHT_MAX_PENDING = 8
+_preflight_pending: list[dict[str, object]] = []
+
+
+def _stash_preflight_prediction(
+    *, signal: dict, udfald: dict, task_description: str
+) -> None:
+    """Gem preflight'ens forudsigelse + beslutning, så livscyklussen kan evaluere DEN.
+
+    Kaster ALDRIG — en fejl i bookkeeping må ikke påvirke om et run starter.
+    """
+    try:
+        now = time.time()
+        _preflight_pending[:] = [
+            p for p in _preflight_pending
+            if now - float(p.get("at") or 0.0) < _PREFLIGHT_TTL_SECONDS
+        ]
+        _preflight_pending.append({
+            "at": now,
+            "hunch": str(udfald.get("hunch") or signal.get("hunch") or "proceed"),
+            "confidence": udfald.get("confidence", signal.get("confidence")),
+            "confidence_no_bias": signal.get("confidence_no_bias"),
+            "raw_confidence": signal.get("raw_confidence"),
+            "recent_error_count": signal.get("recent_error_count"),
+            "recent_success_count": signal.get("recent_success_count"),
+            "allowed": bool(udfald.get("allowed", True)),
+            "backstop": bool(udfald.get("backstop", False)),
+            "task": str(task_description or "")[:80],
+        })
+        while len(_preflight_pending) > _PREFLIGHT_MAX_PENDING:
+            _preflight_pending.pop(0)
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
+        return
+
+
+def take_preflight_prediction() -> dict[str, object] | None:
+    """Tag den ældste ikke-forbrugte preflight-forudsigelse. None hvis ingen findes.
+
+    Bruges af `gut_calibration._on_started`, så kalibreringen evaluerer præcis den
+    forudsigelse gaten brugte — ikke en ny beregning fra et andet input.
+    """
+    try:
+        now = time.time()
+        _preflight_pending[:] = [
+            p for p in _preflight_pending
+            if now - float(p.get("at") or 0.0) < _PREFLIGHT_TTL_SECONDS
+        ]
+        if not _preflight_pending:
+            return None
+        return _preflight_pending.pop(0)
+    except Exception:  # uden observationer falder vi tilbage til dagens adfærd: (0, 0)
+        return None
+
+
 def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     """PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG.
 
@@ -305,7 +467,14 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     OG at blokerings-budgettet ikke er brugt.
     """
     try:
-        signal = derive_gut_signal(task_description=task_description)
+        err, ok = _recent_tick_signals()
+        signal = derive_gut_signal(
+            task_description=task_description,
+            recent_error_count=err,
+            recent_success_count=ok,
+        )
+        signal["recent_error_count"] = err
+        signal["recent_success_count"] = ok
     except Exception:  # kunne ikke danne hunch → slip igennem, det er den sikre side
         return {"allowed": True, "reason": "derive-fejl"}
 
@@ -319,12 +488,19 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
         return {"allowed": True, "reason": "gate-fejl", "confidence": conf}
 
     if tillad:
-        return {"allowed": True, "confidence": conf, "hunch": hunch}
+        udfald = {"allowed": True, "confidence": conf, "hunch": hunch}
+        _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                    task_description=task_description)
+        return udfald
     if _blok_budget_brugt():
         _record_backstop(conf, hunch)
-        return {"allowed": True, "confidence": conf, "hunch": hunch, "backstop": True}
+        udfald = {"allowed": True, "confidence": conf, "hunch": hunch, "backstop": True}
+        _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                    task_description=task_description)
+        return udfald
 
     _blok_tider.append(time.time())
+    _record_withheld_decision(conf, hunch, task_description)
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", "gut_gate_withhold", value=conf,
@@ -333,7 +509,10 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
                        reason="gut_gate_withhold")
     except Exception:  # observationen er egress-fri pynt — uden den stopper vi stadig
         pass
-    return {"allowed": False, "confidence": conf, "hunch": hunch}
+    udfald = {"allowed": False, "confidence": conf, "hunch": hunch}
+    _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                task_description=task_description)
+    return udfald
 
 
 def preflight_allows(message: str) -> bool:
@@ -371,15 +550,45 @@ def record_gut_outcome(
 
 
 def build_gut_surface() -> dict[str, object]:
+    """Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026).
+
+    Før viste den kun `calibrated_hits/total_predictions`, hvilket læses som «hvor ofte
+    havde maven ret». Men `total_predictions` tæller kun de runs der fik LOV at køre, og
+    afvisninger var helt usynlige. Nu står de tre lag ved siden af hinanden:
+
+      • evalueret  — forudsigelse mødt af et observeret udfald (kan kalibrere)
+      • afvist     — gaten sagde nej; intet udfald findes (kan IKKE kalibrere)
+      • overkørt   — gaten sagde nej, bagkanten slap den igennem
+
+    Afvisninger kan aldrig gøre kalibreringen bedre eller dårligere — de har intet udfald
+    at måles mod. De vises for at gøre gatens adfærd synlig, ikke for at pynte på tallet.
+    """
     state = get_cognitive_gut_state()
+
+    withheld = 0
+    overkoersler = 0
+    try:
+        from core.services import gate_verdict_ledger as ledger
+        counts = ledger.summary()
+        withheld = int((counts.get(_WITHHELD_NERVE) or {}).get("total") or 0)
+        overkoersler = int((counts.get(_BACKSTOP_NERVE) or {}).get("total") or 0)
+    except Exception:  # ledgeren er valgfri — fladen skal stadig kunne vises
+        pass
+
     if not state:
-        return {"active": False, "state": None, "summary": "No gut data yet"}
+        return {"active": False, "state": None,
+                "withheld": withheld, "backstop_overkoersler": overkoersler,
+                "summary": "No gut data yet"}
     return {
         "active": True,
         "state": state,
+        "evaluated": int(state["total_predictions"]),
+        "withheld": withheld,
+        "backstop_overkoersler": overkoersler,
         "summary": (
             f"Calibration: {state['calibration_score']:.2f} "
-            f"({state['calibrated_hits']}/{state['total_predictions']} correct)"
+            f"({state['calibrated_hits']}/{state['total_predictions']} correct); "
+            f"{withheld} afvist (intet udfald), {overkoersler} overkørt af bagkanten"
         ),
     }
 
@@ -401,6 +610,7 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     backstop = counts.get(_BACKSTOP_NERVE) or {}
     med = counts.get(_COUNTERFACTUAL_NERVE) or {}
     uden = counts.get(_COUNTERFACTUAL_NERVE_NO_BIAS) or {}
+    shadow = counts.get(_COUNTERFACTUAL_NERVE_SHADOW) or {}
     total = int(med.get("total") or 0)
     if not total:
         return {"active": False, "events": 0,
@@ -409,7 +619,13 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     pass_med = int(med.get("green") or 0)
     pass_uden = int(uden.get("green") or 0)
     delta = pass_med - pass_uden
-    blokeret = total - pass_med
+    overkoersler = int(backstop.get("total") or 0)
+    # A6b (3/11-2026): `blokeret` talte gatens NEJ, ikke faktisk stoppede runs — så en
+    # backstop-overkørsel stod som «stoppet» i samme flade der ved siden af viste den som
+    # «sluppet igennem». Nu tælles kun on-mode-afvisninger, og bagkantens overkørsler
+    # trækkes fra. Shadow-afgørelser ligger på deres egen nerve og indgår ikke i `total`.
+    blokeret = max(0, total - pass_med - overkoersler)
+    shadow_total = int(shadow.get("total") or 0)
     return {
         "active": True,
         "events": total,
@@ -418,10 +634,12 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
         "counterfactual_delta": delta,
         "delta_pct": round(100.0 * delta / total, 2),
         "blokeret": blokeret,
-        "backstop_overkoersler": int(backstop.get("total") or 0),
+        "backstop_overkoersler": overkoersler,
+        "shadow_afgoerelser": shadow_total,
         "summary": (
             f"bias flyttede afgørelsen i {delta} af {total} tilfælde "
             f"({round(100.0 * delta / total, 2)} %); {blokeret} stoppet, "
-            f"{int(backstop.get('total') or 0)} sluppet igennem af bagkanten"
+            f"{overkoersler} sluppet igennem af bagkanten, "
+            f"{shadow_total} simuleret i shadow"
         ),
     }

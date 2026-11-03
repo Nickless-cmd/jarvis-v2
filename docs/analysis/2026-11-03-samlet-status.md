@@ -705,6 +705,93 @@ løber — den var før uendelig.
 
 ---
 
+## Målt 3/11-2026 kl. 21:0x — den systemiske form af samme fejl
+
+Dagens øvrige fund var enkeltmekanismer. Dette er mønstret de deler, målt i
+hele systemet: **noget der er bygget, har en læser, ser rigtigt ud — og kan
+aldrig få data.**
+
+### Registret ved det allerede
+
+`core/services/liveness_registry.py` bærer **41 tabel-poster**:
+
+| status | antal |
+|---|---|
+| `orphaned` | **11** |
+| `manual_only` | 6 |
+| `wired` | 11 |
+| `replaced` | 3 |
+| `active` | 10 |
+
+Plus **10 modul-poster** hvor **9 står `bygget`** og 1 `projektion`.
+
+### De 11 orphaned-tabeller, målt indhold
+
+**10 af 11 er helt tomme (0 rækker):** `cadence_idempotency_keys`,
+`cheap_lane_quota_observations`, `runtime_world_facts`, `session_write_leases`,
+`user_flags`, `cognitive_epistemic_claims`, `cognitive_wrongness`,
+`cognitive_missions`, `cognitive_mission_messages`, `cognitive_trade_outcomes`.
+
+**1 har data:** `composer_jarvis_forslag` (22 rækker — de ni usete tilbud).
+
+### Hvorfor tomme tabeller er et problem og ikke bare stille
+
+De har **læsere der viser deres tilstand som om den fandtes**:
+
+| Tabel | Læses af | Når |
+|---|---|---|
+| `runtime_world_facts` | `world_facts.list_world_facts` → `_world_model_support_signal_instruction` | **prompten** |
+| `cognitive_epistemic_claims`, `cognitive_wrongness` | `epistemics.build_epistemics_surface` | **heartbeat-prompten** (`prompt_sections/heartbeat_sections.py:24`) |
+| `cognitive_missions`, `cognitive_mission_messages` | `missions_pipeline.build_missions_surface` | API-rute |
+| `cognitive_trade_outcomes` | `negotiation_pipeline.build_negotiation_surface` | API-rute |
+
+Skriverne findes (`world_facts.record_world_fact`, `epistemics.reconcile_claim`,
+`missions_pipeline.create_mission`, `negotiation_pipeline.record_trade_outcome`)
+— men har **nul kaldere**. Fladen siger «her er min tilstand», og tilstanden kan
+aldrig opstå.
+
+### Målt direkte på prompt-sektionerne
+
+11 sektions-byggere kørt mod levende data: **8 lever, 3 er tomme.**
+
+| Bygger | Status |
+|---|---|
+| `_development_focus_support_signal_instruction` | lever (292 tegn) |
+| `_growth_support_signal_instruction` | lever (160) |
+| `_private_support_signal_instruction` | lever (138) |
+| `_reflection_support_signal_instruction` | lever (241) |
+| `_retained_memory_support_signal_instruction` | lever (261) |
+| `_runtime_awareness_support_signal_instruction` | lever (220) |
+| `_self_model_support_signal_instruction` | lever (203) |
+| `_temporal_support_signal_instruction` | lever (144) |
+| `_goal_support_signal_instruction` | **TOM** — alle 1.744 goal-signaler er `archived`, nyeste 8/7 |
+| `_world_model_support_signal_instruction` | **TOM** — læser den tomme `runtime_world_facts` |
+| `build_world_fact_prompt_section` | **TOM** — samme tabel |
+
+### Og de kognitive flader når aldrig modellen
+
+`cognitive_architecture` (72 navngivne overflader, 110 KB) læses af
+`central_hub.py` og `mission_control_common.py` — altså **Desk**, via API-ruten
+`/central`. `prompt_contract.py` nævner den **nul gange**, og nævner heller ikke
+`gut_surface`, `self_model_surface`, `affective_state` eller
+`continuity_kernel`.
+
+Det er ikke fordi der ingen kognitiv kontekst er i prompten — de 17
+support-sektioner findes og 8 af dem lever. Men de henter fra **signaler**, ikke
+fra fladerne. To parallelle kanaler, hvoraf den ene kun Desk ser.
+
+### Det vigtigste
+
+`liveness_registry` **ved det hele allerede** — den kalder dem `orphaned` med
+producent-navn. Men registret læses kun af én API-rute
+(`mission_control_runs_ops.py`). **Ingen kode handler på det.**
+
+Registret er en gravsten, ikke en vagt. Det er samme fejlform som
+`honored`-stien og de 293 dubletter, blot i systemisk skala: beskrivelsen af
+problemet er bygget, og forbindelsen fra beskrivelse til handling mangler.
+
+---
+
 ## Bygget 3/11-2026 kl. 19:4x — C3's udøver, og to forslag der aldrig ventede
 
 Forbrugeren lukkede det døde. Men målt kl. 19:36 stod **to forslag stadig

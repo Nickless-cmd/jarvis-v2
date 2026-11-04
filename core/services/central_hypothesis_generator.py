@@ -281,7 +281,6 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
     elif not verdict.alive:
         new_status, outcome, resolved_at = "dead", "falsified", _now()
     elif grounded_n >= int(h["sample_size"]):
-        new_status, resolved_at = "resolved", _now()
         # OUTCOME FRA EVIDENS, IKKE FRA ET TAL (maalt 4/11-2026): den gamle regel
         # satte 'contradicted' naar confidence < 0,5. Maalt i drift: 16.658 af 32.983
         # contradicted (50,5 %) havde stoette >= modsigelse — fx 4 stoettende mod 1
@@ -290,7 +289,17 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
         # "uden lige saa mange der modsiger den".
         _stott = sum(1 for e in _jordet if e.get("supports"))
         _mods = sum(1 for e in _jordet if e.get("falsifies"))
-        outcome = "supported" if _stott > _mods else "contradicted"
+        if _stott > _mods:
+            new_status, resolved_at, outcome = "resolved", _now(), "supported"
+        elif _mods > _stott:
+            new_status, resolved_at, outcome = "resolved", _now(), "contradicted"
+        # Ellers: jordede observationer UDEN flertal — enten retningsneutrale (0-0)
+        # eller lige mange (fx 2-2). Kontrakten kraever at overgangen GENTAGER sig,
+        # og det er ikke observeret; der findes ingen side der har flertal. En dom
+        # ville vaere en pastand uden grundlag, saa ingen afsiges — TTL-sweep'en
+        # afgoer senere. Maalt 4/11-2026: 4.936 af 140.775 afgjorte (3,5 %) havde
+        # denne form; 2.896 var stemplet 'supported' og 2.040 'contradicted' paa et
+        # grundlag der hverken stottede eller modsagde hypotesen.
     try:
         from core.runtime.db import connect
         with connect() as c:

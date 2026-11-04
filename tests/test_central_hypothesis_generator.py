@@ -238,7 +238,7 @@ def test_forskellige_ground_ref_taeller_hver_for_sig(isolated_runtime):
 
 
 # ── Outcome kommer fra EVIDENSEN, ikke fra en confidence-taerskel ─────────────────
-def _insert_dom_hyp(hyp_id: str, *, confidence: float) -> None:
+def _insert_dom_hyp(hyp_id: str, *, confidence: float, sample_size: int = 5) -> None:
     import json as _json
     from datetime import datetime, timezone
     from core.runtime.db import connect
@@ -250,7 +250,7 @@ def _insert_dom_hyp(hyp_id: str, *, confidence: float) -> None:
             " null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json,"
             " confidence, status, outcome, grounded_samples, created_at, resolved_at)"
             " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (hyp_id, "test", "t", "p", "n", "s", 5, 168 * 3600,
+            (hyp_id, "test", "t", "p", "n", "s", sample_size, 168 * 3600,
              _json.dumps({"mechanism": "causal_edges", "family": "a->b", "cursor_id": "c1"}),
              confidence, "active", None, 0, now, None))
         c.commit()
@@ -303,3 +303,53 @@ def test_flertal_af_modsigelser_giver_contradicted(isolated_runtime):
     row = _dom_row("hyp-mod")
     assert row["outcome"] == "contradicted", (
         f"fem modsigelser og nul stoettende blev doemt {row['outcome']!r}")
+
+
+def test_jordet_men_retningsneutral_evidens_giver_ingen_dom(isolated_runtime):
+    """MAALT 4/11-2026: 2.896 af 140.775 afgjorte havde 5 jordede observationer hvor INGEN
+    stottede og INGEN modsagde — og blev alligevel stemplet 'supported' (confidence 0,676),
+    fordi den gamle regel kun saa paa tallet.
+
+    En ren `_stott > _mods`-regel ville goere dem til 'contradicted': 0 > 0 er falsk. Det er
+    samme fejlform med modsat fortegn — en dom uden grundlag. Kontrakten kraever at
+    overgangen GENTAGER sig, og en neutral observation siger intet om det. Derfor: ingen dom,
+    hypotesen forbliver aktiv og TTL-sweep'en afgoer senere.
+    """
+    _insert_dom_hyp("hyp-neutral", confidence=0.30)
+    for i in range(5):
+        gen.record_governed_sample(
+            "hyp-neutral", supports=False, falsifies=False, source="world_consequence",
+            ground_ref=f"obs-{i}", triggered_by="world")
+    row = _dom_row("hyp-neutral")
+    assert row["status"] == "active", (
+        f"retningsneutral evidens udloeste status {row['status']!r} — der er intet grundlag "
+        f"for en dom (outcome={row['outcome']!r})")
+    assert row["outcome"] is None, f"dom uden retning: outcome={row['outcome']!r}"
+    assert row["grounded_samples"] == 5, "observationerne skal stadig taelle som jordede"
+
+
+def test_like_mange_paa_begge_sider_giver_ingen_dom(isolated_runtime):
+    """MAALT 4/11-2026: 2.040 af 140.775 havde lige mange stottende og modsigende (fx 2-2)
+    og blev alle stemplet 'contradicted'. Kontrakten siger "uden lige saa mange der modsiger
+    den" — et 3-3-resultat opfylder den ikke, men det MODBEVISER den heller ikke.
+
+    2+2 mod sample_size=4: gaten ER passeret, det er selve retningen der er uafgjort.
+    (Med krav 5 ville det femte sample afgoere sagen foer det sjette kunne indsaettes —
+    hypotesen var allerede resolved, saa det sidste blev afvist som noop.)
+    """
+    _insert_dom_hyp("hyp-lige", confidence=0.50, sample_size=4)
+    for i in range(2):
+        gen.record_governed_sample(
+            "hyp-lige", supports=True, source="world_consequence",
+            ground_ref=f"st-{i}", triggered_by="world")
+    for i in range(2):
+        gen.record_governed_sample(
+            "hyp-lige", supports=False, falsifies=True, source="world_consequence",
+            ground_ref=f"mo-{i}", triggered_by="world")
+    row = _dom_row("hyp-lige")
+    assert row["grounded_samples"] == 4, (
+        f"testen rammer ikke gaten: {row['grounded_samples']} jordede mod krav 4")
+    assert row["status"] == "active", (
+        f"3-3 udloeste status {row['status']!r} (outcome={row['outcome']!r}) — "
+        f"ingen side har flertal")
+    assert row["outcome"] is None

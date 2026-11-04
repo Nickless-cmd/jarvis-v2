@@ -220,30 +220,32 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         # koersel og er nok til at baere en kalibrerings-indsigelse; critic,
         # open-loop og recurrence styrker den naar de findes.
         if (active_focus or active_goal) and (active_self_model or uncertain_self_model):
+            lag = _lag_pair_label(snapshot)
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
                     signal_type="challenge-calibration",
                     status="active",
-                    title=f"Challenge calibration: {title_suffix}",
-                    summary=f"This bounded calibration thread around {title_suffix.lower()} now looks like it should be challenged internally.",
-                    rationale="Active direction is still being carried while self-model pressure and critic/open-loop recurrence suggest the current calibration should not be accepted too easily.",
-                    status_reason="Self-model pressure plus continuing direction keeps this domain in need of bounded internal challenge.",
+                    title=f"Challenge calibration: {lag}",
+                    summary=f"Kalibrering i denne kørsel: {lag}.",
+                    rationale="To lag sameksisterer i samme kørsel. Om de modsiger hinanden er ikke afgjort — domænet er tidsligt, ikke semantisk.",
+                    status_reason="Begge lag er til stede i samme kørsel; en eventuel modsætning skal læses ud af deres indhold.",
                     source_items=[active_focus, active_goal, active_self_model, uncertain_self_model, active_critic, open_loop, active_recurrence],
                 )
             )
             continue
 
         if (softening_loop or softening_recurrence or resolved_critic) and (active_self_model or uncertain_self_model or live_reflection) and not active_critic and not blocked_goal:
+            lag = _lag_pair_label(snapshot)
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
                     signal_type="challenge-calibration",
                     status="softening",
-                    title=f"Softening challenge: {title_suffix}",
-                    summary=f"This bounded calibration thread around {title_suffix.lower()} may still benefit from challenge, but the pressure is easing.",
-                    rationale="The domain still carries some calibration uncertainty, but the sharper critic/open-loop pressure has eased into a softer challenge need.",
-                    status_reason="Internal challenge still looks relevant, though the thread is now softening rather than sharply opposed.",
+                    title=f"Softening challenge: {lag}",
+                    summary=f"Kalibrering i denne kørsel: {lag}.",
+                    rationale="To lag sameksisterer i samme kørsel, men presset er aftagende. Om de modsiger hinanden er ikke afgjort.",
+                    status_reason="Begge lag er til stede, men den skarpe kritiker/open-loop-pres er væk.",
                     source_items=[active_focus, active_goal, active_self_model, uncertain_self_model, live_reflection, softening_loop, softening_recurrence, resolved_critic, settled_reflection],
                 )
             )
@@ -400,3 +402,42 @@ def _snapshot_label(snapshot: dict[str, object], domain_key: str) -> str:
 def _domain_title(domain_key: str) -> str:
     text = str(domain_key or "").replace("world:", "").replace("-", " ").strip()
     return text[:1].upper() + text[1:] if text else "Internal challenge"
+
+
+def _lag_pair_label(snapshot: dict[str, object]) -> str:
+    """Begge lags tekst i ÉN linje — fordi det kun er titlen der når prompten.
+
+    Målt 4/11-2026: ``current_signal`` bygges af ``title`` alene
+    (``signal_tracking_framework.py:509``), og prompt-linjen læser
+    ``current_signal``. En ændring af ``summary`` eller ``rationale`` når
+    derfor ALDRIG modellen. Uden denne funktion gentog linjen kun fokus-laget;
+    selvmodellen — den sjældne halvdel af betingelsen (36 af 632 kørsler) —
+    stod ingen steder.
+
+    Målt i de levende rækker handlede de to lag ofte slet ikke om det samme:
+    «Forklarer værktøjer som Obsidian» mod «Confidence in debugging: 63%».
+    Begge skrives ud, så en modsætning kan afgøres — eller afvises.
+    """
+    retning = ""
+    for felt in ("active_focus", "active_goal", "blocked_goal"):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                retning = text[:64]
+                break
+    modpart = ""
+    for felt, etiket in (
+        ("active_self_model", ""),
+        ("uncertain_self_model", "(usikker) "),
+        ("live_reflection", "refleksion: "),
+    ):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                modpart = f"{etiket}{text[:48]}"
+                break
+    if retning and modpart:
+        return f"{retning} · modpart: {modpart}"
+    return retning or modpart or "to lag uden læsbar tekst"

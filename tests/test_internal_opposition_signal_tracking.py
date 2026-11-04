@@ -4,14 +4,14 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 
-def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run") -> None:
+def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run", title: str = "Development focus: Danish concise calibration") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_development_focus(
         focus_id=f"focus-{uuid4().hex}",
         focus_type="communication-calibration",
         canonical_key=canonical_key,
         status=status,
-        title="Development focus: Danish concise calibration",
+        title=title,
         summary="Active focus for Danish concise calibration",
         rationale="Validation focus",
         source_kind="repeated-user-correction",
@@ -129,15 +129,15 @@ def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str, 
     )
 
 
-def _insert_self_model(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run") -> None:
+def _insert_self_model(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run", title: str = "Current limitation: Danish concise calibration") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_self_model_signal(
         signal_id=f"self-model-{uuid4().hex}",
         signal_type="current-limitation" if status == "active" else "improvement-edge",
         canonical_key=canonical_key,
         status=status,
-        title="Current limitation: Danish concise calibration",
-        summary="Current limitation: Danish concise calibration",
+        title=title,
+        summary=title,
         rationale="Validation self-model",
         source_kind="critic-supported",
         confidence="high",
@@ -305,6 +305,56 @@ def test_internal_opposition_surface_forms_challenge_calibration_for_self_model_
     assert surface["items"][0]["signal_type"] == "challenge-calibration"
     assert surface["items"][0]["status"] == "active"
     assert surface["items"][0]["canonical_key"] == "internal-opposition:challenge-calibration:test-run"
+
+
+def test_begge_lag_naar_frem_til_prompt_linjen_ikke_kun_fokus(isolated_runtime) -> None:
+    """Den ægte sidste meter for oppositionens INDHOLD.
+
+    Målt 4/11-2026: ``current_signal`` bygges af ``title`` alene
+    (``signal_tracking_framework.py:509``), og prompt-linjen læser
+    ``current_signal``. Før rettelsen bar titlen kun fokus-laget, så den linje
+    Jarvis læste som «indsigelse» var hans eget fokus gentaget — selvmodellen,
+    den sjældne halvdel af betingelsen (36 af 632 kørsler), stod ingen steder.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    unik_fokus = "UNIKTFOKUS bygger oppositionens anden halvdel"
+    unik_selv = "UNIKSELVMODEL tillid til debugging 63 procent"
+
+    _insert_focus(
+        db,
+        canonical_key="focus:bearing:danish-concise-calibration",
+        title=unik_fokus,
+    )
+    _insert_self_model(
+        db,
+        canonical_key="self-model:limitation:danish-concise-calibration",
+        title=unik_selv,
+    )
+
+    tracking.track_runtime_internal_opposition_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_internal_opposition_signal_surface(limit=8)
+
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert item["signal_type"] == "challenge-calibration"
+
+    # 1) signalets titel bærer BEGGE lag
+    assert unik_fokus in item["title"], "fokus-laget mangler i titlen"
+    assert unik_selv in item["title"], (
+        "selvmodellen mangler i titlen — og titlen er det ENESTE der når prompten"
+    )
+
+    # 2) og dermed også den samlede prompt-linje
+    current = surface["summary"]["current_signal"]
+    assert unik_fokus in current
+    assert unik_selv in current, (
+        "prompt-linjen gentager kun fokus — indsigelsen bærer intet andet lag"
+    )
 
 
 def test_internal_opposition_surface_forms_challenge_world_view_for_uncertain_context_with_live_direction(isolated_runtime) -> None:

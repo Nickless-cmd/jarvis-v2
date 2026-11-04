@@ -9653,7 +9653,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -36544,7 +36544,7 @@
       ]
     },
     "runtime_opposition_arms": {
-      "digest": "89:f0:ee:de:0e:78:d9:7a:d8:8f:c8:86:30:d2:64:bb:ef:65:51:b2:59:cc:8e:c3:c0:1d:a4:71:43:3b:ea:f7",
+      "digest": "45:c5:e3:ef:b2:61:7c:a9:e1:1c:da:f8:c2:c0:2f:01:d5:55:68:c5:96:e1:41:a0:d9:be:b0:20:7c:65:dd:52",
       "schema": {
         "columns": [
           {
@@ -36573,6 +36573,14 @@
           },
           {
             "name": "included",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "inclusion_requested",
             "type": "INTEGER",
             "nullable": false,
             "default": "0",

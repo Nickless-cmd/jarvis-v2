@@ -407,6 +407,15 @@ def _accumulated_counts(
 
     En tabel uden ``session_id``-kolonne tæller ikke sessioner op — den sporer
     dem ikke, og et opkald er så ikke et vidnesbyrd om en ny session.
+
+    Målt 4/11-2026 EFTER genstart: akkumuleringen virker — et selvmodel-signal
+    gik fra 1 til 3 (merge_count 47), to fokus-rækker fra 1 til 2. Men
+    ``session_count`` stod på 1 i 967/967 critics og 16.976/16.976
+    world-model-rækker: sessioner mødes aldrig igen, så en port på
+    ``session_count >= 2`` ville gøre alle porte permanent døde — samme fejlform
+    som ``max()`` var. ``support_count`` tæller derfor OBSERVATIONER, ikke
+    uafhængige kilder. Skal uafhængighed måles, kræver det en dimension der
+    faktisk bevæger sig; det er en datamodel-beslutning, ikke en tærskel.
     """
     base_support = int(existing["support_count"] or 0)
     base_session = int(existing["session_count"] or 0)

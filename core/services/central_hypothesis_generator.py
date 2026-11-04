@@ -608,6 +608,62 @@ def _ttl_deadline_iso(created_at_iso: Any, ttl_seconds: Any) -> str | None:
         return None
 
 
+def _sen_sample_afgjorde(conn: Any, hyp_id: str, deadline: str) -> bool:
+    """Flyttede et sample EFTER fristen hypotesens dom — eller findes det bare?
+
+    Målt 4/11-2026: det gamle tjek spurgte kun om der FANDTES et sample efter fristen.
+    56 af 58 udløbne aktive havde et, og alle 58 var uafgjorte både ved fristen og nu —
+    så værnet mod at afslutte forkert blev et værnet mod at afslutte. Her sammenlignes
+    dommen på evidensen FØR fristen med dommen på al evidens: kun hvis de er forskellige,
+    har det sene sample faktisk flyttet hypotesen og skal holde den i live.
+    """
+    try:
+        row = conn.execute(
+            "SELECT sample_size FROM central_hypotheses WHERE hyp_id=?", (hyp_id,)).fetchone()
+        krav = int((row["sample_size"] if row else 0) or 5)
+        samples = conn.execute(
+            "SELECT supports, falsifies, ground_ref, created_at "
+            "FROM central_hypothesis_samples WHERE hyp_id=?", (hyp_id,)).fetchall()
+
+        def _dom(sup: int, fal: int) -> str:
+            if sup >= krav and fal < sup:
+                return "contract_met"
+            if fal >= krav and fal >= sup:
+                return "contradicted"
+            return "undecided"
+
+        pre_sup = pre_fal = all_sup = all_fal = 0
+        seneste = ""
+        for s in samples:
+            if not s["ground_ref"]:
+                continue
+            ts = str(s["created_at"] or "")
+            if ts > seneste:
+                seneste = ts
+            if s["supports"]:
+                all_sup += 1
+            if s["falsifies"]:
+                all_fal += 1
+            if ts <= deadline:
+                if s["supports"]:
+                    pre_sup += 1
+                if s["falsifies"]:
+                    pre_fal += 1
+        # Et sent sample der FLYTTEDE dommen (fx opfyldte kontrakten) er en gyldig afgoerelse
+        # og maa ikke udloebes. Flyttede det den ikke, er der intet nyt at vente paa.
+        # Maalt 4/11-2026: 56 af 58 udloebne aktive havde et sent sample, og ALLE 58 var
+        # uafgjorte baade ved fristen og nu — de sad fast i 'active' for evigt.
+        # BEMAERK: en genoplivet hypotese (sweep -> nyt sample -> naeste sweep) er i databasen
+        # IDENTISK med en der aldrig blev genoplivet: status='active', resolved_at=None, ét
+        # sent sample. Der findes ingen markoer der skelner dem, saa reglen her lukker BEGGE.
+        # Det er en bevidst kontrakt: TTL er en del af den praeregistrerede testbetingelse, og
+        # et sent sample maa ikke bagudrettet forlaenge den. Skal en hypotese undersoeges
+        # videre, kraever det en NY evalueeringsperiode — ikke en tavs genoplivning.
+        return _dom(pre_sup, pre_fal) != _dom(all_sup, all_fal)
+    except Exception:  # kan det ikke maales, maa det ikke holde hypotesen fanget for evigt
+        return False
+
+
 def expire_overdue_hypotheses(*, now: datetime | None = None) -> dict[str, Any]:
     """Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'.
 
@@ -638,13 +694,8 @@ def expire_overdue_hypotheses(*, now: datetime | None = None) -> dict[str, Any]:
                 if not gov.is_expired(r["created_at"], r["ttl_seconds"], now=n):
                     continue
                 deadline = _ttl_deadline_iso(r["created_at"], r["ttl_seconds"])
-                if deadline is not None:
-                    fresh = c.execute(
-                        "SELECT 1 FROM central_hypothesis_samples "
-                        "WHERE hyp_id=? AND created_at > ? LIMIT 1",
-                        (hyp_id, deadline)).fetchone()
-                    if fresh:
-                        continue   # frisk evidens efter fristen → ikke udloebet uden bekræftelse
+                if deadline is not None and _sen_sample_afgjorde(c, hyp_id, deadline):
+                    continue   # det sene sample FLYTTEDE dommen → ikke udloebet uden bekræftelse
                 overdue.append(hyp_id)
             if overdue:
                 c.executemany(

@@ -149,11 +149,19 @@ def test_expired_hypotese_kan_faa_evidens_igen(isolated_runtime):
         "et nyt grounded sample skal genoplive eller afgøre hypotesen"
 
 
-def test_genoplivet_hypotese_draebes_ikke_igen_af_naeste_sweep(isolated_runtime):
-    """Ellers var genoplivningen meningsløs: sweep'en ville dræbe den igen med det samme.
+def test_genoplivet_hypotese_uden_afgoerelse_lukkes_ved_naeste_sweep(isolated_runtime):
+    """KONTRAKTEN ER ÆNDRET 4/11-2026 — læs hvorfor.
 
-    TTL måler tid UDEN ny evidens. Et sample oprettet efter fristen er netop den evidens,
-    så sweep'en skal springe hypotesen over.
+    Den gamle regel beskyttede enhver hypotese der havde et sample efter fristen. Målt i den
+    levende base: 56 af 58 udløbne aktive havde et sådant sample, og ALLE 58 var uafgjorte
+    både ved fristen og nu. Værnet mod at afslutte forkert blev dermed et værnet mod at
+    afslutte — de sad fast i 'active' for evigt.
+
+    En genoplivet hypotese er i databasen IDENTISK med en der aldrig blev genoplivet
+    (status='active', resolved_at=None, ét sent sample). Der findes ingen markør der skelner
+    dem, så reglen lukker begge. Det er bevidst: TTL er en del af den præregistrerede
+    testbetingelse, og et sent sample må ikke bagudrettet forlænge den. Skal hypotesen
+    undersøges videre, kræver det en NY evalueringsperiode — ikke en tavs genoplivning.
     """
     _insert("hyp-gammel", age_hours=24 * 30)
     gen.expire_overdue_hypotheses()
@@ -162,5 +170,45 @@ def test_genoplivet_hypotese_draebes_ikke_igen_af_naeste_sweep(isolated_runtime)
         ground_ref="event-43", triggered_by="world")
     assert _status("hyp-gammel") in {"active", "resolved"}
     gen.expire_overdue_hypotheses()
-    assert _status("hyp-gammel") in {"active", "resolved"}, \
-        "sweep'en dræbte en hypotese der netop havde fået frisk evidens"
+    assert _status("hyp-gammel") == "expired", \
+        "et sent sample der ikke afgjorde kontrakten må ikke holde hypotesen i live for evigt"
+
+
+# ── 4. Et sent sample der IKKE flyttede dommen må ikke holde hypotesen fanget ────────
+def test_sent_sample_uden_dom_aendring_lukker_hypotesen(isolated_runtime):
+    """Målt 4/11-2026: 56 af 58 udløbne aktive havde et sample EFTER fristen, og alle 58
+    var uafgjorte både ved fristen og nu. Det gamle `fresh`-tjek spurgte kun om der FANDTES
+    et sent sample — så værnet mod at afslutte forkert blev et værnet mod at afslutte.
+    Et sent sample der ikke flytter dommen skal derfor IKKE holde hypotesen i live.
+    """
+    from core.runtime.db import connect
+    hyp = _insert("hyp-sent-uden-dom", age_hours=24 * 30)
+    # ét støttende sample EFTER fristen — langt under kravet på 5
+    with connect() as c:
+        c.execute(
+            "INSERT INTO central_hypothesis_samples (hyp_id, supports, falsifies, source,"
+            " ground_ref, triggered_by, created_at) VALUES (?,?,?,?,?,?,?)",
+            (hyp, 1, 0, "world_consequence", "sent-1", "world",
+             datetime.now(timezone.utc).isoformat()))
+        c.commit()
+    res = gen.expire_overdue_hypotheses()
+    assert res["status"] == "ok"
+    assert _status(hyp) == "expired", \
+        "et sent sample der ikke ændrede dommen holdt hypotesen fanget i 'active' for evigt"
+
+
+def test_sent_sample_der_afgoer_dommen_lukker_ikke(isolated_runtime):
+    """Den modsatte kant: et sent sample der FAKTISK opfylder kontrakten må ikke udløbes."""
+    from core.runtime.db import connect
+    hyp = _insert("hyp-sent-afgjort", age_hours=24 * 30)
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as c:
+        for i in range(5):
+            c.execute(
+                "INSERT INTO central_hypothesis_samples (hyp_id, supports, falsifies, source,"
+                " ground_ref, triggered_by, created_at) VALUES (?,?,?,?,?,?,?)",
+                (hyp, 1, 0, "world_consequence", f"afgoer-{i}", "world", now))
+        c.commit()
+    gen.expire_overdue_hypotheses()
+    assert _status(hyp) != "expired", \
+        "et sent sample der opfyldte kontrakten blev alligevel udløbet — en gyldig dom gik tabt"

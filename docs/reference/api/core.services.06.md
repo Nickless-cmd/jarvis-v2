@@ -28,11 +28,12 @@ _core/services/central_hypothesis_generator.py_
 | function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L554) |
 | function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L566) |
 | function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L600) |
-| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L611) |
-| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L664) |
-| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L670) |
-| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L686) |
-| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L702) |
+| function | `_sen_sample_afgjorde` | `(conn, hyp_id, deadline)` | Flyttede et sample EFTER fristen hypotesens dom — eller findes det bare? | [src](../../../core/services/central_hypothesis_generator.py#L611) |
+| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L667) |
+| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L715) |
+| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L721) |
+| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L737) |
+| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L753) |
 
 ## `core/services/central_hypothesis_governance.py`
 _core/services/central_hypothesis_governance.py_

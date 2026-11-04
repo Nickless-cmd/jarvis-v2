@@ -466,11 +466,11 @@ _Kadence-beslutningsjournal — hvorfor en producer IKKE kørte._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `reason_code_for` | `(*, status, reason)` | Udled den stabile årsags-kode af (status, formateret reason). | [src](../../../core/runtime/db_cadence_journal.py#L88) |
-| function | `_ensure_cadence_decisions_table` | `(conn)` | — | [src](../../../core/runtime/db_cadence_journal.py#L105) |
-| function | `record_cadence_decisions` | `(decisions, *, tick_id, dispatch_budget=…, now=…)` | Skriv ét tiks beslutninger. Returnerer antal rækker der blev berørt. | [src](../../../core/runtime/db_cadence_journal.py#L138) |
-| function | `recent_cadence_decisions` | `(*, producer=…, open_only=…, limit=…)` | Læs journalen — nyeste først. Tom liste ved fejl (selv-sikker). | [src](../../../core/runtime/db_cadence_journal.py#L226) |
-| function | `prune_cadence_decisions` | `(*, retention_days=…, max_rows=…, now=…)` | Retention: slet GAMLE LUKKEDE poster, og håndhæv rækkeloftet. | [src](../../../core/runtime/db_cadence_journal.py#L260) |
+| function | `reason_code_for` | `(*, status, reason)` | Udled den stabile årsags-kode af (status, formateret reason). | [src](../../../core/runtime/db_cadence_journal.py#L94) |
+| function | `_ensure_cadence_decisions_table` | `(conn)` | — | [src](../../../core/runtime/db_cadence_journal.py#L111) |
+| function | `record_cadence_decisions` | `(decisions, *, tick_id, dispatch_budget=…, now=…)` | Skriv ét tiks beslutninger. Returnerer antal rækker der blev berørt. | [src](../../../core/runtime/db_cadence_journal.py#L144) |
+| function | `recent_cadence_decisions` | `(*, producer=…, open_only=…, limit=…)` | Læs journalen — nyeste først. Tom liste ved fejl (selv-sikker). | [src](../../../core/runtime/db_cadence_journal.py#L234) |
+| function | `prune_cadence_decisions` | `(*, retention_days=…, max_rows=…, now=…)` | Retention: slet GAMLE LUKKEDE poster, og håndhæv rækkeloftet. | [src](../../../core/runtime/db_cadence_journal.py#L270) |
 
 ## `core/runtime/db_capability.py`
 _Persistence for the `capability_invocations` table._

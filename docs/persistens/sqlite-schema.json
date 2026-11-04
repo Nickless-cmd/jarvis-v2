@@ -6324,6 +6324,171 @@
         "iso_utc_offset"
       ]
     },
+    "cadence_decisions": {
+      "digest": "24:ee:d6:e3:f3:d1:a3:03:7c:26:39:ac:c3:1e:ad:1f:bd:50:84:3f:d1:40:4c:9b:af:08:f0:ce:dd:4c:0b:bc",
+      "schema": {
+        "columns": [
+          {
+            "name": "closed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dispatch_budget",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "due_since",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "first_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "last_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_visible_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "occurrences",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "1",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "priority",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "producer",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_detail",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tick_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_cadence_decisions_open",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "producer",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX idx_cadence_decisions_open ON cadence_decisions (producer) WHERE closed_at = ''"
+          },
+          {
+            "name": "idx_cadence_decisions_producer_seen",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "producer",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "last_seen_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_cadence_decisions_producer_seen ON cadence_decisions (producer, last_seen_at DESC)"
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "cadence_idempotency_keys": {
       "digest": "03:b6:0c:7f:50:6f:89:f4:8f:20:1c:c0:04:a5:cf:58:c1:f4:7d:e0:a7:e0:60:e7:e3:84:9f:0b:a5:a6:e0:69",
       "schema": {
@@ -9653,7 +9818,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "cheap_lane_admission_state": {

@@ -189,3 +189,26 @@ def test_reason_code_er_stabil_naar_detaljen_aendrer_sig():
         "dependency-not-met"
     )
     assert reason_code_for(status="ran", reason="cadence-dispatched") == "dispatched"
+
+
+def test_connect_er_ikke_bundet_paa_modul_niveau():
+    """VAGT (4/11-2026): journalen maa ikke binde ``connect`` ved import.
+
+    ``from core.runtime.db_core import connect`` binder funktionen til den
+    db_core-instans der var importeret ved modul-load. ``isolated_runtime``
+    reloader ``db_core`` med en tmp-HOME, men reloader ikke dette modul — saa
+    skrev journalen til den LEVENDE base under tests. Maalt: 121 raekker med
+    identisk tidsstempel midt i en pytest-koersel, altsaa et helt tick skrevet
+    ned i produktionens database.
+
+    Vagen er strukturel med vilje: den fanger ikke et symptom, men selve den
+    binding der gjorde skaden — ogsaa hvis nogen genindfoerer den for at
+    "rydde op" i importerne.
+    """
+    from core.runtime import db_cadence_journal as journal
+
+    assert not hasattr(journal, "connect"), (
+        "db_cadence_journal binder connect paa modul-niveau — saa skriver den "
+        "til den db_core-instans der var importeret ved load, ikke den aktive. "
+        "Importér connect LAZY inde i funktionen."
+    )

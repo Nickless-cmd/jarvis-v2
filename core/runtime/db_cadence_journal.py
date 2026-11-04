@@ -40,9 +40,15 @@ import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import Any, Iterable
 
-from core.runtime.db_core import connect
-
 logger = logging.getLogger(__name__)
+
+# ``connect`` importeres LAZY inde i hver funktion — ikke her. Målt 4/11-2026:
+# ``from core.runtime.db_core import connect`` binder funktionen til den
+# db_core-instans der var importeret ved modul-load. ``tests/conftest.py``'s
+# ``isolated_runtime`` reloader ``db_core`` med en tmp-HOME, men reloader IKKE
+# denne fil — så journalen skrev til den LEVENDE base under tests. Beviset var
+# 121 rækker med identisk tidsstempel midt i en pytest-kørsel. Lazy import slår
+# altid det aktuelle modul op i ``sys.modules``.
 
 #: Lukkede poster ældre end dette slettes. Overgange er interessante i uger,
 #: ikke i måneder — og en ulukket post slettes ALDRIG af retentionen, for så
@@ -154,6 +160,8 @@ def record_cadence_decisions(
     ts = (now or datetime.now(UTC)).isoformat()
     touched = 0
     try:
+        from core.runtime.db_core import connect
+
         with connect() as conn:
             _ensure_cadence_decisions_table(conn)
             for item in items:
@@ -240,6 +248,8 @@ def recent_cadence_decisions(
             clauses.append("closed_at = ''")
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         params.append(max(int(limit), 1))
+        from core.runtime.db_core import connect
+
         with connect() as conn:
             _ensure_cadence_decisions_table(conn)
             rows = conn.execute(
@@ -272,6 +282,8 @@ def prune_cadence_decisions(
     out = {"expired": 0, "capped": 0}
     cutoff = ((now or datetime.now(UTC)) - timedelta(days=int(retention_days))).isoformat()
     try:
+        from core.runtime.db_core import connect
+
         with connect() as conn:
             _ensure_cadence_decisions_table(conn)
             cur = conn.execute(

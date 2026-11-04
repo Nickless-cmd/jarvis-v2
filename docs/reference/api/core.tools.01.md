@@ -343,6 +343,14 @@ _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
 | function | `_exec_decision_update` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L102) |
 | function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L143) |
 
+## `core/tools/default_bash_session.py`
+_Default persistent bash-session ownership for the one-shot ``bash`` tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_get_or_open_default_bash_session` | `()` | — | [src](../../../core/tools/default_bash_session.py#L15) |
+| function | `_reset_default_bash_session` | `()` | — | [src](../../../core/tools/default_bash_session.py#L51) |
+
 ## `core/tools/desk_browser_tools.py`
 _Jarvis' EGEN browser inde i desk — otte værktøjer over broen._
 
@@ -526,12 +534,4 @@ _Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
 | function | `_exec_goal_update` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L55) |
 | function | `_exec_goal_list` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L86) |
 | function | `_exec_goal_get` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L108) |
-
-## `core/tools/graf_tools.py`
-_`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_graf_dir` | `()` | — | [src](../../../core/tools/graf_tools.py#L44) |
-| function | `_exec_vis_graf` | `(args)` | Tegn en graf og laeg den i traaden. Kaster aldrig. | [src](../../../core/tools/graf_tools.py#L49) |
 

@@ -3,6 +3,7 @@ import { cleanup, render } from '@testing-library/react'
 
 // Tæl hvor mange gange hver blok faktisk parses (= react-markdown kaldes med den).
 const parset = vi.hoisted(() => new Map<string, number>())
+const parsearbejde = vi.hoisted(() => [] as number[])
 const strukturLaengder = vi.hoisted(() => [] as number[])
 vi.mock('../../lib/enforceStructure', async (orig) => {
   const ægte = await orig<typeof import('../../lib/enforceStructure')>()
@@ -19,6 +20,7 @@ vi.mock('react-markdown', async (orig) => {
   return {
     default: (props: { children: string }) => {
       parset.set(props.children, (parset.get(props.children) ?? 0) + 1)
+      parsearbejde.push(props.children.length)
       return ægte(props as never)
     },
   }
@@ -114,23 +116,37 @@ describe('MarkdownRenderer under streaming', () => {
     expect(flest).toBeLessThanOrEqual(2)
   })
 
-  it('tiden pr. render vokser IKKE med teksten (regressionsvagt)', () => {
-    // Før 19/9-2026: 2,9 ms → 27,5 ms pr. render hen over et svar (×9,4).
-    // Forholdet er maskine-uafhængigt; grænsen ×3 fanger den kvadratiske vækst.
+  it('parsearbejdet pr. render vokser IKKE med teksten (regressionsvagt)', () => {
+    // Før 19/9-2026 voksede den målte tid 2,9 ms → 27,5 ms pr. render
+    // hen over et svar (×9,4), fordi alle frosne blokke blev parset igen.
+    // Væguret var imidlertid en flaky proxy: start-armen havde korte tekster,
+    // slut-armen lange, så CPU-kvote og GC ramte dem ulige.
+    // MÅLT FØR OMSKRIVNING 4/11-2026: hele desk-suiten blev kørt 5 gange;
+    // 5/5 var grønne (3158 passed, 1 skipped), altså 0 observerede fejl.
+    // Det beviser ikke at væguret er deterministisk; derfor måler vagten
+    // nedenfor den beskyttede egenskab direkte i stedet for at hæve en grænse.
+    //
+    // Denne vagt måler det egentlige arbejde deterministisk: antal markdown-
+    // tegn sendt til react-markdown ved hver rerender. Med memoiserede blokke
+    // parses kun den levende hale, så arbejdet er omtrent konstant. Uden
+    // MarkdownBlok-memoisering parses hele historikken og forholdet vokser.
+    // MUTATIONSPRØVE 4/11-2026: `memo(function MarkdownBlok` blev midlertidigt
+    // erstattet af en almindelig funktion; vagten målte slut/start over 3 og
+    // fejlede. Mutationen blev derefter gendannet.
     const lang = Array.from({ length: 30 }, (_, i) => afsnit(i)).join('')
     const { rerender } = render(<MarkdownRenderer text="" streaming />)
-    const tider: number[] = []
+    const arbejde: number[] = []
     for (let n = 24; n < lang.length; n += 24) {
-      const a = performance.now()
+      parsearbejde.length = 0
       rerender(<MarkdownRenderer text={lang.slice(0, n)} streaming />)
-      tider.push(performance.now() - a)
+      arbejde.push(parsearbejde.reduce((sum, tegn) => sum + tegn, 0))
     }
     const snit = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
-    const tiendedel = Math.floor(tider.length / 10)
-    const start = snit(tider.slice(tiendedel, 2 * tiendedel))
-    const slut = snit(tider.slice(-tiendedel))
+    const tiendedel = Math.floor(arbejde.length / 10)
+    const start = snit(arbejde.slice(tiendedel, 2 * tiendedel))
+    const slut = snit(arbejde.slice(-tiendedel))
     expect(slut / start).toBeLessThan(3)
-  }, 120000)
+  })
 })
 
 // ── jarvis-ui gennem en ÆGTE stream (25/10-2026) ────────────────────────────

@@ -68,9 +68,21 @@ assignment oprettes.
 
 ## Måling
 
-(d) bad om at tælle dispatches over 30 dage. Det kan ikke gøres før vagten har kørt:
-tællingen af afvisninger starter nu. Den kan tages fra `agent_assignments`/
-`agent_runs` ved at søge `INVALID_SCOPE` med «kraever … som en executor ikke har».
-Et rimeligt kontrolpunkt er 4/12-2026: antal afvisninger, og om et enkelt
-kald-krav stadig når en kørsel og ender i «værktøjet findes ikke» (= hul i
-genkendelsen, fx manglende backticks).
+(d) er målt 4/11-2026 direkte i den deployede, read-only database over de
+seneste 30 dage. Hver af de 82 `agent_assignments` blev joined med sit mandat,
+og den nu deployede kald-kravsdetektor blev kørt mod `goal` og mandatets
+`allowed_tools_json`:
+
+- **5 af 82 dispatches (6,1 %)** krævede et kendt runtime-værktøj agenten ikke
+  havde.
+- 4 krævede `restart_self`; 1 krævede `suggest_next_task`.
+- De fire `restart_self`-opgaver nåede alle en rigtig agentkørsel. De fire
+  run-ID'er er dem der står øverst i dokumentet; outputtet siger eksplicit at
+  værktøjet ikke fandtes.
+
+Det er en lille, men reel driftsklasse — omtrent hver tyvende dispatch i det
+målte vindue — og ikke kun den ene genstartssekvens der udløste rettelsen.
+Målingen er retrospektiv: afvisninger sker før en assignment oprettes, så en
+fremtidig driftsmåling af selve `INVALID_SCOPE`-afvisningerne kræver en separat
+afvisningstæller eller tool-call-telemetri; `agent_assignments` kan ikke tælle
+noget der netop blev afvist før oprettelsen.

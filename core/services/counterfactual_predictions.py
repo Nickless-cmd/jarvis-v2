@@ -64,6 +64,43 @@ GRACE_DAYS = 1
 FREQ_DELTA = 0.30
 MIN_BASELINE_COUNT = 3
 
+# Retningen forudsigelsen hævder. Målt 4/11-2026: dommeren antog hardcodet
+# "declining", og generatoren kunne kun sige "declining" — to halve fejl der
+# ophævede hinanden og så konsistente ud. Fejlen ville først materialisere sig
+# den dag nogen skrev en forventning om STIGNING: et fald ville blive kaldt
+# "supported". Retningen skal derfor stå i forventningen og læses af dommeren.
+DIRECTION_DECLINING = "declining"
+DIRECTION_INCREASING = "increasing"
+DIRECTION_STABLE = "stable"
+_VALID_DIRECTIONS = frozenset(
+    {DIRECTION_DECLINING, DIRECTION_INCREASING, DIRECTION_STABLE}
+)
+
+
+def _extract_direction(prediction: dict[str, Any]) -> str:
+    """Læs forventet retning ud af en forudsigelse.
+
+    Rækkefølge: feltet ``expected_direction`` (nyeste), derefter
+    ``direction:<x>``-tag i evidence, derefter samme tag i
+    expectation-teksten. Poster skrevet før retningen fandtes får
+    ``declining`` — det er hvad generatoren faktisk påstod dengang, men det
+    er en bagudkompatibel antagelse, ikke en sandhed om posten.
+    """
+    direct = str(prediction.get("expected_direction") or "").strip().lower()
+    if direct in _VALID_DIRECTIONS:
+        return direct
+    for ev in prediction.get("evidence") or []:
+        ev = str(ev).strip()
+        if ev.startswith("direction:"):
+            cand = ev[len("direction:") :].strip().lower()
+            if cand in _VALID_DIRECTIONS:
+                return cand
+    text = str(prediction.get("expectation") or "").lower()
+    for cand in _VALID_DIRECTIONS:
+        if f"direction:{cand}" in text:
+            return cand
+    return DIRECTION_DECLINING
+
 
 def _confidence_band(numeric: float) -> str:
     """Map a 0..1 confidence to the world-model band strings."""
@@ -82,6 +119,7 @@ def bind_counterfactual_to_prediction(
     confidence: float = 0.5,
     source: str = "counterfactual",
     event_kind: str = "",
+    expected_direction: str = DIRECTION_DECLINING,
 ) -> dict[str, Any]:
     """Record a world-model prediction linked to a counterfactual.
 
@@ -92,6 +130,11 @@ def bind_counterfactual_to_prediction(
     windows. For abstract legacy trigger_types ("decision", "correction",
     ...) callers may pass the actual event_kind they classified from.
 
+    ``expected_direction`` er hvad forudsigelsen PÅSTÅR om frekvensen
+    (declining/increasing/stable). Den skrives ind i forventningen som
+    ``direction:<x>`` og læses af dommeren — uden den kan dommeren ikke
+    skelne en forudsigelse fra dens modsatte.
+
     Best-effort: never raises. Returns the prediction dict on success,
     or {"status": "skipped", "reason": ...} on no-op paths.
     """
@@ -99,6 +142,9 @@ def bind_counterfactual_to_prediction(
     trigger_type = str(trigger_type or "").strip() or "unknown"
     if not cf_id:
         return {"status": "skipped", "reason": "empty cf_id"}
+    direction = str(expected_direction or "").strip().lower()
+    if direction not in _VALID_DIRECTIONS:
+        direction = DIRECTION_DECLINING
 
     # Respect the engine killswitch — if counterfactuals are off,
     # don't fill the predictions ledger with orphans.
@@ -119,16 +165,18 @@ def bind_counterfactual_to_prediction(
 
     subject = f"future {trigger_type} events"
     expectation = (
-        f"declining frequency vs prior {HORIZON_DAYS} days "
-        f"after learning encoded in counterfactual {cf_id}"
+        f"{direction} frequency vs prior {HORIZON_DAYS} days "
+        f"after learning encoded in counterfactual {cf_id} "
+        f"[direction:{direction}]"
     )
     band = _confidence_band(float(confidence or 0.0))
     # Evidence carries structured back-pointers so the sweep can find
     # what to count without a schema migration:
     #   - "counterfactual:<cf_id>" — links back to the source row
     #   - "event_kind:<kind>" — the event_kind to count in baseline/post windows
+    #   - "direction:<x>" — hvad forudsigelsen påstår om frekvensen
     #   - anchor — free-form context (truncated)
-    evidence = [f"counterfactual:{cf_id}"]
+    evidence = [f"counterfactual:{cf_id}", f"direction:{direction}"]
     if event_kind:
         evidence.append(f"event_kind:{event_kind}")
     if anchor:
@@ -201,7 +249,7 @@ def _extract_event_kind(prediction: dict[str, Any]) -> str:
 
 
 def _frequency_verdict(
-    *, event_kind: str, created_at: datetime
+    *, event_kind: str, created_at: datetime, expected_direction: str = DIRECTION_DECLINING
 ) -> dict[str, Any]:
     """Compare event_kind frequency before vs after the prediction's birth.
 
@@ -209,7 +257,16 @@ def _frequency_verdict(
     [created, created+H] (post), where H = HORIZON_DAYS. Returns a dict:
         {outcome: "supported"|"contradicted"|"uncertain",
          baseline: int, post: int, ratio: float, reason: str}
+
+    ``expected_direction`` er hvad forudsigelsen påstod. Uden den ville
+    dommeren dømme ud fra observationen alene: et fald ville blive kaldt
+    "supported" også når nogen forudsagde en stigning. Målt 4/11-2026 —
+    generatoren kunne kun sige "declining", så fejlen var strukturel men
+    endnu ikke aktiveret.
     """
+    direction = str(expected_direction or "").strip().lower()
+    if direction not in _VALID_DIRECTIONS:
+        direction = DIRECTION_DECLINING
     if not event_kind:
         return {
             "outcome": "uncertain",
@@ -258,18 +315,43 @@ def _frequency_verdict(
             "reason": f"baseline-too-noisy ({baseline} < {MIN_BASELINE_COUNT})",
         }
     ratio = post / baseline if baseline > 0 else 0.0
-    if ratio < (1.0 - FREQ_DELTA):
-        outcome = "supported"
-        reason = f"declined {int((1-ratio)*100)}% vs baseline"
-    elif ratio > (1.0 + FREQ_DELTA):
-        outcome = "contradicted"
-        reason = f"increased {int((ratio-1)*100)}% vs baseline"
-    else:
-        outcome = "uncertain"
-        reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    declined = ratio < (1.0 - FREQ_DELTA)
+    increased = ratio > (1.0 + FREQ_DELTA)
+    if direction == DIRECTION_STABLE:
+        # "stable" forudsiger at frekvensen holder sig inden for båndet.
+        if declined or increased:
+            outcome = "contradicted"
+            reason = (
+                f"moved {int(abs(ratio-1)*100)}% vs baseline, but stability "
+                f"was predicted"
+            )
+        else:
+            outcome = "supported"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    elif direction == DIRECTION_INCREASING:
+        if increased:
+            outcome = "supported"
+            reason = f"increased {int((ratio-1)*100)}% vs baseline, as predicted"
+        elif declined:
+            outcome = "contradicted"
+            reason = f"declined {int((1-ratio)*100)}% vs baseline, but an increase was predicted"
+        else:
+            outcome = "uncertain"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    else:  # DIRECTION_DECLINING
+        if declined:
+            outcome = "supported"
+            reason = f"declined {int((1-ratio)*100)}% vs baseline, as predicted"
+        elif increased:
+            outcome = "contradicted"
+            reason = f"increased {int((ratio-1)*100)}% vs baseline, but a decline was predicted"
+        else:
+            outcome = "uncertain"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
     return {
         "outcome": outcome, "baseline": baseline, "post": post,
         "ratio": round(ratio, 3), "reason": reason,
+        "expected_direction": direction,
     }
 
 
@@ -323,15 +405,21 @@ def sweep_expired_counterfactual_predictions(
         # if event_kind is missing (legacy predictions from before the
         # Phase 2 binding update will lack the tag).
         event_kind = _extract_event_kind(pred)
+        expected_direction = _extract_direction(pred)
         try:
             created_at = datetime.fromisoformat(str(pred.get("created_at") or ""))
         except ValueError:
             created_at = started - timedelta(days=HORIZON_DAYS + GRACE_DAYS)
 
-        verdict = _frequency_verdict(event_kind=event_kind, created_at=created_at)
+        verdict = _frequency_verdict(
+            event_kind=event_kind,
+            created_at=created_at,
+            expected_direction=expected_direction,
+        )
         outcome = verdict["outcome"]
         observed_text = (
-            f"frequency comparison ({event_kind or 'unknown-kind'}): "
+            f"frequency comparison ({event_kind or 'unknown-kind'}, "
+            f"predicted {expected_direction}): "
             f"baseline={verdict['baseline']} post={verdict['post']} "
             f"ratio={verdict['ratio']} — {verdict['reason']}"
         )

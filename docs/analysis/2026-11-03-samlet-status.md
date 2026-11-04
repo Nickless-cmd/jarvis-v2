@@ -2094,3 +2094,44 @@ fem lag. Det er en designbeslutning om hvad et domæne ER i systemet.
 **Vagt:** `tests/test_cross_layer_domain_keys.py::test_fokus_match_er_ikke_generisk`
 fælder den løse matchning. Mutationstestet: en generisk ord-matchning fældes,
 den strenge form består.
+
+## 4/11-2026 — datamodellen: ankeret fandtes, det blev smidt ud
+
+Spørgsmålet var om vi skulle lave en datamodel. Svaret er ja — men den skulle
+ikke opfindes, den skulle findes.
+
+`simple_tool_executor._prepare_call` stempler `_runtime_turn_id` og
+`_runtime_session_id` ind i argumenterne FØR dispatchen (linje 131-133).
+`_preview_arguments` filtrerer dem bevidst ud af payload'en — korrekt, de hører
+ikke i en argument-preview. Men de blev heller ikke gemt som kolonner, så
+288.594 handlings-rækker stod uden forbindelse til den tur de beskriver.
+
+### Bygget
+
+`runtime_action_outcomes` har fået `run_id` + `session_id` som additive
+kolonner plus indeks `idx_runtime_action_outcomes_run`. To veje til ankeret:
+
+1. **Tool-kald** — læses fra `_runtime_turn_id`-stemplet i argumenterne.
+2. **Bro-kald** (`operator_bash`) — går uden om executoren og bærer intet
+   stempel; der falder vi tilbage til kørslens ContextVar, samme fallback som
+   `tool_call_telemetry.identitet` bruger, og af samme grund: en proces-global
+   ville blive overskrevet når to kørsler overlapper.
+
+Verificeret ende-til-ende mod den levende base: rækken fik
+`visible-DIREKTETEST-1`. Regressionstest `test_kaeden_baerer_ankeret_hele_vejen`
+går gennem den faktiske kæde og er mutationstestet (fjernes `run_id` fra kæden,
+fælder den).
+
+### Målt i drift — og hvorfor det ikke virker endnu
+
+Efter commit `95a965c5c`: **0 af 288.594 rækker** har anker. Årsagen er ikke
+koden: processtart er **10:06:47**, men filerne blev ændret **12:40 og 12:41**.
+Python har den gamle kode i hukommelsen. Rettelsen ligger på disk og kører ikke.
+Genstart er booket med `defer_until_idle`.
+
+### Hvad der stadig mangler
+
+Ankeret er den ENE halvdel. Den anden — et fælles domæne-vokabular på tværs af
+fokus, goal og critic — står åben. Målt: `critic ∩ alt = 0`,
+`focus ∩ goal = 2 af 3.118`. Lagene taler ikke samme sprog, og det kan ikke
+kodes væk uden en beslutning om hvad et domæne ER.

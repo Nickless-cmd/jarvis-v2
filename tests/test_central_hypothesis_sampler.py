@@ -295,6 +295,8 @@ _CONTRACT_BASE = {
     "metric": "latency_ms",
     "min_samples": 5,
     "time_basis": "ingestion_time",
+    "evaluation_policy": "latency_margin_v1",
+    "policy_version": 1,
 }
 
 
@@ -330,6 +332,84 @@ def test_modsatrettede_forventninger_giver_modsatte_domme(isolated_runtime, monk
 
     assert a == [{"supports": 1, "falsifies": 0}], f"A (X hurtigere) skal støttes: {a}"
     assert b == [{"supports": 0, "falsifies": 1}], f"B (X langsommere) skal modsiges: {b}"
+
+
+def test_hurtigere_men_ikke_markant_nok_er_uafgjort_ikke_modbevist(isolated_runtime, monkeypatch):
+    """TREDJE UDFALD: «hurtigere, men ikke markant nok» er ikke et modbevis.
+
+    Kontraktens politik kræver 25 % margin for støtte. Er X kun 10 % hurtigere, er
+    observationen uafgjort — ikke en modsigelse. Et binært udfald ville stemple al
+    utydelig evidens som modsigelse, og det er præcis den fejlform der gav 14.618
+    hypoteser stemplet «modbevist» på et tal i stedet for på evidens.
+    """
+    from core.services import central_model_meta as mm
+    # 100 mod 110: X er hurtigere, men kun ~9 % — under 25 %-margin.
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 110.0},
+    })
+    _insert_hyp("h-svag", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 1, res
+    assert res["supported"] == 0 and res["contradicted"] == 0, (
+        f"en utydelig observation maa hverken stotte eller modsige: {res}")
+
+    from core.runtime.db import connect
+    with connect() as c:
+        rows = [dict(r) for r in c.execute(
+            "SELECT supports, falsifies FROM central_hypothesis_samples"
+            " WHERE hyp_id='h-svag'").fetchall()]
+    assert rows == [{"supports": 0, "falsifies": 0}], (
+        f"observationen skal vaere jordet UDEN retning: {rows}")
+
+
+def test_politikken_kommer_fra_kontrakten_ikke_fra_modulet(isolated_runtime, monkeypatch):
+    """Beslutningsreglen skal vaere PINNET i kontrakten, ikke laant fra et andet modul.
+
+    Maalt 4/11-2026 laeste kontrakt-stien `_LATENCY_MARGIN` fra `central_model_meta`
+    med en hardkodet fallback. AEndrede nogen den konstant, ville hypoteser oprettet
+    for maaneder siden faa en anden dom — uden at nogen havde roert deres kontrakt.
+    """
+    from core.services import central_model_meta as mm
+    from core.services import central_test_contract as tc
+
+    # Flyt modul-konstanten til noget absurd: hvis den stadig blev laest, ville
+    # 100 mod 1000 ikke laengere taelle som stotte.
+    monkeypatch.setattr(mm, "_LATENCY_MARGIN", 100.0, raising=False)
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    _insert_hyp("h-pin", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["supported"] == 1, (
+        f"dommen fulgte modul-konstanten i stedet for kontraktens politik: {res}")
+
+    # Og politikken selv skal vaere laesbar og versioneret.
+    pol = tc.policy_of(_CONTRACT_BASE)
+    assert pol is not None and pol["version"] == 1, pol
+
+
+def test_kontrakt_uden_politik_afvises(isolated_runtime):
+    """En kontrakt uden beslutningskriterium maa ikke accepteres.
+
+    «En evaluator maa ikke acceptere en kontrakt, hvis dens beslutningskriterier
+    mangler» — ellers er kontrakten deklarativ mens dommen er imperativ, og de to
+    kan glide fra hinanden uden at nogen roerer hypotesen.
+    """
+    from core.services import central_test_contract as tc
+    uden = {k: v for k, v in _CONTRACT_BASE.items() if k != "evaluation_policy"}
+    ok, missing = tc.validate(uden)
+    assert not ok, "kontrakt uden evaluation_policy blev accepteret"
+    assert any("evaluation_policy" in m for m in missing), missing
+
+    ukendt = {**_CONTRACT_BASE, "evaluation_policy": "opfundet_politik_v9"}
+    ok2, missing2 = tc.validate(ukendt)
+    assert not ok2 and any("evaluation_policy" in m for m in missing2), missing2
 
 
 def test_kontrakt_hypotese_rapporteres_som_contract(isolated_runtime, monkeypatch):
@@ -436,3 +516,113 @@ def test_ny_hypotese_fra_oprettelse_til_dom_paa_kontrakt(isolated_runtime, monke
     # Og den tælles som kontrakt — ikke som legacy-bro.
     ud = smp.evaluator_provenance()
     assert ud["contract"] == 1 and ud["legacy"] == 0, ud
+
+
+def test_ground_ref_daekker_begge_parter_ikke_kun_subject(isolated_runtime, monkeypatch):
+    """Ny comparator-data må ikke afvises som «duplikat».
+
+    Målt 4/11-2026: `cursor` var `sa["samples"]` alene. Når kun comparator fik nye
+    runs ændrede latency-målet sig, men ground_ref stod stille — og dedup'en i
+    `record_governed_sample` (nøgle: source+ground_ref) afviste observationen som
+    duplikat. Centralen kunne altså overse ny evidens om præcis den hypotese den
+    netop testede. ground_ref skal identificere OBSERVATIONEN, og observationen er
+    begge parters tilstand.
+    """
+    from core.services import central_model_meta as mm
+
+    contract = {**_CONTRACT_BASE, "expected_relation": "less_than"}
+
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    a = smp._eval_contract_comparative(contract)
+    # Noeglen baerer nu ogsaa en hash af de faktiske rækker — et antal alene er
+    # ikke en identitet (korrigeret maaling / rullende vindue, maalt 4/11-2026).
+    assert a["cursor"].startswith("10:5:"), a
+
+    # Samme subject, men comparator har fået ét run mere: en NY observation.
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 6, "latency_ms": 1000.0},
+    })
+    b = smp._eval_contract_comparative(contract)
+    assert b["cursor"].startswith("10:6:"), b
+    assert a["cursor"] != b["cursor"], \
+        "ny comparator-data må ikke se ud som den samme observation"
+
+
+# ── Observations-identitet (4/11-2026, anden runde) ───────────────────────────
+# `ground_ref` var `"23:5"` = ANTAL runs. Et antal er ikke en identitet: to
+# forskellige datasæt kan have samme antal. ChatGPT pegede på netop dette efter
+# foerste rettelse — og maalt bagefter er det ikke teoretisk: subject faar 0,40
+# nye runs pr. tick, saa fem samples bygger paa et grundlag der er vokset med
+# 2-3 runs ud af 23. Nøglen bærer derfor en hash af de faktiske rækker.
+
+def _run(rid: str, model: str, start: str, slut: str) -> dict:
+    return {"provider": "p", "model": model, "run_id": rid,
+            "started_at": start, "finished_at": slut}
+
+
+def test_korrigeret_maaling_giver_ny_observation(isolated_runtime, monkeypatch):
+    """Rettes én måling, ændrer ANTALLET runs sig ikke — men grundlaget gør.
+
+    Uden hashen ville den korrigerede måling få samme `ground_ref` som den gamle og
+    blive afvist som duplikat: Centralen ville mangle evidens om at grundlaget flyttede sig.
+    """
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    rows[1] = {**rows[1], "finished_at": "t4-korrigeret"}
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    assert a["cursor"] != b["cursor"], (
+        f"korrigeret maaling skal give en NY observation, ikke en dublet:"
+        f" {a['cursor']} vs {b['cursor']}")
+
+
+def test_rullende_vindue_giver_ny_observation(isolated_runtime, monkeypatch):
+    """300-runs-vinduet glider: samme ANTAL kan dække helt forskellige runs."""
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    foerste = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: foerste)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    # samme antal rækker — men de ældste er rullet ud og nye kommet ind
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
+        _run("r9", "fast", "t9", "t10"), _run("r8", "slow", "t7", "t8")])
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    assert a["cursor"] != b["cursor"], (
+        f"rullende vindue skal give en NY observation: {a['cursor']} vs {b['cursor']}")
+
+
+def test_identisk_grundlag_giver_samme_observation(isolated_runtime, monkeypatch):
+    """Modsat kant: uændret grundlag er STADIG en dublet. Hashen må ikke goere
+    dedup virkningsloes — saa ville samme observation taelle fem gange som fem beviser."""
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+    assert a["cursor"] == b["cursor"], (
+        f"identisk grundlag skal give samme noegle — ellers taeller samme observation"
+        f" flere gange: {a['cursor']} vs {b['cursor']}")
+    assert a["cursor"].count(":") == 2, f"noeglen skal baere antal + hash: {a['cursor']}"

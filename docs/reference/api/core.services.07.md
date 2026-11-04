@@ -393,11 +393,12 @@ _core/services/central_test_contract.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L45) |
-| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L97) |
-| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L102) |
-| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L107) |
-| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L111) |
+| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L70) |
+| function | `policy_of` | `(contract)` | Den pinnede beslutningsregel. None hvis politikken ikke findes. | [src](../../../core/services/central_test_contract.py#L133) |
+| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L147) |
+| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L152) |
+| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L157) |
+| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L161) |
 
 ## `core/services/central_timeseries.py`
 _core/services/central_timeseries.py_

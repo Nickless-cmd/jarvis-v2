@@ -23,6 +23,29 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 
+# Navngivne, versionerede EVALUERINGSPOLITIKKER — hvornår en observation tæller som
+# støtte, som modsigelse, og hvornår den hverken er det ene eller det andet.
+#
+# Grunden til at politikken er pinnet i kontrakten og ikke lånt fra evaluatorens
+# modul-konstanter: målt 4/11-2026 læste kontrakt-stien `_LATENCY_MARGIN` fra
+# `central_model_meta` med en hardkodet fallback. Ændrede nogen den konstant, ville
+# hypoteser oprettet for måneder siden få en anden dom — uden at nogen havde rørt
+# deres kontrakt. En kontrakt der ikke selv bærer sin beslutningsregel er ikke bindende.
+#
+# Tredelingen er ikke kosmetisk: "hurtigere, men ikke markant nok" er IKKE det samme
+# som "modbevist". Et binært udfald ville stemple al utydelig evidens som modsigelse —
+# samme fejlform som `0/0 → 0.0` og som `stott > mods` uden flertalskrav.
+POLICIES: dict[str, dict[str, Any]] = {
+    "latency_margin_v1": {
+        "version": 1,
+        "metric": "latency_ms",
+        # subject skal være mindst 25 % hurtigere end comparator → støtte
+        "support_ratio": 1.25,
+        # subject er ikke hurtigere overhovedet → modsigelse
+        "contradict_ratio": 1.0,
+    },
+}
+
 # Versioneret register over de kontrakttyper Centralen faktisk kan efterprøve.
 # `evaluator_version` pinnes sammen med typen: ændrer evaluatorens domsregel sig,
 # skal det være en NY version — ellers ændrer gamle hypoteser betydning bagudrettet.
@@ -31,12 +54,14 @@ CONTRACT_TYPES: dict[str, dict[str, Any]] = {
         "version": 1,
         "evaluator": "model_meta_persistence",
         "evaluator_version": 1,
-        "required": ("subject", "comparator", "expected_relation", "min_samples"),
+        "required": ("subject", "comparator", "expected_relation", "min_samples",
+                     "evaluation_policy"),
         "relations": ("less_than", "greater_than"),
         # `event_time` er IKKE implementeret: `central_hypothesis_samples.created_at`
         # sættes ved indsættelse. En kontrakt må ikke påstå at måle en tidsbasis
         # infrastrukturen ikke bærer.
         "time_bases": ("ingestion_time",),
+        "policies": ("latency_margin_v1",),
         "metric": "latency_ms",
     },
 }
@@ -85,6 +110,17 @@ def validate(contract: Any) -> tuple[bool, list[str]]:
         missing.append(f"time_basis {tb!r} er ikke implementeret"
                        f" (kun {spec['time_bases']})")
 
+    # Beslutningskriteriet skal være pinnet i kontrakten — ellers kan evaluatorens
+    # kode ændre dommen for hypoteser der aldrig blev rørt.
+    pol = str(contract.get("evaluation_policy") or "")
+    if pol not in spec.get("policies", ()):
+        missing.append(f"evaluation_policy {pol!r} er ikke en af {spec.get('policies')}")
+    else:
+        pver = int(contract.get("policy_version") or 0)
+        expected_ver = int(POLICIES[pol]["version"])
+        if pver and pver != expected_ver:
+            missing.append(f"policy_version skal være {expected_ver} for {pol!r}")
+
     try:
         if int(contract.get("min_samples") or 0) < 1:
             missing.append("min_samples skal være ≥ 1")
@@ -92,6 +128,20 @@ def validate(contract: Any) -> tuple[bool, list[str]]:
         missing.append("min_samples skal være et tal")
 
     return (not missing), missing
+
+
+def policy_of(contract: dict[str, Any]) -> dict[str, Any] | None:
+    """Den pinnede beslutningsregel. None hvis politikken ikke findes.
+
+    Evaluatoren SKAL bruge denne og ikke sine egne modul-konstanter: ellers er
+    kontrakten deklarativ, men dommen imperativ — og de to kan glide fra hinanden
+    uden at nogen rører hypotesen.
+    """
+    name = str(contract.get("evaluation_policy") or "")
+    spec = POLICIES.get(name)
+    if spec is None:
+        return None
+    return dict(spec)
 
 
 def relation_of(contract: dict[str, Any]) -> str:

@@ -459,6 +459,41 @@ def test_dep_stale_when_parent_ran_too_long_ago(isolated_runtime) -> None:
     assert status == "blocked" and "dependency-stale:parent" in reason
 
 
+def test_dep_satisfied_af_holdbart_claim_efter_genstart(isolated_runtime) -> None:
+    """VAGT (5/11-2026): dependency-grenen skal læse den HOLDBARE kilde.
+
+    Målt 4/11-2026: efter en genstart stod 12 producers i indre-liv-kæden
+    permanent som ``dependency-not-met:brain_continuity`` — selv om
+    brain_continuity HAVDE et holdbart claim fra samme dag. Årsagen var at
+    denne gren kun læste ``_last_run_at``, som er en hukommelses-ordbog der
+    tømmes ved genstart, mens cooldown-grenen nedenfor allerede havde
+    ``cadence_claims`` som fallback.
+
+    Scenariet her ER genstarten: ``_last_run_at`` er tom, men forælderen har
+    et holdbart claim inden for sit cooldown-vindue. Barnet skal være ``due``.
+    """
+    from core.services import cadence_claims
+
+    parent = ProducerSpec(name="parent", cooldown_minutes=30, visible_grace_minutes=0,
+                          run_fn=lambda **_k: {}, priority=5)
+    cadence_mod.register_producer(parent)
+    child, _ = _make_recorder("child")
+    child.depends_on = ["parent"]
+    now = datetime.now(UTC)
+
+    # Genstarten: hukommelsen er tom, kun den holdbare tilstand er tilbage.
+    cadence_mod._last_run_at.pop("parent", None)
+    cadence_claims.note_producer_ran("parent", now=now - timedelta(minutes=20))
+
+    status, reason = _evaluate_producer(
+        child, now=now, last_visible_at=None, ran_this_tick=set(),
+    )
+    assert status == "due", (
+        "barnet blev blokeret selv om foraelderen havde et holdbart claim "
+        f"inden for sit vindue — status={status} reason={reason}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Traad-laek ved timeout (målt 26/9-2026)
 # ---------------------------------------------------------------------------

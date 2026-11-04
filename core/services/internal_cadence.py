@@ -139,7 +139,25 @@ def _evaluate_producer(
     for dep in spec.depends_on:
         if dep in ran_this_tick:
             continue
+        # DEN HOLDBARE TILSTAND ER AUTORITETEN — ogsaa her (5/11-2026).
+        # Cooldown-grenen nedenfor læser `cadence_claims` som fallback, men
+        # DENNE gren læste kun `_last_run_at`, som er en hukommelses-ordbog der
+        # tømmes ved genstart. Maalt 4/11-2026: efter en genstart stod 12
+        # producers i hele indre-liv-kæden (sleep_consolidation, witness_daemon,
+        # inner_voice_daemon, dream_articulation, self_critique_runtime,
+        # ontological_revision, dream_distillation, creative_journal, finitude
+        # …) permanent som `dependency-not-met:brain_continuity`, selv om
+        # brain_continuity HAVDE et holdbart claim fra 15:49 samme dag. Kæden
+        # kunne derfor kun åbne i det ene tick efter opstart hvor forælder og
+        # barn tilfældigvis var due samtidig — altsaa reelt aldrig.
         _dep_last = _last_run_at.get(dep)
+        try:
+            from core.services.cadence_claims import last_success_at as _holdbar_dep
+            _dep_vedvarende = _holdbar_dep(dep)
+            if _dep_vedvarende and (not _dep_last or _dep_vedvarende > _dep_last):
+                _dep_last = _dep_vedvarende
+        except Exception:
+            pass  # kan vi ikke laese den, gaelder cachen
         if not _dep_last:
             return "blocked", f"dependency-not-met:{dep}"
         try:

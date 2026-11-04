@@ -174,7 +174,13 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
         return None
     support = float(policy["support_ratio"])
     contradict = float(policy["contradict_ratio"])
-    cur = int(sa.get("samples") or 0)
+    # ground_ref identificerer OBSERVATIONEN — og observationen er BEGGE parters
+    # aggregerede tilstand, ikke kun subject's. Målt 4/11-2026: `cur` var
+    # `sa["samples"]` alene, så når kun comparator fik nye runs ændrede latency-målet
+    # sig mens ground_ref stod stille — og dedup'en i `record_governed_sample`
+    # (nøgle: source+ground_ref) afviste den nye observation som «duplikat».
+    # Centralen kunne altså overse ny evidens om præcis den hypotese den testede.
+    cur = f"{int(sa.get('samples') or 0)}:{int(ca.get('samples') or 0)}"
 
     # TRE udfald, ikke to: «hurtigere, men ikke markant nok» er ikke et modbevis.
     # Et binært udfald ville stemple al utydelig evidens som modsigelse — samme

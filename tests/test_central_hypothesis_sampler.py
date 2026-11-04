@@ -516,3 +516,35 @@ def test_ny_hypotese_fra_oprettelse_til_dom_paa_kontrakt(isolated_runtime, monke
     # Og den tælles som kontrakt — ikke som legacy-bro.
     ud = smp.evaluator_provenance()
     assert ud["contract"] == 1 and ud["legacy"] == 0, ud
+
+
+def test_ground_ref_daekker_begge_parter_ikke_kun_subject(isolated_runtime, monkeypatch):
+    """Ny comparator-data må ikke afvises som «duplikat».
+
+    Målt 4/11-2026: `cursor` var `sa["samples"]` alene. Når kun comparator fik nye
+    runs ændrede latency-målet sig, men ground_ref stod stille — og dedup'en i
+    `record_governed_sample` (nøgle: source+ground_ref) afviste observationen som
+    duplikat. Centralen kunne altså overse ny evidens om præcis den hypotese den
+    netop testede. ground_ref skal identificere OBSERVATIONEN, og observationen er
+    begge parters tilstand.
+    """
+    from core.services import central_model_meta as mm
+
+    contract = {**_CONTRACT_BASE, "expected_relation": "less_than"}
+
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    a = smp._eval_contract_comparative(contract)
+    assert a["cursor"] == "10:5", a
+
+    # Samme subject, men comparator har fået ét run mere: en NY observation.
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 6, "latency_ms": 1000.0},
+    })
+    b = smp._eval_contract_comparative(contract)
+    assert b["cursor"] == "10:6", b
+    assert a["cursor"] != b["cursor"], \
+        "ny comparator-data må ikke se ud som den samme observation"

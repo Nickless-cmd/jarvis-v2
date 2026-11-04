@@ -32,7 +32,7 @@ def _bash(monkeypatch, cmd="echo x"):
     from core.services import operator_channel as OC
     from core.tools import simple_tools_web as W
     monkeypatch.setattr(OC, "maybe_reroute_bash", lambda *a, **k: None)
-    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda: None)
+    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda _scope=None: None)
     return W._exec_bash({"command": cmd})
 
 

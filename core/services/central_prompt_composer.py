@@ -125,6 +125,14 @@ _CHAT_SCOPE_WEIGHTS: dict[str, float] = {
     # linje der goer at jeg taler UD FRA en tilstand i stedet for at beskrive
     # den. Resten af indre liv (0.1-0.2) skaeres fortsat i samtalen.
     "kerne-selv (Centralens midte)": 0.4,
+    # 4/11-2026: oppositionen laa INDE i «indre liv» (0.1) og blev derfor
+    # skaaret vaek i samtalen — den stod kun i prompten i code mode. Det der
+    # redder den er FLYTNINGEN ud som egen sektion, ikke denne linje: tabellen
+    # kan kun SAENKE en vaegt, saa en sektion der slet ikke staar her arver 1.0
+    # og slipper igennem. Maalt 4/11 ved at fjerne linjen: testen blev stadig
+    # groen. Vaerdien her er en forsikring mod en fremtidig global saenkning,
+    # ikke mekanismen der virker.
+    "kryds-lag-indsigelse": 0.4,
     "matrix ensemble voices": 0.1,
     "central notices": 0.2,
     "loop-compliance self-check": 0.2,

@@ -201,7 +201,7 @@ def test_opposition_linje_vises_naar_den_er_aktiv(monkeypatch) -> None:
             },
         },
     )
-    line = vil._opposition_line()
+    line = vil.build_opposition_line()
     assert line is not None
     assert "3 aktiv" in line
     assert "Sagde ét og gjorde noget andet" in line
@@ -216,7 +216,7 @@ def test_opposition_linje_er_tav_naar_intet_er_aktivt(monkeypatch) -> None:
         "core.services.signal_surface_router.read_surface",
         lambda name: {"active": False, "items": [], "summary": {"active_count": 0}},
     )
-    assert vil._opposition_line() is None
+    assert vil.build_opposition_line() is None
 
 
 def test_opposition_linje_fejler_tavst(monkeypatch) -> None:
@@ -227,7 +227,7 @@ def test_opposition_linje_fejler_tavst(monkeypatch) -> None:
         raise RuntimeError("surface nede")
 
     monkeypatch.setattr("core.services.signal_surface_router.read_surface", _boom)
-    assert vil._opposition_line() is None
+    assert vil.build_opposition_line() is None
 
 
 def test_opposition_linjen_er_IKKE_i_det_cachede_praefiks() -> None:
@@ -242,10 +242,12 @@ def test_opposition_linjen_er_IKKE_i_det_cachede_praefiks() -> None:
     assert "Kryds-lag" not in prefix
 
 
-def test_opposition_linjen_er_koblet_paa_blokken(monkeypatch) -> None:
-    """Vagten der fangede en falsk-grøn test: funktionen kan være perfekt og
-    alligevel aldrig blive kaldt. Blokken SKAL indeholde linjen når overfladen
-    er aktiv — ellers er mekanismen teater igen."""
+def test_opposition_linjen_er_FLYTTET_ud_af_blokken(monkeypatch) -> None:
+    """4/11-2026 (anden runde): linjen laa foerst inde i [INDRE LIV], og den blok
+    har chat-vaegt 0.1 — under taersklen 0.3. Maalt: i code mode stod linjen i
+    prompten, i en almindelig samtale blev HELE blokken skaaret vaek. Linjen er
+    derfor flyttet ud som sin egen sektion. Testen holder at den ikke laengere
+    ligger i blokken — ellers ville den blive vist to gange i code mode."""
     from core.services import visible_inner_life as vil
 
     monkeypatch.setattr(
@@ -260,4 +262,52 @@ def test_opposition_linjen_er_koblet_paa_blokken(monkeypatch) -> None:
         },
     )
     block = vil.build_inner_life_section() or ""
-    assert "Kryds-lag-indsigelse (2 aktiv)" in block
+    assert "Kryds-lag-indsigelse" not in block, (
+        "linjen ligger stadig i [INDRE LIV] — den skal vaere sin egen sektion, "
+        "ellers skaeres den i chat og vises dobbelt i code"
+    )
+    # men funktionen selv virker stadig
+    assert "Kryds-lag-indsigelse (2 aktiv)" in (vil.build_opposition_line() or "")
+
+
+def test_oppositionen_overlever_chat_scope_mens_indre_liv_ikke_goer(isolated_runtime) -> None:
+    """Den test der ville have fanget fejlen ChatGPT fandt 4/11.
+
+    «indre liv» har chat-vaegt 0.1 og skaeres HELT i samtale-scope. Laa
+    oppositionen inde i den blok, fik den en vej ind i sektionen men aldrig ind
+    i en almindelig chat-prompt. Som egen sektion (0.4) skal den vaere med.
+
+    `isolated_runtime` + det taendte flag er noedvendigt: gaten er shadow som
+    default, og saa inkluderes ALT — testen ville vaere groen uden at maale noget.
+    """
+    from core.tools import tool_scoping
+    from core.services import central_prompt_composer as cpc
+
+    cpc._kv_set(cpc._LIVE_FLAG, True)
+    cpc._kv_set(cpc._WEIGHTS_KEY, {})
+
+    token = tool_scoping.set_tool_scope("chat")
+    try:
+        assert cpc.should_include("samtale", "kryds-lag-indsigelse") is True, (
+            "oppositionen blev skaaret i chat — saa naar den ikke samtalen"
+        )
+        assert cpc.should_include("samtale", "indre liv") is False, (
+            "maskinrummet skal stadig skaeres i chat; ellers er gaten holdt op "
+            "med at vaere en gate"
+        )
+    finally:
+        tool_scoping.reset_tool_scope(token)
+
+
+def test_prompt_contract_kalder_oppositionen_som_sektion() -> None:
+    """Koblings-vagt: en perfekt funktion der aldrig kaldes er teater. Den
+    statiske vagt her fanger at kaldestedet forsvinder igen."""
+    import inspect
+
+    from core.services import prompt_contract as pc
+
+    kilde = inspect.getsource(pc)
+    assert '\"kryds-lag-indsigelse\"' in kilde or "'kryds-lag-indsigelse'" in kilde, (
+        "prompt_contract kalder ikke oppositionen som sektion"
+    )
+    assert "build_opposition_line" in kilde, "kaldet bruger ikke funktionen"

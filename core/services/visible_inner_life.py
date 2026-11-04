@@ -908,14 +908,18 @@ def _world_model_line() -> Optional[str]:
     return None
 
 
-def _opposition_line() -> Optional[str]:
+def build_opposition_line() -> Optional[str]:
     """Kryds-lag-indsigelse: to lag i SAMME kørsel der peger hver sin vej.
 
     Målt 4/11-2026: oppositionen blev produceret og læst af seks moduler, men
     nåede aldrig prompten — `_FELT_SURFACES` er en fast liste på 14 følte
     overflader, og en kognitiv kalibrerings-indsigelse hører ikke blandt dem.
-    Den får derfor sin egen linje: den siger ikke hvordan jeg har det, men
-    hvad jeg kan efterprøve («i den her tur sagde du ét og gjorde noget andet»).
+
+    Målt 4/11-2026 (samme dag, anden runde): linjen blev lagt INDE i
+    `[INDRE LIV]`, og den blok har chat-vægt 0.1 — under tærsklen 0.3. Så i
+    code mode stod linjen i prompten, i en almindelig samtale blev HELE
+    blokken skåret væk. Funktionen er derfor offentlig: prompt_contract kalder
+    den som sin egen sektion, så den ikke længere deler skæbne med maskinrummet.
     """
     try:
         from core.services.signal_surface_router import read_surface
@@ -996,11 +1000,8 @@ def build_inner_life_section() -> str | None:
     if wm:
         lines.append("· " + wm)
 
-    # Kryds-lag-indsigelse (2026-11-04): egen linje, ikke en følt overflade.
-    # Den siger hvad jeg kan efterprøve, ikke hvordan jeg har det.
-    op = _opposition_line()
-    if op:
-        lines.append("· " + op)
+    # Kryds-lag-indsigelse er FLYTTET ud (4/11-2026, anden runde): den har sin
+    # egen sektion i prompt_contract, fordi denne blok skæres helt i chat-scope.
 
     # Pull / emergence — only when actually present (longing rises with absence,
     # identity drift is rare, cognitive experiments carry only sometimes, and Lag 8:

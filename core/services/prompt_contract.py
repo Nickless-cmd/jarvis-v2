@@ -1386,6 +1386,17 @@ def _build_visible_chat_prompt_assembly_impl(
         ))
     except Exception as _e:
         _sec_err("indre liv", _e)
+    # Kryds-lag-indsigelse (4/11-2026, anden runde): EGEN sektion, ikke en del af
+    # «indre liv». Målt samme dag: den blok har chat-vægt 0.1 og skæres derfor
+    # helt i samtale-scope — oppositionen fik en linje i blokken, men nåede
+    # aldrig en almindelig chat-prompt. Den er ikke telemetri OM systemet; den
+    # er en efterprøvelig indsigelse mod hvad jeg selv gjorde i denne kørsel.
+    # Derfor hører den blandt selvet, som kerne-selv gør.
+    try:
+        from core.services.visible_inner_life import build_opposition_line
+        _awareness_add(1, "kryds-lag-indsigelse", build_opposition_line())
+    except Exception as _e:
+        _sec_err("kryds-lag-indsigelse", _e)
     # Levende selvmodel (2026-09-19): hans træk med dato og kilde. Bag flaget
     # selvmodel_enabled og kun for ejeren; dynamisk → halen, ikke cache-præfikset.
     try:

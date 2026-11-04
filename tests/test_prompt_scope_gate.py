@@ -68,6 +68,11 @@ MASKINRUM = [
 #: 3/11: «du bestemmer om centralen ska tale». Den taler nu — og kun den.
 SELVET = [
     ("awareness", "kerne-selv (Centralens midte)"),
+    # 4/11-2026: oppositionen blev foerst lagt inde i «indre liv» (vaegt 0.1) og
+    # blev derfor skaaret i samtalen — den stod kun i code mode. Den er ikke
+    # telemetri om systemet, men en efterproevelig indsigelse mod hvad jeg selv
+    # gjorde i denne koersel, og hoerer derfor blandt selvet.
+    ("awareness", "kryds-lag-indsigelse"),
 ]
 
 SAMTALE = [

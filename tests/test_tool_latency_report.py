@@ -56,7 +56,23 @@ def test_mixed_routes_and_unmeasured_waits_are_not_forced_to_sum():
     }
 
 
-def test_prompt_cache_outcomes_phases_and_builds_are_counted():
+def test_ikke_final_maaling_taelles_ikke_som_latens():
+    """Cancel-stien skriver et timing-event mens processen stadig koerer.
+
+    Varigheden er ikke en sluttid, og route er null fordi intet er maalt
+    endnu — ikke fordi ruten var ukendt. Maalt 4/11-2026 havde 5 af 5
+    cancelled kald senere en `tool.completed` med aegte exit-kode.
+    """
+    report = aggregate([
+        _timing(total_visible_ms=300, timing_final=False, route=None),
+        _timing(total_visible_ms=100, timing_final=True),
+        # Historiske events bar ikke feltet — de skal stadig taelles.
+        _timing(total_visible_ms=200),
+    ])
+    assert report["calls"] == 2
+    assert report["routes"] == {"server_persistent_shell": 2}
+    assert report["duration_ms"]["max"] == 200.0
+
     report = aggregate([
         {"kind": "prompt.assembly_cache", "payload": {
             "cache_outcome": "hit", "caller_phase": "post_tool", "lookup_ms": 0.4,

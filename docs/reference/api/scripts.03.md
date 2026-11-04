@@ -361,10 +361,10 @@ _Read-only report for visible tool latency and prompt assembly cache behavior._
 | function | `_stats` | `(values)` | — | [src](../../../scripts/tool_latency_report.py#L42) |
 | function | `_dominant_wait` | `(payload)` | — | [src](../../../scripts/tool_latency_report.py#L51) |
 | function | `aggregate` | `(events, *, slow_ms=…)` | Aggregate already-decoded event rows without changing runtime state. | [src](../../../scripts/tool_latency_report.py#L64) |
-| function | `load_events` | `(*, days, db_path=…)` | Read only the three report event kinds from a rolling UTC window. | [src](../../../scripts/tool_latency_report.py#L132) |
-| function | `_fmt_stats` | `(stats)` | — | [src](../../../scripts/tool_latency_report.py#L158) |
-| function | `_print_text` | `(report, *, days)` | — | [src](../../../scripts/tool_latency_report.py#L165) |
-| function | `main` | `()` | — | [src](../../../scripts/tool_latency_report.py#L179) |
+| function | `load_events` | `(*, days, db_path=…)` | Read only the three report event kinds from a rolling UTC window. | [src](../../../scripts/tool_latency_report.py#L138) |
+| function | `_fmt_stats` | `(stats)` | — | [src](../../../scripts/tool_latency_report.py#L164) |
+| function | `_print_text` | `(report, *, days)` | — | [src](../../../scripts/tool_latency_report.py#L171) |
+| function | `main` | `()` | — | [src](../../../scripts/tool_latency_report.py#L185) |
 
 ## `scripts/tool_result_cleanup.py`
 

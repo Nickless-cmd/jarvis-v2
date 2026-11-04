@@ -241,6 +241,14 @@ def _finish(
         "route": measured.get("route"),
         "status": str(status),
         "exit_code": exit_code,
+        # Maalt 4/11-2026: paa cancel-stien skrives eventet mens processen
+        # stadig koerer, saa route/process_ms/first_output_ms er null — ikke
+        # fordi kallet aldrig blev dispatchet, men fordi det ikke er maalt
+        # endnu. 5 af 5 cancelled kald fik senere en `tool.completed` med en
+        # aegte exit-kode. Uden disse to felter laeses null som negativ-bevis
+        # for at kommandoen ikke koerte, og saa antages der ingen side-effekt.
+        "dispatched": item.dispatched_at is not None,
+        "timing_final": str(status) != "cancelled",
         "had_output": measured.get("had_output"),
         "announced_to_dispatch_ms": _milliseconds(item.announced_at, item.dispatched_at),
         "dispatch_to_lock_ms": measured.get("dispatch_to_lock_ms"),

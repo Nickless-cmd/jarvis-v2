@@ -247,10 +247,10 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
 | function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L204) |
 | function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L221) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L283) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L304) |
-| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L309) |
-| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L332) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L291) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L312) |
+| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L317) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L340) |
 
 ## `core/services/tool_failure_surface.py`
 _Turn raw tool failures into short, actionable text for visible surfaces._

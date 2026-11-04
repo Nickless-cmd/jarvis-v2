@@ -121,7 +121,10 @@ def adjudicate(from_fam: str, to_fam: str, *,
             # Kontrakten kræver STØTTENDE observationer. Er de modsigende lige så
             # mange, er hypotesen modbevist med fuld evidens — den må ikke blive
             # hængende i 'undecided' indtil TTL udløber (målt 4/11-2026: 580).
-            if isinstance(modsagt, int) and modsagt >= krav:
+            # MEN reglen må kun gælde når kontrakten selv bærer den: målt 4/11-2026
+            # nævner kun 11 af 586 aktive kontrakter en modsigelse som kriterium.
+            # Uden dette værn ville 96 % få en dom de aldrig præregistrerede.
+            if kontrakt.get("modsigelse_praeregistreret") and isinstance(modsagt, int) and modsagt >= krav:
                 return {"verdict": "contradicted", "prob": round(p, 4), "from_total": total,
                         "reason": f"hypotesens egen kontrakt modbevist: {modsagt} jordede "
                                   f"modsigelser mod {jordet} støttende (krav {krav})"}
@@ -166,7 +169,16 @@ def _kontrakt_af(h: dict[str, Any]) -> dict[str, Any] | None:
     modsigende = jordet.get("modsigende")
     if not isinstance(stottende, int) or not isinstance(modsigende, int):
         return None
-    return {"krav": krav, "jordet": stottende, "modsagt": modsigende}
+    # Modsigelses-reglen skal være PRÆREGISTRERET, ikke en overraskelse i evalueringen.
+    # Målt 4/11-2026: kun 11 af 586 aktive kontrakter nævner en modsigelse som kriterium;
+    # de øvrige 575 kræver blot N støttende observationer og siger intet om hvad der sker
+    # ved N modsigelser. Uden dette flag ville 96 % få en dom de aldrig fremsatte.
+    kriterium = str(h.get("success_criterion") or "").lower()
+    praeregistreret = any(
+        ordet in kriterium for ordet in ("modsig", "modsag", "falsif", "uden lige så mange")
+    )
+    return {"krav": krav, "jordet": stottende, "modsagt": modsigende,
+            "modsigelse_praeregistreret": praeregistreret}
 
 
 def _observe_incident(hyp_id: str, ver: dict[str, Any], *, applied: bool) -> None:

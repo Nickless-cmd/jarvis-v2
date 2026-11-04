@@ -172,8 +172,107 @@ def test_gaten_afviser_ikke_observerbar_kind(monkeypatch):
         cf_id="cf-gate1", trigger_type="decision", event_kind="decision",
     )
     assert r["status"] == "skipped", r
-    assert "not-observable" in r["reason"]
+    assert r["gate"] == "unobservable", r
+    assert "unobservable" in r["reason"]
     assert kald == [], "gaten skal afvise FØR ledgeren skrives"
+
+
+def test_gaten_afviser_observerbar_kind_med_for_tynd_historik(monkeypatch):
+    """Observerbar ≠ falsificerbar (målt 4/11-2026).
+
+    Gaten fandtes i to led men kun det første var håndhævet: 6 af 8 åbne
+    forudsigelser kunne ikke dømmes — to fordi baseline var under
+    MIN_BASELINE_COUNT, fire fordi udfaldet lå inden for ±30 %. Det første
+    kan afvises ved porten; det andet er et ærligt udfald.
+    """
+    import core.services.counterfactual_predictions as cp
+
+    kald: list[dict] = []
+    monkeypatch.setattr(
+        "core.services.world_model_signal_tracking."
+        "record_runtime_world_model_prediction",
+        lambda **kw: kald.append(kw) or {"status": "ok"},
+    )
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: True)
+    monkeypatch.setattr(cp, "_event_kind_baseline_count", lambda k, **kw: 2)
+
+    r = cp.bind_counterfactual_to_prediction(
+        cf_id="cf-gate3", trigger_type="goal.updated",
+    )
+    assert r["status"] == "skipped", r
+    assert r["gate"] == "insufficient_evidence", r
+    assert r["baseline"] == 2, r
+    assert kald == [], "for tynd historik skal afvises FØR ledgeren røres"
+
+
+def test_gaten_afviser_kun_den_gren_der_mangler_historik(monkeypatch):
+    """Modsatrettet kontrol: nok baseline slipper igennem.
+
+    Uden denne kunne gaten være en mur der afviser alt — og testen ovenfor
+    ville stadig være grøn.
+    """
+    import core.services.counterfactual_predictions as cp
+
+    kald: list[dict] = []
+    monkeypatch.setattr(
+        "core.services.world_model_signal_tracking."
+        "record_runtime_world_model_prediction",
+        lambda **kw: kald.append(kw) or {"status": "ok"},
+    )
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: True)
+    monkeypatch.setattr(cp, "_event_kind_baseline_count", lambda k, **kw: 7)
+
+    r = cp.bind_counterfactual_to_prediction(
+        cf_id="cf-gate4", trigger_type="goal.updated",
+    )
+    assert r["status"] == "ok", r
+    assert len(kald) == 1
+
+
+def test_afvisningsaarsagen_er_forskellig_for_de_to_gates(monkeypatch):
+    """De to afvisninger må ikke kollapse til samme svar.
+
+    `unobservable` betyder «hændelsen findes ikke»; `insufficient_evidence`
+    betyder «den findes, men der er ikke nok at måle på». Slog de sammen,
+    kunne Centralen ikke se om den mangler instrumentering eller data.
+    """
+    import core.services.counterfactual_predictions as cp
+
+    monkeypatch.setattr(
+        "core.services.world_model_signal_tracking."
+        "record_runtime_world_model_prediction",
+        lambda **kw: {"status": "ok"},
+    )
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: False)
+    u = cp.bind_counterfactual_to_prediction(cf_id="cf-a", trigger_type="decision")
+
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: True)
+    monkeypatch.setattr(cp, "_event_kind_baseline_count", lambda k, **kw: 1)
+    t = cp.bind_counterfactual_to_prediction(cf_id="cf-b", trigger_type="goal.updated")
+
+    assert u["gate"] != t["gate"], (u, t)
+
+
+def test_arkivet_kan_genfindes_paa_id(monkeypatch):
+    """Provenance må ikke kun være fysisk (målt 4/11-2026: nul kodereferencer).
+
+    Arkiveringen flyttede 901 poster ud af ledgeren. Uden et opslag kunne en
+    counterfactual der peger på `worldpred-…` ikke længere følges — dataene
+    var beskyttet, men historikken var brudt.
+    """
+    import core.services.counterfactual_predictions as cp
+
+    monkeypatch.setattr(
+        "core.runtime.state_store.load_json",
+        lambda name, default=None: [
+            {"prediction_id": "worldpred-abc", "archive_reason": "unfalsifiable"},
+            {"prediction_id": "worldpred-def", "archive_reason": "unfalsifiable"},
+        ],
+    )
+    hit = cp.find_archived_prediction("worldpred-def")
+    assert hit is not None and hit["prediction_id"] == "worldpred-def", hit
+    assert cp.find_archived_prediction("findes-ikke") is None
+    assert cp.find_archived_prediction("") is None
 
 
 def test_gaten_slipper_observerbar_kind_igennem(monkeypatch):
@@ -187,6 +286,7 @@ def test_gaten_slipper_observerbar_kind_igennem(monkeypatch):
         lambda **kw: kald.append(kw) or {"status": "ok"},
     )
     monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: k == "goal.updated")
+    monkeypatch.setattr(cp, "_event_kind_baseline_count", lambda k, **kw: 7)
 
     r = cp.bind_counterfactual_to_prediction(
         cf_id="cf-gate2", trigger_type="goal.updated",

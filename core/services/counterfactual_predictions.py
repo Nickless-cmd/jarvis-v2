@@ -64,6 +64,11 @@ GRACE_DAYS = 1
 FREQ_DELTA = 0.30
 MIN_BASELINE_COUNT = 3
 
+# Arkiveret for uafgørlige forudsigelser (flyttet ud af ledgeren 4/11-2026).
+# Nøglen er state_store-navnet, ikke en sti — så arkivet følger samme
+# lagringsmekanisme som ledgeren og kan læses via find_archived_prediction().
+_ARCHIVE_STATE_KEY = "runtime_world_model_predictions_uafgoerlige_arkiv"
+
 # Retningen forudsigelsen hævder. Målt 4/11-2026: dommeren antog hardcodet
 # "declining", og generatoren kunne kun sige "declining" — to halve fejl der
 # ophævede hinanden og så konsistente ud. Fejlen ville først materialisere sig
@@ -117,6 +122,7 @@ def _confidence_band(numeric: float) -> str:
 # gang, per konstruktion. Vagten her er falsificerbarheds-kontrakten: en
 # forudsigelse må kun oprettes hvis dens hændelse kan observeres.
 _OBSERVABLE_CACHE: dict[tuple[str, str], bool] = {}
+_BASELINE_CACHE: dict[tuple[str, str, int], int] = {}
 
 
 def _event_kind_is_observable(kind: str) -> bool:
@@ -155,6 +161,78 @@ def _event_kind_is_observable(kind: str) -> bool:
         found = False
     _OBSERVABLE_CACHE[cache_key] = found
     return found
+
+
+def _event_kind_baseline_count(kind: str, *, days: int | None = None) -> int:
+    """Hvor mange hændelser af ``kind`` findes i baseline-vinduet?
+
+    Observerbarhed er ikke nok (målt 4/11-2026): 6 af 8 åbne forudsigelser
+    kunne ikke dømmes, fordi dommeren kræver ``MIN_BASELINE_COUNT`` hændelser
+    i baseline-vinduet for at en frekvenssammenligning er meningsfuld. En
+    forudsigelse om en kind der kun er set én gang kan derfor per konstruktion
+    ikke afgøres — den optager en plads i et loft på 1000 uden nogensinde at
+    kunne falsificeres.
+
+    Self-safe: enhver fejl → 0 (gaten afviser hellere end at lukke støj ind).
+    """
+    k = str(kind or "").strip()
+    if not k:
+        return 0
+    window = int(days if days is not None else HORIZON_DAYS)
+    try:
+        from core.runtime.db_core import DB_PATH as _db_path
+
+        db_scope = str(_db_path)
+    except Exception:
+        db_scope = "unknown"
+    cache_key = (db_scope, k, window)
+    if cache_key in _BASELINE_CACHE:
+        return _BASELINE_CACHE[cache_key]
+    count = 0
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM events "
+                "WHERE kind = ? AND created_at >= datetime('now', ?)",
+                (k, f"-{window} days"),
+            ).fetchone()
+        count = int(row[0]) if row else 0
+    except Exception as exc:
+        logger.debug(
+            "counterfactual_predictions: baseline count failed for %s: %s", k, exc
+        )
+        count = 0
+    _BASELINE_CACHE[cache_key] = count
+    return count
+
+
+def find_archived_prediction(prediction_id: str) -> dict[str, Any] | None:
+    """Slå en arkiveret forudsigelse op på dens oprindelige ID.
+
+    Arkiveringen flyttede 901 uafgørlige poster ud af ledgeren, men efterlod
+    dem kun som en fil (målt 4/11-2026: nul kodereferencer). Uden et opslag
+    er provenance fysisk bevaret men logisk brudt — en counterfactual eller
+    refleksion der peger på ``worldpred-…`` kunne ikke længere følges.
+    """
+    pid = str(prediction_id or "").strip()
+    if not pid:
+        return None
+    try:
+        from core.runtime.state_store import load_json
+
+        data = load_json(_ARCHIVE_STATE_KEY, [])
+    except Exception as exc:
+        logger.debug("counterfactual_predictions: archive read failed: %s", exc)
+        return None
+    rows = data.get("predictions") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, dict) and str(row.get("prediction_id") or "") == pid:
+            return row
+    return None
 
 
 def bind_counterfactual_to_prediction(
@@ -206,9 +284,39 @@ def bind_counterfactual_to_prediction(
     # "failed_run"), som ikke findes i `events`. Uden en observerbar kind kan
     # Phase 2 ikke afsige en dom — så vi skriver ingen forudsigelse. Selve
     # counterfactual'en lever videre i sin egen tabel; sporet går ikke tabt.
+    # Falsificerbarheds-gaten har TO led (målt 4/11-2026: det første alene
+    # slap 6 af 8 uafgørlige forudsigelser igennem):
+    #
+    #   1. OBSERVERBAR — findes kind'en i `events`? Kalderne sender enten en
+    #      konkret eventbus-kind (pipeline-vejen) eller en abstrakt trigger_type
+    #      ("decision", "correction", "failed_run") som ikke findes. Uden en
+    #      observerbar kind kan Phase 2 ikke afsige nogen dom.
+    #   2. TILSTRÆKKELIG — har kind'en nok baseline-historik? Dommeren kræver
+    #      MIN_BASELINE_COUNT hændelser før en frekvenssammenligning er
+    #      meningsfuld; under det svarer den altid `uncertain`.
+    #
+    # Afvisningsårsagen returneres eksplicit, så Centralen kan skelne «skulle
+    # ikke være en forudsigelse» fra «kan ikke observeres» fra «for lidt
+    # evidens». En gate der får noget til at forsvinde uden et spor er samme
+    # fejlform som den vi byggede den for at fjerne.
     probe_kind = str(event_kind or "").strip() or trigger_type
     if not _event_kind_is_observable(probe_kind):
-        return {"status": "skipped", "reason": f"not-observable: {probe_kind}"}
+        return {
+            "status": "skipped",
+            "gate": "unobservable",
+            "reason": f"unobservable: {probe_kind}",
+        }
+    baseline = _event_kind_baseline_count(probe_kind)
+    if baseline < MIN_BASELINE_COUNT:
+        return {
+            "status": "skipped",
+            "gate": "insufficient_evidence",
+            "reason": (
+                f"insufficient-evidence: {probe_kind} baseline={baseline} "
+                f"< {MIN_BASELINE_COUNT} in {HORIZON_DAYS}d"
+            ),
+            "baseline": baseline,
+        }
     if not str(event_kind or "").strip():
         event_kind = probe_kind
 

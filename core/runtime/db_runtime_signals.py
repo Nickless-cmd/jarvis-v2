@@ -28,8 +28,32 @@ def ensure_runtime_signals_tables(conn: sqlite3.Connection) -> None:
             result_status TEXT NOT NULL,
             result_summary TEXT NOT NULL DEFAULT '',
             result_json TEXT NOT NULL DEFAULT '{}',
+            run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
             recorded_at TEXT NOT NULL
         )
+        """
+    )
+    # 4/11-2026: ANKERET der goer handlingen sammenlignelig med intentionen.
+    # Maalt foer kolonnen fandtes: 288.544 raekker med action_id + result_status,
+    # men NUL af dem kunne knyttes til den koersel de skete i. Fokus- og
+    # goal-lagene baerer run_id; handlings-laget gjorde ikke — saa «hvad jeg
+    # sagde jeg arbejdede paa» og «hvad jeg faktisk gjorde» kunne aldrig moedes.
+    # Det er ikke et domaene-ord der manglede: koerslen ER ankret, og 286
+    # koersler producerer allerede 3-4 lag samtidig. Kolonnen er tilfoejet
+    # additivt, saa gamle raekker staar med '' (ukendt anker, ikke gættet).
+    for _kolonne in ("run_id", "session_id"):
+        try:
+            conn.execute(
+                f"ALTER TABLE runtime_action_outcomes "
+                f"ADD COLUMN {_kolonne} TEXT NOT NULL DEFAULT ''"
+            )
+        except sqlite3.OperationalError:  # kolonnen findes allerede — migration er idempotent
+            pass
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_action_outcomes_run
+        ON runtime_action_outcomes(run_id, recorded_at DESC)
         """
     )
     conn.execute(
@@ -110,6 +134,8 @@ def _runtime_action_outcome_from_row(row: sqlite3.Row) -> dict[str, object]:
         "result_status": row["result_status"],
         "result_summary": row["result_summary"],
         "result": result if isinstance(result, dict) else {},
+        "run_id": str(row["run_id"] or "") if "run_id" in row.keys() else "",
+        "session_id": str(row["session_id"] or "") if "session_id" in row.keys() else "",
         "recorded_at": row["recorded_at"],
     }
 
@@ -149,6 +175,8 @@ def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
                 result_status,
                 result_summary,
                 result_json,
+                run_id,
+                session_id,
                 recorded_at
             FROM runtime_action_outcomes
             ORDER BY id DESC
@@ -195,6 +223,8 @@ def record_runtime_action_outcome(
     result_summary: str,
     result_json: dict[str, object] | None,
     recorded_at: str,
+    run_id: str = "",
+    session_id: str = "",
 ) -> dict[str, object]:
     outcome_id = f"rao-{uuid4().hex[:12]}"
     with connect() as conn:
@@ -210,9 +240,11 @@ def record_runtime_action_outcome(
                 result_status,
                 result_summary,
                 result_json,
+                run_id,
+                session_id,
                 recorded_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 outcome_id,
@@ -224,6 +256,8 @@ def record_runtime_action_outcome(
                 result_status,
                 result_summary,
                 _json.dumps(result_json or {}, ensure_ascii=False, sort_keys=True),
+                run_id,
+                session_id,
                 recorded_at,
             ),
         )
@@ -241,6 +275,8 @@ def record_runtime_action_outcome(
                 result_status,
                 result_summary,
                 result_json,
+                run_id,
+                session_id,
                 recorded_at
             FROM runtime_action_outcomes
             WHERE outcome_id = ?

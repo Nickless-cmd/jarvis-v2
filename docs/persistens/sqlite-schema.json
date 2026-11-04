@@ -12664,7 +12664,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "cognitive_experiments": {
@@ -29748,7 +29748,7 @@
       ]
     },
     "runtime_action_outcomes": {
-      "digest": "36:92:32:fe:52:8e:f6:1a:b9:59:8f:d4:a3:c1:9a:ce:3c:db:15:db:be:b2:80:7f:a1:4d:3b:df:8f:47:6f:b3",
+      "digest": "de:55:6e:3e:44:c1:1b:27:e8:23:02:f1:56:0e:7a:df:ee:ae:83:a4:2a:84:83:73:7d:2d:76:44:20:36:ee:ba",
       "schema": {
         "columns": [
           {
@@ -29838,6 +29838,22 @@
             "default": "''",
             "pk": 0,
             "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
           }
         ],
         "indexes": [
@@ -29864,6 +29880,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_runtime_action_outcomes_lookup ON runtime_action_outcomes(action_id, recorded_at DESC)"
+          },
+          {
+            "name": "idx_runtime_action_outcomes_run",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "recorded_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_runtime_action_outcomes_run ON runtime_action_outcomes(run_id, recorded_at DESC)"
           },
           {
             "name": "sqlite_autoindex_runtime_action_outcomes_1",

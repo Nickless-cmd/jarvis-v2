@@ -23,6 +23,7 @@ def record_tool_outcome_memory(
     status = str(result_dict.get("status") or "unknown")
     family = classify_tool_family(name)
     summary = _summary_for_result(name, result_dict)
+    run_id, session_id = _run_anchor(arguments)
     try:
         from core.services.runtime_action_outcome_tracking import (
             record_runtime_action_outcome,
@@ -43,9 +44,38 @@ def record_tool_outcome_memory(
                 "tool_family": family,
                 "summary": summary,
             },
+            run_id=run_id,
+            session_id=session_id,
         )
     except Exception:
         return None
+
+
+def _run_anchor(arguments: dict[str, Any] | None) -> tuple[str, str]:
+    """Hvilken kørsel handlingen skete i — og hvilken session.
+
+    Ankeret findes allerede i argumenterne: ``simple_tool_executor._prepare_call``
+    stempler ``_runtime_turn_id`` (og ``_runtime_session_id``) ind før dispatchen.
+    ``_preview_arguments`` filtrerer dem bevidst ud af payload'en, så de skal
+    læses HER og gemmes som kolonner — ellers står 288.544 handlings-rækker uden
+    forbindelse til den tur de beskriver.
+
+    Bro-kald (``operator_bash``) går uden om executoren og bærer derfor intet
+    stempel. Der falder vi tilbage til kørslens ContextVar — samme fallback som
+    ``tool_call_telemetry`` bruger, og af samme grund: en proces-global ville
+    blive overskrevet når to kørsler overlapper.
+    """
+    args = dict(arguments or {})
+    run_id = str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or "").strip()
+    if not run_id:
+        try:
+            from core.services.run_autonomy_context import current_run_id
+
+            run_id = str(current_run_id() or "").strip()
+        except Exception:
+            run_id = ""
+    session_id = str(args.get("_runtime_session_id") or "").strip()
+    return run_id, session_id
 
 
 def _summary_for_result(tool_name: str, result: dict[str, Any]) -> str:

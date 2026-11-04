@@ -114,19 +114,34 @@ class TestKontrakten:
         dømt — de blev hængende i 'undecided' indtil TTL udløb. En dommer der kun
         kan sige 'ja' og 'ved det ikke' kan ikke falsificere noget.
         """
-        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 5})
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 5,
+                                   "modsigelse_praeregistreret": True})
         assert v["verdict"] == "contradicted", v
         assert "5" in v["reason"] and "modsig" in v["reason"]
 
+    def test_modsigelse_uden_praeregistrering_doemmer_ikke(self):
+        """Modsigelses-reglen skal være PRÆREGISTRERET, ikke en overraskelse.
+
+        Målt 4/11-2026: kun 11 af 586 aktive kontrakter nævner en modsigelse som
+        kriterium. De øvrige 575 kræver blot N støttende observationer og siger
+        intet om hvad der sker ved N modsigelser — så dommeren må ikke opfinde
+        den regel for dem. Ellers får 96 % en dom de aldrig fremsatte.
+        """
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 5,
+                                   "modsigelse_praeregistreret": False})
+        assert v["verdict"] == "undecided", v
+
     def test_modsigelser_under_kravet_er_stadig_undecided(self):
         """4 modsigelser af 5 er ikke nok til at dræbe hypotesen — endnu."""
-        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 4})
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 4,
+                                   "modsigelse_praeregistreret": True})
         assert v["verdict"] == "undecided", v
 
     def test_stoettende_vejer_foerst_naar_begge_naar_kravet(self):
         """Er begge sider på kravet, er hypotesen modbevist — ellers kunne en
         hypotese med 5 modsigelser overleve på 5 bekræftelser."""
-        v = self._adj(0.005, 583, {"krav": 5, "jordet": 5, "modsagt": 5})
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 5, "modsagt": 5,
+                                   "modsigelse_praeregistreret": True})
         assert v["verdict"] == "contradicted", v
 
     def test_uden_kontrakt_er_dommen_uaendret(self):
@@ -142,7 +157,7 @@ class TestKontrakten:
     def test_kontrakt_laeses_fra_sample_size_og_jordede(self):
         assert ex._kontrakt_af({"sample_size": "5",
                                 "jordede_samples": {"stottende": 4, "modsigende": 1}}) == \
-            {"krav": 5, "jordet": 4, "modsagt": 1}
+            {"krav": 5, "jordet": 4, "modsagt": 1, "modsigelse_praeregistreret": False}
         assert ex._kontrakt_af({"sample_size": "5"}) is None
         assert ex._kontrakt_af({"sample_size": None,
                                 "jordede_samples": {"stottende": 4, "modsigende": 0}}) is None
@@ -151,6 +166,26 @@ class TestKontrakten:
         # Den gamle form (et rent tal) må ikke læses som en kontrakt: uden
         # opdelingen kan dommeren ikke se om evidensen støtter eller modsiger.
         assert ex._kontrakt_af({"sample_size": "5", "jordede_samples": 4}) is None
+
+    def test_modsigelses_reglen_laeses_fra_kontrakten(self):
+        """Flaget må ikke gættes — det skal stå i hypotesens eget kriterium.
+
+        Målt 4/11-2026: 560 af 586 aktive kontrakter kræver blot N støttende
+        observationer og nævner ingen modsigelse. Kun 11 gør. Dommeren må kun
+        anvende modsigelses-reglen for dem der selv har skrevet den.
+        """
+        uden = ex._kontrakt_af({
+            "sample_size": "5", "success_criterion":
+                ">= 5 jordede observationer af at overgangen gentager sig over baseline",
+            "jordede_samples": {"stottende": 0, "modsigende": 5}})
+        assert uden["modsigelse_praeregistreret"] is False
+
+        med = ex._kontrakt_af({
+            "sample_size": "5", "success_criterion":
+                "mindst 5 observationer der understøtter forudsigelsen, uden lige så "
+                "mange der modsiger den",
+            "jordede_samples": {"stottende": 0, "modsigende": 5}})
+        assert med["modsigelse_praeregistreret"] is True
 
     def test_jordede_samples_taeller_kun_jordede(self, isolated_runtime):
         """Feltet `grounded_samples` tæller ALLE samples (målt 698/698 rækker).

@@ -110,11 +110,11 @@ _Counterfactual → world-model prediction binding._
 | function | `bind_counterfactual_to_prediction` | `(*, cf_id, trigger_type, anchor=…, confidence=…, source=…, event_kind=…)` | Record a world-model prediction linked to a counterfactual. | [src](../../../core/services/counterfactual_predictions.py#L77) |
 | function | `list_open_counterfactual_predictions` | `()` | Return all open predictions whose source=='counterfactual'. | [src](../../../core/services/counterfactual_predictions.py#L155) |
 | function | `_is_horizon_expired` | `(prediction, now)` | Check if a prediction's horizon has passed (with grace period). | [src](../../../core/services/counterfactual_predictions.py#L173) |
-| function | `_extract_event_kind` | `(prediction)` | Pull the event_kind tag out of a prediction's evidence list. | [src](../../../core/services/counterfactual_predictions.py#L183) |
-| function | `_frequency_verdict` | `(*, event_kind, created_at)` | Compare event_kind frequency before vs after the prediction's birth. | [src](../../../core/services/counterfactual_predictions.py#L192) |
-| function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
-| function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
-| function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
+| function | `_extract_event_kind` | `(prediction)` | Pull the event_kind tag out of a prediction. | [src](../../../core/services/counterfactual_predictions.py#L183) |
+| function | `_frequency_verdict` | `(*, event_kind, created_at)` | Compare event_kind frequency before vs after the prediction's birth. | [src](../../../core/services/counterfactual_predictions.py#L203) |
+| function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L276) |
+| function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L365) |
+| function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L380) |
 
 ## `core/services/counterfactual_self_simulation.py`
 _Counterfactual self-simulation for post-run learning._

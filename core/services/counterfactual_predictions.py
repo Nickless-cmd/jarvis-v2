@@ -181,7 +181,18 @@ def _is_horizon_expired(prediction: dict[str, Any], now: datetime) -> bool:
 
 
 def _extract_event_kind(prediction: dict[str, Any]) -> str:
-    """Pull the event_kind tag out of a prediction's evidence list."""
+    """Pull the event_kind tag out of a prediction.
+
+    Læser feltet først (4/11-2026), derefter evidence-strengen. Feltet er den
+    ærlige datamodel; ``event_kind:<kind>``-strengen er den gamle vej og
+    bevares, så forudsigelser skrevet før feltet fandtes stadig kan afgøres.
+    Målt samme dag: 868 åbne forudsigelser, kun 8 bar tag'en — resten blev
+    ``uncertain`` med reason ``no-event-kind-tag-on-prediction``, og
+    kalibreringen var strukturelt ``None``.
+    """
+    direct = str(prediction.get("event_kind") or "").strip()
+    if direct:
+        return direct
     for ev in prediction.get("evidence") or []:
         ev = str(ev)
         if ev.startswith("event_kind:"):

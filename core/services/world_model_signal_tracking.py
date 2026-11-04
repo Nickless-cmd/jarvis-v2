@@ -110,12 +110,21 @@ def record_runtime_world_model_prediction(
     confidence: str = "low",
     evidence: list[str] | None = None,
     source: str = "runtime",
+    event_kind: str = "",
     now: datetime | None = None,
 ) -> dict[str, object]:
     """Record an explicit, falsifiable world-model expectation.
 
     This is deliberately a small ledger, not a planner. A prediction may
     influence attention and later calibration, but it must not execute work.
+
+    ``event_kind`` (målt 4/11-2026) er det felt der gør forudsigelsen
+    FALSIFICERBAR. Feltet fandtes i læseren (``_frequency_verdict``) men blev
+    aldrig skrevet her — så 132 af 132 resolved endte som ``uncertain`` med
+    reason ``no-event-kind-tag-on-prediction``, og ``calibration`` var
+    strukturelt ``None``. Sweepet kørte dagligt uden at kunne afgøre noget.
+    Uden et ``event_kind`` kan frekvens-sammenligningen ikke finde sine
+    hændelser; med det kan den afgøre supported/contradicted.
     """
     normalized_subject = " ".join(str(subject or "").split()).strip()
     normalized_expectation = " ".join(str(expectation or "").split()).strip()
@@ -137,6 +146,7 @@ def record_runtime_world_model_prediction(
         "confidence": confidence,
         "evidence": [str(e).strip() for e in (evidence or []) if str(e).strip()][:5],
         "source": str(source or "runtime").strip() or "runtime",
+        "event_kind": " ".join(str(event_kind or "").split()).strip(),
         "created_at": created_at,
         "updated_at": created_at,
         "resolved_at": "",

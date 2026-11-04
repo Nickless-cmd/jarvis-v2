@@ -161,3 +161,102 @@ def test_horisonten_maa_ikke_vokse_ud_over_loftet():
         "horisonten er sat op til %d dage, men loftet rummer kun %.1f dages "
         "produktion" % (HORIZON_DAYS + GRACE_DAYS, maks_dage)
     )
+
+
+# ---------------------------------------------------------------------------
+# Kalibreringen kunne per konstruktion ikke beregnes
+#
+# Målt 4/11-2026: `_frequency_verdict` kræver et `event_kind` på forudsigelsen
+# for at kunne tælle hændelser før/efter. Producenten skrev det ALDRIG. Så
+# 132 af 132 resolved endte som `uncertain` med reason
+# `no-event-kind-tag-on-prediction`, og `calibration` var strukturelt `None`.
+# Sweepet kørte dagligt uden at kunne afgøre noget — samme fejlform som
+# `max()`-tælleren: mekanismen findes, indgangsbetingelsen kan intet opfylde.
+# ---------------------------------------------------------------------------
+
+_EVENT_KIND = "test.prediction.event"
+
+
+def _seed_events(tmp_path, monkeypatch, *, created: datetime) -> None:
+    """20 hændelser i baseline-vinduet, 2 i post-vinduet → ratio 0.1."""
+    from core.runtime import db_core
+    from core.runtime.db_schema import init_db
+
+    db_core.close_pooled_connection()
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "prediction-events.db")
+    init_db()
+    with db_core.connect() as conn:
+        for i in range(20):
+            ts = (created - timedelta(days=3) + timedelta(hours=i)).isoformat()
+            conn.execute(
+                "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+                (_EVENT_KIND, "{}", ts),
+            )
+        for i in range(2):
+            ts = (created + timedelta(days=2, hours=i)).isoformat()
+            conn.execute(
+                "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+                (_EVENT_KIND, "{}", ts),
+            )
+        conn.commit()
+
+
+def test_forudsigelse_med_event_kind_KAN_afgoeres(tmp_path, monkeypatch):
+    """Uden denne kan kalibreringen aldrig blive andet end None."""
+    from core.services.counterfactual_predictions import (
+        sweep_expired_counterfactual_predictions,
+    )
+
+    created = datetime.now(UTC) - timedelta(days=12)
+    _seed_events(tmp_path, monkeypatch, created=created)
+
+    rec = wm.record_runtime_world_model_prediction(
+        subject="hændelses-frekvens",
+        expectation="frekvensen falder efter læring",
+        event_kind=_EVENT_KIND,
+        source="counterfactual",
+        now=created,
+    )
+    assert rec["prediction"]["event_kind"] == _EVENT_KIND, (
+        "producenten skrev ikke event_kind — så kan sweepet ikke afgøre noget"
+    )
+
+    summary = sweep_expired_counterfactual_predictions(now=datetime.now(UTC))
+    assert summary["by_outcome"]["supported"] == 1, (
+        "forudsigelsen blev ikke afgjort som supported selv om frekvensen "
+        f"faldt til 10% af baseline — by_outcome={summary['by_outcome']}"
+    )
+
+    preds = wm._load_predictions()
+    assert preds[0]["outcome"] == "supported"
+    surface = wm.build_runtime_world_model_prediction_surface()
+    assert surface["summary"]["calibration"] == 1.0, (
+        "kalibreringen blev ikke beregnelig — det var hele pointen"
+    )
+    from core.runtime import db_core
+    db_core.close_pooled_connection()
+
+
+def test_uden_event_kind_forbliver_forudsigelsen_uafgjort(tmp_path, monkeypatch):
+    """Den ærlige halvdel: uden feltet KAN den ikke afgøres — og må ikke gætte."""
+    from core.services.counterfactual_predictions import (
+        sweep_expired_counterfactual_predictions,
+    )
+
+    created = datetime.now(UTC) - timedelta(days=12)
+    _seed_events(tmp_path, monkeypatch, created=created)
+
+    wm.record_runtime_world_model_prediction(
+        subject="uden kind",
+        expectation="kan ikke efterprøves",
+        source="counterfactual",
+        now=created,
+    )
+
+    summary = sweep_expired_counterfactual_predictions(now=datetime.now(UTC))
+    assert summary["by_outcome"]["supported"] == 0
+    assert summary["by_outcome"]["contradicted"] == 0
+    preds = wm._load_predictions()
+    assert preds[0]["outcome"] == "uncertain"
+    from core.runtime import db_core
+    db_core.close_pooled_connection()

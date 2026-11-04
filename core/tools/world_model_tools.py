@@ -35,6 +35,7 @@ def _exec_predict_outcome(args: dict[str, Any]) -> dict[str, Any]:
     expectation = str(args.get("expectation") or "").strip()
     horizon = str(args.get("horizon") or "").strip()
     confidence = str(args.get("confidence") or "low").strip().lower()
+    event_kind = str(args.get("event_kind") or "").strip()
     evidence = args.get("evidence") or []
     if not isinstance(evidence, list):
         evidence = [str(evidence)]
@@ -51,6 +52,7 @@ def _exec_predict_outcome(args: dict[str, Any]) -> dict[str, Any]:
         confidence=confidence,
         evidence=[str(e) for e in evidence],
         source="visible-chat-tool",
+        event_kind=event_kind,
     )
 
     # Memory-search bridge (2026-05-13): on each new prediction, surface
@@ -140,6 +142,15 @@ WORLD_MODEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Hvorfor tror du det? Op til 5 korte begrundelser.",
+                    },
+                    "event_kind": {
+                        "type": "string",
+                        "description": (
+                            "Hændelsestypen forudsigelsen handler om — fx "
+                            "'heartbeat.tick' eller 'tool.completed'. Uden den kan "
+                            "sweeperen ikke afgøre om forudsigelsen holdt, og den "
+                            "ender som 'uncertain' når horisonten udløber."
+                        ),
                     },
                 },
                 "required": ["subject", "expectation"],

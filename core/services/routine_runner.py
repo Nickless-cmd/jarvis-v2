@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -488,6 +489,66 @@ class _LeaseProbe:
         self._check()
 
 
+class _LeaseKeeper:
+    """Fornyer leasen MENS et værktøjskald kører.
+
+    Målt 4/11-2026: to rutine-kørsler (1/11 og 4/11) blev erklæret
+    ``tool_outcome_unknown`` af ``reconcile_expired_runs``. Årsagen var ikke
+    værktøjet: ét enkelt kald tog 103 s henholdsvis 41 s, mens leasen er 90 s
+    og kun blev fornyet af ``_LeaseProbe`` FØR en effect og MELLEM runder.
+    Under selve kaldet stod tiden stille — så et langsomt værktøj dræbte sin
+    egen lease og blev bagefter dømt som «ukendt udfald», selv om det svarede
+    korrekt.
+
+    Tråden her lukker det hul: den fornyer hvert 30. sekund indtil kaldet
+    returnerer. Fejler fornyelsen (fx fordi en anden worker har overtaget),
+    stopper den stille — ``settle_tool_dispatch`` opdager det og kaster
+    ``StaleRoutineLease``, som er den ærlige dom.
+    """
+
+    #: Leasen er 90 s; 30 s giver to forsøg før den løber ud.
+    INTERVAL_S = 30.0
+
+    def __init__(self, repository: "RoutineRunRepository", run_id: str, holder: str):
+        self.repository = repository
+        self.run_id = run_id
+        self.holder = holder
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._generation = 0
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self.INTERVAL_S):
+            try:
+                claim = self.repository.renew(
+                    self.run_id, generation=self._generation, holder=self.holder,
+                )
+                self._generation = claim.lease_generation
+            except Exception:  # noqa: BLE001 — en tabt lease skal ikke dræbe tråden
+                _log.debug("rutine: lease-fornyelse under værktøjskald fejlede", exc_info=True)
+                return
+
+    def __enter__(self) -> "_LeaseKeeper":
+        try:
+            row = self.repository.assert_current(self.run_id, generation=0, holder=self.holder)
+            self._generation = int(row["lease_generation"])
+        except Exception:  # noqa: BLE001 — generationen sættes af kalderen
+            pass
+        self._thread = threading.Thread(
+            target=self._loop, name=f"routine-lease-{self.run_id[:12]}", daemon=True,
+        )
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+
+    def set_generation(self, generation: int) -> None:
+        self._generation = int(generation)
+
+
 class RoutineRunner:
     def __init__(
         self, *, driver: ModelDriver | None = None,
@@ -513,7 +574,10 @@ class RoutineRunner:
             executor = raw_executor or self.tool_executor
             if executor is None:
                 raise RuntimeError(f"no executor configured for tool {call.name}")
-            output = executor(call)
+            # Leasen skal holdes i live MENS værktøjet kører — se _LeaseKeeper.
+            with _LeaseKeeper(self.repository, run_id, self.holder) as keeper:
+                keeper.set_generation(generation)
+                output = executor(call)
             succeeded = True
             return output
         finally:

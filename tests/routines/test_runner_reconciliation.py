@@ -262,3 +262,70 @@ def test_runtime_stop_joins_workers_without_claiming_more():
     assert runtime.claim_count_after_stop() == 0
     assert runner.claims == claims_at_stop
     assert delivery.claims > 0
+
+
+# ── Et langsomt værktøj må ikke dræbe sin egen lease ────────────────────────
+# Målt 4/11-2026: to rutine-kørsler (1/11 og 4/11) blev erklæret
+# `tool_outcome_unknown` af reconcile_expired_runs. Årsagen var ikke værktøjet:
+# ét kald tog 103 s henholdsvis 41 s, mens leasen er 90 s og kun blev fornyet
+# FØR en effect og MELLEM runder — aldrig under selve kaldet. Et langsomt
+# værktøj dræbte altså sin egen lease og blev bagefter dømt «ukendt udfald»,
+# selv om det svarede korrekt.
+
+
+def test_langsomt_vaerktoej_fornyer_leasen_under_kaldet(queued_run, monkeypatch):
+    """Kaldet varer længere end leasen — leasen skal holdes i live imens."""
+    from core.services.routine_runner import RoutineRunner, _LeaseKeeper
+
+    # Leasen er 90 s; vi gør intervallet kort så testen ikke sover i 30 s.
+    monkeypatch.setattr(_LeaseKeeper, "INTERVAL_S", 0.05)
+
+    fornyelser = []
+    runner = RoutineRunner(driver=_OneToolDriver(), tool_executor=lambda _call: "ok")
+    ægte_renew = runner.repository.renew
+
+    def _renew(run_id, *, generation, holder):
+        fornyelser.append(generation)
+        return ægte_renew(run_id, generation=generation, holder=holder)
+
+    monkeypatch.setattr(runner.repository, "renew", _renew)
+
+    claimed = runner.repository.claim(queued_run.run_id, holder=runner.holder)
+
+    def _langsomt_kald(_call):
+        import time
+
+        time.sleep(0.3)  # ~6 fornyelses-intervaller
+        return "ok"
+
+    runner.dispatch_tool(
+        queued_run.run_id,
+        generation=claimed.lease_generation,
+        call=ToolCall("slow-call", "safe_tool", {}),
+        raw_executor=_langsomt_kald,
+    )
+
+    assert fornyelser, "leasen blev ikke fornyet under værktøjskaldet"
+    # Kørslen er stadig vores: ingen fremmed generation har overtaget.
+    run = runner.repository.get_run(queued_run.run_id)
+    assert run.status != "failed"
+
+
+def test_lease_keeper_stopper_naar_kaldet_er_faerdigt(queued_run, monkeypatch):
+    """Tråden må ikke leve videre efter kaldet — ellers lækker hver kørsel en."""
+    from core.services.routine_runner import RoutineRunner, _LeaseKeeper
+
+    monkeypatch.setattr(_LeaseKeeper, "INTERVAL_S", 0.05)
+    runner = RoutineRunner(driver=_OneToolDriver(), tool_executor=lambda _call: "ok")
+    claimed = runner.repository.claim(queued_run.run_id, holder=runner.holder)
+
+    keeper = _LeaseKeeper(runner.repository, queued_run.run_id, runner.holder)
+    with keeper:
+        keeper.set_generation(claimed.lease_generation)
+        import time
+
+        time.sleep(0.12)
+        tråd = keeper._thread
+        assert tråd is not None and tråd.is_alive()
+
+    assert not tråd.is_alive(), "lease-tråden overlevede kaldet"

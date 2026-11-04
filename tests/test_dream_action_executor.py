@@ -105,7 +105,29 @@ class TestKontrakten:
 
     def test_kontrakten_slaar_ogsaa_regime(self):
         """Også en 'regime'-dom må vige: kontrakten er hypotesens egen påstand."""
-        assert self._adj(0.12, 583, {"krav": 5, "jordet": 4})["verdict"] == "undecided"
+        assert self._adj(0.12, 583, {"krav": 5, "jordet": 4, "modsagt": 0})["verdict"] == "undecided"
+
+    def test_modbevist_kontrakt_doemmes_som_contradicted(self):
+        """Fem jordede MODSIGELSER er lige så afgørende som fem bekræftelser.
+
+        Målt 4/11-2026: 580 hypoteser havde fuld modsigende evidens og blev aldrig
+        dømt — de blev hængende i 'undecided' indtil TTL udløb. En dommer der kun
+        kan sige 'ja' og 'ved det ikke' kan ikke falsificere noget.
+        """
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 5})
+        assert v["verdict"] == "contradicted", v
+        assert "5" in v["reason"] and "modsig" in v["reason"]
+
+    def test_modsigelser_under_kravet_er_stadig_undecided(self):
+        """4 modsigelser af 5 er ikke nok til at dræbe hypotesen — endnu."""
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 0, "modsagt": 4})
+        assert v["verdict"] == "undecided", v
+
+    def test_stoettende_vejer_foerst_naar_begge_naar_kravet(self):
+        """Er begge sider på kravet, er hypotesen modbevist — ellers kunne en
+        hypotese med 5 modsigelser overleve på 5 bekræftelser."""
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 5, "modsagt": 5})
+        assert v["verdict"] == "contradicted", v
 
     def test_uden_kontrakt_er_dommen_uaendret(self):
         """Bagudkompatibel: hypoteser uden læsbar kontrakt dømmes som før."""
@@ -118,16 +140,22 @@ class TestKontrakten:
             assert self._adj(0.005, 583, k)["verdict"] == "noise", k
 
     def test_kontrakt_laeses_fra_sample_size_og_jordede(self):
-        assert ex._kontrakt_af({"sample_size": "5", "jordede_samples": 4}) == \
-            {"krav": 5, "jordet": 4}
+        assert ex._kontrakt_af({"sample_size": "5",
+                                "jordede_samples": {"stottende": 4, "modsigende": 1}}) == \
+            {"krav": 5, "jordet": 4, "modsagt": 1}
         assert ex._kontrakt_af({"sample_size": "5"}) is None
-        assert ex._kontrakt_af({"sample_size": None, "jordede_samples": 4}) is None
-        assert ex._kontrakt_af({"sample_size": "0", "jordede_samples": 4}) is None
+        assert ex._kontrakt_af({"sample_size": None,
+                                "jordede_samples": {"stottende": 4, "modsigende": 0}}) is None
+        assert ex._kontrakt_af({"sample_size": "0",
+                                "jordede_samples": {"stottende": 4, "modsigende": 0}}) is None
+        # Den gamle form (et rent tal) må ikke læses som en kontrakt: uden
+        # opdelingen kan dommeren ikke se om evidensen støtter eller modsiger.
+        assert ex._kontrakt_af({"sample_size": "5", "jordede_samples": 4}) is None
 
     def test_jordede_samples_taeller_kun_jordede(self, isolated_runtime):
         """Feltet `grounded_samples` tæller ALLE samples (målt 698/698 rækker).
-        Denne funktion tæller kun dem der faktisk er jordet — ellers dømmer
-        kontrakten på et oppustet tal."""
+        Denne funktion tæller kun dem der faktisk er jordet — og deler dem op i
+        støttende og modsigende, så dommen kan sige begge veje."""
         import core.services.central_dream_action as cda
         from core.runtime.db_core import connect
         with connect() as c:
@@ -135,13 +163,14 @@ class TestKontrakten:
                 id INTEGER PRIMARY KEY AUTOINCREMENT, hyp_id TEXT, supports INTEGER,
                 falsifies INTEGER, source TEXT, ground_ref TEXT, triggered_by TEXT,
                 created_at TEXT)""")
-            for sup, ref in ((1, "r1"), (1, "r2"), (0, "r3"), (1, ""), (1, None)):
+            for sup, fal, ref in ((1, 0, "r1"), (1, 0, "r2"), (0, 1, "r3"),
+                                  (1, 0, ""), (1, 0, None)):
                 c.execute("INSERT INTO central_hypothesis_samples "
-                          "(hyp_id, supports, ground_ref, created_at) VALUES (?,?,?,'x')",
-                          ("h1", sup, ref))
+                          "(hyp_id, supports, falsifies, ground_ref, created_at) "
+                          "VALUES (?,?,?,?,'x')", ("h1", sup, fal, ref))
             c.commit()
-            assert cda._jordede_samples(c, "h1") == 2
-            assert cda._jordede_samples(c, "findes-ikke") == 0
+            assert cda._jordede_samples(c, "h1") == {"stottende": 2, "modsigende": 1}
+            assert cda._jordede_samples(c, "findes-ikke") == {"stottende": 0, "modsigende": 0}
 
     def test_jordede_samples_gaetter_ikke_naar_det_ikke_kan_maales(self, isolated_runtime):
         """Kan tabellen ikke læses, er svaret None — ikke 0. Et gæt på 0 ville

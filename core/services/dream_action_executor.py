@@ -86,16 +86,18 @@ def adjudicate(from_fam: str, to_fam: str, *,
     """Mål om regimet holdt. Ren læsning af sekvens-modellen; ændrer ingenting.
 
     ``kontrakt`` er hypotesens EGEN præregistrerede påstand: ``{"krav": N,
-    "jordet": M}`` — N jordede observationer krævet, M opnået. Den går forud for
-    P-tærsklen. Hypotesen siger *"overgangen gentager sig over baseline"*; P måler
-    om den er blevet 5 % af ALLE overgange fra X. Det er to forskellige påstande,
-    og en hypotese kan ikke afgøres af en måling den ikke fremsatte. Uden
-    ``kontrakt`` er dommen den gamle frekvens-dom (bagudkompatibel).
+    "jordet": M, "modsagt": K}`` — N STØTTENDE observationer krævet, M opnået, K
+    modsigende. Den går forud for P-tærsklen. Hypotesen siger *"overgangen
+    gentager sig over baseline"*; P måler om den er blevet 5 % af ALLE overgange
+    fra X. Det er to forskellige påstande, og en hypotese kan ikke afgøres af en
+    måling den ikke fremsatte. Uden ``kontrakt`` er dommen den gamle frekvens-dom
+    (bagudkompatibel).
 
     ``verdict``: ``'contract_met'`` (hypotesens eget kriterium opfyldt),
-    ``'regime'`` (overgangen er over tærsklen nu — modellen manglede den og har
-    lært den), ``'noise'`` (stadig under, med nok observationer til at sige det),
-    ``'undecided'`` (for lidt data, eller kontrakten ikke opfyldt endnu — vi
+    ``'contradicted'`` (kontrakten modbevist med samme mængde evidens — hypotesen
+    dør), ``'regime'`` (overgangen er over tærsklen nu — modellen manglede den og
+    har lært den), ``'noise'`` (stadig under, med nok observationer til at sige
+    det), ``'undecided'`` (for lidt data, eller kontrakten ikke afgjort endnu — vi
     handler ikke på et gæt).
     """
     try:
@@ -114,7 +116,15 @@ def adjudicate(from_fam: str, to_fam: str, *,
     if kontrakt:
         krav = kontrakt.get("krav")
         jordet = kontrakt.get("jordet")
+        modsagt = kontrakt.get("modsagt")
         if isinstance(krav, int) and krav > 0 and isinstance(jordet, int) and jordet >= 0:
+            # Kontrakten kræver STØTTENDE observationer. Er de modsigende lige så
+            # mange, er hypotesen modbevist med fuld evidens — den må ikke blive
+            # hængende i 'undecided' indtil TTL udløber (målt 4/11-2026: 580).
+            if isinstance(modsagt, int) and modsagt >= krav:
+                return {"verdict": "contradicted", "prob": round(p, 4), "from_total": total,
+                        "reason": f"hypotesens egen kontrakt modbevist: {modsagt} jordede "
+                                  f"modsigelser mod {jordet} støttende (krav {krav})"}
             if jordet >= krav:
                 return {"verdict": "contract_met", "prob": round(p, 4), "from_total": total,
                         "reason": f"hypotesens egen kontrakt opfyldt: {jordet}/{krav} "
@@ -136,10 +146,11 @@ def adjudicate(from_fam: str, to_fam: str, *,
 
 
 def _kontrakt_af(h: dict[str, Any]) -> dict[str, Any] | None:
-    """Hypotesens præregistrerede påstand som ``{"krav", "jordet"}``.
+    """Hypotesens præregistrerede påstand som ``{"krav", "jordet", "modsagt"}``.
 
-    ``krav`` læses fra ``sample_size`` (den mængde generatoren selv krævede), og
-    ``jordet`` er det FAKTISKE antal jordede observationer — ikke feltet
+    ``krav`` læses fra ``sample_size`` (den mængde generatoren selv krævede),
+    ``jordet`` er antallet af STØTTENDE jordede observationer og ``modsagt``
+    antallet af modsigende. Begge er talt fra samples-tabellen — ikke feltet
     ``grounded_samples``, som målt 4/11-2026 tæller ALLE samples (698/698 rækker
     havde ``grounded_samples == alle_samples``). Returnerer None når kontrakten
     ikke kan læses, så dommen falder tilbage til frekvens-dommen.
@@ -149,9 +160,13 @@ def _kontrakt_af(h: dict[str, Any]) -> dict[str, Any] | None:
     except (TypeError, ValueError):  # sample_size er ikke et tal — kontrakten kan ikke læses
         return None
     jordet = h.get("jordede_samples")
-    if krav <= 0 or not isinstance(jordet, int):
+    if krav <= 0 or not isinstance(jordet, dict):
         return None
-    return {"krav": krav, "jordet": jordet}
+    stottende = jordet.get("stottende")
+    modsigende = jordet.get("modsigende")
+    if not isinstance(stottende, int) or not isinstance(modsigende, int):
+        return None
+    return {"krav": krav, "jordet": stottende, "modsagt": modsigende}
 
 
 def _observe_incident(hyp_id: str, ver: dict[str, Any], *, applied: bool) -> None:

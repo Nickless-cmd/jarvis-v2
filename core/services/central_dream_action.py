@@ -87,8 +87,14 @@ def select_actionable(*, limit: int = 3, min_confidence: float = _MIN_CONFIDENCE
         return []
 
 
-def _jordede_samples(conn: sqlite3.Connection, hyp_id: str) -> int | None:
-    """Antal observationer der faktisk er jordet (``supports`` + ikke-tom ``ground_ref``).
+def _jordede_samples(conn: sqlite3.Connection, hyp_id: str) -> dict[str, int] | None:
+    """Jordede observationer, delt op i STØTTENDE og MODSIGENDE.
+
+    Kontrakten er et succeskriterium, ikke et evidensminimum: den kræver N
+    støttende observationer. Så skal dommen også kunne sige det modsatte — en
+    hypotese med N jordede modsigelser og færre støttende er MODBEVIST, ikke
+    "ikke afgjort endnu". Målt 4/11-2026: 580 hypoteser havde fuld modsigende
+    evidens og fik aldrig nogen dom.
 
     Ikke feltet ``grounded_samples``: målt 4/11-2026 tæller det ALLE samples
     (698/698 rækker havde ``grounded_samples == alle_samples``). Returnerer None
@@ -97,10 +103,15 @@ def _jordede_samples(conn: sqlite3.Connection, hyp_id: str) -> int | None:
     """
     try:
         row = conn.execute(
-            "SELECT COUNT(*) FROM central_hypothesis_samples "
-            "WHERE hyp_id=? AND supports=1 "
-            "AND ground_ref IS NOT NULL AND ground_ref != ''", (hyp_id,)).fetchone()
-        return int(row[0]) if row else None
+            "SELECT "
+            "SUM(CASE WHEN supports=1 THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN falsifies=1 THEN 1 ELSE 0 END) "
+            "FROM central_hypothesis_samples "
+            "WHERE hyp_id=? AND ground_ref IS NOT NULL AND ground_ref != ''",
+            (hyp_id,)).fetchone()
+        if row is None:
+            return None
+        return {"stottende": int(row[0] or 0), "modsigende": int(row[1] or 0)}
     except Exception:  # samples-tabellen kan mangle i en frisk base — None tvinger frekvens-dommen
         return None
 

@@ -1071,9 +1071,12 @@ def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
 def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
     from core.services.session_context_resolve import aktiv_session_id, aktivt_run_id
     session_id = str(args.get("session_id") or aktiv_session_id("") or "")
+    # Ét budget til begge grene: finding-grenen tabte det tavst (4/11-2026).
+    budget = {"autonomy_mode": str(args.get("autonomy_mode") or "none"),
+              "max_minutes": args.get("max_minutes") or 20,
+              "max_tool_calls": args.get("max_tool_calls") or 12}
     if args.get("finding_kind"):
         from core.services.run_finding_accounting import record_finding
-        run_id = str(aktivt_run_id("") or "")
         return record_finding(
             kind=str(args.get("finding_kind") or ""),
             disposition=str(args.get("disposition") or "side_task"),
@@ -1083,9 +1086,10 @@ def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
             title=str(args.get("title") or ""),
             next_step=str(args.get("prompt") or ""),
             reason=str(args.get("reason") or ""),
-            run_id=run_id, session_id=session_id,
+            run_id=str(aktivt_run_id("") or ""), session_id=session_id,
             finding_key=str(args.get("finding_key") or ""),
             existing_side_task_id=str(args.get("existing_side_task_id") or ""),
+            **budget,
         )
     return flag(
         title=str(args.get("title") or ""),
@@ -1095,9 +1099,7 @@ def _exec_flag_side_task(args: dict[str, Any]) -> dict[str, Any]:
         finding_key=str(args.get("finding_key") or ""),
         evidence=str(args.get("evidence") or ""),
         not_before=str(args.get("not_before") or ""),
-        autonomy_mode=str(args.get("autonomy_mode") or "none"),
-        max_minutes=args.get("max_minutes") or 20,
-        max_tool_calls=args.get("max_tool_calls") or 12,
+        **budget,
     )
 
 

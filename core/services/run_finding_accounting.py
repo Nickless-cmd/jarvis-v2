@@ -37,7 +37,8 @@ def _ledger() -> list[dict[str, Any]]:
 def record_finding(*, kind: str, disposition: str, path: str, behavior: str,
                    evidence: str, title: str, next_step: str = "", reason: str = "",
                    run_id: str = "", session_id: str = "", finding_key: str = "",
-                   existing_side_task_id: str = "") -> dict[str, Any]:
+                   existing_side_task_id: str = "", autonomy_mode: str = "none",
+                   max_minutes: int = 20, max_tool_calls: int = 12) -> dict[str, Any]:
     """Account for one concrete finding; only deferred gaps create tasks."""
     kind, disposition = str(kind or "").strip(), str(disposition or "").strip()
     path, behavior = str(path or "").strip(), str(behavior or "").strip()
@@ -67,7 +68,8 @@ def record_finding(*, kind: str, disposition: str, path: str, behavior: str,
         result = side_tasks.flag(
             title=title, prompt=prompt, tldr=f"{behavior}: {evidence[:120]}",
             session_id=session_id or None, finding_key=key,
-            source_run_id=run_id, evidence=evidence,
+            source_run_id=run_id, evidence=evidence, autonomy_mode=autonomy_mode,
+            max_minutes=max_minutes, max_tool_calls=max_tool_calls,
         )
         if result.get("status") != "ok":
             return result

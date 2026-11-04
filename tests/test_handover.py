@@ -8,6 +8,7 @@ overdragelsen forsvinde efter næste tur, og så var den meningsløs.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -160,3 +161,61 @@ def test_overdragelsen_holder_capsulen_under_loftet(capsule_dir):
     data = json.loads(raw)
     # Overdragelsen er intakt — truncation rammer recent_activity, ikke den.
     assert len(data["handover"]["text"]) == c._MAX_HANDOVER_CHARS
+
+
+# ── overdragelsens alder (4/11-2026) ──────────────────────────────────
+#
+# Baggrund: 4/11 blev en overdragelse fra 2/11 læst som om den gjaldt nu.
+# `written_at` var skrevet og arvet fremad — men aldrig vist i blokken.
+# Blokken kunne derfor ikke skelne en frisk overdragelse fra en der var
+# to dage gammel, og den gamle blev læst som kontekst om nuet.
+
+
+def _skriv_med_alder(hours_ago: float) -> None:
+    """Skriv en overdragelse og flyt dens `written_at` tilbage i tid."""
+    c.write_handover("Tidsstemplet", "Tekst der overlever.")
+    capsule = c.read_capsule()
+    written = datetime.now(UTC) - timedelta(hours=hours_ago)
+    capsule["handover"]["written_at"] = written.isoformat()
+    c.write_capsule(capsule)
+
+
+def test_ung_overdragelse_viser_minutter(capsule_dir):
+    """(a) Fem minutter gammel skal vise «5 min» — ikke «0 dage»."""
+    _skriv_med_alder(hours_ago=5 / 60)
+    blok = c.build_wake_up_block()
+    assert "(5 min siden)" in blok
+    assert "dage siden" not in blok
+
+
+def test_gammel_overdragelse_kan_ikke_forveksles_med_en_frisk(capsule_dir):
+    """(b) To dage gammel skal vise «2 dage» — og ordet «siden» skal være der."""
+    _skriv_med_alder(hours_ago=48)
+    blok = c.build_wake_up_block()
+    assert "(2 dage siden)" in blok
+    # Den må ikke kunne læses som frisk: minutter/time-mærket må ikke optræde.
+    assert "min siden" not in blok
+    assert "timer siden" not in blok
+
+
+def test_overdragelse_uden_tolkbar_alder_udskrives_alligevel(capsule_dir):
+    """(c) Mangler eller er `written_at` utolkbar, vises teksten UDEN alder."""
+    for vaerdi in (None, "", "i går", "2026-13-45T99:99:99"):
+        c.write_handover("Uden alder", "Teksten skal stadig frem.")
+        capsule = c.read_capsule()
+        if vaerdi is None:
+            capsule["handover"].pop("written_at", None)
+        else:
+            capsule["handover"]["written_at"] = vaerdi
+        c.write_capsule(capsule)
+
+        blok = c.build_wake_up_block()  # maa ikke kaste
+        assert "OVERDRAGELSE — Uden alder" in blok, f"titel manglede for {vaerdi!r}"
+        assert "Teksten skal stadig frem." in blok, f"tekst manglede for {vaerdi!r}"
+        assert "siden)" not in blok, f"alder blev vist for {vaerdi!r}"
+
+
+def test_alderen_formateres_som_det_overordnede_gap(capsule_dir):
+    """Alderen genbruger gap-formateringen — to aldre i samme blok, samme form."""
+    for hours, forventet in ((0.5, "30 min"), (5, "5 timer"), (72, "3 dage")):
+        assert c._format_hours_gap(hours) == forventet

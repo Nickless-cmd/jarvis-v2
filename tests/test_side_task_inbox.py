@@ -37,8 +37,17 @@ def test_side_tasks_are_read_only_projection_and_empty_section_disappears(monkey
     assert byg_indbakke("owner", kilder=k)["sideopgaver"][0]["status"] == "kø"
     side_tasks.resolve(tid, decision="activated", arbejds_session="chat-7", arbejds_run_id="run-8")
     active = byg_indbakke("owner", kilder=k)["sideopgaver"][0]
-    assert active["status"] == "i gang" and active["session_id"] == "chat-7"
+    # Kontrakten (side_tasks.py moduldocstring + b909212d4): ``activated``
+    # betyder claimet/starter — foerst ``running`` betyder at et run faktisk
+    # er foedt. Testen forventede "i gang" her, hvilket var den gamle
+    # kontrakt. Den er rettet til at fastholde BEGGE statusser, saa
+    # forskellen ikke kan smutte igen.
+    assert active["status"] == "starter" and active["session_id"] == "chat-7"
     assert active["run_id"] == "run-8"
+
+    side_tasks.resolve(tid, decision="running")
+    koerer = byg_indbakke("owner", kilder=k)["sideopgaver"][0]
+    assert koerer["status"] == "i gang", "et foedt run skal vise 'i gang'"
     side_tasks.resolve(tid, decision="completed", bevis="Startpositionen er verificeret")
     assert byg_indbakke("owner", kilder=k)["sideopgaver"] == []
 

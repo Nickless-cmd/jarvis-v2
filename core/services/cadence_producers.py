@@ -177,13 +177,22 @@ def produce_signals_from_run(
 
     # 4. Self-review outcome
     try:
+        # 4/11-2026: `summary` var skabelonen "Run <id> completed with completed" —
+        # den gentog status to gange og sagde intet om hvad turen handlede om.
+        # `evidence_summary` bærer brugerens faktiske besked, så den rige tekst
+        # findes allerede; den skal bare bæres videre i stedet for at kastes.
+        _run_summary = " ".join(str(user_message or "").split())[:160]
         upsert_runtime_self_review_outcome(
             outcome_id=f"sro-{uuid4().hex[:10]}",
             outcome_type="post_run_outcome",
             canonical_key=f"self-review:outcome:{run_id}",
             status="active",
             title=f"Outcome: {outcome_status}",
-            summary=f"Run {run_id[:12]} completed with {outcome_status}",
+            summary=(
+                f"{outcome_status}: {_run_summary}"
+                if _run_summary
+                else f"Run {run_id[:12]} ended {outcome_status}"
+            ),
             rationale="Tracking outcome for self-review lifecycle",
             source_kind="visible_run",
             confidence="high",

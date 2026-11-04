@@ -26,6 +26,15 @@ from core.runtime.db import (
 
 _STALE_AFTER_DAYS = 14
 
+# 4/11-2026: `credit_assignment` er IKKE en self-review. Det er per-kald
+# provider-telemetri (rationale = "provider: ok, latency=3456ms") skrevet af
+# `db_credit_assignment.link_outcome_to_decision`, og den skriver ~4.639 rækker i
+# døgnet mod post_run's ~188. Målt: de 12 nyeste aktive var 12/12
+# credit_assignment — så chronicle, selfhood, cadence og self-authored læste et
+# model-kalds latens som om det var en vurdering af en beslutning. Tabellen har
+# to producenter uden noget til fælles; læsefladen skal kun se den ene.
+_NON_REVIEW_OUTCOME_TYPES: tuple[str, ...] = ("credit_assignment",)
+
 
 def track_runtime_self_review_outcomes_for_visible_turn(
     *,
@@ -109,7 +118,10 @@ def build_runtime_self_review_outcome_surface(*, limit: int = 8) -> dict[str, ob
     except Exception:
         pass
     refresh_runtime_self_review_outcome_statuses()
-    items = list_runtime_self_review_outcomes(limit=max(limit, 1))
+    items = list_runtime_self_review_outcomes(
+        exclude_outcome_types=_NON_REVIEW_OUTCOME_TYPES,
+        limit=max(limit, 1),
+    )
     snapshots = _build_outcome_snapshots()
     enriched_items = [_with_surface_outcome_view(item, snapshots=snapshots) for item in items]
     fresh = [item for item in enriched_items if str(item.get("status") or "") == "fresh"]
@@ -212,7 +224,11 @@ def _persist_self_review_outcomes(
 ) -> list[dict[str, object]]:
     now = datetime.now(UTC).isoformat()
     existing_by_key = {
-        str(item.get("canonical_key") or ""): item for item in list_runtime_self_review_outcomes(limit=40)
+        str(item.get("canonical_key") or ""): item
+        for item in list_runtime_self_review_outcomes(
+            exclude_outcome_types=_NON_REVIEW_OUTCOME_TYPES,
+            limit=40,
+        )
     }
     persisted: list[dict[str, object]] = []
     for outcome in outcomes:

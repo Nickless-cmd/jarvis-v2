@@ -318,3 +318,92 @@ def test_self_review_outcome_surface_and_mc_shapes_remain_bounded(isolated_runti
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
+
+
+def test_credit_assignment_telemetri_naar_ikke_laesefladen(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    """4/11-2026: `credit_assignment` er provider-telemetri, ikke en self-review.
+
+    Målt i produktion: 167.700 af 175.714 rækker var credit_assignment, og de
+    skriver ~4.639/døgn mod post_run's ~188. De 12 nyeste aktive var derfor
+    12/12 telemetri, og fire downstream-producenter (chronicle, selfhood,
+    cadence, self-authored) læste et model-kalds latens som en vurdering.
+    """
+    from core.services.self_review_outcome_tracking import (
+        build_runtime_self_review_outcome_surface,
+    )
+
+    now = datetime.now(UTC).isoformat()
+    # Telemetri skrevet SIDST — den ville vinde ethvert "nyeste"-vindue.
+    for i in range(6):
+        db.upsert_runtime_self_review_outcome(
+            outcome_id=f"ca-telemetry-{i}",
+            outcome_type="credit_assignment",
+            canonical_key=f"dec-telemetry-{i}",
+            status="active",
+            title=f"Lag 1 outcome: dec-telemetry-{i}",
+            summary="Credit score: 4.0/5",
+            rationale="provider: ok, latency=3456ms, cost_booster=0.0",
+            source_kind="meta_reflection",
+            confidence="medium",
+            evidence_summary="{}",
+            support_summary="",
+            support_count=1,
+            session_count=1,
+            created_at=now,
+            updated_at=now,
+        )
+    # Én ægte self-review, skrevet FØRST — den skal stadig findes.
+    db.upsert_runtime_self_review_outcome(
+        outcome_id="sro-real",
+        outcome_type="post_run_outcome",
+        canonical_key="self-review:outcome:real-run",
+        status="active",
+        title="Outcome: completed",
+        summary="completed: ret chronicle-producenten",
+        rationale="Tracking outcome for self-review lifecycle",
+        source_kind="visible_run",
+        confidence="high",
+        evidence_summary="ret chronicle-producenten",
+        support_summary="mood=neutral",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+    surface = build_runtime_self_review_outcome_surface(limit=12)
+    types = {str(item.get("outcome_type") or "") for item in surface["items"]}
+    assert "credit_assignment" not in types, (
+        "provider-telemetri lækker ind i self-review-fladen"
+    )
+    assert "post_run_outcome" in types, "den ægte self-review forsvandt"
+    assert surface["summary"]["current_outcome_type"] == "post_run_outcome"
+
+
+def test_post_run_summary_baerer_brugerens_besked(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    """`summary` var skabelonen "Run <id> completed with completed" — to gange status.
+
+    Den rige tekst lå allerede i `evidence_summary`; den skal bæres videre.
+    """
+    from core.services.cadence_producers import produce_signals_from_run
+
+    produce_signals_from_run(
+        run_id="visible-abcdef123456",
+        session_id="test-session",
+        user_message="Ret chronicle-producenten så den ikke gentager sig selv",
+        assistant_response="Rettet.",
+        outcome_status="completed",
+        user_mood="neutral",
+    )
+
+    rows = db.list_runtime_self_review_outcomes(outcome_type="post_run_outcome", limit=5)
+    assert rows, "producenten skrev intet outcome"
+    summary = str(rows[0].get("summary") or "")
+    assert "Ret chronicle-producenten" in summary, (
+        f"summary bærer ikke brugerens besked: {summary!r}"
+    )
+    assert "completed with completed" not in summary, (
+        f"summary er stadig skabelonen: {summary!r}"
+    )

@@ -323,12 +323,23 @@ def test_oppositionen_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(
 
     _orig = ssr.read_surface
 
+    # 4/11-2026: signalet skal baere en UNIK saetning, ikke kun et antal.
+    # Foerste version satte kun ``active_count`` — saa beviste testen at
+    # markoeren naaede frem, men ikke at selve indsigelsens INDHOLD gjorde.
+    # Det er samme fejlform som resten af dagens arbejde: formen bevares,
+    # indholdet tabes. Saetningen nedenfor er valgt saa den overlever baade
+    # ``Challenge calibration: ``-afskaering og 120-tegns trunkering.
+    UNIK = "Jeg gik videre uden readback af den aendrede fil"
+
     def fake_read(name):
         if name == "internal_opposition":
             return {
                 "active": True,
                 "items": [{"signal_type": "Challenge calibration", "status": "active"}],
-                "summary": {"active_count": 3},
+                "summary": {
+                    "active_count": 3,
+                    "current_signal": f"Challenge calibration: {UNIK}",
+                },
             }
         return _orig(name)
 
@@ -374,4 +385,11 @@ def test_oppositionen_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(
         antal = bygget[scope].count("Kryds-lag-indsigelse")
         assert antal == 1, (
             f"oppositionen står {antal} gange i {scope}-prompten — præcis ét sted"
+        )
+        # 4/11-2026: markøren alene er ikke nok. Uden denne linje beviser testen
+        # at der STÅR «der er en indsigelse», ikke hvad indsigelsen ER — og så
+        # ville en tom eller afskåret tekst bestå. Indholdet skal frem.
+        assert UNIK in bygget[scope], (
+            f"indsigelsens indhold nåede ikke {scope}-prompten — kun markøren gjorde. "
+            "Formen blev bevaret, indholdet tabt."
         )

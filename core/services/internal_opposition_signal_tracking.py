@@ -54,22 +54,51 @@ def build_runtime_internal_opposition_signal_surface(*, limit: int = 8) -> dict[
     return _stf.build_surface(_SPEC, limit=limit)
 
 
+#: Hvor mange raekker der hentes pr. lag. Maalt 4/11-2026: med 18 kunne
+#: lagene naesten ikke moedes (nyeste-18 focus ∩ nyeste-18 critic = 0), fordi
+#: hvert lag har sin egen produktionsrytme. Vinduet skal vaere stoerre end
+#: antallet af koersler der baerer 2+ lag.
+_WINDOW = 400
+
+
+def _run_domain(item: dict[str, object], key_fn) -> str:
+    """Domaenet er KOERSLEN, ikke et semantisk emne.
+
+    Maalt 4/11-2026: lagene taler ikke samme spoerg. `focus` er sin egen
+    saetning, `goal` sin egen slug, `critic` en type — saa noegle-parsing gav
+    `critic ∩ alt = 0`. Koerslen er den ene dimension ALLE lag baerer, og det
+    er ogsaa den signalet handler om: «i DENNE tur pegede to lag modsat».
+
+    Graensen skal siges hoejt: dette er et TIDSLIGT domaene, ikke et semantisk.
+    Det fanger at to ting skete i samme tur — ikke at de handler om det samme.
+    Det er den korrekte betydning for intern opposition; for spoergsmaalet
+    «samme emne over tid» (open-loop, recurrence) er domaenet stadig emnet.
+
+    Uden anker falder vi tilbage til noegle-udtraekket, saa gamle raekker uden
+    `run_id` opfoerer sig som foer.
+    """
+    anchor = str(item.get("run_id") or "").strip()
+    if anchor:
+        return anchor
+    return key_fn(str(item.get("canonical_key") or ""))
+
+
 # ── internal-opposition-specific cross-layer candidate derivation (unique) ─────
 def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
-    for focus in list_runtime_development_focuses(limit=18):
+    for focus in list_runtime_development_focuses(limit=_WINDOW):
         if str(focus.get("status") or "") != "active":
             continue
-        domain_key = _focus_domain_key(str(focus.get("canonical_key") or ""))
+        domain_key = _run_domain(focus, _focus_domain_key)
         if domain_key:
             snapshots.setdefault(domain_key, {})["active_focus"] = focus
 
-    for goal in list_runtime_goal_signals(limit=18):
+    for goal in list_runtime_goal_signals(limit=_WINDOW):
         status = str(goal.get("status") or "")
         if status not in {"active", "blocked"}:
             continue
-        domain_key = _goal_domain_key(str(goal.get("canonical_key") or ""))
+        domain_key = _run_domain(goal, _goal_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -78,11 +107,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["active_goal"] = goal
 
-    for critic in list_runtime_reflective_critics(limit=18):
+    for critic in list_runtime_reflective_critics(limit=_WINDOW):
         status = str(critic.get("status") or "")
         if status not in {"active", "resolved"}:
             continue
-        domain_key = _critic_domain_key(str(critic.get("canonical_key") or ""))
+        domain_key = _run_domain(critic, _critic_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -91,11 +120,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["resolved_critic"] = critic
 
-    for signal in list_runtime_self_model_signals(limit=18):
+    for signal in list_runtime_self_model_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "uncertain"}:
             continue
-        domain_key = _self_model_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _self_model_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -104,11 +133,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["uncertain_self_model"] = signal
 
-    for signal in list_runtime_reflection_signals(limit=18):
+    for signal in list_runtime_reflection_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "integrating", "settled"}:
             continue
-        domain_key = _reflection_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _reflection_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -117,11 +146,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["live_reflection"] = signal
 
-    for signal in list_runtime_temporal_recurrence_signals(limit=18):
+    for signal in list_runtime_temporal_recurrence_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "softening"}:
             continue
-        domain_key = _temporal_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _temporal_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -130,11 +159,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["softening_recurrence"] = signal
 
-    for item in build_runtime_open_loop_signal_surface(limit=12).get("items", []):
+    for item in build_runtime_open_loop_signal_surface(limit=_WINDOW).get("items", []):
         status = str(item.get("status") or "")
         if status not in {"open", "softening"}:
             continue
-        domain_key = _open_loop_domain_key(str(item.get("canonical_key") or ""))
+        domain_key = _run_domain(item, _open_loop_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -145,11 +174,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
 
     world_uncertain_signals = [
         item
-        for item in list_runtime_world_model_signals(limit=12)
+        for item in list_runtime_world_model_signals(limit=_WINDOW)
         if str(item.get("status") or "") == "uncertain"
     ]
-    active_goal_count = len([item for item in list_runtime_goal_signals(limit=18) if str(item.get("status") or "") in {"active", "blocked"}])
-    open_loop_surface = build_runtime_open_loop_signal_surface(limit=12)
+    active_goal_count = len([item for item in list_runtime_goal_signals(limit=_WINDOW) if str(item.get("status") or "") in {"active", "blocked"}])
+    open_loop_surface = build_runtime_open_loop_signal_surface(limit=_WINDOW)
 
     candidates: list[dict[str, object]] = []
     for domain_key, snapshot in snapshots.items():
@@ -166,7 +195,7 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         softening_recurrence = snapshot.get("softening_recurrence")
         open_loop = snapshot.get("open_loop")
         softening_loop = snapshot.get("softening_loop")
-        title_suffix = _domain_title(domain_key)
+        title_suffix = _domain_title(_snapshot_label(snapshot, domain_key))
 
         if (open_loop and str(open_loop.get("signal_type") or "") == "persistent-open-loop" and active_critic and (active_focus or active_goal or blocked_goal)) or (
             active_critic and active_recurrence and (active_focus or active_goal or blocked_goal)
@@ -185,7 +214,12 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
             )
             continue
 
-        if (active_focus or active_goal) and (active_self_model or uncertain_self_model) and (active_critic or open_loop or active_recurrence):
+        # Maalt 4/11-2026: critic ∩ self_model = 0 koersler, focus ∩ critic = 1.
+        # De tre lag produceres i hver sin rytme, saa et krav om alle tre var et
+        # krav om at to ure slaar samtidig. Fokus + selv-model ER to lag i samme
+        # koersel og er nok til at baere en kalibrerings-indsigelse; critic,
+        # open-loop og recurrence styrker den naar de findes.
+        if (active_focus or active_goal) and (active_self_model or uncertain_self_model):
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
@@ -346,6 +380,21 @@ def _open_loop_domain_key(canonical_key: str) -> str:
 def _world_domain_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
     return parts[-1] if len(parts) >= 3 else "world-view"
+
+
+def _snapshot_label(snapshot: dict[str, object], domain_key: str) -> str:
+    """Et læsbart emne til titlen — run-id'et er domænet, ikke en titel.
+
+    Domænet er kørslen, men «Visible 329b63ed» siger intet. Vi bruger den
+    titel laget selv bærer, og falder tilbage til domænet.
+    """
+    for felt in ("active_focus", "active_goal", "blocked_goal", "active_self_model", "active_critic"):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                return text[:80]
+    return domain_key
 
 
 def _domain_title(domain_key: str) -> str:

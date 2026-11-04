@@ -165,7 +165,8 @@ def _session_for_task(task: dict[str, Any]) -> str:
 
 
 def _start(text: str, *, session_id: str, origin: str, task_id: str,
-           max_tool_calls: int, max_seconds: float) -> bool:
+           max_tool_calls: int, max_seconds: float,
+           started_callback: Any = None, completion_callback: Any = None) -> bool:
     from core.services.background_start_reservation import reserve_background_start
     from core.services.visible_autonomous_run import start_autonomous_run
 
@@ -179,6 +180,8 @@ def _start(text: str, *, session_id: str, origin: str, task_id: str,
         return bool(start_autonomous_run(
             text, session_id=session_id, origin=origin, task_id=task_id,
             max_tool_calls=max_tool_calls, max_seconds=max_seconds,
+            started_callback=started_callback,
+            completion_callback=completion_callback,
         ))
 
 
@@ -263,11 +266,24 @@ def dispatch_one() -> dict[str, Any]:
         return {"status": "ok", "started": 0, "reason": "no-session"}
 
     try:
+        def _started(*, visible_run_id: str, session_id: str, **_kw: Any) -> None:
+            side_tasks.attach_autonomous_session(
+                task_id, worker_id=worker_id, session_id=session_id,
+                run_id=visible_run_id,
+            )
+
+        def _finished(*, outcome: str, visible_run_id: str, session_id: str,
+                      error: str = "", **_kw: Any) -> None:
+            side_tasks.reconcile_run(
+                task_id, outcome=outcome, run_id=visible_run_id, error=error,
+            )
+
         started = _start(
             _directive(task), session_id=session_id,
             origin=f"side-task-{mode}", task_id=task_id,
             max_tool_calls=int(task.get("max_tool_calls") or 12),
             max_seconds=float(int(task.get("max_minutes") or 20) * 60),
+            started_callback=_started, completion_callback=_finished,
         )
     except Exception as exc:  # noqa: BLE001
         side_tasks.release_autonomous_claim(
@@ -281,9 +297,13 @@ def dispatch_one() -> dict[str, Any]:
         )
         return {"status": "ok", "started": 0, "reason": "start-rejected"}
 
-    side_tasks.attach_autonomous_session(
-        task_id, worker_id=worker_id, session_id=session_id,
-    )
+    # The started callback binds the concrete run id and moves the task from
+    # ``activated`` to ``running``.  Keep a fallback for mocked/legacy starters
+    # that return True without invoking callbacks.
+    if str((side_tasks.get(task_id) or {}).get("status") or "") == "activated":
+        side_tasks.attach_autonomous_session(
+            task_id, worker_id=worker_id, session_id=session_id,
+        )
     try:
         _note_daily_start(task_id)
     except Exception:  # the already-started run remains authoritative

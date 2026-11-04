@@ -35,7 +35,11 @@ import '../../styles/side-tasks.css'
 const STATUS_TEKST: Record<string, string> = {
   pending: 'Venter',
   queued: 'I kø',
-  activated: 'I gang',
+  activated: 'Starter',
+  running: 'Kører',
+  paused: 'Pauset',
+  blocked: 'Blokeret',
+  failed: 'Fejlet',
   completed: 'Færdig',
   dismissed: 'Fjernet',
 }
@@ -118,7 +122,7 @@ export function SideOpgaveListe({ config, onClose, fuld = false, onFuld, refresh
   }
 
   const aabne = (opgaver ?? []).filter(
-    (t) => t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
+    (t) => t.status !== 'completed' && t.status !== 'dismissed')
   const lukkede = (opgaver ?? []).filter(
     (t) => t.status === 'completed' || t.status === 'dismissed')
 

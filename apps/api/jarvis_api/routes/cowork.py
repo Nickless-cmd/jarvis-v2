@@ -281,14 +281,13 @@ async def cowork_side_task_rediger(side_task_id: str, payload: dict = Body(defau
 
 @router.post("/side-tasks/{side_task_id}/status")
 async def cowork_side_task_status(side_task_id: str, payload: dict = Body(default={})) -> dict:
-    """Skift en sideopgaves status fra Desk: `activated` (startet fra kortet —
-    «i gang»), `completed` (lavet) eller `dismissed` (fjernet). Genåbning
-    findes ikke — terminale opgaver bliver terminale (service-reglen)."""
+    """Skift sideopgavens runtime-status; terminale opgaver kan ikke genåbnes."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
     status = str((payload or {}).get("status") or "").strip().lower()
-    if status not in ("queued", "activated", "completed", "dismissed"):
+    if status not in ("queued", "activated", "running", "paused", "blocked",
+                      "failed", "completed", "dismissed"):
         raise HTTPException(status_code=400, detail="ukendt sideopgave-status")
     # `session` (3/10-2026): den samtale der LOESER opgaven. Uden den kan
     # hverken runtimen eller Jarvis selv vide at en given tur er arbejdet paa

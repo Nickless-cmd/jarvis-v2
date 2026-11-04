@@ -57,7 +57,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
   // pollede hvert 6. sekund for at opdage at noget havde ændret sig.
   const { opgaver: alle, hent } = useSideTasks(config ?? undefined)
   const opgaver = (alle ?? []).filter(
-    (t) => (t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
+    (t) => !(['completed', 'dismissed'] as string[]).includes(t.status)
       && !t.skjult_i_chat,
   )
   const [i, setI] = useState(0)
@@ -85,7 +85,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
   const idx = Math.min(i, n - 1)
   const t = opgaver[idx]!
   const standard: Valg = handlinger.worktree ? 'worktree' : 'lokalt'
-  const valg: Valg[] = [...(handlinger.worktree ? ['worktree' as const] : []), 'lokalt', 'baggrund', 'her', ...(t.status === 'activated' ? [] : ['koe' as const])]
+  const valg: Valg[] = [...(handlinger.worktree ? ['worktree' as const] : []), 'lokalt', 'baggrund', 'her', ...(['activated', 'running'].includes(t.status) ? [] : ['koe' as const])]
 
   const udfoer = async (v: Valg) => {
     if (!config || travl) return
@@ -108,8 +108,8 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
         else arbejds = await handlinger.loesHer(t)
         // Startet = i gang, OG knyttet til den samtale der løser den — så
         // lukke-instruksen kan stå netop dér.
-        if (t.status !== 'activated' || arbejds) {
-          await setSideTaskStatus(config, t.side_task_id, 'activated', { session: arbejds })
+        if (t.status !== 'running' || arbejds) {
+          await setSideTaskStatus(config, t.side_task_id, 'running', { session: arbejds })
         }
       }
       void hent()
@@ -170,7 +170,7 @@ export function SideOpgaveKort({ config, handlinger }: { config: ApiConfig | nul
     <div className={`sok-dok${n > 1 ? ' sok-dok-stak' : ''}${n > 2 ? ' sok-dok-stak-tre' : ''}`} ref={rod}>
       <section className={`sok${n > 1 ? ' sok-stak' : ''}`} aria-label="Sideopgave" data-testid="side-tasks" aria-busy={travl}>
         <div className="sok-top">
-          <span className="sok-overskrift">Sideopgave{t.status === 'activated' ? <span className="sok-igang">i gang</span> : t.status === 'queued' ? <span className="sok-igang">i kø</span> : null}</span>
+          <span className="sok-overskrift">Sideopgave{t.status === 'running' ? <span className="sok-igang">i gang</span> : t.status === 'activated' ? <span className="sok-igang">starter</span> : t.status === 'queued' ? <span className="sok-igang">i kø</span> : t.status === 'paused' ? <span className="sok-igang">pauset</span> : t.status === 'blocked' ? <span className="sok-igang">blokeret</span> : t.status === 'failed' ? <span className="sok-igang">fejlet</span> : null}</span>
           <button type="button" className="sok-luk" aria-label="Skjul i chatten" title="Skjul i chatten — opgaven findes stadig under Side-opgaver" disabled={travl} onClick={() => void fjern()}>
             <X size={15} />
           </button>

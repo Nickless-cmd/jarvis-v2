@@ -68,7 +68,7 @@ def test_dismiss_tool_rejects_unknown_decision_and_lists_open_only(monkeypatch):
     side_tasks.resolve(tid, decision="activated")
     listed = side_tasks._exec_list_side_tasks({})
     assert listed["count"] == 1 and listed["side_tasks"][0]["status"] == "activated"
-    assert "(i gang)" in side_tasks.side_tasks_prompt_section()
+    assert "(starter)" in side_tasks.side_tasks_prompt_section()
 
 
 # ── Linket til den samtale der LOESER opgaven (3/10-2026) ─────────────────

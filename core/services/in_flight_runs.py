@@ -745,6 +745,14 @@ def mark_tool(run_id: str, tool_name: str) -> None:
             records[key]["last_tool"] = str(tool_name)[:80]
             records[key]["last_progress_at"] = _iso()
     _mutate(change)
+    # Side-task heartbeat is runtime-owned: the model does not need to
+    # remember a second status call for every tool step.
+    try:
+        from core.services.side_tasks import record_run_progress
+        record_run_progress(run_id, current_step=f"tool:{str(tool_name)[:120]}")
+    except Exception:
+        logger.debug("kunne ikke spejle side-task-progress for %s", run_id,
+                     exc_info=True)
 
 
 def mark_completed(run_id: str) -> None:

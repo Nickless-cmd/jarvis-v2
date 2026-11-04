@@ -774,7 +774,11 @@ def byg_indbakke(
     # Sideopgaver er en projektion af deres eget lager. Der skrives ingen
     # inbox_items-række, og hverken læsning eller statusmapping muterer kilden.
     if bruger_id == _ejer_id():
-        navne = {"pending": "venter", "queued": "kø", "activated": "i gang"}
+        navne = {
+            "pending": "venter", "queued": "kø", "activated": "starter",
+            "running": "i gang", "paused": "pauset", "blocked": "blokeret",
+            "failed": "fejlet",
+        }
         for t in k.side_opgaver(bruger_id):
             status = navne.get(str(t.get("status") or ""))
             sid = str(t.get("side_task_id") or "")

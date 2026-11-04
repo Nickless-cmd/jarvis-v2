@@ -107,7 +107,7 @@ describe('SideOpgaveKort (CC «Suggested task»)', () => {
     // praecis fejlen Bjoern saa 3/10 («maatte jeg minde ham om at markere
     // den flaggede opgave faerdig»).
     const forventet = { startLokalt: 'chat-ny', baggrund: 'chat-bg', loesHer: 'chat-her' }[handling as 'startLokalt']
-    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'activated', { session: forventet }))
+    await waitFor(() => expect(setSideTaskStatus).toHaveBeenCalledWith(cfg, 'a', 'running', { session: forventet }))
     expect(await screen.findByText('i gang')).toBeInTheDocument()
   })
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9648/18002 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9652/18006 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9648/18002 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 864 | 1572 | 54% |
-| `core.services` | 6447 | 12253 | 52% |
+| `core.services` | 6451 | 12257 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1339,7 +1339,7 @@ Generated from source. 9648/18002 functions/methods documented (53%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L1079)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L1087)
 - `core/services/inbox_importance.py` :: `is_round_worthy` (L16)
 - `core/services/inbox_importance.py` :: `normalize_importance` (L11)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L297)
@@ -2083,9 +2083,9 @@ Generated from source. 9648/18002 functions/methods documented (53%). The list b
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `get` (L653)
-- `core/services/side_tasks.py` :: `list_pending` (L500)
-- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L641)
+- `core/services/side_tasks.py` :: `get` (L708)
+- `core/services/side_tasks.py` :: `list_pending` (L505)
+- `core/services/side_tasks.py` :: `mark_autonomy_exhausted_reported` (L696)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)

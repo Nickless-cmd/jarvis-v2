@@ -18,6 +18,7 @@ Alt read-only, self-safe, kaster ALDRIG.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -135,6 +136,39 @@ def _eval_causal_sequence(prov: dict[str, Any], contract: dict[str, Any] | None 
     return test_causal_hypothesis(x_fam, y_fam)
 
 
+def _observation_fingerprint(subject: str, comparator: str, *, window: int = 300) -> str:
+    """Hash af det FAKTISKE datagrundlag — ikke af hvor mange rækker der indgik.
+
+    Et antal er ikke en identitet. Målt 4/11-2026 havde `ground_ref` formen ``"23:5"``
+    (subject-runs : comparator-runs), og det fejler på to måder:
+
+    (a) **Korrigeret måling.** Rettes en `finished_at` (og dermed latency) ændrer
+        antallet sig ikke. Ny data, samme nøgle → dedup'en i `record_governed_sample`
+        afviser den som duplikat, og Centralen ser ikke at grundlaget flyttede sig.
+    (b) **Rullende vindue.** `aggregate_model_outcomes` læser de seneste 300 runs. Når
+        de nyeste kommer ind, falder de ældste ud. ``"23:5"`` kan altså dække to helt
+        forskellige sæt runs.
+
+    Hashen dækker præcis de felter latency-målet beregnes fra (`run_id`, `started_at`,
+    `finished_at`), så identiteten flytter sig hvis og kun hvis grundlaget gør.
+
+    Returnerer "" ved fejl — kalderen falder da tilbage til antals-nøglen frem for en
+    tom streng, der ville kollapse alle observationer til én.
+    """
+    try:
+        from core.runtime.db import recent_visible_runs
+        parts: list[str] = []
+        for r in recent_visible_runs(limit=int(window)):
+            if f"{r.get('provider')}/{r.get('model')}" not in (subject, comparator):
+                continue
+            parts.append(f"{r.get('run_id')}|{r.get('started_at')}|{r.get('finished_at')}")
+        parts.sort()
+        return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:12]
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: kunne ikke fingeraftrykke grundlaget: %s", exc)
+        return ""
+
+
 def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | None:
     """Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN.
 
@@ -180,7 +214,14 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     # sig mens ground_ref stod stille — og dedup'en i `record_governed_sample`
     # (nøgle: source+ground_ref) afviste den nye observation som «duplikat».
     # Centralen kunne altså overse ny evidens om præcis den hypotese den testede.
-    cur = f"{int(sa.get('samples') or 0)}:{int(ca.get('samples') or 0)}"
+    #
+    # Et ANTAL er stadig ikke en identitet (målt 4/11-2026, anden runde): to forskellige
+    # datasæt kan have samme antal runs — en korrigeret `finished_at` ændrer latency uden
+    # at ændre antallet, og det rullende 300-runs-vindue kan udskifte grundlaget helt
+    # uden at tællerne rykker. Nøglen bærer derfor også en hash af de faktiske rækker.
+    s_n, c_n = int(sa.get("samples") or 0), int(ca.get("samples") or 0)
+    fp = _observation_fingerprint(subject, comparator)
+    cur = f"{s_n}:{c_n}:{fp}" if fp else f"{s_n}:{c_n}"
 
     # TRE udfald, ikke to: «hurtigere, men ikke markant nok» er ikke et modbevis.
     # Et binært udfald ville stemple al utydelig evidens som modsigelse — samme

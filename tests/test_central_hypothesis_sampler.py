@@ -537,7 +537,9 @@ def test_ground_ref_daekker_begge_parter_ikke_kun_subject(isolated_runtime, monk
         "p/slow": {"samples": 5, "latency_ms": 1000.0},
     })
     a = smp._eval_contract_comparative(contract)
-    assert a["cursor"] == "10:5", a
+    # Noeglen baerer nu ogsaa en hash af de faktiske rækker — et antal alene er
+    # ikke en identitet (korrigeret maaling / rullende vindue, maalt 4/11-2026).
+    assert a["cursor"].startswith("10:5:"), a
 
     # Samme subject, men comparator har fået ét run mere: en NY observation.
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
@@ -545,6 +547,82 @@ def test_ground_ref_daekker_begge_parter_ikke_kun_subject(isolated_runtime, monk
         "p/slow": {"samples": 6, "latency_ms": 1000.0},
     })
     b = smp._eval_contract_comparative(contract)
-    assert b["cursor"] == "10:6", b
+    assert b["cursor"].startswith("10:6:"), b
     assert a["cursor"] != b["cursor"], \
         "ny comparator-data må ikke se ud som den samme observation"
+
+
+# ── Observations-identitet (4/11-2026, anden runde) ───────────────────────────
+# `ground_ref` var `"23:5"` = ANTAL runs. Et antal er ikke en identitet: to
+# forskellige datasæt kan have samme antal. ChatGPT pegede på netop dette efter
+# foerste rettelse — og maalt bagefter er det ikke teoretisk: subject faar 0,40
+# nye runs pr. tick, saa fem samples bygger paa et grundlag der er vokset med
+# 2-3 runs ud af 23. Nøglen bærer derfor en hash af de faktiske rækker.
+
+def _run(rid: str, model: str, start: str, slut: str) -> dict:
+    return {"provider": "p", "model": model, "run_id": rid,
+            "started_at": start, "finished_at": slut}
+
+
+def test_korrigeret_maaling_giver_ny_observation(isolated_runtime, monkeypatch):
+    """Rettes én måling, ændrer ANTALLET runs sig ikke — men grundlaget gør.
+
+    Uden hashen ville den korrigerede måling få samme `ground_ref` som den gamle og
+    blive afvist som duplikat: Centralen ville mangle evidens om at grundlaget flyttede sig.
+    """
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    rows[1] = {**rows[1], "finished_at": "t4-korrigeret"}
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    assert a["cursor"] != b["cursor"], (
+        f"korrigeret maaling skal give en NY observation, ikke en dublet:"
+        f" {a['cursor']} vs {b['cursor']}")
+
+
+def test_rullende_vindue_giver_ny_observation(isolated_runtime, monkeypatch):
+    """300-runs-vinduet glider: samme ANTAL kan dække helt forskellige runs."""
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    foerste = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: foerste)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    # samme antal rækker — men de ældste er rullet ud og nye kommet ind
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
+        _run("r9", "fast", "t9", "t10"), _run("r8", "slow", "t7", "t8")])
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    assert a["cursor"] != b["cursor"], (
+        f"rullende vindue skal give en NY observation: {a['cursor']} vs {b['cursor']}")
+
+
+def test_identisk_grundlag_giver_samme_observation(isolated_runtime, monkeypatch):
+    """Modsat kant: uændret grundlag er STADIG en dublet. Hashen må ikke goere
+    dedup virkningsloes — saa ville samme observation taelle fem gange som fem beviser."""
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 10, "latency_ms": 100.0},
+        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+    })
+    rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+    assert a["cursor"] == b["cursor"], (
+        f"identisk grundlag skal give samme noegle — ellers taeller samme observation"
+        f" flere gange: {a['cursor']} vs {b['cursor']}")
+    assert a["cursor"].count(":") == 2, f"noeglen skal baere antal + hash: {a['cursor']}"

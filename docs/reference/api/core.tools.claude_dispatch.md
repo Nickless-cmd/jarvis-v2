@@ -11,12 +11,12 @@ _(no top-level classes or functions)_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_now_iso` | `()` | — | [src](../../../core/tools/claude_dispatch/audit.py#L12) |
-| function | `_sikr_ophav_kolonner` | `(conn)` | Doven migration — samme mønster som `kind` på chat_sessions. | [src](../../../core/tools/claude_dispatch/audit.py#L16) |
-| function | `_ophav` | `()` | Hvilken kørsel og session udløste denne dispatch? | [src](../../../core/tools/claude_dispatch/audit.py#L33) |
-| function | `_work_ref` | `(run_id, task_id)` | RODEN for dette arbejde, som en præfikset reference. | [src](../../../core/tools/claude_dispatch/audit.py#L61) |
-| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L81) |
-| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L98) |
-| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L116) |
+| function | `_sikr_kolonner` | `(conn)` | Doven migration — samme mønster som `kind` på chat_sessions. | [src](../../../core/tools/claude_dispatch/audit.py#L16) |
+| function | `_ophav` | `()` | Hvilken kørsel og session udløste denne dispatch? | [src](../../../core/tools/claude_dispatch/audit.py#L41) |
+| function | `_work_ref` | `(run_id, task_id)` | RODEN for dette arbejde, som en præfikset reference. | [src](../../../core/tools/claude_dispatch/audit.py#L69) |
+| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L89) |
+| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error, failure_kind=…, token_source=…)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L106) |
+| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L126) |
 
 ## `core/tools/claude_dispatch/budget.py`
 
@@ -29,6 +29,17 @@ _(no top-level classes or functions)_
 | method | `BudgetTracker.check_and_reserve` | `(self)` | — | [src](../../../core/tools/claude_dispatch/budget.py#L24) |
 | method | `BudgetTracker.record_usage` | `(self, tokens)` | — | [src](../../../core/tools/claude_dispatch/budget.py#L50) |
 | method | `BudgetTracker.current_dispatch_count` | `(self)` | — | [src](../../../core/tools/claude_dispatch/budget.py#L63) |
+
+## `core/tools/claude_dispatch/failure.py`
+_Hvorfor fejlede dispatchen? Exit-koden kan ikke svare._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DispatchFailure` | `` | — | [src](../../../core/tools/claude_dispatch/failure.py#L79) |
+| method | `DispatchFailure.is_failure` | `(self)` | — | [src](../../../core/tools/claude_dispatch/failure.py#L86) |
+| method | `DispatchFailure.needs_human` | `(self)` | Kvote gør ikke. Et dødt token gør — der skal et nyt token til. | [src](../../../core/tools/claude_dispatch/failure.py#L90) |
+| function | `_first_match` | `(text, patterns)` | — | [src](../../../core/tools/claude_dispatch/failure.py#L95) |
+| function | `classify_dispatch_failure` | `(stdout=…, stderr=…, exit_code=…)` | Klassificér en afsluttet dispatch. | [src](../../../core/tools/claude_dispatch/failure.py#L103) |
 
 ## `core/tools/claude_dispatch/host_oauth.py`
 _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
@@ -50,9 +61,9 @@ _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_prompt` | `(spec, task_id)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L24) |
-| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L67) |
-| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L71) |
+| function | `_build_prompt` | `(spec, task_id)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L28) |
+| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L71) |
+| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L75) |
 
 ## `core/tools/claude_dispatch/spec.py`
 

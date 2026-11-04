@@ -58,8 +58,8 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
         # HELE listen fejle paa en manglende kolonne — en flade der gaar ned
         # fordi et nyt felt kom til.
         try:
-            from core.tools.claude_dispatch.audit import _sikr_ophav_kolonner
-            _sikr_ophav_kolonner(conn)
+            from core.tools.claude_dispatch.audit import _sikr_kolonner
+            _sikr_kolonner(conn)
         except Exception:
             pass
         rows = conn.execute(

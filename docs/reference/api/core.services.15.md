@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/grounded_capability_followup.py`
+_Grounded capability follow-up — det andet pas efter en udført evne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_visible_runs` | `()` | Doven import. På modulniveau ville det være en cyklus — visible_runs | [src](../../../core/services/grounded_capability_followup.py#L30) |
+| function | `_run_grounded_capability_followup` | `(run, *, capability_id, invocation, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L36) |
+| function | `_build_grounded_capability_followup_message` | `(run, *, capability_id, invocation, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L71) |
+| function | `_run_grounded_multi_capability_followup` | `(run, *, capability_results, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L113) |
+| function | `_build_grounded_multi_capability_followup_message` | `(run, *, capability_results, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L146) |
+| function | `_is_code_analysis_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L191) |
+| function | `_is_memory_commit_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L210) |
+
 ## `core/services/guided_learning_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -622,12 +635,4 @@ _Shared importance and delivery policy for Jarvis' inbox surfaces._
 | function | `normalize_importance` | `(value, *, default=…)` | — | [src](../../../core/services/inbox_importance.py#L11) |
 | function | `is_round_worthy` | `(value)` | — | [src](../../../core/services/inbox_importance.py#L16) |
 | function | `prompt_order` | `(item)` | Unseen always wins, then importance, then durable creation order. | [src](../../../core/services/inbox_importance.py#L20) |
-
-## `core/services/inbox_prompt_section.py`
-_Indbakken i prompten — læseren hele kæden manglede._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L97) |
-| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L117) |
 

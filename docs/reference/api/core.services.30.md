@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_followup_results.py`
+_Runde-resultater → `ToolResult` til modellens naeste runde og til den gemte tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_billede` | `(result)` | — | [src](../../../core/services/visible_followup_results.py#L34) |
+| function | `to_followup_results` | `(tool_calls, round_results, resolved_texts)` | — | [src](../../../core/services/visible_followup_results.py#L39) |
+| function | `med_react_nudge` | `(results)` | PROMPT-kopien: samme resultater, men det sidste baerer ReAct-nudgen. | [src](../../../core/services/visible_followup_results.py#L77) |
+
 ## `core/services/visible_inner_life.py`
 _Visible-lane inner-life section — gives the entity its voice in the prompt._
 
@@ -558,11 +567,4 @@ _In-process real-time gate: is a VISIBLE turn actively assembling/streaming righ
 | function | `enter_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L38) |
 | function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
 | function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
-
-## `core/services/visible_stream_gate_wrapper.py`
-_Livscyklus-gate omkring en synlig async stream._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `gate_visible_stream` | `(inner_stream)` | Hold visible-stream-gaten fra første iteration til generatorens exit. | [src](../../../core/services/visible_stream_gate_wrapper.py#L11) |
 

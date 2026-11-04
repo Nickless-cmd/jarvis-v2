@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_prompt_context.py`
+_Request-scoped research instructions consumed by prompt assembly surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
+| function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
+| function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
+
 ## `core/services/research_quality.py`
 _Deterministic, inspectable quality gates for research synthesis._
 
@@ -598,12 +607,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L132) |
 | function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L157) |
 | function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L168) |
-
-## `core/services/runtime_action_registry.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuntimeActionSpec` | `` | — | [src](../../../core/services/runtime_action_registry.py#L12) |
-| function | `list_runtime_action_specs` | `()` | — | [src](../../../core/services/runtime_action_registry.py#L109) |
-| function | `get_runtime_action_spec` | `(action_id)` | — | [src](../../../core/services/runtime_action_registry.py#L113) |
 

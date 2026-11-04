@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18064 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18083 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,26 +41,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18064 functions/
 - [`core.services.09`](core.services.09.md) — `code_aesthetic_daemon` … `conversation_rhythm`
 - [`core.services.10`](core.services.10.md) — `conversation_topics` … `db_sentinel`
 - [`core.services.11`](core.services.11.md) — `decision_action_gate` … `dispatch_guards`
-- [`core.services.12`](core.services.12.md) — `dispatch_status` … `emotional_chords`
-- [`core.services.13`](core.services.13.md) — `emotional_controls` … `forced_tool_choice_probe`
-- [`core.services.14`](core.services.14.md) — `forgetting_curve` … `grounded_capability_followup`
-- [`core.services.15`](core.services.15.md) — `guided_learning_runtime` … `inbox_prompt_section`
-- [`core.services.16`](core.services.16.md) — `inbox_state` … `ledger_write_path`
-- [`core.services.17`](core.services.17.md) — `lessons` … `memory_recall_engine`
-- [`core.services.18`](core.services.18.md) — `memory_recall_telemetry` … `non_visible_lane_execution`
-- [`core.services.19`](core.services.19.md) — `non_visible_rate_cap` … `permission_axes`
-- [`core.services.20`](core.services.20.md) — `permission_classifier` … `projection_runtime`
-- [`core.services.21`](core.services.21.md) — `projection_tool_router` … `quota_store`
-- [`core.services.22`](core.services.22.md) — `r2_5_blocking_gate` … `research_prompt_context`
-- [`core.services.23`](core.services.23.md) — `research_quality` … `runtime_action_registry`
-- [`core.services.24`](core.services.24.md) — `runtime_awareness_signal_tracking` … `self_deception_guard`
-- [`core.services.25`](core.services.25.md) — `self_experiments` … `session_persistence_flag`
-- [`core.services.26`](core.services.26.md) — `session_prewarm` … `skill_scanner`
-- [`core.services.27`](core.services.27.md) — `skill_security_scanner` … `temporal_recurrence_signal_tracking`
-- [`core.services.28`](core.services.28.md) — `temporal_rhythm` … `totp_verifier`
-- [`core.services.29`](core.services.29.md) — `truth_gate_v2` … `visible_followup_results`
-- [`core.services.30`](core.services.30.md) — `visible_inner_life` … `visible_stream_gate_wrapper`
-- [`core.services.31`](core.services.31.md) — `visible_synthesis_stream` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `dispatch_quota` … `emotion_tagging`
+- [`core.services.13`](core.services.13.md) — `emotional_chords` … `followup_output_budget`
+- [`core.services.14`](core.services.14.md) — `forced_tool_choice_probe` … `ground_truth_registry`
+- [`core.services.15`](core.services.15.md) — `grounded_capability_followup` … `inbox_importance`
+- [`core.services.16`](core.services.16.md) — `inbox_prompt_section` … `ledger_recovery`
+- [`core.services.17`](core.services.17.md) — `ledger_write_path` … `memory_pruning_daemon`
+- [`core.services.18`](core.services.18.md) — `memory_recall_engine` … `non_visible_fallback`
+- [`core.services.19`](core.services.19.md) — `non_visible_lane_execution` … `periodic_jobs_scheduler`
+- [`core.services.20`](core.services.20.md) — `permission_axes` … `projection_guard`
+- [`core.services.21`](core.services.21.md) — `projection_runtime` … `query_language_bridge`
+- [`core.services.22`](core.services.22.md) — `quota_store` … `research_orchestrator`
+- [`core.services.23`](core.services.23.md) — `research_prompt_context` … `runtime_action_outcome_tracking`
+- [`core.services.24`](core.services.24.md) — `runtime_action_registry` … `self_critique_runtime`
+- [`core.services.25`](core.services.25.md) — `self_deception_guard` … `session_permission`
+- [`core.services.26`](core.services.26.md) — `session_persistence_flag` … `skill_relevance_surface`
+- [`core.services.27`](core.services.27.md) — `skill_scanner` … `temporal_narrative`
+- [`core.services.28`](core.services.28.md) — `temporal_recurrence_signal_tracking` … `tool_world_change`
+- [`core.services.29`](core.services.29.md) — `totp_verifier` … `visible_followup_lean`
+- [`core.services.30`](core.services.30.md) — `visible_followup_results` … `visible_stream_gate`
+- [`core.services.31`](core.services.31.md) — `visible_stream_gate_wrapper` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9703/18064 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9712/18083 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9703/18064 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6496 | 12308 | 52% |
+| `core.services` | 6503 | 12323 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -34,7 +34,7 @@ Generated from source. 9703/18064 functions/methods documented (53%). The list b
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 616 | 1170 | 52% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
-| `core.tools.claude_dispatch` | 5 | 28 | 17% |
+| `core.tools.claude_dispatch` | 7 | 32 | 21% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 307 | 641 | 47% |
@@ -42,7 +42,7 @@ Generated from source. 9703/18064 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2599)
+## Undocumented public functions (2601)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1194,6 +1194,7 @@ Generated from source. 9703/18064 functions/methods documented (53%). The list b
 - `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L58)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
 - `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L20)
+- `core/services/dispatch_quota.py` :: `QuotaReading.get` (L85)
 - `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L49)
 - `core/services/docs_drift_watchdog.py` :: `read_report` (L19)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)
@@ -2366,15 +2367,16 @@ Generated from source. 9703/18064 functions/methods documented (53%). The list b
 - `core/skills/voice/voice_daemon_worker.py` :: `on_wake_word` (L113)
 - `core/skills/voice/voice_test_full.py` :: `get_first_session_id` (L25)
 - `core/skills/voice/voice_test_full.py` :: `run_voice_loop` (L65)
-- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L98)
-- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L116)
-- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L81)
+- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L106)
+- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L126)
+- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L89)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.check_and_reserve` (L24)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.current_dispatch_count` (L63)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.record_usage` (L50)
+- `core/tools/claude_dispatch/failure.py` :: `DispatchFailure.is_failure` (L86)
 - `core/tools/claude_dispatch/jail.py` :: `assert_inside_jail` (L16)
 - `core/tools/claude_dispatch/jail.py` :: `build_worktree_path` (L24)
-- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L71)
+- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L75)
 - `core/tools/claude_dispatch/spec.py` :: `parse_spec` (L33)
 - `core/tools/claude_dispatch/stream.py` :: `parse_stream_line` (L17)
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)

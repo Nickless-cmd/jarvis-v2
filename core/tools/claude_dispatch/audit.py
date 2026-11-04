@@ -13,14 +13,22 @@ def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
-def _sikr_ophav_kolonner(conn) -> None:
+def _sikr_kolonner(conn) -> None:
     """Doven migration — samme mønster som `kind` på chat_sessions.
 
     INTET tilbagefyld. En historisk dispatch kørte før kanten fandtes, og et
     gættet ophav ville være præcis den slags «sandhed» man ikke kan efterprøve.
     Tom streng betyder ærligt «ukendt».
+
+    2026-11-04: `failure_kind` og `token_source` kom til, fordi exit-koden
+    ikke kan skelne et dødt token fra en opbrugt kvote — begge er exit 1.
+    `token_source` findes også for at kunne MÅLE om host_proc-fallbacken
+    nogensinde rammes; ellers er det død kode der ser levende ud.
     """
-    for kolonne in ("origin_run_id", "origin_session_id", "work_ref"):
+    for kolonne in (
+        "origin_run_id", "origin_session_id", "work_ref",
+        "failure_kind", "token_source",
+    ):
         try:
             conn.execute(
                 f"ALTER TABLE claude_dispatch_audit ADD COLUMN {kolonne} "
@@ -82,7 +90,7 @@ def start_audit_row(task_id: str, spec: TaskSpec) -> None:
     rid, sid = _ophav()
     ref = _work_ref(rid, task_id)
     with connect() as conn:
-        _sikr_ophav_kolonner(conn)
+        _sikr_kolonner(conn)
         conn.execute(
             """
             INSERT INTO claude_dispatch_audit
@@ -98,17 +106,19 @@ def start_audit_row(task_id: str, spec: TaskSpec) -> None:
 def finalize_audit_row(
     task_id: str, *, status: str, tokens_used: int,
     exit_code: int | None, diff_summary: str | None, error: str | None,
+    failure_kind: str = "", token_source: str = "",
 ) -> None:
     with connect() as conn:
+        _sikr_kolonner(conn)
         conn.execute(
             """
             UPDATE claude_dispatch_audit
             SET ended_at=?, status=?, tokens_used=?, exit_code=?,
-                diff_summary=?, error=?
+                diff_summary=?, error=?, failure_kind=?, token_source=?
             WHERE task_id=? AND status='running'
             """,
             (_now_iso(), status, int(tokens_used), exit_code,
-             diff_summary, error, task_id),
+             diff_summary, error, failure_kind, token_source, task_id),
         )
         conn.commit()
 

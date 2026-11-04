@@ -7626,6 +7626,83 @@
         "iso_utc_offset"
       ]
     },
+    "central_hypothesis_evidence_runs": {
+      "digest": "ef:54:fe:d8:73:b8:46:9d:95:9c:d3:8e:80:09:97:58:19:41:a1:f3:05:d7:4b:3d:55:c2:81:ba:c7:37:07:70",
+      "schema": {
+        "columns": [
+          {
+            "name": "first_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "hyp_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_cher_hyp",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "hyp_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_cher_hyp ON central_hypothesis_evidence_runs(hyp_id)"
+          },
+          {
+            "name": "sqlite_autoindex_central_hypothesis_evidence_runs_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "hyp_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "central_hypothesis_samples": {
       "digest": "78:77:3b:b6:14:3e:ed:2c:47:cd:69:61:2b:0f:80:c8:7f:19:d5:f0:a5:1a:67:ce:be:27:25:80:40:1f:cc:9d",
       "schema": {
@@ -18464,7 +18541,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "emergent_patterns": {

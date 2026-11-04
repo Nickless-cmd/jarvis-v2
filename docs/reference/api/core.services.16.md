@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/inbox_prompt_section.py`
+_Indbakken i prompten — læseren hele kæden manglede._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bruger_id` | `()` | Den autentificerede bruger, eller workspacet som ejerens egen vej. | [src](../../../core/services/inbox_prompt_section.py#L97) |
+| function | `inbox_prompt_section` | `()` | Indbakken som én prompt-sektion. `None` når der intet er. | [src](../../../core/services/inbox_prompt_section.py#L117) |
+
 ## `core/services/inbox_state.py`
 _Proveniens og bogføring for indbakken._
 
@@ -750,12 +758,4 @@ _Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret.
 |---|---|---|---|---|
 | function | `inspect` | `(session_id)` | Se på sessionen UDEN at røre den. Tager ingen lease, skriver intet. | [src](../../../core/services/ledger_recovery.py#L49) |
 | function | `recover` | `(session_id, *, owner=…, grund=…)` | Luk en åben tur med en balancerende hændelse. Kræver skriveret. | [src](../../../core/services/ledger_recovery.py#L77) |
-
-## `core/services/ledger_write_path.py`
-_Skrivevejen for en session hvor LEDGEREN er sandheden._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `LedgerWriteFailed` | `` | Skrivningen nåede ikke ledgeren. Kalderen har IKKE fået sin besked gemt. | [src](../../../core/services/ledger_write_path.py#L42) |
-| function | `append_message` | `(session_id, *, role, content, created_at=…, user_id=…, workspace_name=…, reasoning_content=…, git_sha=…, content_json=…, message_id=…, owner=…)` | Skriv én besked gennem ledgeren og lad projektoren lave rækken. | [src](../../../core/services/ledger_write_path.py#L46) |
 

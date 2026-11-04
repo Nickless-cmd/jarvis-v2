@@ -13,6 +13,10 @@ from core.tools.claude_dispatch.audit import (
     start_audit_row, finalize_audit_row,
 )
 from core.tools.claude_dispatch.budget import BudgetTracker
+from core.services.dispatch_quota import quota_preflight
+from core.tools.claude_dispatch.failure import (
+    NONE, classify_dispatch_failure,
+)
 from core.tools.claude_dispatch.host_oauth import find_host_oauth_token
 from core.tools.claude_dispatch.spec import TaskSpec
 from core.tools.claude_dispatch.stream import parse_stream_line
@@ -78,6 +82,37 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     start_audit_row(task_id, spec)
     eventbus.publish("tool.dispatch.started", {"task_id": task_id, "goal": spec.goal})
 
+    # 2026-11-04: kvoten måles FØR worktreet oprettes. Ved 100 % er dispatchen
+    # dødsdømt — den ville oprette et worktree og dø efter sekunder med en
+    # fejl der ligner en kodefejl. Blokeringen ligger efter audit-rækken, så
+    # det kan ses at den blev afvist og hvorfor; ellers forsvinder den sporløst.
+    # Ved målefejl går den igennem (fail-open): en netværksfejl er ikke et
+    # bevis for at kvoten er brugt.
+    if os.environ.get("JARVIS_DISPATCH_PREFLIGHT", "1").strip() not in ("0", "false", "no"):
+        preflight = quota_preflight("claude")
+        if not preflight["allow"]:
+            error = f"quota_exhausted: {preflight['reason']}"
+            finalize_audit_row(
+                task_id, status="error", tokens_used=0, exit_code=None,
+                diff_summary="", error=error, failure_kind="quota_exhausted",
+            )
+            eventbus.publish("tool.dispatch.finished", {
+                "task_id": task_id, "status": "error",
+                "tokens": 0, "branch": branch,
+                "failure_kind": "quota_exhausted",
+            })
+            return {
+                "task_id": task_id, "status": "error", "tokens": 0,
+                "branch": branch, "diff_summary": "", "error": error,
+                "failure_kind": "quota_exhausted",
+                "action": (
+                    "Kvoten er opbrugt — den går over af sig selv. "
+                    "Der blev IKKE oprettet et worktree, og intet arbejde er tabt. "
+                    f"Reset: {preflight['resets_at'] or 'ukendt'}"
+                ),
+                "needs_human": False,
+            }
+
     worktree_path = create_worktree(task_id)
 
     cmd = [
@@ -100,12 +135,24 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     # ~/.claude/.credentials.json alone returns 401 for headless calls.
     # We look up a live host token from any running Claude Code process
     # owned by the same user and inject it into the spawn env.
+    #
+    # 2026-11-04: efter at systemd-enheden sætter EnvironmentFile peger
+    # tokenet allerede i miljøet, så find_host_oauth_token() bliver aldrig
+    # kaldt i drift. Grenen er derfor BEVARET som fallback — den er korrekt
+    # og koster intet når den ikke rammes — men den er gjort MÅLBAR i stedet
+    # for formodet: token_source følger med i audit-rækken, så «blev
+    # fallbacken nogensinde brugt?» kan besvares med et tal i stedet for en
+    # antagelse. Død kode der ser levende ud er netop fejlen; død kode der
+    # rapporterer at den er død, er ikke.
     spawn_env = os.environ.copy()
+    token_source = "env"  # noqa: literal-credential — kilde-etiket, ikke en hemmelighed
     if not spawn_env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        token_source = "host_proc"
         host_token = find_host_oauth_token()
         if host_token:
             spawn_env["CLAUDE_CODE_OAUTH_TOKEN"] = host_token
         else:
+            token_source = "missing"  # noqa: literal-credential — kilde-etiket, ikke en hemmelighed
             error = (
                 "no host Claude Code OAuth token available — "
                 "open Claude Code (desktop or terminal) so its session "
@@ -115,6 +162,7 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
             finalize_audit_row(
                 task_id, status=status, tokens_used=0,
                 exit_code=None, diff_summary="", error=error,
+                token_source=token_source,
             )
             eventbus.publish("tool.dispatch.finished", {
                 "task_id": task_id, "status": status,
@@ -141,9 +189,38 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     wd = threading.Thread(target=_watchdog, daemon=True)
     wd.start()
 
+    # 2026-11-04: stderr blev aldrig laest. Det betoed at aarsagen til en
+    # fejl — som oftest staar paa stderr — forsvandt, og at en proces der
+    # skrev meget til stderr kunne fylde pipe-bufferen og haenge. Begge er
+    # rettet her: en traad toemmer stderr loebende, og raa stdout gemmes
+    # forbi JSON-parseren, fordi fejlbeskeder som «You've hit your 5-hour
+    # limit» ikke er JSON og derfor blev kastet vaek af parse_stream_line.
+    _STDERR_LIMIT = 8000
+    _RAW_LIMIT = 8000
+    stderr_chunks: list[str] = []
+    raw_out: list[str] = []
+
+    def _drain_stderr() -> None:
+        total = 0
+        if proc.stderr is None:
+            return
+        try:
+            for chunk in proc.stderr:
+                if total >= _STDERR_LIMIT:
+                    continue
+                stderr_chunks.append(chunk)
+                total += len(chunk)
+        except Exception:
+            pass
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
     try:
         if proc.stdout is not None:
             for line in proc.stdout:
+                if sum(len(c) for c in raw_out) < _RAW_LIMIT:
+                    raw_out.append(line)
                 ev = parse_stream_line(line)
                 if ev is None:
                     continue
@@ -153,19 +230,36 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
                     {"task_id": task_id, "text": ev.text[:500], "tokens": ev.tokens},
                 )
         proc.wait()
+        stderr_thread.join(timeout=2.0)
         exit_code = proc.returncode
     except Exception as e:
         error = f"{type(e).__name__}: {e}"
         status = "error"
         try:
             proc.kill()
-        except Exception:
-            pass
+        except Exception as kill_err:  # processen kan allerede vaere vaek
+            logger.debug("proc.kill() efter fejl slog fejl: %s", kill_err)
 
+    failure_kind = NONE
+    action = ""
+    needs_human = False
     if exit_code != 0 and status == "ok":
         status = "error"
+        failure = classify_dispatch_failure(
+            stdout="".join(raw_out),
+            stderr="".join(stderr_chunks),
+            exit_code=exit_code,
+        )
+        failure_kind = failure.kind
+        action = failure.action
+        needs_human = failure.needs_human
         if error is None:
-            error = f"claude exited with code {exit_code}"
+            # Aarsagen staar i teksten, ikke i exit-koden: doedt token og
+            # opbrugt kvote giver BEGGE exit 1 (maalt 4/11-2026).
+            if failure.is_failure:
+                error = f"{failure.kind}: {failure.detail}"
+            else:
+                error = f"claude exited with code {exit_code}"
 
     if time.monotonic() >= deadline:
         status = "timeout"
@@ -182,10 +276,12 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     finalize_audit_row(
         task_id, status=status, tokens_used=tokens_total,
         exit_code=exit_code, diff_summary=diff_summary, error=error,
+        failure_kind=failure_kind, token_source=token_source,
     )
     eventbus.publish("tool.dispatch.finished", {
         "task_id": task_id, "status": status,
         "tokens": tokens_total, "branch": branch,
+        "failure_kind": failure_kind,
     })
 
     return {
@@ -195,4 +291,8 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
         "branch": branch,
         "diff_summary": diff_summary,
         "error": error,
+        "failure_kind": failure_kind,
+        "action": action,
+        "needs_human": needs_human,
+        "token_source": token_source,
     }

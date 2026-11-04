@@ -53,7 +53,7 @@ def _spec():
 # --------------------------------------------------------- migrationen
 
 def test_migrationen_tilfoejer_kolonnerne(_db):
-    audit._sikr_ophav_kolonner(_db)
+    audit._sikr_kolonner(_db)
     kolonner = {r[1] for r in _db.execute("PRAGMA table_info(claude_dispatch_audit)")}
     assert {"origin_run_id", "origin_session_id"} <= kolonner
 
@@ -61,9 +61,9 @@ def test_migrationen_tilfoejer_kolonnerne(_db):
 def test_migrationen_er_IDEMPOTENT(_db):
     """Den koerer ved HVER skrivning. Var den ikke idempotent, ville anden
     dispatch braekke."""
-    audit._sikr_ophav_kolonner(_db)
-    audit._sikr_ophav_kolonner(_db)
-    audit._sikr_ophav_kolonner(_db)
+    audit._sikr_kolonner(_db)
+    audit._sikr_kolonner(_db)
+    audit._sikr_kolonner(_db)
     kolonner = [r[1] for r in _db.execute("PRAGMA table_info(claude_dispatch_audit)")]
     assert kolonner.count("origin_run_id") == 1
 
@@ -74,7 +74,7 @@ def test_INTET_tilbagefyld_paa_gamle_raekker(_db):
     _db.execute(
         "INSERT INTO claude_dispatch_audit (task_id, started_at, spec_json, status) "
         "VALUES ('gammel','2026-01-01','{}','completed')")
-    audit._sikr_ophav_kolonner(_db)
+    audit._sikr_kolonner(_db)
     r = _db.execute("SELECT origin_run_id FROM claude_dispatch_audit "
                     "WHERE task_id='gammel'").fetchone()
     assert r["origin_run_id"] == ""
@@ -156,7 +156,7 @@ def test_fladen_sikrer_kolonnerne_foer_den_laeser():
                and n.name == "list_dispatches"), None)
     assert fn is not None
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
-    assert "_sikr_ophav_kolonner" in kaldt
+    assert "_sikr_kolonner" in kaldt
 
 
 # ------------------------------------------------------- RODEN, ikke ophavet

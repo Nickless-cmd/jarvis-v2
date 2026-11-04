@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dispatch_quota.py`
+_Kvote for de to dispatch-CLI'er — målt, aldrig gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/dispatch_quota.py#L64) |
+| function | `_epoch_iso` | `(value)` | — | [src](../../../core/services/dispatch_quota.py#L68) |
+| class | `QuotaReading` | `` | Én måling. `ok=False` betyder «jeg ved det ikke», ikke «nul brugt». | [src](../../../core/services/dispatch_quota.py#L75) |
+| method | `QuotaReading.get` | `(self, key, default=…)` | — | [src](../../../core/services/dispatch_quota.py#L85) |
+| function | `reset_cache` | `()` | Til tests og til når et token er skiftet og cachen lyver. | [src](../../../core/services/dispatch_quota.py#L92) |
+| function | `_cached` | `(backend, loader)` | — | [src](../../../core/services/dispatch_quota.py#L97) |
+| function | `_claude_token` | `()` | Token + hvor det kom fra. Miljøet vinder; env-filen er fallback. | [src](../../../core/services/dispatch_quota.py#L112) |
+| function | `_load_claude_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L138) |
+| function | `claude_quota` | `()` | 5-timers og ugentlig kvote for Claude. Cachet i 60 s. | [src](../../../core/services/dispatch_quota.py#L197) |
+| function | `_latest_rollout` | `()` | — | [src](../../../core/services/dispatch_quota.py#L204) |
+| function | `_tail_text` | `(path, limit=…)` | Rollout-filer kan være store; rate_limits står i den nyeste hale. | [src](../../../core/services/dispatch_quota.py#L220) |
+| function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L229) |
+| function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L247) |
+| function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L318) |
+| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L325) |
+| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L337) |
+
 ## `core/services/dispatch_status.py`
 _Typed dispatch-status enum for the dispatch-redesign._
 
@@ -656,17 +678,4 @@ _Emotion tagging — capture affective context at memory-creation time._
 | function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
 | function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
 | function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
-
-## `core/services/emotional_chords.py`
-_Emotional Chords — emergent qualities from signal combinations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ChordDef` | `` | A chord definition — two signals that produce an emergent quality. | [src](../../../core/services/emotional_chords.py#L50) |
-| class | `ActiveChord` | `` | A currently active emotional chord. | [src](../../../core/services/emotional_chords.py#L151) |
-| function | `compute_active_chords` | `()` | Detect active emotional chords from current pressure state. | [src](../../../core/services/emotional_chords.py#L165) |
-| function | `format_chord_for_prompt` | `(chord)` | Format a single chord for prompt injection. | [src](../../../core/services/emotional_chords.py#L226) |
-| function | `get_chord_lines` | `()` | Convenience: compute all active chords and format for prompt. | [src](../../../core/services/emotional_chords.py#L236) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/emotional_chords.py#L254) |
-| function | `_map_pressures_to_families` | `(dominant_pressures)` | Map active pressure vectors to their likely signal families. | [src](../../../core/services/emotional_chords.py#L265) |
 

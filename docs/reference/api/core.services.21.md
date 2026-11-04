@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_runtime.py`
+_Projektions-runtime — rene, versionerede folder over session-ledgeren._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Projection` | `` | — | [src](../../../core/services/projection_runtime.py#L52) |
+| function | `register` | `(navn, *, version, fold, start=…)` | Registrér en projektion. Samme navn to gange er en fejl, ikke en erstatning. | [src](../../../core/services/projection_runtime.py#L64) |
+| function | `registered` | `()` | — | [src](../../../core/services/projection_runtime.py#L80) |
+| function | `_unregister_all_for_tests` | `()` | — | [src](../../../core/services/projection_runtime.py#L84) |
+| function | `_ensure_checkpoint_table` | `(conn)` | — | [src](../../../core/services/projection_runtime.py#L90) |
+| function | `checkpoint` | `(session_id, navn)` | Hvor langt er denne projektion foldet for denne session? | [src](../../../core/services/projection_runtime.py#L105) |
+| function | `_gem_checkpoint` | `(session_id, navn, version, as_of_seq)` | — | [src](../../../core/services/projection_runtime.py#L126) |
+| function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
+| function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
+| function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
+
 ## `core/services/projection_tool_router.py`
 _Projektion: `tool_router_decisions` foldet fra sessionens hændelser._
 
@@ -616,18 +632,4 @@ _Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
 |---|---|---|---|---|
 | function | `normalise_for_embedding` | `(text)` | Byt danske fagord til engelske foer et embedding-opslag. | [src](../../../core/services/query_language_bridge.py#L80) |
 | function | `build_query_language_bridge_surface` | `(text=…)` | Observationsflade — hvad broen ville goere ved denne besked. | [src](../../../core/services/query_language_bridge.py#L103) |
-
-## `core/services/quota_store.py`
-_Kvote-regnskab pr. bruger/mode med daglig nulstilling (spec §21)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_today` | `()` | — | [src](../../../core/services/quota_store.py#L32) |
-| function | `set_user_quota` | `(user_id, tier)` | Sæt en brugers eksplicitte tier (autoritativt i user_db). Owner kan give | [src](../../../core/services/quota_store.py#L36) |
-| function | `get_tier` | `(user_id)` | Brugerens tier. user_db-tier (nyt autoritativt felt) vinder; ellers eksplicit | [src](../../../core/services/quota_store.py#L43) |
-| function | `_limit_for` | `(kind, tier)` | — | [src](../../../core/services/quota_store.py#L75) |
-| function | `_db_key` | `(user_id, kind)` | — | [src](../../../core/services/quota_store.py#L79) |
-| function | `_get_used` | `(user_id, kind)` | — | [src](../../../core/services/quota_store.py#L83) |
-| function | `check_quota` | `(user_id, kind)` | Status uden at forbruge. {allowed, tier, used, limit (None=ubegrænset), | [src](../../../core/services/quota_store.py#L92) |
-| function | `consume_quota` | `(user_id, kind, amount=…)` | Forbrug `amount` af kvoten hvis muligt. Returnerer status (som check_quota) | [src](../../../core/services/quota_store.py#L109) |
 

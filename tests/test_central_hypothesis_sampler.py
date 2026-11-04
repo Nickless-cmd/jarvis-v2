@@ -129,12 +129,16 @@ def test_five_supporting_samples_resolve(isolated_runtime, monkeypatch):
 # 30. minut i ugevis. Navnet forsvandt; kun tallet stod tilbage.
 
 
-def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int = 0) -> None:
+def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int = 0,
+                ekstra: dict | None = None) -> None:
     import json
     from datetime import datetime, timezone, timedelta
     from core.runtime.db import connect
     gen.ensure_schema()
     created = (datetime.now(timezone.utc) - timedelta(hours=age_hours)).isoformat()
+    prov = {"mechanism": mechanism, "family": family}
+    if ekstra:
+        prov.update(ekstra)
     with connect() as c:
         c.execute(
             "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, "
@@ -142,7 +146,7 @@ def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int
             "confidence, status, grounded_samples, created_at) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (hyp_id, "test", "s", "p", "n", ">= 5", 5, 604800,
-             json.dumps({"mechanism": mechanism, "family": family}),
+             json.dumps(prov),
              0.5, "active", 0, created))
 
 
@@ -157,13 +161,35 @@ def test_hypotese_uden_evaluator_rapporteres_med_navn(isolated_runtime, monkeypa
     assert grunde[list(grunde)[0]] == ["hyp-doed"], "hyp_id'et skal staa i rapporten"
 
 
-def test_kendt_evaluator_men_forkert_family_er_no_data(isolated_runtime, monkeypatch):
-    """Modsat kant: en REGISTRERET evaluator der ikke kan maale nu er ikke strukturel gaeld."""
+def test_forkert_family_er_strukturel_gaeld_ikke_no_data(isolated_runtime, monkeypatch):
+    """En REGISTRERET evaluator der ikke KAN teste kontraktformen er strukturel gaeld.
+
+    Testen forventede foer `no_data` — men `family` staar i provenance og aendrer sig ikke,
+    saa «proev igen om 30 minutter» var en loekke uden udgang. Kravet laa desuden inde i
+    evaluatoren, som returnerede None, og None betoed «for lidt data». Maalt 4/11-2026:
+    0 aktive ramt — fejlen var latent, men den bliver aktiv den dag en generator skriver
+    en family i en anden form.
+    """
     _insert_hyp("hyp-tynd", "causal_edges", family="uden-pil")   # kraever 'X->Y'
     res = smp.run_hypothesis_sampler_tick()
     assert res["tested"] == 0
-    assert res["unevaluable"] == {}, "evaluatoren FINDES — det er ikke strukturel gaeld"
-    assert res["no_data"] == ["hyp-tynd"]
+    assert res["no_data"] == [], "formen kan ikke blive rigtig af at vente paa data"
+    assert len(res["unevaluable"]) == 1
+    grund = list(res["unevaluable"])[0]
+    assert "kraever" in grund and "uden-pil" in grund, grund
+
+
+def test_ægte_no_data_naar_evaluatoren_mangler_data(isolated_runtime, monkeypatch):
+    """Modsat kant: en evaluator der MATCHER formen, men hvor der er for lidt data, er no_data.
+
+    Det er den forbigående tilstand — og den eneste der maa hedde no_data.
+    """
+    _insert_hyp("hyp-mangler-data", "causal_edges", family="a->b")
+    _bind_events(monkeypatch, [(1, "a.x", _ts(0)), (2, "b.y", _ts(1))])  # < _MIN_EVENTS
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 0
+    assert res["unevaluable"] == {}, "evaluatoren kan teste formen — det er ikke strukturelt"
+    assert res["no_data"] == ["hyp-mangler-data"]
 
 
 def test_list_unevaluable_active_navngiver_hypotesen(isolated_runtime):
@@ -179,8 +205,69 @@ def test_list_unevaluable_active_navngiver_hypotesen(isolated_runtime):
 def test_eksplicit_evaluator_felt_slaar_broen(isolated_runtime):
     """Broen fra oprindelse er FALLBACK. Baerer kontrakten et evaluator-felt, vinder det —
     saa kan en hypotese foedt i én mekanisme testes af en anden."""
-    navn, why = smp.evaluator_for({"mechanism": "ukendt-ophav", "evaluator": "stance_persistence"})
+    navn, why, kilde = smp.evaluator_for(
+        {"mechanism": "ukendt-ophav", "evaluator": "stance_persistence",
+         "family": "nogen-tension"})
     assert (navn, why) == ("stance_persistence", None)
+    assert kilde == "contract", "et eksplicit felt skal rapporteres som kontrakt, ikke legacy"
     # og et ukendt evaluator-navn afvises frem for at falde tilbage paa broen
-    navn2, why2 = smp.evaluator_for({"mechanism": "causal_edges", "evaluator": "findes-ikke"})
+    navn2, why2, _ = smp.evaluator_for(
+        {"mechanism": "causal_edges", "evaluator": "findes-ikke"})
     assert navn2 is None and "ikke registreret" in str(why2)
+
+
+def test_legacy_bro_rapporteres_som_legacy(isolated_runtime):
+    """Uden et eksplicit felt er koblingen en LEGACY-bro — den skal ikke kunne forveksles
+    med en valideret kontrakt i Centralens egne tal."""
+    navn, why, kilde = smp.evaluator_for(
+        {"mechanism": "causal_edges", "family": "a->b"})
+    assert (navn, why, kilde) == ("causal_sequence", None, "legacy")
+
+
+def test_family_der_ikke_matcher_evaluatoren_er_strukturel_gaeld(isolated_runtime):
+    """En evaluator der ikke KAN teste kontraktformen er strukturel gæld — ikke «mangler data».
+
+    Maalt 4/11-2026: kravet laa foer inde i evaluatoren, som returnerede None, og None blev
+    tolket som «for lidt data lige nu». En permanent utestbar hypotese blev dermed forsoegt
+    igen hvert 30. minut for evigt."""
+    navn, why, _ = smp.evaluator_for(
+        {"mechanism": "causal_edges", "family": "ingen-pil-her"})
+    assert navn is None
+    assert "kraever" in str(why) and "ingen-pil-her" in str(why)
+
+
+def test_samme_evidens_forskellig_oprindelse_giver_samme_dom(isolated_runtime, monkeypatch):
+    """BEVISET paa at ophav og evaluering er adskilt — ikke bare at navnet slaas rigtigt op.
+
+    Tre hypoteser med IDENTISK family og IDENTISK evidens. Kun oprindelsen varierer:
+    to mekanismer der peger paa samme evaluator via broen, og én mekanisme der SLET IKKE
+    har en bro — den testes kun fordi den baerer et eksplicit evaluator-felt.
+
+    Giver de ikke samme dom, sidder den gamle kobling stadig et sted i kaeden.
+    """
+    gen.ensure_schema()
+    _insert_hyp("h-causal", "causal_edges", "memory->somatic")
+    _insert_hyp("h-prederr", "prediction_error", "memory->somatic")
+    _insert_hyp("h-judge", "dream_hypothesis_judge", "memory->somatic",
+                ekstra={"evaluator": "causal_sequence"})
+
+    seq = []
+    eid = 1
+    for base in range(0, 60, 2):
+        seq.append((eid, "memory.recall_fail", _ts(base))); eid += 1
+        seq.append((eid, "somatic.stress", _ts(base + 1))); eid += 1
+    _bind_events(monkeypatch, seq)
+
+    smp.run_hypothesis_sampler_tick()
+
+    from core.runtime.db import connect
+    with connect() as c:
+        def _dom(hid):
+            return [dict(r) for r in c.execute(
+                "SELECT supports, falsifies FROM central_hypothesis_samples"
+                " WHERE hyp_id=?", (hid,)).fetchall()]
+        a, b, c_ = _dom("h-causal"), _dom("h-prederr"), _dom("h-judge")
+
+    assert a and b and c_, f"en af dem fik intet sample: {a} {b} {c_}"
+    assert a == b, f"to oprindelser med SAMME evaluator gav forskellig dom: {a} vs {b}"
+    assert a == c_, f"eksplicit evaluator blev overruled af oprindelsen: {a} vs {c_}"

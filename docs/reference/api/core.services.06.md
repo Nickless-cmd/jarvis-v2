@@ -103,10 +103,14 @@ _core/services/central_hypothesis_sampler.py_
 | function | `_eval_model_meta` | `(prov)` | Holder model-dominansen (latency/success) i friske runs? Kræver family 'A:B'. | [src](../../../core/services/central_hypothesis_sampler.py#L138) |
 | function | `_eval_divergence` | `(prov)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L147) |
 | function | `_eval_stance` | `(prov)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L155) |
-| function | `evaluator_for` | `(prov)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund til at den mangler). | [src](../../../core/services/central_hypothesis_sampler.py#L180) |
-| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L197) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L224) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L293) |
+| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L166) |
+| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L170) |
+| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L174) |
+| function | `evaluator_for` | `(prov)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L202) |
+| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L230) |
+| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L258) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L286) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L356) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._

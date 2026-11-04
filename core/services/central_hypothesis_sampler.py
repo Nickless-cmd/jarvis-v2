@@ -157,14 +157,36 @@ def _eval_stance(prov: dict[str, Any]) -> dict[str, Any] | None:
     return test_stance_persistence(str(prov.get("family") or ""))
 
 
+# Hver evaluator DEKLARERER hvilken kontraktform den kan teste, og kravet HÅNDHÆVES i
+# `evaluator_for()` — ikke først inde i evaluatoren. Forskellen er ikke kosmetisk: en
+# evaluator der selv opdager mismatch returnerer `None`, og `None` betyder «for lidt data
+# lige nu». Så blev en PERMANENT utestbar hypotese talt som forbigående og prøvet igen
+# hvert 30. minut for evigt. Målt 4/11-2026: 0 aktive ramt (fejlen var latent), men den
+# bliver aktiv den dag en generator skriver en family i en anden form.
+def _kraever_pil(fam: str) -> bool:
+    return "->" in fam
+
+
+def _kraever_kolon(fam: str) -> bool:
+    return ":" in fam
+
+
+def _kraever_ikke_tom(fam: str) -> bool:
+    return bool(fam)
+
+
 EVALUATORS: dict[str, dict[str, Any]] = {
     "causal_sequence": {"fn": _eval_causal_sequence,
+                        "accepts": _kraever_pil,
                         "requires": "family 'X->Y'"},
     "model_meta_persistence": {"fn": _eval_model_meta,
+                               "accepts": _kraever_kolon,
                                "requires": "family 'A:B'"},
     "divergence_persistence": {"fn": _eval_divergence,
+                               "accepts": _kraever_kolon,
                                "requires": "family 'parent:good|bad'"},
     "stance_persistence": {"fn": _eval_stance,
+                           "accepts": _kraever_ikke_tom,
                            "requires": "family = tension-nøgle"},
 }
 
@@ -177,21 +199,32 @@ _ORIGIN_TO_EVALUATOR: dict[str, str] = {
 }
 
 
-def evaluator_for(prov: dict[str, Any]) -> tuple[str | None, str | None]:
-    """Hvilken evaluator kan teste DENNE hypotese? → (navn, grund til at den mangler).
+def evaluator_for(prov: dict[str, Any]) -> tuple[str | None, str | None, str]:
+    """Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde).
 
-    Læser et eksplicit `evaluator`-felt hvis kontrakten bærer det (fremtid), ellers broen
-    fra oprindelses-mekanismen. Returnerer (None, grund) når ingen evaluator kan teste
-    hypotesen — det er STRUKTUREL gæld, ikke manglende data.
+    `kilde` er `"contract"` når hypotesen selv bærer et `evaluator`-felt, og `"legacy"`
+    når den blev koblet på via broen fra sin oprindelse. Skelnen er ikke pynt: indtil
+    kontrakterne bærer feltet er broen den operative sandhed for næsten hele populationen,
+    og Centralen må ikke rapportere det som om alle hypoteser er valideret.
+
+    Kravet i `EVALUATORS[name]["accepts"]` håndhæves HER, så en kontrakt-evaluator-mismatch
+    bliver strukturel gæld med navn i stedet for at forsvinde som «mangler data».
     """
     explicit = str(prov.get("evaluator") or "").strip()
     origin = str(prov.get("mechanism") or "")
     name = explicit or _ORIGIN_TO_EVALUATOR.get(origin, "")
+    kilde = "contract" if explicit else "legacy"
     if not name:
-        return None, f"ingen evaluator registreret for oprindelse {origin!r}"
+        return None, f"ingen evaluator registreret for oprindelse {origin!r}", kilde
     if name not in EVALUATORS:
-        return None, f"evaluator {name!r} er ikke registreret"
-    return name, None
+        return None, f"evaluator {name!r} er ikke registreret", kilde
+    accepts = EVALUATORS[name].get("accepts")
+    fam = str(prov.get("family") or "")
+    if callable(accepts) and not accepts(fam):
+        return (None,
+                f"evaluator {name!r} kraever {EVALUATORS[name].get('requires')!r},"
+                f" men family er {fam!r}", kilde)
+    return name, None, kilde
 
 
 def list_unevaluable_active() -> list[dict[str, str]]:
@@ -211,14 +244,43 @@ def list_unevaluable_active() -> list[dict[str, str]]:
             if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
                 continue
             prov = json.loads(r["provenance_json"] or "{}")
-            name, why = evaluator_for(prov)
+            name, why, kilde = evaluator_for(prov)
             if name is None:
                 out.append({"hyp_id": str(r["hyp_id"]), "reason": str(why),
-                            "origin": str(prov.get("mechanism") or "")})
+                            "origin": str(prov.get("mechanism") or ""),
+                            "kilde": kilde})
     except Exception as exc:  # self-safe: en læsefejl må ikke vælte cadence-tick'et
         logger.warning("central_hypothesis_sampler: kunne ikke liste utestbare: %s", exc)
         return out
     return out
+
+
+def evaluator_provenance() -> dict[str, int]:
+    """Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen?
+
+    Broen er en overgangsløsning, ikke en garanti: den kobler en testmetode på ud fra
+    hvor hypotesen blev født. Så længe den bærer næsten hele populationen, må Centralen
+    ikke kunne rapportere at «alle hypoteser har en evaluator» som om det var valideret.
+    Målt 4/11-2026: 529 aktive havde en evaluator — fordelingen stod ikke nogen steder.
+    """
+    ud: dict[str, int] = {"contract": 0, "legacy": 0, "unevaluable": 0}
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            rows = c.execute(
+                "SELECT provenance_json, created_at, ttl_seconds "
+                "FROM central_hypotheses WHERE status='active'").fetchall()
+        now = datetime.now(timezone.utc)
+        for r in rows:
+            if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
+                continue
+            prov = json.loads(r["provenance_json"] or "{}")
+            name, _why, kilde = evaluator_for(prov)
+            ud["unevaluable" if name is None else kilde] = (
+                ud.get("unevaluable" if name is None else kilde, 0) + 1)
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: kunne ikke tælle evaluator-kilder: %s", exc)
+    return ud
 
 
 def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
@@ -253,10 +315,11 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
     except Exception:
         active = []
     for hyp_id, prov in active:
-        name, why = evaluator_for(prov)
+        name, why, _kilde = evaluator_for(prov)
         if name is None:
-            # Strukturel gæld: ingen evaluator kan teste denne hypotese. Den blev før talt
-            # som «skipped» sammen med dem der blot manglede data — to vidt forskellige ting.
+            # Strukturel gæld: ingen evaluator kan teste denne hypotese — heller ikke selv om
+            # der kom data nok. Den blev før talt som «skipped» sammen med dem der blot
+            # manglede data, og senere som «no_data» når evaluatoren selv afviste formen.
             unevaluable.setdefault(str(why), []).append(hyp_id)
             continue
         res = EVALUATORS[name]["fn"](prov)

@@ -268,10 +268,21 @@ def test_evaluate_control_arm_observes_only(monkeypatch):
     assert v.acts is False and "kontrol-arm" in v.reason
 
 
-def test_evaluate_ttl_death_without_grounding():
+def test_evaluate_ttl_udloeb_er_ikke_falsifikation():
+    """KONTRAKTEN ER ÆNDRET 4/11-2026 — læs hvorfor.
+
+    Denne gren returnerede `alive=False`, som generatoren skrev som status='dead',
+    outcome='falsified' — stik imod sweeperens egen kontrakt: *"Udløbet er IKKE
+    falsificeret: rækken bevares, `outcome` røres ikke."* To dommere gav altså to
+    forskellige svar på samme spørgsmål. Udløb siger noget om TESTPERIODEN, ikke om
+    hypotesens sandhed: nu returneres levende-men-handl-ikke, og sweep'en skriver
+    'expired'.
+    """
     old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
     v = g.evaluate(_valid_hyp(created_at=old), confirming_evidence=[])
-    assert v.alive is False and "TTL" in v.reason
+    assert v.alive is True, "udloeb maa ikke doemme hypotesen som doed"
+    assert v.acts is False, "en udloebet hypotese maa ikke handle"
+    assert "udl" in v.reason.lower()
 
 
 def test_evaluate_ignores_unverified_grounding():
@@ -288,9 +299,12 @@ def test_evaluate_ignores_unverified_grounding():
 # svært. En `created_at` der ikke kunne parses gav «ikke udløbet» — hypotesen
 # levede for evigt, stik imod sin egen docstring om falsificering ved tavshed.
 
-def test_ulaeselig_created_at_doer_ved_ttl():
+def test_ulaeselig_created_at_behandles_som_udloebet():
+    """En ulaeselig dato er ikke et bevis på liv — men den er heller ikke en
+    falsifikation. Den behandles som udløbet: levende, handl ikke."""
     v = g.evaluate(_valid_hyp(created_at="ikke-en-dato"), confirming_evidence=[])
-    assert v.alive is False and "TTL" in v.reason
+    assert v.alive is True and v.acts is False
+    assert "udl" in v.reason.lower()
 
 
 def test_frisk_dato_doer_ikke_af_rettelsen():

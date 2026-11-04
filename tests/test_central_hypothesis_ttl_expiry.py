@@ -197,8 +197,18 @@ def test_sent_sample_uden_dom_aendring_lukker_hypotesen(isolated_runtime):
         "et sent sample der ikke ændrede dommen holdt hypotesen fanget i 'active' for evigt"
 
 
-def test_sent_sample_der_afgoer_dommen_lukker_ikke(isolated_runtime):
-    """Den modsatte kant: et sent sample der FAKTISK opfylder kontrakten må ikke udløbes."""
+def test_sent_sample_der_ville_afgoere_dommen_redder_ikke_kontrakten(isolated_runtime):
+    """KONTRAKTEN ER ÆNDRET 4/11-2026 — den tidslige invariant erstattede den resultatbaserede.
+
+    Målt gennem hele kæden (`record_governed_sample → evaluate → persisted → sweep`):
+    fire støttende samples FØR fristen plus det femte 23 døgn EFTER gav `resolved`. Det
+    sene sample forlængede altså kontrakten bagudrettet, og sweeperen fik aldrig chancen.
+    Den gamle test her beskyttede netop den adfærd.
+
+    Nu beregnes dommen KUN på evidens inden for den præregistrerede horisont, så et sent
+    sample kan per konstruktion ikke flytte dommen — og udløb er igen muligt. Vil man
+    undersøge hypotesen videre, kræver det en NY evalueringsperiode.
+    """
     from core.runtime.db import connect
     hyp = _insert("hyp-sent-afgjort", age_hours=24 * 30)
     now = datetime.now(timezone.utc).isoformat()
@@ -210,5 +220,86 @@ def test_sent_sample_der_afgoer_dommen_lukker_ikke(isolated_runtime):
                 (hyp, 1, 0, "world_consequence", f"afgoer-{i}", "world", now))
         c.commit()
     gen.expire_overdue_hypotheses()
-    assert _status(hyp) != "expired", \
-        "et sent sample der opfyldte kontrakten blev alligevel udløbet — en gyldig dom gik tabt"
+    assert _status(hyp) == "expired", \
+        "et sample EFTER fristen maa ikke redde en udloebet kontrakt — TTL er praeregistreret"
+
+
+# ── 5. Den TIDSLIGE invariant: dommen beregnes kun paa evidens inden for horisonten ──
+def _add_sample(hyp_id: str, *, when: datetime, ref: str, supports: bool = True) -> None:
+    from core.runtime.db import connect
+    with connect() as c:
+        c.execute(
+            "INSERT INTO central_hypothesis_samples (hyp_id, supports, falsifies, source,"
+            " ground_ref, triggered_by, created_at) VALUES (?,?,?,?,?,?,?)",
+            (hyp_id, 1 if supports else 0, 0 if supports else 1, "world_consequence",
+             ref, "world", when.isoformat()))
+        c.commit()
+
+
+def test_sent_sample_efter_fristen_resolver_ikke(isolated_runtime):
+    """MAALT 4/11-2026 gennem hele kaeden — dette var bruddet.
+
+    `record_governed_sample` regnede dommen paa AL evidens, ogsaa samples der ankom efter
+    den praeregistrerede TTL. Fire stoettende foer fristen + det femte 23 doegn efter gav
+    status='resolved', saa det sene sample forlaengede kontrakten bagudrettet — og sweeperen
+    fik aldrig chancen, fordi hypotesen ikke laengere var 'active'.
+
+    Invarianten er TIDSLIG, ikke resultatbaseret: en evaluerings dom beregnes udelukkende
+    paa evidens der var gyldig inden for horisonten. Det sene sample gemmes som spor.
+    """
+    hyp = _insert("hyp-kaede", age_hours=24 * 30, ttl_seconds=7 * 24 * 3600)
+    deadline = datetime.now(timezone.utc) - timedelta(days=23)
+    for i in range(4):
+        _add_sample(hyp, when=deadline - timedelta(hours=1), ref=f"foer-{i}")
+
+    gen.record_governed_sample(
+        hyp, supports=True, source="world_consequence",
+        ground_ref="femte-efter-frist", triggered_by="world")
+
+    row = _row(hyp)
+    assert row["status"] == "active", (
+        f"det sene sample resolverede hypotesen: status={row['status']} "
+        f"outcome={row['outcome']} — det forlaenger kontrakten bagudrettet")
+    assert row["outcome"] is None, "en udloebet kontrakt maa ikke faa en dom af sen evidens"
+
+    gen.expire_overdue_hypotheses()
+    assert _status(hyp) == "expired"
+
+
+def test_sent_sample_efter_sweep_genopliver_ikke_kontrakten(isolated_runtime):
+    """Samme, men sweeperen naar at koere FOER det sene sample: det maa ikke genoplive
+    kontrakten til en gyldig dom."""
+    hyp = _insert("hyp-kaede-2", age_hours=24 * 30, ttl_seconds=7 * 24 * 3600)
+    deadline = datetime.now(timezone.utc) - timedelta(days=23)
+    for i in range(4):
+        _add_sample(hyp, when=deadline - timedelta(hours=1), ref=f"foer2-{i}")
+
+    gen.expire_overdue_hypotheses()
+    assert _status(hyp) == "expired"
+
+    gen.record_governed_sample(
+        hyp, supports=True, source="world_consequence",
+        ground_ref="femte-2", triggered_by="world")
+    row = _row(hyp)
+    assert row["status"] == "active" and row["outcome"] is None, (
+        f"det sene sample gav en dom paa en udloebet kontrakt: {row['status']}/{row['outcome']}")
+
+    gen.expire_overdue_hypotheses()
+    assert _status(hyp) == "expired"
+
+
+def test_sample_inden_for_horisonten_taeller_stadig(isolated_runtime):
+    """Modproeven: den tidslige invariant maa ikke kaste gyldig evidens vaek.
+    Fem samples INDEN for fristen skal stadig afgoere hypotesen."""
+    hyp = _insert("hyp-indenfor", age_hours=24 * 3, ttl_seconds=7 * 24 * 3600)
+    when = datetime.now(timezone.utc) - timedelta(hours=2)
+    for i in range(5):
+        _add_sample(hyp, when=when, ref=f"indenfor-{i}")
+
+    gen.record_governed_sample(
+        hyp, supports=True, source="world_consequence",
+        ground_ref="indenfor-6", triggered_by="world")
+    row = _row(hyp)
+    assert row["status"] == "resolved", (
+        f"gyldig evidens inden for horisonten blev kastet vaek: {row['status']}")
+    assert row["outcome"] == "supported"

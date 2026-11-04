@@ -396,7 +396,14 @@ def evaluate(hyp: dict[str, Any], *, confirming_evidence: list[dict[str, Any]] |
         grounded = [e for e in evidence if is_externally_grounded(e, verifier=verifier)]
         if created and is_expired(created, hyp.get("ttl_seconds") or 0, now=now):
             if not any(e.get("supports") for e in grounded):
-                return GovernanceVerdict(False, 0.0, False, "død: TTL udløb uden ekstern bekræftelse")
+                # 4/11-2026: UDLOEB ER IKKE FALSIFIKATION. Denne gren returnerede alive=False,
+                # som generatoren skrev som status='dead', outcome='falsified' — stik imod
+                # sweeperens egen kontrakt ("udloebet er IKKE falsificeret: raekken bevares,
+                # outcome roeres ikke"). To dommere gav to forskellige svar paa samme
+                # spoergsmaal. Udløb siger noget om TESTPERIODEN, ikke om hypotesens
+                # sandhed: returnér levende-men-handl-ikke, og lad sweep'en skrive 'expired'.
+                return GovernanceVerdict(True, float(hyp.get("confidence") or 0.0), False,
+                                         "TTL udloeb uden ekstern bekræftelse — udloeb, ikke falsifikation")
 
         # Circular-karantæne.
         if is_circular(hyp_id, evidence):

@@ -173,7 +173,7 @@ def _load(hyp_id: str) -> dict[str, Any] | None:
                 return None
             h = dict(row)
             samples = c.execute(
-                "SELECT supports, falsifies, source, ground_ref, triggered_by "
+                "SELECT supports, falsifies, source, ground_ref, triggered_by, created_at "
                 "FROM central_hypothesis_samples WHERE hyp_id=?", (hyp_id,)).fetchall()
         h["_samples"] = [dict(s) for s in samples]
         return h
@@ -245,9 +245,25 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
 
     # Re-hent + evaluér gennem governance.
     h = _load(hyp_id) or h
-    evidence = _to_evidence(h.get("_samples") or [])
-    grounded_n = sum(1 for e in evidence
-                     if gov.is_externally_grounded(e, verifier=verifier))
+    # TIDSLIG INVARIANT (maalt 4/11-2026): et sample der ankommer EFTER den
+    # praeregistrerede TTL maa ikke aendre dommen. Maalt gennem hele kaeden:
+    # fire supports foer fristen + det femte 23 doegn efter gav status='resolved',
+    # saa det sene sample forlaengede kontrakten bagudrettet og sweeperen fik
+    # aldrig chancen. Dommen beregnes derfor KUN paa evidens inden for horisonten;
+    # det sene sample gemmes stadig som spor.
+    _deadline = _ttl_deadline_iso(h.get("created_at"), h.get("ttl_seconds"))
+    _samples = h.get("_samples") or []
+    if _deadline:
+        _samples = [x for x in _samples
+                    if str(x.get("created_at") or "") <= _deadline]
+    evidence = _to_evidence(_samples)
+    # Jordet evidens maales ÉN gang og genbruges: baade sample_size-gaten og
+    # retningen af dommen skal bygge paa praecis samme maengde. At taelle
+    # `ground_ref` direkte her ville vaere en ANDEN definition end den
+    # `is_externally_grounded` giver — og saa kunne de to dele af dommen
+    # vaere uenige om hvad der overhovedet er evidens.
+    _jordet = [e for e in evidence if gov.is_externally_grounded(e, verifier=verifier)]
+    grounded_n = len(_jordet)
     hyp_for_eval = {
         "id": hyp_id, "statement": h["statement"], "prediction": h["prediction"],
         "null_hypothesis": h["null_hypothesis"], "success_criterion": h["success_criterion"],
@@ -266,7 +282,15 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
         new_status, outcome, resolved_at = "dead", "falsified", _now()
     elif grounded_n >= int(h["sample_size"]):
         new_status, resolved_at = "resolved", _now()
-        outcome = "supported" if verdict.confidence >= gov.MIN_ACT_CONFIDENCE else "contradicted"
+        # OUTCOME FRA EVIDENS, IKKE FRA ET TAL (maalt 4/11-2026): den gamle regel
+        # satte 'contradicted' naar confidence < 0,5. Maalt i drift: 16.658 af 32.983
+        # contradicted (50,5 %) havde stoette >= modsigelse — fx 4 stoettende mod 1
+        # modsigende, stemplet 'modbevist' fordi confidence var 0,22. Samme fejlform
+        # som 0/0 -> 0.0: et tal der ikke maaler det navnet siger. Kontrakten siger
+        # "uden lige saa mange der modsiger den".
+        _stott = sum(1 for e in _jordet if e.get("supports"))
+        _mods = sum(1 for e in _jordet if e.get("falsifies"))
+        outcome = "supported" if _stott > _mods else "contradicted"
     try:
         from core.runtime.db import connect
         with connect() as c:
@@ -694,8 +718,13 @@ def expire_overdue_hypotheses(*, now: datetime | None = None) -> dict[str, Any]:
                 if not gov.is_expired(r["created_at"], r["ttl_seconds"], now=n):
                     continue
                 deadline = _ttl_deadline_iso(r["created_at"], r["ttl_seconds"])
-                if deadline is not None and _sen_sample_afgjorde(c, hyp_id, deadline):
-                    continue   # det sene sample FLYTTEDE dommen → ikke udloebet uden bekræftelse
+                # 4/11-2026: beskyttelsen mod at udloebe en hypotese hvis sene sample
+                # "afgjorde" den er FJERNET. Den var noedvendig saa laenge dommen blev
+                # beregnet paa AL evidens — men netop derfor var den ogsaa et vaern mod at
+                # afslutte: 56 af 58 udloebne aktive havde et sent sample og sad fast i
+                # 'active' for evigt. Nu beregner record_governed_sample dommen KUN paa
+                # evidens inden for horisonten (tidslig invariant), saa et sent sample kan
+                # per konstruktion ikke flytte dommen. Der er intet at beskytte.
                 overdue.append(hyp_id)
             if overdue:
                 c.executemany(

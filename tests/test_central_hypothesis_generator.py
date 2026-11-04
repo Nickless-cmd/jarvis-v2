@@ -235,3 +235,71 @@ def test_forskellige_ground_ref_taeller_hver_for_sig(isolated_runtime):
         n = c.execute("SELECT COUNT(*) FROM central_hypothesis_samples WHERE hyp_id=?",
                       (hyp_id,)).fetchone()[0]
     assert n == 2
+
+
+# ── Outcome kommer fra EVIDENSEN, ikke fra en confidence-taerskel ─────────────────
+def _insert_dom_hyp(hyp_id: str, *, confidence: float) -> None:
+    import json as _json
+    from datetime import datetime, timezone
+    from core.runtime.db import connect
+    gen.ensure_schema()
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as c:
+        c.execute(
+            "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction,"
+            " null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json,"
+            " confidence, status, outcome, grounded_samples, created_at, resolved_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (hyp_id, "test", "t", "p", "n", "s", 5, 168 * 3600,
+             _json.dumps({"mechanism": "causal_edges", "family": "a->b", "cursor_id": "c1"}),
+             confidence, "active", None, 0, now, None))
+        c.commit()
+
+
+def _dom_row(hyp_id: str) -> dict:
+    from core.runtime.db import connect
+    with connect() as c:
+        r = c.execute("SELECT * FROM central_hypotheses WHERE hyp_id=?", (hyp_id,)).fetchone()
+    return dict(r)
+
+
+def test_stoette_flertal_men_lav_confidence_giver_supported(isolated_runtime):
+    """MAALT 4/11-2026: 16.658 af 32.983 'contradicted' (50,5 %) havde stoette >= modsigelse.
+
+    Den gamle regel var `outcome = 'supported' if verdict.confidence >= 0,5 else 'contradicted'`.
+    En Popper-modsigelse halverer confidence — saa en hypotese med 4 stoettende mod 1 modsigende
+    ender paa ~0,23 og blev stemplet 'modbevist', selv om evidensen IKKE modsagde den (4 > 1).
+    Det er samme fejlform som 0/0 -> 0.0: et tal der ikke maaler det navnet siger.
+    Kontrakten siger "uden lige saa mange der modsiger den".
+
+    (Fem RENE stoettende giver 0,583 og rammer ikke fejlen — derfor skal testen bruge blandet
+    evidens, praecis som de 16.658 i drift har.)
+    """
+    _insert_dom_hyp("hyp-lav-conf", confidence=0.30)
+    for i in range(4):
+        gen.record_governed_sample(
+            "hyp-lav-conf", supports=True, source="world_consequence",
+            ground_ref=f"stott-{i}", triggered_by="world")
+    gen.record_governed_sample(
+        "hyp-lav-conf", supports=False, falsifies=True, source="world_consequence",
+        ground_ref="mod-0", triggered_by="world")
+    row = _dom_row("hyp-lav-conf")
+    assert row["status"] == "resolved"
+    assert row["confidence"] < 0.5, (
+        f"testen rammer ikke fejlen: confidence {row['confidence']} er ikke under taersklen")
+    assert row["outcome"] == "supported", (
+        f"4 stoettende mod 1 modsigende blev doemt {row['outcome']!r} "
+        f"fordi confidence var {row['confidence']} — ikke fordi evidensen modsagde den")
+
+
+def test_flertal_af_modsigelser_giver_contradicted(isolated_runtime):
+    """Modproeven: naar modsigelserne faktisk er flertallet, skal dommen vaere contradicted —
+    ogsaa selv om confidence tilfaeldigvis ligger over 0,5."""
+    _insert_dom_hyp("hyp-mod", confidence=0.90)
+    for i in range(5):
+        gen.record_governed_sample(
+            "hyp-mod", supports=False, falsifies=True, source="world_consequence",
+            ground_ref=f"mod-{i}", triggered_by="world")
+    row = _dom_row("hyp-mod")
+    assert row["outcome"] == "contradicted", (
+        f"fem modsigelser og nul stoettende blev doemt {row['outcome']!r}")

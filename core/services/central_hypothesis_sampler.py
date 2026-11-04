@@ -165,13 +165,33 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     c_lat = float(ca.get("latency_ms") or 0.0)
     if s_lat <= 0 or c_lat <= 0:
         return None
-    margin = float(getattr(mm, "_LATENCY_MARGIN", 1.25))
+
+    # Beslutningsreglen kommer fra kontraktens PINNEDE politik — ikke fra en
+    # modul-konstant. Lånte vi `_LATENCY_MARGIN`, kunne en kodeændring et helt andet
+    # sted ændre dommen for en hypotese der aldrig blev rørt.
+    policy = tc.policy_of(contract)
+    if policy is None:
+        return None
+    support = float(policy["support_ratio"])
+    contradict = float(policy["contradict_ratio"])
+    cur = int(sa.get("samples") or 0)
+
+    # TRE udfald, ikke to: «hurtigere, men ikke markant nok» er ikke et modbevis.
+    # Et binært udfald ville stemple al utydelig evidens som modsigelse — samme
+    # fejlform som `0/0 → 0.0` og som `stott > mods` uden flertalskrav.
     if rel == "less_than":
-        holds = s_lat * margin <= c_lat
+        if s_lat * support <= c_lat:
+            return {"supports": True, "falsifies": False, "cursor": cur}
+        if s_lat > c_lat * contradict:
+            return {"supports": False, "falsifies": True, "cursor": cur}
     else:
-        holds = c_lat * margin <= s_lat
-    return {"supports": bool(holds), "falsifies": not bool(holds),
-            "cursor": int(sa.get("samples") or 0)}
+        if c_lat * support <= s_lat:
+            return {"supports": True, "falsifies": False, "cursor": cur}
+        if c_lat > s_lat * contradict:
+            return {"supports": False, "falsifies": True, "cursor": cur}
+    # I båndet mellem contradict- og support-tærsklen: observationen er uafgjort.
+    # Den registreres som jordet evidens uden retning — ikke som en dom.
+    return {"supports": False, "falsifies": False, "cursor": cur}
 
 
 def _eval_model_meta(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:

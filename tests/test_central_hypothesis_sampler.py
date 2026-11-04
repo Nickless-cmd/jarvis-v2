@@ -295,6 +295,8 @@ _CONTRACT_BASE = {
     "metric": "latency_ms",
     "min_samples": 5,
     "time_basis": "ingestion_time",
+    "evaluation_policy": "latency_margin_v1",
+    "policy_version": 1,
 }
 
 
@@ -330,6 +332,84 @@ def test_modsatrettede_forventninger_giver_modsatte_domme(isolated_runtime, monk
 
     assert a == [{"supports": 1, "falsifies": 0}], f"A (X hurtigere) skal støttes: {a}"
     assert b == [{"supports": 0, "falsifies": 1}], f"B (X langsommere) skal modsiges: {b}"
+
+
+def test_hurtigere_men_ikke_markant_nok_er_uafgjort_ikke_modbevist(isolated_runtime, monkeypatch):
+    """TREDJE UDFALD: «hurtigere, men ikke markant nok» er ikke et modbevis.
+
+    Kontraktens politik kræver 25 % margin for støtte. Er X kun 10 % hurtigere, er
+    observationen uafgjort — ikke en modsigelse. Et binært udfald ville stemple al
+    utydelig evidens som modsigelse, og det er præcis den fejlform der gav 14.618
+    hypoteser stemplet «modbevist» på et tal i stedet for på evidens.
+    """
+    from core.services import central_model_meta as mm
+    # 100 mod 110: X er hurtigere, men kun ~9 % — under 25 %-margin.
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 110.0},
+    })
+    _insert_hyp("h-svag", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 1, res
+    assert res["supported"] == 0 and res["contradicted"] == 0, (
+        f"en utydelig observation maa hverken stotte eller modsige: {res}")
+
+    from core.runtime.db import connect
+    with connect() as c:
+        rows = [dict(r) for r in c.execute(
+            "SELECT supports, falsifies FROM central_hypothesis_samples"
+            " WHERE hyp_id='h-svag'").fetchall()]
+    assert rows == [{"supports": 0, "falsifies": 0}], (
+        f"observationen skal vaere jordet UDEN retning: {rows}")
+
+
+def test_politikken_kommer_fra_kontrakten_ikke_fra_modulet(isolated_runtime, monkeypatch):
+    """Beslutningsreglen skal vaere PINNET i kontrakten, ikke laant fra et andet modul.
+
+    Maalt 4/11-2026 laeste kontrakt-stien `_LATENCY_MARGIN` fra `central_model_meta`
+    med en hardkodet fallback. AEndrede nogen den konstant, ville hypoteser oprettet
+    for maaneder siden faa en anden dom — uden at nogen havde roert deres kontrakt.
+    """
+    from core.services import central_model_meta as mm
+    from core.services import central_test_contract as tc
+
+    # Flyt modul-konstanten til noget absurd: hvis den stadig blev laest, ville
+    # 100 mod 1000 ikke laengere taelle som stotte.
+    monkeypatch.setattr(mm, "_LATENCY_MARGIN", 100.0, raising=False)
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    _insert_hyp("h-pin", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["supported"] == 1, (
+        f"dommen fulgte modul-konstanten i stedet for kontraktens politik: {res}")
+
+    # Og politikken selv skal vaere laesbar og versioneret.
+    pol = tc.policy_of(_CONTRACT_BASE)
+    assert pol is not None and pol["version"] == 1, pol
+
+
+def test_kontrakt_uden_politik_afvises(isolated_runtime):
+    """En kontrakt uden beslutningskriterium maa ikke accepteres.
+
+    «En evaluator maa ikke acceptere en kontrakt, hvis dens beslutningskriterier
+    mangler» — ellers er kontrakten deklarativ mens dommen er imperativ, og de to
+    kan glide fra hinanden uden at nogen roerer hypotesen.
+    """
+    from core.services import central_test_contract as tc
+    uden = {k: v for k, v in _CONTRACT_BASE.items() if k != "evaluation_policy"}
+    ok, missing = tc.validate(uden)
+    assert not ok, "kontrakt uden evaluation_policy blev accepteret"
+    assert any("evaluation_policy" in m for m in missing), missing
+
+    ukendt = {**_CONTRACT_BASE, "evaluation_policy": "opfundet_politik_v9"}
+    ok2, missing2 = tc.validate(ukendt)
+    assert not ok2 and any("evaluation_policy" in m for m in missing2), missing2
 
 
 def test_kontrakt_hypotese_rapporteres_som_contract(isolated_runtime, monkeypatch):

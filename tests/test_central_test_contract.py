@@ -28,6 +28,8 @@ def _gyldig(**over):
         "expected_relation": "less_than",
         "min_samples": 5,
         "time_basis": "ingestion_time",
+        "evaluation_policy": "latency_margin_v1",
+        "policy_version": 1,
     }
     c.update(over)
     return c
@@ -145,6 +147,47 @@ def test_relation_of_og_subject_of():
 def test_relation_of_taaler_manglende_felt():
     """Self-safe: en tom kontrakt maa ikke kaste, blot returnere tom retning."""
     assert tc.relation_of({}) == ""
+
+
+def test_kontrakt_uden_beslutningskriterium_afvises():
+    """En evaluator maa ikke acceptere en kontrakt hvis beslutningskriterier mangler.
+
+    Uden en pinnet politik er kontrakten deklarativ mens dommen er imperativ — og de
+    to kan glide fra hinanden uden at nogen roerer hypotesen.
+    """
+    c = _gyldig()
+    c.pop("evaluation_policy")
+    ok, missing = tc.validate(c)
+    assert ok is False
+    assert any("evaluation_policy" in m for m in missing), missing
+
+
+def test_ukendt_politik_afvises():
+    ok, missing = tc.validate(_gyldig(evaluation_policy="opfundet_v9"))
+    assert ok is False
+    assert any("evaluation_policy" in m for m in missing), missing
+
+
+def test_politik_version_pinnes():
+    """AEndrer domsreglen sig, skal det vaere en NY politik — ikke en stiltiende aendring."""
+    ok, missing = tc.validate(_gyldig(policy_version=99))
+    assert ok is False
+    assert any("policy_version" in m for m in missing), missing
+
+
+def test_policy_of_returnerer_beslutningsreglen():
+    """Evaluatoren skal kunne laese reglen UDEN at kende modul-konstanter."""
+    pol = tc.policy_of(_gyldig())
+    assert pol is not None
+    assert pol["version"] == 1
+    assert pol["support_ratio"] == 1.25
+    assert pol["contradict_ratio"] == 1.0
+
+
+def test_policy_of_ukendt_giver_none():
+    """Self-safe: en ukendt politik maa ikke give en tilfaeldig standardregel."""
+    assert tc.policy_of({"evaluation_policy": "findes_ikke"}) is None
+    assert tc.policy_of({}) is None
 
 
 def test_describe_viser_retningen():

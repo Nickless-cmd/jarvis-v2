@@ -2056,3 +2056,41 @@ Sweep'en standsede producenten: `_extract_chronicle_consolidation_candidates` re
 nu **0 kandidater** for de seneste 40 runs, fordi de underliggende outcomes blev markeret
 stale. Det er korrekt — der var intet at konsolidere — men det betyder også at jeg ikke
 kunne måle den rige tekst mod levende data efter rettelsen. Testene gør det i stedet.
+
+## Afgjort 4/11-2026 — kryds-lag-familien er strukturelt død
+
+`executive-contradiction` har **0 rækker nogensinde**. `internal-opposition` har
+1 række fra 15. maj (superseded). `open-loop` har 0. Alle fire producenter
+(`temporal_recurrence`, `internal_opposition`, `executive_contradiction`,
+`open_loop`) kaldes hver tur og returnerer 0 kandidater — målt direkte i den
+levende kode, ikke læst fra koden.
+
+**Årsagen kan ikke rettes, fordi den ikke er en fejl.** De kræver alle et domæne
+der deles på tværs af lag, og hvert lag taler sit eget nøgle-format:
+
+| Lag | Format | Kan krydses? |
+|---|---|---|
+| focus | `focus:bearing:<hel sætning>` | hvert fokus sit eget domæne |
+| goal | `goal-signal:<slug>` | nej |
+| critic | `critic:<type>` | en TYPE, ikke et emne |
+| self-model | `self-model:domain:<emne>` | det eneste ægte domæne |
+| open-loop | findes ikke (0 rækker) | nej |
+
+Målt: focus∩goal = 2 domæner ud af 3.118. Critic deler nul domæner med noget lag.
+
+**Fristelsen der ikke virker:** at matche fokus-nøglens ord mod beskeden generisk.
+Målt på 400 historiske correction-critics gav det **41 «matches»** — alle på
+funktionsord som «skal», «ikke», «hvordan». Et falsk domæne er værre end et tomt:
+det krydser to lag der ikke taler om det samme.
+
+**Beslutning:** mekanikken pensioneres ikke (testene viser at `open_loop` *kan*
+fyre med de rigtige data), men tavsheden er nu skrevet ind i koden ved
+kaldestedet i `visible_runs_cognitive.py`, så ingen fejlretter den som en bug.
+
+**Hvad der skal bygges først:** en fælles domæne-dimension — en kolonne, et
+vokabular eller en mapping — der siger hvad «samme emne» betyder på tværs af de
+fem lag. Det er en designbeslutning om hvad et domæne ER i systemet.
+
+**Vagt:** `tests/test_cross_layer_domain_keys.py::test_fokus_match_er_ikke_generisk`
+fælder den løse matchning. Mutationstestet: en generisk ord-matchning fældes,
+den strenge form består.

@@ -79,3 +79,29 @@ def test_modulerne_er_enige(canonical_key: str, _expected: str) -> None:
     critic_answers = {module.__name__: module._critic_domain_key(canonical_key) for module in (opposition, open_loop, recurrence)}
     assert len(set(focus_answers.values())) == 1, focus_answers
     assert len(set(critic_answers.values())) == 1, critic_answers
+
+
+def test_fokus_match_er_ikke_generisk() -> None:
+    """Fokus-matchning må ikke blive løs for at «få liv i» de døde signaler.
+
+    Fristelsen er nærliggende: de fire kryds-lag-producenter giver 0 kandidater,
+    og en generisk ord-matchning ville se ud som en rettelse. Målt 4/11-2026 på
+    400 historiske correction-critics gav den 41 «matches» — alle på funktionsord
+    som «skal», «ikke», «hvordan». Et falsk domæne er værre end et tomt: det
+    krydser to lag der ikke taler om det samme, og skriver et signal der ser
+    virksomt ud.
+
+    Derfor: en besked der deler funktionsord med en fokus-nøgle, men ikke emnet,
+    skal IKKE matche. Den dag nogen bygger en rigtig domæne-dimension, skal
+    denne test erstattes — ikke omgås ved at løsne matchningen.
+    """
+    from core.services.reflective_critic_tracking import _message_matches_focus_key
+
+    fokus_noegle = "focus:bearing:Holder træet rent og commits verificeret"
+    # Deler to indholdsord med nøglen («commits», «rent») men handler om noget
+    # andet: om at køre commits, ikke om at holde træet rent. En løs matchning
+    # ville krydse de to lag; den strenge gør ikke.
+    assert not _message_matches_focus_key(fokus_noegle, "Kan du se om de commits der blev kørt er rent faktisk landet")
+    # De to emner funktionen faktisk kender, matcher stadig.
+    assert _message_matches_focus_key("focus:bearing:danish-concise-calibration", "svar kort på dansk")
+    assert _message_matches_focus_key("focus:bearing:avoid-repetitive-openers", "du behøver ikke gentage det")

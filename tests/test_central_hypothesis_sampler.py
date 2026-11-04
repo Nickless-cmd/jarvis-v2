@@ -297,6 +297,12 @@ _CONTRACT_BASE = {
     "time_basis": "ingestion_time",
     "evaluation_policy": "latency_margin_v1",
     "policy_version": 1,
+    # Evidens-specifikationen (4/11-2026): hvad tælles, hvordan vælges det, hvordan
+    # vægtes det. Uden den ved dommen ikke om `min_samples: 5` betyder fem uafhængige
+    # observationer eller én målt fem gange.
+    "evidence_unit": "per_run",
+    "window_semantics": "rolling_run_count",
+    "aggregation": "pooled",
 }
 
 
@@ -626,3 +632,100 @@ def test_identisk_grundlag_giver_samme_observation(isolated_runtime, monkeypatch
         f"identisk grundlag skal give samme noegle — ellers taeller samme observation"
         f" flere gange: {a['cursor']} vs {b['cursor']}")
     assert a["cursor"].count(":") == 2, f"noeglen skal baere antal + hash: {a['cursor']}"
+
+
+# ── Enheden i kontrakten (4/11-2026) ──────────────────────────────────────────
+# Kontrakten bandt retningen, politikken og evaluatoren — men ikke ENHEDEN. Maalt:
+# `min_samples: 5` talte fem kald til `aggregate_model_outcomes()`, ikke fem
+# uafhaengige observationer; de fem kald laeste stort set samme rullende vindue
+# (97,8 % overlap). «Fem beviser» var én observation maalt fem gange.
+
+
+def test_kontrakt_uden_enhed_er_strukturel_gaeld_ikke_no_data(isolated_runtime, monkeypatch):
+    """En kontrakt der ikke deklarerer sin enhed kan ALDRIG evalueres.
+
+    Derfor skal den rapporteres som `unevaluable` — ikke som `no_data`. Forskellen er
+    ikke kosmetisk: `no_data` betyder «proev igen om 30 minutter», og en kontrakt uden
+    enhed bliver aldrig testbar af at vente paa data. Det er samme fejlform som
+    family-mismatchet, som blev forsoegt hvert 30. minut i ugevis.
+    """
+    fra = {k: v for k, v in _CONTRACT_BASE.items() if k != "evidence_unit"}
+    _insert_hyp("h-uden-enhed", "model_meta", "latency:p/fast>p/slow",
+                contract={**fra, "expected_relation": "less_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 0, res
+    assert res["no_data"] == [], "en manglende enhed bliver ikke rigtig af at vente paa data"
+    assert len(res["unevaluable"]) == 1, res["unevaluable"]
+    grund = list(res["unevaluable"])[0]
+    assert "evidence_unit" in grund, grund
+
+
+def test_ikke_implementeret_enhed_er_strukturel_gaeld(isolated_runtime, monkeypatch):
+    """`per_model_call` er registreret men IKKE implementeret — den maa ikke kunne testes.
+
+    `costs` baerer intet per-kald start/slut, saa aegte per-kald-latency kan ikke maales.
+    En kontrakt der paastod det ville lyve om praecis det punkt hvor dommen beregnes.
+    """
+    _insert_hyp("h-per-kald", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than",
+                          "evidence_unit": "per_model_call"})
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 0, res
+    assert res["no_data"] == [], res["no_data"]
+    grund = list(res["unevaluable"])[0]
+    assert "IKKE implementeret" in grund, grund
+
+
+def test_enheden_baeres_i_ground_ref(isolated_runtime, monkeypatch):
+    """ground_ref skal sige HVILKEN enhed observationen blev talt i.
+
+    Uden det kan to kontrakter med forskellige enheder dele evidensidentitet, og
+    dedup'en (noegle: source+ground_ref) ville blokere den ene som «duplikat» af den
+    anden — selv om de talte hvert sit grundlag.
+    """
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
+        _run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")])
+    res = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+    assert "@per_run/rolling_run_count/pooled/v1" in res["cursor"], res["cursor"]
+
+
+def test_forskellige_enheder_giver_forskellig_ground_ref(isolated_runtime, monkeypatch):
+    """To kontrakter paa SAMME data men med FORSKELLIGE enheder maa ikke dele noegle.
+
+    Enheden goeres midlertidigt implementeret her, fordi pointen er mekanismen: i det
+    oejeblik en anden enhed kan maales, skal dens observation vaere sin EGEN — ikke en
+    dublet af den andens. Maalt 4/11-2026 vender enheden dommen (16/16 per koersel mod
+    0/16 per kald), saa de to observationer maa aldrig kollapse til én.
+    """
+    import copy
+    from core.services import central_model_meta as mm
+    from core.services import central_test_contract as tc
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
+        _run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")])
+
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
+
+    spec = copy.deepcopy(tc.EVIDENCE_UNITS)
+    try:
+        tc.EVIDENCE_UNITS["per_model_call"]["implemented"] = True
+        b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than",
+                                            "evidence_unit": "per_model_call"})
+    finally:
+        tc.EVIDENCE_UNITS.clear()
+        tc.EVIDENCE_UNITS.update(spec)
+
+    assert a["cursor"] != b["cursor"], (
+        f"to enheder paa samme data delte evidensidentitet: {a['cursor']} vs {b['cursor']}")
+    assert "@per_run/" in a["cursor"] and "@per_model_call/" in b["cursor"], (a, b)

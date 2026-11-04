@@ -102,18 +102,18 @@ _core/services/central_hypothesis_sampler.py_
 | function | `_eval_causal_sequence` | `(prov, contract=…)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L130) |
 | function | `_observation_fingerprint` | `(subject, comparator, *, window=…)` | Hash af det FAKTISKE datagrundlag — ikke af hvor mange rækker der indgik. | [src](../../../core/services/central_hypothesis_sampler.py#L139) |
 | function | `_eval_contract_comparative` | `(contract)` | Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN. | [src](../../../core/services/central_hypothesis_sampler.py#L172) |
-| function | `_eval_model_meta` | `(prov, contract=…)` | Holder model-dominansen (latency/success) i friske runs? | [src](../../../core/services/central_hypothesis_sampler.py#L244) |
-| function | `_eval_divergence` | `(prov, contract=…)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L259) |
-| function | `_eval_stance` | `(prov, contract=…)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L267) |
-| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L278) |
-| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L282) |
-| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L286) |
-| function | `evaluator_for` | `(prov, contract=…)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L314) |
-| function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L361) |
-| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L373) |
-| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L403) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L433) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L504) |
+| function | `_eval_model_meta` | `(prov, contract=…)` | Holder model-dominansen (latency/success) i friske runs? | [src](../../../core/services/central_hypothesis_sampler.py#L260) |
+| function | `_eval_divergence` | `(prov, contract=…)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L275) |
+| function | `_eval_stance` | `(prov, contract=…)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L283) |
+| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L294) |
+| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L298) |
+| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L302) |
+| function | `evaluator_for` | `(prov, contract=…)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L330) |
+| function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L377) |
+| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L389) |
+| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L419) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L449) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L520) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._

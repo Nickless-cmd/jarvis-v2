@@ -188,6 +188,13 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     rel = tc.relation_of(contract)
     if not subject or not comparator or rel not in ("less_than", "greater_than"):
         return None
+    # ENHEDEN SKAL VÆRE DEKLARERET (4/11-2026). Uden den ved dommen ikke hvad den har
+    # talt: `min_samples: 5` kan betyde fem uafhængige observationer eller én målt fem
+    # gange. Den primære port er `evaluator_for()`, som giver `unevaluable` (strukturel
+    # gæld) — dette er kun så en direkte kalder ikke får en dom på et grundlag
+    # kontrakten ikke nævner.
+    if tc.evidence_of(contract) is None:
+        return None
     min_samples = int(contract.get("min_samples") or 0)
     agg = mm.aggregate_model_outcomes()
     sa, ca = agg.get(subject), agg.get(comparator)
@@ -222,6 +229,15 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     s_n, c_n = int(sa.get("samples") or 0), int(ca.get("samples") or 0)
     fp = _observation_fingerprint(subject, comparator)
     cur = f"{s_n}:{c_n}:{fp}" if fp else f"{s_n}:{c_n}"
+    # ENHEDEN ER EN DEL AF OBSERVATIONENS IDENTITET (4/11-2026). Dedup'en i
+    # `record_governed_sample` nøgler på source+ground_ref. To kontrakter der tæller
+    # FORSKELLIGE enheder — fx `per_run` og `per_model_call` — måler hvert sit grundlag
+    # på samme data, så uden signaturen ville den ene blokere den andens observation som
+    # «duplikat». Centralen ville da tie om netop den kontrast der vender dommen (målt
+    # 4/11-2026: 16/16 per kørsel mod 0/16 per kald på samme 16 dage).
+    ev_sig = tc.evidence_signature(contract)
+    if ev_sig:
+        cur = f"{cur}@{ev_sig}"
 
     # TRE udfald, ikke to: «hurtigere, men ikke markant nok» er ikke et modbevis.
     # Et binært udfald ville stemple al utydelig evidens som modsigelse — samme

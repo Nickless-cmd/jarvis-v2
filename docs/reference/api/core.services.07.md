@@ -393,12 +393,14 @@ _core/services/central_test_contract.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L70) |
-| function | `policy_of` | `(contract)` | Den pinnede beslutningsregel. None hvis politikken ikke findes. | [src](../../../core/services/central_test_contract.py#L133) |
-| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L147) |
-| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L152) |
-| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L157) |
-| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L161) |
+| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L160) |
+| function | `policy_of` | `(contract)` | Den pinnede beslutningsregel. None hvis politikken ikke findes. | [src](../../../core/services/central_test_contract.py#L243) |
+| function | `evidence_of` | `(contract)` | Hvad dommen tæller: (enhed, vindue, aggregering). None hvis spec'en er ugyldig. | [src](../../../core/services/central_test_contract.py#L257) |
+| function | `evidence_signature` | `(contract)` | Kort, stabil signatur af evidens-spec'en — bæres i `ground_ref`. | [src](../../../core/services/central_test_contract.py#L280) |
+| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L293) |
+| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L298) |
+| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L303) |
+| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L307) |
 
 ## `core/services/central_timeseries.py`
 _core/services/central_timeseries.py_

@@ -1,6 +1,8 @@
 """Tests for heartbeat provider fallback load-spreading (2026-06-22)."""
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 import core.services.cheap_provider_runtime as cpr
 from core.services import heartbeat_provider_fallback as hpf
@@ -289,3 +291,44 @@ def test_samme_model_forsoeges_kun_en_gang():
 
     assert tried.count(("mistral", "m")) == 1, tried
     assert tried.count(("opencode", "o")) == 1, tried
+
+
+# ── Modellens TANKE maa aldrig blive dens svar ───────────────────────────
+# Maalt 4/11-2026: outreach_composer brugte denne kalder, og naar modellen
+# brugte alle tokens paa at taenke, faldt svaret tilbage paa
+# `reasoning_content`. Resultatet var 3 af 3 outreach-tekster der var
+# PROMPT-TRACES ("We need to produce a short message to Bjoern...") gemt
+# som brugervendte beskeder. En tanke er ikke et svar.
+
+def _svar_med(monkeypatch, krop: dict):
+    monkeypatch.setattr("core.services.heartbeat_runtime._load_provider_api_key",
+                        lambda **k: "noegle")
+    r = MagicMock()
+    r.read.return_value = json.dumps(krop).encode()
+    r.__enter__ = lambda s: s
+    r.__exit__ = lambda s, *a: False
+    monkeypatch.setattr(hpf.urllib_request, "urlopen", lambda *a, **k: r)
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **k: None)
+
+
+def test_reasoning_content_er_IKKE_et_svar(monkeypatch):
+    """Tomt content + fyldt reasoning_content skal FEJLE, ikke levere tanken."""
+    _svar_med(monkeypatch, {"choices": [{"message": {
+        "content": "",
+        "reasoning_content": "We need to produce a short message to Bjoern. The context: ...",
+    }}]})
+    with pytest.raises(RuntimeError):
+        hpf.execute_openai_compat_heartbeat_prompt(
+            prompt="skriv en besked", target={"provider": "deepseek", "model": "deepseek-v4-flash"})
+
+
+def test_content_med_tanke_ved_siden_af_bruges(monkeypatch):
+    """Har modellen BAADE tanke og svar, er det svaret der vinder."""
+    _svar_med(monkeypatch, {"choices": [{"message": {
+        "content": "Jeg taenkte paa i nat at det hele hang sammen.",
+        "reasoning_content": "We need to produce a short message...",
+    }}]})
+    ud = hpf.execute_openai_compat_heartbeat_prompt(
+        prompt="skriv en besked", target={"provider": "deepseek", "model": "deepseek-v4-flash"})
+    assert ud["text"] == "Jeg taenkte paa i nat at det hele hang sammen."
+    assert "We need to produce" not in ud["text"]

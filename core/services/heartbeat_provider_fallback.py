@@ -119,7 +119,12 @@ def execute_openai_compat_heartbeat_prompt(
         raise RuntimeError(str(exc) or type(exc).__name__) from exc
 
     message = ((data.get("choices") or [{}])[0]).get("message") or {}
-    text = str(message.get("content") or message.get("reasoning_content") or "").strip()
+    # 4/11-2026: `reasoning_content` er modellens TANKE, ikke dens svar. Da
+    # outreach_composer brugte denne kalder, blev tankestroemmen gemt som
+    # brugervendt besked — maalt: 3 af 3 outreach-tekster var prompt-traces
+    # ("We need to produce a short message to Bjoern..."). En tanke maa aldrig
+    # kunne forveksles med et svar: tomt content betyder tomt svar.
+    text = str(message.get("content") or "").strip()
     if not text:
         raise RuntimeError(f"{provider} heartbeat execution returned no response")
 

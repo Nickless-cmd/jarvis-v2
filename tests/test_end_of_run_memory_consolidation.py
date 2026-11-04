@@ -284,3 +284,32 @@ class TestDailyMemoryProvenance:
         content = daily.read_text(encoding="utf-8")
         assert "[CANDIDATE→USER.md] prefers concise answers" in content
         assert "[USER.md] prefers" not in content
+
+
+def test_regel_forslag_citerer_BJOERNS_ord_ikke_modellens_abstraktion(
+    isolated_runtime, monkeypatch,
+) -> None:
+    """Maalt 4/11-2026: forslaget lod «Correction to my assumption about the
+    user's identity» — en model-genereret LABEL — i stedet for den saetning
+    Bjoern faktisk skrev. Et spoergsmaal han ikke kan svare paa, fordi
+    indholdet er vaek. `line` er saetningen i hans sprog; `summary` er
+    abstraktionen. Derfor skal `line` vinde."""
+    module = importlib.import_module("core.services.end_of_run_memory_consolidation")
+    setninger: list[str] = []
+
+    def _fang(*, text, session_id="", kind=""):
+        setninger.append(text)
+        return {"surfaced": False}
+
+    monkeypatch.setattr(
+        "core.services.repeated_requests.note_and_surface", _fang
+    )
+    module._count_repeated_asks(
+        [{
+            "kind": "correction",
+            "summary": "Correction to my assumption about the user's identity",
+            "line": "- Bjoern vil have korte svar uden assistant-fraser",
+        }],
+        session_id="test-session",
+    )
+    assert setninger == ["- Bjoern vil have korte svar uden assistant-fraser"], setninger

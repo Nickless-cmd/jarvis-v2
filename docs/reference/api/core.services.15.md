@@ -127,7 +127,7 @@ _Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…, timeout=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L62) |
-| function | `try_heartbeat_cheap_fallback` | `(prompt, *, budget_s=…)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L179) |
+| function | `try_heartbeat_cheap_fallback` | `(prompt, *, budget_s=…)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L184) |
 
 ## `core/services/heartbeat_runtime.py`
 

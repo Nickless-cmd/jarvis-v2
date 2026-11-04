@@ -107,10 +107,16 @@ def test_five_supporting_samples_resolve(isolated_runtime, monkeypatch):
         seq.append((eid, "memory.recall_fail", _ts(base))); eid += 1
         seq.append((eid, "somatic.stress", _ts(base + 1))); eid += 1
     _bind_events(monkeypatch, seq)
-    # 5 ticks (hver = ét grounded sample) → sample_size=5 nået → resolve supported
-    for _ in range(5):
+    # 5 ticks — men hver tick skal se NY information. `ground_ref` er event-
+    # cursoren, og idempotensen (4/11-2026) indsætter kun ét sample pr.
+    # (source, ground_ref): en uændret strøm er ÉN observation målt fem gange,
+    # ikke fem observationer. Uden dette ville testen måle sin egen antagelse.
+    for i in range(5):
         smp.run_hypothesis_sampler_tick()
+        seq.append((eid, "memory.recall_fail", _ts(i))); eid += 1
+        seq.append((eid, "somatic.stress", _ts(i))); eid += 1
     from core.runtime.db import connect
     with connect() as c:
-        row = c.execute("SELECT status, outcome FROM central_hypotheses").fetchone()
+        row = c.execute("SELECT status, outcome, grounded_samples FROM central_hypotheses").fetchone()
+    assert row["grounded_samples"] == 5, f"5 unikke observationer skulle give 5 samples, fik {row['grounded_samples']}"
     assert row["status"] == "resolved" and row["outcome"] == "supported"

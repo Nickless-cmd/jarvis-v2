@@ -76,6 +76,82 @@ class TestDommen:
             assert ex.adjudicate("a", "b")["verdict"] == "undecided"
 
 
+class TestKontrakten:
+    """Hypotesens EGEN præregistrerede påstand går forud for P-tærsklen.
+
+    Målt 4/11-2026: 392/392 handlinger havde en udfyldt kontrakt, 392/392 sagde
+    "gentager sig over baseline", og 306 opfyldte den allerede — men dommeren
+    målte om overgangen var blevet 5 % af ALLE overgange fra X. En hypotese kan
+    ikke afgøres af en måling den ikke fremsatte.
+    """
+
+    def _adj(self, prob, total, kontrakt=None):
+        with patch("core.services.central_sequence.transition_prob", return_value=prob), \
+             patch("core.services.central_sequence._from_total", return_value=total), \
+             patch("core.runtime.db.connect"):
+            return ex.adjudicate("a", "b", kontrakt=kontrakt)
+
+    def test_opfyldt_kontrakt_doemmes_ikke_som_stoej(self):
+        """P siger 0.005 — den gamle dom ville være 'noise'. Kontrakten siger 5/5."""
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 5})
+        assert v["verdict"] == "contract_met", v
+        assert v["prob"] == 0.005, "P skal bevares som sekundær kontekst"
+
+    def test_uopfyldt_kontrakt_giver_undecided_ikke_stoej(self):
+        """4/5 er ikke 'det var støj' — det er 'kriteriet er ikke nået endnu'."""
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 4})
+        assert v["verdict"] == "undecided", v
+        assert "4/5" in v["reason"]
+
+    def test_kontrakten_slaar_ogsaa_regime(self):
+        """Også en 'regime'-dom må vige: kontrakten er hypotesens egen påstand."""
+        assert self._adj(0.12, 583, {"krav": 5, "jordet": 4})["verdict"] == "undecided"
+
+    def test_uden_kontrakt_er_dommen_uaendret(self):
+        """Bagudkompatibel: hypoteser uden læsbar kontrakt dømmes som før."""
+        assert self._adj(0.005, 583)["verdict"] == "noise"
+        assert self._adj(0.12, 583)["verdict"] == "regime"
+
+    def test_ugyldig_kontrakt_falder_til_frekvensdom(self):
+        for k in (None, {}, {"krav": 0, "jordet": 5}, {"krav": 5, "jordet": None},
+                  {"krav": "5", "jordet": 5}):
+            assert self._adj(0.005, 583, k)["verdict"] == "noise", k
+
+    def test_kontrakt_laeses_fra_sample_size_og_jordede(self):
+        assert ex._kontrakt_af({"sample_size": "5", "jordede_samples": 4}) == \
+            {"krav": 5, "jordet": 4}
+        assert ex._kontrakt_af({"sample_size": "5"}) is None
+        assert ex._kontrakt_af({"sample_size": None, "jordede_samples": 4}) is None
+        assert ex._kontrakt_af({"sample_size": "0", "jordede_samples": 4}) is None
+
+    def test_jordede_samples_taeller_kun_jordede(self, isolated_runtime):
+        """Feltet `grounded_samples` tæller ALLE samples (målt 698/698 rækker).
+        Denne funktion tæller kun dem der faktisk er jordet — ellers dømmer
+        kontrakten på et oppustet tal."""
+        import core.services.central_dream_action as cda
+        from core.runtime.db_core import connect
+        with connect() as c:
+            c.execute("""CREATE TABLE IF NOT EXISTS central_hypothesis_samples (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, hyp_id TEXT, supports INTEGER,
+                falsifies INTEGER, source TEXT, ground_ref TEXT, triggered_by TEXT,
+                created_at TEXT)""")
+            for sup, ref in ((1, "r1"), (1, "r2"), (0, "r3"), (1, ""), (1, None)):
+                c.execute("INSERT INTO central_hypothesis_samples "
+                          "(hyp_id, supports, ground_ref, created_at) VALUES (?,?,?,'x')",
+                          ("h1", sup, ref))
+            c.commit()
+            assert cda._jordede_samples(c, "h1") == 2
+            assert cda._jordede_samples(c, "findes-ikke") == 0
+
+    def test_jordede_samples_gaetter_ikke_naar_det_ikke_kan_maales(self, isolated_runtime):
+        """Kan tabellen ikke læses, er svaret None — ikke 0. Et gæt på 0 ville
+        se ud som 'kontrakten er langt fra opfyldt'."""
+        import core.services.central_dream_action as cda
+        from core.runtime.db_core import connect
+        with connect() as c:
+            assert cda._jordede_samples(c, "h1") is None
+
+
 class TestSnaeverAllowlist:
     def _run(self, cands, mode="live"):
         with patch.object(ex, "mode", return_value=mode), \

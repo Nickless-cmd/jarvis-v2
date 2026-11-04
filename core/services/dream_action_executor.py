@@ -81,12 +81,22 @@ def _parse_family(provenance: dict[str, Any]) -> tuple[str, str] | None:
     return (a, b) if a and b else None
 
 
-def adjudicate(from_fam: str, to_fam: str) -> dict[str, Any]:
+def adjudicate(from_fam: str, to_fam: str, *,
+               kontrakt: dict[str, Any] | None = None) -> dict[str, Any]:
     """Mål om regimet holdt. Ren læsning af sekvens-modellen; ændrer ingenting.
 
-    ``verdict``: ``'regime'`` (overgangen er over tærsklen nu — modellen manglede den
-    og har lært den), ``'noise'`` (stadig under, med nok observationer til at sige det),
-    ``'undecided'`` (for lidt data — vi handler ikke på et gæt).
+    ``kontrakt`` er hypotesens EGEN præregistrerede påstand: ``{"krav": N,
+    "jordet": M}`` — N jordede observationer krævet, M opnået. Den går forud for
+    P-tærsklen. Hypotesen siger *"overgangen gentager sig over baseline"*; P måler
+    om den er blevet 5 % af ALLE overgange fra X. Det er to forskellige påstande,
+    og en hypotese kan ikke afgøres af en måling den ikke fremsatte. Uden
+    ``kontrakt`` er dommen den gamle frekvens-dom (bagudkompatibel).
+
+    ``verdict``: ``'contract_met'`` (hypotesens eget kriterium opfyldt),
+    ``'regime'`` (overgangen er over tærsklen nu — modellen manglede den og har
+    lært den), ``'noise'`` (stadig under, med nok observationer til at sige det),
+    ``'undecided'`` (for lidt data, eller kontrakten ikke opfyldt endnu — vi
+    handler ikke på et gæt).
     """
     try:
         from core.services import central_sequence as seq
@@ -99,6 +109,20 @@ def adjudicate(from_fam: str, to_fam: str) -> dict[str, Any]:
         return {"verdict": "undecided", "reason": f"måling fejlede: {type(exc).__name__}",
                 "prob": None, "from_total": None}
 
+    # Hypotesens egen kontrakt først. Er den læsbar, er det DEN der afgør;
+    # P rapporteres som sekundær kontekst, ikke som dom.
+    if kontrakt:
+        krav = kontrakt.get("krav")
+        jordet = kontrakt.get("jordet")
+        if isinstance(krav, int) and krav > 0 and isinstance(jordet, int) and jordet >= 0:
+            if jordet >= krav:
+                return {"verdict": "contract_met", "prob": round(p, 4), "from_total": total,
+                        "reason": f"hypotesens egen kontrakt opfyldt: {jordet}/{krav} "
+                                  f"jordede observationer (P={p:.4f} er sekundær)"}
+            return {"verdict": "undecided", "prob": round(p, 4), "from_total": total,
+                    "reason": f"kontrakten ikke opfyldt endnu: {jordet}/{krav} "
+                              f"jordede observationer"}
+
     if total < _MIN_FROM_TOTAL:
         return {"verdict": "undecided", "prob": round(p, 4), "from_total": total,
                 "reason": f"kun {total} observationer af '{from_fam}' — for tyndt til en dom"}
@@ -109,6 +133,25 @@ def adjudicate(from_fam: str, to_fam: str) -> dict[str, Any]:
     return {"verdict": "noise", "prob": round(p, 4), "from_total": total,
             "reason": f"'{from_fam}'→'{to_fam}' er stadig P={p:.4f} efter {total} "
                       f"observationer — det var støj"}
+
+
+def _kontrakt_af(h: dict[str, Any]) -> dict[str, Any] | None:
+    """Hypotesens præregistrerede påstand som ``{"krav", "jordet"}``.
+
+    ``krav`` læses fra ``sample_size`` (den mængde generatoren selv krævede), og
+    ``jordet`` er det FAKTISKE antal jordede observationer — ikke feltet
+    ``grounded_samples``, som målt 4/11-2026 tæller ALLE samples (698/698 rækker
+    havde ``grounded_samples == alle_samples``). Returnerer None når kontrakten
+    ikke kan læses, så dommen falder tilbage til frekvens-dommen.
+    """
+    try:
+        krav = int(str(h.get("sample_size") or "").strip())
+    except (TypeError, ValueError):  # sample_size er ikke et tal — kontrakten kan ikke læses
+        return None
+    jordet = h.get("jordede_samples")
+    if krav <= 0 or not isinstance(jordet, int):
+        return None
+    return {"krav": krav, "jordet": jordet}
 
 
 def _observe_incident(hyp_id: str, ver: dict[str, Any], *, applied: bool) -> None:
@@ -172,7 +215,7 @@ def run_once(*, limit: int = _MAX_PER_TICK) -> dict[str, Any]:
             fam = _parse_family(prov)
             if fam is None:
                 continue
-            ver = adjudicate(*fam)
+            ver = adjudicate(*fam, kontrakt=_kontrakt_af(h))
             if ver["verdict"] == "undecided":
                 continue  # vi handler ikke på et gæt
             hyp_id = str(h.get("hyp_id"))

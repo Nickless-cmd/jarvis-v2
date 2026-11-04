@@ -67,7 +67,7 @@ def select_actionable(*, limit: int = 3, min_confidence: float = _MIN_CONFIDENCE
                 # se hypotesens MEKANISME, og `dream_action_executor` filtrerede derfor
                 # alle 12 kandidater fra på sin allowlist uden at kunne sige hvorfor.
                 f"""SELECT hyp_id, statement, prediction, confidence, grounded_samples, status,
-                           created_at, provenance_json
+                           created_at, provenance_json, sample_size
                     FROM central_hypotheses
                     WHERE status IN ({placeholders}) AND confidence >= ? AND grounded_samples >= ?
                     ORDER BY confidence DESC, grounded_samples DESC LIMIT ?""",
@@ -75,15 +75,34 @@ def select_actionable(*, limit: int = 3, min_confidence: float = _MIN_CONFIDENCE
             _ensure_actions(conn)
             acted = {r["hyp_id"] for r in conn.execute(
                 "SELECT DISTINCT hyp_id FROM central_dream_actions").fetchall()}
-        out = []
-        for r in rows:
-            d = dict(r)
-            if d["hyp_id"] in acted:
-                continue
-            out.append(d)
+            out = []
+            for r in rows:
+                d = dict(r)
+                if d["hyp_id"] in acted:
+                    continue
+                d["jordede_samples"] = _jordede_samples(conn, d["hyp_id"])
+                out.append(d)
         return out
     except Exception:
         return []
+
+
+def _jordede_samples(conn: sqlite3.Connection, hyp_id: str) -> int | None:
+    """Antal observationer der faktisk er jordet (``supports`` + ikke-tom ``ground_ref``).
+
+    Ikke feltet ``grounded_samples``: målt 4/11-2026 tæller det ALLE samples
+    (698/698 rækker havde ``grounded_samples == alle_samples``). Returnerer None
+    når det ikke kan måles, så en dommer falder tilbage til frekvens-dommen i
+    stedet for at gætte på et tal.
+    """
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM central_hypothesis_samples "
+            "WHERE hyp_id=? AND supports=1 "
+            "AND ground_ref IS NOT NULL AND ground_ref != ''", (hyp_id,)).fetchone()
+        return int(row[0]) if row else None
+    except Exception:  # samples-tabellen kan mangle i en frisk base — None tvinger frekvens-dommen
+        return None
 
 
 def record_action(hyp_id: str, *, action: str, result: str = "") -> dict[str, Any]:

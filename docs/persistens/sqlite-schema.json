@@ -33652,7 +33652,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "runtime_flows": {
@@ -36540,7 +36540,62 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
+      ]
+    },
+    "runtime_opposition_arms": {
+      "digest": "28:83:67:64:94:50:c3:f4:c3:cf:67:5f:89:47:da:01:49:c7:7c:a0:f7:02:86:b0:e5:57:c6:8d:5b:3b:50:cc",
+      "schema": {
+        "columns": [
+          {
+            "name": "arm",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_runtime_opposition_arms_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "sqlite_utc_seconds"
       ]
     },
     "runtime_private_initiative_tension_signals": {
@@ -37974,7 +38029,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "runtime_proactive_loop_lifecycle_signals": {

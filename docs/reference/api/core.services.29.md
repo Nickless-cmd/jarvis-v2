@@ -568,9 +568,11 @@ _Visible-lane inner-life section — gives the entity its voice in the prompt._
 | function | `_voice_as_prose` | `(text)` | Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren | [src](../../../core/services/visible_inner_life.py#L811) |
 | function | `_voice_line` | `()` | Latest protected inner voice. The producer currently emits degraded | [src](../../../core/services/visible_inner_life.py#L848) |
 | function | `_world_model_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L886) |
-| function | `build_opposition_line` | `()` | Kryds-lag-indsigelse: to lag i SAMME kørsel der peger hver sin vej. | [src](../../../core/services/visible_inner_life.py#L911) |
-| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L945) |
-| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L965) |
+| function | `opposition_arm` | `(run_id)` | Kontrol-arm for kryds-lag-indsigelsen: "control" eller "treatment". | [src](../../../core/services/visible_inner_life.py#L911) |
+| function | `_opposition_line_text` | `()` | Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``. | [src](../../../core/services/visible_inner_life.py#L955) |
+| function | `build_opposition_line` | `()` | Indsigelsen som prompt-linje — eller None i kontrol-armen. | [src](../../../core/services/visible_inner_life.py#L989) |
+| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L1007) |
+| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L1027) |
 
 ## `core/services/visible_member_prompt.py`
 _Bounded visible prompt for a member's own chat session._

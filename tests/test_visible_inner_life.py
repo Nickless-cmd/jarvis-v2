@@ -316,6 +316,13 @@ def test_oppositionen_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(
     from core.services import signal_surface_router as ssr
     from core.tools import tool_scoping
 
+    # 4/11-2026: testen maaler at indsigelsen NAAR FREM, ikke kontrol-armen.
+    # Uden denne pin ville et sat run_id kunne lande i kontrol-armen og goere
+    # testen flaky — den skulle saa fejle paa noget den ikke maaler.
+    from core.services import run_autonomy_context as _rac
+
+    monkeypatch.setattr(_rac, "current_run_id", lambda: "")
+
     # Gaten er shadow som default — uden flaget inkluderes ALT, og testen ville
     # være grøn uden at måle noget.
     cpc._kv_set(cpc._LIVE_FLAG, True)
@@ -393,3 +400,139 @@ def test_oppositionen_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(
             f"indsigelsens indhold nåede ikke {scope}-prompten — kun markøren gjorde. "
             "Formen blev bevaret, indholdet tabt."
         )
+
+
+# ── Niveau 6: kontrol-arm (4/11-2026) ─────────────────────────────────────────
+# Niveau 5 er maalt: indsigelsen naar prompten. Spoergsmaalet der mangler svar
+# paa er om den AENDRER en beslutning — og det kan kun afgoeres mod en arm der
+# ikke ser den. Disse tests vogter at splittet findes, at det er deterministisk,
+# og at armen bliver LOGGET (en tavs kontrol-arm er bare tilfaeldig tavshed).
+
+
+def test_kontrol_armen_er_deterministisk_og_tyve_procent():
+    from core.services.visible_inner_life import opposition_arm
+
+    arme = [opposition_arm(f"visible-arm{i:04d}") for i in range(2000)]
+    andel = arme.count("control") / len(arme)
+    assert 0.15 < andel < 0.25, f"kontrol-armen er {andel:.1%}, ikke ~20%"
+    assert {opposition_arm("visible-arm0042") for _ in range(5)} == {
+        opposition_arm("visible-arm0042")
+    }, "samme run_id skal give samme arm hver gang — ellers er der ingen arm"
+
+
+def test_tomt_run_id_viser_altid_indsigelsen():
+    """Fail-open: uden et id at splitte paa skal indsigelsen VISES.
+
+    Den modsatte vej (skjul i tvivl) ville goere tavshed til en egenskab ved
+    systemet i stedet for en maalt effekt.
+    """
+    from core.services.visible_inner_life import opposition_arm
+
+    assert opposition_arm("") == "treatment"
+    assert opposition_arm(None) == "treatment"
+
+
+def test_kontrol_arm_skjuler_indsigelsen_og_behandling_viser_den(monkeypatch):
+    from core.services import run_autonomy_context as rac
+
+    aktiv = {
+        "active": True,
+        "summary": {"active_count": 2, "current_signal": "Sagde ét og gjorde noget andet"},
+    }
+    monkeypatch.setattr(
+        "core.services.signal_surface_router.read_surface", lambda name: aktiv
+    )
+
+    monkeypatch.setattr(rac, "current_run_id", lambda: "visible-test0000")
+    assert vil.opposition_arm("visible-test0000") == "control"
+    assert vil.build_opposition_line() is None, (
+        "kontrol-armen skal ikke se indsigelsen — ellers findes der ingen "
+        "sammenligning at maale niveau 6 imod"
+    )
+
+    monkeypatch.setattr(rac, "current_run_id", lambda: "visible-test0001")
+    assert vil.opposition_arm("visible-test0001") == "treatment"
+    linje = vil.build_opposition_line()
+    assert linje is not None and "Sagde ét og gjorde noget andet" in linje
+
+
+def test_armen_logges_saa_den_kan_kobles_til_udfald(isolated_runtime):
+    """Uden denne raekke er kontrol-armen maalsloes: man kan ikke bagefter
+    vide hvilke koersler der saa indsigelsen og hvilke der ikke gjorde."""
+    from core.runtime.db import connect
+    from core.services.visible_inner_life import opposition_arm
+
+    rid = "visible-armlog0001"
+    arm = opposition_arm(rid)
+    opposition_arm(rid)  # gentaget kald maa ikke give dubletter
+
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT arm FROM runtime_opposition_arms WHERE run_id=?", (rid,)
+        ).fetchall()
+    assert len(rows) == 1, "armen skal logges praecis én gang pr. koersel"
+    assert rows[0][0] == arm
+
+
+def test_kontrol_armen_fjerner_indsigelsen_fra_den_BYGGEDE_prompt(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Niveau 6's fundament: armen skal virke gennem HELE kaeden, ikke kun i
+    det isolerede funktionskald.
+
+    Maalt 4/11-2026 i den byggede prompt: tomt id og behandlings-arm gav baade
+    markoer og indhold; kontrol-armen fjernede begge. Det er den eneste maaling
+    der kan afgoere om indsigelsen faktisk udeblev for modellen — en arm der
+    kun skjules i funktionen men ikke i prompten ville give en sammenligning
+    mellem to ens grupper.
+    """
+    from core.services import central_prompt_composer as cpc
+    from core.services import prompt_contract as pc
+    from core.services import run_autonomy_context as rac
+    from core.services import signal_surface_router as ssr
+    from core.tools import tool_scoping
+
+    cpc._kv_set(cpc._LIVE_FLAG, True)
+    cpc._kv_set(cpc._WEIGHTS_KEY, {})
+
+    UNIK = "Jeg gik videre uden readback af den aendrede fil"
+    _orig = ssr.read_surface
+
+    def fake_read(name):
+        if name == "internal_opposition":
+            return {
+                "active": True,
+                "items": [{"signal_type": "Challenge calibration", "status": "active"}],
+                "summary": {
+                    "active_count": 3,
+                    "current_signal": f"Challenge calibration: {UNIK}",
+                },
+            }
+        return _orig(name)
+
+    monkeypatch.setattr(ssr, "read_surface", fake_read)
+
+    def byg(run_id: str) -> str:
+        monkeypatch.setattr(rac, "current_run_id", lambda: run_id)
+        token = tool_scoping.set_tool_scope("chat")
+        try:
+            return pc.build_visible_chat_prompt_assembly(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                user_message="hvordan staar det til?",
+                session_id="s-armtest",
+            ).text
+        finally:
+            tool_scoping.reset_tool_scope(token)
+
+    behandling = byg("visible-test0001")
+    kontrol = byg("visible-test0000")
+
+    assert vil.opposition_arm("visible-test0001") == "treatment"
+    assert vil.opposition_arm("visible-test0000") == "control"
+
+    assert UNIK in behandling, "behandlings-armen skal se indsigelsens indhold"
+    assert UNIK not in kontrol, (
+        "kontrol-armen fik indsigelsen med i den byggede prompt — saa er der "
+        "ingen kontrol-arm, kun tilfaeldig tavshed"
+    )

@@ -908,8 +908,52 @@ def _world_model_line() -> Optional[str]:
     return None
 
 
-def build_opposition_line() -> Optional[str]:
-    """Kryds-lag-indsigelse: to lag i SAMME kørsel der peger hver sin vej.
+def opposition_arm(run_id: str) -> str:
+    """Kontrol-arm for kryds-lag-indsigelsen: "control" eller "treatment".
+
+    Niveau 6 (4/11-2026): niveau 5 var maalt — indsigelsen naar prompten. Det
+    naeste spoergsmaal er om den AENDRER en beslutning, og det kan kun maales
+    mod en arm der ikke ser den. Splittet er deterministisk paa et STABILT
+    server-tildelt id (``run_id``), ikke paa indhold — ellers kunne indsigelsen
+    omformuleres indtil den undgik kontrol-armen.
+
+    Tomt ``run_id`` giver ALTID "treatment": hellere vise indsigelsen end at
+    skjule den tilfaeldigt, naar der ikke er et id at splitte paa.
+
+    Armen logges i ``runtime_opposition_arms``, saa den kan kobles til
+    ``runtime_action_outcomes`` paa run_id. Uden den logning ville armen vaere
+    tavshed uden maaling — praecis den fejlform dagen igennem har handlet om.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return "treatment"
+    try:
+        from core.services.central_hypothesis_governance import is_control_arm
+
+        arm = "control" if is_control_arm(rid, fraction=0.2) else "treatment"
+    except Exception:
+        logger.debug("inner-life: control-arm failed", exc_info=True)
+        return "treatment"
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS runtime_opposition_arms ("
+                "run_id TEXT PRIMARY KEY, arm TEXT NOT NULL, created_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO runtime_opposition_arms (run_id, arm, created_at) "
+                "VALUES (?, ?, datetime('now'))",
+                (rid, arm),
+            )
+    except Exception:
+        logger.debug("inner-life: arm-log failed", exc_info=True)
+    return arm
+
+
+def _opposition_line_text() -> Optional[str]:
+    """Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``.
 
     Målt 4/11-2026: oppositionen blev produceret og læst af seks moduler, men
     nåede aldrig prompten — `_FELT_SURFACES` er en fast liste på 14 følte
@@ -940,6 +984,24 @@ def build_opposition_line() -> Optional[str]:
     except Exception:
         logger.debug("inner-life: opposition failed", exc_info=True)
     return None
+
+
+def build_opposition_line() -> Optional[str]:
+    """Indsigelsen som prompt-linje — eller None i kontrol-armen.
+
+    Armen afgøres ét sted her, ikke ved kaldestedet, så en ny kalder ikke kan
+    komme til at springe splittet over. Maalt 4/11-2026: niveau 5 (indsigelsen
+    naar prompten) er bevist; niveau 6 (den aendrer en beslutning) kraever at
+    nogle koersler ikke ser den.
+    """
+    try:
+        from core.services.run_autonomy_context import current_run_id
+
+        if opposition_arm(current_run_id()) == "control":
+            return None
+    except Exception:
+        logger.debug("inner-life: arm-gate failed", exc_info=True)
+    return _opposition_line_text()
 
 
 def build_somatic_snapshot() -> list[str]:

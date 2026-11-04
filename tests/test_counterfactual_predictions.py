@@ -146,3 +146,70 @@ def test_retningen_skrives_og_laeses_fra_forventningen():
     assert cp._extract_direction(pred) == cp.DIRECTION_INCREASING
     # Ældre poster uden retning: bagudkompatibel antagelse, ikke en sandhed.
     assert cp._extract_direction({"expectation": "declining frequency"}) == cp.DIRECTION_DECLINING
+
+
+# --- Falsificerbarheds-gaten (4/11-2026) --------------------------------
+# Målt i drift: `decision`, `dream`, `correction` og `failed_run` er
+# trigger_types i kalderne, men har NUL rækker i `events`. 855 af 909 åbne
+# forudsigelser var den samme uafgørlige påstand. Gaten afviser bindingen
+# FØR ledgeren røres — en forudsigelse der ikke kan efterprøves fortrænger
+# en der kan.
+
+
+def test_gaten_afviser_ikke_observerbar_kind(monkeypatch):
+    """`decision` kan ikke observeres → ingen post, og ledgeren røres ikke."""
+    import core.services.counterfactual_predictions as cp
+
+    kald: list[dict] = []
+    monkeypatch.setattr(
+        "core.services.world_model_signal_tracking."
+        "record_runtime_world_model_prediction",
+        lambda **kw: kald.append(kw) or {"status": "ok"},
+    )
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: k == "goal.updated")
+
+    r = cp.bind_counterfactual_to_prediction(
+        cf_id="cf-gate1", trigger_type="decision", event_kind="decision",
+    )
+    assert r["status"] == "skipped", r
+    assert "not-observable" in r["reason"]
+    assert kald == [], "gaten skal afvise FØR ledgeren skrives"
+
+
+def test_gaten_slipper_observerbar_kind_igennem(monkeypatch):
+    """Samme vej, observerbar kind → posten skrives med kind'en i evidence."""
+    import core.services.counterfactual_predictions as cp
+
+    kald: list[dict] = []
+    monkeypatch.setattr(
+        "core.services.world_model_signal_tracking."
+        "record_runtime_world_model_prediction",
+        lambda **kw: kald.append(kw) or {"status": "ok"},
+    )
+    monkeypatch.setattr(cp, "_event_kind_is_observable", lambda k: k == "goal.updated")
+
+    r = cp.bind_counterfactual_to_prediction(
+        cf_id="cf-gate2", trigger_type="goal.updated",
+    )
+    assert r["status"] == "ok", r
+    assert len(kald) == 1
+    assert "event_kind:goal.updated" in kald[0]["evidence"], kald[0]["evidence"]
+
+
+def test_proben_svarer_paa_den_faktiske_database(monkeypatch):
+    """Proben må ikke gætte: en kind der findes i `events` er observerbar,
+    en der ikke findes er det ikke. Målt mod den isolerede DB."""
+    import core.services.counterfactual_predictions as cp
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO events (kind, created_at, payload_json) VALUES (?, ?, ?)",
+            ("test.observerbar.kind", datetime.now(UTC).isoformat(), "{}"),
+        )
+        conn.commit()
+
+    cp._OBSERVABLE_CACHE.clear()
+    assert cp._event_kind_is_observable("test.observerbar.kind") is True
+    assert cp._event_kind_is_observable("findes.ikke.her") is False
+    assert cp._event_kind_is_observable("") is False

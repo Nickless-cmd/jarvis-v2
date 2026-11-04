@@ -111,6 +111,52 @@ def _confidence_band(numeric: float) -> str:
     return "low"
 
 
+# Målt 4/11-2026: `decision`, `dream`, `correction` og `failed_run` findes
+# som trigger_types i kalderne, men har NUL rækker i `events`. En forudsigelse
+# der tæller dem kan derfor aldrig afgøres — sweeperen svarer `uncertain` hver
+# gang, per konstruktion. Vagten her er falsificerbarheds-kontrakten: en
+# forudsigelse må kun oprettes hvis dens hændelse kan observeres.
+_OBSERVABLE_CACHE: dict[tuple[str, str], bool] = {}
+
+
+def _event_kind_is_observable(kind: str) -> bool:
+    """Findes mindst én række af ``kind`` i eventbus'en?
+
+    Self-safe: enhver fejl → False. En forudsigelse vi ikke kan efterprøve
+    er værre end ingen forudsigelse, fordi den fortrænger en der kan.
+
+    Cachenøglen indeholder DB-stien. Uden den ville en prod-måling
+    (`goal.updated` = True) lække ind i en test der kører mod en tom
+    tmp-DB — samme fælde som de modul-bundne `connect`-kopier, hvor
+    svaret blev båret videre fra den forkerte database.
+    """
+    k = str(kind or "").strip()
+    if not k:
+        return False
+    try:
+        from core.runtime.db_core import DB_PATH as _db_path
+
+        db_scope = str(_db_path)
+    except Exception:
+        db_scope = "unknown"
+    cache_key = (db_scope, k)
+    if cache_key in _OBSERVABLE_CACHE:
+        return _OBSERVABLE_CACHE[cache_key]
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM events WHERE kind = ? LIMIT 1", (k,)
+            ).fetchone()
+        found = row is not None
+    except Exception as exc:
+        logger.debug("counterfactual_predictions: observability probe failed: %s", exc)
+        found = False
+    _OBSERVABLE_CACHE[cache_key] = found
+    return found
+
+
 def bind_counterfactual_to_prediction(
     *,
     cf_id: str,
@@ -155,6 +201,17 @@ def bind_counterfactual_to_prediction(
     except Exception:
         pass  # settings unavailable — proceed best-effort
 
+    # Falsificerbarheds-gaten. Kalderne sender enten en konkret eventbus-kind
+    # (pipeline-vejen) eller en abstrakt trigger_type ("decision", "correction",
+    # "failed_run"), som ikke findes i `events`. Uden en observerbar kind kan
+    # Phase 2 ikke afsige en dom — så vi skriver ingen forudsigelse. Selve
+    # counterfactual'en lever videre i sin egen tabel; sporet går ikke tabt.
+    probe_kind = str(event_kind or "").strip() or trigger_type
+    if not _event_kind_is_observable(probe_kind):
+        return {"status": "skipped", "reason": f"not-observable: {probe_kind}"}
+    if not str(event_kind or "").strip():
+        event_kind = probe_kind
+
     try:
         from core.services.world_model_signal_tracking import (
             record_runtime_world_model_prediction,
@@ -190,6 +247,7 @@ def bind_counterfactual_to_prediction(
             confidence=band,
             evidence=evidence,
             source=source,
+            event_kind=event_kind,
         )
     except Exception as exc:
         logger.debug("counterfactual_predictions: record failed: %s", exc)

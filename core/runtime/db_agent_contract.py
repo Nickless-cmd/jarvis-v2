@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 import uuid
 from typing import Any
@@ -605,6 +606,61 @@ def partial_delivery_error(*, full: str, registry_status: str) -> tuple[str, str
     if text.strip() and "UFULDSTÆNDIG" in text:
         return "AGENT_INCOMPLETE", "delivery"
     return _ERROR_CODE.get(registry_status, ""), _ERROR_PHASE.get(registry_status, "")
+
+
+# Hvor tidligt i svaret en erklaering skal staa for at taelle. En agent der
+# RAPPORTERER om en anden agents erklaering midt i en lang tekst er ikke selv
+# declined — derfor et vindue og ikke en soegning i hele teksten.
+_DECLINE_VINDUE = 250
+
+# Erklaeringen skal naevne OPGAVEN. Det er det ord der giver praecision:
+# «jeg kunne ikke loese det med vaerktoej X, men fandt en anden vej» rammes
+# ikke, og det er netop den saetning en for bred markoer ville oede.
+_DECLINE_MOENSTRE = tuple(re.compile(p, re.IGNORECASE) for p in (
+    r"jeg\s+kan\s+ikke\s+l[øo]se\s+opgaven",
+    r"jeg\s+kunne\s+ikke\s+l[øo]se\s+opgaven",
+    r"jeg\s+kan\s+ikke\s+udf[øo]re\s+opgaven",
+    r"jeg\s+kunne\s+ikke\s+udf[øo]re\s+opgaven",
+    r"jeg\s+kan\s+ikke\s+gennemf[øo]re\s+opgaven",
+    r"jeg\s+er\s+ikke\s+i\s+stand\s+til\s+at\s+l[øo]se\s+opgaven",
+    r"opgaven\s+kan\s+ikke\s+l[øo]ses",
+))
+
+
+def decline_error(*, text: str) -> tuple[str, str]:
+    """(error_code, error_phase) naar agenten SELV melder at opgaven ikke kunne loeses.
+
+    MAALT 4/11-2026 i `agent_runs` (7 dage, status='completed', n=4): alle fire
+    havde et svar der erklaerede at opgaven ikke kunne loeses, og alle fire stod
+    som `completed` med `error_code=''` og `error_phase=''`.
+
+    Skarpest: `agent-71b2452a7d0e42e79395f4a38d3109e7` svarede ordret «Jeg kan
+    ikke loese opgaven: mit vaerktoejssaet i denne sandbox indeholder ikke …» —
+    og blev stemplet `completed`, `provider_status=completed`, `tool_calls=1`.
+    Den HAVDE `wt_bash` og `wt_write_file`. Der findes derfor INTET strukturelt
+    signal at laese paa den anden side: agent-loekken rapporterede selv succes,
+    og der blev kaldt et vaerktoej. Markoeren maa vaere en erklaering.
+
+    HVORFOR EN EGEN KODE OG EN EGEN STATUS
+    `AGENT_INCOMPLETE`/`delivery` (26/10) betyder «agenten blev afbrudt midt i».
+    Det er en anden jagt end «agenten vurderede at den ikke kunne» — slaas de
+    sammen, kan den naeste mig ikke se forskel. Status er `declined`, ikke
+    `failed`: agenten LEVEREDE et svar, og leverancen skal bevares. En
+    `failed`-status ville kaste arbejdet vaek for at faa signalet.
+
+    GROENSEN — og den er aegte: en agent der skriver «jeg kan ikke loese opgaven
+    med X, MEN jeg loeste den med Y» inden for de foerste 250 tegn bliver
+    fejlagtigt stemplet. Prisen er lav netop fordi `declined` bevarer
+    leverancen: intet arbejde gaar tabt, kun signalet bliver forkaert. Det er
+    den bevidste afvejning, ikke en forglemmelse.
+    """
+    hoved = str(text or "").strip()[:_DECLINE_VINDUE]
+    if not hoved:
+        return "", ""
+    for m in _DECLINE_MOENSTRE:
+        if m.search(hoved):
+            return "AGENT_DECLINED", "capability"
+    return "", ""
 
 
 def latest_agent_reply(conn: Any, agent_id: str) -> str:

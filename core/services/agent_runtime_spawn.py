@@ -898,9 +898,27 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                            exc_info=True)
             _resume = str(text or "")[:400]
 
+        # 4/11-2026: en agent der SELV melder at opgaven ikke kunne loeses er
+        # ikke en succes. Maalt i `agent_runs` (7 dage, status='completed', n=4):
+        # alle fire havde netop det svar, og alle fire stod uden fejlkode.
+        # Skarpest: `agent-71b2452a7d0e42e79395f4a38d3109e7` svarede «Jeg kan
+        # ikke loese opgaven: …» og blev stemplet completed med tool_calls=1.
+        #
+        # Status er `declined` og ikke `failed`, fordi agenten LEVEREDE et svar:
+        # leverancen (output_summary, payload, artifact) skal blive staaende.
+        # En `failed`-status ville kaste arbejdet vaek for at faa signalet.
+        _decl_kode, _decl_fase = "", ""
+        try:
+            from core.runtime.db_agent_contract import decline_error
+            _decl_kode, _decl_fase = decline_error(text=text)
+        except Exception:
+            logger.warning("decline_error fejlede for %s — runnet lukkes som foer",
+                           run_id, exc_info=True)
+        _run_status = "declined" if _decl_kode else "completed"
+
         update_agent_run(
             run_id,
-            status="completed",
+            status=_run_status,
             output_summary=_resume,
             output_payload_json=json.dumps(_nyttelast),
             finished_at=_now_iso(),
@@ -908,6 +926,8 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             output_tokens=output_tokens,
             cost_usd=float(result.get("cost_usd") or 0.0),
             provider_status=str(result.get("status") or "completed"),
+            error_code=_decl_kode,
+            error_phase=_decl_fase,
         )
         # Agents-cluster: dispatch-udfald SYNLIGT i Centralen (robusthedskonvolut +
         # envelope-tidsserier). Self-safe — kaster aldrig ind i dispatch-stien.

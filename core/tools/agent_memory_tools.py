@@ -61,7 +61,19 @@ def _exec_agent_note(args: dict[str, Any]) -> dict[str, Any]:
             return {"status": "ok", "text": _render(res), **res}
     except Exception as exc:                      # ContractError m.fl. bliver et fejlresultat til modellen
         return _fail(exc)
-    return {"status": "error", "code": "INVALID_SCOPE", "error": "action skal vaere write, read eller history"}
+    # ── DEN ENE AFVISNING DER IKKE SAGDE SIT NAVN (4/11-2026) ──────────────
+    #
+    # Denne `return` laa UDEN for `try`, saa den gik aldrig gennem `_fail` og
+    # loggede derfor ingenting. Alle andre afvisninger skriver
+    # «agent_note afvist: …»; netop denne var tavs.
+    #
+    # Det kostede en fejlslutning: jeg maalte 14 kald til `agent_note` og nul
+    # «afvist»-linjer i journalen og konkluderede at kaldene maatte fejle FOER
+    # vaerktoejet. De kunne lige saa godt vaere faldet her. En log-linje der
+    # mangler ét sted goer alle de andres fravaer tvetydigt.
+    logger.info("agent_note afvist: INVALID_SCOPE: ugyldig action %r", action or "(ingen)")
+    return {"status": "error", "code": "INVALID_SCOPE",
+            "error": "action skal vaere write, read eller history"}
 
 
 def _render(res: dict[str, Any]) -> str:

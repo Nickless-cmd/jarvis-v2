@@ -331,3 +331,142 @@ def test_read_file_baerer_ogsaa_sti():
         "read_file", "ok", {"path": "/a.py"}, {"path": "/a.py", "text": "x"}
     )
     assert p["path"] == "/a.py"
+
+
+# ── EJEREN VAR ALDRIG UKENDT — DEN STOD I RUNNETS EGEN RAEKKE (4/11-2026) ──
+#
+# Maalt paa CT105: 647 af 5.491 `tool.invoked` (13 %) bar `user_id=UKENDT`,
+# og alle 647 havde en AEGTE session (`chat-…`). Moenstret var pr. RUN: hele
+# runs manglede ejeren, mens naboerne i samme session havde den.
+#
+# Men `visible_runs.user_id` stod rigtigt for begge slags runs — den skrives
+# af samme `force_user_id` som binder workspace-konteksten. Svaret laa i en
+# raekke vi ikke spurgte, mens taellingen meldte et hul der ikke var der.
+
+def test_ejeren_hentes_fra_runnet_naar_konteksten_er_tom(monkeypatch, tmp_path):
+    """Hverken args eller ContextVar har ejeren — men run-id'et er kendt."""
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+    monkeypatch.setattr(t, "_ejer_fra_run", lambda rid: "bjorn" if rid == "visible-1" else "")
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "")
+    monkeypatch.setattr("core.services.run_autonomy_context.current_run_id", lambda: "visible-1")
+
+    ud = t.identitet({})
+    assert ud["user_id"] == "bjorn", (
+        "ejeren stod i runnets raekke og blev ikke hentet — taellingen melder "
+        "et hul der ikke findes")
+    assert ud["run_id"] == "visible-1"
+
+
+def test_et_UKENDT_run_giver_stadig_UKENDT(monkeypatch):
+    """Hullet skal stadig kunne SES. Opslaget maa ikke opfinde en ejer."""
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+    monkeypatch.setattr(t, "_ejer_fra_run", lambda rid: "")
+    monkeypatch.setattr("core.identity.workspace_context.current_user_id", lambda: "")
+    monkeypatch.setattr("core.services.run_autonomy_context.current_run_id", lambda: "visible-ukendt")
+
+    assert t.identitet({})["user_id"] == t.UKENDT
+
+
+def test_argumenternes_ejer_vinder_over_opslaget(monkeypatch):
+    """Opslaget er SIDSTE udvej — det maa aldrig overskrive en kendt ejer."""
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+    monkeypatch.setattr(t, "_ejer_fra_run", lambda rid: "en-anden-bruger")
+    ud = t.identitet({"_runtime_user_id": "bjorn", "_runtime_turn_id": "visible-1"})
+    assert ud["user_id"] == "bjorn", "runnets raekke slog argumenternes ejer ihjel"
+
+
+def test_opslaget_sker_EEN_gang_pr_run(monkeypatch):
+    """Uden cachen koster hvert vaerktoejskald en forespoergsel."""
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+    kald = {"n": 0}
+
+    def _tael(run_id: str) -> str:
+        kald["n"] += 1
+        return "bjorn"
+
+    monkeypatch.setattr(t, "_ejer_fra_run_uncached", _tael, raising=False)
+    # Kald den RIGTIGE funktion, men med DB-laget talt.
+    import core.runtime.db_core as db
+
+    class _Row(dict):
+        def __getitem__(self, k): return dict.__getitem__(self, k)
+
+    class _Conn:
+        def execute(self, *a, **k):
+            kald["n"] += 1
+            class _R:
+                def fetchone(self_inner): return _Row(user_id="bjorn")
+            return _R()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setattr(db, "connect", lambda *a, **k: _Conn())
+    assert t._ejer_fra_run("visible-9") == "bjorn"
+    assert t._ejer_fra_run("visible-9") == "bjorn"
+    assert kald["n"] == 1, "opslaget skete %d gange for samme run" % kald["n"]
+
+
+def test_en_doed_DB_lader_hullet_staa(monkeypatch):
+    """Self-safe: et fejlende opslag maa ikke vaelte et vaerktoejskald."""
+    import core.runtime.db_core as db
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+
+    def _sprael(*a, **k):
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr(db, "connect", _sprael)
+    assert t._ejer_fra_run("visible-x") == ""
+
+
+def test_et_run_der_ikke_findes_giver_TOM_ejer_ikke_et_gaet(monkeypatch):
+    """Den farligste mutation: at lade opslaget DEFAULTE til en ejer.
+
+    `UKENDT` er et aerligt hul man kan taelle. En opfundet ejer er baade et
+    skjult hul OG en forkert raekke i enhver maaling der grupperer paa bruger
+    — og modulet findes netop for at kunne skelne brugere.
+    """
+    import core.runtime.db_core as db
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+
+    class _Conn:
+        def execute(self, *a, **k):
+            class _R:
+                def fetchone(self_inner): return None      # runnet findes ikke
+            return _R()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setattr(db, "connect", lambda *a, **k: _Conn())
+    assert t._ejer_fra_run("visible-findes-ikke") == "", (
+        "opslaget opfandt en ejer for et run der ikke findes")
+
+
+def test_en_raekke_med_tom_ejer_giver_ogsaa_tom(monkeypatch):
+    """Et run UDEN ejer i raekken er stadig et hul — ikke en anledning til et gaet."""
+    import core.runtime.db_core as db
+    import core.tools.tool_call_telemetry as t
+
+    t._EJER_CACHE.clear()
+
+    class _Conn:
+        def execute(self, *a, **k):
+            class _R:
+                def fetchone(self_inner): return {"user_id": ""}
+            return _R()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setattr(db, "connect", lambda *a, **k: _Conn())
+    assert t._ejer_fra_run("visible-tom") == ""

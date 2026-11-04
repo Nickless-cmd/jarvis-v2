@@ -593,10 +593,11 @@ _Hvem kaldte hvilket vaerktoej — gjort taelleligt._
 | function | `er_internt_kald` | `()` | Er vi inde i et af systemets egne kald? Se `internt_kald`. | [src](../../../core/tools/tool_call_telemetry.py#L76) |
 | function | `_fra_args` | `(arguments, navn)` | — | [src](../../../core/tools/tool_call_telemetry.py#L88) |
 | function | `identitet` | `(arguments)` | Bruger, samtale og run — fra argumenterne, ellers fra konteksten. | [src](../../../core/tools/tool_call_telemetry.py#L92) |
-| function | `byg_payload` | `(name, arguments)` | Selve eventet. Adskilt fra udgivelsen, saa formen kan testes alene. | [src](../../../core/tools/tool_call_telemetry.py#L131) |
-| function | `udgiv_tool_invoked` | `(name, arguments)` | Udgiv `tool.invoked`. Maa ALDRIG braekke et vaerktoejskald. | [src](../../../core/tools/tool_call_telemetry.py#L140) |
-| function | `udgiv_execution_timing` | `(payload)` | Publish one terminal timing summary without affecting the tool call. | [src](../../../core/tools/tool_call_telemetry.py#L150) |
-| function | `byg_completed_payload` | `(name, status, arguments, result=…, pre_read=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L182) |
+| function | `_ejer_fra_run` | `(run_id)` | Ejeren af et synligt run, slaaet op én gang pr. run. "" ved enhver tvivl. | [src](../../../core/tools/tool_call_telemetry.py#L157) |
+| function | `byg_payload` | `(name, arguments)` | Selve eventet. Adskilt fra udgivelsen, saa formen kan testes alene. | [src](../../../core/tools/tool_call_telemetry.py#L177) |
+| function | `udgiv_tool_invoked` | `(name, arguments)` | Udgiv `tool.invoked`. Maa ALDRIG braekke et vaerktoejskald. | [src](../../../core/tools/tool_call_telemetry.py#L186) |
+| function | `udgiv_execution_timing` | `(payload)` | Publish one terminal timing summary without affecting the tool call. | [src](../../../core/tools/tool_call_telemetry.py#L196) |
+| function | `byg_completed_payload` | `(name, status, arguments, result=…, pre_read=…)` | `tool.completed` — nu med de to felter der goer parringen mulig. | [src](../../../core/tools/tool_call_telemetry.py#L228) |
 
 ## `core/tools/tool_definition_v2.py`
 _De tre akser skilt ad — Fase 3, K1._

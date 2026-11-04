@@ -1217,10 +1217,27 @@ async def _stream_visible_run(
                     user_id=force_user_id,
                     user_display_name="",
                 )
-        except Exception:
+        except Exception as exc:
             # Best-effort: if context binding fails, continue without it.
             # operator-tools will fall through to owner-fallback (existing
             # behaviour), which is the same as if force_user_id wasn't passed.
+            #
+            # MEN DEN MAA IKKE VAERE TAVS (4/11-2026). Maalt: 647 af 5.491
+            # `tool.invoked` (13 %) bar `user_id=UKENDT`, og moenstret var PR.
+            # RUN — hele runs manglede ejeren, mens naboerne i samme session
+            # havde den. Runnets egen raekke i `visible_runs` HAR ejeren (den
+            # skrives af samme `force_user_id`), saa bindingen her maa vaere
+            # faldet. Uden en loglinje kan «set_context fejlede» ikke skelnes
+            # fra «noget nulstillede konteksten undervejs», og begge veje
+            # ender samme sted: operator-vaerktoejer falder tilbage til EJEREN.
+            # Alle 647 var Bjoerns egne, saa faldet var tilfaeldigvis rigtigt —
+            # for en anden bruger ville det ikke vaere det (bug'en fra
+            # 2026-05-28, som kommentaren ovenfor beskriver).
+            logger.warning(
+                "visible-run %s: workspace-binding fejlede for user_id=%s — "
+                "operator-vaerktoejer falder tilbage til ejeren: %s",
+                run.run_id, force_user_id, exc,
+            )
             _ws_token = None
 
     # Tool-scope (chat/cowork/code) sættes her — inde i generator-body'en der

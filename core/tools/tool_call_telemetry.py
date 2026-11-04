@@ -121,11 +121,57 @@ def identitet(arguments: dict[str, Any]) -> dict[str, str]:
         except Exception as exc:  # ImportError/LookupError — kontekst mangler
             logger.debug("tool_call_telemetry: intet run i konteksten: %s", exc)
             rid = ""
+    # ── SIDSTE UDVEJ: RUNNETS EGEN RAEKKE (4/11-2026) ─────────────────────
+    #
+    # Maalt: 647 af 5.491 `tool.invoked` (13 %) bar `user_id=UKENDT` — og 647
+    # af dem havde en AEGTE session (`chat-…`). Moenstret var pr. RUN: hele
+    # runs manglede ejeren mens naboerne i samme session havde den.
+    #
+    # Men ejeren var aldrig ukendt. `visible_runs.user_id` skrives af samme
+    # `force_user_id` som binder konteksten, og den stod rigtigt for BEGGE
+    # slags runs. Svaret laa altsaa i en raekke vi ikke spurgte.
+    #
+    # Hvorfor ContextVar'en tabes for netop de runs er IKKE afklaret — stien i
+    # `visible_runs` var tavs (rettet i samme commit). Indtil den naeste
+    # forekomst kan diagnosticeres, maa taellingen ikke vaere forkert: en
+    # ejer-dimension der mangler 13 % kan ikke bruges til det modulet findes
+    # for (hvem kalder hvad).
+    #
+    # Kun naar baade args og kontekst er tomme, og kun med et kendt run-id.
+    # Self-safe: enhver fejl lader `UKENDT` staa — hullet skal stadig kunne ses.
+    if not uid and rid:
+        uid = _ejer_fra_run(rid)
     return {
         "user_id": uid or UKENDT,
         "session_id": _fra_args(arguments, "_runtime_session_id") or UKENDT,
         "run_id": rid or UKENDT,
     }
+
+
+#: Run-id -> ejer. Et run skifter aldrig ejer, saa opslaget er gyldigt for
+#: runnets levetid. Uden cachen ville hvert vaerktoejskald koste en forespoergsel.
+_EJER_CACHE: dict[str, str] = {}
+_EJER_CACHE_MAX = 512
+
+
+def _ejer_fra_run(run_id: str) -> str:
+    """Ejeren af et synligt run, slaaet op én gang pr. run. "" ved enhver tvivl."""
+    if run_id in _EJER_CACHE:
+        return _EJER_CACHE[run_id]
+    svar = ""
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT user_id FROM visible_runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        svar = str((row["user_id"] if row else "") or "").strip()
+    except Exception as exc:  # DB nede/skema aendret — hullet forbliver synligt
+        logger.debug("tool_call_telemetry: ejer-opslag for %s fejlede: %s", run_id, exc)
+    if len(_EJER_CACHE) >= _EJER_CACHE_MAX:
+        _EJER_CACHE.clear()          # simpelt loft; runs er kortlivede
+    _EJER_CACHE[run_id] = svar
+    return svar
 
 
 def byg_payload(name: str, arguments: dict[str, Any]) -> dict[str, Any]:

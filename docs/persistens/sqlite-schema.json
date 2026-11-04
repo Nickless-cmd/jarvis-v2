@@ -36544,7 +36544,7 @@
       ]
     },
     "runtime_opposition_arms": {
-      "digest": "28:83:67:64:94:50:c3:f4:c3:cf:67:5f:89:47:da:01:49:c7:7c:a0:f7:02:86:b0:e5:57:c6:8d:5b:3b:50:cc",
+      "digest": "89:f0:ee:de:0e:78:d9:7a:d8:8f:c8:86:30:d2:64:bb:ef:65:51:b2:59:cc:8e:c3:c0:1d:a4:71:43:3b:ea:f7",
       "schema": {
         "columns": [
           {
@@ -36552,6 +36552,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_logged",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
             "pk": 0,
             "hidden": 0
           },
@@ -36564,11 +36572,51 @@
             "hidden": 0
           },
           {
+            "name": "included",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "run_id",
             "type": "TEXT",
             "nullable": true,
             "default": null,
             "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "scope",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "signal_available",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "signal_count",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "source_run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
             "hidden": 0
           }
         ],

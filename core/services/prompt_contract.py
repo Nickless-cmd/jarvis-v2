@@ -2404,6 +2404,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # Alt op til her er flushet; sektioner tilføjet SENERE (de fire tunge tail-deferred)
     # flushes supplerende neden for, før bufferne forbruges ind i _dyn_tail.
     _awareness_flushed_upto = len(_awareness)
+    # Eksponeringen er foerst maalt NU. `_awareness_add` har tre gates EFTER
+    # kaldestedet — section_enabled, should_include og tom-indhold — plus
+    # budget-loftet nedenfor. Uden denne bekræftelse beskriver ``included`` i
+    # runtime_opposition_arms kun en HENSIGT, ikke hvad modellen fik.
+    try:
+        from core.services.visible_inner_life import confirm_opposition_exposure
+        confirm_opposition_exposure("kryds-lag-indsigelse" in derived_inputs)
+    except Exception as _e:
+        _sec_err("kryds-lag-indsigelse (exposure)", _e)
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
         # HVAD BLEV KLEMT UD DENNE TUR — skrevet ud, ikke kun registreret.

@@ -910,6 +910,12 @@ def _world_model_line() -> Optional[str]:
 
 _EXPOSURE_COLS = (
     ("signal_available", "INTEGER NOT NULL DEFAULT 0"),
+    # 4/11-2026 (tredje runde): to felter, ikke ét. ``inclusion_requested``
+    # skrives naar indsigelsen BEDER om plads; ``included`` skrives foerst naar
+    # prompten er samlet og sektionen faktisk slap igennem composeren.
+    # Forskellen er maalt: `_awareness_add` har tre gates EFTER kaldestedet
+    # (section_enabled, should_include, tom-indhold) plus et budget-loft.
+    ("inclusion_requested", "INTEGER NOT NULL DEFAULT 0"),
     ("included", "INTEGER NOT NULL DEFAULT 0"),
     ("signal_count", "INTEGER"),
     ("source_run_id", "TEXT"),
@@ -950,11 +956,20 @@ def opposition_arm(run_id: str) -> str:
     return _arm_for(run_id)
 
 
-def _record_exposure(run_id: str, arm: str, meta: dict, *, included: bool) -> bool:
-    """Log HVAD modellen faktisk fik — ikke kun hvilken arm den blev tildelt.
+def _record_exposure(run_id: str, arm: str, meta: dict, *, requested: bool) -> bool:
+    """Log at indsigelsen BAD om plads — ikke at den fik den.
 
     Felterne goer fire tilstande skelnelige, som foer saa ens ud:
     aktiv+behandling, ingen+behandling, aktiv+kontrol, ingen+kontrol.
+
+    Maalt 4/11-2026 (tredje runde): den foerste version satte ``included`` her,
+    men ``_awareness_add`` har tre gates EFTER dette kald — ``section_enabled``,
+    ``should_include`` og den tomme indhold-check — plus et budget-loft. Et
+    signal kunne derfor staa som inkluderet og blive droppet af composeren.
+    Det er dagens fejlform igen: formen bevaret, indholdet tabt.
+
+    ``included`` saettes derfor foerst af ``confirm_opposition_exposure``, naar
+    den faerdige prompt findes.
 
     ``source_run_id`` baerer hvilken koersel signalet blev PRODUCERET i —
     overfladen er global, saa et signal kan stamme fra et helt andet arbejde
@@ -989,12 +1004,12 @@ def _record_exposure(run_id: str, arm: str, meta: dict, *, included: bool) -> bo
             # samme koersel maa ikke nulstille at signalet VAR med i en tidligere.
             conn.execute(
                 "INSERT INTO runtime_opposition_arms "
-                "(run_id, arm, signal_available, included, signal_count, source_run_id, "
-                " scope, assignment_logged, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now')) "
+                "(run_id, arm, signal_available, inclusion_requested, included, "
+                " signal_count, source_run_id, scope, assignment_logged, created_at) "
+                "VALUES (?, ?, ?, ?, 0, ?, ?, ?, 1, datetime('now')) "
                 "ON CONFLICT(run_id) DO UPDATE SET "
                 "signal_available=MAX(signal_available, excluded.signal_available), "
-                "included=MAX(included, excluded.included), "
+                "inclusion_requested=MAX(inclusion_requested, excluded.inclusion_requested), "
                 "signal_count=COALESCE(excluded.signal_count, signal_count), "
                 "source_run_id=COALESCE(NULLIF(excluded.source_run_id,''), source_run_id), "
                 "scope=COALESCE(NULLIF(excluded.scope,''), scope), "
@@ -1003,7 +1018,7 @@ def _record_exposure(run_id: str, arm: str, meta: dict, *, included: bool) -> bo
                     rid,
                     arm,
                     1 if meta.get("available") else 0,
-                    1 if included else 0,
+                    1 if requested else 0,
                     meta.get("count"),
                     str(meta.get("source_run_id") or ""),
                     scope,
@@ -1062,6 +1077,41 @@ def _opposition_line_text() -> Optional[str]:
     return _opposition_snapshot()[0]
 
 
+def confirm_opposition_exposure(included: bool) -> bool:
+    """Bekraeft om indsigelsen faktisk stod i den FAERDIGE prompt.
+
+    Kaldes fra prompt-assembly EFTER awareness-samlingen, hvor det er maalt om
+    sektionen slap igennem composeren. Uden dette kald beskriver ``included``
+    kun en hensigt — og en hensigt er ikke en eksponering.
+
+    ``MAX`` og ikke tilsidesaettelse: bygges prompten flere gange i samme
+    koersel (fx to scopes), maa en senere udeladelse ikke slette at den VAR
+    med i en tidligere.
+    """
+    rid = ""
+    try:
+        from core.services.run_autonomy_context import current_run_id
+
+        rid = str(current_run_id() or "").strip()
+    except Exception:
+        logger.debug("inner-life: run-id failed", exc_info=True)
+    if not rid:
+        return False
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            conn.execute(
+                "UPDATE runtime_opposition_arms SET included=MAX(included, ?) "
+                "WHERE run_id=?",
+                (1 if included else 0, rid),
+            )
+        return True
+    except Exception:
+        logger.debug("inner-life: exposure-confirm failed", exc_info=True)
+        return False
+
+
 def build_opposition_line() -> Optional[str]:
     """Indsigelsen som prompt-linje — eller None i kontrol-armen.
 
@@ -1083,8 +1133,8 @@ def build_opposition_line() -> Optional[str]:
     except Exception:
         logger.debug("inner-life: run-id failed", exc_info=True)
     arm = _arm_for(rid)
-    included = arm == "treatment" and bool(text)
-    logged = _record_exposure(rid, arm, meta, included=included)
+    requested = arm == "treatment" and bool(text)
+    logged = _record_exposure(rid, arm, meta, requested=requested)
     if arm == "control":
         if not logged:
             logger.warning(

@@ -456,16 +456,24 @@ def test_kontrol_arm_skjuler_indsigelsen_og_behandling_viser_den(monkeypatch):
     assert linje is not None and "Sagde ét og gjorde noget andet" in linje
 
 
-def _exp_control_id() -> str:
+def _exp_control_id(n: int = 0) -> str:
     from core.services.visible_inner_life import _arm_for
 
-    return next(f"visible-exp{i:04d}" for i in range(9000) if _arm_for(f"visible-exp{i:04d}") == "control")
+    fundet = [
+        f"visible-exp{i:04d}" for i in range(9000)
+        if _arm_for(f"visible-exp{i:04d}") == "control"
+    ]
+    return fundet[n]
 
 
-def _exp_treat_id() -> str:
+def _exp_treat_id(n: int = 0) -> str:
     from core.services.visible_inner_life import _arm_for
 
-    return next(f"visible-exp{i:04d}" for i in range(9000) if _arm_for(f"visible-exp{i:04d}") == "treatment")
+    fundet = [
+        f"visible-exp{i:04d}" for i in range(9000)
+        if _arm_for(f"visible-exp{i:04d}") == "treatment"
+    ]
+    return fundet[n]
 
 
 def test_eksponeringen_skelner_de_fire_tilstande(isolated_runtime, monkeypatch):
@@ -489,6 +497,9 @@ def test_eksponeringen_skelner_de_fire_tilstande(isolated_runtime, monkeypatch):
     treat_id = _exp_treat_id()
     control_id = _exp_control_id()
     tom_id = "visible-exp-tomt-signal"
+    # 4/11-2026 (tredje runde): den FJERDE tilstand manglede — kontrol-armen
+    # UDEN et signal. Uden den kan "tilbageholdt" ikke skelnes fra "tom".
+    kontrol_tom_id = _exp_control_id(1)
 
     def koer(rid, surface):
         monkeypatch.setattr("core.services.signal_surface_router.read_surface", lambda name: surface)
@@ -498,36 +509,130 @@ def test_eksponeringen_skelner_de_fire_tilstande(isolated_runtime, monkeypatch):
     assert koer(treat_id, aktiv) is not None, "behandling med signal skal vise det"
     assert koer(control_id, aktiv) is None, "kontrol med signal skal tilbageholde det"
     assert koer(tom_id, tom) is None, "uden signal er der intet at vise"
+    assert koer(kontrol_tom_id, tom) is None, "kontrol uden signal er stadig tomt"
 
     with connect() as conn:
         rows = {
             r[0]: dict(
                 zip(
-                    ("arm", "available", "included", "count", "source", "logged"),
+                    ("arm", "available", "requested", "included", "count", "source", "logged"),
                     r[1:],
                 )
             )
             for r in conn.execute(
-                "SELECT run_id, arm, signal_available, included, signal_count, "
-                "source_run_id, assignment_logged FROM runtime_opposition_arms "
-                "WHERE run_id IN (?,?,?)",
-                (treat_id, control_id, tom_id),
+                "SELECT run_id, arm, signal_available, inclusion_requested, included, "
+                "signal_count, source_run_id, assignment_logged "
+                "FROM runtime_opposition_arms WHERE run_id IN (?,?,?,?)",
+                (treat_id, control_id, tom_id, kontrol_tom_id),
             )
         }
 
-    t, c, n = rows[treat_id], rows[control_id], rows[tom_id]
-    assert (t["arm"], t["available"], t["included"]) == ("treatment", 1, 1)
-    assert (c["arm"], c["available"], c["included"]) == ("control", 1, 0), (
+    t, c, n, k = rows[treat_id], rows[control_id], rows[tom_id], rows[kontrol_tom_id]
+    assert (t["arm"], t["available"], t["requested"]) == ("treatment", 1, 1)
+    assert t["included"] == 0, (
+        "et isoleret kald bygger ingen prompt — 'included' skal staa 0 indtil "
+        "prompt-assembly bekraefter at sektionen faktisk slap igennem"
+    )
+    assert (c["arm"], c["available"], c["requested"]) == ("control", 1, 0), (
         "kontrol-armen skal registrere at signalet FANDTES men blev holdt ude — "
         "ellers kan tilbageholdelse ikke skelnes fra tomhed"
     )
-    assert (n["arm"], n["available"], n["included"]) == ("treatment", 0, 0)
-    assert all(r["logged"] == 1 for r in (t, c, n)), "tildelingen skal vaere bekræftet skrevet"
+    assert (n["arm"], n["available"], n["requested"]) == ("treatment", 0, 0)
+    assert (k["arm"], k["available"], k["requested"]) == ("control", 0, 0), (
+        "kontrol-armen UDEN signal er den fjerde tilstand — den skal ikke "
+        "forveksles med en tilbageholdt indsigelse"
+    )
+    assert all(r["logged"] == 1 for r in (t, c, n, k)), "tildelingen skal vaere bekræftet skrevet"
     assert t["source"] == "visible-kilde0001", (
         "signalets oprindelige koersel skal bevares — overfladen er global, saa "
         "et signal kan stamme fra helt andet arbejde end det der nu laeser det"
     )
     assert t["count"] == 3
+
+
+def test_included_skrives_foerst_naar_prompten_faktisk_er_bygget(
+    isolated_runtime, monkeypatch
+) -> None:
+    """ChatGPTs indvending 4/11-2026, og den holdt: ``included`` blev sat ved
+    kaldestedet, men ``_awareness_add`` har tre gates EFTER det — og et
+    budget-loft. Et signal kunne derfor staa som inkluderet og aldrig naa
+    modellen. Formen bevaret, indholdet tabt — dagens fælles fejlform.
+
+    Testen maaler forskellen i BEGGE retninger: slipper sektionen igennem, bliver
+    ``included`` 1; afviser composeren den, bliver den 0 mens
+    ``inclusion_requested`` staar paa 1.
+    """
+    from core.runtime.db import connect
+    from core.services import central_prompt_composer as cpc
+    from core.services import prompt_contract as pc
+    from core.services import run_autonomy_context as rac
+    from core.services import signal_surface_router as ssr
+    from core.tools import tool_scoping
+
+    UNIK = "Jeg gik videre uden readback af den aendrede fil"
+    _orig = ssr.read_surface
+
+    def fake_read(name):
+        if name == "internal_opposition":
+            return {
+                "active": True,
+                "items": [{"signal_type": "Challenge calibration", "status": "active"}],
+                "summary": {
+                    "active_count": 3,
+                    "current_signal": f"Challenge calibration: {UNIK}",
+                },
+            }
+        return _orig(name)
+
+    monkeypatch.setattr(ssr, "read_surface", fake_read)
+    cpc._kv_set(cpc._LIVE_FLAG, True)
+    cpc._kv_set(cpc._WEIGHTS_KEY, {})
+
+    def byg(rid: str, session: str) -> str:
+        monkeypatch.setattr(rac, "current_run_id", lambda: rid)
+        token = tool_scoping.set_tool_scope("chat")
+        try:
+            return pc._build_visible_chat_prompt_assembly_impl(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                user_message="hvordan staar det til?",
+                session_id=session,
+            ).text
+        finally:
+            tool_scoping.reset_tool_scope(token)
+
+    def raekke(rid: str) -> tuple[int, int]:
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT inclusion_requested, included FROM runtime_opposition_arms "
+                "WHERE run_id=?",
+                (rid,),
+            ).fetchone()
+        assert r is not None, "eksponeringen blev slet ikke logget"
+        return int(r[0]), int(r[1])
+
+    # 1) Sektionen SLAAR IGENNEM — som den goer i produktion.
+    slipper = _exp_treat_id(1)
+    tekst = byg(slipper, "s-inc-slipper")
+    assert UNIK in tekst, "forudsaetningen for testen: indsigelsen stod i prompten"
+    req, inc = raekke(slipper)
+    assert req == 1, "indsigelsen bad om plads"
+    assert inc == 1, (
+        "indsigelsen stod i den byggede prompt, men eksponeringen siger 0 — "
+        "saa maaler tabellen noget andet end det den paastaar"
+    )
+
+    # 2) Composeren AFVISER — saa er 'bad om plads' ikke det samme som 'fik den'.
+    afvist = _exp_treat_id(2)
+    monkeypatch.setattr(cpc, "should_include", lambda *a, **k: False)
+    tekst2 = byg(afvist, "s-inc-afvist")
+    assert UNIK not in tekst2, "composeren skulle have skaaret sektionen"
+    req2, inc2 = raekke(afvist)
+    assert req2 == 1, "den bad stadig om plads — det er den aerlige halvdel"
+    assert inc2 == 0, (
+        "eksponeringen siger 1 om en sektion composeren skar vaek — det er "
+        "praecis den sammenblanding testen skal forhindre"
+    )
 
 
 def test_utilgaengelig_logning_skjuler_ikke_indsigelsen(isolated_runtime, monkeypatch):

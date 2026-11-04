@@ -72,7 +72,9 @@ def _journal_path_for(day: date) -> Path:
 
 def journal_exists_for(day: date) -> bool:
     """Findes der allerede en journal for denne dato?"""
-    return _journal_path_for(day).exists()
+    path = _journal_path_for(day)
+    # Arkiveret ≠ mangler: uden dette ville en arkiveret dag se ud som en dag uden dagbog.
+    return path.exists() or (OBSERVATION_DIR.parent / "_archive" / "observation" / path.name).exists()
 
 
 def _fetch_chat_pairs_for_day(day: date, limit: int = 80) -> list[dict[str, str]]:
@@ -205,7 +207,7 @@ def synthesize_daily_journal(
         day = datetime.now(UTC).date()
 
     path = _journal_path_for(day)
-    if path.exists() and not force:
+    if journal_exists_for(day) and not force:
         return {"status": "skipped", "reason": "already exists", "path": str(path)}
 
     chat_pairs = _fetch_chat_pairs_for_day(day)

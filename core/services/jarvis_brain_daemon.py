@@ -496,6 +496,7 @@ def auto_archive_low_salience() -> int:
     """
     from datetime import datetime, timezone
     from core.services import jarvis_brain
+    from core.services.brain_archive import er_undtaget
 
     now = datetime.now(timezone.utc)
     conn = jarvis_brain.connect_index()
@@ -515,6 +516,8 @@ def auto_archive_low_salience() -> int:
             entry = jarvis_brain.read_entry(entry_id)
         except Exception:
             continue
+        if er_undtaget(entry):
+            continue  # dagbøger glemmes ikke automatisk (brain_archive)
         eff = jarvis_brain.compute_effective_salience(entry, now)
         if eff >= _AUTO_ARCHIVE_THRESHOLD:
             continue

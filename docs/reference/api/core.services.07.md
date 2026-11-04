@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_rca.py`
+_Self-RCA — så Jarvis kan grave ÉN fejl til bunds i stedet for at starte på fem nye._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/central_rca.py#L26) |
+| function | `_observe` | `(kind, payload)` | — | [src](../../../core/services/central_rca.py#L30) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/central_rca.py#L38) |
+| function | `pick_incident` | `()` | Vælg ÉN uløst incident at grave i — højest severity, ældst (længst uløst). READ-ONLY. | [src](../../../core/services/central_rca.py#L52) |
+| function | `investigate` | `(incident_id=…)` | Saml bevis-sporet for ÉN incident → udfyld RCA-skelet + persistér som draft. Self-safe. | [src](../../../core/services/central_rca.py#L66) |
+| function | `list_rca` | `(*, limit=…)` | — | [src](../../../core/services/central_rca.py#L117) |
+| function | `build_rca_surface` | `()` | Uløste incidents + næste at grave i + seneste RCA'er + følt linje. Self-safe. | [src](../../../core/services/central_rca.py#L127) |
+| function | `record_rca` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér uløst-antal + næste-mål (metadata-only). Self-safe. Investigerer IKKE | [src](../../../core/services/central_rca.py#L144) |
+
 ## `core/services/central_realtime.py`
 _Real-time Central-surface til owner-vinduet i jarvis-desk (code mode)._
 
@@ -612,15 +626,4 @@ _Authenticated per-user presentation preferences for Desk Chat Mode._
 | function | `ack_chat_flow_onboarding` | `(principal_id, claim_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L137) |
 | function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
 | function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
-
-## `core/services/chat_response_policy.py`
-_One chat-only decision vocabulary for closure and presentation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L130) |
-| function | `decide_surface` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Resolve a reading task to prose, a native surface, or a drawing tool. | [src](../../../core/services/chat_response_policy.py#L188) |
-| function | `_prose_choice` | `(reason, next_step)` | — | [src](../../../core/services/chat_response_policy.py#L246) |
-| function | `_why_surface` | `(surface, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L256) |
-| function | `_why_prose` | `(task, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L272) |
 

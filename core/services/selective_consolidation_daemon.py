@@ -219,6 +219,7 @@ def _score_brain(entry: dict[str, Any]) -> float:
 def _consolidate_brain(today_start: str) -> dict[str, Any]:
     """Score and archive bottom (100-K)% of today's brain entries."""
     try:
+        from core.services.brain_archive import er_undtaget
         from core.services.jarvis_brain import (
             connect_index, archive_entry, read_entry,
         )
@@ -241,7 +242,7 @@ def _consolidate_brain(today_start: str) -> dict[str, Any]:
     for (entry_id,) in rows:
         try:
             entry = read_entry(entry_id)
-            if entry:
+            if entry and not er_undtaget(entry):
                 entry["_score"] = _score_brain(entry)
                 scored.append(entry)
         except Exception:

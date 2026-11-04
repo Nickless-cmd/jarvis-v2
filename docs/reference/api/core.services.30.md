@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_member_prompt.py`
+_Bounded visible prompt for a member's own chat session._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_iso_dt` | `(value)` | ISO-tidsstempel fra chat_messages → aware datetime. None = ukendt. | [src](../../../core/services/visible_member_prompt.py#L18) |
+| function | `build_member_prompt` | `(*, user_id, session_id, user_message=…)` | — | [src](../../../core/services/visible_member_prompt.py#L30) |
+
 ## `core/services/visible_memory_grounding.py`
 _Bounded, current-source grounding for explicit memory questions._
 
@@ -522,19 +530,4 @@ _Den streamede syntese, skrubbet — ét sted._
 | class | `SyntesStykke` | `` | Ét renset stykke på vej til skærmen. | [src](../../../core/services/visible_synthesis_stream.py#L39) |
 | class | `SyntesFacit` | `` | Den færdige, skrubbede tekst. Kommer sidst, præcis én gang. | [src](../../../core/services/visible_synthesis_stream.py#L45) |
 | function | `skrubbet_syntese` | `(stroem, *, delta_klasse)` | Kør en syntese-strøm igennem `StroemSkrubber` og giv rensede stykker. | [src](../../../core/services/visible_synthesis_stream.py#L50) |
-
-## `core/services/visible_terminal_policy.py`
-_Single source of truth for visible task terminal decisions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TerminalState` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L15) |
-| class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L24) |
-| class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L37) |
-| function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L52) |
-| function | `is_non_retryable_recovery_reason` | `(reason)` | Reject retries for deterministic request and local-code failures. | [src](../../../core/services/visible_terminal_policy.py#L56) |
-| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L65) |
-| function | `svar_beviser_faerdig` | `(reason)` | Er et svar fra et run med denne grund BEVIS for at opgaven er færdig? | [src](../../../core/services/visible_terminal_policy.py#L118) |
-| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L141) |
-| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L180) |
 

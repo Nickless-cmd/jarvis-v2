@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chat_response_policy.py`
+_One chat-only decision vocabulary for closure and presentation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L130) |
+| function | `decide_surface` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Resolve a reading task to prose, a native surface, or a drawing tool. | [src](../../../core/services/chat_response_policy.py#L188) |
+| function | `_prose_choice` | `(reason, next_step)` | — | [src](../../../core/services/chat_response_policy.py#L246) |
+| function | `_why_surface` | `(surface, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L256) |
+| function | `_why_prose` | `(task, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L272) |
+
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._
 
@@ -792,11 +803,4 @@ _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 | function | `_get_recent_git_changes` | `()` | Get last 10 commit messages and changed file summary. | [src](../../../core/services/code_aesthetic_daemon.py#L81) |
 | function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
 | function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L119) |
-
-## `core/services/cognitive_architecture_surface.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_cognitive_architecture_surface` | `()` | Cached MC/self-model cognitive-architecture-surface. Self-safe → falder til fersk build. | [src](../../../core/services/cognitive_architecture_surface.py#L11) |
-| function | `_build_cognitive_architecture_surface_uncached` | `()` | Build a shared cognitive architecture surface for MC and self-model. | [src](../../../core/services/cognitive_architecture_surface.py#L23) |
 

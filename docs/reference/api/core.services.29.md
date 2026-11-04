@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/turens_vaerktoejer.py`
+_Ét værktøjssæt for HELE turen — begge trin ser det samme._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
+| function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
+
 ## `core/services/turn_changelog.py`
 _End-of-turn changelog — auto-summarize what this turn changed._
 
@@ -609,12 +617,4 @@ _Visible-lane inner-life section — gives the entity its voice in the prompt._
 | function | `build_opposition_line` | `()` | Indsigelsen som prompt-linje — eller None i kontrol-armen. | [src](../../../core/services/visible_inner_life.py#L1115) |
 | function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L1150) |
 | function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L1170) |
-
-## `core/services/visible_member_prompt.py`
-_Bounded visible prompt for a member's own chat session._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_iso_dt` | `(value)` | ISO-tidsstempel fra chat_messages → aware datetime. None = ukendt. | [src](../../../core/services/visible_member_prompt.py#L18) |
-| function | `build_member_prompt` | `(*, user_id, session_id, user_message=…)` | — | [src](../../../core/services/visible_member_prompt.py#L30) |
 

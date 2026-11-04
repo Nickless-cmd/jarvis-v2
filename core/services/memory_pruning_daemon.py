@@ -108,6 +108,7 @@ def _prune_brain_entries(now: datetime) -> int:
     high-base + højt decay entries slipper under threshold uden at blive
     set af pruning.
     """
+    from core.services.brain_archive import er_undtaget, sql_ikke_undtaget
     from core.services.jarvis_brain import (
         archive_entry,
         compute_effective_salience,
@@ -122,8 +123,8 @@ def _prune_brain_entries(now: datetime) -> int:
         # er stærkere proxy for "decayed" end base alene. Stadig en
         # heuristik, men favoriserer det vi faktisk vil pruning'e.
         rows = conn.execute(
-            "SELECT id FROM brain_index WHERE status = 'active' "
-            "ORDER BY last_used_at ASC NULLS FIRST, salience_base ASC "
+            "SELECT id FROM brain_index WHERE status = 'active'" + sql_ikke_undtaget() +
+            " ORDER BY last_used_at ASC NULLS FIRST, salience_base ASC "
             f"LIMIT {candidate_limit}"
         ).fetchall()
     finally:
@@ -139,6 +140,8 @@ def _prune_brain_entries(now: datetime) -> int:
             logger.warning(
                 "memory_pruning: read_entry failed for %s: %s", entry_id, exc
             )
+            continue
+        if er_undtaget(entry):
             continue
         eff = compute_effective_salience(entry, now)
         if eff < _SALIENCE_THRESHOLD:

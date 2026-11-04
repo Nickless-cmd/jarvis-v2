@@ -100,3 +100,64 @@ def backfill(directory: Path | None = None) -> dict[str, int]:
         talt[udfald] += 1
         talt["total"] += 1
     return talt
+
+
+# --- Opslag på dato --------------------------------------------------------
+#
+# En dagbogs overskrift som søgning lå uden for top 200 af ~19.000 poster (4/11-2026): en
+# hel dags tekst giver en udvandet embedding. «Hvad skete der 2. november» er et eksakt
+# spørgsmål og får et eksakt svar: dagbogen for datoen, uden cosinus og relevansgulv.
+
+_MAX_DAGE = 31
+_META = ("# Daily journal", "_Synthesized")
+
+
+def _datoer(spec: str) -> list[date]:
+    """«YYYY-MM-DD» eller «YYYY-MM-DD..YYYY-MM-DD» → datoer. ValueError med en grund."""
+    start_s, _, slut_s = str(spec or "").strip().partition("..")
+    try:
+        start = date.fromisoformat(start_s.strip())
+        slut = date.fromisoformat(slut_s.strip()) if slut_s else start
+    except ValueError:
+        raise ValueError("brug YYYY-MM-DD eller YYYY-MM-DD..YYYY-MM-DD") from None
+    if slut < start:
+        raise ValueError("slutdatoen ligger før startdatoen")
+    dage = (slut - start).days + 1
+    if dage > _MAX_DAGE:
+        raise ValueError(f"højst {_MAX_DAGE} dage ad gangen (du bad om {dage})")
+    return [date.fromordinal(start.toordinal() + i) for i in range(dage)]
+
+
+def _uddrag(content: str) -> str:
+    """Dagbogens indhold uden de to meta-linjer foran; det er dét der fortæller dagen."""
+    linjer = [l for l in content.strip().splitlines()]
+    while linjer and (not linjer[0].strip() or linjer[0].startswith(_META)):
+        linjer.pop(0)
+    return "\n".join(linjer).strip()[:600]
+
+
+def find_journals(spec: str, *, ceiling: str) -> dict:
+    """Dagbøgerne for en dato eller et interval. Arkiverede tælles med; `ceiling` er
+    kalderens synlighedsloft, og det skjulte tælles så kalderen ved at noget findes."""
+    dage = _datoer(spec)
+    sti = " OR ".join("path LIKE ?" for _ in dage)
+    conn = jarvis_brain.connect_index()
+    try:
+        raekker = conn.execute(
+            "SELECT id, visibility, path FROM brain_index "
+            f"WHERE status != 'superseded' AND tags LIKE '%\"daily-journal\"%' AND ({sti})",
+            [f"%/{d.isoformat()}-daily.md" for d in dage],
+        ).fetchall()
+    finally:
+        conn.close()
+    niveau = jarvis_brain._VIS_LEVEL
+    synlige = sorted((r for r in raekker if niveau[r[1]] <= niveau[ceiling]), key=lambda r: r[2].rsplit("/", 1)[-1])
+    ud = []
+    for entry_id, _vis, path in synlige:
+        e = jarvis_brain.read_entry(entry_id)
+        ud.append({
+            "id": e.id, "kind": e.kind, "title": e.title, "domain": e.domain,
+            "date": path.rsplit("/", 1)[-1][:10], "status": e.status,
+            "created_at": e.created_at.isoformat(), "excerpt": _uddrag(e.content),
+        })
+    return {"status": "ok", "results": ud, "hidden_by_visibility": len(raekker) - len(synlige), "date": spec}

@@ -43,18 +43,20 @@ JARVIS_BRAIN_TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_jarvis_brain",
-            "description": "Søg i Jarvis' hjerne med semantisk search. Returnerer excerpts.",
+            "description": ("Søg i Jarvis' hjerne med semantisk search. Returnerer excerpts. "
+                            "Skal du have DAGBOGEN for en bestemt dag, så brug date (eksakt opslag, "
+                            "ingen query nødvendig) — en semantisk søgning finder ikke en hel dags tekst."),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Søgetekst"},
+                    "query": {"type": "string", "description": "Søgetekst (kan udelades når date er sat)"},
+                    "date": {"type": "string", "description": "Dagbog på dato: YYYY-MM-DD eller interval YYYY-MM-DD..YYYY-MM-DD (højst 31 dage). Eksakt, ikke semantisk."},
                     "kinds": {"type": "array", "items": {"type": "string"}, "description": "Filtrér på typer"},
                     "limit": {"type": "integer", "description": "Max resultater (default 5)"},
                     "domain": {"type": "string", "description": "Filtrér på domæne"},
                     "tags": {"type": "array", "items": {"type": "string"}, "description": "Metadata tags — returnér kun entries der har ALLE angivne tags (AND-filter)"},
                     "include_archived": {"type": "boolean", "description": "Inkluder arkiverede"},
                 },
-                "required": ["query"],
             },
         },
     },
@@ -203,7 +205,8 @@ def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_search_jarvis_brain(args: dict[str, Any]) -> dict[str, Any]:
     """Executor for search_jarvis_brain tool."""
     return search_jarvis_brain(
-        query=args["query"],
+        query=args.get("query") or "",
+        date=args.get("date"),
         kinds=args.get("kinds"),
         limit=args.get("limit", 5),
         domain=args.get("domain"),
@@ -379,7 +382,8 @@ def remember_this(
 
 def search_jarvis_brain(
     *,
-    query: str,
+    query: str = "",
+    date: str | None = None,
     session_visibility_ceiling: str = "personal",
     kinds: list[str] | None = None,
     limit: int = 5,
@@ -403,6 +407,14 @@ def search_jarvis_brain(
         return scoped_recall_policy.disabled_result("brain_search")
     from core.services import jarvis_brain
     session_visibility_ceiling = _bound_visibility_ceiling()
+    if date:
+        from core.services.daily_journal_entry import find_journals
+        try:
+            return find_journals(date, ceiling=session_visibility_ceiling)
+        except ValueError as exc:  # en ugyldig dato er kalderens fejl: grunden står i svaret
+            return {"status": "error", "error": "invalid_date", "details": str(exc)}
+    if not (query or "").strip():
+        return {"status": "error", "error": "query_or_date_required"}
     try:
         results = jarvis_brain.search_brain(
             query_text=query,

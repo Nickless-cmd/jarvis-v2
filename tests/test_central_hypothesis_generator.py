@@ -179,3 +179,59 @@ def test_self_triggered_confirmation_quarantined(isolated_runtime):
     out = gen.record_governed_sample(hyp_id, supports=True, source="run_outcome",
                                      ground_ref="run-x", triggered_by=hyp_id)
     assert out["hyp_status"] == "quarantined"
+
+
+def test_samme_evidens_taeller_kun_en_gang_paa_tvaers_af_kald(isolated_runtime):
+    """VARIG idempotens (målt 4/11-2026).
+
+    Dedup'en i `gov.evaluate()` virker kun INDEN FOR én evaluering. Generatoren indsatte
+    samme observation som en NY række hver gang og brugte den GEMTE confidence som
+    indgang — så samme falsifikation leveret ved to kald gav 0,8 → 0,4 → 0,2. Målt i
+    drift: 4.815 hypoteser havde samme (source, ground_ref) op til 5 gange.
+
+    Testen kræver at kontrakten holder på tværs af separate kald, ikke kun i ét sæt.
+    """
+    _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
+    gen.run_hypothesis_generation_tick()
+    hyp_id = gen.list_active_hypotheses()[0]["hyp_id"]
+
+    foerste = gen.record_governed_sample(hyp_id, supports=False, falsifies=True,
+                                         source="run_outcome", ground_ref="run-1")
+    assert foerste["status"] == "ok"
+    conf_efter_foerste = foerste["confidence"]
+
+    # Samme observation igen — to gange. Confidence må IKKE flytte sig.
+    for _ in range(2):
+        igen = gen.record_governed_sample(hyp_id, supports=False, falsifies=True,
+                                          source="run_outcome", ground_ref="run-1")
+        assert igen["status"] == "noop", f"duplikat skulle afvises, fik {igen}"
+        assert igen["reason"] == "duplikat-evidens"
+
+    from core.runtime.db import connect
+    with connect() as c:
+        n = c.execute("SELECT COUNT(*) FROM central_hypothesis_samples WHERE hyp_id=?",
+                      (hyp_id,)).fetchone()[0]
+        conf = c.execute("SELECT confidence FROM central_hypotheses WHERE hyp_id=?",
+                         (hyp_id,)).fetchone()[0]
+    assert n == 1, f"kun ét sample må være gemt, fik {n}"
+    assert conf == conf_efter_foerste, f"confidence flyttede sig: {conf_efter_foerste} → {conf}"
+
+
+def test_forskellige_ground_ref_taeller_hver_for_sig(isolated_runtime):
+    """Modstykket: dedup'en må ikke slå for hårdt. Unik evidens skal stadig virke."""
+    _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
+    gen.run_hypothesis_generation_tick()
+    hyp_id = gen.list_active_hypotheses()[0]["hyp_id"]
+
+    a = gen.record_governed_sample(hyp_id, supports=False, falsifies=True,
+                                   source="run_outcome", ground_ref="run-a")
+    b = gen.record_governed_sample(hyp_id, supports=False, falsifies=True,
+                                   source="run_outcome", ground_ref="run-b")
+    assert a["status"] == "ok" and b["status"] == "ok"
+    assert b["confidence"] < a["confidence"], "to unikke falsifikationer skal trække mere end én"
+
+    from core.runtime.db import connect
+    with connect() as c:
+        n = c.execute("SELECT COUNT(*) FROM central_hypothesis_samples WHERE hyp_id=?",
+                      (hyp_id,)).fetchone()[0]
+    assert n == 2

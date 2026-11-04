@@ -211,14 +211,34 @@ def record_governed_sample(hyp_id: str, *, supports: bool, falsifies: bool = Fal
                 c.commit()
         except Exception as exc:  # en fejlet genoplivning maa ikke se ud som et gemt sample
             return {"status": "error", "error": f"kunne ikke genoplive udloebet hypotese: {exc}"}
+    # VARIG IDEMPOTENS (målt 4/11-2026): dedup'en i `gov.evaluate()` virker kun INDEN FOR én
+    # evaluering. Her blev samme observation indsat som en NY række hver gang, og `evaluate()`
+    # tager udgangspunkt i den GEMTE confidence — så samme falsifikation leveret ved to
+    # evalueringer gav 0,8 → 0,4 → 0,2. Målt i drift: 4.815 hypoteser havde samme
+    # (source, ground_ref) mere end én gang (op til 5×), 13.744 overskydende evidensposter.
+    # Nøglen er den samme som i evaluate(): (source, ground_ref) — det anker der gør evidensen
+    # eksternt jordet. Et sample UDEN ground_ref er ikke jordet og flytter ikke confidence, så
+    # det indsættes uændret (det er stadig et spor).
+    _key_source = str(source or "")
+    _key_ref = str(ground_ref or "").strip()
     try:
         from core.runtime.db import connect
         with connect() as c:
+            if _key_ref:
+                dup = c.execute(
+                    "SELECT 1 FROM central_hypothesis_samples "
+                    "WHERE hyp_id=? AND source=? AND ground_ref=? LIMIT 1",
+                    (hyp_id, _key_source, _key_ref)).fetchone()
+                if dup:
+                    # Set før: rør ikke evidenssættet. Hypotesens tilstand er allerede
+                    # resultatet af denne observation, så vi gen-evaluerer ikke.
+                    return {"status": "noop", "reason": "duplikat-evidens", "hyp_id": hyp_id,
+                            "source": _key_source, "ground_ref": _key_ref}
             c.execute(
                 "INSERT INTO central_hypothesis_samples (hyp_id, supports, falsifies, source, "
                 "ground_ref, triggered_by, created_at) VALUES (?,?,?,?,?,?,?)",
-                (hyp_id, 1 if supports else 0, 1 if falsifies else 0, str(source),
-                 str(ground_ref), str(triggered_by), _now()))
+                (hyp_id, 1 if supports else 0, 1 if falsifies else 0, _key_source,
+                 _key_ref, str(triggered_by), _now()))
             c.commit()
     except Exception as exc:
         return {"status": "error", "error": str(exc)}

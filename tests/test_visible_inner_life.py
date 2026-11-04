@@ -456,22 +456,102 @@ def test_kontrol_arm_skjuler_indsigelsen_og_behandling_viser_den(monkeypatch):
     assert linje is not None and "Sagde ét og gjorde noget andet" in linje
 
 
-def test_armen_logges_saa_den_kan_kobles_til_udfald(isolated_runtime):
-    """Uden denne raekke er kontrol-armen maalsloes: man kan ikke bagefter
-    vide hvilke koersler der saa indsigelsen og hvilke der ikke gjorde."""
-    from core.runtime.db import connect
-    from core.services.visible_inner_life import opposition_arm
+def _exp_control_id() -> str:
+    from core.services.visible_inner_life import _arm_for
 
-    rid = "visible-armlog0001"
-    arm = opposition_arm(rid)
-    opposition_arm(rid)  # gentaget kald maa ikke give dubletter
+    return next(f"visible-exp{i:04d}" for i in range(9000) if _arm_for(f"visible-exp{i:04d}") == "control")
+
+
+def _exp_treat_id() -> str:
+    from core.services.visible_inner_life import _arm_for
+
+    return next(f"visible-exp{i:04d}" for i in range(9000) if _arm_for(f"visible-exp{i:04d}") == "treatment")
+
+
+def test_eksponeringen_skelner_de_fire_tilstande(isolated_runtime, monkeypatch):
+    """Arm alene er ikke nok.
+
+    Maalt 4/11-2026: den foerste version loggede armen FOER signalet blev
+    hentet, saa "behandling UDEN signal" og "behandling MED signal" blev
+    identiske raekker. Fordelingen kunne derfor ikke svare paa det eneste
+    spoergsmaal niveau 6 stiller: virkede en indsigelse der VAR til stede?
+    """
+    from core.runtime.db import connect
+    from core.services import run_autonomy_context as rac
+
+    aktiv = {
+        "active": True,
+        "summary": {"active_count": 3, "current_signal": "Sagde ét og gjorde noget andet"},
+        "items": [{"run_id": "visible-kilde0001"}],
+    }
+    tom = {"active": False, "summary": {"active_count": 0}}
+
+    treat_id = _exp_treat_id()
+    control_id = _exp_control_id()
+    tom_id = "visible-exp-tomt-signal"
+
+    def koer(rid, surface):
+        monkeypatch.setattr("core.services.signal_surface_router.read_surface", lambda name: surface)
+        monkeypatch.setattr(rac, "current_run_id", lambda: rid)
+        return vil.build_opposition_line()
+
+    assert koer(treat_id, aktiv) is not None, "behandling med signal skal vise det"
+    assert koer(control_id, aktiv) is None, "kontrol med signal skal tilbageholde det"
+    assert koer(tom_id, tom) is None, "uden signal er der intet at vise"
 
     with connect() as conn:
-        rows = conn.execute(
-            "SELECT arm FROM runtime_opposition_arms WHERE run_id=?", (rid,)
-        ).fetchall()
-    assert len(rows) == 1, "armen skal logges praecis én gang pr. koersel"
-    assert rows[0][0] == arm
+        rows = {
+            r[0]: dict(
+                zip(
+                    ("arm", "available", "included", "count", "source", "logged"),
+                    r[1:],
+                )
+            )
+            for r in conn.execute(
+                "SELECT run_id, arm, signal_available, included, signal_count, "
+                "source_run_id, assignment_logged FROM runtime_opposition_arms "
+                "WHERE run_id IN (?,?,?)",
+                (treat_id, control_id, tom_id),
+            )
+        }
+
+    t, c, n = rows[treat_id], rows[control_id], rows[tom_id]
+    assert (t["arm"], t["available"], t["included"]) == ("treatment", 1, 1)
+    assert (c["arm"], c["available"], c["included"]) == ("control", 1, 0), (
+        "kontrol-armen skal registrere at signalet FANDTES men blev holdt ude — "
+        "ellers kan tilbageholdelse ikke skelnes fra tomhed"
+    )
+    assert (n["arm"], n["available"], n["included"]) == ("treatment", 0, 0)
+    assert all(r["logged"] == 1 for r in (t, c, n)), "tildelingen skal vaere bekræftet skrevet"
+    assert t["source"] == "visible-kilde0001", (
+        "signalets oprindelige koersel skal bevares — overfladen er global, saa "
+        "et signal kan stamme fra helt andet arbejde end det der nu laeser det"
+    )
+    assert t["count"] == 3
+
+
+def test_utilgaengelig_logning_skjuler_ikke_indsigelsen(isolated_runtime, monkeypatch):
+    """En tilbageholdelse UDEN spor er vaerre end ingen kontrol-arm.
+
+    Kan armen ikke dokumenteres, forsvinder den fra data — og saa er tavshed
+    blevet en egenskab ved systemet i stedet for en maalt effekt. Derfor
+    fail-open: vis indsigelsen.
+    """
+    from core.services import run_autonomy_context as rac
+
+    aktiv = {
+        "active": True,
+        "summary": {"active_count": 1, "current_signal": "noget helt konkret"},
+    }
+    monkeypatch.setattr("core.services.signal_surface_router.read_surface", lambda name: aktiv)
+    monkeypatch.setattr(rac, "current_run_id", lambda: _exp_control_id())
+    monkeypatch.setattr(vil, "_record_exposure", lambda *a, **k: False)
+
+    linje = vil.build_opposition_line()
+    assert linje is not None and "noget helt konkret" in linje, (
+        "kontrol-armen skjulte indsigelsen uden at kunne dokumentere det — saa "
+        "findes der ingen raekke der viser at den blev tilbageholdt"
+    )
 
 
 def test_kontrol_armen_fjerner_indsigelsen_fra_den_BYGGEDE_prompt(

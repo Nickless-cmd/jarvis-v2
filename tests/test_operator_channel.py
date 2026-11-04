@@ -233,7 +233,7 @@ def test_bash_koerer_ikke_paa_server_naar_kanaltilstand_ikke_kan_laeses(monkeypa
     monkeypatch.setattr(oc, "_load", _db_nede)
     monkeypatch.setattr(oc, "current_is_owner", lambda: True)
     monkeypatch.setattr(web, "_get_or_open_default_bash_session",
-                        lambda: pytest.fail("bash må ikke køre på serveren"))
+                        lambda _scope=None: pytest.fail("bash må ikke køre på serveren"))
     r = web._exec_bash({"command": "echo workstation", "_runtime_session_id": "s1"})
     assert r["status"] == "error"
     assert "operator-kanal" in r["error"]
@@ -398,14 +398,14 @@ def test_bash_svaret_baerer_noten_paa_BEGGE_shell_veje(monkeypatch):
     monkeypatch.setattr(_oc, "kanal_note", lambda sid: "[operator-kanal] note")
 
     # (a) den vedvarende, delte shell
-    monkeypatch.setattr(web, "_get_or_open_default_bash_session", lambda: "sess-1")
+    monkeypatch.setattr(web, "_get_or_open_default_bash_session", lambda _scope=None: "sess-1")
     monkeypatch.setattr("core.tools.bash_session._exec_bash_session_run",
                         lambda a: {"status": "ok", "exit_code": 0, "output": "hej"})
     r1 = web._exec_bash({"command": "echo hej"})
     assert r1.get("kanal", {}).get("note") == "[operator-kanal] note", "vedvarende vej"
 
     # (b) reserve-vejen (engangs-subprocess)
-    def _ingen_daemon():
+    def _ingen_daemon(_scope=None):
         raise RuntimeError("ingen daemon")
 
     monkeypatch.setattr(web, "_get_or_open_default_bash_session", _ingen_daemon)
@@ -491,7 +491,7 @@ def test_note_fejl_blokerer_ikke_lokal_bash(monkeypatch):
     monkeypatch.setattr(_oc, "maybe_reroute_bash", lambda *a, **k: None)
     monkeypatch.setattr(_oc, "kanal_note",
                         lambda sid: (_ for _ in ()).throw(OSError("DB nede")))
-    monkeypatch.setattr(web, "_get_or_open_default_bash_session", lambda: "sess-1")
+    monkeypatch.setattr(web, "_get_or_open_default_bash_session", lambda _scope=None: "sess-1")
     monkeypatch.setattr("core.tools.bash_session._exec_bash_session_run",
                         lambda a: {"status": "ok", "exit_code": 0, "output": "lokal"})
     r = web._exec_bash({"command": "echo lokal", "_runtime_session_id": "s1"})

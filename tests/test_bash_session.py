@@ -178,7 +178,8 @@ class _Attrap:
     """Nok af en session til at `_list_row` kan læses uden en daemon."""
 
     def __init__(self, *, laast: bool, kommando: str, levende: bool = True,
-                 titel: str = "", arbejde: bool = False):
+                 titel: str = "", arbejde: bool = False,
+                 arbejde_scope: str = ""):
         self.lock = threading.Lock()
         if laast:
             self.lock.acquire()
@@ -189,6 +190,7 @@ class _Attrap:
         # maaler testen en anden kontrakt end daemonen udsteder.
         self.titel = titel
         self.arbejde = arbejde
+        self.arbejde_scope = arbejde_scope
 
     def alive(self) -> bool:
         return self._levende
@@ -210,9 +212,11 @@ def test_list_baerer_titel_og_arbejdsmaerkning():
     # hoerer hjemme i panelet. Begge dele skrives ved `open` og skal derfor
     # med i list-svaret — ellers maa panelet gaette bagefter.
     r = _list_row("bsh-z", _Attrap(laast=False, kommando="",
-                                   titel="bygger klienten", arbejde=True), time.time())
+                                   titel="bygger klienten", arbejde=True,
+                                   arbejde_scope="session:u:chat-a"), time.time())
     assert r["titel"] == "bygger klienten"
     assert r["arbejde"] is True
+    assert r["arbejde_scope"] == "session:u:chat-a"
     # Uden maerkning er det en almindelig session aabnet med vilje.
     r2 = _list_row("bsh-w", _Attrap(laast=False, kommando=""), time.time())
     assert r2["titel"] == "" and r2["arbejde"] is False

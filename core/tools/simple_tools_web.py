@@ -18,8 +18,6 @@ import html
 import json
 import os
 import subprocess
-import threading as _threading_for_bash
-import time
 from pathlib import Path
 from typing import Any
 import hashlib
@@ -33,6 +31,13 @@ from time import monotonic as _monotonic
 
 from core.runtime.config import PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
+from core.tools.default_bash_session import (
+    _DEFAULT_BASH_SESSION_LOCK,  # noqa: F401 - compatibility re-export
+    _default_bash_session_scope,
+    _get_or_open_default_bash_session,
+    _reset_default_bash_session,
+    _threading_for_bash,  # noqa: F401 - compatibility re-export
+)
 # _exec_bash klipper stor output med clip_head_tail (halen betyder mest for bash).
 # Den blev BRUGT (linje ~346/373) men aldrig importeret her → NameError
 # "'_clip_head_tail' is not defined" ramte ETHVERT bash-kald med output >16k
@@ -319,13 +324,6 @@ def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:
 # ── Default bash session (for the one-shot `bash` tool) ──────────────
 # Boy Scout 4/11-2026: lifecycle/state udskilt fra denne >2.000-linjers fil.
 # Symbolerne re-eksporteres her, så simple_tools + tests beholder samme søm.
-from core.tools.default_bash_session import (
-    _DEFAULT_BASH_SESSION_LOCK,
-    _get_or_open_default_bash_session,
-    _reset_default_bash_session,
-    _threading_for_bash,
-)
-import time
 
 
 def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
@@ -501,7 +499,8 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # really cannot be reached.
     try:
         from core.tools.bash_session import _exec_bash_session_run
-        sid = _get_or_open_default_bash_session()
+        _bash_scope = _default_bash_session_scope(args)
+        sid = _get_or_open_default_bash_session(_bash_scope)
     except Exception as exc:
         sid = None
         # WARNING, ikke DEBUG (6/9-2026): en NameError her gjorde HELE den
@@ -522,9 +521,9 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         # transparently retry with a fresh session once.
         err = str(run_result.get("error") or "")
         if "unknown session_id" in err or "session terminated" in err:
-            _reset_default_bash_session()
+            _reset_default_bash_session(_bash_scope)
             try:
-                sid2 = _get_or_open_default_bash_session()
+                sid2 = _get_or_open_default_bash_session(_bash_scope)
             except Exception:
                 sid2 = None
             if sid2:

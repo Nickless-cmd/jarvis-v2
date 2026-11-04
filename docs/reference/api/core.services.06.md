@@ -95,12 +95,18 @@ _core/services/central_hypothesis_sampler.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L32) |
-| function | `test_causal_hypothesis` | `(x_fam, y_fam, *, window=…, follow_s=…)` | Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe. | [src](../../../core/services/central_hypothesis_sampler.py#L40) |
-| function | `test_divergence_persistence` | `(family)` | causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data — | [src](../../../core/services/central_hypothesis_sampler.py#L76) |
-| function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L95) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L108) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L181) |
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L37) |
+| function | `test_causal_hypothesis` | `(x_fam, y_fam, *, window=…, follow_s=…)` | Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe. | [src](../../../core/services/central_hypothesis_sampler.py#L45) |
+| function | `test_divergence_persistence` | `(family)` | causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data — | [src](../../../core/services/central_hypothesis_sampler.py#L81) |
+| function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L100) |
+| function | `_eval_causal_sequence` | `(prov)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L129) |
+| function | `_eval_model_meta` | `(prov)` | Holder model-dominansen (latency/success) i friske runs? Kræver family 'A:B'. | [src](../../../core/services/central_hypothesis_sampler.py#L138) |
+| function | `_eval_divergence` | `(prov)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L147) |
+| function | `_eval_stance` | `(prov)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L155) |
+| function | `evaluator_for` | `(prov)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund til at den mangler). | [src](../../../core/services/central_hypothesis_sampler.py#L180) |
+| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L197) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L224) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L293) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._

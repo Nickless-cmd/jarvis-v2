@@ -11,16 +11,21 @@ gen-udlede den graf der fødte hypotesen). Ét grounded sample pr. tick pr. hypo
 Grounding: events ER virkelighedens optegnelse → source="world_consequence", ground_ref = event-id
 (verificerbart anker, ikke en selvrapporteret label). OBSERVE-ONLY: tester + registrerer, HANDLER aldrig.
 
-Divergens-/stance-hypoteser auto-testes IKKE i v1 (kræver udfald-linkning) — de forbliver aktive.
+Testmetoden er sit EGET begreb (`EVALUATORS`), adskilt fra hvor hypotesen opstod. En hypotese
+uden en registreret evaluator rapporteres som `unevaluable` — strukturel gæld, ikke manglende
+data — i stedet for at forsvinde i et samlet `skipped`-tal.
 Alt read-only, self-safe, kaster ALDRIG.
 """
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from core.services import central_hypothesis_governance as gov
+
+logger = logging.getLogger(__name__)
 
 _WINDOW = 3000            # events der scannes
 _FOLLOW_S = 60            # Y skal følge X inden for dette vindue for at "tælle"
@@ -105,13 +110,129 @@ def test_stance_persistence(tension_key: str) -> dict[str, Any] | None:
         return None
 
 
+# ── Evaluator-laget ────────────────────────────────────────────────────────────
+# TESTMETODE er sit eget begreb, ikke en egenskab ved oprindelsen.
+#
+# `provenance_json.mechanism` svarer på HVOR hypotesen opstod — hver generator skriver
+# sit eget navn der. At bruge det som dispatch-nøgle blandede de to sammen: en hypotese
+# født i en drømmeløkke kunne ikke testes af en sekvensanalyse, fordi navnet ikke matchede
+# en gren. Målt 4/11-2026: 10 mekanismer, 5 grene, og 18 aktive hypoteser faldt tavst
+# igennem `else: res = None` — de blev hentet hvert 30. minut i ugevis uden at nogen
+# kunne se hvorfor. Kontraktens kvalitet og dens testbarhed var omvendt korreleret:
+# de 14 med den mest eksplicitte kontrakt (`dream_hypothesis_judge`) havde nul samples.
+#
+# `EVALUATORS` er nøglet på TESTMETODEN. `_ORIGIN_TO_EVALUATOR` er en midlertidig bro,
+# fordi kontrakten endnu ikke bærer et `evaluator`-felt. Den dag det findes, skal
+# `evaluator_for()` læse det felt FØRST — broen er kun fallback.
+
+
+def _eval_causal_sequence(prov: dict[str, Any]) -> dict[str, Any] | None:
+    """Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'."""
+    fam = str(prov.get("family") or "")
+    if "->" not in fam:
+        return None
+    x_fam, y_fam = fam.split("->", 1)
+    return test_causal_hypothesis(x_fam, y_fam)
+
+
+def _eval_model_meta(prov: dict[str, Any]) -> dict[str, Any] | None:
+    """Holder model-dominansen (latency/success) i friske runs? Kræver family 'A:B'."""
+    fam = str(prov.get("family") or "")
+    if ":" not in fam:
+        return None
+    from core.services import central_model_meta as mm
+    return mm.test_model_meta_persistence(fam)
+
+
+def _eval_divergence(prov: dict[str, Any]) -> dict[str, Any] | None:
+    """Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'."""
+    fam = str(prov.get("family") or "")
+    if ":" not in fam:
+        return None
+    return test_divergence_persistence(fam)
+
+
+def _eval_stance(prov: dict[str, Any]) -> dict[str, Any] | None:
+    """Gentager tension'en sig stadig? Kræver family = tension-nøgle."""
+    return test_stance_persistence(str(prov.get("family") or ""))
+
+
+EVALUATORS: dict[str, dict[str, Any]] = {
+    "causal_sequence": {"fn": _eval_causal_sequence,
+                        "requires": "family 'X->Y'"},
+    "model_meta_persistence": {"fn": _eval_model_meta,
+                               "requires": "family 'A:B'"},
+    "divergence_persistence": {"fn": _eval_divergence,
+                               "requires": "family 'parent:good|bad'"},
+    "stance_persistence": {"fn": _eval_stance,
+                           "requires": "family = tension-nøgle"},
+}
+
+_ORIGIN_TO_EVALUATOR: dict[str, str] = {
+    "causal_edges": "causal_sequence",
+    "prediction_error": "causal_sequence",
+    "model_meta": "model_meta_persistence",
+    "causal_divergence": "divergence_persistence",
+    "stance_divergence": "stance_persistence",
+}
+
+
+def evaluator_for(prov: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Hvilken evaluator kan teste DENNE hypotese? → (navn, grund til at den mangler).
+
+    Læser et eksplicit `evaluator`-felt hvis kontrakten bærer det (fremtid), ellers broen
+    fra oprindelses-mekanismen. Returnerer (None, grund) når ingen evaluator kan teste
+    hypotesen — det er STRUKTUREL gæld, ikke manglende data.
+    """
+    explicit = str(prov.get("evaluator") or "").strip()
+    origin = str(prov.get("mechanism") or "")
+    name = explicit or _ORIGIN_TO_EVALUATOR.get(origin, "")
+    if not name:
+        return None, f"ingen evaluator registreret for oprindelse {origin!r}"
+    if name not in EVALUATORS:
+        return None, f"evaluator {name!r} er ikke registreret"
+    return name, None
+
+
+def list_unevaluable_active() -> list[dict[str, str]]:
+    """Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry.
+
+    Adskilt fra hypoteser der blot mangler data lige nu. Self-safe — kaster ALDRIG.
+    """
+    out: list[dict[str, str]] = []
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            rows = c.execute(
+                "SELECT hyp_id, provenance_json, created_at, ttl_seconds "
+                "FROM central_hypotheses WHERE status='active'").fetchall()
+        now = datetime.now(timezone.utc)
+        for r in rows:
+            if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
+                continue
+            prov = json.loads(r["provenance_json"] or "{}")
+            name, why = evaluator_for(prov)
+            if name is None:
+                out.append({"hyp_id": str(r["hyp_id"]), "reason": str(why),
+                            "origin": str(prov.get("mechanism") or "")})
+    except Exception as exc:  # self-safe: en læsefejl må ikke vælte cadence-tick'et
+        logger.warning("central_hypothesis_sampler: kunne ikke liste utestbare: %s", exc)
+        return out
+    return out
+
+
 def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
                                 last_visible_at: str = "") -> dict[str, object]:
     """Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded
     sample. OBSERVE-ONLY. Self-safe."""
     from core.services import central_hypothesis_generator as gen
     gen.ensure_schema()
-    tested, supported, contradicted, skipped = 0, 0, 0, 0
+    tested, supported, contradicted = 0, 0, 0
+    # `skipped` var ÉT tal for to helt forskellige ting: hypoteser der ALDRIG kan testes
+    # (ingen evaluator — strukturel gæld) og hypoteser der ikke KUNNE måles lige nu
+    # (for lidt data — forbigående). Målt 4/11-2026: 18 aktive lå i den første gruppe.
+    unevaluable: dict[str, list[str]] = {}
+    no_data: list[str] = []
     try:
         from core.runtime.db import connect
         with connect() as c:
@@ -132,29 +253,17 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
     except Exception:
         active = []
     for hyp_id, prov in active:
-        mech = prov.get("mechanism")
-        fam = str(prov.get("family") or "")
-        # §8.4: test causal-KORRELATION, causal-DIVERGENS OG stance-DIVERGENS (før: kun causal_edges).
-        if mech == "causal_edges" and "->" in fam:
-            x_fam, y_fam = fam.split("->", 1)
-            res = test_causal_hypothesis(x_fam, y_fam)
-        elif mech == "prediction_error" and "->" in fam:
-            # Tråd 4: overraskelsen holder KUN hvis overgangen faktisk er prædiktiv over baseline —
-            # samme conditional-rate-test. Ellers falsificeres den (det var støj). §8.4.
-            x_fam, y_fam = fam.split("->", 1)
-            res = test_causal_hypothesis(x_fam, y_fam)
-        elif mech == "model_meta" and ":" in fam:
-            # Tråd 1: holder model-dominansen (latency/success) stadig i friske runs? ellers støj/udvalg.
-            from core.services import central_model_meta as mm
-            res = mm.test_model_meta_persistence(fam)
-        elif mech == "causal_divergence" and ":" in fam:
-            res = test_divergence_persistence(fam)
-        elif mech == "stance_divergence":
-            res = test_stance_persistence(fam)
-        else:
-            res = None
+        name, why = evaluator_for(prov)
+        if name is None:
+            # Strukturel gæld: ingen evaluator kan teste denne hypotese. Den blev før talt
+            # som «skipped» sammen med dem der blot manglede data — to vidt forskellige ting.
+            unevaluable.setdefault(str(why), []).append(hyp_id)
+            continue
+        res = EVALUATORS[name]["fn"](prov)
         if res is None:
-            skipped += 1
+            # Evaluatoren kunne ikke måle NU (for lidt data, eller family matcher ikke det
+            # den kræver). Forbigående — ikke strukturelt.
+            no_data.append(hyp_id)
             continue
         tested += 1
         # triggered_by='world': frisk verdens-observation, IKKE selv-udløst (circular-korrekt, §8.5).
@@ -171,11 +280,14 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         from core.services.central_private_observe import record_private
         record_private("cognition", "hypothesis_sampling", value=float(tested),
                        meta={"tested": tested, "supported": supported,
-                             "contradicted": contradicted, "skipped": skipped})
+                             "contradicted": contradicted,
+                             "unevaluable": sum(len(v) for v in unevaluable.values()),
+                             "no_data": len(no_data)})
     except Exception:
         pass
     return {"status": "ok", "tested": tested, "supported": supported,
-            "contradicted": contradicted, "skipped": skipped}
+            "contradicted": contradicted,
+            "unevaluable": unevaluable, "no_data": no_data}
 
 
 def register_hypothesis_sampler_producer() -> None:

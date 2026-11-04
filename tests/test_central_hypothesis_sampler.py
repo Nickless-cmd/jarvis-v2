@@ -120,3 +120,67 @@ def test_five_supporting_samples_resolve(isolated_runtime, monkeypatch):
         row = c.execute("SELECT status, outcome, grounded_samples FROM central_hypotheses").fetchone()
     assert row["grounded_samples"] == 5, f"5 unikke observationer skulle give 5 samples, fik {row['grounded_samples']}"
     assert row["status"] == "resolved" and row["outcome"] == "supported"
+
+
+# ── Evaluator-laget (4/11-2026) ────────────────────────────────────────────────
+# Foer: ét `skipped`-tal blandt to helt forskellige ting — hypoteser der ALDRIG kan
+# testes (ingen evaluator) og hypoteser der ikke kunne maales lige nu (for lidt data).
+# Maalt i den levende base: 18 aktive laa i den foerste gruppe og blev hentet hvert
+# 30. minut i ugevis. Navnet forsvandt; kun tallet stod tilbage.
+
+
+def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int = 0) -> None:
+    import json
+    from datetime import datetime, timezone, timedelta
+    from core.runtime.db import connect
+    gen.ensure_schema()
+    created = (datetime.now(timezone.utc) - timedelta(hours=age_hours)).isoformat()
+    with connect() as c:
+        c.execute(
+            "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, "
+            "null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json, "
+            "confidence, status, grounded_samples, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (hyp_id, "test", "s", "p", "n", ">= 5", 5, 604800,
+             json.dumps({"mechanism": mechanism, "family": family}),
+             0.5, "active", 0, created))
+
+
+def test_hypotese_uden_evaluator_rapporteres_med_navn(isolated_runtime, monkeypatch):
+    """En hypotese uden evaluator maa ikke forsvinde i et samlet tal."""
+    _insert_hyp("hyp-doed", "dream_hypothesis_judge", "oneiric")
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 0
+    assert res["no_data"] == [], "hypotesen blev aldrig maalt — den er ikke 'no_data'"
+    grunde = res["unevaluable"]
+    assert list(grunde) == ["ingen evaluator registreret for oprindelse 'dream_hypothesis_judge'"], grunde
+    assert grunde[list(grunde)[0]] == ["hyp-doed"], "hyp_id'et skal staa i rapporten"
+
+
+def test_kendt_evaluator_men_forkert_family_er_no_data(isolated_runtime, monkeypatch):
+    """Modsat kant: en REGISTRERET evaluator der ikke kan maale nu er ikke strukturel gaeld."""
+    _insert_hyp("hyp-tynd", "causal_edges", family="uden-pil")   # kraever 'X->Y'
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 0
+    assert res["unevaluable"] == {}, "evaluatoren FINDES — det er ikke strukturel gaeld"
+    assert res["no_data"] == ["hyp-tynd"]
+
+
+def test_list_unevaluable_active_navngiver_hypotesen(isolated_runtime):
+    _insert_hyp("hyp-a", "dream_hypothesis_judge", "oneiric")
+    _insert_hyp("hyp-b", "prediction_error", "a->b")     # har evaluator
+    out = smp.list_unevaluable_active()
+    ids = {x["hyp_id"] for x in out}
+    assert ids == {"hyp-a"}, f"kun hyp-a er utestbar, fik {ids}"
+    assert "dream_hypothesis_judge" in out[0]["reason"]
+    assert out[0]["origin"] == "dream_hypothesis_judge"
+
+
+def test_eksplicit_evaluator_felt_slaar_broen(isolated_runtime):
+    """Broen fra oprindelse er FALLBACK. Baerer kontrakten et evaluator-felt, vinder det —
+    saa kan en hypotese foedt i én mekanisme testes af en anden."""
+    navn, why = smp.evaluator_for({"mechanism": "ukendt-ophav", "evaluator": "stance_persistence"})
+    assert (navn, why) == ("stance_persistence", None)
+    # og et ukendt evaluator-navn afvises frem for at falde tilbage paa broen
+    navn2, why2 = smp.evaluator_for({"mechanism": "causal_edges", "evaluator": "findes-ikke"})
+    assert navn2 is None and "ikke registreret" in str(why2)

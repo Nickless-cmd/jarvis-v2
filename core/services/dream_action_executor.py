@@ -118,20 +118,30 @@ def adjudicate(from_fam: str, to_fam: str, *,
         jordet = kontrakt.get("jordet")
         modsagt = kontrakt.get("modsagt")
         if isinstance(krav, int) and krav > 0 and isinstance(jordet, int) and jordet >= 0:
-            # Kontrakten kræver STØTTENDE observationer. Er de modsigende lige så
-            # mange, er hypotesen modbevist med fuld evidens — den må ikke blive
-            # hængende i 'undecided' indtil TTL udløber (målt 4/11-2026: 580).
-            # MEN reglen må kun gælde når kontrakten selv bærer den: målt 4/11-2026
-            # nævner kun 11 af 586 aktive kontrakter en modsigelse som kriterium.
-            # Uden dette værn ville 96 % få en dom de aldrig præregistrerede.
-            if kontrakt.get("modsigelse_praeregistreret") and isinstance(modsagt, int) and modsagt >= krav:
+            # Kontraktens ORDRETTE formel er: "mindst N observationer der understøtter
+            # forudsigelsen, UDEN LIGE SÅ MANGE der modsiger den". Modsigelserne er
+            # altså en del af success-kriteriet, ikke kun et antal. Målt 4/11-2026:
+            # 14 af 142.071 kontrakter bærer den formel; 0 bærer kun løse ord.
+            #
+            # Derfor to betingelser — begge nødvendige:
+            #   contract_met  : jordet >= krav  OG  modsagt < jordet
+            #   contradicted  : modsagt >= krav OG  modsagt >= jordet
+            # Den første betingelse blev målt manglende: 5 støttende + 5 modsigende
+            # blev godkendt som opfyldt, selv om kontrakten udtrykkeligt afviser
+            # "lige så mange". Den anden kræver at modsigelserne BÅDE når kontraktens
+            # mængde og overhaler støtten — ellers ville 7 støttende + 5 modsigende
+            # blive dømt modbevist på et kriterium kontrakten kalder opfyldt.
+            modsagt_ok = isinstance(modsagt, int)
+            if kontrakt.get("modsigelse_praeregistreret") and modsagt_ok \
+                    and modsagt >= krav and modsagt >= jordet:
                 return {"verdict": "contradicted", "prob": round(p, 4), "from_total": total,
                         "reason": f"hypotesens egen kontrakt modbevist: {modsagt} jordede "
                                   f"modsigelser mod {jordet} støttende (krav {krav})"}
-            if jordet >= krav:
+            if jordet >= krav and (not modsagt_ok or modsagt < jordet):
                 return {"verdict": "contract_met", "prob": round(p, 4), "from_total": total,
                         "reason": f"hypotesens egen kontrakt opfyldt: {jordet}/{krav} "
-                                  f"jordede observationer (P={p:.4f} er sekundær)"}
+                                  f"jordede observationer, {modsagt} modsigende "
+                                  f"(P={p:.4f} er sekundær)"}
             return {"verdict": "undecided", "prob": round(p, 4), "from_total": total,
                     "reason": f"kontrakten ikke opfyldt endnu: {jordet}/{krav} "
                               f"jordede observationer"}
@@ -170,13 +180,16 @@ def _kontrakt_af(h: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(stottende, int) or not isinstance(modsigende, int):
         return None
     # Modsigelses-reglen skal være PRÆREGISTRERET, ikke en overraskelse i evalueringen.
-    # Målt 4/11-2026: kun 11 af 586 aktive kontrakter nævner en modsigelse som kriterium;
-    # de øvrige 575 kræver blot N støttende observationer og siger intet om hvad der sker
-    # ved N modsigelser. Uden dette flag ville 96 % få en dom de aldrig fremsatte.
-    kriterium = str(h.get("success_criterion") or "").lower()
-    praeregistreret = any(
-        ordet in kriterium for ordet in ("modsig", "modsag", "falsif", "uden lige så mange")
-    )
+    # Målt 4/11-2026: kun 14 af 142.071 kontrakter bærer formlen; de øvrige kræver blot
+    # N støttende observationer og siger intet om hvad der sker ved N modsigelser.
+    #
+    # Flaget kræver den RELATIONELLE formel ("uden lige så mange der modsiger"), ikke
+    # blot ordet "modsig". En kontrakt der siger "modsigelser registreres separat"
+    # nævner modsigelse uden at gøre den til et falsifikationskriterium — et løst
+    # ord-match ville give den en dom den aldrig fremsatte. Målt: 0 kontrakter har
+    # i dag kun det løse ord, så skærpelsen ændrer intet — den lukker vejen.
+    kriterium = " ".join(str(h.get("success_criterion") or "").lower().split())
+    praeregistreret = "uden lige så mange" in kriterium or "falsificeres hvis" in kriterium
     return {"krav": krav, "jordet": stottende, "modsagt": modsigende,
             "modsigelse_praeregistreret": praeregistreret}
 

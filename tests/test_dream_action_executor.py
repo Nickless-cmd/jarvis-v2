@@ -144,6 +144,35 @@ class TestKontrakten:
                                    "modsigelse_praeregistreret": True})
         assert v["verdict"] == "contradicted", v
 
+    def test_flere_stoettende_end_modsigende_er_opfyldt(self):
+        """Kontrakten siger 'UDEN LIGE SÅ MANGE der modsiger' — 7 mod 5 opfylder den.
+
+        Reglen var tidligere 'modsagt >= krav', som dømte denne hypotese modbevist
+        på et kriterium dens egen kontrakt kalder opfyldt. Målt 4/11-2026: ingen
+        aktiv hypotese ramte tilfældet, men reglen var forkert.
+        """
+        v = self._adj(0.005, 583, {"krav": 5, "jordet": 7, "modsagt": 5,
+                                   "modsigelse_praeregistreret": True})
+        assert v["verdict"] == "contract_met", v
+
+    def test_flag_kraever_den_relationelle_formel(self):
+        """Flaget må ikke sættes på et løst ord-match.
+
+        'modsigelser registreres separat' nævner modsigelse uden at gøre den til et
+        falsifikationskriterium. Kun 'uden lige så mange' (eller en eksplicit
+        falsificer-hvis-formel) hjemler contradicted-dommen.
+        """
+        loest = ex._kontrakt_af({"sample_size": "5", "success_criterion":
+                                 "5 støttende observationer; modsigelser registreres separat",
+                                 "jordede_samples": {"stottende": 5, "modsigende": 0}})
+        assert loest is not None and loest["modsigelse_praeregistreret"] is False, loest
+
+        praecis = ex._kontrakt_af({"sample_size": "5", "success_criterion":
+                                   "mindst 5 observationer der understøtter forudsigelsen, "
+                                   "uden lige så mange der modsiger den.",
+                                   "jordede_samples": {"stottende": 5, "modsigende": 0}})
+        assert praecis is not None and praecis["modsigelse_praeregistreret"] is True, praecis
+
     def test_uden_kontrakt_er_dommen_uaendret(self):
         """Bagudkompatibel: hypoteser uden læsbar kontrakt dømmes som før."""
         assert self._adj(0.005, 583)["verdict"] == "noise"

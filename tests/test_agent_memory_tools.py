@@ -247,3 +247,62 @@ def test_an_agent_demoted_to_legacy_unscoped_with_an_open_assignment_still_canno
     conn.commit()
     out = mt.call("old2", action="write", content="x")
     assert (out["status"], out["code"]) == ("error", "POLICY_DENIED") and mt.notes("old2") == []
+
+
+# ── HVER afvisning skal sige sit navn (4/11-2026) ──────────────────────────
+#
+# `_exec_agent_note` havde ÉN gren der ikke loggede: den sidste `return` laa
+# uden for `try`, saa en ugyldig `action` blev afvist i tavshed mens alle
+# andre afvisninger skrev «agent_note afvist: …».
+#
+# Det kostede en fejlslutning. Jeg maalte 14 kald til `agent_note` i
+# produktionen og nul «afvist»-linjer i journalen, og sluttede at kaldene
+# maatte fejle FOER vaerktoejet. De kunne lige saa godt vaere faldet i den
+# tavse gren. Én manglende log-linje gjorde ALLE de andres fravaer tvetydigt
+# — og det er praecis den egenskab en log har: den er kun et bevis hvis den
+# er fuldstaendig.
+
+def test_hver_afvisning_logger_sit_navn(caplog):
+    """Alle fire afvisningsveje skal efterlade ÉN «agent_note afvist»-linje."""
+    import logging
+
+    from core.tools.agent_memory_tools import _exec_agent_note
+
+    tilfaelde = {
+        "ingen identitet":  {"action": "read"},
+        "ingen action":     {"_runtime_agent_id": "agent-x"},
+        "ukendt action":    {"_runtime_agent_id": "agent-x", "action": "slet"},
+        "ukendt agent":     {"_runtime_agent_id": "agent-findes-ikke", "action": "read"},
+    }
+    for navn, args in tilfaelde.items():
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="core.tools.agent_memory_tools"):
+            ud = _exec_agent_note(dict(args))
+        assert ud["status"] == "error", navn
+        linjer = [r.getMessage() for r in caplog.records if "agent_note afvist" in r.getMessage()]
+        assert len(linjer) == 1, (
+            "%s: %d «afvist»-linjer. En tavs afvisningsvej goer fravaeret af de "
+            "ANDRE linjer tvetydigt — saa kan en maaling ikke skelne «aldrig "
+            "kaldt» fra «afvist uden at sige det»." % (navn, len(linjer)))
+
+
+def test_den_ugyldige_action_staar_i_loggen():
+    """Grunden skal kunne laeses uden at gense koden — ellers er linjen kun stoej."""
+    import logging
+
+    from core.tools.agent_memory_tools import _exec_agent_note
+
+    optaget: list[str] = []
+
+    class _Fang(logging.Handler):
+        def emit(self, record): optaget.append(record.getMessage())
+
+    log = logging.getLogger("core.tools.agent_memory_tools")
+    h = _Fang(); log.addHandler(h); gammel = log.level; log.setLevel(logging.INFO)
+    try:
+        _exec_agent_note({"_runtime_agent_id": "agent-x", "action": "slet"})
+    finally:
+        log.removeHandler(h); log.setLevel(gammel)
+
+    assert any("slet" in m for m in optaget), (
+        "loggen naevner ikke den action der blev afvist: %r" % optaget)

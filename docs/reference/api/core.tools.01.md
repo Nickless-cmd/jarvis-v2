@@ -44,7 +44,7 @@ _Agent-kun-vaerktoej til agentens EGEN hukommelse (agent-contract-v1 leverance C
 |---|---|---|---|---|
 | function | `_fail` | `(exc)` | — | [src](../../../core/tools/agent_memory_tools.py#L43) |
 | function | `_exec_agent_note` | `(args)` | Identiteten er ``_runtime_agent_id`` (sat af serveren); intet i ``args`` kan udpege en anden agent. | [src](../../../core/tools/agent_memory_tools.py#L49) |
-| function | `_render` | `(res)` | — | [src](../../../core/tools/agent_memory_tools.py#L67) |
+| function | `_render` | `(res)` | — | [src](../../../core/tools/agent_memory_tools.py#L79) |
 
 ## `core/tools/agent_todo_tools.py`
 _Tool wrappers for the per-session todo tracker (agent_todos)._

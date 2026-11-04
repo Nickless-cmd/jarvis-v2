@@ -126,7 +126,7 @@ def test_stance_persistence(tension_key: str) -> dict[str, Any] | None:
 # `evaluator_for()` læse det felt FØRST — broen er kun fallback.
 
 
-def _eval_causal_sequence(prov: dict[str, Any]) -> dict[str, Any] | None:
+def _eval_causal_sequence(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'."""
     fam = str(prov.get("family") or "")
     if "->" not in fam:
@@ -135,8 +135,53 @@ def _eval_causal_sequence(prov: dict[str, Any]) -> dict[str, Any] | None:
     return test_causal_hypothesis(x_fam, y_fam)
 
 
-def _eval_model_meta(prov: dict[str, Any]) -> dict[str, Any] | None:
-    """Holder model-dominansen (latency/success) i friske runs? Kræver family 'A:B'."""
+def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | None:
+    """Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN.
+
+    Legacy-stien kodede retningen to steder: i family-konventionen ``"latency:W>L"``
+    (W er ALTID vinderen) og i et ``if/else``. En hypotese der påstod det modsatte
+    kunne derfor ikke udtrykkes — og to hypoteser med modsatrettede forventninger
+    ville få samme dom på samme data. Her læses `expected_relation` og parterne fra
+    kontrakten, så A ("X hurtigere end Y") og B ("X langsommere end Y") får modsatte
+    domme på PRÆCIS samme observationer.
+
+    Returnerer None når der ikke er data nok — det er operationel tilgængelighed,
+    ikke en ugyldig kontrakt.
+    """
+    from core.services import central_model_meta as mm
+    from core.services import central_test_contract as tc
+    subject, comparator = tc.subject_of(contract)
+    rel = tc.relation_of(contract)
+    if not subject or not comparator or rel not in ("less_than", "greater_than"):
+        return None
+    min_samples = int(contract.get("min_samples") or 0)
+    agg = mm.aggregate_model_outcomes()
+    sa, ca = agg.get(subject), agg.get(comparator)
+    if not sa or not ca:
+        return None
+    if int(sa.get("samples") or 0) < min_samples or int(ca.get("samples") or 0) < min_samples:
+        return None
+    s_lat = float(sa.get("latency_ms") or 0.0)
+    c_lat = float(ca.get("latency_ms") or 0.0)
+    if s_lat <= 0 or c_lat <= 0:
+        return None
+    margin = float(getattr(mm, "_LATENCY_MARGIN", 1.25))
+    if rel == "less_than":
+        holds = s_lat * margin <= c_lat
+    else:
+        holds = c_lat * margin <= s_lat
+    return {"supports": bool(holds), "falsifies": not bool(holds),
+            "cursor": int(sa.get("samples") or 0)}
+
+
+def _eval_model_meta(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Holder model-dominansen (latency/success) i friske runs?
+
+    Bærer hypotesen en kontrakt, er DEN autoritativ for retningen. Ellers legacy:
+    family 'A:B' hvor A er vinderen.
+    """
+    if contract:
+        return _eval_contract_comparative(contract)
     fam = str(prov.get("family") or "")
     if ":" not in fam:
         return None
@@ -144,7 +189,7 @@ def _eval_model_meta(prov: dict[str, Any]) -> dict[str, Any] | None:
     return mm.test_model_meta_persistence(fam)
 
 
-def _eval_divergence(prov: dict[str, Any]) -> dict[str, Any] | None:
+def _eval_divergence(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'."""
     fam = str(prov.get("family") or "")
     if ":" not in fam:
@@ -152,7 +197,7 @@ def _eval_divergence(prov: dict[str, Any]) -> dict[str, Any] | None:
     return test_divergence_persistence(fam)
 
 
-def _eval_stance(prov: dict[str, Any]) -> dict[str, Any] | None:
+def _eval_stance(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """Gentager tension'en sig stadig? Kræver family = tension-nøgle."""
     return test_stance_persistence(str(prov.get("family") or ""))
 
@@ -199,21 +244,40 @@ _ORIGIN_TO_EVALUATOR: dict[str, str] = {
 }
 
 
-def evaluator_for(prov: dict[str, Any]) -> tuple[str | None, str | None, str]:
+def evaluator_for(prov: dict[str, Any],
+                  contract: dict[str, Any] | None = None) -> tuple[str | None, str | None, str]:
     """Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde).
 
-    `kilde` er `"contract"` når hypotesen selv bærer et `evaluator`-felt, og `"legacy"`
-    når den blev koblet på via broen fra sin oprindelse. Skelnen er ikke pynt: indtil
-    kontrakterne bærer feltet er broen den operative sandhed for næsten hele populationen,
-    og Centralen må ikke rapportere det som om alle hypoteser er valideret.
+    `kilde` er `"contract"` når hypotesen bærer en VALIDERET testkontrakt, og `"legacy"`
+    når den blev koblet på via broen fra sin oprindelse. Skelnen er ikke pynt: målt
+    4/11-2026 havde 0 af 505 aktive hypoteser en kontrakt, så broen var den operative
+    sandhed for hele populationen — og Centralen måtte ikke rapportere det som om alle
+    hypoteser var valideret.
 
-    Kravet i `EVALUATORS[name]["accepts"]` håndhæves HER, så en kontrakt-evaluator-mismatch
-    bliver strukturel gæld med navn i stedet for at forsvinde som «mangler data».
+    En kontrakt der IKKE validerer falder ikke tilbage til broen: så ville en ugyldig
+    kontrakt se ud som en gyldig legacy-kobling. Den rapporteres som strukturel gæld.
+
+    Kravet i `EVALUATORS[name]["accepts"]` håndhæves for legacy-stien, så en
+    kontrakt-evaluator-mismatch bliver strukturel gæld med navn i stedet for at
+    forsvinde som «mangler data».
     """
+    if contract:
+        from core.services import central_test_contract as tc
+        cok, cmissing = tc.validate(contract)
+        if not cok:
+            return (None, f"test_contract er ugyldig: {'; '.join(cmissing)}", "contract")
+        name = tc.evaluator_of(contract)
+        if name not in EVALUATORS:
+            return (None, f"evaluator {name!r} er ikke registreret", "contract")
+        return name, None, "contract"
+
     explicit = str(prov.get("evaluator") or "").strip()
     origin = str(prov.get("mechanism") or "")
     name = explicit or _ORIGIN_TO_EVALUATOR.get(origin, "")
-    kilde = "contract" if explicit else "legacy"
+    # Et NAVN i provenance er ikke en kontrakt. `explicit` betyder at hypotesen selv
+    # pegede på en evaluator, men uden en valideret testkontrakt — den er derfor ikke
+    # mere verificeret end broen, bare mere præcis om hvad den peger på.
+    kilde = "explicit" if explicit else "legacy"
     if not name:
         return None, f"ingen evaluator registreret for oprindelse {origin!r}", kilde
     if name not in EVALUATORS:
@@ -227,6 +291,18 @@ def evaluator_for(prov: dict[str, Any]) -> tuple[str | None, str | None, str]:
     return name, None, kilde
 
 
+def _parse_contract(raw: Any) -> dict[str, Any] | None:
+    """Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst)."""
+    if not raw:
+        return None
+    try:
+        c = json.loads(str(raw))
+        return c if isinstance(c, dict) else None
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: ulaeselig test_contract: %s", exc)
+        return None
+
+
 def list_unevaluable_active() -> list[dict[str, str]]:
     """Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry.
 
@@ -235,16 +311,18 @@ def list_unevaluable_active() -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     try:
         from core.runtime.db import connect
+        from core.services import central_hypothesis_generator as gen
+        gen.ensure_schema()      # migreringen af test_contract_json skal vaere sket foer laesning
         with connect() as c:
             rows = c.execute(
-                "SELECT hyp_id, provenance_json, created_at, ttl_seconds "
+                "SELECT hyp_id, provenance_json, test_contract_json, created_at, ttl_seconds "
                 "FROM central_hypotheses WHERE status='active'").fetchall()
         now = datetime.now(timezone.utc)
         for r in rows:
             if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
                 continue
             prov = json.loads(r["provenance_json"] or "{}")
-            name, why, kilde = evaluator_for(prov)
+            name, why, kilde = evaluator_for(prov, _parse_contract(r["test_contract_json"]))
             if name is None:
                 out.append({"hyp_id": str(r["hyp_id"]), "reason": str(why),
                             "origin": str(prov.get("mechanism") or ""),
@@ -263,19 +341,21 @@ def evaluator_provenance() -> dict[str, int]:
     ikke kunne rapportere at «alle hypoteser har en evaluator» som om det var valideret.
     Målt 4/11-2026: 529 aktive havde en evaluator — fordelingen stod ikke nogen steder.
     """
-    ud: dict[str, int] = {"contract": 0, "legacy": 0, "unevaluable": 0}
+    ud: dict[str, int] = {"contract": 0, "explicit": 0, "legacy": 0, "unevaluable": 0}
     try:
         from core.runtime.db import connect
+        from core.services import central_hypothesis_generator as gen
+        gen.ensure_schema()      # migreringen af test_contract_json skal vaere sket foer laesning
         with connect() as c:
             rows = c.execute(
-                "SELECT provenance_json, created_at, ttl_seconds "
+                "SELECT provenance_json, test_contract_json, created_at, ttl_seconds "
                 "FROM central_hypotheses WHERE status='active'").fetchall()
         now = datetime.now(timezone.utc)
         for r in rows:
             if gov.is_expired(r["created_at"], r["ttl_seconds"], now=now):
                 continue
             prov = json.loads(r["provenance_json"] or "{}")
-            name, _why, kilde = evaluator_for(prov)
+            name, _why, kilde = evaluator_for(prov, _parse_contract(r["test_contract_json"]))
             ud["unevaluable" if name is None else kilde] = (
                 ud.get("unevaluable" if name is None else kilde, 0) + 1)
     except Exception as exc:
@@ -299,7 +379,7 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         from core.runtime.db import connect
         with connect() as c:
             rows = c.execute(
-                "SELECT hyp_id, provenance_json, created_at, ttl_seconds "
+                "SELECT hyp_id, provenance_json, test_contract_json, created_at, ttl_seconds "
                 "FROM central_hypotheses WHERE status='active'").fetchall()
         # 30/10-2026: TTL-filteret manglede. Målt i den levende base: 478 af 872 aktive
         # havde passeret deres frist, og sampler'en brugte kræfter på dem hvert 30. minut.
@@ -308,21 +388,22 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         # læser ensartet, så et SQL-filter ville kunne svigte tavst.
         _now = datetime.now(timezone.utc)
         active = [
-            (str(r["hyp_id"]), json.loads(r["provenance_json"] or "{}"))
+            (str(r["hyp_id"]), json.loads(r["provenance_json"] or "{}"),
+             _parse_contract(r["test_contract_json"]))
             for r in rows
             if not gov.is_expired(r["created_at"], r["ttl_seconds"], now=_now)
         ]
     except Exception:
         active = []
-    for hyp_id, prov in active:
-        name, why, _kilde = evaluator_for(prov)
+    for hyp_id, prov, contract in active:
+        name, why, _kilde = evaluator_for(prov, contract)
         if name is None:
             # Strukturel gæld: ingen evaluator kan teste denne hypotese — heller ikke selv om
             # der kom data nok. Den blev før talt som «skipped» sammen med dem der blot
             # manglede data, og senere som «no_data» når evaluatoren selv afviste formen.
             unevaluable.setdefault(str(why), []).append(hyp_id)
             continue
-        res = EVALUATORS[name]["fn"](prov)
+        res = EVALUATORS[name]["fn"](prov, contract)
         if res is None:
             # Evaluatoren kunne ikke måle NU (for lidt data, eller family matcher ikke det
             # den kræver). Forbigående — ikke strukturelt.

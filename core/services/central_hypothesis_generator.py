@@ -66,7 +66,8 @@ def ensure_schema() -> None:
                   grounded_samples INTEGER NOT NULL DEFAULT 0,
                   created_at TEXT NOT NULL,
                   resolved_at TEXT,
-                  notation_il TEXT
+                  notation_il TEXT,
+                  test_contract_json TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_ch_status ON central_hypotheses(status);
                 CREATE INDEX IF NOT EXISTS idx_ch_provfam ON central_hypotheses(source, status);
@@ -87,6 +88,12 @@ def ensure_schema() -> None:
             cols = [r[1] for r in c.execute("PRAGMA table_info(central_hypotheses)").fetchall()]
             if "notation_il" not in cols:
                 c.execute("ALTER TABLE central_hypotheses ADD COLUMN notation_il TEXT")
+            # Migration: test_contract_json (4/11-2026). Kontrakten gemmes PÅ hypotesen —
+            # en fil-reference ville kunne ændre betydningen af en hypotese oprettet for
+            # måneder siden. Legacy-rækker får NULL og fortsætter gennem broen: ingen
+            # automatisk migrering og ingen kontrakt-generering ud fra prosafelterne.
+            if "test_contract_json" not in cols:
+                c.execute("ALTER TABLE central_hypotheses ADD COLUMN test_contract_json TEXT")
             c.commit()
     except Exception:
         pass
@@ -123,7 +130,13 @@ def _stable_id(provenance: dict[str, Any], created_at: str) -> str:
 # ── Registrering: governance-gated ───────────────────────────────────────────────────
 def register_governed_hypothesis(candidate: dict[str, Any]) -> dict[str, Any]:
     """Registrér en kandidat SOM governed hypotese — men KUN hvis den er fuldt pre-registreret
-    (§8 validate_preregistration). Tildeler stabilt server-id. Self-safe."""
+    (§8 validate_preregistration). Tildeler stabilt server-id. Self-safe.
+
+    Bærer kandidaten en `test_contract`, VALIDERES den her mod `CONTRACT_TYPES` før indsættelse.
+    En model må foreslå en kontrakt; Centralen afviser den hvis typen, versionen eller
+    evaluatoren ikke findes. Et gyldigt JSON-objekt er ikke en gyldig kontrakt — og en
+    hypotese der ikke kan efterprøves må ikke se ud som om den kan.
+    """
     ensure_schema()
     created = _now()
     prov = candidate.get("provenance") or {}
@@ -139,6 +152,12 @@ def register_governed_hypothesis(candidate: dict[str, Any]) -> dict[str, Any]:
     ok, missing = gov.validate_preregistration(hyp)
     if not ok:
         return {"status": "rejected", "missing": missing}
+    contract = candidate.get("test_contract")
+    if contract is not None:
+        from core.services import central_test_contract as tc
+        cok, cmissing = tc.validate(contract)
+        if not cok:
+            return {"status": "rejected", "missing": cmissing, "reason": "ugyldig test_contract"}
     hyp_id = _stable_id(prov, created)
     try:
         from core.runtime.db import connect
@@ -151,15 +170,17 @@ def register_governed_hypothesis(candidate: dict[str, Any]) -> dict[str, Any]:
             c.execute(
                 "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, null_hypothesis, "
                 "success_criterion, sample_size, ttl_seconds, provenance_json, confidence, status, "
-                "outcome, grounded_samples, created_at, resolved_at, notation_il) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,'active',NULL,0,?,NULL,?)",
+                "outcome, grounded_samples, created_at, resolved_at, notation_il, test_contract_json) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,'active',NULL,0,?,NULL,?,?)",
                 (hyp_id, src, hyp["statement"],
                  hyp["prediction"], hyp["null_hypothesis"], hyp["success_criterion"],
                  hyp["sample_size"], hyp["ttl_seconds"], json.dumps(prov),
-                 float(candidate.get("confidence") or _INITIAL_CONFIDENCE), created, notation),
+                 float(candidate.get("confidence") or _INITIAL_CONFIDENCE), created, notation,
+                 json.dumps(contract) if contract is not None else None),
             )
             c.commit()
-        return {"status": "registered", "hyp_id": hyp_id}
+        return {"status": "registered", "hyp_id": hyp_id,
+                "contract": bool(contract)}
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 

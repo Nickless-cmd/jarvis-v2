@@ -130,7 +130,7 @@ def test_five_supporting_samples_resolve(isolated_runtime, monkeypatch):
 
 
 def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int = 0,
-                ekstra: dict | None = None) -> None:
+                ekstra: dict | None = None, contract: dict | None = None) -> None:
     import json
     from datetime import datetime, timezone, timedelta
     from core.runtime.db import connect
@@ -143,11 +143,12 @@ def _insert_hyp(hyp_id: str, mechanism: str, family: str = "", *, age_hours: int
         c.execute(
             "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, "
             "null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json, "
-            "confidence, status, grounded_samples, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "confidence, status, grounded_samples, created_at, test_contract_json) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (hyp_id, "test", "s", "p", "n", ">= 5", 5, 604800,
              json.dumps(prov),
-             0.5, "active", 0, created))
+             0.5, "active", 0, created,
+             json.dumps(contract) if contract is not None else None))
 
 
 def test_hypotese_uden_evaluator_rapporteres_med_navn(isolated_runtime, monkeypatch):
@@ -203,13 +204,18 @@ def test_list_unevaluable_active_navngiver_hypotesen(isolated_runtime):
 
 
 def test_eksplicit_evaluator_felt_slaar_broen(isolated_runtime):
-    """Broen fra oprindelse er FALLBACK. Baerer kontrakten et evaluator-felt, vinder det —
-    saa kan en hypotese foedt i én mekanisme testes af en anden."""
+    """Broen fra oprindelse er FALLBACK. Baerer hypotesen et evaluator-felt, vinder det —
+    saa kan en hypotese foedt i én mekanisme testes af en anden.
+
+    Men et NAVN er ikke en KONTRAKT. Kilden er `explicit`, ikke `contract`: der findes
+    ingen valideret testkontrakt, kun en henvisning. Foerst naar `test_contract_json`
+    validerer mod CONTRACT_TYPES maa Centralen kalde koblingen valideret.
+    """
     navn, why, kilde = smp.evaluator_for(
         {"mechanism": "ukendt-ophav", "evaluator": "stance_persistence",
          "family": "nogen-tension"})
     assert (navn, why) == ("stance_persistence", None)
-    assert kilde == "contract", "et eksplicit felt skal rapporteres som kontrakt, ikke legacy"
+    assert kilde == "explicit", "et navn uden kontrakt er ikke en valideret kontrakt"
     # og et ukendt evaluator-navn afvises frem for at falde tilbage paa broen
     navn2, why2, _ = smp.evaluator_for(
         {"mechanism": "causal_edges", "evaluator": "findes-ikke"})
@@ -271,3 +277,162 @@ def test_samme_evidens_forskellig_oprindelse_giver_samme_dom(isolated_runtime, m
     assert a and b and c_, f"en af dem fik intet sample: {a} {b} {c_}"
     assert a == b, f"to oprindelser med SAMME evaluator gav forskellig dom: {a} vs {b}"
     assert a == c_, f"eksplicit evaluator blev overruled af oprindelsen: {a} vs {c_}"
+
+
+# ── Testkontrakten (4/11-2026) ─────────────────────────────────────────────────
+# Maalt: 0 af 505 aktive hypoteser bar en valideret kontrakt. Retningen laa hardkodet
+# i family-konventionen 'latency:W>L' og i et if/else — saa en hypotese der paastod
+# det MODSATTE kunne ikke udtrykkes, og to hypoteser med modsatrettede forventninger
+# ville faa samme dom paa samme data.
+
+_CONTRACT_BASE = {
+    "schema_version": 1,
+    "contract_type": "comparative_latency",
+    "evaluator": "model_meta_persistence",
+    "evaluator_version": 1,
+    "subject": "p/fast",
+    "comparator": "p/slow",
+    "metric": "latency_ms",
+    "min_samples": 5,
+    "time_basis": "ingestion_time",
+}
+
+
+def test_modsatrettede_forventninger_giver_modsatte_domme(isolated_runtime, monkeypatch):
+    """KONTRAKTEN STYRER EVALUERINGEN — ikke bare gemmes og valideres.
+
+    To hypoteser med SAMME ophav, SAMME family og PRÆCIS samme observationsdata.
+    Kun `expected_relation` er modsat. Hvis begge får samme dom, læser evaluatoren
+    stadig family-konventionen i stedet for kontrakten — og så er hele kontrakt-laget
+    pynt. Det er den test der afgør om betydningen følger påstanden hele vejen.
+    """
+    from core.services import central_model_meta as mm
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    # Samme family for BEGGE — den ville give samme dom hvis den blev laest.
+    _insert_hyp("h-a", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+    _insert_hyp("h-b", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "greater_than"})
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 2, res
+
+    from core.runtime.db import connect
+    with connect() as c:
+        def _dom(hid):
+            return [dict(r) for r in c.execute(
+                "SELECT supports, falsifies FROM central_hypothesis_samples"
+                " WHERE hyp_id=?", (hid,)).fetchall()]
+        a, b = _dom("h-a"), _dom("h-b")
+
+    assert a == [{"supports": 1, "falsifies": 0}], f"A (X hurtigere) skal støttes: {a}"
+    assert b == [{"supports": 0, "falsifies": 1}], f"B (X langsommere) skal modsiges: {b}"
+
+
+def test_kontrakt_hypotese_rapporteres_som_contract(isolated_runtime, monkeypatch):
+    """En valideret kontrakt er den ENESTE kilde der maa hedde `contract` i Centralens tal."""
+    from core.services import central_model_meta as mm
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    _insert_hyp("h-kontrakt", "model_meta", "latency:p/fast>p/slow",
+                contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
+    _insert_hyp("h-bro", "causal_edges", "a->b")     # legacy, ingen kontrakt
+    ud = smp.evaluator_provenance()
+    assert ud["contract"] == 1, ud
+    assert ud["legacy"] == 1, ud
+
+
+def test_ugyldig_kontrakt_afvises_ved_oprettelse(isolated_runtime):
+    """Et gyldigt JSON-objekt er ikke en gyldig kontrakt.
+
+    Modellen maa FORESLAA en kontrakt; Centralen VALIDERER den mod CONTRACT_TYPES.
+    Mangler evaluator_version eller min_samples, maa hypotesen ikke blive oprettet
+    som om den var efterprøvbar.
+    """
+    cand = gen.formulate_correlation_hypothesis(
+        {"parent_family": "a", "child_family": "b", "count": 4, "cursor": 1})
+    cand["test_contract"] = {
+        "schema_version": 1,
+        "contract_type": "comparative_latency",
+        "evaluator": "model_meta_persistence",
+        "subject": "x", "comparator": "y",
+        "expected_relation": "less_than",
+    }
+    res = gen.register_governed_hypothesis(cand)
+    assert res["status"] == "rejected", res
+    assert res.get("reason") == "ugyldig test_contract"
+    assert any("min_samples" in m for m in res["missing"]), res["missing"]
+    assert any("evaluator_version" in m for m in res["missing"]), res["missing"]
+
+
+def test_ukendt_kontrakttype_afvises(isolated_runtime):
+    """En kontrakttype Centralen ikke kan efterprøve maa ikke accepteres."""
+    from core.services import central_test_contract as tc
+    ok, missing = tc.validate({**_CONTRACT_BASE, "contract_type": "opfundet_type",
+                               "expected_relation": "less_than"})
+    assert ok is False and any("contract_type" in m for m in missing), missing
+
+
+def test_event_time_afvises_som_tidsbasis(isolated_runtime):
+    """Kontrakten maa ikke paastaa at maale en tidsbasis infrastrukturen ikke baerer.
+
+    `central_hypothesis_samples.created_at` saettes ved indsaettelse — event-time
+    findes kun indirekte via ground_ref. En kontrakt der siger `event_time` ville
+    lyve om praecis det punkt hvor dommen beregnes.
+    """
+    from core.services import central_test_contract as tc
+    ok, missing = tc.validate({**_CONTRACT_BASE, "expected_relation": "less_than",
+                               "time_basis": "event_time"})
+    assert ok is False and any("event_time" in m for m in missing), missing
+
+
+def test_ny_hypotese_fra_oprettelse_til_dom_paa_kontrakt(isolated_runtime, monkeypatch):
+    """HELE livscyklussen gennem den ÆGTE oprettelsesvej: opret → validér → gem → evaluér → dom.
+
+    Ikke `_insert_hyp` (som skriver direkte i DB), men `register_governed_hypothesis` —
+    den vej en generator faktisk bruger. Det er kæden der skal virke, hvis `contract: 0`
+    skal kunne blive `contract: 1` af en reel grund og ikke fordi et felt blev tilføjet.
+    """
+    import json
+    from core.services import central_model_meta as mm
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": {"samples": 20, "latency_ms": 100.0},
+        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+    })
+    cand = {
+        "source": "model_meta",
+        "statement": "p/fast er hurtigere end p/slow",
+        "prediction": "p/fast bevarer sin latency-fordel over friske runs",
+        "null_hypothesis": "p/fast og p/slow er reelt lige hurtige",
+        "success_criterion": ">= 5 jordede maalinger hvor fordelen holder",
+        "sample_size": 5,
+        "provenance": {"mechanism": "model_meta", "family": "latency:p/fast>p/slow",
+                       "cursor_id": 20},
+        "test_contract": {**_CONTRACT_BASE, "expected_relation": "less_than"},
+    }
+    reg = gen.register_governed_hypothesis(cand)
+    assert reg["status"] == "registered" and reg["contract"] is True, reg
+
+    # Kontrakten ligger PAA hypotesen — ikke som en reference til noget der kan aendre sig.
+    from core.runtime.db import connect
+    with connect() as c:
+        row = c.execute("SELECT test_contract_json FROM central_hypotheses WHERE hyp_id=?",
+                        (reg["hyp_id"],)).fetchone()
+    assert json.loads(row["test_contract_json"])["expected_relation"] == "less_than"
+
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] == 1 and res["supported"] == 1, res
+
+    with connect() as c:
+        dom = c.execute("SELECT supports, falsifies FROM central_hypothesis_samples"
+                        " WHERE hyp_id=?", (reg["hyp_id"],)).fetchone()
+    assert (dom["supports"], dom["falsifies"]) == (1, 0)
+
+    # Og den tælles som kontrakt — ikke som legacy-bro.
+    ud = smp.evaluator_provenance()
+    assert ud["contract"] == 1 and ud["legacy"] == 0, ud

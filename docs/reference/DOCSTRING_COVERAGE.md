@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9687/18047 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9693/18054 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9687/18047 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6481 | 12292 | 52% |
+| `core.services` | 6487 | 12299 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9687/18047 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2598)
+## Undocumented public functions (2599)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -984,6 +984,7 @@ Generated from source. 9687/18047 functions/methods documented (53%). The list b
 - `core/services/central_switches.py` :: `CircuitBreaker.is_open` (L79)
 - `core/services/central_switches.py` :: `CircuitBreaker.reset` (L90)
 - `core/services/central_switches.py` :: `is_enabled` (L28)
+- `core/services/central_test_contract.py` :: `evaluator_of` (L107)
 - `core/services/central_trace.py` :: `TraceSink.recent` (L88)
 - `core/services/central_trace.py` :: `TraceSink.record` (L38)
 - `core/services/central_trace.py` :: `TraceSink.records_for_run` (L84)

@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gut_engine.py`
+_Gut Engine — intuition and calibration tracking._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gut_bias` | `()` | Læs Lag-4-bias'en (0.0 = shadow/ingen ændring). Én sætning, så kaldestedets try er | [src](../../../core/services/gut_engine.py#L22) |
+| function | `_task_mapping` | `(task_description)` | Opgave → værktøjs-risiko. Kaster ALDRIG: en fejl her må ikke ændre en hunch. | [src](../../../core/services/gut_engine.py#L32) |
+| function | `derive_gut_signal` | `(*, task_description, confidence=…, recent_error_count=…, recent_success_count=…)` | Generate a gut-feel hunch about a task. | [src](../../../core/services/gut_engine.py#L66) |
+| function | `_consumer_mode` | `()` | — | [src](../../../core/services/gut_engine.py#L212) |
+| function | `_gate_threshold` | `()` | — | [src](../../../core/services/gut_engine.py#L222) |
+| function | `_safe_record` | `(ledger, nerve, decision, reason)` | Ét ledger-kald, indkapslet. En tæller må ALDRIG kunne blokere gaten. | [src](../../../core/services/gut_engine.py#L257) |
+| function | `_record_counterfactual` | `(conf, would_pass, no_bias_confidence, threshold, mode, hunch=…)` | Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L265) |
+| function | `gut_gate` | `(proceed_confidence, *, context=…, no_bias_confidence=…, hunch=…)` | Beslut om et proceed-valg må fortsætte, gated på gut-confidence. | [src](../../../core/services/gut_engine.py#L306) |
+| function | `_blok_budget_brugt` | `(no=…)` | True når blokerings-budgettet for den rullende time er brugt. Ren — kaster ikke. | [src](../../../core/services/gut_engine.py#L394) |
+| function | `_record_backstop` | `(conf, hunch)` | Tæl en overkørsel: gaten ville stoppe, men bagkanten slap runnet igennem. | [src](../../../core/services/gut_engine.py#L402) |
+| function | `_record_withheld_decision` | `(conf, hunch, task_description)` | A3: registrér en afvisning som BESLUTNING — adskilt fra enhver udfaldskalibrering. | [src](../../../core/services/gut_engine.py#L412) |
+| function | `_recent_tick_signals` | `()` | (error_count, success_count) fra de seneste ticks. Fail-safe: (0, 0) ved fejl. | [src](../../../core/services/gut_engine.py#L446) |
+| function | `_stash_preflight_prediction` | `(*, signal, udfald, task_description)` | Gem preflight'ens forudsigelse + beslutning, så livscyklussen kan evaluere DEN. | [src](../../../core/services/gut_engine.py#L499) |
+| function | `take_preflight_prediction` | `()` | Tag den ældste ikke-forbrugte preflight-forudsigelse. None hvis ingen findes. | [src](../../../core/services/gut_engine.py#L534) |
+| function | `preflight_gut_gate` | `(*, task_description)` | PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG. | [src](../../../core/services/gut_engine.py#L553) |
+| function | `preflight_allows` | `(message)` | Bekvemmeligheds-indpakning til run-start-stierne: True = start runnet. | [src](../../../core/services/gut_engine.py#L609) |
+| function | `record_gut_outcome` | `(*, hunch, actual_outcome)` | Record whether the gut hunch was correct. | [src](../../../core/services/gut_engine.py#L621) |
+| function | `build_gut_surface` | `()` | Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026). | [src](../../../core/services/gut_engine.py#L643) |
+| function | `build_gut_counterfactual_surface` | `()` | Counterfactual decision delta: hvor ofte flyttede den lærte bias gatens afgørelse? | [src](../../../core/services/gut_engine.py#L687) |
+
 ## `core/services/habit_tracker.py`
 _Habit Tracker — detects recurring patterns and friction points._
 
@@ -624,24 +649,4 @@ _Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._
 | function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L668) |
 | function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L682) |
 | function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L692) |
-
-## `core/services/indre_puls.py`
-_Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Puls` | `` | En tilstand der skal slå i en kendt takt. | [src](../../../core/services/indre_puls.py#L51) |
-| class | `Afstemning` | `` | To bøger over det samme arbejde. De skal stemme. | [src](../../../core/services/indre_puls.py#L76) |
-| class | `Haendelsesdrevet` | `` | En tilstand der skrives NÅR noget sker — ikke på et ur. | [src](../../../core/services/indre_puls.py#L94) |
-| function | `_nu` | `()` | — | [src](../../../core/services/indre_puls.py#L164) |
-| function | `_alder_af_kv` | `(noegle)` | Sekunder siden nøglen sidst blev skrevet. `None` = kan ikke aflæses. | [src](../../../core/services/indre_puls.py#L168) |
-| function | `_antal` | `(tabel, tidskolonne, siden, hvor=…)` | Rækker i et vindue. `None` = kan ikke tælles (tabellen findes måske ikke). | [src](../../../core/services/indre_puls.py#L185) |
-| function | `maal_puls` | `(p, *, vindue_s=…)` | Mål én puls. ``tilstand`` er "frisk", "stille", "loebsk" eller "ukendt". | [src](../../../core/services/indre_puls.py#L202) |
-| function | `maal_afstemning` | `(a, *, vindue_s=…)` | Sammenlign to bøger over det samme arbejde. | [src](../../../core/services/indre_puls.py#L243) |
-| function | `maal_haendelsesdrevet` | `(h)` | Fyrede driveren uden at tilstanden fulgte med? | [src](../../../core/services/indre_puls.py#L269) |
-| function | `_kvitterede` | `()` | Hvad har vi allerede meldt om? | [src](../../../core/services/indre_puls.py#L315) |
-| function | `_gem_kvitterede` | `(navne)` | — | [src](../../../core/services/indre_puls.py#L334) |
-| function | `tjek` | `(*, meld=…, foerste_koersel=…)` | Mål alt, og meld det der er nyt galt. | [src](../../../core/services/indre_puls.py#L342) |
-| function | `_meld` | `(m)` | Send én melding gennem feeden. | [src](../../../core/services/indre_puls.py#L379) |
-| function | `build_indre_puls_surface` | `()` | Centralens flade. Læser kun — den melder ikke. | [src](../../../core/services/indre_puls.py#L417) |
 

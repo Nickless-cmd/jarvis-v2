@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18023 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18029 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,28 +39,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18023 functions/
 - [`core.services.07`](core.services.07.md) — `central_realtime` … `chat_response_policy`
 - [`core.services.08`](core.services.08.md) — `chat_session_private_metadata` … `cognitive_architecture_surface`
 - [`core.services.09`](core.services.09.md) — `cognitive_chronicle` … `copilot_catalogue`
-- [`core.services.10`](core.services.10.md) — `cost_optimization_daemon` … `decision_breach_reader`
-- [`core.services.11`](core.services.11.md) — `decision_enforcement` … `docs_drift_watchdog`
-- [`core.services.12`](core.services.12.md) — `dream_action_executor` … `encryption`
-- [`core.services.13`](core.services.13.md) — `end_of_run_memory_consolidation` … `forgetting_runtime`
-- [`core.services.14`](core.services.14.md) — `gate_adapters` … `gut_engine`
-- [`core.services.15`](core.services.15.md) — `habit_tracker` … `indre_puls`
-- [`core.services.16`](core.services.16.md) — `infra_sense` … `life_projects`
-- [`core.services.17`](core.services.17.md) — `lifecycle_hooks` … `memory_search`
-- [`core.services.18`](core.services.18.md) — `memory_tattoos` … `notification_bridge`
-- [`core.services.19`](core.services.19.md) — `notification_router` … `personal_project`
-- [`core.services.20`](core.services.20.md) — `personality_drift` … `prompt_assembly_runtime`
-- [`core.services.21`](core.services.21.md) — `prompt_assembly_telemetri` … `raesonnering_eksperiment`
-- [`core.services.22`](core.services.22.md) — `read_before_write_guard` … `research_store`
-- [`core.services.23`](core.services.23.md) — `resonance_decay` … `runtime_cognitive_conductor`
-- [`core.services.24`](core.services.24.md) — `runtime_decision_engine` … `self_model_blind_spots`
-- [`core.services.25`](core.services.25.md) — `self_model_distiller` … `session_titling`
-- [`core.services.26`](core.services.26.md) — `session_tool_pin` … `smith_noise_veto`
-- [`core.services.27`](core.services.27.md) — `social_labilizer` … `terminal_sanitize`
-- [`core.services.28`](core.services.28.md) — `text_clip` … `turn_changelog`
-- [`core.services.29`](core.services.29.md) — `turn_tail_timing` … `visible_memory_grounding`
-- [`core.services.30`](core.services.30.md) — `visible_model` … `visible_text_scrub`
-- [`core.services.31`](core.services.31.md) — `visible_thinking_trace` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `cost_optimization_daemon` … `decision_adherence_gate`
+- [`core.services.11`](core.services.11.md) — `decision_breach_reader` … `doc_repair_agent`
+- [`core.services.12`](core.services.12.md) — `docs_drift_watchdog` … `emotional_memory_engine`
+- [`core.services.13`](core.services.13.md) — `encryption` … `forgetting_engine`
+- [`core.services.14`](core.services.14.md) — `forgetting_runtime` … `gut_calibration`
+- [`core.services.15`](core.services.15.md) — `gut_engine` … `inbox_view`
+- [`core.services.16`](core.services.16.md) — `indre_puls` … `life_milestones`
+- [`core.services.17`](core.services.17.md) — `life_projects` … `memory_resurfacing`
+- [`core.services.18`](core.services.18.md) — `memory_search` … `notes_connector`
+- [`core.services.19`](core.services.19.md) — `notification_bridge` … `permission_engine`
+- [`core.services.20`](core.services.20.md) — `personal_project` … `promise_ledger`
+- [`core.services.21`](core.services.21.md) — `prompt_assembly_runtime` … `r2_5_haandhaevelse`
+- [`core.services.22`](core.services.22.md) — `raesonnering_eksperiment` … `research_router`
+- [`core.services.23`](core.services.23.md) — `research_store` … `runtime_browser_body`
+- [`core.services.24`](core.services.24.md) — `runtime_cognitive_conductor` … `self_history_grounding`
+- [`core.services.25`](core.services.25.md) — `self_model_blind_spots` … `session_spawn`
+- [`core.services.26`](core.services.26.md) — `session_titling` … `smith_confrontation`
+- [`core.services.27`](core.services.27.md) — `smith_noise_veto` … `temporal_self_continuity`
+- [`core.services.28`](core.services.28.md) — `terminal_sanitize` … `turens_vaerktoejer`
+- [`core.services.29`](core.services.29.md) — `turn_changelog` … `visible_member_prompt`
+- [`core.services.30`](core.services.30.md) — `visible_memory_grounding` … `visible_terminal_policy`
+- [`core.services.31`](core.services.31.md) — `visible_text_scrub` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

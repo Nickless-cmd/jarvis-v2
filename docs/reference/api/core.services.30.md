@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_memory_grounding.py`
+_Bounded, current-source grounding for explicit memory questions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `needs_memory_grounding` | `(message)` | Return true only when the user is clearly invoking remembered context. | [src](../../../core/services/visible_memory_grounding.py#L47) |
+| function | `_search_current_workspace` | `(query, *, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L57) |
+| function | `_bounded_search` | `(query, *, limit, timeout_s, search_fn)` | Run the potentially embedding-backed lookup without stalling chat. | [src](../../../core/services/visible_memory_grounding.py#L63) |
+| function | `_clip` | `(value, limit)` | — | [src](../../../core/services/visible_memory_grounding.py#L91) |
+| function | `ground_memory_question` | `(message, *, limit=…, timeout_s=…, search_fn=…)` | Append bounded current-workspace evidence to an explicit memory query. | [src](../../../core/services/visible_memory_grounding.py#L96) |
+
 ## `core/services/visible_model.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -526,26 +537,4 @@ _Single source of truth for visible task terminal decisions._
 | function | `svar_beviser_faerdig` | `(reason)` | Er et svar fra et run med denne grund BEVIS for at opgaven er færdig? | [src](../../../core/services/visible_terminal_policy.py#L118) |
 | function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L141) |
 | function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L180) |
-
-## `core/services/visible_text_scrub.py`
-_Fjern runtime'ens interne markører fra den tekst brugeren ser._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_slut_paa_note` | `(tekst, start)` | Indeks EFTER den klamme der lukker noten der begynder på `start`. | [src](../../../core/services/visible_text_scrub.py#L62) |
-| function | `_foerste_markoer` | `(tekst, fra=…)` | Indeks på den tidligste interne markør fra `fra`, eller -1. | [src](../../../core/services/visible_text_scrub.py#L80) |
-| function | `_fjern_tidsstempler_fra_start` | `(tekst)` | Fjern gentagne transcript-tider, men kun ved outputtets begyndelse. | [src](../../../core/services/visible_text_scrub.py#L87) |
-| function | `_muligt_tidsstempel_i_start` | `(tekst)` | Sand når ``tekst`` stadig kan være en delt start på tidsformatet. | [src](../../../core/services/visible_text_scrub.py#L96) |
-| function | `fjern_interne_markoerer` | `(tekst)` | Teksten uden runtime-noter, med tomme linjer ryddet op efter sig. | [src](../../../core/services/visible_text_scrub.py#L112) |
-| function | `_fjern_markoerer_faerdig` | `(tekst)` | Færdigtekst-rensning uden startfilter; bruges efter streamens start. | [src](../../../core/services/visible_text_scrub.py#L124) |
-| function | `_ryd_tomrum` | `(tekst)` | Noten stod i sit eget afsnit. Fjerner man den, står der tre tomme | [src](../../../core/services/visible_text_scrub.py#L138) |
-| function | `_uden_markoerord` | `(tekst)` | Teksten med selve markoer-ordene fjernet, men indholdet bevaret. | [src](../../../core/services/visible_text_scrub.py#L146) |
-| class | `StroemSkrubber` | `` | Samme fjernelse, men på en strøm hvor markøren kan være delt over flere | [src](../../../core/services/visible_text_scrub.py#L153) |
-| method | `StroemSkrubber.__init__` | `(self)` | — | [src](../../../core/services/visible_text_scrub.py#L162) |
-| method | `StroemSkrubber.foed` | `(self, stykke)` | Den del af `stykke` der trygt kan sendes videre nu. | [src](../../../core/services/visible_text_scrub.py#L168) |
-| method | `StroemSkrubber._foed_krop` | `(self, stykke)` | Eksisterende markørfilter efter at outputtets start er afgjort. | [src](../../../core/services/visible_text_scrub.py#L187) |
-| method | `StroemSkrubber.skyl` | `(self)` | Resten, når strømmen er slut. Uafsluttede noter ryger. | [src](../../../core/services/visible_text_scrub.py#L202) |
-| function | `fjern_interne_markoerer_stroem` | `(buffer)` | (klar-til-udsendelse, hale-der-skal-holdes-tilbage). | [src](../../../core/services/visible_text_scrub.py#L221) |
-| function | `_klap_tomrum_sammen` | `(tekst)` | Tre eller flere linjeskift bliver til ét afsnitsbrud. | [src](../../../core/services/visible_text_scrub.py#L268) |
-| function | `_muligt_praefiks` | `(buffer)` | Den slut-stump der kunne være starten på en markør — ellers «». | [src](../../../core/services/visible_text_scrub.py#L279) |
 

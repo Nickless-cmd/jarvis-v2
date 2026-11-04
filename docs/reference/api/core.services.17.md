@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/life_projects.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `create_life_project` | `(*, title, why, source=…, source_id=…, priority=…)` | — | [src](../../../core/services/life_projects.py#L12) |
+| function | `build_life_projects_surface` | `()` | — | [src](../../../core/services/life_projects.py#L36) |
+| function | `abandon_life_project` | `(initiative_id, *, note=…)` | — | [src](../../../core/services/life_projects.py#L50) |
+| function | `endorse_life_project` | `(initiative_id, *, note=…)` | «Det er i orden» — projektet lever videre, nu med et menneskes ja bag sig. | [src](../../../core/services/life_projects.py#L57) |
+| function | `tick_life_projects_reassessment` | `(*, trigger=…, last_visible_at=…)` | Periodisk re-vurdering af aktive life projects. | [src](../../../core/services/life_projects.py#L66) |
+
 ## `core/services/lifecycle_hooks.py`
 _Livscyklus-hooks server-side — paritet med jarvis-code._
 
@@ -628,36 +638,4 @@ _Proactive memory resurfacing — pull old MEMORY.md headings back into focus._
 | function | `_log_resurfacing` | `(heading, trigger=…)` | — | [src](../../../core/services/memory_resurfacing.py#L135) |
 | function | `pick_resurfacing_candidate` | `(*, trigger=…, seed=…)` | Choose a stale heading to surface, log the choice, return its detail. | [src](../../../core/services/memory_resurfacing.py#L150) |
 | function | `format_for_prompt` | `(candidate)` | Render a resurfacing candidate as a single soft prompt line. | [src](../../../core/services/memory_resurfacing.py#L201) |
-
-## `core/services/memory_search.py`
-_Semantic memory search — embeddings-based search over Jarvis's workspace memory files._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ollama_base` | `()` | Hvor embeddings skal hen — SAMME sandhed som resten af systemet. | [src](../../../core/services/memory_search.py#L25) |
-| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L67) |
-| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L73) |
-| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L155) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L190) |
-| function | `_chunk_markdown` | `(text, source)` | Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten. | [src](../../../core/services/memory_search.py#L205) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L277) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L353) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L365) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L373) |
-| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L404) |
-| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L415) |
-| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L432) |
-| function | `_progress_path` | `(ws=…)` | Checkpoint-fil for en rebuild der ikke er færdig. Ligger ved siden af cachen, | [src](../../../core/services/memory_search.py#L455) |
-| function | `_load_progress_vectors` | `(ws=…)` | Vektorer fra en AFBRUDT rebuild, så den genoptages i stedet for at starte forfra. | [src](../../../core/services/memory_search.py#L462) |
-| function | `_save_progress_vectors` | `(vecs, ws=…)` | Atomisk checkpoint, så en afbrudt rebuild højst mister én portion. | [src](../../../core/services/memory_search.py#L486) |
-| function | `_clear_progress_vectors` | `(ws=…)` | Fjern checkpointet når cachen er skrevet — ellers vokser det ubrugt. | [src](../../../core/services/memory_search.py#L505) |
-| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L514) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L620) |
-| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L651) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L706) |
-| function | `_candidate_er_primaer` | `(text)` | True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold. | [src](../../../core/services/memory_search.py#L725) |
-| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L762) |
-| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L769) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L850) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L859) |
 

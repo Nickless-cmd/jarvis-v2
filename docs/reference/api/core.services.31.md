@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_text_scrub.py`
+_Fjern runtime'ens interne markører fra den tekst brugeren ser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slut_paa_note` | `(tekst, start)` | Indeks EFTER den klamme der lukker noten der begynder på `start`. | [src](../../../core/services/visible_text_scrub.py#L62) |
+| function | `_foerste_markoer` | `(tekst, fra=…)` | Indeks på den tidligste interne markør fra `fra`, eller -1. | [src](../../../core/services/visible_text_scrub.py#L80) |
+| function | `_fjern_tidsstempler_fra_start` | `(tekst)` | Fjern gentagne transcript-tider, men kun ved outputtets begyndelse. | [src](../../../core/services/visible_text_scrub.py#L87) |
+| function | `_muligt_tidsstempel_i_start` | `(tekst)` | Sand når ``tekst`` stadig kan være en delt start på tidsformatet. | [src](../../../core/services/visible_text_scrub.py#L96) |
+| function | `fjern_interne_markoerer` | `(tekst)` | Teksten uden runtime-noter, med tomme linjer ryddet op efter sig. | [src](../../../core/services/visible_text_scrub.py#L112) |
+| function | `_fjern_markoerer_faerdig` | `(tekst)` | Færdigtekst-rensning uden startfilter; bruges efter streamens start. | [src](../../../core/services/visible_text_scrub.py#L124) |
+| function | `_ryd_tomrum` | `(tekst)` | Noten stod i sit eget afsnit. Fjerner man den, står der tre tomme | [src](../../../core/services/visible_text_scrub.py#L138) |
+| function | `_uden_markoerord` | `(tekst)` | Teksten med selve markoer-ordene fjernet, men indholdet bevaret. | [src](../../../core/services/visible_text_scrub.py#L146) |
+| class | `StroemSkrubber` | `` | Samme fjernelse, men på en strøm hvor markøren kan være delt over flere | [src](../../../core/services/visible_text_scrub.py#L153) |
+| method | `StroemSkrubber.__init__` | `(self)` | — | [src](../../../core/services/visible_text_scrub.py#L162) |
+| method | `StroemSkrubber.foed` | `(self, stykke)` | Den del af `stykke` der trygt kan sendes videre nu. | [src](../../../core/services/visible_text_scrub.py#L168) |
+| method | `StroemSkrubber._foed_krop` | `(self, stykke)` | Eksisterende markørfilter efter at outputtets start er afgjort. | [src](../../../core/services/visible_text_scrub.py#L187) |
+| method | `StroemSkrubber.skyl` | `(self)` | Resten, når strømmen er slut. Uafsluttede noter ryger. | [src](../../../core/services/visible_text_scrub.py#L202) |
+| function | `fjern_interne_markoerer_stroem` | `(buffer)` | (klar-til-udsendelse, hale-der-skal-holdes-tilbage). | [src](../../../core/services/visible_text_scrub.py#L221) |
+| function | `_klap_tomrum_sammen` | `(tekst)` | Tre eller flere linjeskift bliver til ét afsnitsbrud. | [src](../../../core/services/visible_text_scrub.py#L268) |
+| function | `_muligt_praefiks` | `(buffer)` | Den slut-stump der kunne være starten på en markør — ellers «». | [src](../../../core/services/visible_text_scrub.py#L279) |
+
 ## `core/services/visible_thinking_trace.py`
 _Hvor længe tænkte han? — målt ét sted, læst ét sted._
 

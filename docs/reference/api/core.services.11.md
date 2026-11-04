@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_breach_reader.py`
+_Læseren for breach-events — den manglende anden halvdel af sløjfen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_records` | `()` | Læs de rå brud-records. Aldrig en undtagelse — tom liste ved fejl. | [src](../../../core/services/decision_breach_reader.py#L50) |
+| function | `_alder_timer` | `(iso_ts, *, now)` | — | [src](../../../core/services/decision_breach_reader.py#L61) |
+| function | `breach_stats` | `(*, window_days=…, now=…)` | Aggregér brud pr. beslutning inden for vinduet. | [src](../../../core/services/decision_breach_reader.py#L71) |
+| function | `breach_line` | `(decision_id, stats=…)` | Én kort linje til trigger-injektionen, eller ``None`` uden brud. | [src](../../../core/services/decision_breach_reader.py#L104) |
+| function | `_direktiv_har_gate_maal` | `(directive)` | Kan gaten overhovedet matche dette direktiv? | [src](../../../core/services/decision_breach_reader.py#L127) |
+| function | `classify` | `(decision, stats=…)` | Klassificér ÉN beslutning i de tre egenskaber. | [src](../../../core/services/decision_breach_reader.py#L144) |
+| function | `health_report` | `(decisions=…, *, stats=…)` | Aggregat over alle aktive beslutninger — og en ærlig opgørelse af huller. | [src](../../../core/services/decision_breach_reader.py#L194) |
+
 ## `core/services/decision_enforcement.py`
 _Decision enforcement — close the loop between commitment and behavior._
 
@@ -611,17 +624,4 @@ _Doc repair agent (spec 2026-07-10 Del 2)._
 | function | `repair_doc` | `(target, *, live)` | Repair én doc. Skriver KUN under docs/ (invariant), KUN naar live=True og | [src](../../../core/services/doc_repair_agent.py#L69) |
 | function | `run_doc_repair_tick` | `()` | Cadence-indgang, kørt gennem central().decide (Centralen er aktoeren). | [src](../../../core/services/doc_repair_agent.py#L104) |
 | function | `build_doc_repair_surface` | `()` | Read-surface til jc raw /central/doc-repair. Side-effect-fri. | [src](../../../core/services/doc_repair_agent.py#L138) |
-
-## `core/services/docs_drift_watchdog.py`
-_SP5 docs-drift watchdog — surface docs/drift_report.json to the Central as a docs:drift nerve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `read_report` | `(report_path=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L19) |
-| function | `_report_stale` | `(report_path=…, repo=…)` | True if the drift audit itself is old — the report is missing, or its own | [src](../../../core/services/docs_drift_watchdog.py#L29) |
-| function | `check_docs_drift` | `(report_path=…, repo=…)` | — | [src](../../../core/services/docs_drift_watchdog.py#L49) |
-| function | `observe_docs_drift` | `()` | Emit the docs:drift signal to Central (timeseries + observe trace). Self-safe. | [src](../../../core/services/docs_drift_watchdog.py#L69) |
-| function | `build_docs_drift_surface` | `()` | Read-only surface for /central/docs-drift. Never throws. | [src](../../../core/services/docs_drift_watchdog.py#L87) |
-| function | `_run_producer_tick` | `(**_)` | — | [src](../../../core/services/docs_drift_watchdog.py#L101) |
-| function | `register_docs_drift_producer` | `()` | Register the docs-drift observation as a ~5-min cadence producer. | [src](../../../core/services/docs_drift_watchdog.py#L106) |
 

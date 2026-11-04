@@ -31,6 +31,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from core.identity.samtale_scope import aktuel_samtale_workspace
+from core.services.daily_journal_entry import write_journal
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,7 @@ def synthesize_daily_journal(
     body = synthesis.strip() + "\n"
 
     try:
-        path.write_text(header + body, encoding="utf-8")
+        write_journal(path, day, header + body)
     except Exception as exc:
         logger.warning("daily_journal: write failed: %s", exc)
         return {"status": "error", "reason": f"write failed: {exc}", "path": str(path)}

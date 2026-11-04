@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/terminal_sanitize.py`
+_Fjern terminal-styrekoder fra tool-output før det når modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `strip_terminal_codes` | `(text)` | Fjern styrekoder. Bevarer tekst, linjeskift og tabulator. | [src](../../../core/services/terminal_sanitize.py#L38) |
+| class | `TerminalStreamSanitizer` | `` | Stateful sanitizer that does not leak escape fragments across chunks. | [src](../../../core/services/terminal_sanitize.py#L48) |
+| method | `TerminalStreamSanitizer.__init__` | `(self, *, max_pending_chars=…)` | — | [src](../../../core/services/terminal_sanitize.py#L51) |
+| method | `TerminalStreamSanitizer._incomplete_escape_start` | `(text)` | — | [src](../../../core/services/terminal_sanitize.py#L58) |
+| method | `TerminalStreamSanitizer._finish_discarded_osc` | `(self, text)` | — | [src](../../../core/services/terminal_sanitize.py#L86) |
+| method | `TerminalStreamSanitizer.feed` | `(self, chunk)` | — | [src](../../../core/services/terminal_sanitize.py#L103) |
+| method | `TerminalStreamSanitizer.flush` | `(self)` | — | [src](../../../core/services/terminal_sanitize.py#L122) |
+
 ## `core/services/text_clip.py`
 _core/services/text_clip.py_
 
@@ -549,15 +562,4 @@ _Ét værktøjssæt for HELE turen — begge trin ser det samme._
 |---|---|---|---|---|
 | function | `_navn` | `(d)` | — | [src](../../../core/services/turens_vaerktoejer.py#L41) |
 | function | `vaerktoejer_for_turen` | `(alle, *, user_message, session_id)` | Værktøjerne for DENNE tur — samme sæt i begge trin. | [src](../../../core/services/turens_vaerktoejer.py#L45) |
-
-## `core/services/turn_changelog.py`
-_End-of-turn changelog — auto-summarize what this turn changed._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_calls_during` | `(run_id, started_at)` | — | [src](../../../core/services/turn_changelog.py#L27) |
-| function | `_git_changed_files` | `(repo)` | — | [src](../../../core/services/turn_changelog.py#L50) |
-| function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
-| function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
-| function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
 

@@ -530,18 +530,30 @@ _Daily journal synthesizer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/daily_journal.py#L49) |
-| function | `_journal_path_for` | `(day)` | — | [src](../../../core/services/daily_journal.py#L67) |
-| function | `journal_exists_for` | `(day)` | Findes der allerede en journal for denne dato? | [src](../../../core/services/daily_journal.py#L72) |
-| function | `_fetch_chat_pairs_for_day` | `(day, limit=…)` | Hent user/assistant beskeder fra visible-chat sessions for denne dag. | [src](../../../core/services/daily_journal.py#L77) |
-| function | `_fetch_brain_carries_for_day` | `(day, limit=…)` | Hent private_brain_records carry-snapshots fra dagen. | [src](../../../core/services/daily_journal.py#L109) |
-| function | `_render_chat_excerpt` | `(pairs)` | — | [src](../../../core/services/daily_journal.py#L170) |
-| function | `_render_brain_excerpt` | `(carries)` | — | [src](../../../core/services/daily_journal.py#L180) |
-| function | `synthesize_daily_journal` | `(day=…, *, force=…)` | Generér og skriv dagens journal. | [src](../../../core/services/daily_journal.py#L192) |
-| function | `_should_synthesize_now` | `(now=…)` | Returnér True hvis vi er i sengetids-vinduet og dagens journal mangler. | [src](../../../core/services/daily_journal.py#L262) |
-| function | `_daemon_loop` | `()` | Wakes hver time, syntesizer dagens journal hvis vi er i vinduet. | [src](../../../core/services/daily_journal.py#L272) |
-| function | `start_daily_journal_daemon` | `()` | Start daemon. Idempotent. | [src](../../../core/services/daily_journal.py#L291) |
-| function | `stop_daily_journal_daemon` | `()` | — | [src](../../../core/services/daily_journal.py#L308) |
+| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/daily_journal.py#L50) |
+| function | `_journal_path_for` | `(day)` | — | [src](../../../core/services/daily_journal.py#L68) |
+| function | `journal_exists_for` | `(day)` | Findes der allerede en journal for denne dato? | [src](../../../core/services/daily_journal.py#L73) |
+| function | `_fetch_chat_pairs_for_day` | `(day, limit=…)` | Hent user/assistant beskeder fra visible-chat sessions for denne dag. | [src](../../../core/services/daily_journal.py#L78) |
+| function | `_fetch_brain_carries_for_day` | `(day, limit=…)` | Hent private_brain_records carry-snapshots fra dagen. | [src](../../../core/services/daily_journal.py#L110) |
+| function | `_render_chat_excerpt` | `(pairs)` | — | [src](../../../core/services/daily_journal.py#L171) |
+| function | `_render_brain_excerpt` | `(carries)` | — | [src](../../../core/services/daily_journal.py#L181) |
+| function | `synthesize_daily_journal` | `(day=…, *, force=…)` | Generér og skriv dagens journal. | [src](../../../core/services/daily_journal.py#L193) |
+| function | `_should_synthesize_now` | `(now=…)` | Returnér True hvis vi er i sengetids-vinduet og dagens journal mangler. | [src](../../../core/services/daily_journal.py#L263) |
+| function | `_daemon_loop` | `()` | Wakes hver time, syntesizer dagens journal hvis vi er i vinduet. | [src](../../../core/services/daily_journal.py#L273) |
+| function | `start_daily_journal_daemon` | `()` | Start daemon. Idempotent. | [src](../../../core/services/daily_journal.py#L292) |
+| function | `stop_daily_journal_daemon` | `()` | — | [src](../../../core/services/daily_journal.py#L309) |
+
+## `core/services/daily_journal_entry.py`
+_Dagbøger som rigtige brain-poster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_dag` | `(path)` | — | [src](../../../core/services/daily_journal_entry.py#L28) |
+| function | `_oprettet` | `(tekst, path)` | Dagbogens egen stempel; ellers filens ændringstid. Aldrig «nu» — en gammel | [src](../../../core/services/daily_journal_entry.py#L38) |
+| function | `_markdown` | `(dag, tekst, oprettet, entry_id)` | — | [src](../../../core/services/daily_journal_entry.py#L51) |
+| function | `ensure_frontmatter` | `(path)` | Giv én dagbog frontmatter. «added» | «present» | «skipped:<grund>». Idempotent. | [src](../../../core/services/daily_journal_entry.py#L64) |
+| function | `write_journal` | `(path, dag, tekst, *, nu=…)` | Skriv en dagbog som brain-post. Overskriver (force) beholder det gamle id, så | [src](../../../core/services/daily_journal_entry.py#L82) |
+| function | `backfill` | `(directory=…)` | Giv alle dagbøger uden frontmatter en. Idempotent; reindex-løkken indekserer dem. | [src](../../../core/services/daily_journal_entry.py#L94) |
 
 ## `core/services/data_erasure.py`
 _GDPR Art. 17 (ret til at blive glemt) — orkestrering._
@@ -610,17 +622,4 @@ _Gate 1: Decision-adherence gate._
 |---|---|---|---|---|
 | function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L32) |
 | function | `registrer_i_indbakken` | `(bruger_id)` | Giv hver beslutning under tærsklen en post i indbakken. | [src](../../../core/services/decision_adherence_gate.py#L190) |
-
-## `core/services/decision_breach_reader.py`
-_Læseren for breach-events — den manglende anden halvdel af sløjfen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_records` | `()` | Læs de rå brud-records. Aldrig en undtagelse — tom liste ved fejl. | [src](../../../core/services/decision_breach_reader.py#L50) |
-| function | `_alder_timer` | `(iso_ts, *, now)` | — | [src](../../../core/services/decision_breach_reader.py#L61) |
-| function | `breach_stats` | `(*, window_days=…, now=…)` | Aggregér brud pr. beslutning inden for vinduet. | [src](../../../core/services/decision_breach_reader.py#L71) |
-| function | `breach_line` | `(decision_id, stats=…)` | Én kort linje til trigger-injektionen, eller ``None`` uden brud. | [src](../../../core/services/decision_breach_reader.py#L104) |
-| function | `_direktiv_har_gate_maal` | `(directive)` | Kan gaten overhovedet matche dette direktiv? | [src](../../../core/services/decision_breach_reader.py#L127) |
-| function | `classify` | `(decision, stats=…)` | Klassificér ÉN beslutning i de tre egenskaber. | [src](../../../core/services/decision_breach_reader.py#L144) |
-| function | `health_report` | `(decisions=…, *, stats=…)` | Aggregat over alle aktive beslutninger — og en ærlig opgørelse af huller. | [src](../../../core/services/decision_breach_reader.py#L194) |
 

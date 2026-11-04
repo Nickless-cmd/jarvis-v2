@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9668/18023 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9672/18029 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9668/18023 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6462 | 12268 | 52% |
+| `core.services` | 6466 | 12274 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1150,7 +1150,7 @@ Generated from source. 9668/18023 functions/methods documented (53%). The list b
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
 - `core/services/daemon_manager.py` :: `get_daemon_names` (L806)
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L853)
-- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L308)
+- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L309)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L551)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)

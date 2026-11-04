@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_assembly_runtime.py`
+_Turn-cache orchestration for visible prompt assembly._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_query_latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L15) |
+| function | `latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L26) |
+| function | `build_with_turn_cache` | `(*, builder, latest_message_id, provider, model, user_message, session_id, name, runtime_self_report_context, caller_phase)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L36) |
+
 ## `core/services/prompt_assembly_telemetri.py`
 _Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
 
@@ -622,13 +631,4 @@ _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 | function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L168) |
 | function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L200) |
 | function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L266) |
-
-## `core/services/raesonnering_eksperiment.py`
-_A/B: raesonnerer han paa mellem-runderne, eller ikke?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_procent` | `()` | — | [src](../../../core/services/raesonnering_eksperiment.py#L59) |
-| function | `arm_for_run` | `(run_id, *, procent=…)` | "daempet" eller "fuld" — stabilt for et givet run_id, i enhver proces. | [src](../../../core/services/raesonnering_eksperiment.py#L71) |
-| function | `daemp_krop` | `(krop, run_id, *, thinking_mode=…, procent=…)` | Returnerer (krop, blev_daempet) for en FOELGE-runde. | [src](../../../core/services/raesonnering_eksperiment.py#L93) |
 

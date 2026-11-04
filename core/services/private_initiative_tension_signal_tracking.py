@@ -305,7 +305,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=lambda spec, ctx: [],  # track() drives persist directly (2-arg view)
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active"}),
     stale_status_reason="Marked stale after bounded initiative-tension inactivity window.",
     surface_status_order=("active", "stale", "superseded"),

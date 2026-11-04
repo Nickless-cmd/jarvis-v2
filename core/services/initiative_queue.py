@@ -58,11 +58,20 @@ _QUEUE_LOCK = threading.Lock()
 
 _IKKE_ET_FORSLAG_PREFIX = ("or ", "eller ", "men ", "and ", "så måske ", "maybe ")
 
+#: Serialiseret tomhed. Målt 3/11-2026: den indre stemme svarede med JSON
+#: `"initiative": null`, og `str(initiative)` gjorde det til den fire tegn lange
+#: streng "null" — som er sand, ikke tom, og derfor gik gennem både sanitizeren
+#: og `if not tekst`. Resultatet var en post i køen uden indhold
+#: (init-d5e4fcffe8, focus="null"). En tom indskydelse er ikke en opgave.
+_TOMTE_FOKUS_ORDS = frozenset(("null", "none", "undefined", "nil", "n/a", "-"))
+
 
 def _er_ikke_et_initiativ(focus: str) -> str:
     """Returnér en grund hvis dette ikke er et forslag. Tom streng = behold."""
     tekst = str(focus or "").strip()
     if not tekst:
+        return "tom"
+    if tekst.lower() in _TOMTE_FOKUS_ORDS:
         return "tom"
 
     try:

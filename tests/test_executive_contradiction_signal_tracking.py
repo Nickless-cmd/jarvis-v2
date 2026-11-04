@@ -269,3 +269,85 @@ def test_executive_contradiction_surface_and_mc_shapes_remain_bounded(
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["authority"] == "non-authoritative"
     assert runtime_shape["summary"]["execution_veto_state"] == "not-authorized"
+
+
+def _insert_credit_assignment_outcome(db, *, canonical_key: str = "self-review-outcome:credit:workspace-search") -> None:
+    """Provider-telemetri i samme tabel som de ægte outcomes — 167.666 mod 8.009 rækker.
+
+    Målt 4/11-2026: `credit_assignment` skriver `rationale = "provider: ok,
+    latency=3456ms"` og `summary = "Credit score: 4.0/5"`. Den er ikke en
+    vurdering af en beslutning, men den skrives oftest og lå derfor øverst.
+    """
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_self_review_outcome(
+        outcome_id=f"credit-assignment-{uuid4().hex}",
+        outcome_type="credit_assignment",
+        canonical_key=canonical_key,
+        status="active",
+        title="Lag 1 outcome: dec-1f32a323815a",
+        summary="Credit score: 4.0/5",
+        rationale="provider: ok, latency=3456ms, cost_booster=0.0",
+        source_kind="credit-assignment",
+        confidence="medium",
+        evidence_summary='{"latency_ms": 3456, "status": "ok"}',
+        support_summary="score=4.0",
+        status_reason="Credit assignment recorded.",
+        review_run_id="test-review-run",
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def test_credit_assignment_telemetri_bliver_ikke_control_target(isolated_runtime) -> None:
+    """Provider-telemetri må ikke læses som en self-review-vurdering.
+
+    Uden filteret blev telemetriens titel `Lag 1 outcome: dec-…` til
+    `control_target` i et executive-contradiction-signal — altså et
+    model-kalds latens rapporteret som Jarvis' egen modstand mod en retning.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.executive_contradiction_signal_tracking
+
+    _insert_internal_opposition_signal(db)
+    _insert_open_loop_signal(db)
+    _insert_credit_assignment_outcome(db)
+
+    result = tracking.track_runtime_executive_contradiction_signals_for_visible_turn(
+        session_id="test-session", run_id="test-run"
+    )
+
+    for item in result["items"]:
+        assert "Credit score" not in str(item.get("control_target") or "")
+        assert "Lag 1 outcome" not in str(item.get("control_target") or "")
+        assert "latency" not in str(item.get("control_summary") or "")
+
+
+def test_aegte_outcome_slipper_stadig_igennem_filteret(isolated_runtime) -> None:
+    """Positiv tvilling: filteret må ikke afvise alt.
+
+    Uden denne kunne rettelsen bestå ved at gøre kilden tom. Testen kræver at
+    den ÆGTE outcome når helt frem til `control_target` — ikke bare at der
+    dannes et signal, for `_target_text` falder tilbage til open-loop og ville
+    gøre testen grøn selv om outcome-kilden var filtreret væk.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.executive_contradiction_signal_tracking
+
+    _insert_internal_opposition_signal(db)
+    _insert_open_loop_signal(db)
+    _insert_self_review_outcome(db)
+
+    result = tracking.track_runtime_executive_contradiction_signals_for_visible_turn(
+        session_id="test-session", run_id="test-run"
+    )
+
+    assert result["created"] >= 1
+    item = result["items"][0]
+    # `review_focus` er det FØRSTE `_target_text` læser fra outcome-rækken, så
+    # den er det eneste der beviser at outcome-kilden faktisk kom igennem.
+    assert str(item.get("control_target") or "") == "Self-review outcome: workspace search"
+    assert "open loop" not in str(item.get("control_target") or "").lower()
+    assert "self review outcome evidence" in str(item.get("evidence_summary") or "")

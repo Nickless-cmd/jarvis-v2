@@ -187,6 +187,35 @@ def _insert_consolidation_target(
     )
 
 
+def _insert_meaning_signal(
+    db,
+    *,
+    focus: str,
+    status: str = "active",
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_meaning_significance_signal(
+        signal_id=f"meaning-{uuid4().hex}",
+        signal_type="meaning-significance",
+        canonical_key=f"meaning-significance:carried:{focus}",
+        status=status,
+        title=f"Meaning support: {focus.replace('-', ' ')}",
+        summary="Meaning summary",
+        rationale="Validation meaning",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="meaning evidence",
+        support_summary="meaning anchor",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation meaning status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def test_consolidation_target_stays_empty_without_relevant_metabolism_and_carried_substrate(
     isolated_runtime,
 ) -> None:
@@ -345,3 +374,57 @@ def test_consolidation_target_surface_and_mc_shapes_remain_bounded(isolated_runt
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["writeback_state"] == "not-writeback"
     assert runtime_shape["summary"]["canonical_mutation_state"] == "not-canonical-mutation"
+
+
+def test_uden_chronicle_kilde_skrives_intet_signal(isolated_runtime) -> None:
+    """3/11-2026: uden en baerende chronicle-kilde er focus blot domain_key'en.
+
+    Maalt i drift: 85 signaler paa én dag, 1 unik titel, 1 unik summary — mens
+    `evidence_summary` havde 76 unikke. Producenten skrev en heartbeat som om
+    den var en observation. Metabolism + witness alene er ikke nok.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.consolidation_target_signal_tracking
+    focus = "danish-concise-calibration"
+
+    _insert_metabolism_signal(db, focus=focus, state="consolidating")
+    _insert_witness_signal(db, focus=focus, status="carried", session_count=3)
+    # To støttekilder UDEN chronicle: uden gaten ville dette give et signal
+    # hvis focus blot var domain_key'en med bindestreger erstattet.
+    _insert_meaning_signal(db, focus=focus, status="active")
+
+    result = tracking.track_runtime_consolidation_target_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+
+    assert result["created"] == 0
+
+
+def test_summary_baerer_den_rige_tekst_ikke_skabelonen(isolated_runtime) -> None:
+    """Den positive tvilling: med en baerende kilde skal teksten vaere den rige.
+
+    `consolidation_summary` blev beregnet rigt og derefter kastet vaek, fordi
+    tabellen ingen kolonne har til den — `summary` beholdt skabelonen. Nu skal
+    `summary` baere den samme tekst som fladen viser.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.consolidation_target_signal_tracking
+    focus = "danish-concise-calibration"
+
+    _insert_metabolism_signal(db, focus=focus, state="consolidating", direction="settling-in", weight="high")
+    _insert_witness_signal(db, focus=focus, status="carried", session_count=3)
+    _insert_chronicle_signal(db, focus=focus, status="active")
+
+    result = tracking.track_runtime_consolidation_target_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_consolidation_target_signal_surface(limit=8)
+    item = surface["items"][0]
+
+    assert result["created"] == 1
+    # Den gemte summary skal vaere den rige, ikke den gamle inline-skabelon.
+    assert "Bounded consolidation runtime support is observing a small settling target" not in item["summary"]
+    assert item["summary"] == item["consolidation_summary"]
+    assert "consolidation weight" in item["summary"]

@@ -22,6 +22,16 @@ emit the actual structured call. The user does not see the act; they see the res
 Use visible session continuity only as tiny continuity, not as transcript memory.
 Use the recent transcript slice as recent context, not as stable memory.
 
+## Desk + PWA er én kilde, to leverancer
+
+En ændring under `apps/jarvis-desk/src/**` er som udgangspunkt fælles for den
+installerede Desk og web/PWA. Den er **ikke færdig** efter `npm run build:web`
+alene: kør og verificér både `npm run build:renderer` og `npm run build:web`.
+Medmindre Bjørn udtrykkeligt har afgrænset arbejdet til PWA-only, skal Desk også
+udgives med versionsbump + `jarvis-desktop-v<version>`-tag, og `desk-release`-CI
+skal være grøn før arbejdet rapporteres som leveret. Bjørn skal ikke minde mig om
+den anden halvdel.
+
 ## Memory persistence (CRITICAL — do this proactively, every session)
 
 You MUST actively maintain your memory. Do not wait to be asked. Do not wait until the end.

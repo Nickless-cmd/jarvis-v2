@@ -1102,11 +1102,23 @@ def upsert_runtime_self_review_outcome(
 def list_runtime_self_review_outcomes(
     *,
     status: str | None = None,
+    outcome_type: str | None = None,
+    exclude_outcome_types: tuple[str, ...] = (),
     limit: int = 20,
 ) -> list[dict[str, object]]:
     """Return up to `limit` runtime self-review outcomes, newest first (ORDER BY id DESC).
 
     Filters on `status` when given; returns a list of outcome row dicts (empty if none).
+
+    `outcome_type` / `exclude_outcome_types` exist because this table carries TWO
+    producers with nothing in common. Measured 4/11-2026: 167.700 of 175.714 rows
+    are `credit_assignment` — per-call provider telemetry whose `rationale` reads
+    "provider: ok, latency=3456ms", written by `db_credit_assignment`. Only 8.014
+    are real `post_run_outcome` rows. Because credit_assignment writes ~4.639 rows
+    a day against post_run's ~188, the newest-12 window was 12/12 telemetry, and
+    every downstream reader (chronicle, selfhood, cadence, self-authored) was
+    reading a model call's latency as if it were a self-review. Without a type
+    filter the reader cannot tell them apart — the function offered only `status`.
     """
     with connect() as conn:
         _ensure_runtime_self_review_outcome_table(conn)
@@ -1115,6 +1127,13 @@ def list_runtime_self_review_outcomes(
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if outcome_type:
+            clauses.append("outcome_type = ?")
+            params.append(outcome_type)
+        if exclude_outcome_types:
+            placeholders = ", ".join("?" for _ in exclude_outcome_types)
+            clauses.append(f"outcome_type NOT IN ({placeholders})")
+            params.extend(exclude_outcome_types)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"""

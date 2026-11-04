@@ -5,7 +5,8 @@ til en tråd. ``/proc/PID/task/TID/fd`` er ÉN delt fd-tabel (alle tråde viser 
 fds), og ``lsof -K`` kan ikke læse tråd-niveau på denne host. Instrumenteringen i
 ``core.runtime.db_core`` tæller derfor ved FØDSEL og DØD og melder poster hvis
 ejer-tråd er død som ``orphaned`` — den eneste klasse der kan vokse monotont over
-dage og ende i fd-udmattelse.
+dage og ende i fd-udmattelse. Svaret bærer derfor BÅDE ``pooled_live`` (ejer
+findes nu) og ``pooled`` (bogholderiets størrelse, kan kun stige).
 
 Tællerne er PROCES-LOKALE, så ét tal er ikke nok. Denne route læser begge processer:
 
@@ -56,9 +57,10 @@ def _runtime_pool() -> dict:
 def get_db_pool() -> dict:
     """DB-forbindelses-poolen i begge processer (owner-only, read-only, self-safe).
 
-    ``orphaned`` er det afgørende tal: poster hvis ejer-tråd ikke længere findes.
-    Er den tom i begge processer, ejer hver forbindelse en levende tråd — og så er
-    de ~90 forbindelser poolens leje, ikke en læk.
+    ``pooled_live`` er det afgørende tal: forbindelser hvis ejer-tråd findes NU.
+    ``pooled`` er bogholderiets størrelse og kan kun stige i en proces med
+    daemon-tråde — det blev læst som en lækage 3/11-2026, og er derfor ikke
+    svaret. ``orphaned_count`` er den klasse der faktisk kan vokse monotont.
     """
     _require_owner()
     from core.services.central_xproc import process_role

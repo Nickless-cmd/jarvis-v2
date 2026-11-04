@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-02 — 521 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-03 — 522 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -451,6 +451,7 @@
 | `webhook_send` | native | no |
 | `webhook_test` | native | no |
 | `wolfram_query` | native | no |
+| `wonder_verdict` | native | no |
 | `worktree_create` | native | no |
 | `worktree_discard` | native | no |
 | `worktree_list` | native | no |

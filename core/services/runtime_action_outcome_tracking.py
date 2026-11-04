@@ -18,6 +18,8 @@ def record_runtime_action_outcome(
     score: float,
     payload: dict[str, Any],
     result: dict[str, Any],
+    run_id: str = "",
+    session_id: str = "",
 ) -> dict[str, Any]:
     recorded_at = datetime.now(UTC).isoformat()
     status = str(result.get("status") or "unknown")
@@ -31,6 +33,8 @@ def record_runtime_action_outcome(
         "result_status": status,
         "result_summary": summary,
         "result": dict(result or {}),
+        "run_id": str(run_id or "").strip(),
+        "session_id": str(session_id or "").strip(),
         "recorded_at": recorded_at,
     }
 
@@ -100,6 +104,8 @@ def _persist_runtime_action_outcome(outcome: dict[str, Any]) -> dict[str, Any]:
         result_summary=str(outcome.get("result_summary") or ""),
         result_json=outcome.get("result") or {},
         recorded_at=str(outcome.get("recorded_at") or ""),
+        run_id=str(outcome.get("run_id") or ""),
+        session_id=str(outcome.get("session_id") or ""),
     )
 
 

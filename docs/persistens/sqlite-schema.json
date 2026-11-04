@@ -6324,6 +6324,171 @@
         "iso_utc_offset"
       ]
     },
+    "cadence_decisions": {
+      "digest": "24:ee:d6:e3:f3:d1:a3:03:7c:26:39:ac:c3:1e:ad:1f:bd:50:84:3f:d1:40:4c:9b:af:08:f0:ce:dd:4c:0b:bc",
+      "schema": {
+        "columns": [
+          {
+            "name": "closed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dispatch_budget",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "due_since",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "first_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "last_seen_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_visible_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "occurrences",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "1",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "priority",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "producer",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_code",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "reason_detail",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tick_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_cadence_decisions_open",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "producer",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX idx_cadence_decisions_open ON cadence_decisions (producer) WHERE closed_at = ''"
+          },
+          {
+            "name": "idx_cadence_decisions_producer_seen",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "producer",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "last_seen_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_cadence_decisions_producer_seen ON cadence_decisions (producer, last_seen_at DESC)"
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
     "cadence_idempotency_keys": {
       "digest": "03:b6:0c:7f:50:6f:89:f4:8f:20:1c:c0:04:a5:cf:58:c1:f4:7d:e0:a7:e0:60:e7:e3:84:9f:0b:a5:a6:e0:69",
       "schema": {
@@ -12664,7 +12829,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_z"
       ]
     },
     "cognitive_experiments": {
@@ -20768,7 +20933,7 @@
       "created_at_formats": []
     },
     "inbox_items": {
-      "digest": "89:64:76:78:2b:9f:58:6f:45:4a:14:d8:48:27:96:44:12:2f:18:d5:e2:40:7c:78:54:45:ab:78:22:4c:60:dc",
+      "digest": "9c:f1:f3:a1:f2:60:32:2f:a0:9d:0a:30:50:ee:93:49:bf:a3:20:f0:93:53:00:e8:39:b5:32:a4:7b:ac:79:07",
       "schema": {
         "columns": [
           {
@@ -20836,6 +21001,14 @@
             "hidden": 0
           },
           {
+            "name": "importance",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'normal'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "kilde_id",
             "type": "TEXT",
             "nullable": false,
@@ -20856,6 +21029,22 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "leveret_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "leveret_til_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -22728,6 +22917,122 @@
       },
       "created_at_formats": []
     },
+    "memory_hygiene_snapshots": {
+      "digest": "5a:53:61:1c:21:86:e1:3b:1d:99:f0:6f:75:90:e9:bc:f3:e6:f2:0c:60:a5:c0:13:02:aa:bf:8a:44:82:89:16",
+      "schema": {
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dated_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "duplicate_groups",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "file_bytes",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "operational_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "section_count",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "tracked_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "undated_sections",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_memory_hygiene_snapshots_workspace",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "workspace",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "id",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_memory_hygiene_snapshots_workspace ON memory_hygiene_snapshots(workspace, id DESC)"
+          }
+        ]
+      },
+      "created_at_formats": [
+        "iso_utc_offset"
+      ]
+    },
     "memory_resurfacing_log": {
       "digest": "73:c9:ac:69:ae:a5:cd:01:98:58:70:68:bd:60:4d:1d:8f:92:7e:e6:04:db:bd:cf:aa:cf:78:65:6c:81:5b:bb",
       "schema": {
@@ -22792,6 +23097,88 @@
               }
             ],
             "sql": "CREATE INDEX idx_resurfacing_at ON memory_resurfacing_log(resurfaced_at)"
+          }
+        ]
+      },
+      "created_at_formats": []
+    },
+    "memory_section_usage": {
+      "digest": "77:9f:1f:83:7b:b2:f8:e5:39:77:d8:cb:67:bd:93:ce:e2:0f:32:c2:3c:bd:2d:37:04:64:9a:df:c1:4e:43:35",
+      "schema": {
+        "columns": [
+          {
+            "name": "first_selected_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "heading",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "last_selected_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "section_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 2,
+            "hidden": 0
+          },
+          {
+            "name": "selection_count",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "workspace",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_memory_section_usage_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "workspace",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "section_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
           }
         ]
       },
@@ -29526,7 +29913,7 @@
       ]
     },
     "runtime_action_outcomes": {
-      "digest": "36:92:32:fe:52:8e:f6:1a:b9:59:8f:d4:a3:c1:9a:ce:3c:db:15:db:be:b2:80:7f:a1:4d:3b:df:8f:47:6f:b3",
+      "digest": "de:55:6e:3e:44:c1:1b:27:e8:23:02:f1:56:0e:7a:df:ee:ae:83:a4:2a:84:83:73:7d:2d:76:44:20:36:ee:ba",
       "schema": {
         "columns": [
           {
@@ -29616,6 +30003,22 @@
             "default": "''",
             "pk": 0,
             "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "session_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
           }
         ],
         "indexes": [
@@ -29642,6 +30045,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_runtime_action_outcomes_lookup ON runtime_action_outcomes(action_id, recorded_at DESC)"
+          },
+          {
+            "name": "idx_runtime_action_outcomes_run",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "recorded_at",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_runtime_action_outcomes_run ON runtime_action_outcomes(run_id, recorded_at DESC)"
           },
           {
             "name": "sqlite_autoindex_runtime_action_outcomes_1",
@@ -33390,7 +33817,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "runtime_flows": {
@@ -36278,7 +36705,118 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
+      ]
+    },
+    "runtime_opposition_arms": {
+      "digest": "45:c5:e3:ef:b2:61:7c:a9:e1:1c:da:f8:c2:c0:2f:01:d5:55:68:c5:96:e1:41:a0:d9:be:b0:20:7c:65:dd:52",
+      "schema": {
+        "columns": [
+          {
+            "name": "arm",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "assignment_logged",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "included",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "inclusion_requested",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "scope",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "signal_available",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "signal_count",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "source_run_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "sqlite_autoindex_runtime_opposition_arms_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "run_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": [
+        "sqlite_utc_seconds"
       ]
     },
     "runtime_private_initiative_tension_signals": {
@@ -37712,7 +38250,7 @@
         ]
       },
       "created_at_formats": [
-        "unobserved"
+        "iso_utc_offset"
       ]
     },
     "runtime_proactive_loop_lifecycle_signals": {
@@ -45852,7 +46390,7 @@
       ]
     },
     "session_inbox": {
-      "digest": "94:99:ac:d3:6d:46:f9:6b:f9:a5:69:49:73:b3:a7:42:ed:7b:c3:13:63:9e:57:b5:a7:49:10:01:ab:27:69:f5",
+      "digest": "00:6e:57:30:14:14:a5:67:d2:06:0b:61:12:ff:89:50:df:59:d2:33:3d:ae:b0:b5:87:c8:ea:fe:03:3e:3b:21",
       "schema": {
         "columns": [
           {
@@ -45860,6 +46398,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "dedupe_key",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -45877,6 +46423,14 @@
             "nullable": true,
             "default": null,
             "pk": 1,
+            "hidden": 0
+          },
+          {
+            "name": "importance",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'normal'",
+            "pk": 0,
             "hidden": 0
           },
           {
@@ -45960,6 +46514,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_inbox_session_status ON session_inbox(session_id, status)"
+          },
+          {
+            "name": "ux_session_inbox_dedupe",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "session_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "dedupe_key",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX ux_session_inbox_dedupe ON session_inbox(session_id, dedupe_key) WHERE dedupe_key != ''"
           }
         ]
       },

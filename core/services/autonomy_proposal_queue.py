@@ -296,6 +296,29 @@ def reject_proposal(
         resolved_by="bjorn",
         resolution_note=resolution_note or "Rejected",
     )
+    # AFVISNING SKAL LUKKE FUNDET (målt 3/11-2026).
+    #
+    # Godkendelse lukker fundet via _execute_instrument_fix_proposal. Afvisning
+    # gjorde ikke: fundet blev staaende `open`, daemonen filede det igen, og
+    # naeste runde afviste det igen. Maalt: 75 afviste instrument-forslag havde
+    # stadig deres fund `open` — mens 734 afviste (dismissed) havde lukket dem.
+    # Et «nej» der ikke lukker sagen, er et spoergsmaal der bliver stillet for
+    # evigt. Status er `dismissed`, ikke `accepted`: et afslag betyder «ret det
+    # ikke», ikke «moensteret er godkendt».
+    if str(proposal.get("kind") or "") == "instrument_fix":
+        try:
+            import json as _json
+
+            from core.runtime import db_instrument as _dbi
+
+            _payload = proposal.get("payload") or proposal.get("payload_json") or {}
+            if isinstance(_payload, str):
+                _payload = _json.loads(_payload or "{}")
+            _sig = str(((_payload.get("finding") or {}).get("signature")) or "").strip()
+            if _sig:
+                _dbi.set_finding_status(_sig, "dismissed")
+        except Exception as exc:  # self-safe: en lukke-fejl maa ikke vaelte afvisningen
+            logger.warning("reject_proposal: kunne ikke lukke fund for %s: %s", proposal_id, exc)
     try:
         event_bus.publish(
             "autonomy_proposal.rejected",
@@ -424,6 +447,49 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     readback_fingerprint = _fp(readback_content)
     new_fingerprint = _fp(new_content)
     readback_match = readback_fingerprint == new_fingerprint
+
+    # 3/11-2026: readback'en blev BEREGNET men ikke HANDHÆVET. Et mismatch gik
+    # videre som «executed», `approve_proposal` kvitterede succes og
+    # `_auto_commit_after_source_edit` lavede en rigtig git-commit af et
+    # indhold disken ikke bar. Samme form som «stale»-fixet 2/10: en maaling
+    # der ikke afgoer udfaldet. Status er derfor «error», saa fejl-grenen i
+    # `approve_proposal` rammer og commit-stien aldrig naas.
+    if not readback_match:
+        # RESTTILSTAND (3/11-2026, rettet samme aften): jeg skrev foerst
+        # «filen ER skrevet» og satte `disk_touched: True`. Det var en SLUTNING,
+        # ikke en maaling: `write_text` returnerede uden exception, men det
+        # beviser kun at kaldet blev gjort — ikke at disken aendrede sig.
+        # Beviset imod stod i min egen test: den patchede `write_text` til at
+        # goere INTET og kraevede alligevel `disk_touched is True`. En groen
+        # test der bekraeftede det modsatte af hvad den selv forhindrede.
+        #
+        # Det eneste der kan afgoeres her er:
+        #   write_attempted  = kaldet returnerede uden exception (observeret)
+        #   readback_match   = disken baerer ikke det skrevne (observeret)
+        #   disk_changed     = readback afviger fra den foer laeste tilstand
+        #                      (observeret — men siger INTET om hvor mange
+        #                      mellemliggende skrivninger der er sket)
+        # Konklusionen «undersoeg filen» er derfor et KRAV til naeste forsoeg,
+        # ikke en paastand om diskens tilstand.
+        disk_changed = readback_fingerprint != current_fingerprint
+        return {
+            "status": "error",
+            "error": (
+                "readback mismatch: skrivningen blev FORSOEGT, men disken baerer "
+                "ikke det skrevne indhold — undersoeg filens faktiske tilstand "
+                "foer et nyt forsoeg (antag hverken at den blev skrevet eller at "
+                f"den er uaendret; wanted={new_fingerprint} "
+                f"got={readback_fingerprint})"
+            ),
+            "target_path": target_path,
+            "write_attempted": True,
+            "readback_match": False,
+            "disk_changed": disk_changed,
+            "requires_inspection": True,
+            "current_fingerprint": current_fingerprint,
+            "new_fingerprint": new_fingerprint,
+            "readback_fingerprint": readback_fingerprint,
+        }
 
     return {
         "status": "executed",

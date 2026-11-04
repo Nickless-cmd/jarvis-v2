@@ -202,3 +202,36 @@ def test_stoejvagten_er_UROERT_for_de_andre():
     assert is_noisy_signal_text("Du glemmer hele tiden hvad vi aftalte i går")
     assert not is_noisy_signal_text(
         "din hukommelse på tværs af sessioner i runtime holder ikke")
+
+
+# ── support_count er ANTAL OBSERVATIONER, ikke et versionsnummer ────────────
+# Målt 4/11-2026: `support_count=int(pv.get("version", 1))` gav op til 51.808
+# med session_count=1 — altså 51.808 observationer i én session. Et
+# versionsnummer er ikke en observation, og tallet forgiftede de signaler der
+# byggede videre på det (internal-opposition rapporterede 51.808 «supports»).
+
+
+def test_support_count_er_ikke_personality_version(isolated_runtime, monkeypatch) -> None:
+    from core.services import cadence_producers
+
+    monkeypatch.setattr(
+        cadence_producers,
+        "get_latest_cognitive_personality_vector",
+        lambda: {
+            "version": 51808,
+            "confidence_by_domain": '{"python": 0.4}',
+            "current_bearing": "neutral",
+            "strengths_discovered": '["kan måle"]',
+            "recurring_mistakes": '["målte ikke"]',
+        },
+    )
+
+    cadence_producers.sync_personality_to_self_model()
+
+    db = isolated_runtime.db
+    rows = db.list_runtime_self_model_signals(limit=50)
+    assert rows, "producenten skulle have skrevet mindst ét signal"
+    for row in rows:
+        assert int(row.get("support_count") or 0) <= 10, (
+            f"support_count={row.get('support_count')} er versionsnummeret, ikke antal observationer"
+        )

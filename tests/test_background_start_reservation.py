@@ -58,7 +58,9 @@ def test_inbox_start_holds_reservation_through_registration(monkeypatch):
         lambda *_args, **_kwargs: events.append(("start", "chat-1")) or True,
     )
 
-    assert inbox_idle_waker._start_run("do it", session_id="chat-1") is True
+    assert inbox_idle_waker._start_run(
+        "do it", session_id="chat-1", user_id="owner-1"
+    ) is True
     assert events == [
         ("reserve", "chat-1"), ("start", "chat-1"), ("release", "chat-1"),
     ]

@@ -710,23 +710,20 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         if not str(result.get("text") or "").strip():
             raise RuntimeError("empty heartbeat result")
     except Exception as exc:
-        # 2026-06-22: the primary heartbeat provider (deepseek) can be dry /
-        # rate-limited. Without a fallback the inner-voice render failed every
-        # turn and the daemon emitted a [fallback-trace] stub instead of his
-        # actual voice — starving the inner life the prompt now surfaces. The
-        # cheap-lane fallback chain (sambanova/mistral/nvidia-nim/openrouter/
-        # ollama...) already exists; wire it in here so a single dry provider
-        # no longer silences him.
-        from core.services.heartbeat_provider_fallback import (
-            try_heartbeat_cheap_fallback,
-        )
+        # `_execute_heartbeat_model` kører SELV cheap-lane-faldkæden i sin egen
+        # except-gren og kaster kun videre, når hele kæden er udtømt. At kalde
+        # kæden igen her gentog præcis de samme providere mod de samme fejl.
+        # Målt 3/11-2026: op til TO fulde kæder i én producer-kørsel, hver med
+        # 34 kandidater og 45 s pr. forsøg, inde i cadence-loftet på 75 s — og
+        # inner_voice_daemon timede ud 9 gange i døgnet på det.
+        # Uden svar her falder vi til den deterministiske komposition, som
+        # allerede findes i _render_inner_voice_note.
         import logging as _logging
         _logging.getLogger(__name__).warning(
-            "inner-voice: primary heartbeat failed (%s); trying cheap fallback", exc
+            "inner-voice: heartbeat-model og dens faldkæde gav intet svar (%s); "
+            "bruger deterministisk komposition", exc
         )
-        result = try_heartbeat_cheap_fallback(full_prompt)
-        if not result:
-            return None
+        return None
 
     raw = str(result.get("text") or "").strip()
     if not raw:

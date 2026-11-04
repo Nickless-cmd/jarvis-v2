@@ -143,23 +143,23 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_live_run` | `(run_id)` | Det runforsoeg der koerer nu (G): foelger en failover-kaede; aldrig en undtagelse. | [src](../../../core/services/agent_runtime_spawn.py#L524) |
 | function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L534) |
 | function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L586) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1113) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1141) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1169) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1173) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1211) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1416) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1460) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1469) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1508) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1538) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1553) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1572) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1589) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1608) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1630) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1670) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1687) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1133) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1161) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1189) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1193) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L1231) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1436) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1480) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1489) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1528) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1558) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1573) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1592) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1609) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1628) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1650) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1690) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1707) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -199,25 +199,28 @@ _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_trace_kinds_since` | `(since, until)` | Ikke-strukturelle event-arter skrevet i vinduet. Self-safe: [] ved fejl. | [src](../../../core/services/agent_self_evaluation.py#L81) |
-| function | `_previous_eval` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L102) |
-| function | `_score_traces` | `(antal)` | Bredden af spor. Trapper frem for lineær, så små udsving ikke støjer. | [src](../../../core/services/agent_self_evaluation.py#L113) |
-| function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L124) |
-| function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad det EFTERLOD — ikke på hvilken form det havde. | [src](../../../core/services/agent_self_evaluation.py#L144) |
-| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L240) |
-| function | `_parse_ts` | `(raw)` | Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/agent_self_evaluation.py#L287) |
-| function | `_load_active_and_progress` | `()` | (aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning. | [src](../../../core/services/agent_self_evaluation.py#L312) |
-| function | `_active_with_last_progress` | `()` | Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et. | [src](../../../core/services/agent_self_evaluation.py#L321) |
-| function | `detect_stale_goals` | `(*, stale_days=…)` | Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``. | [src](../../../core/services/agent_self_evaluation.py#L332) |
-| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L388) |
-| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L404) |
-| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L503) |
-| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L507) |
-| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L537) |
-| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L565) |
-| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L642) |
-| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L646) |
-| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L651) |
+| function | `_som_int` | `(vaerdi)` | Læs et tælletal fra et signal — 0 hvis det ikke kan læses. | [src](../../../core/services/agent_self_evaluation.py#L100) |
+| function | `_score_daemons` | `(indre)` | 0-10: kørte daemon-sweepet, og hvad kostede fejlene? | [src](../../../core/services/agent_self_evaluation.py#L115) |
+| function | `_dispatch_udrettede` | `(act)` | Udleder om et dispatch faktisk udrettede noget — af dets EGNE felter. | [src](../../../core/services/agent_self_evaluation.py#L131) |
+| function | `_score_reaktion` | `(signals, priorities, actions, *, act=…)` | 0-45: så slaget noget der krævede handling — og handlede det? | [src](../../../core/services/agent_self_evaluation.py#L161) |
+| function | `_previous_eval` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L223) |
+| function | `_score_novelty` | `(nu, foer)` | Gav dette slag noget ANDET end det forrige? | [src](../../../core/services/agent_self_evaluation.py#L234) |
+| function | `_slim_history` | `(evals)` | Behold fuld detalje i de nyeste poster, skær den af de ældre. | [src](../../../core/services/agent_self_evaluation.py#L259) |
+| function | `evaluate_tick_quality` | `(*, tick_result)` | Score et slag på hvad SLAGET SELV rapporterede — intet globalt opslag. | [src](../../../core/services/agent_self_evaluation.py#L280) |
+| function | `tick_quality_summary` | `(*, days=…)` | Aggregate stats over recent evaluations. | [src](../../../core/services/agent_self_evaluation.py#L373) |
+| function | `_parse_ts` | `(raw)` | Parse et ISO-tidsstempel fra basen — ``Z`` og ``+00:00`` er samme tid. | [src](../../../core/services/agent_self_evaluation.py#L438) |
+| function | `_load_active_and_progress` | `()` | (aktive mål, sidste reelle fremskridt pr. mål-id) — rå læsning. | [src](../../../core/services/agent_self_evaluation.py#L463) |
+| function | `_active_with_last_progress` | `()` | Self-safe indpakning: en ulæselig mål-kilde må ikke vælte heartbeat'et. | [src](../../../core/services/agent_self_evaluation.py#L472) |
+| function | `detect_stale_goals` | `(*, stale_days=…)` | Find aktive mål hvis sidste REELLE fremskridt er ældre end ``stale_days``. | [src](../../../core/services/agent_self_evaluation.py#L483) |
+| function | `stale_goals_section` | `()` | — | [src](../../../core/services/agent_self_evaluation.py#L539) |
+| function | `decision_adherence_summary` | `()` | Compute adherence over ACTIVE behavioral decisions (the curated kind). | [src](../../../core/services/agent_self_evaluation.py#L555) |
+| function | `_normalize_decision_directive` | `(value)` | — | [src](../../../core/services/agent_self_evaluation.py#L654) |
+| function | `_duplicate_decision_groups` | `(decisions)` | — | [src](../../../core/services/agent_self_evaluation.py#L658) |
+| function | `_adherence_recovery_plan` | `(*, score, low_decisions, duplicate_groups, unreviewed)` | — | [src](../../../core/services/agent_self_evaluation.py#L688) |
+| function | `self_evaluation_section` | `()` | Compact awareness section combining all trackers. | [src](../../../core/services/agent_self_evaluation.py#L716) |
+| function | `_exec_tick_quality_summary` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L793) |
+| function | `_exec_detect_stale_goals` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L797) |
+| function | `_exec_decision_adherence` | `(args)` | — | [src](../../../core/services/agent_self_evaluation.py#L802) |
 
 ## `core/services/agent_skill_distiller.py`
 _Agent skill distillation — turns observed outcomes into principles._

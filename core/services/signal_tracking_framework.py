@@ -34,12 +34,16 @@ exactly the behaviour it had before.
 """
 from __future__ import annotations
 
+import logging
+import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.eventbus.bus import event_bus
+
+logger = logging.getLogger(__name__)
 
 
 # ── configurable superset utils ──────────────────────────────────────────────
@@ -116,6 +120,16 @@ class SignalTrackingSpec:
     early_retire_days: int | None = None                    # only reflection/dream/goal
     early_retire_predicate: Callable[[dict[str, object]], bool] = _default_early_retire
     refresh_scan_limit: int = 3000
+    # 3/11-2026: `refresh_scan_limit` scannede de NYESTE N rækker (``list_fn`` er
+    # ORDER BY id DESC), så stale-grenen var strukturelt uopnåelig i enhver tabel
+    # større end N. Målt på 25 signal-tabeller (~180.000 rækker): 24 moduler satte
+    # N=40 og havde NUL stale-rækker, mens metabolism/self_review/self_narrative/
+    # release_marker hver havde 19.000–28.000 aktive over 30 dage gamle. Sweep'en
+    # nedenfor spørger i stedet efter FOR GAMLE AKTIVE i SQL og rammer derfor
+    # uanset tabelstørrelse. `refresh_scan_limit` bruges nu kun af de tre
+    # early-retire-moduler, hvis per-item-prædikat ikke kan udtrykkes i SQL.
+    stale_sweep_table: str = ""        # tom → udledt: runtime_<name>_signals
+    stale_sweep_batch: int = 2000      # rækker pr. kald — bounded, gradvis oprydning
     refreshable_statuses: frozenset[str] = frozenset({"active", "softening"})
     stale_status_name: str = "stale"
     stale_status_reason: str = "Marked stale after bounded signal inactivity window."
@@ -194,8 +208,254 @@ def track_for_visible_turn(
 
 
 def refresh_statuses(spec: SignalTrackingSpec) -> dict[str, int]:
-    """Mark long-inactive signals stale. Preserves each spec's exact window +
-    optional early-retire branch (default: none)."""
+    """Mark long-inactive signals stale.
+
+    3/11-2026: den tidligere form scannede ``list_fn(limit=refresh_scan_limit)``.
+    ``list_fn`` sorterer ``ORDER BY id DESC`` — altså de NYESTE, som altid er
+    friske. Stale-grenen kunne derfor aldrig nås i en tabel større end limit, og
+    mekanismen har målt aldrig fyrret i de store tabeller (se
+    ``SignalTrackingSpec.stale_sweep_batch``).
+
+    Sweep'en spørger i stedet efter FOR GAMLE AKTIVE i SQL og rammer uanset
+    tabelstørrelse. Early-retire-modulerne (reflection/dream/goal) får deres
+    per-item prædikat anvendt i et smalt, bounded vindue — ikke som en top-N-scan.
+    """
+    swept = _sweep_stale_signals(spec)
+    if swept is not None:
+        return swept
+    return _refresh_via_scan(spec)
+
+
+_SWEEP_TABLE_RE = re.compile(r"^runtime_[a-z0-9_]+$")
+_SWEEP_COL_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _resolve_sweep_table(spec: SignalTrackingSpec) -> str | None:
+    """Table name for the sweep, verified against sqlite_master (never guessed).
+
+    No caching: ``DB_PATH`` is repointed per test, so a cached positive would be
+    wrong in the next test. One ``sqlite_master`` lookup per refresh is cheap.
+    """
+    table = spec.stale_sweep_table or f"runtime_{spec.name.replace('-', '_')}_signals"
+    if not _SWEEP_TABLE_RE.match(table):
+        logger.warning("signal-stale-sweep: afviser tabelnavn %r for %s", table, spec.name)
+        return None
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+            ).fetchone()
+    except Exception:
+        logger.warning(
+            "signal-stale-sweep: kunne ikke slaa %r op for %s", table, spec.name, exc_info=True
+        )
+        return None
+    if not row:
+        logger.warning(
+            "signal-stale-sweep: tabellen %r findes ikke for %s — bruger scan-formen",
+            table,
+            spec.name,
+        )
+        return None
+    return table
+
+
+def _sweep_stale_signals(spec: SignalTrackingSpec) -> dict[str, int] | None:
+    """SQL set-operation: mark old *active* rows stale, bounded per call.
+
+    ``None`` means "sweep not possible" so the caller falls back to the scan.
+    ``datetime()`` is applied on both sides so a row whose timestamp is in an
+    unexpected format yields NULL (never marked) instead of a wrong verdict.
+
+    Two steps, because early-retire is a per-item Python predicate:
+
+    1. everything older than ``stale_after_days`` — one UPDATE, any table size;
+    2. for specs with ``early_retire_days``: the narrow window between the two
+       windows is read (bounded) and the predicate decides. Without step 2 the
+       early-retire specs would keep the top-N blind spot that motivated this
+       whole change (measured: ``runtime_goal_signals``, 1.744 rows, zero stale).
+    """
+    table = _resolve_sweep_table(spec)
+    if table is None:
+        return None
+    marked = _sweep_older_than(spec, table, spec.stale_after_days)
+    if marked is None:
+        return None
+    if spec.early_retire_days is not None and spec.early_retire_days < spec.stale_after_days:
+        marked += _sweep_early_retire(spec, table)
+    return {"stale_marked": marked}
+
+
+def _sweep_older_than(spec: SignalTrackingSpec, table: str, days: int) -> int | None:
+    statuses = sorted(s for s in spec.refreshable_statuses if s)
+    if not statuses:
+        return 0
+    now = datetime.now(UTC)
+    extra_cols = [k for k in spec.stale_payload_extra if _SWEEP_COL_RE.match(str(k))]
+    returned = ["signal_id", "signal_type", "status", "summary", *extra_cols]
+    placeholders = ", ".join("?" for _ in statuses)
+    sql = (
+        f"UPDATE {table} SET status = ?, status_reason = ?, updated_at = ? "
+        f"WHERE rowid IN ("
+        f"SELECT rowid FROM {table} "
+        f"WHERE status IN ({placeholders}) "
+        f"AND datetime(COALESCE(NULLIF(updated_at, ''), created_at)) < datetime(?) "
+        f"ORDER BY rowid LIMIT ?"
+        f") RETURNING {', '.join(returned)}"
+    )
+    params: list[object] = [
+        spec.stale_status_name,
+        spec.stale_status_reason,
+        now.isoformat(),
+        *statuses,
+        (now - timedelta(days=days)).isoformat(),
+        max(int(spec.stale_sweep_batch), 1),
+    ]
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+    except Exception:
+        logger.warning(
+            "signal-stale-sweep fejlede for %s (%s) — falder tilbage til scan",
+            spec.name,
+            table,
+            exc_info=True,
+        )
+        return None
+
+    if rows and spec.publish_stale:
+        for row in rows:
+            _publish(spec.ev("stale"), dict(zip(returned, row)))
+    return len(rows)
+
+
+def sweep_stale_rows(
+    *,
+    table: str,
+    statuses: tuple[str, ...],
+    stale_after_days: int,
+    stale_status: str = "stale",
+    stale_reason: str = "",
+    batch: int = 2000,
+) -> int | None:
+    """Generisk stale-sweep for tabeller der IKKE er signal-specs.
+
+    3/11-2026: den blinde vinkel som :func:`refresh_statuses` blev rettet for,
+    fandtes ogsaa i fem outcome-tabeller (``self_review_outcomes``,
+    ``self_review_cadence_signals``, ``private_state_snapshots``,
+    ``self_model_signals``, ``self_review_runs``). De scannede alle
+    ``list_fn(limit=40)`` — altsaa de NYESTE raekker, som pr. definition er
+    friske. Maalt: 153.147 aktive raekker i ``runtime_self_review_outcomes`` var
+    aeldre end syv dage og kunne aldrig markeres, fordi de laa uden for
+    top-40-vinduet.
+
+    Returnerer antal markerede raekker, eller ``None`` hvis sweep ikke kunne
+    udfoeres (ukendt tabel / SQL-fejl) — saa falder kalderen tilbage til sin scan.
+    """
+    if not _SWEEP_TABLE_RE.match(str(table or "")):
+        logger.warning("stale-sweep: afviser tabelnavn %r", table)
+        return None
+    wanted = sorted(s for s in statuses if s)
+    if not wanted:
+        return 0
+    now = datetime.now(UTC)
+    placeholders = ", ".join("?" for _ in wanted)
+    sql = (
+        f"UPDATE {table} SET status = ?, status_reason = ?, updated_at = ? "
+        f"WHERE rowid IN ("
+        f"SELECT rowid FROM {table} "
+        f"WHERE status IN ({placeholders}) "
+        f"AND datetime(COALESCE(NULLIF(updated_at, ''), created_at)) < datetime(?) "
+        f"ORDER BY rowid LIMIT ?"
+        f")"
+    )
+    params: list[object] = [
+        stale_status,
+        stale_reason,
+        now.isoformat(),
+        *wanted,
+        (now - timedelta(days=stale_after_days)).isoformat(),
+        max(int(batch), 1),
+    ]
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            cur = conn.execute(sql, params)
+            return int(cur.rowcount or 0)
+    except Exception:
+        logger.warning("stale-sweep fejlede for %s — falder tilbage til scan", table, exc_info=True)
+        return None
+
+
+def _sweep_early_retire(spec: SignalTrackingSpec, table: str) -> int:
+    """Apply the early-retire predicate inside the narrow window between the two
+    windows. Bounded by ``stale_sweep_batch``; rows outside the window are left
+    to :func:`_sweep_older_than`."""
+    statuses = sorted(s for s in spec.refreshable_statuses if s)
+    if not statuses:
+        return 0
+    now = datetime.now(UTC)
+    placeholders = ", ".join("?" for _ in statuses)
+    sql = (
+        f"SELECT * FROM {table} "
+        f"WHERE status IN ({placeholders}) "
+        f"AND datetime(COALESCE(NULLIF(updated_at, ''), created_at)) >= datetime(?) "
+        f"AND datetime(COALESCE(NULLIF(updated_at, ''), created_at)) < datetime(?) "
+        f"ORDER BY rowid LIMIT ?"
+    )
+    params = [
+        *statuses,
+        (now - timedelta(days=spec.stale_after_days)).isoformat(),
+        (now - timedelta(days=spec.early_retire_days)).isoformat(),
+        max(int(spec.stale_sweep_batch), 1),
+    ]
+    try:
+        from core.runtime.db_core import connect
+
+        with connect() as conn:
+            cur = conn.execute(sql, params)
+            navne = [d[0] for d in cur.description]
+            kandidater = [dict(zip(navne, r)) for r in cur.fetchall()]
+    except Exception:
+        logger.warning(
+            "signal-stale-sweep early-retire fejlede for %s (%s)", spec.name, table, exc_info=True
+        )
+        return 0
+
+    marked = 0
+    for item in kandidater:
+        if not spec.early_retire_predicate(item):
+            continue
+        updated = spec.update_status_fn(
+            str(item.get("signal_id") or ""),
+            status=spec.stale_status_name,
+            updated_at=now.isoformat(),
+            status_reason=spec.stale_status_reason,
+        )
+        if updated is None:
+            continue
+        marked += 1
+        if spec.publish_stale:
+            payload = {
+                "signal_id": updated.get("signal_id"),
+                "signal_type": updated.get("signal_type"),
+                "status": updated.get("status"),
+                "summary": updated.get("summary"),
+            }
+            for k in spec.stale_payload_extra:
+                payload[k] = updated.get(k)
+            _publish(spec.ev("stale"), payload)
+    return marked
+
+
+def _refresh_via_scan(spec: SignalTrackingSpec) -> dict[str, int]:
+    """Legacy bounded scan — only reached for early-retire specs or when the
+    sweep is unavailable. Preserves the exact per-item semantics."""
     now = datetime.now(UTC)
     refreshed = 0
     for item in spec.list_fn(limit=spec.refresh_scan_limit):

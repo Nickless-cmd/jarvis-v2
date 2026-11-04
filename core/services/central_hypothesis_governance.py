@@ -404,8 +404,20 @@ def evaluate(hyp: dict[str, Any], *, confirming_evidence: list[dict[str, Any]] |
                                      "karantæne: overvejende selv-udløst bekræftelse", quarantined=True)
 
         # Popper-opdatering — KUN på eksternt-jordet+verificeret evidens.
+        #
+        # IDEMPOTENS (målt 4/11-2026): uden dedup tæller samme observation én gang pr.
+        # levering. Målt: 0,5 + samme bekræftelse ×5 → 0,613; 0,5 + samme falsifikation
+        # ×2 → 0,125. En genafspilning efter genstart eller en dobbelt-leveret evidens
+        # ville altså flytte confidence uden at virkeligheden sagde noget nyt. Nøglen er
+        # (source, ground_ref) — det anker der gør evidensen eksternt jordet i første
+        # omgang. Evidens uden ground_ref er allerede afvist af is_externally_grounded.
         conf = float(hyp.get("confidence") or 0.0)
+        seen: set[tuple[str, str]] = set()
         for e in grounded:
+            key = (str(e.get("source") or ""), str(e.get("ground_ref") or "").strip())
+            if key in seen:
+                continue
+            seen.add(key)
             conf = apply_outcome(conf, falsified=bool(e.get("falsifies")))
         conf = round(conf, 4)
 

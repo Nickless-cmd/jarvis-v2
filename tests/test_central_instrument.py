@@ -199,10 +199,15 @@ def test_et_fund_fileres_kun_en_gang(isolated_runtime):
     assert len(forslag) == 1
     q.reject_proposal(forslag[0]["proposal_id"], resolution_note="nej")
 
-    # Fundet er STADIG åbent — koden er ikke rettet. Men anmodningen er afvist,
-    # og en anmodning der er afvist skal ikke gentages.
+    # 3/11-2026: afslaget lukker nu fundet. Før stod det `open` for evigt, så et
+    # nej var usynligt i tilstanden og backlog-tallet voksede uden at nogen kunne
+    # se hvorfor (målt: 75 afviste forslag efterlod deres fund åbne).
+    # Status er `dismissed`, ikke `accepted` — et afslag betyder «ret det ikke».
+    assert not any(r["signature"] == "sig-a"
+                   for r in dbi.list_findings(status="open", min_score=3, limit=10))
     assert any(r["signature"] == "sig-a"
-               for r in dbi.list_findings(status="open", min_score=3, limit=10))
+               for r in dbi.list_findings(status="dismissed", min_score=3, limit=10))
+    # Den oprindelige pointe står uændret: et afvist fund må ikke filéres igen.
     assert ci._file_proposals(max_new=10) == 0
 
 
@@ -496,3 +501,59 @@ def test_en_doven_kort_kommentar_daemper_ikke():
     sil = next(f for f in fs if f.kind == "except_silent")
     assert sil.acknowledged is False
     assert ci.score_finding(sil, file_has_central=False, in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+# ── Målt 3/11-2026: fejlen RETURNERES til kalderen ────────────────────────
+# En fuld rescan efterlod seks fund over proposal-tærsklen. Alle seks fangede
+# en fejl og returnerede den som `{"status": "error", …}` til modellen — altså
+# synligt for den der kan handle på den — men `_is_success_like_return` ser en
+# dict-retur som «success-lignende» (form, ikke brug) og scoringen gav +2.
+# Seks ægte fund, nul ægte problemer. Formerne nedenfor er de faktiske
+# formuleringer fra kodebasen, ikke gættede.
+
+def test_fejl_returneret_til_kalderen_er_en_bevidst_beslutning():
+    """«Kalderen skal se det» / «never raised» → kendt, ikke proposal-værdig."""
+    for kommentar in (
+        "# Kalderen skal se det, ikke et svar der lover noget der ikke findes",
+        "# a caller error that is reported as a tool result, never raised",
+        "# Fejlen ER svaret til kalderen — den siger hvad der gik galt",
+    ):
+        src = ("def f():\n    try:\n        return _hent()\n"
+               f"    except Exception as exc:\n        {kommentar}\n"
+               "        return {\"status\": \"error\", \"error\": str(exc)}\n")
+        fs = ci.scan_source("core/x.py", src)
+        sil = next(f for f in fs if f.kind == "except_silent")
+        assert sil.acknowledged is True, kommentar
+        assert ci.score_finding(sil, file_has_central=False,
+                                in_security=False) < ci._PROPOSAL_THRESHOLD
+
+
+def test_error_dict_uden_begrundelse_filer_stadig():
+    """Grænsen: samme form UDEN en skrevet begrundelse er stadig et ægte fund.
+
+    Uden denne kunne rettelsen ovenfor gøre instrumentet tandløst for netop den
+    klasse der betyder mest: en fejl der returneres uden at nogen har tænkt over
+    hvad kalderen skal gøre med den.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except Exception as exc:\n"
+           "        return {\"status\": \"error\", \"error\": str(exc)}\n")
+    fs = ci.scan_source("core/x.py", src)
+    sil = next(f for f in fs if f.kind == "except_silent")
+    assert sil.acknowledged is False
+    assert ci.score_finding(sil, file_has_central=False,
+                            in_security=False) >= ci._PROPOSAL_THRESHOLD
+
+
+def test_eventbus_publicering_er_synlighed():
+    """En except der publicerer fejlen er ikke tavs — `publish` er en guard.
+
+    Målt 3/11-2026: live_job_sources.py:157 publicerede `source_status` med
+    healthy=False og blev alligevel filéret som silent failure.
+    """
+    src = ("def f():\n    try:\n        return _hent()\n"
+           "    except Exception as exc:\n"
+           "        live_job_events.publish('source_status', payload={'healthy': False})\n"
+           "        return None\n")
+    fs = ci.scan_source("core/x.py", src)
+    assert not [f for f in fs if f.kind == "except_silent"]

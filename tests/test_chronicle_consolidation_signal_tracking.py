@@ -263,3 +263,78 @@ def test_chronicle_consolidation_surface_and_mc_shapes_remain_bounded(
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["authority"] == "non-authoritative"
     assert runtime_shape["summary"]["writeback_state"] == "not-writing-to-canonical-files"
+
+
+# ── 3/11-2026: producenten skrev 9.651 identiske signaler ─────────────────────
+# Maalt: alle 9.651 rækker siden 22/6 havde chronicle_type='chronicle-worthy',
+# samme titel og samme summary. `chronicle-worthy` er FALLBACKEN — den betyder
+# «ingen af de fire baerende grunde». Producenten skrev en heartbeat, ikke en
+# observation: «en self-review blev gennemfoert for domaene X».
+def test_outcome_og_cadence_alene_skriver_intet_signal(isolated_runtime) -> None:
+    """De 9.651 rækkers praecise form: outcome + cadence, intet andet.
+
+    Uden en baerende kilde er der intet at konsolidere. Foer skrev den et signal
+    der sagde praecis det samme som de 9.650 foer det.
+    """
+    tracking = isolated_runtime.chronicle_consolidation_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_self_review_outcome(db)
+    _insert_self_review_cadence_signal(db, run_id="visible-run-9")
+
+    result = tracking.track_runtime_chronicle_consolidation_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="visible-run-9",
+    )
+
+    assert result["created"] == 0, "uden baerende grund skal der ikke skrives et signal"
+    assert result["items"] == []
+
+
+def test_baerende_kilde_alene_slipper_igennem_gaten(isolated_runtime) -> None:
+    """Den positive tvilling: én baerende kilde er nok, ogsaa naar typen er fallback.
+
+    Uden denne kunne gaten bestaa ved at afvise ALT — og testen ovenfor ville
+    vaere groen af den forkerte grund.
+    """
+    tracking = isolated_runtime.chronicle_consolidation_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_self_review_outcome(db)
+    _insert_self_review_cadence_signal(db, run_id="visible-run-10")
+    _insert_private_state_snapshot(db, run_id="visible-run-10")
+
+    result = tracking.track_runtime_chronicle_consolidation_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="visible-run-10",
+    )
+
+    assert result["created"] == 1
+    # Ingen promotion og ingen husket kendsgerning → typen ER fallbacken.
+    # Signalet slippes altsaa igennem PAA den baerende private-state, ikke paa typen.
+    assert result["items"][0]["chronicle_type"] == "chronicle-worthy"
+
+
+def test_summary_baerer_den_rige_tekst_ikke_skabelonen(isolated_runtime) -> None:
+    """Den rige tekst blev beregnet og derefter kastet vaek.
+
+    `chronicle_summary` blev sammensat af outcome/cadence/state/promotion, men
+    tabellen har ingen kolonne til den — saa fladen faldt tilbage paa `summary`,
+    som var skabelonen. Nu baerer `summary` den sammensatte tekst.
+    """
+    tracking = isolated_runtime.chronicle_consolidation_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_self_review_outcome(db)
+    _insert_self_review_cadence_signal(db, run_id="visible-run-11")
+    _insert_private_state_snapshot(db, run_id="visible-run-11")
+
+    result = tracking.track_runtime_chronicle_consolidation_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="visible-run-11",
+    )
+    item = result["items"][0]
+
+    assert "is marking" not in item["summary"], "skabelonen maa ikke vaere summary naar der ER tekst"
+    assert "watched closely" in item["summary"], "outcome'ets egen tekst skal med"
+    assert item["summary"].strip(), "summary maa ikke vaere tom"

@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pickle
 import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -406,6 +408,9 @@ def _cache_path(ws: Path | None = None) -> Path:
 _REBUILD_LOCK = threading.Lock()
 _REBUILD_ACTIVE = False
 
+#: Hvor mange nye chunks der embeddes mellem hvert checkpoint (3/11-2026).
+_REBUILD_CHECKPOINT_EVERY = 1024
+
 
 def _chunk_all_files(files: list[Path], ws: Path | None = None) -> list[Chunk]:
     """Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding."""
@@ -447,6 +452,65 @@ def _load_cached_vectors(ws: Path | None = None) -> dict[str, "np.ndarray"]:
         return {}
 
 
+def _progress_path(ws: Path | None = None) -> Path:
+    """Checkpoint-fil for en rebuild der ikke er færdig. Ligger ved siden af cachen,
+    så den følger samme workspace (og de samme test-monkeypatches)."""
+    cache = _cache_path(ws) if ws is not None else _cache_path()
+    return cache.with_name(f"{cache.name}.progress")
+
+
+def _load_progress_vectors(ws: Path | None = None) -> dict[str, "np.ndarray"]:
+    """Vektorer fra en AFBRUDT rebuild, så den genoptages i stedet for at starte forfra.
+
+    Rod (målt 3/11-2026): rebuild'en kørte i en daemon-tråd og embeddede hele
+    korpuset i ét hug. En proces der stoppede midt i (genstart, nedlukning, et
+    script der faldt tilbage) kastede ALLE ~30 minutter væk — og intet i
+    tilstanden viste at det var sket; næste søgning startede blot forfra.
+    Nu skrives hver portion til en sidecar, som næste rebuild læser som genbrug.
+    Self-safe: enhver fejl → {} (fuld embed, som før)."""
+    try:
+        path = _progress_path(ws) if ws is not None else _progress_path()
+        if not path.exists():
+            return {}
+        with open(path, "rb") as fh:
+            data = pickle.load(fh)
+        if data.get("model") != _EMBED_MODEL:
+            return {}
+        vecs = data.get("vectors")
+        return vecs if isinstance(vecs, dict) else {}
+    except Exception as exc:
+        logger.warning("memory_search: kunne ikke læse rebuild-checkpoint: %s", exc)
+        return {}
+
+
+def _save_progress_vectors(vecs: dict[str, "np.ndarray"], ws: Path | None = None) -> None:
+    """Atomisk checkpoint, så en afbrudt rebuild højst mister én portion."""
+    try:
+        path = _progress_path(ws) if ws is not None else _progress_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
+        try:
+            with open(tmp, "wb") as fh:
+                pickle.dump({"model": _EMBED_MODEL, "vectors": vecs,
+                             "saved_at": datetime.now(UTC).isoformat()}, fh)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
+    except Exception as exc:
+        logger.warning("memory_search: kunne ikke gemme rebuild-checkpoint: %s", exc)
+
+
+def _clear_progress_vectors(ws: Path | None = None) -> None:
+    """Fjern checkpointet når cachen er skrevet — ellers vokser det ubrugt."""
+    try:
+        path = _progress_path(ws) if ws is not None else _progress_path()
+        path.unlink(missing_ok=True)
+    except Exception as exc:
+        logger.debug("memory_search: kunne ikke rydde rebuild-checkpoint: %s", exc)
+
+
 def _build_and_cache_index(
     files: list[Path], current_mtimes: dict[str, float], ws: Path | None = None
 ) -> None:
@@ -475,35 +539,78 @@ def _build_and_cache_index(
         if not all_chunks:
             return
         reuse = _load_cached_vectors(ws)
+    # Genbrug = cache + checkpoint fra en AFBRUDT rebuild. Sidstnævnte er grunden
+    # til at et afbrud ikke længere koster hele arbejdet.
+    progress = _load_progress_vectors(ws)
+    if progress:
+        reuse = {**progress, **reuse}
+        logger.warning(
+            "memory_search: genoptager afbrudt rebuild — %d chunks hentet fra checkpoint",
+            sum(1 for c in all_chunks if c.text in progress),
+        )
     todo = [i for i, c in enumerate(all_chunks) if c.text not in reuse]
-    embeddings: "np.ndarray | None"
-    if not reuse:
-        embeddings = _embed_ollama([c.text for c in all_chunks])  # ingen cache → fuld
-    else:
-        new_vecs = _embed_ollama([all_chunks[i].text for i in todo]) if todo else None
-        if todo and new_vecs is None:
-            embeddings = _embed_ollama([c.text for c in all_chunks])  # delvis fejl → fuld
-        else:
-            dim = len(next(iter(reuse.values())))
-            embeddings = np.zeros((len(all_chunks), dim), dtype=np.float32)
-            k = 0
-            for i, c in enumerate(all_chunks):
-                if c.text in reuse:
-                    embeddings[i] = reuse[c.text]
-                else:
-                    embeddings[i] = new_vecs[k]
-                    k += 1
-            logger.info("memory_search: inkrementel reindex — %d genbrugt, %d embeddet",
-                        len(all_chunks) - len(todo), len(todo))
+    embeddings: "np.ndarray | None" = None
+    if todo:
+        # I PORTIONER med checkpoint efter hver: en rebuild der dør midt i
+        # (proces-stop, genstart) mister højst én portion i stedet for alle ~30 min.
+        nye: dict[str, "np.ndarray"] = {}
+        for start in range(0, len(todo), _REBUILD_CHECKPOINT_EVERY):
+            portion = [all_chunks[i].text for i in todo[start:start + _REBUILD_CHECKPOINT_EVERY]]
+            arr = _embed_ollama(portion)
+            if arr is None or len(arr) != len(portion):
+                # Skriv ALDRIG en cache med huller: de huller ville være usøgbare
+                # for evigt, fordi cachen så matcher mtimes og aldrig bygges om.
+                logger.warning(
+                    "memory_search: rebuild afbrudt efter %d/%d nye chunks — checkpoint bevaret",
+                    len(nye), len(todo),
+                )
+                return
+            for i, text in enumerate(portion):
+                nye[text] = arr[i]
+            _save_progress_vectors({**progress, **nye}, ws)
+            logger.info("memory_search: rebuild %d/%d nye chunks",
+                        min(start + len(portion), len(todo)), len(todo))
+        reuse = {**reuse, **nye}
+    if reuse:
+        dim = len(next(iter(reuse.values())))
+        embeddings = np.zeros((len(all_chunks), dim), dtype=np.float32)
+        mangler = 0
+        for i, c in enumerate(all_chunks):
+            v = reuse.get(c.text)
+            if v is None:
+                mangler += 1
+            else:
+                embeddings[i] = v
+        if mangler:
+            logger.warning("memory_search: %d chunks uden vektor — cachen skrives ikke", mangler)
+            return
+        logger.info("memory_search: inkrementel reindex — %d genbrugt, %d embeddet",
+                    len(all_chunks) - len(todo), len(todo))
     try:
         cache = _cache_path(ws) if ws is not None else _cache_path()
         cache.parent.mkdir(parents=True, exist_ok=True)
-        with open(cache, "wb") as fh:
-            pickle.dump({
-                "chunks": all_chunks, "embeddings": embeddings,
-                "mtimes": current_mtimes, "model": _EMBED_MODEL,
-                "built_at": datetime.now(UTC).isoformat(),
-            }, fh)
+        # ATOMISK (3/11-2026). Før blev den LEVENDE cache skrevet direkte med
+        # open(cache, "wb") + pickle.dump. Rebuild'en kører i en daemon-tråd, så
+        # en proces der stopper midt i skrivningen efterlod en AFKORTET pickle —
+        # og hver efterfølgende søgning fejlede med "Ran out of input" og faldt
+        # til tfidf, indtil nogen slettede filen i hånden. Målt 3/11: 12.953
+        # chunks / 29,5 min spildt, og fejlen var usynlig i svaret.
+        # Nu: skriv til en tmp-fil i SAMME mappe, fsync, og omdøb atomisk. En
+        # læser ser enten den gamle eller den nye fil — aldrig en halv.
+        tmp = cache.with_name(f"{cache.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
+        try:
+            with open(tmp, "wb") as fh:
+                pickle.dump({
+                    "chunks": all_chunks, "embeddings": embeddings,
+                    "mtimes": current_mtimes, "model": _EMBED_MODEL,
+                    "built_at": datetime.now(UTC).isoformat(),
+                }, fh)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, cache)
+        finally:
+            tmp.unlink(missing_ok=True)
+        _clear_progress_vectors(ws)
         logger.info("memory_search: index rebuilt in bg (%d chunks, embeddings=%s)",
                     len(all_chunks), embeddings is not None)
     except Exception as exc:
@@ -579,6 +686,17 @@ def _load_or_build_index(
             return cached.get("chunks", []), cached.get("embeddings"), cached.get("mtimes", current_mtimes)
         except Exception as exc:
             logger.warning("memory_search: cache load failed: %s", exc)
+            # Læg den brudte fil til side ÉN gang (3/11-2026). Uden dette blev den
+            # samme afkortede pickle forsøgt indlæst ved HVER søgning: log-støj,
+            # tfidf-fallback — og rebuild'en blev aldrig færdig, fordi filen stadig
+            # "fandtes" og hvert kald fejlede på den. Navnet bevares til undersøgelse.
+            try:
+                _MEM_INDEX.pop(str(cache), None)
+                cache.replace(cache.with_name(
+                    f"{cache.name}.corrupt-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+                ))
+            except Exception as exc2:
+                logger.warning("memory_search: kunne ikke flytte brudt cache: %s", exc2)
     # Ingen/brudt cache: chunk hurtigt (ingen embed) → tfidf-fallback nu; embed i baggrunden.
     all_chunks = _chunk_all_files(files, ws)
     _schedule_background_rebuild(files, current_mtimes, ws)

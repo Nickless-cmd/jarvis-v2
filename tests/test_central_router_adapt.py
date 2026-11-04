@@ -220,6 +220,8 @@ class TestErModellenRigtig:
         "/deepseek-v4-flash",
         "ollama/",
         "unknown/none",
+        "test-auto-provider/test-auto-model",
+        "mock-provider/glm-5.3-flash:cloud",
     ])
     def test_pladsholdere_afvises(self, key: str) -> None:
         assert ra._is_real_model_key(key) is False
@@ -243,6 +245,17 @@ class TestErModellenRigtig:
         assert ra._is_real_model_key("ollama/deepseek-v4-flash:cloud") is True
         # men en pladsholder er stadig en pladsholder
         assert ra._is_real_model_key("?/jarvis") is False
+
+    def test_syntetisk_autonom_base_falder_til_produktionsbasen(
+        self, monkeypatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "core.services.llm_pricing.er_ollama_myldretid", lambda: False,
+        )
+        assert ra.resolve_autonomous_model(
+            autonomous_provider="test-auto-provider",
+            autonomous_model="test-auto-model",
+        ) == ("ollama", "deepseek-v4.1-flash:cloud")
 
 
 class TestForbrugeren:

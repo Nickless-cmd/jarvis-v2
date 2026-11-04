@@ -415,18 +415,18 @@ _Consolidation-target signal tracking — migrated onto signal_tracking_framewor
 | function | `refresh_runtime_consolidation_target_signal_statuses` | `()` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L51) |
 | function | `build_runtime_consolidation_target_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L55) |
 | function | `_extract_consolidation_target_candidates` | `(*, run_id)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L59) |
-| function | `_build_candidate` | `(*, domain_key, metabolism, witness, chronicle, chronicle_brief, meaning, temperament, self_narrative, relation_continuity)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L179) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L302) |
-| function | `_consolidation_target_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L327) |
-| function | `_derive_consolidation_state` | `(*, witness_status, chronicle_status, brief_status, active_like_count, session_count)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L349) |
-| function | `_derive_consolidation_focus` | `(*, domain_key, chronicle, chronicle_brief)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L364) |
-| function | `_derive_consolidation_weight` | `(*, active_like_count, support_count, session_count, brief_status)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L382) |
-| function | `_consolidation_summary` | `(*, focus, consolidation_state, consolidation_weight)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L399) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L419) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L426) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L438) |
-| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L450) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L461) |
+| function | `_build_candidate` | `(*, domain_key, metabolism, witness, chronicle, chronicle_brief, meaning, temperament, self_narrative, relation_continuity)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L185) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L312) |
+| function | `_consolidation_target_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L337) |
+| function | `_derive_consolidation_state` | `(*, witness_status, chronicle_status, brief_status, active_like_count, session_count)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L359) |
+| function | `_derive_consolidation_focus` | `(*, domain_key, chronicle, chronicle_brief)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L374) |
+| function | `_derive_consolidation_weight` | `(*, active_like_count, support_count, session_count, brief_status)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L392) |
+| function | `_consolidation_summary` | `(*, focus, consolidation_state, consolidation_weight)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L409) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L429) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L436) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L448) |
+| function | `_find_support_value` | `(support_summary, key, default)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L460) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/consolidation_target_signal_tracking.py#L471) |
 
 ## `core/services/content_blocks.py`
 _Rene content-blok-funktioner: tekst-projektion + serve-on-read rekonstruktion._
@@ -479,8 +479,9 @@ _Continuity Kernel — state capsule + live update + graded wake-up._
 | function | `read_capsule` | `()` | Read the latest capsule from disk. | [src](../../../core/services/continuity.py#L405) |
 | function | `get_wake_tier` | `(hours_since_last)` | Determine wake tier based on time since last session. | [src](../../../core/services/continuity.py#L423) |
 | function | `build_conversation_continuity` | `(*, limit=…)` | Build a 'hvad talte vi om' block from recent session data. | [src](../../../core/services/continuity.py#L435) |
-| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L529) |
-| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L661) |
+| function | `_format_hours_gap` | `(hours_since)` | Format a duration in hours as a short Danish string. | [src](../../../core/services/continuity.py#L529) |
+| function | `build_wake_up_block` | `(capsule=…)` | Build the wake-up block for prompt injection. | [src](../../../core/services/continuity.py#L544) |
+| function | `live_update_after_turn` | `(*, mood=…, attention=…, relation=…, somatic=…, goals=…, recent_activity=…, session_id=…)` | Call this after every visible turn to persist the state capsule. | [src](../../../core/services/continuity.py#L686) |
 
 ## `core/services/continuity_kernel.py`
 _Bounded Continuity Kernel — existence feel between ticks._

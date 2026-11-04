@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 17905 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18019 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -27,9 +27,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17905 functions/
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)
 - [`core.plugins`](core.plugins.md)
-- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_composer_choice`
-- [`core.runtime.02`](core.runtime.02.md) — `db_composer_jarvis` … `db_runtime_self`
-- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_self_review` … `ws_auth`
+- [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_cognitive_utility`
+- [`core.runtime.02`](core.runtime.02.md) — `db_composer_choice` … `db_runtime_relational_signals`
+- [`core.runtime.03`](core.runtime.03.md) — `db_runtime_self` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
 - [`core.services.02`](core.services.02.md) — `agent_pool_router` … `api_connection_nerve`
 - [`core.services.03`](core.services.03.md) — `apophenia_guard` … `background_attention`
@@ -46,21 +46,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17905 functions/
 - [`core.services.14`](core.services.14.md) — `gate_auth` … `habit_tracker`
 - [`core.services.15`](core.services.15.md) — `habits_pipeline` … `infra_sense`
 - [`core.services.16`](core.services.16.md) — `infra_weather_daemon` … `lifecycle_hooks`
-- [`core.services.17`](core.services.17.md) — `live_job_events` … `memory_write_policy`
-- [`core.services.18`](core.services.18.md) — `memory_write_queue` … `notifikationer`
-- [`core.services.19`](core.services.19.md) — `notifikationer_hydrering` … `personality_vector`
-- [`core.services.20`](core.services.20.md) — `pfsense_syslog` … `prompt_assembly_turn_cache`
-- [`core.services.21`](core.services.21.md) — `prompt_cache_probe` … `reasoning_detectors`
-- [`core.services.22`](core.services.22.md) — `reasoning_escalation` … `retention_coverage`
-- [`core.services.23`](core.services.23.md) — `retry_admissibility` … `runtime_guard`
-- [`core.services.24`](core.services.24.md) — `runtime_hook_runtime` … `self_model_predictive`
-- [`core.services.25`](core.services.25.md) — `self_model_signal_tracking` … `session_view`
-- [`core.services.26`](core.services.26.md) — `session_wakeup` … `source_confidence_gate`
-- [`core.services.27`](core.services.27.md) — `spaced_repetition` … `theory_of_mind_engine`
-- [`core.services.28`](core.services.28.md) — `think_language` … `unconscious_temperature_field`
-- [`core.services.29`](core.services.29.md) — `unfinished_intent` … `visible_model_prompt`
-- [`core.services.30`](core.services.30.md) — `visible_model_sse` … `visible_turn_blocks`
-- [`core.services.31`](core.services.31.md) — `visible_work_surfaces` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `live_job_events` … `memory_tattoos`
+- [`core.services.18`](core.services.18.md) — `memory_write_policy` … `notification_router`
+- [`core.services.19`](core.services.19.md) — `notifikationer` … `personality_drift`
+- [`core.services.20`](core.services.20.md) — `personality_vector` … `prompt_assembly_telemetri`
+- [`core.services.21`](core.services.21.md) — `prompt_assembly_turn_cache` … `read_before_write_guard`
+- [`core.services.22`](core.services.22.md) — `reasoning_classifier` … `resonance_decay`
+- [`core.services.23`](core.services.23.md) — `retention` … `runtime_decision_engine`
+- [`core.services.24`](core.services.24.md) — `runtime_flows` … `self_model_distiller`
+- [`core.services.25`](core.services.25.md) — `self_model_history` … `session_tool_pin`
+- [`core.services.26`](core.services.26.md) — `session_topic_tracker` … `social_labilizer`
+- [`core.services.27`](core.services.27.md) — `somatic_daemon` … `text_clip`
+- [`core.services.28`](core.services.28.md) — `text_resonance` … `turn_tail_timing`
+- [`core.services.29`](core.services.29.md) — `turn_trace` … `visible_model`
+- [`core.services.30`](core.services.30.md) — `visible_model_adapters` … `visible_thinking_trace`
+- [`core.services.31`](core.services.31.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -69,10 +69,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 17905 functions/
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `graf_tools`
-- [`core.tools.02`](core.tools.02.md) — `health_monitor_tools` … `py_source_guard`
-- [`core.tools.03`](core.tools.03.md) — `reasoning_store_tools` … `tool_result_format`
-- [`core.tools.04`](core.tools.04.md) — `tool_schema_contract` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `goals_tools`
+- [`core.tools.02`](core.tools.02.md) — `graf_tools` … `publish_file_tool`
+- [`core.tools.03`](core.tools.03.md) — `py_source_guard` … `tool_limits`
+- [`core.tools.04`](core.tools.04.md) — `tool_result_format` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

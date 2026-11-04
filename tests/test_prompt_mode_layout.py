@@ -105,6 +105,18 @@ def test_v2_chat_contract_is_cache_first_not_duplicated_in_tail(monkeypatch):
     assert "current turn" in tail
 
 
+def test_chat_orientation_keeps_read_only_investigation_in_chat(monkeypatch):
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
+    with patch("core.tools.tool_scoping.current_tool_scope", return_value="chat"):
+        full = _visible_mode_orientation_instruction(compact=False) or ""
+        compact = _visible_mode_orientation_instruction(compact=True) or ""
+
+    for orientation in (full, compact):
+        assert "Peg kun på code mode" in orientation
+        assert "En read-only undersøgelse hører stadig til her" in orientation
+        assert "brug dem fuldt ud" in orientation
+
+
 def test_v2_code_contract_is_cache_first_plan_stays_dynamic(monkeypatch):
     monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "1")
     with patch("core.tools.tool_scoping.current_tool_scope", return_value="code"):

@@ -171,3 +171,84 @@ def test_fejeren_afslutter_ogsaa_FORAELDRELOESE_afsendelser():
     ud = D.tick_approval_expiry_daemon(now=senere)
     assert ud["foraeldreloese_afsendelser"] == 1
     assert _tilstand(aid) == B.OUTCOME_UNKNOWN
+
+
+# ── Køens fejer (4/11-2026) ──────────────────────────────────────────────
+#
+# Den TREDJE forekomst af samme fejlform i denne fil. `proactive_candidates.
+# expire_stale()` fandtes, var grundigt testet i `test_proactive_candidates.py`
+# — og blev kaldt NUL steder uden for tests. Målt 4/11-2026 i drift: 26 poster
+# stod «åbne», de ældste 45 dage gamle, altså 31 dage over grænsen på 14.
+#
+# Derfor måles KALDET her, ikke kun fejningen: en mekanisme uden kalder er
+# ingen mekanisme.
+
+def test_koeens_fejer_bliver_FAKTISK_kaldt(monkeypatch):
+    kaldt: list[bool] = []
+
+    def _falsk(*, days=7, aabne_days=14):
+        kaldt.append(True)
+        return 0
+
+    # Patch på MODULET: daemonen importerer navnet inde i kaldet.
+    monkeypatch.setattr("core.services.proactive_candidates.expire_stale", _falsk)
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert kaldt == [True], "køens fejer blev ikke kaldt"
+
+
+def test_koeens_fejning_staar_i_resultatet(monkeypatch):
+    """En fejer hvis udbytte ikke kan læses ser ud som en der ikke kørte."""
+    monkeypatch.setattr("core.services.proactive_candidates.expire_stale",
+                        lambda **k: 4)
+    r = D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert r["udloebne_kandidater"] == 4
+
+
+def _kandidat_med_alder(dage: int) -> str:
+    """En vist-og-ubesvaret kandidat, tilbagedateret. Returnerer candidate_id."""
+    from core.services import proactive_candidates as PC
+
+    cid = PC.add_candidate(
+        source="test", kind="test-kind",
+        text="En kandidat der blev vist men aldrig besvaret",
+    )["candidate_id"]
+    assert PC.mark([cid], "surfaced") == 1
+    from datetime import timedelta as _td
+    gammel = (datetime.now(UTC) - _td(days=dage)).isoformat()
+    with connect() as c:
+        c.execute("UPDATE proactive_candidates SET created_at=? WHERE candidate_id=?", (gammel, cid))
+    return cid
+
+
+def _status(cid: str) -> str:
+    with connect() as c:
+        r = c.execute("SELECT status FROM proactive_candidates WHERE candidate_id=?",
+                      (cid,)).fetchone()
+    return str(r[0]) if r else ""
+
+
+def test_en_gammel_surfaced_kandidat_bliver_lukket():
+    """45 dage gammel og aldrig besvaret: den skal have sin terminale tilstand."""
+    cid = _kandidat_med_alder(45)
+    assert _status(cid) == "surfaced"
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert _status(cid) == "expired"
+
+
+def test_en_frisk_kandidat_roeres_ikke():
+    """Kontrolarm. Uden den ville en fejer der lukkede ALT bestaa proeven."""
+    cid = _kandidat_med_alder(1)
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC))
+    assert _status(cid) == "surfaced"
+
+
+def test_koeens_fejer_slukker_ikke_de_andre_fejere(monkeypatch):
+    """Egen try/except: en fejl i køen må ikke gøre godkendelsesfejningen tavs."""
+    monkeypatch.setattr("core.services.proactive_candidates.expire_stale",
+                        lambda **k: (_ for _ in ()).throw(RuntimeError("db nede")))
+    aid = "a-koe-fejl"
+    B.request(aid, tool_name="gmail_send", arguments={"til": "x"}, run_id="r1", session_id="s1")
+    r = D.tick_approval_expiry_daemon(now=datetime.now(UTC) + timedelta(hours=2))
+    assert r["fejet"] is True
+    assert r["udloebne_kandidater"] == -1          # «kunne ikke køre», ikke «intet at feje»
+    assert _tilstand(aid) == B.EXPIRED             # den anden fejer virkede stadig

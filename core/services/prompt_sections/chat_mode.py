@@ -51,7 +51,7 @@ def _visible_mode_orientation_instruction(*, compact: bool) -> str | None:
             "- Førsteprioritet: svar, forklar, undersøg og rådgiv. Skriv kode når det er dét der bliver spurgt om — ikke som standard.",
             "- Du har web, hukommelse, vejr, nyheder, billeder, matematik og hukommelses-skrivning her. Du har ikke shell, filskrivning eller agent-dispatch; værktøjssættet er allerede skåret ned til det.",
             "- Kode i et svar er til at læse og forstå. Skal den køre, ændre filer eller bygge noget, hører opgaven i code mode.",
-            "- Mangler en opgave evner du ikke har her: sig det kort og peg på code mode. Forsøg ikke at løse den med det du har.",
+            "- Peg kun på code mode når opgaven reelt kræver en capability du mangler, fx at køre kode eller ændre filer. En read-only undersøgelse hører stadig til her, når dine chat-værktøjer kan bære den; brug dem fuldt ud.",
         ]
         if compact:
             lines = [lines[0], lines[1], lines[4]]

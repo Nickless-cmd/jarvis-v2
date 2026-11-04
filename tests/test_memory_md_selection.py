@@ -63,6 +63,21 @@ def test_selects_matching_section_with_heading(ws):
     assert "env_override" in lines[0]
 
 
+def test_selected_heading_is_recorded_as_durable_usage(monkeypatch, ws):
+    recorded: list[tuple[str, list[str]]] = []
+    monkeypatch.setattr(
+        "core.services.memory_hygiene.record_section_selections",
+        lambda workspace, headings: recorded.append((workspace, list(headings))),
+    )
+
+    lines = select_memory_md_sections(
+        "hvor ligger pfsense api nøglen?", workspace_dir=ws, max_sections=1,
+    )
+
+    assert lines
+    assert recorded == [(ws.name, ["pfSense nøgle"])]
+
+
 def test_sections_are_deduped_by_heading_and_capped(ws):
     lines = select_memory_md_sections(
         "pfsense nøgle env_override python-dotenv", workspace_dir=ws, max_sections=3, max_chars=120,

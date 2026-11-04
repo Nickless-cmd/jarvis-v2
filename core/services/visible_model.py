@@ -24,6 +24,7 @@ from core.services.non_visible_lane_execution import (  # noqa: F401
     fetch_github_copilot_models,
 )
 from core.services.prompt_contract import build_visible_chat_prompt_assembly
+from core.services.prompt_dynamic_tail_layout import move_query_memory_to_tail_end
 from core.services.run_message_provenance import (
     current_message_for_model, current_run_source_notice,
 )
@@ -486,6 +487,7 @@ def _build_visible_input(
     dynamic_tail = build_chat_mode_dynamic_tail(
         dynamic_tail, message=message, session_id=session_id,
     )
+    dynamic_tail = move_query_memory_to_tail_end(dynamic_tail)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:
@@ -608,6 +610,7 @@ def _build_visible_chat_messages_for_github(
     dynamic_tail = build_chat_mode_dynamic_tail(
         dynamic_tail, message=message, session_id=session_id,
     )
+    dynamic_tail = move_query_memory_to_tail_end(dynamic_tail)
     model_message = current_message_for_model(message)
     source_notice = current_run_source_notice()
     if source_notice:

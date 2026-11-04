@@ -1,9 +1,8 @@
 """Tests for runtime contract candidate workflow.
 
-Dækker eligibility-gates for auto-apply af MEMORY.md candidates.
-Tilføjet 2026-06-09 ifm. åbning af gate'en for high-confidence
-single_session_pattern proposals (98% af proposed candidates var
-gated bort fra dette specifikke filter).
+Dækker eligibility-gates for auto-apply af MEMORY.md candidates. Generiske
+single-session og runtime-afledte facts bliver i review; kun eksplicitte
+brugerudsagn og den lille navngivne whitelist kan auto-skrives.
 """
 from __future__ import annotations
 
@@ -26,14 +25,11 @@ def _make_candidate(**overrides):
     return base
 
 
-def test_high_confidence_single_session_pattern_is_eligible(monkeypatch) -> None:
-    """2026-06-09 fix: åbnede gate for høj-confidence single_session_pattern."""
+def test_high_confidence_single_session_pattern_stays_in_review(monkeypatch) -> None:
+    """Høj confidence gør ikke et enkelt sessionsmønster til varig identitet."""
     from core.identity.candidate_workflow import _memory_candidate_eligible_for_auto_apply
     from core.identity import candidate_workflow
 
-    # Stub readiness — single_session_pattern proposals returnerer factual-memory
-    # via _with_apply_readiness, men selve gate'n tjekker ikke readiness for
-    # disse — duplicate-check er den eneste yderligere gate.
     monkeypatch.setattr(
         candidate_workflow,
         "candidate_apply_readiness",
@@ -46,6 +42,28 @@ def test_high_confidence_single_session_pattern_is_eligible(monkeypatch) -> None
     )
 
     candidate = _make_candidate()
+    assert _memory_candidate_eligible_for_auto_apply(candidate) is False
+
+
+def test_explicit_user_fact_is_eligible(monkeypatch) -> None:
+    from core.identity.candidate_workflow import _memory_candidate_eligible_for_auto_apply
+    from core.identity import candidate_workflow
+
+    monkeypatch.setattr(
+        candidate_workflow,
+        "candidate_apply_readiness",
+        lambda c: {"apply_readiness": "medium", "apply_reason": "factual-memory"},
+    )
+    monkeypatch.setattr(
+        candidate_workflow,
+        "list_runtime_contract_candidates",
+        lambda **kwargs: [],
+    )
+
+    candidate = _make_candidate(
+        source_kind="user-explicit",
+        evidence_class="explicit_user_statement",
+    )
     assert _memory_candidate_eligible_for_auto_apply(candidate) is True
 
 

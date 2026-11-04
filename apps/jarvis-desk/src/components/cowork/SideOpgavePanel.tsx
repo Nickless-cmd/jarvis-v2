@@ -20,7 +20,11 @@ import type { ApiConfig } from '../../lib/api'
 const STATUS_TEKST: Record<string, string> = {
   pending: 'Venter',
   queued: 'I kø',
-  activated: 'I gang',
+  activated: 'Starter',
+  running: 'Kører',
+  paused: 'Pauset',
+  blocked: 'Blokeret',
+  failed: 'Fejlet',
   completed: 'Færdig',
   dismissed: 'Fjernet',
 }
@@ -89,7 +93,7 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
   }
 
   if (opgaver === null && !fejl && !henteFejl) return <p className="settings-hint">Henter…</p>
-  const aabne = (opgaver ?? []).filter((t) => t.status === 'pending' || t.status === 'queued' || t.status === 'activated')
+  const aabne = (opgaver ?? []).filter((t) => t.status !== 'completed' && t.status !== 'dismissed')
   const lukkede = (opgaver ?? []).filter((t) => t.status === 'completed' || t.status === 'dismissed')
 
   return (
@@ -119,7 +123,9 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
             </p>
             {t.bevis ? <p className="sop-bevis">Bevis: {t.bevis}</p> : null}
             {t.dismiss_reason ? <p className="sop-bevis">Grund: {t.dismiss_reason}</p> : null}
-            {t.status === 'pending' || t.status === 'queued' || t.status === 'activated' ? (
+            {t.state_reason ? <p className="sop-bevis">Status: {t.state_reason}</p> : null}
+            {t.current_step ? <p className="sop-bevis">Seneste trin: {t.current_step}</p> : null}
+            {t.status !== 'completed' && t.status !== 'dismissed' ? (
               lukker?.id === t.side_task_id ? (
                 <div className="sop-lukform">
                   <label className="sop-luklabel" htmlFor={`sop-begrundelse-${t.side_task_id}`}>
@@ -149,8 +155,8 @@ export function SideOpgavePanel({ config }: { config?: ApiConfig }) {
                       stående men deaktiveret, så det ses HVORFOR den ikke kan
                       bruges i stedet for at funktionen ser ud til at mangle. */}
                   <button type="button" className="sop-rediger"
-                          disabled={travl === t.side_task_id || t.status === 'activated'}
-                          title={t.status === 'activated'
+                          disabled={travl === t.side_task_id || t.status === 'activated' || t.status === 'running'}
+                          title={t.status === 'activated' || t.status === 'running'
                             ? 'Et run læser opgaven lige nu — den kan ikke ændres under det'
                             : 'Ret titel, beskrivelse, autonomi eller budget'}
                           onClick={() => setRedigerer(t)}>Redigér</button>

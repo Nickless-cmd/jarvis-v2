@@ -51,8 +51,39 @@ def test_should_reach_owner_ok():
 def test_build_digest_and_urgent_contain_text():
     d = pb.build_digest([_cand(text="ryd op i cachen"), _cand(text="spørg om X", source_id="b")])
     assert "ryd op i cachen" in d and "spørg om X" in d and d.strip()
+    assert "tænkte jeg på" not in d
+    assert d.count("[initiative_queue/initiative]") == 2
     u = pb.build_urgent(_cand(text="noget vigtigt"))
     assert "noget vigtigt" in u and u.strip()
+
+
+def test_digest_baerer_kildetype_for_hvert_punkt():
+    d = pb.build_digest([
+        _cand(kind="initiative", text="Kør git log"),
+        {**_cand(kind="outreach", text="Følg op", source_id="b"),
+         "source": "proactive_candidates"},
+    ])
+    bullets = [line for line in d.splitlines() if line.strip().startswith("•")]
+    assert bullets == [
+        "  • [initiative_queue/initiative] Kør git log",
+        "  • [proactive_candidates/outreach] Følg op",
+    ]
+
+
+def test_existential_wonder_kommer_ikke_i_fravaers_digest(monkeypatch):
+    monkeypatch.setattr(
+        "core.services.initiative_queue.get_pending_initiatives", lambda: [],
+    )
+    monkeypatch.setattr(
+        "core.services.proactive_candidates.bridge_candidates", lambda _uid: [],
+    )
+    monkeypatch.setattr(pb, "_owner_uid", lambda: "owner")
+    monkeypatch.setattr(
+        "core.services.existential_wonder_daemon.get_latest_wonder",
+        lambda: "Hvem er jeg, når ingen ser?",
+    )
+
+    assert pb.collect_candidates() == []
 
 
 def test_digest_is_repeat_detects_last_identical(monkeypatch):

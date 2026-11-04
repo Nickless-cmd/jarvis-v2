@@ -139,7 +139,25 @@ def _evaluate_producer(
     for dep in spec.depends_on:
         if dep in ran_this_tick:
             continue
+        # DEN HOLDBARE TILSTAND ER AUTORITETEN — ogsaa her (5/11-2026).
+        # Cooldown-grenen nedenfor læser `cadence_claims` som fallback, men
+        # DENNE gren læste kun `_last_run_at`, som er en hukommelses-ordbog der
+        # tømmes ved genstart. Maalt 4/11-2026: efter en genstart stod 12
+        # producers i hele indre-liv-kæden (sleep_consolidation, witness_daemon,
+        # inner_voice_daemon, dream_articulation, self_critique_runtime,
+        # ontological_revision, dream_distillation, creative_journal, finitude
+        # …) permanent som `dependency-not-met:brain_continuity`, selv om
+        # brain_continuity HAVDE et holdbart claim fra 15:49 samme dag. Kæden
+        # kunne derfor kun åbne i det ene tick efter opstart hvor forælder og
+        # barn tilfældigvis var due samtidig — altsaa reelt aldrig.
         _dep_last = _last_run_at.get(dep)
+        try:
+            from core.services.cadence_claims import last_success_at as _holdbar_dep
+            _dep_vedvarende = _holdbar_dep(dep)
+            if _dep_vedvarende and (not _dep_last or _dep_vedvarende > _dep_last):
+                _dep_last = _dep_vedvarende
+        except Exception:
+            pass  # kan vi ikke laese den, gaelder cachen
         if not _dep_last:
             return "blocked", f"dependency-not-met:{dep}"
         try:
@@ -612,6 +630,52 @@ def run_cadence_tick(
 
     _last_tick_at = now_iso
     _last_tick_results = results
+
+    # Beslutningsjournal (5/11-2026). Indtil nu levede tick'ets fravalg kun i
+    # `_last_tick_results` — en liste der overskrives ved næste tick. En
+    # producer der ALDRIG blev kørt efterlod derfor præcis ét spor: et
+    # manglende claim, fordi `note_producer_ran` kun skrives i succesgrenen.
+    # «Hvorfor kørte min selvmodel ikke i går?» kunne kun besvares med
+    # simulation — og simulationen brugte hverken `visible_grace` eller den
+    # faktiske `last_visible_at`, så den «beviste» noget om forhold der ikke
+    # ligner driften. Nu skrives hver beslutning, også fravalget.
+    # Self-safe: en journal må aldrig vælte cadencen der kalder den.
+    try:
+        from core.runtime.db_cadence_journal import record_cadence_decisions
+
+        _journal: list[dict[str, object]] = []
+        for _r in results:
+            _spec = _producers.get(_r.name)
+            _due_since = ""
+            # Kun meningsfuldt for det der IKKE blev kørt: «hvornår blev den
+            # klar?» = sidste kørsel + cooldown. For en kørt producer ville
+            # det være nu + cooldown, altså ikke en ventetid.
+            if _r.status != "ran" and _spec is not None:
+                _sidste = _last_run_at.get(_r.name, "")
+                if _sidste:
+                    try:
+                        _due_since = (
+                            datetime.fromisoformat(_sidste)
+                            + timedelta(minutes=float(_spec.cooldown_minutes))
+                        ).isoformat()
+                    except (ValueError, TypeError):
+                        _due_since = ""
+            _journal.append({
+                "producer": _r.name,
+                "status": _r.status,
+                "reason": _r.reason,
+                "priority": int(_spec.priority) if _spec is not None else 0,
+                "due_since": _due_since,
+                "last_visible_at": last_visible_at_iso,
+            })
+        record_cadence_decisions(
+            _journal,
+            tick_id=now_iso,
+            dispatch_budget=_MAX_DISPATCHES_PER_TICK,
+            now=now,
+        )
+    except Exception:
+        logger.debug("cadence-journal kunne ikke skrives", exc_info=True)
 
     # Observability event
     event_bus.publish(

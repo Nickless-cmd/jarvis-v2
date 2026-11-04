@@ -168,6 +168,8 @@ def _db_pool() -> dict:
     jarvis.db-forbindelse, hvor mange er født/død i alt, og hvor mange poster er
     `orphaned` (ejer-tråden er død, forbindelsen aldrig lukket). Sidstnævnte er den
     eneste klasse der kan vokse monotont over dage og ende i fd-udmattelse.
+    `pooled_live` er det ægte antal ejede forbindelser; `pooled` er bogholderiets
+    størrelse og stiger også når intet er galt.
 
     Tællerne er PROCES-LOKALE, så dette er runtime-processens tal når routen kaldes
     på 8011. Api-processens egne tal læses direkte af `/central/db-pool`.

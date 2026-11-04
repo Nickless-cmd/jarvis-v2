@@ -9,14 +9,29 @@ saa kaldere og tests der importerer dem derfra virker som foer.
 from __future__ import annotations
 
 import logging
+import time
 
 LOGGER = logging.getLogger(__name__)
+
+_CENTRAL_NOTICES_CACHE_TTL_S = 60.0
+_CENTRAL_NOTICES_CACHE: tuple[float, str | None] | None = None
+
+
+def _clear_central_notices_cache() -> None:
+    """Test/operatør-søm: næste læsning henter et nyt incident-snapshot."""
+    global _CENTRAL_NOTICES_CACHE
+    _CENTRAL_NOTICES_CACHE = None
 
 
 def _central_notices_section() -> str | None:
     """Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem
     ntfy'er Centralen), IKKE low (dem er trace-only). Kompakt: max 3, max 1 pr. nerve.
     Returnerer None (tom sektion) når ingen notices → brænder 0 tokens. Selv-sikker."""
+    global _CENTRAL_NOTICES_CACHE
+    now = time.monotonic()
+    if (_CENTRAL_NOTICES_CACHE is not None
+            and now - _CENTRAL_NOTICES_CACHE[0] < _CENTRAL_NOTICES_CACHE_TTL_S):
+        return _CENTRAL_NOTICES_CACHE[1]
     try:
         from core.runtime.db_central_incidents import list_central_incidents
         incidents = list_central_incidents(unresolved_only=True, limit=40)
@@ -26,6 +41,7 @@ def _central_notices_section() -> str | None:
             and str(i.get("kind")) != "fail_open"        # ikke sikkerhed
         ]
         if not medium:
+            _CENTRAL_NOTICES_CACHE = (now, None)
             return None
         seen: set[str] = set()
         lines: list[str] = []
@@ -38,8 +54,11 @@ def _central_notices_section() -> str | None:
             if len(lines) >= 3:
                 break
         if not lines:
+            _CENTRAL_NOTICES_CACHE = (now, None)
             return None
-        return "[CENTRAL-NOTICE] medium:\n" + "\n".join(lines)
+        section = "[CENTRAL-NOTICE] medium:\n" + "\n".join(lines)
+        _CENTRAL_NOTICES_CACHE = (now, section)
+        return section
     except Exception:
         return None  # selv-sikker: crash = tom sektion, ikke crashet prompt
 

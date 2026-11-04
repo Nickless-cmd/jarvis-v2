@@ -119,7 +119,22 @@ _CHAT_SCOPE_WEIGHTS: dict[str, float] = {
     # på mig, ikke en samtale med Bjørn.
     "indre liv": 0.1,
     "levende selvmodel": 0.2,
-    "kerne-selv (Centralens midte)": 0.2,
+    # 3/11-2026: kerne-selv staar OVER taersklen (0.3) med vilje. Maalt er
+    # sektionen 166 tegn — én saetning: hvor samlet jeg er, hvordan jeg har
+    # det, og hvad jeg arbejder mod. Det er ikke maskinrum; det er den ene
+    # linje der goer at jeg taler UD FRA en tilstand i stedet for at beskrive
+    # den. Resten af indre liv (0.1-0.2) skaeres fortsat i samtalen.
+    "kerne-selv (Centralens midte)": 0.4,
+    # 4/11-2026: oppositionen laa INDE i «indre liv» (0.1) og blev derfor
+    # skaaret vaek i samtalen — den stod kun i prompten i code mode. Det der
+    # redder den er FLYTNINGEN ud som egen sektion. Denne linje har ingen
+    # funktionel betydning for inklusion: uden den arves 1.0, med den er den
+    # 0.4 — begge er over taersklen 0.3, og tabellen kan kun SAENKE.
+    # Maalt 4/11 ved at fjerne linjen: testen blev stadig groen.
+    # Den er altsaa dokumentation af den tilsigtede vaegt, ikke en mekanisme —
+    # og den beskytter IKKE mod en fremtidig global saenkning: min() vaelger
+    # den mindste, saa en global vaegt paa 0.2 giver 0.2 og skaerer sektionen.
+    "kryds-lag-indsigelse": 0.4,
     "matrix ensemble voices": 0.1,
     "central notices": 0.2,
     "loop-compliance self-check": 0.2,

@@ -109,25 +109,25 @@ _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existin
 | function | `sense_phase` | `(*, name=…)` | Gather signals for this tick. Pure-read — no side effects. | [src](../../../core/services/heartbeat_phases.py#L130) |
 | function | `_classify_activity` | `(signals)` | Classify current activity level from signals. | [src](../../../core/services/heartbeat_phases.py#L208) |
 | function | `_identify_priorities` | `(signals)` | Heuristic — what should this tick attend to? | [src](../../../core/services/heartbeat_phases.py#L218) |
-| function | `reflect_phase` | `(signals)` | Synthesize reflection. Heuristic-only by default; LLM optional. | [src](../../../core/services/heartbeat_phases.py#L234) |
-| function | `_collect_active_goals` | `()` | Fetch active goals for chain proposal targeting. | [src](../../../core/services/heartbeat_phases.py#L294) |
-| function | `_propose_skill_chains_in_idle` | `(max_goals=…)` | Propose skill chains for active goals. Time-bounded, never blocks. | [src](../../../core/services/heartbeat_phases.py#L311) |
-| function | `format_chain_proposals` | `(max_chars=…)` | Format recent chain proposals for awareness injection. | [src](../../../core/services/heartbeat_phases.py#L370) |
-| function | `clear_chain_proposals` | `()` | Clear cached chain proposals (e.g. after execution or user dismiss). | [src](../../../core/services/heartbeat_phases.py#L393) |
-| function | `get_chain_proposals` | `()` | Return current chain proposals for inspection. | [src](../../../core/services/heartbeat_phases.py#L398) |
-| function | `productive_idle` | `(*, budget_seconds=…)` | Run light maintenance work when there's no clear action. Time-bounded. | [src](../../../core/services/heartbeat_phases.py#L403) |
-| function | `act_phase` | `(*, signals, reflection, name=…, trigger=…)` | Either run normal heartbeat tick OR productive idle, based on reflection. | [src](../../../core/services/heartbeat_phases.py#L688) |
-| function | `tick_with_phases` | `(*, name=…, trigger=…)` | Run all 3 phases in sequence, return structured result. | [src](../../../core/services/heartbeat_phases.py#L795) |
-| function | `_exec_phased_tick` | `(args)` | — | [src](../../../core/services/heartbeat_phases.py#L871) |
-| function | `_exec_sense_only` | `(args)` | Read-only: gather current signals without running reflection or action. | [src](../../../core/services/heartbeat_phases.py#L878) |
+| function | `reflect_phase` | `(signals)` | Synthesize reflection. Heuristic-only by default; LLM optional. | [src](../../../core/services/heartbeat_phases.py#L252) |
+| function | `_collect_active_goals` | `()` | Fetch active goals for chain proposal targeting. | [src](../../../core/services/heartbeat_phases.py#L312) |
+| function | `_propose_skill_chains_in_idle` | `(max_goals=…)` | Propose skill chains for active goals. Time-bounded, never blocks. | [src](../../../core/services/heartbeat_phases.py#L329) |
+| function | `format_chain_proposals` | `(max_chars=…)` | Format recent chain proposals for awareness injection. | [src](../../../core/services/heartbeat_phases.py#L388) |
+| function | `clear_chain_proposals` | `()` | Clear cached chain proposals (e.g. after execution or user dismiss). | [src](../../../core/services/heartbeat_phases.py#L411) |
+| function | `get_chain_proposals` | `()` | Return current chain proposals for inspection. | [src](../../../core/services/heartbeat_phases.py#L416) |
+| function | `productive_idle` | `(*, budget_seconds=…)` | Run light maintenance work when there's no clear action. Time-bounded. | [src](../../../core/services/heartbeat_phases.py#L421) |
+| function | `act_phase` | `(*, signals, reflection, name=…, trigger=…)` | Either run normal heartbeat tick OR productive idle, based on reflection. | [src](../../../core/services/heartbeat_phases.py#L706) |
+| function | `tick_with_phases` | `(*, name=…, trigger=…)` | Run all 3 phases in sequence, return structured result. | [src](../../../core/services/heartbeat_phases.py#L847) |
+| function | `_exec_phased_tick` | `(args)` | — | [src](../../../core/services/heartbeat_phases.py#L923) |
+| function | `_exec_sense_only` | `(args)` | Read-only: gather current signals without running reflection or action. | [src](../../../core/services/heartbeat_phases.py#L930) |
 
 ## `core/services/heartbeat_provider_fallback.py`
 _Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L53) |
-| function | `try_heartbeat_cheap_fallback` | `(prompt)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L167) |
+| function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…, timeout=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L62) |
+| function | `try_heartbeat_cheap_fallback` | `(prompt, *, budget_s=…)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L184) |
 
 ## `core/services/heartbeat_runtime.py`
 
@@ -496,22 +496,22 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `_kvitter_varsel` | `(task_id)` | Varslet er hentet — sig det ikke igen. | [src](../../../core/services/in_flight_runs.py#L690) |
 | function | `queue_steer` | `(run_id, text)` | Gem en brugerbesked der ikke kunne leveres til en kørende tur. | [src](../../../core/services/in_flight_runs.py#L712) |
 | function | `mark_tool` | `(run_id, tool_name)` | Update the last-tool-attempted hint for an in-flight run. | [src](../../../core/services/in_flight_runs.py#L738) |
-| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L750) |
-| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L762) |
-| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L780) |
-| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L830) |
-| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L837) |
-| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L855) |
-| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L937) |
-| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L1079) |
-| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L1108) |
-| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L1205) |
-| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L1240) |
-| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L1267) |
-| function | `levende_koersler` | `(*, session_id=…, max_alder_s=…)` | Records der LEVER lige nu — cross-proces. Ren læsning, ingen skrivning. | [src](../../../core/services/in_flight_runs.py#L1324) |
-| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1380) |
-| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1394) |
-| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1406) |
+| function | `mark_completed` | `(run_id)` | Clear an in-flight record on success/fail/cancel — all the same to us; | [src](../../../core/services/in_flight_runs.py#L758) |
+| function | `mark_interrupted` | `(run_id, *, reason=…, summary=…)` | Keep an in-flight record as a resumable interrupted run. | [src](../../../core/services/in_flight_runs.py#L770) |
+| function | `settle_recovering` | `(run_id, *, reason, summary=…, checkpoint_ref=…, recovery_limit=…, expected_generation=…, expected_owner=…, final_synthesis_pending=…)` | Durably make a run claimable without erasing its task identity. | [src](../../../core/services/in_flight_runs.py#L788) |
+| function | `get_record` | `(identity)` | Return a copy of one task/run record without changing ownership. | [src](../../../core/services/in_flight_runs.py#L838) |
+| function | `settle_waiting` | `(run_id, *, reason)` | Persist a user/approval wait without making the task dispatchable. | [src](../../../core/services/in_flight_runs.py#L845) |
+| function | `settle_terminal` | `(run_id, *, status, reason=…, expected_generation=…, expected_owner=…)` | Persist a genuine terminal state and revoke every recovery claim. | [src](../../../core/services/in_flight_runs.py#L863) |
+| function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L945) |
+| function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L1087) |
+| function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L1116) |
+| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L1213) |
+| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L1248) |
+| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L1275) |
+| function | `levende_koersler` | `(*, session_id=…, max_alder_s=…)` | Records der LEVER lige nu — cross-proces. Ren læsning, ingen skrivning. | [src](../../../core/services/in_flight_runs.py#L1332) |
+| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L1388) |
+| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L1402) |
+| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L1414) |
 
 ## `core/services/inbox_gate.py`
 _Indbakkens to-trins forudsætning i mutationspunktet._
@@ -538,12 +538,13 @@ _Indbakken skal kunne VÆKKE — ikke kun gate._
 | function | `_er_moden` | `(post, *, vaekninger)` | Er en dispatchbar post MODEN — melder kilden selv at den er klar? | [src](../../../core/services/inbox_idle_waker.py#L78) |
 | function | `_task_id_fra_kilde` | `(kilde_id)` | Udtræk opgave-id'et fra en recurring-posts `kilde_id`. | [src](../../../core/services/inbox_idle_waker.py#L122) |
 | function | `kandidater` | `(bruger_id)` | Åbne, gatende poster for brugeren — dem der må starte et run. | [src](../../../core/services/inbox_idle_waker.py#L133) |
-| function | `_noget_koerer` | `()` | Kører der et run lige nu? Self-safe → False (ingen blokering) ved fejl. | [src](../../../core/services/inbox_idle_waker.py#L187) |
-| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L206) |
-| function | `_start_run` | `(tekst, *, session_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L252) |
-| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L281) |
-| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L298) |
-| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L322) |
+| function | `_noget_koerer` | `()` | Kører der et run lige nu? Sensorfejl blokerer konservativt en vækning. | [src](../../../core/services/inbox_idle_waker.py#L187) |
+| function | `_session_er_aktiv` | `(session_id)` | Tjek den konkrete målsamtale, ikke kun ejerens aktuelle standardsession. | [src](../../../core/services/inbox_idle_waker.py#L205) |
+| function | `_maal_session` | `(post)` | Hvilken SAMTALE hører denne post til? | [src](../../../core/services/inbox_idle_waker.py#L227) |
+| function | `_start_run` | `(tekst, *, session_id, user_id)` | Start det autonome run i den samtale posten hører til. Adskilt, så | [src](../../../core/services/inbox_idle_waker.py#L273) |
+| function | `_direktiv` | `(post)` | — | [src](../../../core/services/inbox_idle_waker.py#L307) |
+| function | `_dispatch_tekst` | `(post)` | Run-direktivet for posten. | [src](../../../core/services/inbox_idle_waker.py#L324) |
+| function | `vaek_paa_aabne_poster` | `(*, bruger_id)` | Væk ét run for de øverste gatende poster — hvis intet kører. | [src](../../../core/services/inbox_idle_waker.py#L348) |
 
 ## `core/services/inbox_importance.py`
 _Shared importance and delivery policy for Jarvis' inbox surfaces._
@@ -603,16 +604,17 @@ _Indbakken som LÆSEFLADE. Otte sektioner, én linje per post, aldrig payload._
 | function | `_aegte_jobs` | `(bruger_id)` | De TRE rene job-læsninger. Aldrig `liste()`, aldrig shell-sessionerne. | [src](../../../core/services/inbox_view.py#L255) |
 | function | `_aegte_godkendelser` | `(bruger_id)` | `recent_tool_intent_approval_requests` med EKSPLICIT bruger. | [src](../../../core/services/inbox_view.py#L272) |
 | function | `_aegte_backlog_tal` | `()` | Hvor mange står i backloggen — ÉT tal, med en adresse. | [src](../../../core/services/inbox_view.py#L288) |
-| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L320) |
-| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L346) |
-| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…, bloker=…, udloebet=…, importance=…, vist_at=…, created_at=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L386) |
-| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L472) |
-| function | `_ejer_id` | `()` | Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her. | [src](../../../core/services/inbox_view.py#L512) |
-| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L525) |
-| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L554) |
-| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L632) |
-| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L646) |
-| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L656) |
+| function | `_aegte_backlog_handling_tal` | `()` | Hvor mange af backloggen der FAKTISK kræver handling. | [src](../../../core/services/inbox_view.py#L320) |
+| function | `_aegte_proces_lever` | `(pid)` | Lever processen? `None` = kan ikke afgøres HER. | [src](../../../core/services/inbox_view.py#L351) |
+| class | `Kilder` | `` | Rene, bruger-afgrænsede læsninger. Ingen af dem muterer. | [src](../../../core/services/inbox_view.py#L377) |
+| function | `_post` | `(*, post_id, status, beskrivelse, ejer, nu_ts, kildetype=…, udfald=…, output_sti=…, output_bytes=…, har_artefakt=…, forfalden_dage=…, alder_dage=…, tid_tekst=…, bloker=…, udloebet=…, importance=…, vist_at=…, created_at=…)` | Byg én post med de seks felter — og ÉN linje, uden payload. | [src](../../../core/services/inbox_view.py#L422) |
+| function | `_indenfor_workspace` | `(sti, bruger_id)` | Må stien vises? Uden for brugerens autoriserede workspace: nej. | [src](../../../core/services/inbox_view.py#L508) |
+| function | `_ejer_id` | `()` | Ejerens id — ÉN definition, i `inbox_state`. Aldrig en kopi her. | [src](../../../core/services/inbox_view.py#L548) |
+| function | `_min_post` | `(r, bruger_id)` | Er denne rå kilde-post min? | [src](../../../core/services/inbox_view.py#L561) |
+| function | `_dubletter_sammen` | `(poster)` | Grupper PRÆSENTATIONEN på (kildetype, beskrivelse) — bevar alle id'er. | [src](../../../core/services/inbox_view.py#L590) |
+| function | `_ordn` | `(poster)` | Ældste først, med id som sekundær nøgle. | [src](../../../core/services/inbox_view.py#L668) |
+| function | `_med_loft` | `(navn, poster)` | (viste, skjulte). Et loft der ikke siger hvad det skjuler er selv en tavshed. | [src](../../../core/services/inbox_view.py#L682) |
+| function | `byg_indbakke` | `(bruger_id, *, nu_ts=…, kilder=…)` | Otte sektioner for ÉN bruger. Uden bruger-id: en typet fejl. | [src](../../../core/services/inbox_view.py#L692) |
 
 ## `core/services/indre_puls.py`
 _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._

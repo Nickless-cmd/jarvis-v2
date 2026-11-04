@@ -1,6 +1,7 @@
 """Unit tests for agent_self_evaluation."""
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -14,108 +15,334 @@ from core.services.agent_self_evaluation import (
 )
 
 
-def _fake_tick(act_kind="productive_idle", priorities=None, actions=None, elapsed_ms=1000):
+def _fake_tick(
+    act_kind="productive_idle",
+    priorities=None,
+    actions=None,
+    elapsed_ms=1000,
+    koert=30,
+    fejlet=0,
+    action_status=None,
+    action_type=None,
+    blocked_reason="",
+    **signals,
+):
+    """Et tick-resultat med samme form som ``tick_with_phases`` returnerer.
+
+    3/11-2026 (Codex' indvending): fixturen gav `tick_dispatched` en `actions`-
+    liste, men den ægte dispatch-gren returnerer kun `tick_status` — så testen
+    beviste en datastruktur produktionen aldrig leverer. Formen herunder er
+    målt i `heartbeat_runtime_ticks`: `action_status`, `action_type`,
+    `action_summary`, `decision_type`, `blocked_reason`.
+    """
+    sense = {
+        "mood_name": "x", "active_goals": [], "events_last_hour": 0,
+        "context_pressure_level": "comfortable", "errors_last_hour": 0,
+        "failed_verifies": 0, "unverified_mutations": 0,
+    }
+    sense.update(signals)
+    if act_kind in ("tick_dispatched", "tick_blocked_then_idle"):
+        # Dispatch-formen: outcome i `result`, ingen `actions`.
+        result = {
+            "tick_status": "ok",
+            "action_status": action_status if action_status is not None else "executed",
+            "action_type": action_type if action_type is not None else "ping",
+            "action_summary": "",
+            "decision_type": "",
+            "blocked_reason": blocked_reason,
+        }
+    else:
+        result = {"actions": actions or []}
     return {
         "elapsed_ms": elapsed_ms,
+        "indre_daemoner": {"koert": koert, "fejlet": fejlet, "brugere": 1},
         "phases": {
-            "sense": {
-                "mood_name": "x", "active_goals": [], "events_last_hour": 0,
-                "context_pressure_level": "comfortable", "errors_last_hour": 0,
-            },
+            "sense": sense,
             "reflect": {"priorities": priorities or []},
-            "act": {
-                "kind": act_kind,
-                "result": {"actions": actions or []},
-            },
+            "act": {"kind": act_kind, "result": result},
         },
     }
 
 
-# 2026-09-05: scoringen måler nu SPOR, ikke form. De tre tests herunder holdt
-# tidligere fast i formen (havde slaget priorities? hvor mange handlinger?), og
-# netop den form gav 70 til 199 af 200 slag. Et slag med priorities der ikke
-# efterlader noget, skal kunne score lavt — det er hele pointen.
+# 3/11-2026 (aften): spor-leddet blev fjernet. Det læste `events` globalt, men
+# tabellen har ingen kolonne der binder et event til det slag der målte det —
+# målt: 17.860 af 48.821 events i ét vindue kom fra én forgetting-daemon. Et
+# slag kunne altså score 100 ved at sove mens en baggrundsdaemon arbejdede.
+# Alle led læses nu af `tick_result`. Testene herunder værner det.
+
+_IDLE_HANDLINGER = [
+    "personality_snapshot", "personality_drift_tick", "tick_elapsed",
+    "dreams", "wants", "boredom", "idle_daemon:event_trigger_shadow",
+]
 
 
-def _uden_spor(monkeypatch=None):
-    """Patch spor-opslaget til tomt, så testen ikke afhænger af en levende DB."""
-    return patch("core.services.agent_self_evaluation._trace_kinds_since",
-                 return_value=[])
+def _eval(tick, forrige=None):
+    """Kør scoringen isoleret fra den levende historik."""
+    with patch("core.services.agent_self_evaluation.load_json",
+               return_value=forrige or []), \
+         patch("core.services.agent_self_evaluation.save_json"):
+        return evaluate_tick_quality(tick_result=tick)
 
 
-def _med_spor(*kinds):
-    return patch("core.services.agent_self_evaluation._trace_kinds_since",
-                 return_value=list(kinds))
+def test_tomt_slag_scorer_lavt():
+    """Intet sweep, intet at reagere på, ingen handlinger: kun tiden er sund."""
+    r = _eval(_fake_tick(koert=0, actions=[]))
+    assert "score" in r and "evaluated_at" in r
+    assert r["score"] < 30
 
 
-def test_slag_uden_spor_scorer_lavt():
-    """Ingen handlinger, ingen spor: kun tiden er sund."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick())
-    assert "score" in result and "evaluated_at" in result
-    assert result["score"] < 60
+def test_daemon_sweepet_er_et_led_der_kan_mangle():
+    """Sweepet sker ikke af sig selv — og det skal kunne ses i scoren."""
+    uden = _eval(_fake_tick(koert=0, actions=[]))
+    med = _eval(_fake_tick(koert=30, actions=[]))
+    assert med["score"] > uden["score"]
+    assert any("daemon-sweepet kørte ikke" in n for n in uden["notes"])
 
 
-def test_priorities_alene_giver_ikke_hoej_score():
-    """Den gamle scoring gav +45 for priorities + dispatch uanset udbytte."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick(
-            act_kind="tick_dispatched",
-            priorities=["compact_context", "verify_mutations"],
-            elapsed_ms=2000,
-        ))
-    assert result["score"] < 60, "form uden spor må ikke give høj score"
+def test_daemon_fejl_traekker_ned():
+    """De fejlende daemoner er et ægte kvalitetssignal — ikke pynt."""
+    rent = _eval(_fake_tick(koert=30, fejlet=0, actions=[]))
+    fejl = _eval(_fake_tick(koert=27, fejlet=3, actions=[]))
+    assert fejl["score"] < rent["score"]
+    assert any("3 fejlet" in n for n in fejl["notes"])
 
 
-def test_spor_loefter_scoren():
-    """Samme slag, men denne gang efterlod det noget."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written", "credit_assignment.choice_recorded",
-                   "thought_stream.fragment_generated", "learning_pipeline.cycle_completed",
-                   "runtime.emergent_signal_created", "dream.recorded"):
-        result = evaluate_tick_quality(tick_result=_fake_tick(
-            act_kind="productive_idle",
-            actions=["personality_snapshot", "composite_candidates:2"],
-            elapsed_ms=5000,
-        ))
-    assert result["score"] >= 80
-    assert len(result["trace_kinds"]) == 6
+def test_reaktion_beloenner_kaeden_signal_prioritet_handling():
+    """Kæden skal holdes hele vejen — ellers er prioriteringen teater.
+
+    Bruger den ÆGTE dispatch-form: outcome i `result`, ingen `actions`.
+    """
+    handlede = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="ping"))
+    så_men_uden_handling = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="productive_idle"))
+    uden_prioritet = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=[], action_status="executed", action_type="ping"))
+    assert handlede["score"] > så_men_uden_handling["score"]
+    assert så_men_uden_handling["score"] > uden_prioritet["score"]
+    assert any("dannede ingen prioritet" in n for n in uden_prioritet["notes"])
 
 
-def test_samme_spor_som_sidst_giver_ingen_nyhed():
+def test_dispatch_uden_udfoert_handling_faar_ingen_reaktionspoint():
+    """Kernen i Codex' indvending: et dispatch der ikke udrettede noget må
+    ikke kunne score som et der gjorde. `tick_status=ok` er ikke nok."""
+    udrettede = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="ping"))
+    blokeret = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="blocked", action_type="ping",
+        blocked_reason="active-chat-gate"))
+    kun_idle = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="executed", action_type="productive_idle"))
+    assert udrettede["score"] > blokeret["score"]
+    assert udrettede["score"] > kun_idle["score"]
+    assert any("blokeret" in n for n in blokeret["notes"])
+    assert any("ledig drift" in n for n in kun_idle["notes"])
+
+
+def test_dispatch_med_tom_status_taelles_ikke_som_handling():
+    """Målt i produktion: felterne kan være tomme strenge. Tom status er
+    ikke bevis for at noget skete."""
+    tom = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="", action_type=""))
+    assert any("uden udført handling" in n for n in tom["notes"])
+
+
+def test_afsendt_handling_taelles_som_udfoert():
+    """Codex 3/11-2026: kun `executed` blev godkendt, men målt i
+    heartbeat_runtime_ticks har 681 rækker `action_status="sent"` — heraf 195
+    webchat-heartbeat-ping og 173 discord-heartbeat-ping. En ping der faktisk
+    blev afsendt er en effektueret handling, og blev dømt som resultatløs.
+    """
+    afsendt = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="webchat-heartbeat-ping"))
+    blokeret = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="blocked", action_type="webchat-heartbeat-ping",
+        blocked_reason="active-chat-gate"))
+    assert afsendt["score"] > blokeret["score"]
+    assert any("webchat-heartbeat-ping" in n for n in afsendt["notes"])
+
+
+def test_recorded_er_ikke_en_effektueret_handling():
+    """`recorded` er `recorded-preview` (heartbeat_runtime.py:4474) med TOM
+    `action_type` — intet blev sendt. Husets feedback-domæne i
+    `runtime_operational_memory.py:209` regner den som succes, men dér måles om
+    posten blev REGISTRERET; her måles om handlingen blev EFFEKTUERET.
+    """
+    r = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="recorded", action_type=""))
+    assert any("uden udført handling" in n for n in r["notes"])
+
+
+def test_dispatch_handlingen_foeres_videre_til_nyhed_og_historik():
+    """Codex' anden indvending: `_score_reaktion` dannede den syntetiske
+    dispatch-handling LOKALT, så kalderens liste forblev tom — hvert dispatch
+    blev gemt med `actions: []` og fik 0 nyhedspoint, selv når handlingstypen
+    var ny. Handlingen skal både gemmes og kunne være ny næste gang.
+    """
+    foerste = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="discord-heartbeat-ping"))
+    assert foerste["actions"], "dispatch-handlingen blev ikke gemt i posten"
+
+    forrige = [{
+        "evaluated_at": datetime.now(UTC).isoformat(), "score": 40,
+        "actions": ["dispatch udførte discord-heartbeat-ping"],
+    }]
+    gentaget = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="discord-heartbeat-ping"),
+        forrige=forrige)
+    nyt = _eval(_fake_tick(
+        act_kind="tick_dispatched", failed_verifies=2,
+        priorities=["address_failed_verifications"],
+        action_status="sent", action_type="webchat-heartbeat-proposal"),
+        forrige=forrige)
+    assert nyt["score"] > gentaget["score"], (
+        "en ny handlingstype gav ingen nyhed — handlingen føres ikke videre"
+    )
+
+
+def test_et_ledigt_slag_kan_ikke_laengere_score_90():
+    """Kernen i indvendingen (3/11-2026): et slag der kører den samme runde
+    igen fik 90-100, fordi spor-leddet talte baggrundsstøj. Nu måler nyheds-
+    leddet slagets EGNE handlinger — og de syv gentagne giver nul nyhed.
+    """
+    forrige = [{"evaluated_at": datetime.now(UTC).isoformat(), "score": 90,
+                "actions": list(_IDLE_HANDLINGER)}]
+    r = _eval(_fake_tick(actions=list(_IDLE_HANDLINGER)), forrige=forrige)
+    assert r["score"] <= 70, f"et gentaget ledigt slag scorer {r['score']}"
+    assert any("samme handlinger" in n for n in r["notes"])
+
+
+def test_nye_handlinger_giver_nyhed():
     """Et system der kører den samme runde igen, er ikke produktivt."""
-    forrige = [{"evaluated_at": (datetime.now(UTC) - timedelta(seconds=30)).isoformat(),
-                "score": 40, "trace_kinds": ["memory.written", "dream.recorded"]}]
-    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written", "dream.recorded"):
-        gentaget = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
-    with patch("core.services.agent_self_evaluation.load_json", return_value=forrige), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("noget.helt_nyt", "og_et_til.ogsaa_nyt"):
-        nyt = evaluate_tick_quality(tick_result=_fake_tick(actions=["x"]))
-    assert nyt["score"] > gentaget["score"], "nye spor skal score højere end en gentagelse"
+    forrige = [{"evaluated_at": datetime.now(UTC).isoformat(), "score": 40,
+                "actions": list(_IDLE_HANDLINGER)}]
+    gentaget = _eval(_fake_tick(actions=list(_IDLE_HANDLINGER)), forrige=forrige)
+    nyt = _eval(_fake_tick(actions=["memory.written", "dream.recorded"]),
+                forrige=forrige)
+    assert nyt["score"] > gentaget["score"]
 
 
-def test_haengende_slag_faar_ingen_tidspoint():
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), _uden_spor():
-        result = evaluate_tick_quality(tick_result=_fake_tick(elapsed_ms=200_000))
-    assert any("HANG" in n for n in result["notes"])
+def test_scoringen_laeser_ikke_globale_events():
+    """Selve rettelsen, som AST — en vagt mod at koblingen sniger sig ind igen.
+
+    Målt 3/11-2026: `events` har fire kolonner, og ingen af dem henfører et
+    event til det slag der målte det. Læser scoringen den tabel igen, er
+    scoren tilbage til at måle systemets puls i stedet for slagets arbejde.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from core.services import agent_self_evaluation as ase
+
+    # Vagtens omfang er SCORINGS-STIEN, ikke hele modulet: adhærence-måleren
+    # længere nede læser beslutninger fra DB med rette.
+    for navn in ("evaluate_tick_quality", "_score_daemons", "_score_reaktion",
+                 "_score_novelty", "_previous_eval"):
+        fn = getattr(ase, navn)
+        trae = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+        moduler = set()
+        for n in ast.walk(trae):
+            if isinstance(n, ast.ImportFrom) and n.module:
+                moduler.add(n.module)
+            elif isinstance(n, ast.Import):
+                moduler.update(a.name for a in n.names)
+        assert not any(m.startswith("core.runtime.db") for m in moduler), (
+            f"{navn} importerer databasen igen: {sorted(moduler)}"
+        )
+        sql = [
+            n.value for n in ast.walk(trae)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            and "FROM EVENTS" in n.value.upper()
+        ]
+        assert sql == [], f"{navn} har stadig en SQL der læser events: {sql}"
+    assert not hasattr(ase, "_trace_kinds_since"), (
+        "det globale spor-opslag er tilbage"
+    )
 
 
 def test_posten_gemmer_hvad_slaget_udrettede():
-    """Uden actions/trace_kinds i posten kan nyheds-målingen ikke virke næste gang."""
-    with patch("core.services.agent_self_evaluation.load_json", return_value=[]), \
-         patch("core.services.agent_self_evaluation.save_json"), \
-         _med_spor("memory.written"):
-        result = evaluate_tick_quality(tick_result=_fake_tick(actions=["a", "b"]))
-    assert result["actions"] == ["a", "b"]
-    assert result["trace_kinds"] == ["memory.written"]
-    assert result["window_seconds"] >= 0
+    """Uden handlinger og prioriteter kan nyheds-målingen ikke virke næste gang."""
+    r = _eval(_fake_tick(actions=["a", "b"], priorities=["p1"],
+                         koert=29, fejlet=1))
+    assert r["actions"] == ["a", "b"]
+    assert r["priorities"] == ["p1"]
+    assert r["daemon_koert"] == 29
+    assert r["daemon_fejlet"] == 1
+
+
+def test_haengende_slag_faar_ingen_tidspoint():
+    r = _eval(_fake_tick(elapsed_ms=200_000))
+    assert any("HANG" in n for n in r["notes"])
+
+
+def test_historikken_raekker_til_vinduet():
+    """3/11-2026: 200 poster dækkede 2,2 døgn, så ``days=7``, ``(14)`` og
+    ``(30)`` gav identiske tal — et vindue der ikke kan rumme sin egen etiket.
+    """
+    from core.services import agent_self_evaluation as ase
+
+    assert ase._MAX_TICK_EVALS_KEPT >= 30 * 90, (
+        "loftet skal dække 30 døgn ved ~90 slag i døgnet"
+    )
+
+
+def test_komprimering_bevarer_tal_men_skærer_detaljer():
+    """Ældre poster behøver tal, ikke hvilke handlinger der skrev den gang."""
+    from core.services import agent_self_evaluation as ase
+
+    evals = [
+        {"evaluated_at": f"2026-{1 + i // 28:02d}-{1 + i % 28:02d}T00:00:00+00:00",
+         "score": 80, "actions": ["b"] * 20, "priorities": ["p"] * 10}
+        for i in range(300)
+    ]
+    slim = ase._slim_history(evals)
+
+    assert len(slim) == 300, "ingen poster må forsvinde"
+    assert all(p["score"] == 80 for p in slim), "scoren skal bevares"
+    assert slim[-1]["actions"] and slim[-1]["priorities"], "de nyeste beholder detaljen"
+    assert "actions" not in slim[0], "de ældste skal være skåret"
+    # 3/11-2026: posten er blevet mindre (spor-listen på op til 200 arter er
+    # væk), så den gamle 1/3-tærskel målte noget andet. Halvdelen er grænsen
+    # for at komprimeringen stadig gør sit arbejde.
+    assert len(json.dumps(slim)) < len(json.dumps(evals)) / 2
+
+
+def test_opsummeringen_siger_hvor_langt_historikken_raekker():
+    """Et 30-dages vindue over 2 døgn er en etiket, ikke en måling."""
+    nu = datetime.now(UTC)
+    evals = [{"evaluated_at": (nu - timedelta(hours=h)).isoformat(), "score": 80}
+             for h in range(48)]
+    with patch("core.services.agent_self_evaluation.load_json", return_value=evals):
+        kort = tick_quality_summary(days=30)
+        daekket = tick_quality_summary(days=1)
+
+    assert kort["window_covered"] is False
+    assert "ikke dækket" in kort["coverage_warning"]
+    assert daekket["window_covered"] is True
 
 
 def test_laast_maaling_raabes_op_i_opsummeringen():

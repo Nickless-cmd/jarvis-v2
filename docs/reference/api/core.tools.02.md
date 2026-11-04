@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/graf_tools.py`
+_`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_graf_dir` | `()` | — | [src](../../../core/tools/graf_tools.py#L44) |
+| function | `_exec_vis_graf` | `(args)` | Tegn en graf og laeg den i traaden. Kaster aldrig. | [src](../../../core/tools/graf_tools.py#L49) |
+
 ## `core/tools/health_monitor_tools.py`
 _API health monitor tools — Jarvis can watch services and be notified of outages._
 
@@ -73,10 +81,10 @@ _De tre indbakke-værktøjer: `inbox`, `inbox_done`, `inbox_drop`._
 |---|---|---|---|---|
 | function | `_bruger` | `()` | Den autentificerede bruger. Tom streng når ingen er bundet. | [src](../../../core/tools/inbox_tools.py#L113) |
 | function | `_tekst` | `(v)` | Visningen som ÉN tekst. Tomme sektioner udelades helt. | [src](../../../core/tools/inbox_tools.py#L157) |
-| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L179) |
-| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L202) |
-| function | `_blokeret_for_autonom` | `(post_id, bruger)` | Grund til at NÆGTE en autonom afvisning — ellers tom streng. | [src](../../../core/tools/inbox_tools.py#L222) |
-| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L261) |
+| function | `_exec_inbox` | `(arguments=…, **_kw)` | Hele visningen. Læser; skriver intet. | [src](../../../core/tools/inbox_tools.py#L182) |
+| function | `_exec_inbox_done` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L205) |
+| function | `_blokeret_for_autonom` | `(post_id, bruger)` | Grund til at NÆGTE en autonom afvisning — ellers tom streng. | [src](../../../core/tools/inbox_tools.py#L225) |
+| function | `_exec_inbox_drop` | `(arguments=…, **_kw)` | — | [src](../../../core/tools/inbox_tools.py#L264) |
 
 ## `core/tools/jarvis_brain_tools.py`
 _Visible Jarvis' værktøjer til hjernen._
@@ -569,11 +577,4 @@ _`publish_file` — udskilt enhed, og nu per bruger._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_publish_file` | `(args)` | Copy or create a file in ~/.jarvis-v2/files/ and return a download URL. | [src](../../../core/tools/publish_file_tool.py#L36) |
-
-## `core/tools/py_source_guard.py`
-_py_source_guard — vaern mod en tilbagevendende LLM-skrive-artefakt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `guard_py_escapes` | `(content, path)` | Returnér (evt. rettet content, advarsels-note eller None). Se modul-docstring. | [src](../../../core/tools/py_source_guard.py#L22) |
 

@@ -52,30 +52,6 @@ def _insert_goal(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -
     )
 
 
-def _insert_critic(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -> None:
-    ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
-    db.upsert_runtime_reflective_critic(
-        critic_id=f"critic-{uuid4().hex}",
-        critic_type="development-focus-mismatch",
-        canonical_key=canonical_key,
-        status=status,
-        title="Active focus is not landing yet: Danish concise calibration",
-        summary="Repeated correction still conflicts with the active focus.",
-        rationale="Validation critic",
-        source_kind="focus-mismatch",
-        confidence="high",
-        evidence_summary="critic evidence",
-        support_summary="critic support",
-        support_count=2,
-        session_count=1,
-        created_at=ts.isoformat(),
-        updated_at=ts.isoformat(),
-        status_reason="Validation critic status",
-        run_id="test-run",
-        session_id="test-session",
-    )
-
-
 def _insert_temporal_recurrence(db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0) -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     title = (
@@ -225,20 +201,12 @@ def test_self_review_surface_stays_empty_without_review_worthy_composition(isola
 
 def test_self_review_surface_forms_review_pressure_for_live_loop_and_opposition(isolated_runtime) -> None:
     db = isolated_runtime.db
-    open_loop_tracking = isolated_runtime.open_loop_tracking
-    internal_opposition_tracking = isolated_runtime.internal_opposition_tracking
     tracking = isolated_runtime.self_review_tracking
 
     _insert_focus(
         db,
         canonical_key="development-focus:communication:danish-concise-calibration",
         minutes_ago=30,
-    )
-    _insert_critic(
-        db,
-        canonical_key="reflective-critic:mismatch:development-focus:communication:danish-concise-calibration",
-        status="active",
-        minutes_ago=20,
     )
     _insert_goal(
         db,
@@ -253,15 +221,23 @@ def test_self_review_surface_forms_review_pressure_for_live_loop_and_opposition(
         signal_type="recurring-tension",
         minutes_ago=10,
     )
+    # Grenen kraever open_loop OG aktiv opposition. Maalt 4/11-2026: testen
+    # indsatte en critic som producenten aldrig laeser, og haabede at
+    # track_kaldene selv skabte loop+opposition — det gjorde de ikke, saa
+    # testen maalte en gren den aldrig naaede.
+    _insert_open_loop(
+        db,
+        status="open",
+        signal_type="live-loop",
+        canonical_key="open-loop:live-loop:danish-concise-calibration",
+    )
+    _insert_internal_opposition(
+        db,
+        status="active",
+        signal_type="challenge-direction",
+        canonical_key="internal-opposition:challenge-direction:danish-concise-calibration",
+    )
 
-    open_loop_tracking.track_runtime_open_loop_signals_for_visible_turn(
-        session_id="test-session",
-        run_id="test-run",
-    )
-    internal_opposition_tracking.track_runtime_internal_opposition_signals_for_visible_turn(
-        session_id="test-session",
-        run_id="test-run",
-    )
     tracking.track_runtime_self_review_signals_for_visible_turn(
         session_id="test-session",
         run_id="test-run",

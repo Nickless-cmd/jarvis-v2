@@ -68,13 +68,37 @@ def test_classify_activity_high():
     assert _classify_activity({"tool_invocations_last_hour": 1000}) == "high"
 
 
-def test_priorities_empty_when_calm():
+def test_priorities_calm_with_goals_is_advance_only():
+    """Rolig + aktive mål → kun `advance_goals`.
+
+    Erstatter `test_priorities_empty_when_calm` (3/11-2026). Den gamle test
+    håndhævede at en rolig tilstand UDEN mål gav nul prioriteter — altså at
+    «ingen mål» betød «intet at lave». Præcis den antagelse holdt dispatch-stien
+    fanget: målt gik hvert tik til `productive_idle` i otte timer efter det
+    sidste mål blev abandoned 09:50:27, fordi der ikke var noget der fyrede.
+    """
+    p = _identify_priorities({
+        "failed_verifies": 0, "unverified_mutations": 0,
+        "context_pressure_level": "comfortable",
+        "active_goals": [{"goal_id": "g1", "title": "et mål"}],
+        "errors_last_hour": 0,
+    })
+    assert p == ["advance_goals"]
+
+
+def test_priorities_empty_goal_pool_is_itself_a_priority():
+    """Rolig UDEN mål → `goal_starvation`, ikke tom liste.
+
+    Et tomt mål-loft er et signal om at der skal handles (mål skal oprettes),
+    ikke et bevis på at der intet er at lave. Uden denne gren faldt hele
+    dispatch-stien tilbage til evig tomgang uden at nogen sagde til.
+    """
     p = _identify_priorities({
         "failed_verifies": 0, "unverified_mutations": 0,
         "context_pressure_level": "comfortable", "active_goals": [],
         "errors_last_hour": 0,
     })
-    assert p == []
+    assert p == ["goal_starvation"]
 
 
 def test_priorities_failed_verify_triggers():

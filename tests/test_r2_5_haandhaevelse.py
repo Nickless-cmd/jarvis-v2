@@ -249,3 +249,77 @@ def test_uden_armering_afvises_den_stadig(bus, monkeypatch):
     monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
     _aaben()
     assert h.afvis_mutation("edit_file", {}, nu=NU)
+
+
+# ── Kvittering af adlydelse (3/11-2026) ──────────────────────────────────────
+# Målt: 504 `pending`, 68 `overridden_by_user`, 0 `honored`. `honored` havde nul
+# kaldere i produktion, så tærsklen kunne kun hæves — aldrig sænkes igen.
+
+
+class _FalskConn:
+    """Optager SQL'en og dens parametre, så testen kan se HVAD der blev spurgt."""
+
+    def __init__(self, raekker):
+        self.raekker = raekker
+        self.kald: list[tuple[str, tuple]] = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=()):
+        self.kald.append((" ".join(str(sql).split()), tuple(params)))
+        raekker = self.raekker
+
+        class _Resultat:
+            def fetchall(self):
+                return raekker
+
+        return _Resultat()
+
+
+def test_kig_tilbage_kvitterer_blokeringen_som_honored(bus, monkeypatch):
+    """Blokeringen blev adlydt — så må rækken ikke blive stående `pending`."""
+    conn = _FalskConn([("veto-abc123",), ("veto-def456",)])
+    monkeypatch.setattr("core.runtime.db_core.connect", lambda: conn)
+    resolveret: list[tuple[str, str]] = []
+    monkeypatch.setattr("core.services.veto_gate.resolve_veto_event",
+                        lambda eid, res: resolveret.append((eid, res)))
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
+    _aaben()
+    bus.tool("read_file", efter_s=10)
+    assert h.afvis_mutation("edit_file", {}, nu=NU) is None
+    assert resolveret == [("veto-abc123", "honored"), ("veto-def456", "honored")]
+
+
+def test_en_udloebet_blok_kvitteres_ikke(bus, monkeypatch):
+    """Modstykket: udløb er ikke en adlydelse — vi ved ikke hvad han gjorde."""
+    conn = _FalskConn([("veto-abc123",)])
+    monkeypatch.setattr("core.runtime.db_core.connect", lambda: conn)
+    resolveret: list[tuple[str, str]] = []
+    monkeypatch.setattr("core.services.veto_gate.resolve_veto_event",
+                        lambda eid, res: resolveret.append((eid, res)))
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
+    _aaben()
+    assert h.afvis_mutation("edit_file", {}, nu=T0 + timedelta(minutes=11)) is None
+    assert resolveret == []
+    assert conn.kald == [], "udløb må slet ikke spørge databasen"
+
+
+def test_kvitteringen_spoerger_kun_egne_aabne_raekker(bus, monkeypatch):
+    """Filteret er en del af kontrakten: ellers rammer den andre gates rækker."""
+    conn = _FalskConn([])
+    monkeypatch.setattr("core.runtime.db_core.connect", lambda: conn)
+    monkeypatch.setattr("core.services.veto_gate.resolve_veto_event", lambda e, r: None)
+    monkeypatch.setattr("core.services.veto_gate.log_veto_event", lambda **k: None)
+    _aaben()
+    bus.tool("read_file", efter_s=10)
+    assert h.afvis_mutation("edit_file", {}, nu=NU) is None
+    assert len(conn.kald) == 1
+    sql, params = conn.kald[0]
+    assert "FROM veto_events" in sql
+    assert "resolution = 'pending'" in sql
+    assert "veto_result = 'blocked'" in sql
+    assert params == ("r2_5_gate", T0.isoformat())

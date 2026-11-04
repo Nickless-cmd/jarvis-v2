@@ -383,6 +383,7 @@ def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
     from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
 
     assert "Tekstdisciplin" in CHAT_MODE_HOW_I_TALK
+    assert "undersøgelsesdybde og svarlængde er uafhængige" in CHAT_MODE_HOW_I_TALK
     # lean-vagtens forudsætning: kontrakten skal være ÉN blok uden tomme linjer internt.
     assert "\n\n" not in CHAT_MODE_HOW_I_TALK
 
@@ -399,6 +400,20 @@ def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
     finally:
         reset_tool_scope(token)
     assert "Tekstdisciplin" not in tail_code
+
+
+def test_chat_paalidelighed_kraever_modbevis_og_epistemisk_adskillelse() -> None:
+    """Chat må være kompakt uden at forveksle en plausibel proxy med et udfald."""
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
+
+    tekst = CHAT_MODE_HOW_I_TALK
+    assert "stop ikke ved den første plausible" in tekst
+    assert "evidens proportional med deres betydning" in tekst
+    assert "signaler der kan modsige dem" in tekst
+    assert "observeret eller målt" in tekst
+    assert "udledt fra data eller kode" in tekst
+    assert "aktivitet eller en proxy" in tekst
+    assert "\n\n" not in tekst
 
 
 def test_rig_profil_bevarer_let_form_og_vaelger_flade_efter_behov(monkeypatch) -> None:

@@ -16,9 +16,23 @@ from core.runtime.db_core import get_runtime_state_bool
 from core.services import non_visible_rate_cap
 from core.services.cheap_lane_floor import attempt_floor
 from core.services.cheap_provider_runtime_selection import execute_cheap_lane_via_pool
+from core.services.provider_error_guard import looks_like_protocol_leak
 
 _FALLBACK_FLAG = "non_visible_ollama_fallback_enabled"
 _RATE_CAP_FLAG = "non_visible_rate_cap_enabled"
+
+
+def _ubrugeligt_svar(result: Any) -> bool:
+    """True hvis poolen svarede med noget der ikke er et svar.
+
+    Poolen validerer HTTP-status, ikke indhold. Målt 3/11-2026: en gratis
+    coding-model skrev sine værktøjskald som rå protokol-tokens, og teksten gik
+    videre som et fuldført svar. Et sådant svar er en FEJL — kæden skal videre,
+    ikke stoppe med skraldet.
+    """
+    if not isinstance(result, dict):
+        return False
+    return looks_like_protocol_leak(str(result.get("text") or ""))
 
 
 def _fallback_enabled() -> bool:
@@ -98,5 +112,39 @@ def run_non_visible_with_fallback(
                 lane="autonomous",
                 reason="paid-blocked",
             )
+
+        # 6) Indholds-gate. Poolen validerer HTTP-status, ikke om svaret ER et
+        #    svar. Målt 3/11-2026: en gratis coding-model uden værktøjsstøtte
+        #    skrev sine værktøjskald som rå protokol-tokens, og 536 tegn
+        #    token-skov gik i chatten som et «fuldført» svar.
+        #    Et ubrugeligt svar er en fejl — så prøv kæden ÉN gang mere uden den
+        #    udbyder der leverede skraldet, og fald ellers til floor. Uden dette
+        #    stop er én dårlig model i puljen nok til at dræbe hele turen.
+        if _ubrugeligt_svar(result):
+            daarlig = str(result.get("provider") or "")
+            _observe_central({
+                "event": "fallback_bad_content",
+                "lane": "autonomous",
+                "provider": daarlig,
+            })
+            try:
+                result = execute_cheap_lane_via_pool(
+                    message=message,
+                    task_kind=task_kind,
+                    lane="autonomous",
+                    skip_providers=frozenset({daarlig}) if daarlig else frozenset(),
+                )
+            except Exception:  # poolen kunne ikke svare uden den udbyder — bund er en gyldig udgang
+                return attempt_floor(
+                    message=message,
+                    lane="autonomous",
+                    reason="bad-content",
+                )
+            if _ubrugeligt_svar(result):
+                return attempt_floor(
+                    message=message,
+                    lane="autonomous",
+                    reason="bad-content",
+                )
 
         return result

@@ -11,7 +11,7 @@ export interface SideTask {
   prompt: string
   tldr: string
   /** `completed`/`dismissed` optræder kun i `scope=all` — kortet viser de åbne. */
-  status: 'pending' | 'queued' | 'activated' | 'completed' | 'dismissed'
+  status: 'pending' | 'queued' | 'activated' | 'running' | 'paused' | 'blocked' | 'failed' | 'completed' | 'dismissed'
   session_id: string
   created_at: string
   /** Sat når opgaven er SKJULT i chatkortet (8/10-2026). Opgaven er stadig
@@ -30,6 +30,9 @@ export interface SideTask {
   /** Samtalen der løser/løste opgaven. */
   arbejds_session?: string
   arbejds_run_id?: string
+  state_reason?: string
+  current_step?: string
+  last_progress_at?: string
   finding_key?: string
   evidence?: string
   /** Hvor meget opgaven må gøre af sig selv (25/10-2026). `none` = påmindelse. */
@@ -42,7 +45,7 @@ export interface SideTask {
   redigeret_at?: string
 }
 
-export type SideTaskAfslutning = 'queued' | 'activated' | 'completed' | 'dismissed'
+export type SideTaskAfslutning = 'queued' | 'activated' | 'running' | 'paused' | 'blocked' | 'failed' | 'completed' | 'dismissed'
 
 /**
  * Hvor meget opgaven må gøre af sig selv — hvis nogen giver den lov.
@@ -88,7 +91,7 @@ export async function setSideTaskStatus(
   config: ApiConfig,
   id: string,
   status: SideTaskAfslutning,
-  opts: { session?: string; bevis?: string; reason?: string } = {},
+  opts: { session?: string; run_id?: string; bevis?: string; reason?: string } = {},
 ): Promise<void> {
   // `session` er samtalen der LØSER opgaven. Uden den kan serveren ikke knytte
   // turen til opgaven, og så er der ingen der kan lukke den (Bjørn 3/10: «måtte
@@ -102,6 +105,7 @@ export async function setSideTaskStatus(
   // der kalder afsluttet arbejde «stadig åben».
   const body: Record<string, string> = { status }
   if (opts.session) body.session = opts.session
+  if (opts.run_id) body.run_id = opts.run_id
   if (opts.bevis) body.bevis = opts.bevis
   if (opts.reason) body.reason = opts.reason
   const r = await apiFetch<{ status?: string; error?: string }>(

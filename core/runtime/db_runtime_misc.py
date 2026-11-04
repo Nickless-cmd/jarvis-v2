@@ -44,7 +44,26 @@ from core.runtime.db_core import (
 def get_relevant_experiential_memories(
     *, context: str, limit: int = 3
 ) -> list[dict[str, object]]:
-    """Find experiential memories relevant to the given context."""
+    """Find experiential memories relevant to the given context.
+
+    ⚠️ RETTET 3/11-2026 — filteret var en no-op. `WHERE decay_score < 0.9` så ud
+    som en glemsels-grænse, men kolonnen skrives kun ÉT sted i hele koden
+    (`db_experiential_memory.py:71`, `SET … decay_score=0.0` ved forstærkning),
+    og den sætter den altid til nul. Målt i den levende DB: 9 rækker, NUL med
+    `decay_score > 0`, max 0,0. Filteret matchede altså hver eneste række og
+    udelukkede intet — det påstod en glemsel der ikke fandtes i den tabel.
+
+    Den ægte henfald bor i `forgetting_curve`-registret (500 poster, nøglet på
+    `sha256(focus|summary)[:16]`, med `content_preview` som første 100 tegn af
+    indholdet og et `decay_score` der faktisk tælles op pr. tick). De to
+    systemer deler navn, men ikke nøglerum: registret hasher indhold, tabellen
+    bruger `exp-`-id'er. Der findes ingen direkte mapping.
+
+    Broen er `content_preview`: den er en præfiks af den tekst posten blev
+    registreret fra, så den kan matches mod rækkens egen tekst. Rækker uden et
+    register-opslag får decay 0 — de er ikke sporet, og så skal de ikke
+    påstås at være falmende.
+    """
     from core.runtime.db_cognitive import _ensure_cognitive_experiential_memories_table
     with connect() as conn:
         _ensure_cognitive_experiential_memories_table(conn)
@@ -57,14 +76,46 @@ def get_relevant_experiential_memories(
         ).fetchall()
     if not rows:
         return []
+
+    # Ægte henfald fra glemsels-registret: content_preview -> decay_score.
+    # Læses defensivt — et manglende register må ikke gøre recall blind, det
+    # betyder blot at ingen rækker er sporet (decay 0).
+    decay_efter_preview: dict[str, float] = {}
+    try:
+        from core.services.forgetting_curve import _load as _load_forgetting
+
+        for _post in (_load_forgetting() or {}).values():
+            if not isinstance(_post, dict):
+                continue
+            preview = str(_post.get("content_preview") or "").strip().lower()
+            if preview:
+                decay_efter_preview[preview] = float(_post.get("decay_score") or 0.0)
+    except Exception:  # registret er en berigelse — uden det er decay blot 0
+        decay_efter_preview = {}
+
+    def _aegte_decay(tekst: str) -> float:
+        """Største registrerede decay hvis preview optræder i rækkens tekst."""
+        if not decay_efter_preview:
+            return 0.0
+        tekst_lower = tekst.lower()
+        bedst = 0.0
+        for preview, decay in decay_efter_preview.items():
+            if preview in tekst_lower and decay > bedst:
+                bedst = decay
+        return bedst
+
     context_lower = context.lower()
     context_words = set(w for w in context_lower.split() if len(w) > 3)
     scored = []
     for r in rows:
         text = f"{r['narrative']} {r['topic']} {r['key_lesson']}".lower()
+        aegte_decay = _aegte_decay(text)
+        if aegte_decay >= 0.9:
+            # Faldet i det register der faktisk tæller — udelades nu for alvor.
+            continue
         overlap = sum(1 for w in context_words if w in text)
         score = overlap * 0.3 + float(r["importance"]) * 0.4 + float(r["reinforcement_count"]) * 0.1
-        scored.append((score, r))
+        scored.append((score, r, aegte_decay))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [
         {
@@ -74,11 +125,12 @@ def get_relevant_experiential_memories(
             "key_lesson": r["key_lesson"],
             "topic": r["topic"],
             "importance": float(r["importance"]),
-            "decay_score": float(r["decay_score"]),
+            # Den ægte decay, ikke kolonnen der altid står på nul.
+            "decay_score": aegte_decay,
             "reinforcement_count": int(r["reinforcement_count"]),
             "created_at": r["created_at"],
         }
-        for _, r in scored[:limit]
+        for _, r, aegte_decay in scored[:limit]
     ]
 
 

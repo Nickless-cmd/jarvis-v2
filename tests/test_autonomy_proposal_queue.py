@@ -246,3 +246,196 @@ def test_list_proposals_viser_FULD_noegle():
         out = _exec_list_proposals({})
 
     assert fuld in str(out.get("text") or ""), "noeglen er klippet — approve svarer not-found"
+
+
+def test_afvisning_lukker_fundet(monkeypatch):
+    """Målt 3/11-2026: 75 afviste instrument-forslag efterlod deres fund `open`.
+
+    Godkendelse lukkede fundet; afvisning gjorde ikke — så daemonen filede det
+    igen, og næste runde afviste det igen. Et «nej» der ikke lukker sagen er et
+    spørgsmål der bliver stillet for evigt.
+    """
+    from core.services import autonomy_proposal_queue as apq
+    import core.runtime.db_instrument as dbi
+
+    lukket: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(apq, "get_autonomy_proposal", lambda pid: {
+        "proposal_id": pid,
+        "kind": "instrument_fix",
+        "status": "pending",
+        "payload": {"finding": {"signature": "except_silent:abc123"}},
+    })
+    monkeypatch.setattr(
+        apq, "resolve_autonomy_proposal",
+        lambda pid, **kw: {"proposal_id": pid, "status": kw.get("status")},
+    )
+    monkeypatch.setattr(
+        dbi, "set_finding_status",
+        lambda sig, st: lukket.append((sig, st)) or True,
+    )
+
+    out = apq.reject_proposal("prop-1", resolution_note="forældet fund")
+
+    assert out["status"] == "rejected"
+    # `dismissed`, ikke `accepted`: afslag betyder «ret det ikke».
+    assert lukket == [("except_silent:abc123", "dismissed")]
+
+
+def test_en_skrivning_der_ikke_landede_er_ikke_en_succes(tmp_path):
+    """Readback der ikke matcher må ikke give «executed» (målt 3/11-2026).
+
+    Fejlen var: `readback_match` blev BEREGNET men ikke HÅNDHÆVET. Et mismatch
+    returnerede stadig status «executed», `approve_proposal` kvitterede succes
+    og `_auto_commit_after_source_edit` lavede en rigtig git-commit af et
+    indhold disken ikke bar. Samme form som «stale»-fixet 2/10-2026: en måling
+    der ikke afgør udfaldet.
+
+    Simuleringen er den ægte: skrivningen lander ikke, så readback læser det
+    der faktisk står på disken — originalen.
+    """
+    from unittest.mock import patch as _patch
+
+    from core.services.autonomy_proposal_queue import _execute_source_edit_proposal
+
+    target = tmp_path / "core" / "skrevet.py"
+    target.parent.mkdir()
+    target.write_text("original = True\n", encoding="utf-8")
+
+    # Skrivningen lander ikke: write_text gør intet, så disken bærer originalen.
+    with _patch("pathlib.Path.write_text", return_value=None):
+        res = _execute_source_edit_proposal(
+            {
+                "target_path": str(target),
+                "new_content": "nyt = True\n",
+            }
+        )
+
+    assert res["status"] != "executed", f"en ikke-landet skrivning blev meldt som succes: {res}"
+    assert res["status"] == "error"
+    assert "readback" in res["error"]
+    assert res["readback_match"] is False
+    # RESTTILSTAND (3/11-2026, rettet samme aften): jeg skrev først
+    # `disk_touched is True` og «filen ER skrevet». Men denne test patcher
+    # `write_text` til at gøre INTET — så den beviste at disken var uændret,
+    # mens den assert'ede det modsatte. En grøn test der bekræftede sin egen
+    # modsætning. Det der kan observeres er tre ting, og de står nu hver for sig:
+    assert res["write_attempted"] is True, "kaldet blev gjort — det er observeret"
+    assert res["disk_changed"] is False, (
+        "write_text gjorde intet, så disken bærer stadig originalen — "
+        "disk_changed skal være False, ikke True"
+    )
+    assert res["requires_inspection"] is True, (
+        "et nyt forsøg skal undersøge filen, ikke antage noget om den"
+    )
+
+
+def test_en_skrivning_der_landede_FORKERT_markerer_disk_changed(tmp_path):
+    """Den anden gren — og den jeg helt manglede.
+
+    `disk_changed` er sand når readback afviger fra den FØR læste tilstand.
+    Det siger intet om hvor mange mellemliggende skrivninger der er sket, men
+    det gør resttilstanden målbar: filen er reelt ændret, og et nyt forsøg må
+    ikke antage at den er som før.
+
+    Uden denne test kunne `disk_changed` være hardcoded til False og hele
+    kontrakten stadig se rigtig ud — samme fejlklasse som `readback_match`.
+    """
+    from unittest.mock import patch as _patch
+
+    from core.services.autonomy_proposal_queue import _execute_source_edit_proposal
+
+    target = tmp_path / "core" / "halvskrevet.py"
+    target.parent.mkdir()
+    target.write_text("original = True\n", encoding="utf-8")
+
+    def _skriv_noget_andet(self, data, **kwargs):
+        # Skrivningen LANDER, men disken bærer ikke det forventede indhold —
+        # fx fordi et filter eller en anden skriver kom imellem.
+        with open(self, "w", encoding="utf-8") as fh:
+            fh.write("noget_helt_andet = True\n")
+
+    with _patch("pathlib.Path.write_text", _skriv_noget_andet):
+        res = _execute_source_edit_proposal(
+            {
+                "target_path": str(target),
+                "new_content": "nyt = True\n",
+            }
+        )
+
+    assert res["status"] == "error"
+    assert res["readback_match"] is False
+    assert res["write_attempted"] is True
+    assert res["disk_changed"] is True, (
+        "filen blev reelt ændret — disk_changed skal være True så næste forsøg "
+        "ved at den skal undersøges"
+    )
+    assert res["current_fingerprint"] != res["readback_fingerprint"]
+    assert target.read_text(encoding="utf-8") == "noget_helt_andet = True\n"
+
+
+def _koer_godkendelse(monkeypatch, *, executor_svar):
+    """Kør `approve_proposal` HELT igennem med en source-edit-executor.
+
+    Returnerer (resultat, commit_kaldt, resolved_status). Bruges af begge
+    retnings-tests nedenfor, saa den ene ikke kan bestaa ved at commit aldrig
+    kaldes for noget som helst.
+    """
+    from core.services import autonomy_proposal_queue as apq
+
+    commit_kald: list[tuple] = []
+    resolved: list[dict] = []
+
+    monkeypatch.setattr(apq, "get_autonomy_proposal", lambda pid: {
+        "proposal_id": pid,
+        "kind": "source-edit",
+        "status": "pending",
+        "payload": {"target_path": "/tmp/x.py", "relative_path": "x.py"},
+    })
+    monkeypatch.setattr(
+        apq, "resolve_autonomy_proposal",
+        lambda pid, **kw: resolved.append({"status": kw.get("status")}) or {"proposal_id": pid},
+    )
+    monkeypatch.setitem(apq._PROPOSAL_EXECUTORS, "source-edit", lambda payload: executor_svar)
+    monkeypatch.setattr(
+        apq, "_auto_commit_after_source_edit",
+        lambda proposal, result: commit_kald.append((proposal, result)),
+    )
+
+    out = apq.approve_proposal("prop-1")
+    return out, commit_kald, resolved[-1]["status"] if resolved else None
+
+
+def test_et_mismatch_naar_aldrig_commit_grenen(monkeypatch):
+    """En readback der ikke matcher maa ikke blive en commit.
+
+    3/11-2026: den foerste udgave af denne test var en grep i kildekoden —
+    `inspect.getsource` plus `assert "error" not in ("executed",)`, som er en
+    tautologi mellem to konstanter testen selv skrev. Den kunde ALDRIG fejle,
+    uanset hvad koden gjorde. Maalt af GPT: den udfoerte ikke engang
+    `approve_proposal`. Her kaldes hele kaeden, og commit-funktionen er en spy.
+    """
+    out, commit_kald, status = _koer_godkendelse(
+        monkeypatch,
+        executor_svar={"status": "error", "readback_match": False, "error": "readback mismatch"},
+    )
+
+    assert out["status"] == "failed", out
+    assert status == "failed"
+    assert commit_kald == [], f"en ikke-landet skrivning blev committet: {commit_kald}"
+
+
+def test_en_landet_skrivning_naar_commit_grenen(monkeypatch):
+    """Positiv kontrol: uden den beviser testen ovenfor intet.
+
+    En «executed» fra executoren SKAL naa commit-grenen. Ellers kunne den
+    negative test bestaa af den forkerte grund — at commit aldrig kaldes.
+    """
+    out, commit_kald, status = _koer_godkendelse(
+        monkeypatch,
+        executor_svar={"status": "executed", "readback_match": True},
+    )
+
+    assert out["status"] == "executed", out
+    assert status == "executed"
+    assert len(commit_kald) == 1, "en landet skrivning naaede ikke commit-grenen"

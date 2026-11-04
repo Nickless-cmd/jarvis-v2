@@ -122,6 +122,15 @@ def test_udbyder_fejl_er_ikke_et_initiativ():
     )
 
 
+def test_serialiseret_tomhed_er_ikke_et_initiativ():
+    """Målt 3/11-2026: den indre stemme svarede med JSON `"initiative": null`,
+    og `str(initiative)` gjorde det til den fire tegn lange streng "null" — som
+    er sand, ikke tom, og derfor gik gennem både sanitizeren og `if not tekst`.
+    Resultatet var init-d5e4fcffe8: en post i køen uden indhold."""
+    for tom in ("null", "None", "none", "NULL", "undefined", "nil", "n/a", "-"):
+        assert _port(tom) == "tom", "serialiseret tomhed slap igennem: %r" % tom
+
+
 def test_aegte_initiativer_slipper_igennem():
     """Porten skal være konservativ — tvivlstilfælde beholdes."""
     for aegte in (

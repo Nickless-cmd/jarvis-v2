@@ -437,7 +437,6 @@ _SPEC = SignalTrackingSpec(
     ),
     takes_user_message=True,
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded user-understanding inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

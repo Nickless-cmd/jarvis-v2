@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import time
 import logging
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -20,6 +21,14 @@ from urllib import request as urllib_request
 logger = logging.getLogger(__name__)
 
 _CHEAP_FALLBACK_TIMEOUT = 45
+# Samlet loft for HELE faldkaeden (maalt 3/11-2026). Foer havde hver kandidat
+# sin egen 45 s-graense, men kaeden havde intet samlet budget: 34 kandidater
+# (kun 18 unikke) kunne i vaerste fald bruge 25 minutter inde i en
+# cadence-producer hvis haarde loft er 75 s. To fejlende kandidater var nok
+# til at spraenge det - og inner_voice_daemon gjorde det 9 gange i doegnet.
+_CHEAP_FALLBACK_BUDGET_S = 25.0
+# Et forsoeg der ikke kan naa at svare inden for dette er ikke et forsoeg.
+_MIN_ATTEMPT_S = 3.0
 _SKIP_FOR_HEARTBEAT: frozenset[str] = frozenset({"groq", "ollamafreeapi"})
 
 # Round-robin so a single provider isn't hammered by every internal job while
@@ -53,6 +62,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
 def execute_openai_compat_heartbeat_prompt(
     *, prompt: str, target: dict[str, str | bool],
     max_tokens: int = 1536, temperature: float = 0.7,
+    timeout: float | None = None,
 ) -> dict[str, object]:
     """Call an OpenAI-chat/completions-compatible provider for heartbeat.
 
@@ -98,7 +108,9 @@ def execute_openai_compat_heartbeat_prompt(
         method="POST",
     )
     try:
-        with urllib_request.urlopen(req, timeout=_CHEAP_FALLBACK_TIMEOUT) as resp:
+        with urllib_request.urlopen(
+            req, timeout=timeout if timeout is not None else _CHEAP_FALLBACK_TIMEOUT
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib_error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:200]
@@ -107,7 +119,12 @@ def execute_openai_compat_heartbeat_prompt(
         raise RuntimeError(str(exc) or type(exc).__name__) from exc
 
     message = ((data.get("choices") or [{}])[0]).get("message") or {}
-    text = str(message.get("content") or message.get("reasoning_content") or "").strip()
+    # 4/11-2026: `reasoning_content` er modellens TANKE, ikke dens svar. Da
+    # outreach_composer brugte denne kalder, blev tankestroemmen gemt som
+    # brugervendt besked — maalt: 3 af 3 outreach-tekster var prompt-traces
+    # ("We need to produce a short message to Bjoern..."). En tanke maa aldrig
+    # kunne forveksles med et svar: tomt content betyder tomt svar.
+    text = str(message.get("content") or "").strip()
     if not text:
         raise RuntimeError(f"{provider} heartbeat execution returned no response")
 
@@ -164,12 +181,22 @@ def execute_openai_compat_heartbeat_prompt(
     }
 
 
-def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
+def try_heartbeat_cheap_fallback(
+    prompt: str, *, budget_s: float | None = None
+) -> dict[str, object] | None:
     """Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback.
 
-    Returns result dict on success, None if all candidates fail.
-    Called when the configured heartbeat provider (Groq) is rate-limited.
+    Returns result dict on success, None if all candidates fail (or the
+    budget runs out). Called when the configured heartbeat provider is
+    rate-limited or dry.
+
+    ``budget_s`` is the TOTAL wall-clock ceiling for the whole chain, not
+    per candidate. Without it the chain is bounded only per call, so a
+    caller with its own hard deadline (the cadence conductor: 75 s) could
+    be blown by two slow candidates.
     """
+    budget = _CHEAP_FALLBACK_BUDGET_S if budget_s is None else max(0.0, float(budget_s))
+    deadline = time.monotonic() + budget
     try:
         from core.services.cheap_provider_runtime import (
             _configured_cheap_candidates,
@@ -202,11 +229,36 @@ def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
             continue
         usable.append(candidate)
 
+    # Samme (provider, model) stod flere gange paa listen - den samme doede
+    # model blev forsoegt to gange mens budgettet loeb. Dedupe foer rotation,
+    # saa rotationen fordeler LAST i stedet for at gentage en fejl.
+    _set: set[tuple[str, str]] = set()
+    deduped: list[dict] = []
+    for candidate in usable:
+        _key = (
+            str(candidate.get("provider") or "").strip(),
+            str(candidate.get("model") or "").strip(),
+        )
+        if _key in _set:
+            continue
+        _set.add(_key)
+        deduped.append(candidate)
+    usable = deduped
+
     if usable:
         _off = next(_fallback_rotation) % len(usable)
         usable = usable[_off:] + usable[:_off]
 
+    tried = 0
     for candidate in usable:
+        remaining = deadline - time.monotonic()
+        if remaining < _MIN_ATTEMPT_S:
+            logger.warning(
+                "heartbeat_fallback: budget paa %.0fs brugt efter %d forsoeg - "
+                "gaar tilbage uden svar",
+                budget, tried,
+            )
+            break
         provider = str(candidate.get("provider") or "").strip()
         model = str(candidate.get("model") or "").strip()
 
@@ -216,8 +268,12 @@ def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
             "auth_profile": str(candidate.get("auth_profile") or "").strip(),
             "base_url": str(candidate.get("base_url") or "").strip(),
         }
+        tried += 1
         try:
-            result = execute_openai_compat_heartbeat_prompt(prompt=prompt, target=target)
+            result = execute_openai_compat_heartbeat_prompt(
+                prompt=prompt, target=target,
+                timeout=min(remaining, _CHEAP_FALLBACK_TIMEOUT),
+            )
             logger.info(
                 "heartbeat_fallback: succeeded via %s/%s", provider, model
             )
@@ -240,7 +296,8 @@ def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
     try:
         from core.services.central_core import central
         central().observe({"cluster": "stream", "nerve": "provider_fallback",
-                           "outcome": "exhausted", "tried": len(usable)})
+                           "outcome": "exhausted", "tried": tried,
+                           "candidates": len(usable)})
     except Exception:
         pass
     return None

@@ -167,6 +167,7 @@ def compute_preference() -> dict[str, Any]:
 # faldt derefter tilfældigt ned gennem gratis-puljen. Målt live 2026-09-02:
 # {"visible": {"model": "?/jarvis", "strength": 0.253}}, sat LIVE.
 _PLACEHOLDER_TOKENS = {"", "?", "unknown", "jarvis", "none", "null"}
+_SYNTHETIC_ROUTE_TOKENS = {"test", "fake", "mock", "stub"}
 
 
 def _is_real_model_key(model_key: str) -> bool:
@@ -186,8 +187,18 @@ def _is_real_model_key(model_key: str) -> bool:
     if "/" not in key:
         return False
     provider, model = key.split("/", 1)
-    return (provider.strip().lower() not in _PLACEHOLDER_TOKENS
-            and model.strip().lower() not in _PLACEHOLDER_TOKENS)
+    provider = provider.strip().lower()
+    model = model.strip().lower()
+    if provider in _PLACEHOLDER_TOKENS or model in _PLACEHOLDER_TOKENS:
+        return False
+    # Test doubles are observations, not configured production routes.  Four
+    # test-auto rows leaked into live telemetry on 22/10-2026; the exploration
+    # arm then treated that provider as a real, cheap alternative and selected
+    # it repeatedly for genuine wakeups.  Match tokens rather than substrings,
+    # so a legitimate name such as ``contest`` is not rejected.
+    import re
+    tokens = set(re.split(r"[^a-z0-9]+", f"{provider}/{model}"))
+    return not bool(tokens & _SYNTHETIC_ROUTE_TOKENS)
 
 
 def run_router_adapt_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
@@ -426,6 +437,11 @@ def resolve_autonomous_model(*, autonomous_provider: str = "",
     'deepseek'-provider klemmes tilbage til baggrunds-basen. Kaster ALDRIG — fail-safe."""
     base_provider = (str(autonomous_provider or "").strip() or _AUTONOMOUS_FALLBACK_PROVIDER)
     base_model = (str(autonomous_model or "").strip() or _AUTONOMOUS_FALLBACK_MODEL)
+    # A synthetic setting must not become its own fallback.  This is the last
+    # line of defence if a test double reaches runtime config or telemetry.
+    if not _is_real_model_key(f"{base_provider}/{base_model}"):
+        base_provider = _AUTONOMOUS_FALLBACK_PROVIDER
+        base_model = _AUTONOMOUS_FALLBACK_MODEL
     # PRIS-BEVIDST BASE: i Ollamas myldretid fakturerer deepseek det dobbelte.
     # Skiftet koster intet uden for vinduet — begge modeller er $0,15/M der.
     base_provider, base_model = _pris_bevidst_base(base_provider, base_model)

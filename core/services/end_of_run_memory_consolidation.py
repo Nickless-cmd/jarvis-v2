@@ -516,7 +516,11 @@ def _count_repeated_asks(items: list[dict[str, str]], *, session_id: str) -> int
         if item.get("target") == "REQUEST":
             text, kind = str(item.get("request") or ""), "request"
         elif str(item.get("kind") or "") == "correction":
-            text, kind = str(item.get("summary") or "") or str(item.get("line") or ""), "correction"
+            # 4/11-2026: `line` er saetningen i BJOERNS sprog (prompten kraever
+            # det eksplicit, se linje ~356); `summary` er modellens abstraktion.
+            # Regel-forslaget citerede derfor "Correction to my assumption about
+            # the user's identity" — en label Bjoern ikke kan handle paa.
+            text, kind = str(item.get("line") or "") or str(item.get("summary") or ""), "correction"
         else:
             continue
         try:

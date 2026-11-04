@@ -161,3 +161,165 @@ def test_horisonten_maa_ikke_vokse_ud_over_loftet():
         "horisonten er sat op til %d dage, men loftet rummer kun %.1f dages "
         "produktion" % (HORIZON_DAYS + GRACE_DAYS, maks_dage)
     )
+
+
+# ---------------------------------------------------------------------------
+# Kalibreringen kunne per konstruktion ikke beregnes
+#
+# Målt 4/11-2026: `_frequency_verdict` kræver et `event_kind` på forudsigelsen
+# for at kunne tælle hændelser før/efter. Producenten skrev det ALDRIG. Så
+# 132 af 132 resolved endte som `uncertain` med reason
+# `no-event-kind-tag-on-prediction`, og `calibration` var strukturelt `None`.
+# Sweepet kørte dagligt uden at kunne afgøre noget — samme fejlform som
+# `max()`-tælleren: mekanismen findes, indgangsbetingelsen kan intet opfylde.
+# ---------------------------------------------------------------------------
+
+_EVENT_KIND = "test.prediction.event"
+
+
+def _seed_events(tmp_path, monkeypatch, *, created: datetime) -> None:
+    """20 hændelser i baseline-vinduet, 2 i post-vinduet → ratio 0.1."""
+    from core.runtime import db_core
+    from core.runtime.db_schema import init_db
+
+    db_core.close_pooled_connection()
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "prediction-events.db")
+    init_db()
+    with db_core.connect() as conn:
+        for i in range(20):
+            ts = (created - timedelta(days=3) + timedelta(hours=i)).isoformat()
+            conn.execute(
+                "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+                (_EVENT_KIND, "{}", ts),
+            )
+        for i in range(2):
+            ts = (created + timedelta(days=2, hours=i)).isoformat()
+            conn.execute(
+                "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+                (_EVENT_KIND, "{}", ts),
+            )
+        conn.commit()
+
+
+def test_forudsigelse_med_event_kind_KAN_afgoeres(tmp_path, monkeypatch):
+    """Uden denne kan kalibreringen aldrig blive andet end None."""
+    from core.services.counterfactual_predictions import (
+        sweep_expired_counterfactual_predictions,
+    )
+
+    created = datetime.now(UTC) - timedelta(days=12)
+    _seed_events(tmp_path, monkeypatch, created=created)
+
+    rec = wm.record_runtime_world_model_prediction(
+        subject="hændelses-frekvens",
+        expectation="frekvensen falder efter læring",
+        event_kind=_EVENT_KIND,
+        source="counterfactual",
+        now=created,
+    )
+    assert rec["prediction"]["event_kind"] == _EVENT_KIND, (
+        "producenten skrev ikke event_kind — så kan sweepet ikke afgøre noget"
+    )
+
+    summary = sweep_expired_counterfactual_predictions(now=datetime.now(UTC))
+    assert summary["by_outcome"]["supported"] == 1, (
+        "forudsigelsen blev ikke afgjort som supported selv om frekvensen "
+        f"faldt til 10% af baseline — by_outcome={summary['by_outcome']}"
+    )
+
+    preds = wm._load_predictions()
+    assert preds[0]["outcome"] == "supported"
+    surface = wm.build_runtime_world_model_prediction_surface()
+    assert surface["summary"]["calibration"] == 1.0, (
+        "kalibreringen blev ikke beregnelig — det var hele pointen"
+    )
+    from core.runtime import db_core
+    db_core.close_pooled_connection()
+
+
+def test_uden_event_kind_forbliver_forudsigelsen_uafgjort(tmp_path, monkeypatch):
+    """Den ærlige halvdel: uden feltet KAN den ikke afgøres — og må ikke gætte."""
+    from core.services.counterfactual_predictions import (
+        sweep_expired_counterfactual_predictions,
+    )
+
+    created = datetime.now(UTC) - timedelta(days=12)
+    _seed_events(tmp_path, monkeypatch, created=created)
+
+    wm.record_runtime_world_model_prediction(
+        subject="uden kind",
+        expectation="kan ikke efterprøves",
+        source="counterfactual",
+        now=created,
+    )
+
+    summary = sweep_expired_counterfactual_predictions(now=datetime.now(UTC))
+    assert summary["by_outcome"]["supported"] == 0
+    assert summary["by_outcome"]["contradicted"] == 0
+    preds = wm._load_predictions()
+    assert preds[0]["outcome"] == "uncertain"
+    from core.runtime import db_core
+    db_core.close_pooled_connection()
+
+
+# ---------------------------------------------------------------------------
+# 0/0 er UNDEFINED, ikke 0 %
+#
+# Målt 4/11-2026: `_calibration_of` returnerede 0.0 når nævneren var tom. Alle
+# 48 `count_10`-milestones i drift sagde derfor «Kalibrering sidste 30: 0.0%»
+# — Centralen fik 48 gange besked om en måling der aldrig havde fundet sted.
+# Samme fejlform som `tool_rate`: en default der ligner en måling.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _iso_milestones(monkeypatch):
+    """Isolér milestone-persistensen. Uden den skriver testen i den LEVENDE fil."""
+    hist: list[dict] = []
+    monkeypatch.setattr(wm, "_load_milestones", lambda: {"history": list(hist)})
+    monkeypatch.setattr(
+        wm, "_save_milestones", lambda d: hist.__setitem__(slice(None), d.get("history") or [])
+    )
+    return hist
+
+
+def test_kalibrering_uden_domme_er_None_ikke_nul():
+    """0 supported + 0 contradicted → None. En usikker post er ikke en dom."""
+    preds = [{"outcome": "uncertain"}, {"outcome": "uncertain"}]
+    assert wm._calibration_of(preds) is None, (
+        "tom nævner blev rapporteret som 0.0 — det påstår nul korrekthed hvor "
+        "sandheden er 'aldrig målt'"
+    )
+
+
+def test_kalibrering_med_domme_giver_tal():
+    """Halvdelen rigtige → 50.0. Grænsen må ikke gøre funktionen blind."""
+    preds = [
+        {"outcome": "supported"},
+        {"outcome": "contradicted"},
+        {"outcome": "uncertain"},  # ekskluderes fra nævneren
+    ]
+    assert wm._calibration_of(preds) == 50.0
+
+
+def test_milestone_uden_domme_siger_ikke_maalt(_iso_milestones):
+    """Den formidlede tekst må ikke påstå en procentsats der ikke findes."""
+    resolved = [
+        {
+            "prediction_id": f"p{i}",
+            "status": "resolved",
+            "outcome": "uncertain",
+            "resolved_at": (datetime.now(UTC) - timedelta(hours=10 - i)).isoformat(),
+            "created_at": (datetime.now(UTC) - timedelta(days=9)).isoformat(),
+        }
+        for i in range(10)
+    ]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(wm, "_load_predictions", lambda: list(resolved))
+        m = wm._compute_calibration_milestone()
+
+    assert m is not None, "regel 1 skal fyre ved 10 resolved"
+    assert "ikke maalt" in m["message"], (
+        f"milestone påstod en kalibrering der ikke er målt: {m['message']!r}"
+    )
+    assert "0.0%" not in m["message"]

@@ -29,6 +29,40 @@ def _gut_bias() -> float:
         return 0.0
 
 
+def _task_mapping(task_description: str) -> dict[str, object]:
+    """Opgave → værktøjs-risiko. Kaster ALDRIG: en fejl her må ikke ændre en hunch.
+
+    Svarer et tomt `unknown`-resultat hvis modulet mangler eller fejler — det er den
+    sikre side, fordi delta 0,0 betyder «uændret adfærd», ikke «ufarlig opgave».
+    """
+    try:
+        from core.services.task_tool_mapping import map_task_to_tools
+        return map_task_to_tools(task_description)
+    except Exception:
+        return {"tools": [], "tier": "unknown", "signals": [],
+                "method": "none", "confidence_delta": 0.0}
+
+
+# ── Fejl-signalet: RATE, ikke absolut antal (3/11-2026) ──────────────────────
+#
+# Målt 3/11 kl. 18:44 UTC: 23 `blocked` mod 280 ok/completed i døgnet = **7,6 % fejlrate**.
+# Den gamle regel lød `recent_error_count > 3` — et absolut tal uden grundlag. I et aktivt
+# system passeres 3 fejl HVER dag, så betingelsen var altid sand, og `caution` var derfor
+# ikke et signal men en konstant. Målt konsekvens: seks vidt forskellige opgaver (migration,
+# deploy, logfil-læsning, testfil, analyse, volapyk) fik ALLE `caution` og conf 0,59 — og
+# med `mode=on` ville gaten afvise 100 % af alle autonome runs. Tærsklen (A5, 0,30) var
+# aldrig bindende; retningen var.
+#
+# En betingelse der altid er opfyldt kan ikke skelne. Rate-reglen kræver desuden et
+# minimumsgrundlag, så to fejl af to forsøg ikke læses som 100 %.
+#
+# GRÆNSE, målt og IKKE løst her: 18 af de 23 `blocked` er
+# `discord-no-active-dm-and-webchat-fallback-blocked` — en KANAL-fejl, ikke en
+# dømmekraft-fejl. Fejlraten måler derfor delvist om Discord svarer. Det er en egen sag.
+_ERROR_RATE_CAUTION = 0.20
+_MIN_SAMPLE_FOR_RATE = 20
+
+
 def derive_gut_signal(
     *,
     task_description: str,
@@ -36,12 +70,43 @@ def derive_gut_signal(
     recent_error_count: int = 0,
     recent_success_count: int = 0,
 ) -> dict[str, object]:
-    """Generate a gut-feel hunch about a task."""
+    """Generate a gut-feel hunch about a task.
+
+    Definition B (3/11-2026, Bjørn): `confidence` betyder «hvor sikker er jeg på den
+    RETNING jeg peger i» — ikke «hvor sandsynligt er det at opgaven lykkes».
+
+    Før 3/11 var de to blandet sammen: `hunch_confidence` var 0,5 for proceed og 0,6–0,7
+    for caution, altså signalSTYRKE, men `gut_gate` læste tallet som tilladelsesGRAD.
+    Resultatet var at en advarsel per konstruktion slap lettere igennem end en tilladelse
+    (målt: caution 0,70 mod proceed 0,50 uden bias). Med definition B bærer `hunch`
+    retningen og `confidence` styrken, og gaten SKAL se begge — se `gut_gate`.
+
+    A7 (3/11-2026): `confidence` er nu OPGAVESPECIFIK. Indtil i dag blev
+    `task_description` kun klippet til en label (`task_hint`), så tre vidt forskellige
+    opgaver fik identisk rå 0,5. `task_tool_mapping` klassificerer opgaven som
+    læsende/skrivende/irreversibel og justerer den RÅ confidence, før hunch-grenene
+    læses — så en migration eller en sletning lettere ender i `caution`.
+    """
     gut_state = get_cognitive_gut_state()
     calibration = float(gut_state.get("calibration_score", 0.5)) if gut_state else 0.5
 
-    # Heuristic gut signal
-    if recent_error_count > 3 and confidence < 0.6:
+    # A7: opgavens risiko ind i den RÅ confidence — ikke bagefter, fordi grenene nedenfor
+    # læser netop dette tal. Mappingen kaster aldrig og svarer `unknown`/0,0 når teksten
+    # intet signal bærer, så en uklar opgave opfører sig som før.
+    task_map = _task_mapping(task_description)
+    if task_map.get("confidence_delta"):
+        confidence = min(1.0, max(0.0, confidence + float(task_map["confidence_delta"])))
+
+    # Heuristic gut signal. `hunch_confidence` = styrken af den retning vi peger i.
+    # Fejlraten beregnes ALTID, så den kan læses i signalet — også når den ikke flytter
+    # retningen. Ellers kan ingen efterprøve hvorfor `caution` udløste eller ikke gjorde.
+    _grundlag = recent_error_count + recent_success_count
+    error_rate = (recent_error_count / _grundlag) if _grundlag else 0.0
+    if (
+        _grundlag >= _MIN_SAMPLE_FOR_RATE
+        and error_rate > _ERROR_RATE_CAUTION
+        and confidence < 0.6
+    ):
         hunch = "caution"
         hunch_confidence = 0.7
     elif recent_success_count > 5 and confidence > 0.7:
@@ -54,8 +119,27 @@ def derive_gut_signal(
         hunch = "proceed"
         hunch_confidence = 0.5
 
+    # A7 (3/11-2026): en irreversibel opgave er ALDRIG et «proceed» på global statistik.
+    # Målt før denne gren fandtes: med nul fejl i døgnet blev «kritisk migration af
+    # produktionsdatabase» klassificeret som `proceed` — den globale fejlrate afgjorde
+    # retningen, ikke opgaven. En sletning, en udgivelse eller en migration kan ikke
+    # rulles tilbage, så retningen skal være caution uanset hvor sund driften ser ud.
+    # (Dette er en RETNING, ikke en styrke: tærsklen og A5 er stadig urørt.)
+    if task_map.get("tier") == "irreversible":
+        hunch = "caution"
+        hunch_confidence = max(hunch_confidence, 0.7)
+
     # Weight by calibration — if gut has been wrong, reduce confidence
     adjusted_confidence = hunch_confidence * calibration
+    # A7: BEVIDST INGEN kontinuert skalering af styrken efter opgavens rå confidence.
+    # Jeg prøvede `adjusted_confidence * (confidence / 0.5)` og målte den: den gav fire
+    # opgaver fire forskellige tal — men tallene var OPDIGTEDE. Der findes ingen data der
+    # siger at en læseopgave er 0,66 sikker og en skriveopgave 0,52; det var min
+    # multiplikator der opfandt dem, og ved rå 0,1 gjorde den styrken næsten nul.
+    # Opgavespecificiteten bæres derfor af RETNINGEN (se `irreversible`-grenen ovenfor) og
+    # af delta'et på den RÅ confidence, som flytter grenvalget ved 0,6 og 0,3 — ikke af en
+    # skala jeg ikke kan forsvare. Det er den ærlige grænse: jeg ved OM opgaven er farlig,
+    # ikke hvor farlig den er på en kontinuert skala.
     # Bias-FRI baseline (12/10-2026): bevares FØR Lag-4 lægges oveni, så counterfactual-
     # tællingen kan svare på hvad gaten VILLE afgøre uden den lærte bias. Uden dette led
     # findes svaret ikke — gaten ser kun den justerede værdi og kan ikke sammenlignes med sig selv.
@@ -86,6 +170,18 @@ def derive_gut_signal(
         "calibration_score": calibration,
         "raw_confidence": confidence,
         "task_hint": task_description[:80],
+        # A7 (3/11-2026): de fire felter gør det efterprøveligt HVORFOR confidence er
+        # hvad den er. Uden dem ville en opgavespecifik justering være usynlig i ledgeren
+        # — og så kunne ingen se om mappingen faktisk klassificerede opgaven rigtigt.
+        "task_tier": task_map.get("tier"),
+        "task_signals": list(task_map.get("signals") or []),
+        "task_method": task_map.get("method"),
+        "task_confidence_delta": task_map.get("confidence_delta"),
+        # 3/11-2026: fejlraten er gjort synlig. `caution` udløses af RATEN (over 20 % ved
+        # mindst 20 ticks), ikke af et absolut antal — og uden tallet i signalet kan ingen
+        # se om retningen blev valgt på et sundt eller et skrøbeligt grundlag.
+        "recent_error_rate": round(error_rate, 3),
+        "recent_sample_size": _grundlag,
     }
 
 
@@ -119,7 +215,7 @@ def _consumer_mode() -> str:
         v = get_runtime_state_value(_CONSUMER_MODE_KEY, "off")
         mode = str(v or "off").strip().lower()
         return mode if mode in ("off", "shadow", "on") else "off"
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return "off"
 
 
@@ -127,13 +223,35 @@ def _gate_threshold() -> float:
     try:
         from core.runtime.db_core import get_runtime_state_value
         return float(get_runtime_state_value(_GATE_THRESHOLD_KEY, _DEFAULT_THRESHOLD))
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return _DEFAULT_THRESHOLD
 
 
 # Counterfactual-tælling (12/10-2026). To nerves i den EKSISTERENDE ledger — ingen ny tabel.
 _COUNTERFACTUAL_NERVE = "gut_gate"
 _COUNTERFACTUAL_NERVE_NO_BIAS = "gut_gate_uden_bias"
+
+# A6b (3/11-2026): `mode` var ikke en dimension i ledgerens nøgle. Den levede kun som fri
+# tekst i `last_reason`, som overskrives ved hvert nyt kald — så en shadow-simuleret
+# afvisning blev smeltet sammen med en håndhævet, og fladen talte begge som «stoppet».
+# Nøglen er `(nerve, decision)`, så mode bæres nu af NERVE-NAVNET: en shadow-afgørelse
+# tælles på sin egen nerve og kan trækkes fra uden at røre den fælles ledger eller skemaet.
+# (At gøre mode til en rigtig nøgle-dimension ville kræve en migrering af
+# `gate_verdict_counts`; nerve-navnet løser samme problem reversibelt.)
+_COUNTERFACTUAL_NERVE_SHADOW = "gut_gate_shadow"
+_COUNTERFACTUAL_NERVE_NO_BIAS_SHADOW = "gut_gate_uden_bias_shadow"
+
+# A3 (3/11-2026): en afvisning er en BESLUTNING, ikke et udfald.
+#
+# Før endte den kun i en egress-fri trace (`record_private("gut_gate_withhold")`), som
+# kalibreringen ikke læser. Den tælles nu i den samme ledger som de øvrige gate-afgørelser
+# — men på sin EGEN nerve, så den aldrig kan forveksles med et evalueret udfald.
+#
+# Den kan ALDRIG kalibrere maven: et afvist run har intet observeret udfald, og vi ved
+# ikke om det ville være lykkedes. Kun forudsigelse + udfald tilsammen kan det. En
+# registreret afvisning er derfor et datapunkt om gatens ADFÆRD — ikke et bevis for at
+# afvisningen var rigtig.
+_WITHHELD_NERVE = "gut_gate_withheld"
 
 
 def _safe_record(ledger: object, nerve: str, decision: str, reason: str) -> None:
@@ -150,6 +268,7 @@ def _record_counterfactual(
     no_bias_confidence: float | None,
     threshold: float,
     mode: str,
+    hunch: str = "proceed",
 ) -> None:
     """Optæl gatens afgørelse MED og UDEN den lærte bias. Ren statistik — kaster ALDRIG.
 
@@ -162,7 +281,11 @@ def _record_counterfactual(
     except Exception:  # ledgeren er valgfri — uden den tæller vi bare ikke
         return
 
-    _safe_record(ledger, _COUNTERFACTUAL_NERVE,
+    shadow = str(mode or "").strip().lower() == "shadow"
+    nerve = _COUNTERFACTUAL_NERVE_SHADOW if shadow else _COUNTERFACTUAL_NERVE
+    nerve_nb = _COUNTERFACTUAL_NERVE_NO_BIAS_SHADOW if shadow else _COUNTERFACTUAL_NERVE_NO_BIAS
+
+    _safe_record(ledger, nerve,
                  "green" if would_pass else "red",
                  f"mode={mode} conf={conf:.3f} thr={threshold:.2f}")
     if no_bias_confidence is None:
@@ -171,9 +294,13 @@ def _record_counterfactual(
         nb = float(no_bias_confidence)
     except (TypeError, ValueError):  # utolkbar baseline → kun med-bias tælles
         return
-    _safe_record(ledger, _COUNTERFACTUAL_NERVE_NO_BIAS,
-                 "green" if nb >= threshold else "red",
-                 f"conf={nb:.3f} thr={threshold:.2f}")
+    # Definition B: bias flytter kun STYRKEN, aldrig retningen. No-bias-siden skal derfor
+    # bruge samme retningsregel som den faktiske afgørelse — ellers rapporterer ledgeren
+    # at erfaringen flyttede en beslutning, når det var retningsreglen der gjorde det.
+    nb_would_pass = str(hunch or "proceed").strip().lower() == "proceed" and nb >= threshold
+    _safe_record(ledger, nerve_nb,
+                 "green" if nb_would_pass else "red",
+                 f"hunch={str(hunch or 'proceed').strip().lower()} conf={nb:.3f} thr={threshold:.2f}")
 
 
 def gut_gate(
@@ -181,6 +308,7 @@ def gut_gate(
     *,
     context: str = "",
     no_bias_confidence: float | None = None,
+    hunch: str | None = None,
 ) -> bool:
     """Beslut om et proceed-valg må fortsætte, gated på gut-confidence.
 
@@ -188,27 +316,35 @@ def gut_gate(
     lærte bias). Self-safe: kaster ALDRIG, fejler ALTID open (returnér True) — en fejl
     her må aldrig blokere et autonomt run.
 
+    Definition B (3/11-2026): `confidence` er STYRKEN af den retning `hunch` peger i.
+    Derfor er tilladelse en to-delt betingelse: retningen skal være "proceed" OG styrken
+    skal være ≥ tærsklen. Uden `hunch` (bagudkompatibelt kald) antages "proceed", så
+    gamle kaldesteder ikke ændrer adfærd — men de kan heller ikke længere slippe en
+    advarsel igennem ved høj styrke, fordi de ikke sender en advarsel.
+
     off    → True (confidence ignoreres, dagens adfærd)
     shadow → beregn would-gate + observér, men returnér True (handl ikke)
-    on      → returnér (confidence >= threshold)
+    on      → returnér (hunch == "proceed" AND confidence >= threshold)
     """
     try:
         conf = float(proceed_confidence)
-    except Exception:
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
         return True  # kan ikke tolke → fail open
 
     mode = _consumer_mode()
     if mode == "off":
         return True
 
+    retning = str(hunch or "proceed").strip().lower()
     threshold = _gate_threshold()
-    would_pass = conf >= threshold
+    # Retningen er en DEL af afgørelsen: en advarsel kan aldrig passere på høj styrke.
+    would_pass = retning == "proceed" and conf >= threshold
 
     # Counterfactual-tælling (12/10-2026): registrér BÅDE den faktiske afgørelse (med den
     # lærte bias) og hvad gaten ville have afgjort UDEN den. Forskellen er det eneste der
     # kan svare på om erfaringen faktisk flytter en beslutning — uden den findes svaret ikke,
     # fordi bias'en er positiv-only og derfor aldrig efterlader et withhold-spor.
-    _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode)
+    _record_counterfactual(conf, would_pass, no_bias_confidence, threshold, mode, retning)
 
     # Egress-fri observation (shadow OG on) — kun skalarer, aldrig egress.
     try:
@@ -220,12 +356,13 @@ def gut_gate(
                 "mode": mode,
                 "confidence": round(conf, 3),
                 "threshold": round(threshold, 3),
+                "hunch": retning,
                 "would_pass": would_pass,
                 "context": str(context)[:40],
             },
             reason="gut_gate",
         )
-    except Exception:
+    except Exception:  # ledgeren er valgfri — uden den tæller vi bare ikke
         pass
 
     if mode == "on":
@@ -272,6 +409,147 @@ def _record_backstop(conf: float, hunch: str) -> None:
                  f"backstop conf={conf:.3f} hunch={hunch}")
 
 
+def _record_withheld_decision(conf: float, hunch: str, task_description: str) -> None:
+    """A3: registrér en afvisning som BESLUTNING — adskilt fra enhver udfaldskalibrering.
+
+    Kaster ALDRIG: en tæller må ikke kunne påvirke om et run stoppes.
+    """
+    try:
+        from core.services import gate_verdict_ledger as ledger
+    except Exception:  # ledgeren er valgfri — en tæller må ALDRIG påvirke beslutningen
+        return
+    _safe_record(ledger, _WITHHELD_NERVE, "withheld",
+                 f"conf={conf:.3f} hunch={hunch} task={str(task_description or '')[:40]}")
+
+
+# ── A1 (3/11-2026): ægte observationer i stedet for hårdkodede nuller ────────
+#
+# Før: `preflight_gut_gate` kaldte `derive_gut_signal(task_description=…)` — intet andet.
+# Så var `confidence=0,5`, `recent_error_count=0` og `recent_success_count=0` ALTID
+# defaults, og tre vidt forskellige opgaver gav identisk 0,61. Gaten kunne ikke skelne.
+#
+# Nu: de to tællere læses fra `heartbeat_runtime_ticks` — de seneste tick-udfald. Det er
+# ægte observationer om hvordan systemet kører lige nu (målt 3/11: 23 blocked mod 270
+# ok/completed det seneste døgn).
+#
+# GRÆNSE, som skal siges højt: de to tællere er GLOBALE observationer, ikke
+# opgavespecifikke. De siger hvordan systemet kører lige nu, ikke om NETOP denne opgave
+# er risikabel. Den del bæres fra 3/11-2026 af `task_tool_mapping` (A7), som klassificerer
+# opgavens tekst — men den er en kurateret, deterministisk heuristik, ikke en måling af
+# opgavens faktiske værktøjsbrug. `confidence` er derfor opgavespecifik i RETNING, ikke i
+# sandsynlighed: vi ved om opgaven er læsende eller irreversibel, ikke om den lykkes.
+_SIGNAL_WINDOW_HOURS = 24
+_SIGNAL_CACHE_SECONDS = 60.0
+_signal_cache: dict[str, object] = {}
+
+
+def _recent_tick_signals() -> tuple[int, int]:
+    """(error_count, success_count) fra de seneste ticks. Fail-safe: (0, 0) ved fejl.
+
+    `blocked` tælles som fejl; `ok` og `completed` som succes. Caches i 60 s, så et
+    run-start ikke betaler en DB-forespørgsel hver gang.
+    """
+    try:
+        now = time.time()
+        cached_at = float(_signal_cache.get("at") or 0.0)
+        if now - cached_at < _SIGNAL_CACHE_SECONDS and "err" in _signal_cache:
+            return int(_signal_cache["err"]), int(_signal_cache["ok"])  # type: ignore[arg-type]
+
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT tick_status, COUNT(*) AS n
+                     FROM heartbeat_runtime_ticks
+                    WHERE started_at > datetime('now', ?)
+                    GROUP BY tick_status""",
+                (f"-{_SIGNAL_WINDOW_HOURS} hours",),
+            ).fetchall()
+        err = 0
+        ok = 0
+        for row in rows:
+            status = str(row["tick_status"] or "").strip().lower()
+            n = int(row["n"] or 0)
+            if status == "blocked":
+                err += n
+            elif status in ("ok", "completed"):
+                ok += n
+        _signal_cache.update({"at": now, "err": err, "ok": ok})
+        return err, ok
+    except Exception:  # uden observationer falder vi tilbage til dagens adfærd: (0, 0)
+        return 0, 0
+
+
+# ── A2 (3/11-2026): forudsigelsens livscyklus ────────────────────────────────
+#
+# Før: `preflight_gut_gate` dannede en hunch og kastede den. `gut_calibration._on_started`
+# dannede derefter en NY — fra `payload.get("focus")`, altså et andet input end det gaten
+# så på, og først EFTER at runnet var begyndt. Kalibreringen evaluerede derfor en anden
+# forudsigelse end den der lå bag startbeslutningen. To beregninger, den ene kasseret.
+#
+# Nu: preflight lægger sin forudsigelse i en kortlivet FIFO, og `_on_started` tager den
+# ældste ikke-forbrugte. Slotten er per proces og TTL-begrænset, fordi preflight og
+# run-start ligger millisekunder fra hinanden i samme proces; findes der ingen slot
+# (fx et run startet ad en anden vej), falder kalibreringen tilbage til at danne sin egen
+# — og siger det i `source`-feltet, så det kan ses bagefter hvilken vej der blev brugt.
+_PREFLIGHT_TTL_SECONDS = 120.0
+_PREFLIGHT_MAX_PENDING = 8
+_preflight_pending: list[dict[str, object]] = []
+
+
+def _stash_preflight_prediction(
+    *, signal: dict, udfald: dict, task_description: str
+) -> None:
+    """Gem preflight'ens forudsigelse + beslutning, så livscyklussen kan evaluere DEN.
+
+    Kaster ALDRIG — en fejl i bookkeeping må ikke påvirke om et run starter.
+    """
+    try:
+        now = time.time()
+        _preflight_pending[:] = [
+            p for p in _preflight_pending
+            if now - float(p.get("at") or 0.0) < _PREFLIGHT_TTL_SECONDS
+        ]
+        _preflight_pending.append({
+            "at": now,
+            "hunch": str(udfald.get("hunch") or signal.get("hunch") or "proceed"),
+            "confidence": udfald.get("confidence", signal.get("confidence")),
+            "confidence_no_bias": signal.get("confidence_no_bias"),
+            "raw_confidence": signal.get("raw_confidence"),
+            "recent_error_count": signal.get("recent_error_count"),
+            "recent_success_count": signal.get("recent_success_count"),
+            # A7: hvilken risikoklasse opgaven blev læst som — så kalibreringen kan se
+            # om en afvist/lupket opgave var irreversibel eller læsende.
+            "task_tier": signal.get("task_tier"),
+            "task_signals": signal.get("task_signals"),
+            "allowed": bool(udfald.get("allowed", True)),
+            "backstop": bool(udfald.get("backstop", False)),
+            "task": str(task_description or "")[:80],
+        })
+        while len(_preflight_pending) > _PREFLIGHT_MAX_PENDING:
+            _preflight_pending.pop(0)
+    except Exception:  # bookkeeping må ALDRIG påvirke beslutningen
+        return
+
+
+def take_preflight_prediction() -> dict[str, object] | None:
+    """Tag den ældste ikke-forbrugte preflight-forudsigelse. None hvis ingen findes.
+
+    Bruges af `gut_calibration._on_started`, så kalibreringen evaluerer præcis den
+    forudsigelse gaten brugte — ikke en ny beregning fra et andet input.
+    """
+    try:
+        now = time.time()
+        _preflight_pending[:] = [
+            p for p in _preflight_pending
+            if now - float(p.get("at") or 0.0) < _PREFLIGHT_TTL_SECONDS
+        ]
+        if not _preflight_pending:
+            return None
+        return _preflight_pending.pop(0)
+    except Exception:  # uden observationer falder vi tilbage til dagens adfærd: (0, 0)
+        return None
+
+
 def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     """PRE-FLIGHT: dan hunch og afgør om et autonomt run må starte. Kaster ALDRIG.
 
@@ -280,7 +558,14 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     OG at blokerings-budgettet ikke er brugt.
     """
     try:
-        signal = derive_gut_signal(task_description=task_description)
+        err, ok = _recent_tick_signals()
+        signal = derive_gut_signal(
+            task_description=task_description,
+            recent_error_count=err,
+            recent_success_count=ok,
+        )
+        signal["recent_error_count"] = err
+        signal["recent_success_count"] = ok
     except Exception:  # kunne ikke danne hunch → slip igennem, det er den sikre side
         return {"allowed": True, "reason": "derive-fejl"}
 
@@ -288,17 +573,25 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
     hunch = str(signal.get("hunch") or "proceed")
     try:
         tillad = gut_gate(conf, context="autonomous_run_preflight",
-                          no_bias_confidence=signal.get("confidence_no_bias"))
+                          no_bias_confidence=signal.get("confidence_no_bias"),
+                          hunch=hunch)
     except Exception:  # gaten er rådgivende — en fejl her må ALDRIG stoppe et run
         return {"allowed": True, "reason": "gate-fejl", "confidence": conf}
 
     if tillad:
-        return {"allowed": True, "confidence": conf, "hunch": hunch}
+        udfald = {"allowed": True, "confidence": conf, "hunch": hunch}
+        _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                    task_description=task_description)
+        return udfald
     if _blok_budget_brugt():
         _record_backstop(conf, hunch)
-        return {"allowed": True, "confidence": conf, "hunch": hunch, "backstop": True}
+        udfald = {"allowed": True, "confidence": conf, "hunch": hunch, "backstop": True}
+        _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                    task_description=task_description)
+        return udfald
 
     _blok_tider.append(time.time())
+    _record_withheld_decision(conf, hunch, task_description)
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", "gut_gate_withhold", value=conf,
@@ -307,7 +600,10 @@ def preflight_gut_gate(*, task_description: str) -> dict[str, object]:
                        reason="gut_gate_withhold")
     except Exception:  # observationen er egress-fri pynt — uden den stopper vi stadig
         pass
-    return {"allowed": False, "confidence": conf, "hunch": hunch}
+    udfald = {"allowed": False, "confidence": conf, "hunch": hunch}
+    _stash_preflight_prediction(signal=signal, udfald=udfald,
+                                task_description=task_description)
+    return udfald
 
 
 def preflight_allows(message: str) -> bool:
@@ -345,15 +641,45 @@ def record_gut_outcome(
 
 
 def build_gut_surface() -> dict[str, object]:
+    """Kalibrerings-fladen — viser de tre lag ADSKILT (A3, 3/11-2026).
+
+    Før viste den kun `calibrated_hits/total_predictions`, hvilket læses som «hvor ofte
+    havde maven ret». Men `total_predictions` tæller kun de runs der fik LOV at køre, og
+    afvisninger var helt usynlige. Nu står de tre lag ved siden af hinanden:
+
+      • evalueret  — forudsigelse mødt af et observeret udfald (kan kalibrere)
+      • afvist     — gaten sagde nej; intet udfald findes (kan IKKE kalibrere)
+      • overkørt   — gaten sagde nej, bagkanten slap den igennem
+
+    Afvisninger kan aldrig gøre kalibreringen bedre eller dårligere — de har intet udfald
+    at måles mod. De vises for at gøre gatens adfærd synlig, ikke for at pynte på tallet.
+    """
     state = get_cognitive_gut_state()
+
+    withheld = 0
+    overkoersler = 0
+    try:
+        from core.services import gate_verdict_ledger as ledger
+        counts = ledger.summary()
+        withheld = int((counts.get(_WITHHELD_NERVE) or {}).get("total") or 0)
+        overkoersler = int((counts.get(_BACKSTOP_NERVE) or {}).get("total") or 0)
+    except Exception:  # ledgeren er valgfri — fladen skal stadig kunne vises
+        pass
+
     if not state:
-        return {"active": False, "state": None, "summary": "No gut data yet"}
+        return {"active": False, "state": None,
+                "withheld": withheld, "backstop_overkoersler": overkoersler,
+                "summary": "No gut data yet"}
     return {
         "active": True,
         "state": state,
+        "evaluated": int(state["total_predictions"]),
+        "withheld": withheld,
+        "backstop_overkoersler": overkoersler,
         "summary": (
             f"Calibration: {state['calibration_score']:.2f} "
-            f"({state['calibrated_hits']}/{state['total_predictions']} correct)"
+            f"({state['calibrated_hits']}/{state['total_predictions']} correct); "
+            f"{withheld} afvist (intet udfald), {overkoersler} overkørt af bagkanten"
         ),
     }
 
@@ -375,6 +701,7 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     backstop = counts.get(_BACKSTOP_NERVE) or {}
     med = counts.get(_COUNTERFACTUAL_NERVE) or {}
     uden = counts.get(_COUNTERFACTUAL_NERVE_NO_BIAS) or {}
+    shadow = counts.get(_COUNTERFACTUAL_NERVE_SHADOW) or {}
     total = int(med.get("total") or 0)
     if not total:
         return {"active": False, "events": 0,
@@ -383,7 +710,13 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
     pass_med = int(med.get("green") or 0)
     pass_uden = int(uden.get("green") or 0)
     delta = pass_med - pass_uden
-    blokeret = total - pass_med
+    overkoersler = int(backstop.get("total") or 0)
+    # A6b (3/11-2026): `blokeret` talte gatens NEJ, ikke faktisk stoppede runs — så en
+    # backstop-overkørsel stod som «stoppet» i samme flade der ved siden af viste den som
+    # «sluppet igennem». Nu tælles kun on-mode-afvisninger, og bagkantens overkørsler
+    # trækkes fra. Shadow-afgørelser ligger på deres egen nerve og indgår ikke i `total`.
+    blokeret = max(0, total - pass_med - overkoersler)
+    shadow_total = int(shadow.get("total") or 0)
     return {
         "active": True,
         "events": total,
@@ -392,10 +725,12 @@ def build_gut_counterfactual_surface() -> dict[str, object]:
         "counterfactual_delta": delta,
         "delta_pct": round(100.0 * delta / total, 2),
         "blokeret": blokeret,
-        "backstop_overkoersler": int(backstop.get("total") or 0),
+        "backstop_overkoersler": overkoersler,
+        "shadow_afgoerelser": shadow_total,
         "summary": (
             f"bias flyttede afgørelsen i {delta} af {total} tilfælde "
             f"({round(100.0 * delta / total, 2)} %); {blokeret} stoppet, "
-            f"{int(backstop.get('total') or 0)} sluppet igennem af bagkanten"
+            f"{overkoersler} sluppet igennem af bagkanten, "
+            f"{shadow_total} simuleret i shadow"
         ),
     }

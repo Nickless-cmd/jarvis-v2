@@ -90,6 +90,10 @@ class _Session:
         #: ligesom baggrunds-jobbenes titel — ellers maa panelet gaette.
         self.titel = ""
         self.arbejde = False
+        # Den almindelige `bash`-shell tilhører én chat/run-scope. Daemonen
+        # overlever API-genstarter, så scopet skal leve HER og ikke kun i den
+        # proceslokale pool; ellers bliver alle shells anonyme efter restart.
+        self.arbejde_scope = ""
         #: Kommandoen fra sidste `run`. Kun meningsfuld MENS laasen holdes —
         #: derfor ryddes den aldrig, og `_list_row` viser den kun naar
         #: `lock.locked()`. Det sparer et try/finally om hele `run`s krop,
@@ -471,6 +475,7 @@ def _list_row(sid: str, sess: _Session, now: float) -> dict[str, Any]:
         # `titel` er hvad den viser i stedet for «aaben shell».
         "titel": sess.titel,
         "arbejde": sess.arbejde,
+        "arbejde_scope": sess.arbejde_scope,
         # `running_command` ryddes aldrig; den er kun sand mens låsen holdes.
         "command": sess.running_command if optaget else "",
     }
@@ -611,6 +616,7 @@ def _daemon_main() -> int:
                     # at vaere maerket som arbejde hele sin levetid.
                     sess.titel = str(req.get("titel") or "")[:120]
                     sess.arbejde = bool(req.get("arbejde"))
+                    sess.arbejde_scope = str(req.get("arbejde_scope") or "")[:240]
                 except Exception as exc:
                     _send(client, {"status": "error", "error": f"spawn failed: {exc}"})
                     return
@@ -965,14 +971,17 @@ def _exec_bash_session_open(args: dict[str, Any]) -> dict[str, Any]:
         {"op": "open", "titel": str(args.get("titel") or "")}, timeout=10.0)
 
 
-def _open_arbejdssession() -> dict[str, Any]:
+def _open_arbejdssession(scope: str = "") -> dict[str, Any]:
     """Aabn den DELTE arbejds-shell — den `bash`-vaerktoejet genbruger.
 
     Adskilt fra `_exec_bash_session_open` fordi den ikke er en opgave. Den
     skal ikke i baggrundsjob-panelet, og daemonen maerker den derfor ved
     fødselen frem for at panelet gaetter bagefter.
     """
-    return _client_call({"op": "open", "arbejde": True}, timeout=10.0)
+    return _client_call(
+        {"op": "open", "arbejde": True, "arbejde_scope": str(scope)[:240]},
+        timeout=10.0,
+    )
 
 
 def _exec_bash_session_run(args: dict[str, Any]) -> dict[str, Any]:

@@ -3,6 +3,7 @@ import core.services.visible_model as visible_model
 import core.services.visible_model_adapters as adapters
 import core.tools.copilot_tool_pruning as pruning
 import core.tools.simple_tools as simple_tools
+from core.services.cheap_provider_runtime import CheapProviderError
 
 
 def _stub_openai_compat(monkeypatch, done_event: dict) -> None:
@@ -176,6 +177,53 @@ def _stub_stream(monkeypatch, events: list[dict]) -> None:
 def _stream(events: list[dict]) -> list:
     return list(visible_model._stream_openai_compatible_model(
         provider="deepseek", model="deepseek-v4-flash", message="hej"))
+
+
+def test_deepseek_503_retries_same_model_then_succeeds(monkeypatch) -> None:
+    _stub_stream(monkeypatch, [])
+    calls: list[tuple[str, str]] = []
+    sleeps: list[float] = []
+
+    def _events(**kwargs):
+        calls.append((kwargs["provider"], kwargs["model"]))
+        if len(calls) < 4:
+            raise CheapProviderError(
+                provider="deepseek", code="provider-error",
+                message="HTTP 503: busy", status_code=503,
+            )
+        return iter([{
+            "kind": "done", "full_text": "ok", "reasoning_content": "",
+            "finish_reason": "stop",
+        }])
+
+    monkeypatch.setattr(cheap, "_iter_openai_compatible_chat_events", _events)
+    monkeypatch.setattr("time.sleep", lambda seconds: sleeps.append(seconds))
+
+    items = _stream([])
+
+    assert calls == [("deepseek", "deepseek-v4-flash")] * 4
+    assert sleeps == [1.0, 3.0, 7.0]
+    assert any(isinstance(item, visible_model.VisibleModelStreamDone) for item in items)
+
+
+def test_deepseek_503_after_delta_is_not_retried(monkeypatch) -> None:
+    _stub_stream(monkeypatch, [])
+    calls = 0
+
+    def _events(**_kwargs):
+        nonlocal calls
+        calls += 1
+        yield {"kind": "delta", "text": "delvist"}
+        raise CheapProviderError(
+            provider="deepseek", code="provider-error",
+            message="HTTP 503: busy", status_code=503,
+        )
+
+    monkeypatch.setattr(cheap, "_iter_openai_compatible_chat_events", _events)
+
+    with _pytest.raises(CheapProviderError):
+        _stream([])
+    assert calls == 1
 
 
 import pytest as _pytest

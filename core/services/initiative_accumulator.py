@@ -203,21 +203,53 @@ def get_wants_by_type(want_type: str) -> list[Want]:
     return [w for w in _levende(_wants) if w.want_type == want_type]
 
 
+_WANT_TYPE_LABELS: dict[str, str] = {
+    "insight": "Jeg vil gerne forstå",
+    "meaning": "Jeg vil gerne hjælpe",
+    "growth": "Jeg vil gerne vokse",
+    "clarity": "Jeg vil gerne have klarhed",
+}
+
+
+def render_want_text(want: Want | None, *, with_strength: bool = False) -> str:
+    """Et ønskes tekst i husets eget sprog — aldrig dets repr.
+
+    Målt 3/11-2026: ``Want`` bærer ``want_type``/``topic``/``strength``/``life_phase``
+    og har hverken ``text`` eller ``summary``. Kaldte man ``str(w)`` skrev man derfor
+    en Python-repr — og i Centralens forgrund endte den som «jeg arbejder mod:
+    Want(want_id='want-11871', …, life_phase='deep_», afskåret midt i et ord, videre
+    ind i prompten. En repr kan ikke læses, citeres eller handles på.
+
+    Kan intet læsbart udledes, returneres tom streng — så kalderen kan tie frem for
+    at sende skrald videre.
+    """
+    if want is None:
+        return ""
+    topic = str(getattr(want, "topic", "") or "").strip()
+    kind = str(getattr(want, "want_type", "") or "").strip()
+    if not topic and not kind:
+        return ""
+    label = _WANT_TYPE_LABELS.get(kind, kind)
+    text = f"{label} om {topic}" if topic else label
+    if with_strength:
+        try:
+            strength = float(getattr(want, "strength", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            strength = 0.0
+        phase = str(getattr(want, "life_phase", "") or "").strip()
+        detail = [d for d in (f"styrke {strength:.2f}" if strength > 0 else "",
+                              f"fase {phase}" if phase else "") if d]
+        if detail:
+            text += f" ({', '.join(detail)})"
+    return text[:200]
+
+
 def format_wants_for_prompt() -> str:
     """Format wants for prompt injection."""
     top = get_top_want()
     if not top:
         return ""
-    
-    type_labels = {
-        "insight": "Jeg vil gerne forstå",
-        "meaning": "Jeg vil gerne hjælpe",
-        "growth": "Jeg vil gerne vokse",
-        "clarity": "Jeg vil gerne have klarhed",
-    }
-    
-    label = type_labels.get(top.want_type, top.want_type)
-    return f"[ØNSKE: {label} om {top.topic}]"
+    return f"[ØNSKE: {render_want_text(top)}]"
 
 
 def clear_wants_by_type(want_type: str) -> None:

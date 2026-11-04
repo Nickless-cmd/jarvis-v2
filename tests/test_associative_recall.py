@@ -500,9 +500,19 @@ def _aegte_prod_db():
 
 
 def _tael_raekker(db_sti, memory_id):
-    import sqlite3
+    """Tæl uden at kunne skrive — en verifikation må ikke forurene det den måler.
 
-    conn = sqlite3.connect(str(db_sti))
+    Målt 4/11-2026: funktionen åbnede produktionsbasen SKRIVBART blot for at
+    tælle, og `sqlite3.connect` ville oprette filen hvis den ikke fandtes. En
+    test der beviser at skrivningen lander i tmp, kunne altså selv skrive i
+    drift. `_afvis_skrivning_til_prod_db` fælder nu den slags åbninger.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    if not Path(db_sti).is_file():
+        return 0
+    conn = sqlite3.connect(f"file:{db_sti}?mode=ro", uri=True)
     try:
         return conn.execute(
             "SELECT COUNT(*) FROM recall_active_memories WHERE memory_id=?",

@@ -298,3 +298,47 @@ def test_frisk_dato_doer_ikke_af_rettelsen():
     frisk = datetime.now(timezone.utc).isoformat()
     v = g.evaluate(_valid_hyp(created_at=frisk), confirming_evidence=[])
     assert "TTL" not in v.reason
+
+
+# ── Idempotens: samme observation må kun tælle ÉN gang (4/11-2026) ────────────
+#
+# Målt før rettelsen: 0,5 + samme bekræftelse ×5 → 0,613; 0,5 + samme
+# falsifikation ×2 → 0,125. `is_circular` dækker cirkularitet, ikke
+# idempotens — de er to forskellige problemer. Uden dedup flytter en
+# genafspilning efter genstart eller en dobbelt-leveret evidens confidence
+# uden at virkeligheden sagde noget nyt.
+
+def test_samme_evidens_taeller_kun_en_gang():
+    """Fem leveringer af ÉN observation skal give samme confidence som én."""
+    ev = [_grounded()]
+    en = g.evaluate(_valid_hyp(confidence=0.5, sample_size=1),
+                    confirming_evidence=ev, grounded_sample_count=1)
+    fem = g.evaluate(_valid_hyp(confidence=0.5, sample_size=1),
+                     confirming_evidence=ev * 5, grounded_sample_count=5)
+    assert en.confidence == fem.confidence, (
+        f"samme observation flyttede confidence: 1× → {en.confidence}, 5× → {fem.confidence}"
+    )
+
+
+def test_samme_falsifikation_taeller_kun_en_gang():
+    ev = [_grounded(supports=False, falsifies=True)]
+    en = g.evaluate(_valid_hyp(confidence=0.8, sample_size=1),
+                    confirming_evidence=ev, grounded_sample_count=1)
+    to = g.evaluate(_valid_hyp(confidence=0.8, sample_size=1),
+                    confirming_evidence=ev * 2, grounded_sample_count=2)
+    assert en.confidence == to.confidence, (
+        f"én modsigelse blev talt to gange: 1× → {en.confidence}, 2× → {to.confidence}"
+    )
+
+
+def test_forskellige_ground_ref_taeller_hver_for_sig():
+    """Modprøven: dedup må ikke slå rigtig, uafhængig evidens sammen."""
+    def ev(n):
+        return [_grounded(ground_ref=f"run-{i}") for i in range(n)]
+    en = g.evaluate(_valid_hyp(confidence=0.5, sample_size=1),
+                    confirming_evidence=ev(1), grounded_sample_count=1)
+    tre = g.evaluate(_valid_hyp(confidence=0.5, sample_size=1),
+                     confirming_evidence=ev(3), grounded_sample_count=3)
+    assert tre.confidence > en.confidence, (
+        "tre uafhængige observationer skal flytte confidence mere end én"
+    )

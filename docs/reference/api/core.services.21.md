@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/prompt_assembly_turn_cache.py`
+_Small process-local cache for reusing one prompt assembly within a turn._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CacheLookup` | `` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L20) |
+| function | `lookup` | `(key, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L26) |
+| function | `store` | `(key, value, *, now=…)` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L39) |
+| function | `clear` | `()` | — | [src](../../../core/services/prompt_assembly_turn_cache.py#L46) |
+
 ## `core/services/prompt_cache_probe.py`
 _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige ture._
 
@@ -40,36 +50,36 @@ _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige tur
 | function | `_device_presence_line` | `(user_id)` | Hvilken enhed Bjørn er ved (routing-awareness). Killswitch-gatet, best-effort. | [src](../../../core/services/prompt_contract.py#L619) |
 | function | `build_visible_chat_prompt_assembly` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…, caller_phase=…)` | Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for | [src](../../../core/services/prompt_contract.py#L678) |
 | function | `_build_visible_chat_prompt_assembly_impl` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | — | [src](../../../core/services/prompt_contract.py#L701) |
-| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3480) |
-| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3632) |
-| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3762) |
-| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3769) |
-| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3889) |
-| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3904) |
-| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3934) |
-| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L4013) |
-| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L4021) |
-| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L4031) |
-| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L4092) |
-| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L4124) |
-| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L4128) |
-| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4208) |
-| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4239) |
-| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4262) |
-| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4310) |
-| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4362) |
-| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…, acc=…)` | Byg de 17 support-sektioner. | [src](../../../core/services/prompt_contract.py#L4372) |
-| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4431) |
-| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4447) |
-| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4488) |
-| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4599) |
-| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4627) |
-| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4661) |
-| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4679) |
-| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4698) |
-| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4711) |
-| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4722) |
-| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4747) |
+| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3514) |
+| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3666) |
+| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3796) |
+| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3803) |
+| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3923) |
+| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3938) |
+| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3968) |
+| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L4047) |
+| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L4055) |
+| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L4065) |
+| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L4126) |
+| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L4158) |
+| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L4162) |
+| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4242) |
+| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4273) |
+| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4296) |
+| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4344) |
+| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4396) |
+| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…, acc=…)` | Byg de 17 support-sektioner. | [src](../../../core/services/prompt_contract.py#L4406) |
+| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4465) |
+| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4481) |
+| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4522) |
+| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4633) |
+| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4661) |
+| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4695) |
+| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4713) |
+| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4732) |
+| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4745) |
+| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4756) |
+| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4781) |
 
 ## `core/services/prompt_dump.py`
 _core/services/prompt_dump.py_
@@ -78,6 +88,13 @@ _core/services/prompt_dump.py_
 |---|---|---|---|---|
 | function | `is_armed` | `()` | Er dumpet arméret? (sentinel-filen findes) | [src](../../../core/services/prompt_dump.py#L29) |
 | function | `dump_payload` | `(*, provider, model, messages, tools=…, params=…, lane=…, round_index=…)` | Skriv HELE requesten til latest.json; forrige dump → prev.json. | [src](../../../core/services/prompt_dump.py#L37) |
+
+## `core/services/prompt_dynamic_tail_layout.py`
+_Cache-aware ordering for the visible prompt's dynamic tail._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `move_query_memory_to_tail_end` | `(tail)` | Move the contiguous query-selected memory group to the absolute end. | [src](../../../core/services/prompt_dynamic_tail_layout.py#L32) |
 
 ## `core/services/prompt_evolution.py`
 _Prompt evolution — versioning + rollback safety net for workspace prompts._
@@ -137,7 +154,7 @@ _Supplementary non-blocking recall during visible prompt assembly._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L17) |
+| function | `append_background_recall` | `(user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err)` | Surface prepared associations only when they match the current message. | [src](../../../core/services/prompt_memory_recall.py#L18) |
 
 ## `core/services/prompt_mode_layout.py`
 _Reversible prompt-layout policy for the visible chat and code lanes._
@@ -333,17 +350,19 @@ _Mekanisk kontrol af fire former for formfejl i et synligt svar._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ProsaPunkt` | `` | Ét afsnit (eller én fence) der bærer en formfejl. | [src](../../../core/services/prosa_struktur_guard.py#L115) |
-| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L128) |
-| function | `_blokke_med_overskrift` | `(text)` | (nærmeste overskrift, blok) for hvert afsnit i hele teksten. | [src](../../../core/services/prosa_struktur_guard.py#L152) |
-| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L200) |
-| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L206) |
-| function | `_antal_tal` | `(afsnit)` | Antal selvstændige tal i et afsnit, efter klokkeslæt og hashes er fjernet. | [src](../../../core/services/prosa_struktur_guard.py#L222) |
-| function | `_pseudo_overskrift` | `(blok)` | Returnér den fede tekst hvis blokken indledes af en pseudo-overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L233) |
-| function | `_indeholder_kode` | `(krop)` | Afgør om en fence-krop faktisk er kode. | [src](../../../core/services/prosa_struktur_guard.py#L250) |
-| function | `_kodeblokke` | `(text)` | Find fences uden kode. Returnerer (overskrift, krop, linjer). | [src](../../../core/services/prosa_struktur_guard.py#L259) |
-| function | `find_prosa_punkter` | `(text)` | Find formfejl i et svar. Én blok giver højst ét fund. | [src](../../../core/services/prosa_struktur_guard.py#L290) |
-| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L389) |
+| class | `ProsaPunkt` | `` | Ét afsnit (eller én fence) der bærer en formfejl. | [src](../../../core/services/prosa_struktur_guard.py#L126) |
+| method | `ProsaPunkt.som_fejl` | `(self)` | Læsbar fejlstreng — samme form som ``jarvis_ui_guard.fejl_i_flader``. | [src](../../../core/services/prosa_struktur_guard.py#L139) |
+| function | `_blokke_med_overskrift` | `(text)` | (nærmeste overskrift, blok) for hvert afsnit i hele teksten. | [src](../../../core/services/prosa_struktur_guard.py#L163) |
+| function | `_er_struktureret` | `(blok)` | — | [src](../../../core/services/prosa_struktur_guard.py#L211) |
+| function | `_antal_led` | `(saetning)` | Antal parallelle led i én sætning, målt på opremsningskæden. | [src](../../../core/services/prosa_struktur_guard.py#L217) |
+| function | `_antal_tal` | `(afsnit)` | Antal selvstændige tal i et afsnit, efter klokkeslæt og hashes er fjernet. | [src](../../../core/services/prosa_struktur_guard.py#L233) |
+| function | `_pseudo_overskrift` | `(blok)` | Returnér den fede tekst hvis blokken indledes af en pseudo-overskrift. | [src](../../../core/services/prosa_struktur_guard.py#L244) |
+| function | `skal_have_break` | `(linje)` | Er denne linje en pseudo-overskrift der mangler sit break? | [src](../../../core/services/prosa_struktur_guard.py#L261) |
+| function | `ret_pseudo_overskrift` | `(text)` | Sæt et break ind efter en pseudo-overskrift. Ren teksttransformation. | [src](../../../core/services/prosa_struktur_guard.py#L303) |
+| function | `_indeholder_kode` | `(krop)` | Afgør om en fence-krop faktisk er kode. | [src](../../../core/services/prosa_struktur_guard.py#L346) |
+| function | `_kodeblokke` | `(text)` | Find fences uden kode. Returnerer (overskrift, krop, linjer). | [src](../../../core/services/prosa_struktur_guard.py#L355) |
+| function | `find_prosa_punkter` | `(text)` | Find formfejl i et svar. Én blok giver højst ét fund. | [src](../../../core/services/prosa_struktur_guard.py#L386) |
+| function | `fejl_i_prosa` | `(text)` | Returnér læsbare fejl for formfejl — tom liste = intet at rette. | [src](../../../core/services/prosa_struktur_guard.py#L485) |
 
 ## `core/services/prose_tool_calls.py`
 _Parser for prosa-emitterede tool-kald (cluster: tool-leak-fix 2026-06-21)._
@@ -409,6 +428,8 @@ _Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
 |---|---|---|---|---|
 | function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
 | function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
+| function | `looks_like_protocol_leak` | `(text)` | True hvis `text` bærer en models rå protokol-tokens. | [src](../../../core/services/provider_error_guard.py#L132) |
+| function | `looks_like_reasoning_leak` | `(text)` | True hvis `text` er modellens ræsonnement, ikke dens svar. | [src](../../../core/services/provider_error_guard.py#L169) |
 
 ## `core/services/provider_health_check.py`
 _Provider health check — periodic ping to detect outages early._
@@ -583,10 +604,11 @@ _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 | function | `er_bagdoer` | `(navn)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L84) |
 | function | `er_mutation` | `(navn, argumenter=…)` | Samme klassifikation som verification_gate tæller efter. | [src](../../../core/services/r2_5_haandhaevelse.py#L88) |
 | function | `_kiggede_tilbage_efter` | `(siden)` | Er der kommet et kig tilbage siden blokken blev sat? | [src](../../../core/services/r2_5_haandhaevelse.py#L103) |
-| function | `_publicer` | `(kind, data)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L118) |
-| function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L126) |
-| function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L154) |
-| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L220) |
+| function | `_kvitter_adlydt` | `(siden)` | Blokeringen blev adlydt — skriv det som et udfald, lad den ikke stå åben. | [src](../../../core/services/r2_5_haandhaevelse.py#L118) |
+| function | `_publicer` | `(kind, data)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L160) |
+| function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L168) |
+| function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L200) |
+| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L266) |
 
 ## `core/services/raesonnering_eksperiment.py`
 _A/B: raesonnerer han paa mellem-runderne, eller ikke?_
@@ -624,32 +646,4 @@ _Read-before-write guard — prevents overwrite of existing files without prior 
 | function | `_session_edits_key` | `(session_id)` | — | [src](../../../core/services/read_before_write_guard.py#L660) |
 | function | `record_operator_edit` | `(path, session_id=…, kind=…)` | Record that the operator side mutated this file. kind is 'edit' or 'write'. | [src](../../../core/services/read_before_write_guard.py#L664) |
 | function | `get_session_edit_summary` | `(session_id=…)` | Return the running tally for this session. Empty dict if nothing yet. | [src](../../../core/services/read_before_write_guard.py#L697) |
-
-## `core/services/reasoning_classifier.py`
-_Reasoning classifier — router that picks fast / reasoning / deep tier._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_score_patterns` | `(text, patterns)` | — | [src](../../../core/services/reasoning_classifier.py#L65) |
-| function | `classify_reasoning_tier` | `(message, *, task_hint=…)` | Pick reasoning tier for a user message (or task description). | [src](../../../core/services/reasoning_classifier.py#L75) |
-| function | `reasoning_tier_section` | `(message)` | Format tier verdict as a prompt-awareness section. None for fast tier | [src](../../../core/services/reasoning_classifier.py#L210) |
-| function | `_exec_reasoning_classify` | `(args)` | — | [src](../../../core/services/reasoning_classifier.py#L227) |
-| function | `build_reasoning_classifier_surface` | `()` | — | [src](../../../core/services/reasoning_classifier.py#L275) |
-| function | `_emit_tier_event` | `(tier, score)` | — | [src](../../../core/services/reasoning_classifier.py#L284) |
-
-## `core/services/reasoning_detectors.py`
-_Reasoning detectors for the reasoning-interceptor._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_downgrade_cognitive` | `(v, *, gate)` | Re-stamp a gate's verdict for the reasoning stage: keep GREEN/YELLOW, but a COGNITIVE RED | [src](../../../core/services/reasoning_detectors.py#L16) |
-| function | `fact_gate_on_reasoning` | `(reasoning_text, ctx)` | fact_gate re-applied to reasoning. A number/status claim with NO backing tool-call in this | [src](../../../core/services/reasoning_detectors.py#L26) |
-| function | `decision_gate_on_reasoning` | `(reasoning_text, ctx)` | decision_gate (commit cluster) re-applied to reasoning. Grounding = the active-decisions | [src](../../../core/services/reasoning_detectors.py#L43) |
-| function | `veto_on_reasoning` | `(reasoning_text, ctx)` | ABSTAINER — veto-gaten kan ikke dømmes af agentens egen reasoning (målt 13/9-2026). | [src](../../../core/services/reasoning_detectors.py#L55) |
-| function | `verification_on_reasoning` | `(reasoning_text, ctx)` | proactivity/verification gate re-applied. Grounding = the run's verification state (the gate | [src](../../../core/services/reasoning_detectors.py#L81) |
-| function | `cross_user_share_on_reasoning` | `(reasoning_text, ctx)` | privacy/cross_user_share gate re-applied to reasoning. SECURITY — keeps RED (a leak forming | [src](../../../core/services/reasoning_detectors.py#L97) |
-| function | `standing_orders_on_reasoning` | `(reasoning_text, ctx)` | Flag when the reasoning enters a risk class an active standing order governs. Grounding = | [src](../../../core/services/reasoning_detectors.py#L111) |
-| function | `_drift_signal` | `(ctx)` | INDEPENDENT drift signal 0..1 from the Central's OWN affect/valence nerves + an | [src](../../../core/services/reasoning_detectors.py#L131) |
-| function | `drift_on_reasoning` | `(reasoning_text, ctx)` | Affective drift (overconfidence). Grounding = the Central's own affect nerves + claim streak | [src](../../../core/services/reasoning_detectors.py#L151) |
-| function | `tone_on_reasoning` | `(reasoning_text, ctx)` | Epistemic tone — a guess stated as fact. ANCHORED (invariant 3): runs ONLY if a truth/drift | [src](../../../core/services/reasoning_detectors.py#L169) |
 

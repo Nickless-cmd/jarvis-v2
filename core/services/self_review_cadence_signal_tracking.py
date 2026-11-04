@@ -62,6 +62,20 @@ def track_runtime_self_review_cadence_signals_for_visible_turn(
 
 
 def refresh_runtime_self_review_cadence_signal_statuses() -> dict[str, int]:
+    # 3/11-2026: den tidligere form scannede `list_fn(limit=40)` — altsaa de
+    # NYESTE raekker, som pr. definition er friske. Stale-grenen var derfor
+    # strukturelt uopnaaelig i en tabel stoerre end 40. Sweep'en spoerger i
+    # stedet efter FOR GAMLE AKTIVE i SQL og rammer uanset tabelstoerrelse.
+    from core.services.signal_tracking_framework import sweep_stale_rows
+
+    swept = sweep_stale_rows(
+        table="runtime_self_review_cadence_signals",
+        statuses=("active", "softening"),
+        stale_after_days=_STALE_AFTER_DAYS,
+        stale_reason="Marked stale after bounded self-review cadence inactivity window.",
+    )
+    if swept is not None:
+        return {"stale_marked": swept}
     now = datetime.now(UTC)
     refreshed = 0
     for item in list_runtime_self_review_cadence_signals(limit=40):

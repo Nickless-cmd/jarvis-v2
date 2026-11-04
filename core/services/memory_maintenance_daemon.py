@@ -5,9 +5,9 @@ then it maintained one hardcoded file — `shared_dir()/MEMORY.md`, 24 KB — wh
 is not any user's memory: each user's MEMORY.md lives in their own workspace.
 Bjørn: «der er flere brugere».
 
-Two tiers:
-  Tier A (auto): exact + fuzzy heading duplicates → auto-merge.
-  Tier B (flag): overlapping content across headings → publish event for review.
+Two report-only tiers:
+  Tier A: exact + fuzzy heading duplicates → propose, never auto-merge.
+  Tier B: overlapping content across headings → publish event for review.
 
 This is the daemon companion to the writer-level fuzzy dedup in
 candidate_workflow._fuzzy_line_match (Lag 1). Lag 1 prevents
@@ -29,11 +29,11 @@ from core.runtime.workspace_paths import shared_dir
 # ---------------------------------------------------------------------------
 
 _CADENCE_HOURS = 12
-_TIER_A_HEADING_SIMILARITY = 0.85  # Jaccard threshold for auto-merge
+_TIER_A_HEADING_SIMILARITY = 0.85  # Jaccard threshold for duplicate proposals
 _TIER_B_CONTENT_SIMILARITY = 0.50  # Jaccard threshold for flagging
 _MIN_SECTION_LINES = 2  # skip sections with fewer lines
 
-#: Kun TOPNIVEAU-sections auto-merges (12/10-2026). Målt på Bjørns fil: af 53
+#: Kun TOPNIVEAU-sections sammenlignes (12/10-2026). Målt på Bjørns fil: af 53
 #: eksakte dubletter lå ALLE på niveau 3 — `### Læren`, `### Fejlen`,
 #: `### Status` under FORSKELLIGE forældre. Merge-reglen sammenligner kun
 #: overskriftsteksten, så den ville lime to ubeslægtede hændelser sammen.
@@ -99,7 +99,7 @@ def tick_memory_maintenance_daemon(now: datetime | None = None) -> dict:
 
     12/10-2026 (Bjørn: «der er flere brugere»): indtil nu vedligeholdt cyklussen
     én hardkodet fil som ikke var nogen brugers hukommelse. Den går nu gennem
-    alle registrerede workspaces og kører Tier A + Tier B på hver. Én brugers
+    alle registrerede workspaces og rapporterer Tier A + Tier B for hver. Én brugers
     fejl isoleres pr. fil og stopper ikke de øvrige.
 
     Returns dict med summerede tier_a/tier_b-tal plus et `workspaces`-kort.
@@ -115,6 +115,7 @@ def tick_memory_maintenance_daemon(now: datetime | None = None) -> dict:
 
     per_workspace: dict[str, dict] = {}
     tier_a_total = 0
+    tier_a_candidate_total = 0
     tier_b_total = 0
     for workspace in _target_workspaces():
         try:
@@ -125,6 +126,7 @@ def tick_memory_maintenance_daemon(now: datetime | None = None) -> dict:
         if res:
             per_workspace[workspace] = res
             tier_a_total += int(res.get("tier_a_merged") or 0)
+            tier_a_candidate_total += int(res.get("tier_a_candidates") or 0)
             tier_b_total += int(res.get("tier_b_flagged") or 0)
 
     if not per_workspace:
@@ -133,6 +135,7 @@ def tick_memory_maintenance_daemon(now: datetime | None = None) -> dict:
     _last_tick_at = now
     _last_result = {
         "tier_a_merged": tier_a_total,
+        "tier_a_candidates": tier_a_candidate_total,
         "tier_b_flagged": tier_b_total,
         "workspaces": per_workspace,
         "users": len(per_workspace),
@@ -144,6 +147,7 @@ def tick_memory_maintenance_daemon(now: datetime | None = None) -> dict:
             "memory.maintenance",
             {
                 "tier_a_merged": tier_a_total,
+                "tier_a_candidates": tier_a_candidate_total,
                 "tier_b_flagged": tier_b_total,
                 "users": len(per_workspace),
                 "timestamp": now.isoformat(),
@@ -165,15 +169,15 @@ def _maintain_workspace(workspace: str) -> dict:
         return {}
 
     sections_before = len(sections)
-    tier_a_merged = _tier_a_auto_merge(sections, text, workspace)
-
-    # Re-read after potential merges
-    sections = _parse_sections(_read_memory(workspace))
+    # Report-only: maintenance must never rewrite identity memory unattended.
+    tier_a_candidates = _tier_a_duplicate_candidates(sections)
 
     # Tier B: flag overlapping content across different headings
     top_level = [s for s in sections if s["level"] == _TOP_LEVEL]
     out = {
-        "tier_a_merged": tier_a_merged,
+        "tier_a_merged": 0,
+        "tier_a_candidates": len(tier_a_candidates),
+        "report_only": True,
         "tier_b_flagged": 0,
         "sections_before": sections_before,
         "sections_after": len(sections),
@@ -183,6 +187,14 @@ def _maintain_workspace(workspace: str) -> dict:
         out["tier_b_skipped"] = f"too_many_sections:{len(top_level)}"
     else:
         out["tier_b_flagged"] = len(_tier_b_flag_overlaps(sections))
+    try:
+        from core.services.memory_hygiene import audit_workspace
+
+        out["hygiene"] = audit_workspace(
+            workspace, path=_memory_md(workspace), publish_inbox=True,
+        )
+    except Exception as exc:
+        out["hygiene_error"] = f"{type(exc).__name__}: {exc}"
     return out
 
 
@@ -252,8 +264,8 @@ def _jaccard(a: str, b: str) -> float:
     return len(wa & wb) / len(wa | wb)
 
 
-def _tier_a_auto_merge(sections: list[dict], text: str, workspace: str) -> int:
-    """Auto-merge TOPNIVEAU-sektioner med samme eller næsten samme overskrift.
+def _tier_a_duplicate_candidates(sections: list[dict]) -> list[dict]:
+    """Find duplicate top-level headings without mutating ``MEMORY.md``.
 
     Reglerne blev strammet 12/10-2026 efter en måling på Bjørns fil (1.410
     sektioner, 94 kandidater). To ting var i stykker:
@@ -270,17 +282,12 @@ def _tier_a_auto_merge(sections: list[dict], text: str, workspace: str) -> int:
 
     Tilbage på Bjørns fil: 2 kandidater mod 94 før.
 
-    Fletningen sker i HUKOMMELSEN og skrives ÉN gang. Den gamle vej læste og
-    skrev filen pr. fletning gennem `re.subn`, hvilket både kunne kaste
-    `bad escape` på indhold med en backslash og ramte den FORKERTE sektion når
-    to sektioner delte overskrift.
+    Historical versions auto-merged these sections. That is no longer safe:
+    even an exact heading can contain distinct events, and identity-memory
+    mutation requires an explicit reviewed plan. Return bounded metadata only.
     """
-    lines = text.splitlines(keepends=True)
-    total = len(lines)
-
-    drop: set[int] = set()
-    append: dict[int, list[str]] = {}
-    merged_count = 0
+    candidates: list[dict] = []
+    claimed: set[int] = set()
 
     for i, s1 in enumerate(sections):
         for j, s2 in enumerate(sections):
@@ -288,7 +295,7 @@ def _tier_a_auto_merge(sections: list[dict], text: str, workspace: str) -> int:
                 continue
             if s1["level"] != s2["level"] or s1["level"] != _TOP_LEVEL:
                 continue
-            if i in drop or j in drop:
+            if i in claimed or j in claimed:
                 continue
 
             h1, h2 = s1["heading"], s2["heading"]
@@ -297,44 +304,17 @@ def _tier_a_auto_merge(sections: list[dict], text: str, workspace: str) -> int:
             if not (is_exact or is_fuzzy_high):
                 continue
 
-            # Behold den laengste som vaert; flyt den kortestes unikke linjer derind.
-            keep, gone = (i, j) if len(s1["content"]) >= len(s2["content"]) else (j, i)
-            keep_lines = set(sections[keep]["content"].splitlines())
-            extra = [
-                line for line in sections[gone]["content"].splitlines()
-                if line.strip() and line.strip() not in keep_lines
-            ]
-            if extra:
-                append.setdefault(keep, []).extend(extra)
-            drop.add(gone)
-            merged_count += 1
-
-    if not merged_count:
-        return 0
-
-    # Genopbyg filen i ét skridt: spring de flettede-vaek sektioner over, og
-    # saet de flyttede linjer ind i deres nye vaert. Ingen regex, ingen
-    # delvis skrivning.
-    out: list[str] = []
-    cursor = 0
-    for idx, s in enumerate(sections):
-        start, end = s["start_line"], s["end_line"]
-        if start > cursor:
-            out.extend(lines[cursor:start])
-        cursor = end + 1
-        if idx in drop:
-            continue
-        out.extend(lines[start:end + 1])
-        for line in append.get(idx, ()):
-            out.append(line if line.endswith("\n") else line + "\n")
-
-    if cursor < total:
-        out.extend(lines[cursor:])
-
-    p = _memory_md(workspace)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("".join(out), encoding="utf-8")
-    return merged_count
+            claimed.add(j)
+            candidates.append({
+                "section_a": h1,
+                "section_b": h2,
+                "line_a": int(s1["start_line"]) + 1,
+                "line_b": int(s2["start_line"]) + 1,
+                "heading_similarity": round(_jaccard(h1, h2), 3),
+            })
+            if len(candidates) >= 50:
+                return candidates
+    return candidates
 
 
 def _tier_b_flag_overlaps(sections: list[dict]) -> list[dict]:
@@ -381,8 +361,5 @@ def _tier_b_flag_overlaps(sections: list[dict]) -> list[dict]:
     return flagged
 
 
-# (12/10-2026: `_replace_section_content` og `_remove_section` er fjernet.
-# De skrev filen pr. fletning gennem `re.subn` — det kastede `bad escape` på
-# indhold med en backslash, og de ramte altid den FØRSTE sektion med et givet
-# navn, så to sektioner med samme overskrift fik den forkerte slettet.
-# `_tier_a_auto_merge` genopbygger nu filen i ét skridt i stedet.)
+# No mutation helper belongs in this daemon. Approved archival is a separate,
+# manifest-backed operation.

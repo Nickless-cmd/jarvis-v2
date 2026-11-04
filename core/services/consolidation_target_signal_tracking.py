@@ -160,6 +160,12 @@ def _extract_consolidation_target_candidates(*, run_id: str) -> list[dict[str, o
         ]
         if len(support_items) < 2:
             continue
+        # 3/11-2026: uden en baerende chronicle-kilde er `consolidation_focus`
+        # blot domain_key'en med bindestreger erstattet — og saa siger signalet
+        # praecis det samme som de 84 foer det. Maalt: 85 signaler i dag, 1
+        # unik titel. Vi skriver ikke en heartbeat som om den var en observation.
+        if chronicle is None and chronicle_brief is None:
+            continue
         candidates.append(
             _build_candidate(
                 domain_key=domain_key,
@@ -251,14 +257,23 @@ def _build_candidate(
         str((relation_continuity or {}).get("evidence_summary") or ""),
     )
     status = "active" if consolidation_state in {"consolidation-forming", "consolidation-ready"} else "softening"
-    focus_label = consolidation_focus.lower()
+    # 3/11-2026: `consolidation_summary` blev beregnet rigt og derefter kastet
+    # vaek — tabellen har ingen kolonne til den, saa `summary` beholdt
+    # skabelonen. Maalt: 85 signaler i dag, 1 unik titel, 1 unik summary, mens
+    # `evidence_summary` havde 76 unikke. Den rige tekst fandtes og naaede
+    # aldrig sin laeser. Samme fejlklasse som chronicle-producenten.
+    rich_summary = _consolidation_summary(
+        focus=consolidation_focus,
+        consolidation_state=consolidation_state,
+        consolidation_weight=consolidation_weight,
+    )
     return {
         "signal_type": "consolidation-target",
         "canonical_key": f"consolidation-target:{consolidation_state}:{domain_key}",
         "domain_key": domain_key,
         "status": status,
         "title": f"Consolidation support: {consolidation_focus}",
-        "summary": f"Bounded consolidation runtime support is observing a small settling target around {focus_label}.",
+        "summary": rich_summary,
         "rationale": (
             "A bounded consolidation-target signal may return only when metabolism already reads as consolidating or active-retaining and existing witness or chronicle support already looks carried enough to settle in compact form, without becoming chronicle writeback, memory writeback, canonical mutation, prompt authority, workflow authority, or compression execution."
         ),
@@ -280,11 +295,6 @@ def _build_candidate(
         "consolidation_state": consolidation_state,
         "consolidation_focus": consolidation_focus,
         "consolidation_weight": consolidation_weight,
-        "consolidation_summary": _consolidation_summary(
-            focus=consolidation_focus,
-            consolidation_state=consolidation_state,
-            consolidation_weight=consolidation_weight,
-        ),
         "consolidation_confidence": consolidation_confidence,
         "source_anchor": source_anchor,
         "metabolism_signal_id": str((metabolism or {}).get("signal_id") or ""),
@@ -487,7 +497,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=lambda spec, ctx: _extract_consolidation_target_candidates(run_id=str(ctx.get("run_id") or "")),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded consolidation-target inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

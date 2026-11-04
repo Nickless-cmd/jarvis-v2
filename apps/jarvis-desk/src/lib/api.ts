@@ -920,16 +920,30 @@ export async function getCentralProviders(
   return apiFetch(config, '/central/providers')
 }
 
-/** Jarvis Mind-hub (Centralen som ÉT samlingspunkt). Uden section → index af alle faner. */
-export interface MindIndexEntry { section: string; label: string; ready: boolean }
+/** Jarvis Mind-hub (Centralen som ÉT samlingspunkt). Uden section → index af alle faner.
+ *
+ *  `tabs` bærer undertab-strukturen fra hub-indexet (tom for sektioner uden). Den
+ *  kommer fra serveren i stedet for at være hardcodet her: ellers ville fane-træet
+ *  bo to steder og kunne drive fra hinanden. */
+export interface MindTabEntry { tab: string; label: string }
+export interface MindIndexEntry {
+  section: string
+  label: string
+  ready: boolean
+  tabs?: MindTabEntry[]
+}
 export async function getMindIndex(config: ApiConfig): Promise<{ index: MindIndexEntry[] }> {
   return apiFetch(config, '/central/mind')
 }
-/** Én Jarvis Mind-sektions projektion (læst fra Centralens cachede kilde — ét ground truth). */
+/** Én Jarvis Mind-sektions projektion (læst fra Centralens cachede kilde — ét ground truth).
+ *  `tab` vælger en undertab (fx `mind` + `sjael`): hver gruppe er sin egen projektion, så
+ *  payloaden bliver 2-36 KB i stedet for de 110 KB hele surfaces-dicten fylder. */
 export async function getMindSection(
-  config: ApiConfig, section: string,
+  config: ApiConfig, section: string, tab?: string,
 ): Promise<Record<string, unknown>> {
-  return apiFetch(config, `/central/mind?section=${encodeURIComponent(section)}`)
+  const q = new URLSearchParams({ section })
+  if (tab) q.set('tab', tab)
+  return apiFetch(config, `/central/mind?${q.toString()}`)
 }
 
 const BESLUTNINGS_RUTER: Record<string, string> = {

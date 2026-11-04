@@ -98,6 +98,30 @@ def test_dispatcher_starts_one_task_only_when_idle(monkeypatch):
     assert "STOPREGLER" in started[0][0]
 
 
+def test_dispatch_callbacks_own_running_and_exit_state(monkeypatch):
+    rows = _state(monkeypatch)
+    task_id = side_tasks.flag(
+        title="A", prompt="Undersøg A", autonomy_mode="inspect",
+    )["side_task_id"]
+    _klar_til_start(monkeypatch)
+    monkeypatch.setattr(dispatcher, "_target_session", lambda: "chat-1")
+
+    def fake_start(_text, **kwargs):
+        kwargs["started_callback"](visible_run_id="run-1", session_id="chat-1")
+        assert rows[0]["status"] == "running"
+        assert rows[0]["arbejds_run_id"] == "run-1"
+        kwargs["completion_callback"](
+            outcome="failed", visible_run_id="run-1", session_id="chat-1",
+            error="timeout",
+        )
+        return True
+
+    monkeypatch.setattr(dispatcher, "_start", fake_start)
+    assert dispatcher.dispatch_one()["side_task_id"] == task_id
+    assert rows[0]["status"] == "failed"
+    assert rows[0]["state_reason"].endswith("timeout")
+
+
 def test_rejected_start_releases_claim(monkeypatch):
     rows = _state(monkeypatch)
     side_tasks.flag(title="A", prompt="Undersøg A", autonomy_mode="inspect")

@@ -391,7 +391,6 @@ _SPEC = SignalTrackingSpec(
         session_id=str(ctx.get("session_id") or ""),
     ),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded remembered-fact inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

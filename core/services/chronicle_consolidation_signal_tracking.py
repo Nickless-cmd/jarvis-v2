@@ -155,6 +155,16 @@ def _extract_chronicle_consolidation_candidates(*, run_id: str) -> list[dict[str
             promotion_type=promotion_type,
             has_remembered_fact=remembered_fact is not None,
         )
+        # 3/11-2026: `chronicle-worthy` er FALLBACKEN — den betyder «ingen af de fire
+        # baerende grunde». Maalt: 9.651 af 9.651 signaler siden 22/6 var netop denne
+        # type, alle med samme titel og samme summary. Producenten skrev en heartbeat,
+        # ikke en observation: «en self-review blev gennemfoert for domaene X».
+        # Uden en baerende kilde er der intet at konsolidere, og signalet siger praecis
+        # det samme som de 9.650 foer det. Saa skriver vi ikke.
+        if chronicle_type == "chronicle-worthy" and not (
+            private_state or temporal_promotion or remembered_fact or executive_contradiction
+        ):
+            continue
         status = "active" if cadence_state in {"due", "lingering"} or temporal_promotion else "softening"
         chronicle_weight = _chronicle_weight(
             cadence_state=cadence_state,
@@ -204,7 +214,14 @@ def _extract_chronicle_consolidation_candidates(*, run_id: str) -> list[dict[str
                 "domain_key": domain_key,
                 "status": status,
                 "title": f"Chronicle consolidation support: {chronicle_focus}",
-                "summary": _summary_line(
+                # 3/11-2026: skabelonen sagde «is marking X as chronicle worthy» —
+                # identisk for alle 9.651. Den rige tekst blev beregnet i
+                # `chronicle_summary` og derefter kastet vaek, fordi tabellen ingen
+                # kolonne har til den: fladen faldt tilbage paa `summary` = skabelonen.
+                # Nu baerer `summary` den sammensatte tekst, og skabelonen er kun
+                # sidste udvej naar intet felt havde indhold.
+                "summary": chronicle_summary
+                or _summary_line(
                     chronicle_type=chronicle_type,
                     chronicle_focus=chronicle_focus,
                 ),
@@ -458,7 +475,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=lambda spec, ctx: _extract_chronicle_consolidation_candidates(run_id=str(ctx.get("run_id") or "")),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded chronicle/consolidation inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

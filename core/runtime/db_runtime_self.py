@@ -20,6 +20,7 @@ from __future__ import annotations
 import sqlite3
 
 from core.runtime.db_core import (
+    _accumulated_counts,
     connect,
     _upsert_signal,
     _merge_text_fragments,
@@ -171,11 +172,11 @@ def upsert_runtime_self_model_signal(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            merged_support_count, merged_session_count = _accumulated_counts(
+                existing,
+                support_count=support_count,
+                session_count=session_count,
+                session_id=session_id,
             )
             same_payload = (
                 merged_status == str(existing["status"] or "")
@@ -189,8 +190,6 @@ def upsert_runtime_self_model_signal(
                 and merged_status_reason == str(existing["status_reason"] or "")
                 and run_id == str(existing["run_id"] or "")
                 and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
                 meta = {

@@ -50,12 +50,12 @@ _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L335) |
-| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L343) |
-| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L348) |
-| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L360) |
-| function | `module_is_alive` | `(name)` | True naar modulet ikke er doedt. En `projektion` gemmer intet og lever. | [src](../../../core/services/liveness_registry.py#L365) |
-| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L375) |
+| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L367) |
+| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L375) |
+| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L380) |
+| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L392) |
+| function | `module_is_alive` | `(name)` | True naar modulet ikke er doedt. En `projektion` gemmer intet og lever. | [src](../../../core/services/liveness_registry.py#L397) |
+| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L407) |
 
 ## `core/services/living_executive.py`
 _Living Executive — Jarvis' active impulse/choice/action loop._
@@ -490,6 +490,24 @@ _Memory hierarchy — explicit hot/warm/cold tiers + recall-before-act._
 | function | `_exec_warm_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L252) |
 | function | `_exec_cold_tier` | `(args)` | — | [src](../../../core/services/memory_hierarchy.py#L256) |
 
+## `core/services/memory_hygiene.py`
+_Measured, reversible hygiene for per-user ``MEMORY.md`` files._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/memory_hygiene.py#L45) |
+| function | `_section_key` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L49) |
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/services/memory_hygiene.py#L54) |
+| function | `record_section_selections` | `(workspace, headings, *, selected_at=…)` | Persist actual prompt selections; one transaction per prompt build. | [src](../../../core/services/memory_hygiene.py#L90) |
+| function | `auto_write_allowed` | `(workspace, *, path=…)` | Backpressure only: candidates remain proposed when the file is over cap. | [src](../../../core/services/memory_hygiene.py#L125) |
+| function | `_workspace_memory_path` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L152) |
+| function | `_parse_h2_sections` | `(text)` | — | [src](../../../core/services/memory_hygiene.py#L158) |
+| function | `_normalize_heading` | `(heading)` | — | [src](../../../core/services/memory_hygiene.py#L180) |
+| function | `_usage_summary` | `(workspace)` | — | [src](../../../core/services/memory_hygiene.py#L184) |
+| function | `_atomic_json` | `(path, payload)` | — | [src](../../../core/services/memory_hygiene.py#L204) |
+| function | `audit_workspace` | `(workspace, *, path=…, publish_inbox=…)` | Create a read-only hygiene report.  Never moves or rewrites memory. | [src](../../../core/services/memory_hygiene.py#L220) |
+| function | `_publish_inbox` | `(workspace, report)` | — | [src](../../../core/services/memory_hygiene.py#L310) |
+
 ## `core/services/memory_maintenance_daemon.py`
 _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.md._
 
@@ -498,13 +516,13 @@ _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.
 | function | `_memory_md` | `(workspace)` | Stien til ÉN brugers MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L50) |
 | function | `_target_workspaces` | `()` | Alle registrerede brugeres workspace-navne. | [src](../../../core/services/memory_maintenance_daemon.py#L61) |
 | function | `tick_memory_maintenance_daemon` | `(now=…)` | Run the 12h maintenance cycle on EVERY registered user's MEMORY.md. | [src](../../../core/services/memory_maintenance_daemon.py#L97) |
-| function | `_maintain_workspace` | `(workspace)` | Tier A + Tier B for ÉN brugers MEMORY.md. Tom dict = intet at gøre. | [src](../../../core/services/memory_maintenance_daemon.py#L158) |
-| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L189) |
-| function | `_read_memory` | `(workspace)` | — | [src](../../../core/services/memory_maintenance_daemon.py#L201) |
-| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L208) |
-| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L246) |
-| function | `_tier_a_auto_merge` | `(sections, text, workspace)` | Auto-merge TOPNIVEAU-sektioner med samme eller næsten samme overskrift. | [src](../../../core/services/memory_maintenance_daemon.py#L255) |
-| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L340) |
+| function | `_maintain_workspace` | `(workspace)` | Tier A + Tier B for ÉN brugers MEMORY.md. Tom dict = intet at gøre. | [src](../../../core/services/memory_maintenance_daemon.py#L162) |
+| function | `build_memory_maintenance_surface` | `()` | — | [src](../../../core/services/memory_maintenance_daemon.py#L201) |
+| function | `_read_memory` | `(workspace)` | — | [src](../../../core/services/memory_maintenance_daemon.py#L213) |
+| function | `_parse_sections` | `(text)` | Parse MEMORY.md into sections: [{heading, level, content, start_line, end_line}]. | [src](../../../core/services/memory_maintenance_daemon.py#L220) |
+| function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L258) |
+| function | `_tier_a_duplicate_candidates` | `(sections)` | Find duplicate top-level headings without mutating ``MEMORY.md``. | [src](../../../core/services/memory_maintenance_daemon.py#L267) |
+| function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L320) |
 
 ## `core/services/memory_md_update_proposal_tracking.py`
 
@@ -597,28 +615,32 @@ _Semantic memory search — embeddings-based search over Jarvis's workspace memo
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ollama_base` | `()` | Hvor embeddings skal hen — SAMME sandhed som resten af systemet. | [src](../../../core/services/memory_search.py#L23) |
-| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L65) |
-| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L71) |
-| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L153) |
-| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L188) |
-| function | `_chunk_markdown` | `(text, source)` | Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten. | [src](../../../core/services/memory_search.py#L203) |
-| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L275) |
-| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L351) |
-| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L363) |
-| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L371) |
-| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L402) |
-| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L410) |
-| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L427) |
-| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L450) |
-| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L513) |
-| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L544) |
-| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L588) |
-| function | `_candidate_er_primaer` | `(text)` | True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold. | [src](../../../core/services/memory_search.py#L607) |
-| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L644) |
-| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L651) |
-| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L732) |
-| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L741) |
+| function | `_ollama_base` | `()` | Hvor embeddings skal hen — SAMME sandhed som resten af systemet. | [src](../../../core/services/memory_search.py#L25) |
+| class | `Chunk` | `` | — | [src](../../../core/services/memory_search.py#L67) |
+| function | `_workspace_dir` | `()` | Workspace for the current user, falling back to the owner's workspace. | [src](../../../core/services/memory_search.py#L73) |
+| function | `_memory_files` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L155) |
+| function | `_file_mtime` | `(path)` | — | [src](../../../core/services/memory_search.py#L190) |
+| function | `_chunk_markdown` | `(text, source)` | Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten. | [src](../../../core/services/memory_search.py#L205) |
+| function | `_embed_ollama` | `(texts)` | Embed a list of texts via Ollama. Returns (N, D) array or None on failure. | [src](../../../core/services/memory_search.py#L277) |
+| function | `_embed_single` | `(text)` | — | [src](../../../core/services/memory_search.py#L353) |
+| function | `_cosine_sim` | `(query_vec, matrix)` | Cosine similarity between query (D,) and matrix (N, D). | [src](../../../core/services/memory_search.py#L365) |
+| function | `_tfidf_search` | `(query, chunks, limit)` | Fallback TF-IDF search when Ollama is unavailable. | [src](../../../core/services/memory_search.py#L373) |
+| function | `_cache_path` | `(ws=…)` | — | [src](../../../core/services/memory_search.py#L404) |
+| function | `_chunk_all_files` | `(files, ws=…)` | Læs + chunk alle memory-filer. HURTIGT — kun fil-I/O, INGEN embedding. | [src](../../../core/services/memory_search.py#L415) |
+| function | `_load_cached_vectors` | `(ws=…)` | chunk-tekst → vektor fra den eksisterende cache, til INKREMENTEL reindex. | [src](../../../core/services/memory_search.py#L432) |
+| function | `_progress_path` | `(ws=…)` | Checkpoint-fil for en rebuild der ikke er færdig. Ligger ved siden af cachen, | [src](../../../core/services/memory_search.py#L455) |
+| function | `_load_progress_vectors` | `(ws=…)` | Vektorer fra en AFBRUDT rebuild, så den genoptages i stedet for at starte forfra. | [src](../../../core/services/memory_search.py#L462) |
+| function | `_save_progress_vectors` | `(vecs, ws=…)` | Atomisk checkpoint, så en afbrudt rebuild højst mister én portion. | [src](../../../core/services/memory_search.py#L486) |
+| function | `_clear_progress_vectors` | `(ws=…)` | Fjern checkpointet når cachen er skrevet — ellers vokser det ubrugt. | [src](../../../core/services/memory_search.py#L505) |
+| function | `_build_and_cache_index` | `(files, current_mtimes, ws=…)` | Byg indeks og skriv cache. Kaldes KUN fra baggrunds-tråden. | [src](../../../core/services/memory_search.py#L514) |
+| function | `_schedule_background_rebuild` | `(files, current_mtimes, ws=…)` | Kør en fuld re-embed i BAGGRUNDEN (fire-and-forget, kun én ad gangen). Så en bruger-søgning | [src](../../../core/services/memory_search.py#L620) |
+| function | `_load_or_build_index` | `(ws=…)` | Returnér (chunks, embeddings, mtimes). BLOKERER ALDRIG på et fuldt re-embed: | [src](../../../core/services/memory_search.py#L651) |
+| function | `_is_quarantined` | `(text)` | True if a chunk has been marked as retracted/false. | [src](../../../core/services/memory_search.py#L706) |
+| function | `_candidate_er_primaer` | `(text)` | True når `[CANDIDATE→`-markøren er chunkens PRIMÆRE indhold. | [src](../../../core/services/memory_search.py#L725) |
+| function | `_source_matches` | `(chunk_source, sources)` | — | [src](../../../core/services/memory_search.py#L762) |
+| function | `search_memory` | `(query, *, limit=…, sources=…, workspace_dir=…)` | Search workspace memory files by semantic similarity. | [src](../../../core/services/memory_search.py#L769) |
+| function | `invalidate_index` | `()` | Force index rebuild on next search (call after memory file writes). | [src](../../../core/services/memory_search.py#L850) |
+| function | `get_index_stats` | `()` | Return stats about the current index (without rebuilding). | [src](../../../core/services/memory_search.py#L859) |
 
 ## `core/services/memory_tattoos.py`
 _Memory Tattoos — de mærker der bliver siddende._
@@ -634,25 +656,4 @@ _Memory Tattoos — de mærker der bliver siddende._
 | function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L164) |
 | function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L169) |
 | function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L173) |
-
-## `core/services/memory_write_policy.py`
-_Memory Write Policy — gating + review queue for inferred memory writes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
-| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
-| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
-| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
-| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
-| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
-| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
-| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
-| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
-| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
-| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
-| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
-| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
-| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
-| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
 

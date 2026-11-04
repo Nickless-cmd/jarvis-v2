@@ -89,18 +89,18 @@ _core/services/central_router_adapt.py_
 | function | `_is_currently_healthy` | `(model_key)` | False KUN når vi har ≥_HEALTH_MIN_SAMPLES friske samples OG recent success-rate < gulvet | [src](../../../core/services/central_router_adapt.py#L103) |
 | function | `_configured_models` | `()` | Modeller der FAKTISK er konfigureret (aldrig peg på noget der ikke findes). Self-safe. | [src](../../../core/services/central_router_adapt.py#L116) |
 | function | `compute_preference` | `()` | Læs RESOLVEREDE, supporterede model_meta-hypoteser → tæl 'sejre' pr. model → foreslå den mest | [src](../../../core/services/central_router_adapt.py#L130) |
-| function | `_is_real_model_key` | `(model_key)` | Er «provider/model» en rigtig rute — eller en pladsholder? | [src](../../../core/services/central_router_adapt.py#L172) |
-| function | `run_router_adapt_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: beregn foreslået præference → §8-gate → SHADOW-diff altid; skriv live-præference KUN | [src](../../../core/services/central_router_adapt.py#L193) |
-| function | `_audit_notation` | `(model_key)` | Best-effort B4-audit: præferencen som notation (stemme → handling = den valgte stemme fører | [src](../../../core/services/central_router_adapt.py#L233) |
-| function | `get_live_preference` | `(lane=…)` | KONSUMENT-API (til den fremtidige routing-wire): den LIVE præference for en lane, eller None. | [src](../../../core/services/central_router_adapt.py#L244) |
-| function | `_note_health_suppressed` | `(model_key)` | Best-effort: gør det synligt når en lært præference undertrykkes pga. dårlig recent-health. | [src](../../../core/services/central_router_adapt.py#L268) |
-| function | `resolve_visible_model` | `(*, provider_override=…, model_override=…, default_provider, default_model, autonomous=…)` | KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den | [src](../../../core/services/central_router_adapt.py#L280) |
-| function | `_input_pris` | `(model)` | Input-pris (USD/M tokens) for en cloud-model — eller None hvis ukendt. | [src](../../../core/services/central_router_adapt.py#L359) |
-| function | `_pref_pris_ok` | `(model_key)` | Må læreren skrive denne model til LIVE-præferencen? | [src](../../../core/services/central_router_adapt.py#L379) |
-| function | `_pris_bevidst_base` | `(base_provider, base_model)` | Skift basen til den faste billige model når Ollama fakturerer dobbelt. | [src](../../../core/services/central_router_adapt.py#L399) |
-| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L419) |
-| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L458) |
-| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L470) |
+| function | `_is_real_model_key` | `(model_key)` | Er «provider/model» en rigtig rute — eller en pladsholder? | [src](../../../core/services/central_router_adapt.py#L173) |
+| function | `run_router_adapt_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence: beregn foreslået præference → §8-gate → SHADOW-diff altid; skriv live-præference KUN | [src](../../../core/services/central_router_adapt.py#L204) |
+| function | `_audit_notation` | `(model_key)` | Best-effort B4-audit: præferencen som notation (stemme → handling = den valgte stemme fører | [src](../../../core/services/central_router_adapt.py#L244) |
+| function | `get_live_preference` | `(lane=…)` | KONSUMENT-API (til den fremtidige routing-wire): den LIVE præference for en lane, eller None. | [src](../../../core/services/central_router_adapt.py#L255) |
+| function | `_note_health_suppressed` | `(model_key)` | Best-effort: gør det synligt når en lært præference undertrykkes pga. dårlig recent-health. | [src](../../../core/services/central_router_adapt.py#L279) |
+| function | `resolve_visible_model` | `(*, provider_override=…, model_override=…, default_provider, default_model, autonomous=…)` | KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den | [src](../../../core/services/central_router_adapt.py#L291) |
+| function | `_input_pris` | `(model)` | Input-pris (USD/M tokens) for en cloud-model — eller None hvis ukendt. | [src](../../../core/services/central_router_adapt.py#L370) |
+| function | `_pref_pris_ok` | `(model_key)` | Må læreren skrive denne model til LIVE-præferencen? | [src](../../../core/services/central_router_adapt.py#L390) |
+| function | `_pris_bevidst_base` | `(base_provider, base_model)` | Skift basen til den faste billige model når Ollama fakturerer dobbelt. | [src](../../../core/services/central_router_adapt.py#L410) |
+| function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L430) |
+| function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L474) |
+| function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L486) |
 
 ## `core/services/central_router_explore.py`
 _core/services/central_router_explore.py_
@@ -111,8 +111,8 @@ _core/services/central_router_explore.py_
 | function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_router_explore.py#L37) |
 | function | `is_explore_live` | `()` | — | [src](../../../core/services/central_router_explore.py#L45) |
 | function | `_candidates` | `(default_key)` | Konfigurerede, ikke-deep-tier modeller forskellige fra default — sorteret efter FÆRREST samples | [src](../../../core/services/central_router_explore.py#L49) |
-| function | `pick_exploration_model` | `(default_provider, default_model)` | Vælg en alternativ model at sample på DENNE autonome run — eller None (behold default/præference). | [src](../../../core/services/central_router_explore.py#L66) |
-| function | `build_router_explore_surface` | `()` | Mission Control — read-only: eksplorations-status + kandidater der ville blive samplet. | [src](../../../core/services/central_router_explore.py#L90) |
+| function | `pick_exploration_model` | `(default_provider, default_model)` | Vælg en alternativ model at sample på DENNE autonome run — eller None (behold default/præference). | [src](../../../core/services/central_router_explore.py#L67) |
+| function | `build_router_explore_surface` | `()` | Mission Control — read-only: eksplorations-status + kandidater der ville blive samplet. | [src](../../../core/services/central_router_explore.py#L91) |
 
 ## `core/services/central_runtime_proxy.py`
 _Central runtime proxy — read runtime-process-only surfaces from anywhere._

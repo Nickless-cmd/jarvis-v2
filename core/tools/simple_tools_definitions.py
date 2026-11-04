@@ -2057,6 +2057,46 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "wonder_verdict",
+            "description": (
+                "Gem din vurdering af en undren du selv har rejst. Uden et gemt "
+                "udfald er undren stadig aaben — ogsaa hvis du valgte ikke at dele den."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "record_id": {
+                        "type": "string",
+                        "description": "Undrenens id, som vist i UNDREN-sektionen",
+                    },
+                    "verdict": {
+                        "type": "string",
+                        "description": (
+                            "vurderet-ikke-delt | taget-nu | parkeret | besvaret"
+                        ),
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "Kort om hvad du kom frem til — isaer ved besvaret/taget-nu",
+                    },
+                    "closed_by": {
+                        "type": "string",
+                        "description": (
+                            "Hvem/hvad lukkede undren: 'bjorn' (han svarede), "
+                            "'minde' (et minde flyttede den) eller 'selv' (du "
+                            "lukkede den selv). Paakraevet for alle udfald undtagen "
+                            "vurderet-ikke-delt. Selv-lukning af besvaret/taget-nu "
+                            "kraever desuden en note der peger paa hvad der aendrede sig."
+                        ),
+                    },
+                },
+                "required": ["record_id", "verdict"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_model_config",
             "description": (
                 "Read the current model configuration for all runtime lanes. "

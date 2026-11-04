@@ -908,6 +908,245 @@ def _world_model_line() -> Optional[str]:
     return None
 
 
+_EXPOSURE_COLS = (
+    ("signal_available", "INTEGER NOT NULL DEFAULT 0"),
+    # 4/11-2026 (tredje runde): to felter, ikke ét. ``inclusion_requested``
+    # skrives naar indsigelsen BEDER om plads; ``included`` skrives foerst naar
+    # prompten er samlet og sektionen faktisk slap igennem composeren.
+    # Forskellen er maalt: `_awareness_add` har tre gates EFTER kaldestedet
+    # (section_enabled, should_include, tom-indhold) plus et budget-loft.
+    ("inclusion_requested", "INTEGER NOT NULL DEFAULT 0"),
+    ("included", "INTEGER NOT NULL DEFAULT 0"),
+    ("signal_count", "INTEGER"),
+    ("source_run_id", "TEXT"),
+    ("scope", "TEXT"),
+    ("assignment_logged", "INTEGER NOT NULL DEFAULT 0"),
+)
+
+
+def _arm_for(run_id: str) -> str:
+    """Beregnet arm — UDEN logning. Logning sker i ``_record_exposure``.
+
+    Splittet er deterministisk paa et STABILT server-tildelt id (``run_id``),
+    ikke paa indhold — ellers kunne indsigelsen omformuleres indtil den undgik
+    kontrol-armen. Tomt id giver ALTID "treatment": hellere vise indsigelsen
+    end at skjule den tilfaeldigt.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return "treatment"
+    try:
+        from core.services.central_hypothesis_governance import is_control_arm
+
+        return "control" if is_control_arm(rid, fraction=0.2) else "treatment"
+    except Exception:
+        logger.debug("inner-life: control-arm failed", exc_info=True)
+        return "treatment"
+
+
+def opposition_arm(run_id: str) -> str:
+    """Armen for en koersel. Bagudkompatibel indgang — logger intet.
+
+    Maalt 4/11-2026 (anden runde): den foerste version loggede armen FOER
+    signalet blev hentet. En behandlings-koersel med et aktivt signal og en
+    uden blev derfor identiske i tabellen — fordelingen kunne ikke skelne
+    "ingen opposition" fra "tilbageholdt". Eksponeringen logges nu i
+    ``_record_exposure``, som kender baade signal og inklusion.
+    """
+    return _arm_for(run_id)
+
+
+def _record_exposure(run_id: str, arm: str, meta: dict, *, requested: bool) -> bool:
+    """Log at indsigelsen BAD om plads — ikke at den fik den.
+
+    Felterne goer fire tilstande skelnelige, som foer saa ens ud:
+    aktiv+behandling, ingen+behandling, aktiv+kontrol, ingen+kontrol.
+
+    Maalt 4/11-2026 (tredje runde): den foerste version satte ``included`` her,
+    men ``_awareness_add`` har tre gates EFTER dette kald — ``section_enabled``,
+    ``should_include`` og den tomme indhold-check — plus et budget-loft. Et
+    signal kunne derfor staa som inkluderet og blive droppet af composeren.
+    Det er dagens fejlform igen: formen bevaret, indholdet tabt.
+
+    ``included`` saettes derfor foerst af ``confirm_opposition_exposure``, naar
+    den faerdige prompt findes.
+
+    ``source_run_id`` baerer hvilken koersel signalet blev PRODUCERET i —
+    overfladen er global, saa et signal kan stamme fra et helt andet arbejde
+    end det der nu laeser det.
+
+    Returnerer True naar raekken er skrevet; False betyder at tilbageholdelsen
+    ikke kan dokumenteres, og kalderen skal da vise indsigelsen i stedet.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    scope = ""
+    try:
+        from core.tools.tool_scoping import current_tool_scope
+
+        scope = str(current_tool_scope() or "")
+    except Exception:
+        logger.debug("inner-life: scope-read failed", exc_info=True)
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS runtime_opposition_arms ("
+                "run_id TEXT PRIMARY KEY, arm TEXT NOT NULL, created_at TEXT NOT NULL)"
+            )
+            have = {r[1] for r in conn.execute("PRAGMA table_info(runtime_opposition_arms)")}
+            for name, decl in _EXPOSURE_COLS:
+                if name not in have:
+                    conn.execute(f"ALTER TABLE runtime_opposition_arms ADD COLUMN {name} {decl}")
+            # MAX paa available/included: en senere genopbygning af prompten i
+            # samme koersel maa ikke nulstille at signalet VAR med i en tidligere.
+            conn.execute(
+                "INSERT INTO runtime_opposition_arms "
+                "(run_id, arm, signal_available, inclusion_requested, included, "
+                " signal_count, source_run_id, scope, assignment_logged, created_at) "
+                "VALUES (?, ?, ?, ?, 0, ?, ?, ?, 1, datetime('now')) "
+                "ON CONFLICT(run_id) DO UPDATE SET "
+                "signal_available=MAX(signal_available, excluded.signal_available), "
+                "inclusion_requested=MAX(inclusion_requested, excluded.inclusion_requested), "
+                "signal_count=COALESCE(excluded.signal_count, signal_count), "
+                "source_run_id=COALESCE(NULLIF(excluded.source_run_id,''), source_run_id), "
+                "scope=COALESCE(NULLIF(excluded.scope,''), scope), "
+                "assignment_logged=1",
+                (
+                    rid,
+                    arm,
+                    1 if meta.get("available") else 0,
+                    1 if requested else 0,
+                    meta.get("count"),
+                    str(meta.get("source_run_id") or ""),
+                    scope,
+                ),
+            )
+        return True
+    except Exception:
+        logger.debug("inner-life: exposure-log failed", exc_info=True)
+        return False
+
+
+def _opposition_snapshot() -> tuple[Optional[str], dict]:
+    """Indsigelsens linje OG dens ophav — uden arm-gate.
+
+    Maalt 4/11-2026: ``read_surface("internal_opposition")`` laeser den
+    GLOBALE overflade. Den filtrerer ikke paa den aktuelle prompts run_id, saa
+    en indsigelse produceret under helt andet arbejde kan vises i en senere,
+    urelateret samtale. Vi skjuler den ikke — vi maerker den, saa
+    ``_record_exposure`` kan vise hvilken koersel den kom fra.
+    """
+    meta: dict = {"available": False, "count": 0, "source_run_id": "", "current": ""}
+    try:
+        from core.services.signal_surface_router import read_surface
+
+        d = read_surface("internal_opposition")
+        if not isinstance(d, dict) or d.get("error") or d.get("active") is False:
+            return None, meta
+        summary = d.get("summary") if isinstance(d.get("summary"), dict) else {}
+        n = summary.get("active_count")
+        if not n:
+            return None, meta
+        # Titlen er menneskelæsbar; canonical_key er et internt id — vis den aldrig.
+        current = str(summary.get("current_signal") or "").strip()
+        if current.lower().startswith("challenge calibration:"):
+            current = current.split(":", 1)[1].strip()
+        current = _truncate_clean(current, 120)
+        items = d.get("items") if isinstance(d.get("items"), list) else []
+        source_run = ""
+        if items and isinstance(items[0], dict):
+            source_run = str(items[0].get("run_id") or "").strip()
+        meta = {
+            "available": True,
+            "count": int(n),
+            "source_run_id": source_run,
+            "current": current,
+        }
+        line = f"Kryds-lag-indsigelse ({n} aktiv)" + (f": {current}" if current else "")
+        return line, meta
+    except Exception:
+        logger.debug("inner-life: opposition failed", exc_info=True)
+        return None, meta
+
+
+def _opposition_line_text() -> Optional[str]:
+    """Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``."""
+    return _opposition_snapshot()[0]
+
+
+def confirm_opposition_exposure(included: bool) -> bool:
+    """Bekraeft om indsigelsen faktisk stod i den FAERDIGE prompt.
+
+    Kaldes fra prompt-assembly EFTER awareness-samlingen, hvor det er maalt om
+    sektionen slap igennem composeren. Uden dette kald beskriver ``included``
+    kun en hensigt — og en hensigt er ikke en eksponering.
+
+    ``MAX`` og ikke tilsidesaettelse: bygges prompten flere gange i samme
+    koersel (fx to scopes), maa en senere udeladelse ikke slette at den VAR
+    med i en tidligere.
+    """
+    rid = ""
+    try:
+        from core.services.run_autonomy_context import current_run_id
+
+        rid = str(current_run_id() or "").strip()
+    except Exception:
+        logger.debug("inner-life: run-id failed", exc_info=True)
+    if not rid:
+        return False
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            conn.execute(
+                "UPDATE runtime_opposition_arms SET included=MAX(included, ?) "
+                "WHERE run_id=?",
+                (1 if included else 0, rid),
+            )
+        return True
+    except Exception:
+        logger.debug("inner-life: exposure-confirm failed", exc_info=True)
+        return False
+
+
+def build_opposition_line() -> Optional[str]:
+    """Indsigelsen som prompt-linje — eller None i kontrol-armen.
+
+    Armen afgoeres ét sted her, ikke ved kaldestedet, saa en ny kalder ikke kan
+    komme til at springe splittet over.
+
+    Raekkefoelgen er maalt vigtig (4/11-2026): signalet hentes FOERST, saa
+    eksponerings-loggen kan skelne "ingen opposition fandtes" fra "den blev
+    tilbageholdt". Fejler logningen i en kontrol-koersel, vises indsigelsen —
+    en tilbageholdelse uden spor er praecis den tavshed eksperimentet skal
+    goere maalbar.
+    """
+    text, meta = _opposition_snapshot()
+    rid = ""
+    try:
+        from core.services.run_autonomy_context import current_run_id
+
+        rid = current_run_id()
+    except Exception:
+        logger.debug("inner-life: run-id failed", exc_info=True)
+    arm = _arm_for(rid)
+    requested = arm == "treatment" and bool(text)
+    logged = _record_exposure(rid, arm, meta, requested=requested)
+    if arm == "control":
+        if not logged:
+            logger.warning(
+                "inner-life: kontrol-arm kunne ikke dokumenteres (%s) — viser "
+                "indsigelsen frem for at skjule den uden spor",
+                rid or "(tomt id)",
+            )
+            return text
+        return None
+    return text
+
+
 def build_somatic_snapshot() -> list[str]:
     """Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command
     in the Central HUD). Reuses the buffered/cached line-builders — no LLM, no
@@ -965,6 +1204,9 @@ def build_inner_life_section() -> str | None:
     wm = _world_model_line()
     if wm:
         lines.append("· " + wm)
+
+    # Kryds-lag-indsigelse er FLYTTET ud (4/11-2026, anden runde): den har sin
+    # egen sektion i prompt_contract, fordi denne blok skæres helt i chat-scope.
 
     # Pull / emergence — only when actually present (longing rises with absence,
     # identity drift is rare, cognitive experiments carry only sometimes, and Lag 8:

@@ -294,62 +294,38 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
     for focus in list_runtime_development_focuses(limit=18):
         if str(focus.get("status") or "") != "active":
             continue
-        domain_key = _focus_domain_key(str(focus.get("canonical_key") or ""))
-        if domain_key:
-            snapshots.setdefault(domain_key, {})["active_focus"] = focus
+        _bucket(snapshots, focus, _focus_domain_key, "active_focus")
 
     for critic in list_runtime_reflective_critics(limit=18):
         status = str(critic.get("status") or "")
         if status not in {"active", "resolved"}:
             continue
-        domain_key = _critic_domain_key(str(critic.get("canonical_key") or ""))
-        if domain_key:
-            bucket = snapshots.setdefault(domain_key, {})
-            if status == "active":
-                bucket["active_critic"] = critic
-            else:
-                bucket["resolved_critic"] = critic
+        _bucket(snapshots, critic, _critic_domain_key,
+                "active_critic" if status == "active" else "resolved_critic")
 
     for goal in list_runtime_goal_signals(limit=18):
         status = str(goal.get("status") or "")
         if status not in {"active", "blocked", "completed"}:
             continue
-        domain_key = _goal_domain_key(str(goal.get("canonical_key") or ""))
-        if domain_key:
-            bucket = snapshots.setdefault(domain_key, {})
-            if status == "blocked":
-                bucket["blocked_goal"] = goal
-            elif status == "active":
-                active_goals.append(goal)
-                bucket["active_goal"] = goal
-            else:
-                bucket["completed_goal"] = goal
+        _slot = "blocked_goal" if status == "blocked" else ("active_goal" if status == "active" else "completed_goal")
+        if status == "active":
+            active_goals.append(goal)
+        _bucket(snapshots, goal, _goal_domain_key, _slot)
 
     for reflection in list_runtime_reflection_signals(limit=18):
         status = str(reflection.get("status") or "")
         if status not in {"active", "integrating", "settled"}:
             continue
-        domain_key = _reflection_domain_key(str(reflection.get("canonical_key") or ""))
-        if domain_key:
-            bucket = snapshots.setdefault(domain_key, {})
-            if status == "active":
-                bucket["active_reflection"] = reflection
-            elif status == "integrating":
-                bucket["integrating_reflection"] = reflection
-            else:
-                bucket["settled_reflection"] = reflection
+        _slot = ("active_reflection" if status == "active"
+                 else ("integrating_reflection" if status == "integrating" else "settled_reflection"))
+        _bucket(snapshots, reflection, _reflection_domain_key, _slot)
 
     for recurrence in list_runtime_temporal_recurrence_signals(limit=18):
         status = str(recurrence.get("status") or "")
         if status not in {"active", "softening"}:
             continue
-        domain_key = _temporal_domain_key(str(recurrence.get("canonical_key") or ""))
-        if domain_key:
-            bucket = snapshots.setdefault(domain_key, {})
-            if status == "active":
-                bucket["active_recurrence"] = recurrence
-            else:
-                bucket["softening_recurrence"] = recurrence
+        _bucket(snapshots, recurrence, _temporal_domain_key,
+                "active_recurrence" if status == "active" else "softening_recurrence")
 
     for tension in list_runtime_private_initiative_tension_signals(limit=18):
         if str(tension.get("status") or "") != "active":
@@ -374,7 +350,11 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
         settled_reflection = snapshot.get("settled_reflection")
         active_recurrence = snapshot.get("active_recurrence")
         softening_recurrence = snapshot.get("softening_recurrence")
+        # Når domænet er en kørsel, er run-id'et ulæseligt som titel. Brug den
+        # aktive fokus' egen sætning — den ER retningen i den tur.
         title_suffix = _domain_title(domain_key)
+        if active_focus and str(domain_key).startswith(("visible-", "autonomous-", "run_")):
+            title_suffix = str(active_focus.get("title") or "").strip() or title_suffix
 
         live_pressure = [
             item
@@ -531,7 +511,29 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
         if mat_candidate not in candidates:
             candidates.append(mat_candidate)
 
-    return candidates[:4]
+    # Dedup på (signal_type, domæne): et lag registreres nu under BÅDE sin nøgle
+    # og sin kørsel, så samme kobling kan dukke op to gange. Uden dette ville
+    # ready_count tælle dobbelt (målt: 2 hvor der skulle være 1).
+    # Dedup på KILDEPARRET, ikke på domænet: samme lag-kobling kan nu dukke op
+    # under både nøgle-aksen og kørsel-aksen, og domænerne er forskellige mens
+    # koblingen er den samme. Målt: uden dette blev open_count 2 hvor den skulle
+    # være 1. Kilden er kandidatens titel + signal_type — den er stabil fordi
+    # den bygges af fokus-titlen, ikke af domænet.
+    seen: set[tuple[str, str]] = set()
+    unique: list[dict[str, object]] = []
+    for cand in candidates:
+        # Identiteten er KILDERNE, ikke domænet eller titlen: begge bygges af
+        # domænet og ændrer sig derfor når samme kobling registreres på to akser.
+        # evidence_summary er derimod foldet fra kilderne selv og er stabil.
+        sig = (
+            str(cand.get("signal_type") or ""),
+            str(cand.get("evidence_summary") or ""),
+        )
+        if sig in seen:
+            continue
+        seen.add(sig)
+        unique.append(cand)
+    return unique[:4]
 
 
 def _materialize_from_creation_readiness(
@@ -903,34 +905,81 @@ def _build_candidate(
     }
 
 
+def _bucket(snapshots: dict, item: dict[str, object], key_fn, slot: str) -> None:
+    """Registrér et lag under sit domæne — nøglen først, kørslen som fallback.
+
+    Målt 4/11-2026: nøglen er semantisk (samme EMNE over tid) og er det
+    open-loop spørger om. Men fokus-nøglen er en hel sætning og critic-nøglen
+    en type, så de mødes aldrig i virkeligheden (fokus ∩ critic = 0). Kørslen
+    er den tidslige akse og virker i drift (34 kørsler har både fokus og live
+    pressure).
+
+    Nøglen har forrang: giver den et domæne, bruges den — så den semantiske
+    kontrakt bevares uændret. Kun når nøglen intet giver (fx en critic af
+    typen ``critic:user_correction``) falder vi tilbage til kørslen. Begge
+    akser på én gang gav dubletter og brød ready_count, så det er bevidst
+    fravalgt her.
+    """
+    # BEGGE akser registreres (målt 4/11-2026). Nøglen alene gav 0 kandidater i
+    # drift, fordi fokus-nøglen altid er en hel sætning: hvert fokus bliver sit
+    # eget domæne, og intet andet lag kan dele det. Kørslen alene brød den
+    # semantiske kontrakt (to lag om samme emne i forskellige ture skal stadig
+    # mødes). Derfor registreres laget under begge — og kandidaterne deduplikeres
+    # bagefter på (signal_type, domæne), så ready_count ikke fordobles.
+    key_domain = key_fn(str(item.get("canonical_key") or ""))
+    run_domain = _run_domain(item)
+    for domain_key in {key_domain, run_domain}:
+        if domain_key:
+            snapshots.setdefault(domain_key, {})[slot] = item
+
+
+def _run_domain(item: dict[str, object]) -> str:
+    """Domænet er KØRSLEN når den findes — se ``internal_opposition_signal_tracking``.
+
+    Målt 4/11-2026: open-loop kræver en aktiv fokus OG en live pressure-kilde i
+    SAMME domæne. Med nøgle-parsing kunne de aldrig mødes: fokus-nøglen er en
+    hel sætning, critic-nøglen er en TYPE (``critic:user_correction``), og
+    reflection-nøglen er en besked-slug. Målt: fokus ∩ critic = 0, fokus ∩
+    reflection = 0 — uanset hvor mange rækker der blev læst (400-loft gav
+    stadig nul kandidater).
+
+    Kørslen er den ene dimension alle lag allerede bærer. Målt i den levende
+    base: 34 kørsler har både en aktiv fokus og en live pressure-kilde. Det er
+    den ægte kobling — «i denne tur var der både retning og uløst pres».
+
+    Nøgle-parsingen bevares som fallback for rækker uden ``run_id`` (ældre
+    data), så kontrakten for dem er uændret.
+    """
+    run_id = str(item.get("run_id") or "").strip()
+    return run_id
+
+
 def _focus_domain_key(canonical_key: str) -> str:
-    text = str(canonical_key or "")
-    if text.startswith("development-focus:communication:"):
-        return text.removeprefix("development-focus:communication:")
-    if text.startswith("development-focus:user-directed:"):
-        return text.removeprefix("development-focus:user-directed:")
-    if text.startswith("development-focus:runtime:"):
-        parts = text.removeprefix("development-focus:runtime:").split(":")
-        return parts[0] if parts else ""
-    return ""
+    # 4/11-2026: krævede præfikset ``development-focus:{kategori}:`` og kasserede
+    # derfor alle nyere fokus-nøgler. Målt i den levende base: 3.093 fokus-rækker
+    # bærer ``focus:bearing:<sætning>``, kun 905 bærer det gamle format — så 77 %
+    # af fokuslaget var usynligt for open-loop. Samme form som
+    # ``internal_opposition_signal_tracking._focus_domain_key``.
+    #
+    # Domænet er det TREDJE segment, ikke det sidste: begge formater har et
+    # to-segments præfiks, og det gamle format kan bære en undertype efter
+    # domænet (``development-focus:runtime:visible-work:reinforce-retain`` →
+    # ``visible-work``). Sidste segment ville give ``reinforce-retain`` og
+    # bryde den eksisterende open-loop-kontrakt.
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[2] if len(parts) >= 3 else ""
 
 
 def _critic_domain_key(canonical_key: str) -> str:
-    text = str(canonical_key or "")
-    if text.startswith("reflective-critic:mismatch:development-focus:communication:"):
-        return text.removeprefix(
-            "reflective-critic:mismatch:development-focus:communication:"
-        )
-    if text.startswith("reflective-critic:mismatch:development-focus:user-directed:"):
-        return text.removeprefix(
-            "reflective-critic:mismatch:development-focus:user-directed:"
-        )
-    if text.startswith("reflective-critic:mismatch:development-focus:runtime:"):
-        parts = text.removeprefix(
-            "reflective-critic:mismatch:development-focus:runtime:"
-        ).split(":")
-        return parts[0] if parts else ""
-    return ""
+    # Producenten skriver ``reflective-critic:mismatch:{fokus-nøgle}``
+    # (``reflective_critic_tracking.py:171``); denne funktion forventede et
+    # ``development-focus:``-led indskudt som producenten aldrig skriver. Målt:
+    # nul af 967 critics har haft det præfiks. Type-nøgler som
+    # ``critic:user_correction`` bærer intet domæne og skal fortsat give tomt.
+    # Domænet er det FEMTE segment: to for ``reflective-critic:mismatch:`` plus
+    # to for fokus-nøglens eget præfiks.
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[4] if len(parts) >= 5 else ""
 
 
 def _goal_domain_key(canonical_key: str) -> str:

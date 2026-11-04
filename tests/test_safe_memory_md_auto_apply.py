@@ -107,7 +107,7 @@ def _insert_prompt_candidate(db) -> None:
     )
 
 
-def test_safe_memory_md_candidate_can_auto_apply_via_existing_workflow(isolated_runtime) -> None:
+def test_stable_context_candidate_stays_proposed_for_review(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control
@@ -132,11 +132,10 @@ def test_safe_memory_md_candidate_can_auto_apply_via_existing_workflow(isolated_
     contract = mission_control.mc_runtime_contract()
 
     assert draft_result["created"] == 1
-    assert apply_result["auto_applied"] == 1
-    assert candidates[0]["status"] == "applied"
-    assert "bounded auto-apply policy" in str(candidates[0]["status_reason"])
-    assert contract["pending_writes"]["memory_promotions"]["applied_count"] >= 1
-    assert contract["write_history"]["total"] >= 1
+    assert apply_result["auto_applied"] == 0
+    assert candidates[0]["status"] == "proposed"
+    assert contract["pending_writes"]["memory_promotions"]["pending_count"] >= 1
+    assert contract["write_history"]["total"] == 0
 
 
 def test_memory_md_candidate_outside_safe_subset_does_not_auto_apply(isolated_runtime) -> None:
@@ -196,9 +195,40 @@ def test_other_targets_are_not_auto_applied_as_memory_side_effect(isolated_runti
         limit=8,
     )
 
-    assert apply_result["auto_applied"] == 1
-    assert memory_candidates[0]["status"] == "applied"
+    assert apply_result["auto_applied"] == 0
+    assert memory_candidates[0]["status"] == "proposed"
     assert prompt_candidates[0]["status"] == "proposed"
+
+
+def test_hygiene_cap_keeps_safe_candidate_proposed(monkeypatch, isolated_runtime) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.candidate_tracking
+
+    _insert_memory_md_update_proposal(
+        db,
+        status="active",
+        proposal_type="remembered-fact-update",
+        canonical_key="memory-md-update-proposal:remembered-fact-update:project-anchor",
+        confidence="high",
+    )
+    tracking.track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    monkeypatch.setattr(
+        "core.identity.candidate_workflow._memory_auto_write_allowed",
+        lambda candidate: False,
+    )
+
+    result = tracking.auto_apply_safe_memory_md_candidates_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    candidates = db.list_runtime_contract_candidates(target_file="MEMORY.md", limit=8)
+
+    assert result["auto_applied"] == 0
+    assert result["backpressured"] == 1
+    assert candidates[0]["status"] == "proposed"
 
 
 def test_safe_remembered_fact_project_anchor_can_auto_apply_via_existing_workflow(

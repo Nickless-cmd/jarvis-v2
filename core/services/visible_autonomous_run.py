@@ -96,6 +96,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                          origin: str | None = None, task_id: str = "",
                          max_tool_calls: int = 0, max_seconds: float = 0.0,
                          tool_scope: str = "", force_user_id: str = "",
+                         started_callback: Callable[..., None] | None = None,
                          completion_callback: Callable[..., None] | None = None) -> bool:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
@@ -298,6 +299,13 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         user_id=str(force_user_id or ""),
         origin=_origin,
     )
+    if started_callback is not None:
+        try:
+            started_callback(visible_run_id=run.run_id, session_id=resolved_session)
+        except Exception:
+            # Observability must not become a second run gate after pre-flight
+            # has accepted the work. Reconciliation still runs at completion.
+            logger.warning("autonom started-callback fejlede", exc_info=True)
     # KAEDE-STEMPLET (14/10-2026). Foer stemplede kun `detached_run` — og kun
     # genoptagelses-dispatcheren gaar den vej. Enhver anden producent der tog
     # en forpligtelse op (living_executive, wakeup_dispatcher, inbox_idle_waker)

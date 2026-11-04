@@ -81,6 +81,12 @@ def aggregate(events: Iterable[dict], *, slow_ms: int = 500) -> dict[str, Any]:
         kind = str(event.get("kind") or "")
         payload = event["payload"]
         if kind == "tool.execution_timing":
+            # En ikke-final maaling (cancel-stien) skrives mens processen
+            # stadig koerer: varigheden er ikke en sluttid, og route=null er
+            # «ikke maalt endnu», ikke «ukendt rute». Den hoerer ikke i
+            # latens-statistikken.
+            if payload.get("timing_final") is False:
+                continue
             total = _number(payload.get("total_visible_ms"))
             if total is None:
                 continue

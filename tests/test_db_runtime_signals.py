@@ -127,3 +127,108 @@ def test_vaegten_er_global_paa_tvaers_af_kald(signals):
     loaded = signals.load_action_weights(["gentaget"])
     assert loaded["gentaget"]["n_samples"] == 3
     assert loaded["gentaget"]["weight"] == pytest.approx(0.0)
+
+
+# ── Ankeret: handlingen skal kunne knyttes til den koersel den skete i ──────
+# Maalt 4/11-2026 foer kolonnen fandtes: 288.544 handlings-raekker med
+# action_id + result_status, men NUL kunne knyttes til en koersel. Fokus- og
+# goal-lagene baerer run_id; handlings-laget gjorde ikke — saa intention og
+# handling kunne aldrig sammenlignes. Disse tests maaler at ankeret skrives.
+
+
+def test_ankeret_skrives_og_laeses_tilbage(signals):
+    row = signals.record_runtime_action_outcome(
+        action_id="tool:bash",
+        decision_mode="tool_force",
+        decision_reason="test",
+        decision_score=0.8,
+        payload_json={"k": "v"},
+        result_status="ok",
+        result_summary="det gik",
+        result_json={"ok": True},
+        recorded_at="2026-11-04T12:00:00+00:00",
+        run_id="visible-abc123",
+        session_id="sess-42",
+    )
+    assert row["run_id"] == "visible-abc123"
+    assert row["session_id"] == "sess-42"
+
+    recent = signals.recent_runtime_action_outcomes(limit=5)
+    assert recent[0]["run_id"] == "visible-abc123"
+    assert recent[0]["session_id"] == "sess-42"
+
+
+def test_uden_anker_er_tom_streng_ikke_gaet(signals):
+    """Bagudkompatibel: et kald uden anker maa ikke gaette et."""
+    row = signals.record_runtime_action_outcome(
+        action_id="tool:read_file",
+        decision_mode="tool",
+        decision_reason="test",
+        decision_score=0.6,
+        payload_json={},
+        result_status="ok",
+        result_summary="",
+        result_json={},
+        recorded_at="2026-11-04T12:00:01+00:00",
+    )
+    assert row["run_id"] == ""
+    assert row["session_id"] == ""
+
+
+def test_run_anchor_laeser_argument_stemplet():
+    from core.services.tool_outcome_memory import _run_anchor
+
+    run_id, session_id = _run_anchor(
+        {"_runtime_turn_id": "visible-stemplet", "_runtime_session_id": "sess-9"}
+    )
+    assert run_id == "visible-stemplet"
+    assert session_id == "sess-9"
+
+
+def test_run_anchor_falder_tilbage_til_koerslens_contextvar():
+    """Bro-kald (operator_bash) gaar uden om executoren og baerer intet stempel.
+
+    Der maa ankeret komme fra koerslens ContextVar — en proces-global ville
+    blive overskrevet naar to koersler overlapper.
+    """
+    from core.services.run_autonomy_context import set_run_identity
+    from core.services.tool_outcome_memory import _run_anchor
+
+    set_run_identity("visible-fra-contextvar")
+    run_id, _ = _run_anchor({"command": "ls"})
+    assert run_id == "visible-fra-contextvar"
+
+
+def test_run_anchor_tomme_argumenter_giver_tomt_anker():
+    from core.services.run_autonomy_context import set_run_identity
+    from core.services.tool_outcome_memory import _run_anchor
+
+    set_run_identity("")
+    run_id, session_id = _run_anchor(None)
+    assert run_id == ""
+    assert session_id == ""
+
+
+def test_kaeden_baerer_ankeret_hele_vejen(signals):
+    """KÆDEN, ikke bare enderne.
+
+    `_run_anchor` og db-laget kan hver isaer vaere korrekte mens kaldet imellem
+    dem taber ankeret. Denne test gaar gennem `record_tool_outcome_memory` —
+    praecis den vej et rigtigt tool-kald tager — og kraever at ankeret lander
+    i kolonnen. Maalt: uden den var hele kaeden utestet.
+    """
+    from core.services.run_autonomy_context import set_run_identity
+    from core.services.tool_outcome_memory import record_tool_outcome_memory
+
+    set_run_identity("")
+    record_tool_outcome_memory(
+        tool_name="bash",
+        arguments={
+            "_runtime_turn_id": "visible-kaedetest",
+            "_runtime_session_id": "sess-kaede",
+        },
+        result={"status": "ok", "summary": "kaede"},
+    )
+    recent = signals.recent_runtime_action_outcomes(limit=5)
+    assert recent[0]["run_id"] == "visible-kaedetest"
+    assert recent[0]["session_id"] == "sess-kaede"

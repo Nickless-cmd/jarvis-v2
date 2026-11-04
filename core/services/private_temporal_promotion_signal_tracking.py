@@ -371,7 +371,6 @@ _SPEC = SignalTrackingSpec(
         [c] if (c := _extract_candidate_for_run(run_id=str(ctx.get("run_id") or ""))) else []
     ),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active"}),
     stale_status_reason="Marked stale after bounded temporal-promotion inactivity window.",
     surface_status_order=("active", "stale", "superseded"),

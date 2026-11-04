@@ -171,8 +171,11 @@ def _tekst(v: dict[str, Any]) -> str:
         if v.get(f"{noegle}_skjult"):
             ud.append(f"  +{v[f'{noegle}_skjult']} mere")
     tal = int(v.get("backlog_tal") or 0)
+    handling = int(v.get("backlog_handling_tal") or 0)
     if tal:
-        ud.append(f"\nBacklog: {tal} kandidat-forslag → GET /central/candidates")
+        ud.append(
+            f"\nBacklog: {tal} kendte fund · {handling} kræver handling "
+            "→ GET /central/candidates")
     return "\n".join(ud) if ud else "Indbakken er tom."
 
 

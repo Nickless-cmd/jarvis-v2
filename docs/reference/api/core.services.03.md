@@ -44,7 +44,7 @@ _Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
 |---|---|---|---|---|
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L51) |
 | function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L57) |
-| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L155) |
+| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L176) |
 
 ## `core/services/approval_feedback_subscriber.py`
 
@@ -498,10 +498,10 @@ _Lease and dispatch one explicitly autonomous side task while Jarvis is idle._
 | function | `_something_running` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L54) |
 | function | `_target_session` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L63) |
 | function | `_session_for_task` | `(task)` | Hvilken SAMTALE hører denne opgave til? | [src](../../../core/services/autonomous_side_task_dispatcher.py#L78) |
-| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L167) |
-| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L185) |
-| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L205) |
-| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L226) |
+| function | `_start` | `(text, *, session_id, origin, task_id, max_tool_calls, max_seconds, started_callback=…, completion_callback=…)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L167) |
+| function | `_directive` | `(task)` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L188) |
+| function | `_report_exhausted` | `()` | — | [src](../../../core/services/autonomous_side_task_dispatcher.py#L208) |
+| function | `dispatch_one` | `()` | Start at most one task.  Every uncertain precondition means no start. | [src](../../../core/services/autonomous_side_task_dispatcher.py#L229) |
 
 ## `core/services/autonomous_stream_run.py`
 _Server-authoritative streaming lifecycle for autonomous visible runs._
@@ -533,14 +533,21 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `_file_proposal` | `(*, proposal_type, title, details, rationale)` | Record a work proposal for later execution/approval. | [src](../../../core/services/autonomous_work_daemon.py#L131) |
 | function | `_maybe_propose_memory_consolidate` | `()` | Propose a daily memory consolidation when ~end of day locally. | [src](../../../core/services/autonomous_work_daemon.py#L169) |
 | function | `_maybe_nudge_incubator` | `()` | If incubator is sparse, nudge creative_instinct to generate. | [src](../../../core/services/autonomous_work_daemon.py#L189) |
-| function | `_maybe_propose_research` | `()` | Pick one maturing incubator seed and propose a research topic for it. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
-| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L231) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L253) |
-| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L268) |
-| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L275) |
-| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L291) |
-| function | `_surface_summary` | `(pending, all_items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L310) |
-| function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L318) |
+| function | `_maybe_propose_research` | `()` | Vælg ét maturing seed der IKKE allerede har et ventende forslag. | [src](../../../core/services/autonomous_work_daemon.py#L213) |
+| function | `_plan_once` | `()` | Run planning passes and return list of created proposal_ids. | [src](../../../core/services/autonomous_work_daemon.py#L251) |
+| function | `_pending_count` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L273) |
+| function | `_forslag_noegle` | `(entry)` | Stabil identitet for et forslag. To forslag med samme nøgle er dubletter. | [src](../../../core/services/autonomous_work_daemon.py#L297) |
+| function | `_grundlag_findes` | `(entry)` | Lever forslagets grundlag stadig? Returnerer (ok, begrundelse). | [src](../../../core/services/autonomous_work_daemon.py#L315) |
+| function | `consume_proposals` | `(*, max_age_days=…)` | Behandl køen: luk det døde med begrundelse, bevar det levende. | [src](../../../core/services/autonomous_work_daemon.py#L369) |
+| function | `_udfoer_memory_consolidate` | `(entry)` | Konsolidér den dag forslaget peger på. Returnerer (status, note). | [src](../../../core/services/autonomous_work_daemon.py#L476) |
+| function | `_udfoer_research` | `(entry)` | Research kan ikke udføres autonomt — sig det med den faktiske grund. | [src](../../../core/services/autonomous_work_daemon.py#L514) |
+| function | `execute_proposals` | `()` | Udfør de forslag hvis grundlag OG policy tillader det nu. | [src](../../../core/services/autonomous_work_daemon.py#L528) |
+| function | `tick` | `(_seconds=…)` | Plan work proposals during low activity. | [src](../../../core/services/autonomous_work_daemon.py#L587) |
+| function | `list_proposals` | `(*, status=…, limit=…)` | — | [src](../../../core/services/autonomous_work_daemon.py#L645) |
+| function | `resolve_proposal` | `(proposal_id, *, outcome, note=…)` | Close a proposal. outcome in {'approved', 'rejected', 'completed'}. | [src](../../../core/services/autonomous_work_daemon.py#L652) |
+| function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L668) |
+| function | `_surface_summary` | `(pending, all_items)` | Summarise the queue — og sig naar den ikke bliver forbruget. | [src](../../../core/services/autonomous_work_daemon.py#L701) |
+| function | `build_autonomous_work_prompt_section` | `()` | Sig hvad der venter — med type, dato og hvad der blokerer. | [src](../../../core/services/autonomous_work_daemon.py#L760) |
 
 ## `core/services/autonomy_budget.py`
 _Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
@@ -595,14 +602,14 @@ _Autonomy proposal queue — Niveau 2 fundament._
 | function | `list_recent_proposals` | `(*, limit=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L159) |
 | function | `approve_proposal` | `(proposal_id, *, resolution_note=…)` | Bjørn approves a proposal — execute it immediately if we have an | [src](../../../core/services/autonomy_proposal_queue.py#L163) |
 | function | `reject_proposal` | `(proposal_id, *, resolution_note=…)` | — | [src](../../../core/services/autonomy_proposal_queue.py#L279) |
-| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L309) |
-| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
-| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L357) |
-| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L441) |
-| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L532) |
-| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L635) |
-| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L681) |
-| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L793) |
+| function | `build_autonomy_proposal_surface` | `(*, limit=…)` | MC-friendly view of the proposal queue. | [src](../../../core/services/autonomy_proposal_queue.py#L332) |
+| function | `_execute_memory_rewrite_proposal` | `(payload)` | Execute an approved memory-rewrite proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L355) |
+| function | `_execute_source_edit_proposal` | `(payload)` | Execute an approved source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L380) |
+| function | `_auto_commit_after_source_edit` | `(proposal, result)` | Auto-commit the file changed by a source-edit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L507) |
+| function | `_execute_git_commit_proposal` | `(payload)` | Execute an approved git-commit proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L598) |
+| function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L701) |
+| function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L747) |
+| function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L859) |
 
 ## `core/services/avoidance_detector.py`
 _Avoidance Detector — unbidden self-observation of patterns over time._

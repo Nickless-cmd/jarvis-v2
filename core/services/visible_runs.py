@@ -222,6 +222,7 @@ from core.services.visible_model import (
 # model-stream fejler. Importeres på modul-niveau så testen kan monkeypatche
 # core.services.visible_runs.run_non_visible_with_fallback direkte.
 from core.services.non_visible_fallback import run_non_visible_with_fallback
+from core.services.provider_error_guard import looks_like_protocol_leak
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
@@ -6160,6 +6161,33 @@ async def _stream_visible_run(
                     _mekanisk_reparation as _hegn_mekanisk,
                 )
                 visible_output_text = _hegn_mekanisk(visible_output_text)
+                # 4/11-2026 (Bjørn, tredje gang): «anden linje i din sidste
+                # besked burde være nyt linje efter den fede headline ?» —
+                # pseudo-overskriften `**🪶 Overskrift.** Brødtekst` nåede
+                # brugeren i HVERT primært svar, fordi prosa_struktur_guard
+                # kun blev kaldt i _finalize_second_pass_visible_text, og
+                # second pass er `skipped` for langt de fleste runs.
+                # Rettelsen er deterministisk og gratis: et linjeskift, ingen
+                # model, ingen tokens, ingen ekstra pas. Den sidder HER fordi
+                # dette er den fælles udgang — samme sted som flade-guarden
+                # blev flyttet til 24/10 efter præcis samme fejlform.
+                # Diskriminatoren er testet i tests/test_pseudo_overskrift_break.py
+                # i BEGGE retninger: former der skal rettes, og korrekt tekst
+                # der skal passere urørt. Fail-open.
+                try:
+                    from core.services.prosa_struktur_guard import (
+                        ret_pseudo_overskrift as _ret_pseudo_overskrift,
+                    )
+                    _pseudo_foer = visible_output_text
+                    visible_output_text = _ret_pseudo_overskrift(visible_output_text)
+                    if visible_output_text != _pseudo_foer:
+                        yield _sse("scan_correction", {
+                            "type": "scan_correction",
+                            "run_id": run.run_id,
+                            "corrected": visible_output_text,
+                        })
+                except Exception:  # fail-open: formatering maa aldrig koste et svar
+                    pass
                 pass  # MUTATION B
                 if visible_output_text != _flade_foer:
                     yield _sse("scan_correction", {
@@ -6843,6 +6871,15 @@ _TOOL_CALL_LEAK_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+#: Protokol-token-lækage (målt 3/11-2026, se `provider_error_guard`): en model
+#: skrev sine værktøjskald som RÅ TEKST i sit eget token-format, og 536 tegn
+#: token-skov gik direkte i chatten. `_TOOL_CALL_LEAK_PATTERN` ovenfor leder efter
+#: `[navn]: {` og var blind for `<]minimax[>` og `[<tool_call>{`.
+#:
+#: Detektoren bor nu i `provider_error_guard.looks_like_protocol_leak`, fordi
+#: failover-kæden skal bruge PRÆCIS samme dom — og den kan ikke importere denne
+#: fil, som selv importerer fallback-modulet. Én definition, to brugere.
+
 
 def _assert_presentation_invariant(text: str) -> None:
     stripped = (text or "").lstrip()
@@ -6865,6 +6902,17 @@ def _assert_presentation_invariant(text: str) -> None:
         )
         raise PresentationInvariantError(
             f"tool-call emitted as prose instead of structured tool_calls: "
+            f"{stripped[:120]!r}"
+        )
+    # Protokol-token-lækage (3/11-2026). Detektoren bor i provider_error_guard,
+    # så failover-kæden bruger PRÆCIS samme dom uden at importere denne fil.
+    if looks_like_protocol_leak(stripped):
+        logger.warning(
+            "presentation-invariant-leak kind=protokol-token preview=%r",
+            stripped[:200],
+        )
+        raise PresentationInvariantError(
+            f"model protocol tokens leaked into user-visible text: "
             f"{stripped[:120]!r}"
         )
 

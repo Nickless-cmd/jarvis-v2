@@ -297,10 +297,12 @@ class TestAdaptiveThresholds:
     def test_override_raises_threshold(self):
         from core.services.veto_gate import _adaptive_threshold
         from unittest.mock import patch
-        # 3 overrides on default(irritation) base 0.75 → 0.75 + 3*0.05 = 0.90
+        # 3/11-2026: stigningen er aftagende (ceiling 0,20, half 3), så
+        # 3 overrides på default(irritation) base 0,75 → 0,75 + 0,20*3/6 = 0,85.
+        # Før var den lineær og gav 0,90 — men den ramte også 0,98 efter fem.
         with patch("core.services.veto_gate._get_override_count", return_value=3), \
              patch("core.services.veto_gate._get_honored_count", return_value=0):
-            assert _adaptive_threshold("default", "irritation", 1.0) == 0.90
+            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.85) < 1e-9
 
     def test_honored_lowers_threshold(self):
         from core.services.veto_gate import _adaptive_threshold
@@ -314,10 +316,60 @@ class TestAdaptiveThresholds:
         """Mixed signals: overrides and honored events offset each other."""
         from core.services.veto_gate import _adaptive_threshold
         from unittest.mock import patch
-        # 4 overrides (+0.20) and 5 honored (-0.10) on 0.75 base → 0.85
+        # 4 overrides (+0,20*4/7 = 0,1143) og 5 honored (-0,10) på 0,75 → 0,7643
         with patch("core.services.veto_gate._get_override_count", return_value=4), \
              patch("core.services.veto_gate._get_honored_count", return_value=5):
-            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.85) < 1e-9
+            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.7642857142857142) < 1e-9
+
+    def test_intet_par_kan_blive_blindt_ved_akkumulering(self):
+        """Målt 3/11-2026: 7 overrides gjorde to par blinde på 0,98.
+
+        restart_self+protectiveness og edit_file+r2_5_gate stod begge på loftet,
+        så intet under intensitet 0,98 blev afvist. Syv overrides over fire
+        måneder er ikke bevis for at værktøjet aldrig skal gates igen — så
+        stigningen er nu aftagende og kan ikke nå loftet fra en 0,75-basis.
+        """
+        from core.services.veto_gate import _adaptive_threshold, _THRESHOLD_MAX
+        from unittest.mock import patch
+        with patch("core.services.veto_gate._get_honored_count", return_value=0):
+            for n in (5, 7, 10, 50, 10_000):
+                with patch("core.services.veto_gate._get_override_count", return_value=n):
+                    t = _adaptive_threshold("restart_self", "protectiveness", 1.0)
+                assert t < _THRESHOLD_MAX, (
+                    f"{n} overrides gjorde parret blindt: threshold={t:.4f} "
+                    f"nåede loftet {_THRESHOLD_MAX}"
+                )
+            # Kontrol: de to par der FAKTISK stod på loftet er nu under det,
+            # og en intensitet på 0,90 bliver afvist igen.
+            with patch("core.services.veto_gate._get_override_count", return_value=7):
+                t = _adaptive_threshold("edit_file", "r2_5_gate", 1.0)
+            assert abs(t - 0.89) < 1e-9, f"forventet 0,89, fik {t}"
+            assert 0.90 >= t, "intensitet 0,90 skal kunne afvises igen"
+
+    def test_foerste_override_er_uaendret(self):
+        """Bagudkompatibilitet: én override giver stadig +0,05."""
+        from core.services.veto_gate import _adaptive_threshold
+        from unittest.mock import patch
+        with patch("core.services.veto_gate._get_override_count", return_value=1), \
+             patch("core.services.veto_gate._get_honored_count", return_value=0):
+            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.80) < 1e-9
+
+    def test_stigningen_er_aftagende(self):
+        """Hver ekstra override må løfte mindre end den foregående."""
+        from core.services.veto_gate import _override_lift
+        tidligere = 0.0
+        for n in range(1, 12):
+            nu = _override_lift(n)
+            delta = nu - tidligere
+            if n > 1:
+                assert delta < forrige_delta, (
+                    f"stigningen tog til ved n={n}: {delta:.5f} >= {forrige_delta:.5f}"
+                )
+            forrige_delta = delta
+            tidligere = nu
+        # og den nærmer sig ceiling uden at nå den
+        from core.services.veto_gate import _OVERRIDE_CEILING
+        assert _override_lift(10_000) < _OVERRIDE_CEILING
 
 
 class TestActPhaseSkipForActiveChat:

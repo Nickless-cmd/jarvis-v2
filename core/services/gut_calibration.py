@@ -46,17 +46,34 @@ def _on_started(payload: dict) -> None:
     run_id = str(payload.get("run_id") or "")
     if not run_id:
         return
-    from core.services.gut_engine import derive_gut_signal
-    signal = derive_gut_signal(task_description=str(payload.get("focus") or ""))
+    from core.services.gut_engine import derive_gut_signal, take_preflight_prediction
+
+    # A2 (3/11-2026): brug preflight'ens forudsigelse hvis den findes. Før blev den kastet,
+    # og denne handler dannede en NY fra `payload["focus"]` — et andet input end gaten så
+    # på, og først efter runnet var begyndt. Kalibreringen evaluerede derfor en anden
+    # forudsigelse end den der lå bag startbeslutningen.
+    prediction = take_preflight_prediction()
+    if prediction is not None:
+        hunch = str(prediction.get("hunch") or "proceed")
+        source = "preflight"
+    else:
+        # Ingen slot: runnet er startet ad en anden vej (eller slotten er udløbet).
+        # Vi danner stadig en hunch, men mærker den, så det kan ses bagefter hvilken
+        # vej forudsigelsen kom ad.
+        signal = derive_gut_signal(task_description=str(payload.get("focus") or ""))
+        hunch = str(signal.get("hunch") or "proceed")
+        source = "fallback"
+
     if len(_pending) >= _MAX_PENDING:
         _pending.clear()  # backstop mod læk ved tabte completed-events
-    _pending[run_id] = str(signal.get("hunch") or "proceed")
+    _pending[run_id] = hunch
 
     # 12/10-2026: gut_gate-kaldet FLYTTEDE herfra til pre-flight (gut_engine.preflight_gut_gate,
     # kaldt fra start_autonomous_run/start_autonomous_stream_run). Her fyrede det på et event der
     # kommer EFTER runnet er begyndt — «vi ANNULLERER ikke run'et her» stod der selv — så det
     # kunne aldrig stoppe noget, og det ville dobbelt-tælle counterfactual'en nu hvor gaten er
     # ægte. Denne handler har ÉN opgave tilbage: stashe hunch'en, så udfaldet kan kalibrere maven.
+    logger.debug("gut_calibration: hunch=%s source=%s run=%s", hunch, source, run_id)
 
 
 def _on_outcome(payload: dict, actual_outcome: str) -> None:

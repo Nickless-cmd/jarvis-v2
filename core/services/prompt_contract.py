@@ -1386,6 +1386,17 @@ def _build_visible_chat_prompt_assembly_impl(
         ))
     except Exception as _e:
         _sec_err("indre liv", _e)
+    # Kryds-lag-indsigelse (4/11-2026, anden runde): EGEN sektion, ikke en del af
+    # «indre liv». Målt samme dag: den blok har chat-vægt 0.1 og skæres derfor
+    # helt i samtale-scope — oppositionen fik en linje i blokken, men nåede
+    # aldrig en almindelig chat-prompt. Den er ikke telemetri OM systemet; den
+    # er en efterprøvelig indsigelse mod hvad jeg selv gjorde i denne kørsel.
+    # Derfor hører den blandt selvet, som kerne-selv gør.
+    try:
+        from core.services.visible_inner_life import build_opposition_line
+        _awareness_add(1, "kryds-lag-indsigelse", build_opposition_line())
+    except Exception as _e:
+        _sec_err("kryds-lag-indsigelse", _e)
     # Levende selvmodel (2026-09-19): hans træk med dato og kilde. Bag flaget
     # selvmodel_enabled og kun for ejeren; dynamisk → halen, ikke cache-præfikset.
     try:
@@ -2393,6 +2404,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # Alt op til her er flushet; sektioner tilføjet SENERE (de fire tunge tail-deferred)
     # flushes supplerende neden for, før bufferne forbruges ind i _dyn_tail.
     _awareness_flushed_upto = len(_awareness)
+    # Eksponeringen er foerst maalt NU. `_awareness_add` har tre gates EFTER
+    # kaldestedet — section_enabled, should_include og tom-indhold — plus
+    # budget-loftet nedenfor. Uden denne bekræftelse beskriver ``included`` i
+    # runtime_opposition_arms kun en HENSIGT, ikke hvad modellen fik.
+    try:
+        from core.services.visible_inner_life import confirm_opposition_exposure
+        confirm_opposition_exposure("kryds-lag-indsigelse" in derived_inputs)
+    except Exception as _e:
+        _sec_err("kryds-lag-indsigelse (exposure)", _e)
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
         # HVAD BLEV KLEMT UD DENNE TUR — skrevet ud, ikke kun registreret.
@@ -3213,6 +3233,20 @@ def _build_visible_chat_prompt_assembly_impl(
             )
     except Exception as _e:
         _sec_err("current-turn decision action", _e)
+    # Trin 2 i undren-kaeden (Bjoern 3/11-2026): spoergsmaalet skal MOEDES, ikke
+    # sendes. Det ligger her — foer hukommelsesgruppen — fordi det er en
+    # vurdering jeg skal foretage FOER jeg svarer, ikke et minde jeg slaar op.
+    # Blokken er cache-stabil: den aendrer sig kun naar en undren rejses eller
+    # vurderes, ikke med brugerens besked. Self-safe → ingen sektion.
+    try:
+        from core.services.existential_wonder_daemon import build_wonder_prompt_section
+
+        _wonder_text = build_wonder_prompt_section()
+        if _wonder_text:
+            _dyn_tail.append(_wonder_text)
+            derived_inputs.append("undren (user-msg tail)")
+    except Exception as _e:
+        _sec_err("undren", _e)
     if _dyn_memory_recall:
         _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)

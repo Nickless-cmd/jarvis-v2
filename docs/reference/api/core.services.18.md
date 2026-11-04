@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_write_policy.py`
+_Memory Write Policy — gating + review queue for inferred memory writes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
+| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
+| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
+| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
+| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
+| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
+| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
+| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
+| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
+| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
+| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
+| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
+| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
+| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
+| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
+
 ## `core/services/memory_write_queue.py`
 _Memory Write Queue — async write queue for sensory/brain memories._
 
@@ -515,10 +536,11 @@ _Non-visible (autonomous) LLM fallback chain._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_fallback_enabled` | `()` | Læs feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L24) |
-| function | `_rate_cap_enabled` | `()` | Læs rate-cap feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L29) |
-| function | `_observe_central` | `(payload)` | Task 15: let observabilitet på ON-stien → Centralens system/cheap_pool. | [src](../../../core/services/non_visible_fallback.py#L34) |
-| function | `run_non_visible_with_fallback` | `(*, message, primary_call, run_is_autonomous, task_kind=…)` | Prøv primary_call() (ollama). Ved fejl: fald til den gratis cheap-lane | [src](../../../core/services/non_visible_fallback.py#L44) |
+| function | `_ubrugeligt_svar` | `(result)` | True hvis poolen svarede med noget der ikke er et svar. | [src](../../../core/services/non_visible_fallback.py#L25) |
+| function | `_fallback_enabled` | `()` | Læs feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L38) |
+| function | `_rate_cap_enabled` | `()` | Læs rate-cap feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L43) |
+| function | `_observe_central` | `(payload)` | Task 15: let observabilitet på ON-stien → Centralens system/cheap_pool. | [src](../../../core/services/non_visible_fallback.py#L48) |
+| function | `run_non_visible_with_fallback` | `(*, message, primary_call, run_is_autonomous, task_kind=…)` | Prøv primary_call() (ollama). Ved fejl: fald til den gratis cheap-lane | [src](../../../core/services/non_visible_fallback.py#L58) |
 
 ## `core/services/non_visible_lane_execution.py`
 
@@ -632,21 +654,4 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L579) |
 | function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L596) |
 | function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L631) |
-
-## `core/services/notifikationer.py`
-_Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_udsend` | `(slags_haendelse, nid, user_id, slags)` | Live-vejen til klokken. Fejler den, skal FEEDEN stadig virke — men den | [src](../../../core/services/notifikationer.py#L27) |
-| function | `_nu` | `()` | — | [src](../../../core/services/notifikationer.py#L44) |
-| function | `opret` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…, data=…)` | Laeg en notifikation. Returnerer id. | [src](../../../core/services/notifikationer.py#L48) |
-| function | `aabne` | `(user_id, *, er_owner)` | Aabne raekker for denne bruger. RAA — se hydreringen for den rigtige feed. | [src](../../../core/services/notifikationer.py#L100) |
-| function | `afsluttede` | `(user_id, *, dage=…)` | KLAREDE raekker for denne bruger — de sidste `dage`. RAA. | [src](../../../core/services/notifikationer.py#L123) |
-| function | `_med_data` | `(raekke)` | — | [src](../../../core/services/notifikationer.py#L150) |
-| function | `opdater` | `(slags, ref, *, titel, tekst=…, data=…)` | Opdater den samme feed-post, fx mens et release gaar gennem CI. | [src](../../../core/services/notifikationer.py#L159) |
-| function | `luk` | `(notif_id, udfald)` | Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`. | [src](../../../core/services/notifikationer.py#L178) |
-| function | `genaabn` | `(slags, ref)` | Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en | [src](../../../core/services/notifikationer.py#L196) |
-| function | `luk_foraeldede` | `(dage=…, *, slags=…)` | Luk AABNE `run_done` aeldre end `dage`. Returnerer antal lukkede. | [src](../../../core/services/notifikationer.py#L224) |
-| function | `ryd_gamle` | `(dage=…)` | Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede. | [src](../../../core/services/notifikationer.py#L255) |
 

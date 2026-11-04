@@ -110,12 +110,21 @@ def record_runtime_world_model_prediction(
     confidence: str = "low",
     evidence: list[str] | None = None,
     source: str = "runtime",
+    event_kind: str = "",
     now: datetime | None = None,
 ) -> dict[str, object]:
     """Record an explicit, falsifiable world-model expectation.
 
     This is deliberately a small ledger, not a planner. A prediction may
     influence attention and later calibration, but it must not execute work.
+
+    ``event_kind`` (målt 4/11-2026) er det felt der gør forudsigelsen
+    FALSIFICERBAR. Feltet fandtes i læseren (``_frequency_verdict``) men blev
+    aldrig skrevet her — så 132 af 132 resolved endte som ``uncertain`` med
+    reason ``no-event-kind-tag-on-prediction``, og ``calibration`` var
+    strukturelt ``None``. Sweepet kørte dagligt uden at kunne afgøre noget.
+    Uden et ``event_kind`` kan frekvens-sammenligningen ikke finde sine
+    hændelser; med det kan den afgøre supported/contradicted.
     """
     normalized_subject = " ".join(str(subject or "").split()).strip()
     normalized_expectation = " ".join(str(expectation or "").split()).strip()
@@ -137,6 +146,7 @@ def record_runtime_world_model_prediction(
         "confidence": confidence,
         "evidence": [str(e).strip() for e in (evidence or []) if str(e).strip()][:5],
         "source": str(source or "runtime").strip() or "runtime",
+        "event_kind": " ".join(str(event_kind or "").split()).strip(),
         "created_at": created_at,
         "updated_at": created_at,
         "resolved_at": "",
@@ -609,12 +619,20 @@ def _resolved_predictions_chrono() -> list[dict[str, object]]:
     return resolved
 
 
-def _calibration_of(predictions: list[dict[str, object]]) -> float:
-    """% supported among supported+contradicted; uncertain is excluded."""
+def _calibration_of(predictions: list[dict[str, object]]) -> float | None:
+    """% supported among supported+contradicted; uncertain is excluded.
+
+    ``None`` naar naevneren er tom (maalt 4/11-2026). 0/0 er UNDEFINED, ikke
+    0 %. Foer returnerede den 0.0 — og de 48 ``count_10``-milestones fortalte
+    Centralen at dens kalibrering var 0.0 %, selv om der aldrig havde vaeret
+    en eneste afgjort forudsigelse. Samme fejlform som ``tool_rate`` der
+    returnerede 0.0 naar funktionen ikke fandtes: en default der ligner en
+    maaling.
+    """
     s = sum(1 for p in predictions if p.get("outcome") == "supported")
     c = sum(1 for p in predictions if p.get("outcome") == "contradicted")
     if s + c == 0:
-        return 0.0
+        return None
     return round(100.0 * s / (s + c), 1)
 
 
@@ -666,10 +684,11 @@ def _compute_calibration_milestone(*, now: datetime | None = None) -> dict[str, 
         return None
 
     calibration = _calibration_of(resolved[-30:])
+    cal_text = "ikke maalt (0 afgjorte)" if calibration is None else f"{calibration}%"
 
     # Rule 1: count_10
     if count > 0 and count % 10 == 0 and not _has_milestone("count_10", count):
-        message = f"Du har nu {count} resolved predictions. Kalibrering sidste 30: {calibration}%."
+        message = f"Du har nu {count} resolved predictions. Kalibrering sidste 30: {cal_text}."
         return _append_milestone("count_10", count, message, now)
 
     # Rule 2: first_contradiction_after_streak
@@ -689,7 +708,7 @@ def _compute_calibration_milestone(*, now: datetime | None = None) -> dict[str, 
     # Rule 3: threshold cross
     for tier in (60, 70, 80):
         kind = f"threshold_{tier}"
-        if calibration >= tier and not _has_milestone(kind):
+        if calibration is not None and calibration >= tier and not _has_milestone(kind):
             message = f"Din kalibrering er nu {calibration}% — over {tier}%."
             return _append_milestone(kind, tier, message, now)
 
@@ -699,6 +718,8 @@ def _compute_calibration_milestone(*, now: datetime | None = None) -> dict[str, 
         prior_10 = resolved[-20:-10]
         recent_cal = _calibration_of(recent_10)
         prior_cal = _calibration_of(prior_10)
+        if recent_cal is None or prior_cal is None:
+            return None
         delta = round(recent_cal - prior_cal, 1)
         if delta >= 5:
             anchor = f"improving:{count}"

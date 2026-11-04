@@ -212,6 +212,37 @@ def _track_runtime_candidates(run: "_vr.VisibleRun", assistant_text: str) -> Non
         )
     except Exception:
         _track_step_failed()
+    # ── KRYDS-LAG-FAMILIEN: STRUKTURELT DØD (målt 4/11-2026) ─────────────────
+    # De fire trackers nedenfor — temporal_recurrence, internal_opposition,
+    # executive_contradiction og open_loop — kaldes hver tur og skriver ALDRIG
+    # noget. Målt i den levende base: alle fire _extract_*-funktioner returnerer
+    # 0 kandidater, og tabellerne har 0 rækker nogensinde (internal_opposition
+    # har 1 række fra 15. maj, superseded).
+    #
+    # ÅRSAGEN ER IKKE EN FEJL DER KAN RETTES. De kræver alle et domæne der deles
+    # på tværs af lag, og hvert lag taler sit eget nøgle-format:
+    #   focus   → focus:bearing:<hel sætning>      (hvert fokus sit eget domæne)
+    #   goal    → goal-signal:<slug>
+    #   critic  → critic:<type>                    (en TYPE, ikke et emne)
+    #   self    → self-model:domain:<emne>         (det eneste ægte domæne)
+    #   loop    → findes ikke (0 rækker)
+    # Ingen af dem kan mødes. Målt: focus∩goal = 2 domæner ud af 3.118, og
+    # critic deler nul domæner med noget lag.
+    #
+    # FRISTELSE DER IKKE VIRKER: at matche fokus-nøglens ord mod beskeden
+    # generisk. Målt på 400 historiske correction-critics gav det 41 "matches"
+    # — alle på funktionsord som «skal», «ikke», «hvordan». Det er falske
+    # domæner, og et falsk domæne er værre end et tomt.
+    #
+    # HVAD DER SKAL BYGGES FØR DE KAN FYRE: en fælles domæne-dimension — en
+    # kolonne, et vokabular eller en mapping — der siger hvad «samme emne»
+    # betyder på tværs af de fem lag. Det er en designbeslutning om hvad et
+    # domæne ER i systemet, ikke en konfigurationsrettelse. Indtil den findes,
+    # er tomme signaler den korrekte adfærd — men de skal stå her som tomme
+    # med vilje, ikke som en mekanisme nogen tror virker.
+    #
+    # Læserne (11 for executive_contradiction alene) tåler tomme data og gør
+    # det allerede. Der er derfor intet at rette i læse-fladen.
     try:
         _vr.track_runtime_temporal_recurrence_signals_for_visible_turn(
             session_id=run.session_id,

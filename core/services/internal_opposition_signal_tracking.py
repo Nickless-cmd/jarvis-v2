@@ -54,22 +54,51 @@ def build_runtime_internal_opposition_signal_surface(*, limit: int = 8) -> dict[
     return _stf.build_surface(_SPEC, limit=limit)
 
 
+#: Hvor mange raekker der hentes pr. lag. Maalt 4/11-2026: med 18 kunne
+#: lagene naesten ikke moedes (nyeste-18 focus ∩ nyeste-18 critic = 0), fordi
+#: hvert lag har sin egen produktionsrytme. Vinduet skal vaere stoerre end
+#: antallet af koersler der baerer 2+ lag.
+_WINDOW = 400
+
+
+def _run_domain(item: dict[str, object], key_fn) -> str:
+    """Domaenet er KOERSLEN, ikke et semantisk emne.
+
+    Maalt 4/11-2026: lagene taler ikke samme spoerg. `focus` er sin egen
+    saetning, `goal` sin egen slug, `critic` en type — saa noegle-parsing gav
+    `critic ∩ alt = 0`. Koerslen er den ene dimension ALLE lag baerer, og det
+    er ogsaa den signalet handler om: «i DENNE tur pegede to lag modsat».
+
+    Graensen skal siges hoejt: dette er et TIDSLIGT domaene, ikke et semantisk.
+    Det fanger at to ting skete i samme tur — ikke at de handler om det samme.
+    Det er den korrekte betydning for intern opposition; for spoergsmaalet
+    «samme emne over tid» (open-loop, recurrence) er domaenet stadig emnet.
+
+    Uden anker falder vi tilbage til noegle-udtraekket, saa gamle raekker uden
+    `run_id` opfoerer sig som foer.
+    """
+    anchor = str(item.get("run_id") or "").strip()
+    if anchor:
+        return anchor
+    return key_fn(str(item.get("canonical_key") or ""))
+
+
 # ── internal-opposition-specific cross-layer candidate derivation (unique) ─────
 def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
-    for focus in list_runtime_development_focuses(limit=18):
+    for focus in list_runtime_development_focuses(limit=_WINDOW):
         if str(focus.get("status") or "") != "active":
             continue
-        domain_key = _focus_domain_key(str(focus.get("canonical_key") or ""))
+        domain_key = _run_domain(focus, _focus_domain_key)
         if domain_key:
             snapshots.setdefault(domain_key, {})["active_focus"] = focus
 
-    for goal in list_runtime_goal_signals(limit=18):
+    for goal in list_runtime_goal_signals(limit=_WINDOW):
         status = str(goal.get("status") or "")
         if status not in {"active", "blocked"}:
             continue
-        domain_key = _goal_domain_key(str(goal.get("canonical_key") or ""))
+        domain_key = _run_domain(goal, _goal_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -78,11 +107,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["active_goal"] = goal
 
-    for critic in list_runtime_reflective_critics(limit=18):
+    for critic in list_runtime_reflective_critics(limit=_WINDOW):
         status = str(critic.get("status") or "")
         if status not in {"active", "resolved"}:
             continue
-        domain_key = _critic_domain_key(str(critic.get("canonical_key") or ""))
+        domain_key = _run_domain(critic, _critic_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -91,11 +120,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["resolved_critic"] = critic
 
-    for signal in list_runtime_self_model_signals(limit=18):
+    for signal in list_runtime_self_model_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "uncertain"}:
             continue
-        domain_key = _self_model_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _self_model_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -104,11 +133,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["uncertain_self_model"] = signal
 
-    for signal in list_runtime_reflection_signals(limit=18):
+    for signal in list_runtime_reflection_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "integrating", "settled"}:
             continue
-        domain_key = _reflection_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _reflection_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -117,11 +146,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["live_reflection"] = signal
 
-    for signal in list_runtime_temporal_recurrence_signals(limit=18):
+    for signal in list_runtime_temporal_recurrence_signals(limit=_WINDOW):
         status = str(signal.get("status") or "")
         if status not in {"active", "softening"}:
             continue
-        domain_key = _temporal_domain_key(str(signal.get("canonical_key") or ""))
+        domain_key = _run_domain(signal, _temporal_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -130,11 +159,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         else:
             bucket["softening_recurrence"] = signal
 
-    for item in build_runtime_open_loop_signal_surface(limit=12).get("items", []):
+    for item in build_runtime_open_loop_signal_surface(limit=_WINDOW).get("items", []):
         status = str(item.get("status") or "")
         if status not in {"open", "softening"}:
             continue
-        domain_key = _open_loop_domain_key(str(item.get("canonical_key") or ""))
+        domain_key = _run_domain(item, _open_loop_domain_key)
         if not domain_key:
             continue
         bucket = snapshots.setdefault(domain_key, {})
@@ -145,11 +174,11 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
 
     world_uncertain_signals = [
         item
-        for item in list_runtime_world_model_signals(limit=12)
+        for item in list_runtime_world_model_signals(limit=_WINDOW)
         if str(item.get("status") or "") == "uncertain"
     ]
-    active_goal_count = len([item for item in list_runtime_goal_signals(limit=18) if str(item.get("status") or "") in {"active", "blocked"}])
-    open_loop_surface = build_runtime_open_loop_signal_surface(limit=12)
+    active_goal_count = len([item for item in list_runtime_goal_signals(limit=_WINDOW) if str(item.get("status") or "") in {"active", "blocked"}])
+    open_loop_surface = build_runtime_open_loop_signal_surface(limit=_WINDOW)
 
     candidates: list[dict[str, object]] = []
     for domain_key, snapshot in snapshots.items():
@@ -166,7 +195,7 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
         softening_recurrence = snapshot.get("softening_recurrence")
         open_loop = snapshot.get("open_loop")
         softening_loop = snapshot.get("softening_loop")
-        title_suffix = _domain_title(domain_key)
+        title_suffix = _domain_title(_snapshot_label(snapshot, domain_key))
 
         if (open_loop and str(open_loop.get("signal_type") or "") == "persistent-open-loop" and active_critic and (active_focus or active_goal or blocked_goal)) or (
             active_critic and active_recurrence and (active_focus or active_goal or blocked_goal)
@@ -185,31 +214,38 @@ def _extract_internal_opposition_candidates(*_args, **_kwargs) -> list[dict[str,
             )
             continue
 
-        if (active_focus or active_goal) and (active_self_model or uncertain_self_model) and (active_critic or open_loop or active_recurrence):
+        # Maalt 4/11-2026: critic ∩ self_model = 0 koersler, focus ∩ critic = 1.
+        # De tre lag produceres i hver sin rytme, saa et krav om alle tre var et
+        # krav om at to ure slaar samtidig. Fokus + selv-model ER to lag i samme
+        # koersel og er nok til at baere en kalibrerings-indsigelse; critic,
+        # open-loop og recurrence styrker den naar de findes.
+        if (active_focus or active_goal) and (active_self_model or uncertain_self_model):
+            lag = _lag_pair_label(snapshot)
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
                     signal_type="challenge-calibration",
                     status="active",
-                    title=f"Challenge calibration: {title_suffix}",
-                    summary=f"This bounded calibration thread around {title_suffix.lower()} now looks like it should be challenged internally.",
-                    rationale="Active direction is still being carried while self-model pressure and critic/open-loop recurrence suggest the current calibration should not be accepted too easily.",
-                    status_reason="Self-model pressure plus continuing direction keeps this domain in need of bounded internal challenge.",
+                    title=f"Challenge calibration: {lag}",
+                    summary=f"Kalibrering i denne kørsel: {lag}.",
+                    rationale="To lag sameksisterer i samme kørsel. Om de modsiger hinanden er ikke afgjort — domænet er tidsligt, ikke semantisk.",
+                    status_reason="Begge lag er til stede i samme kørsel; en eventuel modsætning skal læses ud af deres indhold.",
                     source_items=[active_focus, active_goal, active_self_model, uncertain_self_model, active_critic, open_loop, active_recurrence],
                 )
             )
             continue
 
         if (softening_loop or softening_recurrence or resolved_critic) and (active_self_model or uncertain_self_model or live_reflection) and not active_critic and not blocked_goal:
+            lag = _lag_pair_label(snapshot)
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
                     signal_type="challenge-calibration",
                     status="softening",
-                    title=f"Softening challenge: {title_suffix}",
-                    summary=f"This bounded calibration thread around {title_suffix.lower()} may still benefit from challenge, but the pressure is easing.",
-                    rationale="The domain still carries some calibration uncertainty, but the sharper critic/open-loop pressure has eased into a softer challenge need.",
-                    status_reason="Internal challenge still looks relevant, though the thread is now softening rather than sharply opposed.",
+                    title=f"Softening challenge: {lag}",
+                    summary=f"Kalibrering i denne kørsel: {lag}.",
+                    rationale="To lag sameksisterer i samme kørsel, men presset er aftagende. Om de modsiger hinanden er ikke afgjort.",
+                    status_reason="Begge lag er til stede, men den skarpe kritiker/open-loop-pres er væk.",
                     source_items=[active_focus, active_goal, active_self_model, uncertain_self_model, live_reflection, softening_loop, softening_recurrence, resolved_critic, settled_reflection],
                 )
             )
@@ -287,7 +323,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=_extract_internal_opposition_candidates,
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded internal-opposition inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),
@@ -301,8 +336,14 @@ _SPEC = SignalTrackingSpec(
 
 # ── internal-opposition-specific domain-key mapping + labels (unique) ──────────
 def _focus_domain_key(canonical_key: str) -> str:
-    parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    # 4/11-2026: domænet er det TREDJE segment, ikke det sidste. Begge fokus-
+    # formater har et to-segments præfiks (``focus:bearing:`` /
+    # ``development-focus:runtime:``), og det gamle format kan bære en undertype
+    # efter domænet: ``development-focus:runtime:visible-work:reinforce-retain``
+    # → ``visible-work``. Sidste segment gav ``reinforce-retain`` og brød
+    # open-loop-kontrakten (målt i test_visible_runs_open_loop_materialization).
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[2] if len(parts) >= 3 else ""
 
 
 def _goal_domain_key(canonical_key: str) -> str:
@@ -311,8 +352,11 @@ def _goal_domain_key(canonical_key: str) -> str:
 
 
 def _critic_domain_key(canonical_key: str) -> str:
-    parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 4 else ""
+    # Domænet er det FEMTE segment: to for ``reflective-critic:mismatch:`` plus
+    # to for fokus-nøglens eget præfiks. Type-nøgler som ``critic:user_correction``
+    # bærer intet domæne og skal fortsat give tomt.
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[4] if len(parts) >= 5 else ""
 
 
 def _self_model_domain_key(canonical_key: str) -> str:
@@ -340,6 +384,60 @@ def _world_domain_key(canonical_key: str) -> str:
     return parts[-1] if len(parts) >= 3 else "world-view"
 
 
+def _snapshot_label(snapshot: dict[str, object], domain_key: str) -> str:
+    """Et læsbart emne til titlen — run-id'et er domænet, ikke en titel.
+
+    Domænet er kørslen, men «Visible 329b63ed» siger intet. Vi bruger den
+    titel laget selv bærer, og falder tilbage til domænet.
+    """
+    for felt in ("active_focus", "active_goal", "blocked_goal", "active_self_model", "active_critic"):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                return text[:80]
+    return domain_key
+
+
 def _domain_title(domain_key: str) -> str:
     text = str(domain_key or "").replace("world:", "").replace("-", " ").strip()
     return text[:1].upper() + text[1:] if text else "Internal challenge"
+
+
+def _lag_pair_label(snapshot: dict[str, object]) -> str:
+    """Begge lags tekst i ÉN linje — fordi det kun er titlen der når prompten.
+
+    Målt 4/11-2026: ``current_signal`` bygges af ``title`` alene
+    (``signal_tracking_framework.py:509``), og prompt-linjen læser
+    ``current_signal``. En ændring af ``summary`` eller ``rationale`` når
+    derfor ALDRIG modellen. Uden denne funktion gentog linjen kun fokus-laget;
+    selvmodellen — den sjældne halvdel af betingelsen (36 af 632 kørsler) —
+    stod ingen steder.
+
+    Målt i de levende rækker handlede de to lag ofte slet ikke om det samme:
+    «Forklarer værktøjer som Obsidian» mod «Confidence in debugging: 63%».
+    Begge skrives ud, så en modsætning kan afgøres — eller afvises.
+    """
+    retning = ""
+    for felt in ("active_focus", "active_goal", "blocked_goal"):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                retning = text[:64]
+                break
+    modpart = ""
+    for felt, etiket in (
+        ("active_self_model", ""),
+        ("uncertain_self_model", "(usikker) "),
+        ("live_reflection", "refleksion: "),
+    ):
+        item = snapshot.get(felt)
+        if isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+            if text:
+                modpart = f"{etiket}{text[:48]}"
+                break
+    if retning and modpart:
+        return f"{retning} · modpart: {modpart}"
+    return retning or modpart or "to lag uden læsbar tekst"

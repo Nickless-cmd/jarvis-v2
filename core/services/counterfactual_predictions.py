@@ -64,6 +64,48 @@ GRACE_DAYS = 1
 FREQ_DELTA = 0.30
 MIN_BASELINE_COUNT = 3
 
+# Arkiveret for uafgørlige forudsigelser (flyttet ud af ledgeren 4/11-2026).
+# Nøglen er state_store-navnet, ikke en sti — så arkivet følger samme
+# lagringsmekanisme som ledgeren og kan læses via find_archived_prediction().
+_ARCHIVE_STATE_KEY = "runtime_world_model_predictions_uafgoerlige_arkiv"
+
+# Retningen forudsigelsen hævder. Målt 4/11-2026: dommeren antog hardcodet
+# "declining", og generatoren kunne kun sige "declining" — to halve fejl der
+# ophævede hinanden og så konsistente ud. Fejlen ville først materialisere sig
+# den dag nogen skrev en forventning om STIGNING: et fald ville blive kaldt
+# "supported". Retningen skal derfor stå i forventningen og læses af dommeren.
+DIRECTION_DECLINING = "declining"
+DIRECTION_INCREASING = "increasing"
+DIRECTION_STABLE = "stable"
+_VALID_DIRECTIONS = frozenset(
+    {DIRECTION_DECLINING, DIRECTION_INCREASING, DIRECTION_STABLE}
+)
+
+
+def _extract_direction(prediction: dict[str, Any]) -> str:
+    """Læs forventet retning ud af en forudsigelse.
+
+    Rækkefølge: feltet ``expected_direction`` (nyeste), derefter
+    ``direction:<x>``-tag i evidence, derefter samme tag i
+    expectation-teksten. Poster skrevet før retningen fandtes får
+    ``declining`` — det er hvad generatoren faktisk påstod dengang, men det
+    er en bagudkompatibel antagelse, ikke en sandhed om posten.
+    """
+    direct = str(prediction.get("expected_direction") or "").strip().lower()
+    if direct in _VALID_DIRECTIONS:
+        return direct
+    for ev in prediction.get("evidence") or []:
+        ev = str(ev).strip()
+        if ev.startswith("direction:"):
+            cand = ev[len("direction:") :].strip().lower()
+            if cand in _VALID_DIRECTIONS:
+                return cand
+    text = str(prediction.get("expectation") or "").lower()
+    for cand in _VALID_DIRECTIONS:
+        if f"direction:{cand}" in text:
+            return cand
+    return DIRECTION_DECLINING
+
 
 def _confidence_band(numeric: float) -> str:
     """Map a 0..1 confidence to the world-model band strings."""
@@ -74,6 +116,125 @@ def _confidence_band(numeric: float) -> str:
     return "low"
 
 
+# Målt 4/11-2026: `decision`, `dream`, `correction` og `failed_run` findes
+# som trigger_types i kalderne, men har NUL rækker i `events`. En forudsigelse
+# der tæller dem kan derfor aldrig afgøres — sweeperen svarer `uncertain` hver
+# gang, per konstruktion. Vagten her er falsificerbarheds-kontrakten: en
+# forudsigelse må kun oprettes hvis dens hændelse kan observeres.
+_OBSERVABLE_CACHE: dict[tuple[str, str], bool] = {}
+_BASELINE_CACHE: dict[tuple[str, str, int], int] = {}
+
+
+def _event_kind_is_observable(kind: str) -> bool:
+    """Findes mindst én række af ``kind`` i eventbus'en?
+
+    Self-safe: enhver fejl → False. En forudsigelse vi ikke kan efterprøve
+    er værre end ingen forudsigelse, fordi den fortrænger en der kan.
+
+    Cachenøglen indeholder DB-stien. Uden den ville en prod-måling
+    (`goal.updated` = True) lække ind i en test der kører mod en tom
+    tmp-DB — samme fælde som de modul-bundne `connect`-kopier, hvor
+    svaret blev båret videre fra den forkerte database.
+    """
+    k = str(kind or "").strip()
+    if not k:
+        return False
+    try:
+        from core.runtime.db_core import DB_PATH as _db_path
+
+        db_scope = str(_db_path)
+    except Exception:
+        db_scope = "unknown"
+    cache_key = (db_scope, k)
+    if cache_key in _OBSERVABLE_CACHE:
+        return _OBSERVABLE_CACHE[cache_key]
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM events WHERE kind = ? LIMIT 1", (k,)
+            ).fetchone()
+        found = row is not None
+    except Exception as exc:
+        logger.debug("counterfactual_predictions: observability probe failed: %s", exc)
+        found = False
+    _OBSERVABLE_CACHE[cache_key] = found
+    return found
+
+
+def _event_kind_baseline_count(kind: str, *, days: int | None = None) -> int:
+    """Hvor mange hændelser af ``kind`` findes i baseline-vinduet?
+
+    Observerbarhed er ikke nok (målt 4/11-2026): 6 af 8 åbne forudsigelser
+    kunne ikke dømmes, fordi dommeren kræver ``MIN_BASELINE_COUNT`` hændelser
+    i baseline-vinduet for at en frekvenssammenligning er meningsfuld. En
+    forudsigelse om en kind der kun er set én gang kan derfor per konstruktion
+    ikke afgøres — den optager en plads i et loft på 1000 uden nogensinde at
+    kunne falsificeres.
+
+    Self-safe: enhver fejl → 0 (gaten afviser hellere end at lukke støj ind).
+    """
+    k = str(kind or "").strip()
+    if not k:
+        return 0
+    window = int(days if days is not None else HORIZON_DAYS)
+    try:
+        from core.runtime.db_core import DB_PATH as _db_path
+
+        db_scope = str(_db_path)
+    except Exception:
+        db_scope = "unknown"
+    cache_key = (db_scope, k, window)
+    if cache_key in _BASELINE_CACHE:
+        return _BASELINE_CACHE[cache_key]
+    count = 0
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM events "
+                "WHERE kind = ? AND created_at >= datetime('now', ?)",
+                (k, f"-{window} days"),
+            ).fetchone()
+        count = int(row[0]) if row else 0
+    except Exception as exc:
+        logger.debug(
+            "counterfactual_predictions: baseline count failed for %s: %s", k, exc
+        )
+        count = 0
+    _BASELINE_CACHE[cache_key] = count
+    return count
+
+
+def find_archived_prediction(prediction_id: str) -> dict[str, Any] | None:
+    """Slå en arkiveret forudsigelse op på dens oprindelige ID.
+
+    Arkiveringen flyttede 901 uafgørlige poster ud af ledgeren, men efterlod
+    dem kun som en fil (målt 4/11-2026: nul kodereferencer). Uden et opslag
+    er provenance fysisk bevaret men logisk brudt — en counterfactual eller
+    refleksion der peger på ``worldpred-…`` kunne ikke længere følges.
+    """
+    pid = str(prediction_id or "").strip()
+    if not pid:
+        return None
+    try:
+        from core.runtime.state_store import load_json
+
+        data = load_json(_ARCHIVE_STATE_KEY, [])
+    except Exception as exc:
+        logger.debug("counterfactual_predictions: archive read failed: %s", exc)
+        return None
+    rows = data.get("predictions") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, dict) and str(row.get("prediction_id") or "") == pid:
+            return row
+    return None
+
+
 def bind_counterfactual_to_prediction(
     *,
     cf_id: str,
@@ -82,6 +243,7 @@ def bind_counterfactual_to_prediction(
     confidence: float = 0.5,
     source: str = "counterfactual",
     event_kind: str = "",
+    expected_direction: str = DIRECTION_DECLINING,
 ) -> dict[str, Any]:
     """Record a world-model prediction linked to a counterfactual.
 
@@ -92,6 +254,11 @@ def bind_counterfactual_to_prediction(
     windows. For abstract legacy trigger_types ("decision", "correction",
     ...) callers may pass the actual event_kind they classified from.
 
+    ``expected_direction`` er hvad forudsigelsen PÅSTÅR om frekvensen
+    (declining/increasing/stable). Den skrives ind i forventningen som
+    ``direction:<x>`` og læses af dommeren — uden den kan dommeren ikke
+    skelne en forudsigelse fra dens modsatte.
+
     Best-effort: never raises. Returns the prediction dict on success,
     or {"status": "skipped", "reason": ...} on no-op paths.
     """
@@ -99,6 +266,9 @@ def bind_counterfactual_to_prediction(
     trigger_type = str(trigger_type or "").strip() or "unknown"
     if not cf_id:
         return {"status": "skipped", "reason": "empty cf_id"}
+    direction = str(expected_direction or "").strip().lower()
+    if direction not in _VALID_DIRECTIONS:
+        direction = DIRECTION_DECLINING
 
     # Respect the engine killswitch — if counterfactuals are off,
     # don't fill the predictions ledger with orphans.
@@ -108,6 +278,47 @@ def bind_counterfactual_to_prediction(
             return {"status": "skipped", "reason": "engine-killswitch-off"}
     except Exception:
         pass  # settings unavailable — proceed best-effort
+
+    # Falsificerbarheds-gaten. Kalderne sender enten en konkret eventbus-kind
+    # (pipeline-vejen) eller en abstrakt trigger_type ("decision", "correction",
+    # "failed_run"), som ikke findes i `events`. Uden en observerbar kind kan
+    # Phase 2 ikke afsige en dom — så vi skriver ingen forudsigelse. Selve
+    # counterfactual'en lever videre i sin egen tabel; sporet går ikke tabt.
+    # Falsificerbarheds-gaten har TO led (målt 4/11-2026: det første alene
+    # slap 6 af 8 uafgørlige forudsigelser igennem):
+    #
+    #   1. OBSERVERBAR — findes kind'en i `events`? Kalderne sender enten en
+    #      konkret eventbus-kind (pipeline-vejen) eller en abstrakt trigger_type
+    #      ("decision", "correction", "failed_run") som ikke findes. Uden en
+    #      observerbar kind kan Phase 2 ikke afsige nogen dom.
+    #   2. TILSTRÆKKELIG — har kind'en nok baseline-historik? Dommeren kræver
+    #      MIN_BASELINE_COUNT hændelser før en frekvenssammenligning er
+    #      meningsfuld; under det svarer den altid `uncertain`.
+    #
+    # Afvisningsårsagen returneres eksplicit, så Centralen kan skelne «skulle
+    # ikke være en forudsigelse» fra «kan ikke observeres» fra «for lidt
+    # evidens». En gate der får noget til at forsvinde uden et spor er samme
+    # fejlform som den vi byggede den for at fjerne.
+    probe_kind = str(event_kind or "").strip() or trigger_type
+    if not _event_kind_is_observable(probe_kind):
+        return {
+            "status": "skipped",
+            "gate": "unobservable",
+            "reason": f"unobservable: {probe_kind}",
+        }
+    baseline = _event_kind_baseline_count(probe_kind)
+    if baseline < MIN_BASELINE_COUNT:
+        return {
+            "status": "skipped",
+            "gate": "insufficient_evidence",
+            "reason": (
+                f"insufficient-evidence: {probe_kind} baseline={baseline} "
+                f"< {MIN_BASELINE_COUNT} in {HORIZON_DAYS}d"
+            ),
+            "baseline": baseline,
+        }
+    if not str(event_kind or "").strip():
+        event_kind = probe_kind
 
     try:
         from core.services.world_model_signal_tracking import (
@@ -119,16 +330,18 @@ def bind_counterfactual_to_prediction(
 
     subject = f"future {trigger_type} events"
     expectation = (
-        f"declining frequency vs prior {HORIZON_DAYS} days "
-        f"after learning encoded in counterfactual {cf_id}"
+        f"{direction} frequency vs prior {HORIZON_DAYS} days "
+        f"after learning encoded in counterfactual {cf_id} "
+        f"[direction:{direction}]"
     )
     band = _confidence_band(float(confidence or 0.0))
     # Evidence carries structured back-pointers so the sweep can find
     # what to count without a schema migration:
     #   - "counterfactual:<cf_id>" — links back to the source row
     #   - "event_kind:<kind>" — the event_kind to count in baseline/post windows
+    #   - "direction:<x>" — hvad forudsigelsen påstår om frekvensen
     #   - anchor — free-form context (truncated)
-    evidence = [f"counterfactual:{cf_id}"]
+    evidence = [f"counterfactual:{cf_id}", f"direction:{direction}"]
     if event_kind:
         evidence.append(f"event_kind:{event_kind}")
     if anchor:
@@ -142,6 +355,7 @@ def bind_counterfactual_to_prediction(
             confidence=band,
             evidence=evidence,
             source=source,
+            event_kind=event_kind,
         )
     except Exception as exc:
         logger.debug("counterfactual_predictions: record failed: %s", exc)
@@ -181,7 +395,18 @@ def _is_horizon_expired(prediction: dict[str, Any], now: datetime) -> bool:
 
 
 def _extract_event_kind(prediction: dict[str, Any]) -> str:
-    """Pull the event_kind tag out of a prediction's evidence list."""
+    """Pull the event_kind tag out of a prediction.
+
+    Læser feltet først (4/11-2026), derefter evidence-strengen. Feltet er den
+    ærlige datamodel; ``event_kind:<kind>``-strengen er den gamle vej og
+    bevares, så forudsigelser skrevet før feltet fandtes stadig kan afgøres.
+    Målt samme dag: 868 åbne forudsigelser, kun 8 bar tag'en — resten blev
+    ``uncertain`` med reason ``no-event-kind-tag-on-prediction``, og
+    kalibreringen var strukturelt ``None``.
+    """
+    direct = str(prediction.get("event_kind") or "").strip()
+    if direct:
+        return direct
     for ev in prediction.get("evidence") or []:
         ev = str(ev)
         if ev.startswith("event_kind:"):
@@ -190,7 +415,7 @@ def _extract_event_kind(prediction: dict[str, Any]) -> str:
 
 
 def _frequency_verdict(
-    *, event_kind: str, created_at: datetime
+    *, event_kind: str, created_at: datetime, expected_direction: str = DIRECTION_DECLINING
 ) -> dict[str, Any]:
     """Compare event_kind frequency before vs after the prediction's birth.
 
@@ -198,7 +423,16 @@ def _frequency_verdict(
     [created, created+H] (post), where H = HORIZON_DAYS. Returns a dict:
         {outcome: "supported"|"contradicted"|"uncertain",
          baseline: int, post: int, ratio: float, reason: str}
+
+    ``expected_direction`` er hvad forudsigelsen påstod. Uden den ville
+    dommeren dømme ud fra observationen alene: et fald ville blive kaldt
+    "supported" også når nogen forudsagde en stigning. Målt 4/11-2026 —
+    generatoren kunne kun sige "declining", så fejlen var strukturel men
+    endnu ikke aktiveret.
     """
+    direction = str(expected_direction or "").strip().lower()
+    if direction not in _VALID_DIRECTIONS:
+        direction = DIRECTION_DECLINING
     if not event_kind:
         return {
             "outcome": "uncertain",
@@ -247,18 +481,43 @@ def _frequency_verdict(
             "reason": f"baseline-too-noisy ({baseline} < {MIN_BASELINE_COUNT})",
         }
     ratio = post / baseline if baseline > 0 else 0.0
-    if ratio < (1.0 - FREQ_DELTA):
-        outcome = "supported"
-        reason = f"declined {int((1-ratio)*100)}% vs baseline"
-    elif ratio > (1.0 + FREQ_DELTA):
-        outcome = "contradicted"
-        reason = f"increased {int((ratio-1)*100)}% vs baseline"
-    else:
-        outcome = "uncertain"
-        reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    declined = ratio < (1.0 - FREQ_DELTA)
+    increased = ratio > (1.0 + FREQ_DELTA)
+    if direction == DIRECTION_STABLE:
+        # "stable" forudsiger at frekvensen holder sig inden for båndet.
+        if declined or increased:
+            outcome = "contradicted"
+            reason = (
+                f"moved {int(abs(ratio-1)*100)}% vs baseline, but stability "
+                f"was predicted"
+            )
+        else:
+            outcome = "supported"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    elif direction == DIRECTION_INCREASING:
+        if increased:
+            outcome = "supported"
+            reason = f"increased {int((ratio-1)*100)}% vs baseline, as predicted"
+        elif declined:
+            outcome = "contradicted"
+            reason = f"declined {int((1-ratio)*100)}% vs baseline, but an increase was predicted"
+        else:
+            outcome = "uncertain"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
+    else:  # DIRECTION_DECLINING
+        if declined:
+            outcome = "supported"
+            reason = f"declined {int((1-ratio)*100)}% vs baseline, as predicted"
+        elif increased:
+            outcome = "contradicted"
+            reason = f"increased {int((ratio-1)*100)}% vs baseline, but a decline was predicted"
+        else:
+            outcome = "uncertain"
+            reason = f"stable ({int(ratio*100)}% of baseline, within ±{int(FREQ_DELTA*100)}%)"
     return {
         "outcome": outcome, "baseline": baseline, "post": post,
         "ratio": round(ratio, 3), "reason": reason,
+        "expected_direction": direction,
     }
 
 
@@ -312,15 +571,21 @@ def sweep_expired_counterfactual_predictions(
         # if event_kind is missing (legacy predictions from before the
         # Phase 2 binding update will lack the tag).
         event_kind = _extract_event_kind(pred)
+        expected_direction = _extract_direction(pred)
         try:
             created_at = datetime.fromisoformat(str(pred.get("created_at") or ""))
         except ValueError:
             created_at = started - timedelta(days=HORIZON_DAYS + GRACE_DAYS)
 
-        verdict = _frequency_verdict(event_kind=event_kind, created_at=created_at)
+        verdict = _frequency_verdict(
+            event_kind=event_kind,
+            created_at=created_at,
+            expected_direction=expected_direction,
+        )
         outcome = verdict["outcome"]
         observed_text = (
-            f"frequency comparison ({event_kind or 'unknown-kind'}): "
+            f"frequency comparison ({event_kind or 'unknown-kind'}, "
+            f"predicted {expected_direction}): "
             f"baseline={verdict['baseline']} post={verdict['post']} "
             f"ratio={verdict['ratio']} — {verdict['reason']}"
         )

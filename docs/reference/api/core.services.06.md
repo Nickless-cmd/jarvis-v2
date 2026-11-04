@@ -128,28 +128,28 @@ _central_instrument — selv-instrumenterende motor (system-cluster nerve, perio
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Finding` | `` | — | [src](../../../core/services/central_instrument.py#L91) |
-| method | `Finding.signature` | `(self)` | — | [src](../../../core/services/central_instrument.py#L102) |
-| function | `_call_name` | `(node)` | Bedste streng-navn for et Call's funktion (foo / obj.foo / a.b.foo). | [src](../../../core/services/central_instrument.py#L109) |
-| function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L121) |
-| function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L134) |
-| function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L150) |
-| function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L160) |
-| function | `_begrundelse_paa_linjen` | `(lines, lineno)` | True hvis selve `except`-linjen bærer en indholdsrig kommentar. | [src](../../../core/services/central_instrument.py#L183) |
-| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L205) |
-| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L226) |
-| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L306) |
-| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L330) |
-| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L335) |
-| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L354) |
-| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L369) |
-| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L383) |
-| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L423) |
-| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L445) |
-| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L467) |
-| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L524) |
-| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L545) |
-| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L616) |
+| class | `Finding` | `` | — | [src](../../../core/services/central_instrument.py#L107) |
+| method | `Finding.signature` | `(self)` | — | [src](../../../core/services/central_instrument.py#L118) |
+| function | `_call_name` | `(node)` | Bedste streng-navn for et Call's funktion (foo / obj.foo / a.b.foo). | [src](../../../core/services/central_instrument.py#L125) |
+| function | `_has_guard_call` | `(node)` | True hvis subtræet indeholder et kald der tæller som fejl-håndtering/synlighed, | [src](../../../core/services/central_instrument.py#L137) |
+| function | `_is_success_like_return` | `(node)` | True hvis except-handleren returnerer en success-lignende værdi (None/{}/[]/True/0/ | [src](../../../core/services/central_instrument.py#L150) |
+| function | `_func_of` | `(lineno, funcs)` | Navn på den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L166) |
+| function | `_doc_span_of` | `(lineno, funcs)` | (funktions-start, docstring-slut) for den inderste funktion der omslutter lineno. | [src](../../../core/services/central_instrument.py#L176) |
+| function | `_begrundelse_paa_linjen` | `(lines, lineno)` | True hvis selve `except`-linjen bærer en indholdsrig kommentar. | [src](../../../core/services/central_instrument.py#L199) |
+| function | `_acknowledged` | `(lines, start, end, doc_span=…)` | True hvis en intent-markør (self-safe/bevidst/...) findes i vinduet omkring [start,end] | [src](../../../core/services/central_instrument.py#L221) |
+| function | `scan_source` | `(relpath, source)` | AST-scan af ÉN fils kildekode → fund. Deterministisk (sorteret efter linje). Self-safe: | [src](../../../core/services/central_instrument.py#L242) |
+| function | `score_finding` | `(f, *, file_has_central, in_security, hot_path=…, reject_count=…)` | Fase 2-score. Base = severity (critical=3→altid proposal). Modifiers fra spec'en: | [src](../../../core/services/central_instrument.py#L322) |
+| function | `_file_has_central` | `(source)` | — | [src](../../../core/services/central_instrument.py#L346) |
+| function | `_security_files` | `()` | Filer der hører til en sikkerheds-cluster (via central_catalog nerve-lokationer). | [src](../../../core/services/central_instrument.py#L351) |
+| function | `_reject_count` | `(canonical_key)` | Hvor mange gange er en proposal med denne canonical_key blevet afvist? (lærings-signal). | [src](../../../core/services/central_instrument.py#L370) |
+| function | `_iter_py_files` | `()` | — | [src](../../../core/services/central_instrument.py#L385) |
+| function | `scan_repo` | `(*, changed_only=…)` | Scan kodebasen (incremental). Persisterer fund pr. fil + opdaterer scoring. Returnerer | [src](../../../core/services/central_instrument.py#L399) |
+| function | `_allerede_filet` | `()` | Canonical_keys der ALLEREDE har et instrument_fix-forslag — uanset status. | [src](../../../core/services/central_instrument.py#L439) |
+| function | `_er_fritstaaende` | `(linje, aaben)` | Lukker kaldet der starter ved `aaben` (indeks for '(') som det SIDSTE på linjen? | [src](../../../core/services/central_instrument.py#L461) |
+| function | `_funktions_brug` | `()` | Navne på funktioner hvis returværdi LÆSES et sted i kodebasen. | [src](../../../core/services/central_instrument.py#L483) |
+| function | `_vaerd_at_foreslaa` | `(f, *, læste, sikkerhed)` | Er fundet værd at bruge en ANMODNING på? — måler brug, ikke form. | [src](../../../core/services/central_instrument.py#L540) |
+| function | `_file_proposals` | `(max_new=…, *, stats=…)` | Filer reviewbare proposals for åbne fund med score≥threshold. | [src](../../../core/services/central_instrument.py#L561) |
+| function | `run_instrument_scan` | `(*, trigger=…, changed_only=…)` | Daemon-entry: scan → score → persistér → observe → filer proposals (score≥3). Self-safe. | [src](../../../core/services/central_instrument.py#L632) |
 
 ## `core/services/central_keymaker.py`
 _The Keymaker — optjent, udløbende, én-dør-ad-gangen autonomi._
@@ -563,20 +563,20 @@ _core/services/central_prompt_composer.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_chat_scope_weight` | `(section, tabel)` | Sektionens chat-vægt, eller None hvis rummet ikke er chat. | [src](../../../core/services/central_prompt_composer.py#L142) |
-| function | `classify_turn_type` | `(user_message)` | Grov tur-type fra brugerbeskeden (kode/hukommelse/opgave/spørgsmål/samtale). Model-fri, self-safe. | [src](../../../core/services/central_prompt_composer.py#L180) |
-| function | `resolve_thinking_mode` | `(user_message, requested=…)` | Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også | [src](../../../core/services/central_prompt_composer.py#L197) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_composer.py#L214) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_composer.py#L223) |
-| function | `is_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L231) |
-| function | `is_tail_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L235) |
-| function | `get_weight` | `(turn_type, section)` | Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L239) |
-| function | `get_tail_weight` | `(turn_type, section)` | Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L257) |
-| function | `should_include` | `(turn_type, section, *, threshold=…)` | DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type? | [src](../../../core/services/central_prompt_composer.py#L270) |
-| function | `should_include_tail` | `(turn_type, section, *, threshold=…)` | Live gate kun for tail-anchored dynamisk kontekst. | [src](../../../core/services/central_prompt_composer.py#L302) |
-| function | `observe_composition` | `(turn_type, *, sections_total, sections_included, outcome=…, included_labels=…)` | Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun | [src](../../../core/services/central_prompt_composer.py#L330) |
-| function | `build_relevance_candidates` | `(*, min_count=…, top=…)` | Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste | [src](../../../core/services/central_prompt_composer.py#L377) |
-| function | `build_central_prompt_composer_surface` | `()` | Mission Control surface — read-only: live-status + relevans-vægte (hvad Centralen VILLE skære). | [src](../../../core/services/central_prompt_composer.py#L398) |
+| function | `_chat_scope_weight` | `(section, tabel)` | Sektionens chat-vægt, eller None hvis rummet ikke er chat. | [src](../../../core/services/central_prompt_composer.py#L157) |
+| function | `classify_turn_type` | `(user_message)` | Grov tur-type fra brugerbeskeden (kode/hukommelse/opgave/spørgsmål/samtale). Model-fri, self-safe. | [src](../../../core/services/central_prompt_composer.py#L195) |
+| function | `resolve_thinking_mode` | `(user_message, requested=…)` | Adaptiv tænknings-effekt (12. jul): deepseek tænker ~9s FØR svar ved 'think' — også | [src](../../../core/services/central_prompt_composer.py#L212) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_prompt_composer.py#L229) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_prompt_composer.py#L238) |
+| function | `is_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L246) |
+| function | `is_tail_live_enabled` | `()` | — | [src](../../../core/services/central_prompt_composer.py#L250) |
+| function | `get_weight` | `(turn_type, section)` | Relevans-vægt for (tur-type, sektion). Default 1.0 = altid inkludér. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L254) |
+| function | `get_tail_weight` | `(turn_type, section)` | Tail relevans-vægt. Runtime overrides vinder; default-map er konservativ. Self-safe. | [src](../../../core/services/central_prompt_composer.py#L272) |
+| function | `should_include` | `(turn_type, section, *, threshold=…)` | DEN RENE SWITCH (som get_gut_bias): skal denne sektion med i halen for denne tur-type? | [src](../../../core/services/central_prompt_composer.py#L285) |
+| function | `should_include_tail` | `(turn_type, section, *, threshold=…)` | Live gate kun for tail-anchored dynamisk kontekst. | [src](../../../core/services/central_prompt_composer.py#L317) |
+| function | `observe_composition` | `(turn_type, *, sections_total, sections_included, outcome=…, included_labels=…)` | Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun | [src](../../../core/services/central_prompt_composer.py#L345) |
+| function | `build_relevance_candidates` | `(*, min_count=…, top=…)` | Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste | [src](../../../core/services/central_prompt_composer.py#L392) |
+| function | `build_central_prompt_composer_surface` | `()` | Mission Control surface — read-only: live-status + relevans-vægte (hvad Centralen VILLE skære). | [src](../../../core/services/central_prompt_composer.py#L413) |
 
 ## `core/services/central_prompt_explore.py`
 _core/services/central_prompt_explore.py_

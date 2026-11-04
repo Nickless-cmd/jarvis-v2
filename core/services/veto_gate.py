@@ -402,9 +402,37 @@ _BASE_THRESHOLDS: dict[str, dict[str, float]] = {
     },
 }
 
+# De følelser en BESLUTNING kan slå op med.
+#
+# `_affective_pressure` (pushback.py) er den eneste producent af `feeling` på
+# beslutningsvejen — `check_veto` → `_extract_feeling(section)` → her — og den
+# kan kun returnere disse fem. Alt andet der havner i `veto_events.feeling` er
+# skrevet af en anden kalder (fx `r2_5_haandhaevelse`, der sender sin NERVE
+# `r2_5_gate`) og bliver aldrig læst af en beslutning.
+_OPERATIVE_FEELINGS = frozenset({
+    "irritation", "unease", "fatigue", "protectiveness", "hesitation",
+})
+
 # Adjustment per outcome. Override = false positive, raise threshold.
 # Honored = correct gate, lower threshold (resensitize).
+#
+# 3/11-2026: bumpen var lineær (+0,05 pr. override) og ramte 0,98 efter fem.
+# Målt i veto_adaptive_counters: restart_self+protectiveness og
+# edit_file+r2_5_gate stod BEGGE på loftet med 7 overrides, altså blinde for
+# enhver intensitet under 0,98. Syv overrides fordelt over fire måneder er
+# ikke bevis for at værktøjet aldrig skal gates igen — det er en bivirkning
+# af at lægge et fast beløb oven på en fast basis. Stigningen er nu aftagende
+# og nærmer sig `_OVERRIDE_CEILING` asymptotisk.
+# Første override giver stadig +0,05; tredje giver +0,10 hvor den før gav +0,15.
+# En 0,75-basis har en matematisk grænse på 0,95 (0,75 + 0,20 når n→∞), så
+# den kan aldrig nå clamp-loftet 0,98. Ved n=1000 er værdien 0,9494 — det er
+# en målt værdi, ikke grænsen. En basis på 0,95 eller derover
+# rammer stadig loftet ved FØRSTE override (0,95+0,05 = 1,00 → 0,98) — kurven
+# dækker de baser der findes (alle i drift står på 0,75), ikke en hypotetisk
+# høj basis.
 _OVERRIDE_BUMP = 0.05
+_OVERRIDE_CEILING = 0.20
+_OVERRIDE_HALF = 3.0
 _HONORED_DAMPEN = 0.02
 
 # Hard clamp per spec
@@ -574,17 +602,29 @@ def _base_threshold(tool_name: str, feeling: str) -> float:
     return tool_table.get(feeling, _BASE_THRESHOLDS["default"].get(feeling, 0.75))
 
 
+def _override_lift(overrides: int) -> float:
+    """Aftagende stigning pr. override: ceiling * n/(n+half).
+
+    n=0 → 0, n=1 → +0,05, n=3 → +0,10, n=7 → +0,14, n→∞ → +0,20.
+    Kurven gør at et par aldrig kan nå 0,98 fra en 0,75-basis, uanset hvor
+    mange gange nogen har sagt «kør alligevel».
+    """
+    if overrides <= 0:
+        return 0.0
+    return _OVERRIDE_CEILING * (overrides / (overrides + _OVERRIDE_HALF))
+
+
 def _adaptive_threshold(tool_name: str, feeling: str, intensity: float) -> float:
     """Compute the effective veto threshold for this (tool, feeling) pair.
 
     base = per-(tool, feeling) value from _BASE_THRESHOLDS
-    adjustment = (overrides * +0.05) - (honored * -0.02)
+    adjustment = _override_lift(overrides) - (honored * 0.02)
     clamped to [0.30, 0.98]
     """
     base = _base_threshold(tool_name, feeling)
     overrides = _get_override_count(tool_name, feeling)
     honored = _get_honored_count(tool_name, feeling)
-    adjustment = (overrides * _OVERRIDE_BUMP) - (honored * _HONORED_DAMPEN)
+    adjustment = _override_lift(overrides) - (honored * _HONORED_DAMPEN)
     effective = base + adjustment
     return max(_THRESHOLD_MIN, min(_THRESHOLD_MAX, effective))
 
@@ -612,6 +652,13 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     "list_self_wakeups", "list_events",
     # Read-only git operations — observability into the repo, no mutation.
     "git_log", "git_diff", "git_status",
+    # 3/11-2026: rene læsere der blev blokeret af protectiveness. Målt i
+    # veto_events: db_query 20, verify_file_contains 17, read_mood 11,
+    # eventbus_recent 9, read_dreams 5, read_self_state 3, recall 3,
+    # semantic_search_code 2. En gate kan ikke beskytte noget ved at blokere
+    # en SELECT eller en fillæsning — den gør blot arbejdet blindt.
+    "db_query", "verify_file_contains", "read_mood", "eventbus_recent",
+    "read_dreams", "read_self_state", "semantic_search_code",
     # bash — arbitrary shell exec. Owner-calibrated trust: Bjørn
     # explicitly enabled this 2026-05-03 ("han har haft det hele tiden").
     # Side effects are Jarvis's responsibility; veto_gate doesn't gate it.
@@ -938,16 +985,47 @@ def build_veto_gate_surface() -> dict[str, object]:
     except Exception:
         recent_events = []
 
-    # Collect adaptive threshold summary for recently-blocked tools
-    threshold_summary: dict[str, dict[str, float]] = {}
+    # Collect adaptive threshold summary for recently-seen (tool, feeling) pairs.
+    #
+    # 3/11-2026: nøglen var `tool` ALENE — `if t not in threshold_summary` lod
+    # den første hændelse for et værktøj bestemme hvilken feeling der blev vist,
+    # og dermed hvilken tærskel. `_adaptive_threshold` er defineret pr.
+    # (tool, feeling), så oversigten mistede en dimension. Målt: 31 af 81
+    # værktøjer har mere end én feeling i `veto_events`; `edit_file` har fire
+    # operative plus `r2_5_gate`.
+    #
+    # Hver post bærer nu sin egen `authority`. En tærskel er kun
+    # beslutningsgrundlag når feelingen er en `check_veto` faktisk kan slå op
+    # med, OG værktøjet ikke står i `_ALWAYS_ALLOWED_TOOLS`. Ellers er den
+    # telemetri: tællingerne er ægte, virkningen findes ikke. Målt eksempel før
+    # rettelsen: `bash → threshold 0.73, honored 1` — en nerve-feeling på et
+    # værktøj der aldrig gates.
+    threshold_summary: dict[str, dict[str, object]] = {}
     for ev in recent_events:
-        t = ev.get("tool_name", "")
-        f = ev.get("feeling", "")
-        if t and f and t not in threshold_summary:
-            threshold_summary[t] = {
-                "threshold": _adaptive_threshold(t, f, 1.0),
-                "overrides": _get_override_count(t, f),
-            }
+        t = str(ev.get("tool_name") or "")
+        f = str(ev.get("feeling") or "")
+        if not (t and f):
+            continue
+        key = f"{t}/{f}"
+        if key in threshold_summary:
+            continue
+        operative = f in _OPERATIVE_FEELINGS
+        gate_exempt = t in _ALWAYS_ALLOWED_TOOLS
+        threshold_summary[key] = {
+            "tool_name": t,
+            "feeling": f,
+            "threshold": _adaptive_threshold(t, f, 1.0),
+            "overrides": _get_override_count(t, f),
+            # 3/11-2026: honored blev aldrig vist, og asymmetrien var derfor
+            # usynlig — overrides akkumulerer, honored gør ikke (den eneste
+            # kalder af resolve_veto_event sender «overridden_by_jarvis»).
+            "honored": _get_honored_count(t, f),
+            "operative": operative,
+            "gate_exempt": gate_exempt,
+            "authority": (
+                "decision" if (operative and not gate_exempt) else "telemetry_only"
+            ),
+        }
 
     return {
         "active": True,

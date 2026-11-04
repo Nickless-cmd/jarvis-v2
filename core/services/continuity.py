@@ -526,6 +526,21 @@ def build_conversation_continuity(*, limit: int = 3) -> str | None:
     return f"{header}\n" + "\n".join(lines)
 
 
+def _format_hours_gap(hours_since: float) -> str:
+    """Format a duration in hours as a short Danish string.
+
+    Genbruges baade til det overordnede "since last session"-gap og til
+    OVERDRAGELSE-alderen, saa de to aldre altid formateres ens.
+    """
+    if hours_since < 1:
+        return f"{int(hours_since * 60)} min"
+    elif hours_since < 24:
+        return f"{int(hours_since)} timer"
+    else:
+        days = int(hours_since / 24)
+        return f"{days} dag{'e' if days > 1 else ''}"
+
+
 def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     """Build the wake-up block for prompt injection.
 
@@ -540,14 +555,7 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     hours_since = provenance.get("hours_since_last_session", 0.0)
     tier = get_wake_tier(hours_since)
 
-    # Format duration
-    if hours_since < 1:
-        gap_str = f"{int(hours_since * 60)} min"
-    elif hours_since < 24:
-        gap_str = f"{int(hours_since)} timer"
-    else:
-        days = int(hours_since / 24)
-        gap_str = f"{days} dag{'e' if days > 1 else ''}"
+    gap_str = _format_hours_gap(hours_since)
 
     mood = capsule.get("mood", {})
     attention = capsule.get("attention", {})
@@ -572,7 +580,24 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     handover = capsule.get("handover") or {}
     if str(handover.get("text") or "").strip():
         titel = str(handover.get("title") or "").strip() or "uden titel"
-        lines.append(f"  ⤷ OVERDRAGELSE — {titel}")
+        age_suffix = ""
+        written_at_raw = handover.get("written_at")
+        if written_at_raw:
+            try:
+                written_dt = datetime.fromisoformat(
+                    str(written_at_raw).replace("Z", "+00:00")
+                )
+                if written_dt.tzinfo is None:
+                    written_dt = written_dt.replace(tzinfo=UTC)
+                handover_hours_since = (
+                    datetime.now(UTC) - written_dt
+                ).total_seconds() / 3600.0
+                if handover_hours_since < 0:
+                    handover_hours_since = 0.0
+                age_suffix = f" ({_format_hours_gap(handover_hours_since)} siden)"
+            except (TypeError, ValueError):
+                age_suffix = ""
+        lines.append(f"  ⤷ OVERDRAGELSE — {titel}{age_suffix}")
         for ln in str(handover["text"]).splitlines():
             lines.append(f"    {ln}")
 

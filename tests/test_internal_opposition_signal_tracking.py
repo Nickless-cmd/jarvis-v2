@@ -4,14 +4,14 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 
-def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0) -> None:
+def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run", title: str = "Development focus: Danish concise calibration") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_development_focus(
         focus_id=f"focus-{uuid4().hex}",
         focus_type="communication-calibration",
         canonical_key=canonical_key,
         status=status,
-        title="Development focus: Danish concise calibration",
+        title=title,
         summary="Active focus for Danish concise calibration",
         rationale="Validation focus",
         source_kind="repeated-user-correction",
@@ -23,12 +23,12 @@ def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation focus status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_critic(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -> None:
+def _insert_critic(db, *, canonical_key: str, status: str, minutes_ago: int = 0, run_id: str = "test-run") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_reflective_critic(
         critic_id=f"critic-{uuid4().hex}",
@@ -47,12 +47,12 @@ def _insert_critic(db, *, canonical_key: str, status: str, minutes_ago: int = 0)
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation critic status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_goal(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -> None:
+def _insert_goal(db, *, canonical_key: str, status: str, minutes_ago: int = 0, run_id: str = "test-run") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_goal_signal(
         goal_id=f"goal-{uuid4().hex}",
@@ -71,12 +71,12 @@ def _insert_goal(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation goal status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_temporal_recurrence(db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0) -> None:
+def _insert_temporal_recurrence(db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0, run_id: str = "test-run") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     title = (
         "Recurring tension: Danish concise calibration"
@@ -100,12 +100,12 @@ def _insert_temporal_recurrence(db, *, canonical_key: str, status: str, signal_t
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation temporal recurrence status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str) -> None:
+def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str, run_id: str = "test-run") -> None:
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_open_loop_signal(
         signal_id=f"open-loop-{uuid4().hex}",
@@ -124,20 +124,20 @@ def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str) 
         created_at=now,
         updated_at=now,
         status_reason="Validation open loop status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_self_model(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0) -> None:
+def _insert_self_model(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0, run_id: str = "test-run", title: str = "Current limitation: Danish concise calibration") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_self_model_signal(
         signal_id=f"self-model-{uuid4().hex}",
         signal_type="current-limitation" if status == "active" else "improvement-edge",
         canonical_key=canonical_key,
         status=status,
-        title="Current limitation: Danish concise calibration",
-        summary="Current limitation: Danish concise calibration",
+        title=title,
+        summary=title,
         rationale="Validation self-model",
         source_kind="critic-supported",
         confidence="high",
@@ -148,12 +148,12 @@ def _insert_self_model(db, *, canonical_key: str, status: str = "active", minute
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation self-model status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_world_model(db, *, canonical_key: str, status: str = "uncertain", minutes_ago: int = 0) -> None:
+def _insert_world_model(db, *, canonical_key: str, status: str = "uncertain", minutes_ago: int = 0, run_id: str = "test-run") -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_world_model_signal(
         signal_id=f"world-model-{uuid4().hex}",
@@ -172,12 +172,12 @@ def _insert_world_model(db, *, canonical_key: str, status: str = "uncertain", mi
         created_at=ts.isoformat(),
         updated_at=ts.isoformat(),
         status_reason="Validation world-model status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
 
-def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_key: str) -> None:
+def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_key: str, run_id: str = "test-run") -> None:
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_internal_opposition_signal(
         signal_id=f"internal-opposition-{uuid4().hex}",
@@ -196,7 +196,7 @@ def _insert_internal_opposition(db, *, status: str, signal_type: str, canonical_
         created_at=now,
         updated_at=now,
         status_reason="Validation internal opposition status",
-        run_id="test-run",
+        run_id=run_id,
         session_id="test-session",
     )
 
@@ -268,7 +268,7 @@ def test_internal_opposition_surface_forms_challenge_direction_for_open_loop_und
     assert surface["summary"]["current_status"] == "active"
     assert surface["items"][0]["signal_type"] == "challenge-direction"
     assert surface["items"][0]["status"] == "active"
-    assert surface["items"][0]["canonical_key"] == "internal-opposition:challenge-direction:danish-concise-calibration"
+    assert surface["items"][0]["canonical_key"] == "internal-opposition:challenge-direction:test-run"
 
 
 def test_internal_opposition_surface_forms_challenge_calibration_for_self_model_pressure(isolated_runtime) -> None:
@@ -304,7 +304,57 @@ def test_internal_opposition_surface_forms_challenge_calibration_for_self_model_
     assert surface["summary"]["active_count"] == 1
     assert surface["items"][0]["signal_type"] == "challenge-calibration"
     assert surface["items"][0]["status"] == "active"
-    assert surface["items"][0]["canonical_key"] == "internal-opposition:challenge-calibration:danish-concise-calibration"
+    assert surface["items"][0]["canonical_key"] == "internal-opposition:challenge-calibration:test-run"
+
+
+def test_begge_lag_naar_frem_til_prompt_linjen_ikke_kun_fokus(isolated_runtime) -> None:
+    """Den ægte sidste meter for oppositionens INDHOLD.
+
+    Målt 4/11-2026: ``current_signal`` bygges af ``title`` alene
+    (``signal_tracking_framework.py:509``), og prompt-linjen læser
+    ``current_signal``. Før rettelsen bar titlen kun fokus-laget, så den linje
+    Jarvis læste som «indsigelse» var hans eget fokus gentaget — selvmodellen,
+    den sjældne halvdel af betingelsen (36 af 632 kørsler), stod ingen steder.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    unik_fokus = "UNIKTFOKUS bygger oppositionens anden halvdel"
+    unik_selv = "UNIKSELVMODEL tillid til debugging 63 procent"
+
+    _insert_focus(
+        db,
+        canonical_key="focus:bearing:danish-concise-calibration",
+        title=unik_fokus,
+    )
+    _insert_self_model(
+        db,
+        canonical_key="self-model:limitation:danish-concise-calibration",
+        title=unik_selv,
+    )
+
+    tracking.track_runtime_internal_opposition_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_internal_opposition_signal_surface(limit=8)
+
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert item["signal_type"] == "challenge-calibration"
+
+    # 1) signalets titel bærer BEGGE lag
+    assert unik_fokus in item["title"], "fokus-laget mangler i titlen"
+    assert unik_selv in item["title"], (
+        "selvmodellen mangler i titlen — og titlen er det ENESTE der når prompten"
+    )
+
+    # 2) og dermed også den samlede prompt-linje
+    current = surface["summary"]["current_signal"]
+    assert unik_fokus in current
+    assert unik_selv in current, (
+        "prompt-linjen gentager kun fokus — indsigelsen bærer intet andet lag"
+    )
 
 
 def test_internal_opposition_surface_forms_challenge_world_view_for_uncertain_context_with_live_direction(isolated_runtime) -> None:
@@ -398,3 +448,69 @@ def test_internal_opposition_surface_and_mc_shapes_remain_bounded(isolated_runti
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"active", "softening", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"active", "softening", "stale"}
+
+
+# ── Domænet er KØRSLEN (målt 4/11-2026) ─────────────────────────────────────
+# Lagene taler ikke samme sprog: `focus` er en sætning, `goal` en slug,
+# `critic` en type. Nøgle-parsing gav `critic ∩ alt = 0`. Kørslen er den ene
+# dimension alle lag bærer — og den oppositionen faktisk handler om.
+
+
+def test_to_lag_i_samme_koersel_danner_opposition(isolated_runtime) -> None:
+    """Fokus + selv-model i SAMME kørsel er nok til en kalibrerings-indsigelse."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    _insert_focus(
+        db,
+        canonical_key="focus:bearing:helt-andet-emne",
+        status="active",
+        minutes_ago=10,
+        run_id="samme-koersel",
+    )
+    _insert_self_model(
+        db,
+        canonical_key="self-model:domain:fejlhaandtering",
+        status="active",
+        minutes_ago=5,
+        run_id="samme-koersel",
+    )
+
+    tracking.track_runtime_internal_opposition_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="samme-koersel",
+    )
+    surface = tracking.build_runtime_internal_opposition_signal_surface(limit=8)
+
+    assert surface["active"] is True
+    keys = [item["canonical_key"] for item in surface["items"]]
+    assert "internal-opposition:challenge-calibration:samme-koersel" in keys
+
+
+def test_to_lag_i_forskellige_koersler_danner_ikke_opposition(isolated_runtime) -> None:
+    """Emnet er underordnet: uden fælles kørsel er der ingen kobling."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.internal_opposition_tracking
+
+    _insert_focus(
+        db,
+        canonical_key="focus:bearing:helt-andet-emne",
+        status="active",
+        minutes_ago=10,
+        run_id="koersel-a",
+    )
+    _insert_self_model(
+        db,
+        canonical_key="self-model:domain:fejlhaandtering",
+        status="active",
+        minutes_ago=5,
+        run_id="koersel-b",
+    )
+
+    tracking.track_runtime_internal_opposition_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="tredje-koersel",
+    )
+    surface = tracking.build_runtime_internal_opposition_signal_surface(limit=8)
+
+    assert surface["active"] is False

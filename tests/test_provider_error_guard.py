@@ -88,3 +88,56 @@ def test_describe_is_bounded_and_safe() -> None:
     assert "\n" not in d
     assert describe("") == ""
     assert describe(None) == ""
+
+
+# ── Protokol-token-lækage (målt 3/11-2026) ────────────────────────────────
+# Fallback-kaskaden landede på `aihubmix/coding-minimax-m3-free`, som skrev sine
+# værktøjskald som rå tekst i sit eget token-format. 536 tegn gik i chatten som
+# et «fuldført» svar, fordi poolen kun validerede HTTP-status.
+
+from core.services.provider_error_guard import looks_like_protocol_leak
+
+MINIMAX_LEAK = (
+    ']<]minimax[>[<tool_call>{analysis: "We need fulfill Danish routine. Need '
+    'current time via date command.", "final": "…"}]<]minimax[>[<tool_call>'
+)
+
+
+def test_the_real_leak_is_caught() -> None:
+    assert looks_like_protocol_leak(MINIMAX_LEAK) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "<|im_start|>assistant",
+        "<|endoftext|>",
+        "<]minimax[>",
+        "[<tool_call>{\"name\": \"search\"}",
+        "<tool_call>{}</tool_call>",
+        "svar først <|tool_call|> derefter",
+    ],
+)
+def test_protocol_token_formats_are_caught(text: str) -> None:
+    assert looks_like_protocol_leak(text) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Jeg har rettet fejlen i cheap-lanen og testene er grønne.",
+        "Et helt almindeligt svar uden mærkelige tokens.",
+        # En forklaring der VISER et token i en kodeblok er ikke en lækage.
+        "Modellen skrev protokol-tokens som rå tekst. Sådan ser det ud:\n"
+        "```\n<|im_start|>assistant\n```\nDet er præcis fejlen.",
+        "",
+        "   ",
+    ],
+)
+def test_normal_text_is_not_a_leak(text: str) -> None:
+    assert looks_like_protocol_leak(text) is False
+
+
+@pytest.mark.parametrize("text", [None, "", "   "])
+def test_leak_detector_is_safe_on_empty(text) -> None:
+    assert looks_like_protocol_leak(text) is False

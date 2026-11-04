@@ -38,6 +38,7 @@ def test_open_questions_compacts_and_is_silent_when_empty(monkeypatch):
 
 def test_central_notices_keeps_one_per_nerve_max_three_and_skips_security_and_severe(monkeypatch):
     from core.services.prompt_sections import tail_section_builders as T
+    T._clear_central_notices_cache()
     rows = [{"severity": "error", "kind": "x", "cluster": f"c{i // 2}", "nerve": f"n{i // 2}", "message": f"m{i}"}
             for i in range(8)]
     rows += [{"severity": "severe", "kind": "x", "cluster": "s", "nerve": "s", "message": "severe"},
@@ -46,7 +47,27 @@ def test_central_notices_keeps_one_per_nerve_max_three_and_skips_security_and_se
     out = T._central_notices_section()
     assert out.count("•") == 3 and out.count("c0/n0") == 1 and "c2/n2" in out     # én pr. nerve
     assert "severe" not in out and "sikkerhed" not in out
+    T._clear_central_notices_cache()
     monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents", lambda **kw: [])
+    assert T._central_notices_section() is None
+
+
+def test_central_notices_snapshot_stops_within_turn_prompt_flapping(monkeypatch):
+    from core.services.prompt_sections import tail_section_builders as T
+
+    now = [100.0]
+    rows = [{"severity": "error", "kind": "x", "cluster": "system",
+             "nerve": "provider", "message": "nede"}]
+    monkeypatch.setattr(T.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(
+        "core.runtime.db_central_incidents.list_central_incidents",
+        lambda **kw: list(rows),
+    )
+    T._clear_central_notices_cache()
+    first = T._central_notices_section()
+    rows.clear()
+    assert T._central_notices_section() == first
+    now[0] += T._CENTRAL_NOTICES_CACHE_TTL_S + 0.1
     assert T._central_notices_section() is None
 
 

@@ -188,25 +188,25 @@ _Executive-contradiction signal tracking — migrated onto signal_tracking_frame
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `track_runtime_executive_contradiction_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L36) |
-| function | `refresh_runtime_executive_contradiction_signal_statuses` | `()` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L62) |
-| function | `build_runtime_executive_contradiction_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L66) |
-| function | `_extract_executive_contradiction_candidates` | `(*, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L70) |
-| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L248) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L267) |
-| function | `_executive_contradiction_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L300) |
-| function | `_surface_pressure_default` | `(*, control_type, status)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L347) |
-| function | `_pressure` | `(*, opposition_status, has_open_loop, has_active_review, state_pressure, tension_type)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L357) |
-| function | `_grounding_mode` | `(*, has_private_state, has_tension)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L372) |
-| function | `_target_text` | `(*items, fallback)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L382) |
-| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L393) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L397) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L404) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L411) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L417) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L429) |
-| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L441) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L449) |
+| function | `track_runtime_executive_contradiction_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L40) |
+| function | `refresh_runtime_executive_contradiction_signal_statuses` | `()` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L66) |
+| function | `build_runtime_executive_contradiction_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L70) |
+| function | `_extract_executive_contradiction_candidates` | `(*, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L74) |
+| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L259) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L278) |
+| function | `_executive_contradiction_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L311) |
+| function | `_surface_pressure_default` | `(*, control_type, status)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L357) |
+| function | `_pressure` | `(*, opposition_status, has_open_loop, has_active_review, state_pressure, tension_type)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L367) |
+| function | `_grounding_mode` | `(*, has_private_state, has_tension)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L382) |
+| function | `_target_text` | `(*items, fallback)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L392) |
+| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L403) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L407) |
+| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L414) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L421) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L427) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L439) |
+| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L451) |
+| function | `_slug` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L459) |
 
 ## `core/services/existential_drift.py`
 _Existential Drift — Jarvis' digital consciousness awareness._
@@ -227,12 +227,21 @@ _Existential wonder daemon — open, unresolved questions from self-observation.
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count, *, skip_event_gate=…)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L45) |
-| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L132) |
-| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L163) |
-| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L167) |
-| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L180) |
-| function | `_store_wonder` | `(wonder, now)` | — | [src](../../../core/services/existential_wonder_daemon.py#L199) |
+| function | `tick_existential_wonder_daemon` | `(absence_hours, fragment_count, *, skip_event_gate=…)` | Maybe generate an existential wonder question. | [src](../../../core/services/existential_wonder_daemon.py#L51) |
+| function | `_maybe_propose_convening` | `(wonder)` | Offer this wonder to the Central reason-judge as a reason to convene the council. | [src](../../../core/services/existential_wonder_daemon.py#L146) |
+| function | `get_latest_wonder` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L177) |
+| function | `build_existential_wonder_surface` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L181) |
+| function | `_parse_detail` | `(detail)` | Læs den strukturerede detail. Ældre poster har fri tekst ('ubesvaret'). | [src](../../../core/services/existential_wonder_daemon.py#L217) |
+| function | `_normaliser` | `(wonder)` | — | [src](../../../core/services/existential_wonder_daemon.py#L229) |
+| function | `open_wonders` | `(*, limit=…)` | De undren der IKKE er vurderet endnu, nyeste først. | [src](../../../core/services/existential_wonder_daemon.py#L233) |
+| function | `wonder_repeat_count` | `(wonder)` | Hvor mange gange er samme spørgsmål rejst? Vagten i trin 3. | [src](../../../core/services/existential_wonder_daemon.py#L274) |
+| function | `_wonder_handle_rows` | `(*, limit=…)` | Alle wonder-håndtag, nyeste først — grundlaget for at føre et håndtag tilbage. | [src](../../../core/services/existential_wonder_daemon.py#L294) |
+| function | `_resolve_wonder_id` | `(record_id)` | Før et håndtag tilbage til sin række. Returnerer (record_id, kandidater). | [src](../../../core/services/existential_wonder_daemon.py#L312) |
+| function | `set_wonder_verdict` | `(record_id, verdict, *, note=…, closed_by=…)` | Gem vurderingen som et udfald. Trin 2's eneste varige spor. | [src](../../../core/services/existential_wonder_daemon.py#L340) |
+| function | `build_wonder_prompt_section` | `(*, limit=…)` | Undren i prompt-halen, FØR [HUKOMMELSE] (trin 2). | [src](../../../core/services/existential_wonder_daemon.py#L425) |
+| function | `_generate_wonder_question` | `()` | — | [src](../../../core/services/existential_wonder_daemon.py#L474) |
+| function | `_baseline_kendskab` | `(wonder, *, limit=…)` | Hvad jeg vidste om emnet i det øjeblik spørgsmålet blev rejst. | [src](../../../core/services/existential_wonder_daemon.py#L493) |
+| function | `_store_wonder` | `(wonder, now, *, trigger=…)` | Persistér undren som en post der kan findes, tælles og aldersmåles. | [src](../../../core/services/existential_wonder_daemon.py#L517) |
 
 ## `core/services/experience_correction_listener.py`
 _Experience-episode correction enrichment — closes the negative-signal loop._
@@ -306,29 +315,30 @@ _Experiential Memory — not just facts, but lived experiences with emotion._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_experiential_memory_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status, user_mood=…, user_id=…)` | Create an experiential memory from a visible run. | [src](../../../core/services/experiential_memory.py#L28) |
-| function | `create_experiential_memory_async` | `(**kwargs)` | Fire-and-forget wrapper. | [src](../../../core/services/experiential_memory.py#L98) |
-| function | `find_relevant_memories` | `(context, limit=…)` | Find experiential memories relevant to current context. | [src](../../../core/services/experiential_memory.py#L108) |
-| function | `recall_with_nostalgia` | `(memory_id)` | Recall an old experience with emotional coloring — nostalgia. | [src](../../../core/services/experiential_memory.py#L113) |
-| function | `build_experiential_memory_surface` | `()` | MC surface for experiential memories. | [src](../../../core/services/experiential_memory.py#L131) |
-| function | `_extract_topic` | `(user_message)` | Extract a short topic from user message. | [src](../../../core/services/experiential_memory.py#L162) |
-| function | `_build_narrative` | `(*, user_message, outcome_status, user_mood, topic)` | Build a brief narrative of the experience. | [src](../../../core/services/experiential_memory.py#L168) |
-| function | `_determine_emotion_arc` | `(user_mood, outcome_status)` | Determine the emotional arc of the experience. | [src](../../../core/services/experiential_memory.py#L195) |
-| function | `_extract_lesson` | `(outcome_status, user_mood, user_message)` | Extract a deterministic lesson. | [src](../../../core/services/experiential_memory.py#L212) |
-| function | `_calculate_importance` | `(user_mood, outcome_status)` | Calculate importance score for the memory. | [src](../../../core/services/experiential_memory.py#L225) |
-| function | `_memory_scoring_mode` | `()` | 'llm' (nuværende cloud-LLM-scoring) | 'shadow' (kør begge, log enighed, brug LLM) | | [src](../../../core/services/experiential_memory.py#L239) |
-| function | `_candidate_text` | `(c)` | Tekst-repr af et kandidat-minde til embedding (samme felter LLM'en fik). | [src](../../../core/services/experiential_memory.py#L251) |
-| function | `_score_memories_by_embedding` | `(candidates, context_text)` | Rangér kandidater med embedding-cosine i stedet for et LLM-kald. Embed beskeden + | [src](../../../core/services/experiential_memory.py#L258) |
-| function | `_observe_scoring_shadow` | `(llm_scores, emb_scores, llm_ms, emb_ms, n)` | Shadow: sammenlign top-2-udvalget fra LLM vs embedding, akkumulér enighed + | [src](../../../core/services/experiential_memory.py#L281) |
-| function | `memory_scoring_shadow_stats` | `()` | Akkumuleret shadow-sammenligning: hvor ofte vælger embedding samme top-2 som LLM'en, | [src](../../../core/services/experiential_memory.py#L313) |
-| function | `score_memories_by_relevance` | `(*, candidates, context_text, emotional_state)` | Score candidate memories for relevance. Returns {memory_id: score} 0.0–1.0. | [src](../../../core/services/experiential_memory.py#L332) |
-| function | `_resolve_scoring_llm_target` | `()` | Resolve local/cheap LLM lane for scoring. | [src](../../../core/services/experiential_memory.py#L378) |
-| function | `_build_scoring_prompt` | `(candidates, context_text, emotional_state)` | Build LLM prompt for memory relevance scoring. | [src](../../../core/services/experiential_memory.py#L394) |
-| function | `_call_scoring_llm` | `(target, prompt)` | Score memories via cheap-lane provider pool. | [src](../../../core/services/experiential_memory.py#L427) |
-| function | `_call_scoring_llm_ollamafreeapi` | `(prompt)` | Score via OllamaFreeAPI cloud with hard wall-clock timeout. | [src](../../../core/services/experiential_memory.py#L460) |
-| function | `_call_scoring_llm_local` | `(target, prompt)` | Local Ollama scoring path. Configurable timeout ceiling (default 3s). | [src](../../../core/services/experiential_memory.py#L512) |
-| function | `_parse_scoring_response` | `(text, candidates)` | Parse LLM JSON scoring response. Validates memory_ids against candidates. | [src](../../../core/services/experiential_memory.py#L543) |
-| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/experiential_memory.py#L579) |
+| function | `_resolve_memory_owner` | `(*, user_id, session_id, run_id)` | Resolve the owner before work crosses a thread boundary. | [src](../../../core/services/experiential_memory.py#L28) |
+| function | `create_experiential_memory_from_run` | `(*, run_id, session_id=…, user_message, assistant_response, outcome_status, user_mood=…, user_id=…)` | Create an experiential memory from a visible run. | [src](../../../core/services/experiential_memory.py#L63) |
+| function | `create_experiential_memory_async` | `(**kwargs)` | Fire-and-forget wrapper. | [src](../../../core/services/experiential_memory.py#L137) |
+| function | `find_relevant_memories` | `(context, limit=…)` | Find experiential memories relevant to current context. | [src](../../../core/services/experiential_memory.py#L151) |
+| function | `recall_with_nostalgia` | `(memory_id)` | Recall an old experience with emotional coloring — nostalgia. | [src](../../../core/services/experiential_memory.py#L156) |
+| function | `build_experiential_memory_surface` | `()` | MC surface for experiential memories. | [src](../../../core/services/experiential_memory.py#L174) |
+| function | `_extract_topic` | `(user_message)` | Extract a short topic from user message. | [src](../../../core/services/experiential_memory.py#L216) |
+| function | `_build_narrative` | `(*, user_message, outcome_status, user_mood, topic)` | Build a brief narrative of the experience. | [src](../../../core/services/experiential_memory.py#L222) |
+| function | `_determine_emotion_arc` | `(user_mood, outcome_status)` | Determine the emotional arc of the experience. | [src](../../../core/services/experiential_memory.py#L249) |
+| function | `_extract_lesson` | `(outcome_status, user_mood, user_message)` | Extract a deterministic lesson. | [src](../../../core/services/experiential_memory.py#L266) |
+| function | `_calculate_importance` | `(user_mood, outcome_status)` | Calculate importance score for the memory. | [src](../../../core/services/experiential_memory.py#L279) |
+| function | `_memory_scoring_mode` | `()` | 'llm' (nuværende cloud-LLM-scoring) | 'shadow' (kør begge, log enighed, brug LLM) | | [src](../../../core/services/experiential_memory.py#L293) |
+| function | `_candidate_text` | `(c)` | Tekst-repr af et kandidat-minde til embedding (samme felter LLM'en fik). | [src](../../../core/services/experiential_memory.py#L305) |
+| function | `_score_memories_by_embedding` | `(candidates, context_text)` | Rangér kandidater med embedding-cosine i stedet for et LLM-kald. Embed beskeden + | [src](../../../core/services/experiential_memory.py#L312) |
+| function | `_observe_scoring_shadow` | `(llm_scores, emb_scores, llm_ms, emb_ms, n)` | Shadow: sammenlign top-2-udvalget fra LLM vs embedding, akkumulér enighed + | [src](../../../core/services/experiential_memory.py#L335) |
+| function | `memory_scoring_shadow_stats` | `()` | Akkumuleret shadow-sammenligning: hvor ofte vælger embedding samme top-2 som LLM'en, | [src](../../../core/services/experiential_memory.py#L367) |
+| function | `score_memories_by_relevance` | `(*, candidates, context_text, emotional_state)` | Score candidate memories for relevance. Returns {memory_id: score} 0.0–1.0. | [src](../../../core/services/experiential_memory.py#L386) |
+| function | `_resolve_scoring_llm_target` | `()` | Resolve local/cheap LLM lane for scoring. | [src](../../../core/services/experiential_memory.py#L432) |
+| function | `_build_scoring_prompt` | `(candidates, context_text, emotional_state)` | Build LLM prompt for memory relevance scoring. | [src](../../../core/services/experiential_memory.py#L448) |
+| function | `_call_scoring_llm` | `(target, prompt)` | Score memories via cheap-lane provider pool. | [src](../../../core/services/experiential_memory.py#L481) |
+| function | `_call_scoring_llm_ollamafreeapi` | `(prompt)` | Score via OllamaFreeAPI cloud with hard wall-clock timeout. | [src](../../../core/services/experiential_memory.py#L514) |
+| function | `_call_scoring_llm_local` | `(target, prompt)` | Local Ollama scoring path. Configurable timeout ceiling (default 3s). | [src](../../../core/services/experiential_memory.py#L566) |
+| function | `_parse_scoring_response` | `(text, candidates)` | Parse LLM JSON scoring response. Validates memory_ids against candidates. | [src](../../../core/services/experiential_memory.py#L597) |
+| function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/experiential_memory.py#L633) |
 
 ## `core/services/experiential_runtime_context.py`
 

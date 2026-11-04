@@ -92,9 +92,41 @@ STALL_KODE = "stalled-before-first-event"
 # Ét. Samme regel som bro-failoveren: en aerlig fejl er bedre end en langsom.
 MAKS_GENFORSOEG = 1
 
+# DeepSeek dokumenterer 503 som midlertidig server-overbelastning og beder
+# klienten proeve igen efter en kort pause. Vi bliver paa samme betalte
+# provider og samme model. Tre pauser giver fire samlede kald over 11 sekunder.
+DEEPSEEK_503_BACKOFF_S = (1.0, 3.0, 7.0)
+MAKS_FOERSTE_KALD_GENFORSOEG = max(MAKS_GENFORSOEG, len(DEEPSEEK_503_BACKOFF_S))
+
 # Under dette er ventetiden helt normal (p90 = 22,3 s), og der er ingen grund
 # til at goere en bruger nervoes.
 USAEDVANLIG_EFTER_S = 45.0
+
+
+def genforsoeg_ventetid_s(
+    *,
+    provider: str,
+    status_code: int | None,
+    error_code: str,
+    forsoeg: int,
+    har_streamet_event: bool,
+) -> float | None:
+    """Ventetid for et sikkert nyt first-pass-kald, ellers ``None``.
+
+    Efter ethvert event er retry forbudt: eventet kan være tekst, reasoning
+    eller et tool-call, og et nyt kald kan derfor gentage output eller handling.
+    """
+    if har_streamet_event:
+        return None
+    if error_code == STALL_KODE and forsoeg < MAKS_GENFORSOEG:
+        return 0.0
+    if (
+        str(provider or "").strip().lower() == "deepseek"
+        and status_code == 503
+        and 0 <= forsoeg < len(DEEPSEEK_503_BACKOFF_S)
+    ):
+        return DEEPSEEK_503_BACKOFF_S[forsoeg]
+    return None
 
 
 def hjerteslag_fase(ventet_s: float) -> str:

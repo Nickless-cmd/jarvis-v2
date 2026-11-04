@@ -497,6 +497,74 @@ def _guard_prod_db_path(request, monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def _afvis_skrivning_til_prod_db(request, monkeypatch):
+    """Databaseadgangen selv afviser skrivning til den ægte produktionsbase.
+
+    `_guard_prod_db_path` ovenfor peger `db_core.DB_PATH` mod en shield — men den
+    rammer kun den modul-instans der ligger i `sys.modules` i det øjeblik testen
+    starter. Et modul der binder `connect` på modul-niveau
+    (`from core.runtime.db_core import connect`) holder en FUNKTIONSKOPI fra den
+    instans der var importeret dengang; `isolated_runtime` reloader `db_core`, så
+    kopien kan pege på en anden `DB_PATH` end den patch'ede.
+
+    Målt 4/11-2026: 154 moduler i `core/` binder `connect` sådan (57 fra
+    `db_core`, 97 fra `db`). `db_cadence_journal.py` gjorde det samme, og under
+    arbejdet med den landede 121 rækker i den levende base mens hele suiten var
+    grøn. Fejlen blev først synlig fordi jeg tilfældigt kiggede i tabellen — ikke
+    fordi noget målte den.
+
+    Denne vagt måler ikke VEJEN men PORTEN: `db_core` kalder `sqlite3.connect` som
+    attribut-opslag (`sqlite3.connect(DB_PATH, …)`), så en patch her rammer enhver
+    kalder — bundet reference, literal sti eller en ny modul-instans. Læseadgang
+    slippes igennem (`mode=ro`), fordi `_prod_db_shield_path` kopierer prods skema
+    derfra; et værn der også blokerede læsning ville tvinge shielden til at gætte
+    skemaet.
+
+    `@pytest.mark.real_db` slipper igennem, som for de øvrige DB-værn.
+    """
+    if request.node.get_closest_marker("real_db") is not None:
+        yield
+        return
+    try:
+        from core.runtime.config import STATE_DIR as _real_state
+        _prod_sti = (Path(_real_state) / "jarvis.db").resolve()
+    except Exception:
+        yield
+        return
+
+    import sqlite3 as _sqlite3
+
+    _oprindelig_connect = _sqlite3.connect
+
+    def _vagt_connect(database, *args, **kwargs):
+        _tekst = str(database)
+        if "mode=ro" not in _tekst:
+            _sti_tekst = (
+                _tekst[len("file:"):].split("?", 1)[0]
+                if _tekst.startswith("file:")
+                else _tekst
+            )
+            try:
+                _loest = Path(_sti_tekst).resolve()
+            except Exception:
+                _loest = None
+            if _loest is not None and _loest == _prod_sti:
+                raise AssertionError(
+                    "test-vagt: testen åbnede den ÆGTE produktionsdatabase "
+                    f"({_prod_sti}) til SKRIVNING. `_guard_prod_db_path` peger "
+                    "DB_PATH mod en shield, men en modul-bundet `connect` "
+                    "(`from core.runtime.db_core import connect`) holder en kopi "
+                    "fra en ældre modul-instans og rammer derfor prod. Importér "
+                    "`connect` LAZY inde i funktionen — eller markér testen "
+                    "@pytest.mark.real_db hvis den bevidst må røre den ægte base."
+                )
+        return _oprindelig_connect(database, *args, **kwargs)
+
+    monkeypatch.setattr(_sqlite3, "connect", _vagt_connect)
+    yield
+
+
 @pytest.fixture(scope="session")
 def _prod_home_shield_dir(tmp_path_factory):
     """Én tmp-mappe pr. session som `shared/` og `workspaces/` peges mod."""

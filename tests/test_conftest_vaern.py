@@ -118,3 +118,64 @@ def test_real_bash_daemon_slipper_igennem():
 
     assert bash_session._PID_PATH.resolve() == (
         _aegte_hjem() / "state" / "bash_session.pid").resolve()
+
+
+# ── produktionsdatabasen (_afvis_skrivning_til_prod_db) ─────────────────────
+
+
+def _prod_sti() -> pathlib.Path:
+    from core.runtime.config import STATE_DIR
+
+    return pathlib.Path(STATE_DIR) / "jarvis.db"
+
+
+def test_skrivning_til_prod_db_afvises_ved_porten():
+    """En modul-bundet `connect` må ikke kunne snige sig forbi DB_PATH-værnet.
+
+    Målt 4/11-2026: `db_cadence_journal.py` bandt `connect` på modul-niveau.
+    `_guard_prod_db_path` patcher kun den modul-instans der ligger i
+    `sys.modules`; en funktionskopi fra en ældre instans rammer ikke den patch.
+    121 rækker landede i den levende base mens suiten var grøn.
+    """
+    import sqlite3
+
+    with pytest.raises(AssertionError, match="ÆGTE produktionsdatabase"):
+        sqlite3.connect(str(_prod_sti()))
+
+
+def test_skrivning_via_uri_uden_ro_afvises_ogsaa():
+    """`file:`-URI er en anden indgang til samme fil — den skal også lukkes."""
+    import sqlite3
+
+    with pytest.raises(AssertionError, match="ÆGTE produktionsdatabase"):
+        sqlite3.connect(f"file:{_prod_sti()}", uri=True)
+
+
+def test_laesning_af_prod_db_slipper_igennem():
+    """`_prod_db_shield_path` kopierer prods skema read-only — det skal virke.
+
+    Et værn der også blokerede læsning ville tvinge shielden til at gætte
+    skemaet, og så er den ikke længere skema-tro mod drift.
+    """
+    import sqlite3
+
+    prod = _prod_sti()
+    if not prod.is_file():
+        pytest.skip("ingen produktionsdatabase på denne maskine")
+    conn = sqlite3.connect(f"file:{prod}?mode=ro", uri=True)
+    try:
+        assert conn.execute("SELECT count(*) FROM sqlite_master").fetchone()[0] > 0
+    finally:
+        conn.close()
+
+
+@pytest.mark.real_db
+def test_real_db_slipper_igennem():
+    """Symmetrien: markøren findes for tests der bevidst må røre den ægte base."""
+    import sqlite3
+
+    prod = _prod_sti()
+    if not prod.is_file():
+        pytest.skip("ingen produktionsdatabase på denne maskine")
+    conn = sqlite3.connect(str(prod))
+    conn.close()

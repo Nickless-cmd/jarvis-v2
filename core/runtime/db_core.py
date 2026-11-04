@@ -273,9 +273,11 @@ def _sweep_orphaned_pool_connections() -> dict:
 def pool_connection_stats() -> dict:
     """Øjebliksbillede: hvilke LEVENDE tråde ejer en pool-forbindelse.
 
-    `orphaned` er svaret på det åbne spørgsmål: poster hvis tråd-ident ikke
-    længere findes blandt de kørende tråde. Er den tom, ejer hver forbindelse
-    en levende tråd — og så er tallet poolens leje, ikke en læk.
+    Det afgørende tal er `pooled_live` — forbindelser hvis ejer-tråd findes nu.
+    `pooled` er bogholderiets størrelse (unikke identer set siden start, minus
+    eksplicit lukkede) og kan kun stige i en proces med daemon-tråde; det blev
+    læst som en lækage 3/11-2026. `orphaned_count`/`orphaned` er den klasse der
+    faktisk kan vokse monotont: poster hvis tråd er død.
     """
     with _pool_events_lock:
         births = dict(_pool_births)
@@ -284,8 +286,14 @@ def pool_connection_stats() -> dict:
     foraeldreloese = {
         ident: rec for ident, rec in births.items() if ident not in levende
     }
+    # `pooled` er bogholderiets størrelse — unikke tråd-identer set siden start,
+    # minus dem der blev lukket eksplicit. Da daemon-tråde sjældent dør, kan det
+    # tal kun stige, og det blev læst som en lækage 3/11-2026. Det ægte tal er
+    # `pooled_live`: forbindelser hvis ejer-tråd findes NU.
     return {
+        "pooled_live": len(births) - len(foraeldreloese),
         "pooled": len(births),
+        "orphaned_count": len(foraeldreloese),
         "births_total": seq_b,
         "deaths_total": seq_d,
         "threads_alive": len(levende),
@@ -374,6 +382,53 @@ def _merge_text_fragments(current: str, proposed: str, *, limit: int = 3) -> str
     return " | ".join(parts)
 
 
+def _accumulated_counts(
+    existing: sqlite3.Row | dict[str, object],
+    *,
+    support_count: int,
+    session_count: int,
+    session_id: str = "",
+) -> tuple[int, int]:
+    """Akkumulér support- og session-tal ved merge — addition, ikke ``max()``.
+
+    Målt 4/11-2026: alle 15 merge-implementeringer brugte
+    ``max(existing, incoming)``, mens kaldestederne sender INKREMENTET (næsten
+    altid 1). Tallet kunne derfor aldrig vokse: 967 af 967 reflective critics
+    stod på 1 — også de to der var merget 194 og 84 gange. Samme tørke i 22
+    tabeller. Otte moduler har porte der derfor var beviseligt døde:
+    ``support_count >= 2`` i ``self_model_signal_tracking`` (selvmodellen),
+    ``world_model_signal_tracking`` (verdensbilledet), ``>= 3`` i
+    ``witness_signal_tracking`` — og derigennem oppositionens
+    ``challenge-calibration``, som kræver ``active_self_model``.
+
+    ``session_count`` tæller DISTINKTE sessioner: samme session må ikke tælles
+    op igen, ellers bliver antal kald til antal sessioner og «uafhængig
+    støtte» til en tæller for hvor længe man blev ved.
+
+    En tabel uden ``session_id``-kolonne tæller ikke sessioner op — den sporer
+    dem ikke, og et opkald er så ikke et vidnesbyrd om en ny session.
+
+    Målt 4/11-2026 EFTER genstart: akkumuleringen virker — et selvmodel-signal
+    gik fra 1 til 3 (merge_count 47), to fokus-rækker fra 1 til 2. Men
+    ``session_count`` stod på 1 i 967/967 critics og 16.976/16.976
+    world-model-rækker: sessioner mødes aldrig igen, så en port på
+    ``session_count >= 2`` ville gøre alle porte permanent døde — samme fejlform
+    som ``max()`` var. ``support_count`` tæller derfor OBSERVATIONER, ikke
+    uafhængige kilder. Skal uafhængighed måles, kræver det en dimension der
+    faktisk bevæger sig; det er en datamodel-beslutning, ikke en tærskel.
+    """
+    base_support = int(existing["support_count"] or 0)
+    base_session = int(existing["session_count"] or 0)
+    merged_support = base_support + max(int(support_count or 0), 1)
+    try:
+        forrige_session = str(existing["session_id"] or "")
+    except (IndexError, KeyError):
+        forrige_session = ""
+    indkommende = str(session_id or "").strip()
+    ny_session = bool(indkommende) and indkommende != forrige_session
+    return merged_support, base_session + (1 if ny_session else 0)
+
+
 def _upsert_signal(
     *,
     conn: sqlite3.Connection,
@@ -404,8 +459,10 @@ def _upsert_signal(
       (source_kind, confidence, evidence_class, ...).
     - ``merge_text_cols`` → ``_merge_text_fragments`` against the existing row
       (evidence_summary, support_summary, status_reason, ...).
-    - ``accumulate_cols`` → ``max(existing, max(incoming, 1))`` (support_count,
-      session_count, ...); on INSERT stored as ``max(incoming, 1)``.
+    - ``accumulate_cols`` → ``support_count`` og ``session_count`` går gennem
+      ``_accumulated_counts`` (addition; session_count kun for NYE sessioner).
+      Øvrige akkumulator-kolonner beholder ``max(existing, max(incoming, 1))``.
+      On INSERT stored as ``max(incoming, 1)``.
     - ``merge_count``     → 0 on insert, ``COALESCE(merge_count,0)+1`` on update.
     - ``created_at``      → immutable on existing (only written on insert).
     - ``updated_at``      → written on both insert and update.
@@ -479,16 +536,31 @@ def _upsert_signal(
             col: _merge_text_fragments(str(existing[col] or ""), val, limit=limit)
             for col, val, limit in merge_text_cols
         }
+        _accum_vals = dict(accumulate_cols)
+        _merged_support, _merged_session = _accumulated_counts(
+            existing,
+            support_count=int(_accum_vals.get("support_count") or 0),
+            session_count=int(_accum_vals.get("session_count") or 0),
+            session_id=str(dict(overwrite_cols).get("session_id") or ""),
+        )
         merged_accum = {
-            col: max(int(existing[col] or 0), max(int(val or 0), 1))
+            col: (
+                _merged_support
+                if col == "support_count"
+                else _merged_session
+                if col == "session_count"
+                else max(int(existing[col] or 0), max(int(val or 0), 1))
+            )
             for col, val in accumulate_cols
         }
 
+        # Tællingerne indgår IKKE i samme-payload-tjekket: de vokser ved hver
+        # ny observation, så de ville gøre grenen «unchanged» strukturelt
+        # uopnåelig — og dermed skjule at et identisk kald ikke er ny støtte.
         same_payload = (
             all(val == str(existing[col] or "") for col, val in overwrite_cols)
             and all(merged_rank[col] == str(existing[col] or "") for col, _, _ in rank_cols)
             and all(merged_text[col] == str(existing[col] or "") for col, _, _ in merge_text_cols)
-            and all(merged_accum[col] == int(existing[col] or 0) for col, _ in accumulate_cols)
         )
         if same_payload:
             meta = {

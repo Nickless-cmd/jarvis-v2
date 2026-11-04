@@ -41,6 +41,8 @@ def test_surface_publishes_exactly_one_summary(monkeypatch):
         "route": "server_persistent_shell",
         "status": "ok",
         "exit_code": 0,
+        "dispatched": True,
+        "timing_final": True,
         "had_output": True,
         "announced_to_dispatch_ms": 25,
         "dispatch_to_lock_ms": 40,
@@ -124,6 +126,37 @@ def test_cancel_is_terminal_and_late_completion_cannot_publish(monkeypatch):
     assert len(sent) == 1
     assert sent[0][1]["status"] == "cancelled"
     assert sent[0][1]["total_visible_ms"] == 200
+    # Intet blev dispatchet her — saa det skal siges eksplicit.
+    assert sent[0][1]["dispatched"] is False
+    assert sent[0][1]["timing_final"] is False
+
+
+def test_annulleret_kald_hvis_proces_fuldfoerer_rapporteres_ikke_som_u_dispatchet(
+    monkeypatch,
+):
+    """Maalt 4/11-2026: 5 af 5 cancelled kald fik senere `tool.completed` med
+    aegte exit-kode. Timing-eventet blev skrevet mens processen koerte, saa
+    route/process_ms/first_output_ms var null — og null laeses som «kommandoen
+    koerte ikke», altsaa «ingen side-effekt». Et dispatchet kald skal derfor
+    baere `dispatched: True` selv om maalingen ikke er faerdig.
+    """
+    sent = _capture_timing(monkeypatch)
+    trace.start_call("dispatched-cancel", tool="bash", run_id="r5", announced_at=50.0)
+    trace.mark_dispatch("dispatched-cancel", now=50.05)
+    trace.cancel_call("dispatched-cancel", now=50.3)
+    trace.mark_execution_complete("dispatched-cancel", now=50.9)
+    trace.surface_result("dispatched-cancel", status="ok", exit_code=0, now=51.0)
+
+    payload = sent[0][1]
+    assert payload["status"] == "cancelled"
+    assert payload["route"] is None
+    assert payload["process_ms"] is None
+    assert payload["announced_to_dispatch_ms"] == 50
+    # Kernekravet: null-felterne er «ikke maalt endnu», ikke «skete ikke».
+    assert payload["dispatched"] is True
+    assert payload["timing_final"] is False
+    # Cancel er stadig terminal i timing-laget: den sene completion udgiver intet.
+    assert len(sent) == 1
 
 
 def test_start_event_baerer_den_menneskelige_jobtitel():

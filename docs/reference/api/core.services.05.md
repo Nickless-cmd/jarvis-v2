@@ -506,18 +506,27 @@ _Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L44) |
-| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L53) |
-| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L67) |
-| function | `_build_mind` | `()` | De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems- | [src](../../../core/services/central_hub.py#L94) |
-| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L111) |
-| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L117) |
-| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L123) |
-| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L141) |
-| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L149) |
-| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L245) |
-| function | `mind_section` | `(section)` | Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe. | [src](../../../core/services/central_hub.py#L262) |
-| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L285) |
+| function | `_safe` | `(builder)` | — | [src](../../../core/services/central_hub.py#L102) |
+| function | `_build_overview` | `()` | Centralens egen puls = Jarvis Mind-rygraden (status/dækning/processer/clusters). | [src](../../../core/services/central_hub.py#L111) |
+| function | `_build_observability` | `()` | Det levende vindue: nerve-feed + incidents + anomalier + læring + breakers. | [src](../../../core/services/central_hub.py#L125) |
+| function | `_surface_group` | `(names)` | Projicerer et udsnit af `cognitive_architecture_surface()["surfaces"]`. | [src](../../../core/services/central_hub.py#L152) |
+| function | `_build_mind` | `()` | Sind — bevidstheds-gruppen (default undertab; se `_SECTION_TABS`). | [src](../../../core/services/central_hub.py#L184) |
+| function | `_build_proprioception` | `()` | Kroppen (gammel MC-fane 6): fil-overvågning, genstart-bevidsthed, | [src](../../../core/services/central_hub.py#L195) |
+| function | `_build_threads` | `()` | Tråde (gammel MC-fane 7): de kognitive overflader der løber på tværs af | [src](../../../core/services/central_hub.py#L201) |
+| function | `_build_relationship` | `()` | Relation (gammel MC-fane 10): den relationelle model — tillid over tid. | [src](../../../core/services/central_hub.py#L207) |
+| function | `_build_agency` | `()` | Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler). | [src](../../../core/services/central_hub.py#L212) |
+| function | `_build_skills` | `()` | Skills-motor + kontrakt-registry. | [src](../../../core/services/central_hub.py#L218) |
+| function | `_trim_agency_map` | `(m)` | Skær agency-kortet til det Agentur-fanen viser — og bevar totalerne. | [src](../../../core/services/central_hub.py#L234) |
+| function | `_build_agency_agents` | `()` | Agentur-fanen: agency-broer (loops/agenter/kanaler) + B3 agent-dispatch-udfald | [src](../../../core/services/central_hub.py#L278) |
+| function | `_build_council` | `()` | Council-fanen (B3): convocations/deadlocks/roller. Empty-safe. | [src](../../../core/services/central_hub.py#L301) |
+| function | `_build_decisions` | `()` | Hvad venter paa et menneske — samlet ét sted. | [src](../../../core/services/central_hub.py#L309) |
+| function | `_build_memory` | `()` | Hukommelse — hvad han husker, og hvad der er på vej til at blive glemt. | [src](../../../core/services/central_hub.py#L392) |
+| function | `_build_reflection` | `()` | Refleksion — dagens refleksions-slot og hvad den må røre. | [src](../../../core/services/central_hub.py#L427) |
+| function | `_build_lab` | `()` | Lab — hvad det koster, og hvad der er tilbage at købe for. | [src](../../../core/services/central_hub.py#L437) |
+| function | `_build_hardening` | `()` | Hærdning — governance-flag og hvad de værner. | [src](../../../core/services/central_hub.py#L445) |
+| function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L480) |
+| function | `mind_section` | `(section, tab=…)` | Projektionen for ÉN sektion — eller ÉN undertab i den (læser den cachede | [src](../../../core/services/central_hub.py#L507) |
+| function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L547) |
 
 ## `core/services/central_hypothesis_generator.py`
 _core/services/central_hypothesis_generator.py_
@@ -532,22 +541,22 @@ _core/services/central_hypothesis_generator.py_
 | function | `_load` | `(hyp_id)` | — | [src](../../../core/services/central_hypothesis_generator.py#L167) |
 | function | `_to_evidence` | `(samples)` | — | [src](../../../core/services/central_hypothesis_generator.py#L184) |
 | function | `record_governed_sample` | `(hyp_id, *, supports, falsifies=…, source=…, ground_ref=…, triggered_by=…, verifier=…)` | Registrér ét udfald-sample + re-evaluér hypotesen gennem hele dødsmekanismen (evaluate). | [src](../../../core/services/central_hypothesis_generator.py#L190) |
-| function | `detect_causal_convergence_candidates` | `(*, window=…, min_recurrence=…)` | Find familie-par (X→Y) der optræder ≥ min_recurrence gange blandt de seneste MENINGSFULDE | [src](../../../core/services/central_hypothesis_generator.py#L290) |
-| function | `formulate_correlation_hypothesis` | `(cand)` | Omsæt en detekteret korrelation til en EKSPLICIT, menneske-læsbar, pre-registreret hypotese | [src](../../../core/services/central_hypothesis_generator.py#L327) |
-| function | `detect_outcome_divergence_candidates` | `(*, window=…, min_each=…)` | Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each | [src](../../../core/services/central_hypothesis_generator.py#L354) |
-| function | `formulate_divergence_hypothesis` | `(cand)` | Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er | [src](../../../core/services/central_hypothesis_generator.py#L395) |
-| function | `detect_stance_divergence_candidates` | `(*, min_count=…)` | Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions | [src](../../../core/services/central_hypothesis_generator.py#L417) |
-| function | `formulate_stance_divergence_hypothesis` | `(t)` | Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør. | [src](../../../core/services/central_hypothesis_generator.py#L428) |
-| function | `detect_prediction_error_candidates` | `()` | Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde | [src](../../../core/services/central_hypothesis_generator.py#L446) |
-| function | `formulate_prediction_error_hypothesis` | `(s)` | Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen | [src](../../../core/services/central_hypothesis_generator.py#L456) |
-| function | `_active_provenance_families` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L478) |
-| function | `run_hypothesis_generation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér → | [src](../../../core/services/central_hypothesis_generator.py#L495) |
-| function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L534) |
-| function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L546) |
-| function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L580) |
-| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L591) |
-| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L644) |
-| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L650) |
-| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L666) |
-| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L682) |
+| function | `detect_causal_convergence_candidates` | `(*, window=…, min_recurrence=…)` | Find familie-par (X→Y) der optræder ≥ min_recurrence gange blandt de seneste MENINGSFULDE | [src](../../../core/services/central_hypothesis_generator.py#L310) |
+| function | `formulate_correlation_hypothesis` | `(cand)` | Omsæt en detekteret korrelation til en EKSPLICIT, menneske-læsbar, pre-registreret hypotese | [src](../../../core/services/central_hypothesis_generator.py#L347) |
+| function | `detect_outcome_divergence_candidates` | `(*, window=…, min_each=…)` | Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each | [src](../../../core/services/central_hypothesis_generator.py#L374) |
+| function | `formulate_divergence_hypothesis` | `(cand)` | Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er | [src](../../../core/services/central_hypothesis_generator.py#L415) |
+| function | `detect_stance_divergence_candidates` | `(*, min_count=…)` | Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions | [src](../../../core/services/central_hypothesis_generator.py#L437) |
+| function | `formulate_stance_divergence_hypothesis` | `(t)` | Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør. | [src](../../../core/services/central_hypothesis_generator.py#L448) |
+| function | `detect_prediction_error_candidates` | `()` | Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde | [src](../../../core/services/central_hypothesis_generator.py#L466) |
+| function | `formulate_prediction_error_hypothesis` | `(s)` | Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen | [src](../../../core/services/central_hypothesis_generator.py#L476) |
+| function | `_active_provenance_families` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L498) |
+| function | `run_hypothesis_generation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér → | [src](../../../core/services/central_hypothesis_generator.py#L515) |
+| function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L554) |
+| function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L566) |
+| function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L600) |
+| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L611) |
+| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L664) |
+| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L670) |
+| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L686) |
+| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L702) |
 

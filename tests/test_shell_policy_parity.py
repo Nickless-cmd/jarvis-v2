@@ -50,7 +50,7 @@ def test_en_GODKENDT_kommando_faar_samme_indespaerring_som_en_ugodkendt(
                         or ægte(cmd, cwd, **kw))
     # Tving engangs-stien: den vedvarende session naas ved at aabne en
     # default-session, saa den slaas fra ved at lade aabningen give None.
-    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda: None)
+    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda _scope=None: None)
 
     W._exec_bash({"command": "echo k10"})
     W._exec_bash({"command": "echo k10", "_runtime_trust_all": True})
@@ -112,7 +112,7 @@ def test_en_kollapset_sandkasse_rapporteres_frem_for_at_tie(isolated_runtime,
     from core.tools import simple_tools_web as W
     monkeypatch.setattr(SB, "enforcement",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("bwrap vaek")))
-    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda: None)
+    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda _scope=None: None)
     svar = W._exec_bash({"command": "echo k10"})
     assert svar["status"] == "ok"
     assert svar["confinement"]["honored"] is False

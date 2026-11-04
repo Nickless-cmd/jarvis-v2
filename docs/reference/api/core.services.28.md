@@ -2,6 +2,72 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/text_resonance.py`
+_Text Resonance — I feel what I read, before I analyze it._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | Nyeste foerst — samme raekkefoelge som den gamle `deque.appendleft`. | [src](../../../core/services/text_resonance.py#L46) |
+| function | `_save` | `(historik)` | — | [src](../../../core/services/text_resonance.py#L57) |
+| function | `resonate` | `(text, *, source=…)` | Compute warmth, cold, urgency scores for a piece of text. | [src](../../../core/services/text_resonance.py#L97) |
+| function | `recent_resonances` | `(*, limit=…)` | — | [src](../../../core/services/text_resonance.py#L191) |
+| function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L195) |
+| function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L229) |
+| function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L246) |
+
+## `core/services/theater_audit.py`
+_Theater Audit -- find narrative-first inner-life patterns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
+| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
+| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
+| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
+| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
+| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
+| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
+| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
+| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
+| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
+
+## `core/services/theory_of_mind.py`
+_Theory of Mind — Step A.v1 of meta-evne stack._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/theory_of_mind.py#L97) |
+| function | `_connect` | `()` | Frisk forbindelse der LUKKES ved `with`-exit (rettet 12/10-2026). | [src](../../../core/services/theory_of_mind.py#L123) |
+| function | `_normalize_to_key` | `(text)` | Build a stable dedupe key from a sentence. | [src](../../../core/services/theory_of_mind.py#L144) |
+| function | `_split_factual_sentences` | `(text)` | Return sentences from text that look like factual claims. | [src](../../../core/services/theory_of_mind.py#L160) |
+| function | `record_fact` | `(*, partner_id, origin, fact_summary, session_id=…, message_id=…, evidence=…)` | Upsert a fact into the ledger. | [src](../../../core/services/theory_of_mind.py#L179) |
+| function | `_is_autonomous_session` | `(session_id)` | — | [src](../../../core/services/theory_of_mind.py#L250) |
+| function | `record_message` | `(*, role, content, partner_id=…, session_id=…, message_id=…)` | Extract factual sentences from a message and record each one. | [src](../../../core/services/theory_of_mind.py#L255) |
+| function | `recent_facts` | `(*, partner_id=…, origin=…, hours=…, limit=…)` | — | [src](../../../core/services/theory_of_mind.py#L297) |
+| function | `has_been_told` | `(fact_text, *, partner_id=…, hours=…)` | Has Jarvis told partner this fact within the time window? | [src](../../../core/services/theory_of_mind.py#L323) |
+| function | `repetition_warnings` | `(*, partner_id=…, hours=…, threshold=…)` | Facts Jarvis has repeated to partner at or above threshold within window. | [src](../../../core/services/theory_of_mind.py#L348) |
+| function | `communication_ledger_section` | `(*, partner_id=…)` | Quiet by default. Surfaces only when Jarvis is repeating himself. | [src](../../../core/services/theory_of_mind.py#L374) |
+| function | `_listener_loop` | `()` | Poll events table for channel.chat_message_appended events. | [src](../../../core/services/theory_of_mind.py#L401) |
+| function | `start_theory_of_mind_tracker` | `()` | Start the DB-polling listener. Idempotent. | [src](../../../core/services/theory_of_mind.py#L465) |
+| function | `stop_theory_of_mind_tracker` | `()` | — | [src](../../../core/services/theory_of_mind.py#L482) |
+
+## `core/services/theory_of_mind_engine.py`
+_Active theory-of-mind engine for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
+| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
+| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
+| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
+| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
+| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
+| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
+| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
+| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
+
 ## `core/services/think_language.py`
 _Tænke-sprog — killswitch for hvilket sprog ræsonnementet føres i._
 
@@ -194,10 +260,10 @@ _Process-local timing and bounded live-output state for visible tool calls._
 | function | `mark_approved_dispatch` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L197) |
 | function | `note_executor_timing` | `(tool_use_id, timing)` | — | [src](../../../core/services/tool_execution_trace.py#L204) |
 | function | `_finish` | `(tool_use_id, *, status, exit_code, now, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L221) |
-| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L283) |
-| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L304) |
-| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L309) |
-| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L332) |
+| function | `surface_result` | `(tool_use_id, *, status, exit_code=…, now=…, result_text=…, raw_result=…, timeout_s=…)` | — | [src](../../../core/services/tool_execution_trace.py#L291) |
+| function | `cancel_call` | `(tool_use_id, *, now=…)` | — | [src](../../../core/services/tool_execution_trace.py#L312) |
+| function | `bind_execution` | `(tool_use_id, output_buffer, *, run_id=…, session_id=…, tool_name=…)` | — | [src](../../../core/services/tool_execution_trace.py#L317) |
+| function | `emit_current_output` | `(stream, chunk, seq=…, truncated=…)` | — | [src](../../../core/services/tool_execution_trace.py#L340) |
 
 ## `core/services/tool_failure_surface.py`
 _Turn raw tool failures into short, actionable text for visible surfaces._
@@ -294,10 +360,11 @@ _Bridge tool execution outcomes into durable runtime action evidence._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `record_tool_outcome_memory` | `(*, tool_name, arguments, result, mode=…)` | Persist a tool outcome as runtime action evidence. | [src](../../../core/services/tool_outcome_memory.py#L7) |
-| function | `_summary_for_result` | `(tool_name, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L51) |
-| function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L59) |
-| function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L74) |
-| function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L98) |
+| function | `_run_anchor` | `(arguments)` | Hvilken kørsel handlingen skete i — og hvilken session. | [src](../../../core/services/tool_outcome_memory.py#L54) |
+| function | `_summary_for_result` | `(tool_name, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L81) |
+| function | `classify_tool_family` | `(tool_name)` | — | [src](../../../core/services/tool_outcome_memory.py#L89) |
+| function | `_score_for_outcome` | `(*, status, family, result)` | — | [src](../../../core/services/tool_outcome_memory.py#L104) |
+| function | `_preview_arguments` | `(arguments)` | — | [src](../../../core/services/tool_outcome_memory.py#L128) |
 
 ## `core/services/tool_pattern_miner.py`
 _Tool pattern miner — discover repeating tool sequences as composite candidates._
@@ -493,43 +560,4 @@ _Hvor bliver sekunderne af EFTER svaret er skrevet færdigt?_
 | function | `mark` | `(run_id, navn)` | Notér at ét led er færdigt. Gratis hvis `start` aldrig blev kaldt. | [src](../../../core/services/turn_tail_timing.py#L57) |
 | function | `slut` | `(run_id)` | Afslut målingen. Returnerer halens længde i sekunder (0 hvis ukendt). | [src](../../../core/services/turn_tail_timing.py#L67) |
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/turn_tail_timing.py#L87) |
-
-## `core/services/turn_trace.py`
-_core/services/turn_trace.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
-| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
-| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
-| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
-| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
-
-## `core/services/ui_panel_store.py`
-_Pending UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `request_panel` | `(panel, *, detail=…, scope=…, session_id=…, action=…)` | Tilføj en pending panel-forespørgsel. | [src](../../../core/services/ui_panel_store.py#L32) |
-| function | `list_pending` | `(*, session_id=…)` | Returnér alle pending requests (status='pending'), valgfrit filtreret på session. | [src](../../../core/services/ui_panel_store.py#L73) |
-| function | `ack_panel` | `(request_id)` | Markér en request som 'opened' (desk-appen har åbnet panelet). | [src](../../../core/services/ui_panel_store.py#L83) |
-| function | `get_request_status` | `(request_id)` | Nuværende status ('pending'/'opened') for en request, eller None hvis ukendt. | [src](../../../core/services/ui_panel_store.py#L94) |
-| function | `_load` | `()` | — | [src](../../../core/services/ui_panel_store.py#L103) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/ui_panel_store.py#L114) |
-
-## `core/services/unconscious_modulation.py`
-_Unconscious modulation — sub-symbolic sampling-parameter shift._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_modulation_enabled` | `()` | Kill-switch check. True = modulate; False = pass base through. | [src](../../../core/services/unconscious_modulation.py#L32) |
-| function | `compute_unconscious_modulation` | `(*, base_temperature, base_top_p, workspace_id=…)` | Return (modulated_temperature, modulated_top_p). | [src](../../../core/services/unconscious_modulation.py#L40) |
-
-## `core/services/unconscious_temperature_field.py`
-_Unconscious temperature field — backwards-compat wrapper for Lag 10._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L15) |
-| function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L30) |
 

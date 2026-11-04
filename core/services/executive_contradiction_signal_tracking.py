@@ -31,6 +31,10 @@ from core.runtime.db import (
 _STALE_AFTER_DAYS = 7
 _CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
 
+# Outcome-typer der deler tabel med self-review-outcomes men ikke ER en
+# self-review. Se `self_review_outcome_tracking._NON_REVIEW_OUTCOME_TYPES`.
+_NON_REVIEW_OUTCOME_TYPES: tuple[str, ...] = ("credit_assignment",)
+
 
 # ── public surface (thin delegates; signatures unchanged) ─────────────────────
 def track_runtime_executive_contradiction_signals_for_visible_turn(
@@ -96,7 +100,14 @@ def _extract_executive_contradiction_candidates(*, run_id: str) -> list[dict[str
         else:
             bucket["softening_loop"] = item
 
-    for item in list_runtime_self_review_outcomes(limit=18):
+    # 4/11-2026: `credit_assignment` skriver provider-telemetri (latens, fallback,
+    # cost-booster) i samme tabel som de ægte self-review-outcomes — 167.666 mod
+    # 8.009 rækker. Uden filteret læste denne producent et model-kalds latens som
+    # en vurdering af en beslutning, og `_target_text` gjorde telemetriens titel
+    # til `control_target` i et executive-contradiction-signal.
+    for item in list_runtime_self_review_outcomes(
+        exclude_outcome_types=_NON_REVIEW_OUTCOME_TYPES, limit=18
+    ):
         status = str(item.get("status") or "")
         if status not in {"fresh", "active", "fading"}:
             continue
@@ -331,7 +342,6 @@ _SPEC = SignalTrackingSpec(
     supersede_group_kw="domain_key",
     extract_fn=lambda spec, ctx: _extract_executive_contradiction_candidates(run_id=str(ctx.get("run_id") or "")),
     stale_after_days=_STALE_AFTER_DAYS,
-    refresh_scan_limit=40,
     refreshable_statuses=frozenset({"active", "softening"}),
     stale_status_reason="Marked stale after bounded executive-contradiction inactivity window.",
     surface_status_order=("active", "softening", "stale", "superseded"),

@@ -385,6 +385,11 @@
       "ejer": "core/services/user_hensyn.py",
       "beskrivelse": "Bruger-hensyn — handlingsrelevante hensyn med VARIG og SITUATIONEL levetid.",
       "registreret": "2026-10-25"
+    },
+    "runtime_world_model_predictions_uafgoerlige_arkiv": {
+      "ejer": "core/services/counterfactual_predictions.py",
+      "beskrivelse": "Arkiv for uafgoerlige forudsigelser flyttet ud af ledgeren (loft 1000). Slaas op via find_archived_prediction(prediction_id), saa provenance bevares efter flytningen.",
+      "registreret": "2026-11-04"
     }
   }
 }

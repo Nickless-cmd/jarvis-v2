@@ -120,13 +120,17 @@ describe('SideOpgavePanel', () => {
       post({ side_task_id: 'a', status: 'pending' }),
       post({ side_task_id: 'q', status: 'queued' }),
       post({ side_task_id: 'b', status: 'activated' }),
+      post({ side_task_id: 'r', status: 'running' }),
+      post({ side_task_id: 'p', status: 'paused' }),
+      post({ side_task_id: 'x', status: 'blocked' }),
+      post({ side_task_id: 'f', status: 'failed' }),
       post({ side_task_id: 'c', status: 'completed', resolved_at: '2026-10-03T13:37:13+00:00' }),
       post({ side_task_id: 'd', status: 'dismissed', resolved_at: '2026-10-03T13:37:13+00:00' }),
     ] as never)
     render(<SideOpgavePanel config={cfg} />)
-    for (const ord of ['Venter', 'I kø', 'I gang', 'Færdig', 'Fjernet']) {
+    for (const ord of ['Venter', 'I kø', 'Starter', 'Kører', 'Pauset', 'Blokeret', 'Fejlet', 'Færdig', 'Fjernet']) {
       expect(await screen.findByText(ord)).toBeInTheDocument()
     }
-    expect(screen.getByText('3 åbne · 2 lukkede', { exact: false })).toBeInTheDocument()
+    expect(screen.getByText('7 åbne · 2 lukkede', { exact: false })).toBeInTheDocument()
   })
 })

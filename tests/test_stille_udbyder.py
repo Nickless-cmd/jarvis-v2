@@ -107,6 +107,24 @@ def test_der_er_praecis_ÉT_genforsoeg():
     assert vf.MAKS_GENFORSOEG == 1
 
 
+def test_deepseek_503_faar_tre_korte_genforsoeg_uden_providerskift():
+    assert vf.DEEPSEEK_503_BACKOFF_S == (1.0, 3.0, 7.0)
+    assert [
+        vf.genforsoeg_ventetid_s(
+            provider="deepseek", status_code=503, error_code="provider-error",
+            forsoeg=i, har_streamet_event=False,
+        )
+        for i in range(4)
+    ] == [1.0, 3.0, 7.0, None]
+
+
+def test_503_genforsoeg_er_forbudt_efter_ethvert_stream_event():
+    assert vf.genforsoeg_ventetid_s(
+        provider="deepseek", status_code=503, error_code="provider-error",
+        forsoeg=0, har_streamet_event=True,
+    ) is None
+
+
 # ───────────────────────────────────────────── vagten i selve læse-loopet
 
 def test_keepalive_i_lang_tid_rejser_stall(monkeypatch):
@@ -161,8 +179,8 @@ def test_adapteren_proever_igen_paa_stall_koden():
     for n in ast.walk(ast.parse(kilde)):
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "_stream_openai_compatible_model":
             tekst = ast.unparse(n)
-            assert "STALL_KODE" in tekst, "genforsoeget spoerger ikke paa koden"
-            assert "MAKS_GENFORSOEG" in tekst, "der er intet loft paa antal forsoeg"
+            assert "genforsoeg_ventetid_s" in tekst, "retry-politikken kaldes ikke"
+            assert "MAKS_FOERSTE_KALD_GENFORSOEG" in tekst, "der er intet loft"
             assert "for _forsoeg in range" in tekst, "der er ingen loekke at proeve igen i"
             return
     raise AssertionError("_stream_openai_compatible_model findes ikke laengere")
@@ -173,6 +191,6 @@ def test_genforsoeget_staar_FOER_bogfoeringen_i_centralen():
     noget der gik godt — og en observation der lyver er værre end ingen."""
     kilde = pathlib.Path(__file__).parent.parent / "core/services/visible_model_adapters.py"
     t = kilde.read_text()
-    i_continue = t.index("[stille-udbyder]")
+    i_continue = t.index("[provider-retry]")
     i_observe = t.index('"cluster": "stream"')
     assert i_continue < i_observe

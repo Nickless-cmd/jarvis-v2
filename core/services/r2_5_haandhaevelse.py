@@ -115,6 +115,48 @@ def _kiggede_tilbage_efter(siden: datetime) -> bool:
     return bool(scan["strict_verifies"] or scan["light_verifies"])
 
 
+def _kvitter_adlydt(siden: datetime) -> None:
+    """Blokeringen blev adlydt — skriv det som et udfald, lad den ikke stå åben.
+
+    Målt 3/11-2026: 504 `pending`, 68 `overridden_by_user`, **0 `honored`**.
+    `resolve_veto_event(..., "honored")` havde nul kaldere i produktion.
+
+    ⚠️ MEN (målt samme aften, EFTER funktionen var skrevet): dette lukker IKKE
+    asymmetrien i tærskel-læringen. r2.5 logger sin blokering med
+    ``feeling=NERVE`` (``"r2_5_gate"``), og ``veto_gate._adaptive_threshold``
+    kaldes kun med de følelser ``pushback._affective_pressure`` kan producere
+    (irritation, unease, fatigue, protectiveness, hesitation). ``r2_5_gate`` er
+    ikke blandt dem — det er en nerve, ikke en følelse. Tærsklen for
+    ``(edit_file, "r2_5_gate")`` (7 overrides i drift) bliver beregnet og vist
+    i summaries, men aldrig brugt til at afvise noget: r2.5 træffer sin
+    beslutning på ``_afvist_i_blokken``, ikke på tærsklen.
+
+    Hvad funktionen DERIMOD gør, og som er sandt: en blok der blev løftet af et
+    faktisk kig tilbage registreres som ``honored`` i stedet for at stå
+    ``pending`` for evigt. Det er en korrekt udfalds-registrering — ikke en
+    tærskel-effekt. Se ``tests/test_honored_kobling.py`` der fastholder begge.
+
+    Sættes KUN når blokken løftes af et faktisk kig tilbage. En udløbet blok er
+    ikke en adlydelse, og en læsefejl er ikke en adlydelse — de bliver stående
+    `pending`, hvilket er sandt: vi ved ikke hvad der skete.
+    """
+    try:
+        from core.runtime.db_core import connect
+        from core.services.veto_gate import resolve_veto_event
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT event_id FROM veto_events
+                   WHERE feeling = ? AND resolution = 'pending'
+                     AND veto_result = 'blocked' AND created_at >= ?""",
+                (NERVE, siden.isoformat()),
+            ).fetchall()
+        for (event_id,) in rows:
+            resolve_veto_event(event_id, "honored")
+    except Exception:
+        # Fail-open: en kvittering der fejler må aldrig holde en blok åben.
+        logger.debug("r2.5-håndhævelse: honored-kvittering fejlede", exc_info=True)
+
+
 def _publicer(kind: str, data: dict[str, Any]) -> None:
     try:
         from core.eventbus.bus import event_bus
@@ -148,6 +190,10 @@ def _aaben_blok(nu: datetime) -> dict[str, Any] | None:
             _blok = None
     _publicer("released", {"reason": grund, "refused": _afvist_i_blokken,
                            "since": blok["siden"].isoformat()})
+    if grund == "kig_tilbage":
+        # Kun en faktisk adlydelse kvitteres. Udløb og læsefejl forbliver
+        # `pending`, fordi de ikke siger noget om hvad han gjorde.
+        _kvitter_adlydt(blok["siden"])
     return None
 
 

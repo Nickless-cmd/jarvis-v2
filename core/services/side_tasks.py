@@ -14,8 +14,9 @@ Per-session for context, but visible across the workspace so a side
 task flagged in Discord is visible in webchat too. Persisted via
 state_store.
 
-Status: ``pending``, ``queued`` og ``activated`` er ÅBNE — de står i inboxen
-og over chatten i Desk til nogen afslutter dem.
+Status: alle ikke-terminale tilstande er ÅBNE — de står i inboxen og over
+chatten i Desk til nogen afslutter dem. ``activated`` betyder claimet/starter;
+først ``running`` betyder at et run faktisk er født.
 ``completed`` og ``dismissed`` er terminale og kan ikke genåbnes. Før fandtes
 kun ``dismissed`` som slutpunkt, så en opgave der BLEV lavet, forsvandt som
 om den var droppet — og en ``activated`` forsvandt fra prompten i samme
@@ -29,13 +30,17 @@ from typing import Any, Final
 from uuid import uuid4
 
 from core.runtime.state_store import _path, load_json, med_laas, save_json
+from core.services.side_task_lifecycle import (
+    ACTIVE_STATUSES, OPEN_STATUSES, TERMINAL_STATUSES, VALID_STATUSES,
+    apply_transition, validate_transition,
+)
 
 logger = logging.getLogger(__name__)
 
 _STATE_KEY = "side_tasks"
-_VALID_STATUSES = ("pending", "queued", "activated", "completed", "dismissed")
-_AABNE = frozenset({"pending", "queued", "activated"})
-_TERMINALE = frozenset({"completed", "dismissed"})
+_VALID_STATUSES = VALID_STATUSES
+_AABNE = OPEN_STATUSES
+_TERMINALE = TERMINAL_STATUSES
 _MAX_SHOWN = 6
 _AUTONOMY_MODES: Final[frozenset[str]] = frozenset({"none", "inspect", "local_write"})
 _AUTONOMY_MAX_ATTEMPTS: Final[int] = 3
@@ -426,7 +431,7 @@ def snooze(side_task_id: str, *, until: str, reason: str = "") -> dict[str, Any]
         return {"status": "error",
                 "error": (f"side task {side_task_id} is already {forud.get('status')} "
                           "and cannot be snoozed")}
-    if str(forud.get("status") or "") == "activated":
+    if str(forud.get("status") or "") in ACTIVE_STATUSES:
         return {"status": "error",
                 "error": ("en igangvaerende opgave kan ikke udskydes — saet den i koe "
                           "foerst (activate_side_task status=queued)")}
@@ -440,7 +445,7 @@ def snooze(side_task_id: str, *, until: str, reason: str = "") -> dict[str, Any]
         fejl = ""
         if found is None:
             fejl = f"unknown side_task_id {side_task_id}"
-        elif old in _TERMINALE or old == "activated":
+        elif old in _TERMINALE or old in ACTIVE_STATUSES:
             fejl = f"side task {side_task_id} er nu {old} og kan ikke udskydes"
         if fejl:
             # Tilstanden naaede at skifte mellem laesningen og laasen. Den
@@ -568,8 +573,7 @@ def claim_autonomous(*, worker_id: str, lease_minutes: int = 30,
         candidates.sort(key=lambda row: str(row.get("created_at") or ""))
         found = candidates[0]
         found["autonomy_previous_status"] = str(found.get("status") or "pending")
-        found["status"] = "activated"
-        found["activated_at"] = moment.isoformat()
+        apply_transition(found, "activated", actor=worker, now=moment)
         found["autonomy_lease_owner"] = worker[:160]
         found["autonomy_lease_until"] = (moment + timedelta(minutes=lease_for)).isoformat()
         found["autonomy_attempts"] = int(found.get("autonomy_attempts") or 0) + 1
@@ -579,8 +583,8 @@ def claim_autonomous(*, worker_id: str, lease_minutes: int = 30,
 
 
 def attach_autonomous_session(side_task_id: str, *, worker_id: str,
-                              session_id: str) -> bool:
-    """Bind a successfully started autonomous task to its visible session."""
+                              session_id: str, run_id: str = "") -> bool:
+    """Bind a born autonomous run and promote ``activated`` to ``running``."""
     with med_laas(_STATE_KEY):
         items = _load_all()
         found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
@@ -588,10 +592,62 @@ def attach_autonomous_session(side_task_id: str, *, worker_id: str,
                 or str(found.get("autonomy_lease_owner") or "") != str(worker_id or "")):
             return False
         found["arbejds_session"] = str(session_id or "")[:160]
+        if run_id:
+            found["arbejds_run_id"] = str(run_id)[:160]
+        apply_transition(found, "running", actor=worker_id)
         found["autonomy_started_at"] = datetime.now(UTC).isoformat()
-        found["updated_at"] = found["autonomy_started_at"]
         _save_all(items)
         return True
+
+
+def record_run_progress(run_id: str, *, current_step: str = "") -> bool:
+    """Copy a run heartbeat onto its side task without changing task state."""
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    with med_laas(_STATE_KEY):
+        items = _load_all()
+        found = next((r for r in items if str(r.get("arbejds_run_id") or "") == rid), None)
+        if found is None or str(found.get("status") or "") not in ACTIVE_STATUSES:
+            return False
+        found["last_progress_at"] = datetime.now(UTC).isoformat()
+        if current_step:
+            found["current_step"] = str(current_step)[:200]
+        _save_all(items)
+    return True
+
+
+def reconcile_run(side_task_id: str, *, outcome: str, run_id: str = "",
+                  error: str = "") -> bool:
+    """Reconcile run exit without ever inferring task completion."""
+    result = str(outcome or "").strip().lower()
+    current = get(side_task_id)
+    if current is None or str(current.get("status") or "") in _TERMINALE:
+        return current is not None
+    # A user/model transition made before the callback wins. Likewise, a late
+    # callback from an older attempt may not settle a newer run.
+    if str(current.get("status") or "") not in ACTIVE_STATUSES:
+        return True
+    linked_run = str(current.get("arbejds_run_id") or "")
+    if linked_run and run_id and linked_run != str(run_id):
+        return False
+    if result == "failed":
+        target = "failed"
+        reason = f"Run {run_id or '(ukendt)'} fejlede"
+        if error:
+            reason += f": {str(error)[:500]}"
+    elif result == "interrupted":
+        target = "paused"
+        reason = f"Run {run_id or '(ukendt)'} blev afbrudt"
+        if error:
+            reason += f": {str(error)[:500]}"
+    else:
+        target = "paused"
+        reason = (f"Run {run_id or '(ukendt)'} sluttede uden at markere opgaven "
+                  "completed eller dismissed")
+    response = resolve(side_task_id, decision=target, reason=reason,
+                       arbejds_run_id=run_id, lukket_af="runtime")
+    return str(response.get("status") or "") == "ok"
 
 
 def release_autonomous_claim(side_task_id: str, *, worker_id: str,
@@ -605,7 +661,7 @@ def release_autonomous_claim(side_task_id: str, *, worker_id: str,
                 or str(found.get("autonomy_lease_owner") or "") != str(worker_id or "")
                 or str(found.get("status") or "") in _TERMINALE):
             return False
-        found["status"] = "queued"
+        apply_transition(found, "queued", reason=reason, actor=worker_id)
         found.pop("autonomy_lease_owner", None)
         found.pop("autonomy_lease_until", None)
         found["autonomy_retry_after"] = (
@@ -613,7 +669,6 @@ def release_autonomous_claim(side_task_id: str, *, worker_id: str,
         ).isoformat()
         if reason:
             found["autonomy_last_blocked_reason"] = str(reason)[:500]
-        found["updated_at"] = now.isoformat()
         _save_all(items)
         return True
 
@@ -758,7 +813,7 @@ def opdater(side_task_id: str, **aendringer: Any) -> dict[str, Any]:
         if status_nu in _TERMINALE:
             return {"status": "error",
                     "error": f"sideopgaven er allerede {status_nu} og kan ikke redigeres"}
-        if status_nu not in ("pending", "queued"):
+        if status_nu not in ("pending", "queued", "paused", "blocked", "failed"):
             return {"status": "error",
                     "error": ("sideopgaven er i gang og kan ikke redigeres — "
                               "et run læser den lige nu")}
@@ -821,27 +876,13 @@ def resolve(side_task_id: str, *, decision: str,
             arbejds_session: str | None = None,
             arbejds_run_id: str | None = None,
             lukket_af: str = "", reason: str = "", bevis: str = "") -> dict[str, Any]:
-    """Flyt en opgaves status. `arbejds_session` knytter den til den samtale
-    der løser den — se `arbejds_session_for` for hvorfor det er nødvendigt.
+    """Apply one audited lifecycle transition.
 
-    ## En lukning skal bære sin egen begrundelse (16/10-2026)
-
-    Bjørn: «Krav ved completed — men dismissed med begrundelse er altid en vej
-    ud». Indtil da krævede `completed` INTET. Det er derfor en sideopgave
-    kunne lukkes uden belæg, mens en MEMORY-sektion blev stående og sagde
-    «STADIG ÅBEN» om arbejde der for længst var gjort: lukningen og påstanden
-    var to poster om samme faktum, og intet bandt dem sammen.
-
-    Nu bærer hver terminal beslutning sin grund:
-
-    * ``completed`` kræver ``bevis`` — hvad der FAKTISK blev gjort.
-    * ``dismissed`` kræver ``reason`` — hvorfor den ikke skal løses.
-
-    Begge gemmes på posten, så lukningen kan efterprøves bagefter. Vejen ud
-    findes altid: en opgave der ikke kan løses afvises med en grund.
+    ``completed`` requires evidence; paused/blocked/failed/dismissed require a
+    reason. Session and run links make runtime reconciliation possible.
     """
     decision = (decision or "").strip().lower()
-    if decision not in {"queued", "dismissed", "activated", "completed"}:
+    if decision not in _VALID_STATUSES or decision == "pending":
         return {"status": "error", "error": "unknown side-task decision"}
     if decision == "completed" and len(str(bevis or "").strip()) < _MIN_BEVIS:
         return {"status": "error",
@@ -858,21 +899,11 @@ def resolve(side_task_id: str, *, decision: str,
         found = next((r for r in items if r.get("side_task_id") == side_task_id), None)
         if found is None:
             return {"status": "error", "error": f"unknown side_task_id {side_task_id}"}
-        old = str(found.get("status") or "")
-        if old in _TERMINALE:
-            return {"status": "error",
-                    "error": f"side task {side_task_id} is already {old} and cannot be reopened"}
-        if decision == "queued" and old == "activated":
-            return {"status": "error", "error": "active side task cannot be queued"}
-        now = datetime.now(UTC).isoformat()
-        found["status"] = decision
-        found["updated_at"] = now
-        if decision == "queued":
-            found["queued_at"] = now
-        elif decision == "activated":
-            found["activated_at"] = now
-        else:
-            found["resolved_at"] = now
+        old = str(found.get("status") or "pending")
+        transition_error = validate_transition(old, decision, reason=reason)
+        if transition_error:
+            return {"status": "error", "error": transition_error}
+        apply_transition(found, decision, reason=reason, actor=lukket_af)
         if arbejds_session:
             found["arbejds_session"] = str(arbejds_session)
         if arbejds_run_id:
@@ -885,17 +916,16 @@ def resolve(side_task_id: str, *, decision: str,
             found["bevis"] = str(bevis).strip()[:1000]
         gammel_vaekning = ""
         if decision in _TERMINALE:
-            # En lukket opgave må ikke vække nogen (16/10-2026). Uden dette led
-            # ville en udskudt opgave ringe på døren efter den var afvist — og
-            # svaret ville være «den er lukket», altså støj uden en opgave.
-            # Det er samme kobling som `bevis`-kravet: en lukning skal efterlade
-            # systemet i en tilstand hvor ingenting peger på den længere.
+            # A closed task must not retain wakeups or worker ownership.
             gammel_vaekning = str(found.get("vaekning_id") or "")
             found.pop("not_before", None)
             found.pop("vaekning_id", None)
             found.pop("autonomy_lease_owner", None)
             found.pop("autonomy_lease_until", None)
             found.pop("autonomy_retry_after", None)
+        elif decision in {"paused", "blocked", "failed", "queued"}:
+            found.pop("autonomy_lease_owner", None)
+            found.pop("autonomy_lease_until", None)
         _save_all(items)
     if gammel_vaekning:
         _annuller_vaekning_id(gammel_vaekning)
@@ -951,7 +981,7 @@ def arbejds_session_for(session_id: str) -> dict[str, Any] | None:
     if not sid:
         return None
     for r in _load_all():
-        if (r.get("status") in _AABNE
+        if (r.get("status") in ACTIVE_STATUSES
                 # En SOVENDE opgave er ikke denne samtales arbejde (16/10-2026).
                 # Uden leddet ville lukke-instruksen stå i en samtale der ikke
                 # må tage opgaven op endnu — og bede om en lukning af arbejde
@@ -999,9 +1029,13 @@ def side_tasks_prompt_section(session_id: str | None = None) -> str | None:
         # men den må ikke læses som noget der skal tages nu. Tiden kommer fra
         # `sove_tekst`, så formateringen ikke findes i to kopier.
         sove = sove_tekst(r)
+        status_tags = {
+            "activated": "starter", "running": "i gang", "queued": "i kø",
+            "paused": "pauset", "blocked": "blokeret", "failed": "fejlet",
+        }
         tag = (f" ({sove})" if sove
-               else " (i gang)" if r.get("status") == "activated"
-               else " (i kø)" if r.get("status") == "queued" else "")
+               else f" ({status_tags[r.get('status')]})" if r.get("status") in status_tags
+               else "")
         alder = _age_label(r.get("created_at"))
         alder_tag = f" ({alder})" if alder else ""
         bullets.append(f"  [{sid}]{tag} {title}{suffix}{alder_tag}")
@@ -1086,14 +1120,16 @@ def _exec_dismiss_side_task(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_activate_side_task(args: dict[str, Any]) -> dict[str, Any]:
     from core.services.session_context_resolve import aktiv_session_id, aktivt_run_id
-    decision = str(args.get("status") or "activated").strip().lower()
-    if decision not in {"queued", "activated"}:
-        return {"status": "error", "error": "status must be queued or activated"}
+    decision = str(args.get("status") or "running").strip().lower()
+    if decision not in {"queued", "activated", "running", "paused", "blocked", "failed"}:
+        return {"status": "error", "error": "unknown open side-task status"}
     return resolve(str(args.get("side_task_id") or ""), decision=decision,
                    arbejds_session=(str(args.get("session_id") or aktiv_session_id("") or "") or None)
-                   if decision == "activated" else None,
+                   if decision in ACTIVE_STATUSES else None,
                    arbejds_run_id=(str(args.get("run_id") or aktivt_run_id("") or "") or None)
-                   if decision == "activated" else None)
+                   if decision in ACTIVE_STATUSES else None,
+                   reason=str(args.get("reason") or ""),
+                   lukket_af="jarvis")
 
 
 def _exec_snooze_side_task(args: dict[str, Any]) -> dict[str, Any]:
@@ -1204,12 +1240,17 @@ SIDE_TASK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "activate_side_task",
-            "description": "Move a flagged side-task to queue or active work. Active work should include its session_id and run_id when known; this does not dispatch work.",
+            "description": (
+                "Update an open side-task lifecycle. Use running immediately when work "
+                "actually begins; paused, blocked and failed REQUIRE a concrete reason. "
+                "queued releases active ownership. Include session_id and run_id for active work."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {"side_task_id": {"type": "string"},
-                               "status": {"type": "string", "enum": ["queued", "activated"]},
-                               "session_id": {"type": "string"}, "run_id": {"type": "string"}},
+                               "status": {"type": "string", "enum": ["queued", "activated", "running", "paused", "blocked", "failed"]},
+                               "session_id": {"type": "string"}, "run_id": {"type": "string"},
+                               "reason": {"type": "string", "description": "Required for paused, blocked and failed."}},
                 "required": ["side_task_id"],
             },
         },
@@ -1360,7 +1401,7 @@ def fej_faerdige(*, stilstand_minutter: float | None = None) -> dict[str, Any]:
         # selv fejler — `test_fejningen_kaster_ALDRIG` pinner det.
         aabne = list_open()
         for r in aabne:
-            if r.get("status") != "activated":
+            if r.get("status") not in ACTIVE_STATUSES:
                 continue
             sid = str(r.get("arbejds_session") or "").strip()
             if not sid:
@@ -1381,9 +1422,10 @@ def fej_faerdige(*, stilstand_minutter: float | None = None) -> dict[str, Any]:
             with med_laas(_STATE_KEY):
                 items = _load_all()
                 found = next((x for x in items if x.get("side_task_id") == tid), None)
-                if found is None or found.get("status") != "activated":
+                if found is None or found.get("status") not in ACTIVE_STATUSES:
                     continue
-                found["status"] = "pending"
+                apply_transition(found, "pending", reason=f"arbejdssession stille i {int(stille)}min",
+                                 actor="runtime:stale-sweep")
                 found["stale_at"] = datetime.now(UTC).isoformat()
                 found["stale_reason"] = f"arbejdssession stille i {int(stille)}min"
                 found.pop("arbejds_session", None)

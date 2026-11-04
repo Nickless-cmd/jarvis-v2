@@ -228,16 +228,18 @@ async def central_command(payload: dict) -> dict:
 
 
 @router.get("/mind")
-async def central_mind(section: str = "") -> dict:
+async def central_mind(section: str = "", tab: str = "") -> dict:
     """Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only.
 
-    Uden `section` → index (alle faner + om de er projiceret). Med `section` → den ENE sektions
-    projektion (læser den cachede kilde — ingen anden sandhed). Self-safe via central_hub.
+    Uden `section` → index (alle faner + undertabs + om de er projiceret). Med `section` → den ENE
+    sektions projektion (læser den cachede kilde — ingen anden sandhed). `tab` vælger en undertab
+    (fx `mind` + `sjael`): hver undertab er sin egen gruppe, så payloaden bliver 2-36 KB i stedet
+    for de 110 KB hele surfaces-dicten fylder. Self-safe via central_hub.
     """
     _require_owner()
     from core.services import central_hub
     if section:
-        return await asyncio.to_thread(central_hub.mind_section, section)
+        return await asyncio.to_thread(central_hub.mind_section, section, tab)
     return {"index": await asyncio.to_thread(central_hub.mind_index)}
 
 

@@ -68,6 +68,23 @@ def test_koe_og_arbejds_run_bindes_gennem_samme_statusrute(monkeypatch, lager):
     assert item["arbejds_session"] == "chat-1" and item["arbejds_run_id"] == "run-1"
 
 
+def test_pause_blockering_og_fejl_kraever_en_grund(monkeypatch, lager):
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    tid = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    asyncio.run(cw.cowork_side_task_status(
+        tid, {"status": "running", "session": "chat-1", "run_id": "run-1"},
+    ))
+    for status in ("paused", "blocked", "failed"):
+        assert asyncio.run(cw.cowork_side_task_status(
+            tid, {"status": status},
+        ))["status"] == "error"
+        assert asyncio.run(cw.cowork_side_task_status(
+            tid, {"status": status, "reason": f"konkret grund til {status}"},
+        ))["new_status"] == status
+        if status != "failed":
+            asyncio.run(cw.cowork_side_task_status(tid, {"status": "running"}))
+
+
 @pytest.mark.parametrize("status", ["pending", "bogus", ""])
 def test_ugyldig_status_er_400(monkeypatch, lager, status):
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))

@@ -260,3 +260,66 @@ def test_uden_event_kind_forbliver_forudsigelsen_uafgjort(tmp_path, monkeypatch)
     assert preds[0]["outcome"] == "uncertain"
     from core.runtime import db_core
     db_core.close_pooled_connection()
+
+
+# ---------------------------------------------------------------------------
+# 0/0 er UNDEFINED, ikke 0 %
+#
+# Målt 4/11-2026: `_calibration_of` returnerede 0.0 når nævneren var tom. Alle
+# 48 `count_10`-milestones i drift sagde derfor «Kalibrering sidste 30: 0.0%»
+# — Centralen fik 48 gange besked om en måling der aldrig havde fundet sted.
+# Samme fejlform som `tool_rate`: en default der ligner en måling.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _iso_milestones(monkeypatch):
+    """Isolér milestone-persistensen. Uden den skriver testen i den LEVENDE fil."""
+    hist: list[dict] = []
+    monkeypatch.setattr(wm, "_load_milestones", lambda: {"history": list(hist)})
+    monkeypatch.setattr(
+        wm, "_save_milestones", lambda d: hist.__setitem__(slice(None), d.get("history") or [])
+    )
+    return hist
+
+
+def test_kalibrering_uden_domme_er_None_ikke_nul():
+    """0 supported + 0 contradicted → None. En usikker post er ikke en dom."""
+    preds = [{"outcome": "uncertain"}, {"outcome": "uncertain"}]
+    assert wm._calibration_of(preds) is None, (
+        "tom nævner blev rapporteret som 0.0 — det påstår nul korrekthed hvor "
+        "sandheden er 'aldrig målt'"
+    )
+
+
+def test_kalibrering_med_domme_giver_tal():
+    """Halvdelen rigtige → 50.0. Grænsen må ikke gøre funktionen blind."""
+    preds = [
+        {"outcome": "supported"},
+        {"outcome": "contradicted"},
+        {"outcome": "uncertain"},  # ekskluderes fra nævneren
+    ]
+    assert wm._calibration_of(preds) == 50.0
+
+
+def test_milestone_uden_domme_siger_ikke_maalt(_iso_milestones):
+    """Den formidlede tekst må ikke påstå en procentsats der ikke findes."""
+    resolved = [
+        {
+            "prediction_id": f"p{i}",
+            "status": "resolved",
+            "outcome": "uncertain",
+            "resolved_at": (datetime.now(UTC) - timedelta(hours=10 - i)).isoformat(),
+            "created_at": (datetime.now(UTC) - timedelta(days=9)).isoformat(),
+        }
+        for i in range(10)
+    ]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(wm, "_load_predictions", lambda: list(resolved))
+        m = wm._compute_calibration_milestone()
+
+    assert m is not None, "regel 1 skal fyre ved 10 resolved"
+    assert "ikke maalt" in m["message"], (
+        f"milestone påstod en kalibrering der ikke er målt: {m['message']!r}"
+    )
+    assert "0.0%" not in m["message"]

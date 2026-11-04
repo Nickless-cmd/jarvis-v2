@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_guard.py`
+_Vagten der gør et skifte til hovedbogen fortrydeligt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_guard.py#L28) |
+| function | `guard_direct_write` | `(session_id, *, projektion, tabel, conn=…)` | Afvis direkte skrivninger til `tabel` for en ledger-session. | [src](../../../core/services/projection_guard.py#L32) |
+
 ## `core/services/projection_runtime.py`
 _Projektions-runtime — rene, versionerede folder over session-ledgeren._
 
@@ -624,12 +632,4 @@ _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
 | function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L422) |
 | function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L499) |
 | function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L506) |
-
-## `core/services/query_language_bridge.py`
-_Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `normalise_for_embedding` | `(text)` | Byt danske fagord til engelske foer et embedding-opslag. | [src](../../../core/services/query_language_bridge.py#L80) |
-| function | `build_query_language_bridge_surface` | `(text=…)` | Observationsflade — hvad broen ville goere ved denne besked. | [src](../../../core/services/query_language_bridge.py#L103) |
 

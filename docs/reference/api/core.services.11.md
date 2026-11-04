@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/db_sentinel.py`
+_DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerende gate og_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_list_tables` | `()` | — | [src](../../../core/services/db_sentinel.py#L27) |
+| function | `census` | `()` | Row-count pr. tabel. Best-effort; en fejlende tabel udelades. | [src](../../../core/services/db_sentinel.py#L40) |
+| function | `dead_table_candidates` | `()` | Tabeller med 0 rækker = KANDIDATER til oprydning. KUN til menneskelig review — | [src](../../../core/services/db_sentinel.py#L57) |
+| function | `_load_prev` | `()` | — | [src](../../../core/services/db_sentinel.py#L64) |
+| function | `_save` | `(c)` | — | [src](../../../core/services/db_sentinel.py#L73) |
+| function | `scan` | `()` | Census + vækst-delta vs forrige snapshot + flag egregious vækst. Returnér rapport. | [src](../../../core/services/db_sentinel.py#L81) |
+| function | `observe` | `()` | Kør scan + central.observe(summary) + flag egregious vækst som incident (review). | [src](../../../core/services/db_sentinel.py#L105) |
+| function | `build_db_health_surface` | `()` | MC-surface — read-only meta-projektion af DB-helbred + kandidat-død-liste til review. | [src](../../../core/services/db_sentinel.py#L131) |
+
 ## `core/services/decision_action_gate.py`
 _Current-turn opportunities for three low-adherence behavioral decisions._
 
@@ -599,31 +613,4 @@ _Robustness envelope builder + plausibility guard for the dispatch-redesign._
 | function | `_to_float` | `(value)` | Coerce to float; on any failure return 0.0. | [src](../../../core/services/dispatch_envelope.py#L27) |
 | function | `build_envelope` | `(*, status, tokens_in=…, tokens_out=…, cost_usd=…, duration_ms=…, tool_calls=…, result=…)` | Build a fixed 7-key dispatch envelope with coerced types. | [src](../../../core/services/dispatch_envelope.py#L35) |
 | function | `validate_envelope` | `(env)` | Return plausibility warnings for an envelope. Empty list = clean. | [src](../../../core/services/dispatch_envelope.py#L60) |
-
-## `core/services/dispatch_guards.py`
-_core/services/dispatch_guards.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_rs_get` | `(key, default)` | — | [src](../../../core/services/dispatch_guards.py#L71) |
-| function | `_rs_set` | `(key, value)` | — | [src](../../../core/services/dispatch_guards.py#L81) |
-| function | `_as_float` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L90) |
-| function | `_as_int` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L97) |
-| function | `_idem_ttl_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L107) |
-| function | `try_consume` | `(key, *, now=…, ttl_s=…)` | Markér `key` forbrugt ATOMISK. True første gang, False hvis allerede forbrugt | [src](../../../core/services/dispatch_guards.py#L111) |
-| function | `synthesize_timeout_envelope` | `(agent_id, deadline_ms)` | Byg en LARMENDE TIMEOUT-envelope for en dispatch der aldrig meldte tilbage. | [src](../../../core/services/dispatch_guards.py#L152) |
-| function | `register_deadline` | `(dispatch_id, deadline_ts)` | Registrér hvornår en dispatch SENEST skal have rapporteret. Durabel. | [src](../../../core/services/dispatch_guards.py#L163) |
-| function | `overdue` | `(now_ts=…)` | Returnér dispatch_ids hvis deadline er passeret ved now_ts (frisk = ikke med). | [src](../../../core/services/dispatch_guards.py#L175) |
-| function | `clear_deadline` | `(dispatch_id)` | Fjern en deadline (kaldes når dispatch rapporterer tilbage). Durabel, self-safe. | [src](../../../core/services/dispatch_guards.py#L191) |
-| function | `_breaker_threshold` | `()` | — | [src](../../../core/services/dispatch_guards.py#L205) |
-| function | `_breaker_window_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L210) |
-| function | `_breaker_cooldown_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L215) |
-| function | `_breaker_state` | `(lane)` | — | [src](../../../core/services/dispatch_guards.py#L220) |
-| function | `record_outcome` | `(lane, ok, *, now=…)` | Registrér udfaldet af en dispatch på `lane`. En succes nulstiller den | [src](../../../core/services/dispatch_guards.py#L227) |
-| function | `is_tripped` | `(lane, *, now=…)` | True hvis breakeren for `lane` er åben (blokér dispatch). Auto-resetter efter | [src](../../../core/services/dispatch_guards.py#L253) |
-| function | `_budget_max_count` | `()` | — | [src](../../../core/services/dispatch_guards.py#L275) |
-| function | `_budget_max_cost` | `()` | — | [src](../../../core/services/dispatch_guards.py#L280) |
-| function | `_budget_events` | `(lane, now)` | Hent lane-forbrug som liste af [ts, cost] beskåret til det rullende 24h-vindue. | [src](../../../core/services/dispatch_guards.py#L285) |
-| function | `budget_allows` | `(lane, cost_usd, *, now=…)` | HÅRD backstop FØR LLM'en fyrer: False hvis dette dispatch ville bryde ENTEN | [src](../../../core/services/dispatch_guards.py#L303) |
-| function | `record_spend` | `(lane, cost_usd, *, now=…)` | Registrér ét dispatch + dets cost på `lane`. Beskærer samtidig vinduet til 24h. | [src](../../../core/services/dispatch_guards.py#L329) |
 

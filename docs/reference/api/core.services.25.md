@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_critique_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_self_critique_interval_days` | `()` | Read base interval, modulate by dream-bias self_critique_volume. | [src](../../../core/services/self_critique_runtime.py#L35) |
+| function | `read_self_docs` | `(*, doc_id=…, include_history=…, max_chars_per_doc=…)` | — | [src](../../../core/services/self_critique_runtime.py#L69) |
+| function | `run_self_critique_cycle` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/self_critique_runtime.py#L116) |
+| function | `run_ontological_revision_check` | `()` | Check if a 90-day revision is due. If yes, append 'Er du stadig enig?' response. | [src](../../../core/services/self_critique_runtime.py#L230) |
+| function | `build_self_critique_surface` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L322) |
+| function | `self_critique_path` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L348) |
+| function | `_self_doc_manifest` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L353) |
+| function | `_render_manifest` | `(manifest)` | — | [src](../../../core/services/self_critique_runtime.py#L371) |
+| function | `_render_doc` | `(item, *, max_chars)` | — | [src](../../../core/services/self_critique_runtime.py#L378) |
+| function | `_render_recent_chronicles` | `(entries)` | — | [src](../../../core/services/self_critique_runtime.py#L388) |
+| function | `_render_recent_chronicles_extended` | `(entries)` | Extended rendering for blind-angle prompt — more entries, includes lessons too. | [src](../../../core/services/self_critique_runtime.py#L400) |
+| function | `_append_self_critique_entry` | `(*, entry_id, created_at, next_review_at, prompt, critique, source_docs, cycle_type=…)` | — | [src](../../../core/services/self_critique_runtime.py#L417) |
+| function | `_latest_entry_preview` | `(text)` | — | [src](../../../core/services/self_critique_runtime.py#L450) |
+| function | `_self_critique_enabled` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L457) |
+| function | `_state` | `()` | — | [src](../../../core/services/self_critique_runtime.py#L462) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/self_critique_runtime.py#L467) |
+| function | `_extract_key_words` | `(text)` | Extract meaningful Danish/English words (5+ chars) from text. | [src](../../../core/services/self_critique_runtime.py#L495) |
+| function | `_check_absence_links` | `(*, entry_id, critique_text, now)` | After a blind-angle critique, look for convergence with recent absence signals. | [src](../../../core/services/self_critique_runtime.py#L502) |
+| function | `get_absence_trace_links` | `()` | Return stored absence × blind-angle convergence records. | [src](../../../core/services/self_critique_runtime.py#L577) |
+
 ## `core/services/self_deception_guard.py`
 _Bounded self-deception guard — deterministic truth-constraint on user-facing stance._
 
@@ -762,15 +786,4 @@ _Fastlås modellen pr. session, så prompt-præfikset holder (2026-10-03)._
 | function | `pin` | `(session_id, provider, model)` | Lås modellen for sessionen. Returnerer det der FAKTISK blev låst. | [src](../../../core/services/session_model_pin.py#L123) |
 | function | `resolve` | `(session_id, provider, model)` | Modellen turen skal bruge, og hvor valget kom fra. | [src](../../../core/services/session_model_pin.py#L139) |
 | function | `release` | `(session_id, *, grund=…)` | Slip låsen — kaldes når den låste model ikke kunne bruges. | [src](../../../core/services/session_model_pin.py#L163) |
-
-## `core/services/session_permission.py`
-_Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L55) |
-| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L64) |
-| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L82) |
-| function | `trust_for_session` | `(session_id)` | Skal et run der lander i denne samtale arve fuld adgang? | [src](../../../core/services/session_permission.py#L99) |
-| function | `arv_permission` | `(ny_session, fra_session)` | Giv en NY samtale samme niveau som den den blev startet fra. | [src](../../../core/services/session_permission.py#L122) |
 

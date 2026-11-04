@@ -124,6 +124,30 @@ def test_an_explicit_pool_model_is_honoured_and_a_hard_unknown_model_fails_clear
     assert soft["route_source"] == "agent_pool" and soft["rejected"][0]["stage"] == "explicit"
 
 
+def test_owner_can_select_ready_cli_before_pool(pol, monkeypatch):
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    route = pol.route(BJORN, requested_model="codex-cli")
+    assert (route["route_source"], route["provider"], route["model"]) == (
+        "explicit", "codex-cli", "default")
+    assert route["candidates"][1]["route_source"] == "agent_pool"
+    assert route["cost_basis"] == "abonnements_cli_kvote"
+
+
+def test_cli_is_owner_only_and_quota_refusal_falls_back(pol, monkeypatch):
+    pol.cands(PREMIUM)
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason", lambda provider: "")
+    other = pol.route(ANDEN, requested_model="codex-cli")
+    assert other["route_source"] == "agent_pool"
+    assert other["rejected"][0]["reason"] == "codex-cli_er_kun_for_platformens_ejer"
+
+    monkeypatch.setattr("core.services.agent_cli_backend.admission_reason",
+                        lambda provider: "quota:5-timerskvoten er brugt")
+    exhausted = pol.route(BJORN, requested_model="claude-cli")
+    assert exhausted["route_source"] == "agent_pool"
+    assert exhausted["rejected"][0]["reason"].startswith("quota:")
+
+
 @pytest.mark.parametrize("owner", [BJORN, ANDEN])
 def test_explicit_deepseek_neither_skips_the_pool_nor_unlocks_anything(pol, owner):
     pol.cands(PREMIUM, FREE)

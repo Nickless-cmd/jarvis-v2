@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/non_visible_fallback.py`
+_Non-visible (autonomous) LLM fallback chain._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ubrugeligt_svar` | `(result)` | True hvis poolen svarede med noget der ikke er et svar. | [src](../../../core/services/non_visible_fallback.py#L25) |
+| function | `_fallback_enabled` | `()` | Læs feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L38) |
+| function | `_rate_cap_enabled` | `()` | Læs rate-cap feature-flag; default False. Monkeypatchbar i tests. | [src](../../../core/services/non_visible_fallback.py#L43) |
+| function | `_observe_central` | `(payload)` | Task 15: let observabilitet på ON-stien → Centralens system/cheap_pool. | [src](../../../core/services/non_visible_fallback.py#L48) |
+| function | `run_non_visible_with_fallback` | `(*, message, primary_call, run_is_autonomous, task_kind=…)` | Prøv primary_call() (ollama). Ved fejl: fald til den gratis cheap-lane | [src](../../../core/services/non_visible_fallback.py#L58) |
+
 ## `core/services/non_visible_lane_execution.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -617,12 +628,4 @@ _Perceptual event engine — eventful perception for Jarvis._
 | function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L499) |
 | function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L505) |
 | function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L512) |
-
-## `core/services/periodic_jobs_scheduler.py`
-_Periodic jobs scheduler — enqueues overdue background jobs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L75) |
-| function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L88) |
 

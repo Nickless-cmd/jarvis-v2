@@ -1,37 +1,6 @@
 {
-  "generated_at": "2026-10-30T15:25:34.614898+00:00",
-  "hard": [
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/api/scripts.01.md"
-    },
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/api/scripts.02.md"
-    },
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/api/scripts.03.md"
-    },
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/api/scripts.04.md"
-    },
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/api/README.md"
-    },
-    {
-      "generator": "api_docs_gen",
-      "kind": "stale",
-      "path": "docs/reference/DOCSTRING_COVERAGE.md"
-    }
-  ],
+  "generated_at": "2026-11-04T17:35:54.013532+00:00",
+  "hard": [],
   "soft": [
     {
       "kind": "requirement_missing",
@@ -231,7 +200,7 @@
     }
   ],
   "counts": {
-    "hard": 6,
+    "hard": 0,
     "soft": 49
   }
 }

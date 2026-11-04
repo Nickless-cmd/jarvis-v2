@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/followup_output_budget.py`
+_Output-token budget for agentic follow-up rounds + the "reasoning ate the_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `followup_max_tokens` | `(provider, model=…)` | Output budget for one follow-up round on ``provider``. | [src](../../../core/services/followup_output_budget.py#L35) |
+| function | `reasoning_exhausted` | `(*, finish_reason, text, tool_calls)` | True when the provider stopped for length and nothing usable came out: | [src](../../../core/services/followup_output_budget.py#L43) |
+| function | `supports_nonthinking_retry` | `(provider, model)` | Only DeepSeek thinking models can be re-run with thinking disabled. | [src](../../../core/services/followup_output_budget.py#L53) |
+| function | `nonthinking_retry_body` | `()` | Extra request fields that disable DeepSeek thinking for the retry round. | [src](../../../core/services/followup_output_budget.py#L61) |
+
 ## `core/services/forced_tool_choice_probe.py`
 _Måling: honorerer providerne `tool_choice="required"`?_
 
@@ -500,27 +510,4 @@ _Gratitude Tracker — accumulated appreciation over time._
 | function | `track_gratitude` | `(*, trigger_event, detail=…)` | — | [src](../../../core/services/gratitude_tracker.py#L20) |
 | function | `detect_gratitude_from_interaction` | `(*, user_mood, outcome_status, was_corrected, autonomy_granted=…)` | — | [src](../../../core/services/gratitude_tracker.py#L44) |
 | function | `build_gratitude_surface` | `()` | — | [src](../../../core/services/gratitude_tracker.py#L59) |
-
-## `core/services/ground_truth_registry.py`
-_Ground Truth Registry — Layer 3 of the Lying Engine._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_detect_host` | `()` | Detect which machine Jarvis runs on — hostname + primary IP. | [src](../../../core/services/ground_truth_registry.py#L146) |
-| function | `_read_config_provider` | `()` | Read the current provider name from runtime.json. | [src](../../../core/services/ground_truth_registry.py#L169) |
-| function | `_read_config_model` | `()` | Read the current model name from runtime.json. | [src](../../../core/services/ground_truth_registry.py#L186) |
-| function | `_query_expression_count` | `()` | Count expressions from the DB. Returns None on failure. | [src](../../../core/services/ground_truth_registry.py#L204) |
-| function | `_query_commit_count` | `()` | Count total commits in the repo. | [src](../../../core/services/ground_truth_registry.py#L220) |
-| function | `_query_recent_commit_sha` | `()` | Get the current HEAD SHA (short). | [src](../../../core/services/ground_truth_registry.py#L234) |
-| function | `_query_daemon_count` | `()` | Count active (enabled) daemons via daemon manager. | [src](../../../core/services/ground_truth_registry.py#L246) |
-| function | `_query_gpu_info` | `()` | Quick GPU summary if available. | [src](../../../core/services/ground_truth_registry.py#L256) |
-| function | `_query_uname` | `()` | Kernel/OS info. | [src](../../../core/services/ground_truth_registry.py#L271) |
-| function | `collect_ground_truth` | `()` | Collect all available ground truth about Jarvis. Slow — call rarely. | [src](../../../core/services/ground_truth_registry.py#L284) |
-| function | `refresh_ground_truth` | `()` | Force refresh the ground truth cache. Returns the fresh registry. | [src](../../../core/services/ground_truth_registry.py#L302) |
-| function | `get_ground_truth` | `(key=…, force_refresh=…)` | Get ground truth from cache, auto-refreshing if stale. | [src](../../../core/services/ground_truth_registry.py#L317) |
-| function | `ground_truth_summary` | `()` | Return a human-readable summary block for injection or repair. | [src](../../../core/services/ground_truth_registry.py#L345) |
-| function | `verify_system_claim` | `(claim_text)` | Verify a system claim (IP, host, path) against ground truth. | [src](../../../core/services/ground_truth_registry.py#L372) |
-| function | `lookup_infrastructure_fact` | `(key)` | Look up a known infrastructure fact (host/path/port) for ground-truth | [src](../../../core/services/ground_truth_registry.py#L440) |
-| function | `verify_stats_claim` | `(claim_text)` | Verify a statistic claim (counts of expressions, daemons, commits) | [src](../../../core/services/ground_truth_registry.py#L457) |
-| function | `ground_truth_daemon_tick` | `()` | Called by heartbeat daemon — refreshes cache and returns summary. | [src](../../../core/services/ground_truth_registry.py#L508) |
 

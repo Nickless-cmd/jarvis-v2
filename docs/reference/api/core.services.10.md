@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/conversation_rhythm.py`
+_Conversation Rhythm — tracks conversation signature patterns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `classify_conversation` | `(*, turn_count, correction_count, avg_message_length, duration_minutes, outcome_status)` | Classify the conversation rhythm pattern. | [src](../../../core/services/conversation_rhythm.py#L20) |
+| function | `track_conversation_rhythm` | `(*, run_id, session_id=…, turn_count=…, correction_count=…, avg_message_length=…, duration_minutes=…, outcome_status=…)` | Track and classify the conversation rhythm. | [src](../../../core/services/conversation_rhythm.py#L40) |
+| function | `build_conversation_rhythm_surface` | `()` | — | [src](../../../core/services/conversation_rhythm.py#L74) |
+
 ## `core/services/conversation_topics.py`
 _Conversation-continuity topics, deliberately separate from world truth._
 
@@ -610,18 +619,4 @@ _Day Shape Memory — sensory depth over time._
 | function | `build_day_shape_surface` | `()` | — | [src](../../../core/services/day_shape_memory.py#L261) |
 | function | `_surface_summary` | `(current, history, anomaly)` | — | [src](../../../core/services/day_shape_memory.py#L277) |
 | function | `build_day_shape_prompt_section` | `()` | Surfaces only when today differs noticeably from baseline. | [src](../../../core/services/day_shape_memory.py#L292) |
-
-## `core/services/db_sentinel.py`
-_DB-cluster — observabilitet + flag for jarvis.db's helbred. IKKE en blokerende gate og_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_list_tables` | `()` | — | [src](../../../core/services/db_sentinel.py#L27) |
-| function | `census` | `()` | Row-count pr. tabel. Best-effort; en fejlende tabel udelades. | [src](../../../core/services/db_sentinel.py#L40) |
-| function | `dead_table_candidates` | `()` | Tabeller med 0 rækker = KANDIDATER til oprydning. KUN til menneskelig review — | [src](../../../core/services/db_sentinel.py#L57) |
-| function | `_load_prev` | `()` | — | [src](../../../core/services/db_sentinel.py#L64) |
-| function | `_save` | `(c)` | — | [src](../../../core/services/db_sentinel.py#L73) |
-| function | `scan` | `()` | Census + vækst-delta vs forrige snapshot + flag egregious vækst. Returnér rapport. | [src](../../../core/services/db_sentinel.py#L81) |
-| function | `observe` | `()` | Kør scan + central.observe(summary) + flag egregious vækst som incident (review). | [src](../../../core/services/db_sentinel.py#L105) |
-| function | `build_db_health_surface` | `()` | MC-surface — read-only meta-projektion af DB-helbred + kandidat-død-liste til review. | [src](../../../core/services/db_sentinel.py#L131) |
 

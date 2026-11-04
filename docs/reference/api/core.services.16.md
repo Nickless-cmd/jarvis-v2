@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/inbox_importance.py`
+_Shared importance and delivery policy for Jarvis' inbox surfaces._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normalize_importance` | `(value, *, default=…)` | — | [src](../../../core/services/inbox_importance.py#L11) |
+| function | `is_round_worthy` | `(value)` | — | [src](../../../core/services/inbox_importance.py#L16) |
+| function | `prompt_order` | `(item)` | Unseen always wins, then importance, then durable creation order. | [src](../../../core/services/inbox_importance.py#L20) |
+
 ## `core/services/inbox_prompt_section.py`
 _Indbakken i prompten — læseren hele kæden manglede._
 
@@ -750,12 +759,4 @@ _Efterfyld en session i ledgeren og slå skyggen til._
 | function | `is_armed` | `()` | — | [src](../../../core/services/ledger_canary.py#L224) |
 | function | `disarm` | `()` | — | [src](../../../core/services/ledger_canary.py#L232) |
 | function | `maybe_enroll_new_session` | `(session_id)` | Kaldes naar en ny session oprettes. Fejler ALDRIG opad. | [src](../../../core/services/ledger_canary.py#L239) |
-
-## `core/services/ledger_recovery.py`
-_Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `inspect` | `(session_id)` | Se på sessionen UDEN at røre den. Tager ingen lease, skriver intet. | [src](../../../core/services/ledger_recovery.py#L49) |
-| function | `recover` | `(session_id, *, owner=…, grund=…)` | Luk en åben tur med en balancerende hændelse. Kræver skriveret. | [src](../../../core/services/ledger_recovery.py#L77) |
 

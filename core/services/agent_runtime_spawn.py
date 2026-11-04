@@ -677,7 +677,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # Kontraktagenter bruger altid en isoleret worker. Kun agenter uden
         # assignment bruger de gamle reversible worker-/toolflags.
         from core.services.agent_worker_runner import run_agent_in_worker, worker_mode_enabled
-        if _layers is not None:
+        from core.services.agent_cli_backend import is_cli_provider, run_task_cli
+        if _layers is not None and is_cli_provider(str(agent.get("provider") or "")):
+            # Claude Code/Codex er komplette agent-backends, ikke chatmodeller.
+            # De koerer én afgraenset session i Taskens worktree/read-only rod;
+            # den almindelige worker-/tool-loop ville ellers bede en agent-CLI
+            # om at udstede Jarvis-tool_calls, som den ikke kan levere.
+            result = run_task_cli(agent=agent, prompt=prompt, run_id=run_id)
+        elif _layers is not None:
             # agent-contract-v1 (C6): loekken koerer i en sandboxet workerproces; serveren er broker.
             # Kan sandboxen ikke etableres, fejler turen (ingen stille tilbagegang til in-process).
             result = run_agent_in_worker(

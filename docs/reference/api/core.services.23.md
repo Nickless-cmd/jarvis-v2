@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_orchestrator.py`
+_Adaptive research coordinator around the existing visible and agent runtimes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L30) |
+| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L34) |
+| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L48) |
+| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L56) |
+| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L78) |
+| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L109) |
+| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L152) |
+| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L177) |
+| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L193) |
+| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L204) |
+| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L208) |
+| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L213) |
+| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L230) |
+| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L304) |
+| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L321) |
+| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L355) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L393) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L439) |
+| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L490) |
+| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L514) |
+| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L552) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L584) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L625) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L651) |
+| class | `ResearchRecoverableError` | `` | Der er intet at syntetisere på — forælderen må tage sig af det. | [src](../../../core/services/research_orchestrator.py#L971) |
+| method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L979) |
+| function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L986) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1061) |
+
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
 
@@ -594,17 +628,4 @@ _Beskeder der hoerer EFTER historikken i en agentisk tur._
 | function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L591) |
 | function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L604) |
 | function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L626) |
-
-## `core/services/runtime_action_outcome_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_runtime_action_outcome` | `(*, action_id, mode, reason, score, payload, result, run_id=…, session_id=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L13) |
-| function | `build_runtime_action_outcome_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L58) |
-| function | `recent_runtime_action_outcomes` | `(*, limit=…)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L82) |
-| function | `_persist_runtime_action_outcome` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L91) |
-| function | `_persist_action_weight` | `(outcome)` | Skrive-vejen: udfaldet flytter vaegten (UPDATE, ikke INSERT). | [src](../../../core/services/runtime_action_outcome_tracking.py#L112) |
-| function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L132) |
-| function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L157) |
-| function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L168) |
 

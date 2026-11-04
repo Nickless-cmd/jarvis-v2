@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18083 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18097 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -30,37 +30,37 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18083 functions/
 - [`core.runtime.01`](core.runtime.01.md) — `__init__` … `db_cognitive_utility`
 - [`core.runtime.02`](core.runtime.02.md) — `db_composer_choice` … `db_runtime_relational_signals`
 - [`core.runtime.03`](core.runtime.03.md) — `db_runtime_self` … `ws_auth`
-- [`core.services.01`](core.services.01.md) — `__init__` … `agent_parking`
-- [`core.services.02`](core.services.02.md) — `agent_pool_router` … `anticipatory_context`
-- [`core.services.03`](core.services.03.md) — `api_connection_nerve` … `avoidance_detector`
-- [`core.services.04`](core.services.04.md) — `background_attention` … `central_agent_smith`
-- [`core.services.05`](core.services.05.md) — `central_agent_smith_escalation` … `central_health`
-- [`core.services.06`](core.services.06.md) — `central_hub` … `central_proposal`
-- [`core.services.07`](core.services.07.md) — `central_rca` … `chat_crypto`
-- [`core.services.08`](core.services.08.md) — `chat_flow_preferences` … `cluster_family_scheduler`
-- [`core.services.09`](core.services.09.md) — `code_aesthetic_daemon` … `conversation_rhythm`
-- [`core.services.10`](core.services.10.md) — `conversation_topics` … `db_sentinel`
-- [`core.services.11`](core.services.11.md) — `decision_action_gate` … `dispatch_guards`
-- [`core.services.12`](core.services.12.md) — `dispatch_quota` … `emotion_tagging`
-- [`core.services.13`](core.services.13.md) — `emotional_chords` … `followup_output_budget`
-- [`core.services.14`](core.services.14.md) — `forced_tool_choice_probe` … `ground_truth_registry`
-- [`core.services.15`](core.services.15.md) — `grounded_capability_followup` … `inbox_importance`
-- [`core.services.16`](core.services.16.md) — `inbox_prompt_section` … `ledger_recovery`
-- [`core.services.17`](core.services.17.md) — `ledger_write_path` … `memory_pruning_daemon`
-- [`core.services.18`](core.services.18.md) — `memory_recall_engine` … `non_visible_fallback`
-- [`core.services.19`](core.services.19.md) — `non_visible_lane_execution` … `periodic_jobs_scheduler`
-- [`core.services.20`](core.services.20.md) — `permission_axes` … `projection_guard`
-- [`core.services.21`](core.services.21.md) — `projection_runtime` … `query_language_bridge`
-- [`core.services.22`](core.services.22.md) — `quota_store` … `research_orchestrator`
-- [`core.services.23`](core.services.23.md) — `research_prompt_context` … `runtime_action_outcome_tracking`
-- [`core.services.24`](core.services.24.md) — `runtime_action_registry` … `self_critique_runtime`
-- [`core.services.25`](core.services.25.md) — `self_deception_guard` … `session_permission`
-- [`core.services.26`](core.services.26.md) — `session_persistence_flag` … `skill_relevance_surface`
-- [`core.services.27`](core.services.27.md) — `skill_scanner` … `temporal_narrative`
-- [`core.services.28`](core.services.28.md) — `temporal_recurrence_signal_tracking` … `tool_world_change`
-- [`core.services.29`](core.services.29.md) — `totp_verifier` … `visible_followup_lean`
-- [`core.services.30`](core.services.30.md) — `visible_followup_results` … `visible_stream_gate`
-- [`core.services.31`](core.services.31.md) — `visible_stream_gate_wrapper` … `world_model_signal_tracking`
+- [`core.services.01`](core.services.01.md) — `__init__` … `agent_outcomes_log`
+- [`core.services.02`](core.services.02.md) — `agent_parking` … `anticipatory_action_daemon`
+- [`core.services.03`](core.services.03.md) — `anticipatory_context` … `autonomy_proposal_queue`
+- [`core.services.04`](core.services.04.md) — `avoidance_detector` … `central_agenda`
+- [`core.services.05`](core.services.05.md) — `central_agent_smith` … `central_growth_observe`
+- [`core.services.06`](core.services.06.md) — `central_health` … `central_prompt_explore`
+- [`core.services.07`](core.services.07.md) — `central_proposal` … `chat_conversation_rules`
+- [`core.services.08`](core.services.08.md) — `chat_crypto` … `cluster_daemon_families`
+- [`core.services.09`](core.services.09.md) — `cluster_family_scheduler` … `contradiction_resolver`
+- [`core.services.10`](core.services.10.md) — `conversation_rhythm` … `day_shape_memory`
+- [`core.services.11`](core.services.11.md) — `db_sentinel` … `dispatch_envelope`
+- [`core.services.12`](core.services.12.md) — `dispatch_guards` … `emotion_repair_bridge_daemon`
+- [`core.services.13`](core.services.13.md) — `emotion_tagging` … `followup_observer`
+- [`core.services.14`](core.services.14.md) — `followup_output_budget` … `gratitude_tracker`
+- [`core.services.15`](core.services.15.md) — `ground_truth_registry` … `inbox_idle_waker`
+- [`core.services.16`](core.services.16.md) — `inbox_importance` … `ledger_canary`
+- [`core.services.17`](core.services.17.md) — `ledger_recovery` … `memory_md_update_proposal_tracking`
+- [`core.services.18`](core.services.18.md) — `memory_pruning_daemon` … `network_health`
+- [`core.services.19`](core.services.19.md) — `non_visible_fallback` … `perceptual_event_engine`
+- [`core.services.20`](core.services.20.md) — `periodic_jobs_scheduler` … `projection_drift`
+- [`core.services.21`](core.services.21.md) — `projection_guard` … `pushback`
+- [`core.services.22`](core.services.22.md) — `query_language_bridge` … `research_ledger`
+- [`core.services.23`](core.services.23.md) — `research_orchestrator` … `runtime_action_executor`
+- [`core.services.24`](core.services.24.md) — `runtime_action_outcome_tracking` … `self_compassion`
+- [`core.services.25`](core.services.25.md) — `self_critique_runtime` … `session_model_pin`
+- [`core.services.26`](core.services.26.md) — `session_permission` … `skill_gate_guard`
+- [`core.services.27`](core.services.27.md) — `skill_relevance_surface` … `temporal_depth`
+- [`core.services.28`](core.services.28.md) — `temporal_narrative` … `tool_usage_store`
+- [`core.services.29`](core.services.29.md) — `tool_world_change` … `visible_followup_events`
+- [`core.services.30`](core.services.30.md) — `visible_followup_lean` … `visible_self_state_summary`
+- [`core.services.31`](core.services.31.md) — `visible_stream_gate` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/query_language_bridge.py`
+_Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normalise_for_embedding` | `(text)` | Byt danske fagord til engelske foer et embedding-opslag. | [src](../../../core/services/query_language_bridge.py#L80) |
+| function | `build_query_language_bridge_surface` | `(text=…)` | Observationsflade — hvad broen ville goere ved denne besked. | [src](../../../core/services/query_language_bridge.py#L103) |
+
 ## `core/services/quota_store.py`
 _Kvote-regnskab pr. bruger/mode med daglig nulstilling (spec §21)._
 
@@ -724,38 +732,4 @@ _Research-runnet synligt i session-ledgeren (spec Fase A4)._
 | function | `record_research_event` | `(session_id, *, event_id, event, payload=…)` | Skriv én research-hændelse i session-ledgeren. Kaster aldrig. | [src](../../../core/services/research_ledger.py#L51) |
 | function | `record_run_started` | `(session_id, *, run_id, tier, query)` | Runnet er startet: tier og den oprindelige forespørgsel. | [src](../../../core/services/research_ledger.py#L96) |
 | function | `record_run_completed` | `(session_id, *, run_id, sources, quality, timed_out, tool_calls=…)` | Runnet er slut: hvad det blev — kilder, kvalitetsdom, timeout, forbrug. | [src](../../../core/services/research_ledger.py#L106) |
-
-## `core/services/research_orchestrator.py`
-_Adaptive research coordinator around the existing visible and agent runtimes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L30) |
-| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L34) |
-| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L48) |
-| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L56) |
-| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L78) |
-| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L109) |
-| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L152) |
-| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L177) |
-| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L193) |
-| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L204) |
-| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L208) |
-| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L213) |
-| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L230) |
-| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L304) |
-| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L321) |
-| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L355) |
-| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L393) |
-| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L439) |
-| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L490) |
-| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L514) |
-| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L552) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L584) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L625) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L651) |
-| class | `ResearchRecoverableError` | `` | Der er intet at syntetisere på — forælderen må tage sig af det. | [src](../../../core/services/research_orchestrator.py#L971) |
-| method | `ResearchRecoverableError.__init__` | `(self, run_id, reason, evidence_count=…)` | — | [src](../../../core/services/research_orchestrator.py#L979) |
-| function | `resume_research_run` | `(run_id, *, visible_run_id, worker_factory=…)` | Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor. | [src](../../../core/services/research_orchestrator.py#L986) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L1061) |
 

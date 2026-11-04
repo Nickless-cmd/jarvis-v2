@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/ledger_recovery.py`
+_Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `inspect` | `(session_id)` | Se på sessionen UDEN at røre den. Tager ingen lease, skriver intet. | [src](../../../core/services/ledger_recovery.py#L49) |
+| function | `recover` | `(session_id, *, owner=…, grund=…)` | Luk en åben tur med en balancerende hændelse. Kræver skriveret. | [src](../../../core/services/ledger_recovery.py#L77) |
+
 ## `core/services/ledger_write_path.py`
 _Skrivevejen for en session hvor LEDGEREN er sandheden._
 
@@ -616,14 +624,4 @@ _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.
 | function | `_stronger_confidence` | `(left, right)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L516) |
 | function | `_rank_confidence` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L520) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L524) |
-
-## `core/services/memory_pruning_daemon.py`
-_Memory pruning daemon — arkiverer entries med meget lav salience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_memory_pruning_daemon` | `()` | Run pruning cycle if cadence elapsed. Returns stats dict. | [src](../../../core/services/memory_pruning_daemon.py#L53) |
-| function | `_prune_brain_entries` | `(now)` | Find brain entries med effektiv salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L103) |
-| function | `_prune_private_brain_records` | `()` | Find private_brain_records med salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L164) |
-| function | `build_memory_pruning_surface` | `()` | — | [src](../../../core/services/memory_pruning_daemon.py#L210) |
 

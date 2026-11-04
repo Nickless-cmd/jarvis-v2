@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -50,6 +51,7 @@ from typing import Any, Callable
 _CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 _CLAUDE_BETA = "oauth-2025-04-20"
 _CLAUDE_ENV_FILE = "~/.jarvis-v2/config/claude_dispatch.env"
+_CLAUDE_CREDENTIALS_FILE = "~/.claude/.credentials.json"
 _CODEX_SESSIONS = "~/.codex/sessions"
 
 CACHE_TTL_SECONDS = 60.0
@@ -81,6 +83,9 @@ class QuotaReading:
     error: str = ""
     observed_at: str = ""
     cached: bool = False
+    # True = «jeg VED den er doed» (udloebet token, usage limit), ikke
+    # «jeg ved det ikke». Preflight blokerer paa den foerste.
+    hard_block: bool = False
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.values.get(key, default)
@@ -101,6 +106,10 @@ def _cached(backend: str, loader: Callable[[], QuotaReading]) -> QuotaReading:
         return QuotaReading(
             ok=prev.ok, backend=prev.backend, values=dict(prev.values),
             error=prev.error, observed_at=prev.observed_at, cached=True,
+            # Uden denne linje taber et cache-hit «maalt doed»-flaget, og
+            # preflighten blokerer kun det FOERSTE kald — derefter siger
+            # cachen «tillad» i CACHE_TTL_SECONDS. Maalt 4/11-2026.
+            hard_block=prev.hard_block,
         )
     reading = loader()
     _CACHE[backend] = (time.monotonic(), reading)
@@ -122,8 +131,8 @@ def _claude_token() -> tuple[str, str]:
     path = Path(os.path.expanduser(_CLAUDE_ENV_FILE))
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as e:  # env-filen er valgfri — miljoeet kan baere tokenet alene
-        return "", f"CLAUDE_CODE_OAUTH_TOKEN mangler i miljøet og {path} kan ikke læses: {e}"
+    except OSError:  # env-filen er valgfri — naeste kilde kan baere tokenet
+        text = ""
     for line in text.splitlines():
         line = line.strip()
         if line.startswith("export "):
@@ -132,13 +141,49 @@ def _claude_token() -> tuple[str, str]:
             value = line.split("=", 1)[1].strip().strip('"').strip("'")
             if value:
                 return value, "env_file"
-    return "", f"CLAUDE_CODE_OAUTH_TOKEN mangler i miljøet og i {path}"
+    return _claude_credentials_token()
+
+
+def _claude_credentials_token() -> tuple[str, str]:
+    """Claude Codes egen credentials-fil — den kilde CLI'en selv bruger.
+
+    Målt 4/11-2026 på CheifOne: `claudeAiOauth.accessToken` + `expiresAt`
+    (ms). Et udløbet token giver 401 fra både usage-endpointet og
+    `claude -p`, så tilstanden rapporteres som MÅLT død med udløbstidspunktet
+    i stedet for at ligne «kvoten kunne ikke måles».
+    """
+    path = Path(os.path.expanduser(_CLAUDE_CREDENTIALS_FILE))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError:  # filen findes ikke — saa er der ingen kilde tilbage
+        return "", (
+            "CLAUDE_CODE_OAUTH_TOKEN mangler i miljøet, i "
+            f"{_CLAUDE_ENV_FILE} og i {path}"
+        )
+    except ValueError:  # filen er ikke JSON — behandl som ingen kilde
+        return "", f"{path} kunne ikke parses som JSON"
+    oauth = data.get("claudeAiOauth") if isinstance(data, dict) else None
+    if not isinstance(oauth, dict):
+        return "", f"{path} havde ingen claudeAiOauth-sektion"
+    value = str(oauth.get("accessToken") or "").strip()
+    if not value:
+        return "", f"{path} havde intet accessToken"
+    expires_ms = float(oauth.get("expiresAt") or 0.0)
+    if expires_ms and expires_ms / 1000.0 <= time.time():
+        return "", (
+            f"Claude-tokenet i {path} er udløbet "
+            f"({_epoch_iso(expires_ms / 1000.0)}) — log ind med `claude` igen"
+        )
+    return value, "credentials_file"
 
 
 def _load_claude_quota() -> QuotaReading:
     token, source = _claude_token()
     if not token:
-        return QuotaReading(ok=False, backend="claude", error=source)
+        return QuotaReading(
+            ok=False, backend="claude", error=source,
+            hard_block="udløbet" in source,
+        )
 
     request = urllib.request.Request(_CLAUDE_USAGE_URL, headers={
         "Authorization": f"Bearer {token}",
@@ -200,6 +245,46 @@ def claude_quota() -> QuotaReading:
 
 
 # ── Codex ───────────────────────────────────────────────────────────────────
+
+_MONTHS = {
+    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+    "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
+}
+
+_CODEX_RESET_RE = re.compile(
+    r"try again at ([A-Z][a-z]{2}) (\d{1,2})(?:st|nd|rd|th)?,? (\d{4}) (\d{1,2}):(\d{2}) (AM|PM)"
+)
+
+
+def _codex_usage_limit_reset(tail: str) -> float | None:
+    """Epoch for «try again at …» naar den seneste rollout doede paa usage limit.
+
+    Tiden i beskeden er LOKAL (målt 4/11-2026: «2:09 AM» svarede til 01:09 UTC
+    i rate_limits), så den parses som naiv lokal tid og konverteres af
+    `timestamp()`.
+    """
+    if "usage limit" not in tail:
+        return None
+    matches = _CODEX_RESET_RE.findall(tail)
+    if not matches:
+        return None
+    mon, day, year, hour, minute, ampm = matches[-1]
+    # Maaneden mappes eksplicit: `%b` er LOCALE-afhaengig, og paa en dansk
+    # LC_TIME fejler strptime paa «Nov». Det ville goere vagten tavst
+    # inaktiv paa netop den maskine den skal vogte.
+    month = _MONTHS.get(mon)
+    if month is None:
+        return None
+    try:
+        parsed = datetime(
+            int(year), month, int(day),
+            int(hour) % 12 + (12 if ampm == "PM" else 0),
+            int(minute),
+        )
+    except ValueError:  # ugyldig dato i beskeden — ingen paalidelig reset-tid
+        return None
+    return parsed.timestamp()
+
 
 def _latest_rollout() -> Path | None:
     root = Path(os.path.expanduser(_CODEX_SESSIONS))
@@ -279,6 +364,32 @@ def _load_codex_quota() -> QuotaReading:
         )
 
     now = time.time()
+    # Codex melder «opbrugt» som primary=null/secondary=null PLUS en
+    # task_complete med usage-limit-fejl. Uden dette læses null som 0 % —
+    # altså «der er masser tilbage» — og preflighten slipper en dispatch
+    # igennem der dør efter sekunder. Målt 4/11-2026: kvoten var tør, mens
+    # læseren svarede «0 % brugt».
+    blocked_until = _codex_usage_limit_reset(tail)
+    if blocked_until is not None and blocked_until > now:
+        return QuotaReading(
+            ok=True, backend="codex",
+            values={
+                "primary_pct": 100.0,
+                "primary_resets_at": _epoch_iso(blocked_until),
+                "primary_expired": False,
+                "secondary_pct": 0.0,
+                "secondary_resets_at": "",
+                "secondary_expired": False,
+                "plan_type": str(limits.get("plan_type") or ""),
+                "rate_limit_reached_type": "usage_limit",
+                "age_seconds": round(now - mtime, 1),
+                "source_file": str(path),
+                "evidence": "task_complete usage limit",
+            },
+            observed_at=_epoch_iso(mtime),
+            hard_block=True,
+        )
+
     primary = limits.get("primary") or {}
     secondary = limits.get("secondary") or {}
 
@@ -343,6 +454,14 @@ def quota_preflight(backend: str) -> dict[str, Any]:
     """
     reading = claude_quota() if backend == "claude" else codex_quota()
     if not reading.ok:
+        if reading.hard_block:
+            # Maalt doed (fx udloebet token). Det er viden, ikke uvidenhed —
+            # og kontrakten siger bloker paa viden.
+            return {
+                "allow": False, "severity": "block",
+                "reason": reading.error,
+                "pct": None, "resets_at": "", "reading": reading,
+            }
         return {
             "allow": True, "severity": "unknown",
             "reason": f"kvoten kunne ikke måles ({reading.error}) — dispatchen fortsætter",

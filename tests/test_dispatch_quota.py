@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import time
 import urllib.error
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -38,9 +39,14 @@ class _Resp:
 
 
 @pytest.fixture(autouse=True)
-def _clean(monkeypatch):
+def _clean(monkeypatch, tmp_path):
     dispatch_quota.reset_cache()
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-token")
+    # Testene maa ikke laane maskinens EGEN credentials-fil: den findes paa
+    # CheifOne og er udloebet, saa uden denne linje afhaenger resultatet af
+    # hvilken maskine suiten koerer paa. Maalt 4/11-2026.
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE",
+                        str(tmp_path / "ingen-credentials.json"))
     yield
     dispatch_quota.reset_cache()
 
@@ -277,3 +283,127 @@ def test_preflight_standser_foer_worktree_oprettes(monkeypatch):
     assert res["failure_kind"] == "quota_exhausted"
     assert res["status"] == "error" and res["needs_human"] is False
     assert skrevet.get("failure_kind") == "quota_exhausted"
+
+
+# ── «Opbrugt» skal læses som opbrugt, ikke som nul ───────────────────────────
+# Målt 4/11-2026 på CheifOne: codex' rate_limits havde primary=null og
+# secondary=null, credits.balance="0", og den seneste task_complete bar
+# «You've hit your usage limit … try again at Nov 5th, 2026 2:09 AM».
+# Læseren tog null for 0 % og preflighten svarede «tillad». Det er den
+# fejlform der ser ud som en måling uden at være det.
+
+_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _codex_limit_label(moment: "datetime") -> str:
+    """Samme form codex selv skriver — bygget uden locale-afhaengighed."""
+    hour12 = moment.hour % 12 or 12
+    ampm = "AM" if moment.hour < 12 else "PM"
+    return f"{_MON[moment.month - 1]} {moment.day}, {moment.year} {hour12}:{moment.minute:02d} {ampm}"
+
+
+def _write_exhausted_rollout(tmp_path, reset_at: "datetime") -> None:
+    path = tmp_path / "2026" / "11" / "04"
+    path.mkdir(parents=True, exist_ok=True)
+    token_count = {
+        "type": "event_msg",
+        "payload": {
+            "type": "token_count",
+            "rate_limits": {
+                "limit_id": "premium",
+                "primary": None,
+                "secondary": None,
+                "credits": {"has_credits": False, "unlimited": False, "balance": "0"},
+                "plan_type": "plus",
+            },
+        },
+    }
+    complete = {
+        "type": "event_msg",
+        "payload": {
+            "type": "task_complete",
+            "error": {
+                "message": "You’ve hit your usage limit. Upgrade to Pro "
+                           f"(https://chatgpt.com/explore/pro) … or try again at "
+                           f"{_codex_limit_label(reset_at)}."
+            },
+        },
+    }
+    (path / "rollout-2026-11-04T21-09-27-test.jsonl").write_text(
+        json.dumps({"type": "session_meta"}) + "\n"
+        + json.dumps(token_count) + "\n" + json.dumps(complete) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_codex_usage_limit_blokerer_selv_naar_vinduerne_er_null(monkeypatch, tmp_path):
+    reset = datetime.now() + timedelta(hours=3)
+    _write_exhausted_rollout(tmp_path, reset)
+    monkeypatch.setattr(dispatch_quota, "_CODEX_SESSIONS", str(tmp_path))
+
+    reading = dispatch_quota.codex_quota()
+    preflight = dispatch_quota.quota_preflight("codex")
+
+    assert reading.ok is True
+    assert reading.hard_block is True
+    assert reading.get("primary_pct") == 100.0
+    assert reading.get("rate_limit_reached_type") == "usage_limit"
+    assert preflight["allow"] is False
+    assert preflight["severity"] == "block"
+
+
+def test_codex_usage_limit_efter_reset_slipper_igennem(monkeypatch, tmp_path):
+    """Er «try again at» passeret, er grænsen historie — ikke en blokering."""
+    reset = datetime.now() - timedelta(hours=3)
+    _write_exhausted_rollout(tmp_path, reset)
+    monkeypatch.setattr(dispatch_quota, "_CODEX_SESSIONS", str(tmp_path))
+
+    reading = dispatch_quota.codex_quota()
+
+    assert reading.hard_block is False
+    assert dispatch_quota.quota_preflight("codex")["allow"] is True
+
+
+def test_claude_udloebet_credentials_token_blokerer(monkeypatch, tmp_path):
+    """Udløbet token er MÅLT død — ikke «kunne ikke måles», som er fail-open."""
+    cred = tmp_path / ".credentials.json"
+    cred.write_text(json.dumps({
+        "claudeAiOauth": {
+            "accessToken": "sk-ant-oat01-udloebet",
+            "expiresAt": (time.time() - 3600) * 1000,
+        }
+    }), encoding="utf-8")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_ENV_FILE", str(tmp_path / "ingen.env"))
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE", str(cred))
+
+    reading = dispatch_quota.claude_quota()
+    preflight = dispatch_quota.quota_preflight("claude")
+
+    assert reading.ok is False
+    assert reading.hard_block is True
+    assert "udløbet" in reading.error
+    assert preflight["allow"] is False
+    assert preflight["severity"] == "block"
+
+
+def test_claude_gyldigt_credentials_token_bruges(monkeypatch, tmp_path):
+    """Et levende token i credentials-filen skal bruges som kilde."""
+    cred = tmp_path / ".credentials.json"
+    cred.write_text(json.dumps({
+        "claudeAiOauth": {
+            "accessToken": "sk-ant-oat01-levende",
+            "expiresAt": (time.time() + 3600) * 1000,
+        }
+    }), encoding="utf-8")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_ENV_FILE", str(tmp_path / "ingen.env"))
+    monkeypatch.setattr(dispatch_quota, "_CLAUDE_CREDENTIALS_FILE", str(cred))
+    monkeypatch.setattr(dispatch_quota.urllib.request, "urlopen",
+                        lambda *a, **k: _Resp(json.dumps(CLAUDE_PAYLOAD).encode()))
+
+    reading = dispatch_quota.claude_quota()
+
+    assert reading.ok is True
+    assert reading.get("token_source") == "credentials_file"

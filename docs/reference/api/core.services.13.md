@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_tagging.py`
+_Emotion tagging — capture affective context at memory-creation time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `current_emotion_tag` | `()` | Snapshot current affective state for tagging a new memory. | [src](../../../core/services/emotion_tagging.py#L25) |
+| function | `format_emotion_tag` | `(tag)` | Render a tag as a compact string for inclusion in memory text. | [src](../../../core/services/emotion_tagging.py#L53) |
+| function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
+| function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
+| function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
+
 ## `core/services/emotional_chords.py`
 _Emotional Chords — emergent qualities from signal combinations._
 
@@ -666,14 +677,4 @@ _Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente
 | function | `note_leak` | `(run_id, *, provider=…, model=…, chars=…, reason=…)` | LEAK/DUMP: modellen echoede et råt (kæmpe) tool-result som prosa-svar i stedet | [src](../../../core/services/followup_observer.py#L215) |
 | function | `note_degeneration` | `(run_id, *, provider=…, model=…, reason=…, chars=…)` | MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved | [src](../../../core/services/followup_observer.py#L234) |
 | function | `followup_summary` | `(*, window=…)` | Read-only: nylig followup-loop-aktivitet (til MC). Self-safe. | [src](../../../core/services/followup_observer.py#L253) |
-
-## `core/services/followup_output_budget.py`
-_Output-token budget for agentic follow-up rounds + the "reasoning ate the_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `followup_max_tokens` | `(provider, model=…)` | Output budget for one follow-up round on ``provider``. | [src](../../../core/services/followup_output_budget.py#L35) |
-| function | `reasoning_exhausted` | `(*, finish_reason, text, tool_calls)` | True when the provider stopped for length and nothing usable came out: | [src](../../../core/services/followup_output_budget.py#L43) |
-| function | `supports_nonthinking_retry` | `(provider, model)` | Only DeepSeek thinking models can be re-run with thinking disabled. | [src](../../../core/services/followup_output_budget.py#L53) |
-| function | `nonthinking_retry_body` | `()` | Extra request fields that disable DeepSeek thinking for the retry round. | [src](../../../core/services/followup_output_budget.py#L61) |
 

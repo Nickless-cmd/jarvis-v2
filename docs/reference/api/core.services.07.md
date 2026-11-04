@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_proposal.py`
+_core/services/central_proposal.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `audit_proposal` | `(notation, *, existing=…)` | Auditér en foreslået mutation (som notation-sætning) model-frit. Returnerer | [src](../../../core/services/central_proposal.py#L20) |
+| function | `make_proposal` | `(*, domain, notation, rationale=…, existing=…)` | Pak en mutation-forslag ind SOM en auditeret NotationProposal. `admissible=True` betyder KUN | [src](../../../core/services/central_proposal.py#L56) |
+
 ## `core/services/central_rca.py`
 _Self-RCA — så Jarvis kan grave ÉN fejl til bunds i stedet for at starte på fem nye._
 
@@ -608,20 +616,4 @@ _Samtale-reglerne for chat mode — med en LIVE killswitch._
 | function | `kill` | `(reason=…)` | Slå reglerne fra uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L37) |
 | function | `revive` | `()` | Slå reglerne til igen uden genstart. | [src](../../../core/services/chat_conversation_rules.py#L43) |
 | function | `section` | `(*, compact=…)` | Reglerne som prompt-tekst — eller None når killswitchen er slået fra. | [src](../../../core/services/chat_conversation_rules.py#L49) |
-
-## `core/services/chat_crypto.py`
-_Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `kryptering_slaaet_til` | `()` | Nødbremse. Tændt med mindre nogen eksplicit slukker. | [src](../../../core/services/chat_crypto.py#L65) |
-| function | `medlem_for_raekke` | `(*, workspace_name=…, user_id=…)` | `discord_id` for den registrerede NON-owner rækken tilhører, ellers None. | [src](../../../core/services/chat_crypto.py#L71) |
-| function | `medlem_for_session` | `(session_id, conn=…)` | Samme svar som `medlem_for_raekke`, men udledt af sessionen. | [src](../../../core/services/chat_crypto.py#L101) |
-| function | `er_krypteret` | `(raa)` | — | [src](../../../core/services/chat_crypto.py#L150) |
-| function | `krypter` | `(tekst, medlem_id)` | ``enc:v1:<base64>``. Allerede krypteret tekst røres ikke. | [src](../../../core/services/chat_crypto.py#L154) |
-| function | `dekrypter` | `(raa, medlem_id)` | Modsat `krypter`. Klartekst ind → klartekst ud, uændret. | [src](../../../core/services/chat_crypto.py#L164) |
-| function | `medlem_for_skrivning` | `(raekke, *, session_id=…, conn=…)` | Hvem rækken tilhører — rækkens egne felter først, ellers SESSIONEN. | [src](../../../core/services/chat_crypto.py#L184) |
-| function | `krypter_raekke` | `(raekke, *, session_id=…, conn=…)` | Krypter de tekstbærende felter i en chat-række, hvis den er en members. | [src](../../../core/services/chat_crypto.py#L216) |
-| function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L240) |
-| function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L278) |
 

@@ -2,27 +2,56 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dispatch_guards.py`
+_core/services/dispatch_guards.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rs_get` | `(key, default)` | — | [src](../../../core/services/dispatch_guards.py#L71) |
+| function | `_rs_set` | `(key, value)` | — | [src](../../../core/services/dispatch_guards.py#L81) |
+| function | `_as_float` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L90) |
+| function | `_as_int` | `(v, default)` | — | [src](../../../core/services/dispatch_guards.py#L97) |
+| function | `_idem_ttl_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L107) |
+| function | `try_consume` | `(key, *, now=…, ttl_s=…)` | Markér `key` forbrugt ATOMISK. True første gang, False hvis allerede forbrugt | [src](../../../core/services/dispatch_guards.py#L111) |
+| function | `synthesize_timeout_envelope` | `(agent_id, deadline_ms)` | Byg en LARMENDE TIMEOUT-envelope for en dispatch der aldrig meldte tilbage. | [src](../../../core/services/dispatch_guards.py#L152) |
+| function | `register_deadline` | `(dispatch_id, deadline_ts)` | Registrér hvornår en dispatch SENEST skal have rapporteret. Durabel. | [src](../../../core/services/dispatch_guards.py#L163) |
+| function | `overdue` | `(now_ts=…)` | Returnér dispatch_ids hvis deadline er passeret ved now_ts (frisk = ikke med). | [src](../../../core/services/dispatch_guards.py#L175) |
+| function | `clear_deadline` | `(dispatch_id)` | Fjern en deadline (kaldes når dispatch rapporterer tilbage). Durabel, self-safe. | [src](../../../core/services/dispatch_guards.py#L191) |
+| function | `_breaker_threshold` | `()` | — | [src](../../../core/services/dispatch_guards.py#L205) |
+| function | `_breaker_window_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L210) |
+| function | `_breaker_cooldown_s` | `()` | — | [src](../../../core/services/dispatch_guards.py#L215) |
+| function | `_breaker_state` | `(lane)` | — | [src](../../../core/services/dispatch_guards.py#L220) |
+| function | `record_outcome` | `(lane, ok, *, now=…)` | Registrér udfaldet af en dispatch på `lane`. En succes nulstiller den | [src](../../../core/services/dispatch_guards.py#L227) |
+| function | `is_tripped` | `(lane, *, now=…)` | True hvis breakeren for `lane` er åben (blokér dispatch). Auto-resetter efter | [src](../../../core/services/dispatch_guards.py#L253) |
+| function | `_budget_max_count` | `()` | — | [src](../../../core/services/dispatch_guards.py#L275) |
+| function | `_budget_max_cost` | `()` | — | [src](../../../core/services/dispatch_guards.py#L280) |
+| function | `_budget_events` | `(lane, now)` | Hent lane-forbrug som liste af [ts, cost] beskåret til det rullende 24h-vindue. | [src](../../../core/services/dispatch_guards.py#L285) |
+| function | `budget_allows` | `(lane, cost_usd, *, now=…)` | HÅRD backstop FØR LLM'en fyrer: False hvis dette dispatch ville bryde ENTEN | [src](../../../core/services/dispatch_guards.py#L303) |
+| function | `record_spend` | `(lane, cost_usd, *, now=…)` | Registrér ét dispatch + dets cost på `lane`. Beskærer samtidig vinduet til 24h. | [src](../../../core/services/dispatch_guards.py#L329) |
+
 ## `core/services/dispatch_quota.py`
 _Kvote for de to dispatch-CLI'er — målt, aldrig gættet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/dispatch_quota.py#L64) |
-| function | `_epoch_iso` | `(value)` | — | [src](../../../core/services/dispatch_quota.py#L68) |
-| class | `QuotaReading` | `` | Én måling. `ok=False` betyder «jeg ved det ikke», ikke «nul brugt». | [src](../../../core/services/dispatch_quota.py#L75) |
-| method | `QuotaReading.get` | `(self, key, default=…)` | — | [src](../../../core/services/dispatch_quota.py#L85) |
-| function | `reset_cache` | `()` | Til tests og til når et token er skiftet og cachen lyver. | [src](../../../core/services/dispatch_quota.py#L92) |
-| function | `_cached` | `(backend, loader)` | — | [src](../../../core/services/dispatch_quota.py#L97) |
-| function | `_claude_token` | `()` | Token + hvor det kom fra. Miljøet vinder; env-filen er fallback. | [src](../../../core/services/dispatch_quota.py#L112) |
-| function | `_load_claude_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L138) |
-| function | `claude_quota` | `()` | 5-timers og ugentlig kvote for Claude. Cachet i 60 s. | [src](../../../core/services/dispatch_quota.py#L197) |
-| function | `_latest_rollout` | `()` | — | [src](../../../core/services/dispatch_quota.py#L204) |
-| function | `_tail_text` | `(path, limit=…)` | Rollout-filer kan være store; rate_limits står i den nyeste hale. | [src](../../../core/services/dispatch_quota.py#L220) |
-| function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L229) |
-| function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L247) |
-| function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L318) |
-| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L325) |
-| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L337) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/dispatch_quota.py#L66) |
+| function | `_epoch_iso` | `(value)` | — | [src](../../../core/services/dispatch_quota.py#L70) |
+| class | `QuotaReading` | `` | Én måling. `ok=False` betyder «jeg ved det ikke», ikke «nul brugt». | [src](../../../core/services/dispatch_quota.py#L77) |
+| method | `QuotaReading.get` | `(self, key, default=…)` | — | [src](../../../core/services/dispatch_quota.py#L90) |
+| function | `reset_cache` | `()` | Til tests og til når et token er skiftet og cachen lyver. | [src](../../../core/services/dispatch_quota.py#L97) |
+| function | `_cached` | `(backend, loader)` | — | [src](../../../core/services/dispatch_quota.py#L102) |
+| function | `_claude_token` | `()` | Token + hvor det kom fra. Miljøet vinder; env-filen er fallback. | [src](../../../core/services/dispatch_quota.py#L121) |
+| function | `_claude_credentials_token` | `()` | Claude Codes egen credentials-fil — den kilde CLI'en selv bruger. | [src](../../../core/services/dispatch_quota.py#L147) |
+| function | `_load_claude_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L180) |
+| function | `claude_quota` | `()` | 5-timers og ugentlig kvote for Claude. Cachet i 60 s. | [src](../../../core/services/dispatch_quota.py#L242) |
+| function | `_codex_usage_limit_reset` | `(tail)` | Epoch for «try again at …» naar den seneste rollout doede paa usage limit. | [src](../../../core/services/dispatch_quota.py#L259) |
+| function | `_latest_rollout` | `()` | — | [src](../../../core/services/dispatch_quota.py#L289) |
+| function | `_tail_text` | `(path, limit=…)` | Rollout-filer kan være store; rate_limits står i den nyeste hale. | [src](../../../core/services/dispatch_quota.py#L305) |
+| function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L314) |
+| function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L332) |
+| function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L429) |
+| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L436) |
+| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L448) |
 
 ## `core/services/dispatch_status.py`
 _Typed dispatch-status enum for the dispatch-redesign._
@@ -667,15 +696,4 @@ _Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvr
 | function | `_skal_broes` | `(mode, first_of_its_kind)` | Skal denne reparation skrives til Sansernes Arkiv? | [src](../../../core/services/emotion_repair_bridge_daemon.py#L421) |
 | function | `_bridge_repair_to_senses` | `(*, action_type, pattern_id, outcome, concept, error_summary=…)` | Write a sensory impression to Sansernes Arkiv when self-repair happens. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L436) |
 | function | `_execute_repair_action` | `(action_type, pattern_id)` | Execute a repair action by type. Can be extended. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L487) |
-
-## `core/services/emotion_tagging.py`
-_Emotion tagging — capture affective context at memory-creation time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current_emotion_tag` | `()` | Snapshot current affective state for tagging a new memory. | [src](../../../core/services/emotion_tagging.py#L25) |
-| function | `format_emotion_tag` | `(tag)` | Render a tag as a compact string for inclusion in memory text. | [src](../../../core/services/emotion_tagging.py#L53) |
-| function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
-| function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
-| function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
 

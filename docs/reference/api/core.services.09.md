@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cluster_family_scheduler.py`
+_Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er det tid til?»_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_running` | `()` | Lever tråden? Siger intet om hvorvidt den udretter noget — se iterations(). | [src](../../../core/services/cluster_family_scheduler.py#L76) |
+| function | `iterations` | `()` | Gennemløb siden start. Står tallet stille, er løkken væk. | [src](../../../core/services/cluster_family_scheduler.py#L81) |
+| function | `stop_event` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L86) |
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, kører vi videre. | [src](../../../core/services/cluster_family_scheduler.py#L90) |
+| function | `_tick_functions` | `()` | Slå familiernes tick-funktioner op. De bor i to moduler efter en udskillelse. | [src](../../../core/services/cluster_family_scheduler.py#L99) |
+| function | `_is_due` | `(family, cadence_minutes, last_run_at)` | Er familien forfalden efter sin egen kadence? | [src](../../../core/services/cluster_family_scheduler.py#L120) |
+| function | `_tick_writing_own_state` | `(family, fn)` | Wrap en familie-tick så den skriver sit EGET spor, før den returnerer. | [src](../../../core/services/cluster_family_scheduler.py#L136) |
+| function | `run_due_families` | `()` | Kør de familier der er forfaldne. Returnerer hvad der skete — også til test. | [src](../../../core/services/cluster_family_scheduler.py#L163) |
+| function | `_loop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L218) |
+| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L252) |
+| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L267) |
+| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L277) |
+
 ## `core/services/code_aesthetic_daemon.py`
 _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 
@@ -570,13 +588,4 @@ _Contradiction resolver (spec 2026-07-10)._
 | function | `resolve_contradictions` | `(*, live)` | Resolve modsigelser. ``live=True`` muterer (supersede); ``live=False`` er | [src](../../../core/services/contradiction_resolver.py#L162) |
 | function | `run_resolver_tick` | `()` | Cadence-indgang. Kaldes gennem central().decide saa Centralen ER aktoeren; gate_enforcement | [src](../../../core/services/contradiction_resolver.py#L200) |
 | function | `build_contradiction_resolver_surface` | `(*, limit=…)` | Side-effect-fri read-surface til Central-CLI (jc raw /central/contradictions). | [src](../../../core/services/contradiction_resolver.py#L226) |
-
-## `core/services/conversation_rhythm.py`
-_Conversation Rhythm — tracks conversation signature patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_conversation` | `(*, turn_count, correction_count, avg_message_length, duration_minutes, outcome_status)` | Classify the conversation rhythm pattern. | [src](../../../core/services/conversation_rhythm.py#L20) |
-| function | `track_conversation_rhythm` | `(*, run_id, session_id=…, turn_count=…, correction_count=…, avg_message_length=…, duration_minutes=…, outcome_status=…)` | Track and classify the conversation rhythm. | [src](../../../core/services/conversation_rhythm.py#L40) |
-| function | `build_conversation_rhythm_surface` | `()` | — | [src](../../../core/services/conversation_rhythm.py#L74) |
 

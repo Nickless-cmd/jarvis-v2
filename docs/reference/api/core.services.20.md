@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/periodic_jobs_scheduler.py`
+_Periodic jobs scheduler — enqueues overdue background jobs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_extract_last_time` | `(item)` | Pick the most relevant timestamp from a job record. | [src](../../../core/services/periodic_jobs_scheduler.py#L75) |
+| function | `check_and_enqueue_due_periodic_jobs` | `()` | Idempotent — enqueue any periodic jobs whose cadence is exceeded. | [src](../../../core/services/periodic_jobs_scheduler.py#L88) |
+
 ## `core/services/permission_axes.py`
 _To akser: hvad et kald MÅ røre, og hvornår et menneske skal spørges._
 
@@ -692,12 +700,4 @@ _Drift-detektion — er ledgeren og `chat_messages` enige?_
 | function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
 | function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
 | function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
-
-## `core/services/projection_guard.py`
-_Vagten der gør et skifte til hovedbogen fortrydeligt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_guard.py#L28) |
-| function | `guard_direct_write` | `(session_id, *, projektion, tabel, conn=…)` | Afvis direkte skrivninger til `tabel` for en ledger-session. | [src](../../../core/services/projection_guard.py#L32) |
 

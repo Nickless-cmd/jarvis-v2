@@ -437,6 +437,25 @@ _Fastlaast bro-dispatch til EN bestemt klient (agent-contract-v1 E, spec 8)._
 | function | `dispatch_pinned` | `(*, user_id, client_id, tool, args, timeout_s, extra=…, allow_cross_process=…)` | Send ``tool`` til netop ``client_id``. Aldrig failover til en anden klient. Rejser ikke. | [src](../../../core/services/agent_bridge_dispatch.py#L55) |
 | function | `_forward` | `(*, user_id, client_id, tool, args, timeout_s, extra)` | Til den proces presence siger holder KLIENTEN. Ingen presence -> klienten er ikke forbundet. | [src](../../../core/services/agent_bridge_dispatch.py#L97) |
 
+## `core/services/agent_cli_backend.py`
+_Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `CliBackendError` | `` | — | [src](../../../core/services/agent_cli_backend.py#L39) |
+| function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L43) |
+| function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L56) |
+| function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L60) |
+| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L71) |
+| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L84) |
+| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L93) |
+| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L111) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L128) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L149) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L156) |
+| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L167) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L177) |
+
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._
 
@@ -652,9 +671,9 @@ _Modelvalg for agenter: premium-agentpulje -> ejerafhaengig fallback (agent-cont
 | function | `_cost_class` | `(provider)` | — | [src](../../../core/services/agent_model_policy.py#L104) |
 | function | `_evaluate` | `(provider, model, *, owner, role, needs_tools)` | (afvisningsaarsag eller '', fitness_ukendt). | [src](../../../core/services/agent_model_policy.py#L109) |
 | function | `_split_requested` | `(requested)` | ('provider','model') for ``provider/model`` eller et bart modelnavn fra kataloget; ellers ('',''). | [src](../../../core/services/agent_model_policy.py#L132) |
-| function | `_deepseek_budget_reason` | `()` | Tom = indenfor budget. Fail-closed: et ukendt budget er et afslag, ikke et ja. | [src](../../../core/services/agent_model_policy.py#L151) |
-| function | `_estimate_cost` | `(provider, model, budget_tokens)` | — | [src](../../../core/services/agent_model_policy.py#L166) |
-| function | `decide_route` | `(*, owner_user_id, requested_model=…, hard=…, role=…, needs_tools=…, min_tokens=…, budget_tokens=…, exclude=…)` | Faststil ruten FOER agenten oprettes. Rejser ``ModelUnavailable`` hvis ingen rute er tilladt. | [src](../../../core/services/agent_model_policy.py#L182) |
+| function | `_deepseek_budget_reason` | `()` | Tom = indenfor budget. Fail-closed: et ukendt budget er et afslag, ikke et ja. | [src](../../../core/services/agent_model_policy.py#L155) |
+| function | `_estimate_cost` | `(provider, model, budget_tokens)` | — | [src](../../../core/services/agent_model_policy.py#L170) |
+| function | `decide_route` | `(*, owner_user_id, requested_model=…, hard=…, role=…, needs_tools=…, min_tokens=…, budget_tokens=…, exclude=…)` | Faststil ruten FOER agenten oprettes. Rejser ``ModelUnavailable`` hvis ingen rute er tilladt. | [src](../../../core/services/agent_model_policy.py#L188) |
 
 ## `core/services/agent_model_router.py`
 _Modelkald for en agent: genvalidering ved kaldet og failover i kandidatkaeden (agent-contract-v1 D)._
@@ -698,14 +717,4 @@ _Agent Outcomes Log — persists solo-agent task completions to AGENT_OUTCOMES.m
 | function | `_parse_entries` | `(content)` | — | [src](../../../core/services/agent_outcomes_log.py#L83) |
 | function | `_parse_single_entry` | `(block)` | — | [src](../../../core/services/agent_outcomes_log.py#L96) |
 | function | `_extract_section` | `(block, heading)` | — | [src](../../../core/services/agent_outcomes_log.py#L129) |
-
-## `core/services/agent_parking.py`
-_Parkering og genoptagelse af et barn der venter paa en approval (agent-contract-v1 F4b, spec 8.2)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `set_assignment_status` | `(*, assignment_id, status, only_from)` | Atomisk statusskifte inden for de aabne tilstande. ``False`` hvis den ikke stod i ``only_from``. | [src](../../../core/services/agent_parking.py#L26) |
-| function | `park_run` | `(*, agent, run_id, result, thread_id=…)` | Gem checkpointen og sæt tilstandene. Returnerer agentens detaljeflade (som en almindelig tur). | [src](../../../core/services/agent_parking.py#L36) |
-| function | `take_resume` | `(agent_id)` | Er agenten parkeret og afgjort? Tag checkpointen (atomisk) og returnér loekkens ``resume``-dict, eller | [src](../../../core/services/agent_parking.py#L65) |
-| function | `resume_decided` | `(start)` | Genoptag alle parkerede agenter hvis approval er afgjort. ``start(agent_id)`` starter udfoerelsen | [src](../../../core/services/agent_parking.py#L88) |
 

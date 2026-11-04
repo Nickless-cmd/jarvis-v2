@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chat_crypto.py`
+_Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kryptering_slaaet_til` | `()` | Nødbremse. Tændt med mindre nogen eksplicit slukker. | [src](../../../core/services/chat_crypto.py#L65) |
+| function | `medlem_for_raekke` | `(*, workspace_name=…, user_id=…)` | `discord_id` for den registrerede NON-owner rækken tilhører, ellers None. | [src](../../../core/services/chat_crypto.py#L71) |
+| function | `medlem_for_session` | `(session_id, conn=…)` | Samme svar som `medlem_for_raekke`, men udledt af sessionen. | [src](../../../core/services/chat_crypto.py#L101) |
+| function | `er_krypteret` | `(raa)` | — | [src](../../../core/services/chat_crypto.py#L150) |
+| function | `krypter` | `(tekst, medlem_id)` | ``enc:v1:<base64>``. Allerede krypteret tekst røres ikke. | [src](../../../core/services/chat_crypto.py#L154) |
+| function | `dekrypter` | `(raa, medlem_id)` | Modsat `krypter`. Klartekst ind → klartekst ud, uændret. | [src](../../../core/services/chat_crypto.py#L164) |
+| function | `medlem_for_skrivning` | `(raekke, *, session_id=…, conn=…)` | Hvem rækken tilhører — rækkens egne felter først, ellers SESSIONEN. | [src](../../../core/services/chat_crypto.py#L184) |
+| function | `krypter_raekke` | `(raekke, *, session_id=…, conn=…)` | Krypter de tekstbærende felter i en chat-række, hvis den er en members. | [src](../../../core/services/chat_crypto.py#L216) |
+| function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L240) |
+| function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L278) |
+
 ## `core/services/chat_flow_preferences.py`
 _Authenticated per-user presentation preferences for Desk Chat Mode._
 
@@ -791,22 +807,4 @@ _Cluster-daemon FAMILIES — the second file of consolidated nerve-families._
 | function | `_infra_feedback_review_live` | `(snap)` | Giv Jarvis månedens tommel-op/ned at tænke over. Rules-based, no LLM. | [src](../../../core/services/cluster_daemon_families.py#L1343) |
 | function | `_run_infra_unconditional` | `(snap, result)` | Run every infra member UNCONDITIONALLY (this family has no LLM/gated tier), | [src](../../../core/services/cluster_daemon_families.py#L1378) |
 | function | `tick_cluster_infra` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the infra/maintenance cluster-daemon family (#10). | [src](../../../core/services/cluster_daemon_families.py#L1395) |
-
-## `core/services/cluster_family_scheduler.py`
-_Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er det tid til?»_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_running` | `()` | Lever tråden? Siger intet om hvorvidt den udretter noget — se iterations(). | [src](../../../core/services/cluster_family_scheduler.py#L76) |
-| function | `iterations` | `()` | Gennemløb siden start. Står tallet stille, er løkken væk. | [src](../../../core/services/cluster_family_scheduler.py#L81) |
-| function | `stop_event` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L86) |
-| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, kører vi videre. | [src](../../../core/services/cluster_family_scheduler.py#L90) |
-| function | `_tick_functions` | `()` | Slå familiernes tick-funktioner op. De bor i to moduler efter en udskillelse. | [src](../../../core/services/cluster_family_scheduler.py#L99) |
-| function | `_is_due` | `(family, cadence_minutes, last_run_at)` | Er familien forfalden efter sin egen kadence? | [src](../../../core/services/cluster_family_scheduler.py#L120) |
-| function | `_tick_writing_own_state` | `(family, fn)` | Wrap en familie-tick så den skriver sit EGET spor, før den returnerer. | [src](../../../core/services/cluster_family_scheduler.py#L136) |
-| function | `run_due_families` | `()` | Kør de familier der er forfaldne. Returnerer hvad der skete — også til test. | [src](../../../core/services/cluster_family_scheduler.py#L163) |
-| function | `_loop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L218) |
-| function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L252) |
-| function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L267) |
-| function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L277) |
 

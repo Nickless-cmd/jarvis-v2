@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_narrative.py`
+_Temporal Narrative — continuous self-history over time._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `NarrativeBeat` | `` | A beat in Jarvis' narrative thread. | [src](../../../core/services/temporal_narrative.py#L24) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/temporal_narrative.py#L36) |
+| function | `add_beat` | `(mood, event)` | Add a beat to the narrative thread. | [src](../../../core/services/temporal_narrative.py#L40) |
+| function | `add_beat_from_affective` | `()` | Add a beat based on current affective state. | [src](../../../core/services/temporal_narrative.py#L66) |
+| function | `summarize_current_self` | `()` | Summarize current self based on narrative thread. | [src](../../../core/services/temporal_narrative.py#L80) |
+| function | `ask_self_question` | `()` | Jarvis asks himself a question based on narrative. | [src](../../../core/services/temporal_narrative.py#L100) |
+| function | `format_narrative_for_prompt` | `()` | Format narrative for prompt injection. | [src](../../../core/services/temporal_narrative.py#L117) |
+| function | `get_thread` | `()` | Get the full narrative thread. | [src](../../../core/services/temporal_narrative.py#L130) |
+| function | `reset_temporal_narrative` | `()` | Reset temporal narrative state (for testing). | [src](../../../core/services/temporal_narrative.py#L143) |
+| function | `build_temporal_narrative_surface` | `()` | Build MC surface for temporal narrative. | [src](../../../core/services/temporal_narrative.py#L150) |
+
 ## `core/services/temporal_recurrence_signal_tracking.py`
 _Temporal-recurrence signal tracking — migrated onto signal_tracking_framework._
 
@@ -563,14 +579,4 @@ _Tools-cluster Phase 2 — persistent forbrugs-statistik (DB-backed, cross-proce
 | function | `tool_order` | `(registered)` | Ordn registrerede tools efter forbrug: mest-brugte FØRST, aldrig-brugte SIDST. | [src](../../../core/services/tool_usage_store.py#L106) |
 | function | `dead_tools` | `(registered)` | Registrerede tools der ALDRIG er kaldt (count 0). Vises sidst / kandidater til at | [src](../../../core/services/tool_usage_store.py#L116) |
 | function | `observe_stats` | `(registered=…)` | Periodisk (cadence): central.observe forbrugs-summary + flag antal døde tools. | [src](../../../core/services/tool_usage_store.py#L123) |
-
-## `core/services/tool_world_change.py`
-_Ændrede dette værktøjskald verden? (loop-fix 2026-09-05)_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_shell_command` | `(arguments)` | — | [src](../../../core/services/tool_world_change.py#L37) |
-| function | `_mutation_tool_names` | `()` | Navne fra verification_gate — ét sted at vedligeholde listen. | [src](../../../core/services/tool_world_change.py#L45) |
-| function | `call_changed_the_world` | `(*, tool_name, arguments=…, status=…)` | True når kaldet reelt ændrede state (og lykkedes). | [src](../../../core/services/tool_world_change.py#L54) |
-| function | `round_changed_the_world` | `(results)` | Ændrede mindst ét kald i denne agentiske runde verden? | [src](../../../core/services/tool_world_change.py#L83) |
 

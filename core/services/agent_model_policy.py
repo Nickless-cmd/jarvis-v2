@@ -25,7 +25,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-OWNER_ONLY_PROVIDERS: frozenset[str] = frozenset({"deepseek"})
+OWNER_ONLY_PROVIDERS: frozenset[str] = frozenset({"deepseek", "claude-cli", "codex-cli"})
 DEFAULT_OWNER_FALLBACK = ("deepseek", "deepseek-v4-flash")
 TOOL_CAPABILITY_FLOOR = 0.6          # samme gulv som agent_runtime_spawn bruger for vaerktoejsroller
 DEFAULT_EST_TOKENS = 20_000
@@ -135,6 +135,10 @@ def _split_requested(requested: str) -> tuple[str, str]:
     req = str(requested or "").strip()
     if not req:
         return "", ""
+    from core.services.agent_cli_backend import parse_preference
+    cli = parse_preference(req)
+    if cli is not None:
+        return cli
     if "/" in req:
         prov, _, mod = req.partition("/")
         if prov in CHEAP_PROVIDER_DEFAULTS and mod:
@@ -165,6 +169,8 @@ def _deepseek_budget_reason() -> str:
 
 def _estimate_cost(provider: str, model: str, budget_tokens: int) -> dict[str, Any]:
     tokens = int(budget_tokens or 0) or DEFAULT_EST_TOKENS
+    if provider in {"claude-cli", "codex-cli"}:
+        return {"estimated_cost_usd": None, "cost_basis": "abonnements_cli_kvote", "tokens": tokens}
     if provider == "deepseek":
         from core.services.cheap_provider_runtime_adapters import _estimate_deepseek_cost
         usd = float(_estimate_deepseek_cost({"model": model, "prompt_tokens": int(tokens * 0.7),
@@ -220,6 +226,18 @@ def decide_route(*, owner_user_id: str, requested_model: str = "", hard: bool = 
             reject("explicit", requested, "", "ukendt_model")
             if hard:
                 raise ModelUnavailable(f"modelkravet {requested!r} kan ikke opfyldes", rejected)
+        elif rp in {"claude-cli", "codex-cli"}:
+            if (why := provider_denied_reason(owner, rp)):
+                reject("explicit", rp, rm, why)
+            else:
+                from core.services.agent_cli_backend import admission_reason
+                why = admission_reason(rp)
+                if why:
+                    reject("explicit", rp, rm, why)
+                else:
+                    add("explicit", rp, rm)
+            if hard and not chain:
+                raise ModelUnavailable(f"modelkravet {rp}/{rm} kan ikke opfyldes", rejected)
         elif rp in OWNER_ONLY_PROVIDERS:
             if (why := provider_denied_reason(owner, rp)):
                 reject("explicit", rp, rm, why)

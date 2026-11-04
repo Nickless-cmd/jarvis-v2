@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_followup_lean.py`
+_Lean agentic-round-prompt transform + kill-switch (split from_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_split_on_double_newline` | `(text)` | Split en sammensat besked i blokke på ``\n\n`` (assembly-join-grænsen). | [src](../../../core/services/visible_followup_lean.py#L77) |
+| function | `_lean_strip_user_message` | `(text)` | Skær den tunge per-turn-hale af ÉN bruger-besked, men bevar de load-bearing | [src](../../../core/services/visible_followup_lean.py#L82) |
+| function | `build_lean_base_messages` | `(base_messages)` | Producér en LEAN udgave af ``base_messages`` til agentiske runder ≥2. | [src](../../../core/services/visible_followup_lean.py#L124) |
+| function | `agentic_lean_prompt_enabled` | `()` | Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default True. | [src](../../../core/services/visible_followup_lean.py#L236) |
+
 ## `core/services/visible_followup_results.py`
 _Runde-resultater → `ToolResult` til modellens naeste runde og til den gemte tur._
 
@@ -557,14 +567,4 @@ _Visible-chat self-state summary — let Jarvis answer questions about_
 | function | `_goals_summary` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L56) |
 | function | `_recent_tick_quality` | `()` | — | [src](../../../core/services/visible_self_state_summary.py#L87) |
 | function | `build_self_state_block` | `()` | Return a short prompt section. Empty string when nothing useful to add. | [src](../../../core/services/visible_self_state_summary.py#L112) |
-
-## `core/services/visible_stream_gate.py`
-_In-process real-time gate: is a VISIBLE turn actively assembling/streaming right now?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `visible_streaming` | `()` | True hvis mindst én synlig tur i øjeblikket assembler/streamer i denne proces. | [src](../../../core/services/visible_stream_gate.py#L27) |
-| function | `enter_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L38) |
-| function | `exit_visible_stream` | `()` | — | [src](../../../core/services/visible_stream_gate.py#L44) |
-| function | `visible_stream` | `()` | Context manager: markér at en synlig tur er aktiv i dens levetid. Self-safe — | [src](../../../core/services/visible_stream_gate.py#L52) |
 

@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/skill_relevance_surface.py`
+_Slå skills op FOR ham i stedet for at bede ham huske at slå op._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_enabled` | `()` | Kill-switch. Self-safe: kan config ikke læses, slår vi op. | [src](../../../core/services/skill_relevance_surface.py#L89) |
+| function | `matchede_skills` | `(user_message)` | Navnene paa de skills der matcher denne besked. Tom liste hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L119) |
+| function | `_navnet_staar_i` | `(skill_navn, besked)` | Staar skillets eget navn i beskeden? | [src](../../../core/services/skill_relevance_surface.py#L144) |
+| function | `_naevner_mekanismen` | `(besked)` | Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak. | [src](../../../core/services/skill_relevance_surface.py#L162) |
+| function | `skill_flade_event` | `(user_message)` | Det runtimen lagde i prompten, som et event klienterne kan vise. | [src](../../../core/services/skill_relevance_surface.py#L168) |
+| function | `sidst_foreslaaede` | `()` | Hvilke skills blev foreslaaet i den seneste prompt-bygning. | [src](../../../core/services/skill_relevance_surface.py#L214) |
+| function | `_er_selvstartet_tur` | `()` | Startede maskinen sig selv, uden nogen opgave fra ham? | [src](../../../core/services/skill_relevance_surface.py#L236) |
+| function | `_er_autonom_tur` | `()` | Koerer vi en autonom tur lige nu? | [src](../../../core/services/skill_relevance_surface.py#L257) |
+| function | `_traef` | `(besked)` | Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej. | [src](../../../core/services/skill_relevance_surface.py#L290) |
+| function | `relevant_skills_section` | `(user_message)` | Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen. | [src](../../../core/services/skill_relevance_surface.py#L313) |
+| function | `build_skill_relevance_surface` | `(user_message=…)` | Observationsflade — hvad opslaget ville sige om denne besked. | [src](../../../core/services/skill_relevance_surface.py#L410) |
+
 ## `core/services/skill_scanner.py`
 _Skill-scanning før lokal eksekvering (spec §19.8 / §15.3.2)._
 
@@ -620,20 +637,4 @@ _Temporal Depth — predictive coding for internal signals._
 | method | `TemporalDepth._compute_rhythm` | `(self, state)` | Does now match the expected recurring cadence? | [src](../../../core/services/temporal_depth.py#L149) |
 | method | `TemporalDepth._build_summary` | `(self, recall, anticipation, rhythm)` | Build a short human-readable phrase for the assembly output. | [src](../../../core/services/temporal_depth.py#L160) |
 | function | `get_temporal_depth` | `()` | — | [src](../../../core/services/temporal_depth.py#L180) |
-
-## `core/services/temporal_narrative.py`
-_Temporal Narrative — continuous self-history over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `NarrativeBeat` | `` | A beat in Jarvis' narrative thread. | [src](../../../core/services/temporal_narrative.py#L24) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/temporal_narrative.py#L36) |
-| function | `add_beat` | `(mood, event)` | Add a beat to the narrative thread. | [src](../../../core/services/temporal_narrative.py#L40) |
-| function | `add_beat_from_affective` | `()` | Add a beat based on current affective state. | [src](../../../core/services/temporal_narrative.py#L66) |
-| function | `summarize_current_self` | `()` | Summarize current self based on narrative thread. | [src](../../../core/services/temporal_narrative.py#L80) |
-| function | `ask_self_question` | `()` | Jarvis asks himself a question based on narrative. | [src](../../../core/services/temporal_narrative.py#L100) |
-| function | `format_narrative_for_prompt` | `()` | Format narrative for prompt injection. | [src](../../../core/services/temporal_narrative.py#L117) |
-| function | `get_thread` | `()` | Get the full narrative thread. | [src](../../../core/services/temporal_narrative.py#L130) |
-| function | `reset_temporal_narrative` | `()` | Reset temporal narrative state (for testing). | [src](../../../core/services/temporal_narrative.py#L143) |
-| function | `build_temporal_narrative_surface` | `()` | Build MC surface for temporal narrative. | [src](../../../core/services/temporal_narrative.py#L150) |
 

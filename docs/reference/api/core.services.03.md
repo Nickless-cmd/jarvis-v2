@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/anticipatory_context.py`
+_Anticipatory Context — predict what the user will likely ask about next._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `predict_next_context` | `(*, recent_topics=…, hour=…, idle_hours=…, last_session_topic=…)` | Predict the most likely next context. | [src](../../../core/services/anticipatory_context.py#L17) |
+| function | `build_anticipatory_context_surface` | `()` | — | [src](../../../core/services/anticipatory_context.py#L76) |
+
 ## `core/services/api_connection_nerve.py`
 _API-forbindelses-nerve — Jarvis mærker hvem/hvad der forbinder til hans API._
 
@@ -623,18 +631,4 @@ _Autonomy proposal queue — Niveau 2 fundament._
 | function | `_execute_instrument_fix_proposal` | `(payload)` | Execute an approved instrument_fix proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L701) |
 | function | `_execute_prompt_evolution_proposal` | `(payload)` | Execute an approved prompt-evolution proposal. | [src](../../../core/services/autonomy_proposal_queue.py#L747) |
 | function | `propose_prompt_evolution_apply` | `(proposal_id, *, target_file=…, created_by=…)` | Rejs et prompt-forslag til MENNESKETS godkendelse. | [src](../../../core/services/autonomy_proposal_queue.py#L859) |
-
-## `core/services/avoidance_detector.py`
-_Avoidance Detector — unbidden self-observation of patterns over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tokens_from_title` | `(title)` | — | [src](../../../core/services/avoidance_detector.py#L37) |
-| function | `_cluster_key` | `(title)` | Pick a short cluster key from the first meaningful keyword(s). | [src](../../../core/services/avoidance_detector.py#L45) |
-| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/avoidance_detector.py#L54) |
-| function | `_gather_signals` | `()` | Pull goal/dream/focus signals with common shape. | [src](../../../core/services/avoidance_detector.py#L63) |
-| function | `detect_avoidances` | `()` | Identify clusters with real prior support that have gone silent. | [src](../../../core/services/avoidance_detector.py#L108) |
-| function | `build_avoidance_surface` | `()` | — | [src](../../../core/services/avoidance_detector.py#L161) |
-| function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
-| function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
 

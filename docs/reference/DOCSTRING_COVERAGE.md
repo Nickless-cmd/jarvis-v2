@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9712/18083 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9717/18097 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9712/18083 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6503 | 12323 | 52% |
+| `core.services` | 6508 | 12337 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 9712/18083 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2601)
+## Undocumented public functions (2603)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L228)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -723,6 +723,8 @@ Generated from source. 9712/18083 functions/methods documented (53%). The list b
 - `core/services/agent_bridge.py` :: `human_resolve` (L390)
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L351)
+- `core/services/agent_cli_backend.py` :: `is_cli_provider` (L56)
+- `core/services/agent_cli_backend.py` :: `resolve_executable` (L60)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
@@ -740,15 +742,15 @@ Generated from source. 9712/18083 functions/methods documented (53%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1573)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1628)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1609)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1436)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1193)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1133)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1161)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1580)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1635)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1616)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1443)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1200)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1140)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1168)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1592)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1599)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
@@ -1194,7 +1196,7 @@ Generated from source. 9712/18083 functions/methods documented (53%). The list b
 - `core/services/diary_synthesis_signal_tracking.py` :: `build_diary_synthesis_signal_surface` (L58)
 - `core/services/diary_synthesis_signal_tracking.py` :: `refresh_diary_synthesis_signal_statuses` (L54)
 - `core/services/diary_synthesis_signal_tracking.py` :: `track_diary_synthesis_signals_for_visible_turn` (L20)
-- `core/services/dispatch_quota.py` :: `QuotaReading.get` (L85)
+- `core/services/dispatch_quota.py` :: `QuotaReading.get` (L90)
 - `core/services/docs_drift_watchdog.py` :: `check_docs_drift` (L49)
 - `core/services/docs_drift_watchdog.py` :: `read_report` (L19)
 - `core/services/dream_adoption_candidate_tracking.py` :: `build_runtime_dream_adoption_candidate_surface` (L85)

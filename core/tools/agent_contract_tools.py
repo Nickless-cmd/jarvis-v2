@@ -63,7 +63,8 @@ AGENT_CONTRACT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
          "subagent_type": {"type": "string",
                            "enum": ["researcher", "critic", "planner", "watcher", "executor"]},
          "model": {"type": "string",
-                   "description": "Optional model preference; runtime validates allowed routes."},
+                   "description": "Optional model preference; runtime validates allowed routes. "
+                                  "For the owner's installed agent CLIs use claude-cli or codex-cli."},
          "run_in_background": {"type": "boolean",
                                "description": "True returns after acceptance; false waits up to 120 seconds."}},
         ["description", "prompt", "subagent_type"]),

@@ -52,6 +52,8 @@ __all__ = [
     "ProsaPunkt",
     "fejl_i_prosa",
     "find_prosa_punkter",
+    "ret_pseudo_overskrift",
+    "skal_have_break",
 ]
 
 #: Hvor mange parallelle led et afsnit må bære i prosa før det flagges.
@@ -85,6 +87,15 @@ _TALORD_RE = re.compile(
 #: Det er formen der ser ud som en overskrift uden at være det: læseren får et
 #: hvilested for øjet, og der er ingen struktur bag det.
 _PSEUDO_OVERSKRIFT_RE = re.compile(r"^\*\*([^*\n]{2,90})\*\*(?=[ \t]+\S)")
+
+#: DETALJERET pseudo-overskrift: fed label der SLUTTER med et tegn, og brødtekst
+#: på samme linje. Adskiller sig fra ``_PSEUDO_OVERSKRIFT_RE`` ved at kræve et
+#: afsluttende tegn — det er netop den form der kan RETTES deterministisk uden
+#: at gætte. Labelen er non-greedy, så ``**Vigtigt:** …`` giver label
+#: ``Vigtigt:`` og ikke et længere udsnit der æder kolonet.
+_PSEUDO_BREAK_RE = re.compile(
+    r"^\*\*(?P<label>[^*\n]{1,89}?[.:!?])\*\*[ \t]+(?P<body>\S.*)$"
+)
 
 #: Tidsstempler og git-hashes fjernes før tal tælles. «kl. 12:38:27» er ét
 #: klokkeslæt, ikke tre tal, og «e4036a383» er en reference, ikke et regnestykke.
@@ -245,6 +256,91 @@ def _pseudo_overskrift(blok: list[str]) -> str | None:
     if len(fed.split()) < 3 and ":" not in fed:
         return None
     return fed
+
+
+def skal_have_break(linje: str) -> bool:
+    """Er denne linje en pseudo-overskrift der mangler sit break?
+
+    DISKRIMINATOREN (defineret 4/11-2026, FØR transformationen blev skrevet):
+
+    En fed sætningsstart er en pseudo-overskrift når ALLE fire holder:
+
+      1. linjen er afsnittets FØRSTE linje — håndhæves af kalderen, for den
+         kræver kontekst. Her måles kun linjen selv.
+      2. den fede tekst slutter med ``.`` ``:`` ``!`` eller ``?``
+      3. den fede tekst bærer mindst to ord — eller ét ord der slutter med
+         ``:`` ``!`` ``?``, hvilket gør det til en etiket og ikke et svarord
+      4. brødteksten starter en NY sætning — stort bogstav, tal eller emoji
+
+    Punkt 4 er den bærende og den eneste ikke-oplagte. Uden den ville
+    ``**Vigtigt:** dette fortsætter sætningen`` blive revet midt over, og det er
+    god prosa med en fed ledetråd. Med den er forskellen mekanisk: en lille
+    begyndelsesbogstav betyder at sætningen fortsætter, og så er den fede tekst
+    en fremhævning — ikke en overskrift.
+
+    Returnerer ``False`` ved enhver tvivl. Choke-punktet rammer HVERT svar, så
+    en falsk positiv er dyrere end en falsk negativ.
+    """
+    m = _PSEUDO_BREAK_RE.match(linje)
+    if not m:
+        return False
+    label = m.group("label").strip()
+    # Et-ords labels: et spørgsmålstegn, udråbstegn eller kolon gør ordet til en
+    # ETIKET («**Note!**», «**Vigtigt:**»). Et punktum gør det ikke — «**Ja.**»
+    # er et svarord, ikke en overskrift, og må ikke rives over.
+    if len(label.split()) < 2 and label[-1:] not in (":", "!", "?"):
+        return False
+    body = m.group("body")
+    if not body:
+        return False
+    første = body[0]
+    # Lille bogstav = sætningen fortsætter = fremhævning, ikke overskrift.
+    if første.isalpha() and første.islower():
+        return False
+    return True
+
+
+def ret_pseudo_overskrift(text: str) -> str:
+    """Sæt et break ind efter en pseudo-overskrift. Ren teksttransformation.
+
+    ``**🪶 Overskrift.** Brødtekst`` → ``**🪶 Overskrift.**\\n\\nBrødtekst``
+
+    Ingen model, ingen tokens, ingen ekstra pas — og ingen omskrivning af
+    indholdet. Kun et linjeskift der manglede.
+
+    Rører intet indeni en kodeblok, intet i lister eller tabeller, og intet der
+    ikke står som afsnittets første linje. Idempotent: kørt to gange giver
+    samme tekst, fordi den rettede form ikke længere matcher regexen.
+
+    Fail-open: en fejl returnerer teksten uændret.
+    """
+    if not text or "**" not in text:
+        return text
+    try:
+        linjer = text.split("\n")
+        ud: list[str] = []
+        i_fence = False
+        for i, linje in enumerate(linjer):
+            if _FENCE_RE.match(linje):
+                i_fence = not i_fence
+                ud.append(linje)
+                continue
+            if i_fence:
+                ud.append(linje)
+                continue
+            # Punkt 1 i diskriminatoren: kun afsnittets FØRSTE linje.
+            forrige = linjer[i - 1] if i > 0 else ""
+            if not forrige.strip() and skal_have_break(linje):
+                m = _PSEUDO_BREAK_RE.match(linje)
+                if m:
+                    ud.append(f"**{m.group('label')}**")
+                    ud.append("")
+                    ud.append(m.group("body"))
+                    continue
+            ud.append(linje)
+        return "\n".join(ud)
+    except Exception:  # fail-open: formatering må aldrig koste et svar
+        return text
 
 
 def _indeholder_kode(krop: str) -> bool:

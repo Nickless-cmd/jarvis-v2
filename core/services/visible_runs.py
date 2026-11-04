@@ -6161,6 +6161,33 @@ async def _stream_visible_run(
                     _mekanisk_reparation as _hegn_mekanisk,
                 )
                 visible_output_text = _hegn_mekanisk(visible_output_text)
+                # 4/11-2026 (Bjørn, tredje gang): «anden linje i din sidste
+                # besked burde være nyt linje efter den fede headline ?» —
+                # pseudo-overskriften `**🪶 Overskrift.** Brødtekst` nåede
+                # brugeren i HVERT primært svar, fordi prosa_struktur_guard
+                # kun blev kaldt i _finalize_second_pass_visible_text, og
+                # second pass er `skipped` for langt de fleste runs.
+                # Rettelsen er deterministisk og gratis: et linjeskift, ingen
+                # model, ingen tokens, ingen ekstra pas. Den sidder HER fordi
+                # dette er den fælles udgang — samme sted som flade-guarden
+                # blev flyttet til 24/10 efter præcis samme fejlform.
+                # Diskriminatoren er testet i tests/test_pseudo_overskrift_break.py
+                # i BEGGE retninger: former der skal rettes, og korrekt tekst
+                # der skal passere urørt. Fail-open.
+                try:
+                    from core.services.prosa_struktur_guard import (
+                        ret_pseudo_overskrift as _ret_pseudo_overskrift,
+                    )
+                    _pseudo_foer = visible_output_text
+                    visible_output_text = _ret_pseudo_overskrift(visible_output_text)
+                    if visible_output_text != _pseudo_foer:
+                        yield _sse("scan_correction", {
+                            "type": "scan_correction",
+                            "run_id": run.run_id,
+                            "corrected": visible_output_text,
+                        })
+                except Exception:  # fail-open: formatering maa aldrig koste et svar
+                    pass
                 pass  # MUTATION B
                 if visible_output_text != _flade_foer:
                     yield _sse("scan_correction", {

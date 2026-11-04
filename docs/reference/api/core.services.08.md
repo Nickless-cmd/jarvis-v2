@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chat_flow_preferences.py`
+_Authenticated per-user presentation preferences for Desk Chat Mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ChatFlowIdentityError` | `` | The current execution has no verified stable preference owner. | [src](../../../core/services/chat_flow_preferences.py#L16) |
+| function | `_now` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L20) |
+| function | `_iso` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L25) |
+| function | `resolve_chat_flow_principal` | `()` | Resolve only token-backed identity; session elevation never changes owner. | [src](../../../core/services/chat_flow_preferences.py#L29) |
+| function | `_ensure_row` | `(conn, principal_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L42) |
+| function | `_state_from_row` | `(row)` | — | [src](../../../core/services/chat_flow_preferences.py#L53) |
+| function | `get_chat_flow_state` | `(principal_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L71) |
+| function | `set_chat_flow_state` | `(principal_id, *, preference=…, suggestions_enabled=…, explicit=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L81) |
+| function | `claim_chat_flow_onboarding` | `(principal_id, run_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L113) |
+| function | `ack_chat_flow_onboarding` | `(principal_id, claim_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L137) |
+| function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
+| function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
+
 ## `core/services/chat_response_policy.py`
 _One chat-only decision vocabulary for closure and presentation._
 
@@ -791,16 +809,4 @@ _Cluster-familiernes egen løkke — tråden der spørger «hvilken familie er d
 | function | `start` | `()` | Start løkken. Kører den allerede, sker der ingenting. | [src](../../../core/services/cluster_family_scheduler.py#L252) |
 | function | `stop` | `()` | — | [src](../../../core/services/cluster_family_scheduler.py#L267) |
 | function | `build_cluster_family_scheduler_surface` | `()` | Hvad løkken laver — til Central og til at svare på «kører de?». | [src](../../../core/services/cluster_family_scheduler.py#L277) |
-
-## `core/services/code_aesthetic_daemon.py`
-_Code aesthetic daemon — weekly aesthetic reflection on the codebase._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_code_aesthetic_daemon` | `()` | Run aesthetic analysis if cadence elapsed. Returns {generated, reflection}. | [src](../../../core/services/code_aesthetic_daemon.py#L39) |
-| function | `get_latest_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L64) |
-| function | `build_code_aesthetic_surface` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L68) |
-| function | `_get_recent_git_changes` | `()` | Get last 10 commit messages and changed file summary. | [src](../../../core/services/code_aesthetic_daemon.py#L81) |
-| function | `_generate_aesthetic_reflection` | `()` | — | [src](../../../core/services/code_aesthetic_daemon.py#L101) |
-| function | `_store_reflection` | `(reflection, now)` | — | [src](../../../core/services/code_aesthetic_daemon.py#L119) |
 

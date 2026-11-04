@@ -7417,7 +7417,7 @@
       ]
     },
     "central_hypotheses": {
-      "digest": "9b:fb:e5:2f:21:a9:15:90:6b:5a:b8:2d:08:84:68:5a:dd:63:8a:db:d5:ef:8d:fa:73:5f:67:4b:ea:14:97:5c",
+      "digest": "4a:7c:76:78:33:65:df:35:b0:27:77:38:4f:ac:78:88:e5:d8:16:1a:04:a1:c5:c8:11:bb:d6:de:7e:d7:0d:71",
       "schema": {
         "columns": [
           {
@@ -7536,6 +7536,14 @@
             "name": "success_criterion",
             "type": "TEXT",
             "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "test_contract_json",
+            "type": "TEXT",
+            "nullable": true,
             "default": null,
             "pk": 0,
             "hidden": 0
@@ -18456,7 +18464,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_z"
+        "unobserved"
       ]
     },
     "emergent_patterns": {

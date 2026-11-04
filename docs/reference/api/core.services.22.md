@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/r2_5_blocking_gate.py`
+_R2.5 — conditional blocking gate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_live_thresholds` | `()` | Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne | [src](../../../core/services/r2_5_blocking_gate.py#L71) |
+| function | `_heed_rate_24h` | `()` | — | [src](../../../core/services/r2_5_blocking_gate.py#L99) |
+| function | `_publish_evaluation` | `(*, tier, threshold, unverified_effective, failed, heed_rate, blocked, reason)` | Gør gatens beslutning synlig OGSÅ når den siger nej. | [src](../../../core/services/r2_5_blocking_gate.py#L117) |
+| function | `should_block_for_verification` | `(*, reasoning_tier)` | Decide whether to inject a 'stop and look back' block. | [src](../../../core/services/r2_5_blocking_gate.py#L150) |
+| function | `r2_5_block_section` | `(reasoning_tier)` | Render the block as a high-priority awareness section, or None. | [src](../../../core/services/r2_5_blocking_gate.py#L329) |
+
 ## `core/services/r2_5_haandhaevelse.py`
 _R2.5-håndhævelse — en blok der ikke kan ignoreres._
 
@@ -742,12 +753,4 @@ _Request-scoped research instructions consumed by prompt assembly surfaces._
 | class | `_PromptResearch` | `` | — | [src](../../../core/services/research_prompt_context.py#L13) |
 | function | `research_context` | `(policy, *, skill_instructions=…, evidence=…, clarification=…)` | — | [src](../../../core/services/research_prompt_context.py#L24) |
 | function | `research_prompt_section` | `()` | — | [src](../../../core/services/research_prompt_context.py#L43) |
-
-## `core/services/research_quality.py`
-_Deterministic, inspectable quality gates for research synthesis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchQualityResult` | `` | — | [src](../../../core/services/research_quality.py#L13) |
-| function | `evaluate_research_report` | `(report, sources, requested_facets, *, contradictions=…, requires_freshness=…, tool_calls=…, max_tool_calls=…)` | — | [src](../../../core/services/research_quality.py#L19) |
 

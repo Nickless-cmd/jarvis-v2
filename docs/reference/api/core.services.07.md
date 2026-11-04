@@ -388,6 +388,17 @@ _central_terminal — en command-line ind i Den Intelligente Central (owner-term
 | function | `_fmt_envelope` | `(env)` | central_query-envelope → terminal-linjer (kompakt, læsbar). | [src](../../../core/services/central_terminal.py#L40) |
 | function | `run_command` | `(line)` | Parse + udfør én terminal-kommando. Returnerer {ok, command, lines}. Self-safe. | [src](../../../core/services/central_terminal.py#L76) |
 
+## `core/services/central_test_contract.py`
+_core/services/central_test_contract.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L45) |
+| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L97) |
+| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L102) |
+| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L107) |
+| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L111) |
+
 ## `core/services/central_timeseries.py`
 _core/services/central_timeseries.py_
 
@@ -608,22 +619,4 @@ _Kryptering af chat-historik i databasen (spec §16.2, plan-task 3.3)._
 | function | `krypter_raekke` | `(raekke, *, session_id=…, conn=…)` | Krypter de tekstbærende felter i en chat-række, hvis den er en members. | [src](../../../core/services/chat_crypto.py#L216) |
 | function | `dekrypter_sessionsraekker` | `(raekker, session_id, conn=…)` | Dekryptér en sessions egne rækker. Kun til sessions-læserne. | [src](../../../core/services/chat_crypto.py#L240) |
 | function | `dekrypter_raekke` | `(raekke)` | Modsat `krypter_raekke`. Bruges KUN af sessions-læserne. | [src](../../../core/services/chat_crypto.py#L278) |
-
-## `core/services/chat_flow_preferences.py`
-_Authenticated per-user presentation preferences for Desk Chat Mode._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ChatFlowIdentityError` | `` | The current execution has no verified stable preference owner. | [src](../../../core/services/chat_flow_preferences.py#L16) |
-| function | `_now` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L20) |
-| function | `_iso` | `(value=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L25) |
-| function | `resolve_chat_flow_principal` | `()` | Resolve only token-backed identity; session elevation never changes owner. | [src](../../../core/services/chat_flow_preferences.py#L29) |
-| function | `_ensure_row` | `(conn, principal_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L42) |
-| function | `_state_from_row` | `(row)` | — | [src](../../../core/services/chat_flow_preferences.py#L53) |
-| function | `get_chat_flow_state` | `(principal_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L71) |
-| function | `set_chat_flow_state` | `(principal_id, *, preference=…, suggestions_enabled=…, explicit=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L81) |
-| function | `claim_chat_flow_onboarding` | `(principal_id, run_id, *, now=…)` | — | [src](../../../core/services/chat_flow_preferences.py#L113) |
-| function | `ack_chat_flow_onboarding` | `(principal_id, claim_id)` | — | [src](../../../core/services/chat_flow_preferences.py#L137) |
-| function | `record_chat_flow_observation` | `(principal_id, *, meaningful_steps, expanded_work, manual_override)` | — | [src](../../../core/services/chat_flow_preferences.py#L152) |
-| function | `record_chat_flow_suggestion` | `(principal_id, *, kind, outcome)` | — | [src](../../../core/services/chat_flow_preferences.py#L176) |
 

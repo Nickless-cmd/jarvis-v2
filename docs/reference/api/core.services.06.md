@@ -36,31 +36,31 @@ _core/services/central_hypothesis_generator.py_
 |---|---|---|---|---|
 | function | `_now` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L42) |
 | function | `ensure_schema` | `()` | Idempotent — CREATE IF NOT EXISTS køres hver gang (billigt; tåler per-test-isolerede DB'er). | [src](../../../core/services/central_hypothesis_generator.py#L46) |
-| function | `_notation_for` | `(source, provenance)` | Rendér en hypotese til interlanguage-notation via lexicon-bindingen. None hvis leddene er | [src](../../../core/services/central_hypothesis_generator.py#L95) |
-| function | `_stable_id` | `(provenance, created_at)` | Immutabelt server-tildelt id (ikke statement-afledt → ingen kontrol-arm-p-hacking). | [src](../../../core/services/central_hypothesis_generator.py#L117) |
-| function | `register_governed_hypothesis` | `(candidate)` | Registrér en kandidat SOM governed hypotese — men KUN hvis den er fuldt pre-registreret | [src](../../../core/services/central_hypothesis_generator.py#L124) |
-| function | `_load` | `(hyp_id)` | — | [src](../../../core/services/central_hypothesis_generator.py#L167) |
-| function | `_to_evidence` | `(samples)` | — | [src](../../../core/services/central_hypothesis_generator.py#L184) |
-| function | `record_governed_sample` | `(hyp_id, *, supports, falsifies=…, source=…, ground_ref=…, triggered_by=…, verifier=…)` | Registrér ét udfald-sample + re-evaluér hypotesen gennem hele dødsmekanismen (evaluate). | [src](../../../core/services/central_hypothesis_generator.py#L190) |
-| function | `detect_causal_convergence_candidates` | `(*, window=…, min_recurrence=…)` | Find familie-par (X→Y) der optræder ≥ min_recurrence gange blandt de seneste MENINGSFULDE | [src](../../../core/services/central_hypothesis_generator.py#L343) |
-| function | `formulate_correlation_hypothesis` | `(cand)` | Omsæt en detekteret korrelation til en EKSPLICIT, menneske-læsbar, pre-registreret hypotese | [src](../../../core/services/central_hypothesis_generator.py#L380) |
-| function | `detect_outcome_divergence_candidates` | `(*, window=…, min_each=…)` | Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each | [src](../../../core/services/central_hypothesis_generator.py#L407) |
-| function | `formulate_divergence_hypothesis` | `(cand)` | Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er | [src](../../../core/services/central_hypothesis_generator.py#L448) |
-| function | `detect_stance_divergence_candidates` | `(*, min_count=…)` | Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions | [src](../../../core/services/central_hypothesis_generator.py#L470) |
-| function | `formulate_stance_divergence_hypothesis` | `(t)` | Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør. | [src](../../../core/services/central_hypothesis_generator.py#L481) |
-| function | `detect_prediction_error_candidates` | `()` | Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde | [src](../../../core/services/central_hypothesis_generator.py#L499) |
-| function | `formulate_prediction_error_hypothesis` | `(s)` | Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen | [src](../../../core/services/central_hypothesis_generator.py#L509) |
-| function | `_active_provenance_families` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L531) |
-| function | `run_hypothesis_generation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér → | [src](../../../core/services/central_hypothesis_generator.py#L548) |
-| function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L587) |
-| function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L599) |
-| function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L633) |
-| function | `_sen_sample_afgjorde` | `(conn, hyp_id, deadline)` | Flyttede et sample EFTER fristen hypotesens dom — eller findes det bare? | [src](../../../core/services/central_hypothesis_generator.py#L644) |
-| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L700) |
-| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L753) |
-| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L759) |
-| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L775) |
-| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L791) |
+| function | `_notation_for` | `(source, provenance)` | Rendér en hypotese til interlanguage-notation via lexicon-bindingen. None hvis leddene er | [src](../../../core/services/central_hypothesis_generator.py#L102) |
+| function | `_stable_id` | `(provenance, created_at)` | Immutabelt server-tildelt id (ikke statement-afledt → ingen kontrol-arm-p-hacking). | [src](../../../core/services/central_hypothesis_generator.py#L124) |
+| function | `register_governed_hypothesis` | `(candidate)` | Registrér en kandidat SOM governed hypotese — men KUN hvis den er fuldt pre-registreret | [src](../../../core/services/central_hypothesis_generator.py#L131) |
+| function | `_load` | `(hyp_id)` | — | [src](../../../core/services/central_hypothesis_generator.py#L188) |
+| function | `_to_evidence` | `(samples)` | — | [src](../../../core/services/central_hypothesis_generator.py#L205) |
+| function | `record_governed_sample` | `(hyp_id, *, supports, falsifies=…, source=…, ground_ref=…, triggered_by=…, verifier=…)` | Registrér ét udfald-sample + re-evaluér hypotesen gennem hele dødsmekanismen (evaluate). | [src](../../../core/services/central_hypothesis_generator.py#L211) |
+| function | `detect_causal_convergence_candidates` | `(*, window=…, min_recurrence=…)` | Find familie-par (X→Y) der optræder ≥ min_recurrence gange blandt de seneste MENINGSFULDE | [src](../../../core/services/central_hypothesis_generator.py#L364) |
+| function | `formulate_correlation_hypothesis` | `(cand)` | Omsæt en detekteret korrelation til en EKSPLICIT, menneske-læsbar, pre-registreret hypotese | [src](../../../core/services/central_hypothesis_generator.py#L401) |
+| function | `detect_outcome_divergence_candidates` | `(*, window=…, min_each=…)` | Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each | [src](../../../core/services/central_hypothesis_generator.py#L428) |
+| function | `formulate_divergence_hypothesis` | `(cand)` | Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er | [src](../../../core/services/central_hypothesis_generator.py#L469) |
+| function | `detect_stance_divergence_candidates` | `(*, min_count=…)` | Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions | [src](../../../core/services/central_hypothesis_generator.py#L491) |
+| function | `formulate_stance_divergence_hypothesis` | `(t)` | Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør. | [src](../../../core/services/central_hypothesis_generator.py#L502) |
+| function | `detect_prediction_error_candidates` | `()` | Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde | [src](../../../core/services/central_hypothesis_generator.py#L520) |
+| function | `formulate_prediction_error_hypothesis` | `(s)` | Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen | [src](../../../core/services/central_hypothesis_generator.py#L530) |
+| function | `_active_provenance_families` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L552) |
+| function | `run_hypothesis_generation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér → | [src](../../../core/services/central_hypothesis_generator.py#L569) |
+| function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L608) |
+| function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L620) |
+| function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L654) |
+| function | `_sen_sample_afgjorde` | `(conn, hyp_id, deadline)` | Flyttede et sample EFTER fristen hypotesens dom — eller findes det bare? | [src](../../../core/services/central_hypothesis_generator.py#L665) |
+| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L721) |
+| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L774) |
+| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L780) |
+| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L796) |
+| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L812) |
 
 ## `core/services/central_hypothesis_governance.py`
 _core/services/central_hypothesis_governance.py_
@@ -99,18 +99,20 @@ _core/services/central_hypothesis_sampler.py_
 | function | `test_causal_hypothesis` | `(x_fam, y_fam, *, window=…, follow_s=…)` | Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe. | [src](../../../core/services/central_hypothesis_sampler.py#L45) |
 | function | `test_divergence_persistence` | `(family)` | causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data — | [src](../../../core/services/central_hypothesis_sampler.py#L81) |
 | function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L100) |
-| function | `_eval_causal_sequence` | `(prov)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L129) |
-| function | `_eval_model_meta` | `(prov)` | Holder model-dominansen (latency/success) i friske runs? Kræver family 'A:B'. | [src](../../../core/services/central_hypothesis_sampler.py#L138) |
-| function | `_eval_divergence` | `(prov)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L147) |
-| function | `_eval_stance` | `(prov)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L155) |
-| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L166) |
-| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L170) |
-| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L174) |
-| function | `evaluator_for` | `(prov)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L202) |
-| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L230) |
-| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L258) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L286) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L356) |
+| function | `_eval_causal_sequence` | `(prov, contract=…)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L129) |
+| function | `_eval_contract_comparative` | `(contract)` | Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN. | [src](../../../core/services/central_hypothesis_sampler.py#L138) |
+| function | `_eval_model_meta` | `(prov, contract=…)` | Holder model-dominansen (latency/success) i friske runs? | [src](../../../core/services/central_hypothesis_sampler.py#L177) |
+| function | `_eval_divergence` | `(prov, contract=…)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L192) |
+| function | `_eval_stance` | `(prov, contract=…)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L200) |
+| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L211) |
+| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L215) |
+| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L219) |
+| function | `evaluator_for` | `(prov, contract=…)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L247) |
+| function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L294) |
+| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L306) |
+| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L336) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L366) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L437) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._

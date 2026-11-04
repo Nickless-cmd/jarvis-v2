@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/forgetting_curve.py`
+_Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `emne_for` | `(source)` | Emne-noeglen er KILDEN, ikke teksten. | [src](../../../core/services/forgetting_curve.py#L81) |
+| function | `_ts` | `(iso)` | ISO-tidsstempel -> epoch-sekunder. None naar det ikke kan laeses. | [src](../../../core/services/forgetting_curve.py#L99) |
+| function | `_emne_poster_indenfor` | `(reg, emne, nu_ts)` | (tidsstempel, noegle) for poster med SAMME emne inden for vinduet. | [src](../../../core/services/forgetting_curve.py#L110) |
+| function | `_load` | `()` | — | [src](../../../core/services/forgetting_curve.py#L131) |
+| function | `_save` | `(reg)` | — | [src](../../../core/services/forgetting_curve.py#L141) |
+| function | `noegle_for` | `(focus, summary)` | Stabil identitet for et erindrings-udtraek. Udtraek baerer intet id. | [src](../../../core/services/forgetting_curve.py#L149) |
+| function | `_normaliser` | `(preview)` | Sammenligningsform: smaa bogstaver, ingen tegnsaetning, eet mellemrum. | [src](../../../core/services/forgetting_curve.py#L173) |
+| function | `_uden_praefiks` | `(preview)` | Fjern `focus`-praefikset («tankestroem: …») fra en `content_preview`. | [src](../../../core/services/forgetting_curve.py#L186) |
+| function | `_find_dublet` | `(reg, tekst)` | Noeglen paa en post med SAMME normaliserede indhold, hvis nogen. | [src](../../../core/services/forgetting_curve.py#L199) |
+| function | `register_memory` | `(*, memory_key, content_preview=…, initial_decay=…, source=…)` | Register a memory for decay tracking. | [src](../../../core/services/forgetting_curve.py#L247) |
+| function | `reinforce_memory` | `(memory_key)` | Reinforce a memory — reset decay, increment reinforcement count. | [src](../../../core/services/forgetting_curve.py#L303) |
+| function | `apply_decay_tick` | `(decay_increment=…)` | Apply one decay tick to all registered memories. | [src](../../../core/services/forgetting_curve.py#L315) |
+| function | `get_active_memories` | `()` | Return memories with decay < 0.9 (still active). | [src](../../../core/services/forgetting_curve.py#L350) |
+| function | `get_faded_memories` | `()` | Return memories with decay >= 0.9 (faded but archived). | [src](../../../core/services/forgetting_curve.py#L359) |
+| function | `build_forgetting_curve_surface` | `()` | — | [src](../../../core/services/forgetting_curve.py#L368) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: se hvad der ER i sind nu, og lad resten falme. | [src](../../../core/services/forgetting_curve.py#L390) |
+
 ## `core/services/forgetting_engine.py`
 _Forgetting engine — Lag 11 deletion logic._
 
@@ -507,29 +529,4 @@ _Grounded capability follow-up — det andet pas efter en udført evne._
 | function | `_build_grounded_multi_capability_followup_message` | `(run, *, capability_results, initial_model_text)` | — | [src](../../../core/services/grounded_capability_followup.py#L146) |
 | function | `_is_code_analysis_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L191) |
 | function | `_is_memory_commit_request` | `(user_message)` | — | [src](../../../core/services/grounded_capability_followup.py#L210) |
-
-## `core/services/guided_learning_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_guided_learning_runtime_surface` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L11) |
-| function | `_build_guided_learning_runtime_surface_uncached` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L19) |
-| function | `build_guided_learning_runtime_from_sources` | `(*, adaptive_planner, adaptive_reasoning, epistemic_runtime_state, prompt_evolution, dream_articulation, dream_influence, loop_runtime, council_runtime)` | — | [src](../../../core/services/guided_learning_runtime.py#L32) |
-| function | `build_guided_learning_prompt_section` | `(surface=…)` | — | [src](../../../core/services/guided_learning_runtime.py#L150) |
-| function | `_derive_learning_focus` | `(*, planner, reasoning, epistemic, prompt_summary, dream_summary, dream_influence, loop_summary, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L177) |
-| function | `_derive_learning_mode` | `(*, learning_focus, planner, reasoning, epistemic, prompt_summary, dream_summary, dream_influence, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L214) |
-| function | `_derive_learning_posture` | `(*, learning_mode, council, reasoning, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L247) |
-| function | `_derive_next_learning_bias` | `(*, learning_mode, learning_focus, planner, reasoning, epistemic, prompt_summary, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L265) |
-| function | `_derive_learning_pressure` | `(*, learning_mode, planner, epistemic, council, prompt_summary, dream_summary, dream_influence)` | — | [src](../../../core/services/guided_learning_runtime.py#L296) |
-| function | `_derive_confidence` | `(*, learning_mode, learning_focus, learning_pressure, council, epistemic)` | — | [src](../../../core/services/guided_learning_runtime.py#L321) |
-| function | `_source_contributors` | `(*, adaptive_planner, adaptive_reasoning, epistemic, prompt_summary, dream_summary, dream_influence, loop_summary, council)` | — | [src](../../../core/services/guided_learning_runtime.py#L340) |
-| function | `_guidance_for_learning` | `(state)` | — | [src](../../../core/services/guided_learning_runtime.py#L427) |
-| function | `_safe_adaptive_planner` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L442) |
-| function | `_safe_adaptive_reasoning` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L450) |
-| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L458) |
-| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L466) |
-| function | `_safe_dream_articulation` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L474) |
-| function | `_safe_dream_influence` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L482) |
-| function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L489) |
-| function | `_safe_council_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L497) |
 

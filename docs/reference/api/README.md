@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18047 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18054 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -36,31 +36,31 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18047 functions/
 - [`core.services.04`](core.services.04.md) — `background_attention` … `central_agent_smith`
 - [`core.services.05`](core.services.05.md) — `central_agent_smith_escalation` … `central_health`
 - [`core.services.06`](core.services.06.md) — `central_hub` … `central_proposal`
-- [`core.services.07`](core.services.07.md) — `central_rca` … `chat_flow_preferences`
-- [`core.services.08`](core.services.08.md) — `chat_response_policy` … `code_aesthetic_daemon`
-- [`core.services.09`](core.services.09.md) — `cognitive_architecture_surface` … `conversation_topics`
-- [`core.services.10`](core.services.10.md) — `copilot_catalogue` … `decision_action_gate`
-- [`core.services.11`](core.services.11.md) — `decision_adherence_gate` … `dispatch_status`
-- [`core.services.12`](core.services.12.md) — `doc_repair_agent` … `emotional_controls`
-- [`core.services.13`](core.services.13.md) — `emotional_memory_engine` … `forgetting_curve`
-- [`core.services.14`](core.services.14.md) — `forgetting_engine` … `guided_learning_runtime`
-- [`core.services.15`](core.services.15.md) — `gut_calibration` … `inbox_state`
-- [`core.services.16`](core.services.16.md) — `inbox_view` … `lessons`
-- [`core.services.17`](core.services.17.md) — `life_milestones` … `memory_recall_telemetry`
-- [`core.services.18`](core.services.18.md) — `memory_resurfacing` … `non_visible_rate_cap`
-- [`core.services.19`](core.services.19.md) — `notes_connector` … `permission_classifier`
-- [`core.services.20`](core.services.20.md) — `permission_engine` … `projection_tool_router`
-- [`core.services.21`](core.services.21.md) — `promise_ledger` … `r2_5_blocking_gate`
-- [`core.services.22`](core.services.22.md) — `r2_5_haandhaevelse` … `research_quality`
-- [`core.services.23`](core.services.23.md) — `research_router` … `runtime_awareness_signal_tracking`
-- [`core.services.24`](core.services.24.md) — `runtime_browser_body` … `self_experiments`
-- [`core.services.25`](core.services.25.md) — `self_history_grounding` … `session_prewarm`
-- [`core.services.26`](core.services.26.md) — `session_spawn` … `skill_security_scanner`
-- [`core.services.27`](core.services.27.md) — `smith_confrontation` … `temporal_rhythm`
-- [`core.services.28`](core.services.28.md) — `temporal_self_continuity` … `truth_gate_v2`
-- [`core.services.29`](core.services.29.md) — `turens_vaerktoejer` … `visible_inner_life`
-- [`core.services.30`](core.services.30.md) — `visible_member_prompt` … `visible_synthesis_stream`
-- [`core.services.31`](core.services.31.md) — `visible_terminal_policy` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `central_rca` … `chat_crypto`
+- [`core.services.08`](core.services.08.md) — `chat_flow_preferences` … `cluster_family_scheduler`
+- [`core.services.09`](core.services.09.md) — `code_aesthetic_daemon` … `conversation_rhythm`
+- [`core.services.10`](core.services.10.md) — `conversation_topics` … `db_sentinel`
+- [`core.services.11`](core.services.11.md) — `decision_action_gate` … `dispatch_guards`
+- [`core.services.12`](core.services.12.md) — `dispatch_status` … `emotional_chords`
+- [`core.services.13`](core.services.13.md) — `emotional_controls` … `forced_tool_choice_probe`
+- [`core.services.14`](core.services.14.md) — `forgetting_curve` … `grounded_capability_followup`
+- [`core.services.15`](core.services.15.md) — `guided_learning_runtime` … `inbox_prompt_section`
+- [`core.services.16`](core.services.16.md) — `inbox_state` … `ledger_write_path`
+- [`core.services.17`](core.services.17.md) — `lessons` … `memory_recall_engine`
+- [`core.services.18`](core.services.18.md) — `memory_recall_telemetry` … `non_visible_lane_execution`
+- [`core.services.19`](core.services.19.md) — `non_visible_rate_cap` … `permission_axes`
+- [`core.services.20`](core.services.20.md) — `permission_classifier` … `projection_runtime`
+- [`core.services.21`](core.services.21.md) — `projection_tool_router` … `quota_store`
+- [`core.services.22`](core.services.22.md) — `r2_5_blocking_gate` … `research_prompt_context`
+- [`core.services.23`](core.services.23.md) — `research_quality` … `runtime_action_registry`
+- [`core.services.24`](core.services.24.md) — `runtime_awareness_signal_tracking` … `self_deception_guard`
+- [`core.services.25`](core.services.25.md) — `self_experiments` … `session_persistence_flag`
+- [`core.services.26`](core.services.26.md) — `session_prewarm` … `skill_scanner`
+- [`core.services.27`](core.services.27.md) — `skill_security_scanner` … `temporal_recurrence_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `temporal_rhythm` … `totp_verifier`
+- [`core.services.29`](core.services.29.md) — `truth_gate_v2` … `visible_followup_results`
+- [`core.services.30`](core.services.30.md) — `visible_inner_life` … `visible_stream_gate_wrapper`
+- [`core.services.31`](core.services.31.md) — `visible_synthesis_stream` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

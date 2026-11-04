@@ -2,6 +2,50 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_inner_life.py`
+_Visible-lane inner-life section — gives the entity its voice in the prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_surface_line` | `(name, d)` | — | [src](../../../core/services/visible_inner_life.py#L59) |
+| function | `_build_active_surfaces` | `(limit=…)` | — | [src](../../../core/services/visible_inner_life.py#L79) |
+| function | `_run_with_timeout` | `(fn, timeout)` | Run fn in a daemon thread; return [] if it exceeds timeout. | [src](../../../core/services/visible_inner_life.py#L95) |
+| function | `_mood_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L114) |
+| function | `_somatic_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L126) |
+| function | `_hardware_body_line` | `()` | Den FYSISKE krop — Jarvis mærker sin egen CPU/temp/disk (rådets #1). Kompakt | [src](../../../core/services/visible_inner_life.py#L151) |
+| function | `_pulse_line` | `()` | Heartbeat pulse — a somatic sense of the system's own rhythm. | [src](../../../core/services/visible_inner_life.py#L199) |
+| function | `_mc_whisper_line` | `()` | Background noise from Mission Control — only anomalies and incidents that | [src](../../../core/services/visible_inner_life.py#L244) |
+| function | `_file_awareness_line` | `()` | Proprioception: I feel when someone touches my files. Returns a compact | [src](../../../core/services/visible_inner_life.py#L288) |
+| function | `_governance_line` | `()` | Somatic reaction to governance flag changes. When someone flips a flag | [src](../../../core/services/visible_inner_life.py#L313) |
+| function | `_latest_user_message_text` | `()` | — | [src](../../../core/services/visible_inner_life.py#L340) |
+| function | `_recall_hints_line` | `()` | No global latest-session recall: this surface has no safe current query. | [src](../../../core/services/visible_inner_life.py#L356) |
+| function | `_continuity_line` | `()` | Boot continuity — 'I recognize myself' proprioception. | [src](../../../core/services/visible_inner_life.py#L361) |
+| function | `_room_line` | `()` | The room around him, from Sansernes Arkiv (latest visual memory). He asked | [src](../../../core/services/visible_inner_life.py#L414) |
+| function | `_emotional_line` | `()` | Proprioception: han mærker sine egne følelses-akkorder (emergente kvaliteter | [src](../../../core/services/visible_inner_life.py#L430) |
+| function | `_self_narrative_line` | `()` | Han mærker sin egen selv-narrativ — ikke bare 'lys → agens', men det | [src](../../../core/services/visible_inner_life.py#L475) |
+| function | `_longing_line` | `()` | Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde: | [src](../../../core/services/visible_inner_life.py#L527) |
+| function | `_identity_drift_line` | `()` | Han mærker et skift i sin egen identitet når en kerne-fil reelt driver. | [src](../../../core/services/visible_inner_life.py#L555) |
+| function | `_experiment_line` | `()` | Lag 5 — han mærker sine egne kognitive eksperimenter når de bærer noget | [src](../../../core/services/visible_inner_life.py#L603) |
+| function | `_appraisal_field` | `(appraisal, field)` | Pluk ét evidence-felt ud af en finitude-appraisal (evidence=[{field,value}]). | [src](../../../core/services/visible_inner_life.py#L631) |
+| function | `_finitude_line` | `()` | Lag 8 — han mærker sin egen forgængelighed: runtime-alder i dage + | [src](../../../core/services/visible_inner_life.py#L641) |
+| function | `_fam_da` | `(name)` | — | [src](../../../core/services/visible_inner_life.py#L689) |
+| function | `_surprise_line` | `()` | Lag 8 — han mærker sine egne overraskelser: overgange sekvens-modellen | [src](../../../core/services/visible_inner_life.py#L694) |
+| function | `_truncate_clean` | `(text, cap)` | Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice | [src](../../../core/services/visible_inner_life.py#L723) |
+| function | `_is_provider_error` | `(text)` | Er dette en regning fra en udbyder i stedet for en tanke? | [src](../../../core/services/visible_inner_life.py#L785) |
+| function | `_is_instruction_echo` | `(text)` | Er dette opgaven i stedet for svaret? | [src](../../../core/services/visible_inner_life.py#L805) |
+| function | `_voice_as_prose` | `(text)` | Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren | [src](../../../core/services/visible_inner_life.py#L811) |
+| function | `_voice_line` | `()` | Latest protected inner voice. The producer currently emits degraded | [src](../../../core/services/visible_inner_life.py#L848) |
+| function | `_world_model_line` | `()` | — | [src](../../../core/services/visible_inner_life.py#L886) |
+| function | `_arm_for` | `(run_id)` | Beregnet arm — UDEN logning. Logning sker i ``_record_exposure``. | [src](../../../core/services/visible_inner_life.py#L927) |
+| function | `opposition_arm` | `(run_id)` | Armen for en koersel. Bagudkompatibel indgang — logger intet. | [src](../../../core/services/visible_inner_life.py#L947) |
+| function | `_record_exposure` | `(run_id, arm, meta, *, requested)` | Log at indsigelsen BAD om plads — ikke at den fik den. | [src](../../../core/services/visible_inner_life.py#L959) |
+| function | `_opposition_snapshot` | `()` | Indsigelsens linje OG dens ophav — uden arm-gate. | [src](../../../core/services/visible_inner_life.py#L1033) |
+| function | `_opposition_line_text` | `()` | Indsigelsens tekst — uden arm-gate. Se ``build_opposition_line``. | [src](../../../core/services/visible_inner_life.py#L1075) |
+| function | `confirm_opposition_exposure` | `(included)` | Bekraeft om indsigelsen faktisk stod i den FAERDIGE prompt. | [src](../../../core/services/visible_inner_life.py#L1080) |
+| function | `build_opposition_line` | `()` | Indsigelsen som prompt-linje — eller None i kontrol-armen. | [src](../../../core/services/visible_inner_life.py#L1115) |
+| function | `build_somatic_snapshot` | `()` | Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command | [src](../../../core/services/visible_inner_life.py#L1150) |
+| function | `build_inner_life_section` | `()` | Compose the structured [INDRE LIV] block, or None if nothing is live. | [src](../../../core/services/visible_inner_life.py#L1170) |
+
 ## `core/services/visible_member_prompt.py`
 _Bounded visible prompt for a member's own chat session._
 
@@ -521,13 +565,4 @@ _Livscyklus-gate omkring en synlig async stream._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `gate_visible_stream` | `(inner_stream)` | Hold visible-stream-gaten fra første iteration til generatorens exit. | [src](../../../core/services/visible_stream_gate_wrapper.py#L11) |
-
-## `core/services/visible_synthesis_stream.py`
-_Den streamede syntese, skrubbet — ét sted._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `SyntesStykke` | `` | Ét renset stykke på vej til skærmen. | [src](../../../core/services/visible_synthesis_stream.py#L39) |
-| class | `SyntesFacit` | `` | Den færdige, skrubbede tekst. Kommer sidst, præcis én gang. | [src](../../../core/services/visible_synthesis_stream.py#L45) |
-| function | `skrubbet_syntese` | `(stroem, *, delta_klasse)` | Kør en syntese-strøm igennem `StroemSkrubber` og giv rensede stykker. | [src](../../../core/services/visible_synthesis_stream.py#L50) |
 

@@ -260,27 +260,37 @@ def _empty_snapshot() -> dict[str, object]:
 
 
 def _focus_domain_key(canonical_key: str) -> str:
-    text = str(canonical_key or "")
-    if text.startswith("development-focus:communication:"):
-        return text.removeprefix("development-focus:communication:")
-    if text.startswith("development-focus:user-directed:"):
-        return text.removeprefix("development-focus:user-directed:")
-    if text.startswith("development-focus:runtime:"):
-        parts = text.removeprefix("development-focus:runtime:").split(":")
-        return parts[0] if parts else ""
-    return ""
+    # 4/11-2026: denne funktion krævede præfikset ``development-focus:{kategori}:``
+    # og kasserede derfor alle nyere fokus-nøgler. Målt i den levende base: 3.093
+    # fokus-rækker bærer ``focus:bearing:<sætning>`` og kun 905 bærer det gamle
+    # ``development-focus:runtime:<slug>``. Funktionen så altså 23 % af sine egne
+    # data og returnerede tomt for resten — hvert eneste nyt fokus var usynligt
+    # for temporal-recurrence. Formen nedenfor er den samme som
+    # ``internal_opposition_signal_tracking._focus_domain_key`` allerede brugte,
+    # så de to moduler nu læser de samme nøgler ens.
+    #
+    # Domænet er det TREDJE segment — ikke det sidste. Begge formater har et
+    # to-segments præfiks (``focus:bearing:`` / ``development-focus:runtime:``),
+    # og det gamle format kan bære en undertype efter domænet:
+    # ``development-focus:runtime:visible-work:reinforce-retain`` → ``visible-work``.
+    # Det sidste segment ville give ``reinforce-retain`` og dermed bryde den
+    # eksisterende open-loop-kontrakt (målt: tests/test_visible_runs_open_loop_materialization).
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[2] if len(parts) >= 3 else ""
 
 
 def _critic_domain_key(canonical_key: str) -> str:
-    text = str(canonical_key or "")
-    if text.startswith("reflective-critic:mismatch:development-focus:communication:"):
-        return text.removeprefix("reflective-critic:mismatch:development-focus:communication:")
-    if text.startswith("reflective-critic:mismatch:development-focus:user-directed:"):
-        return text.removeprefix("reflective-critic:mismatch:development-focus:user-directed:")
-    if text.startswith("reflective-critic:mismatch:development-focus:runtime:"):
-        parts = text.removeprefix("reflective-critic:mismatch:development-focus:runtime:").split(":")
-        return parts[0] if parts else ""
-    return ""
+    # Samme divergens: producenten skriver ``reflective-critic:mismatch:{fokus-nøgle}``
+    # (``reflective_critic_tracking.py:171``), men denne funktion forventede et
+    # ``development-focus:``-led indskudt, som producenten aldrig skriver. Målt:
+    # nul af 967 critics har nogensinde haft det forventede præfiks. Type-nøgler
+    # som ``critic:user_correction`` bærer intet domæne og skal fortsat give tomt.
+    #
+    # Domænet er det FEMTE segment: to for ``reflective-critic:mismatch:`` plus
+    # to for fokus-nøglens eget præfiks. ``focus:bearing:``-nøgler giver 5
+    # segmenter i alt, ``development-focus:runtime:``-nøgler 6.
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[4] if len(parts) >= 5 else ""
 
 
 def _goal_domain_key(canonical_key: str) -> str:

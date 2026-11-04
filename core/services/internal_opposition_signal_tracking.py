@@ -300,8 +300,14 @@ _SPEC = SignalTrackingSpec(
 
 # ── internal-opposition-specific domain-key mapping + labels (unique) ──────────
 def _focus_domain_key(canonical_key: str) -> str:
-    parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 3 else ""
+    # 4/11-2026: domænet er det TREDJE segment, ikke det sidste. Begge fokus-
+    # formater har et to-segments præfiks (``focus:bearing:`` /
+    # ``development-focus:runtime:``), og det gamle format kan bære en undertype
+    # efter domænet: ``development-focus:runtime:visible-work:reinforce-retain``
+    # → ``visible-work``. Sidste segment gav ``reinforce-retain`` og brød
+    # open-loop-kontrakten (målt i test_visible_runs_open_loop_materialization).
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[2] if len(parts) >= 3 else ""
 
 
 def _goal_domain_key(canonical_key: str) -> str:
@@ -310,8 +316,11 @@ def _goal_domain_key(canonical_key: str) -> str:
 
 
 def _critic_domain_key(canonical_key: str) -> str:
-    parts = canonical_key.split(":")
-    return parts[-1] if len(parts) >= 4 else ""
+    # Domænet er det FEMTE segment: to for ``reflective-critic:mismatch:`` plus
+    # to for fokus-nøglens eget præfiks. Type-nøgler som ``critic:user_correction``
+    # bærer intet domæne og skal fortsat give tomt.
+    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    return parts[4] if len(parts) >= 5 else ""
 
 
 def _self_model_domain_key(canonical_key: str) -> str:

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9646/18000 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9647/18001 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 9646/18000 functions/methods documented (53%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 863 | 1571 | 54% |
+| `core.runtime` | 864 | 1572 | 54% |
 | `core.services` | 6447 | 12253 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
@@ -469,8 +469,8 @@ Generated from source. 9646/18000 functions/methods documented (53%). The list b
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
 - `core/runtime/db_core.py` :: `PooledConnection.close` (L86)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L587)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L567)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L642)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L622)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L436)
 - `core/runtime/db_decisions.py` :: `create_decision` (L108)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L421)

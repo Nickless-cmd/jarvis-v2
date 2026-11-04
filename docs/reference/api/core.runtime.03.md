@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_runtime_self.py`
+_Persistence for Jarvis' runtime self-* signal cluster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `upsert_runtime_self_model_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime self-model signal into runtime_self_model_signals. | [src](../../../core/runtime/db_runtime_self.py#L33) |
+| function | `list_runtime_self_model_signals` | `(*, status=…, limit=…)` | Return runtime self-model signals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L254) |
+| function | `get_runtime_self_model_signal` | `(signal_id)` | Return the runtime self-model signal for `signal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L303) |
+| function | `update_runtime_self_model_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-model signal. | [src](../../../core/runtime/db_runtime_self.py#L340) |
+| function | `supersede_runtime_self_model_signals` | `(*, signal_type, exclude_signal_id, updated_at, status_reason)` | Mark all active/uncertain/stale self-model signals of `signal_type` as superseded. | [src](../../../core/runtime/db_runtime_self.py#L376) |
+| function | `upsert_runtime_self_authored_prompt_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…, candidate_fragment=…)` | Insert or merge a self-authored prompt proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L411) |
+| function | `list_runtime_self_authored_prompt_proposals` | `(*, status=…, limit=…)` | Return self-authored prompt proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L484) |
+| function | `get_runtime_self_authored_prompt_proposal` | `(proposal_id)` | Return the self-authored prompt proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L534) |
+| function | `update_runtime_self_authored_prompt_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-authored prompt proposal. | [src](../../../core/runtime/db_runtime_self.py#L574) |
+| function | `supersede_runtime_self_authored_prompt_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live self-authored prompt proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L610) |
+| function | `upsert_runtime_self_narrative_continuity_signal` | `(*, signal_id, signal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, status_reason=…, run_id=…, session_id=…, support_count=…, session_count=…, created_at, updated_at)` | Insert or merge a self-narrative-continuity signal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L646) |
+| function | `list_runtime_self_narrative_continuity_signals` | `(*, status=…, limit=…)` | Return self-narrative-continuity signals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L717) |
+| function | `get_runtime_self_narrative_continuity_signal` | `(signal_id)` | Return the self-narrative-continuity signal for `signal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L766) |
+| function | `update_runtime_self_narrative_continuity_signal_status` | `(signal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one self-narrative-continuity signal. | [src](../../../core/runtime/db_runtime_self.py#L805) |
+| function | `supersede_runtime_self_narrative_continuity_signals_for_focus` | `(*, focus_key, exclude_signal_id, updated_at, status_reason)` | Mark all live self-narrative-continuity signals for a focus as superseded. | [src](../../../core/runtime/db_runtime_self.py#L841) |
+| function | `upsert_runtime_selfhood_proposal` | `(*, proposal_id, proposal_type, canonical_key, status, title, summary, rationale, source_kind, confidence, evidence_summary, support_summary, support_count, session_count, created_at, updated_at, status_reason=…, run_id=…, session_id=…)` | Insert or merge a runtime selfhood proposal via the shared _upsert_signal. | [src](../../../core/runtime/db_runtime_self.py#L877) |
+| function | `list_runtime_selfhood_proposals` | `(*, status=…, limit=…)` | Return runtime selfhood proposals as row dicts, newest first. | [src](../../../core/runtime/db_runtime_self.py#L948) |
+| function | `get_runtime_selfhood_proposal` | `(proposal_id)` | Return the runtime selfhood proposal for `proposal_id` as a row dict, or None. | [src](../../../core/runtime/db_runtime_self.py#L997) |
+| function | `update_runtime_selfhood_proposal_status` | `(proposal_id, *, status, updated_at, status_reason=…)` | Update status/status_reason/updated_at for one runtime selfhood proposal. | [src](../../../core/runtime/db_runtime_self.py#L1034) |
+| function | `supersede_runtime_selfhood_proposals_for_domain` | `(*, domain_key, exclude_proposal_id, updated_at, status_reason)` | Mark all live runtime selfhood proposals for a domain as superseded. | [src](../../../core/runtime/db_runtime_self.py#L1070) |
+| function | `_ensure_runtime_self_model_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1106) |
+| function | `_ensure_runtime_self_authored_prompt_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1147) |
+| function | `_ensure_runtime_self_narrative_continuity_signal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1207) |
+| function | `_ensure_runtime_selfhood_proposal_table` | `(conn)` | — | [src](../../../core/runtime/db_runtime_self.py#L1250) |
+| function | `_runtime_self_narrative_continuity_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1291) |
+| function | `_runtime_self_model_signal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1324) |
+| function | `_runtime_self_authored_prompt_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1348) |
+| function | `_runtime_selfhood_proposal_from_row` | `(row)` | — | [src](../../../core/runtime/db_runtime_self.py#L1374) |
+
 ## `core/runtime/db_runtime_self_review.py`
 _Persistence for Jarvis' runtime self-review signal cluster._
 

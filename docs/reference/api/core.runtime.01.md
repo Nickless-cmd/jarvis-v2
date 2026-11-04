@@ -461,6 +461,17 @@ _Persistence for the `bounded_action_continuity_state` table._
 | function | `get_bounded_action_continuity_state` | `()` | — | [src](../../../core/runtime/db_bounded_action.py#L72) |
 | function | `upsert_bounded_action_continuity_state` | `(*, active, kind, continuity_id, action_continuity_state, last_action_type, last_action_target, last_action_summary, last_action_outcome, last_action_at, action_mode, read_only, mutation_permitted, followup_state, followup_hint, post_action_understanding, post_action_concern, confidence, source_contributors, boundary, updated_at, source)` | — | [src](../../../core/runtime/db_bounded_action.py#L105) |
 
+## `core/runtime/db_cadence_journal.py`
+_Kadence-beslutningsjournal — hvorfor en producer IKKE kørte._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reason_code_for` | `(*, status, reason)` | Udled den stabile årsags-kode af (status, formateret reason). | [src](../../../core/runtime/db_cadence_journal.py#L88) |
+| function | `_ensure_cadence_decisions_table` | `(conn)` | — | [src](../../../core/runtime/db_cadence_journal.py#L105) |
+| function | `record_cadence_decisions` | `(decisions, *, tick_id, dispatch_budget=…, now=…)` | Skriv ét tiks beslutninger. Returnerer antal rækker der blev berørt. | [src](../../../core/runtime/db_cadence_journal.py#L138) |
+| function | `recent_cadence_decisions` | `(*, producer=…, open_only=…, limit=…)` | Læs journalen — nyeste først. Tom liste ved fejl (selv-sikker). | [src](../../../core/runtime/db_cadence_journal.py#L226) |
+| function | `prune_cadence_decisions` | `(*, retention_days=…, max_rows=…, now=…)` | Retention: slet GAMLE LUKKEDE poster, og håndhæv rækkeloftet. | [src](../../../core/runtime/db_cadence_journal.py#L260) |
+
 ## `core/runtime/db_capability.py`
 _Persistence for the `capability_invocations` table._
 
@@ -675,16 +686,4 @@ _Persistence for the cognitive-domain utility caches._
 | function | `daemon_output_log_insert` | `(*, daemon_name, raw_llm_output, parsed_result, success, provider=…)` | — | [src](../../../core/runtime/db_cognitive_utility.py#L248) |
 | function | `daemon_output_log_recent` | `(daemon_name=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive_utility.py#L275) |
 | function | `daemon_output_log_cleanup` | `(max_age_days=…)` | — | [src](../../../core/runtime/db_cognitive_utility.py#L302) |
-
-## `core/runtime/db_composer_choice.py`
-_Hvad Bjørn gjorde ved komponistens forslag — tog han det, eller skrev han selv?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_choice.py#L53) |
-| function | `noter_vist` | `(*, forslag_id, session_id, forslag, kilde_besked_id=…, nu=…)` | Forslaget kom på skærmen. Returnerer False hvis kaldet var ubrugeligt. | [src](../../../core/runtime/db_composer_choice.py#L72) |
-| function | `er_vist` | `(*, forslag_id)` | Kom NETOP dette forslag på skærmen? (målt 16/10-2026) | [src](../../../core/runtime/db_composer_choice.py#L109) |
-| function | `noter_valg` | `(*, forslag_id, valg, nu=…)` | Hvad der skete med forslaget. Returnerer False ved et ukendt valg. | [src](../../../core/runtime/db_composer_choice.py#L134) |
-| function | `seneste_valg` | `(*, session_id=…, limit=…)` | De seneste forslag og hvad der skete med dem. Til fase 3 og til at kigge. | [src](../../../core/runtime/db_composer_choice.py#L160) |
-| function | `optaelling` | `(*, session_id=…)` | Hvor mange forslag endte hvor. Grundlaget for «virker det?». | [src](../../../core/runtime/db_composer_choice.py#L178) |
 

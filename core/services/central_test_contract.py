@@ -42,14 +42,33 @@ EVIDENCE_SPEC_VERSION = 1
 EVIDENCE_UNITS: dict[str, dict[str, Any]] = {
     "per_run": {
         "version": 1,
-        "description": "én kørsel = én observation (den ventetid brugeren oplevede)",
+        "description": ("én kørsel = én observation; hvert run vejer 1 uanset varighed,"
+                        " så dommen falder på MEDIANEN (varighedsvægtning er pooled)"),
         "source": "visible_runs",
+        # IKKE nok at skrive det: `min_samples` tælles mod antal RUNS, og dommen skal
+        # læses som en fordelingsegenskab. Målt 4/11-2026: kontrakten deklarerede
+        # `per_run` mens evaluatoren læste ét pooled gennemsnit — 288 run-enheder blev
+        # til ÉT sample. En enhed der er deklareret men ikke implementeret er værre end
+        # ingen enhed, fordi den ser valideret ud.
+        "units_from": "runs",
+        "implemented": True,
+    },
+    "aggregate_window": {
+        "version": 1,
+        "description": ("vinduet er ÉN observation (pooled gennemsnit over alle runs i"
+                        " det); grundlaget kan bære præcis 1 enhed"),
+        "source": "visible_runs",
+        # Dette er hvad `pooled`-gennemsnittet faktisk ER. Den hed tidligere ikke noget,
+        # så `per_run` blev brugt som et navn på det — og navnet påstod 288 gange mere
+        # uafhængighed end beregningen kunne levere.
+        "units_from": "window",
         "implemented": True,
     },
     "per_model_call": {
         "version": 1,
         "description": "ét model-kald = én observation (modellens egen hastighed)",
         "source": "costs",
+        "units_from": "model_calls",
         "implemented": False,
         "reason": ("`costs` bærer `created_at` pr. ledger-række, men intet per-kald "
                    "start/slut. Ægte per-kald-latency kan derfor ikke måles; "
@@ -98,6 +117,18 @@ AGGREGATIONS: dict[str, dict[str, Any]] = {
     "pooled": {
         "version": 1,
         "description": "gennemsnit vægtet pr. observation (mange runs vejer tungest)",
+        # Varighedsvægtning: et run på 30 minutter vejer 100x mere end et på 18 sekunder.
+        # Det er derfor `pooled` hører til `aggregate_window` og ikke til `per_run`.
+        "weights": "duration",
+        "implemented": True,
+    },
+    "equal_weight": {
+        "version": 1,
+        "description": "hvert run vejer 1 uanset varighed → medianen, ikke gennemsnittet",
+        # Målt 4/11-2026: `per_run` blev deklareret sammen med `pooled`. De to er ikke
+        # uafhængige felter — `pooled` kollapser netop de runs `per_run` påstår at tælle
+        # enkeltvis. En kontrakt der bad om begge bad om én observation og kaldte den 288.
+        "weights": "per_run",
         "implemented": True,
     },
     "per_period": {
@@ -106,6 +137,25 @@ AGGREGATIONS: dict[str, dict[str, Any]] = {
         "implemented": False,
         "reason": "aggregatet summerer råt; periode-opdeling er ikke bygget",
     },
+}
+
+# Hvilken aggregering en enhed overhovedet KAN bære. Ikke en anbefaling — en
+# begrænsning: `pooled` over en enkelt kørsel er ikke en aggregering, og `per_run`
+# over et pooled gennemsnit er ikke per run. Uden denne tabel kunne kontrakten
+# deklarere en enhed dens egen beregning modsiger.
+UNIT_AGGREGATIONS: dict[str, tuple[str, ...]] = {
+    "per_run": ("equal_weight",),
+    "aggregate_window": ("pooled",),
+}
+
+# Hvor mange SAMPLES en enhed kan levere fra ÉN observation. `None` = operationelt
+# loft (antallet af runs i vinduet), som først kendes ved evalueringen. `1` = et
+# strukturelt loft: et pooled vindue ER ét bevis, uanset hvor mange runs det summerer.
+# Uden dette loft ville en kontrakt med `aggregate_window` og `min_samples: 5` stå som
+# «mangler data» for evigt i stedet for at blive afvist ved oprettelsen.
+UNIT_SAMPLE_CEILING: dict[str, int | None] = {
+    "per_run": None,
+    "aggregate_window": 1,
 }
 
 # Navngivne, versionerede EVALUERINGSPOLITIKKER — hvornår en observation tæller som
@@ -153,6 +203,30 @@ CONTRACT_TYPES: dict[str, dict[str, Any]] = {
         "time_bases": ("ingestion_time",),
         "policies": ("latency_margin_v1",),
         "metric": "latency_ms",
+        # HVAD TYPEN MÅLT PÅSTÅR (4/11-2026). Navnet `comparative_latency` var bredere end
+        # målingen: den læser `visible_runs.started_at/finished_at`, altså hvor længe en
+        # SAMLET KØRSEL tog — inkl. routing, køtid og alle værktøjskald. Målt samme dag:
+        # comparator har 11,3 model-kald pr. kørsel mod subject's 1,0, så «hurtigst per
+        # kørsel» og «hurtigst per kald» peger i hver sin retning (16/16 vs 0/16).
+        # Påstanden skal derfor siges præcist, ellers læser en dom som en anden dom.
+        "claim": ("hvilken rute giver den laveste OBSERVEREDE run-latency — den ventetid"
+                  " en samlet kørsel gav — under de målte betingelser"),
+        "does_not_claim": ("at måle modellens inferenshastighed: run-latency rummer"
+                           " routing, køtid og alle model-kald i kørslen"),
+    },
+    # IKKE IMPLEMENTERET — dokumentation af hvad der mangler, ikke et tilbud. Samme
+    # regel som `per_model_call` og `event_time`: en kontrakt må kun påstå det
+    # infrastrukturen kan bære. `costs` har `created_at` pr. ledger-række men intet
+    # per-kald start/slut, og `time_to_first_token`/`tokens_per_second` findes slet
+    # ikke. Registreret her så navnet ikke opfindes ad hoc senere.
+    "model_inference_latency": {
+        "version": 1,
+        "evaluator": None,
+        "evaluator_version": 0,
+        "implemented": False,
+        "reason": ("kræver per-kald start/slut samt token-tal pr. kald; `costs` bærer"
+                   " kun `created_at` pr. ledger-række, så et per-kald-latency kan"
+                   " afledes som fordeling men ikke måles"),
     },
 }
 
@@ -220,6 +294,36 @@ def validate(contract: Any) -> tuple[bool, list[str]]:
         missing.append(f"evidence_version skal være {EVIDENCE_SPEC_VERSION}"
                        f" (kontrakten bærer {ev_ver})")
 
+    # ENHEDEN OG AGGREGERINGEN MÅ IKKE MODSIGE HINANDEN (4/11-2026). De er ikke to
+    # uafhængige valg: `pooled` er varighedsvægtning, som kollapser netop de runs
+    # `per_run` påstår at tælle enkeltvis. Målt samme dag stod den levende kontrakt med
+    # `per_run` + `pooled` — den deklarerede 288 enheder og udførte 1. Det er værre end
+    # ingen enhed, fordi den så valideret ud.
+    unit_navn = str(contract.get("evidence_unit") or "")
+    agg_navn = str(contract.get("aggregation") or "")
+    tilladt = UNIT_AGGREGATIONS.get(unit_navn)
+    if tilladt and agg_navn and agg_navn not in tilladt:
+        missing.append(f"evidence_unit {unit_navn!r} kan ikke bære aggregation"
+                       f" {agg_navn!r} (kun {tilladt}) — enheden og vægtningen"
+                       f" beskriver to forskellige observationer")
+
+    # MIN_SAMPLES KAN IKKE OVERSTIGE HVAD ENHEDEN LEVERER PR. OBSERVATION. Et pooled
+    # vindue er ÉT bevis uanset hvor mange runs det summerer; en kontrakt der kræver 5
+    # samples af et enkelt aggregat kan aldrig opfyldes, og ville stå som «mangler data»
+    # for evigt i stedet for at blive afvist. Loftet håndhæves her, så fejlen er
+    # strukturel og synlig ved oprettelsen.
+    # Loftet tjekkes kun naar `min_samples` faktisk ER et tal — ellers er den allerede
+    # rapporteret som ugyldig i blokken ovenfor, og en tvangskonvertering her ville
+    # kaste paa netop den fejl der er beskrevet. Ingen try/except: betingelsen er
+    # spurgt, ikke gættet.
+    loft = UNIT_SAMPLE_CEILING.get(unit_navn)
+    raa_ms = contract.get("min_samples")
+    if loft is not None and isinstance(raa_ms, int) and not isinstance(raa_ms, bool) \
+            and int(raa_ms) > loft:
+        missing.append(f"min_samples {int(raa_ms)} overstiger hvad evidence_unit"
+                       f" {unit_navn!r} kan levere (højst {loft} pr. observation)"
+                       f" — vælg 'per_run' for at tælle flere")
+
     # Beslutningskriteriet skal være pinnet i kontrakten — ellers kan evaluatorens
     # kode ændre dommen for hypoteser der aldrig blev rørt.
     pol = str(contract.get("evaluation_policy") or "")
@@ -274,7 +378,22 @@ def evidence_of(contract: dict[str, Any]) -> dict[str, Any] | None:
         "aggregation": str(contract.get("aggregation")),
         "version": EVIDENCE_SPEC_VERSION,
         "source": unit.get("source", ""),
+        # Hvor mange enheder grundlaget kan bære: `runs` = antallet af kørsler i vinduet,
+        # `window` = præcis 1. Evaluatoren SKAL læse dette og ikke gætte — det er
+        # forskellen mellem 288 og 1, og den forskel var hele fejlen.
+        "units_from": str(unit.get("units_from") or ""),
     }
+
+
+def claim_of(contract: dict[str, Any]) -> str:
+    """Hvad kontrakttypen må påstå — ikke hvad navnet antyder.
+
+    Målt 4/11-2026: `comparative_latency` læser run-latency (inkl. routing, køtid og
+    alle model-kald), men navnet kunne læses som modellens egen hastighed. To domme
+    der lyder ens kan derfor svare på to forskellige spørgsmål.
+    """
+    spec = CONTRACT_TYPES.get(str(contract.get("contract_type") or ""))
+    return str((spec or {}).get("claim") or "")
 
 
 def evidence_signature(contract: dict[str, Any]) -> str:
@@ -288,6 +407,29 @@ def evidence_signature(contract: dict[str, Any]) -> str:
     if not ev:
         return ""
     return f"{ev['unit']}/{ev['window']}/{ev['aggregation']}/v{ev['version']}"
+
+
+def supersedes_of(provenance: dict[str, Any] | None) -> list[str]:
+    """Hvilke tidligere hypoteser denne undersøgelse ERSTATTER — i rækkefølge.
+
+    Bæres i `provenance_json.supersedes`, ikke i en ny kolonne: det er historie, ikke
+    testmetode, og det kræver ingen migration.
+
+    Grunden til at feltet findes (4/11-2026): da evidens-enheden blev påkrævet, blev
+    den eneste kontrakt-hypotese `unevaluable` — dens kontrakt deklarerede ingen enhed.
+    At oprette en ny er korrekt (en præregistreret kontrakt må ikke ændres stiltiende),
+    men uden referencen forsvinder den gamle som en teknisk rest, og Centralen kan ikke
+    længere svare på HVORFOR undersøgelsen blev erstattet. En hypotese der dør af en
+    utilstrækkelig kontrakt er et fund, ikke skrald.
+    """
+    if not isinstance(provenance, dict):
+        return []
+    raw = provenance.get("supersedes")
+    if isinstance(raw, str):
+        return [raw] if raw else []
+    if isinstance(raw, (list, tuple)):
+        return [str(x) for x in raw if x]
+    return []
 
 
 def relation_of(contract: dict[str, Any]) -> str:

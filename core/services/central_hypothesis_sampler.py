@@ -195,15 +195,37 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     # kontrakten ikke nævner.
     if tc.evidence_of(contract) is None:
         return None
+    ev = tc.evidence_of(contract)
     min_samples = int(contract.get("min_samples") or 0)
     agg = mm.aggregate_model_outcomes()
     sa, ca = agg.get(subject), agg.get(comparator)
     if not sa or not ca:
         return None
-    if int(sa.get("samples") or 0) < min_samples or int(ca.get("samples") or 0) < min_samples:
+
+    # HVOR MANGE ENHEDER BÆRER GRUNDLAGET? (4/11-2026, tredje runde.) `min_samples` blev
+    # talt mod `samples` — antallet af RÆKKER i vinduet — uanset hvad kontrakten
+    # deklarerede. Med `per_run` er det rigtige tal antallet af kørsler der bar et
+    # latency-mål (`lat_n`, som aggregatet allerede talte og kastede væk); med
+    # `aggregate_window` er det præcis 1, fordi det pooled gennemsnit ER observationen.
+    # Målt før rettelsen: grundlaget rummede 288 run-enheder, evaluatoren udnyttede 1.
+    if str(ev.get("units_from")) == "runs":
+        units = min(int(sa.get("lat_n") or 0), int(ca.get("lat_n") or 0))
+    else:
+        units = 1
+    if units < min_samples:
         return None
-    s_lat = float(sa.get("latency_ms") or 0.0)
-    c_lat = float(ca.get("latency_ms") or 0.0)
+
+    # ESTIMANDEN FØLGER ENHEDEN. `equal_weight` = hvert run vejer 1 → medianen.
+    # `pooled` = varighedsvægtning → gennemsnittet. At læse `latency_ms` uanset enhed
+    # var netop at deklarere `per_run` og udføre `aggregate_window`: et run på 30
+    # minutter vejede 100x mere end et på 18 sekunder, så ét hængt run kunne flytte
+    # dommen for alle — mens kontrakten kaldte det «hvert run er én observation».
+    if str(ev.get("aggregation")) == "equal_weight":
+        s_lat = float(sa.get("latency_median_ms") or 0.0)
+        c_lat = float(ca.get("latency_median_ms") or 0.0)
+    else:
+        s_lat = float(sa.get("latency_ms") or 0.0)
+        c_lat = float(ca.get("latency_ms") or 0.0)
     if s_lat <= 0 or c_lat <= 0:
         return None
 
@@ -228,7 +250,11 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     # uden at tællerne rykker. Nøglen bærer derfor også en hash af de faktiske rækker.
     s_n, c_n = int(sa.get("samples") or 0), int(ca.get("samples") or 0)
     fp = _observation_fingerprint(subject, comparator)
-    cur = f"{s_n}:{c_n}:{fp}" if fp else f"{s_n}:{c_n}"
+    # `units` staar FOERST i noeglen: to kontrakter med forskellige enheder kan se samme
+    # raekker men besidde et forskelligt antal observationer. Uden tallet kunne en
+    # `per_run`-dom (288 enheder) og en `aggregate_window`-dom (1) dele evidensidentitet
+    # og blokere hinanden som duplikater.
+    cur = f"{units}u:{s_n}:{c_n}:{fp}" if fp else f"{units}u:{s_n}:{c_n}"
     # ENHEDEN ER EN DEL AF OBSERVATIONENS IDENTITET (4/11-2026). Dedup'en i
     # `record_governed_sample` nøgler på source+ground_ref. To kontrakter der tæller
     # FORSKELLIGE enheder — fx `per_run` og `per_model_call` — måler hvert sit grundlag

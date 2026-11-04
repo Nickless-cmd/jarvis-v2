@@ -302,7 +302,7 @@ _CONTRACT_BASE = {
     # observationer eller én målt fem gange.
     "evidence_unit": "per_run",
     "window_semantics": "rolling_run_count",
-    "aggregation": "pooled",
+    "aggregation": "equal_weight",
 }
 
 
@@ -316,8 +316,8 @@ def test_modsatrettede_forventninger_giver_modsatte_domme(isolated_runtime, monk
     """
     from core.services import central_model_meta as mm
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     # Samme family for BEGGE — den ville give samme dom hvis den blev laest.
     _insert_hyp("h-a", "model_meta", "latency:p/fast>p/slow",
@@ -351,8 +351,8 @@ def test_hurtigere_men_ikke_markant_nok_er_uafgjort_ikke_modbevist(isolated_runt
     from core.services import central_model_meta as mm
     # 100 mod 110: X er hurtigere, men kun ~9 % — under 25 %-margin.
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 110.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 110.0, "latency_median_ms": 110.0},
     })
     _insert_hyp("h-svag", "model_meta", "latency:p/fast>p/slow",
                 contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
@@ -385,8 +385,8 @@ def test_politikken_kommer_fra_kontrakten_ikke_fra_modulet(isolated_runtime, mon
     # 100 mod 1000 ikke laengere taelle som stotte.
     monkeypatch.setattr(mm, "_LATENCY_MARGIN", 100.0, raising=False)
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     _insert_hyp("h-pin", "model_meta", "latency:p/fast>p/slow",
                 contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
@@ -422,8 +422,8 @@ def test_kontrakt_hypotese_rapporteres_som_contract(isolated_runtime, monkeypatc
     """En valideret kontrakt er den ENESTE kilde der maa hedde `contract` i Centralens tal."""
     from core.services import central_model_meta as mm
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     _insert_hyp("h-kontrakt", "model_meta", "latency:p/fast>p/slow",
                 contract={**_CONTRACT_BASE, "expected_relation": "less_than"})
@@ -487,8 +487,8 @@ def test_ny_hypotese_fra_oprettelse_til_dom_paa_kontrakt(isolated_runtime, monke
     import json
     from core.services import central_model_meta as mm
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     cand = {
         "source": "model_meta",
@@ -539,21 +539,21 @@ def test_ground_ref_daekker_begge_parter_ikke_kun_subject(isolated_runtime, monk
     contract = {**_CONTRACT_BASE, "expected_relation": "less_than"}
 
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 10, "latency_ms": 100.0},
-        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+        "p/fast": {"samples": 10, "lat_n": 10, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 5, "lat_n": 5, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     a = smp._eval_contract_comparative(contract)
     # Noeglen baerer nu ogsaa en hash af de faktiske rækker — et antal alene er
     # ikke en identitet (korrigeret maaling / rullende vindue, maalt 4/11-2026).
-    assert a["cursor"].startswith("10:5:"), a
+    assert a["cursor"].startswith("5u:10:5:"), a
 
     # Samme subject, men comparator har fået ét run mere: en NY observation.
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 10, "latency_ms": 100.0},
-        "p/slow": {"samples": 6, "latency_ms": 1000.0},
+        "p/fast": {"samples": 10, "lat_n": 10, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 6, "lat_n": 6, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     b = smp._eval_contract_comparative(contract)
-    assert b["cursor"].startswith("10:6:"), b
+    assert b["cursor"].startswith("6u:10:6:"), b
     assert a["cursor"] != b["cursor"], \
         "ny comparator-data må ikke se ud som den samme observation"
 
@@ -579,8 +579,8 @@ def test_korrigeret_maaling_giver_ny_observation(isolated_runtime, monkeypatch):
     from core.services import central_model_meta as mm
     from core.runtime import db as rdb
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 10, "latency_ms": 100.0},
-        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+        "p/fast": {"samples": 10, "lat_n": 10, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 5, "lat_n": 5, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
     monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
@@ -599,8 +599,8 @@ def test_rullende_vindue_giver_ny_observation(isolated_runtime, monkeypatch):
     from core.services import central_model_meta as mm
     from core.runtime import db as rdb
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 10, "latency_ms": 100.0},
-        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+        "p/fast": {"samples": 10, "lat_n": 10, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 5, "lat_n": 5, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     foerste = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
     monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: foerste)
@@ -621,8 +621,8 @@ def test_identisk_grundlag_giver_samme_observation(isolated_runtime, monkeypatch
     from core.services import central_model_meta as mm
     from core.runtime import db as rdb
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 10, "latency_ms": 100.0},
-        "p/slow": {"samples": 5, "latency_ms": 1000.0},
+        "p/fast": {"samples": 10, "lat_n": 10, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 5, "lat_n": 5, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     rows = [_run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")]
     monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: rows)
@@ -631,7 +631,7 @@ def test_identisk_grundlag_giver_samme_observation(isolated_runtime, monkeypatch
     assert a["cursor"] == b["cursor"], (
         f"identisk grundlag skal give samme noegle — ellers taeller samme observation"
         f" flere gange: {a['cursor']} vs {b['cursor']}")
-    assert a["cursor"].count(":") == 2, f"noeglen skal baere antal + hash: {a['cursor']}"
+    assert a["cursor"].count(":") == 3, f"noeglen skal baere enheder + antal + hash: {a['cursor']}"
 
 
 # ── Enheden i kontrakten (4/11-2026) ──────────────────────────────────────────
@@ -687,13 +687,13 @@ def test_enheden_baeres_i_ground_ref(isolated_runtime, monkeypatch):
     from core.services import central_model_meta as mm
     from core.runtime import db as rdb
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
         _run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")])
     res = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than"})
-    assert "@per_run/rolling_run_count/pooled/v1" in res["cursor"], res["cursor"]
+    assert "@per_run/rolling_run_count/equal_weight/v1" in res["cursor"], res["cursor"]
 
 
 def test_forskellige_enheder_giver_forskellig_ground_ref(isolated_runtime, monkeypatch):
@@ -709,8 +709,8 @@ def test_forskellige_enheder_giver_forskellig_ground_ref(isolated_runtime, monke
     from core.services import central_test_contract as tc
     from core.runtime import db as rdb
     monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
-        "p/fast": {"samples": 20, "latency_ms": 100.0},
-        "p/slow": {"samples": 20, "latency_ms": 1000.0},
+        "p/fast": {"samples": 20, "lat_n": 20, "latency_ms": 100.0, "latency_median_ms": 100.0},
+        "p/slow": {"samples": 20, "lat_n": 20, "latency_ms": 1000.0, "latency_median_ms": 1000.0},
     })
     monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
         _run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")])
@@ -721,7 +721,8 @@ def test_forskellige_enheder_giver_forskellig_ground_ref(isolated_runtime, monke
     try:
         tc.EVIDENCE_UNITS["per_model_call"]["implemented"] = True
         b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than",
-                                            "evidence_unit": "per_model_call"})
+                                            "evidence_unit": "per_model_call",
+                                            "min_samples": 1})
     finally:
         tc.EVIDENCE_UNITS.clear()
         tc.EVIDENCE_UNITS.update(spec)
@@ -729,3 +730,113 @@ def test_forskellige_enheder_giver_forskellig_ground_ref(isolated_runtime, monke
     assert a["cursor"] != b["cursor"], (
         f"to enheder paa samme data delte evidensidentitet: {a['cursor']} vs {b['cursor']}")
     assert "@per_run/" in a["cursor"] and "@per_model_call/" in b["cursor"], (a, b)
+
+
+# ── ENHEDEN SKAL VÆRE IMPLEMENTERET, IKKE BARE DEKLARERET (4/11-2026) ─────────────
+#
+# Målt samme dag: kontrakten deklarerede `per_run` + `pooled`, mens evaluatoren læste
+# `latency_ms` — et pooled gennemsnit over hele vinduet — og gemte det som ÉT sample.
+# Grundlaget rummede 288 run-enheder; dommen udnyttede 1. Testene herunder binder de to
+# til hinanden: `min_samples` skal tælles i den deklarerede enhed, og estimanden skal
+# følge vægtningen.
+
+
+def _mock_agg(monkeypatch, fast, slow):
+    """Mock med aggregatets FAKTISKE returform (lat_n + latency_median_ms)."""
+    from core.services import central_model_meta as mm
+    from core.runtime import db as rdb
+    monkeypatch.setattr(mm, "aggregate_model_outcomes", lambda **k: {
+        "p/fast": fast, "p/slow": slow})
+    monkeypatch.setattr(rdb, "recent_visible_runs", lambda **k: [
+        _run("r1", "fast", "t1", "t2"), _run("r2", "slow", "t3", "t4")])
+
+
+def test_per_run_taeller_runs_ikke_vinduer(isolated_runtime, monkeypatch):
+    """`per_run` skal give ÉN enhed pr. kørsel — ikke ét pr. vindue.
+
+    Det er hele forskellen: 23 runs er 23 beviser, et pooled vindue er 1. Målt
+    4/11-2026 gav samme grundlag `units=23` for per_run og `units=1` for
+    aggregate_window.
+    """
+    _mock_agg(monkeypatch,
+              {"samples": 40, "lat_n": 40, "latency_ms": 100.0, "latency_median_ms": 100.0},
+              {"samples": 90, "lat_n": 90, "latency_ms": 1000.0, "latency_median_ms": 1000.0})
+    a = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "per_run",
+                                        "aggregation": "equal_weight", "min_samples": 5})
+    b = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "aggregate_window",
+                                        "aggregation": "pooled", "min_samples": 1})
+    assert a["cursor"].startswith("40u:"), a
+    assert b["cursor"].startswith("1u:"), b
+    assert a["cursor"] != b["cursor"]
+
+
+def test_per_run_taeller_kun_runs_med_latency(isolated_runtime, monkeypatch):
+    """`samples` er antallet af RÆKKER; `lat_n` er dem der faktisk bar et latency-mål.
+
+    En række uden `finished_at` er en kørsel, men ikke en observation af latency. Blev
+    `samples` brugt som enhedstal, ville fem uafsluttede kørsler tælle som fem beviser
+    om noget de ikke målte.
+    """
+    _mock_agg(monkeypatch,
+              {"samples": 50, "lat_n": 3, "latency_ms": 100.0, "latency_median_ms": 100.0},
+              {"samples": 80, "lat_n": 60, "latency_ms": 1000.0, "latency_median_ms": 1000.0})
+    # 3 runs med latency < 5 krævede → ingen dom, selv om der er 50 rækker
+    assert smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "per_run",
+                                           "aggregation": "equal_weight",
+                                           "min_samples": 5}) is None
+    # sænkes kravet til 3, er der netop nok — og dommen falder
+    res = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "per_run",
+                                          "aggregation": "equal_weight", "min_samples": 3})
+    assert res and res["cursor"].startswith("3u:"), res
+
+
+def test_equal_weight_bruger_medianen_ikke_gennemsnittet(isolated_runtime, monkeypatch):
+    """Enheden bestemmer ESTIMANDEN — ikke kun antallet.
+
+    `pooled` er varighedsvægtning: et run på 30 minutter vejer 100x mere end et på 18
+    sekunder, så ét hængt run kan flytte dommen for alle. Er `per_run` ægte, skal
+    dommen følge medianen — hvor hvert run har præcis én stemme.
+    """
+    # mean siger «fast er 10x langsommere», median siger «fast er 10x hurtigere»
+    _mock_agg(monkeypatch,
+              {"samples": 20, "lat_n": 20, "latency_ms": 10_000.0, "latency_median_ms": 100.0},
+              {"samples": 20, "lat_n": 20, "latency_ms": 1_000.0, "latency_median_ms": 1_000.0})
+    res = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "per_run",
+                                          "aggregation": "equal_weight", "min_samples": 5})
+    assert res["supports"] is True, ("medianen siger fast er hurtigst — brugtes "
+                                     f"gennemsnittet ville dommen vende: {res}")
+    # modsat retning paa SAMME data: pooled gennemsnit skal give den modsatte dom
+    pooled = smp._eval_contract_comparative({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "aggregate_window",
+                                             "aggregation": "pooled", "min_samples": 1})
+    assert pooled["falsifies"] is True, ("det pooled gennemsnit er domineret af det "
+                                         f"haengte run: {pooled}")
+
+
+def test_kontrakt_kan_ikke_blande_enhed_og_aggregering():
+    """`per_run` + `pooled` er ikke to uafhaengige valg — de modsiger hinanden.
+
+    `pooled` kollapser netop de runs `per_run` paastaar at taelle enkeltvis. Maalt
+    4/11-2026 stod den levende kontrakt med praecis den kombination: den deklarerede
+    288 enheder og udfoerte 1.
+    """
+    from core.services import central_test_contract as tc
+    c = {**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "per_run", "aggregation": "pooled"}
+    ok, mangler = tc.validate(c)
+    assert ok is False, "per_run + pooled skal afvises"
+    assert any("kan ikke bære" in m for m in mangler), mangler
+
+
+def test_aggregate_window_kan_ikke_kraeve_fem_samples():
+    """Et pooled vindue er ÉT bevis — uanset hvor mange runs det summerer.
+
+    Uden loftet ville en saadan kontrakt staa som «mangler data» for evigt i stedet for
+    at blive afvist ved oprettelsen.
+    """
+    from core.services import central_test_contract as tc
+    ok, mangler = tc.validate({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "aggregate_window",
+                               "aggregation": "pooled", "min_samples": 5})
+    assert ok is False
+    assert any("overstiger" in m for m in mangler), mangler
+    ok1, _ = tc.validate({**_CONTRACT_BASE, "expected_relation": "less_than", "evidence_unit": "aggregate_window",
+                          "aggregation": "pooled", "min_samples": 1})
+    assert ok1 is True

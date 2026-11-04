@@ -33,7 +33,7 @@ def _gyldig(**over):
         # Evidens-specifikationen: hvad tælles, hvordan vælges det, hvordan vægtes det.
         "evidence_unit": "per_run",
         "window_semantics": "rolling_run_count",
-        "aggregation": "pooled",
+        "aggregation": "equal_weight",
     }
     c.update(over)
     return c
@@ -270,7 +270,7 @@ def test_evidence_of_returnerer_specifikationen():
     assert ev is not None
     assert ev["unit"] == "per_run"
     assert ev["window"] == "rolling_run_count"
-    assert ev["aggregation"] == "pooled"
+    assert ev["aggregation"] == "equal_weight"
     assert ev["version"] == tc.EVIDENCE_SPEC_VERSION
     assert ev["source"] == "visible_runs"
 
@@ -291,7 +291,7 @@ def test_signaturen_foelger_enheden_ikke_en_konstant():
     implementeret: saa SKAL signaturen aendre sig.
     """
     base = tc.evidence_signature(_gyldig())
-    assert base == "per_run/rolling_run_count/pooled/v1", base
+    assert base == "per_run/rolling_run_count/equal_weight/v1", base
     # En kontrakt uden gyldig enhed har ingen signatur — ikke en tom der kollapser alle.
     assert tc.evidence_signature(_gyldig(window_semantics="fixed_duration")) == ""
 
@@ -300,7 +300,7 @@ def test_signaturen_foelger_enheden_ikke_en_konstant():
     try:
         tc.WINDOW_SEMANTICS["fixed_duration"]["implemented"] = True
         aendret = tc.evidence_signature(_gyldig(window_semantics="fixed_duration"))
-        assert aendret == "per_run/fixed_duration/pooled/v1", aendret
+        assert aendret == "per_run/fixed_duration/equal_weight/v1", aendret
         assert aendret != base, "signaturen skal foege vindues-semantikken"
     finally:
         tc.WINDOW_SEMANTICS.clear()
@@ -310,7 +310,7 @@ def test_signaturen_foelger_enheden_ikke_en_konstant():
 def test_describe_viser_enheden():
     """En dom uden sin enhed kan ikke revideres — enheden skal staa i den laesbare form."""
     tekst = tc.describe(_gyldig())
-    assert "per_run/rolling_run_count/pooled" in tekst, tekst
+    assert "per_run/rolling_run_count/equal_weight" in tekst, tekst
     # Og en kontrakt UDEN enhed skal sige det hoejt i stedet for at se gyldig ud.
     c = _gyldig()
     c.pop("evidence_unit")

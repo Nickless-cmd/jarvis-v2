@@ -16,6 +16,7 @@ disse ER i LEARNABLE_AGGREGATE_KEYS; rå navne ville fail-close.
 """
 from __future__ import annotations
 
+import statistics
 from datetime import datetime, timezone
 from typing import Any
 
@@ -50,7 +51,8 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
             k = _key(r.get("provider"), r.get("model"))
             d = out.setdefault(k, {"provider": r.get("provider"), "model": r.get("model"),
                                    "samples": 0, "success": 0, "lat_sum": 0.0, "lat_n": 0,
-                                   "cost_usd": 0.0, "tokens": 0, "cost_rows": 0})
+                                   "latencies": [], "cost_usd": 0.0, "tokens": 0,
+                                   "cost_rows": 0})
             d["samples"] += 1
             if str(r.get("status") or "") in _SUCCESS_STATES:
                 d["success"] += 1
@@ -60,6 +62,7 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
                 if 0 <= ms < 3_600_000:          # sanity: 0..1h
                     d["lat_sum"] += ms
                     d["lat_n"] += 1
+                    d["latencies"].append(ms)
     except Exception:
         pass
     # --- pris + tokens fra cost-ledgeren ---
@@ -69,7 +72,8 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
             k = _key(c.get("provider"), c.get("model"))
             d = out.setdefault(k, {"provider": c.get("provider"), "model": c.get("model"),
                                    "samples": 0, "success": 0, "lat_sum": 0.0, "lat_n": 0,
-                                   "cost_usd": 0.0, "tokens": 0, "cost_rows": 0})
+                                   "latencies": [], "cost_usd": 0.0, "tokens": 0,
+                                   "cost_rows": 0})
             d["cost_usd"] += float(c.get("cost_usd") or 0.0)
             d["tokens"] += int(c.get("input_tokens") or 0) + int(c.get("output_tokens") or 0)
             d["cost_rows"] += 1
@@ -79,6 +83,17 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
     for d in out.values():
         d["success_rate"] = round(d["success"] / d["samples"], 4) if d["samples"] else 0.0
         d["latency_ms"] = round(d["lat_sum"] / d["lat_n"], 1) if d["lat_n"] else 0.0
+        # MEDIANEN ER IKKE EN KOSMETISK EKSTRA-SKALAR (4/11-2026). `latency_ms` er et
+        # pooled gennemsnit: et run paa 30 minutter vejer 100x mere end et paa 18
+        # sekunder, saa et enkelt haengt run flytter dommen for alle. Medianen giver
+        # hvert run praecis EEN stemme — det er den eneste form hvor `per_run` kan
+        # siges at vaere talt. Begge offentliggoeres, fordi de svarer paa hvert sit
+        # spoergsmaal, og en kontrakt maa ikke kunne vaelge det ene og kalde det det andet.
+        d["latency_median_ms"] = (round(statistics.median(d["latencies"]), 1)
+                                  if d.get("latencies") else 0.0)
+        # `lat_n` var allerede talt og kastet vaek. Det er antallet af runs der bar
+        # latency-maalet — altsaa hvor mange `per_run`-enheder grundlaget rummer.
+        d["lat_n"] = int(d["lat_n"])
         d["cost_per_1k"] = round(d["cost_usd"] / d["tokens"] * 1000.0, 6) if d["tokens"] else 0.0
     return out
 

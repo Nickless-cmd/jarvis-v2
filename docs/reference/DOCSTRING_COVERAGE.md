@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9698/18059 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9700/18061 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9698/18059 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6491 | 12303 | 52% |
+| `core.services` | 6493 | 12305 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -984,7 +984,7 @@ Generated from source. 9698/18059 functions/methods documented (53%). The list b
 - `core/services/central_switches.py` :: `CircuitBreaker.is_open` (L79)
 - `core/services/central_switches.py` :: `CircuitBreaker.reset` (L90)
 - `core/services/central_switches.py` :: `is_enabled` (L28)
-- `core/services/central_test_contract.py` :: `evaluator_of` (L303)
+- `core/services/central_test_contract.py` :: `evaluator_of` (L445)
 - `core/services/central_trace.py` :: `TraceSink.recent` (L88)
 - `core/services/central_trace.py` :: `TraceSink.record` (L38)
 - `core/services/central_trace.py` :: `TraceSink.records_for_run` (L84)

@@ -51,9 +51,17 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
             k = _key(r.get("provider"), r.get("model"))
             d = out.setdefault(k, {"provider": r.get("provider"), "model": r.get("model"),
                                    "samples": 0, "success": 0, "lat_sum": 0.0, "lat_n": 0,
-                                   "latencies": [], "cost_usd": 0.0, "tokens": 0,
+                                   "latencies": [], "run_ids": [], "cost_usd": 0.0, "tokens": 0,
                                    "cost_rows": 0})
             d["samples"] += 1
+            # RUN-ID'ERNE FØLGER GRUNDLAGET (4/11-2026). Uden dem måtte evidens-ledgeren
+            # læse `visible_runs` ENDNU en gang for at vide hvad der indgik — og to
+            # læsninger kan se to forskellige sæt. Det var præcis racen som
+            # `_observation_fingerprint` havde: den beskrev en GENLÆSNING, ikke
+            # beregningens input. Nu bærer resultatet sit eget grundlag.
+            rid = str(r.get("run_id") or "")
+            if rid:
+                d["run_ids"].append(rid)
             if str(r.get("status") or "") in _SUCCESS_STATES:
                 d["success"] += 1
             st, fi = _parse(r.get("started_at")), _parse(r.get("finished_at"))
@@ -72,7 +80,7 @@ def aggregate_model_outcomes(*, window: int = _WINDOW) -> dict[str, dict[str, An
             k = _key(c.get("provider"), c.get("model"))
             d = out.setdefault(k, {"provider": c.get("provider"), "model": c.get("model"),
                                    "samples": 0, "success": 0, "lat_sum": 0.0, "lat_n": 0,
-                                   "latencies": [], "cost_usd": 0.0, "tokens": 0,
+                                   "latencies": [], "run_ids": [], "cost_usd": 0.0, "tokens": 0,
                                    "cost_rows": 0})
             d["cost_usd"] += float(c.get("cost_usd") or 0.0)
             d["tokens"] += int(c.get("input_tokens") or 0) + int(c.get("output_tokens") or 0)

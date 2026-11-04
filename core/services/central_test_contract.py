@@ -42,8 +42,8 @@ EVIDENCE_SPEC_VERSION = 1
 EVIDENCE_UNITS: dict[str, dict[str, Any]] = {
     "per_run": {
         "version": 1,
-        "description": ("én kørsel = én observation; hvert run vejer 1 uanset varighed,"
-                        " så dommen falder på MEDIANEN (varighedsvægtning er pooled)"),
+        "description": ("én kørsel = én observation; grundlaget bærer lige så mange"
+                        " enheder som der er kørsler med et latency-mål"),
         "source": "visible_runs",
         # IKKE nok at skrive det: `min_samples` tælles mod antal RUNS, og dommen skal
         # læses som en fordelingsegenskab. Målt 4/11-2026: kontrakten deklarerede
@@ -55,7 +55,7 @@ EVIDENCE_UNITS: dict[str, dict[str, Any]] = {
     },
     "aggregate_window": {
         "version": 1,
-        "description": ("vinduet er ÉN observation (pooled gennemsnit over alle runs i"
+        "description": ("vinduet er ÉN observation (ét gennemsnit over alle runs i"
                         " det); grundlaget kan bære præcis 1 enhed"),
         "source": "visible_runs",
         # Dette er hvad `pooled`-gennemsnittet faktisk ER. Den hed tidligere ikke noget,
@@ -113,23 +113,53 @@ WINDOW_SEMANTICS: dict[str, dict[str, Any]] = {
 # vægtet gav 0,988 (støtter) — vægtforskellen var 5,5x fordi comparator havde op til
 # 224 runs på en dag mod subject's 3-25. Det er ikke støj: det er to forskellige
 # estimander, og de besvarer hvert sit spørgsmål.
+#
+# NAVNET ER DEN MATEMATISKE OPERATION, IKKE VÆGTNINGEN (målt 4/11-2026, anden rettelse).
+# Før hed de to tilgængelige valg `pooled` og `equal_weight`. Begge navne beskrev
+# VÆGTNINGEN, men koden valgte en ESTIMATOR — og de to er ikke samme akse:
+#
+#   runs:      10, 10, 10, 10, 100 ms
+#   median:    10 ms      ← robust estimator, hvert run vejer 1
+#   mean:      28 ms      ← aritmetisk gennemsnit, hvert run vejer 1
+#   duration:  74,3 ms    ← varighedsvægtet (findes IKKE i koden)
+#
+# `equal_weight` + `mean` er lige så gyldigt som `equal_weight` + `median` — så et navn
+# der hedder «equal_weight» kan ikke samtidig betyde «median». Og `pooled` blev
+# beskrevet som «varighedsvægtning» mens `aggregate_model_outcomes` beregner
+# `mean(latencies)`; der var altså ingen varighedsvægtning nogen steder, kun et navn
+# der påstod det. Kontrakten deklarerer derfor nu operationen selv.
 AGGREGATIONS: dict[str, dict[str, Any]] = {
-    "pooled": {
+    "mean": {
         "version": 1,
-        "description": "gennemsnit vægtet pr. observation (mange runs vejer tungest)",
-        # Varighedsvægtning: et run på 30 minutter vejer 100x mere end et på 18 sekunder.
-        # Det er derfor `pooled` hører til `aggregate_window` og ikke til `per_run`.
-        "weights": "duration",
+        "description": ("aritmetisk gennemsnit over alle runs i grundlaget; hvert run"
+                        " vejer 1, men et run på 30 min kan dominere summen"),
+        # IKKE varighedsvægtet. Det var navnet `pooled`s fejl: den lød som om de lange
+        # runs vejede mere, men `aggregate_model_outcomes` lægger `latencies` i en liste
+        # og tager `statistics.mean`. Forskellen er målbar — på 10,10,10,10,100 er
+        # gennemsnittet 28 ms og varighedsvægtningen 74,3 ms.
+        "estimator": "arithmetic_mean",
         "implemented": True,
     },
-    "equal_weight": {
+    "median": {
         "version": 1,
-        "description": "hvert run vejer 1 uanset varighed → medianen, ikke gennemsnittet",
-        # Målt 4/11-2026: `per_run` blev deklareret sammen med `pooled`. De to er ikke
-        # uafhængige felter — `pooled` kollapser netop de runs `per_run` påstår at tælle
-        # enkeltvis. En kontrakt der bad om begge bad om én observation og kaldte den 288.
-        "weights": "per_run",
+        "description": ("median over runs; hvert run vejer 1 og ekstreme værdier flytter"
+                        " ikke dommen"),
+        # Målt 4/11-2026: `per_run` blev deklareret sammen med `pooled`-gennemsnittet.
+        # De to er ikke uafhængige felter — gennemsnittet kollapser netop de runs
+        # `per_run` påstår at tælle enkeltvis. En kontrakt der bad om begge bad om én
+        # observation og kaldte den 288.
+        "estimator": "median",
         "implemented": True,
+    },
+    "duration_weighted_mean": {
+        "version": 1,
+        "description": "hver run vejer sin egen varighed — de lange kørsler dominerer",
+        # Registreret så navnet ikke opfindes ad hoc senere. Den findes IKKE: det var
+        # netop hvad `pooled` påstod at være mens koden tog et simpelt gennemsnit.
+        "estimator": "duration_weighted",
+        "implemented": False,
+        "reason": ("`aggregate_model_outcomes` tager `statistics.mean` over latencies;"
+                   " en varighedsvægtet estimator er ikke bygget"),
     },
     "per_period": {
         "version": 1,
@@ -140,12 +170,13 @@ AGGREGATIONS: dict[str, dict[str, Any]] = {
 }
 
 # Hvilken aggregering en enhed overhovedet KAN bære. Ikke en anbefaling — en
-# begrænsning: `pooled` over en enkelt kørsel er ikke en aggregering, og `per_run`
-# over et pooled gennemsnit er ikke per run. Uden denne tabel kunne kontrakten
-# deklarere en enhed dens egen beregning modsiger.
+# begrænsning: et enkelt aggregat kan ikke have en median (der er kun én værdi), og et
+# pooled gennemsnit over `per_run` kollapser netop de runs enheden påstår at tælle.
+# `per_run` kan bære BEGGE estimatorer — valget mellem dem er en selvstændig
+# videnskabelig beslutning (robusthed over for halen), ikke en følge af enheden.
 UNIT_AGGREGATIONS: dict[str, tuple[str, ...]] = {
-    "per_run": ("equal_weight",),
-    "aggregate_window": ("pooled",),
+    "per_run": ("median", "mean"),
+    "aggregate_window": ("mean",),
 }
 
 # Hvor mange SAMPLES en enhed kan levere fra ÉN observation. `None` = operationelt
@@ -295,9 +326,9 @@ def validate(contract: Any) -> tuple[bool, list[str]]:
                        f" (kontrakten bærer {ev_ver})")
 
     # ENHEDEN OG AGGREGERINGEN MÅ IKKE MODSIGE HINANDEN (4/11-2026). De er ikke to
-    # uafhængige valg: `pooled` er varighedsvægtning, som kollapser netop de runs
-    # `per_run` påstår at tælle enkeltvis. Målt samme dag stod den levende kontrakt med
-    # `per_run` + `pooled` — den deklarerede 288 enheder og udførte 1. Det er værre end
+    # uafhængige valg: et pooled gennemsnit kollapser netop de runs `per_run` påstår at
+    # tælle enkeltvis. Målt samme dag stod den levende kontrakt med `per_run` + et
+    # pooled gennemsnit — den deklarerede 288 enheder og udførte 1. Det er værre end
     # ingen enhed, fordi den så valideret ud.
     unit_navn = str(contract.get("evidence_unit") or "")
     agg_navn = str(contract.get("aggregation") or "")

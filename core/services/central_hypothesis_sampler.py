@@ -127,7 +127,8 @@ def test_stance_persistence(tension_key: str) -> dict[str, Any] | None:
 # `evaluator_for()` læse det felt FØRST — broen er kun fallback.
 
 
-def _eval_causal_sequence(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
+def _eval_causal_sequence(prov: dict[str, Any], contract: dict[str, Any] | None = None,
+                          hyp_id: str = "") -> dict[str, Any] | None:
     """Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'."""
     fam = str(prov.get("family") or "")
     if "->" not in fam:
@@ -169,7 +170,85 @@ def _observation_fingerprint(subject: str, comparator: str, *, window: int = 300
         return ""
 
 
-def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | None:
+def _ensure_evidence_schema() -> None:
+    """Evidens-ledgeren: hvilke run-ID'er har DENNE hypotese allerede talt med?
+
+    Grunden til at den findes (målt 4/11-2026, fjerde runde): `units` blev talt som
+    antallet af runs i det RULLENDE vindue — men vinduet genbruges hvert tick. De samme
+    23 runs blev derfor talt som 23 enheder igen og igen, og `min_samples: 5` kunne
+    opfyldes af én observation målt fem gange. Det var præcis den fejl hele
+    undersøgelsen startede med, blot et lag dybere: nu var enheden navngivet korrekt
+    (`per_run`) og alligevel ikke uafhængig.
+
+    Invarianten er derfor: **et run-ID må højst bidrage én gang til en given hypoteses
+    optjente evidens.** Ledgeren er det eneste sted det kan håndhæves, fordi den er
+    den eneste der husker på tværs af ticks.
+    """
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            c.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS central_hypothesis_evidence_runs (
+                  hyp_id TEXT NOT NULL,
+                  run_id TEXT NOT NULL,
+                  first_seen_at TEXT NOT NULL,
+                  PRIMARY KEY (hyp_id, run_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_cher_hyp
+                  ON central_hypothesis_evidence_runs(hyp_id);
+                """
+            )
+            c.commit()
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: kunne ikke sikre evidens-skema: %s", exc)
+
+
+def _seen_run_ids(hyp_id: str) -> set[str]:
+    """De run-ID'er denne hypotese allerede har talt med. Tom mængde ved fejl."""
+    if not hyp_id:
+        return set()
+    try:
+        from core.runtime.db import connect
+        _ensure_evidence_schema()
+        with connect() as c:
+            rows = c.execute(
+                "SELECT run_id FROM central_hypothesis_evidence_runs WHERE hyp_id=?",
+                (str(hyp_id),)).fetchall()
+        return {str(r["run_id"]) for r in rows}
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: kunne ikke laese sete runs: %s", exc)
+        return set()
+
+
+def _mark_run_ids(hyp_id: str, run_ids: list[str]) -> int:
+    """Registrér run-ID'er som sete for denne hypotese. → antal nye rækker.
+
+    Kaldes EFTER et sample er gemt, ikke inde i evaluatoren: en evaluator der selv
+    skriver ville markere runs som sete selv når samplet blev afvist som duplikat —
+    og så ville evidensen være tabt uden at nogen havde set den.
+    """
+    if not hyp_id or not run_ids:
+        return 0
+    try:
+        from core.runtime.db import connect
+        _ensure_evidence_schema()
+        now = datetime.now(timezone.utc).isoformat()
+        with connect() as c:
+            before = c.total_changes
+            c.executemany(
+                "INSERT OR IGNORE INTO central_hypothesis_evidence_runs"
+                " (hyp_id, run_id, first_seen_at) VALUES (?,?,?)",
+                [(str(hyp_id), str(r), now) for r in run_ids if r])
+            c.commit()
+            return int(c.total_changes) - int(before)
+    except Exception as exc:
+        logger.warning("central_hypothesis_sampler: kunne ikke markere runs: %s", exc)
+        return 0
+
+
+def _eval_contract_comparative(contract: dict[str, Any],
+                               hyp_id: str = "") -> dict[str, Any] | None:
     """Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN.
 
     Legacy-stien kodede retningen to steder: i family-konventionen ``"latency:W>L"``
@@ -202,25 +281,54 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     if not sa or not ca:
         return None
 
-    # HVOR MANGE ENHEDER BÆRER GRUNDLAGET? (4/11-2026, tredje runde.) `min_samples` blev
-    # talt mod `samples` — antallet af RÆKKER i vinduet — uanset hvad kontrakten
-    # deklarerede. Med `per_run` er det rigtige tal antallet af kørsler der bar et
-    # latency-mål (`lat_n`, som aggregatet allerede talte og kastede væk); med
-    # `aggregate_window` er det præcis 1, fordi det pooled gennemsnit ER observationen.
-    # Målt før rettelsen: grundlaget rummede 288 run-enheder, evaluatoren udnyttede 1.
+    # HVOR MANGE *NYE* ENHEDER BÆRER GRUNDLAGET? (4/11-2026, fjerde runde.)
+    #
+    # Før blev `units` talt som antallet af runs i det RULLENDE vindue. Men vinduet
+    # genbruges hvert tick, så de samme 23 runs blev talt som 23 enheder igen og igen —
+    # og `min_samples: 5` kunne opfyldes af én observation målt fem gange. Det var
+    # præcis den fejl hele undersøgelsen startede med, nu et lag dybere: enheden var
+    # navngivet korrekt (`per_run`) og alligevel ikke uafhængig.
+    #
+    # Ledgeren husker hvilke run-ID'er hypotesen allerede har talt med. `units` er nu
+    # hvor meget grundlaget er VOKSET siden sidst — og et run kan aldrig bidrage to
+    # gange til samme hypotese. Målt 4/11-2026: subject fik 0,40 nye runs pr. tick,
+    # comparator 3,17, så fem samples over 2,5 timer byggede på grundlag der voksede
+    # 1,09x (97,8 % overlap). Med denne port er det umuligt.
+    #
+    # ID'ERNE KOMMER FRA AGGREGATET, ikke fra en ny læsning: to læsninger kan se to
+    # forskellige sæt, og så beskriver nøglen noget andet end dommen bygger på.
+    window_ids = list(sa.get("run_ids") or []) + list(ca.get("run_ids") or [])
     if str(ev.get("units_from")) == "runs":
-        units = min(int(sa.get("lat_n") or 0), int(ca.get("lat_n") or 0))
+        seen = _seen_run_ids(hyp_id) if hyp_id else set()
+        subj_new = [r for r in (sa.get("run_ids") or []) if r not in seen]
+        comp_new = [r for r in (ca.get("run_ids") or []) if r not in seen]
+        # EN KOMPARATIV OBSERVATION ER ET PAR, IKKE ET ENKELT RUN (4/11-2026, fjerde
+        # runde). Du kan ikke lave 130 sammenligninger af 40 mod 90 runs — grundlaget
+        # bærer kun så mange NYE sammenligninger som den mindst voksende part. Det er
+        # også svaret på hvorfor den levende hypotese sad fast: subject fik 0,40 nye
+        # runs pr. tick mens comparator fik 3,17, så der kom ingen nye par — og uden
+        # denne grænse ville comparators travlhed alene blive talt som ny evidens om
+        # en sammenligning der ikke havde fået ny modpart.
+        units = min(len(subj_new), len(comp_new))
+        new_ids = subj_new[:units] + comp_new[:units]
+        total_units = min(len(sa.get("run_ids") or []), len(ca.get("run_ids") or []))
     else:
-        units = 1
+        # Et pooled vindue ER ét bevis uanset hvor mange runs det summerer. Det kan
+        # derfor kun bidrage én gang — derefter er der ingen ny observation.
+        already = bool(hyp_id) and bool(_seen_run_ids(hyp_id))
+        new_ids = [] if already else window_ids
+        units = 0 if already else 1
+        total_units = 1
     if units < min_samples:
         return None
 
-    # ESTIMANDEN FØLGER ENHEDEN. `equal_weight` = hvert run vejer 1 → medianen.
-    # `pooled` = varighedsvægtning → gennemsnittet. At læse `latency_ms` uanset enhed
-    # var netop at deklarere `per_run` og udføre `aggregate_window`: et run på 30
-    # minutter vejede 100x mere end et på 18 sekunder, så ét hængt run kunne flytte
-    # dommen for alle — mens kontrakten kaldte det «hvert run er én observation».
-    if str(ev.get("aggregation")) == "equal_weight":
+    # ESTIMANDEN FØLGER KONTRAKTENS OPERATION — ikke et navn på en vægtning.
+    # `median` er robust over for halen; `mean` er det aritmetiske gennemsnit. Begge
+    # vejer hvert run 1, så valget mellem dem er en selvstændig beslutning og ikke en
+    # følge af enheden. Før hed valgene `equal_weight` og `pooled`: det første navn
+    # beskrev vægtningen og valgte alligevel medianen, og det andet påstod
+    # varighedsvægtning mens `aggregate_model_outcomes` tager `statistics.mean`.
+    if str(ev.get("aggregation")) == "median":
         s_lat = float(sa.get("latency_median_ms") or 0.0)
         c_lat = float(ca.get("latency_median_ms") or 0.0)
     else:
@@ -254,7 +362,7 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     # raekker men besidde et forskelligt antal observationer. Uden tallet kunne en
     # `per_run`-dom (288 enheder) og en `aggregate_window`-dom (1) dele evidensidentitet
     # og blokere hinanden som duplikater.
-    cur = f"{units}u:{s_n}:{c_n}:{fp}" if fp else f"{units}u:{s_n}:{c_n}"
+    cur = f"{units}u/{total_units}u:{s_n}:{c_n}:{fp}" if fp else f"{units}u/{total_units}u:{s_n}:{c_n}"
     # ENHEDEN ER EN DEL AF OBSERVATIONENS IDENTITET (4/11-2026). Dedup'en i
     # `record_governed_sample` nøgler på source+ground_ref. To kontrakter der tæller
     # FORSKELLIGE enheder — fx `per_run` og `per_model_call` — måler hvert sit grundlag
@@ -268,29 +376,35 @@ def _eval_contract_comparative(contract: dict[str, Any]) -> dict[str, Any] | Non
     # TRE udfald, ikke to: «hurtigere, men ikke markant nok» er ikke et modbevis.
     # Et binært udfald ville stemple al utydelig evidens som modsigelse — samme
     # fejlform som `0/0 → 0.0` og som `stott > mods` uden flertalskrav.
+    #
+    # `run_ids` følger med dommen: de er det grundlag der netop blev talt, og tick'en
+    # markerer dem som sete EFTER samplet er gemt. Markerede evaluatoren selv, ville et
+    # afvist sample efterlade runs som «sete» uden at nogen havde set dem.
+    base = {"cursor": cur, "run_ids": new_ids, "new_units": units, "total_units": total_units}
     if rel == "less_than":
         if s_lat * support <= c_lat:
-            return {"supports": True, "falsifies": False, "cursor": cur}
+            return {**base, "supports": True, "falsifies": False}
         if s_lat > c_lat * contradict:
-            return {"supports": False, "falsifies": True, "cursor": cur}
+            return {**base, "supports": False, "falsifies": True}
     else:
         if c_lat * support <= s_lat:
-            return {"supports": True, "falsifies": False, "cursor": cur}
+            return {**base, "supports": True, "falsifies": False}
         if c_lat > s_lat * contradict:
-            return {"supports": False, "falsifies": True, "cursor": cur}
+            return {**base, "supports": False, "falsifies": True}
     # I båndet mellem contradict- og support-tærsklen: observationen er uafgjort.
     # Den registreres som jordet evidens uden retning — ikke som en dom.
-    return {"supports": False, "falsifies": False, "cursor": cur}
+    return {**base, "supports": False, "falsifies": False}
 
 
-def _eval_model_meta(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
+def _eval_model_meta(prov: dict[str, Any], contract: dict[str, Any] | None = None,
+                     hyp_id: str = "") -> dict[str, Any] | None:
     """Holder model-dominansen (latency/success) i friske runs?
 
     Bærer hypotesen en kontrakt, er DEN autoritativ for retningen. Ellers legacy:
     family 'A:B' hvor A er vinderen.
     """
     if contract:
-        return _eval_contract_comparative(contract)
+        return _eval_contract_comparative(contract, hyp_id)
     fam = str(prov.get("family") or "")
     if ":" not in fam:
         return None
@@ -298,7 +412,8 @@ def _eval_model_meta(prov: dict[str, Any], contract: dict[str, Any] | None = Non
     return mm.test_model_meta_persistence(fam)
 
 
-def _eval_divergence(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
+def _eval_divergence(prov: dict[str, Any], contract: dict[str, Any] | None = None,
+                     hyp_id: str = "") -> dict[str, Any] | None:
     """Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'."""
     fam = str(prov.get("family") or "")
     if ":" not in fam:
@@ -306,7 +421,8 @@ def _eval_divergence(prov: dict[str, Any], contract: dict[str, Any] | None = Non
     return test_divergence_persistence(fam)
 
 
-def _eval_stance(prov: dict[str, Any], contract: dict[str, Any] | None = None) -> dict[str, Any] | None:
+def _eval_stance(prov: dict[str, Any], contract: dict[str, Any] | None = None,
+                 hyp_id: str = "") -> dict[str, Any] | None:
     """Gentager tension'en sig stadig? Kræver family = tension-nøgle."""
     return test_stance_persistence(str(prov.get("family") or ""))
 
@@ -512,7 +628,7 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
             # manglede data, og senere som «no_data» når evaluatoren selv afviste formen.
             unevaluable.setdefault(str(why), []).append(hyp_id)
             continue
-        res = EVALUATORS[name]["fn"](prov, contract)
+        res = EVALUATORS[name]["fn"](prov, contract, hyp_id)
         if res is None:
             # Evaluatoren kunne ikke måle NU (for lidt data, eller family matcher ikke det
             # den kræver). Forbigående — ikke strukturelt.
@@ -520,10 +636,17 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
             continue
         tested += 1
         # triggered_by='world': frisk verdens-observation, IKKE selv-udløst (circular-korrekt, §8.5).
-        gen.record_governed_sample(
+        rec = gen.record_governed_sample(
             hyp_id, supports=bool(res["supports"]), falsifies=bool(res["falsifies"]),
             source="world_consequence", ground_ref=str(res["cursor"]),
             triggered_by="world")
+        # EVIDENS-LEDGEREN (4/11-2026, fjerde runde). Markeringen sker EFTER samplet er
+        # gemt — ikke inde i evaluatoren. Markerede den selv, ville et sample der blev
+        # afvist alligevel efterlade runs som «sete», og så var evidensen tabt uden at
+        # nogen havde set den. `noop` tælles med: et duplikat betyder netop at grundlaget
+        # allerede er talt, og så må det ikke tælles igen.
+        if str(rec.get("status") or "") in ("ok", "noop"):
+            _mark_run_ids(hyp_id, list(res.get("run_ids") or []))
         if res["supports"]:
             supported += 1
         elif res["falsifies"]:

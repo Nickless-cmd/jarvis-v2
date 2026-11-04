@@ -393,16 +393,16 @@ _core/services/central_test_contract.py_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L234) |
-| function | `policy_of` | `(contract)` | Den pinnede beslutningsregel. None hvis politikken ikke findes. | [src](../../../core/services/central_test_contract.py#L347) |
-| function | `evidence_of` | `(contract)` | Hvad dommen tæller: (enhed, vindue, aggregering). None hvis spec'en er ugyldig. | [src](../../../core/services/central_test_contract.py#L361) |
-| function | `claim_of` | `(contract)` | Hvad kontrakttypen må påstå — ikke hvad navnet antyder. | [src](../../../core/services/central_test_contract.py#L388) |
-| function | `evidence_signature` | `(contract)` | Kort, stabil signatur af evidens-spec'en — bæres i `ground_ref`. | [src](../../../core/services/central_test_contract.py#L399) |
-| function | `supersedes_of` | `(provenance)` | Hvilke tidligere hypoteser denne undersøgelse ERSTATTER — i rækkefølge. | [src](../../../core/services/central_test_contract.py#L412) |
-| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L435) |
-| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L440) |
-| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L445) |
-| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L449) |
+| function | `validate` | `(contract)` | Strukturel + semantisk kompatibilitet. → (ok, manglende/ugyldige felter). | [src](../../../core/services/central_test_contract.py#L265) |
+| function | `policy_of` | `(contract)` | Den pinnede beslutningsregel. None hvis politikken ikke findes. | [src](../../../core/services/central_test_contract.py#L378) |
+| function | `evidence_of` | `(contract)` | Hvad dommen tæller: (enhed, vindue, aggregering). None hvis spec'en er ugyldig. | [src](../../../core/services/central_test_contract.py#L392) |
+| function | `claim_of` | `(contract)` | Hvad kontrakttypen må påstå — ikke hvad navnet antyder. | [src](../../../core/services/central_test_contract.py#L419) |
+| function | `evidence_signature` | `(contract)` | Kort, stabil signatur af evidens-spec'en — bæres i `ground_ref`. | [src](../../../core/services/central_test_contract.py#L430) |
+| function | `supersedes_of` | `(provenance)` | Hvilke tidligere hypoteser denne undersøgelse ERSTATTER — i rækkefølge. | [src](../../../core/services/central_test_contract.py#L443) |
+| function | `relation_of` | `(contract)` | Retningen kontrakten hævder — 'less_than' eller 'greater_than'. Tom ved fejl. | [src](../../../core/services/central_test_contract.py#L466) |
+| function | `subject_of` | `(contract)` | (subject, comparator) — de to størrelser der sammenlignes. | [src](../../../core/services/central_test_contract.py#L471) |
+| function | `evaluator_of` | `(contract)` | — | [src](../../../core/services/central_test_contract.py#L476) |
+| function | `describe` | `(contract)` | Kort menneskelæsbar form til logs og surfaces. | [src](../../../core/services/central_test_contract.py#L480) |
 
 ## `core/services/central_timeseries.py`
 _core/services/central_timeseries.py_

@@ -99,21 +99,24 @@ _core/services/central_hypothesis_sampler.py_
 | function | `test_causal_hypothesis` | `(x_fam, y_fam, *, window=…, follow_s=…)` | Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe. | [src](../../../core/services/central_hypothesis_sampler.py#L46) |
 | function | `test_divergence_persistence` | `(family)` | causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data — | [src](../../../core/services/central_hypothesis_sampler.py#L82) |
 | function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L101) |
-| function | `_eval_causal_sequence` | `(prov, contract=…)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L130) |
-| function | `_observation_fingerprint` | `(subject, comparator, *, window=…)` | Hash af det FAKTISKE datagrundlag — ikke af hvor mange rækker der indgik. | [src](../../../core/services/central_hypothesis_sampler.py#L139) |
-| function | `_eval_contract_comparative` | `(contract)` | Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN. | [src](../../../core/services/central_hypothesis_sampler.py#L172) |
-| function | `_eval_model_meta` | `(prov, contract=…)` | Holder model-dominansen (latency/success) i friske runs? | [src](../../../core/services/central_hypothesis_sampler.py#L286) |
-| function | `_eval_divergence` | `(prov, contract=…)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L301) |
-| function | `_eval_stance` | `(prov, contract=…)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L309) |
-| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L320) |
-| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L324) |
-| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L328) |
-| function | `evaluator_for` | `(prov, contract=…)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L356) |
-| function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L403) |
-| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L415) |
-| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L445) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L475) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L546) |
+| function | `_eval_causal_sequence` | `(prov, contract=…, hyp_id=…)` | Betinget rate P(Y følger X) vs. baseline. Kræver family 'X->Y'. | [src](../../../core/services/central_hypothesis_sampler.py#L130) |
+| function | `_observation_fingerprint` | `(subject, comparator, *, window=…)` | Hash af det FAKTISKE datagrundlag — ikke af hvor mange rækker der indgik. | [src](../../../core/services/central_hypothesis_sampler.py#L140) |
+| function | `_ensure_evidence_schema` | `()` | Evidens-ledgeren: hvilke run-ID'er har DENNE hypotese allerede talt med? | [src](../../../core/services/central_hypothesis_sampler.py#L173) |
+| function | `_seen_run_ids` | `(hyp_id)` | De run-ID'er denne hypotese allerede har talt med. Tom mængde ved fejl. | [src](../../../core/services/central_hypothesis_sampler.py#L207) |
+| function | `_mark_run_ids` | `(hyp_id, run_ids)` | Registrér run-ID'er som sete for denne hypotese. → antal nye rækker. | [src](../../../core/services/central_hypothesis_sampler.py#L224) |
+| function | `_eval_contract_comparative` | `(contract, hyp_id=…)` | Evaluer en `comparative_latency`-kontrakt. RETNINGEN KOMMER FRA KONTRAKTEN. | [src](../../../core/services/central_hypothesis_sampler.py#L250) |
+| function | `_eval_model_meta` | `(prov, contract=…, hyp_id=…)` | Holder model-dominansen (latency/success) i friske runs? | [src](../../../core/services/central_hypothesis_sampler.py#L399) |
+| function | `_eval_divergence` | `(prov, contract=…, hyp_id=…)` | Er divergensen der stadig, eller kollapsede den til én side? Kræver 'parent:good|bad'. | [src](../../../core/services/central_hypothesis_sampler.py#L415) |
+| function | `_eval_stance` | `(prov, contract=…, hyp_id=…)` | Gentager tension'en sig stadig? Kræver family = tension-nøgle. | [src](../../../core/services/central_hypothesis_sampler.py#L424) |
+| function | `_kraever_pil` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L436) |
+| function | `_kraever_kolon` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L440) |
+| function | `_kraever_ikke_tom` | `(fam)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L444) |
+| function | `evaluator_for` | `(prov, contract=…)` | Hvilken evaluator kan teste DENNE hypotese? → (navn, grund, kilde). | [src](../../../core/services/central_hypothesis_sampler.py#L472) |
+| function | `_parse_contract` | `(raw)` | Læs `test_contract_json`. Ulaeselig → None med en loglinje (aldrig tavst). | [src](../../../core/services/central_hypothesis_sampler.py#L519) |
+| function | `list_unevaluable_active` | `()` | Aktive hypoteser der ALDRIG kan testes med den nuværende evaluator-registry. | [src](../../../core/services/central_hypothesis_sampler.py#L531) |
+| function | `evaluator_provenance` | `()` | Hvor mange aktive hypoteser er koblet på via KONTRAKT vs. via LEGACY-broen? | [src](../../../core/services/central_hypothesis_sampler.py#L561) |
+| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L591) |
+| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L669) |
 
 ## `core/services/central_initiative_ladder.py`
 _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._
@@ -425,14 +428,14 @@ _core/services/central_model_meta.py_
 | function | `_parse` | `(ts)` | — | [src](../../../core/services/central_model_meta.py#L30) |
 | function | `_key` | `(provider, model)` | — | [src](../../../core/services/central_model_meta.py#L39) |
 | function | `aggregate_model_outcomes` | `(*, window=…)` | Aggregér per-model: samples, success-rate, gennemsnits-latency (fra visible_runs) + pris/1k | [src](../../../core/services/central_model_meta.py#L43) |
-| function | `observe_model_outcomes` | `(*, window=…)` | Skriv per-model-udfald til tidsserien "system"/"model_outcome:<prov>:<model>". Metadata-only | [src](../../../core/services/central_model_meta.py#L101) |
-| function | `detect_model_meta_candidates` | `(*, window=…, min_samples=…)` | Find modeller med ægte kontrast (begge ≥ min_samples) hvor den ene DOMINERER den anden på | [src](../../../core/services/central_model_meta.py#L120) |
-| function | `_family` | `(cand)` | — | [src](../../../core/services/central_model_meta.py#L157) |
-| function | `formulate_model_meta_hypothesis` | `(cand)` | Kontrast → falsificerbar model_meta-hypotese. Testbar = dominansen PERSISTERER i friske runs. | [src](../../../core/services/central_model_meta.py#L161) |
-| function | `test_model_meta_persistence` | `(family)` | Sampler-sti (§8.4): holder model-dominansen stadig i friske data? family = "<metric>:<w>><l>". | [src](../../../core/services/central_model_meta.py#L180) |
-| function | `run_model_meta_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: observér per-model-udfald + generér model_meta-hypoteser (governance-gated, | [src](../../../core/services/central_model_meta.py#L204) |
-| function | `register_model_meta_producer` | `()` | Registrér Tråd 1 som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_model_meta.py#L230) |
-| function | `build_model_meta_surface` | `()` | Mission Control surface — read-only: hvad Centralen ved om sine egne modeller. | [src](../../../core/services/central_model_meta.py#L242) |
+| function | `observe_model_outcomes` | `(*, window=…)` | Skriv per-model-udfald til tidsserien "system"/"model_outcome:<prov>:<model>". Metadata-only | [src](../../../core/services/central_model_meta.py#L109) |
+| function | `detect_model_meta_candidates` | `(*, window=…, min_samples=…)` | Find modeller med ægte kontrast (begge ≥ min_samples) hvor den ene DOMINERER den anden på | [src](../../../core/services/central_model_meta.py#L128) |
+| function | `_family` | `(cand)` | — | [src](../../../core/services/central_model_meta.py#L165) |
+| function | `formulate_model_meta_hypothesis` | `(cand)` | Kontrast → falsificerbar model_meta-hypotese. Testbar = dominansen PERSISTERER i friske runs. | [src](../../../core/services/central_model_meta.py#L169) |
+| function | `test_model_meta_persistence` | `(family)` | Sampler-sti (§8.4): holder model-dominansen stadig i friske data? family = "<metric>:<w>><l>". | [src](../../../core/services/central_model_meta.py#L188) |
+| function | `run_model_meta_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: observér per-model-udfald + generér model_meta-hypoteser (governance-gated, | [src](../../../core/services/central_model_meta.py#L212) |
+| function | `register_model_meta_producer` | `()` | Registrér Tråd 1 som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_model_meta.py#L238) |
+| function | `build_model_meta_surface` | `()` | Mission Control surface — read-only: hvad Centralen ved om sine egne modeller. | [src](../../../core/services/central_model_meta.py#L250) |
 
 ## `core/services/central_moltbook.py`
 _central_moltbook — Jarvis' Moltbook-tilstedeværelse som en governed Central-nerve (observe-only)._

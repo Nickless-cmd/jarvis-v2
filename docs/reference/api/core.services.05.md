@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_agents_surface.py`
+_Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_window_threshold` | `(window)` | ISO8601-tærskel (samme format som costs.created_at → lex-sammenlignelig). | [src](../../../core/services/central_agents_surface.py#L29) |
+| function | `_agg_for_window` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L42) |
+| function | `_lane_breakdown` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L62) |
+| function | `_agents_trace` | `()` | De seneste agents-cluster trace-records (nyeste sidst). Self-safe. | [src](../../../core/services/central_agents_surface.py#L88) |
+| function | `_dispatch_signal` | `(records)` | Per-status + recent fra agent_result/agent_blocked/agent_error-events. | [src](../../../core/services/central_agents_surface.py#L98) |
+| function | `build_agents_surface` | `(*, window=…)` | Agent-observabilitet til /central/agents + `jc agents`. | [src](../../../core/services/central_agents_surface.py#L131) |
+| function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
+| function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
+| function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
+
 ## `core/services/central_analyst.py`
 _The Analyst — observatør-effekten._
 
@@ -528,36 +543,4 @@ _Jarvis Mind-hub — Centralen som ÉT samlingspunkt for alt MC viser._
 | function | `mind_index` | `()` | Alle Jarvis Mind-sektioner + om de er projiceret endnu. Til sub-navbaren. Self-safe. | [src](../../../core/services/central_hub.py#L480) |
 | function | `mind_section` | `(section, tab=…)` | Projektionen for ÉN sektion — eller ÉN undertab i den (læser den cachede | [src](../../../core/services/central_hub.py#L507) |
 | function | `mind_snapshot` | `(*, sections=…)` | Hub-snapshot: index + (valgfrit) fulde data for bestemte sektioner. Default = kun index | [src](../../../core/services/central_hub.py#L547) |
-
-## `core/services/central_hypothesis_generator.py`
-_core/services/central_hypothesis_generator.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L42) |
-| function | `ensure_schema` | `()` | Idempotent — CREATE IF NOT EXISTS køres hver gang (billigt; tåler per-test-isolerede DB'er). | [src](../../../core/services/central_hypothesis_generator.py#L46) |
-| function | `_notation_for` | `(source, provenance)` | Rendér en hypotese til interlanguage-notation via lexicon-bindingen. None hvis leddene er | [src](../../../core/services/central_hypothesis_generator.py#L95) |
-| function | `_stable_id` | `(provenance, created_at)` | Immutabelt server-tildelt id (ikke statement-afledt → ingen kontrol-arm-p-hacking). | [src](../../../core/services/central_hypothesis_generator.py#L117) |
-| function | `register_governed_hypothesis` | `(candidate)` | Registrér en kandidat SOM governed hypotese — men KUN hvis den er fuldt pre-registreret | [src](../../../core/services/central_hypothesis_generator.py#L124) |
-| function | `_load` | `(hyp_id)` | — | [src](../../../core/services/central_hypothesis_generator.py#L167) |
-| function | `_to_evidence` | `(samples)` | — | [src](../../../core/services/central_hypothesis_generator.py#L184) |
-| function | `record_governed_sample` | `(hyp_id, *, supports, falsifies=…, source=…, ground_ref=…, triggered_by=…, verifier=…)` | Registrér ét udfald-sample + re-evaluér hypotesen gennem hele dødsmekanismen (evaluate). | [src](../../../core/services/central_hypothesis_generator.py#L190) |
-| function | `detect_causal_convergence_candidates` | `(*, window=…, min_recurrence=…)` | Find familie-par (X→Y) der optræder ≥ min_recurrence gange blandt de seneste MENINGSFULDE | [src](../../../core/services/central_hypothesis_generator.py#L310) |
-| function | `formulate_correlation_hypothesis` | `(cand)` | Omsæt en detekteret korrelation til en EKSPLICIT, menneske-læsbar, pre-registreret hypotese | [src](../../../core/services/central_hypothesis_generator.py#L347) |
-| function | `detect_outcome_divergence_candidates` | `(*, window=…, min_each=…)` | Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each | [src](../../../core/services/central_hypothesis_generator.py#L374) |
-| function | `formulate_divergence_hypothesis` | `(cand)` | Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er | [src](../../../core/services/central_hypothesis_generator.py#L415) |
-| function | `detect_stance_divergence_candidates` | `(*, min_count=…)` | Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions | [src](../../../core/services/central_hypothesis_generator.py#L437) |
-| function | `formulate_stance_divergence_hypothesis` | `(t)` | Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør. | [src](../../../core/services/central_hypothesis_generator.py#L448) |
-| function | `detect_prediction_error_candidates` | `()` | Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde | [src](../../../core/services/central_hypothesis_generator.py#L466) |
-| function | `formulate_prediction_error_hypothesis` | `(s)` | Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen | [src](../../../core/services/central_hypothesis_generator.py#L476) |
-| function | `_active_provenance_families` | `()` | — | [src](../../../core/services/central_hypothesis_generator.py#L498) |
-| function | `run_hypothesis_generation_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér → | [src](../../../core/services/central_hypothesis_generator.py#L515) |
-| function | `register_hypothesis_generator_producer` | `()` | Registrér Lag 3-generatoren som cadence-producer (~hvert 60 min, lav prioritet). | [src](../../../core/services/central_hypothesis_generator.py#L554) |
-| function | `list_active_hypotheses` | `(*, limit=…)` | Aktive hypoteser der IKKE har passeret deres TTL, sorteret på confidence. | [src](../../../core/services/central_hypothesis_generator.py#L566) |
-| function | `_ttl_deadline_iso` | `(created_at_iso, ttl_seconds)` | Tidspunktet hvor fristen udløb — None hvis datoen ikke kan læses. | [src](../../../core/services/central_hypothesis_generator.py#L600) |
-| function | `expire_overdue_hypotheses` | `(*, now=…)` | Sweep: skriv døden for hypoteser hvis TTL er udløbet, men som stadig står 'active'. | [src](../../../core/services/central_hypothesis_generator.py#L611) |
-| function | `run_hypothesis_expiry_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: sweep udløbne hypoteser. Kaldes af internal_cadence — ikke kun defineret. | [src](../../../core/services/central_hypothesis_generator.py#L664) |
-| function | `register_hypothesis_expiry_producer` | `()` | Registrér TTL-sweep'en som cadence-producer (hvert 30. min, samme kadence som sampler'en). | [src](../../../core/services/central_hypothesis_generator.py#L670) |
-| function | `format_governed_hypotheses_for_awareness` | `(*, limit=…)` | Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær: | [src](../../../core/services/central_hypothesis_generator.py#L686) |
-| function | `build_central_hypothesis_generator_surface` | `()` | Mission Control surface — read-only projektion af den governede hypotese-population. | [src](../../../core/services/central_hypothesis_generator.py#L702) |
 

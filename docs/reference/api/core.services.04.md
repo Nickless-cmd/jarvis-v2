@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/background_attention.py`
+_One durable exit path for findings from unattended runtime work._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_token` | `(value, fallback)` | — | [src](../../../core/services/background_attention.py#L28) |
+| function | `_owner_user_id` | `()` | — | [src](../../../core/services/background_attention.py#L33) |
+| function | `_publish` | `(payload)` | — | [src](../../../core/services/background_attention.py#L42) |
+| function | `_write_inbox` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L52) |
+| function | `_existing_inbox` | `(*, owner, inbox_id)` | — | [src](../../../core/services/background_attention.py#L58) |
+| function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L67) |
+| function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L73) |
+| function | `report_background_recovered` | `(*, source_kind, source_id)` | Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben. | [src](../../../core/services/background_attention.py#L194) |
+
 ## `core/services/background_job_watch.py`
 _Færdige baggrunds-shells — set, ikke gættet._
 
@@ -613,19 +627,4 @@ _Agent Smith — eskalerings-stige ("The Confrontation")._
 | function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L259) |
 | function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L287) |
 | function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L420) |
-
-## `core/services/central_agents_surface.py`
-_Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_window_threshold` | `(window)` | ISO8601-tærskel (samme format som costs.created_at → lex-sammenlignelig). | [src](../../../core/services/central_agents_surface.py#L29) |
-| function | `_agg_for_window` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L42) |
-| function | `_lane_breakdown` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L62) |
-| function | `_agents_trace` | `()` | De seneste agents-cluster trace-records (nyeste sidst). Self-safe. | [src](../../../core/services/central_agents_surface.py#L88) |
-| function | `_dispatch_signal` | `(records)` | Per-status + recent fra agent_result/agent_blocked/agent_error-events. | [src](../../../core/services/central_agents_surface.py#L98) |
-| function | `build_agents_surface` | `(*, window=…)` | Agent-observabilitet til /central/agents + `jc agents`. | [src](../../../core/services/central_agents_surface.py#L131) |
-| function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
-| function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
-| function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
 

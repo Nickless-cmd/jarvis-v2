@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/personality_drift.py`
+_Personality drift detection — has Jarvis' baseline shifted?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_snapshots` | `()` | — | [src](../../../core/services/personality_drift.py#L32) |
+| function | `_save_snapshots` | `(snapshots)` | — | [src](../../../core/services/personality_drift.py#L39) |
+| function | `take_snapshot` | `()` | Capture current mood — call from heartbeat or daemon periodically. | [src](../../../core/services/personality_drift.py#L45) |
+| function | `compute_baseline` | `(*, lookback_days=…)` | Mean + stddev for each mood dimension over the lookback window. | [src](../../../core/services/personality_drift.py#L67) |
+| function | `detect_drift` | `(*, lookback_days=…, recent_window=…)` | Compare recent snapshot mean vs long-term baseline. | [src](../../../core/services/personality_drift.py#L93) |
+| function | `personality_drift_section` | `()` | Awareness section when drift detected — surfaces in prompt. | [src](../../../core/services/personality_drift.py#L143) |
+| function | `_exec_personality_drift_check` | `(args)` | — | [src](../../../core/services/personality_drift.py#L159) |
+| function | `_exec_personality_drift_snapshot` | `(args)` | — | [src](../../../core/services/personality_drift.py#L167) |
+
 ## `core/services/personality_vector.py`
 _Personality Vector — cumulative personality that grows over time._
 
@@ -670,17 +684,4 @@ _Turn-cache orchestration for visible prompt assembly._
 | function | `_query_latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L15) |
 | function | `latest_user_msg_id` | `(session_id)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L26) |
 | function | `build_with_turn_cache` | `(*, builder, latest_message_id, provider, model, user_message, session_id, name, runtime_self_report_context, caller_phase)` | — | [src](../../../core/services/prompt_assembly_runtime.py#L36) |
-
-## `core/services/prompt_assembly_telemetri.py`
-_Telemetri for den synlige prompts assembly: hvad fylder, og hvad koster cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_opaque_key_hash` | `(key)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L36) |
-| function | `rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | Publish one privacy-safe cache decision for every wrapper call. | [src](../../../core/services/prompt_assembly_telemetri.py#L42) |
-| function | `_rapporter_cache_lookup` | `(*, key, outcome, cache_age_ms, lookup_ms, build_ms, caller_phase)` | — | [src](../../../core/services/prompt_assembly_telemetri.py#L65) |
-| function | `label_of` | `(text)` | Stykkets navn, udledt af dets FOERSTE LINJE — som ikke kan komme ud af | [src](../../../core/services/prompt_assembly_telemetri.py#L97) |
-| function | `hale_tegn` | `(assembled_text)` | Tegn i den DO-NOT-CACHE-hale som forbrugeren flytter ud af praefikset. | [src](../../../core/services/prompt_assembly_telemetri.py#L105) |
-| function | `rangordn` | `(parts)` | (navn, tegn) pr. ikke-tomt stykke, stoerste foerst. Navnet er stykkets eget. | [src](../../../core/services/prompt_assembly_telemetri.py#L125) |
-| function | `rapporter_assembly` | `(parts, *, assembled_text, compact, session_id, assembly_ms)` | Udsend event + journal-linjer + aflevér sektionerne til impact-telemetrien. | [src](../../../core/services/prompt_assembly_telemetri.py#L133) |
 

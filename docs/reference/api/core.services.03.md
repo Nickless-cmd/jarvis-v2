@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/api_connection_nerve.py`
+_API-forbindelses-nerve — Jarvis mærker hvem/hvad der forbinder til hans API._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/api_connection_nerve.py#L41) |
+| function | `record` | `(*, ip, method, path, status, latency_ms, user_id=…, session_id=…, error=…)` | Registrér én API-request (metadata-only). Billig, låst, kaster ALDRIG. | [src](../../../core/services/api_connection_nerve.py#L45) |
+| function | `_maybe_flush_async` | `()` | Throttlet baggrunds-flush (api-proces ejer bufferen). Spawner en daemon-tråd så request- | [src](../../../core/services/api_connection_nerve.py#L99) |
+| function | `_drain` | `()` | Snapshot dirty presence-deltas + log-buffer under lås; nulstil buffer + dirty-flag. | [src](../../../core/services/api_connection_nerve.py#L129) |
+| function | `flush` | `()` | Batch-flush presence + log til DB (cadence). Self-safe. | [src](../../../core/services/api_connection_nerve.py#L147) |
+| function | `retention_sweep` | `()` | GDPR-retention (cadence): anonymisér IP > 48t → /24, slet gammel log, prune presence. | [src](../../../core/services/api_connection_nerve.py#L158) |
+| function | `presence_view` | `(*, active_within_s=…, limit=…)` | Hvem er forbundet til API'et? Fletter live in-memory + persistent DB. Self-safe. | [src](../../../core/services/api_connection_nerve.py#L166) |
+
 ## `core/services/apophenia_guard.py`
 _Apophenia Guard — pattern skeptic that validates before elevation._
 
@@ -624,18 +637,4 @@ _Avoidance Detector — unbidden self-observation of patterns over time._
 | function | `build_avoidance_surface` | `()` | — | [src](../../../core/services/avoidance_detector.py#L161) |
 | function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
 | function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
-
-## `core/services/background_attention.py`
-_One durable exit path for findings from unattended runtime work._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_token` | `(value, fallback)` | — | [src](../../../core/services/background_attention.py#L28) |
-| function | `_owner_user_id` | `()` | — | [src](../../../core/services/background_attention.py#L33) |
-| function | `_publish` | `(payload)` | — | [src](../../../core/services/background_attention.py#L42) |
-| function | `_write_inbox` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L52) |
-| function | `_existing_inbox` | `(*, owner, inbox_id)` | — | [src](../../../core/services/background_attention.py#L58) |
-| function | `_write_side_task` | `(**kwargs)` | — | [src](../../../core/services/background_attention.py#L67) |
-| function | `report_background_outcome` | `(*, source_kind, source_id, status, summary, severity=…, run_id=…, session_id=…, evidence_ref=…, suggested_next_step=…, requires_attention=…, create_side_task=…, autonomy_mode=…, safe_to_continue=…, max_minutes=…, max_tool_calls=…)` | Project one background outcome without granting it extra authority. | [src](../../../core/services/background_attention.py#L73) |
-| function | `report_background_recovered` | `(*, source_kind, source_id)` | Kilden melder sig frisk igen — luk dens EGEN post, hvis den står åben. | [src](../../../core/services/background_attention.py#L194) |
 

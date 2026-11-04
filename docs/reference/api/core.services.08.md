@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/chat_session_private_metadata.py`
+_Encrypt message-derived session metadata for registered non-owner users._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `encrypt_session_text` | `(text, session_id, *, user_id=…, workspace_name=…)` | — | [src](../../../core/services/chat_session_private_metadata.py#L8) |
+| function | `decrypt_session_text` | `(text, session_id)` | — | [src](../../../core/services/chat_session_private_metadata.py#L23) |
+| function | `search_member_sessions` | `(query, user_id, limit)` | Search ciphertext-backed member sessions after an indexed user scope. | [src](../../../core/services/chat_session_private_metadata.py#L34) |
+
 ## `core/services/chat_sessions.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -790,11 +799,4 @@ _Code aesthetic daemon — weekly aesthetic reflection on the codebase._
 |---|---|---|---|---|
 | function | `build_cognitive_architecture_surface` | `()` | Cached MC/self-model cognitive-architecture-surface. Self-safe → falder til fersk build. | [src](../../../core/services/cognitive_architecture_surface.py#L11) |
 | function | `_build_cognitive_architecture_surface_uncached` | `()` | Build a shared cognitive architecture surface for MC and self-model. | [src](../../../core/services/cognitive_architecture_surface.py#L23) |
-
-## `core/services/cognitive_chronicle.py`
-_Cognitive Chronicle — user-scoped read layer for chronicle entries._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `query_chronicle_for_user` | `(limit=…)` | Return chronicle entries visible to the current user. | [src](../../../core/services/cognitive_chronicle.py#L15) |
 

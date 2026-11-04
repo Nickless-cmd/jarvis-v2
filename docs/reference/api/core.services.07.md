@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_realtime.py`
+_Real-time Central-surface til owner-vinduet i jarvis-desk (code mode)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_status_from` | `(diag, incidents, open_breakers, drift, degrading, anomaly_counts=…, processes=…, incident_counts=…)` | 🔴 red / 🟡 yellow / 🟢 green — værst-vinder. Inkluderer ALLE processers helbred | [src](../../../core/services/central_realtime.py#L20) |
+| function | `runtime_liveness` | `()` | Sandfærdig runtime-topologi + heartbeat-friskhed. | [src](../../../core/services/central_realtime.py#L55) |
+| function | `realtime_snapshot` | `(*, trace_limit=…)` | Ét snapshot af Centralens live-tilstand. Self-safe (delvise data ved fejl). | [src](../../../core/services/central_realtime.py#L87) |
+| function | `_balanced_feed` | `(records, limit)` | Flet feed-records på tværs af processer UDEN at en højvolumen-proces (api) sulter en | [src](../../../core/services/central_realtime.py#L238) |
+| function | `_cluster_grid` | `(feed, incidents, open_breakers, degrading)` | Pr. cluster: grøn (fyrer), gul (fejl/degraderer), rød (breaker/severe/fail-open), | [src](../../../core/services/central_realtime.py#L267) |
+| function | `_safe` | `(fn, *a)` | — | [src](../../../core/services/central_realtime.py#L305) |
+
 ## `core/services/central_red_dress.py`
 _The Woman in the Red Dress — opmærksomheds-fælden._
 
@@ -611,13 +623,4 @@ _One chat-only decision vocabulary for closure and presentation._
 | function | `_prose_choice` | `(reason, next_step)` | — | [src](../../../core/services/chat_response_policy.py#L246) |
 | function | `_why_surface` | `(surface, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L256) |
 | function | `_why_prose` | `(task, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L272) |
-
-## `core/services/chat_session_private_metadata.py`
-_Encrypt message-derived session metadata for registered non-owner users._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `encrypt_session_text` | `(text, session_id, *, user_id=…, workspace_name=…)` | — | [src](../../../core/services/chat_session_private_metadata.py#L8) |
-| function | `decrypt_session_text` | `(text, session_id)` | — | [src](../../../core/services/chat_session_private_metadata.py#L23) |
-| function | `search_member_sessions` | `(query, user_id, limit)` | Search ciphertext-backed member sessions after an indexed user scope. | [src](../../../core/services/chat_session_private_metadata.py#L34) |
 

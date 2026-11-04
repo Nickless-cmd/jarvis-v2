@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.config import PROJECT_ROOT
+from core.services.agent_task_requirements import ufuldstaendige_vaerktoejer
+
+logger = logging.getLogger(__name__)
 
 
 _READ_TOOLS = (
@@ -24,6 +28,17 @@ _READ_TYPES = frozenset({"researcher", "scout", "critic", "reviewer", "planner",
 _WRITE_TYPES = frozenset({"executor", "builder", "coder", "code"})
 _ROLE = {"scout": "researcher", "reviewer": "critic", "builder": "executor", "coder": "executor",
          "code": "executor"}
+
+
+def _kendte_vaerktoejer() -> frozenset[str]:
+    """Runtime-registerets værktøjsnavne. Tomt sæt hvis det ikke kan læses: vagten
+    tilføjer kun en afvisning, så et manglende register må ikke afvise noget nyt."""
+    try:
+        from core.tools.simple_tools import _TOOL_HANDLERS
+        return frozenset(_TOOL_HANDLERS)
+    except Exception:  # noqa: BLE001 — vagten er additiv; uden register afviser den intet
+        logger.warning("agent_task_facade: værktøjsregisteret kunne ikke læses", exc_info=True)
+        return frozenset()
 
 
 def _session_scope(owner: str, session: str) -> tuple[str, str]:
@@ -89,6 +104,14 @@ def derive(*, owner_user_id: str, origin_session_id: str, parent_run_id: str,
     tools = list(_WORKTREE_TOOLS if writes else _READ_TOOLS)
     if not workspace:
         tools = [t for t in tools if t in {"web_search", "web_fetch", "read_tool_result", "agent_note"}]
+    mangler = ufuldstaendige_vaerktoejer(prompt, tools, _kendte_vaerktoejer())
+    if mangler:
+        # Afvis ved dispatch, ikke efter en kørsel: en agent kan ikke få et værktøj ud over sit
+        # faste sæt, så opgaven ville blive accepteret, brænde tokens og fejle (4/11-2026).
+        raise ValueError(
+            f"opgaven kraever {', '.join('`' + n + '`' for n in mangler)}, som en {kind} ikke har "
+            f"(den faar kun: {', '.join(tools)}). Udfoer det selv i stedet for at delegere det"
+        )
     granted = "worktree-write" if writes else "read"
     original = "worktree-write" if has_repo else "read"
     canonical = {

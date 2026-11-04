@@ -257,9 +257,17 @@ _The five-field model-facing Task facade over agent-contract-v1._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L29) |
-| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L66) |
-| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L128) |
+| function | `_kendte_vaerktoejer` | `()` | Runtime-registerets værktøjsnavne. Tomt sæt hvis det ikke kan læses: vagten | [src](../../../core/services/agent_task_facade.py#L33) |
+| function | `_session_scope` | `(owner, session)` | — | [src](../../../core/services/agent_task_facade.py#L44) |
+| function | `derive` | `(*, owner_user_id, origin_session_id, parent_run_id, parent_agent_id, description, prompt, subagent_type, model, run_in_background)` | — | [src](../../../core/services/agent_task_facade.py#L81) |
+| function | `execute` | `(**fields)` | — | [src](../../../core/services/agent_task_facade.py#L151) |
+
+## `core/services/agent_task_requirements.py`
+_Hvilke værktøjer en opgaveprompt KRÆVER at agenten kalder._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ufuldstaendige_vaerktoejer` | `(prompt, allowed_tools, known_tools)` | Kendte runtime-værktøjer prompten beder agenten KALDE, men som den ikke har. | [src](../../../core/services/agent_task_requirements.py#L32) |
 
 ## `core/services/agent_todos.py`
 _Per-session todo tracker — Jarvis' working memory for "what am I doing right now"._
@@ -642,17 +650,4 @@ _Anticipatory Context — predict what the user will likely ask about next._
 |---|---|---|---|---|
 | function | `predict_next_context` | `(*, recent_topics=…, hour=…, idle_hours=…, last_session_topic=…)` | Predict the most likely next context. | [src](../../../core/services/anticipatory_context.py#L17) |
 | function | `build_anticipatory_context_surface` | `()` | — | [src](../../../core/services/anticipatory_context.py#L76) |
-
-## `core/services/api_connection_nerve.py`
-_API-forbindelses-nerve — Jarvis mærker hvem/hvad der forbinder til hans API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/api_connection_nerve.py#L41) |
-| function | `record` | `(*, ip, method, path, status, latency_ms, user_id=…, session_id=…, error=…)` | Registrér én API-request (metadata-only). Billig, låst, kaster ALDRIG. | [src](../../../core/services/api_connection_nerve.py#L45) |
-| function | `_maybe_flush_async` | `()` | Throttlet baggrunds-flush (api-proces ejer bufferen). Spawner en daemon-tråd så request- | [src](../../../core/services/api_connection_nerve.py#L99) |
-| function | `_drain` | `()` | Snapshot dirty presence-deltas + log-buffer under lås; nulstil buffer + dirty-flag. | [src](../../../core/services/api_connection_nerve.py#L129) |
-| function | `flush` | `()` | Batch-flush presence + log til DB (cadence). Self-safe. | [src](../../../core/services/api_connection_nerve.py#L147) |
-| function | `retention_sweep` | `()` | GDPR-retention (cadence): anonymisér IP > 48t → /24, slet gammel log, prune presence. | [src](../../../core/services/api_connection_nerve.py#L158) |
-| function | `presence_view` | `(*, active_within_s=…, limit=…)` | Hvem er forbundet til API'et? Fletter live in-memory + persistent DB. Self-safe. | [src](../../../core/services/api_connection_nerve.py#L166) |
 

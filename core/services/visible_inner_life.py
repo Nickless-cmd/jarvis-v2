@@ -908,6 +908,36 @@ def _world_model_line() -> Optional[str]:
     return None
 
 
+def _opposition_line() -> Optional[str]:
+    """Kryds-lag-indsigelse: to lag i SAMME kørsel der peger hver sin vej.
+
+    Målt 4/11-2026: oppositionen blev produceret og læst af seks moduler, men
+    nåede aldrig prompten — `_FELT_SURFACES` er en fast liste på 14 følte
+    overflader, og en kognitiv kalibrerings-indsigelse hører ikke blandt dem.
+    Den får derfor sin egen linje: den siger ikke hvordan jeg har det, men
+    hvad jeg kan efterprøve («i den her tur sagde du ét og gjorde noget andet»).
+    """
+    try:
+        from core.services.signal_surface_router import read_surface
+
+        d = read_surface("internal_opposition")
+        if not isinstance(d, dict) or d.get("error") or d.get("active") is False:
+            return None
+        summary = d.get("summary") if isinstance(d.get("summary"), dict) else {}
+        n = summary.get("active_count")
+        if not n:
+            return None
+        # Titlen er menneskelæsbar; canonical_key er et internt id — vis den aldrig.
+        current = str(summary.get("current_signal") or "").strip()
+        if current.lower().startswith("challenge calibration:"):
+            current = current.split(":", 1)[1].strip()
+        current = _truncate_clean(current, 120)
+        return f"Kryds-lag-indsigelse ({n} aktiv)" + (f": {current}" if current else "")
+    except Exception:
+        logger.debug("inner-life: opposition failed", exc_info=True)
+    return None
+
+
 def build_somatic_snapshot() -> list[str]:
     """Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command
     in the Central HUD). Reuses the buffered/cached line-builders — no LLM, no
@@ -965,6 +995,12 @@ def build_inner_life_section() -> str | None:
     wm = _world_model_line()
     if wm:
         lines.append("· " + wm)
+
+    # Kryds-lag-indsigelse (2026-11-04): egen linje, ikke en følt overflade.
+    # Den siger hvad jeg kan efterprøve, ikke hvordan jeg har det.
+    op = _opposition_line()
+    if op:
+        lines.append("· " + op)
 
     # Pull / emergence — only when actually present (longing rises with absence,
     # identity drift is rare, cognitive experiments carry only sometimes, and Lag 8:

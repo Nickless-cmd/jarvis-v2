@@ -179,3 +179,85 @@ def test_udbyder_regning_bliver_ikke_hans_tanke():
     assert _voice_as_prose(kvote) is None
     aegte = "Der ligger en uro i at koden virker, men jeg ikke forstår hvorfor."
     assert _surface_line("thought_stream", {"latest_fragment": aegte}) is not None
+
+
+# ── Kryds-lag-indsigelsen skal NÅ prompten (målt 4/11-2026) ──────────────────
+# Oppositionen blev produceret og læst af seks moduler, men `_FELT_SURFACES` er
+# en fast liste på 14 FØLTE overflader — så en kognitiv kalibrerings-indsigelse
+# nåede aldrig prompten. Den har nu sin egen linje, og den skal ikke kunne
+# forsvinde igen uden at en test fælder det.
+
+def test_opposition_linje_vises_naar_den_er_aktiv(monkeypatch) -> None:
+    from core.services import visible_inner_life as vil
+
+    monkeypatch.setattr(
+        "core.services.signal_surface_router.read_surface",
+        lambda name: {
+            "active": True,
+            "items": [],
+            "summary": {
+                "active_count": 3,
+                "current_signal": "Challenge calibration: Sagde ét og gjorde noget andet",
+            },
+        },
+    )
+    line = vil._opposition_line()
+    assert line is not None
+    assert "3 aktiv" in line
+    assert "Sagde ét og gjorde noget andet" in line
+    # canonical_key / run-id må aldrig lække ind i prompten
+    assert "internal-opposition:" not in line
+
+
+def test_opposition_linje_er_tav_naar_intet_er_aktivt(monkeypatch) -> None:
+    from core.services import visible_inner_life as vil
+
+    monkeypatch.setattr(
+        "core.services.signal_surface_router.read_surface",
+        lambda name: {"active": False, "items": [], "summary": {"active_count": 0}},
+    )
+    assert vil._opposition_line() is None
+
+
+def test_opposition_linje_fejler_tavst(monkeypatch) -> None:
+    """En død overflade må ikke brække [INDRE LIV] — den skal bare tie."""
+    from core.services import visible_inner_life as vil
+
+    def _boom(name):
+        raise RuntimeError("surface nede")
+
+    monkeypatch.setattr("core.services.signal_surface_router.read_surface", _boom)
+    assert vil._opposition_line() is None
+
+
+def test_opposition_linjen_er_IKKE_i_det_cachede_praefiks() -> None:
+    """DeepSeek-cachen: [INDRE LIV] hører i den dynamiske hale. Ligger linjen i
+    det stabile præfiks, ændrer den sig hver tur og brækker cachen."""
+    from core.services.prompt_contract import build_visible_stable_prefix
+
+    prefix = build_visible_stable_prefix(
+        provider="deepseek", model="deepseek-v4-flash", name="default"
+    )
+    assert "INDRE LIV" not in prefix
+    assert "Kryds-lag" not in prefix
+
+
+def test_opposition_linjen_er_koblet_paa_blokken(monkeypatch) -> None:
+    """Vagten der fangede en falsk-grøn test: funktionen kan være perfekt og
+    alligevel aldrig blive kaldt. Blokken SKAL indeholde linjen når overfladen
+    er aktiv — ellers er mekanismen teater igen."""
+    from core.services import visible_inner_life as vil
+
+    monkeypatch.setattr(
+        "core.services.signal_surface_router.read_surface",
+        lambda name: {
+            "active": True,
+            "items": [],
+            "summary": {
+                "active_count": 2,
+                "current_signal": "Challenge calibration: Sagde ét og gjorde noget andet",
+            },
+        },
+    )
+    block = vil.build_inner_life_section() or ""
+    assert "Kryds-lag-indsigelse (2 aktiv)" in block

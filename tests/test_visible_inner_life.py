@@ -299,15 +299,79 @@ def test_oppositionen_overlever_chat_scope_mens_indre_liv_ikke_goer(isolated_run
         tool_scoping.reset_tool_scope(token)
 
 
-def test_prompt_contract_kalder_oppositionen_som_sektion() -> None:
-    """Koblings-vagt: en perfekt funktion der aldrig kaldes er teater. Den
-    statiske vagt her fanger at kaldestedet forsvinder igen."""
-    import inspect
+def test_oppositionen_naar_FAKTISK_frem_til_modellen_i_en_chatprompt(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Den ægte sidste meter — ikke at producenten findes eller at gaten tillader
+    sektionen, men at informationen når frem til den prompt modellen ser.
 
+    Målt 4/11-2026 i den byggede prompt: oppositionen stod i parts-listen i
+    BÅDE chat og code, mens ``[ INDRE LIV ]``-headeren kun var i code. Det er
+    den kæde denne test holder. En ``inspect.getsource``-søgning kan ikke se
+    forskel på et kald og en kommentar der nævner det samme navn — den var grøn
+    selv hvis kaldet blev fjernet.
+    """
+    from core.services import central_prompt_composer as cpc
     from core.services import prompt_contract as pc
+    from core.services import signal_surface_router as ssr
+    from core.tools import tool_scoping
 
-    kilde = inspect.getsource(pc)
-    assert '\"kryds-lag-indsigelse\"' in kilde or "'kryds-lag-indsigelse'" in kilde, (
-        "prompt_contract kalder ikke oppositionen som sektion"
+    # Gaten er shadow som default — uden flaget inkluderes ALT, og testen ville
+    # være grøn uden at måle noget.
+    cpc._kv_set(cpc._LIVE_FLAG, True)
+    cpc._kv_set(cpc._WEIGHTS_KEY, {})
+
+    _orig = ssr.read_surface
+
+    def fake_read(name):
+        if name == "internal_opposition":
+            return {
+                "active": True,
+                "items": [{"signal_type": "Challenge calibration", "status": "active"}],
+                "summary": {"active_count": 3},
+            }
+        return _orig(name)
+
+    monkeypatch.setattr(ssr, "read_surface", fake_read)
+
+    # Prompt-bygningen resolver provider-kandidater (support-signals, compact_llm)
+    # og naar nettet. Testen maaler hvilke sektioner der overlever gaten, ikke
+    # hvilke providere der svarer — saa den del lukkes.
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.available_candidates",
+        lambda *a, **k: [],
+        raising=False,
     )
-    assert "build_opposition_line" in kilde, "kaldet bruger ikke funktionen"
+
+    header = "[ INDRE LIV ]"
+    bygget: dict[str, str] = {}
+    for scope in ("chat", "code"):
+        token = tool_scoping.set_tool_scope(scope)
+        try:
+            # impl-vejen, ikke den cachede wrapper: samme bygger, men uden
+            # turn-cachen der kan give chat-svaret tilbage til code-kaldet.
+            asm = pc._build_visible_chat_prompt_assembly_impl(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                user_message="hej, hvordan går det?",
+                session_id=None,
+            )
+            bygget[scope] = asm.text
+        finally:
+            tool_scoping.reset_tool_scope(token)
+
+    assert "Kryds-lag-indsigelse" in bygget["chat"], (
+        "oppositionen nåede ikke en almindelig chatprompt — den sidste meter "
+        "er stadig ikke lukket"
+    )
+    assert header not in bygget["chat"], (
+        "[INDRE LIV] blev ikke skåret i chat; så er gaten holdt op med at virke"
+    )
+    assert header in bygget["code"], (
+        "maskinrummet skal stadig være med i code — ellers måler testen ingenting"
+    )
+    for scope in ("chat", "code"):
+        antal = bygget[scope].count("Kryds-lag-indsigelse")
+        assert antal == 1, (
+            f"oppositionen står {antal} gange i {scope}-prompten — præcis ét sted"
+        )

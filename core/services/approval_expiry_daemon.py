@@ -115,6 +115,26 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
             # en fejer er død bag et tal der betyder «alt er fint».
             udloebne_indbakke = -1
             opryddede_indbakke = -1
+        # ── Køens fejer (4/11-2026) ─────────────────────────────────────────
+        #
+        # `proactive_candidates.expire_stale()` er den TREDJE forekomst af
+        # samme fejlform i denne fil: den fandtes, den var testet — og den blev
+        # kaldt NUL steder uden for tests. Målt 4/11-2026 i drift: 26 poster
+        # stod «åbne», de ældste 45 dage gamle, altså 31 dage over
+        # `_STILLET_EXPIRE_DAYS` på 14.
+        #
+        # Den hører her af samme grund som de to andre: «en post ingen læser
+        # skal alligevel have sin terminale tilstand SKREVET». Køen har ingen
+        # anden udgang — `mark()` flytter kun `pending`, og en post der blev
+        # vist men aldrig besvaret får aldrig et svar at blive lukket af.
+        try:
+            from core.services.proactive_candidates import expire_stale as _pc_expire
+            udloebne_kandidater = int(_pc_expire())
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("approval_expiry: køens fejer kunne ikke køre: %s", exc)
+            # -1 af samme grund som ovenfor: «kunne ikke køre» må ikke se ud
+            # som «intet at feje».
+            udloebne_kandidater = -1
     except Exception as exc:
         # Familien isolerer allerede fejl, men en fejer der stille holder op
         # med at virke er praecis den fejl denne fil blev skrevet for at rette.
@@ -127,7 +147,8 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
     _last_result = {"fejet": True, "udloebet": antal,
                     "foraeldreloese_afsendelser": foraeldreloese,
                     "udloebne_indbakke": udloebne_indbakke,
-                    "opryddede_indbakke": opryddede_indbakke}
+                    "opryddede_indbakke": opryddede_indbakke,
+                    "udloebne_kandidater": udloebne_kandidater}
 
     if foraeldreloese:
         logger.warning("approval_expiry: %d afsendelse(r) uden afslutning — "

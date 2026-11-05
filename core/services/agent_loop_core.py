@@ -55,6 +55,54 @@ _ACTION_NUDGE = (
     "Skal opgaven løses, så udfør den nu med et skriveværktøj. Kan du ikke, så sig det "
     "eksplicit med grunden — afslut ikke med et løfte om noget du ikke gjorde.")
 
+#: Rundebudget-signal (5/11-2026). Maalt i `cache_telemetry.jsonl` over 1.646
+#: runde-overgange: 67,3 % af alle runder baerer PRAECIS ét vaerktoejskald, og i de 21
+#: koersler der kom over 40 runder FALDER kald/runde fra 1,62 i runde 0-4 til 1,07 i
+#: runde 25-29. Altsaa: jeg batcher mindst praecis naar der er mindst tilbage.
+#:
+#: Aarsagen er ikke manglende instruks — prompten har tre batch-linjer
+#: (`visible_capability_truth.py:37`, `:56`, `prompt_contract.py:3055`) og de virker
+#: ikke. Aarsagen er at `while rounds < max_rounds` giver modellen NUL signal om hvor
+#: mange runder der er tilbage: knapheden findes kun i koden, aldrig i konteksten.
+#: Uden den kan modellen ikke prioritere, og en sekventiel vane koster en hel runde
+#: pr. kald — praecis den runde der mangler til sidst.
+#:
+#: Noten injiceres derfor som en USER-besked midt i loopet, samme kanal som
+#: `_ACTION_NUDGE` og `_SCOUT_NUDGE`, naar der er 10, 5 og 2 runder tilbage. Tre
+#: punkter, ikke hver runde: hver injektion skifter praefikset og koster et
+#: cache-miss, og tre gange er prisen vi allerede betaler for de andre nudges.
+#:
+#: Absolutte tal frem for fraktioner: budgettet skrues ned til 20 eller 12 runder af
+#: `affect_modulation` naar kropspres/fatigue er hoej, saa et fraktions-baseret signal
+#: ville fyre paa naseten hver runde i netop de koersler hvor det er dyrest.
+_BUDGET_NOTE_AT_REMAINING = (10, 5, 2)
+
+
+def _budget_note(rounds: int, max_rounds: int, messages: list[dict]) -> str:
+    """Rundebudget-noten, eller ``""`` naar den ikke skal injiceres.
+
+    Tre betingelser, alle noedvendige:
+
+    1. ``remaining`` er et af de tre punkter. Ellers ville hver runde baere en ny
+       besked og praefikset ville skifte hver gang.
+    2. Sidste besked er et ``tool``-resultat. En note foer noget arbejde er gjort er
+       stoj — der er intet at batche endnu — og den ville ligge som to brugerbeskeder
+       i traek i runde 1. (En dublet ved genoptagelse kan ikke opstaa: baade
+       ``rounds`` og beskedlisten ligger i checkpointen, saa en genoptaget runde
+       fortsaetter paa det naeste rundetal, ikke det samme.)
+    """
+    remaining = max_rounds - rounds
+    if remaining not in _BUDGET_NOTE_AT_REMAINING:
+        return ""
+    if not messages or str(messages[-1].get("role") or "") != "tool":
+        return ""
+    return (
+        f"Rundebudget: runde {rounds} af {max_rounds} — {remaining} runder tilbage. "
+        "Kald ALLE uafhængige værktøjer i SAMME runde fra nu af: læs flere filer på én "
+        "gang, læg flere kommandoer i samme bash-kald, søg og læs side om side. "
+        "Et kald pr. runde koster en hel runde du ikke har tilbage. "
+        "Del dem kun op naar det næste kald har brug for det forriges resultat.")
+
 
 def _answers_directive(unanswered: int) -> str:
     """Ordre om at svare NU ud fra det agenten allerede har fundet (26/10-2026).
@@ -361,6 +409,11 @@ def run_tool_loop(io: LoopIO, *, prompt: str, tools_payload: list[dict], require
                                 error_str, t0, parked)
         while rounds < max_rounds:
             rounds += 1
+            # 5/11-2026: knapheden skal staa i konteksten, ikke kun i `while`-betingelsen.
+            # Se `_BUDGET_NOTE_AT_REMAINING` for hvorfor den ligger her og ikke i prompten.
+            budget_note = _budget_note(rounds, max_rounds, messages)
+            if budget_note:
+                messages.append({"role": "user", "content": budget_note})
             result = io.model(messages=messages, tools=tools_payload, requires_tools=requires_tools,
                               provider=provider, model=model)
             total_input += int(result.get("input_tokens") or 0)

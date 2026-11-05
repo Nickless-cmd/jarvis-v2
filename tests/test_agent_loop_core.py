@@ -201,6 +201,64 @@ def test_a_tool_exception_is_an_error_not_a_success():
     assert out["error_str"] == "vaerktoej braekkede" and out["total_tool_calls"] == 0
 
 
+# ── Rundebudget-signal (5/11-2026) ──────────────────────────────────────────────────
+# Maalt i cache_telemetry.jsonl over 1.646 runde-overgange: 67,3 % af alle runder baerer
+# PRAECIS ét vaerktoejskald, og i de 21 koersler over 40 runder FALDER kald/runde fra 1,62
+# i runde 0-4 til 1,07 i runde 25-29. Loekken gav modellen nul signal om hvor mange runder
+# der var tilbage — knapheden fandtes kun i `while`-betingelsen, aldrig i konteksten.
+# Prompten har tre batch-instrukser og de virkede ikke; signalet skal komme fra loopet.
+
+def _budget_noter(io) -> list[int]:
+    """Positionen (1-baseret) i DENNE IO's model-kald hvor noten blev sendt.
+
+    Ikke rundetallet: en genoptaget koersel starter paa et hoejere rundetal end 1, saa
+    de to tal falder kun sammen naar IO'en selv startede i runde 1.
+    """
+    return [i + 1 for i, c in enumerate(io.model_calls)
+            if c["messages"] and str(c["messages"][-1].get("content") or "").startswith("Rundebudget:")]
+
+
+def test_rundebudget_noten_injiceres_praecis_ved_ti_fem_og_to_runder_tilbage():
+    """Tre punkter, ikke hver runde: hvert injektionspunkt skifter praefikset og koster
+    et cache-miss. Med max_rounds=12 er remaining 10 ved runde 2, 5 ved runde 7 og 2 ved
+    runde 10 — og paa ingen andre runder."""
+    io = FakeIO([{"text": "", "tool_calls": [_tc(i)]} for i in range(1, 12)] + [{"text": "slut"}])
+    out = _run(io, max_rounds=12)
+    assert _budget_noter(io) == [2, 7, 10]
+    assert out["rounds"] == 12
+
+
+def test_noten_fyrer_ikke_foer_der_er_arbejde_at_batche():
+    """I runde 1 er sidste besked opgaven selv. En note dér ville ligge som to
+    brugerbeskeder i traek og pege paa et batch-arbejde der ikke findes endnu.
+    max_rounds=11 goer remaining=10 netop i runde 1 — saa betingelsen isoleres."""
+    io = FakeIO([{"text": "", "tool_calls": [_tc(1)]}, {"text": "slut"}])
+    _run(io, max_rounds=11)
+    assert not io.model_calls[0]["messages"][-1]["content"].startswith("Rundebudget:")
+    assert _budget_noter(io) == [], "remaining er 9 i runde 2 — uden for de tre punkter"
+
+
+def test_noten_baerer_en_konkret_batch_ordre_ikke_bare_et_tal():
+    """Et rundetal alene aendrer ikke en vane — maalt er det praecis den vane der kostede
+    runderne. Noten skal sige HVAD der skal goeres, ikke kun hvor meget der er tilbage."""
+    note = core._budget_note(2, 12, [{"role": "tool", "content": "x"}])
+    assert note.startswith("Rundebudget: runde 2 af 12"), note
+    assert "SAMME runde" in note and "Et kald pr. runde koster en hel runde" in note
+
+
+def test_en_gentaget_runde_efter_parkering_injicerer_ikke_noten_to_gange():
+    """Baade `rounds` og beskedlisten ligger i checkpointen, saa en genoptaget runde
+    fortsaetter paa det naeste rundetal. Noten maa aldrig staa to gange."""
+    first = ParkIO([{"text": "", "tool_calls": [_tc(1)]}], park_on=("c1",))
+    cp = _run(first, max_rounds=12)["parked"]["checkpoint"]
+    assert cp["rounds"] == 1
+    io = ParkIO([{"text": "", "tool_calls": [_tc(2)]}, {"text": "slut"}], park_on=())
+    _run(io, resume=cp, max_rounds=12)
+    sendt = [str(m.get("content") or "") for m in io.model_calls[0]["messages"]]
+    assert sum(1 for c in sendt if c.startswith("Rundebudget:")) == 1, "praecis én note, ikke to"
+    assert _budget_noter(io) == [1], "noten hoerer til den genoptagne runde 2 — IO'ens FOERSTE kald"
+
+
 # --- in-process-bindingen --------------------------------------------------------------------
 
 @pytest.fixture

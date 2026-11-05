@@ -390,6 +390,11 @@
       "ejer": "core/services/counterfactual_predictions.py",
       "beskrivelse": "Arkiv for uafgoerlige forudsigelser flyttet ud af ledgeren (loft 1000). Slaas op via find_archived_prediction(prediction_id), saa provenance bevares efter flytningen.",
       "registreret": "2026-11-04"
+    },
+    "flade_paamindelse": {
+      "ejer": "core/services/visible_runs.py (skriver) + core/services/prompt_contract.py (laeser)",
+      "beskrivelse": "Én linje naar forrige svar bar en sammenligningstabel uden en jarvis-ui-flade. Skrives ved svar-finaliseringen og læses i den per-turn-dynamiske prompt-hale. Tom streng = intet at minde om. Feedback, ikke censur: den retter intet svar.",
+      "dato": "2026-11-05"
     }
   }
 }

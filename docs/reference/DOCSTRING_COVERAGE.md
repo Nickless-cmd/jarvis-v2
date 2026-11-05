@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9801/18270 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9804/18273 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9801/18270 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6530 | 12368 | 52% |
+| `core.services` | 6533 | 12371 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1661,13 +1661,13 @@ Generated from source. 9801/18270 functions/methods documented (53%). The list b
 - `core/services/prompt_assembly_turn_cache.py` :: `lookup` (L26)
 - `core/services/prompt_assembly_turn_cache.py` :: `store` (L39)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3666)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3514)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3803)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3677)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3525)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3814)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L173)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L121)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L148)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4745)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4781)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L229)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L474)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
@@ -2328,14 +2328,14 @@ Generated from source. 9801/18270 functions/methods documented (53%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L618)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L615)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L625)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7237)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7262)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7300)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7296)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7233)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7195)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7317)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7248)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7257)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7282)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7320)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7316)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7253)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7215)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7337)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7268)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L772)
 - `core/services/visible_runs_sections/approval_wait.py` :: `unregister_live_approval` (L77)

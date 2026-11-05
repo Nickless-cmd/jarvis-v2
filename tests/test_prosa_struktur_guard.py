@@ -413,3 +413,74 @@ def test_en_blok_giver_hoejst_et_fund() -> None:
     assert len(fund) == 1, f"forventede ét fund, fik {len(fund)}"
     assert fund[0].slags == "opremsning"
 
+
+
+# ── 7. Tabel uden flade — FEEDBACK, ikke en formfejl (5/11-2026) ───────────
+#
+# Målt i chat_messages over 14 dage: 578 af 591 tabel-svar (98 %) var ren
+# prosa, mens `vaelg_flade` blev kaldt 111 gange i alt. Værktøjet virker — det
+# bliver bare ikke kaldt. Reglen lægger én linje i næste turs bevidsthed.
+
+#: Den form der fortjener en flade: en matrix, ikke en liste. Eksemplet er fra
+#: den levende base («| Provider | Proben sagde | Virkeligheden |»).
+SAMMENLIGNING = """Her er tallene.
+
+| Provider | Proben sagde | Virkeligheden |
+|---|---|---|
+| mistral | 401 | 200 |
+| gemini | 404 | 200 |
+| opencode | 403 | 200 |
+| groq | 403 | 200 |
+"""
+
+
+def test_sammenligningstabel_uden_flade_giver_en_linje() -> None:
+    """5 rækker x 3 kolonner uden flade skal give præcis én linje.
+
+    MUTATION: sæt MIN_TABEL_RAEKKER til 6 → intet fund → fejler.
+    """
+    linje = g.tabel_uden_flade(SAMMENLIGNING)
+    assert linje is not None
+    assert "5 raekker" in linje and "3 kolonner" in linje
+    assert "vaelg_flade" in linje
+
+
+def test_to_kolonner_er_en_liste_ikke_en_sammenligning() -> None:
+    """«navn → værdi» læses fint som prosa. Kun 3+ kolonner er en matrix.
+
+    Målt: 373 tabel-instanser har 2 kolonner — de er lister, ikke matricer.
+    MUTATION: sæt MIN_TABEL_KOLONNER til 2 → fund → fejler.
+    """
+    tekst = (
+        "| Navn | Vaerdi |\n|---|---|\n"
+        "| a | 1 |\n| b | 2 |\n| c | 3 |\n| d | 4 |\n"
+    )
+    assert g.tabel_uden_flade(tekst) is None
+
+
+def test_for_faa_raekker_rammer_ikke() -> None:
+    """Tre rækker er en note, ikke en sammenligning der kraever en flade.
+
+    MUTATION: sæt MIN_TABEL_RAEKKER til 3 → fund → fejler.
+    """
+    tekst = "| A | B | C |\n|---|---|---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n"
+    assert g.tabel_uden_flade(tekst) is None
+
+
+def test_svar_der_allerede_har_en_flade_rammes_ikke() -> None:
+    """Har svaret en jarvis-ui-blok, er der intet at minde om.
+
+    MUTATION: fjern `"jarvis-ui" in text` fra gaten → fund → fejler.
+    """
+    assert g.tabel_uden_flade(SAMMENLIGNING + '\n```jarvis-ui {"type":"comparison"}\n```\n') is None
+
+
+def test_detektoren_er_ikke_en_formfejl_og_udloeser_ingen_omskrivning() -> None:
+    """Den bærende kontrakt: feedback må ikke blive censur.
+
+    ``fejl_i_prosa`` fører til ``korriger_prosa``, altså en omskrivning af
+    svaret. En tabel er et gyldigt svar, så detektoren må IKKE optræde der.
+    MUTATION: kald tabel_uden_flade fra fejl_i_prosa → fejler.
+    """
+    assert g.tabel_uden_flade(SAMMENLIGNING) is not None
+    assert g.fejl_i_prosa(SAMMENLIGNING) == []

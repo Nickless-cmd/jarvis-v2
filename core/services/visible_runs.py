@@ -6846,6 +6846,26 @@ def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
             return fallback
     except Exception:
         pass
+    # TABEL UDEN FLADE (5/11-2026): feedback, ikke en formfejl. Maalt i
+    # chat_messages over 14 dage: 578 af 591 tabel-svar var ren prosa, mens
+    # `vaelg_flade` blev kaldt 111 gange i alt — vaerktoejet virker, det bliver
+    # bare ikke kaldt. Linjen gemmes til NAESTE turs prompt og retter intet
+    # her; en omskrivning ville oedelaegge prosa der flyder rigtigt.
+    try:
+        from core.services.prosa_struktur_guard import (
+            tabel_uden_flade as _tabel_uden_flade,
+        )
+        from core.runtime import state_store as _state_store
+
+        _state_store.save_json(
+            "flade_paamindelse",
+            {
+                "linje": (_tabel_uden_flade(cleaned) if cleaned else None) or "",
+                "run_id": str(run.run_id or ""),
+            },
+        )
+    except Exception:  # fail-open: en paamindelse maa aldrig koste et svar
+        pass
     if cleaned:
         return cleaned
     return fallback

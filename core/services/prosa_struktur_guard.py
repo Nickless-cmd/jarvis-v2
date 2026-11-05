@@ -49,11 +49,15 @@ __all__ = [
     "MIN_AFSNIT_TEGN",
     "MIN_TAL",
     "MIN_KODEBLOK_LINJER",
+    "MAKS_AFSNIT_LINJER",
+    "MIN_TABEL_RAEKKER",
+    "MIN_TABEL_KOLONNER",
     "ProsaPunkt",
     "fejl_i_prosa",
     "find_prosa_punkter",
     "ret_pseudo_overskrift",
     "skal_have_break",
+    "tabel_uden_flade",
 ]
 
 #: Hvor mange parallelle led et afsnit må bære i prosa før det flagges.
@@ -520,3 +524,84 @@ def fejl_i_prosa(text: str) -> list[str]:
     ikke en omskrevet tekst.
     """
     return [p.som_fejl() for p in find_prosa_punkter(text)]
+
+
+# ---------------------------------------------------------------------------
+# Tabel uden flade — FEEDBACK, ikke en formfejl (5/11-2026)
+#
+# Målt i ``chat_messages`` over 14 dage: 2.389 assistent-svar, 591 med en
+# markdown-tabel, 578 af dem (98 %) uden en ``jarvis-ui``-flade. Kun 248 svar
+# (11 %) havde en flade overhovedet, mens ``vaelg_flade`` blev kaldt 111 gange
+# i alt. Værktøjet virker — det bliver bare ikke kaldt.
+#
+# Derfor står reglen HER og ikke i ``fejl_i_prosa``: formfejlene ovenfor fører
+# til ``korriger_prosa``, altså en omskrivning af svaret. En tabel er ikke en
+# formfejl — den er et gyldigt svar — og en omskrivning ville ødelægge prosa
+# der flyder rigtigt. Reglen lægger i stedet én linje i næste turs bevidsthed.
+#
+# Tærsklen er målt, ikke gættet. Fordelingen af tabel-instanser uden flade:
+#   2 kolonner: 373   3 kolonner: 285   4 kolonner: 70   5+: 16
+# To kolonner er en liste («navn → værdi»), som prosa læser fint. Tre eller
+# flere er en matrix, altså en sammenligning — og det er præcis dem en flade
+# tegner bedre. Eksempler fra den levende base, alle skrevet som prosa:
+#   «| Provider | Proben sagde | Virkeligheden |»        6 rækker, 3 kolonner
+#   «| Provider | Health-check | Faktiske kald, 48 t |»  5 rækker, 3 kolonner
+#   «| Brief | Rutinens mode | Ejer |»                   4 rækker, 3 kolonner
+# Med >=4 rækker og >=3 kolonner rammes 247 svar over 14 dage (~17/dag).
+# ---------------------------------------------------------------------------
+
+#: Mindste antal datarækker i en tabel før den fortjener en flade.
+MIN_TABEL_RAEKKER = 4
+
+#: Mindste antal kolonner. To er en liste; tre er en sammenligning.
+MIN_TABEL_KOLONNER = 3
+
+#: Skillelinjen i en markdown-tabel tælles ikke som en datarække.
+_TABEL_SEPARATOR_RE = re.compile(r"^\|[\s:|-]+\|?$")
+
+
+def _tabel_blokke(text: str) -> list[list[str]]:
+    """Sammenhængende linjer der alle starter med ``|``."""
+    blokke: list[list[str]] = []
+    blok: list[str] = []
+    for linje in text.split("\n"):
+        if linje.strip().startswith("|"):
+            blok.append(linje.strip())
+            continue
+        if len(blok) >= 2:
+            blokke.append(blok)
+        blok = []
+    if len(blok) >= 2:
+        blokke.append(blok)
+    return blokke
+
+
+def tabel_uden_flade(text: str) -> str | None:
+    """Én linje når svaret bærer en sammenligningstabel uden en flade.
+
+    Returnerer ``None`` når svaret ingen tabel har, når tabellen er for lille
+    til at en flade ville være bedre, eller når svaret allerede indeholder en
+    ``jarvis-ui``-blok. Retter intet og afviser intet.
+    """
+    if not text or "|" not in text or "jarvis-ui" in text:
+        return None
+
+    bedste_raekker = 0
+    bedste_kolonner = 0
+    for blok in _tabel_blokke(text):
+        data = [linje for linje in blok if not _TABEL_SEPARATOR_RE.match(linje)]
+        kolonner = blok[0].count("|") - 1
+        if len(data) < MIN_TABEL_RAEKKER or kolonner < MIN_TABEL_KOLONNER:
+            continue
+        if len(data) * kolonner > bedste_raekker * bedste_kolonner:
+            bedste_raekker, bedste_kolonner = len(data), kolonner
+
+    if not bedste_raekker:
+        return None
+
+    return (
+        f"forrige svar havde en sammenligningstabel paa {bedste_raekker} raekker "
+        f"og {bedste_kolonner} kolonner uden flade — overvej `vaelg_flade` naar "
+        f"en tabel har 3+ kolonner, saa den bliver tegnet i stedet for laest "
+        f"som prosa"
+    )

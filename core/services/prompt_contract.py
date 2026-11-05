@@ -3076,6 +3076,17 @@ def _build_visible_chat_prompt_assembly_impl(
     if _self_buffer:
         _dyn_tail.extend(_self_buffer)
         derived_inputs.append("felt-state / self (background, pre-diagnostics)")
+    # FLADE-PAAMINDELSE (5/11-2026): én linje naar forrige svar bar en
+    # sammenligningstabel uden flade. Dynamisk med vilje — den hoerer i halen,
+    # ikke i den cachebare prefix. Skrevet ved svar-finaliseringen i
+    # visible_runs.py; den retter intet, den minder om et vaerktoej.
+    try:
+        _flade_linje = _flade_paamindelse_section()
+        if _flade_linje:
+            _dyn_tail.append(_flade_linje)
+            derived_inputs.append("flade-paamindelse (feedback)")
+    except Exception:
+        pass
     # ── ZONE B: BACKGROUND STATE. Self-model telemetry (audit #3, 2026-07-22 —
     # moved here from the head of the tail). Was three separate parts (predictive
     # 14d + self-evaluation 7d + development sense) that repeated tick-quality AND
@@ -4279,6 +4290,31 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
     cacheable prefix, loaded in both warmer and live). Kept as a no-op returning
     "" so the gated call-sites don't have to change shape."""
     return ""
+
+
+def _flade_paamindelse_section() -> str | None:
+    """Én linje når forrige svar bar en sammenligningstabel uden flade.
+
+    Feedback, ikke censur: den retter intet og afviser intet. Kilden er
+    ``state_store``-nøglen ``flade_paamindelse``, skrevet ved svar-
+    finaliseringen i ``visible_runs``. Tom når forrige svar brugte en flade,
+    eller når det slet ikke havde en tabel der fortjente en.
+
+    Målt 5/11-2026: 578 af 591 tabel-svar var ren prosa mens ``vaelg_flade``
+    blev kaldt 111 gange i alt. Værktøjet virker — det bliver bare ikke kaldt,
+    og det her er den billigste kur: én linje i den dynamiske hale, ikke en
+    omskrivning af svaret.
+    """
+    try:
+        from core.runtime import state_store
+
+        data = state_store.load_json("flade_paamindelse", {})
+        linje = str((data or {}).get("linje") or "").strip()
+    except Exception:  # fail-open: en påmindelse må aldrig koste en prompt
+        return None
+    if not linje:
+        return None
+    return f"🖼 FLADE: {linje}"
 
 
 # Smaa hale-sektionsbyggere er flyttet til prompt_sections/tail_section_builders.py (Boy Scout, 2026-10-07;

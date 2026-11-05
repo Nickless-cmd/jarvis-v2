@@ -3,7 +3,8 @@ import { Fragment, useCallback } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatScroll } from '../lib/useChatScroll'
-import { PanelRight, AudioWaveform, Bot, Globe, ListTodo } from 'lucide-react'
+import { PanelRight, AudioWaveform, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
+import { DesktopPanel } from '../components/desktop/DesktopPanel'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
@@ -788,6 +789,7 @@ export function ChatView({
   // de var åbne … alle paneler nulstiller ved app genstart»).
   const [jobsOpen, setJobsOpen] = usePersistedState('jarvis-desk:panel:jobs', false)
   const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
+  const [desktopOpen, setDesktopOpen] = usePersistedState('jarvis-desk:panel:desktop', false)
   // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
   // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
   const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
@@ -804,7 +806,7 @@ export function ChatView({
   const [changesOpen, setChangesOpen] = usePersistedState('jarvis-desk:panel:changes', false)
   const [, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'desktop' | 'sideopgaver'>('')
 
   // Klik paa en fil i «Redigerede N filer» aabner ruden PAA den fil.
   useEffect(() => paaAendringsFokus((sti) => {
@@ -874,7 +876,7 @@ export function ChatView({
   // browserOpen SKAL være med: uden den åbnede skinnen kun hvis ændringer
   // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
   // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
-  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen)
+  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen || desktopOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen)
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
@@ -887,6 +889,7 @@ export function ChatView({
   const visChanges = changesOpen && (!fuldRude || fuldRude === 'changes')
   const visJobs = jobsOpen && (!fuldRude || fuldRude === 'jobs')
   const visBrowser = browserOpen && (!fuldRude || fuldRude === 'browser')
+  const visDesktop = desktopOpen && (!fuldRude || fuldRude === 'desktop')
   const visSideOpgave = sideOpgaveOpen && (!fuldRude || fuldRude === 'sideopgaver')
   const jobsRude = skinneAaben ? (
     <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
@@ -912,6 +915,15 @@ export function ChatView({
           fuld={fuldRude === 'browser'}
           onFuld={(f) => setFuldRude(f ? 'browser' : '')}
           onClose={() => { setBrowserOpen(false); setFuldRude((v) => v === 'browser' ? '' : v) }}
+        />
+      )}
+      {visDesktop && (
+        <DesktopPanel
+          config={cfgSkinne}
+          aaben={visDesktop}
+          fuld={fuldRude === 'desktop'}
+          onFuld={(f) => setFuldRude(f ? 'desktop' : '')}
+          onClose={() => { setDesktopOpen(false); setFuldRude((v) => v === 'desktop' ? '' : v) }}
         />
       )}
       {visJobs && cfgSkinne && (
@@ -977,6 +989,14 @@ export function ChatView({
           onClick={() => setBrowserOpen((o) => !o)}
         >
           <Globe size={15} />
+        </button>
+        <button
+          type="button"
+          className={`panel-toggle ${desktopOpen ? 'active' : ''}`}
+          aria-label="Vis/skjul Jarvis' desktop" title="Jarvis' desktop"
+          onClick={() => setDesktopOpen((o) => !o)}
+        >
+          <Monitor size={15} />
         </button>
         {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
         <HeaderMere

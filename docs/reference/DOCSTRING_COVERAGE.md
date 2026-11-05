@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9799/18266 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9801/18270 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,7 +35,7 @@ Generated from source. 9799/18266 functions/methods documented (53%). The list b
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 625 | 1209 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
-| `core.tools.claude_dispatch` | 7 | 32 | 21% |
+| `core.tools.claude_dispatch` | 9 | 36 | 25% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 307 | 641 | 47% |
@@ -2396,7 +2396,7 @@ Generated from source. 9799/18266 functions/methods documented (53%). The list b
 - `core/tools/claude_dispatch/failure.py` :: `DispatchFailure.is_failure` (L86)
 - `core/tools/claude_dispatch/jail.py` :: `assert_inside_jail` (L16)
 - `core/tools/claude_dispatch/jail.py` :: `build_worktree_path` (L24)
-- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L75)
+- `core/tools/claude_dispatch/runner.py` :: `run_dispatch` (L143)
 - `core/tools/claude_dispatch/spec.py` :: `parse_spec` (L33)
 - `core/tools/claude_dispatch/stream.py` :: `parse_stream_line` (L17)
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)

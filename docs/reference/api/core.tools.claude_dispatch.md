@@ -61,9 +61,13 @@ _Find a live host Claude Code OAuth token to inject into `claude -p` spawns._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_build_prompt` | `(spec, task_id)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L28) |
-| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L71) |
-| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L75) |
+| function | `_build_prompt` | `(spec, task_id)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L31) |
+| function | `_git` | `(worktree, *args)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L77) |
+| function | `_head` | `(worktree)` | HEAD i worktreet, eller tom streng hvis det ikke kan laeses. | [src](../../../core/tools/claude_dispatch/runner.py#L83) |
+| function | `_in_scope` | `(path, scope)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L89) |
+| function | `_commit_leftovers` | `(spec, task_id, worktree)` | Commit det agenten lod ligge, gennem den attribuerede wrapper. | [src](../../../core/tools/claude_dispatch/runner.py#L95) |
+| function | `_new_task_id` | `()` | — | [src](../../../core/tools/claude_dispatch/runner.py#L139) |
+| function | `run_dispatch` | `(spec, eventbus)` | — | [src](../../../core/tools/claude_dispatch/runner.py#L143) |
 
 ## `core/tools/claude_dispatch/spec.py`
 

@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-05 — 527 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-05 — 528 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -257,6 +257,7 @@
 | `nudge_dismiss` | native | no |
 | `nudge_inspect` | native | no |
 | `nudge_send` | native | no |
+| `nudge_vent` | native | no |
 | `open_ui_panel` | native | no |
 | `openrouter_image` | native | no |
 | `openrouter_image_edit` | native | no |

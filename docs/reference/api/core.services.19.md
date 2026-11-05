@@ -224,16 +224,23 @@ _Nudge-broend — daemons drop nudges, Jarvis inspects and decides._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L24) |
-| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L37) |
-| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L48) |
-| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L62) |
-| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L105) |
-| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L113) |
-| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L119) |
-| function | `mark_sent` | `(nudge_id)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L128) |
-| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L140) |
-| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L154) |
+| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L39) |
+| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L52) |
+| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L63) |
+| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…, emne=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L81) |
+| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L134) |
+| function | `_emne_for` | `(source, message)` | Udled en emne-nøgle når kalderen ikke giver en. | [src](../../../core/services/nudge_broend.py#L146) |
+| function | `_parse_ts` | `(value)` | — | [src](../../../core/services/nudge_broend.py#L162) |
+| function | `sidst_naevnt` | `(emne)` | Hvornår emnet sidst blev SAGT. None = aldrig. | [src](../../../core/services/nudge_broend.py#L170) |
+| function | `kadence_tillader` | `(emne, *, nu=…)` | Må emnet nævnes nu? Højst én prik pr. emne pr. dag. | [src](../../../core/services/nudge_broend.py#L190) |
+| function | `mark_venter` | `(nudge_id, *, grund=…)` | Trin 4: flyt en nudge til ``venter`` — ikke kasseret, ikke gentaget. | [src](../../../core/services/nudge_broend.py#L199) |
+| function | `list_ventende` | `(limit=…)` | Nudges der venter på at verden flytter sig. | [src](../../../core/services/nudge_broend.py#L223) |
+| function | `genoptag_ved_skift` | `(skift, *, nu=…)` | Trin 5: genoptag hvilende nudges NÅR et registreret skift er tilgængeligt. | [src](../../../core/services/nudge_broend.py#L230) |
+| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L286) |
+| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L292) |
+| function | `mark_sent` | `(nudge_id)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L301) |
+| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L316) |
+| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L330) |
 
 ## `core/services/oauth_flow.py`
 _OAuth-flow-helper for plugin-connectors (16. jun 2026)._

@@ -12,19 +12,31 @@ from typing import Any
 def _exec_nudge_inspect(args: dict[str, Any]) -> dict[str, Any]:
     """Vis pending nudges."""
     try:
-        from core.services.nudge_broend import list_pending, count_pending
+        from core.services.nudge_broend import (
+            count_pending,
+            list_pending,
+            list_ventende,
+        )
     except Exception as exc:
         return {"status": "error", "error": f"nudge_broend not available: {exc}"}
 
     limit = int(args.get("limit") or 10)
     pending = list_pending(limit=limit)
     total = count_pending()
+    # Trin 4 (5/11-2026): hvilende nudges er ikke klar til at blive sagt, men de
+    # er heller ikke væk. De vises separat saa de ikke forveksles med koen.
+    hvilende = list_ventende(limit=limit)
+
+    tekst = f"{len(pending)} vist (ud af {total} pending)" if pending else "Brønden er tom — ingen ventende nudges."
+    if hvilende:
+        tekst += f" · {len(hvilende)} hvilende (venter paa et skift)"
 
     return {
         "status": "ok",
         "pending_count": total,
         "nudges": pending,
-        "text": f"{len(pending)} vist (ud af {total} pending)" if pending else "Brønden er tom — ingen ventende nudges.",
+        "ventende": hvilende,
+        "text": tekst,
     }
 
 
@@ -119,8 +131,31 @@ def _exec_nudge_dismiss(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": f"Nudge '{nudge_id}' ikke fundet eller allerede håndteret"}
 
 
+def _exec_nudge_vent(args: dict[str, Any]) -> dict[str, Any]:
+    """Trin 4: saet en nudge i venter — ikke afvist, ikke gentaget."""
+    nudge_id = str(args.get("nudge_id") or "").strip()
+    if not nudge_id:
+        return {"status": "error", "error": "nudge_id er paakraevet"}
+    try:
+        from core.services.nudge_broend import get, mark_venter
+    except ImportError as exc:  # brønden kunne ikke indlæses → meld det, gæt ikke på tilstanden
+        return {"status": "error", "error": f"nudge_broend not available: {exc}"}
+
+    nudge = get(nudge_id)
+    if nudge is None:
+        return {"status": "error", "error": f"Nudge '{nudge_id}' ikke fundet"}
+    if not mark_venter(nudge_id, grund=str(args.get("reason") or "kadence-loft")):
+        return {"status": "error", "error": f"Nudge er allerede {nudge.get('status')}"}
+    return {
+        "status": "ok",
+        "nudge_id": nudge_id,
+        "text": f"Nudge {nudge_id} hviler nu — den vender tilbage naar noget flytter sig.",
+    }
+
+
 NUDGE_BROEND_TOOL_HANDLERS: dict[str, Any] = {
     "nudge_inspect": _exec_nudge_inspect,
+    "nudge_vent": _exec_nudge_vent,
     "nudge_send": _exec_nudge_send,
     "nudge_dismiss": _exec_nudge_dismiss,
 }
@@ -164,6 +199,26 @@ NUDGE_BROEND_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": "ID på nudgen der skal sendes (fra nudge_inspect)",
                     },
+                },
+                "required": ["nudge_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "nudge_vent",
+            "description": (
+                "Saet en nudge i venter (trin 4 i eskaleringstrappen). Brug den naar "
+                "emnet allerede er naevnt inden for et doegn: den afvises ikke og "
+                "gentages ikke — den vender tilbage som et nyt tilbud naar et "
+                "registreret stemningsskift goer det relevant igen."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "nudge_id": {"type": "string", "description": "ID paa nudgen"},
+                    "reason": {"type": "string", "description": "Valgfri grund"},
                 },
                 "required": ["nudge_id"],
             },

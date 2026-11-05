@@ -333,8 +333,9 @@ _Nudge-brønd tools — Jarvis inspicerer, sender og afviser nudges._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_exec_nudge_inspect` | `(args)` | Vis pending nudges. | [src](../../../core/tools/nudge_broend_tools.py#L12) |
-| function | `_exec_nudge_send` | `(args)` | Send en nudge via notify_user (webchat/Discord). | [src](../../../core/tools/nudge_broend_tools.py#L31) |
-| function | `_exec_nudge_dismiss` | `(args)` | Afvis ét eller alle nudges. | [src](../../../core/tools/nudge_broend_tools.py#L87) |
+| function | `_exec_nudge_send` | `(args)` | Send en nudge via notify_user (webchat/Discord). | [src](../../../core/tools/nudge_broend_tools.py#L43) |
+| function | `_exec_nudge_dismiss` | `(args)` | Afvis ét eller alle nudges. | [src](../../../core/tools/nudge_broend_tools.py#L99) |
+| function | `_exec_nudge_vent` | `(args)` | Trin 4: saet en nudge i venter — ikke afvist, ikke gentaget. | [src](../../../core/tools/nudge_broend_tools.py#L134) |
 
 ## `core/tools/nudge_tools.py`
 _Tools Jarvis uses to surface or dismiss pending nudges._

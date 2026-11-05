@@ -13,6 +13,34 @@ from core.services.visible_chat_pragmatics import (
 from core.tools.tool_scoping import tool_scope
 
 
+def _chat_prompt(message: str = "", session_id: str | None = None, tail: str = "") -> str:
+    """Hele chat-prompten som modellen ser den: stabil prefix + per-tur hale.
+
+    Målt 5/11-2026: i v2-layoutet ligger CHAT_MODE_HOW_I_TALK i den cachebare
+    prefix (`prompt_sections/chat_mode.py`), ikke i halen — placeringen ejes af
+    `test_prompt_mode_layout.py`. Vagterne her målte kun halen og var derfor
+    røde på en prompt der fungerede: de målte en kodevej der ikke bruges i
+    drift. De skal måle den samlede vej, ellers beviser de intet om det
+    modellen faktisk får.
+    """
+    from core.services.prompt_sections.chat_mode import _visible_mode_orientation_instruction
+
+    with tool_scope("chat"):
+        prefix = _visible_mode_orientation_instruction(compact=False) or ""
+        rest = build_chat_mode_dynamic_tail(tail, message=message, session_id=session_id)
+    return "\n\n".join(part for part in (prefix, rest) if part)
+
+
+def _code_prompt(message: str = "", session_id: str | None = None, tail: str = "") -> str:
+    """Samme for code mode, så «når ikke code mode» måles på den vej der kører."""
+    from core.services.prompt_sections.chat_mode import _visible_mode_orientation_instruction
+
+    with tool_scope("code"):
+        prefix = _visible_mode_orientation_instruction(compact=False) or ""
+        rest = build_chat_mode_dynamic_tail(tail, message=message, session_id=session_id)
+    return "\n\n".join(part for part in (prefix, rest) if part)
+
+
 def test_contract_is_injected_only_in_chat_scope() -> None:
     with tool_scope("chat"):
         chat = apply_chat_mode_conversation_contract("BASE")
@@ -39,7 +67,14 @@ def test_contract_covers_reaction_correction_and_stop_signal() -> None:
 
 
 def test_both_visible_provider_shapes_receive_chat_contract(monkeypatch) -> None:
-    assembly = SimpleNamespace(text="BASE", transcript_messages=[])
+    from core.services.prompt_sections.chat_mode import _visible_mode_orientation_instruction
+
+    # Mock'en skal bære den prefix der faktisk bygges — i v2 ligger kontrakten
+    # der, ikke i halen. En fast "BASE" ville måle en tom prefix og fejle på en
+    # prompt der fungerer.
+    with tool_scope("chat"):
+        prefix = _visible_mode_orientation_instruction(compact=False) or ""
+    assembly = SimpleNamespace(text=prefix, transcript_messages=[])
     monkeypatch.setattr(
         visible_model, "_build_visible_prompt_assembly", lambda **_: assembly,
     )
@@ -52,17 +87,19 @@ def test_both_visible_provider_shapes_receive_chat_contract(monkeypatch) -> None
             "Gå væk", session_id="s", provider="deepseek", model="m",
         )
 
-    assert typed[0]["content"][0]["text"] == "BASE"
-    assert plain[0]["content"] == "BASE"
+    assert typed[0]["content"][0]["text"] == prefix
+    assert plain[0]["content"] == prefix
     typed_tail = "\n".join(
         str(part.get("text") or "")
         for item in typed[1:] for part in item.get("content", [])
         if isinstance(part, dict)
     )
     plain_tail = "\n".join(str(item.get("content") or "") for item in plain[1:])
-    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in typed_tail
-    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in plain_tail
-    assert CHAT_MODE_RENDER_CONTRACT.strip() in plain_tail
+    typed_prompt = "\n\n".join((typed[0]["content"][0]["text"], typed_tail))
+    plain_prompt = "\n\n".join((plain[0]["content"], plain_tail))
+    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in typed_prompt
+    assert CHAT_MODE_CONVERSATION_CONTRACT.strip() in plain_prompt
+    assert CHAT_MODE_RENDER_CONTRACT.strip() in plain_prompt
 
 
 def test_code_mode_provider_shape_does_not_receive_chat_contract(monkeypatch) -> None:
@@ -101,7 +138,11 @@ def test_chat_profile_and_turn_signals_live_only_in_dynamic_tail(monkeypatch) ->
     # placeringen kunne drive mellem modes.
     assert "FØRST i linjen, før overskriftsteksten" in tail
     assert "kraftsprog i denne tur" in tail
-    assert "jarvis-ui" in tail
+    # `jarvis-ui` er kontrakt-indhold, ikke et profilfelt: i v2 ligger det i
+    # prefixen. Profilfelterne ovenfor skal fortsat være i halen.
+    assert "jarvis-ui" in _chat_prompt(
+        message="Haha, det er fanme fedt 😂", session_id="s", tail="EXISTING",
+    )
 
 
 def test_explicit_profile_is_an_active_default_and_recognizes_text_emoticon(monkeypatch) -> None:
@@ -143,25 +184,18 @@ def test_deepseek_stable_prefix_is_identical_across_user_tone(monkeypatch) -> No
     assert first[-2]["content"] != second[-2]["content"]
 
 
-def test_skriveformen_naar_halen_i_chat_scope() -> None:
-    """Den levende, skimmelige kerne skal med i halen i chat mode."""
-    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
-    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
-
-    token = set_tool_scope("chat")
-    try:
-        tail = build_chat_mode_dynamic_tail("", message="hvad lavede du i git-loggen?", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "## Chatmode: hvordan jeg taler" in tail
-    assert "læsehjælp" in tail
-    assert "fast konklusionssektion" in tail
+def test_skriveformen_naar_chatten_i_chat_scope() -> None:
+    """Den levende kerne skal med i den prompt modellen får i chat mode."""
+    prompt = _chat_prompt(message="hvad lavede du i git-loggen?")
+    assert "## Chatmode: hvordan jeg taler" in prompt
+    assert "læsehjælp" in prompt
+    assert "fast konklusionssektion" in prompt
     # 24/10-2026: kontrakten navngav selv afslutningssektionen som eksempel, og
     # så blev den en signatur i hvert svar (Bjørn: «du behøver ikke bruge denne
     # linje i hver besked»). Kontrakten må ikke foreskrive en fast sektion.
-    assert "Hvad jeg især lægger mærke til" not in tail
-    assert "Vis beviset" in tail
-    assert "Grundniveauet i chat er varm, nysgerrig, kvik og energisk tilstedeværelse" in tail
+    assert "Hvad jeg især lægger mærke til" not in prompt
+    assert "Vis beviset" in prompt
+    assert "Grundniveauet i chat er varm, nysgerrig, kvik og energisk tilstedeværelse" in prompt
 
 
 def test_chatkernen_bruger_let_form_som_standard() -> None:
@@ -250,15 +284,7 @@ def test_injicerede_chatregler_modsiger_ikke_formkernen() -> None:
 
 
 def test_skriveformen_er_ikke_i_code_mode() -> None:
-    from core.services.visible_chat_pragmatics import build_chat_mode_dynamic_tail
-    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
-
-    token = set_tool_scope("code")
-    try:
-        tail = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "skriveformen" not in tail
+    assert "skriveformen" not in _code_prompt(message="ret koden")
 
 
 def test_skriveformen_overlever_lean_runder() -> None:
@@ -299,21 +325,8 @@ def test_blanklinje_reglen_staar_i_kontrakten_og_i_halen() -> None:
     # Lean-transformen splitter på tomme linjer — kontrakten skal være én blok.
     assert "\n\n" not in CHAT_MODE_HOW_I_TALK
 
-    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
-
-    token = set_tool_scope("chat")
-    try:
-        tail = build_chat_mode_dynamic_tail("", message="hvorfor blev den rodet?", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "Afsnit adskilles af en blank linje" in tail
-
-    token = set_tool_scope("code")
-    try:
-        code_tail = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "Afsnit adskilles af en blank linje" not in code_tail
+    assert "Afsnit adskilles af en blank linje" in _chat_prompt(message="hvorfor blev den rodet?")
+    assert "Afsnit adskilles af en blank linje" not in _code_prompt(message="ret koden")
 
 
 def test_chat_chooses_presence_closure_and_surface_by_reading_task() -> None:
@@ -333,12 +346,8 @@ def test_chat_chooses_presence_closure_and_surface_by_reading_task() -> None:
 
 
 def test_presence_and_surface_decisions_never_reach_code_mode() -> None:
-    from core.tools.tool_scoping import tool_scope
-
-    with tool_scope("chat"):
-        chat = build_chat_mode_dynamic_tail("", message="sammenlign dem", session_id="s")
-    with tool_scope("code"):
-        code = build_chat_mode_dynamic_tail("", message="sammenlign dem", session_id="s")
+    chat = _chat_prompt(message="sammenlign dem", session_id="s")
+    code = _code_prompt(message="sammenlign dem", session_id="s")
 
     assert "Vælg flade efter læseopgaven" in chat
     assert "Kun leverance" in chat
@@ -376,30 +385,15 @@ def test_tekstdisciplin_staar_i_kontrakten_og_i_halen() -> None:
     må være — så «vær grundig» vandt over «vær læsbar». Målt 24/10-2026: Bjørn pegede
     på tekstdisciplin som det sidste der manglede, efter at fladerne var på plads.
     """
-    from core.services.visible_chat_pragmatics import (
-        CHAT_MODE_HOW_I_TALK,
-        build_chat_mode_dynamic_tail,
-    )
-    from core.tools.tool_scoping import reset_tool_scope, set_tool_scope
+    from core.services.visible_chat_pragmatics import CHAT_MODE_HOW_I_TALK
 
     assert "Tekstdisciplin" in CHAT_MODE_HOW_I_TALK
     assert "undersøgelsesdybde og svarlængde er uafhængige" in CHAT_MODE_HOW_I_TALK
     # lean-vagtens forudsætning: kontrakten skal være ÉN blok uden tomme linjer internt.
     assert "\n\n" not in CHAT_MODE_HOW_I_TALK
 
-    token = set_tool_scope("chat")
-    try:
-        tail = build_chat_mode_dynamic_tail("", message="hvad lavede du i git-loggen?", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "Tekstdisciplin" in tail
-
-    token = set_tool_scope("code")
-    try:
-        tail_code = build_chat_mode_dynamic_tail("", message="ret koden", session_id=None)
-    finally:
-        reset_tool_scope(token)
-    assert "Tekstdisciplin" not in tail_code
+    assert "Tekstdisciplin" in _chat_prompt(message="hvad lavede du i git-loggen?")
+    assert "Tekstdisciplin" not in _code_prompt(message="ret koden")
 
 
 def test_chat_paalidelighed_kraever_modbevis_og_epistemisk_adskillelse() -> None:
@@ -456,10 +450,8 @@ def test_kernen_lader_profilen_regulere_uden_mekanisk_form() -> None:
 
 
 def test_personligheden_og_anti_meta_reglen_er_chat_only() -> None:
-    with tool_scope("chat"):
-        chat = build_chat_mode_dynamic_tail("", message="jeg har haft en svær dag", session_id="s")
-    with tool_scope("code"):
-        code = build_chat_mode_dynamic_tail("", message="ret koden", session_id="s")
+    chat = _chat_prompt(message="jeg har haft en svær dag", session_id="s")
+    code = _code_prompt(message="ret koden", session_id="s")
 
     for phrase in (
         "varm, nysgerrig, kvik og energisk tilstedeværelse",

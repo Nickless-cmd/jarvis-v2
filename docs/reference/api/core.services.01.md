@@ -443,18 +443,20 @@ _Claude Code og Codex CLI som eksekveringsbackends for ``Task``._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `CliBackendError` | `` | — | [src](../../../core/services/agent_cli_backend.py#L39) |
-| function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L43) |
-| function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L56) |
-| function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L60) |
-| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L71) |
-| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L84) |
-| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L93) |
-| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L111) |
-| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L128) |
-| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L149) |
-| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L156) |
-| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L167) |
-| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L177) |
+| method | `CliBackendError.__init__` | `(self, message, *, error_code=…, error_phase=…, provider_status=…)` | — | [src](../../../core/services/agent_cli_backend.py#L40) |
+| function | `_cli_failure` | `(provider, returncode, stdout, stderr)` | — | [src](../../../core/services/agent_cli_backend.py#L55) |
+| function | `parse_preference` | `(value)` | Returner en CLI-rute for de dokumenterede aliases, ellers ``None``. | [src](../../../core/services/agent_cli_backend.py#L68) |
+| function | `is_cli_provider` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L81) |
+| function | `resolve_executable` | `(provider)` | — | [src](../../../core/services/agent_cli_backend.py#L85) |
+| function | `admission_reason` | `(provider)` | Tom streng betyder at CLI-ruten kan optages i Task-rutekæden. | [src](../../../core/services/agent_cli_backend.py#L96) |
+| function | `_assignment` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L109) |
+| function | `_working_root` | `(agent, assignment)` | — | [src](../../../core/services/agent_cli_backend.py#L118) |
+| function | `_prompt` | `(prompt, *, writes)` | — | [src](../../../core/services/agent_cli_backend.py#L136) |
+| function | `_command` | `(provider, executable, model, root, prompt, *, writes, output_path)` | — | [src](../../../core/services/agent_cli_backend.py#L153) |
+| function | `_cancelled` | `(agent_id)` | — | [src](../../../core/services/agent_cli_backend.py#L174) |
+| function | `_stop` | `(proc)` | — | [src](../../../core/services/agent_cli_backend.py#L181) |
+| function | `_claude_text` | `(stdout)` | — | [src](../../../core/services/agent_cli_backend.py#L192) |
+| function | `run_task_cli` | `(*, agent, prompt, run_id, timeout_s=…)` | Koer den valgte CLI én gang og returner agent-runtimens resultatform. | [src](../../../core/services/agent_cli_backend.py#L202) |
 
 ## `core/services/agent_contract_bridge.py`
 _Binder spawn_agent_task til agent-contract-v1 (leverance A2)._

@@ -1060,12 +1060,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # `agent_runs`-raekken uden de to felter. Samme koersel stod derfor med to
         # sandheder — og den raekke jeg selv slaar op i foerst, sagde ingenting.
         # En delvis leverance er ikke en model-fejl; fasen skal sige det den ved.
-        _err_code, _err_phase = "", ""
-        try:
-            from core.runtime.db_agent_contract import partial_delivery_error
-            _err_code, _err_phase = partial_delivery_error(full=message, registry_status="failed")
-        except Exception:
-            logger.warning("partial_delivery_error fejlede for %s", run_id, exc_info=True)
+        _err_code = str(getattr(exc, "error_code", "") or "")
+        _err_phase = str(getattr(exc, "error_phase", "") or "")
+        if not _err_code:
+            try:
+                from core.runtime.db_agent_contract import partial_delivery_error
+                _err_code, _err_phase = partial_delivery_error(full=message, registry_status="failed")
+            except Exception:
+                logger.warning("partial_delivery_error fejlede for %s", run_id, exc_info=True)
         # 27/10-2026: `output_summary` blev KUN sat paa SUCCES-stien (linje ~899).
         # Maalt i den levende DB: 6 af 6 fejlede koersler havde en TOM summary, mens
         # 0 af 9 `completed` havde det. `scout_inbox_delivery` laeser praecis det felt
@@ -1088,7 +1090,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             finished_at=_now_iso(),
             failure_reason=message,
             output_summary=_fejl_summary,
-            provider_status="failed",
+            provider_status=str(getattr(exc, "provider_status", "") or "failed"),
             error_code=_err_code,
             error_phase=_err_phase,
         )

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9723/18108 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9723/18112 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9723/18108 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6514 | 12348 | 52% |
+| `core.services` | 6514 | 12352 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -723,8 +723,8 @@ Generated from source. 9723/18108 functions/methods documented (53%). The list b
 - `core/services/agent_bridge.py` :: `human_resolve` (L390)
 - `core/services/agent_bridge.py` :: `idempotency_class` (L64)
 - `core/services/agent_bridge.py` :: `run_is_halted` (L351)
-- `core/services/agent_cli_backend.py` :: `is_cli_provider` (L56)
-- `core/services/agent_cli_backend.py` :: `resolve_executable` (L60)
+- `core/services/agent_cli_backend.py` :: `is_cli_provider` (L81)
+- `core/services/agent_cli_backend.py` :: `resolve_executable` (L85)
 - `core/services/agent_contract_bridge.py` :: `resolve_owner_and_session` (L18)
 - `core/services/agent_contract_projection.py` :: `close` (L565)
 - `core/services/agent_contract_projection.py` :: `followup` (L542)
@@ -742,15 +742,15 @@ Generated from source. 9723/18108 functions/methods documented (53%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L155)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L205)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L255)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1580)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1635)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1616)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1443)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1200)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1140)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1168)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1582)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1637)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1618)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1445)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L1202)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L1142)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L1170)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L137)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1599)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1601)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
@@ -1526,8 +1526,8 @@ Generated from source. 9723/18108 functions/methods documented (53%). The list b
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `refresh_runtime_open_loop_closure_proposal_statuses` (L54)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `track_runtime_open_loop_closure_proposals_for_visible_turn` (L32)
-- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L158)
-- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L233)
+- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L211)
+- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L286)
 - `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L82)
 - `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L60)
 - `core/services/operator_allowlist.py` :: `add_to_allowlist` (L45)

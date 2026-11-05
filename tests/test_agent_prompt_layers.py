@@ -147,3 +147,30 @@ def test_legacy_agents_keep_the_old_flat_prompt(pl):
     pl.M_.execute_agent_task(agent_id=a["agent_id"])
     assert pl.sent_["message"].startswith("System prompt:")
     assert pl.sent_["snapshot_existed_before_call"] is False
+
+
+def test_cli_quota_failure_reaches_the_agent_run_with_its_real_code(pl, monkeypatch):
+    from core.services.agent_cli_backend import CliBackendError
+
+    monkeypatch.setattr("core.services.agent_cli_backend.is_cli_provider", lambda _p: True)
+
+    def quota_failure(**_kw):
+        raise CliBackendError(
+            "codex-cli har opbrugt sin kvote",
+            error_code="CLI_QUOTA_EXHAUSTED",
+            error_phase="provider",
+            provider_status="quota_exhausted",
+        )
+
+    monkeypatch.setattr("core.services.agent_cli_backend.run_task_cli", quota_failure)
+    agent = pl.spawn()
+    surface = pl.M_.execute_agent_task(agent_id=agent["agent_id"])
+    run = pl.c_._conn().execute(
+        "SELECT status, error_code, error_phase, provider_status, failure_reason "
+        "FROM agent_runs ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()
+
+    assert surface["status"] == "failed"
+    assert tuple(run)[:4] == (
+        "failed", "CLI_QUOTA_EXHAUSTED", "provider", "quota_exhausted")
+    assert "kvote" in run["failure_reason"]

@@ -207,6 +207,53 @@ def test_refresh_reaches_old_rows_beyond_the_newest_forty(isolated_runtime) -> N
     assert row["status"] == "stale"
 
 
+def test_completed_visible_run_closes_its_loop_but_interrupted_stays_open(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    with db.connect() as conn:
+        for run_id, status in (("visible-done", "completed"),
+                               ("visible-interrupted", "interrupted")):
+            conn.execute(
+                "INSERT INTO visible_runs "
+                "(run_id, lane, provider, model, status, finished_at) "
+                "VALUES (?, 'visible', 'test', 'test', ?, ?)",
+                (run_id, status, datetime.now(UTC).isoformat()),
+            )
+    _insert_open_loop(db, status="open", signal_type="done",
+                      canonical_key="open-loop:open-loop:visible-done")
+    _insert_open_loop(db, status="open", signal_type="interrupted",
+                      canonical_key="open-loop:open-loop:visible-interrupted")
+
+    result = tracking.refresh_runtime_open_loop_signal_statuses()
+    rows = {row["canonical_key"]: row for row in db.list_runtime_open_loop_signals(limit=20)}
+
+    assert result["auto_closed"] == 1
+    assert rows["open-loop:open-loop:visible-done"]["status"] == "closed"
+    assert rows["open-loop:open-loop:visible-interrupted"]["status"] == "open"
+
+
+def test_closed_loop_never_decays_back_to_stale(isolated_runtime) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    old = datetime.now(UTC) - timedelta(days=20)
+    db.upsert_runtime_open_loop_signal(
+        signal_id="closed-stays-closed", signal_type="closed",
+        canonical_key="open-loop:closed:durable", status="closed", title="Closed",
+        summary="closed", rationale="test", source_kind="test", confidence="high",
+        evidence_summary="", support_summary="", support_count=1, session_count=1,
+        created_at=old.isoformat(), updated_at=old.isoformat(), status_reason="done",
+        run_id="old-run", session_id="old-session",
+    )
+
+    tracking.refresh_runtime_open_loop_signal_statuses()
+    row = next(x for x in db.list_runtime_open_loop_signals(limit=20)
+               if x["signal_id"] == "closed-stays-closed")
+
+    assert row["status"] == "closed"
+
+
 def _insert_initiative_tension(
     db,
     *,

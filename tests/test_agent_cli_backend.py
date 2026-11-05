@@ -55,3 +55,22 @@ def test_claude_json_result_is_mapped_to_runtime_shape():
     assert (text, inp, out) == ("færdig", 12, 3)
 
 
+def test_cli_quota_failure_is_typed_and_explicit():
+    from core.services.agent_cli_backend import _cli_failure
+
+    exc = _cli_failure(
+        "codex-cli", 1, "", "You've hit your usage limit. Try again later.")
+    assert exc.error_code == "CLI_QUOTA_EXHAUSTED"
+    assert exc.error_phase == "provider"
+    assert exc.provider_status == "quota_exhausted"
+    assert "kvote" in str(exc)
+
+
+def test_cli_non_quota_failure_stays_a_backend_failure():
+    from core.services.agent_cli_backend import _cli_failure
+
+    exc = _cli_failure("claude-cli", 2, "", "invalid command line option")
+    assert exc.error_code == "CLI_BACKEND_FAILED"
+    assert exc.provider_status == "failed"
+
+

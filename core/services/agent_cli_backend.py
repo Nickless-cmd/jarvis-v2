@@ -37,7 +37,32 @@ ALIASES = {
 
 
 class CliBackendError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, error_code: str = "CLI_BACKEND_FAILED",
+                 error_phase: str = "execution", provider_status: str = "failed") -> None:
+        super().__init__(message)
+        self.error_code = error_code
+        self.error_phase = error_phase
+        self.provider_status = provider_status
+
+
+_QUOTA_FAILURE_MARKERS = (
+    "429", "credit balance", "credits exhausted", "limit reached", "quota",
+    "rate limit", "rate_limit", "too many requests", "usage limit",
+    "you've hit your limit", "you have hit your limit",
+)
+
+
+def _cli_failure(provider: str, returncode: int, stdout: str, stderr: str) -> CliBackendError:
+    detail = (stderr or stdout or "ukendt CLI-fejl").strip()[-2000:]
+    normalized = " ".join(detail.lower().split())
+    if any(marker in normalized for marker in _QUOTA_FAILURE_MARKERS):
+        return CliBackendError(
+            f"{provider} har opbrugt eller ramt sin kvote: {detail}",
+            error_code="CLI_QUOTA_EXHAUSTED",
+            error_phase="provider",
+            provider_status="quota_exhausted",
+        )
+    return CliBackendError(f"{provider} sluttede med {returncode}: {detail}")
 
 
 def parse_preference(value: str) -> tuple[str, str] | None:
@@ -184,7 +209,13 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
         raise CliBackendError(f"{provider} executable mangler")
     reason = admission_reason(provider)
     if reason:
-        raise CliBackendError(f"{provider} preflight afviste dispatch: {reason}")
+        is_quota = reason.startswith("quota:")
+        raise CliBackendError(
+            f"{provider} preflight afviste dispatch: {reason}",
+            error_code="CLI_QUOTA_BLOCKED" if is_quota else "CLI_PREFLIGHT_REJECTED",
+            error_phase="preflight",
+            provider_status="quota_blocked" if is_quota else "rejected",
+        )
 
     assignment = _assignment(str(agent.get("agent_id") or ""))
     root, writes = _working_root(agent, assignment)
@@ -213,8 +244,7 @@ def run_task_cli(*, agent: dict[str, Any], prompt: str, run_id: str,
                     proc.wait(timeout=10)
                     raise CliBackendError(f"{provider} overskred tidsloftet")
         if proc.returncode != 0:
-            detail = (stderr or stdout or "ukendt CLI-fejl").strip()[-2000:]
-            raise CliBackendError(f"{provider} sluttede med {proc.returncode}: {detail}")
+            raise _cli_failure(provider, proc.returncode, stdout, stderr)
         if provider == "claude-cli":
             text, input_tokens, output_tokens = _claude_text(stdout)
         else:

@@ -406,6 +406,7 @@ _Rule definitions — production rules feeding the rule_engine._
 |---|---|---|---|---|
 | function | `_get` | `(s, *keys, default=…)` | Walk a nested dict; return default if any step is missing. | [src](../../../core/services/rule_definitions.py#L25) |
 | function | `_len` | `(s, surface, key=…)` | Count items in a surface list field. | [src](../../../core/services/rule_definitions.py#L38) |
+| function | `_open_loop_count` | `(s)` | Populationstallet fra open-loop-fladen, ikke den trunkerede item-side. | [src](../../../core/services/rule_definitions.py#L44) |
 
 ## `core/services/rule_engine.py`
 _Rule Engine — forward-chaining symbolic inference over signal surfaces._

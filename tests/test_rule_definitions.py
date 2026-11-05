@@ -37,6 +37,21 @@ def test_engine_loads_and_evaluates_empty_signals():
     assert len(result.errors) == 0, f"errors: {result.errors}"
 
 
+def test_open_loop_rule_uses_population_summary_not_visible_items():
+    from core.services.rule_engine import evaluate_rules, reset_engine
+
+    reset_engine()
+    few_total_many_items = {"open_loop": {"items": [{}] * 8, "summary": {"open_count": 2}}}
+    many_total_few_items = {"open_loop": {"items": [{}], "summary": {"open_count": 7}}}
+
+    first = evaluate_rules(few_total_many_items)
+    assert not any(x.rule_name == "open_loops_demand_action" for x in first.conclusions)
+    second = evaluate_rules(many_total_few_items)
+    matches = [x for x in second.conclusions if x.rule_name == "open_loops_demand_action"]
+    assert len(matches) == 1
+    assert "7 open loops" in matches[0].suggestion
+
+
 def test_engine_evaluates_real_signals_without_errors():
     """Run engine against actual signal surfaces; verify no rule crashes."""
     from core.services.rule_engine import evaluate_rules, reset_engine

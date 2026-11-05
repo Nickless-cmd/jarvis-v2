@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
+    connect,
     list_runtime_development_focuses,
     list_runtime_goal_signals,
     list_runtime_open_loop_signals,
@@ -24,6 +25,7 @@ from core.runtime.db import (
 
 _STALE_AFTER_DAYS = 5    # 2026-05-16: 14d var for langt — Bjørn fik 16 zombie-loops fra test-runs
 _CLOSE_STALE_AFTER_DAYS = 7  # efter stale-mark, auto-close hvis ingen update i yderligere 7 dage
+_COUNTED_STATUSES = ("open", "softening", "closed", "stale", "superseded")
 _THREAD_TOKEN_STOPWORDS = {
     "active",
     "around",
@@ -81,7 +83,12 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
     auto_closed = 0
-    for item in list_runtime_open_loop_signals(limit=40):
+    # Listen er nyeste-først og trunkeret. Et fast limit=40 betød derfor at
+    # gamle åbne loops aldrig igen blev set, når tabellen voksede over 40.
+    # Tæl først populationen og hent hele det lille statuslager; UI-fladen
+    # nedenfor er stadig trunkeret separat.
+    total = sum(_open_loop_status_counts().values())
+    for item in list_runtime_open_loop_signals(limit=max(total, 40)):
         current_status = str(item.get("status") or "")
         if current_status not in {"open", "softening", "closed", "stale"}:
             continue
@@ -131,6 +138,23 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     return {"stale_marked": refreshed, "auto_closed": auto_closed}
 
 
+def _open_loop_status_counts() -> dict[str, int]:
+    """Tabelsandheden pr. status; aldrig en optælling af en UI-side."""
+    counts = {status: 0 for status in _COUNTED_STATUSES}
+    # Lagerets offentlige læsevej ejer schema-initialiseringen. På en frisk DB
+    # (tests og første boot) findes tabellen ellers endnu ikke.
+    list_runtime_open_loop_signals(limit=1)
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT status, COUNT(*) AS n FROM runtime_open_loop_signals GROUP BY status"
+        ).fetchall()
+    for row in rows:
+        status = str(row["status"] or "")
+        if status in counts:
+            counts[status] = int(row["n"] or 0)
+    return counts
+
+
 def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, object]:
     return get_timed_runtime_surface(
         ("runtime_open_loop_signal_surface", max(limit, 1)),
@@ -156,6 +180,7 @@ def _build_runtime_open_loop_signal_surface_uncached(
     except Exception:
         pass
     refresh_runtime_open_loop_signal_statuses()
+    counts = _open_loop_status_counts()
     items = list_runtime_open_loop_signals(limit=limit)
     snapshots = _build_governance_snapshots()
     enriched_items = [
@@ -180,14 +205,14 @@ def _build_runtime_open_loop_signal_surface_uncached(
     latest = next(iter(open_items or softening or closed or stale or superseded), None)
     creation_readiness = get_open_loop_creation_readiness()
     return {
-        "active": bool(open_items or softening or closed),
+        "active": bool(counts["open"] or counts["softening"] or counts["closed"]),
         "items": ordered,
         "summary": {
-            "open_count": len(open_items),
-            "softening_count": len(softening),
-            "closed_count": len(closed),
-            "stale_count": len(stale),
-            "superseded_count": len(superseded),
+            "open_count": counts["open"],
+            "softening_count": counts["softening"],
+            "closed_count": counts["closed"],
+            "stale_count": counts["stale"],
+            "superseded_count": counts["superseded"],
             "ready_count": len(
                 [
                     item

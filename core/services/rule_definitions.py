@@ -41,6 +41,14 @@ def _len(s: dict, surface: str, key: str = "items") -> int:
     return len(items) if isinstance(items, list) else 0
 
 
+def _open_loop_count(s: dict) -> int:
+    """Populationstallet fra open-loop-fladen, ikke den trunkerede item-side."""
+    try:
+        return max(0, int(_get(s, "open_loop", "summary", "open_count", default=0) or 0))
+    except (TypeError, ValueError):  # et misformet runtime-signal maa blot ikke fyre reglen
+        return 0
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # RULES
 # ═══════════════════════════════════════════════════════════════════════
@@ -148,12 +156,12 @@ _RULES_ACTION = [
         description="Many open_loops above threshold → fire an action instead of new ones",
         domain="action",
         priority=90,
-        condition=lambda s: _len(s, "open_loop") >= 5,
+        condition=lambda s: _open_loop_count(s) >= 5,
         action=lambda s: RuleConclusion(
             rule_name="open_loops_demand_action",
-            suggestion=f"{_len(s, 'open_loop')} open loops — close one, don't start new ones",
+            suggestion=f"{_open_loop_count(s)} open loops — close one, don't start new ones",
             priority_delta=+35,
-            trace=f"open_loops={_len(s, 'open_loop')} ≥ 5",
+            trace=f"open_loops={_open_loop_count(s)} ≥ 5",
             target_domain="action",
             urgency="high",
         ),

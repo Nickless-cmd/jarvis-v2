@@ -168,6 +168,45 @@ def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str) 
     )
 
 
+def test_summary_counts_the_table_not_the_truncated_page(isolated_runtime) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    for i in range(12):
+        _insert_open_loop(db, status="open", signal_type=f"open-{i}", canonical_key=f"open:{i}")
+    for i in range(3):
+        _insert_open_loop(db, status="closed", signal_type=f"closed-{i}", canonical_key=f"closed:{i}")
+    _insert_open_loop(db, status="superseded", signal_type="old", canonical_key="old:1")
+
+    surface = tracking._build_runtime_open_loop_signal_surface_uncached(limit=8)
+
+    assert len(surface["items"]) == 8
+    assert surface["summary"]["open_count"] == 12
+    assert surface["summary"]["closed_count"] == 3
+    assert surface["summary"]["superseded_count"] == 1
+
+
+def test_refresh_reaches_old_rows_beyond_the_newest_forty(isolated_runtime) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    old = datetime.now(UTC) - timedelta(days=6)
+    db.upsert_runtime_open_loop_signal(
+        signal_id="old-beyond-page", signal_type="old", canonical_key="old:beyond-page",
+        status="open", title="Old beyond page", summary="old", rationale="test",
+        source_kind="test", confidence="high", evidence_summary="", support_summary="",
+        support_count=1, session_count=1, created_at=old.isoformat(), updated_at=old.isoformat(),
+        status_reason="", run_id="old-run", session_id="old-session",
+    )
+    for i in range(45):
+        _insert_open_loop(db, status="open", signal_type=f"fresh-{i}", canonical_key=f"fresh:{i}")
+
+    result = tracking.refresh_runtime_open_loop_signal_statuses()
+    row = next(x for x in db.list_runtime_open_loop_signals(limit=100)
+               if x["signal_id"] == "old-beyond-page")
+
+    assert result["stale_marked"] == 1
+    assert row["status"] == "stale"
+
+
 def _insert_initiative_tension(
     db,
     *,

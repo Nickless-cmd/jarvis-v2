@@ -41,6 +41,8 @@ _PROTOKOL_VERSION = "2024-11-05"
 _KLIENT_NAVN = "jarvis-v2"
 _STDIO_TIMEOUT_S = 20
 _HTTP_TIMEOUT_S = 20
+MCP_APPS_EXTENSION = "io.modelcontextprotocol/ui"
+MCP_APP_MIME = "text/html;profile=mcp-app"
 
 
 def parse_mcp_http_body(tekst: str, content_type: str = "") -> dict[str, Any]:
@@ -300,7 +302,14 @@ class MCPClient:
         `tools/list` indtil det er kørt."""
         svar = self._send_request("initialize", {
             "protocolVersion": _PROTOKOL_VERSION,
-            "capabilities": {},
+            # MCP Apps er en capability-extension, ikke et privat Jarvis-format.
+            # En gammel server ignorerer feltet; en ny server kan derimod sende
+            # `_meta.ui.resourceUri` og vide at klienten kan tegne ressourcen.
+            "capabilities": {
+                "extensions": {
+                    MCP_APPS_EXTENSION: {"mimeTypes": [MCP_APP_MIME]},
+                },
+            },
             "clientInfo": {"name": _KLIENT_NAVN, "version": "2"},
         })
         if "error" in svar:
@@ -316,23 +325,52 @@ class MCPClient:
             return []
         return list((svar.get("result") or {}).get("tools") or [])
 
-    def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        # Et tidligere timeout har efterladt rørene ude af sync. At genoprette
-        # her koster ~2 s og er den ærlige pris — alternativet er en forbindelse
-        # der svarer forkert eller hænger for evigt (målt 18/10-2026).
+    def tool(self, tool_name: str) -> dict[str, Any] | None:
+        """Den fulde tool-definition, inkl. MCP Apps `_meta`."""
+        navn = str(tool_name or "")
+        return next((dict(t) for t in self.tools if str(t.get("name") or "") == navn), None)
+
+    def read_resource(self, uri: str) -> dict[str, Any]:
+        """Læs én MCP-resource i dens rå protokolform.
+
+        Den bruges både til den første `ui://`-flade og til appens senere
+        `resources/read`-kald. Tillidsgaten ligger stadig foran forbindelsen.
+        """
+        svar = self._send_request("resources/read", {"uri": str(uri or "")})
+        if "error" in svar:
+            return {"status": "error", "error": svar["error"]}
+        result = svar.get("result")
+        return result if isinstance(result, dict) else {
+            "status": "error", "error": "MCP-serveren returnerede en ugyldig resource",
+        }
+
+    def call_tool_raw(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Kald et tool og behold MCP-strukturen urørt.
+
+        Kun host-broen må bruge denne. Modelvejen går gennem `call_tool`, som
+        hegner fremmed tekst ind før den kommer tilbage i prompten.
+        """
         if self.transport != "http" and self._broken:
             self.disconnect()
             if not self.connect():
-                return {"status": "error",
-                        "error": self.connect_error
+                return {"status": "error", "error": self.connect_error
                         or f"{self.name}: kunne ikke genoprette forbindelsen"}
         svar = self._send_request("tools/call",
                                   {"name": tool_name, "arguments": arguments or {}})
         if "error" in svar:
             return {"status": "error", "error": svar["error"]}
         result = svar.get("result")
-        if not isinstance(result, dict):
-            result = {"status": "ok", "content": str(result)}
+        return result if isinstance(result, dict) else {"content": [{
+            "type": "text", "text": str(result),
+        }]}
+
+    def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        # Et tidligere timeout har efterladt rørene ude af sync. At genoprette
+        # her koster ~2 s og er den ærlige pris — alternativet er en forbindelse
+        # der svarer forkert eller hænger for evigt (målt 18/10-2026).
+        result = self.call_tool_raw(tool_name, arguments)
+        if result.get("status") == "error":
+            return result
         # En fremmed server er praecis den slags kilde der kan vaere SKREVET
         # til at ligne en instruks. Hegnet siger til modellen at det er data.
         try:

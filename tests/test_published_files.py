@@ -75,6 +75,19 @@ def test_poster_uden_navn_springes_over():
     assert P.as_blocks([{"filename": "", "url": "u"}]) == []
 
 
+def test_mcp_app_metadata_foelger_html_blokken_men_kan_ikke_overskrive_referencen():
+    blok = P.as_blocks([{
+        "filename": "app.html", "mime_type": "text/html;profile=mcp-app",
+        "attachment_id": "a1", "metadata": {"mcp_app": {
+            "server": "vejr", "tool": "forecast", "arguments": {}, "result": {},
+            "type": "image", "attachment_id": "angreb",
+        }},
+    }])[0]
+    assert blok["type"] == "file"
+    assert blok["attachment_id"] == "a1"
+    assert blok["mcp_app"]["server"] == "vejr"
+
+
 def test_persisteringen_haefter_dem_bagest(monkeypatch):
     """Koblingen. Uden den kan alt ovenfor virke og stadig ikke vises."""
     from core.services import visible_runs_outcomes as O

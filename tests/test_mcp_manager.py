@@ -44,6 +44,9 @@ def test_ukendt_vaerktoej_naar_aldrig_serveren(monkeypatch):
         connect_error = None
         tools = [{"name": "forecast"}]
 
+        def tool(self, navn):
+            return next((t for t in self.tools if t["name"] == navn), None)
+
         def call_tool(self, n, a):
             raise AssertionError("maa ikke kaldes for et ukendt vaerktoej")
 
@@ -51,3 +54,51 @@ def test_ukendt_vaerktoej_naar_aldrig_serveren(monkeypatch):
     r = mcp_manager.call("vejr", "findes-ikke", {})
     assert r["status"] == "error"
     assert r["kendte"] == ["forecast"]
+
+
+def test_tool_med_ui_resource_leverer_resultat_og_app(monkeypatch):
+    class _Klient:
+        connected = True
+        connect_error = None
+        tools = []
+
+        def tool(self, navn):
+            return {"name": navn, "_meta": {"ui": {"resourceUri": "ui://vejr/app"}}}
+
+        def call_tool_raw(self, navn, args):
+            return {"content": [{"type": "text", "text": "sol"}],
+                    "structuredContent": {"grader": 21}}
+
+        def read_resource(self, uri):
+            return {"contents": [{"uri": uri, "mimeType": "text/html;profile=mcp-app",
+                                   "text": "<html><body>vejr</body></html>"}]}
+
+    monkeypatch.setattr(mcp_manager, "get_client", lambda n, connect=True: _Klient())
+    result, app = mcp_manager.call_with_app("vejr", "forecast", {"by": "Svendborg"})
+    assert "UTROET" in result["content"][0]["text"]
+    assert app and app["uri"] == "ui://vejr/app"
+    assert app["result"]["structuredContent"]["grader"] == 21
+
+
+def test_model_og_app_visibility_haandhaeves(monkeypatch):
+    kald = []
+
+    class _Klient:
+        connected = True
+        connect_error = None
+        tools = []
+
+        def tool(self, navn):
+            audience = "app" if navn == "app_only" else "model"
+            return {"name": navn, "_meta": {"ui": {"visibility": [audience]}}}
+
+        def call_tool_raw(self, navn, args):
+            kald.append(navn)
+            return {"content": []}
+
+    monkeypatch.setattr(mcp_manager, "get_client", lambda n, connect=True: _Klient())
+    model_result, app = mcp_manager.call_with_app("vejr", "app_only", {})
+    assert model_result["status"] == "error"
+    assert app is None
+    assert mcp_manager.call_raw("vejr", "model_only", {})["status"] == "error"
+    assert kald == []

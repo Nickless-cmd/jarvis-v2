@@ -538,6 +538,46 @@ async def account_mcp_revoke(server_name: str) -> dict[str, Any]:
     return await asyncio.to_thread(revoke, server_name)
 
 
+@router.post("/mcp/{server_name}/apps/call")
+async def account_mcp_app_call(server_name: str,
+                               payload: dict = Body(default={})) -> dict[str, Any]:
+    """MCP App -> dens egen godkendte server.
+
+    View'et har ingen token og kan ikke kalde API'et direkte; den sandboxede
+    iframe spørger host-broen, som kalder denne owner-scopede rute. Servernavnet
+    kommer fra den persisterede blok, ikke fra View'ets HTML.
+    """
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan bruge MCP Apps")
+    tool = str((payload or {}).get("tool") or "").strip()
+    arguments = (payload or {}).get("arguments") or {}
+    if not tool or not isinstance(arguments, dict):
+        raise HTTPException(status_code=400, detail="tool og arguments er påkrævet")
+    from core.services.mcp_manager import call_raw
+    result = await asyncio.to_thread(call_raw, server_name, tool, arguments)
+    if result.get("status") == "error":
+        return {
+            "content": [{"type": "text", "text": str(result.get("error") or "MCP-kaldet fejlede")}],
+            "isError": True,
+        }
+    return result
+
+
+@router.post("/mcp/{server_name}/apps/resource")
+async def account_mcp_app_resource(server_name: str,
+                                   payload: dict = Body(default={})) -> dict[str, Any]:
+    """MCP App -> `resources/read` på dens egen godkendte server."""
+    snap = current_context_snapshot()
+    if _current_role(snap.get("user_id") or "") != "owner":
+        raise HTTPException(status_code=403, detail="Kun owner kan bruge MCP Apps")
+    uri = str((payload or {}).get("uri") or "").strip()
+    if not uri:
+        raise HTTPException(status_code=400, detail="uri er påkrævet")
+    from core.services.mcp_manager import read_resource
+    return await asyncio.to_thread(read_resource, server_name, uri)
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     """Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type

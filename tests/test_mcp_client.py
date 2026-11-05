@@ -97,6 +97,32 @@ def test_almindeligt_json_svar_virker_stadig():
     assert svar["result"]["ok"] is True
 
 
+def test_initialize_reklamerer_for_mcp_apps(monkeypatch):
+    mcp_trust.allow("s")
+    k = mcp_client.MCPClient("s", {"url": "https://a.example/mcp"})
+    payloads: list[dict] = []
+
+    def _send(method, params=None):
+        payloads.append({"method": method, "params": params or {}})
+        return {"result": {}}
+
+    monkeypatch.setattr(k, "_send_request", _send)
+    monkeypatch.setattr(k, "_send_notification", lambda method: None)
+    assert k._initialize() is True
+    extensions = payloads[0]["params"]["capabilities"]["extensions"]
+    assert extensions[mcp_client.MCP_APPS_EXTENSION]["mimeTypes"] == [mcp_client.MCP_APP_MIME]
+
+
+def test_resource_read_bevarer_mcp_strukturen(monkeypatch):
+    k = mcp_client.MCPClient("s", {"url": "https://a.example/mcp"})
+    monkeypatch.setattr(k, "_send_request", lambda method, params=None: {
+        "result": {"contents": [{"uri": params["uri"], "mimeType": mcp_client.MCP_APP_MIME,
+                                  "text": "<h1>hej</h1>"}]},
+    })
+    r = k.read_resource("ui://demo/app")
+    assert r["contents"][0]["uri"] == "ui://demo/app"
+
+
 def test_done_markering_springes_over():
     krop = 'data: [DONE]\ndata: {"result":{"x":2}}\n'
     assert mcp_client.parse_mcp_http_body(krop, "text/event-stream")["result"]["x"] == 2

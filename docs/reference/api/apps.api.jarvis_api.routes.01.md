@@ -40,14 +40,16 @@ _Self-profile-route for cowork command center (spec §4.1 Account)._
 | function | `account_mcp_trust` | `()` | Hvilke servere er GODKENDT, og hvad er de pinnet til? | [src](../../../apps/api/jarvis_api/routes/account.py#L501) |
 | function | `account_mcp_allow` | `(server_name)` | Owner-only: godkend en MCP-server til at koere paa Bjoerns vegne. | [src](../../../apps/api/jarvis_api/routes/account.py#L513) |
 | function | `account_mcp_revoke` | `(server_name)` | Owner-only: tilbagekald godkendelsen OG drop pinnen. | [src](../../../apps/api/jarvis_api/routes/account.py#L528) |
-| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L542) |
-| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L550) |
-| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L604) |
-| function | `build_export_zip` | `(bundle, *, now=…)` | Pak eksport-bundtet som et ZIP-arkiv i hukommelsen. | [src](../../../apps/api/jarvis_api/routes/account.py#L652) |
-| function | `account_export_zip` | `()` | Samme bundt som /export, pakket som ZIP og streamet. Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L679) |
-| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L704) |
-| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L770) |
-| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L783) |
+| function | `account_mcp_app_call` | `(server_name, payload=…)` | MCP App -> dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L542) |
+| function | `account_mcp_app_resource` | `(server_name, payload=…)` | MCP App -> `resources/read` på dens egen godkendte server. | [src](../../../apps/api/jarvis_api/routes/account.py#L568) |
+| function | `account_quota` | `()` | Self-scope kvote-overblik for den aktuelle bruger: tier + forbrug pr. type | [src](../../../apps/api/jarvis_api/routes/account.py#L582) |
+| function | `build_data_export` | `(user_id, *, get_user, get_tier)` | GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt. | [src](../../../apps/api/jarvis_api/routes/account.py#L590) |
+| function | `account_export` | `()` | Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L644) |
+| function | `build_export_zip` | `(bundle, *, now=…)` | Pak eksport-bundtet som et ZIP-arkiv i hukommelsen. | [src](../../../apps/api/jarvis_api/routes/account.py#L692) |
+| function | `account_export_zip` | `()` | Samme bundt som /export, pakket som ZIP og streamet. Self-scoped. | [src](../../../apps/api/jarvis_api/routes/account.py#L719) |
+| function | `account_erase` | `(payload=…)` | GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet. | [src](../../../apps/api/jarvis_api/routes/account.py#L744) |
+| function | `account_data_overview` | `()` | Hvad har vi om dig, lag for lag. Rene tal — intet indhold. | [src](../../../apps/api/jarvis_api/routes/account.py#L810) |
+| function | `account_delete_layer` | `(layer)` | Slet ét lag: sessions | senses | brain | identity — eller `all`. | [src](../../../apps/api/jarvis_api/routes/account.py#L823) |
 
 ## `apps/api/jarvis_api/routes/agent_approvals.py`
 _Agent-approvals: list og afgoer (agent-contract-v1 F4c, spec 8.2)._

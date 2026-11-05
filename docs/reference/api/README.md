@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18112 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18126 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,21 +46,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18112 functions/
 - [`core.services.14`](core.services.14.md) — `followup_output_budget` … `gratitude_tracker`
 - [`core.services.15`](core.services.15.md) — `ground_truth_registry` … `inbox_idle_waker`
 - [`core.services.16`](core.services.16.md) — `inbox_importance` … `ledger_canary`
-- [`core.services.17`](core.services.17.md) — `ledger_recovery` … `memory_md_update_proposal_tracking`
-- [`core.services.18`](core.services.18.md) — `memory_pruning_daemon` … `network_health`
-- [`core.services.19`](core.services.19.md) — `non_visible_fallback` … `perceptual_event_engine`
-- [`core.services.20`](core.services.20.md) — `periodic_jobs_scheduler` … `projection_drift`
-- [`core.services.21`](core.services.21.md) — `projection_guard` … `pushback`
-- [`core.services.22`](core.services.22.md) — `query_language_bridge` … `research_ledger`
-- [`core.services.23`](core.services.23.md) — `research_orchestrator` … `runtime_action_executor`
-- [`core.services.24`](core.services.24.md) — `runtime_action_outcome_tracking` … `self_compassion`
-- [`core.services.25`](core.services.25.md) — `self_critique_runtime` … `session_model_pin`
-- [`core.services.26`](core.services.26.md) — `session_permission` … `skill_gate_guard`
-- [`core.services.27`](core.services.27.md) — `skill_relevance_surface` … `temporal_depth`
-- [`core.services.28`](core.services.28.md) — `temporal_narrative` … `tool_usage_store`
-- [`core.services.29`](core.services.29.md) — `tool_world_change` … `visible_followup_events`
-- [`core.services.30`](core.services.30.md) — `visible_followup_lean` … `visible_self_state_summary`
-- [`core.services.31`](core.services.31.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `ledger_recovery` … `memory_maintenance_daemon`
+- [`core.services.18`](core.services.18.md) — `memory_md_update_proposal_tracking` … `nerve_registry`
+- [`core.services.19`](core.services.19.md) — `network_health` … `peak_varsel_daemon`
+- [`core.services.20`](core.services.20.md) — `perceptual_event_engine` … `projection_chat_messages`
+- [`core.services.21`](core.services.21.md) — `projection_drift` … `push_dispatcher`
+- [`core.services.22`](core.services.22.md) — `pushback` … `research_evidence_collector`
+- [`core.services.23`](core.services.23.md) — `research_ledger` … `run_trailing`
+- [`core.services.24`](core.services.24.md) — `runtime_action_executor` … `self_authored_prompt_proposal_tracking`
+- [`core.services.25`](core.services.25.md) — `self_compassion` … `session_milestones`
+- [`core.services.26`](core.services.26.md) — `session_model_pin` … `skill_engine`
+- [`core.services.27`](core.services.27.md) — `skill_gate_guard` … `temporal_context`
+- [`core.services.28`](core.services.28.md) — `temporal_depth` … `tool_tagger`
+- [`core.services.29`](core.services.29.md) — `tool_usage_store` … `visible_followup_adapters`
+- [`core.services.30`](core.services.30.md) — `visible_followup_events` … `visible_runs_watchdog`
+- [`core.services.31`](core.services.31.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`
@@ -70,9 +70,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18112 functions/
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
 - [`core.tools.01`](core.tools.01.md) — `__init__` … `goals_tools`
-- [`core.tools.02`](core.tools.02.md) — `graf_tools` … `publish_file_tool`
-- [`core.tools.03`](core.tools.03.md) — `py_source_guard` … `tool_limits`
-- [`core.tools.04`](core.tools.04.md) — `tool_result_format` … `world_model_tools`
+- [`core.tools.02`](core.tools.02.md) — `graf_tools` … `project_notes_tools`
+- [`core.tools.03`](core.tools.03.md) — `publish_file_tool` … `tool_definition_v2`
+- [`core.tools.04`](core.tools.04.md) — `tool_limits` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)

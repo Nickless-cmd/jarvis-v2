@@ -28,6 +28,7 @@ from core.eventbus.bus import event_bus
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir as _shared_dir
 from core.tools.load_more_tools import _tool_load_more_tools  # noqa: F401
+from core.tools.mcp_tool import _exec_mcp  # noqa: F401
 from core.tools.simple_tools_web import _read_api_key  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -2811,46 +2812,6 @@ def _exec_operator_channel(args: dict[str, Any]) -> dict[str, Any]:
         return oc.open_channel(sid, is_owner=ejer)
     if handling == "close":
         return oc.close_channel(sid, is_owner=ejer)
-    return {"status": "error", "error": f"ukendt action: {handling!r}"}
-
-def _exec_mcp(args: dict[str, Any]) -> dict[str, Any]:
-    """Én indgang til MCP: se, godkend, list vaerktoejer, kald.
-
-    Samlet i ét vaerktoej frem for fem, fordi fem navne i tool-arrayet koster
-    plads i en pulje paa 48 — og fordi de fire foerste kun bruges én gang pr.
-    server, mens `call` bruges hele tiden.
-    """
-    from core.services import mcp_manager, mcp_trust
-    handling = str(args.get("action") or "status").strip().lower()
-    server = str(args.get("server") or "").strip()
-
-    if handling == "status":
-        return mcp_manager.status()
-    if handling == "allow":
-        if not server:
-            return {"status": "error", "error": "server mangler"}
-        # Kun Bjoern kan godkende en fremmed server til at koere paa hans
-        # vegne. Det er den samme graense som operator-kanalen.
-        from core.services.operator_channel import current_is_owner
-        if not current_is_owner():
-            return {"status": "error",
-                    "error": "kun Bjørn kan godkende en MCP-server"}
-        return mcp_trust.allow(server)
-    if handling == "revoke":
-        from core.services.operator_channel import current_is_owner
-        if not current_is_owner():
-            return {"status": "error",
-                    "error": "kun Bjørn kan tilbagekalde en MCP-server"}
-        return mcp_trust.revoke(server)
-    if handling == "tools":
-        if not server:
-            return {"status": "error", "error": "server mangler"}
-        return mcp_manager.list_tools(server)
-    if handling == "call":
-        vaerktoej = str(args.get("tool") or "").strip()
-        if not server or not vaerktoej:
-            return {"status": "error", "error": "server og tool er påkrævet"}
-        return mcp_manager.call(server, vaerktoej, args.get("arguments") or {})
     return {"status": "error", "error": f"ukendt action: {handling!r}"}
 
 def _exec_checkpoint(args: dict[str, Any]) -> dict[str, Any]:

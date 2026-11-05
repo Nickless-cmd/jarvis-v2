@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/tool_limits.py`
+_Grænser for værktøjs-kørsel — ét sted, så de to bash-stier ikke driver fra hinanden._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `bash_timeout_s` | `()` | Sekunder en enkelt bash-kommando må tage. Overstyres i runtime.json som | [src](../../../core/tools/tool_limits.py#L22) |
+| function | `timeout_note` | `(seconds, command=…)` | Besked når en kommando løber tør for tid. | [src](../../../core/tools/tool_limits.py#L35) |
+
 ## `core/tools/tool_result_format.py`
 _Formatering af vaerktoejsresultater til modellen + verify-hints._
 

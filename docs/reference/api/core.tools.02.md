@@ -189,6 +189,13 @@ _Precise math and unit conversion tools using sympy._
 | function | `_exec_unit_convert` | `(args)` | — | [src](../../../core/tools/math_tools.py#L50) |
 | function | `_exec_percentage` | `(args)` | — | [src](../../../core/tools/math_tools.py#L80) |
 
+## `core/tools/mcp_tool.py`
+_Jarvis-toolindgangen til MCP-register, tillid og MCP Apps._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `exec_mcp` | `(args)` | Se, godkend, list og kald MCP-tools gennem én kompakt toolindgang. | [src](../../../core/tools/mcp_tool.py#L10) |
+
 ## `core/tools/memory_tools.py`
 _Memory duplicate-check and safe-write tools for MEMORY.md._
 
@@ -570,11 +577,4 @@ _Tools for project-scoped persistent notes._
 | function | `_resolve_notes_path` | `()` | — | [src](../../../core/tools/project_notes_tools.py#L21) |
 | function | `_exec_read_project_notes` | `(_args)` | — | [src](../../../core/tools/project_notes_tools.py#L31) |
 | function | `_exec_update_project_notes` | `(args)` | — | [src](../../../core/tools/project_notes_tools.py#L58) |
-
-## `core/tools/publish_file_tool.py`
-_`publish_file` — udskilt enhed, og nu per bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_publish_file` | `(args)` | Copy or create a file in ~/.jarvis-v2/files/ and return a download URL. | [src](../../../core/tools/publish_file_tool.py#L36) |
 

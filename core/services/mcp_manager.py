@@ -102,9 +102,80 @@ def call(navn: str, vaerktoej: str, arguments: dict[str, Any] | None = None) -> 
         return {"status": "error", "error": f"ukendt MCP-server: {navn!r}"}
     if not klient.connected:
         return {"status": "error", "error": klient.connect_error or "kunne ikke forbinde"}
-    kendte = {str(t.get("name")) for t in klient.tools}
-    if vaerktoej not in kendte:
+    definition = klient.tool(vaerktoej)
+    if definition is None:
+        kendte = {str(t.get("name")) for t in klient.tools}
         return {"status": "error",
                 "error": f"{navn!r} har intet værktøj {vaerktoej!r}",
                 "kendte": sorted(kendte)[:20]}
+    from core.services.mcp_apps import tool_visible_to
+    if not tool_visible_to(definition, "model"):
+        return {"status": "error", "error": f"{vaerktoej!r} er kun synligt for MCP App'en"}
     return klient.call_tool(vaerktoej, arguments or {})
+
+
+def call_with_app(navn: str, vaerktoej: str,
+                  arguments: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Modelkald + evt. MCP App-resource, uden at blande de to datastrømme."""
+    klient = get_client(navn)
+    if klient is None:
+        return ({"status": "error", "error": f"ukendt MCP-server: {navn!r}"}, None)
+    if not klient.connected:
+        return ({"status": "error", "error": klient.connect_error or "kunne ikke forbinde"}, None)
+    definition = klient.tool(vaerktoej)
+    if definition is None:
+        return ({"status": "error", "error": f"{navn!r} har intet værktøj {vaerktoej!r}"}, None)
+
+    from core.services.mcp_apps import tool_visible_to
+    if not tool_visible_to(definition, "model"):
+        return ({"status": "error", "error": f"{vaerktoej!r} er kun synligt for MCP App'en"}, None)
+
+    raw = klient.call_tool_raw(vaerktoej, arguments or {})
+    try:
+        from core.services.untrusted_fencing import fence_tool_result
+        visible = fence_tool_result(f"mcp_{navn}_{vaerktoej}", raw)
+    except Exception:
+        visible = raw
+
+    from core.services.mcp_apps import extract_html, resource_uri
+    uri = resource_uri(definition)
+    if not uri or raw.get("status") == "error":
+        return visible, None
+    resource = klient.read_resource(uri)
+    if resource.get("status") == "error":
+        logger.warning("mcp app %s/%s: resources/read fejlede: %s",
+                       navn, vaerktoej, resource.get("error"))
+        return visible, None
+    try:
+        html, meta = extract_html(resource)
+    except Exception as exc:
+        logger.warning("mcp app %s/%s: ugyldig UI-resource: %s", navn, vaerktoej, exc)
+        return visible, None
+    return visible, {"uri": uri, "html": html, "resource_meta": meta, "result": raw}
+
+
+def call_raw(navn: str, vaerktoej: str,
+             arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Host-broens app-initierede tool-kald; stadig bag register+tillid."""
+    klient = get_client(navn)
+    if klient is None:
+        return {"status": "error", "error": f"ukendt MCP-server: {navn!r}"}
+    if not klient.connected:
+        return {"status": "error", "error": klient.connect_error or "kunne ikke forbinde"}
+    definition = klient.tool(vaerktoej)
+    if definition is None:
+        return {"status": "error", "error": f"{navn!r} har intet værktøj {vaerktoej!r}"}
+    from core.services.mcp_apps import tool_visible_to
+    if not tool_visible_to(definition, "app"):
+        return {"status": "error", "error": f"{vaerktoej!r} er kun synligt for modellen"}
+    return klient.call_tool_raw(vaerktoej, arguments or {})
+
+
+def read_resource(navn: str, uri: str) -> dict[str, Any]:
+    """Host-broens resource-læsning på den allerede godkendte server."""
+    klient = get_client(navn)
+    if klient is None:
+        return {"status": "error", "error": f"ukendt MCP-server: {navn!r}"}
+    if not klient.connected:
+        return {"status": "error", "error": klient.connect_error or "kunne ikke forbinde"}
+    return klient.read_resource(uri)

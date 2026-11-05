@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9723/18112 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9737/18126 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9723/18112 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 716 | 986 | 72% |
+| `apps.api.jarvis_api.routes` | 718 | 988 | 72% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 9723/18112 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6514 | 12352 | 52% |
+| `core.services` | 6526 | 12364 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1424,9 +1424,9 @@ Generated from source. 9723/18112 functions/methods documented (53%). The list b
 - `core/services/mcp_auth.py` :: `get_token` (L75)
 - `core/services/mcp_auth.py` :: `needs_refresh` (L102)
 - `core/services/mcp_auth.py` :: `set_token` (L80)
-- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L319)
-- `core/services/mcp_client.py` :: `MCPClient.connected` (L186)
-- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L171)
+- `core/services/mcp_client.py` :: `MCPClient.call_tool` (L367)
+- `core/services/mcp_client.py` :: `MCPClient.connected` (L188)
+- `core/services/mcp_client.py` :: `MCPClient.disconnect` (L173)
 - `core/services/mcp_manager.py` :: `call` (L99)
 - `core/services/mcp_manager.py` :: `disconnect_all` (L58)
 - `core/services/mcp_manager.py` :: `list_tools` (L88)

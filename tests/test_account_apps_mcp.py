@@ -41,3 +41,41 @@ def test_mcp_add_applies(monkeypatch):
     res = asyncio.run(acc.account_mcp_add({"name": "CF", "url": "https://x"}))
     assert res["status"] == "ok"
     assert captured == {"n": "CF", "u": "https://x"}
+
+
+def test_mcp_app_tool_call_er_owner_only(monkeypatch):
+    monkeypatch.setattr(acc, "_current_role", lambda uid: "member")
+    monkeypatch.setattr(acc, "current_context_snapshot", lambda: {"user_id": "u_m"})
+    import pytest
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(acc.account_mcp_app_call("vejr", {"tool": "forecast", "arguments": {}}))
+    assert ei.value.status_code == 403
+
+
+def test_mcp_app_tool_call_gaar_gennem_manageren(monkeypatch):
+    monkeypatch.setattr(acc, "_current_role", lambda uid: "owner")
+    monkeypatch.setattr(acc, "current_context_snapshot", lambda: {"user_id": "bjorn"})
+    import core.services.mcp_manager as manager
+    captured = {}
+    monkeypatch.setattr(manager, "call_raw", lambda server, tool, args: (
+        captured.update(server=server, tool=tool, args=args)
+        or {"content": [{"type": "text", "text": "ok"}]}
+    ))
+    res = asyncio.run(acc.account_mcp_app_call(
+        "vejr", {"tool": "forecast", "arguments": {"by": "Svendborg"}},
+    ))
+    assert res["content"][0]["text"] == "ok"
+    assert captured == {"server": "vejr", "tool": "forecast", "args": {"by": "Svendborg"}}
+
+
+def test_mcp_app_tool_call_normaliserer_hostfejl(monkeypatch):
+    monkeypatch.setattr(acc, "_current_role", lambda uid: "owner")
+    monkeypatch.setattr(acc, "current_context_snapshot", lambda: {"user_id": "bjorn"})
+    import core.services.mcp_manager as manager
+    monkeypatch.setattr(manager, "call_raw", lambda server, tool, args: {
+        "status": "error", "error": "kun model",
+    })
+    res = asyncio.run(acc.account_mcp_app_call("vejr", {"tool": "x", "arguments": {}}))
+    assert res["isError"] is True
+    assert res["content"][0]["text"] == "kun model"

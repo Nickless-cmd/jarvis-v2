@@ -50,7 +50,7 @@ def _nulstil_for_tests() -> None:
 
 def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
          size_bytes: int = 0, attachment_id: str = "",
-         tool_use_id: str = "") -> None:
+         tool_use_id: str = "", metadata: dict[str, Any] | None = None) -> None:
     """Registrér at turen udgav en fil eller et billede. Kaster aldrig.
 
     `run_id` tom → gør ingenting. En post uden tur kan ikke hæftes på noget,
@@ -91,6 +91,10 @@ def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
                 # samme id, saa billedet staar DÉR hvor det blev lavet — ikke
                 # bagerst efter fyrre andre blokke.
                 "tool_use_id": str(tool_use_id or ""),
+                # Renderer-specifik metadata. Bruges bl.a. af MCP Apps til at
+                # bære server/tool/input/result sammen med HTML-referencen.
+                # Det ligger i beskedblokken, ikke inde i modelhistorikken.
+                "metadata": dict(metadata or {}),
             })
     except Exception:
         logger.warning("published_files: kunne ikke notere %s", navn, exc_info=True)
@@ -204,5 +208,12 @@ def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
         stoerrelse = p.get("size_bytes")
         if isinstance(stoerrelse, int) and stoerrelse > 0:
             blok["size_bytes"] = stoerrelse
+        metadata = p.get("metadata")
+        if isinstance(metadata, dict):
+            # Kun kendte, navngivne renderer-kontrakter må løftes ud. En
+            # vilkårlig metadata-dict fra et tool må ikke kunne opfinde type,
+            # URL eller attachment-reference i blokken.
+            if isinstance(metadata.get("mcp_app"), dict):
+                blok["mcp_app"] = dict(metadata["mcp_app"])
         ud.append(blok)
     return ud

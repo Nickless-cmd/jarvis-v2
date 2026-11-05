@@ -366,6 +366,18 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L303) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L349) |
 
+## `core/services/mcp_apps.py`
+_MCP Apps host-bro: `ui://` resource -> sikker widget i samtalen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resource_uri` | `(tool)` | Foretræk den endelige nested form; behold legacy-interoperabilitet. | [src](../../../core/services/mcp_apps.py#L38) |
+| function | `tool_visible_to` | `(tool, audience)` | Håndhæv MCP Apps' model/app-skel; manglende metadata betyder begge. | [src](../../../core/services/mcp_apps.py#L49) |
+| function | `extract_html` | `(resource)` | Hent den første HTML-tekstblok fra et `resources/read`-resultat. | [src](../../../core/services/mcp_apps.py#L63) |
+| function | `harden_html` | `(html)` | Indsæt en fail-closed CSP uden at omskrive appens dokument. | [src](../../../core/services/mcp_apps.py#L80) |
+| function | `_result_for_block` | `(result)` | Bevar MCP-resultatet til View'et, men aldrig ubegrænset. | [src](../../../core/services/mcp_apps.py#L89) |
+| function | `publish` | `(*, server, tool_name, arguments, result, html, run_id, tool_use_id)` | Gem HTML'en og hæft en MCP App-blok på det synlige run. | [src](../../../core/services/mcp_apps.py#L100) |
+
 ## `core/services/mcp_auth.py`
 _OAuth/bearer til remote MCP-servere._
 
@@ -386,23 +398,26 @@ _MCP-klient — stdio og HTTP, med trust-gate foran hver forbindelse._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `parse_mcp_http_body` | `(tekst, content_type=…)` | Læs et MCP-over-HTTP-svar — JSON *eller* SSE. | [src](../../../core/services/mcp_client.py#L46) |
-| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L89) |
-| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L92) |
-| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L113) |
-| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L130) |
-| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L156) |
-| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L171) |
-| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L186) |
-| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L195) |
-| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L204) |
-| method | `MCPClient._send_stdio_locked` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L213) |
-| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L244) |
-| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L263) |
-| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L285) |
-| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L298) |
-| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L312) |
-| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L319) |
+| function | `parse_mcp_http_body` | `(tekst, content_type=…)` | Læs et MCP-over-HTTP-svar — JSON *eller* SSE. | [src](../../../core/services/mcp_client.py#L48) |
+| class | `MCPClient` | `` | Én forbindelse til én MCP-server. | [src](../../../core/services/mcp_client.py#L91) |
+| method | `MCPClient.__init__` | `(self, name, config)` | — | [src](../../../core/services/mcp_client.py#L94) |
+| method | `MCPClient.connect` | `(self)` | Trust-gate først, DERNÆST forbindelse. Rækkefølgen er hele pointen. | [src](../../../core/services/mcp_client.py#L115) |
+| method | `MCPClient._connect_stdio` | `(self)` | — | [src](../../../core/services/mcp_client.py#L132) |
+| method | `MCPClient._connect_http` | `(self)` | — | [src](../../../core/services/mcp_client.py#L158) |
+| method | `MCPClient.disconnect` | `(self)` | — | [src](../../../core/services/mcp_client.py#L173) |
+| method | `MCPClient.connected` | `(self)` | — | [src](../../../core/services/mcp_client.py#L188) |
+| method | `MCPClient._send_request` | `(self, method, params=…)` | — | [src](../../../core/services/mcp_client.py#L197) |
+| method | `MCPClient._send_stdio` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L206) |
+| method | `MCPClient._send_stdio_locked` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L215) |
+| method | `MCPClient._http_headers` | `(self)` | — | [src](../../../core/services/mcp_client.py#L246) |
+| method | `MCPClient._send_http` | `(self, req)` | — | [src](../../../core/services/mcp_client.py#L265) |
+| method | `MCPClient._send_notification` | `(self, method)` | — | [src](../../../core/services/mcp_client.py#L287) |
+| method | `MCPClient._initialize` | `(self)` | MCP kræver dette håndtryk før alt andet — mange servere afviser | [src](../../../core/services/mcp_client.py#L300) |
+| method | `MCPClient._discover_tools` | `(self)` | — | [src](../../../core/services/mcp_client.py#L321) |
+| method | `MCPClient.tool` | `(self, tool_name)` | Den fulde tool-definition, inkl. MCP Apps `_meta`. | [src](../../../core/services/mcp_client.py#L328) |
+| method | `MCPClient.read_resource` | `(self, uri)` | Læs én MCP-resource i dens rå protokolform. | [src](../../../core/services/mcp_client.py#L333) |
+| method | `MCPClient.call_tool_raw` | `(self, tool_name, arguments)` | Kald et tool og behold MCP-strukturen urørt. | [src](../../../core/services/mcp_client.py#L347) |
+| method | `MCPClient.call_tool` | `(self, tool_name, arguments)` | — | [src](../../../core/services/mcp_client.py#L367) |
 
 ## `core/services/mcp_manager.py`
 _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
@@ -415,6 +430,9 @@ _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
 | function | `status` | `()` | Hvilke servere kendes, hvilke er godkendt, hvilke er forbundet? | [src](../../../core/services/mcp_manager.py#L68) |
 | function | `list_tools` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L88) |
 | function | `call` | `(navn, vaerktoej, arguments=…)` | — | [src](../../../core/services/mcp_manager.py#L99) |
+| function | `call_with_app` | `(navn, vaerktoej, arguments=…)` | Modelkald + evt. MCP App-resource, uden at blande de to datastrømme. | [src](../../../core/services/mcp_manager.py#L117) |
+| function | `call_raw` | `(navn, vaerktoej, arguments=…)` | Host-broens app-initierede tool-kald; stadig bag register+tillid. | [src](../../../core/services/mcp_manager.py#L157) |
+| function | `read_resource` | `(navn, uri)` | Host-broens resource-læsning på den allerede godkendte server. | [src](../../../core/services/mcp_manager.py#L174) |
 
 ## `core/services/mcp_registry.py`
 _MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
@@ -597,31 +615,4 @@ _Memory maintenance daemon — periodic dedup and health of every user's MEMORY.
 | function | `_jaccard` | `(a, b)` | Word-level Jaccard similarity between two strings. | [src](../../../core/services/memory_maintenance_daemon.py#L258) |
 | function | `_tier_a_duplicate_candidates` | `(sections)` | Find duplicate top-level headings without mutating ``MEMORY.md``. | [src](../../../core/services/memory_maintenance_daemon.py#L267) |
 | function | `_tier_b_flag_overlaps` | `(sections)` | Flag sections with different headings but overlapping content. | [src](../../../core/services/memory_maintenance_daemon.py#L320) |
-
-## `core/services/memory_md_update_proposal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_memory_md_update_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L27) |
-| function | `_looks_like_sentence` | `(domain_key)` | A slugified user message ("det-er-fordi-du-prompt-er-rodet") — not a topic. | [src](../../../core/services/memory_md_update_proposal_tracking.py#L53) |
-| function | `refresh_runtime_memory_md_update_proposal_statuses` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L59) |
-| function | `build_runtime_memory_md_update_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L95) |
-| function | `_extract_memory_md_update_proposals` | `()` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L123) |
-| function | `_persist_memory_md_update_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L313) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L382) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L392) |
-| function | `_build_proposed_update` | `(*, proposal_type, domain_key, item=…)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L403) |
-| function | `_build_proposal_reason` | `(*, proposal_type, source_summary, proposal_confidence)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L415) |
-| function | `_build_proposal_confidence` | `(*, source_confidence, proposal_type)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L425) |
-| function | `_build_source_anchor` | `(*, source_type, domain_key, support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L435) |
-| function | `_build_status_reason` | `(*, proposal_type, source_status)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L440) |
-| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L454) |
-| function | `_domain_from_canonical_key` | `(canonical_key)` | Sidste led af witness-nøglen, foldet til en STABIL domæne-nøgle. | [src](../../../core/services/memory_md_update_proposal_tracking.py#L458) |
-| function | `_raw_tail_from_canonical_key` | `(canonical_key)` | Sidste led af nøglen UDEN foldning — til sætnings-tjekket. | [src](../../../core/services/memory_md_update_proposal_tracking.py#L470) |
-| function | `_memory_kind_from_canonical_key` | `(canonical_key)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L487) |
-| function | `_source_anchor_from_support_summary` | `(support_summary)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L499) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L506) |
-| function | `_stronger_confidence` | `(left, right)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L516) |
-| function | `_rank_confidence` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L520) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L524) |
 

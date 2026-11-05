@@ -201,6 +201,73 @@ _CHUNK_MIN = 20
 #: Adskiller i overskrifts-stien. Valgt fordi den ikke optræder i overskrifter.
 _STI = " › "
 
+#: Filer hvor hvert PUNKT er sin egen chunk, ikke hvert 800-tegns vindue.
+#:
+#: HVORFOR (5/11-2026, målt): Bjørn spurgte «hvad har jeg af køretøjer? og hvilke
+#: motor har de?». Faktaen står i `USER.md` under `## Personal` — men sektionen er
+#: 27 linjer og blev delt i 6 vilkårlige 800-tegns vinduer. El-cykel-faktaen landede
+#: i chunk 5 SAMMEN med drone-app, drone og en sætning der var klippet midt over, så
+#: vektoren blev et gennemsnit af fem ubeslægtede emner. Søgningen gav dagens egen
+#: samtale i top-3 og faktaen uden for top-12. Fejlen gentager sig for HVER fakta i
+#: filen: en vektor kan ikke pege på én ting når den bærer ti.
+#:
+#: Vinduer er det rigtige valg for prosa (MEMORY.md-sektioner, daglige noter), hvor
+#: en chunk ER et sammenhængende ræsonnement. Fakta-filer er det modsatte: hver linje
+#: er en selvstændig sandhed der skal kunne findes alene.
+_FAKTA_FILES = ("USER.md",)
+
+
+def _chunk_fakta(text: str, source: str) -> list[Chunk]:
+    """Del en fakta-fil i chunks pr. PUNKT, så én fakta bliver én vektor.
+
+    Hver chunk bærer sin overskrifts-sti (samme kontrakt som ``_chunk_markdown``),
+    så «Personal: - **Køretøjer:** El-cykel 2× 1000 W» kan findes på både emne og
+    sti. Et punkt der i sig selv er længere end ``_CHUNK_MAX`` deles stadig i
+    vinduer — ellers ville den lange post være usøgelig i sin helhed.
+    """
+    chunks: list[Chunk] = []
+    stak: list[tuple[int, str]] = []
+    post: list[str] = []
+
+    def sti() -> str:
+        return _STI.join(h for niv, h in stak if niv > 1)
+
+    def flush() -> None:
+        nonlocal post
+        samlet = " ".join(l for l in (x.strip() for x in post) if l)
+        post = []
+        if len(samlet) < _CHUNK_MIN:
+            return
+        s = sti()
+        praefiks = f"{s}: " if s else ""
+        plads = max(_CHUNK_MAX - len(praefiks), _CHUNK_MIN)
+        for i in range(0, len(samlet), plads):
+            stykke = samlet[i:i + plads]
+            if len(stykke) < _CHUNK_MIN and chunks:
+                break
+            chunks.append(Chunk(text=praefiks + stykke, source=source, section=s))
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            flush()
+            niveau = len(stripped) - len(stripped.lstrip("#"))
+            titel = stripped.lstrip("#").strip()
+            while stak and stak[-1][0] >= niveau:
+                stak.pop()
+            if titel:
+                stak.append((niveau, titel))
+            continue
+        # Et nyt punkt starter på en liste-markør. Fortsættelseslinjer (indrykket
+        # eller uden markør) hører til punktet ovenfor — de er samme fakta.
+        if stripped[:2] in ("- ", "* ", "+ ") or (stripped[:3].rstrip(".").isdigit() and stripped[2:4] in (". ", ") ")):
+            flush()
+            post.append(stripped)
+        elif stripped:
+            post.append(stripped)
+    flush()
+    return chunks
+
 
 def _chunk_markdown(text: str, source: str) -> list[Chunk]:
     """Del markdown i chunks der hver BÆRER sin overskrifts-sti i teksten.
@@ -423,7 +490,12 @@ def _chunk_all_files(files: list[Path], ws: Path | None = None) -> list[Chunk]:
                 rel = str(f.relative_to(ws))
             except ValueError:
                 rel = f.name
-            all_chunks.extend(_chunk_markdown(text, rel))
+            # Fakta-filer chunkes pr. punkt, ikke pr. 800-tegns vindue — se
+            # _FAKTA_FILES. Prosa-filer beholder vinduerne.
+            if f.name in _FAKTA_FILES:
+                all_chunks.extend(_chunk_fakta(text, rel))
+            else:
+                all_chunks.extend(_chunk_markdown(text, rel))
         except Exception as exc:
             logger.warning("memory_search: failed to read %s: %s", f, exc)
     return all_chunks

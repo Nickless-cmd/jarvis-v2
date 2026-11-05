@@ -100,5 +100,9 @@ def build_signal_decay_surface() -> dict[str, object]:
         "last_archived": _last_result.get("archived", 0),
         "last_archive_cleaned": _last_result.get("archive_cleaned", 0),
         "tables_scanned": _last_result.get("tables_scanned", 0),
+        # 5/11-2026: hvor mange tabeller der ramte batch-loftet — altså hvor vi
+        # VED der ligger mere til næste kørsel. Uden den her ville loftet gøre
+        # en backlog usynlig i stedet for at gøre den håndterbar.
+        "deferred_tables": _last_result.get("truncated_tables", 0),
         "last_tick_at": _last_tick_at.isoformat() if _last_tick_at else "",
     }

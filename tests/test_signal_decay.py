@@ -197,6 +197,83 @@ class TestSignalDecayArchiveAndDelete:
         assert result["per_table"]["runtime_goal_signals"] == 1
         assert result["per_table"]["runtime_awareness_signals"] == 2
 
+    def test_batch_limit_stops_a_backlog_from_being_one_huge_transaction(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Målt 5/11-2026: 147.721 rækker blev arkiveret i ÉT hug (~295.000
+        statements i én transaktion), hvilket kan låse DB'en mens API'et kører.
+        Loftet skal efterlade resten til næste kørsel — og sige at den gjorde.
+
+        Mutationstestet: fjernes ``LIMIT ?`` fra SELECT'en, arkiveres alle 10 og
+        testen fejler på både ``archived`` og ``truncated_tables``.
+        """
+        from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
+
+        conn = _memory_conn()
+        table = "runtime_goal_signals"
+        _create_signal_table(conn, table)
+        db_mod._ensure_signal_archive_table(conn)
+
+        old_time = (datetime.now(UTC) - timedelta(hours=48)).isoformat()
+        for i in range(10):
+            _insert_signal(conn, table, f"sig-{i}", status="stale", updated_at=old_time)
+
+        from contextlib import contextmanager
+
+        @contextmanager
+        def fake_connect():
+            yield conn
+
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", [table])
+
+        result = db_mod.signal_decay_archive_and_delete(stale_hours=24, batch_limit=3)
+
+        # Kun loftet blev behandlet — ikke hele backloggen
+        assert result["archived"] == 3
+        assert result["per_table"][table] == 3
+        # ... og den siger selv at der ligger mere
+        assert result["truncated_tables"] == 1
+
+        # De resterende 7 er stadig i kilden, ikke smidt væk
+        remaining = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        assert remaining == 7
+
+        # Næste kørsel tager den næste portion
+        second = db_mod.signal_decay_archive_and_delete(stale_hours=24, batch_limit=3)
+        assert second["archived"] == 3
+        assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 4
+
+    def test_batch_limit_not_reached_reports_no_truncation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Loftet må ikke rapportere afkortning når det ikke blev nået — ellers
+        ville fladen vise en evig backlog der ikke findes."""
+        from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
+
+        conn = _memory_conn()
+        table = "runtime_goal_signals"
+        _create_signal_table(conn, table)
+        db_mod._ensure_signal_archive_table(conn)
+
+        old_time = (datetime.now(UTC) - timedelta(hours=48)).isoformat()
+        _insert_signal(conn, table, "sig-1", status="stale", updated_at=old_time)
+
+        from contextlib import contextmanager
+
+        @contextmanager
+        def fake_connect():
+            yield conn
+
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", [table])
+
+        result = db_mod.signal_decay_archive_and_delete(stale_hours=24, batch_limit=5000)
+        assert result["archived"] == 1
+        assert result["truncated_tables"] == 0
+
 
 # ---------------------------------------------------------------------------
 # signal_archive_cleanup

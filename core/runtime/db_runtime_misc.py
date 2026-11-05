@@ -662,16 +662,31 @@ def _ensure_signal_archive_table(conn: sqlite3.Connection) -> None:
     )
 
 
-def signal_decay_archive_and_delete(*, stale_hours: int = 24) -> dict[str, int]:
+# 5/11-2026: uden loft hev én backlog-tømning ALLE stale rækker ind i hukommelsen
+# og skrev to statements pr. række i én transaktion. Målt i den levende base:
+# 147.721 rækker blev arkiveret i ét hug kl. 21 den 4/11 (~295.000 statements i
+# samme transaktion). Det er ikke en teoretisk risiko — det låser DB'en i minutter
+# mens API'et kører, og fejler med "database is locked" hvis noget andet skriver.
+# Loftet gør en backlog til flere timers arbejde i stedet for ét hug; det der ikke
+# nås, bliver liggende til næste kørsel (cadence: 1 time).
+_BATCH_LIMIT = 5000
+
+
+def signal_decay_archive_and_delete(
+    *, stale_hours: int = 24, batch_limit: int = _BATCH_LIMIT
+) -> dict[str, int]:
     """Archive and delete signals marked stale for longer than stale_hours.
 
-    Returns {"archived": N, "tables_scanned": M, "per_table": {table: count}}.
+    Returns {"archived": N, "tables_scanned": M, "per_table": {table: count},
+    "truncated_tables": K}. `truncated_tables` tæller de tabeller hvor loftet blev
+    nået — altså hvor vi VED der ligger mere til næste kørsel.
     """
     now = datetime.now(UTC)
     cutoff = (now - timedelta(hours=stale_hours)).isoformat()
     now_iso = now.isoformat()
     total_archived = 0
     per_table: dict[str, int] = {}
+    truncated_tables = 0
 
     with connect() as conn:
         _ensure_signal_archive_table(conn)
@@ -679,9 +694,11 @@ def signal_decay_archive_and_delete(*, stale_hours: int = 24) -> dict[str, int]:
             try:
                 # Find stale signals updated before the cutoff
                 rows = conn.execute(
-                    f"SELECT * FROM {table} WHERE status = 'stale' AND updated_at < ?",  # noqa: S608
-                    (cutoff,),
+                    f"SELECT * FROM {table} WHERE status = 'stale' AND updated_at < ? LIMIT ?",  # noqa: S608
+                    (cutoff, batch_limit),
                 ).fetchall()
+                if len(rows) >= batch_limit:
+                    truncated_tables += 1
                 if not rows:
                     continue
                 count = 0
@@ -723,6 +740,7 @@ def signal_decay_archive_and_delete(*, stale_hours: int = 24) -> dict[str, int]:
         "archived": total_archived,
         "tables_scanned": len(_SIGNAL_TABLES_WITH_STATUS),
         "per_table": per_table,
+        "truncated_tables": truncated_tables,
     }
 
 

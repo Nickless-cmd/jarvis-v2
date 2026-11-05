@@ -474,3 +474,50 @@ def test_personligheden_og_anti_meta_reglen_er_chat_only() -> None:
     ):
         assert phrase in chat
         assert phrase not in code
+
+
+def test_vaerktojsraekkefoelgen_naar_den_koerende_prompt() -> None:
+    """Værktøjsrækkefølgen skal nå den prompt-vej der FAKTISK bruges.
+
+    Målt 5/11-2026: Bjørn spurgte «hvad siger vejret imorgen?», og Jarvis kaldte
+    `web_fetch` mod api.met.no og parste rå GeoJSON selv — i stedet for
+    `get_weather` eller `google_weather`, som begge findes i værktøjssættet.
+    Prognosen blev 3–4 grader forkert.
+
+    Reglen står i niveau 1 (pålidelighed), men i v2-layoutet ligger
+    `CHAT_MODE_HOW_I_TALK` i den cachebare PREFIX — ikke i halen. En test der
+    kun kigger i `build_chat_mode_dynamic_tail()` ville derfor være grøn på en
+    regel der aldrig når modellen. Denne test måler den samlede prompt.
+
+    MUTATION: fjern værktøjsrækkefølgen fra niveau 1 → fejler.
+    MUTATION: fjern CHAT_MODE_HOW_I_TALK fra v2-prefixen → fejler.
+    """
+    chat = _chat_prompt(message="hvad siger vejret imorgen?", session_id="s")
+    code = _code_prompt(message="ret koden", session_id="s")
+
+    for phrase in (
+        "Værktøjsrækkefølgen — findes værktøjet, brug det",
+        "det dedikerede værktøj",
+        "web_search eller web_fetch når intet dedikeret findes",
+        "bash eller egen parsing kun når ingen af de to første dækker",
+        "er en fejl og ikke en genvej",
+        "sig det højt og hvorfor intet værktøj dækkede behovet",
+    ):
+        assert phrase in chat, f"mangler i den kørende chat-prompt: {phrase!r}"
+        assert phrase not in code, f"lækkede ind i code mode: {phrase!r}"
+
+
+def test_vaerktojsraekkefoelgen_overlever_legacy_layout(monkeypatch) -> None:
+    """Reglen skal også nå legacy-grenen — ellers er den layout-afhængig.
+
+    MUTATION: læg reglen KUN i v2-prefixen (dvs. i prompt_sections/chat_mode.py)
+    og ikke i CHAT_MODE_HOW_I_TALK → fejler her.
+    """
+    from core.services import prompt_mode_layout
+
+    monkeypatch.setenv("JARVIS_PROMPT_MODE_LAYOUT_V2", "0")
+    monkeypatch.setattr(
+        prompt_mode_layout, "mode_layout_v2_enabled", lambda: False,
+    )
+    chat = _chat_prompt(message="hvad siger vejret imorgen?", session_id="s")
+    assert "Værktøjsrækkefølgen — findes værktøjet, brug det" in chat

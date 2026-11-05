@@ -1216,6 +1216,7 @@ export function CodeView({
         )}
         {browserOpen && (!fuldRude || fuldRude === 'browser') && (
           <JarvisBrowserPanel
+            config={config}
             aaben={browserOpen}
             fuld={fuldRude === 'browser'}
             onFuld={(f) => setFuldRude(f ? 'browser' : '')}

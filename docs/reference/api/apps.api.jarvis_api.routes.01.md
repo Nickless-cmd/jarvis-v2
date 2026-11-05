@@ -217,6 +217,12 @@ _Billing / Stripe-integration (spec §21.6) — SKELET._
 | function | `create_checkout` | `(payload)` | Opret en Stripe Checkout-session for tier-opgradering (§21.6). | [src](../../../apps/api/jarvis_api/routes/billing.py#L52) |
 | function | `stripe_webhook` | `(request)` | Stripe webhook (§21.6). Verificér signatur, grant kvote/tier ved succes. | [src](../../../apps/api/jarvis_api/routes/billing.py#L64) |
 
+## `apps/api/jarvis_api/routes/browser_stream.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `browser_stream` | `(ws)` | Jarvis' browser som JPEG-frames (binære beskeder) + input tilbage. | [src](../../../apps/api/jarvis_api/routes/browser_stream.py#L16) |
+
 ## `apps/api/jarvis_api/routes/central.py`
 _Real-time Central-vindue til owner (jarvis-desk code mode)._
 
@@ -623,13 +629,4 @@ _Bjørns egen vej ind i indbakken — den fjerde skriver._
 |---|---|---|---|---|
 | class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
 | function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
-
-## `apps/api/jarvis_api/routes/chat_rewind.py`
-_`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RewindRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L19) |
-| function | `chat_rewind` | `(session_id, request)` | Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L24) |
-| function | `chat_rewind_undo` | `(session_id, rewind_id)` | Læg beskederne tilbage — kun så længe der ikke er skrevet siden. | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L36) |
 

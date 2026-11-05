@@ -907,6 +907,7 @@ export function ChatView({
       )}
       {visBrowser && (
         <JarvisBrowserPanel
+          config={cfgSkinne}
           aaben={visBrowser}
           fuld={fuldRude === 'browser'}
           onFuld={(f) => setFuldRude(f ? 'browser' : '')}

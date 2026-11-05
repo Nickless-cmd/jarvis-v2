@@ -18,6 +18,17 @@ _STATE_KEY = "perceptual_event_engine"
 _MAX_EVENTS = 80
 _SCAN_LIMIT = 120
 
+#: Prompt-linjen vaelger ikke bare de N nyeste events (5/11-2026). Maalt i den
+#: levende tilstand: 80 events = 40 channel-message, 22 tool-result, 7
+#: tool-error, 5 runtime-completion, 6 sensory-change. Med `events[:limit]` var
+#: sanseindtrykkene et lotteri — de kom kun med naar de tilfaeldigt laa blandt de
+#: fire nyeste, saa 3.750 poster i sensory_memories kunne have nul effekt paa
+#: svaret. Kanal-beskeder er samtidig redundante: samtalen staar allerede i
+#: konteksten, saa «Channel message appended from user» optog pladser uden at
+#: tilfoeje noget. Sanseindtryk faar derfor deres egen kvote.
+_SENSORY_PREFIX = "sensory-change-"
+_PROMPT_SENSORY_QUOTA = 2
+
 # Hvor længe det samme gentagne signal er «set», før det igen tæller som en
 # ændring.
 _VAERKTOEJ_STILHED_MINUTTER = 60
@@ -329,14 +340,64 @@ def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, 
     )
 
 
+def _select_prompt_events(
+    events: list[dict[str, object]], *, limit: int
+) -> list[dict[str, object]]:
+    """Vaelg hvilke events der kommer i prompt-linjen — med kvote til sanserne.
+
+    Sanseindtryk og kanal-beskeder konkurrerer ikke om de samme pladser: sanserne
+    har deres egen kvote, kanal-beskeder er udeladt saa laenge andet kan fylde
+    (samtalen staar allerede i konteksten). Raekkefoelgen bevares — nyeste
+    foerst — saa linjen laeses kronologisk.
+
+    `events` selv er UROERT: den er kontrakten for `build_perception_surface`,
+    hvor kaldere forventer de nyeste events i raekkefoelge.
+    """
+    if limit <= 0 or not events:
+        return []
+    valgt: list[int] = []
+
+    # 1. Sanseindtryk: egen kvote, saa de ikke afhaenger af at ligge i toppen.
+    for i, e in enumerate(events):
+        if len(valgt) >= min(_PROMPT_SENSORY_QUOTA, limit):
+            break
+        if str(e.get("change_type") or "").startswith(_SENSORY_PREFIX):
+            valgt.append(i)
+
+    # 2. Resten: nyeste ikke-redundante events.
+    for i, e in enumerate(events):
+        if len(valgt) >= limit:
+            break
+        if i in valgt:
+            continue
+        if str(e.get("change_type") or "") == "channel-message":
+            continue
+        valgt.append(i)
+
+    # 3. Er der stadig plads, er en kanal-besked bedre end en tom linje.
+    for i in range(len(events)):
+        if len(valgt) >= limit:
+            break
+        if i not in valgt:
+            valgt.append(i)
+
+    return [events[i] for i in sorted(valgt)]
+
+
 def build_perception_prompt_section(*, limit: int = 4) -> str | None:
     surface = build_perception_surface(limit=limit)
     if not surface.get("active"):
         return None
+    # Brug den kvote-udvalgte liste, ikke de raa nyeste. `events` er bevaret
+    # uaendret for kaldere der laeser surface direkte.
+    valgte = list(surface.get("prompt_events") or []) or _select_prompt_events(
+        list(surface.get("events") or []), limit=limit
+    )
     lines = ["Perception/change observer:"]
-    if surface.get("directive"):
-        lines.append(f"- directive: {str(surface['directive'])[:140]}")
-    for item in list(surface.get("events") or [])[:limit]:
+    directive = _directive_for_events(valgte) or str(surface.get("directive") or "")
+    if directive:
+        lines.append(f"- directive: {directive[:140]}")
+    for item in valgte[:limit]:
         lines.append(
             f"- {item.get('change_type')}: {str(item.get('summary') or '')[:100]}"
             f" ({item.get('salience')})"
@@ -355,11 +416,13 @@ def _build_perception_surface_uncached(*, limit: int) -> dict[str, object]:
             "events": [],
             "directive": "",
         }
-    directive = _directive_for_events(active)
+    prompt_events = _select_prompt_events(events, limit=max(int(limit), 1))
+    directive = _directive_for_events(prompt_events)
     return {
         "active": True,
         "summary": _summary_for_events(active),
         "events": active,
+        "prompt_events": prompt_events,
         "directive": directive,
         "last_seen_event_id": int(state.get("last_seen_event_id") or 0),
         "updated_at": str(state.get("updated_at") or ""),
@@ -491,6 +554,8 @@ def _directive_for_events(events: list[dict[str, object]]) -> str:
         return "Attend to tool failure as feedback; inspect error/context before retry."
     if "learned-policy-change" in types:
         return "A learned policy changed; let it affect the next action choice."
+    if any(t.startswith(_SENSORY_PREFIX) for t in types):
+        return "A sensory impression changed; let it colour the room you are in before you answer."
     if "channel-message" in types:
         return "A conversational state changed; update social and task context before responding."
     return "Track what changed since the last turn and prefer change-relevant action."

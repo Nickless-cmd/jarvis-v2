@@ -208,3 +208,57 @@ def test_vaerktoej_og_regel_med_samme_navn_skygger_ikke(isolated_runtime, monkey
 
     assert svar["observed_count"] == 2
     assert svar["skipped_routine_tools"] == 0
+
+
+def test_sanseindtryk_faar_egen_kvote_i_prompt_linjen(isolated_runtime) -> None:
+    """Sanserne skal ikke vaelges ved lodtraekning.
+
+    Maalt 5/11-2026 i den levende tilstand: 80 events = 40 channel-message,
+    22 tool-result, 7 tool-error, 6 sensory-change. Med `events[:limit]` kom
+    sanseindtrykkene kun med naar de tilfaeldigt laa blandt de fire nyeste — saa
+    3.750 poster i sensory_memories kunne have nul effekt paa svaret, mens
+    «Channel message appended from user» optog pladser med ren redundans.
+
+    Testen bygger den samme fordeling skaleret ned (aeldst foerst, nyeste
+    sidst — `record_perceptual_event` praefikser listen).
+    """
+    from core.services.perceptual_event_engine import (
+        build_perception_surface,
+        record_perceptual_event,
+    )
+
+    def _post(change_type: str, salience: str, kind: str, n: int, summary: str) -> None:
+        for i in range(n):
+            record_perceptual_event(
+                change_type=change_type,
+                summary=f"{summary} #{i}",
+                salience=salience,
+                source_kind=kind,
+                source_event_id=len(change_type) * 1000 + i,
+            )
+
+    # Aeldst: sansningerne. Derefter vaerktoejsstoej, og til sidst 20
+    # kanal-beskeder ovenpaa — praecis den maalte overvaegt.
+    _post("sensory-change-visual", "high", "memory.sensory.recorded", 2, "Rummet skiftede til varmt lys")
+    _post("tool-result", "normal", "tool.completed", 3, "Tool completed: read_file")
+    _post("tool-error", "high", "tool.completed", 2, "Tool failed: grep")
+    _post("channel-message", "medium", "channel.chat_message_appended", 20, "Channel message appended from user")
+
+    surface = build_perception_surface(scan=False, limit=4)
+
+    # Kontrakten for `events` er uaendret: de nyeste foerst.
+    assert surface["events"][0]["change_type"] == "channel-message"
+
+    typer = [e["change_type"] for e in surface["prompt_events"]]
+    assert typer.count("sensory-change-visual") == 2, (
+        "sanseindtrykkene forsvandt bag kanal-beskeder — kvoten virker ikke"
+    )
+    assert "channel-message" not in typer, (
+        "kanal-beskeder optog pladser; samtalen staar allerede i konteksten"
+    )
+    # Sanseindtrykkene skal ogsaa naa den faktiske prompt-linje, ikke kun feltet.
+    from core.services.perceptual_event_engine import build_perception_prompt_section
+
+    linje = build_perception_prompt_section(limit=4)
+    assert linje is not None
+    assert "sensory-change-visual" in linje

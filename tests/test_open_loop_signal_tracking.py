@@ -207,9 +207,18 @@ def test_refresh_reaches_old_rows_beyond_the_newest_forty(isolated_runtime) -> N
     assert row["status"] == "stale"
 
 
-def test_completed_visible_run_closes_its_loop_but_interrupted_stays_open(
+def test_completed_source_run_does_not_close_loop_born_after_it(
     isolated_runtime,
 ) -> None:
+    """Målt 5/11-2026: 51/51 lukkede loops var oprettet EFTER deres kilde-kørsel
+    fik terminal status. Betingelsen «kørslen er completed» var derfor opfyldt
+    ved fødslen, og loopet lukkede sig selv uden at nogen havde svaret på det.
+    Kørslens udfald siger intet om loopets indhold — derfor lukker den ikke.
+
+    Testen holder begge retninger: en completed kilde-kørsel må IKKE lukke
+    loopet, og et loop der ikke er berørt inden for inaktivitetsvinduet skal
+    stadig blive stale (den ægte terminale vej).
+    """
     tracking = isolated_runtime.open_loop_tracking
     db = isolated_runtime.db
     with db.connect() as conn:
@@ -221,6 +230,8 @@ def test_completed_visible_run_closes_its_loop_but_interrupted_stays_open(
                 "VALUES (?, 'visible', 'test', 'test', ?, ?)",
                 (run_id, status, datetime.now(UTC).isoformat()),
             )
+    # _insert_open_loop sætter created_at = now, altså EFTER kørslens finished_at.
+    # Det er præcis det mønster der blev målt i produktion.
     _insert_open_loop(db, status="open", signal_type="done",
                       canonical_key="open-loop:open-loop:visible-done")
     _insert_open_loop(db, status="open", signal_type="interrupted",
@@ -229,9 +240,43 @@ def test_completed_visible_run_closes_its_loop_but_interrupted_stays_open(
     result = tracking.refresh_runtime_open_loop_signal_statuses()
     rows = {row["canonical_key"]: row for row in db.list_runtime_open_loop_signals(limit=20)}
 
-    assert result["auto_closed"] == 1
-    assert rows["open-loop:open-loop:visible-done"]["status"] == "closed"
+    assert result["auto_closed"] == 0
+    assert rows["open-loop:open-loop:visible-done"]["status"] == "open"
     assert rows["open-loop:open-loop:visible-interrupted"]["status"] == "open"
+    # Ingen falsk begrundelse må kunne skrives på rækken.
+    assert "completed successfully" not in str(
+        rows["open-loop:open-loop:visible-done"]["status_reason"] or ""
+    )
+
+
+def test_untouched_loop_still_decays_to_stale(isolated_runtime) -> None:
+    """Den ægte terminale vej: fravær af berøring, ikke kørslens udfald."""
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    old = datetime.now(UTC) - timedelta(days=6)
+    db.upsert_runtime_open_loop_signal(
+        signal_id="loop-never-touched", signal_type="touched",
+        canonical_key="open-loop:open-loop:visible-old",
+        status="open", title="Never touched", summary="old", rationale="test",
+        source_kind="test", confidence="high", evidence_summary="",
+        support_summary="", support_count=1, session_count=1,
+        created_at=old.isoformat(), updated_at=old.isoformat(),
+        status_reason="", run_id="old-run", session_id="old-session",
+    )
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO visible_runs "
+            "(run_id, lane, provider, model, status, finished_at) "
+            "VALUES ('visible-old', 'visible', 'test', 'test', 'completed', ?)",
+            (old.isoformat(),),
+        )
+
+    result = tracking.refresh_runtime_open_loop_signal_statuses()
+    row = next(x for x in db.list_runtime_open_loop_signals(limit=20)
+               if x["signal_id"] == "loop-never-touched")
+
+    assert result["stale_marked"] == 1
+    assert row["status"] == "stale"
 
 
 def test_closed_loop_never_decays_back_to_stale(isolated_runtime) -> None:

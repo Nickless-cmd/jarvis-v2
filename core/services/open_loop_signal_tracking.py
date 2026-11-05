@@ -89,7 +89,6 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     # nedenfor er stadig trunkeret separat.
     total = sum(_open_loop_status_counts().values())
     items = list_runtime_open_loop_signals(limit=max(total, 40))
-    completed_visible_domains = _completed_visible_domains(items)
     for item in items:
         current_status = str(item.get("status") or "")
         if current_status not in {"open", "softening", "closed", "stale"}:
@@ -100,33 +99,18 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
         if updated_at is None:
             continue
 
-        # Et visible-run er den operationelle sandhed for de per-run-domæner,
-        # som fokuslaget skaber. 41/45 åbne loops på CT105 pegede 5/11-2026
-        # på runs der allerede stod completed; closure ventede i stedet på
-        # resolved/settled-signaler, som de relevante producenter aldrig skrev.
-        # Interrupted er bevidst IKKE terminalt her: dét arbejde kan stadig
-        # kræve en fortsættelse.
-        domain = _loop_domain(str(item.get("canonical_key") or ""))
-        if current_status in {"open", "softening"} and domain in completed_visible_domains:
-            closed_item = update_runtime_open_loop_signal_status(
-                str(item.get("signal_id") or ""),
-                status="closed",
-                updated_at=now.isoformat(),
-                status_reason="Closed because the source visible run completed successfully.",
-            )
-            if closed_item is not None:
-                auto_closed += 1
-                event_bus.publish(
-                    "open_loop_signal.closed",
-                    {
-                        "signal_id": closed_item.get("signal_id"),
-                        "signal_type": closed_item.get("signal_type"),
-                        "status": closed_item.get("status"),
-                        "summary": closed_item.get("summary"),
-                        "status_reason": closed_item.get("status_reason"),
-                    },
-                )
-            continue
+        # Auto-lukning på «kilde-kørslen er completed» er FJERNET 5/11-2026.
+        # Målt: 51/51 lukkede loops var oprettet EFTER deres kilde-kørsel fik
+        # terminal status (visible_runs.py:6413 sætter status før 6437 kalder
+        # udtrækket, og nøglen bærer netop den kørsels run_id). Betingelsen var
+        # derfor opfyldt ved fødslen: loopet lukkede sig selv uden at nogen
+        # havde svaret på det. 0 af 51 kunne påvises løst, og de forsvandt
+        # samtidig fra closure- og memory-proposal-fladerne, som filtrerer på
+        # status in {open, softening}. En tidsstempel-vagt (finished_at >
+        # created_at) ville blive uopfyldelig af samme grund og gøre grenen til
+        # død kode, så den er ikke indført. Ægte terminale veje herunder er
+        # stale-markning og lukning efter inaktivitet — de måler fravær af
+        # berøring, hvilket er sandt uanset hvorfor loopet opstod.
 
         # Trin 1: stale → closed efter yderligere _CLOSE_STALE_AFTER_DAYS
         # 2026-05-16 fix: forhindrer at zombie-loops bliver ved med at trigge
@@ -166,29 +150,6 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
                 },
             )
     return {"stale_marked": refreshed, "auto_closed": auto_closed}
-
-
-def _loop_domain(canonical_key: str) -> str:
-    return str(canonical_key or "").rsplit(":", 1)[-1]
-
-
-def _completed_visible_domains(items: list[dict[str, object]]) -> set[str]:
-    domains = {
-        _loop_domain(str(item.get("canonical_key") or ""))
-        for item in items
-        if str(item.get("status") or "") in {"open", "softening"}
-    }
-    run_ids = sorted(domain for domain in domains if domain.startswith("visible-"))
-    if not run_ids:
-        return set()
-    placeholders = ",".join("?" for _ in run_ids)
-    with connect() as conn:
-        rows = conn.execute(
-            f"SELECT run_id FROM visible_runs WHERE status = 'completed' "
-            f"AND run_id IN ({placeholders})",
-            run_ids,
-        ).fetchall()
-    return {str(row["run_id"] or "") for row in rows}
 
 
 def _open_loop_status_counts() -> dict[str, int]:

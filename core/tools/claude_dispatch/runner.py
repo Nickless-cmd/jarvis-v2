@@ -4,9 +4,12 @@ import logging
 import os
 import shlex
 import subprocess
+import sys
+import tempfile
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from core.tools.claude_dispatch.audit import (
@@ -66,6 +69,71 @@ def _build_prompt(spec: TaskSpec, task_id: str) -> str:
         "After committing, summarize what you changed in one paragraph.",
     ]
     return "\n".join(parts)
+
+
+NO_COMMIT = "no_commit"
+
+
+def _git(worktree: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args], cwd=str(worktree), capture_output=True, text=True,
+    )
+
+
+def _head(worktree: Path) -> str:
+    """HEAD i worktreet, eller tom streng hvis det ikke kan laeses."""
+    result = _git(worktree, "rev-parse", "HEAD")
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _in_scope(path: str, scope: tuple[str, ...]) -> bool:
+    return any(
+        path == s or path.startswith(s.rstrip("/") + "/") for s in scope
+    )
+
+
+def _commit_leftovers(spec: TaskSpec, task_id: str, worktree: Path) -> str:
+    """Commit det agenten lod ligge, gennem den attribuerede wrapper.
+
+    MAALT 5/11-2026 (task 1a78689c5437 og 0b0493f1c2d0): agenten stagede
+    arbejdet og meldte ok, men HEAD flyttede sig ikke. Prompten HAR
+    commit-instruksen, saa roden er ikke at agenten ikke blev bedt om det —
+    en instruktion til en LLM er en bøn, ikke en garanti. Derfor ejer motoren
+    det sidste skridt. Returnerer tom streng ved succes, ellers aarsagen.
+    Kun filer i SCOPE committes; alt andet roeres ikke.
+    """
+    for path in spec.scope_files:
+        _git(worktree, "add", "-A", "--", path)  # sti uden aendringer er ikke en fejl
+    staged = _git(worktree, "diff", "--cached", "--name-only")
+    paths = [
+        p for p in staged.stdout.splitlines()
+        if p.strip() and _in_scope(p, spec.scope_files)
+    ]
+    if not paths:
+        return "ingen aendringer i SCOPE at committe"
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".txt", delete=False, encoding="utf-8",
+    ) as fh:
+        fh.write(f"feat(worker): {spec.goal.strip()[:58]}\n")
+        message_file = fh.name
+    try:
+        result = subprocess.run(
+            [
+                sys.executable, "scripts/commit_with_attribution.py",
+                "--repo", ".", "--actor", "opus", "--run-id", task_id,
+                "--session-id", "none", "--origin", "delegated",
+                "--approved-by", "policy:claude-dispatch-v1",
+                "--message-file", message_file,
+                *[a for p in paths for a in ("--path", p)],
+            ],
+            cwd=str(worktree), capture_output=True, text=True,
+        )
+    finally:
+        Path(message_file).unlink(missing_ok=True)
+    if result.returncode != 0:
+        return (result.stderr.strip() or result.stdout.strip()
+                or f"commit-wrapper exit {result.returncode}")[:500]
+    return ""
 
 
 def _new_task_id() -> str:
@@ -173,6 +241,8 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
                 "branch": branch, "diff_summary": "", "error": error,
             }
 
+    base_head = _head(worktree_path)
+
     proc = subprocess.Popen(
         cmd, cwd=str(worktree_path),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -266,6 +336,34 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
         if error is None:
             error = f"exceeded max_wall_seconds={spec.max_wall_seconds}"
 
+    # En dispatch er kun leveret hvis HEAD har flyttet sig. «ok» uden commit er
+    # en løgn: arbejdet ligger i et worktree der kan ryddes, uden attribution.
+    committed_by = ""
+    if status == "ok":
+        head_after = _head(worktree_path)
+        if base_head and head_after and head_after != base_head:
+            committed_by = "agent"
+        else:
+            commit_error = (
+                _commit_leftovers(spec, task_id, worktree_path)
+                if base_head else "HEAD kunne ikke laeses foer koerslen"
+            )
+            head_after = _head(worktree_path)
+            if base_head and head_after and head_after != base_head:
+                committed_by = "runner"
+            else:
+                status = "error"
+                failure_kind = NO_COMMIT
+                needs_human = True
+                error = (
+                    f"no_commit: agenten afsluttede uden at HEAD flyttede sig "
+                    f"({commit_error})"
+                )
+                action = (
+                    f"Tjek worktree {worktree_path} (branch {branch}) "
+                    "foer det ryddes — arbejdet kan ligge ucommittet."
+                )
+
     diff_summary = ""
     try:
         diff_summary = worktree_diff(task_id)[:8000]
@@ -295,4 +393,5 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
         "action": action,
         "needs_human": needs_human,
         "token_source": token_source,
+        "committed_by": committed_by,
     }

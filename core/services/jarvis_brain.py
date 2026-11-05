@@ -726,6 +726,17 @@ _HALFLIFE_DAYS = {
 }
 _SALIENCE_FLOOR = 0.02
 
+# Rangordens-vaegte (5/11-2026). Maalt mod det levende indeks: cosinus-spaendvidden
+# (max - median) er 0,10-0,19 og p99-minus-median 0,06-0,07, fordi nomic har en
+# hoej baseline-cosinus (median 0,52-0,58). Med 0.7/0.3 kunne salience give op til
+# 0,30 — ca. 2,3x hele relevans-spaendvidden — og en topisk irrelevant men
+# hoej-importance post vandt. Nu giver salience hoejst 0,05 (spaend mellem
+# importance 0,3 og 0,95 = 0,03), altsaa UNDER spaendvidden: den afgoer kun poster
+# der er naer-lige paa relevans. Vaegtene summer stadig til 1,0, saa scoren ligger
+# paa omtrent samme skala som foer og `min_score` betyder det samme.
+_COSINE_WEIGHT = 0.95
+_SALIENCE_WEIGHT = 0.05
+
 
 def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
     """Compute time-decayed salience with bump amplification + importance gate.
@@ -849,7 +860,9 @@ def search_brain(
     min_score: float = 0.0,
     min_cosine: float = 0.0,
 ) -> list[BrainEntry]:
-    """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience + temporal boost.
+    """Hybrid embedding search: 0.95*cosine + 0.05*effective_salience + temporal boost.
+
+    Relevans dominerer; salience er tiebreaker (se _COSINE_WEIGHT).
 
     Visibility_ceiling filtrerer ud poster med højere visibility-niveau.
     Tags: hvis angivet, returnér kun entries der har ALLE de angivne tags (AND-match).
@@ -991,7 +1004,7 @@ def search_brain_scored(
         # loftet var bumps en positiv feedback-loop (R1, 2026-09-04).
         eff = max(_SALIENCE_FLOOR, min(raw_eff, importance))
 
-        score = 0.7 * cos + 0.3 * eff
+        score = _COSINE_WEIGHT * cos + _SALIENCE_WEIGHT * eff
         scored.append((score, entry_id))
         candidate_ids.append(entry_id)
 
@@ -1028,7 +1041,7 @@ def search_brain_scored(
     scored.sort(reverse=True)
     # Relevans-cutoff (Jarvis-spec 2026-06-23 #3): FØR returneredes top-K uanset hvor
     # lav scoren var → 6 af 8 brain-fakta var irrelevante for samtalen. min_score skærer
-    # støjen (score = 0.7*cos + 0.3*eff). Default 0.0 = bagudkompatibel (intet filter).
+    # støjen (score = 0.95*cos + 0.05*eff). Default 0.0 = bagudkompatibel (intet filter).
     if min_score > 0.0:
         scored = [(s, eid) for s, eid in scored if s >= min_score]
     return scored[:limit]
@@ -1061,13 +1074,19 @@ TEMPORAL_EDGE_MAX_PER_NODE = 64
 #: Bruges til at afskære hvilke kandidater der overhovedet kan flytte sig ind
 #: i top-K. Hæves `boost_factor`, skal dette tal følge med, ellers bliver
 #: afskæringen for stram og rangeringen ændrer sig stille.
-_MAX_TEMPORAL_BOOST = 0.15
+#:
+#: 5/11-2026: sænket 0,15 -> 0,03. Boosten er uafhængig af relevans, og 0,15 var
+#: større end hele cosinus-spændvidden (p99-minus-median 0,06-0,07) — efter at
+#: salience var rettet løftede den stadig topisk irrelevante poster ind på
+#: plads 2-3 ("hvad er el-cyklens watt"). 0,03 ligger under spændvidden, så den
+#: kun afgør nær-lige poster, ligesom salience (_SALIENCE_WEIGHT).
+_MAX_TEMPORAL_BOOST = 0.03
 
 
 def _compute_search_temporal_boost(
     candidate_ids: list[str],
     *,
-    boost_factor: float = 0.15,
+    boost_factor: float = _MAX_TEMPORAL_BOOST,
     min_confidence: float = TEMPORAL_EDGE_READ_MIN_CONFIDENCE,
 ) -> dict[str, float]:
     """Compute temporal boost for search candidates.

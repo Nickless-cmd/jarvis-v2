@@ -76,8 +76,9 @@ def test_search_effective_salience_is_capped_by_importance(brain):
     with patch.object(brain, "_embed_text", return_value=q):
         scored = brain.search_brain_scored(query_text="x", limit=1, use_temporal_boost=False)
     score, _eid = scored[0]
-    # cos = 1.0 → 0.7 ; salience ≤ 0.3 → 0.09 ; total ≤ 0.79
-    assert score <= 0.79 + 1e-6
+    # cos = 1.0 → COSINE_WEIGHT ; salience ≤ importance 0.3 → 0.3·SALIENCE_WEIGHT
+    ceiling = brain._COSINE_WEIGHT * 1.0 + brain._SALIENCE_WEIGHT * 0.3
+    assert score <= ceiling + 1e-6
 
 
 def test_bump_salience_at_most_once_per_interval(brain):
@@ -264,3 +265,56 @@ def test_afskaeringen_maa_ikke_skaere_en_post_der_KAN_naa_op(brain):
                                                 use_temporal_boost=True)]
     assert uden == [a], "opsaetningen virker ikke — a skal foere uden boost"
     assert med == [b], "afskaeringen skar en post vaek der kunne naa op"
+
+
+# --- 2026-11-05: rangordenen beskrev vigtighed, ikke relevans -----------------
+# Målt mod det levende indeks: cosinus-spændvidden (max - median) er 0,10-0,19,
+# mens salience-leddet kunne give op til 0,30. Salience vejede ~2,3x mere end
+# HELE relevans-spændvidden, så "hvilken port kører ntfy på" fik en
+# høj-importance indsigt om noget helt andet som nr. 1.
+
+def _vec(cos_to_q0: float) -> np.ndarray:
+    """Enhedsvektor med præcis `cos_to_q0` i cosinus til _unit(0)."""
+    v = np.zeros(768, dtype=np.float32)
+    v[0] = cos_to_q0
+    v[1] = (1.0 - cos_to_q0 ** 2) ** 0.5
+    return v
+
+
+def _top_ids(brain, q, limit):
+    with patch.object(brain, "_embed_text", return_value=q):
+        return [eid for _s, eid in brain.search_brain_scored(
+            query_text="x", limit=limit, use_temporal_boost=False)]
+
+
+@pytest.mark.parametrize(
+    "relevant_cos, other_cos",
+    [
+        (0.60, 0.52),  # realistisk: median-til-p99-afstand i produktionen
+        (0.58, 0.52),  # 0,06 — under den målte p99-minus-median
+        (0.70, 0.60),  # øverst i fordelingen
+    ],
+)
+def test_high_importance_low_cosine_does_not_beat_high_cosine(brain, relevant_cos, other_cos):
+    """Høj cosinus + lav importance SKAL slå lav cosinus + høj importance."""
+    relevant = _write(brain, title="relevant", vec=_vec(relevant_cos), bumps=0, importance=0.3)
+    important = _write(brain, title="important-but-offtopic", vec=_vec(other_cos),
+                       bumps=0, importance=0.95)
+    assert _top_ids(brain, _unit(0), 2) == [relevant, important]
+
+
+def test_salience_still_breaks_ties_between_equally_relevant(brain):
+    """Salience er ikke fjernet — den afgør nær-lige poster."""
+    low = _write(brain, title="low", vec=_vec(0.60), bumps=0, importance=0.3)
+    high = _write(brain, title="high", vec=_vec(0.60), bumps=0, importance=0.95)
+    assert _top_ids(brain, _unit(0), 2) == [high, low]
+
+
+def test_salience_term_is_smaller_than_realistic_cosine_spread(brain):
+    """Hele salience-leddet (importance 0,02..1,0) skal rumme under 0,05."""
+    lo = _write(brain, title="lo", vec=_vec(0.60), bumps=0, importance=0.1)
+    hi = _write(brain, title="hi", vec=_vec(0.60), bumps=50_000, importance=1.0)
+    with patch.object(brain, "_embed_text", return_value=_unit(0)):
+        scored = dict((eid, s) for s, eid in brain.search_brain_scored(
+            query_text="x", limit=2, use_temporal_boost=False))
+    assert 0.0 < scored[hi] - scored[lo] < 0.05

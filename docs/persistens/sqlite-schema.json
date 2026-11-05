@@ -9903,7 +9903,7 @@
         ]
       },
       "created_at_formats": [
-        "iso_utc_offset"
+        "unobserved"
       ]
     },
     "cheap_lane_admission_state": {
@@ -10958,7 +10958,7 @@
       "created_at_formats": []
     },
     "claude_dispatch_audit": {
-      "digest": "f0:66:e7:60:a3:62:13:1c:a4:a5:26:4e:e2:02:20:9c:5c:82:bb:bb:47:8c:1f:5e:c6:0c:fb:f5:b5:8f:c9:65",
+      "digest": "e6:9f:f1:4c:96:86:45:16:6d:ab:3e:04:a9:e5:3f:4c:ce:66:75:c7:6f:af:27:e0:6d:a0:24:70:bb:ed:f3:f0",
       "schema": {
         "columns": [
           {
@@ -10990,6 +10990,14 @@
             "type": "INTEGER",
             "nullable": true,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "failure_kind",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },
@@ -11046,6 +11054,14 @@
             "type": "TEXT",
             "nullable": false,
             "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "token_source",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
             "pk": 0,
             "hidden": 0
           },

@@ -429,12 +429,12 @@ _Jarvis' desktop som ét kaldbart værktøj — ni medlemmer i én handling._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session` | `()` | Den delte X-session, startet hvis den ikke kører. | [src](../../../core/tools/desktop_tools.py#L42) |
-| function | `_gem` | `(jpeg, navn)` | Skriv JPEG'en til en fil og svar med stien. | [src](../../../core/tools/desktop_tools.py#L53) |
-| function | `_svar` | `(resultat)` | — | [src](../../../core/tools/desktop_tools.py#L63) |
-| function | `_koer` | `(action, args)` | Udfør én handling. Aldrig exception — en fejl er et svar, ikke et crash. | [src](../../../core/tools/desktop_tools.py#L69) |
-| function | `_exec_jarvis_desktop` | `(args)` | — | [src](../../../core/tools/desktop_tools.py#L141) |
-| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desktop_tools.py#L152) |
+| function | `_session` | `()` | Kalderens EGEN X-session, startet hvis den ikke kører. | [src](../../../core/tools/desktop_tools.py#L42) |
+| function | `_gem` | `(jpeg, navn)` | Skriv JPEG'en til en fil og svar med stien. | [src](../../../core/tools/desktop_tools.py#L69) |
+| function | `_svar` | `(resultat)` | — | [src](../../../core/tools/desktop_tools.py#L79) |
+| function | `_koer` | `(action, args)` | Udfør én handling. Aldrig exception — en fejl er et svar, ikke et crash. | [src](../../../core/tools/desktop_tools.py#L85) |
+| function | `_exec_jarvis_desktop` | `(args)` | — | [src](../../../core/tools/desktop_tools.py#L157) |
+| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desktop_tools.py#L168) |
 
 ## `core/tools/document_create_tools.py`
 _Opret-dokumenter: Word, Excel, PowerPoint og PDF._

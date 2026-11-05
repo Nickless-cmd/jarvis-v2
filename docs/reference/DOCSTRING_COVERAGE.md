@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9785/18247 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9790/18252 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9785/18247 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 734 | 1026 | 71% |
+| `apps.api.jarvis_api.routes` | 735 | 1027 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -20,7 +20,7 @@ Generated from source. 9785/18247 functions/methods documented (53%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 76 | 104 | 73% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.desktop` | 21 | 30 | 70% |
+| `core.desktop` | 25 | 34 | 73% |
 | `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
@@ -305,8 +305,8 @@ Generated from source. 9785/18247 functions/methods documented (53%). The list b
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
 - `core/costing/ledger.py` :: `telemetry_summary` (L118)
-- `core/desktop/x_session.py` :: `XSession.start` (L190)
-- `core/desktop/x_session.py` :: `XSession.stop` (L395)
+- `core/desktop/x_session.py` :: `XSession.start` (L300)
+- `core/desktop/x_session.py` :: `XSession.stop` (L505)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L180)
 - `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L201)
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L226)

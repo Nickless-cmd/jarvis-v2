@@ -287,10 +287,14 @@ def test_vagten_startes_kun_en_gang(monkeypatch):
     assert startet[0]["daemon"] is True
 
 
-# ── Den delte session ────────────────────────────────────────────────────
-def test_delt_session_er_samme_instans():
-    """Desktoppen er en tilstand: alle klienter skal se SAMME skaerm."""
-    assert xs.shared_session() is xs.shared_session()
+# ── Sessionen pr. bruger ─────────────────────────────────────────────────
+def test_session_for_er_cachet_pr_bruger(monkeypatch, tmp_path):
+    """Desktoppen er en tilstand: samme bruger faar SAMME skaerm igen."""
+    monkeypatch.setattr(xs, "_REGISTER_DIR", tmp_path / "reg")
+    monkeypatch.setattr(xs, "_sessioner", {})
+    monkeypatch.setattr(xs, "_workspace_for", lambda u, p: tmp_path)
+    assert xs.session_for("a", "owner") is xs.session_for("a", "owner")
+    assert not hasattr(xs, "shared_session")
 
 
 def test_doed_socket_ryddes(monkeypatch, tmp_path):

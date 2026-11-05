@@ -175,7 +175,8 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `desktop_stream` | `(ws)` | Jarvis' Linux-desktop som JPEG-frames (binære beskeder) + input tilbage. | [src](../../../apps/api/jarvis_api/routes/desktop_stream.py#L16) |
+| function | `_bruger_id` | `(krav, privilege)` | Hvem sessionen tilhører. Uden token (auth slået fra) er det ejeren. | [src](../../../apps/api/jarvis_api/routes/desktop_stream.py#L15) |
+| function | `desktop_stream` | `(ws)` | Jarvis' Linux-desktop som JPEG-frames (binære beskeder) + input tilbage. | [src](../../../apps/api/jarvis_api/routes/desktop_stream.py#L31) |
 
 ## `apps/api/jarvis_api/routes/files.py`
 _Udgivne filer — per bruger._

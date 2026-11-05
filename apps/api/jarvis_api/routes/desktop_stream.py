@@ -12,11 +12,29 @@ logger = logging.getLogger("uvicorn.error")
 _MAX_BESKED = 8192
 
 
+def _bruger_id(krav: dict | None, privilege: str) -> str:
+    """Hvem sessionen tilhører. Uden token (auth slået fra) er det ejeren."""
+    if krav is not None:
+        return str(krav.get("sub") or "")
+    if privilege == "owner":
+        try:
+            from core.identity.users import get_owner
+
+            o = get_owner()
+            return str(getattr(o, "discord_id", "") or "") if o else ""
+        except Exception:  # ingen ejer at finde: tomt id -> workspace_unavailable
+            return ""
+    return ""
+
+
 @router.websocket("/ws/desktop")
 async def desktop_stream(ws: WebSocket) -> None:
     """Jarvis' Linux-desktop som JPEG-frames (binære beskeder) + input tilbage.
 
-    Owner-only. Tokenet kommer via subprotokollen (se core/runtime/ws_auth).
+    Hver bruger får sin EGEN session i eget workspace (`session_for`). Ejeren
+    er ikke indespærret; alle andre er låst til deres workspace. Kan workspace
+    ikke opløses, lukkes forbindelsen med `workspace_unavailable` — aldrig et
+    fald til en fælles session. Tokenet kommer via subprotokollen.
     """
     from core.runtime import ws_auth
 
@@ -25,19 +43,22 @@ async def desktop_stream(ws: WebSocket) -> None:
     if krav is None and ws_auth.kraeves_auth():
         await ws.close(code=1008, reason="auth_required")
         return
-    # Desktoppen er et styrehåndtag, ikke en læsestrøm: kun ejeren.
-    if not ws_auth.er_ejer(krav):
-        await ws.close(code=1008, reason="owner_required")
-        return
+    privilege = "owner" if ws_auth.er_ejer(krav) else "member"
+    bruger = _bruger_id(krav, privilege)
 
     if bad_om_sub:
         await ws.accept(subprotocol=bad_om_sub)
     else:
         await ws.accept()
 
-    from core.desktop.x_session import shared_session
+    from core.desktop.x_session import WorkspaceUnavailable, session_for
 
-    sess = shared_session()
+    try:
+        sess = session_for(bruger, privilege)
+    except (WorkspaceUnavailable, ValueError) as exc:
+        logger.warning("desktop_stream: workspace utilgængeligt: %s", exc)
+        await ws.close(code=1008, reason="workspace_unavailable")
+        return
     try:
         res = await asyncio.to_thread(sess.start)
     except Exception as exc:

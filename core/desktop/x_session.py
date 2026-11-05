@@ -6,13 +6,16 @@ kaste returneres `{"status":"error","code":"DESKTOP_UNAVAILABLE","error":...}`.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
 import shutil
 import subprocess
+import tempfile
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 DISPLAY = ":99"
@@ -41,6 +44,96 @@ _TASTE_ALIAS = {
     "PageDown": "Next", "Shift": "Shift_L", "Control": "Control_L", "Alt": "Alt_L",
     "Meta": "Super_L", " ": "space", "Insert": "Insert",
 }
+
+
+# ── Rettigheder og workspace-binding (5/11-2026) ─────────────────────────
+#
+# Alle desktop-sessioner starter i brugerens EGEN workspace-mappe, også ejerens.
+# Forskellen er rettigheder UDEN FOR mappen:
+#   owner  – Bjørn: ingen indespærring
+#   self   – Jarvis' egen desktop: ingen indespærring
+#   member – alle andre: LÅST til eget workspace
+#
+# cwd er ikke en indespærring (en proces med cwd i sin mappe læser stadig
+# /etc/passwd). Derfor er håndhævelsen MEKANISK: teknik (a), bubblewrap-
+# namespace hvor kun workspace-mappen (og read-only /usr) er monteret. Sti-
+# validering (b) er fravalgt: den dækker hver fil-operation for sig og
+# springes over af ethvert program vi ikke selv har skrevet (xterm-shell,
+# pcmanfm), mens en mount-namespace slet ikke indeholder stierne.
+PRIVILEGE_OWNER = "owner"
+PRIVILEGE_SELF = "self"
+PRIVILEGE_MEMBER = "member"
+PRIVILEGER = (PRIVILEGE_OWNER, PRIVILEGE_SELF, PRIVILEGE_MEMBER)
+SELF_USER = "jarvis"
+
+#: Hvem der har claimet hvilket display. Overlever API-genstart, så et display
+#: aldrig skifter bruger mens dets Xvfb stadig lever.
+_REGISTER_DIR = Path(tempfile.gettempdir()) / "jarvis-desktop-displays"
+_DISPLAY_FRA = 100
+_DISPLAY_TIL = 999
+
+
+class WorkspaceUnavailable(RuntimeError):
+    """Brugerens workspace kunne ikke opløses. Der er INTET fallback."""
+
+
+def _tildel_display(noegle: str) -> str:
+    """Et display pr. bruger-nøgle; aldrig delt mellem to nøgler."""
+    _REGISTER_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    antal = _DISPLAY_TIL - _DISPLAY_FRA + 1
+    start = int(hashlib.sha256(noegle.encode()).hexdigest()[:8], 16) % antal
+    for i in range(antal):
+        n = _DISPLAY_FRA + (start + i) % antal
+        fil = _REGISTER_DIR / str(n)
+        try:
+            fd = os.open(fil, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError:
+            try:
+                if fil.read_text() == noegle:
+                    return f":{n}"
+            except OSError:  # ulæselig post: behandl displayet som optaget
+                pass
+            continue
+        with os.fdopen(fd, "w") as f:
+            f.write(noegle)
+        return f":{n}"
+    raise WorkspaceUnavailable("ingen ledige desktop-displays")
+
+
+def sandbox_args(workspace: Path, display: str) -> list[str]:
+    """bwrap-præfiks: kun workspace (rw), read-only systembiblioteker, eget X-socket.
+
+    Intet /etc (altså ingen /etc/passwd), intet /home, tom /tmp, eget PID-/net-
+    namespace (net: ellers kan klienten nå andre brugeres X via abstract socket),
+    og et RENT miljø så API'ets hemmeligheder ikke arves.
+    """
+    ws = str(workspace)
+    sok = "/tmp/.X11-unix/X" + display.lstrip(":")
+    a = ["bwrap", "--unshare-pid", "--unshare-ipc", "--unshare-uts", "--unshare-net",
+         "--cap-drop", "ALL", "--clearenv",
+         "--ro-bind", "/usr", "/usr"]
+    for d in ("/bin", "/sbin", "/lib", "/lib32", "/lib64"):
+        if os.path.islink(d):
+            a += ["--symlink", os.readlink(d), d]
+        elif os.path.isdir(d):
+            a += ["--ro-bind", d, d]
+    a += ["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"]
+    if os.path.isdir("/etc/fonts"):
+        a += ["--ro-bind", "/etc/fonts", "/etc/fonts"]
+    a += ["--bind", sok, sok, "--bind", ws, ws, "--chdir", ws,
+          "--setenv", "HOME", ws, "--setenv", "DISPLAY", display,
+          "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin",
+          "--setenv", "SHELL", "/bin/bash", "--setenv", "LANG", "C.UTF-8",
+          "--"]
+    return a
+
+
+def _navn(p: Any) -> str:
+    """Programnavnet bag en proces, også når den er pakket ind i bwrap."""
+    n = getattr(p, "jarvis_navn", None)
+    if isinstance(n, str):
+        return n
+    return os.path.basename(str(p.args[0])) if p.args else ""
 
 
 def _fejl(kode: str, tekst: str) -> dict[str, Any]:
@@ -148,7 +241,12 @@ def mangler_pakker() -> list[str]:
 
 
 class XSession:
-    def __init__(self, display: str = DISPLAY, bredde: int = BREDDE, hoejde: int = HOEJDE) -> None:
+    def __init__(
+        self, display: str = DISPLAY, bredde: int = BREDDE, hoejde: int = HOEJDE,
+        *, workspace: Path | None = None, privilege: str | None = None,
+    ) -> None:
+        self.workspace = Path(workspace) if workspace is not None else None
+        self.privilege = privilege
         self.display = display
         self.bredde = bredde
         self.hoejde = hoejde
@@ -179,10 +277,22 @@ class XSession:
         # start_new_session: skaermen er en TILSTAND, ikke en forbindelse. Uden
         # dette doer Xvfb og vinduerne naar API-processen genstarter, og den
         # delte desktop varer kun til naeste deploy (maalt 5/11-2026).
+        orig = list(args)
+        cwd = None
+        if self.workspace is not None and os.path.basename(str(args[0])) != "Xvfb":
+            # Klienter (WM, terminal, filhaandtering) starter i workspace.
+            cwd = str(self.workspace)
+            if self.privilege == PRIVILEGE_MEMBER:
+                # Mekanisk indespaerring: se sandbox_args.
+                if shutil.which("bwrap") is None:
+                    raise OSError("bwrap mangler: member-session kan ikke indespaerres")
+                args = sandbox_args(self.workspace, self.display) + list(args)
         p = subprocess.Popen(
             args, env=self._env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            start_new_session=True, cwd=cwd,
         )
+        # Under bwrap er args[0] "bwrap"; husk det rigtige programnavn.
+        p.jarvis_navn = os.path.basename(str(orig[0]))  # type: ignore[attr-defined]
         with self._proc_laas:
             self._procs.append(p)
         return p
@@ -251,7 +361,7 @@ class XSession:
         for p in procs:
             if p.poll() is not None:
                 continue
-            navn = os.path.basename(str(p.args[0])) if p.args else ""
+            navn = _navn(p)
             if navn in _WM_KANDIDATER:
                 return True
         return False
@@ -364,7 +474,7 @@ class XSession:
         egne = [
             p for p in procs
             if p.poll() is None and p.args
-            and os.path.basename(str(p.args[0])) == "xterm"
+            and _navn(p) == "xterm"
         ]
         for p in egne:
             if self._vinduer_for(p.pid):
@@ -545,20 +655,56 @@ class XSession:
         return {"status": "ok"}
 
 
-_singleton: XSession | None = None
-_singleton_laas = threading.Lock()
+_sessioner: dict[tuple[str, str], XSession] = {}
+_sessioner_laas = threading.Lock()
 
 
-def shared_session() -> XSession:
-    """Én delt X-session for hele processen.
+def _workspace_for(user: str, privilege: str) -> Path:
+    """Opløs workspace gennem den eksisterende adgangsvej (workspace_paths).
 
-    Desktoppen er en TILSTAND, ikke en forbindelse. Blev sessionen stoppet når
-    den sidste websocket lukkede, forsvandt vinduerne og alt man var i gang
-    med, hver gang man skiftede fane. Derfor deles den mellem alle klienter, og
-    den stoppes kun ved eksplicit nedlukning.
+    Aldrig sammensat af rå input: `workspace_dir` slår brugeren op i
+    users.json/SQLite og rejser ellers. Desktoppen LÆSER ingen filer i
+    mappen (medlemmers .enc-filer forbliver bag workspace_crypto); den
+    monterer kun selve mappen.
     """
-    global _singleton
-    with _singleton_laas:
-        if _singleton is None:
-            _singleton = XSession()
-        return _singleton
+    from core.runtime import workspace_paths as wp
+
+    try:
+        if privilege == PRIVILEGE_SELF:
+            sti = wp.shared_dir()
+        else:
+            sti = wp.workspace_dir(user)
+            if not wp.rent_mappe_eller_filnavn(sti.name):
+                raise WorkspaceUnavailable("ugyldigt workspace-navn")
+        sti = sti.resolve(strict=True)
+    except WorkspaceUnavailable:
+        raise
+    except Exception as exc:  # NoUserContextError, manglende mappe, I/O: ingen fallback
+        raise WorkspaceUnavailable(f"workspace kunne ikke opløses: {exc}") from exc
+    if not sti.is_dir():
+        raise WorkspaceUnavailable("workspace er ikke en mappe")
+    return sti
+
+
+def session_for(user: str, privilege: str) -> XSession:
+    """Brugerens EGEN X-session, cachet pr. (rettighed, bruger).
+
+    Erstatter den globale `shared_session()`. Rejser `WorkspaceUnavailable`
+    hvis workspace ikke kan opløses — ALDRIG et stille fald til en fælles
+    session. Desktoppen er stadig en tilstand: sessionen stoppes kun ved
+    eksplicit nedlukning, ikke når en forbindelse lukker.
+    """
+    if privilege not in PRIVILEGER:
+        raise ValueError(f"ukendt rettighed: {privilege!r}")
+    bruger = SELF_USER if privilege == PRIVILEGE_SELF else str(user or "").strip()
+    if not bruger:
+        raise WorkspaceUnavailable("ingen bruger")
+    noegle = (privilege, bruger)
+    with _sessioner_laas:
+        sess = _sessioner.get(noegle)
+        if sess is None:
+            ws = _workspace_for(bruger, privilege)
+            display = _tildel_display(f"{privilege}:{bruger}")
+            sess = XSession(display=display, workspace=ws, privilege=privilege)
+            _sessioner[noegle] = sess
+        return sess

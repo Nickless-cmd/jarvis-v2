@@ -40,10 +40,26 @@ _AKTIONER = (
 
 
 def _session() -> Any:
-    """Den delte X-session, startet hvis den ikke kører."""
-    from core.desktop.x_session import shared_session
+    """Kalderens EGEN X-session, startet hvis den ikke kører.
 
-    sess = shared_session()
+    Ejeren og Jarvis (`self`) er ikke indespærret; et medlem er låst til eget
+    workspace. Kan workspace ikke opløses, fejler værktøjet — intet fallback.
+    """
+    from core.desktop.x_session import (
+        PRIVILEGE_MEMBER, PRIVILEGE_SELF, SELF_USER, session_for,
+    )
+    from core.identity.workspace_context import current_user_id
+
+    uid = current_user_id()
+    privilege, bruger = PRIVILEGE_SELF, SELF_USER
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+
+        u = find_user_by_discord_id(uid)
+        if u is None or u.role != "owner":
+            # Ukendt eller ikke-ejer: aldrig mere end member-rettigheder.
+            privilege, bruger = PRIVILEGE_MEMBER, uid
+    sess = session_for(bruger, privilege)
     res = sess.start()
     if res.get("status") != "ok":
         raise RuntimeError(str(res.get("error") or "desktoppen kunne ikke startes"))

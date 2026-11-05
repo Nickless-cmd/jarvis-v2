@@ -36579,7 +36579,7 @@
       ]
     },
     "runtime_open_loop_signals": {
-      "digest": "f4:f6:c5:16:f0:40:cc:db:a9:55:0c:36:52:95:3b:78:04:f4:cb:a5:7a:16:06:55:c9:ec:03:6d:87:b7:9f:df",
+      "digest": "0c:ce:2c:67:dd:6e:e0:1c:ee:f7:bd:ed:c6:4d:58:2e:a1:f2:aa:89:9e:07:e9:61:35:e9:e0:6c:e1:61:63:fd",
       "schema": {
         "columns": [
           {
@@ -36687,6 +36687,14 @@
             "hidden": 0
           },
           {
+            "name": "source_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
             "name": "status",
             "type": "TEXT",
             "nullable": false,
@@ -36720,6 +36728,14 @@
           },
           {
             "name": "support_summary",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "thread_id",
             "type": "TEXT",
             "nullable": false,
             "default": "''",
@@ -36791,6 +36807,30 @@
               }
             ],
             "sql": "CREATE INDEX idx_runtime_open_loop_signals_status ON runtime_open_loop_signals(status, id DESC)"
+          },
+          {
+            "name": "idx_runtime_open_loop_signals_thread",
+            "unique": false,
+            "origin": "c",
+            "partial": false,
+            "parts": [
+              {
+                "column": "thread_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": "id",
+                "descending": true,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE INDEX idx_runtime_open_loop_signals_thread ON runtime_open_loop_signals(thread_id, id DESC)"
           },
           {
             "name": "sqlite_autoindex_runtime_open_loop_signals_1",
@@ -43690,6 +43730,126 @@
       "created_at_formats": [
         "unobserved"
       ]
+    },
+    "runtime_thread_registry": {
+      "digest": "6c:e2:67:06:4d:a5:27:00:4a:07:f0:2c:b0:07:3c:20:64:d1:47:39:d3:b5:f1:0d:a6:1f:04:9e:37:17:ed:c3",
+      "schema": {
+        "columns": [
+          {
+            "name": "closed_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "closed_in_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "closure_evidence",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "declared_by",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "name",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "opened_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "opened_in_run_id",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "''",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'open'",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "thread_id",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
+            "pk": 1,
+            "hidden": 0
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_runtime_thread_registry_open_name",
+            "unique": true,
+            "origin": "c",
+            "partial": true,
+            "parts": [
+              {
+                "column": "name",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": "CREATE UNIQUE INDEX idx_runtime_thread_registry_open_name ON runtime_thread_registry(name) WHERE status = 'open'"
+          },
+          {
+            "name": "sqlite_autoindex_runtime_thread_registry_1",
+            "unique": true,
+            "origin": "pk",
+            "partial": false,
+            "parts": [
+              {
+                "column": "thread_id",
+                "descending": false,
+                "key": true
+              },
+              {
+                "column": null,
+                "descending": false,
+                "key": false
+              }
+            ],
+            "sql": null
+          }
+        ]
+      },
+      "created_at_formats": []
     },
     "runtime_user_md_update_proposals": {
       "digest": "e2:d8:bc:36:57:c9:b5:55:78:d9:7f:f1:c9:ad:ef:ea:84:d9:7f:77:e7:62:86:a0:dc:9c:50:e8:23:f5:09:40",

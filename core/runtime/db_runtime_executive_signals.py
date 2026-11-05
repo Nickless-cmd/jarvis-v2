@@ -22,6 +22,7 @@ families; contract_candidate carries an extra
 from __future__ import annotations
 
 import sqlite3
+from uuid import uuid4
 
 from core.runtime.db_core import (
     _accumulated_counts,
@@ -1672,16 +1673,32 @@ def upsert_runtime_open_loop_signal(
     status_reason: str = "",
     run_id: str = "",
     session_id: str = "",
+    thread_id: str = "",
+    source_run_id: str = "",
 ) -> dict[str, object]:
     """Insert or merge a runtime open-loop signal via the shared ``_upsert_signal``
     helper (lookup statuses: open/softening/closed/stale).
+
+    ``thread_id`` binds the row to a DECLARED thread in ``runtime_thread_registry``
+    (identity). ``run_id`` is the latest run that touched the row;
+    ``source_run_id`` is the run that created it (set once, never overwritten).
+    A thread-bound row can only be written open/softening against an open thread —
+    closing goes through ``close_runtime_thread`` and its evidence requirement.
 
     Returns the persisted row dict enriched with the upsert meta
     (``was_created``/``was_updated``/``merge_state``). Raises if the row cannot
     be re-read.
     """
+    thread_id = str(thread_id or "").strip()
     with connect() as conn:
         _ensure_runtime_open_loop_signal_table(conn)
+        if thread_id:
+            _require_open_thread(conn, thread_id)
+            if status not in {"open", "softening"}:
+                raise ValueError(
+                    f"thread-bound open loop cannot be written as {status!r}; "
+                    "use close_runtime_thread with evidence"
+                )
         resolved_id, meta = _upsert_signal(
             conn=conn,
             table="runtime_open_loop_signals",
@@ -1698,6 +1715,7 @@ def upsert_runtime_open_loop_signal(
                 ("rationale", rationale),
                 ("run_id", run_id),
                 ("session_id", session_id),
+                ("thread_id", thread_id),
             ],
             rank_cols=[
                 ("source_kind", source_kind, _SOURCE_KIND_RANKS),
@@ -1715,6 +1733,13 @@ def upsert_runtime_open_loop_signal(
             created_at=created_at,
             updated_at=updated_at,
         )
+        # Skabelsesstedet er immutabelt: kun den tomme værdi kan sættes.
+        conn.execute(
+            "UPDATE runtime_open_loop_signals SET source_run_id = ? "
+            "WHERE signal_id = ? AND source_run_id = ''",
+            (str(source_run_id or run_id or ""), resolved_id),
+        )
+        conn.commit()
 
     signal = get_runtime_open_loop_signal(resolved_id)
     if signal is None:
@@ -1757,6 +1782,8 @@ def list_runtime_open_loop_signals(
                 status_reason,
                 run_id,
                 session_id,
+                thread_id,
+                source_run_id,
                 support_count,
                 session_count,
                 merge_count,
@@ -1793,6 +1820,8 @@ def get_runtime_open_loop_signal(signal_id: str) -> dict[str, object] | None:
                 status_reason,
                 run_id,
                 session_id,
+                thread_id,
+                source_run_id,
                 support_count,
                 session_count,
                 merge_count,
@@ -1824,7 +1853,7 @@ def update_runtime_open_loop_signal_status(
         _ensure_runtime_open_loop_signal_table(conn)
         row = conn.execute(
             """
-            SELECT signal_id
+            SELECT signal_id, thread_id
             FROM runtime_open_loop_signals
             WHERE signal_id = ?
             LIMIT 1
@@ -1833,6 +1862,11 @@ def update_runtime_open_loop_signal_status(
         ).fetchone()
         if row is None:
             return None
+        if row["thread_id"] and status in {"closed", "superseded"}:
+            raise ValueError(
+                "thread-bound open loop is closed only by close_runtime_thread "
+                "with evidence"
+            )
         conn.execute(
             """
             UPDATE runtime_open_loop_signals
@@ -1879,6 +1913,192 @@ def supersede_runtime_open_loop_signals_for_domain(
         return int(cursor.rowcount or 0)
 
 
+# ---------------------------------------------------------------------------
+# Thread registry (5/11-2026): en tråd får et SAT navn, ikke et udledt.
+# Tekst-nøgler er 1:1 med kørsler (99,94 % unikke) og embedding-similarity kan
+# ikke skelne tråde (median 0,770 mellem forskellige, p99 0,870), så der findes
+# ingen automatisk erklæring. ``declare_runtime_thread`` er det bevidste
+# valg-punkt; lukning kræver bevis for at spørgsmålet blev besvaret.
+# ---------------------------------------------------------------------------
+
+THREAD_DECLARERS = ("jarvis", "bjorn")
+
+
+def _ensure_runtime_thread_registry_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_thread_registry (
+            thread_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL COLLATE NOCASE,
+            status TEXT NOT NULL DEFAULT 'open',
+            declared_by TEXT NOT NULL,
+            opened_in_run_id TEXT NOT NULL DEFAULT '',
+            opened_at TEXT NOT NULL,
+            closed_at TEXT NOT NULL DEFAULT '',
+            closed_in_run_id TEXT NOT NULL DEFAULT '',
+            closure_evidence TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    # Ét åbent navn ad gangen: samme navn genbruges, det erklæres ikke to gange.
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_runtime_thread_registry_open_name
+        ON runtime_thread_registry(name) WHERE status = 'open'
+        """
+    )
+
+
+def _thread_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {key: row[key] for key in row.keys()}
+
+
+def _require_open_thread(conn: sqlite3.Connection, thread_id: str) -> dict[str, object]:
+    _ensure_runtime_thread_registry_table(conn)
+    row = conn.execute(
+        "SELECT * FROM runtime_thread_registry WHERE thread_id = ?", (thread_id,)
+    ).fetchone()
+    if row is None:
+        raise ValueError(f"unknown thread_id {thread_id!r}: declare it first")
+    if row["status"] != "open":
+        raise ValueError(f"thread {thread_id!r} is {row['status']}, not open")
+    return _thread_from_row(row)
+
+
+def declare_runtime_thread(
+    *,
+    name: str,
+    declared_by: str,
+    opened_at: str,
+    opened_in_run_id: str = "",
+    thread_id: str = "",
+) -> dict[str, object]:
+    """Erklær en tråd med et SAT navn. ``declared_by`` er ``jarvis`` eller
+    ``bjorn`` — aldrig en heuristic. Rejser ValueError ved tomt navn, ukendt
+    erklærer eller et allerede åbent navn."""
+    clean_name = " ".join(str(name or "").split())
+    if not clean_name:
+        raise ValueError("a thread needs a name set on purpose")
+    if declared_by not in THREAD_DECLARERS:
+        raise ValueError(f"declared_by must be one of {THREAD_DECLARERS}")
+    resolved_id = str(thread_id or "").strip() or f"thread-{uuid4().hex[:12]}"
+    with connect() as conn:
+        _ensure_runtime_thread_registry_table(conn)
+        clash = conn.execute(
+            "SELECT thread_id FROM runtime_thread_registry "
+            "WHERE name = ? AND status = 'open'",
+            (clean_name,),
+        ).fetchone()
+        if clash is not None:
+            raise ValueError(
+                f"thread named {clean_name!r} is already open as {clash['thread_id']}"
+            )
+        conn.execute(
+            """
+            INSERT INTO runtime_thread_registry
+                (thread_id, name, status, declared_by, opened_in_run_id, opened_at)
+            VALUES (?, ?, 'open', ?, ?, ?)
+            """,
+            (resolved_id, clean_name, declared_by, opened_in_run_id, opened_at),
+        )
+        conn.commit()
+    thread = get_runtime_thread(resolved_id)
+    if thread is None:
+        raise RuntimeError("runtime thread was not persisted")
+    return thread
+
+
+def get_runtime_thread(thread_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_thread_registry_table(conn)
+        row = conn.execute(
+            "SELECT * FROM runtime_thread_registry WHERE thread_id = ?", (thread_id,)
+        ).fetchone()
+    return _thread_from_row(row) if row is not None else None
+
+
+def get_open_runtime_thread_by_name(name: str) -> dict[str, object] | None:
+    """Opslag på det satte navn (eksakt, case-insensitivt) — ikke fuzzy."""
+    clean_name = " ".join(str(name or "").split())
+    with connect() as conn:
+        _ensure_runtime_thread_registry_table(conn)
+        row = conn.execute(
+            "SELECT * FROM runtime_thread_registry WHERE name = ? AND status = 'open'",
+            (clean_name,),
+        ).fetchone()
+    return _thread_from_row(row) if row is not None else None
+
+
+def list_runtime_threads(*, status: str | None = None, limit: int = 50) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_thread_registry_table(conn)
+        where, params = ("WHERE status = ?", (status,)) if status else ("", ())
+        rows = conn.execute(
+            f"SELECT * FROM runtime_thread_registry {where} "
+            "ORDER BY opened_at DESC LIMIT ?",
+            (*params, max(limit, 1)),
+        ).fetchall()
+    return [_thread_from_row(row) for row in rows]
+
+
+def close_runtime_thread(
+    thread_id: str,
+    *,
+    evidence: str,
+    answered_in_run_id: str,
+    closed_at: str,
+) -> dict[str, object]:
+    """Luk en tråd og dens loop-rækker. Kræver bevis: en ikke-tom ``evidence``
+    og den kørsel der besvarede spørgsmålet. Kørslen må ikke være den der åbnede
+    tråden — det var netop den selvopfyldende lukning, der blev fjernet i
+    38a1339a0 (betingelsen opfyldt ved fødslen). En kørsels afslutning er ikke
+    bevis; kun et peg på svaret er."""
+    clean_evidence = " ".join(str(evidence or "").split())
+    answering_run = str(answered_in_run_id or "").strip()
+    if not clean_evidence:
+        raise ValueError("closing a thread requires evidence that it was answered")
+    if not answering_run:
+        raise ValueError("closing a thread requires the run that answered it")
+    with connect() as conn:
+        _ensure_runtime_open_loop_signal_table(conn)
+        thread = _require_open_thread(conn, thread_id)
+        origin_runs = {str(thread["opened_in_run_id"] or "")} | {
+            str(r["source_run_id"] or "")
+            for r in conn.execute(
+                "SELECT source_run_id FROM runtime_open_loop_signals WHERE thread_id = ?",
+                (thread_id,),
+            )
+        }
+        if answering_run in origin_runs:
+            raise ValueError(
+                "the run that opened the thread cannot be the run that answers it"
+            )
+        reason = f"Answered in {answering_run}: {clean_evidence}"
+        conn.execute(
+            """
+            UPDATE runtime_thread_registry
+            SET status = 'closed', closed_at = ?, closed_in_run_id = ?,
+                closure_evidence = ?
+            WHERE thread_id = ?
+            """,
+            (closed_at, answering_run, clean_evidence, thread_id),
+        )
+        conn.execute(
+            """
+            UPDATE runtime_open_loop_signals
+            SET status = 'closed', status_reason = ?, updated_at = ?
+            WHERE thread_id = ? AND status IN ('open', 'softening', 'stale')
+            """,
+            (reason, closed_at, thread_id),
+        )
+        conn.commit()
+    closed = get_runtime_thread(thread_id)
+    if closed is None:
+        raise RuntimeError("runtime thread vanished while closing")
+    return closed
+
+
+
 def _ensure_runtime_open_loop_signal_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -1898,12 +2118,38 @@ def _ensure_runtime_open_loop_signal_table(conn: sqlite3.Connection) -> None:
             status_reason TEXT NOT NULL DEFAULT '',
             run_id TEXT NOT NULL DEFAULT '',
             session_id TEXT NOT NULL DEFAULT '',
+            thread_id TEXT NOT NULL DEFAULT '',
+            source_run_id TEXT NOT NULL DEFAULT '',
             support_count INTEGER NOT NULL DEFAULT 1,
             session_count INTEGER NOT NULL DEFAULT 1,
             merge_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
+        """
+    )
+    existing_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(runtime_open_loop_signals)")
+    }
+    if "thread_id" not in existing_cols:
+        conn.execute(
+            "ALTER TABLE runtime_open_loop_signals "
+            "ADD COLUMN thread_id TEXT NOT NULL DEFAULT ''"
+        )
+    if "source_run_id" not in existing_cols:
+        conn.execute(
+            "ALTER TABLE runtime_open_loop_signals "
+            "ADD COLUMN source_run_id TEXT NOT NULL DEFAULT ''"
+        )
+        # Eksisterende rækker er per-tur: deres run_id ER skabelseskørslen.
+        conn.execute(
+            "UPDATE runtime_open_loop_signals SET source_run_id = run_id "
+            "WHERE source_run_id = ''"
+        )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_open_loop_signals_thread
+        ON runtime_open_loop_signals(thread_id, id DESC)
         """
     )
     conn.execute(
@@ -1936,6 +2182,8 @@ def _runtime_open_loop_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
         "status_reason": row["status_reason"],
         "run_id": row["run_id"],
         "session_id": row["session_id"],
+        "thread_id": row["thread_id"],
+        "source_run_id": row["source_run_id"],
         "support_count": int(row["support_count"] or 0),
         "session_count": int(row["session_count"] or 0),
         "merge_count": int(row["merge_count"] or 0),

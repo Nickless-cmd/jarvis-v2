@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9793/18253 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9799/18266 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,8 +25,8 @@ Generated from source. 9793/18253 functions/methods documented (53%). The list b
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6527 | 12363 | 52% |
+| `core.runtime` | 872 | 1586 | 54% |
+| `core.services` | 6530 | 12368 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 9793/18253 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2626)
+## Undocumented public functions (2628)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -606,6 +606,8 @@ Generated from source. 9793/18253 functions/methods documented (53%). The list b
 - `core/runtime/db_runtime_diary.py` :: `supersede_diary_synthesis_signals_for_focus` (L131)
 - `core/runtime/db_runtime_diary.py` :: `update_diary_synthesis_signal_status` (L97)
 - `core/runtime/db_runtime_diary.py` :: `upsert_diary_synthesis_signal` (L161)
+- `core/runtime/db_runtime_executive_signals.py` :: `get_runtime_thread` (L2011)
+- `core/runtime/db_runtime_executive_signals.py` :: `list_runtime_threads` (L2032)
 - `core/runtime/db_runtime_flows.py` :: `create_runtime_flow` (L56)
 - `core/runtime/db_runtime_flows.py` :: `ensure_runtime_flows_tables` (L13)
 - `core/runtime/db_runtime_flows.py` :: `get_runtime_flow` (L109)
@@ -1542,10 +1544,10 @@ Generated from source. 9793/18253 functions/methods documented (53%). The list b
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `refresh_runtime_open_loop_closure_proposal_statuses` (L54)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `track_runtime_open_loop_closure_proposals_for_visible_turn` (L32)
-- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L172)
-- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L247)
-- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L82)
-- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L60)
+- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L183)
+- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L258)
+- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L89)
+- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L67)
 - `core/services/operator_allowlist.py` :: `add_to_allowlist` (L45)
 - `core/services/operator_allowlist.py` :: `is_enforced` (L58)
 - `core/services/operator_allowlist.py` :: `list_allowlist` (L30)

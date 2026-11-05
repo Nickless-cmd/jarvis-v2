@@ -23,6 +23,13 @@ from core.runtime.db import (
     upsert_runtime_open_loop_signal,
 )
 
+from core.runtime.db_runtime_executive_signals import (
+    close_runtime_thread,
+    declare_runtime_thread,
+    get_runtime_thread,
+    supersede_runtime_open_loop_signals_for_domain,
+)
+
 _STALE_AFTER_DAYS = 5    # 2026-05-16: 14d var for langt — Bjørn fik 16 zombie-loops fra test-runs
 _CLOSE_STALE_AFTER_DAYS = 7  # efter stale-mark, auto-close hvis ingen update i yderligere 7 dage
 _COUNTED_STATUSES = ("open", "softening", "closed", "stale", "superseded")
@@ -92,6 +99,10 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     for item in items:
         current_status = str(item.get("status") or "")
         if current_status not in {"open", "softening", "closed", "stale"}:
+            continue
+        # En erklæret tråd forfalder ikke af stilhed: stilhed er ikke svar. Den
+        # lukkes kun af close_open_loop_thread med bevis.
+        if str(item.get("thread_id") or ""):
             continue
         updated_at = _parse_dt(
             str(item.get("updated_at") or item.get("created_at") or "")
@@ -656,8 +667,8 @@ def _extract_closure_maturation_candidates(
 
     for loop in open_loops:
         loop_domain_key = str(loop.get("canonical_key") or "")
-        if not loop_domain_key:
-            continue
+        if not loop_domain_key or str(loop.get("thread_id") or ""):
+            continue  # tråde modnes ikke af lag-signaler; kun eksplicit bevis lukker
 
         parts = loop_domain_key.split(":")
         domain_key_part = parts[-1] if parts else loop_domain_key
@@ -869,6 +880,10 @@ def _existing_open_loop_keys() -> tuple[dict[str, str], set[str]]:
         if not key:
             continue
         keys.add(key)
+        # En tråd har et SAT navn; en titel-match må aldrig flette en per-tur
+        # kandidat ind i den (tekst som nøgle er værdiløs, se modulets note).
+        if str(row.get("thread_id") or ""):
+            continue
         topic = _topic_key(str(row.get("title") or ""))
         if topic:
             topics[topic] = key
@@ -1089,6 +1104,8 @@ def _temporal_domain_key(canonical_key: str) -> str:
 
 def _open_loop_domain_key(canonical_key: str) -> str:
     parts = str(canonical_key or "").split(":")
+    if len(parts) >= 3 and parts[2] == "thread":
+        return ""  # trådens identitet er thread_id, ikke et lag-domæne
     return parts[2] if len(parts) >= 3 else ""
 
 
@@ -1179,3 +1196,115 @@ def _parse_dt(value: str) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+# ---------------------------------------------------------------------------
+# Tråd-registry: bevidst erklæring, bevarelse på tværs af kørsler, bevist lukning
+# ---------------------------------------------------------------------------
+
+
+def _thread_loop_key(signal_type: str, thread_id: str) -> str:
+    return f"open-loop:{signal_type}:thread:{thread_id}"
+
+
+def _write_thread_loop(
+    *,
+    thread: dict[str, object],
+    run_id: str,
+    session_id: str,
+    summary: str,
+    signal_type: str = "open-loop",
+    status: str = "open",
+) -> dict[str, object]:
+    thread_id = str(thread["thread_id"])
+    now = datetime.now(UTC).isoformat()
+    name = str(thread["name"])
+    item = upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-{uuid4().hex}",
+        signal_type=signal_type,
+        canonical_key=_thread_loop_key(signal_type, thread_id),
+        status=status,
+        title=f"Open loop: {name}",
+        summary=summary or f"Thread «{name}» is open and awaiting an answer.",
+        rationale="Declared thread: identity is the registry thread_id, set on purpose.",
+        source_kind="declared-thread",
+        confidence="high",
+        evidence_summary="",
+        support_summary="",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="The declared thread has not been answered.",
+        run_id=run_id,
+        session_id=session_id,
+        thread_id=thread_id,
+        source_run_id=run_id,
+    )
+    # Skifter signal_type, ville en søsterrække ellers leve videre: nøglen bærer
+    # nu identiteten, så supersede-kaldet rammer endelig noget.
+    supersede_runtime_open_loop_signals_for_domain(
+        domain_key=f"thread:{thread_id}",
+        exclude_signal_id=str(item["signal_id"]),
+        updated_at=now,
+        status_reason="Superseded by a newer row of the same declared thread.",
+    )
+    return item
+
+
+def declare_open_loop_thread(
+    *,
+    name: str,
+    declared_by: str,
+    run_id: str,
+    session_id: str = "",
+    summary: str = "",
+) -> dict[str, object]:
+    """DET BEVIDSTE VALG-PUNKT: erklær at noget er en tråd, med et navn der sættes
+    her og nu af ``jarvis`` eller ``bjorn``. Intet kald udleder en tråd af tekst."""
+    thread = declare_runtime_thread(
+        name=name,
+        declared_by=declared_by,
+        opened_at=datetime.now(UTC).isoformat(),
+        opened_in_run_id=run_id,
+    )
+    item = _write_thread_loop(
+        thread=thread, run_id=run_id, session_id=session_id, summary=summary
+    )
+    event_bus.publish(
+        "open_loop_signal.created",
+        {"signal_id": item["signal_id"], "thread_id": thread["thread_id"],
+         "status": item["status"], "summary": item["summary"]},
+    )
+    return {"thread": thread, "loop": item}
+
+
+def touch_open_loop_thread(
+    thread_id: str, *, run_id: str, session_id: str = "", summary: str = ""
+) -> dict[str, object]:
+    """En ny kørsel berører samme tråd: samme række, ``run_id`` flytter med,
+    ``source_run_id`` bliver. Rejser for en ukendt eller lukket tråd."""
+    thread = get_runtime_thread(thread_id)
+    if thread is None:
+        raise ValueError(f"unknown thread_id {thread_id!r}")
+    return _write_thread_loop(
+        thread=thread, run_id=run_id, session_id=session_id, summary=summary
+    )
+
+
+def close_open_loop_thread(
+    thread_id: str, *, evidence: str, answered_in_run_id: str
+) -> dict[str, object]:
+    """Luk en tråd KUN med bevis for at spørgsmålet blev besvaret. En kørsels
+    afslutning er ikke bevis; se ``close_runtime_thread``."""
+    thread = close_runtime_thread(
+        thread_id,
+        evidence=evidence,
+        answered_in_run_id=answered_in_run_id,
+        closed_at=datetime.now(UTC).isoformat(),
+    )
+    event_bus.publish(
+        "open_loop_signal.closed",
+        {"thread_id": thread_id, "status": "closed", "summary": evidence},
+    )
+    return thread

@@ -285,3 +285,79 @@ def test_build_perception_surface_kalder_genoptagelsen(monkeypatch):
     pee.build_perception_surface(limit=4)
 
     assert len(kaldt) == 1, "build_perception_surface gik uden om genoptagelsen"
+
+
+# ── Trin 0-3: grovheden er en funktion af historikken (5/11-2026) ────────────
+
+def test_trin_for_stiger_med_historikken(broend):
+    """0 = usagt, 1 = sagt én gang, 2 = sagt to eller ét døgn, 3 = tre eller tre døgn."""
+    assert nb.trin_for("opvask") == 0
+
+    nid = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_sent(nid)
+    assert nb.trin_for("opvask") == 1
+
+    nid2 = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_sent(nid2)
+    assert nb.trin_for("opvask") == 2
+
+    nid3 = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_sent(nid3)
+    assert nb.trin_for("opvask") == 3
+
+
+def test_trin_stiger_med_tiden_uden_nye_prik(broend):
+    nid = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_sent(nid)
+
+    om_1_dag = datetime.now(UTC) + timedelta(days=1, hours=1)
+    assert nb.trin_for("opvask", nu=om_1_dag) == 2
+    om_4_dage = datetime.now(UTC) + timedelta(days=4)
+    assert nb.trin_for("opvask", nu=om_4_dage) == 3
+
+
+def test_formuleringen_aendrer_form_ikke_indhold(broend):
+    tekst = "opvasken staar stadig"
+
+    assert nb.formuler_for_trin(0, tekst, "opvask") == ""      # trin 0 siger intet
+    assert nb.formuler_for_trin(1, tekst, "opvask") == tekst   # i forbifarten
+    trin2 = nb.formuler_for_trin(2, tekst, "opvask")
+    assert tekst in trin2 and "stået der før" in trin2
+    trin3 = nb.formuler_for_trin(3, tekst, "opvask")
+    assert tekst in trin3 and "Skal vi gøre noget" in trin3
+
+
+def test_send_vaerktoejet_bruger_trinnet(broend, monkeypatch):
+    """Koblingen: send-vaerktoejet formulerer efter historikken.
+
+    Uden dette kald er trin 0-3 endnu et felt uden baerer — praecis den fejl
+    der blev maalt 5/11-2026.
+    """
+    from core.tools import nudge_broend_tools as tools
+
+    sendt: list[dict] = []
+    monkeypatch.setattr(
+        "core.tools.simple_tools._exec_notify_user",
+        lambda args: sendt.append(args) or {"status": "ok"},
+    )
+
+    # To gange sagt => tredje afsendelse skal vaere trin 3 (direkte).
+    for _ in range(2):
+        nid = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+        tools._exec_nudge_send({"nudge_id": nid})
+    # kadence blokerer den tredje; flyt tiden ved at rydde «sent»-posterne
+    # Fire dage tilbage: baade kadence-loftet (24 t) og trin 3 (3 dage) er entydige.
+    for n in broend:
+        if n.get("status") == "sent":
+            n["sent_at"] = (datetime.now(UTC) - timedelta(days=4)).isoformat()
+
+    nid3 = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    tools._exec_nudge_send({"nudge_id": nid3})
+
+    # Pointen er FORMEN, ikke antallet: beskeden er formuleret efter trinnet.
+    # (Hvor mange der naar igennem afhaenger af kadence-loftet og testes separat.)
+    assert sendt, "intet blev sendt"
+    assert sendt[0]["content"] == "opvasken staar", "trin 1 skal vaere den raa besked"
+    sidste = sendt[-1]["content"]
+    assert "Skal vi gøre noget ved det nu?" in sidste or "Det har stået der før" in sidste, \
+        f"formuleringen blev ikke anvendt: {sidste!r}"

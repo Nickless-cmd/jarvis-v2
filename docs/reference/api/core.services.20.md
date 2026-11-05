@@ -15,15 +15,15 @@ _Perceptual event engine — eventful perception for Jarvis._
 | function | `_surface_med_genoptagelse` | `(*, limit)` | — | [src](../../../core/services/perceptual_event_engine.py#L365) |
 | function | `build_perception_surface` | `(*, limit=…, scan=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L371) |
 | function | `_select_prompt_events` | `(events, *, limit)` | Vaelg hvilke events der kommer i prompt-linjen — med kvote til sanserne. | [src](../../../core/services/perceptual_event_engine.py#L383) |
-| function | `build_perception_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L427) |
-| function | `_build_perception_surface_uncached` | `(*, limit)` | — | [src](../../../core/services/perceptual_event_engine.py#L448) |
-| function | `_record_perceptual_event` | `(percept, *, state)` | — | [src](../../../core/services/perceptual_event_engine.py#L472) |
-| function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | — | [src](../../../core/services/perceptual_event_engine.py#L538) |
-| function | `_learning_rule_for_percept` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L559) |
-| function | `_directive_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L589) |
-| function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L604) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L610) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L617) |
+| function | `build_perception_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/perceptual_event_engine.py#L453) |
+| function | `_build_perception_surface_uncached` | `(*, limit)` | — | [src](../../../core/services/perceptual_event_engine.py#L474) |
+| function | `_record_perceptual_event` | `(percept, *, state)` | — | [src](../../../core/services/perceptual_event_engine.py#L498) |
+| function | `_percept` | `(*, source_event_id, source_kind, change_type, salience, summary, observed_at, evidence)` | — | [src](../../../core/services/perceptual_event_engine.py#L564) |
+| function | `_learning_rule_for_percept` | `(event)` | — | [src](../../../core/services/perceptual_event_engine.py#L585) |
+| function | `_directive_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L615) |
+| function | `_summary_for_events` | `(events)` | — | [src](../../../core/services/perceptual_event_engine.py#L630) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/perceptual_event_engine.py#L636) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/perceptual_event_engine.py#L643) |
 
 ## `core/services/periodic_jobs_scheduler.py`
 _Periodic jobs scheduler — enqueues overdue background jobs._

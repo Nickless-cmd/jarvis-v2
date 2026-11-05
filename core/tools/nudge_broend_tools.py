@@ -27,6 +27,16 @@ def _exec_nudge_inspect(args: dict[str, Any]) -> dict[str, Any]:
     # er heller ikke væk. De vises separat saa de ikke forveksles med koen.
     hvilende = list_ventende(limit=limit)
 
+    # Trin 0-3 (5/11-2026): vis hvilket trin hvert emne staar paa, saa
+    # grovheden er synlig FOER beskeden sendes — ikke noget man gaetter.
+    try:
+        from core.services.nudge_broend import trin_for as _trin_for
+
+        for n in pending:
+            n["trin_forslag"] = max(1, _trin_for(str(n.get("emne") or "")))
+    except Exception:  # trin-visning maa ikke blokere selve inspektionen
+        pass
+
     tekst = f"{len(pending)} vist (ud af {total} pending)" if pending else "Brønden er tom — ingen ventende nudges."
     if hvilende:
         tekst += f" · {len(hvilende)} hvilende (venter paa et skift)"
@@ -48,10 +58,12 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
 
     try:
         from core.services.nudge_broend import (
+            formuler_for_trin,
             get,
             kadence_tillader,
             mark_sent,
             mark_venter,
+            trin_for,
         )
     except Exception as exc:
         return {"status": "error", "error": f"nudge_broend not available: {exc}"}
@@ -80,7 +92,10 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
             ),
         }
 
-    message = str(nudge.get("message", ""))
+    # Trin 0-3 (5/11-2026): grovheden beregnes af historikken, ikke af et valg.
+    # Aldrig sagt foer → trin 1 (i forbifarten). Sagt to gange → trin 3 (direkte).
+    trin = max(1, trin_for(emne))
+    message = formuler_for_trin(trin, str(nudge.get("message", "")), emne)
     importance = str(nudge.get("importance", "normal"))
 
     # Send via notify_user tool
@@ -95,7 +110,7 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": f"send failed: {exc}"}
 
     if result.get("status") == "ok":
-        mark_sent(nudge_id)
+        mark_sent(nudge_id, trin=trin)
         # Hvis det var en Matrix-karakter-nudge, nulstil unaddressed count
         try:
             from core.services.central_matrix_ensemble import extract_cid, reset_unaddressed

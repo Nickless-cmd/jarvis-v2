@@ -396,15 +396,33 @@ def _select_prompt_events(
     if limit <= 0 or not events:
         return []
     valgt: list[int] = []
+    sete: set[tuple[str, str]] = set()
+    kanal_brugt = False
+
+    def _noegle(e: dict[str, object]) -> tuple[str, str]:
+        return (str(e.get("change_type") or ""), str(e.get("summary") or "")[:80])
+
+    def _tag(i: int) -> None:
+        nonlocal kanal_brugt
+        valgt.append(i)
+        sete.add(_noegle(events[i]))
+        if str(events[i].get("change_type") or "") == "channel-message":
+            kanal_brugt = True
 
     # 1. Sanseindtryk: egen kvote, saa de ikke afhaenger af at ligge i toppen.
     for i, e in enumerate(events):
         if len(valgt) >= min(_PROMPT_SENSORY_QUOTA, limit):
             break
-        if str(e.get("change_type") or "").startswith(_SENSORY_PREFIX):
-            valgt.append(i)
+        if not str(e.get("change_type") or "").startswith(_SENSORY_PREFIX):
+            continue
+        if _noegle(e) in sete:
+            continue
+        _tag(i)
 
-    # 2. Resten: nyeste ikke-redundante events.
+    # 2. Resten: nyeste IKKE-redundante events. Samme (change_type, summary) to
+    #    gange er én begivenhed set to gange — maalt 5/11-2026 fyldte tre
+    #    identiske «Channel message appended from user» tre af fire pladser,
+    #    altsaa information der allerede staar i samtalen.
     for i, e in enumerate(events):
         if len(valgt) >= limit:
             break
@@ -412,14 +430,22 @@ def _select_prompt_events(
             continue
         if str(e.get("change_type") or "") == "channel-message":
             continue
-        valgt.append(i)
+        if _noegle(e) in sete:
+            continue
+        _tag(i)
 
-    # 3. Er der stadig plads, er en kanal-besked bedre end en tom linje.
-    for i in range(len(events)):
+    # 3. Er der stadig plads, er ÉN kanal-besked bedre end en tom linje — men
+    #    kun én: samtalen selv er den bedre kilde til at der kom en besked.
+    for i, e in enumerate(events):
         if len(valgt) >= limit:
             break
-        if i not in valgt:
-            valgt.append(i)
+        if i in valgt:
+            continue
+        if _noegle(e) in sete:
+            continue
+        if str(e.get("change_type") or "") == "channel-message" and kanal_brugt:
+            continue
+        _tag(i)
 
     return [events[i] for i in sorted(valgt)]
 

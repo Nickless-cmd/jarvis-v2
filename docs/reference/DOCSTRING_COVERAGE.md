@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9815/18286 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9817/18288 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9815/18286 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6543 | 12383 | 52% |
+| `core.services` | 6545 | 12385 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1573,7 +1573,7 @@ Generated from source. 9815/18286 functions/methods documented (53%). The list b
 - `core/services/pattern_counterfactual_daemon.py` :: `run_pattern_cf_cycle` (L105)
 - `core/services/pattern_counterfactual_daemon.py` :: `tick_pattern_counterfactual_daemon` (L145)
 - `core/services/pdf_connector.py` :: `read_pdf` (L58)
-- `core/services/perceptual_event_engine.py` :: `build_perception_prompt_section` (L427)
+- `core/services/perceptual_event_engine.py` :: `build_perception_prompt_section` (L453)
 - `core/services/perceptual_event_engine.py` :: `build_perception_surface` (L371)
 - `core/services/perceptual_event_engine.py` :: `classify_event_change` (L157)
 - `core/services/perceptual_event_engine.py` :: `record_perceptual_event` (L307)

@@ -262,3 +262,34 @@ def test_sanseindtryk_faar_egen_kvote_i_prompt_linjen(isolated_runtime) -> None:
     linje = build_perception_prompt_section(limit=4)
     assert linje is not None
     assert "sensory-change-visual" in linje
+
+
+def test_prompt_linjen_gentager_ikke_samme_begivenhed() -> None:
+    """MÅLT DEFEKT 5/11-2026: tre identiske «Channel message appended from user»
+    fyldte tre af fire pladser i perception-linjen — information der allerede
+    står i samtalen. En sanse-event og en tool-error stod udenfor.
+
+    Testen bygger netop den fordelig og fælder hvis dedup'en fjernes.
+    """
+    from core.services.perceptual_event_engine import _select_prompt_events
+
+    events = [
+        {"change_type": "channel-message", "summary": "Channel message appended from user",
+         "salience": "normal"},
+        {"change_type": "channel-message", "summary": "Channel message appended from user",
+         "salience": "normal"},
+        {"change_type": "channel-message", "summary": "Channel message appended from user",
+         "salience": "normal"},
+        {"change_type": "sensory-change-visual", "summary": "Visuel-indhold markant ændret",
+         "salience": "high"},
+        {"change_type": "tool-error", "summary": "Tool failed: read_file",
+         "salience": "high"},
+    ]
+
+    valgt = _select_prompt_events(events, limit=4)
+    typer = [e["change_type"] for e in valgt]
+
+    assert typer.count("channel-message") == 1, f"kanal-besked gentaget: {typer}"
+    assert "sensory-change-visual" in typer, f"sansen faldt ud: {typer}"
+    assert "tool-error" in typer, f"fejlen faldt ud: {typer}"
+    assert len(typer) == len(set((e["change_type"], e["summary"]) for e in valgt))

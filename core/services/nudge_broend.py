@@ -303,6 +303,68 @@ def genoptag_ved_skift(
     return [valgt]
 
 
+# ── Trin 0-3: grovheden styres af HISTORIK, ikke af et valg (5/11-2026) ──────
+#
+# Trappen er besluttet i samtale 5/11-2026. Trin 4-5 (hvile/genoptag) laa
+# allerede her; trin 0-3 er formulerings-laget UNDER dem:
+#
+#   0  Ser det, siger intet       — registreret, ikke sagt
+#   1  Nævner det i forbifarten    — én sætning, ingen opfordring
+#   2  Nævner det med historik     — «det stod der også før», stadig ingen opfordring
+#   3  Siger det direkte           — må gerne spørge om handling
+#
+# Uden dette lag er «trin» et felt nogen sætter i hånden. Med det er grovheden
+# en funktion af hvor mange gange emnet faktisk er sagt — og det er den eneste
+# definition der ikke kan lyve om sig selv.
+
+#: Hvor mange dage der skal gå før et emne rykker op uden at være sagt igen.
+_TRIN_DAGE = (1.0, 3.0)  # til trin 2 og trin 3
+
+
+def trin_for(emne: str, *, nu: datetime | None = None) -> int:
+    """Hvilket trin er emnet på? 0-3, beregnet af historikken.
+
+    Kun ``sent`` tæller som «sagt» — en hvilende nudge er et spørgsmål der blev
+    holdt tilbage, ikke en prik. Det er samme regel som ``sidst_naevnt``.
+    """
+    nu = nu or datetime.now(UTC)
+    sagt = [
+        n for n in _load()
+        if n.get("emne") == emne and n.get("status") == "sent"
+    ]
+    if not sagt:
+        return 0
+    antal = len(sagt)
+    nyeste: datetime | None = None
+    for n in sagt:
+        ts = _parse_ts(n.get("sent_at") or n.get("created_at"))
+        if ts and (nyeste is None or ts > nyeste):
+            nyeste = ts
+    dage = ((nu - nyeste).total_seconds() / 86400.0) if nyeste else 0.0
+
+    if antal >= 3 or dage >= _TRIN_DAGE[1]:
+        return 3
+    if antal >= 2 or dage >= _TRIN_DAGE[0]:
+        return 2
+    return 1
+
+
+def formuler_for_trin(trin: int, message: str, emne: str = "") -> str:
+    """Formulér beskeden efter trinnet. Grovheden er FORMEN, ikke indholdet.
+
+    Trin 0 returnerer ``""``: den skal ikke siges. Det er ikke en fejl at få en
+    tom streng tilbage — det er trinnet der virker.
+    """
+    tekst = " ".join(str(message or "").split())
+    if not tekst or trin <= 0:
+        return ""
+    if trin == 1:
+        return tekst[:1000]
+    if trin == 2:
+        return f"Forresten — {tekst} Det har stået der før."[:1200]
+    return f"{tekst} Skal vi gøre noget ved det nu?"[:1200]
+
+
 def count_pending() -> int:
     """Return count of pending nudges."""
     nudges = _load()
@@ -318,8 +380,12 @@ def get(nudge_id: str) -> dict[str, Any] | None:
     return None
 
 
-def mark_sent(nudge_id: str) -> bool:
-    """Mark a nudge as sent."""
+def mark_sent(nudge_id: str, *, trin: int | None = None) -> bool:
+    """Mark a nudge as sent.
+
+    ``trin`` er det trin beskeden blev formuleret paa (0-3). Gives det ikke,
+    bevares nudgens eget trin — men en afsendelse er altid mindst trin 1.
+    """
     nudges = _load()
     for n in nudges:
         if n.get("nudge_id") == nudge_id and n.get("status") == "pending":
@@ -327,7 +393,7 @@ def mark_sent(nudge_id: str) -> bool:
             n["sent_at"] = datetime.now(UTC).isoformat()
             # Prik tælles ved afsendelse — det er dét kadence-loftet måler på.
             n["prik"] = int(n.get("prik") or 0) + 1
-            n["trin"] = max(1, int(n.get("trin") or 1))
+            n["trin"] = int(trin) if trin is not None else max(1, int(n.get("trin") or 1))
             _save(nudges)
             return True
     return False

@@ -2,10 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
   getPoolListe, getPoolOpsummering, getPoolArbejde,
+  getPoolRuter, startAgent, afbrydAgent, lukAgent, followUpAgent,
   type PoolAgent, type PoolListe, type PoolOpsummering,
-  type AgentKoersel,
+  type AgentKoersel, type PoolRute, type StyringSvar,
 } from '../../../lib/agentPoolApi'
 import { AgentInspector } from '../../panel/AgentInspector'
+import {
+  kladdeFejl, startBody, livsstatus, handlinger, handlingsKvittering, styringsFejl,
+  type StartKladde,
+} from './agentStyring'
 
 /**
  * Agent pool — hvem findes, hvad laver de, hvad kostede de.
@@ -22,10 +27,13 @@ import { AgentInspector } from '../../panel/AgentInspector'
  *    En fane der altid er tom er et løfte man ikke kan holde; kørslerne med
  *    deres resuméer er det nærmeste sande.
  */
-type Fane = 'oversigt' | 'agenter' | 'arbejde'
+type Fane = 'oversigt' | 'styring' | 'agenter' | 'arbejde'
+
+const LIVE_INTERVAL_MS = 5000
 
 const FANER: { id: Fane; label: string }[] = [
   { id: 'oversigt', label: 'Oversigt' },
+  { id: 'styring', label: 'Start agent' },
   { id: 'agenter', label: 'Agenter' },
   { id: 'arbejde', label: 'Seneste arbejde' },
 ]
@@ -77,6 +85,11 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
   const [aaben, setAaben] = useState<PoolAgent | null>(null)
   const [besked, setBesked] = useState('')
   const [henter, setHenter] = useState(false)
+  const [ruter, setRuter] = useState<PoolRute[]>([])
+  const [kladde, setKladde] = useState<StartKladde>({ rolle: 'researcher', opgave: '', udbyder: '', model: '' })
+  const [koerer, setKoerer] = useState(false)
+  const [styrBesked, setStyrBesked] = useState('')
+  const [followOpgave, setFollowOpgave] = useState('')
 
   const LOFT = 50
 
@@ -97,6 +110,51 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
   }, [config, status, soeg, side])
 
   useEffect(() => { void hent() }, [hent])
+
+  // Live: mens der er aktive agenter, genhentes listen. Ingen aktive = ingen polling.
+  const harAktive = (liste?.agenter ?? []).some((a) => a.er_aktiv)
+  useEffect(() => {
+    if (!harAktive || fane === 'oversigt') return
+    const t = setInterval(() => { void hent() }, LIVE_INTERVAL_MS)
+    return () => clearInterval(t)
+  }, [harAktive, fane, hent])
+
+  // Ruter hentes først når startfanen åbnes (backend ejer listen og ejer-begrænsningen).
+  useEffect(() => {
+    if (!config || fane !== 'styring' || ruter.length) return
+    getPoolRuter(config).then((r) => setRuter(r.ruter ?? [])).catch(() => setRuter([]))
+  }, [config, fane, ruter.length])
+
+  const kor = useCallback(async (
+    handling: 'start' | 'interrupt' | 'close' | 'followup', fn: () => Promise<StyringSvar>,
+  ) => {
+    setKoerer(true)
+    try {
+      const svar = await fn()
+      setStyrBesked(handlingsKvittering(handling, svar))
+      await hent()
+      return true
+    } catch (e) {
+      setStyrBesked(styringsFejl(e))
+      return false
+    } finally {
+      setKoerer(false)
+    }
+  }, [hent])
+
+  const startNy = async () => {
+    if (!config) return
+    const fejl = kladdeFejl(kladde)
+    if (fejl) { setStyrBesked(fejl); return }
+    const ok = await kor('start', () => startAgent(config, startBody(kladde)))
+    if (ok) setKladde((k) => ({ ...k, opgave: '' }))
+  }
+
+  const sendFollowUp = async () => {
+    if (!config || !aaben || !followOpgave.trim()) return
+    const ok = await kor('followup', () => followUpAgent(config, aaben.agent_id, followOpgave.trim()))
+    if (ok) setFollowOpgave('')
+  }
 
   if (!config) return <div className="mc-tom">Ingen forbindelse til serveren.</div>
 
@@ -168,6 +226,48 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
             </div>
           </div>
         </div>
+      )}
+
+      {styrBesked && <div className="mc-besked" role="status">{styrBesked}</div>}
+
+      {fane === 'styring' && (
+        <form className="ap-start" onSubmit={(e) => { e.preventDefault(); void startNy() }}>
+          <p className="cl-note">
+            Start en agent med en valgt model-rute. Backenden afgør om ruten er tilladt —
+            en afvist rute vises her med årsagen.
+          </p>
+          <label>Rolle
+            <input type="text" value={kladde.rolle} aria-label="Rolle"
+                   onChange={(e) => setKladde({ ...kladde, rolle: e.target.value })} />
+          </label>
+          <label>Model-rute
+            <select value={kladde.udbyder} aria-label="Model-rute"
+                    onChange={(e) => {
+                      const r = ruter.find((x) => x.udbyder === e.target.value)
+                      setKladde({ ...kladde, udbyder: e.target.value, model: r?.standard_model ?? '' })
+                    }}>
+              <option value="">Automatisk valg</option>
+              {ruter.map((r) => (
+                <option key={r.udbyder} value={r.udbyder}>
+                  {r.udbyder}{r.kun_ejer ? ' (kun ejer)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          {kladde.udbyder && (
+            <label>Model
+              <input type="text" value={kladde.model} aria-label="Model" placeholder="fx default eller qwen3:4b"
+                     onChange={(e) => setKladde({ ...kladde, model: e.target.value })} />
+            </label>
+          )}
+          <label>Opgave
+            <textarea rows={5} value={kladde.opgave} aria-label="Opgave"
+                      onChange={(e) => setKladde({ ...kladde, opgave: e.target.value })} />
+          </label>
+          <button type="submit" className="mc-control-btn" disabled={koerer}>
+            {koerer ? 'Starter…' : 'Start agent'}
+          </button>
+        </form>
       )}
 
       {fane === 'agenter' && (
@@ -258,6 +358,33 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
             <h3>Agentdetaljer</h3>
             <button type="button" onClick={() => setAaben(null)} aria-label="Luk">✕</button>
           </div>
+          {(() => {
+            // Live status fra den seneste liste, ikke fra klikøjeblikket.
+            const levende = (liste?.agenter ?? []).find((x) => x.agent_id === aaben.agent_id) ?? aaben
+            const h = handlinger(levende.status, levende.er_aktiv)
+            return (
+              <div className="ap-styring" aria-label="Styring">
+                <span className="ap-live" title={levende.status}>Status: {livsstatus(levende.status)}</span>
+                <button type="button" disabled={!h.interrupt || koerer}
+                        onClick={() => void kor('interrupt', () => afbrydAgent(config, aaben.agent_id))}>
+                  Afbryd
+                </button>
+                <button type="button" disabled={!h.luk || koerer}
+                        onClick={() => void kor('close', () => lukAgent(config, aaben.agent_id))}>
+                  Luk agent
+                </button>
+                {h.followup && (
+                  <div className="ap-followup">
+                    <textarea rows={2} value={followOpgave} aria-label="Opfølgende opgave"
+                              placeholder="Giv agenten en opfølgende opgave"
+                              onChange={(e) => setFollowOpgave(e.target.value)} />
+                    <button type="button" disabled={koerer || !followOpgave.trim()}
+                            onClick={() => void sendFollowUp()}>Send opgave</button>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <AgentInspector
             config={config}
             agent={{

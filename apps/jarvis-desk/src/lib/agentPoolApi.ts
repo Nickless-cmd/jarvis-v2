@@ -152,6 +152,44 @@ export function agentHandling(
     { method: 'POST' })
 }
 
+/* --- Styring (kontrakt-servicen via /mc/agent-pool/*) --------------------------------- */
+
+export interface StyringSvar {
+  status?: string
+  agent_id?: string
+  assignment_id?: string
+  lifecycle_status?: string
+}
+
+export interface PoolRute { udbyder: string; standard_model: string; kun_ejer: boolean; eksempel: string }
+
+export function getPoolRuter(config: ApiConfig): Promise<{ ruter: PoolRute[] }> {
+  return apiFetch(config, '/mc/agent-pool/routes')
+}
+
+/** Ruten valideres af backendens agent_model_policy — en afvisning kommer tilbage som fejl. */
+export function startAgent(
+  config: ApiConfig,
+  body: { rolle: string; opgave: string; model_route: string },
+): Promise<StyringSvar> {
+  return apiFetch(config, '/mc/agent-pool/agents', { method: 'POST', body })
+}
+
+export function afbrydAgent(config: ApiConfig, agentId: string): Promise<StyringSvar> {
+  return apiFetch(config, `/mc/agent-pool/agents/${encodeURIComponent(agentId)}/interrupt`,
+    { method: 'POST', body: {} })
+}
+
+export function lukAgent(config: ApiConfig, agentId: string): Promise<StyringSvar> {
+  return apiFetch(config, `/mc/agent-pool/agents/${encodeURIComponent(agentId)}/close`,
+    { method: 'POST' })
+}
+
+export function followUpAgent(config: ApiConfig, agentId: string, opgave: string): Promise<StyringSvar> {
+  return apiFetch(config, `/mc/agent-pool/agents/${encodeURIComponent(agentId)}/followup`,
+    { method: 'POST', body: { opgave } })
+}
+
 export function sendTilAgent(
   config: ApiConfig, agentId: string, besked: string,
 ): Promise<{ status?: string }> {

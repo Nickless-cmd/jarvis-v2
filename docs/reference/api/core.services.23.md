@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_evidence_collector.py`
+_Capture structured web-tool evidence for the active research run._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
+| function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
+| function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
+
 ## `core/services/research_ledger.py`
 _Research-runnet synligt i session-ledgeren (spec Fase A4)._
 
@@ -594,24 +603,4 @@ _Local replay and authenticated cross-process proxying for run streams._
 | function | `stream_error` | `(status, code, retry_after=…, *, run_id=…)` | — | [src](../../../core/services/run_stream_proxy.py#L19) |
 | function | `local_frame_generator` | `(run_id, from_idx)` | Replay and follow one process-local authoritative frame log. | [src](../../../core/services/run_stream_proxy.py#L34) |
 | function | `proxy_owner_stream` | `(location, from_idx)` | Open the owner process before committing a public 200 response. | [src](../../../core/services/run_stream_proxy.py#L90) |
-
-## `core/services/run_trailing.py`
-_Beskeder der hoerer EFTER historikken i en agentisk tur._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `runtime_instruction_message` | `(text)` | A model-facing runtime instruction with explicit non-user provenance. | [src](../../../core/services/run_trailing.py#L97) |
-| class | `RundeHale` | `` | Turens hale. Ikke en liste, fordi de tre slags har hver sin levetid. | [src](../../../core/services/run_trailing.py#L102) |
-| method | `RundeHale.__init__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L107) |
-| method | `RundeHale.tilfoej_vedvarende` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder resten af turen. Tom tekst ignoreres — | [src](../../../core/services/run_trailing.py#L113) |
-| method | `RundeHale.opdater_vedvarende` | `(self, noegle, *, nyt_indhold=…, aktuel_status=…, rolle=…, art=…)` | Hold én vedvarende blok pr. kilde og opdatér den mellem runder. | [src](../../../core/services/run_trailing.py#L125) |
-| method | `RundeHale.tilfoej_naeste` | `(self, indhold, *, rolle=…, art=…)` | En besked der gaelder KUN den naeste runde. | [src](../../../core/services/run_trailing.py#L164) |
-| method | `RundeHale.tilfoej_runde` | `(self, indhold, *, rolle=…, art=…)` | En besked der kun gaelder DENNE runde. | [src](../../../core/services/run_trailing.py#L185) |
-| method | `RundeHale.ny_runde` | `(self)` | Ryd runde-beskederne; de vedvarende bliver, og de naeste rykker ind. | [src](../../../core/services/run_trailing.py#L201) |
-| method | `RundeHale.som_liste` | `(self)` | Halen i afsendelses-raekkefoelge: vedvarende foerst, saa rundens. | [src](../../../core/services/run_trailing.py#L213) |
-| method | `RundeHale.antal_vedvarende` | `(self)` | — | [src](../../../core/services/run_trailing.py#L223) |
-| method | `RundeHale.antal_naeste` | `(self)` | — | [src](../../../core/services/run_trailing.py#L227) |
-| method | `RundeHale.raadgivning_i_runden` | `(self)` | Hvor mange noter i den sendte hale der er raadgivning, ikke krav. | [src](../../../core/services/run_trailing.py#L231) |
-| method | `RundeHale.__len__` | `(self)` | — | [src](../../../core/services/run_trailing.py#L242) |
-| method | `RundeHale.telemetri` | `(self)` | Kompakt billede af halen, praecis som den sendes i denne runde. | [src](../../../core/services/run_trailing.py#L245) |
 

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_context.py`
+_Temporal Context — time-based situational awareness._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_temporal_context` | `()` | Build current temporal context in local (CEST/CET) time. | [src](../../../core/services/temporal_context.py#L20) |
+| function | `build_temporal_context_surface` | `()` | — | [src](../../../core/services/temporal_context.py#L44) |
+| function | `_classify_day_phase` | `(hour)` | — | [src](../../../core/services/temporal_context.py#L53) |
+| function | `_emit_temporal_context_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/temporal_context.py#L67) |
+
 ## `core/services/temporal_depth.py`
 _Temporal Depth — predictive coding for internal signals._
 
@@ -570,16 +580,4 @@ _Nightly daemon: refresh always-core ranking, recompute embeddings,_
 | function | `_loop` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L64) |
 | function | `start_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L73) |
 | function | `stop_tool_router_runtime` | `()` | — | [src](../../../core/services/tool_router_runtime.py#L85) |
-
-## `core/services/tool_tagger.py`
-_Tool tag taxonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_json` | `(p)` | — | [src](../../../core/services/tool_tagger.py#L39) |
-| function | `_ensure_loaded` | `()` | — | [src](../../../core/services/tool_tagger.py#L49) |
-| function | `get_tags` | `(tool_name)` | Return tags for `tool_name`. Overrides win over auto. Empty if unknown. | [src](../../../core/services/tool_tagger.py#L65) |
-| function | `get_pinned_set` | `()` | — | [src](../../../core/services/tool_tagger.py#L75) |
-| function | `invalidate_cache` | `()` | — | [src](../../../core/services/tool_tagger.py#L80) |
-| function | `bootstrap_tags` | `(*, dry_run=…)` | Use cheap-lane LLM to generate domain tags for every registered tool. | [src](../../../core/services/tool_tagger.py#L85) |
 

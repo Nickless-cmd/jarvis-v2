@@ -2500,6 +2500,7 @@ async def _stream_visible_run(
                 # Skill-beslutning (2/10-2026): ét stærkt match = ét krav om
                 # svar. Cap 1, samme grund som hollow-promise-loftet.
                 _skill_gate_nudges = 0
+                _repetition_nudges = 0  # gentagelses-vagt: max ÉN pr. run
                 # Stillingtagen til næste skridt (Bjørn 7/10-2026): noten der
                 # fyrer ved tur-afslutning når turen udførte arbejde og intet
                 # forslag blev lagt. Cap 1, samme grund som de to ovenfor.
@@ -4096,6 +4097,22 @@ async def _stream_visible_run(
                                     pass
                         except Exception:
                             pass  # fail-open → normal break nedenfor
+                        # ── GENTAGELSES-VAGT (5/11-2026, flag-gated, fail-open) ──
+                        # Som hollow-promise: LÆS svaret, indlæg korrektionen.
+                        try:
+                            from core.services import repetition_guard as _rg
+                            if (
+                                not _is_last_round
+                                and _repetition_nudges < 1
+                                and _rg.should_nudge("".join(_a_parts), run.session_id)
+                            ):
+                                _repetition_nudges += 1
+                                _followup_exchanges.append(_vf.ToolExchange(
+                                    text=_exchange_text(), tool_calls=[], results=[]))
+                                _tur_hale.tilfoej_naeste(_rg.REPETITION_NUDGE)
+                                continue  # ÉN mere runde med korrektionen
+                        except Exception:
+                            pass  # fail-open → normal break
                         # ── SKILL-BESLUTNING (2/10-2026, flag-gated, fail-open) ──
                         # Fladen skriver «[SKILLS DER MATCHER DENNE OPGAVE]» i
                         # prompten, og Bjørn ser den i chatten. Men målt samme

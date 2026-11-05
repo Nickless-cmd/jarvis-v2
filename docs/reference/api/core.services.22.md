@@ -685,6 +685,18 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 | function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L315) |
 | function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L325) |
 
+## `core/services/repetition_guard.py`
+_Gentagelses-vagt (5/11-2026) — fang "sagde det samme igen, intet er ændret"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fact_tokens` | `(text)` | Konkrete fakta i teksten: tal, filnavne, hashes (lowercased). | [src](../../../core/services/repetition_guard.py#L53) |
+| function | `_normaliser` | `(text)` | Tegnsætning væk, så «færdig.» og «færdig» ikke tæller som forskellige ord. | [src](../../../core/services/repetition_guard.py#L62) |
+| function | `is_repetition` | `(final_text, previous_texts, nudged_already=…, window=…, threshold=…, min_words=…)` | Gentagelse = svaret ligner et af de seneste svar + ingen ny information. | [src](../../../core/services/repetition_guard.py#L67) |
+| function | `previous_assistant_texts` | `(session_id, limit=…)` | Jarvis' seneste svar i sessionen, ældste først. Self-safe → [] ved fejl. | [src](../../../core/services/repetition_guard.py#L103) |
+| function | `should_nudge` | `(final_text, session_id)` | Produktions-indgangen: flag + sessionens seneste svar + is_repetition. | [src](../../../core/services/repetition_guard.py#L113) |
+| function | `repetition_guard_enabled` | `()` | Default TRUE. Env `JARVIS_REPETITION_GUARD` vinder; ellers runtime-state | [src](../../../core/services/repetition_guard.py#L119) |
+
 ## `core/services/repo_index.py`
 _Separat søgeindeks over repoets DOKUMENTATION — ikke kildekoden._
 
@@ -732,13 +744,4 @@ _Typed contracts and source normalization for explicit research runs._
 | function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L103) |
 | function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L120) |
 | function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L137) |
-
-## `core/services/research_evidence_collector.py`
-_Capture structured web-tool evidence for the active research run._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
-| function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
-| function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
 

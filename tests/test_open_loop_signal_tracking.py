@@ -379,6 +379,103 @@ def test_open_loop_surface_forms_persistent_open_loop_for_clear_repeated_pressur
     )
 
 
+def test_same_topic_in_two_runs_gives_one_row(isolated_runtime) -> None:
+    """Samme emne i to kørsler skal give ÉN række, ikke to.
+
+    Målt 4/11-2026: ``canonical_key`` bærer kørslens run_id (``_run_domain``), så
+    opslaget i ``_upsert_signal`` aldrig matchede en tidligere række. Samme loop
+    blev derfor registreret på ny hver tur. I den levende base gav det 8
+    dublet-familier med 20 rækker, og nul rækker var nogensinde lukket gennem
+    supersede — fordi supersede-mønstret indeholdt kørslens eget run_id.
+    """
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_tracking
+
+    base = {
+        "signal_type": "open-loop",
+        "status": "open",
+        "title": "Open loop: Development focus: Danish concise calibration",
+        "summary": "A bounded loop around danish concise calibration is still unresolved.",
+        "rationale": "Live pressure in the same domain.",
+        "status_reason": "The bounded thread is still visibly unresolved.",
+        "source_kind": "derived-runtime-open-loop",
+        "confidence": "high",
+        "evidence_summary": "focus evidence | critic evidence",
+        "support_summary": "focus support",
+        "support_count": 2,
+        "session_count": 1,
+    }
+
+    for run in ("visible-run-one", "visible-run-two"):
+        tracking._persist_open_loop_signals(
+            signals=[{**base, "canonical_key": f"open-loop:open-loop:{run}"}],
+            session_id="test-session",
+            run_id=run,
+        )
+
+    rows = [
+        row
+        for row in db.list_runtime_open_loop_signals(limit=20)
+        if str(row.get("status") or "") == "open"
+    ]
+    assert len(rows) == 1, [row.get("canonical_key") for row in rows]
+    # Nøglen beholder sin domæne-form: emnet er identitet ved SKRIVNING, ikke en
+    # erstatning for mødestedet som closure-governance læser tilbage.
+    assert rows[0]["canonical_key"] == "open-loop:open-loop:visible-run-one"
+    # Rækken er set igen i den anden kørsel, ikke dubleret.
+    assert rows[0]["run_id"] == "visible-run-two"
+
+
+def test_different_topics_stay_separate_rows(isolated_runtime) -> None:
+    """Emne-nøglen må ikke smelte to forskellige undersøgelser sammen."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_tracking
+
+    base = {
+        "signal_type": "open-loop",
+        "status": "open",
+        "summary": "A bounded loop is still unresolved.",
+        "rationale": "Live pressure in the same domain.",
+        "status_reason": "The bounded thread is still visibly unresolved.",
+        "source_kind": "derived-runtime-open-loop",
+        "confidence": "high",
+        "evidence_summary": "focus evidence",
+        "support_summary": "focus support",
+        "support_count": 2,
+        "session_count": 1,
+    }
+
+    tracking._persist_open_loop_signals(
+        signals=[
+            {
+                **base,
+                "canonical_key": "open-loop:open-loop:visible-run-one",
+                "title": "Open loop: Kortlægger hvor origin stadig forbruges",
+            }
+        ],
+        session_id="test-session",
+        run_id="visible-run-one",
+    )
+    tracking._persist_open_loop_signals(
+        signals=[
+            {
+                **base,
+                "canonical_key": "open-loop:open-loop:visible-run-two",
+                "title": "Open loop: Kører kontrafaktisk eksperiment gennem gate-kæden",
+            }
+        ],
+        session_id="test-session",
+        run_id="visible-run-two",
+    )
+
+    rows = [
+        row
+        for row in db.list_runtime_open_loop_signals(limit=20)
+        if str(row.get("status") or "") == "open"
+    ]
+    assert len(rows) == 2, [row.get("title") for row in rows]
+
+
 def test_open_loop_surface_forms_softening_loop_for_easing_domain(
     isolated_runtime,
 ) -> None:

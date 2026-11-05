@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9717/18097 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9718/18098 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9717/18097 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6508 | 12337 | 52% |
+| `core.services` | 6509 | 12338 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1526,10 +1526,10 @@ Generated from source. 9717/18097 functions/methods documented (53%). The list b
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `refresh_runtime_open_loop_closure_proposal_statuses` (L54)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `track_runtime_open_loop_closure_proposals_for_visible_turn` (L32)
-- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L135)
-- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L209)
-- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L81)
-- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L59)
+- `core/services/open_loop_signal_tracking.py` :: `build_runtime_open_loop_signal_surface` (L134)
+- `core/services/open_loop_signal_tracking.py` :: `get_open_loop_creation_readiness` (L208)
+- `core/services/open_loop_signal_tracking.py` :: `refresh_runtime_open_loop_signal_statuses` (L80)
+- `core/services/open_loop_signal_tracking.py` :: `track_runtime_open_loop_signals_for_visible_turn` (L58)
 - `core/services/operator_allowlist.py` :: `add_to_allowlist` (L45)
 - `core/services/operator_allowlist.py` :: `is_enforced` (L58)
 - `core/services/operator_allowlist.py` :: `list_allowlist` (L30)

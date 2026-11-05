@@ -47,5 +47,6 @@ _X-session til Jarvis' desktop-fane._
 | method | `XSession.wait` | `(self, timeout_ms=…, interval_ms=…)` | Vent til skaermen ÆNDRER sig, eller tiden løber ud. | [src](../../../core/desktop/x_session.py#L609) |
 | method | `XSession.input` | `(self, msg)` | Oversæt og kør input. Aldrig exception; ugyldigt input giver fejl-dict. | [src](../../../core/desktop/x_session.py#L641) |
 | function | `_workspace_for` | `(user, privilege)` | Opløs workspace gennem den eksisterende adgangsvej (workspace_paths). | [src](../../../core/desktop/x_session.py#L662) |
-| function | `session_for` | `(user, privilege)` | Brugerens EGEN X-session, cachet pr. (rettighed, bruger). | [src](../../../core/desktop/x_session.py#L689) |
+| function | `_owner_user` | `()` | Ejerens bruger-id — den skærm Jarvis deler er ejerens. | [src](../../../core/desktop/x_session.py#L689) |
+| function | `session_for` | `(user, privilege)` | Brugerens X-session, cachet pr. (rettighed, bruger). | [src](../../../core/desktop/x_session.py#L700) |
 

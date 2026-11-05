@@ -51,8 +51,8 @@ _TASTE_ALIAS = {
 # Alle desktop-sessioner starter i brugerens EGEN workspace-mappe, også ejerens.
 # Forskellen er rettigheder UDEN FOR mappen:
 #   owner  – Bjørn: ingen indespærring
-#   self   – Jarvis' egen desktop: ingen indespærring
-#   member – alle andre: LÅST til eget workspace
+#   self   – Jarvis: DELER ejerens skærm (samme session, samme display)
+#   member – alle andre: LÅST til eget workspace, egen skærm
 #
 # cwd er ikke en indespærring (en proces med cwd i sin mappe læser stadig
 # /etc/passwd). Derfor er håndhævelsen MEKANISK: teknik (a), bubblewrap-
@@ -686,17 +686,38 @@ def _workspace_for(user: str, privilege: str) -> Path:
     return sti
 
 
-def session_for(user: str, privilege: str) -> XSession:
-    """Brugerens EGEN X-session, cachet pr. (rettighed, bruger).
+def _owner_user() -> str:
+    """Ejerens bruger-id — den skærm Jarvis deler er ejerens."""
+    try:
+        from core.identity.users import get_owner
 
-    Erstatter den globale `shared_session()`. Rejser `WorkspaceUnavailable`
-    hvis workspace ikke kan opløses — ALDRIG et stille fald til en fælles
-    session. Desktoppen er stadig en tilstand: sessionen stoppes kun ved
-    eksplicit nedlukning, ikke når en forbindelse lukker.
+        o = get_owner()
+        return str(getattr(o, "discord_id", "") or "") if o else ""
+    except Exception:  # ingen brugerliste: tomt id -> WorkspaceUnavailable, intet fald
+        return ""
+
+
+def session_for(user: str, privilege: str) -> XSession:
+    """Brugerens X-session, cachet pr. (rettighed, bruger).
+
+    `self` er Jarvis, og Jarvis arbejder PÅ ejerens skærm — ikke ved siden af
+    den. En desktop vi ikke deler er to VNC-sessioner, og så er delingen af
+    fladen væk (Bjørn 5/11-2026). Privilegiet siger hvem der HANDLER; skærmen
+    er ejerens i begge tilfælde. Et medlem rammer ALDRIG den gren og får
+    hverken ejerens display eller workspace.
+
+    Rejser `WorkspaceUnavailable` hvis workspace ikke kan opløses — ALDRIG et
+    stille fald til en fælles session. Desktoppen er stadig en tilstand:
+    sessionen stoppes kun ved eksplicit nedlukning, ikke når en forbindelse
+    lukker.
     """
     if privilege not in PRIVILEGER:
         raise ValueError(f"ukendt rettighed: {privilege!r}")
-    bruger = SELF_USER if privilege == PRIVILEGE_SELF else str(user or "").strip()
+    if privilege == PRIVILEGE_SELF:
+        privilege = PRIVILEGE_OWNER
+        bruger = _owner_user()
+    else:
+        bruger = str(user or "").strip()
     if not bruger:
         raise WorkspaceUnavailable("ingen bruger")
     noegle = (privilege, bruger)

@@ -92,14 +92,50 @@ def test_b_owner_starter_i_bjorn_og_er_ikke_indespaerret(miljo, tmp_path):
     assert kald == [["xterm"]]
 
 
-def test_c_self_har_egen_mappe_og_er_ikke_indespaerret(miljo, monkeypatch):
-    s = xs.session_for("hvadsomhelst", "self")
-    assert s.workspace == (miljo / "shared").resolve()
-    assert s.privilege == "self"
+def test_c_self_deler_ejerens_skærm_og_er_ikke_indespærret(miljo, monkeypatch):
+    """Jarvis arbejder PÅ ejerens skærm — ikke ved siden af den.
+
+    En desktop vi ikke deler er to VNC-sessioner, og så er delingen af fladen
+    væk (Bjørn 5/11-2026). Testen kræver SAMME objekt, ikke en kopi med samme
+    display: en kopi ville se rigtig ud og alligevel være en anden skærm.
+    """
+    monkeypatch.setattr(xs, "_owner_user", lambda: "u-bjorn")
+    min_ = xs.session_for("hvadsomhelst", "self")
+    hans = xs.session_for("u-bjorn", "owner")
+    assert min_ is hans
+    assert min_.display == hans.display
+    assert min_.workspace == (miljo / "workspaces" / "bjorn").resolve()
     kald = []
     monkeypatch.setattr(xs.subprocess, "Popen", lambda a, **k: kald.append(a) or _Proc())
-    s._start_proc(["xterm"])
-    assert kald == [["xterm"]]
+    min_._start_proc(["xterm"])
+    assert kald == [["xterm"]]  # ikke indespærret
+
+
+def test_c_self_uden_ejer_fejler_uden_fallback(miljo, monkeypatch):
+    """Ingen ejer at dele med -> nægt. Aldrig en lydløs separat session."""
+    monkeypatch.setattr(xs, "_owner_user", lambda: "")
+    with pytest.raises(xs.WorkspaceUnavailable):
+        xs.session_for("hvadsomhelst", "self")
+    assert xs._sessioner == {}
+
+
+def test_c_member_faar_aldrig_ejerens_session(miljo, monkeypatch):
+    """Delingen gælder ejer+Jarvis. Et medlem har sin EGEN indespærrede skærm.
+
+    Det er hele grunden til at `self` ikke må være en fælles session: der er
+    flere brugere, og en delt skærm ville give dem ejerens.
+    """
+    monkeypatch.setattr(xs, "_owner_user", lambda: "u-bjorn")
+    ejer = xs.session_for("u-bjorn", "owner")
+    jarvis = xs.session_for(xs.SELF_USER, "self")
+    assert jarvis is ejer
+    for uid, navn in (("u-lotte", "lotte"), ("u-mikkel", "mikkel")):
+        m = xs.session_for(uid, "member")
+        assert m is not ejer
+        assert m.display != ejer.display
+        assert m.workspace != ejer.workspace
+        assert m.workspace == (miljo / "workspaces" / navn).resolve()
+        assert m.privilege == "member"
 
 
 @pytest.mark.parametrize("bruger", ["ukendt", "", "  "])

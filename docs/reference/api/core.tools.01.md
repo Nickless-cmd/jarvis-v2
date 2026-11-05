@@ -429,12 +429,13 @@ _Jarvis' desktop som ét kaldbart værktøj — ni medlemmer i én handling._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_session` | `()` | Kalderens EGEN X-session, startet hvis den ikke kører. | [src](../../../core/tools/desktop_tools.py#L42) |
-| function | `_gem` | `(jpeg, navn)` | Skriv JPEG'en til en fil og svar med stien. | [src](../../../core/tools/desktop_tools.py#L69) |
-| function | `_svar` | `(resultat)` | — | [src](../../../core/tools/desktop_tools.py#L79) |
-| function | `_koer` | `(action, args)` | Udfør én handling. Aldrig exception — en fejl er et svar, ikke et crash. | [src](../../../core/tools/desktop_tools.py#L85) |
-| function | `_exec_jarvis_desktop` | `(args)` | — | [src](../../../core/tools/desktop_tools.py#L157) |
-| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desktop_tools.py#L168) |
+| function | `_ejer_workspace` | `()` | Ejerens workspace-navn. Kontekstens default når intet er bundet. | [src](../../../core/tools/desktop_tools.py#L42) |
+| function | `_session` | `()` | Kalderens X-session, startet hvis den ikke kører. | [src](../../../core/tools/desktop_tools.py#L53) |
+| function | `_gem` | `(jpeg, navn)` | Skriv JPEG'en til en fil og svar med stien. | [src](../../../core/tools/desktop_tools.py#L90) |
+| function | `_svar` | `(resultat)` | — | [src](../../../core/tools/desktop_tools.py#L100) |
+| function | `_koer` | `(action, args)` | Udfør én handling. Aldrig exception — en fejl er et svar, ikke et crash. | [src](../../../core/tools/desktop_tools.py#L106) |
+| function | `_exec_jarvis_desktop` | `(args)` | — | [src](../../../core/tools/desktop_tools.py#L178) |
+| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desktop_tools.py#L189) |
 
 ## `core/tools/document_create_tools.py`
 _Opret-dokumenter: Word, Excel, PowerPoint og PDF._

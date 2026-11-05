@@ -39,16 +39,29 @@ _AKTIONER = (
 )
 
 
-def _session() -> Any:
-    """Kalderens EGEN X-session, startet hvis den ikke kører.
+def _ejer_workspace() -> str:
+    """Ejerens workspace-navn. Kontekstens default når intet er bundet."""
+    try:
+        from core.identity.users import get_owner
 
-    Ejeren og Jarvis (`self`) er ikke indespærret; et medlem er låst til eget
-    workspace. Kan workspace ikke opløses, fejler værktøjet — intet fallback.
+        o = get_owner()
+        return str(getattr(o, "workspace", "") or "bjorn") if o else "bjorn"
+    except Exception:  # ingen brugerliste: default-navnet ER ejerens
+        return "bjorn"
+
+
+def _session() -> Any:
+    """Kalderens X-session, startet hvis den ikke kører.
+
+    `self` betyder EJERENS skærm — det er den flade Bjørn ser i panelet. Ejeren
+    og Jarvis er ikke indespærret; et medlem er låst til eget workspace og får
+    sin egen skærm. Kan workspace ikke opløses, fejler værktøjet — intet
+    fallback.
     """
     from core.desktop.x_session import (
         PRIVILEGE_MEMBER, PRIVILEGE_SELF, SELF_USER, session_for,
     )
-    from core.identity.workspace_context import current_user_id
+    from core.identity.workspace_context import current_user_id, current_workspace_name
 
     uid = current_user_id()
     privilege, bruger = PRIVILEGE_SELF, SELF_USER
@@ -59,6 +72,14 @@ def _session() -> Any:
         if u is None or u.role != "owner":
             # Ukendt eller ikke-ejer: aldrig mere end member-rettigheder.
             privilege, bruger = PRIVILEGE_MEMBER, uid
+    elif current_workspace_name() != _ejer_workspace():
+        # Konteksten bærer hverken et bruger-id eller ejerens workspace. Siden
+        # `self` nu betyder ejerens skærm, må vi ikke gætte: en medlems-samtale
+        # uden bundet id ville ellers få ejerens skærm. Nægt frem for at give
+        # mere adgang end konteksten kan dokumentere.
+        raise RuntimeError(
+            "desktop: kan ikke afgøre hvem der handler — nægter at bruge ejerens skærm"
+        )
     sess = session_for(bruger, privilege)
     res = sess.start()
     if res.get("status") != "ok":

@@ -62,6 +62,25 @@ def _meaningful_run_topic(user_message: str) -> str:
     return "" if is_noisy_signal_text(topic) else topic
 
 
+def _klippet(tekst: str, bredde: int) -> str:
+    """Klip ved ORDGRÆNSE og markér at noget mangler.
+
+    Målt 5/11-2026: ``bearing[:80]`` skar midt i ordet, så alle 51
+    open-loop-titler læste som færdige sætninger men sluttede i et
+    ordfragment («… og bekræfter det med»). En tavs afskæring er en løgn om at
+    tanken er hel; «…» gør ufuldstændigheden synlig, og ordgrænsen gør resten
+    læsbar.
+    """
+    rent = " ".join(str(tekst or "").split())
+    if len(rent) <= bredde:
+        return rent
+    udsnit = rent[:bredde]
+    skaer = udsnit.rfind(" ")
+    if skaer > 0:
+        udsnit = udsnit[:skaer]
+    return udsnit.rstrip(" ,.;:—-") + "…"
+
+
 def produce_signals_from_run(
     *,
     run_id: str,
@@ -317,8 +336,8 @@ def produce_signals_from_run(
                     focus_type="current_bearing",
                     canonical_key=f"focus:bearing:{bearing[:30]}",
                     status="active",
-                    title=bearing[:80],
-                    summary=f"Current strategic focus: {bearing[:120]}",
+                    title=_klippet(bearing, 80),
+                    summary=f"Current strategic focus: {_klippet(bearing, 120)}",
                     rationale="Derived from personality vector bearing",
                     source_kind="personality_vector",
                     confidence="high",

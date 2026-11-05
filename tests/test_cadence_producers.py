@@ -235,3 +235,49 @@ def test_support_count_er_ikke_personality_version(isolated_runtime, monkeypatch
         assert int(row.get("support_count") or 0) <= 10, (
             f"support_count={row.get('support_count')} er versionsnummeret, ikke antal observationer"
         )
+
+
+# ── En titel der slutter midt i et ord lyver om at tanken er hel (5/11-2026) ─
+#
+# Målt: alle 51 open-loop-titler sluttede i et ordfragment («… og bekræfter
+# det med»). Kilden er `title=bearing[:80]` i fokus-producenten — et råt
+# tegn-snit der hverken respekterer ordgrænser eller markerer at noget
+# mangler. Læseren ser en færdig sætning; virkeligheden er et afsnit af en
+# længere tanke. Det er samme fejlform som de to nøgle-fejl ovenfor: teksten
+# ser rigtig ud, men bærer ikke den betydning den udgiver sig for.
+
+
+def test_klippet_respekterer_ordgraensen():
+    # MUTATION: brug `udsnit` direkte i stedet for ordgrænse-grenen → snittet
+    # lander inde i et ord og denne test fejler. (Første udgave af testen
+    # brugte bredde 40, hvor snittet tilfældigvis ramte et mellemrum, og
+    # mutationen slap igennem — målt, ikke gættet.)
+    from core.services.cadence_producers import _klippet
+
+    lang = (
+        "Får open-loop-opgaven ud af blokering og i faktisk kørsel, "
+        "og bekræfter det med en måling"
+    )
+    ud = _klippet(lang, 39)
+    assert ud.endswith("…"), "afskæringen er ikke markeret — så lyver titlen"
+    kerne = ud[:-1]
+    assert lang.startswith(kerne), "afskæringen er ikke et præfiks af kilden"
+    assert lang[len(kerne)] == " ", (
+        f"snittet lander inde i et ord: {lang[len(kerne)-6:len(kerne)+6]!r}"
+    )
+
+
+def test_klippet_roerer_ikke_korte_tekster():
+    # MUTATION: fjern længde-gaten → korte tekster får en falsk «…».
+    from core.services.cadence_producers import _klippet
+
+    kort = "Kort sætning"
+    assert _klippet(kort, 80) == kort
+    assert _klippet("", 80) == ""
+
+
+def test_fokus_titlen_bruger_ordgraense():
+    # MUTATION: skriv `title=bearing[:80]` tilbage → denne fejler.
+    kilde = _kilde()
+    assert "title=_klippet(bearing, 80)" in kilde
+    assert "title=bearing[:80]" not in kilde

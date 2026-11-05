@@ -965,3 +965,28 @@ def test_extract_open_loop_candidates_ready_readiness_does_not_raise(
     # Must not raise TypeError: unhashable type: 'dict_keys'.
     candidates = mod._extract_open_loop_candidates()
     assert isinstance(candidates, list)
+
+
+def test_per_turn_loop_keeps_run_id_as_source_run_id_not_as_identity(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.open_loop_tracking
+    db = isolated_runtime.db
+    signal = {
+        "signal_type": "open-loop",
+        "canonical_key": "open-loop:open-loop:visible-first",
+        "title": "Open loop: something",
+        "summary": "s",
+    }
+
+    tracking._persist_open_loop_signals(signals=[signal], session_id="s", run_id="visible-first")
+    # Samme emne i en senere kørsel: samme række, source_run_id bliver.
+    tracking._persist_open_loop_signals(
+        signals=[{**signal, "canonical_key": "open-loop:open-loop:visible-second"}],
+        session_id="s", run_id="visible-second",
+    )
+
+    rows = db.list_runtime_open_loop_signals(limit=10)
+    assert [(r["thread_id"], r["run_id"], r["source_run_id"]) for r in rows] == [
+        ("", "visible-second", "visible-first")
+    ]

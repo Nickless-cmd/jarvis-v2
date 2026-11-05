@@ -124,43 +124,79 @@ def test_xvfb_bruger_display_og_stoerrelse():
 
 
 # ── Skrivebordet skal have indhold ───────────────────────────────────────
-def _stub_proc():
+def _stub_proc(args=None, pid=0):
     class P:
+        def __init__(self):
+            self.args = list(args or [])
+            self.pid = pid
         def poll(self): return None
         def wait(self, timeout=None): return 0
         def terminate(self): pass
         def kill(self): pass
+        def is_alive(self): return True
+        def start(self): pass
     return P()
+
+
+def _stub_koert():
+    class R:
+        returncode = 0
+        stdout = b""
+    return R()
 
 
 def test_skrivebordet_faar_baggrund_og_terminal(monkeypatch):
     """En tom X-session er kulsort. Uden apps ser streamen ud som en fejl."""
     s = xs.XSession()
     kaldt: list[list[str]] = []
+    koert: list[list[str]] = []
     monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
-    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc(args))[1])
     monkeypatch.setattr(s, "_har_vindue", lambda _m: False)
+    monkeypatch.setattr(s, "_har_klasse", lambda _k: False)
+    monkeypatch.setattr(xs.subprocess, "run", lambda cmd, **kw: (koert.append(cmd), _stub_koert())[1])
     s._fyld_skrivebord()
     kommandoer = [k[0] for k in kaldt]
-    assert "xsetroot" in kommandoer
     assert "pcmanfm" in kommandoer
     assert "xterm" in kommandoer
-    assert any(xs.BAGGRUND in k for k in kaldt if k[0] == "xsetroot")
+    assert any(xs.BAGGRUND in k for k in koert if k and k[0] == "xsetroot")
 
 
 def test_skrivebordet_starter_ikke_dubletter(monkeypatch):
-    """Genbruges en X-server der allerede har apps, maa vi ikke stable oven paa."""
+    """Genbruges en X-server der allerede har apps, maa vi ikke stable oven paa.
+
+    Terminalen tjekkes paa PROCESSEN der ejer et vindue — ikke paa vinduets
+    titel, som skallen overskriver (maalt 5/11-2026).
+    """
     s = xs.XSession()
     kaldt: list[list[str]] = []
+    s._procs.append(_stub_proc(["xterm", "-title", "Jarvis"], pid=4242))
     monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
-    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc(args))[1])
     monkeypatch.setattr(s, "_har_vindue", lambda _m: True)
+    monkeypatch.setattr(s, "_har_klasse", lambda _k: True)
+    monkeypatch.setattr(s, "_vinduer_for", lambda _pid: ["123"])
+    monkeypatch.setattr(xs.subprocess, "run", lambda cmd, **kw: _stub_koert())
     s._fyld_skrivebord()
     kommandoer = [k[0] for k in kaldt]
     assert "pcmanfm" not in kommandoer
     assert "xterm" not in kommandoer
-    # baggrunden saettes altid: den er idempotent og koster intet
-    assert "xsetroot" in kommandoer
+
+
+def test_efter_api_genstart_adopteres_terminalen(monkeypatch):
+    """En ny API-proces ejer ingen processer, men skaermen staar der endnu.
+
+    Uden adoption ville hver genstart stable endnu en terminal oven paa den
+    foerste (maalt 5/11-2026: fire xterm-processer, ét vindue).
+    """
+    s = xs.XSession()
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc(args))[1])
+    monkeypatch.setattr(s, "_har_klasse", lambda _k: True)
+    monkeypatch.setattr(xs.subprocess, "run", lambda cmd, **kw: _stub_koert())
+    s._fyld_skrivebord()
+    assert kaldt == []
 
 
 def test_skrivebordet_taaler_manglende_apps(monkeypatch):
@@ -168,10 +204,87 @@ def test_skrivebordet_taaler_manglende_apps(monkeypatch):
     s = xs.XSession()
     kaldt: list[list[str]] = []
     monkeypatch.setattr(xs.shutil, "which", lambda n: None)
-    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc(args))[1])
     monkeypatch.setattr(s, "_har_vindue", lambda _m: False)
     s._fyld_skrivebord()
     assert kaldt == []
+
+
+# ── Den delte desktop skal ikke raadne ───────────────────────────────────
+# Maalt 5/11-2026: openbox og pcmanfm stod som <defunct> med API-processen som
+# foraelder, mens sessionen meldte "ok". Skaermen blev tom, og ingen klient
+# kunne se at der var noget galt — derfor skal sessionen vedligeholde sig selv.
+def test_doede_boern_reapes():
+    """poll() er det der reaper: et doedt barn maa ikke blive en zombie."""
+    s = xs.XSession()
+    doed = _stub_proc(["openbox"])
+    doed.poll = lambda: 1
+    levende = _stub_proc(["xterm"])
+    s._procs.extend([doed, levende])
+    s._ryd_doede()
+    assert s._procs == [levende]
+
+
+def test_wm_doed_opdages():
+    s = xs.XSession()
+    doed = _stub_proc(["openbox"])
+    doed.poll = lambda: 1
+    s._procs.append(doed)
+    assert s._wm_oppe() is False
+
+
+def test_wm_levende_opdages():
+    s = xs.XSession()
+    s._procs.append(_stub_proc(["/usr/bin/openbox"]))
+    assert s._wm_oppe() is True
+
+
+def test_vedligehold_genstarter_doed_wm(monkeypatch):
+    """En delt session maa ikke melde ok paa en skaerm ingen kan bruge."""
+    s = xs.XSession()
+    s._kor = True
+    startet: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (startet.append(args), _stub_proc(args))[1])
+    monkeypatch.setattr(s, "_fyld_skrivebord", lambda: None)
+    monkeypatch.setattr(xs.time, "sleep", lambda _s: None)
+    s._vedligehold()
+    assert "openbox" in [k[0] for k in startet]
+
+
+def test_vedligehold_genstarter_ikke_levende_wm(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    s._procs.append(_stub_proc(["openbox"]))
+    startet: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (startet.append(args), _stub_proc(args))[1])
+    monkeypatch.setattr(s, "_fyld_skrivebord", lambda: None)
+    s._vedligehold()
+    assert startet == []
+
+
+def test_start_paa_doed_server_starter_forfra(monkeypatch):
+    """Svarer X-serveren ikke, maa start() rydde op i stedet for at melde ok."""
+    s = xs.XSession()
+    s._kor = True
+    stoppet = []
+    monkeypatch.setattr(s, "_server_svarer", lambda: False)
+    monkeypatch.setattr(s, "stop", lambda: stoppet.append(True))
+    monkeypatch.setattr(xs, "mangler_pakker", lambda: ["Xvfb"])
+    res = s.start()
+    assert stoppet == [True]
+    assert res["status"] == "error"
+
+
+def test_vagten_startes_kun_en_gang(monkeypatch):
+    s = xs.XSession()
+    startet = []
+    monkeypatch.setattr(xs.threading, "Thread", lambda **kw: (startet.append(kw), _stub_proc())[1])
+    s._start_vagt()
+    s._start_vagt()
+    assert len(startet) == 1
+    assert startet[0]["daemon"] is True
 
 
 # ── Den delte session ────────────────────────────────────────────────────

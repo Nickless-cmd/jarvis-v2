@@ -6,6 +6,7 @@ kaste returneres `{"status":"error","code":"DESKTOP_UNAVAILABLE","error":...}`.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import shutil
@@ -18,6 +19,13 @@ DISPLAY = ":99"
 BREDDE = 1280
 HOEJDE = 800
 _MAX_TEKST = 500
+
+logger = logging.getLogger(__name__)
+
+# Hvor ofte vagten kigger paa den delte desktop. Skaermen er en tilstand der
+# lever laengere end enhver forbindelse, saa der er ingen klient til at opdage
+# at den er raadnet.
+VAGT_SEKUNDER = 20
 # Skrivebordsbaggrund. En rå X-session uden rodmotiv er kulsort, og en sort
 # skaerm ser ud som en fejl selv naar streamen virker (maalt 5/11-2026).
 BAGGRUND = "#2b3a4a"
@@ -146,6 +154,9 @@ class XSession:
         self.hoejde = hoejde
         self._procs: list[subprocess.Popen] = []
         self._laas = threading.Lock()
+        self._proc_laas = threading.Lock()
+        self._vedligehold_laas = threading.Lock()
+        self._vagt: threading.Thread | None = None
         self._kor = False
 
     def _env(self) -> dict[str, str]:
@@ -165,15 +176,23 @@ class XSession:
         return env
 
     def _start_proc(self, args: list[str]) -> subprocess.Popen:
+        # start_new_session: skaermen er en TILSTAND, ikke en forbindelse. Uden
+        # dette doer Xvfb og vinduerne naar API-processen genstarter, og den
+        # delte desktop varer kun til naeste deploy (maalt 5/11-2026).
         p = subprocess.Popen(
             args, env=self._env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
-        self._procs.append(p)
+        with self._proc_laas:
+            self._procs.append(p)
         return p
 
     def start(self) -> dict[str, Any]:
+        if self._kor and self._server_svarer():
+            return self._vedligehold()
         if self._kor:
-            return {"status": "ok"}
+            # X-serveren er død under os: ryd resterne og start forfra.
+            self.stop()
         mangler = mangler_pakker()
         if mangler:
             return _utilgaengelig("Mangler pakker: " + ", ".join(mangler))
@@ -201,6 +220,7 @@ class XSession:
             self.stop()
             return _utilgaengelig(f"Kunne ikke starte X-session: {exc}")
         self._kor = True
+        self._start_vagt()
         return {"status": "ok"}
 
     def _server_svarer(self) -> bool:
@@ -213,6 +233,80 @@ class XSession:
         except (OSError, subprocess.TimeoutExpired):  # xdotool findes ikke eller svarer ikke: behandl som "nej"
             return False
         return res.returncode == 0 and bool(res.stdout.strip())
+
+    def _ryd_doede(self) -> None:
+        """Reap børn der er døde, saa de ikke bliver zombier.
+
+        ``Popen.poll()`` kalder waitpid, og det er den der reaper processen.
+        Uden dette stod openbox og pcmanfm som ``<defunct>`` med API-processen
+        som foraelder — døde, men usynlige for os (maalt 5/11-2026).
+        """
+        with self._proc_laas:
+            self._procs[:] = [p for p in self._procs if p.poll() is None]
+
+    def _wm_oppe(self) -> bool:
+        """Lever window manageren? Uden den bliver nye vinduer aldrig mappet."""
+        with self._proc_laas:
+            procs = list(self._procs)
+        for p in procs:
+            if p.poll() is not None:
+                continue
+            navn = os.path.basename(str(p.args[0])) if p.args else ""
+            if navn in _WM_KANDIDATER:
+                return True
+        return False
+
+    def _vinduer_for(self, pid: int) -> list[str]:
+        """Vindues-id'er der tilhoerer processen (tom liste hvis ingen)."""
+        try:
+            res = subprocess.run(
+                ["xdotool", "search", "--pid", str(pid)],
+                env=self._env(), capture_output=True, timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):  # xdotool findes ikke eller svarer ikke: behandl som "ingen vinduer"
+            return []
+        return res.stdout.decode(errors="replace").split()
+
+    def _vedligehold(self) -> dict[str, Any]:
+        """Hold den delte desktop i live: genstart det der er dødt, fyld det der mangler.
+
+        Sessionen er delt og langlivet, saa den skal vedligeholdes frem for at
+        blive kastet vaek og startet forfra. Maalt 5/11-2026: openbox og
+        pcmanfm var døde mens sessionen meldte "ok", og skaermen blev tom.
+        """
+        if not self._vedligehold_laas.acquire(blocking=False):
+            return {"status": "ok"}
+        try:
+            self._ryd_doede()
+            if not self._wm_oppe():
+                wm = next((w for w in _WM_KANDIDATER if shutil.which(w)), None)
+                if wm:
+                    self._start_proc([wm])
+                    # Lad WM naa at mappe det der allerede staar paa skaermen.
+                    time.sleep(0.4)
+            self._fyld_skrivebord()
+        finally:
+            self._vedligehold_laas.release()
+        return {"status": "ok"}
+
+    def _start_vagt(self) -> None:
+        """Én baggrundstraad der holder sessionen i live."""
+        if self._vagt is not None and self._vagt.is_alive():
+            return
+        self._vagt = threading.Thread(
+            target=self._vagt_loekke, name="desktop-vagt", daemon=True,
+        )
+        self._vagt.start()
+
+    def _vagt_loekke(self) -> None:
+        while True:
+            time.sleep(VAGT_SEKUNDER)
+            if not self._kor:
+                continue
+            try:
+                self._vedligehold()
+            except Exception as exc:  # vagten maa ikke do af sin egen fejl: log og proev igen
+                logger.warning("desktop-vagt: vedligehold fejlede: %s", exc)
 
     def _ryd_doed_socket(self, sok: str) -> None:
         """Fjern resterne af en X-server der ikke svarer, saa vi kan starte en ny."""
@@ -235,14 +329,57 @@ class XSession:
         (fx efter en genstart af API'et), startes ingen dubletter.
         """
         if shutil.which("xsetroot"):
-            self._start_proc(["xsetroot", "-solid", BAGGRUND])
-        if shutil.which("pcmanfm") and not self._har_vindue("pcmanfm"):
+            try:
+                subprocess.run(
+                    ["xsetroot", "-solid", BAGGRUND],
+                    env=self._env(), capture_output=True, timeout=3,
+                )
+            except (OSError, subprocess.TimeoutExpired):  # baggrundsfarve er kosmetik: spring over
+                pass
+        if shutil.which("pcmanfm") and not self._har_klasse("pcmanfm"):
             self._start_proc(["pcmanfm", "--desktop"])
-        if shutil.which("xterm") and not self._har_vindue("Jarvis"):
-            self._start_proc([
-                "xterm", "-fa", "Monospace", "-fs", "11",
-                "-geometry", "100x28+40+40", "-title", "Jarvis",
-            ])
+        if shutil.which("xterm"):
+            self._sikr_terminal()
+
+    def _har_klasse(self, klasse: str) -> bool:
+        """Findes der et vindue med den WM-klasse? (robust mod at titlen aendres)"""
+        try:
+            res = subprocess.run(
+                ["xdotool", "search", "--class", klasse],
+                env=self._env(), capture_output=True, timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):  # xdotool findes ikke eller svarer ikke: behandl som "nej"
+            return False
+        return res.returncode == 0 and bool(res.stdout.strip())
+
+    def _sikr_terminal(self) -> None:
+        """Sørg for at der findes en synlig terminal.
+
+        En xterm der blev startet mens window manageren var død har ingen
+        vindue og kan ikke reddes — den dræbes, saa vi ikke hober dem op
+        (maalt 5/11-2026: én levende xterm uden vindue).
+        """
+        with self._proc_laas:
+            procs = list(self._procs)
+        egne = [
+            p for p in procs
+            if p.poll() is None and p.args
+            and os.path.basename(str(p.args[0])) == "xterm"
+        ]
+        for p in egne:
+            if self._vinduer_for(p.pid):
+                return
+        # Efter en genstart af API'et ejer vi ingen processer, men terminalen
+        # kan stadig staa paa skaermen — adopter den i stedet for at stable
+        # endnu en oven paa.
+        if self._har_klasse("xterm"):
+            return
+        for p in egne:
+            p.terminate()
+        self._start_proc([
+            "xterm", "-fa", "Monospace", "-fs", "11",
+            "-geometry", "100x28+40+40", "-title", "Jarvis",
+        ])
 
     def _har_vindue(self, moenster: str) -> bool:
         """Findes der allerede et vindue med navnet? (saa vi ikke starter dubletter)"""
@@ -257,15 +394,17 @@ class XSession:
 
     def stop(self) -> None:
         self._kor = False
-        for p in reversed(self._procs):
+        with self._proc_laas:
+            procs = list(self._procs)
+            self._procs.clear()
+        for p in reversed(procs):
             if p.poll() is None:
                 p.terminate()
-        for p in self._procs:
+        for p in procs:
             try:
                 p.wait(timeout=3)
             except subprocess.TimeoutExpired:  # lukker ikke pænt: dræb hårdt
                 p.kill()
-        self._procs.clear()
 
     def frame(self) -> bytes | dict[str, Any]:
         """Skærmen som JPEG-bytes, eller en struktureret fejl-dict."""

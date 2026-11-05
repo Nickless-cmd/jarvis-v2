@@ -43,15 +43,15 @@ _Kvote for de to dispatch-CLI'er — målt, aldrig gættet._
 | function | `_claude_token` | `()` | Token + hvor det kom fra. Miljøet vinder; env-filen er fallback. | [src](../../../core/services/dispatch_quota.py#L121) |
 | function | `_claude_credentials_token` | `()` | Claude Codes egen credentials-fil — den kilde CLI'en selv bruger. | [src](../../../core/services/dispatch_quota.py#L147) |
 | function | `_load_claude_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L180) |
-| function | `claude_quota` | `()` | 5-timers og ugentlig kvote for Claude. Cachet i 60 s. | [src](../../../core/services/dispatch_quota.py#L242) |
-| function | `_codex_usage_limit_reset` | `(tail)` | Epoch for «try again at …» naar den seneste rollout doede paa usage limit. | [src](../../../core/services/dispatch_quota.py#L259) |
-| function | `_latest_rollout` | `()` | — | [src](../../../core/services/dispatch_quota.py#L289) |
-| function | `_tail_text` | `(path, limit=…)` | Rollout-filer kan være store; rate_limits står i den nyeste hale. | [src](../../../core/services/dispatch_quota.py#L305) |
-| function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L314) |
-| function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L332) |
-| function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L429) |
-| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L436) |
-| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L448) |
+| function | `claude_quota` | `()` | 5-timers og ugentlig kvote for Claude. Cachet i 60 s. | [src](../../../core/services/dispatch_quota.py#L269) |
+| function | `_codex_usage_limit_reset` | `(tail)` | Epoch for «try again at …» naar den seneste rollout doede paa usage limit. | [src](../../../core/services/dispatch_quota.py#L286) |
+| function | `_latest_rollout` | `()` | — | [src](../../../core/services/dispatch_quota.py#L316) |
+| function | `_tail_text` | `(path, limit=…)` | Rollout-filer kan være store; rate_limits står i den nyeste hale. | [src](../../../core/services/dispatch_quota.py#L332) |
+| function | `_find_key` | `(node, key)` | Event-strukturen er pakket ind; vi leder efter nøglen, ikke efter en sti. | [src](../../../core/services/dispatch_quota.py#L341) |
+| function | `_load_codex_quota` | `()` | — | [src](../../../core/services/dispatch_quota.py#L359) |
+| function | `codex_quota` | `()` | 5-timers (300 min) og ugentlig (10080 min) kvote for Codex. | [src](../../../core/services/dispatch_quota.py#L456) |
+| function | `_window` | `(reading)` | — | [src](../../../core/services/dispatch_quota.py#L463) |
+| function | `quota_preflight` | `(backend)` | Skal denne dispatch startes? Svar FØR worktreet oprettes. | [src](../../../core/services/dispatch_quota.py#L475) |
 
 ## `core/services/dispatch_status.py`
 _Typed dispatch-status enum for the dispatch-redesign._

@@ -199,6 +199,33 @@ def _load_claude_quota() -> QuotaReading:
             detail = e.read().decode("utf-8", errors="replace")[:300]
         except Exception:  # body er kun ekstra kontekst — HTTP-koden baerer aarsagen
             pass
+        # 2026-11-05, maalt med et `claude setup-token`-token: det giver kun
+        # inference-scopes. Det KAN koere `claude -p` (verificeret: svar OK,
+        # exit 0), men kvote-endpointet kraever `user:profile` og svarer 403
+        # `oauth_scope_insufficient`. Det er hverken et doedt token eller en
+        # netvaerksfejl — og det maa ALDRIG blive hard_block, for saa blokerer
+        # preflighten en backend der virker. Beskeden skal navngive det der
+        # mangler, saa den ikke bliver jagtet som et netvaerksproblem.
+        if "oauth_scope_insufficient" in detail or "required_scopes" in detail:
+            return QuotaReading(
+                ok=False, backend="claude",
+                error=(
+                    "tokenet mangler scopet user:profile "
+                    "(et `claude setup-token` har kun inference — kald virker)"
+                ),
+            )
+        if e.code == 401:
+            # Afvist token. Det ER viden, ikke uvidenhed: `claude -p` vil
+            # fejle med samme token, saa preflighten skal blokere og spare
+            # worktreet. Uden hard_block her blev et doedt token meldt som
+            # «kunne ikke måles» og sluppet igennem.
+            return QuotaReading(
+                ok=False, backend="claude", hard_block=True,
+                error=(
+                    "tokenet blev afvist (HTTP 401) — forny "
+                    f"CLAUDE_CODE_OAUTH_TOKEN i {_CLAUDE_ENV_FILE}: {detail.strip()}"
+                ),
+            )
         return QuotaReading(
             ok=False, backend="claude",
             error=f"HTTP {e.code} fra kvote-endpointet: {detail.strip()}",

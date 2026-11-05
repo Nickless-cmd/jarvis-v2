@@ -116,6 +116,74 @@ def test_claude_quota_http_401_giver_grund_ikke_tal(monkeypatch):
     assert "401" in reading.error
 
 
+def test_claude_quota_401_er_hard_block(monkeypatch):
+    """Et afvist token er VIDEN, ikke uvidenhed: `claude -p` fejler med samme
+    token, så preflighten skal blokere og spare worktreet.
+
+    Målt 5/11-2026: uden hard_block blev et dødt token meldt som «kunne ikke
+    måles» og sluppet igennem, hvorefter dispatchen døde efter sekunder.
+    """
+    err = urllib.error.HTTPError(
+        "https://x", 401, "Unauthorized", {},
+        _Resp(b'{"type":"error","error":{"type":"authentication_error"}}'),
+    )
+    _patch_urlopen(monkeypatch, error=err)
+
+    reading = dispatch_quota.claude_quota()
+
+    assert reading.ok is False
+    assert reading.hard_block is True
+    preflight = dispatch_quota.quota_preflight("claude")
+    assert preflight["allow"] is False
+    assert preflight["severity"] == "block"
+
+
+def test_claude_quota_403_scope_blokerer_ikke(monkeypatch):
+    """Et `claude setup-token` har kun inference-scopes.
+
+    Målt 5/11-2026: det kører `claude -p` (svar OK, exit 0), men
+    kvote-endpointet kræver `user:profile` og svarer 403. Det er hverken et
+    dødt token eller en netværksfejl — så det må ALDRIG blive hard_block, for
+    så blokerer preflighten en backend der virker. Beskeden skal navngive
+    scopet, så den ikke bliver jagtet som et netværksproblem.
+    """
+    body = (
+        b'{"type":"error","error":{"type":"permission_error",'
+        b'"message":"OAuth token does not meet scope requirement user:profile",'
+        b'"error_code":"oauth_scope_insufficient"}}'
+    )
+    err = urllib.error.HTTPError("https://x", 403, "Forbidden", {}, _Resp(body))
+    _patch_urlopen(monkeypatch, error=err)
+
+    reading = dispatch_quota.claude_quota()
+
+    assert reading.ok is False
+    assert reading.hard_block is False
+    assert "user:profile" in reading.error
+    preflight = dispatch_quota.quota_preflight("claude")
+    assert preflight["allow"] is True
+    assert preflight["severity"] == "unknown"
+
+
+def test_claude_quota_429_blokerer_ikke(monkeypatch):
+    """429 fra kvote-endpointet er en rate limit på MÅLINGEN, ikke på kvoten.
+
+    Målt 5/11-2026 efter få kald i træk. Behandlede vi den som «brugt op»,
+    blev vagten selv den ting der standsede alt arbejde.
+    """
+    err = urllib.error.HTTPError(
+        "https://x", 429, "Too Many Requests", {},
+        _Resp(b'{"type":"error","error":{"type":"rate_limit_error"}}'),
+    )
+    _patch_urlopen(monkeypatch, error=err)
+
+    reading = dispatch_quota.claude_quota()
+
+    assert reading.ok is False
+    assert reading.hard_block is False
+    assert dispatch_quota.quota_preflight("claude")["allow"] is True
+
+
 def test_claude_quota_ikke_json_giver_grund(monkeypatch):
     _patch_urlopen(monkeypatch, payload=None)
     monkeypatch.setattr(

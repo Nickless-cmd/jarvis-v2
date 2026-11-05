@@ -22,7 +22,7 @@
  * ## Rate-limiter
  *
  * Streaming kalder rendereren mange gange i sekundet. Nøglen er
- * `udfald + lang + blok-længde + blokkens første 200 tegn`, så den SAMME fejl
+ * `udfald + lang + blokkens første 40 tegn` (aldrig længden — den vokser), så den SAMME fejl
  * kun rapporteres én gang — også når blokken re-rendres. Derudover et loft pr.
  * session, så en ukendt fejlform ikke kan oversvømme serveren.
  */
@@ -61,8 +61,12 @@ export function saetFladeLogSender(fn: Sender | null): void {
 
 /** Én nøgle pr. unik fejlform — ikke pr. render. */
 export function fladeLogNoegle(s: FladeSnapshot): string {
-  return `${s.udfald}|${s.lang}|${s.blok.length}|${s.blok.slice(0, 200)}`
+  // Ikke blok-længden: den vokser ~6 tegn pr. streaming-tick (målt 5/11-2026:
+  // 39 ticks = 39 nøgler). Kun et stabilt, kort præfiks.
+  return `${s.udfald}|${s.lang}|${s.blok.slice(0, NOEGLE_PRAEFIKS)}`
 }
+
+const NOEGLE_PRAEFIKS = 40
 
 export function logFlade(s: FladeSnapshot): void {
   if (!sender) return

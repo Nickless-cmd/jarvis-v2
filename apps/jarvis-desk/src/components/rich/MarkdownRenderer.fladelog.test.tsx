@@ -11,7 +11,9 @@ import { nulstilFladeLog, saetFladeLogSender, MAKS_PR_SESSION, type FladeSnapsho
 const SPEC = '{"type":"comparison","title":"Test","columns":["A","B"],"rows":[{"label":"x","values":["1","2"]}]}'
 const KORREKT = `Her er fladen:\n\n\`\`\`jarvis-ui\n${SPEC}\n\`\`\`\n\nEfter.`
 const MAST = `Her er fladen:\n\n\`\`\`jarvis-ui ${SPEC}\n\`\`\`\n\nEfter.`
-const UDEN_FENCE = `Her er fladen: jarvis-ui ${SPEC} — uden hegn overhovedet.`
+// Hegnet står midt i en linje, så det aldrig bliver et <pre>.
+const UDEN_FENCE = `Her er fladen: \`\`\`jarvis-ui ${SPEC} \`\`\` — midt i linjen.`
+const PROSA = 'Ahh — *fladen*, ikke falden 😄 Jeg skrev `jarvis-ui` som ord.'
 
 let fanget: FladeSnapshot[] = []
 
@@ -52,6 +54,25 @@ describe('klientlog ved renderbeslutningen', () => {
     expect(udfald()).toContain('no-pre-node')
   })
 
+  it('logger IKKE no-pre-node for en prosa-omtale uden hegn', () => {
+    render(<MarkdownRenderer text={PROSA} streaming={false} />)
+    expect(fanget).toEqual([])
+  })
+
+  it('logger ikke wrong-lang mens et jarvis-ui-hegn er åbent', () => {
+    const aaben = `Her:\n\n\`\`\`jarvis-ui {"type":"comparison"`
+    render(<MarkdownRenderer text={aaben} streaming />)
+    expect(udfald()).not.toContain('wrong-lang')
+  })
+
+  it('samme blok med voksende længde giver præcis ÉN log-linje', () => {
+    const { rerender } = render(<MarkdownRenderer text="" streaming={false} />)
+    for (let n = 0; n < 20; n++) {
+      rerender(<MarkdownRenderer text={`${UDEN_FENCE}${' x'.repeat(n)}`} streaming={false} />)
+    }
+    expect(udfald()).toEqual(['no-pre-node'])
+  })
+
   it('begrænser antallet af snapshots gennem en hel stream', () => {
     // Streaming kalder rendereren én gang pr. delta. Målt 25/10-2026 er
     // nøglen `udfald + lang + blokkens første 80 tegn`, så hver NY blokform
@@ -72,7 +93,7 @@ describe('klientlog ved renderbeslutningen', () => {
 
   it('holder sig under loftet pr. sidevisning', () => {
     for (let i = 0; i < MAKS_PR_SESSION + 10; i++) {
-      const tekst = `jarvis-ui uden hegn, variant ${i}`
+      const tekst = `x \`\`\`jarvis-ui variant ${i}\`\`\``
       render(<MarkdownRenderer text={tekst} streaming={false} />)
       cleanup()
     }

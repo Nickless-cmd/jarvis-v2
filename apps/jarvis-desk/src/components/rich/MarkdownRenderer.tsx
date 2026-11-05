@@ -202,6 +202,11 @@ function ikonFor(kind: RefKind | null, commit: boolean, ekstern: boolean) {
   return null
 }
 
+/** Ulige antal ```-hegn = et hegn er stadig åbent (streaming-tilstand). */
+export function harAabentHegn(tekst: string): boolean {
+  return ((tekst.match(/```/g) ?? []).length % 2) === 1
+}
+
 /** Én blok markdown. Memoiseret på strengen: en færdig blok parses én gang. */
 export const MarkdownBlok = memo(function MarkdownBlok({
   md,
@@ -226,7 +231,13 @@ export const MarkdownBlok = memo(function MarkdownBlok({
     const fence = struktureret
       .split('\n')
       .find((l) => l.trimStart().startsWith('```') && l.includes('jarvis-ui'))
+    // Et åbent hegn er en streaming-tilstand, ikke et render-udfald: log først
+    // den afsluttende tilstand (5/11-2026: 42 wrong-lang = én besked).
+    if (harAabentHegn(struktureret)) return
     if (!fence) {
+      // no-pre-node kræver et ægte ```jarvis-ui-hegn der bare ikke står på
+      // linjestart; ren prosa-omtale af ordet er støj (39 linjer = én besked).
+      if (!struktureret.includes('```jarvis-ui')) return
       logFlade({ udfald: 'no-pre-node', foer: '', efter: struktureret,
         blok: struktureret, className: '', lang: '', kode: '' })
       return
@@ -263,6 +274,8 @@ export function MarkdownRenderer({ text, streaming }: { text: string; streaming:
     if (!streaming) return
     const stabilized = stabilizeStreamingMarkdown(text)
     if (stabilized === text) return
+    // Åbent hegn = stabiliseringen lukkede det midt i streamingen; ikke et udfald.
+    if (harAabentHegn(text)) return
     if (!text.includes('jarvis-ui') && !stabilized.includes('jarvis-ui')) return
     logFlade({
       udfald: 'wrong-lang',

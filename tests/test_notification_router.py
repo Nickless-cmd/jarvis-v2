@@ -60,6 +60,12 @@ def test_route_queues_during_quiet_hours(tmp_path, monkeypatch):
     res = nr.route_proactive_notification("u1", "approval", {"preview": "morgen"})
     assert res["channel"] == "queued"
     assert delivered == []  # IKKE leveret — sat i kø
+    with db.connect() as conn:
+        row = conn.execute(
+            "SELECT deliver_after, delivered_at FROM delayed_notifications"
+        ).fetchone()
+    assert "T" in row["deliver_after"] and row["deliver_after"].endswith("Z")
+    assert row["delivered_at"] is None
 
 
 def test_route_critical_bypasses_quiet_hours(tmp_path, monkeypatch):
@@ -405,21 +411,43 @@ def test_approval_har_kortere_levetid_end_andre(isolated_runtime, monkeypatch) -
     assert udfald["leveret"] == 1    # infra_security: 3t < 24t
 
 
-def test_koeen_toemmes_i_batch_ikke_som_byge(isolated_runtime, monkeypatch) -> None:
-    """En ophobning må ikke lande på én gang — højst _MAX_PR_RUN pr. kald,
-    ældste først, så resten kommer i de næste poll."""
-    monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+def test_nattens_koe_bliver_en_digest_ikke_en_byge(isolated_runtime, monkeypatch) -> None:
+    """En brugers nattelige ophobning bliver én levering, uanset antal rækker."""
+    calls = []
+    monkeypatch.setattr(
+        nr, "_deliver_to_channel",
+        lambda uid, channel, payload, ntype: calls.append((uid, payload, ntype)) or True,
+    )
     monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
 
     for i in range(8):
         _indsaet_koe("bjorn", "reach_out", f"nr{i}", timer_gammel=1)
 
-    første = nr.fire_due_delayed("12:00")
-    assert første["leveret"] == nr._MAX_PR_RUN
-    assert første["tilbage"] == 8 - nr._MAX_PR_RUN
+    result = nr.fire_due_delayed("12:00")
+    assert result == {"leveret": 8, "digests": 1, "foraeldet": 0, "tilbage": 0}
+    assert len(calls) == 1
+    assert calls[0][1]["title"] == "8 hændelser i nat"
+    assert "+2 flere" in calls[0][1]["body"]
+    with db.connect() as conn:
+        rows = conn.execute(
+            "SELECT delivered, delivered_at FROM delayed_notifications ORDER BY id"
+        ).fetchall()
+    assert all(row["delivered"] == 1 and row["delivered_at"] for row in rows)
 
-    anden = nr.fire_due_delayed("12:00")
-    assert anden["leveret"] == 3
+
+def test_digest_batch_limit_counts_users_not_rows(isolated_runtime, monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(nr, "_deliver_to_channel", lambda uid, *a: calls.append(uid) or True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+    for uid in ("u1", "u2", "u3"):
+        for i in range(4):
+            _indsaet_koe(uid, "reach_out", f"{uid}-{i}", timer_gammel=1)
+
+    first = nr.fire_due_delayed("12:00", max_per_run=2)
+    assert first["leveret"] == 8 and first["digests"] == 2 and first["tilbage"] == 4
+    second = nr.fire_due_delayed("12:00", max_per_run=2)
+    assert second["leveret"] == 4 and second["digests"] == 1 and second["tilbage"] == 0
+    assert len(calls) == 3
 
 
 def test_raekke_fyrer_ikke_foer_sit_eget_tidspunkt(isolated_runtime, monkeypatch) -> None:
@@ -434,6 +462,14 @@ def test_raekke_fyrer_ikke_foer_sit_eget_tidspunkt(isolated_runtime, monkeypatch
         assert nr.fire_due_delayed(tid)["leveret"] == 0, f"fyrede for tidligt ved {tid}"
 
     assert nr.fire_due_delayed("07:00")["leveret"] == 1
+
+
+def test_next_delivery_timestamp_handles_cross_midnight() -> None:
+    from datetime import datetime, timedelta, timezone
+
+    cet = timezone(timedelta(hours=1))
+    now = datetime(2026, 11, 5, 23, 0, tzinfo=cet)
+    assert nr._next_delivery_iso("07:00", now=now) == "2026-11-06T06:00:00Z"
 
 
 def test_titel_og_tekst_oversaetter_alle_payload_former(isolated_runtime, monkeypatch) -> None:

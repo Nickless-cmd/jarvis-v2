@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from core.runtime.db import connect
 
@@ -109,15 +109,31 @@ def is_quiet_hours(prefs: dict, now_hm: str | None = None) -> bool:
 
 
 # ── Quiet-hours-kø ─────────────────────────────────────────────────────────────
-def _enqueue_delayed(user_id: str, ntype: str, payload: dict, importance: str, deliver_after_hm: str) -> None:
-    """Gem en notifikation til levering efter quiet_end. deliver_after_hm = 'HH:MM'."""
+def _next_delivery_iso(deliver_after_hm: str, *, now: datetime | None = None) -> str:
+    """Næste lokale forekomst af ``HH:MM`` som fuldt UTC-tidsstempel."""
+    local_now = now or datetime.now().astimezone()
+    if local_now.tzinfo is None:
+        local_now = local_now.astimezone()
+    try:
+        hour, minute = (int(part) for part in str(deliver_after_hm).split(":", 1))
+        target = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    except (TypeError, ValueError):
+        target = local_now
+    if target <= local_now:
+        target += timedelta(days=1)
+    return target.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _enqueue_delayed(user_id: str, ntype: str, payload: dict, importance: str,
+                     deliver_after_hm: str) -> None:
+    """Gem en notifikation til næste forekomst af quiet_end."""
     with connect() as conn:
         conn.execute(
             "INSERT INTO delayed_notifications "
             "(user_id, notif_type, payload_json, importance, deliver_after, created_at, delivered) "
             "VALUES (?,?,?,?,?,?,0)",
             (user_id, ntype, json.dumps(payload, ensure_ascii=False), importance,
-             deliver_after_hm, _now_iso()),
+             _next_delivery_iso(deliver_after_hm), _now_iso()),
         )
 
 
@@ -130,10 +146,11 @@ def _enqueue_delayed(user_id: str, ntype: str, payload: dict, importance: str, d
 _LEVETID_TIMER: dict[str, int] = {"approval": 2}
 _LEVETID_TIMER_DEFAULT = 24
 
-# Batch: hvor mange der maksimalt leveres pr. kald. Heartbeat-poll'en kører
-# hvert ~30s, så 5/kald tømmer ~600/time — rigeligt til normal drift — uden at
-# en ophobning rammer Bjørn som én byge.
+# Batch: hvor mange BRUGER-DIGESTS der maksimalt leveres pr. kald. Alle en
+# brugers forfaldne rækker samles i én digest, så heartbeat-kadencen ikke
+# spreder den samme nats kø ud som en byge over mange polls.
 _MAX_PR_RUN = 5
+_DIGEST_LINES = 6
 
 
 def _alder_timer(created_at: str | None, nu: datetime) -> float | None:
@@ -149,10 +166,79 @@ def _alder_timer(created_at: str | None, nu: datetime) -> float | None:
     return (nu - t).total_seconds() / 3600.0
 
 
+def _effective_now(now_hm: str | None) -> datetime:
+    local_now = datetime.now().astimezone()
+    if not now_hm:
+        return local_now
+    try:
+        hour, minute = (int(part) for part in str(now_hm).split(":", 1))
+        return local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    except (TypeError, ValueError):  # Ugyldig test/legacy-tid falder sikkert tilbage til nu.
+        return local_now
+
+
+def _delivery_due(deliver_after: str, *, now_local: datetime) -> bool:
+    value = str(deliver_after or "").strip()
+    if not value:
+        return True
+    try:
+        target = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        # Bagudkompatibilitet for de gamle rækker, der kun bar HH:MM. Nye
+        # rækker tager altid ISO-vejen og har derfor ingen cross-midnight-fejl.
+        return now_local.strftime("%H:%M") >= value
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    return now_local.astimezone(timezone.utc) >= target.astimezone(timezone.utc)
+
+
+def _digest_line(ntype: str, payload: dict) -> str:
+    title = str(payload.get("title") or "").strip()
+    text = (str(payload.get("preview") or "").strip()
+            or str(payload.get("body") or "").strip()
+            or str(payload.get("message") or "").strip()
+            or str(payload.get("text") or "").strip())
+    label = title or str(ntype).removeprefix("msg:").replace("_", " ") or "Hændelse"
+    if title and text:
+        line = f"{title}: {text}"
+    else:
+        line = text or label
+    return " ".join(line.split())[:220]
+
+
+def _quiet_digest(rows: list[tuple]) -> dict:
+    lines: list[str] = []
+    for row in rows[:_DIGEST_LINES]:
+        try:
+            payload = json.loads(row[3])
+        except (TypeError, ValueError):
+            payload = {}
+        lines.append(f"• {_digest_line(str(row[2]), payload)}")
+    remaining = len(rows) - len(lines)
+    if remaining > 0:
+        lines.append(f"• +{remaining} flere")
+    return {
+        "kind": "quiet_digest",
+        "title": f"{len(rows)} hændelser i nat",
+        "body": "\n".join(lines),
+        "preview": "\n".join(lines),
+        "count": len(rows),
+    }
+
+
+def _mark_delivered(ids: list[int], delivered_at: str) -> None:
+    with connect() as conn:
+        conn.executemany(
+            "UPDATE delayed_notifications SET delivered = 1, delivered_at = ? WHERE id = ?",
+            [(delivered_at, rid) for rid in ids],
+        )
+
+
 def fire_due_delayed(now_hm: str | None = None, *, max_per_run: int = _MAX_PR_RUN) -> dict:
     """Lever forfaldne udskudte notifikationer (kaldes af heartbeat-poll'en).
 
-    Returnerer {"leveret": n, "foraeldet": n, "tilbage": n}.
+    Returnerer {"leveret": rækker, "digests": notifikationer,
+    "foraeldet": rækker, "tilbage": rækker}.
 
     23/9-2026: funktionen havde NUL kaldere uden for tests, så alt der ramte
     quiet hours blev spist i stilhed (1.542 rækker, 0 leveret). Den er nu
@@ -163,13 +249,15 @@ def fire_due_delayed(now_hm: str | None = None, *, max_per_run: int = _MAX_PR_RU
       `approval` kun 2t) markeres `delivered = 2` ("forældet, bevidst ikke
       leveret") i stedet for at fyre. 1 = leveret, 0 = venter; ingen anden
       læser rører 2-tallet.
-    - **Batch** (`max_per_run`): højst så mange pr. kald, ældste først, så en
-      ophobning ikke lander som én byge.
+    - **Digest-batch** (`max_per_run`): højst så mange bruger-digests pr. kald;
+      alle samme brugers forfaldne rækker samles i én notifikation.
     - **Eget tidspunkt**: en række fyrer ikke før sin egen `deliver_after`.
     """
-    now = now_hm or datetime.now().strftime("%H:%M")
-    nu_dt = datetime.now(timezone.utc)
+    now_local = _effective_now(now_hm)
+    now = now_local.strftime("%H:%M")
+    nu_dt = now_local.astimezone(timezone.utc)
     leveret = 0
+    digests = 0
     foraeldede_ids: list[int] = []
     with connect() as conn:
         rows = conn.execute(
@@ -177,31 +265,31 @@ def fire_due_delayed(now_hm: str | None = None, *, max_per_run: int = _MAX_PR_RU
             "FROM delayed_notifications WHERE delivered = 0 ORDER BY id ASC",
         ).fetchall()
     tilbage = len(rows)
-    for rid, uid, ntype, pj, imp, deliver_after, created_at in rows:
-        if leveret >= max_per_run:
-            break
+    due_by_user: dict[str, list[tuple]] = {}
+    for row in rows:
+        rid, uid, ntype, pj, imp, deliver_after, created_at = row
         if (_alder_timer(created_at, nu_dt) or 0.0) > _LEVETID_TIMER.get(
                 str(ntype), _LEVETID_TIMER_DEFAULT):
             foraeldede_ids.append(rid)
             tilbage -= 1
             continue
-        try:
-            payload = json.loads(pj)
-        except Exception:
-            payload = {}
         prefs = get_preferences(uid)
         if is_quiet_hours(prefs, now):
             continue  # stadig stille — vent
-        if deliver_after and now < str(deliver_after):
+        if not _delivery_due(str(deliver_after or ""), now_local=now_local):
             continue  # rækkens eget tidspunkt ikke nået endnu
-        if str(ntype).startswith("msg:"):
-            deliver_message(uid, payload.get("body") or "", ntype[4:], importance=imp)
-        else:
-            route_proactive_notification(uid, ntype, payload, importance=imp, _skip_quiet=True)
-        with connect() as conn:
-            conn.execute("UPDATE delayed_notifications SET delivered = 1 WHERE id = ?", (rid,))
-        leveret += 1
-        tilbage -= 1
+        due_by_user.setdefault(str(uid), []).append(tuple(row))
+
+    for uid, due_rows in list(due_by_user.items())[:max(0, max_per_run)]:
+        payload = _quiet_digest(due_rows)
+        importance = "high" if any(str(row[4]) in {"high", "critical"} for row in due_rows) else "normal"
+        route_proactive_notification(
+            uid, "quiet_digest", payload, importance=importance, _skip_quiet=True, feed=False)
+        ids = [int(row[0]) for row in due_rows]
+        _mark_delivered(ids, _now_iso())
+        leveret += len(ids)
+        digests += 1
+        tilbage -= len(ids)
     # Forældelsen skrives i ÉT hug: en kø der har stået i månedsvis kan rumme
     # tusindvis af rækker (målt 23/9: 1.539), og én forbindelse pr. række i en
     # heartbeat-poll der kører hvert 30s er spild. Værdien 2 = "forældet,
@@ -210,7 +298,8 @@ def fire_due_delayed(now_hm: str | None = None, *, max_per_run: int = _MAX_PR_RU
         with connect() as conn:
             conn.executemany("UPDATE delayed_notifications SET delivered = 2 WHERE id = ?",
                              [(rid,) for rid in foraeldede_ids])
-    return {"leveret": leveret, "foraeldet": len(foraeldede_ids), "tilbage": tilbage}
+    return {"leveret": leveret, "digests": digests,
+            "foraeldet": len(foraeldede_ids), "tilbage": tilbage}
 
 
 # ── Levering (mekanik — delegerer til eksisterende primitiver) ─────────────────

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9722/18102 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9723/18108 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9722/18102 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6513 | 12342 | 52% |
+| `core.services` | 6514 | 12348 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -619,7 +619,7 @@ Generated from source. 9722/18102 functions/methods documented (53%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L102)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L139)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L125)
-- `core/runtime/db_schema.py` :: `init_db` (L462)
+- `core/runtime/db_schema.py` :: `init_db` (L468)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -1508,7 +1508,7 @@ Generated from source. 9722/18102 functions/methods documented (53%). The list b
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)
 - `core/services/notes_connector.py` :: `search_notes` (L105)
-- `core/services/notification_router.py` :: `reset_delivery` (L431)
+- `core/services/notification_router.py` :: `reset_delivery` (L520)
 - `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L84)
 - `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L100)
 - `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L94)

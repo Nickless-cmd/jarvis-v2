@@ -346,8 +346,14 @@ def _ensure_notification_tables(conn) -> None:
             importance    TEXT NOT NULL DEFAULT 'normal',
             deliver_after TEXT NOT NULL,
             created_at    TEXT NOT NULL,
-            delivered     INTEGER NOT NULL DEFAULT 0
+            delivered     INTEGER NOT NULL DEFAULT 0,
+            delivered_at  TEXT
         )""")
+    delayed_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(delayed_notifications)").fetchall()
+    }
+    if "delivered_at" not in delayed_cols:
+        conn.execute("ALTER TABLE delayed_notifications ADD COLUMN delivered_at TEXT")
     # Notifikations-feeden (spec 2026-09-21). Raekken PEGER paa sin ejer gennem
     # kilde+ref og kopierer ham ikke: en godkendelse har sin egen livscyklus, og
     # en kopi her ville kunne staa og lyve om at noget stadig venter.

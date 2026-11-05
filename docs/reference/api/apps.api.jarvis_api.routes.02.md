@@ -175,6 +175,40 @@ _Klientlog ved renderbeslutningen — fire målepunkter, ingen guard._
 | function | `_antal_i_dag` | `()` | Antal linjer skrevet i dag. Læses kun når filen findes. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L77) |
 | function | `flade_log` | `(snapshot)` | Modtag ét snapshot og skriv det. Svarer altid 202. | [src](../../../apps/api/jarvis_api/routes/flade_log.py#L91) |
 
+## `apps/api/jarvis_api/routes/git_panel.py`
+_Git-panelets ruter: status, diff, stage, unstage, commit, log, push, worktrees._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_afkvot` | `(sti)` | `git status` citerer stier med mellemrum/specialtegn: "a b.txt". | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L46) |
+| function | `parse_status` | `(tekst)` | `git status --porcelain=v1 --branch` → branch, tracking og filliste. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L54) |
+| function | `parse_log` | `(tekst)` | Format `%H\x1f%h\x1f%an\x1f%aI\x1f%s\x1e` → liste af commits. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L109) |
+| function | `parse_worktrees` | `(tekst)` | `git worktree list --porcelain` → liste. Første post er hovedtræet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L123) |
+| function | `rens_sti` | `(sti)` | Afvis stier der kunne læses som flag eller bryde ud af repoet. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L147) |
+| function | `_mål` | `(kind, root)` | Validér target → (kind, rod, uid). Container = owner + server-repo. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L163) |
+| function | `_git` | `(kind, rod, uid, *args)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L177) |
+| function | `_fejl` | `(ud, standard=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L182) |
+| function | `_status_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L187) |
+| function | `_diff_sync` | `(kind, rod, uid, path, mode)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L195) |
+| function | `_stage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L224) |
+| function | `_unstage_sync` | `(kind, rod, uid, paths, alle)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L230) |
+| function | `_commit_sync` | `(kind, rod, uid, besked)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L245) |
+| function | `_log_sync` | `(kind, rod, uid, grænse)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L268) |
+| function | `_push_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L280) |
+| function | `_worktrees_sync` | `(kind, rod, uid)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L304) |
+| class | `_PathsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L317) |
+| class | `_CommitBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L324) |
+| class | `_PushBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L330) |
+| function | `git_panel_status` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L336) |
+| function | `git_panel_diff` | `(kind=…, root=…, path=…, mode=…)` | Diff for én fil (`path`) eller samlet (uden `path`). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L342) |
+| function | `_paths_eller_alle` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L357) |
+| function | `git_panel_stage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L366) |
+| function | `git_panel_unstage` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L373) |
+| function | `git_panel_commit` | `(body)` | Commit KUN det staged, med serverens attribution-trailere. | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L380) |
+| function | `git_panel_log` | `(kind=…, root=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L390) |
+| function | `git_panel_push` | `(body)` | Push den aktuelle branch (sætter upstream til origin første gang). | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L396) |
+| function | `git_panel_worktrees` | `(kind=…, root=…)` | — | [src](../../../apps/api/jarvis_api/routes/git_panel.py#L406) |
+
 ## `apps/api/jarvis_api/routes/health.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -709,41 +743,4 @@ _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeli
 | function | `mc_endorse_life_project` | `(initiative_id, note=…)` | Sig god for en langsigtet hensigt uden at afslutte den. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L442) |
 | function | `mc_abandon_life_project` | `(initiative_id, note=…)` | Abandon a long-term intention without deleting its record. | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L452) |
 | function | `mc_operations` | `(limit=…)` | Samlet operations-flade (3s cached): runtime-config, tool-intent, runs, | [src](../../../apps/api/jarvis_api/routes/mission_control_runs_ops.py#L461) |
-
-## `apps/api/jarvis_api/routes/mission_control_runtime_config.py`
-_Mission Control routes: adaptive/tool-intent, runtime-contract, heartbeat, visible-execution, capability-approval_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_capability_request_scope` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L16) |
-| function | `_stored_capability_execution_args` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L23) |
-| function | `mc_adaptive_planner` | `()` | Return the current bounded adaptive planner runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L35) |
-| function | `mc_adaptive_reasoning` | `()` | Return the current bounded adaptive reasoning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L41) |
-| function | `mc_guided_learning` | `()` | Return the current bounded guided learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L51) |
-| function | `mc_adaptive_learning` | `()` | Return the current bounded adaptive learning runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L61) |
-| function | `mc_self_system_code_awareness` | `()` | Return the current bounded self system / code awareness runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L71) |
-| function | `mc_tool_intent` | `()` | Return the current bounded approval-gated tool intent runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L77) |
-| function | `mc_approval_feedback` | `()` | Return the approval-feedback surface (learning signal from past approvals/denials). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L83) |
-| function | `mc_approve_tool_intent` | `()` | Approve the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L89) |
-| function | `mc_deny_tool_intent` | `()` | Deny the current pending tool intent from Mission Control. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L116) |
-| function | `mc_private_brain` | `()` | Return the private-brain overview plus recent session-distillation entries. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L143) |
-| function | `mc_runtime_contract` | `()` | Return the current runtime-contract state (active contract + candidates). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L152) |
-| function | `mc_heartbeat` | `()` | Return the heartbeat runtime surface (current heartbeat state and policy). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L158) |
-| function | `mc_emotional_memory` | `(limit=…)` | Closes cartographer dark-edge (2026-05-13): emotional_memory_engine | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L164) |
-| function | `mc_heartbeat_tick` | `()` | Manually trigger one heartbeat tick and return its resulting state/tick/policy. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L173) |
-| function | `mc_approve_runtime_contract_candidate` | `(candidate_id)` | Approve a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L185) |
-| function | `mc_reject_runtime_contract_candidate` | `(candidate_id)` | Reject a runtime-contract candidate by id; returns the updated candidate. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L198) |
-| function | `mc_apply_runtime_contract_candidate` | `(candidate_id)` | Apply an approved runtime-contract candidate by id; returns the apply result. Raises 400 on invalid id. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L211) |
-| function | `mc_runtime` | `()` | Return the aggregate Mission Control runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L224) |
-| function | `mc_visible_execution` | `()` | Return the visible-execution surface (current visible model/provider/auth) from live settings. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L230) |
-| function | `mc_main_agent_selection` | `()` | Return the current main-agent selection surface (selected provider/model/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L237) |
-| function | `mc_ollama_models` | `()` | Return the Ollama models available for use as the visible target. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L243) |
-| function | `mc_provider_models` | `(provider=…, auth_profile=…)` | Return the models available for the given provider (optionally scoped to an auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L249) |
-| function | `mc_invoke_workspace_capability` | `(capability_id, approved=…, write_content=…, target_path=…, command_text=…)` | Invoke a workspace capability by id, passing through the approval flag and optional | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L263) |
-| function | `mc_approve_capability_request` | `(request_id)` | Approve a capability-approval request by id (stamping approved_at now). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L286) |
-| function | `mc_execute_capability_request` | `(request_id, write_content=…, command_text=…)` | Execute a previously approved capability-approval request. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L309) |
-| function | `mc_approve_and_execute_capability_request` | `(request_id)` | Atomically approve, claim and execute a stored capability request once. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L426) |
-| function | `mc_complete_development_focus` | `(focus_id)` | Manually mark a development focus as completed. | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L506) |
-| function | `mc_update_visible_execution` | `(payload)` | Update the visible-execution settings (visible model provider/name/auth profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L538) |
-| function | `mc_update_main_agent_selection` | `(payload)` | Select the main-agent target (provider/model, optional auth_profile). | [src](../../../apps/api/jarvis_api/routes/mission_control_runtime_config.py#L593) |
 

@@ -994,6 +994,8 @@ def create_app() -> FastAPI:
     from apps.api.jarvis_api.routes.flade_log import router as flade_log_router
     app.include_router(flade_log_router)
     app.include_router(chat_router)
+    from apps.api.jarvis_api.routes.git_panel import router as git_panel_router
+    app.include_router(git_panel_router)
     app.include_router(chat_run_streams_router)
     # Boy-scout split 3/10-2026: samme /chat-praefiks, egne tillids-ruter.
     app.include_router(chat_workspace_trust_router)

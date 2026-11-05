@@ -454,7 +454,7 @@ _Scope-aware capability truth for visible prompts._
 | function | `_scope` | `()` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L18) |
 | function | `_legacy_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L26) |
 | function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L47) |
-| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L79) |
+| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_sections/visible_capability_truth.py#L80) |
 
 ## `core/services/prompt_sections/workspace_files.py`
 _Workspace file section helpers — udskilt fra prompt_contract.py (Boy Scout)._

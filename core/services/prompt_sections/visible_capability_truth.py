@@ -52,7 +52,8 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     common = [
         "Runtime capability truth:",
         "- The native tools exposed in this request are authoritative. Use their actual call mechanism; never simulate a tool call in prose.",
-        "- Use available tools for claims that require inspection. Batch independent calls; sequence only calls whose arguments depend on an earlier result.",
+        "- Use available tools for claims that require inspection.",
+        "- BATCH independent calls: emit them as SEVERAL tool calls in the SAME round. Go one call per round ONLY when the next call's arguments depend on the previous call's result.",
         "- A tool error, policy block or approval request is not success. Report the real state and do not invent a result.",
     ]
     if scope == "chat":

@@ -35,9 +35,9 @@ async def desktop_stream(ws: WebSocket) -> None:
     else:
         await ws.accept()
 
-    from core.desktop.x_session import XSession
+    from core.desktop.x_session import shared_session
 
-    sess = XSession()
+    sess = shared_session()
     try:
         res = await asyncio.to_thread(sess.start)
     except Exception as exc:
@@ -85,4 +85,5 @@ async def desktop_stream(ws: WebSocket) -> None:
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        await asyncio.to_thread(sess.stop)
+        # Desktoppen stoppes IKKE her: den er delt og en tilstand, ikke en
+        # forbindelse. Ellers forsvandt vinduerne hver gang man skiftede fane.

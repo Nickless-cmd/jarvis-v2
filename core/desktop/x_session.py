@@ -18,6 +18,9 @@ DISPLAY = ":99"
 BREDDE = 1280
 HOEJDE = 800
 _MAX_TEKST = 500
+# Skrivebordsbaggrund. En rå X-session uden rodmotiv er kulsort, og en sort
+# skaerm ser ud som en fejl selv naar streamen virker (maalt 5/11-2026).
+BAGGRUND = "#2b3a4a"
 _WM_KANDIDATER = ("openbox", "fluxbox", "icewm", "xfwm4", "twm")
 _TASTE_RE = re.compile(r"^[A-Za-z0-9_]{1,32}$")
 _KNAPPER = {"left": "1", "middle": "2", "right": "3"}
@@ -112,6 +115,17 @@ def bygg_input(msg: Any) -> list[list[str]] | None:
     return None
 
 
+def xvfb_args(display: str = DISPLAY, bredde: int = BREDDE, hoejde: int = HOEJDE) -> list[str]:
+    """Xvfb-kommandoen.
+
+    ``-extension GLX`` er ikke kosmetik: uden det initialiserer Xvfb NVIDIA's
+    EGL og dør med SIGABRT i ``libEGL_nvidia.so.0`` (målt 5/11-2026). En ren
+    2D-desktop har ikke brug for GLX.
+    """
+    return ["Xvfb", display, "-screen", "0", f"{bredde}x{hoejde}x24",
+            "-nolisten", "tcp", "-extension", "GLX"]
+
+
 def mangler_pakker() -> list[str]:
     """Navne på manglende binære pakker (tom liste = klar)."""
     mangler = []
@@ -137,9 +151,8 @@ class XSession:
     def _env(self) -> dict[str, str]:
         env = dict(os.environ)
         env["DISPLAY"] = self.display
-        # Conda-miljoeets libEGL kolliderer med NVIDIA-driveren: Xvfb doer med
-        # EGL-backtrace (exit 134) naar den ser condas libEGL.so.1. X-vaerktoejerne
-        # er system-binaerer og skal ikke se condas biblioteker.
+        # Conda-miljoeets biblioteker skal ikke med til system-binaererne
+        # (Xvfb, xdotool, xterm): de er bygget mod systemets libs.
         lp = env.get("LD_LIBRARY_PATH", "")
         renset = [
             p for p in lp.split(":")
@@ -165,11 +178,14 @@ class XSession:
         if mangler:
             return _utilgaengelig("Mangler pakker: " + ", ".join(mangler))
         sok = "/tmp/.X11-unix/X" + self.display.lstrip(":")
+        # En socket kan overleve sin X-server (draebt proces, genstartet
+        # container). Uden dette tjek ville vi genbruge en doed skaerm og
+        # melde "ok" paa et display ingen kan tegne paa.
+        if os.path.exists(sok) and not self._server_svarer():
+            self._ryd_doed_socket(sok)
         try:
             if not os.path.exists(sok):
-                xvfb = self._start_proc(
-                    ["Xvfb", self.display, "-screen", "0", f"{self.bredde}x{self.hoejde}x24"]
-                )
+                xvfb = self._start_proc(xvfb_args(self.display, self.bredde, self.hoejde))
                 for _ in range(50):
                     if os.path.exists(sok) or xvfb.poll() is not None:
                         break
@@ -180,11 +196,64 @@ class XSession:
             wm = next((w for w in _WM_KANDIDATER if shutil.which(w)), None)
             if wm:
                 self._start_proc([wm])
+            self._fyld_skrivebord()
         except OSError as exc:
             self.stop()
             return _utilgaengelig(f"Kunne ikke starte X-session: {exc}")
         self._kor = True
         return {"status": "ok"}
+
+    def _server_svarer(self) -> bool:
+        """Svarer X-serveren paa displayet? (ikke bare: findes socket-filen)"""
+        try:
+            res = subprocess.run(
+                ["xdotool", "getdisplaygeometry"],
+                env=self._env(), capture_output=True, timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):  # xdotool findes ikke eller svarer ikke: behandl som "nej"
+            return False
+        return res.returncode == 0 and bool(res.stdout.strip())
+
+    def _ryd_doed_socket(self, sok: str) -> None:
+        """Fjern resterne af en X-server der ikke svarer, saa vi kan starte en ny."""
+        for sti in (sok, "/tmp/.X" + self.display.lstrip(":") + "-lock"):
+            try:
+                os.unlink(sti)
+            except FileNotFoundError:  # allerede vaek: intet at rydde
+                pass
+            except OSError:  # ikke vores fil: lad den staa, start() fejler aerligt
+                pass
+
+    def _fyld_skrivebord(self) -> None:
+        """Saet baggrund, filhaandtering og en terminal paa skrivebordet.
+
+        Uden dette er sessionen en tom, sort skaerm: streamen virker, men der
+        er intet at se eller klikke paa. Hver app er valgfri — mangler den,
+        springes den over, og desktoppen er stadig gyldig.
+
+        Idempotent: genbruges en X-server der allerede har apps paa skrivebordet
+        (fx efter en genstart af API'et), startes ingen dubletter.
+        """
+        if shutil.which("xsetroot"):
+            self._start_proc(["xsetroot", "-solid", BAGGRUND])
+        if shutil.which("pcmanfm") and not self._har_vindue("pcmanfm"):
+            self._start_proc(["pcmanfm", "--desktop"])
+        if shutil.which("xterm") and not self._har_vindue("Jarvis"):
+            self._start_proc([
+                "xterm", "-fa", "Monospace", "-fs", "11",
+                "-geometry", "100x28+40+40", "-title", "Jarvis",
+            ])
+
+    def _har_vindue(self, moenster: str) -> bool:
+        """Findes der allerede et vindue med navnet? (saa vi ikke starter dubletter)"""
+        try:
+            res = subprocess.run(
+                ["xdotool", "search", "--name", moenster],
+                env=self._env(), capture_output=True, timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):  # xdotool findes ikke eller svarer ikke: behandl som "nej"
+            return False
+        return res.returncode == 0 and bool(res.stdout.strip())
 
     def stop(self) -> None:
         self._kor = False
@@ -232,3 +301,22 @@ class XSession:
                 except (OSError, subprocess.TimeoutExpired) as exc:  # xdotool findes ikke eller hænger: svar klienten i stedet for at dø
                     return _fejl("INPUT_FAILED", f"xdotool fejlede: {exc}")
         return {"status": "ok"}
+
+
+_singleton: XSession | None = None
+_singleton_laas = threading.Lock()
+
+
+def shared_session() -> XSession:
+    """Én delt X-session for hele processen.
+
+    Desktoppen er en TILSTAND, ikke en forbindelse. Blev sessionen stoppet når
+    den sidste websocket lukkede, forsvandt vinduerne og alt man var i gang
+    med, hver gang man skiftede fane. Derfor deles den mellem alle klienter, og
+    den stoppes kun ved eksplicit nedlukning.
+    """
+    global _singleton
+    with _singleton_laas:
+        if _singleton is None:
+            _singleton = XSession()
+        return _singleton

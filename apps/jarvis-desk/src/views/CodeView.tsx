@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe, ListTodo, Monitor } from 'lucide-react'
 import { onPauseSvar } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -38,6 +38,7 @@ import { SideOpgaveListe } from '../components/shell/SideOpgaveListe'
 import { SideOpgaveDialog } from '../components/SideOpgaveDialog'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { DesktopPanel } from '../components/desktop/DesktopPanel'
 import { hasHostCapability } from '../lib/host'
 import { ArtifactsPanel } from '../components/panel/ArtifactsPanel'
 import { PlansPanel } from '../components/panel/PlansPanel'
@@ -349,6 +350,9 @@ export function CodeView({
   // Jarvis' browser. Den kom med i chat-fladen 21/9 og blev glemt her —
   // samme hoejre-stak, samme plads i raekken, saa de to flader ikke skilles ad.
   const [browserOpen, setBrowserOpen] = usePersistedState('jarvis-desk:panel:browser', false)
+  // Jarvis' desktop (5/11-2026). Bygget til chat-fladen og glemt her — samme
+  // fejl som browseren 21/9: samme stak, samme plads i rækken.
+  const [desktopOpen, setDesktopOpen] = usePersistedState('jarvis-desk:panel:desktop', false)
   // 3/10-2026: artifact, plan og pr — de tre sidste paneler. De blev afvist
   // statisk i `IKKE_I_DESK`, men komponenterne fandtes hele tiden.
   const [artifactsOpen, setArtifactsOpen] = usePersistedState('jarvis-desk:panel:artifacts', false)
@@ -366,7 +370,7 @@ export function CodeView({
   const [sideOpgaveRefresh, setSideOpgaveRefresh] = useState(0)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'sideopgaver'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser' | 'desktop' | 'sideopgaver'>('')
 
   useEffect(() => paaAendringsFokus((sti) => {
     setFokusFil(sti)
@@ -377,8 +381,8 @@ export function CodeView({
   // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
   const [codeFane, setCodeFane] = usePersistedState<PanelTab>('jarvis-desk:panel:codeFane', 'files')
   const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
-  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen })
-  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, artifactsOpen, plansOpen, prOpen }
+  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, desktopOpen, artifactsOpen, plansOpen, prOpen })
+  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen, desktopOpen, artifactsOpen, plansOpen, prOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -390,6 +394,7 @@ export function CodeView({
           t.changesOpen && 'diff', t.jobsOpen && 'tasks',
           t.filesOpen && (t.codeFane === 'terminal' ? 'terminal' : 'file'),
           t.browserOpen && 'browser',
+          t.desktopOpen && 'desktop',
           t.artifactsOpen && 'artifact', t.plansOpen && 'plan', t.prOpen && 'pr',
         ].filter(Boolean) as string[]
       },
@@ -404,6 +409,7 @@ export function CodeView({
           return null
         }
         if (p === 'browser') { setBrowserOpen(true); return null }
+        if (p === 'desktop') { setDesktopOpen(true); return null }
         if (p === 'terminal') { setFilesOpen(true); setAabenFane({ fane: 'terminal', n: Date.now() }); return null }
         if (p === 'artifact') { setArtifactsOpen(true); return null }
         if (p === 'plan') { setPlansOpen(true); return null }
@@ -416,12 +422,13 @@ export function CodeView({
       // opstod i fletningen 21/9: view-request-kanalen og den fulde visning
       // blev bygget hver for sig og var begge rigtige alene.
       luk: (p) => {
-        const rude = p === 'diff' ? 'changes' : p === 'tasks' ? 'jobs' : p === 'browser' ? 'browser' : ''
+        const rude = p === 'diff' ? 'changes' : p === 'tasks' ? 'jobs' : p === 'browser' ? 'browser' : p === 'desktop' ? 'desktop' : ''
         if (rude) setFuldRude((v) => (v === rude ? '' : v))
         if (p === 'diff') setChangesOpen(false)
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file' || p === 'terminal') setFilesOpen(false)
         else if (p === 'browser') setBrowserOpen(false)
+        else if (p === 'desktop') setDesktopOpen(false)
         else if (p === 'artifact') setArtifactsOpen(false)
         else if (p === 'plan') setPlansOpen(false)
         else if (p === 'pr') setPrOpen(false)
@@ -1102,6 +1109,14 @@ export function CodeView({
       </button>
       <button
         type="button"
+        className={`panel-toggle ${desktopOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul Jarvis' desktop" title="Jarvis' desktop"
+        onClick={() => setDesktopOpen((o) => !o)}
+      >
+        <Monitor size={15} />
+      </button>
+      <button
+        type="button"
         className={`panel-toggle ${envOpen ? 'active' : ''}`}
         aria-label="Vis/skjul miljø-felt" title="Miljø"
         onClick={() => setEnvManual(!(envManual ?? envWide))}
@@ -1151,7 +1166,7 @@ export function CodeView({
     </div>
   )
 
-  const skinneAaben = jobsOpen || changesOpen || browserOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen
+  const skinneAaben = jobsOpen || changesOpen || browserOpen || desktopOpen || artifactsOpen || plansOpen || prOpen || sideOpgaveOpen
   // Miljø-feltet og ruderne deler ÉN højre-stak: feltet øverst, ruden under.
   // Før skjulte hver rude feltet, så de to aldrig stod sammen — Bjørn
   // 3/10-2026: «så skal de 3 paneler kunne vises under miljøfeltet». Filer og
@@ -1221,6 +1236,15 @@ export function CodeView({
             fuld={fuldRude === 'browser'}
             onFuld={(f) => setFuldRude(f ? 'browser' : '')}
             onClose={() => { setBrowserOpen(false); setFuldRude((v) => v === 'browser' ? '' : v) }}
+          />
+        )}
+        {desktopOpen && (!fuldRude || fuldRude === 'desktop') && (
+          <DesktopPanel
+            config={config}
+            aaben={desktopOpen}
+            fuld={fuldRude === 'desktop'}
+            onFuld={(f) => setFuldRude(f ? 'desktop' : '')}
+            onClose={() => { setDesktopOpen(false); setFuldRude((v) => v === 'desktop' ? '' : v) }}
           />
         )}
         {jobsOpen && (!fuldRude || fuldRude === 'jobs') && (

@@ -112,6 +112,20 @@ def upsert_section(
     body_lines = [ln.rstrip() for ln in str(body or "").strip().splitlines()]
     if not heading:
         raise ValueError("heading is required")
+    # 5/11-2026: en kalder kan sende overskriften MED i kroppen. Målt tre gange
+    # i MEMORY.md (3/11, 4/11 og 5/11) blev resultatet "## X / tom linje /
+    # ## X / indhold" — altså en tom sektion efterfulgt af en dublet, fordi
+    # dublet-overskriften selv afslutter den tomme sektion. Overskriften ejes af
+    # `heading`-argumentet; en gentaget overskrift som første kropslinje er
+    # aldrig tilsigtet. Fjern den (og blanke linjer) før sektionen bygges.
+    while body_lines and not body_lines[0].strip():
+        body_lines.pop(0)
+    if body_lines:
+        _m = _HEADING_RE.match(body_lines[0])
+        if _m and normalize_heading(_m.group(2)) == normalize_heading(heading):
+            body_lines.pop(0)
+            while body_lines and not body_lines[0].strip():
+                body_lines.pop(0)
     level = max(1, min(6, int(level)))
     # §16 (9/10-2026): læs sti-nøglet. `path.read_text()` fandt ikke en
     # krypteret member-fil (.enc), så en skrivning til et member-workspace

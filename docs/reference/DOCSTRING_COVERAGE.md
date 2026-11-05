@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9766/18224 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9772/18230 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,7 +20,7 @@ Generated from source. 9766/18224 functions/methods documented (53%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 76 | 104 | 73% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.desktop` | 5 | 13 | 38% |
+| `core.desktop` | 11 | 19 | 57% |
 | `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
@@ -305,8 +305,8 @@ Generated from source. 9766/18224 functions/methods documented (53%). The list b
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L138)
 - `core/costing/ledger.py` :: `telemetry_summary` (L118)
-- `core/desktop/x_session.py` :: `XSession.start` (L161)
-- `core/desktop/x_session.py` :: `XSession.stop` (L189)
+- `core/desktop/x_session.py` :: `XSession.start` (L174)
+- `core/desktop/x_session.py` :: `XSession.stop` (L258)
 - `core/eventbus/bus.py` :: `EventBus.recent` (L180)
 - `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L201)
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L226)

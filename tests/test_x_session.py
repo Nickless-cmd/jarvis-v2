@@ -88,9 +88,10 @@ def test_ugyldigt_input_paa_koerende_session_giver_fejl_dict(monkeypatch):
 
 
 def test_conda_stier_fjernes_fra_x_miljoeet(monkeypatch):
-    """Conda-miljoeets libEGL draeber Xvfb med EGL-backtrace (exit 134).
+    """Conda-miljoeets biblioteker skal ikke med til X-systembinaererne.
 
-    X-vaerktoejerne er system-binaerer: de skal ikke se condas biblioteker.
+    De er bygget mod systemets libs. (At Xvfb ogsaa doede paa NVIDIA's EGL er
+    en ANDEN aarsag — den haandteres med -extension GLX, se testen nedenfor.)
     """
     monkeypatch.setenv("LD_LIBRARY_PATH", "/home/bs/miniconda3/envs/ai/lib:/usr/local/lib")
     env = xs.XSession()._env()
@@ -103,3 +104,98 @@ def test_kun_conda_sti_fjerner_variablen_helt(monkeypatch):
     monkeypatch.setenv("LD_LIBRARY_PATH", "/home/bs/miniconda3/envs/ai/lib")
     env = xs.XSession()._env()
     assert "LD_LIBRARY_PATH" not in env
+
+
+# ── Xvfb-kommandoen: GLX skal vaere slaaet fra ────────────────────────────
+# Maalt 5/11-2026: uden -extension GLX doer Xvfb med SIGABRT inde i
+# libEGL_nvidia.so.0 — den toemte skaermen var altsaa ikke et stream-problem
+# men en X-server der aldrig kom op.
+def test_xvfb_slaar_glx_fra():
+    args = xs.xvfb_args(":99", 1280, 800)
+    assert args[0] == "Xvfb"
+    assert "-extension" in args
+    assert args[args.index("-extension") + 1] == "GLX"
+
+
+def test_xvfb_bruger_display_og_stoerrelse():
+    args = xs.xvfb_args(":42", 800, 600)
+    assert ":42" in args
+    assert "800x600x24" in args
+
+
+# ── Skrivebordet skal have indhold ───────────────────────────────────────
+def _stub_proc():
+    class P:
+        def poll(self): return None
+        def wait(self, timeout=None): return 0
+        def terminate(self): pass
+        def kill(self): pass
+    return P()
+
+
+def test_skrivebordet_faar_baggrund_og_terminal(monkeypatch):
+    """En tom X-session er kulsort. Uden apps ser streamen ud som en fejl."""
+    s = xs.XSession()
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_har_vindue", lambda _m: False)
+    s._fyld_skrivebord()
+    kommandoer = [k[0] for k in kaldt]
+    assert "xsetroot" in kommandoer
+    assert "pcmanfm" in kommandoer
+    assert "xterm" in kommandoer
+    assert any(xs.BAGGRUND in k for k in kaldt if k[0] == "xsetroot")
+
+
+def test_skrivebordet_starter_ikke_dubletter(monkeypatch):
+    """Genbruges en X-server der allerede har apps, maa vi ikke stable oven paa."""
+    s = xs.XSession()
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_har_vindue", lambda _m: True)
+    s._fyld_skrivebord()
+    kommandoer = [k[0] for k in kaldt]
+    assert "pcmanfm" not in kommandoer
+    assert "xterm" not in kommandoer
+    # baggrunden saettes altid: den er idempotent og koster intet
+    assert "xsetroot" in kommandoer
+
+
+def test_skrivebordet_taaler_manglende_apps(monkeypatch):
+    """Mangler xterm/pcmanfm, er desktoppen stadig gyldig — ikke en fejl."""
+    s = xs.XSession()
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: None)
+    monkeypatch.setattr(s, "_start_proc", lambda args: (kaldt.append(args), _stub_proc())[1])
+    monkeypatch.setattr(s, "_har_vindue", lambda _m: False)
+    s._fyld_skrivebord()
+    assert kaldt == []
+
+
+# ── Den delte session ────────────────────────────────────────────────────
+def test_delt_session_er_samme_instans():
+    """Desktoppen er en tilstand: alle klienter skal se SAMME skaerm."""
+    assert xs.shared_session() is xs.shared_session()
+
+
+def test_doed_socket_ryddes(monkeypatch, tmp_path):
+    sok = tmp_path / "X99"
+    sok.write_text("")
+    lock = "/tmp/.X99-lock"
+    s = xs.XSession()
+    s._ryd_doed_socket(str(sok))
+    assert not sok.exists()
+
+
+def test_doed_socket_rydder_ikke_fremmede_filer(monkeypatch, tmp_path):
+    """En fil vi ikke kan slette maa ikke kaste — start() skal fejle aerligt."""
+    s = xs.XSession()
+
+    def nægt(_p):
+        raise PermissionError("ikke vores")
+
+    monkeypatch.setattr(xs.os, "unlink", nægt)
+    s._ryd_doed_socket("/tmp/.X11-unix/X99")  # kaster ikke
+

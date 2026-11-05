@@ -92,7 +92,15 @@ CHAT_FORMAT_CORE = (
     "SE FØR DU KONKLUDERER OM FORM: en tekst der er klippet ud af en visuel flade "
     "har mistet streger, tabelkanter og vægt. Konkludér aldrig om hvordan noget "
     "SER UD på grundlag af en ren tekstkopi — spørg efter et billede eller lad "
-    "være at udtale dig."
+    "være at udtale dig. "
+    "STRUKTURERET DATA HAR EN FORM: en kodeblok er ikke en præsentation — den er "
+    "et citat af noget rå. Commit-hashes, filnavne, stier, side-opgave-id'er, "
+    "værktøjsnavne og tilstande skal OPSTILLES, ikke klumpes. Ét navn inde i en "
+    "sætning må stå som inline-kode. To eller flere af samme slags bliver en liste "
+    "når de er sideordnede, og en tabel når de har fælles akser. Skal noget "
+    "aflæses, sammenlignes eller vælges, er det en flade. Aldrig flere linjer rå "
+    "output i én blok, og aldrig en blok som erstatning for den sætning der "
+    "fortæller hvad læseren ser på."
 )
 
 

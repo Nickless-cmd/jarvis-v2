@@ -320,6 +320,83 @@ def test_kort_pseudo_overskrift_flagges() -> None:
     assert g.fejl_i_prosa(tekst) != []
 
 
+# ── 6. Afsnitslængde: muren af korte sætninger uden luft (5/11-2026) ───────
+#
+# Bjørn: «du klumper teksten sammen». En mur af korte, korrekte sætninger uden
+# blanke linjer imellem. De fem daværende regler målte ALLE indholdet inde i et
+# afsnit — ingen talte hvor mange linjer det fyldte — så guarden var grøn på
+# præcis den form han klagede over.
+
+
+def test_mur_af_korte_saetninger_uden_luft_flagges() -> None:
+    """Ni linjer i træk uden en blank linje imellem er en mur.
+
+    MUTATION: sæt MAKS_AFSNIT_LINJER = 99 → intet flag → fejler.
+    """
+    linjer = "\n".join(
+        f"Sætning nummer {i} står her uden luft over eller under sig."
+        for i in range(1, 10)
+    )
+    tekst = f"## Status\n\n{linjer}\n"
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "9 linjer" in fejl[0]
+    assert "luft" in fejl[0]
+
+
+def test_samme_indhold_med_luft_flagges_ikke() -> None:
+    """Præcis samme tekst, kun med blanke linjer imellem — det ER formen.
+
+    MUTATION: tæl linjer i hele teksten i stedet for pr. blok → den luftede
+    version ville også ramme grænsen → fejler.
+    """
+    afsnit = [
+        f"Sætning nummer {i} står her uden luft over eller under sig."
+        for i in range(1, 10)
+    ]
+    tekst = "## Status\n\n" + "\n\n".join(afsnit) + "\n"
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_liste_paa_ti_punkter_flagges_ikke() -> None:
+    """Ti punkter ER struktur — `_er_struktureret` skal skærme dem.
+
+    MUTATION: fjern `_er_struktureret`-gaten → listen tælles som en mur → fejler.
+    """
+    tekst = (
+        "## Fund\n\n"
+        + "\n".join(f"- punkt {i} med nok tekst til at fylde en hel linje" for i in range(1, 11))
+        + "\n"
+    )
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_kodeblok_paa_ti_linjer_flagges_ikke() -> None:
+    """En fence på ti linjer er kode, ikke prosa i forklædning.
+
+    MUTATION: fjern fence-sporet i `_blokke_med_overskrift` → de ti linjer
+    måles som ét prosa-afsnit → fejler.
+    """
+    krop = "\n".join(f"echo 'linje {i}'" for i in range(1, 11))
+    tekst = f"## Kode\n\n```bash\n{krop}\n```\n"
+    assert g.fejl_i_prosa(tekst) == []
+
+
+def test_muren_taelles_i_linjer_ikke_i_saetninger() -> None:
+    """Reglen må ikke kunne omgås ved at skrive ét punktum pr. linje.
+
+    Teksten har ingen komma-kæde og intet tal — kun linjeantal kan fange den.
+
+    MUTATION: mål sætninger i stedet for linjer (fx `_SAETNING_SPLIT`) → hver
+    linje er sin egen korte sætning → intet fund → fejler.
+    """
+    linjer = "\n".join("Det holder ikke." for _ in range(10))
+    tekst = f"## Svar\n\n{linjer}\n"
+    fejl = g.fejl_i_prosa(tekst)
+    assert len(fejl) == 1
+    assert "10 linjer" in fejl[0]
+
+
 def test_en_blok_giver_hoejst_et_fund() -> None:
     """Fakta-tungt afsnit må ikke flagges både som opremsning og talmur.
 

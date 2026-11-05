@@ -147,7 +147,20 @@ def format_tool_result_for_model(
         # er en af dem. Uden dette fald tilbage viste hvert eneste af dem
         # «unknown error», og den rigtige aarsag fandtes ingen steder i
         # samtalen: beskeden VAR der, den blev kastet vaek her.
-        besked = result.get("error") or result.get("text") or "unknown error"
+        besked = result.get("error") or result.get("text")
+        if not besked:
+            # `detail` (5/11-2026): git_actions.commit_paths_as_jarvis returnerer
+            # sine fejl som {"status": "error", "detail": ...} — seks steder — og
+            # hverken `error` eller `text`. commit_attributed, commit_all_container
+            # og commit_all_workstation viste derfor ALLE fejl som «unknown error»:
+            # beskeden VAR der, den blev kastet vaek her. Samme klasse som
+            # 27/9-2026-fixet der tilfoejede `text` — `detail` blev aldrig daekket.
+            # Kun naar den er en streng: enkelte vaerktoejer laegger en struktur i
+            # `detail`, og en dict i fejlbeskeden er vaerre end ingen besked.
+            _detalje = result.get("detail")
+            if isinstance(_detalje, str) and _detalje.strip():
+                besked = _detalje
+        besked = besked or "unknown error"
         return f"[Tool {name} error: {besked}]"
 
     if status == "blocked":

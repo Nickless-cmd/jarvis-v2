@@ -69,6 +69,15 @@ MIN_TAL = 5
 #: Kortere fences er inline-eksempler, ikke prosa i forklædning.
 MIN_KODEBLOK_LINJER = 2
 
+#: Hvor mange linjer et prosa-afsnit må fylde UDEN en blank linje imellem.
+#: Målt 5/11-2026 (Bjørn): «du klumper teksten sammen» — en mur af korte,
+#: korrekte sætninger uden luft. De fem daværende regler målte alle indholdet
+#: INDE i et afsnit og så derfor intet. Bjørns egen form er 3–5 linjer pr.
+#: afsnit, så grænsen ligger over det normale brug og under det der læses som
+#: en mur. Måles i LINJER, ikke tegn: det er sammenflydningen der er fejlen,
+#: og den kan ikke omgås ved at skrive ét punktum pr. linje.
+MAKS_AFSNIT_LINJER = 8
+
 _OVERSKRIFT_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*$")
 _FED_OVERSKRIFT_RE = re.compile(r"^\*\*([^*\n]{2,60})\*\*[ \t]*$")
 _FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
@@ -153,6 +162,11 @@ class ProsaPunkt:
             return (
                 f"kodeblok uden kode under «{self.overskrift}» — den bærer prosa, "
                 f"brug liste eller tabel: «{kort}»"
+            )
+        if self.slags == "afsnitslaengde":
+            return (
+                f"afsnit med {self.antal_led} linjer uden luft under "
+                f"«{self.overskrift}» — del det med blanke linjer: «{kort}»"
             )
         return (
             f"prosa-opremsning med {self.antal_led} led under "
@@ -423,7 +437,24 @@ def find_prosa_punkter(text: str) -> list[ProsaPunkt]:
         if len(afsnit) < MIN_AFSNIT_TEGN:
             continue
 
-        # 2. Opremsning skrevet som prosa — kræver en overskrift over sig.
+        # 2. Afsnitslængde: en mur af linjer uden blank linje imellem.
+        # `_er_struktureret` er allerede sprunget over ovenfor, så lister,
+        # tabeller og citater rammes ikke; fences er fjernet i
+        # `_blokke_med_overskrift`. Målt 5/11-2026: guarden var grøn på præcis
+        # den form Bjørn klagede over, fordi ingen regel talte linjer.
+        if len(blok) >= MAKS_AFSNIT_LINJER:
+            fund.append(
+                ProsaPunkt(
+                    overskrift=overskrift or "svaret",
+                    antal_led=len(blok),
+                    uddrag=afsnit,
+                    grund="linjer uden luft",
+                    slags="afsnitslaengde",
+                )
+            )
+            continue
+
+        # 3. Opremsning skrevet som prosa — kræver en overskrift over sig.
         bedste = 0
         grund = ""
         if overskrift:

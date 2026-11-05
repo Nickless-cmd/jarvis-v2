@@ -41,11 +41,11 @@ _One chat-only decision vocabulary for closure and presentation._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L130) |
-| function | `decide_surface` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Resolve a reading task to prose, a native surface, or a drawing tool. | [src](../../../core/services/chat_response_policy.py#L188) |
-| function | `_prose_choice` | `(reason, next_step)` | — | [src](../../../core/services/chat_response_policy.py#L246) |
-| function | `_why_surface` | `(surface, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L256) |
-| function | `_why_prose` | `(task, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L272) |
+| function | `surface_for_reading_task` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Compile a semantic reading task to one of the six native surfaces. | [src](../../../core/services/chat_response_policy.py#L137) |
+| function | `decide_surface` | `(task, *, item_count=…, shared_dimensions=…, already_rendered=…)` | Resolve a reading task to prose, a native surface, or a drawing tool. | [src](../../../core/services/chat_response_policy.py#L195) |
+| function | `_prose_choice` | `(reason, next_step)` | — | [src](../../../core/services/chat_response_policy.py#L253) |
+| function | `_why_surface` | `(surface, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L263) |
+| function | `_why_prose` | `(task, item_count, shared_dimensions)` | — | [src](../../../core/services/chat_response_policy.py#L279) |
 
 ## `core/services/chat_session_private_metadata.py`
 _Encrypt message-derived session metadata for registered non-owner users._

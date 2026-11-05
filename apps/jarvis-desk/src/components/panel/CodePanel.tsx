@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FileText, TerminalSquare, Save, X, Search, GitCommit, Eye } from 'lucide-react'
+import { FileText, TerminalSquare, Save, X, Search, GitCommit, GitBranch, Eye } from 'lucide-react'
 import { FileTree } from './FileTree'
+import { GitPanel } from './GitPanel'
 import { FileContextMenu } from './FileContextMenu'
 import { TerminalPane } from './TerminalPane'
 import { CodeBlock } from '../rich/CodeBlock'
@@ -11,7 +12,7 @@ import {
   getFile, writeFile, openExternal, getActiveFile, commitMessage, commitFile, type ApiConfig,
 } from '../../lib/api'
 
-export type PanelTab = 'files' | 'terminal'
+export type PanelTab = 'files' | 'terminal' | 'git'
 
 /** Sprog der vises som ren tekst (ingen kode-highlight). */
 const _PLAIN = new Set(['', 'text', 'plaintext', 'txt', 'log'])
@@ -170,8 +171,15 @@ export function CodePanel({
               <TerminalSquare size={13} /> Terminal
             </button>
           )}
+          <button type="button" className={`codepanel-tab ${tab === 'git' ? 'active' : ''}`}
+            onClick={() => setTab('git')} title="Git">
+            <GitBranch size={13} /> Git
+          </button>
         </div>
       </div>
+
+      {/* Git-fanen monteres kun når den er åben, så status hentes frisk hver gang. */}
+      {tab === 'git' && <GitPanel config={config} kind={kind} root={root} />}
 
       {/* Keep-alive: begge faner forbliver monteret, skjules med display. */}
       <div className="codepanel-body" style={{ display: tab === 'files' ? 'flex' : 'none' }}>

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-11-05 from app.routes (live) — 669 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-05 from app.routes (live) — 677 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -278,6 +278,14 @@
 | POST | `/chat/file` | dict | chat |
 | POST | `/chat/file/commit` | dict | chat |
 | POST | `/chat/file/commit-message` | dict | chat |
+| POST | `/chat/git-panel/commit` | dict | git_panel |
+| GET | `/chat/git-panel/diff` | dict | git_panel |
+| GET | `/chat/git-panel/log` | dict | git_panel |
+| POST | `/chat/git-panel/push` | dict | git_panel |
+| POST | `/chat/git-panel/stage` | dict | git_panel |
+| GET | `/chat/git-panel/status` | dict | git_panel |
+| POST | `/chat/git-panel/unstage` | dict | git_panel |
+| GET | `/chat/git-panel/worktrees` | dict | git_panel |
 | GET | `/chat/git-status` | dict | chat |
 | GET | `/chat/git/branches` | dict | chat |
 | POST | `/chat/git/checkout` | dict | chat |

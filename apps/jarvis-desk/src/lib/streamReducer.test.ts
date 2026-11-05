@@ -554,6 +554,18 @@ describe('udgivet fil i den levende strøm (7/10-2026)', () => {
     expect(s.blocks[0]).toMatchObject({ type: 'file', kilde: 'published' })
   })
 
+  it('MCP Apps-hostdata overlever den levende strøm', () => {
+    const mcpApp = {
+      server: 'vejr', tool: 'forecast', arguments: { by: 'Svendborg' },
+      result: { structuredContent: { grader: 21 } },
+    }
+    const s = start({
+      type: 'file', filename: 'mcp-app.html', mime_type: 'text/html;profile=mcp-app',
+      attachment_id: 'att-mcp', kilde: 'generated', tool_use_id: 'tu-mcp', mcp_app: mcpApp,
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'file', mcp_app: mcpApp, tool_use_id: 'tu-mcp' })
+  })
+
   it('en video-blok lander ogsaa — samme hul ramte den', () => {
     const s = start({
       type: 'video', filename: 'k.mp4', mime_type: 'video/mp4',

@@ -316,6 +316,33 @@ export async function apiFetch<T>(
   throw lastError ?? new StreamError('unknown', 'Ukendt fejl', {})
 }
 
+/** MCP Apps-hostbro. Iframen får aldrig tokenet; kun denne forælder kalder
+ * den allerede godkendte server gennem Jarvis API. */
+export async function callMcpAppTool(
+  config: ApiConfig,
+  server: string,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(
+    config,
+    `/account/mcp/${encodeURIComponent(server)}/apps/call`,
+    { method: 'POST', body: { tool, arguments: args } },
+  )
+}
+
+export async function readMcpAppResource(
+  config: ApiConfig,
+  server: string,
+  uri: string,
+): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(
+    config,
+    `/account/mcp/${encodeURIComponent(server)}/apps/resource`,
+    { method: 'POST', body: { uri } },
+  )
+}
+
 export async function listSessions(
   config: ApiConfig,
   opts: { inkluderArkiverede?: boolean } = {},

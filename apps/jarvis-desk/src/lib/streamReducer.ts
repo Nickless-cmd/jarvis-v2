@@ -391,9 +391,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // fladen faldt til jorden i den levende strøm og dukkede først op når
       // tråden blev genindlæst fra `content_json`.
       else if (cb.type === 'file') blocks[event.index] = {
-        // Tilstandstypen `file` bærer KUN referencen — `src`/`alt`/
-        // `tool_use_id` findes ikke på den (kun på `image` og `video`).
-        // Udsenderen sender dem heller ikke for en fil.
+        // MCP Apps bærer desuden host-kontrakten. Den må ikke droppes live:
+        // så ville samme blok være en fejl indtil reload og virke bagefter.
         type: 'file',
         filename: cb.filename,
         url: cb.url,
@@ -401,6 +400,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         mime_type: cb.mime_type,
         size_bytes: cb.size_bytes,
         kilde: cb.kilde,
+        tool_use_id: cb.tool_use_id,
+        mcp_app: cb.mcp_app,
       }
       else if (cb.type === 'video') blocks[event.index] = {
         type: 'video',

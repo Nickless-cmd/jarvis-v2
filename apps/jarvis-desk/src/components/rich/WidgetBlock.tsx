@@ -50,7 +50,7 @@ const MAX_PROMPT_TEGN = 2000
  *  Tom naar der ikke er nogen bro: web-fladen, mobilen og testene har ingen
  *  `jarvisDesk`, og dér er `'unsafe-inline'` stadig aktiv — dokumentet skal
  *  blot stå urørt. En fejl her maa ikke draebe widget'en, saa den sluges. */
-async function hentWidgetNonce(): Promise<string> {
+export async function hentWidgetNonce(): Promise<string> {
   const bro = (window as unknown as {
     jarvisDesk?: { widgetNonce?: () => Promise<unknown> }
   }).jarvisDesk

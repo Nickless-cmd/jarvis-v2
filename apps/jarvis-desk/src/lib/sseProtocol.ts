@@ -65,6 +65,7 @@ export interface ContentBlockStartEvent {
         size_bytes?: number
         kilde?: string
         tool_use_id?: string
+        mcp_app?: McpAppDescriptor
       }
     | {
         type: 'video'
@@ -296,6 +297,9 @@ export type ContentBlock =
       size_bytes?: number
       /** `published` = Jarvis lagde den ud selv. */
       kilde?: string
+      tool_use_id?: string
+      /** Findes kun på en genereret MCP Apps HTML-resource. */
+      mcp_app?: McpAppDescriptor
     }
   | {
       // Fladt persisteret progress-element (spec 2026-07-09 §5). Bærer den
@@ -319,6 +323,13 @@ export type ContentBlock =
       hint?: string
       status: 'running' | 'done' | 'error'
     }
+
+export interface McpAppDescriptor {
+  server: string
+  tool: string
+  arguments: Record<string, unknown>
+  result: Record<string, unknown>
+}
 
 /** Lightweight type-guard: et objekt med en string `type` er et StreamEvent. */
 export function isStreamEvent(value: unknown): value is StreamEvent {

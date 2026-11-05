@@ -8,6 +8,7 @@ import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
 import { WidgetBlock } from './WidgetBlock'
+import { McpAppBlock } from './McpAppBlock'
 import { VideoBlock } from './VideoBlock'
 import { ThinkingLine } from './ThinkingLine'
 import { SkillLine, SkillSurfaceLine } from './SkillLine'
@@ -286,6 +287,9 @@ function BlockView({
       // Uden config kan dokumentet ikke hentes (token). Så falder den tilbage
       // til kortet — ringere, men ærligt; en widget der ikke kan hente sit
       // indhold ville stå som en tom rude.
+      if (config && erWidget(block) && block.mcp_app) {
+        return <McpAppBlock block={block} config={config} />
+      }
       if (config && erWidget(block)) return <WidgetBlock block={block} config={config} />
       // UDGIVET fil (`publish_file`) eller en vedhæftning. Havde ingen gren
       // før, så den ramte `default: return null` — filen lå i beskeden og nåede

@@ -323,23 +323,24 @@ _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 | function | `_extract_closure_maturation_candidates` | `(snapshots, existing_domain_keys)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L606) |
 | function | `_build_governance_snapshots` | `()` | — | [src](../../../core/services/open_loop_signal_tracking.py#L685) |
 | function | `_with_closure_governance` | `(item, *, snapshots)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L743) |
-| function | `_persist_open_loop_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L793) |
-| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L875) |
-| function | `_bucket` | `(snapshots, item, key_fn, slot)` | Registrér et lag under sit domæne — nøglen først, kørslen som fallback. | [src](../../../core/services/open_loop_signal_tracking.py#L916) |
-| function | `_run_domain` | `(item)` | Domænet er KØRSLEN når den findes — se ``internal_opposition_signal_tracking``. | [src](../../../core/services/open_loop_signal_tracking.py#L944) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L965) |
-| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L981) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L993) |
-| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L997) |
-| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1002) |
-| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1007) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1012) |
-| function | `_topic_key` | `(title)` | Emnets identitet — adskilt fra domænet. | [src](../../../core/services/open_loop_signal_tracking.py#L1017) |
-| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1044) |
-| function | `_match_live_pressure_item` | `(*, anchors, candidates, minimum_overlap)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1053) |
-| function | `_thread_overlap` | `(left, right)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1077) |
-| function | `_thread_tokens` | `(item)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1081) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1115) |
+| function | `_topic_key` | `(title)` | Emnet som identitet ved SKRIVNING — eksakt normaliseret, ikke fuzzy. | [src](../../../core/services/open_loop_signal_tracking.py#L793) |
+| function | `_existing_open_loop_keys` | `()` | Kort over emne → eksisterende ``canonical_key``, plus alle kendte nøgler. | [src](../../../core/services/open_loop_signal_tracking.py#L817) |
+| function | `_persist_open_loop_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L838) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L913) |
+| function | `_bucket` | `(snapshots, item, key_fn, slot)` | Registrér et lag under sit domæne — nøglen først, kørslen som fallback. | [src](../../../core/services/open_loop_signal_tracking.py#L954) |
+| function | `_run_domain` | `(item)` | Domænet er KØRSLEN når den findes — se ``internal_opposition_signal_tracking``. | [src](../../../core/services/open_loop_signal_tracking.py#L987) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1008) |
+| function | `_critic_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1024) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1036) |
+| function | `_reflection_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1040) |
+| function | `_temporal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1045) |
+| function | `_open_loop_domain_key` | `(canonical_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1050) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1055) |
+| function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1060) |
+| function | `_match_live_pressure_item` | `(*, anchors, candidates, minimum_overlap)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1069) |
+| function | `_thread_overlap` | `(left, right)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1093) |
+| function | `_thread_tokens` | `(item)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1097) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/open_loop_signal_tracking.py#L1131) |
 
 ## `core/services/operator_allowlist.py`
 _Operator app-allowlist (leak-kandidat #5, CHICAGO-guard-mønster, 2026-07-10)._

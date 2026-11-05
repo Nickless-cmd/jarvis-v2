@@ -18,7 +18,6 @@ from core.runtime.db import (
     list_runtime_reflection_signals,
     list_runtime_regulation_homeostasis_signals,
     list_runtime_temporal_recurrence_signals,
-    supersede_runtime_open_loop_signals_for_domain,
     update_runtime_open_loop_signal_status,
     upsert_runtime_open_loop_signal,
 )
@@ -791,6 +790,51 @@ def _with_closure_governance(
     return enriched
 
 
+def _topic_key(title: str) -> str:
+    """Emnet som identitet ved SKRIVNING — eksakt normaliseret, ikke fuzzy.
+
+    ``canonical_key`` bærer kørslens run_id (``_run_domain``), så opslaget i
+    ``_upsert_signal`` aldrig kan matche en tidligere række: samme loop blev
+    indsat på ny hver tur (målt 4/11-2026: 8 dublet-familier, 20 rækker).
+
+    Domænet kan ikke erstattes af emnet — det er mødestedet hvor fokus-, critic-,
+    goal- og reflection-lagene mødes i samme tur, og ``_with_closure_governance``
+    læser det tilbage fra nøglens tredje segment. Emnet bruges derfor kun her.
+
+    Modenheds-præfikset fjernes, så «Open loop: X» og «Softening loop: X» bliver
+    SAMME række opdateret i stedet for to. Resten er eksakt: en omformulering er
+    et nyt emne, for fuzzy matchning ville kunne smelte to forskellige
+    undersøgelser sammen.
+    """
+    text = " ".join(str(title or "").split()).strip().lower()
+    for prefix in ("open loop:", "softening loop:", "closed loop:"):
+        if text.startswith(prefix):
+            text = text[len(prefix) :].strip()
+            break
+    return text
+
+
+def _existing_open_loop_keys() -> tuple[dict[str, str], set[str]]:
+    """Kort over emne → eksisterende ``canonical_key``, plus alle kendte nøgler.
+
+    Listen er nyeste-først, og vi overskriver undervejs, så den ÆLDSTE række i en
+    dublet-familie vinder — den er den oprindelige identitet, ikke en efterfølger.
+    """
+    topics: dict[str, str] = {}
+    keys: set[str] = set()
+    for row in list_runtime_open_loop_signals(limit=200):
+        if str(row.get("status") or "") not in {"open", "softening", "closed", "stale"}:
+            continue
+        key = str(row.get("canonical_key") or "")
+        if not key:
+            continue
+        keys.add(key)
+        topic = _topic_key(str(row.get("title") or ""))
+        if topic:
+            topics[topic] = key
+    return topics, keys
+
+
 def _persist_open_loop_signals(
     *,
     signals: list[dict[str, object]],
@@ -799,11 +843,24 @@ def _persist_open_loop_signals(
 ) -> list[dict[str, object]]:
     now = datetime.now(UTC).isoformat()
     persisted: list[dict[str, object]] = []
+    known_topics, existing_keys = _existing_open_loop_keys()
     for signal in signals:
+        canonical_key = str(signal.get("canonical_key") or "")
+        topic = _topic_key(str(signal.get("title") or ""))
+        # En nøgle der allerede findes er allerede en identitet — fx når
+        # closure-maturation genbruger den række den modner. Ellers slår vi
+        # emnet op, så samme loop opdateres i stedet for at blive indsat igen.
+        if canonical_key not in existing_keys:
+            reused_key = known_topics.get(topic) if topic else None
+            if reused_key:
+                canonical_key = reused_key
+            elif topic:
+                known_topics[topic] = canonical_key
+                existing_keys.add(canonical_key)
         persisted_item = upsert_runtime_open_loop_signal(
             signal_id=f"open-loop-{uuid4().hex}",
             signal_type=str(signal.get("signal_type") or "open-loop"),
-            canonical_key=str(signal.get("canonical_key") or ""),
+            canonical_key=canonical_key,
             status=str(signal.get("status") or "open"),
             title=str(signal.get("title") or ""),
             summary=str(signal.get("summary") or ""),
@@ -820,22 +877,11 @@ def _persist_open_loop_signals(
             run_id=run_id,
             session_id=session_id,
         )
-        superseded_count = supersede_runtime_open_loop_signals_for_domain(
-            domain_key=str(signal.get("domain_key") or ""),
-            exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-            updated_at=now,
-            status_reason="Superseded by a newer open-loop reading for the same bounded domain.",
-        )
-        if superseded_count > 0:
-            event_bus.publish(
-                "open_loop_signal.superseded",
-                {
-                    "signal_id": persisted_item.get("signal_id"),
-                    "signal_type": persisted_item.get("signal_type"),
-                    "superseded_count": superseded_count,
-                    "summary": persisted_item.get("summary"),
-                },
-            )
+        # Supersede-kaldet er fjernet (5/11-2026): det sendte kørslens run_id som
+        # domain_key, så mønstret ``open-loop:%:{run_id}`` kun kunne matche den
+        # række der netop var udelukket. Målt: 0 rækker ramt i hele basens
+        # levetid, og ``open_loop_signal.superseded`` havde nul lyttere.
+        # Identiteten håndhæves nu ved skrivning via emne-nøglen ovenfor.
         if persisted_item.get("was_created"):
             event_bus.publish(
                 "open_loop_signal.created"
@@ -928,7 +974,12 @@ def _bucket(snapshots: dict, item: dict[str, object], key_fn, slot: str) -> None
     # bagefter på (signal_type, domæne), så ready_count ikke fordobles.
     key_domain = key_fn(str(item.get("canonical_key") or ""))
     run_domain = _run_domain(item)
-    for domain_key in {key_domain, run_domain}:
+    # RAEKKEFOELGEN ER FAST (5/11-2026). Et saet her gjorde rækkefølgen vilkaarlig
+    # pr. hash-seed: maalt fejlede filens egne tests 1-3 gange i 6 af 6 koersler,
+    # fordi run-aksen nogle gange blev itereret foer noegle-aksen og dermed vandt
+    # dedup'en nedenfor. Noeglen har forrang (se docstring), saa den registreres
+    # foerst — og dermed itereres den foerst.
+    for domain_key in (key_domain, run_domain):
         if domain_key:
             snapshots.setdefault(domain_key, {})[slot] = item
 

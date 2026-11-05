@@ -148,6 +148,14 @@ def _udled_provider(navn: str, handler: Any) -> str:
 
 def _udled_effekt(navn: str) -> str:
     try:
+        # Custom-vaerktoejer: effekten er udledt af AST'en, aldrig erklaeret.
+        from core.tools.custom_tool_factory import effect_for
+        e = effect_for(navn)
+        if e:
+            return NON_IDEMPOTENT_WRITE if e == "non_idempotent_write" else READ_ONLY
+    except Exception:  # intet custom-vaerktoej med det navn: proev naeste kilde
+        pass
+    try:
         from core.services.permission_classifier import _MUTATING_TOOLS
         if navn in _MUTATING_TOOLS:
             return NON_IDEMPOTENT_WRITE
@@ -157,6 +165,13 @@ def _udled_effekt(navn: str) -> str:
 
 
 def _udled_godkendelse(navn: str, handler: Any) -> str:
+    try:
+        from core.tools.custom_tool_factory import approval_for
+        a = approval_for(navn)
+        if a:
+            return APPROVAL_ASK if a == "ask" else APPROVAL_NONE
+    except Exception:  # intet custom-vaerktoej med det navn: proev naeste kilde
+        pass
     try:
         from core.tools.force_handlers import _FORCE_HANDLERS
         if navn in _FORCE_HANDLERS:

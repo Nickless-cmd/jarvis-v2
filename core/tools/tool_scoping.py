@@ -56,6 +56,9 @@ except Exception:  # pragma: no cover
 # Værktøjer kun owner (eller unbound legacy) må se — strippes for member/guest.
 # Flyttet hertil fra simple_tools.py; re-eksporteres derfra for bagudkompat.
 OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
+    # Custom-tool-fabrik (spor 5) — Jarvis' egen kodeoprettelse
+    "create_custom_tool", "list_custom_tools",
+    "delete_custom_tool", "show_custom_tool_source",
     # Raw backend shell + file mutation (operator_* counterparts are user-side)
     "bash",
     "bash_session_close",

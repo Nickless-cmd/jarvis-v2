@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-11-03 — 522 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-11-05 — 526 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -70,6 +70,7 @@
 | `control_daemon` | native | no |
 | `convene_agent_council` | native | no |
 | `counterfactual_summary` | native | no |
+| `create_custom_tool` | native | no |
 | `create_event` | native | no |
 | `cross_agent_recall` | native | no |
 | `curiosity_list_skills` | native | no |
@@ -95,6 +96,7 @@
 | `decision_update` | native | no |
 | `deep_analyze` | native | no |
 | `delegation_advisor` | native | no |
+| `delete_custom_tool` | native | no |
 | `delete_event` | native | no |
 | `desk_close_pane` | native | no |
 | `desk_get_layout` | native | no |
@@ -196,6 +198,7 @@
 | `list_context_versions` | native | no |
 | `list_counterfactuals` | native | no |
 | `list_crisis_markers` | native | no |
+| `list_custom_tools` | native | no |
 | `list_events` | native | no |
 | `list_flags` | native | no |
 | `list_identity_mutations` | native | no |
@@ -384,6 +387,7 @@
 | `sheets_create` | native | no |
 | `sheets_read` | native | no |
 | `sheets_write` | native | no |
+| `show_custom_tool_source` | native | no |
 | `skill_chain` | native | no |
 | `skill_create` | native | no |
 | `skill_delete` | native | no |

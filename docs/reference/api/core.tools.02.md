@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/goals_tools.py`
+_Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normalize_tags` | `(raw)` | — | [src](../../../core/tools/goals_tools.py#L18) |
+| function | `_exec_goal_create` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L30) |
+| function | `_exec_goal_update` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L55) |
+| function | `_exec_goal_list` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L86) |
+| function | `_exec_goal_get` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L108) |
+
 ## `core/tools/graf_tools.py`
 _`vis_graf` — en graf der faktisk kan SES, i baade desk og mobil._
 
@@ -568,13 +579,4 @@ _Tool wrappers for the process_watcher service._
 | function | `_exec_list_process_watches` | `(_args)` | — | [src](../../../core/tools/process_watcher_tools.py#L33) |
 | function | `_exec_remove_process_watch` | `(args)` | — | [src](../../../core/tools/process_watcher_tools.py#L39) |
 | function | `_exec_set_watch_enabled` | `(args)` | — | [src](../../../core/tools/process_watcher_tools.py#L44) |
-
-## `core/tools/project_notes_tools.py`
-_Tools for project-scoped persistent notes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_notes_path` | `()` | — | [src](../../../core/tools/project_notes_tools.py#L21) |
-| function | `_exec_read_project_notes` | `(_args)` | — | [src](../../../core/tools/project_notes_tools.py#L31) |
-| function | `_exec_update_project_notes` | `(args)` | — | [src](../../../core/tools/project_notes_tools.py#L58) |
 

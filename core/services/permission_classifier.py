@@ -45,7 +45,13 @@ class PermissionPrediction:
 
 
 def is_mutating(tool: str) -> bool:
-    return tool in _MUTATING_TOOLS
+    if tool in _MUTATING_TOOLS:
+        return True
+    try:  # custom-vaerktoejer med udledt skrive-effekt er mutating
+        from core.tools.custom_tool_factory import effect_for
+        return effect_for(tool) == "non_idempotent_write"
+    except Exception:  # ukendt vaerktoej: svar "ikke muterende" -> gate-politikken afgoer
+        return False
 
 
 def permission_classifier_mode() -> str:

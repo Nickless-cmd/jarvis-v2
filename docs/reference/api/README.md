@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18210 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18224 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -9,8 +9,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18210 functions/
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
 - [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `chat_flow_preferences`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_inbox` … `mission_control_jarvis_state`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mission_control_living_mind` … `workbench`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `chat_inbox` … `mission_control_introspection`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `mission_control_jarvis_state` … `workbench`
 - [`apps.api.jarvis_api.routes.routines`](apps.api.jarvis_api.routes.routines.md) — `routines` … `routines`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
@@ -23,6 +23,7 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18210 functions/
 - [`core.coding_lane`](core.coding_lane.md)
 - [`core.context`](core.context.md)
 - [`core.costing`](core.costing.md)
+- [`core.desktop`](core.desktop.md)
 - [`core.eventbus`](core.eventbus.md)
 - [`core.identity`](core.identity.md)
 - [`core.memory`](core.memory.md)

@@ -134,6 +134,7 @@ from apps.api.jarvis_api.routes.peak import router as peak_router
 from apps.api.jarvis_api.routes.sensory import router as sensory_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.browser_stream import router as browser_stream_router
+from apps.api.jarvis_api.routes.desktop_stream import router as desktop_stream_router
 from apps.api.jarvis_api.routes.jarvisx_bridge import router as jarvisx_bridge_router
 from apps.api.jarvis_api.routes.tts import router as tts_router
 from apps.api.jarvis_api.routes.voice_live import router as voice_live_router
@@ -1099,6 +1100,7 @@ def create_app() -> FastAPI:
     app.include_router(anthropic_compat_router)
     app.include_router(live_router)
     app.include_router(browser_stream_router)
+    app.include_router(desktop_stream_router)
     app.include_router(jarvisx_bridge_router)
     app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
     app.include_router(voice_live_router)

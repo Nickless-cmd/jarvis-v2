@@ -2,6 +2,41 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_jarvis_state.py`
+_Mission Control routes: jarvis-introspektion (cognitive-frame, attention-budget, self-*, dream-*, embodied)_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `mc_jarvis` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L14) |
+| function | `mc_cognitive_frame` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L305) |
+| function | `mc_attention_budget` | `()` | Return attention budget traces for all prompt paths. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L311) |
+| function | `mc_conflict_resolution` | `()` | Return the last conflict resolution trace. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L326) |
+| function | `mc_self_code_changes` | `()` | Return Jarvis' recent self-mutations — files he wrote or edited in his own runtime. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L335) |
+| function | `mc_self_deception_guard` | `()` | Return the last self-deception guard trace. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L342) |
+| function | `mc_witness_daemon` | `()` | Return the current witness daemon state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L351) |
+| function | `mc_inner_voice_daemon` | `()` | Return the current inner voice daemon state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L361) |
+| function | `mc_internal_cadence` | `()` | Return the current internal cadence layer state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L371) |
+| function | `mc_emergent_signals` | `()` | Return current bounded emergent inner signals. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L379) |
+| function | `mc_self_knowledge` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L385) |
+| function | `mc_runtime_self_model` | `()` | Return the current runtime self-model snapshot. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L391) |
+| function | `mc_self_critique` | `()` | Return the current self-critique runtime surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L398) |
+| function | `mc_creative_journal` | `()` | Return the current private creative journal surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L404) |
+| function | `mc_finitude` | `()` | Return Jarvis's bounded finitude and transition surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L410) |
+| function | `mc_dream_distillation` | `()` | Return the current dream residue distillation surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L416) |
+| function | `mc_unconscious_temperature_field` | `()` | Return the current bounded user temperature field surface. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L422) |
+| function | `mc_embodied_state` | `()` | Return the current bounded embodied host/body state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L428) |
+| function | `mc_affective_meta_state` | `()` | Return the current bounded affective/meta runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L440) |
+| function | `mc_emotion_concepts` | `()` | Return active Lag-2 emotion concept signals and their Lag-1 influence deltas. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L446) |
+| function | `mc_experiential_runtime_context` | `()` | Return the current bounded experiential runtime context (body/tone/intermittence/pressure). | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L456) |
+| function | `mc_epistemic_runtime_state` | `()` | Return the current bounded epistemic runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L463) |
+| function | `mc_loop_runtime` | `()` | Return the current bounded loop runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L469) |
+| function | `mc_idle_consolidation` | `()` | Return the current bounded sleep / idle consolidation state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L475) |
+| function | `mc_dream_articulation` | `()` | Return the current bounded dream articulation state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L481) |
+| function | `mc_prompt_evolution` | `()` | Return the current bounded runtime prompt evolution state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L487) |
+| function | `mc_dream_influence` | `()` | Return the current bounded dream influence runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L493) |
+| function | `mc_subagent_ecology` | `()` | Return the current bounded internal subagent ecology state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L503) |
+| function | `mc_council_runtime` | `()` | Return the current bounded internal council runtime state. | [src](../../../apps/api/jarvis_api/routes/mission_control_jarvis_state.py#L509) |
+
 ## `apps/api/jarvis_api/routes/mission_control_living_mind.py`
 _Living Mind surface routes — daemon state endpoints for the Living Mind MC tab._
 

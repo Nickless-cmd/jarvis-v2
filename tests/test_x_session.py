@@ -312,3 +312,99 @@ def test_doed_socket_rydder_ikke_fremmede_filer(monkeypatch, tmp_path):
     monkeypatch.setattr(xs.os, "unlink", nægt)
     s._ryd_doed_socket("/tmp/.X11-unix/X99")  # kaster ikke
 
+
+
+# ── Markøren, zoom og wait (5/11-2026) ───────────────────────────────────
+# De tre medlemmer fra Anthropics computer-toolset. Markøren er den vigtigste:
+# X11 tegner den UDEN FOR billedbufferen, så skærmgrebet indeholder den ikke —
+# musen flyttede sig mens skærmen så død ud (målt 5/11-2026).
+def _svar(stdout: bytes, rc: int = 0):
+    class R:
+        returncode = rc
+    R.stdout = stdout
+    return R
+
+
+def test_cursor_laeser_position(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    monkeypatch.setattr(xs.subprocess, "run", lambda *a, **k: _svar(b"X=640\nY=400\nSCREEN=0\nWINDOW=1\n"))
+    assert s.cursor() == {"status": "ok", "x": 640, "y": 400}
+
+
+def test_cursor_klemmer_til_skarmen(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    monkeypatch.setattr(xs.subprocess, "run", lambda *a, **k: _svar(b"X=99999\nY=-5\n"))
+    assert s.cursor() == {"status": "ok", "x": xs.BREDDE - 1, "y": 0}
+
+
+def test_cursor_ugyldigt_svar_giver_struktureret_fejl(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    monkeypatch.setattr(xs.subprocess, "run", lambda *a, **k: _svar(b"noget andet\n"))
+    assert s.cursor()["code"] == "CURSOR_FAILED"
+    monkeypatch.setattr(xs.subprocess, "run", lambda *a, **k: _svar(b"", rc=1))
+    assert s.cursor()["code"] == "CURSOR_FAILED"
+
+
+def test_cursor_og_zoom_uden_start_kaster_ikke():
+    s = xs.XSession()
+    assert s.cursor()["code"] == "DESKTOP_UNAVAILABLE"
+    assert s.zoom(0, 0, 100, 100)["code"] == "DESKTOP_UNAVAILABLE"
+    assert s.wait(100)["code"] == "DESKTOP_UNAVAILABLE"
+
+
+def test_zoom_skalerer_et_udsnit_op(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(xs.subprocess, "run", lambda cmd, **k: (kaldt.append(cmd), _svar(b"\xff\xd8jpeg"))[1])
+    ud = s.zoom(100, 200, 300, 150, 3)
+    assert ud == b"\xff\xd8jpeg"
+    cmd = kaldt[0]
+    assert cmd[0] == "import"
+    assert "300x150+100+200" in cmd
+    assert "300%" in cmd
+
+
+def test_zoom_klemmer_udsnittet_ind_paa_skarmen(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    kaldt: list[list[str]] = []
+    monkeypatch.setattr(xs.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(xs.subprocess, "run", lambda cmd, **k: (kaldt.append(cmd), _svar(b"x"))[1])
+    s.zoom(xs.BREDDE - 10, xs.HOEJDE - 10, 500, 500, 2)
+    crop = kaldt[0][kaldt[0].index("-crop") + 1]
+    w, h = crop.split("+")[0].split("x")
+    assert int(w) <= 10 and int(h) <= 10
+
+
+def test_zoom_afviser_ikke_tal(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    assert s.zoom("a", 0, 10, 10)["code"] == "INVALID_INPUT"
+    assert s.zoom(0, 0, None, 10)["code"] == "INVALID_INPUT"
+
+
+def test_wait_ser_naar_skaermen_aendrer_sig(monkeypatch):
+    """Efter et klik skal vi kunne MAALE om der skete noget, ikke gætte."""
+    s = xs.XSession()
+    s._kor = True
+    rammer = iter([b"a", b"a", b"b"])
+    monkeypatch.setattr(s, "frame", lambda: next(rammer))
+    monkeypatch.setattr(xs.time, "sleep", lambda _s: None)
+    r = s.wait(2000)
+    assert r["status"] == "ok" and r["changed"] is True
+
+
+def test_wait_uden_aendring_loeber_ud(monkeypatch):
+    s = xs.XSession()
+    s._kor = True
+    monkeypatch.setattr(s, "frame", lambda: b"a")
+    monkeypatch.setattr(xs.time, "sleep", lambda _s: None)
+    ur = iter(range(0, 100000, 100))
+    monkeypatch.setattr(xs.time, "monotonic", lambda: next(ur))
+    r = s.wait(500)
+    assert r["status"] == "ok" and r["changed"] is False

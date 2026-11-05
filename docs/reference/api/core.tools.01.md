@@ -424,6 +424,18 @@ _Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._
 | function | `_exec_close_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L81) |
 | function | `_exec_set_chat_flow_preference` | `(args)` | Persist presentation state for the verified current run principal. | [src](../../../core/tools/desk_view_tools.py#L88) |
 
+## `core/tools/desktop_tools.py`
+_Jarvis' desktop som ét kaldbart værktøj — ni medlemmer i én handling._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_session` | `()` | Den delte X-session, startet hvis den ikke kører. | [src](../../../core/tools/desktop_tools.py#L42) |
+| function | `_gem` | `(jpeg, navn)` | Skriv JPEG'en til en fil og svar med stien. | [src](../../../core/tools/desktop_tools.py#L53) |
+| function | `_svar` | `(resultat)` | — | [src](../../../core/tools/desktop_tools.py#L63) |
+| function | `_koer` | `(action, args)` | Udfør én handling. Aldrig exception — en fejl er et svar, ikke et crash. | [src](../../../core/tools/desktop_tools.py#L69) |
+| function | `_exec_jarvis_desktop` | `(args)` | — | [src](../../../core/tools/desktop_tools.py#L141) |
+| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desktop_tools.py#L152) |
+
 ## `core/tools/document_create_tools.py`
 _Opret-dokumenter: Word, Excel, PowerPoint og PDF._
 
@@ -551,16 +563,4 @@ _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 | function | `exec_nearby_search` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L958) |
 | function | `exec_google_weather` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L964) |
 | function | `exec_google_air_quality` | `(args)` | — | [src](../../../core/tools/geolocation_tools.py#L968) |
-
-## `core/tools/github_tools.py`
-_Git introspection tools — operates on the Jarvis v2 repo._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git` | `(args, cwd=…)` | — | [src](../../../core/tools/github_tools.py#L11) |
-| function | `_exec_git_log` | `(args)` | — | [src](../../../core/tools/github_tools.py#L22) |
-| function | `_exec_git_diff` | `(args)` | — | [src](../../../core/tools/github_tools.py#L32) |
-| function | `_exec_git_status` | `(args)` | — | [src](../../../core/tools/github_tools.py#L46) |
-| function | `_exec_git_branch` | `(args)` | — | [src](../../../core/tools/github_tools.py#L54) |
-| function | `_exec_git_blame` | `(args)` | — | [src](../../../core/tools/github_tools.py#L65) |
 

@@ -29,6 +29,8 @@ export function openDesktopStream(
   handlers: {
     onFrame: (jpeg: Blob) => void
     onStatus: (status: DesktopStatus, detalje?: string) => void
+    /** Markørens position i skærm-pixels. Den er ikke i JPEG-framen. */
+    onCursor?: (x: number, y: number) => void
   },
 ): DesktopStream {
   const url = desktopStreamUrl(config)
@@ -44,9 +46,11 @@ export function openDesktopStream(
   ws.onmessage = (ev: MessageEvent) => {
     if (typeof ev.data === 'string') {
       try {
-        const m = JSON.parse(ev.data) as { type?: string; code?: string; error?: string }
+        const m = JSON.parse(ev.data) as { type?: string; code?: string; error?: string; x?: number; y?: number }
         if (m.type === 'error') {
           handlers.onStatus(m.code === 'DESKTOP_UNAVAILABLE' ? 'unavailable' : 'error', m.error)
+        } else if (m.type === 'cursor' && typeof m.x === 'number' && typeof m.y === 'number') {
+          handlers.onCursor?.(m.x, m.y)
         }
       } catch { /* ignorér ukendt tekst */ }
     } else if (ev.data instanceof Blob) {

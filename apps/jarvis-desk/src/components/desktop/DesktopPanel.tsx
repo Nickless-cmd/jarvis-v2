@@ -27,6 +27,7 @@ export function DesktopPanel({ aaben, config, fuld = false, onFuld, onClose }: {
   )
   const canvas = useRef<HTMLCanvasElement | null>(null)
   const strom = useRef<DesktopStream | null>(null)
+  const markor = useRef<HTMLDivElement | null>(null)
   const ramme = useRef({ w: 1280, h: 800 })
   const sidsteMus = useRef(0)
   const [status, setStatus] = useState<DesktopStatus | 'forbinder'>('forbinder')
@@ -51,6 +52,14 @@ export function DesktopPanel({ aaben, config, fuld = false, onFuld, onClose }: {
         }).catch(() => { /* ødelagt frame: spring over, næste kommer straks */ })
       },
       onStatus: (st, d) => { if (aktiv) { setStatus(st); setDetalje(d ?? '') } },
+      onCursor: (x, y) => {
+        const el = markor.current
+        const { w, h } = ramme.current
+        if (!aktiv || !el || !w || !h) return
+        el.style.display = 'block'
+        el.style.left = `${(x / w) * 100}%`
+        el.style.top = `${(y / h) * 100}%`
+      },
     })
     strom.current = s
     return () => { aktiv = false; s.close(); strom.current = null }
@@ -94,27 +103,55 @@ export function DesktopPanel({ aaben, config, fuld = false, onFuld, onClose }: {
         </div>
       )}
       {cfg && status === 'forbinder' && <div className="desktop-info">Forbinder til desktop…</div>}
-      <canvas
-        ref={canvas}
-        tabIndex={0}
-        aria-label="Jarvis' desktop"
-        style={{ width: '100%', display: fejlTekst ? 'none' : 'block', outline: 'none', background: '#000' }}
-        onContextMenu={(e) => e.preventDefault()}
-        onMouseMove={(e) => {
-          const nu = Date.now()
-          if (nu - sidsteMus.current < 50) return
-          sidsteMus.current = nu
-          strom.current?.send({ t: 'mouse', kind: 'move', ...koord(e) })
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.focus()
-          strom.current?.send({ t: 'mouse', kind: 'down', button: museKnap(e.button), ...koord(e) })
-        }}
-        onMouseUp={(e) => strom.current?.send({ t: 'mouse', kind: 'up', button: museKnap(e.button), ...koord(e) })}
-        onWheel={(e) => strom.current?.send({ t: 'mouse', kind: 'wheel', dx: e.deltaX, dy: e.deltaY, ...koord(e) })}
-        onKeyDown={(e) => { e.preventDefault(); strom.current?.send({ t: 'key', kind: 'down', key: e.key }) }}
-        onKeyUp={(e) => { e.preventDefault(); strom.current?.send({ t: 'key', kind: 'up', key: e.key }) }}
-      />
+      <div style={{ position: 'relative', display: fejlTekst ? 'none' : 'block' }}>
+        <canvas
+          ref={canvas}
+          tabIndex={0}
+          aria-label="Jarvis' desktop"
+          style={{ width: '100%', display: 'block', outline: 'none', background: '#000' }}
+          onContextMenu={(e) => e.preventDefault()}
+          onMouseMove={(e) => {
+            const nu = Date.now()
+            if (nu - sidsteMus.current < 50) return
+            sidsteMus.current = nu
+            strom.current?.send({ t: 'mouse', kind: 'move', ...koord(e) })
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.focus()
+            strom.current?.send({ t: 'mouse', kind: 'down', button: museKnap(e.button), ...koord(e) })
+          }}
+          onMouseUp={(e) => strom.current?.send({ t: 'mouse', kind: 'up', button: museKnap(e.button), ...koord(e) })}
+          onWheel={(e) => strom.current?.send({ t: 'mouse', kind: 'wheel', dx: e.deltaX, dy: e.deltaY, ...koord(e) })}
+          onKeyDown={(e) => {
+            e.preventDefault()
+            // Et TEGN sendes som tekst, ikke som tastetryk: så virker shift,
+            // store bogstaver og symboler, fordi browseren allerede har dannet
+            // det rigtige tegn. Kun styretasterne går den anden vej.
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+              strom.current?.send({ t: 'text', text: e.key })
+              return
+            }
+            strom.current?.send({ t: 'key', kind: 'down', key: e.key })
+          }}
+          onKeyUp={(e) => {
+            e.preventDefault()
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) return
+            strom.current?.send({ t: 'key', kind: 'up', key: e.key })
+          }}
+        />
+        {/* Markøren ligger ikke i JPEG-framen — den tegnes her, så man kan se
+            hvor man peger. */}
+        <div
+          ref={markor}
+          aria-hidden="true"
+          style={{ position: 'absolute', left: 0, top: 0, transform: 'translate(-2px,-1px)', pointerEvents: 'none', display: 'none' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M2 2 L2 14.5 L5.6 10.9 L8.1 16 L10.6 15 L8.1 9.9 L13.2 9.9 Z"
+              fill="#fff" stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
     </div>
   )
 }

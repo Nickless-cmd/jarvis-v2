@@ -52,10 +52,24 @@ async def desktop_stream(ws: WebSocket) -> None:
     stop = asyncio.Event()
 
     async def _send_frames() -> None:
+        sidste_markor: tuple[int, int] | None = None
+        tael = 0
         while not stop.is_set():
             frame = await asyncio.to_thread(sess.frame)
             if isinstance(frame, (bytes, bytearray)):
                 await ws.send_bytes(bytes(frame))
+                tael += 1
+                # Markøren ligger IKKE i skærmgrebet: X11 tegner den uden for
+                # billedbufferen. Uden positionen kan klienten ikke vise hvor
+                # man peger, og så ser musen død ud selv om den flytter sig.
+                pos = await asyncio.to_thread(sess.cursor)
+                if pos.get("status") == "ok":
+                    nu = (pos["x"], pos["y"])
+                    # Ved hver flytning — og ellers en gang i sekundet, så en
+                    # klient der lige er kommet til ikke står uden markør.
+                    if nu != sidste_markor or tael % 10 == 0:
+                        sidste_markor = nu
+                        await ws.send_json({"type": "cursor", "x": nu[0], "y": nu[1]})
                 await asyncio.sleep(0.12)
             else:
                 await ws.send_json({"type": "error", "code": frame.get("code"), "error": frame.get("error")})

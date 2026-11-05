@@ -238,6 +238,7 @@ from core.tools.app_control_tool import (
 )
 from core.tools.desk_view_tools import DESK_VIEW_TOOL_HANDLERS
 from core.tools.desk_browser_tools import DESK_BROWSER_TOOL_HANDLERS
+from core.tools.desktop_tools import DESKTOP_TOOL_HANDLERS
 from core.tools.commit_attributed_tool import COMMIT_ATTRIBUTED_TOOL_HANDLERS
 from core.tools.agent_todo_tools import (
     AGENT_TODO_TOOL_DEFINITIONS,
@@ -2166,6 +2167,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **APP_CONTROL_TOOL_HANDLERS,
     **DESK_VIEW_TOOL_HANDLERS,
     **DESK_BROWSER_TOOL_HANDLERS,
+    **DESKTOP_TOOL_HANDLERS,
     # Commit uden shell — beskeden er et JSON-argument (30/10-2026).
     **COMMIT_ATTRIBUTED_TOOL_HANDLERS,
     "todo_list": _exec_todo_list,

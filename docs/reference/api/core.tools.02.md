@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/github_tools.py`
+_Git introspection tools — operates on the Jarvis v2 repo._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_git` | `(args, cwd=…)` | — | [src](../../../core/tools/github_tools.py#L11) |
+| function | `_exec_git_log` | `(args)` | — | [src](../../../core/tools/github_tools.py#L22) |
+| function | `_exec_git_diff` | `(args)` | — | [src](../../../core/tools/github_tools.py#L32) |
+| function | `_exec_git_status` | `(args)` | — | [src](../../../core/tools/github_tools.py#L46) |
+| function | `_exec_git_branch` | `(args)` | — | [src](../../../core/tools/github_tools.py#L54) |
+| function | `_exec_git_blame` | `(args)` | — | [src](../../../core/tools/github_tools.py#L65) |
+
 ## `core/tools/goals_tools.py`
 _Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
 
@@ -569,14 +581,4 @@ _Process and system health monitoring tools._
 | function | `_exec_tail_log` | `(args)` | Read recent journalctl lines for a systemd service. | [src](../../../core/tools/process_tools.py#L112) |
 | function | `_exec_gpu_status` | `(_args)` | Snapshot of NVIDIA GPU state (memory, utilization, processes). | [src](../../../core/tools/process_tools.py#L142) |
 | function | `_exec_run_pytest` | `(args)` | Run a specific pytest target so the model can verify behavior by test. | [src](../../../core/tools/process_tools.py#L177) |
-
-## `core/tools/process_watcher_tools.py`
-_Tool wrappers for the process_watcher service._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_add_process_watch` | `(args)` | — | [src](../../../core/tools/process_watcher_tools.py#L21) |
-| function | `_exec_list_process_watches` | `(_args)` | — | [src](../../../core/tools/process_watcher_tools.py#L33) |
-| function | `_exec_remove_process_watch` | `(args)` | — | [src](../../../core/tools/process_watcher_tools.py#L39) |
-| function | `_exec_set_watch_enabled` | `(args)` | — | [src](../../../core/tools/process_watcher_tools.py#L44) |
 

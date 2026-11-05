@@ -38,6 +38,9 @@ _X-session til Jarvis' desktop-fane._
 | method | `XSession._har_vindue` | `(self, moenster)` | Findes der allerede et vindue med navnet? (saa vi ikke starter dubletter) | [src](../../../core/desktop/x_session.py#L384) |
 | method | `XSession.stop` | `(self)` | — | [src](../../../core/desktop/x_session.py#L395) |
 | method | `XSession.frame` | `(self)` | Skærmen som JPEG-bytes, eller en struktureret fejl-dict. | [src](../../../core/desktop/x_session.py#L409) |
-| method | `XSession.input` | `(self, msg)` | Oversæt og kør input. Aldrig exception; ugyldigt input giver fejl-dict. | [src](../../../core/desktop/x_session.py#L428) |
-| function | `shared_session` | `()` | Én delt X-session for hele processen. | [src](../../../core/desktop/x_session.py#L449) |
+| method | `XSession.cursor` | `(self)` | Hvor staar musemarkoeren? Svar: ``{"status":"ok","x":..,"y":..}``. | [src](../../../core/desktop/x_session.py#L428) |
+| method | `XSession.zoom` | `(self, x, y, bredde, hoejde, faktor=…)` | Et UDSNIT af skaermen, skaleret op — til at ramme noget smaat. | [src](../../../core/desktop/x_session.py#L464) |
+| method | `XSession.wait` | `(self, timeout_ms=…, interval_ms=…)` | Vent til skaermen ÆNDRER sig, eller tiden løber ud. | [src](../../../core/desktop/x_session.py#L499) |
+| method | `XSession.input` | `(self, msg)` | Oversæt og kør input. Aldrig exception; ugyldigt input giver fejl-dict. | [src](../../../core/desktop/x_session.py#L531) |
+| function | `shared_session` | `()` | Én delt X-session for hele processen. | [src](../../../core/desktop/x_session.py#L552) |
 

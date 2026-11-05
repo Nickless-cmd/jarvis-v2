@@ -425,6 +425,109 @@ class XSession:
             return _fejl("FRAME_FAILED", "Skærmgreb gav ingen data")
         return res.stdout
 
+    def cursor(self) -> dict[str, Any]:
+        """Hvor staar musemarkoeren? Svar: ``{"status":"ok","x":..,"y":..}``.
+
+        Skaermgrebet indeholder IKKE markoeren — X11 tegner den uden for
+        billedbufferen. Uden dette punkt flytter musen sig i virkeligheden mens
+        skaermen ser doed ud, saa man ikke kan se hvor man peger (maalt
+        5/11-2026: Bjørn kunne ikke flytte musen, men den flyttede sig).
+        """
+        if not self._kor:
+            return _utilgaengelig("Desktop er ikke startet")
+        try:
+            res = subprocess.run(
+                ["xdotool", "getmouselocation", "--shell"],
+                env=self._env(), capture_output=True, timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:  # xdotool findes ikke eller hænger: rapportér i stedet for at dø
+            return _fejl("CURSOR_FAILED", f"kunne ikke læse markøren: {exc}")
+        if res.returncode != 0:
+            return _fejl("CURSOR_FAILED", "xdotool gav ingen markørposition")
+        linjer = res.stdout.decode(errors="replace").splitlines()
+
+        def _felt(prefiks: str) -> int | None:
+            for linje in linjer:
+                if linje.startswith(prefiks):
+                    try:
+                        return int(linje[len(prefiks):].strip())
+                    except ValueError:  # uventet format: behandl som «ingen position»
+                        return None
+            return None
+
+        x = _tal(_felt("X="), 0, self.bredde - 1)
+        y = _tal(_felt("Y="), 0, self.hoejde - 1)
+        if x is None or y is None:
+            return _fejl("CURSOR_FAILED", "markørpositionen kunne ikke læses")
+        return {"status": "ok", "x": x, "y": y}
+
+    def zoom(
+        self, x: Any, y: Any, bredde: Any, hoejde: Any, faktor: Any = 2,
+    ) -> bytes | dict[str, Any]:
+        """Et UDSNIT af skaermen, skaleret op — til at ramme noget smaat.
+
+        Koordinaterne er ALTID i fuld skaerm-opløsning; det er her driveren
+        skalerer, ikke modellen. Uden zoom bliver smaa ting ramt dårligt, fordi
+        hele skaermen er skaleret ned foer nogen kigger paa den.
+        """
+        if not self._kor:
+            return _utilgaengelig("Desktop er ikke startet")
+        if not shutil.which("import"):
+            return _utilgaengelig("ImageMagick (import) er ikke installeret")
+        bx = _tal(x, 0, self.bredde - 1)
+        by = _tal(y, 0, self.hoejde - 1)
+        if bx is None or by is None:
+            return _fejl("INVALID_INPUT", "zoom kraever x og y som tal")
+        bw = _tal(bredde, min(16, self.bredde - bx), self.bredde - bx)
+        bh = _tal(hoejde, min(16, self.hoejde - by), self.hoejde - by)
+        if bw is None or bh is None:
+            return _fejl("INVALID_INPUT", "zoom kraever bredde og hoejde som tal")
+        f = _tal(faktor, 1, 8) or 2
+        cmd = [
+            "import", "-window", "root",
+            "-crop", f"{bw}x{bh}+{bx}+{by}", "+repage",
+            "-resize", f"{f * 100}%", "-quality", "80", "jpeg:-",
+        ]
+        try:
+            res = subprocess.run(cmd, env=self._env(), capture_output=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired) as exc:  # udsnit kan fejle eller hænge: rapportér i stedet for at dø
+            return _fejl("ZOOM_FAILED", f"zoom fejlede: {exc}")
+        if res.returncode != 0 or not res.stdout:
+            return _fejl("ZOOM_FAILED", "zoom gav ingen data")
+        return res.stdout
+
+    def wait(self, timeout_ms: Any = 1500, interval_ms: Any = 120) -> dict[str, Any]:
+        """Vent til skaermen ÆNDRER sig, eller tiden løber ud.
+
+        Efter et klik ved hverken jeg eller klienten om programmet har naaet at
+        tegne. En fast sleep er enten for kort eller spildt tid; her maales der
+        i stedet, og svaret siger om der faktisk skete noget.
+        """
+        if not self._kor:
+            return _utilgaengelig("Desktop er ikke startet")
+        graense = _tal(timeout_ms, 0, 10000) or 0
+        pause = _tal(interval_ms, 20, 1000) or 120
+        start = time.monotonic()
+        foer = self.frame()
+        if not isinstance(foer, (bytes, bytearray)):
+            return foer
+        while (time.monotonic() - start) * 1000 < graense:
+            time.sleep(pause / 1000)
+            nu = self.frame()
+            if not isinstance(nu, (bytes, bytearray)):
+                return nu
+            if nu != foer:
+                return {
+                    "status": "ok",
+                    "changed": True,
+                    "ms": int((time.monotonic() - start) * 1000),
+                }
+        return {
+            "status": "ok",
+            "changed": False,
+            "ms": int((time.monotonic() - start) * 1000),
+        }
+
     def input(self, msg: Any) -> dict[str, Any]:
         """Oversæt og kør input. Aldrig exception; ugyldigt input giver fejl-dict."""
         if not self._kor:

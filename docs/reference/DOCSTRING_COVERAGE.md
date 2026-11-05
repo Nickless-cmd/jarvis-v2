@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9779/18238 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9785/18247 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,7 +20,7 @@ Generated from source. 9779/18238 functions/methods documented (53%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 76 | 104 | 73% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.desktop` | 18 | 27 | 66% |
+| `core.desktop` | 21 | 30 | 70% |
 | `core.eventbus` | 20 | 37 | 54% |
 | `core.identity` | 80 | 173 | 46% |
 | `core.memory` | 55 | 142 | 38% |
@@ -33,7 +33,7 @@ Generated from source. 9779/18238 functions/methods documented (53%). The list b
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 621 | 1202 | 51% |
+| `core.tools` | 624 | 1208 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 7 | 32 | 21% |
 | `core.undo` | 2 | 18 | 11% |
@@ -2445,11 +2445,11 @@ Generated from source. 9779/18238 functions/methods documented (53%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L226)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_local_exec` (L469)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L447)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L465)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L443)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L474)
+- `core/tools/tool_scoping.py` :: `reset_local_exec` (L473)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L451)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L469)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L447)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L478)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

@@ -64,6 +64,7 @@ from core.tools.gate_override_tools import (GATE_OVERRIDE_TOOL_DEFINITIONS)
 from core.tools.app_control_tool import (APP_CONTROL_TOOL_DEFINITIONS)
 from core.tools.desk_view_tools import (DESK_VIEW_TOOL_DEFINITIONS)
 from core.tools.desk_browser_tools import (DESK_BROWSER_TOOL_DEFINITIONS)
+from core.tools.desktop_tools import (DESKTOP_TOOL_DEFINITIONS)
 from core.tools.agent_todo_tools import (AGENT_TODO_TOOL_DEFINITIONS)
 from core.tools.monitor_tools import (MONITOR_TOOL_DEFINITIONS)
 from core.tools.verify_tools import (VERIFY_TOOL_DEFINITIONS)
@@ -3543,6 +3544,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DESK_VIEW_TOOL_DEFINITIONS,
     # Jarvis' EGEN browser inde i desk (21/9-2026) — otte handlinger over broen.
     *DESK_BROWSER_TOOL_DEFINITIONS,
+    # Jarvis' EGEN Linux-desktop (5/11-2026) — samme flade Bjorn ser i panelet,
+    # med wait, zoom og cursor_position som Anthropics computer-toolset.
+    *DESKTOP_TOOL_DEFINITIONS,
     # Commit uden shell — beskeden er et JSON-argument (30/10-2026).
     *COMMIT_ATTRIBUTED_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,

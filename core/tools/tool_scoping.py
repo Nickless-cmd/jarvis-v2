@@ -281,6 +281,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "jarvis_browser_open", "jarvis_browser_navigate", "jarvis_browser_read",
     "jarvis_browser_click", "jarvis_browser_type", "jarvis_browser_screenshot",
     "jarvis_browser_tabs", "jarvis_browser_close",
+    # Jarvis' EGEN Linux-desktop (5/11-2026) — samme flade Bjorn ser i panelet.
+    "jarvis_desktop",
     # App-self-control (desk) — foreslå skift chat→code mode (brugeren godkender)
     "request_app_action",
     # Companion-push — naa brugeren proaktivt paa deres egne enheder (device-routet)
@@ -331,6 +333,8 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "jarvis_browser_open", "jarvis_browser_navigate", "jarvis_browser_read",
     "jarvis_browser_click", "jarvis_browser_type", "jarvis_browser_screenshot",
     "jarvis_browser_tabs", "jarvis_browser_close",
+    # Jarvis' EGEN Linux-desktop (5/11-2026) — samme flade Bjorn ser i panelet.
+    "jarvis_desktop",
     "operator_channel",
     "mcp",
     "checkpoint",

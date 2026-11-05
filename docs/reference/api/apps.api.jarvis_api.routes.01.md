@@ -95,6 +95,26 @@ _Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._
 | function | `opsummering` | `(timer=…)` | Hvor mange, hvilke roller, hvad de kostede, og hvor graenserne gaar. | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L34) |
 | function | `arbejde` | `(limit=…)` | De nyeste koersler paa tvaers af agenter. | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L42) |
 
+## `apps/api/jarvis_api/routes/agent_pool_control.py`
+_Agent-puljen — STYRING fra Desk/PWA: start, interrupt, luk, follow-up. Owner-only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rute_udbydere` | `()` | De udbydere politikken faktisk kender: CLI-standarderne plus ejer-only-udbyderne. | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L20) |
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L39) |
+| function | `_owner_id` | `()` | Den autentificerede ejer. Uden token (lokal enkeltbruger) er det platformens ejer. | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L44) |
+| function | `_svc` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L60) |
+| function | `_svar` | `(out)` | Servicens fejl bliver til en HTTP-fejl med dens egen årsag — ikke en tavs 200. | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L65) |
+| class | `StartAgent` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L74) |
+| class | `FollowUp` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L82) |
+| class | `Afbryd` | `` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L87) |
+| function | `validér_route_syntaks` | `(route)` | Kun formen (provider/model). Om ruten er TILLADT afgør agent_model_policy. | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L91) |
+| function | `routes` | `()` | Ruter UI'et kan tilbyde — hver enkelt EFTERPRØVET mod politikken. | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L107) |
+| function | `start` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L142) |
+| function | `afbryd` | `(agent_id, body=…)` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L158) |
+| function | `luk` | `(agent_id)` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L166) |
+| function | `opfoelgning` | `(agent_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool_control.py#L174) |
+
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
 
@@ -623,13 +643,4 @@ _Bjørns egen vej ind i indbakken — den fjerde skriver._
 |---|---|---|---|---|
 | class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
 | function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
-
-## `apps/api/jarvis_api/routes/chat_rewind.py`
-_`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RewindRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L19) |
-| function | `chat_rewind` | `(session_id, request)` | Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L24) |
-| function | `chat_rewind_undo` | `(session_id, rewind_id)` | Læg beskederne tilbage — kun så længe der ikke er skrevet siden. | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L36) |
 

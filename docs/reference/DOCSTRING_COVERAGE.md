@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9746/18151 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9751/18162 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9746/18151 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 727 | 1013 | 71% |
+| `apps.api.jarvis_api.routes` | 732 | 1024 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -42,9 +42,9 @@ Generated from source. 9746/18151 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2608)
+## Undocumented public functions (2612)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L228)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L229)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -62,6 +62,10 @@ Generated from source. 9746/18151 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `message` (L125)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `read` (L157)
 - `apps/api/jarvis_api/routes/agent_contract_view.py` :: `stop` (L138)
+- `apps/api/jarvis_api/routes/agent_pool_control.py` :: `afbryd` (L158)
+- `apps/api/jarvis_api/routes/agent_pool_control.py` :: `luk` (L166)
+- `apps/api/jarvis_api/routes/agent_pool_control.py` :: `opfoelgning` (L174)
+- `apps/api/jarvis_api/routes/agent_pool_control.py` :: `start` (L142)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L156)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L171)
 - `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L405)

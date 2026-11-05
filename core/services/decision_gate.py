@@ -18,9 +18,26 @@ logger = logging.getLogger(__name__)
 
 
 # Tools whose results are used to check decisions (not blocked themselves).
+#
+# 5/11-2026: udvidet med de værktøjer hvis argumenter OM TALER en forpligtelse i
+# stedet for at udføre den. Gaten matcher ét bærende ord mod hele konteksten og
+# kan ikke skelne et citat fra et brud — målt: 20 falske blokeringer (4
+# beslutninger × 5 note-værktøjer). Konkret blev en note der citerede «Slut ikke
+# gratis fra et manglende tal» blokeret af den beslutning den citerede, og det
+# gjorde det umuligt at dokumentere en beslutning i sin egen hukommelse.
+#
+# PRISEN, målt og accepteret: en beslutning der forbyder en SKRIVNING kan ikke
+# længere håndhæves på disse værktøjer. Derfor står `memory_upsert_section`,
+# `memory_check_duplicate`, `write_file` og `edit_file` bevidst UDENFOR —
+# dec_f1047a72 og dec_dfb56369 handler netop om hvad der må skrives til
+# hukommelsen, og de skal fortsat kunne fange det.
 _META_TOOLS = frozenset({
     "decision_list", "decision_get", "decision_review",
+    "decision_create", "decision_update", "decision_revoke",
     "list_proposals", "list_plans", "todo_list",
+    "remember_this", "write_handover", "flag_side_task",
+    "suggest_next_task", "todo_add", "todo_set",
+    "todo_update_status", "todo_remove",
 })
 
 

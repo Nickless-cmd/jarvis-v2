@@ -140,6 +140,11 @@ _QF_SEKTIONER = (
     "home assistant",
     "paths",
     "priser",
+    # 5/11-2026: cache-tallene er et OPSLAG — hvilken tabel, hvilke kolonner,
+    # hvilke to akser, og hvorfor et gennemsnit hen over dem lyver. Det er
+    # præcis den slags fakta der ellers skulle genopdages hver gang, og det var
+    # dem der gjorde at jeg to gange i træk målte den forkerte størrelse.
+    "cache-hit",
     "værktøjskanaler",
     "værktøjer",
     "bruger",

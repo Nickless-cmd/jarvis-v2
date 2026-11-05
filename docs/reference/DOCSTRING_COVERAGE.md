@@ -2661,7 +2661,7 @@ Generated from source. 9805/18274 functions/methods documented (53%). The list b
 - `scripts/verify_guard_tests.py` :: `main` (L69)
 - `scripts/verify_history_reads.py` :: `fund_i_fil` (L54)
 - `scripts/verify_history_reads.py` :: `main` (L92)
-- `scripts/verify_memory_status.py` :: `main` (L292)
+- `scripts/verify_memory_status.py` :: `main` (L297)
 - `scripts/verify_notes.py` :: `fejl_i` (L50)
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)

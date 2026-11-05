@@ -99,14 +99,14 @@ _Decision gate — pre-execution decision conflict detection._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L27) |
-| function | `_aldrig_maalt_er_svag` | `(decision_id, brud)` | Har en beslutning uden måling et brud-mønster i vinduet? | [src](../../../core/services/decision_gate.py#L153) |
-| function | `directive_har_maal` | `(directive)` | Kan `_detect_conflict` overhovedet finde et mål i dette direktiv? | [src](../../../core/services/decision_gate.py#L163) |
-| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L185) |
-| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L201) |
-| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build conflict context from the proposed action, not the whole request. | [src](../../../core/services/decision_gate.py#L324) |
-| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L391) |
-| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L396) |
+| function | `check_decision_gate` | `(tool_name, tool_args=…, user_message=…)` | Check if a tool call conflicts with active decisions. | [src](../../../core/services/decision_gate.py#L44) |
+| function | `_aldrig_maalt_er_svag` | `(decision_id, brud)` | Har en beslutning uden måling et brud-mønster i vinduet? | [src](../../../core/services/decision_gate.py#L170) |
+| function | `directive_har_maal` | `(directive)` | Kan `_detect_conflict` overhovedet finde et mål i dette direktiv? | [src](../../../core/services/decision_gate.py#L180) |
+| function | `ejeren_har_sagt_alligevel` | `(user_message)` | Har BRUGEREN sagt «alligevel» i sin egen besked? | [src](../../../core/services/decision_gate.py#L202) |
+| function | `evaluate_decision_conflict` | `(tool_name, tool_args=…, user_message=…)` | Graderet decision-conflict. Returnerer (severity, reason): | [src](../../../core/services/decision_gate.py#L218) |
+| function | `_build_context` | `(tool_name, tool_args, user_message)` | Build conflict context from the proposed action, not the whole request. | [src](../../../core/services/decision_gate.py#L341) |
+| function | `_helt_ord` | `(maal, tekst)` | Delstreng var for loest: «findes» ramte ogsaa «genfindes» og «befindes». | [src](../../../core/services/decision_gate.py#L408) |
+| function | `_detect_conflict` | `(directive, context, decision)` | Detect if the context conflicts with a decision directive. | [src](../../../core/services/decision_gate.py#L413) |
 
 ## `core/services/decision_ghosts.py`
 _Decision Ghosts — de veje der blev fravalgt, og dem der holdt._

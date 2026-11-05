@@ -290,3 +290,51 @@ def test_heartbeat_viser_mindst_fem_beslutninger():
 
     src = inspect.getsource(heartbeat_sections)
     assert "format_active_decisions_for_heartbeat(max_items=5)" in src
+
+
+# ── 5/11-2026: citat er ikke brud ───────────────────────────────────────────
+#
+# Gaten matcher ét bærende ord mod hele værktøjskonteksten. Den kan derfor ikke
+# skelne en handling der UDFØRER det forbudte fra en note der OM TALER det.
+# Maalt over de 68 aktive beslutninger: 20 falske blokeringer (4 beslutninger ×
+# 5 note-værktøjer). Konkret blev en note der citerede «Slut ikke gratis fra et
+# manglende tal» blokeret af netop den beslutning den citerede — så en
+# beslutning kunne ikke dokumenteres i sin egen hukommelse.
+
+
+def test_citat_af_en_beslutning_er_ikke_et_brud_men_dispatch_er(monkeypatch):
+    """Testen maaler BEGGE sider: at citatet slipper igennem, OG at den aegte
+    dispatch stadig fanges. Blev kun den ene side maalt, ville en toemning af
+    `_META_TOOLS` bestaa som groen."""
+    from core.services import decision_gate as dg
+
+    monkeypatch.setattr(
+        "core.services.behavioral_decisions.list_active_decisions",
+        lambda limit=10: [{
+            "decision_id": "dec_test",
+            "directive": "Undgå researcher til git-historik og regressionsspørgsmål",
+            "priority": 65,
+        }],
+    )
+
+    # Citatet af forpligtelsen er ikke en overtraedelse af den.
+    ok, _ = dg.check_decision_gate("remember_this", {
+        "kind": "indsigt",
+        "title": "Beslutning indskrænket",
+        "content": "Jeg indskrænkede beslutningen: Undgå researcher til git-historik",
+    })
+    assert ok is True, "en note der citerer beslutningen maa ikke blokeres"
+
+    # Den faktiske dispatch er stadig et brud.
+    ok, reason = dg.check_decision_gate(
+        "Task", {"subagent_type": "researcher", "prompt": "mål cache"})
+    assert ok is False
+    assert "dec_test" in (reason or "")
+
+    # De vaerktoejer der FAKTISK kan skrive til hukommelsen er stadig inden for
+    # gaten — ellers ville beslutninger om hukommelses-skrivning
+    # (dec_f1047a72, dec_dfb56369) blive tandloese af samme rettelse.
+    for name in ("memory_upsert_section", "memory_check_duplicate",
+                 "write_file", "edit_file"):
+        assert name not in dg._META_TOOLS, name
+

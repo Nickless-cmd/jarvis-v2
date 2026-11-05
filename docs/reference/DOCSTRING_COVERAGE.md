@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9755/18178 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9760/18210 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 9755/18178 functions/methods documented (53%). The list b
 | `core.services.visible_runs_sections` | 25 | 40 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 616 | 1170 | 52% |
+| `core.tools` | 621 | 1202 | 51% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 7 | 32 | 21% |
 | `core.undo` | 2 | 18 | 11% |
@@ -42,7 +42,7 @@ Generated from source. 9755/18178 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2616)
+## Undocumented public functions (2624)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L230)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2397,6 +2397,14 @@ Generated from source. 9755/18178 functions/methods documented (53%). The list b
 - `core/tools/claude_dispatch/worktree.py` :: `cleanup_worktree` (L24)
 - `core/tools/claude_dispatch/worktree.py` :: `create_worktree` (L9)
 - `core/tools/claude_dispatch/worktree.py` :: `worktree_diff` (L41)
+- `core/tools/custom_tool_factory.py` :: `approval_for` (L337)
+- `core/tools/custom_tool_factory.py` :: `create_tool` (L267)
+- `core/tools/custom_tool_factory.py` :: `delete_tool` (L296)
+- `core/tools/custom_tool_factory.py` :: `effect_for` (L332)
+- `core/tools/custom_tool_factory.py` :: `is_custom` (L328)
+- `core/tools/custom_tool_factory.py` :: `list_tools` (L312)
+- `core/tools/custom_tool_factory.py` :: `show_source` (L318)
+- `core/tools/custom_tool_factory.py` :: `tools_dir` (L114)
 - `core/tools/geolocation_tools.py` :: `exec_geocode` (L940)
 - `core/tools/geolocation_tools.py` :: `exec_geolocation_lookup` (L929)
 - `core/tools/geolocation_tools.py` :: `exec_google_air_quality` (L968)
@@ -2431,14 +2439,14 @@ Generated from source. 9755/18178 functions/methods documented (53%). The list b
 - `core/tools/session_search.py` :: `exec_search_sessions` (L262)
 - `core/tools/streaming_subprocess.py` :: `run_streaming` (L28)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
-- `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
+- `core/tools/tool_definition_v2.py` :: `all_definitions` (L226)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_local_exec` (L466)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L444)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L462)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L440)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L471)
+- `core/tools/tool_scoping.py` :: `reset_local_exec` (L469)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L447)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L465)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L443)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L474)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

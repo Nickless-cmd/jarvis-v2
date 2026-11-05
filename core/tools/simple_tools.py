@@ -2433,6 +2433,14 @@ except Exception:
 
 
 
+# ── Custom-tool-fabrik (spor 5): registrér persisterede værktøjer ved opstart.
+# Exec'er ingen krop — kun metadata + handlere. Fejl må ikke vælte opstarten.
+try:
+    from core.tools.custom_tool_factory import install as _install_custom_tools
+    _install_custom_tools(_TOOL_HANDLERS, TOOL_DEFINITIONS)
+except Exception:
+    logger.warning("custom_tool_factory kunne ikke indlæses", exc_info=True)
+
 
 # Owner-only tools (RBAC deny-list).
 # Tools that mutate Jarvis own code, identity, schedule, or dispatch

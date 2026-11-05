@@ -308,6 +308,45 @@ _Curiosity-budget tools — Phase 1 (AGI track #6 Åben udforskning)._
 | function | `_exec_curiosity_search_sessions` | `(args)` | — | [src](../../../core/tools/curiosity_tools.py#L257) |
 | function | `_make_def` | `(name, description, extra_props, required)` | — | [src](../../../core/tools/curiosity_tools.py#L293) |
 
+## `core/tools/custom_tool_factory.py`
+_Permanent, governed Python-tool-fabrik (spor 5)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ToolFactoryError` | `` | Afvisning med en brugbar aarsag — vises til kalderen. | [src](../../../core/tools/custom_tool_factory.py#L109) |
+| function | `tools_dir` | `()` | — | [src](../../../core/tools/custom_tool_factory.py#L114) |
+| function | `_registry_path` | `()` | — | [src](../../../core/tools/custom_tool_factory.py#L122) |
+| function | `_read_registry` | `()` | — | [src](../../../core/tools/custom_tool_factory.py#L126) |
+| function | `_write_registry` | `(tools)` | — | [src](../../../core/tools/custom_tool_factory.py#L139) |
+| function | `_source_path` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L148) |
+| function | `builtin_names` | `()` | Navne paa indbyggede vaerktoejer (alt der ikke er custom). | [src](../../../core/tools/custom_tool_factory.py#L153) |
+| function | `_mod_root` | `(name)` | — | [src](../../../core/tools/custom_tool_factory.py#L174) |
+| function | `analyse_source` | `(source)` | AST-tjek + effektudledning. Rejser ToolFactoryError. Exec'er ALDRIG. | [src](../../../core/tools/custom_tool_factory.py#L178) |
+| function | `_validate_schema` | `(parameters)` | — | [src](../../../core/tools/custom_tool_factory.py#L247) |
+| function | `create_tool` | `(navn, description, parameters, source)` | — | [src](../../../core/tools/custom_tool_factory.py#L267) |
+| function | `delete_tool` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L296) |
+| function | `list_tools` | `()` | — | [src](../../../core/tools/custom_tool_factory.py#L312) |
+| function | `show_source` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L318) |
+| function | `is_custom` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L328) |
+| function | `effect_for` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L332) |
+| function | `approval_for` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L337) |
+| function | `_safe_import` | `(name, globals=…, locals=…, fromlist=…, level=…)` | — | [src](../../../core/tools/custom_tool_factory.py#L343) |
+| function | `_restricted_builtins` | `()` | — | [src](../../../core/tools/custom_tool_factory.py#L352) |
+| function | `invoke` | `(navn, args)` | Foerste og eneste sted kroppen exec'es. Kaldes fra handleren. | [src](../../../core/tools/custom_tool_factory.py#L362) |
+| function | `_make_handler` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L407) |
+| function | `_definition` | `(navn, meta)` | — | [src](../../../core/tools/custom_tool_factory.py#L418) |
+| function | `_register_one` | `(navn, meta)` | — | [src](../../../core/tools/custom_tool_factory.py#L426) |
+| function | `_unregister_one` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L437) |
+| function | `_bust_cache` | `(navn)` | — | [src](../../../core/tools/custom_tool_factory.py#L447) |
+| function | `load_registry` | `(handlers=…, definitions=…)` | Frisk indlaesning af registret. Registrerer handlere + definitioner. | [src](../../../core/tools/custom_tool_factory.py#L455) |
+| function | `_wrap` | `(fn)` | — | [src](../../../core/tools/custom_tool_factory.py#L495) |
+| function | `_exec_create` | `(a)` | — | [src](../../../core/tools/custom_tool_factory.py#L504) |
+| function | `_exec_list` | `(a)` | — | [src](../../../core/tools/custom_tool_factory.py#L508) |
+| function | `_exec_delete` | `(a)` | — | [src](../../../core/tools/custom_tool_factory.py#L512) |
+| function | `_exec_show` | `(a)` | — | [src](../../../core/tools/custom_tool_factory.py#L516) |
+| function | `_name_param` | `(desc)` | — | [src](../../../core/tools/custom_tool_factory.py#L528) |
+| function | `install` | `(handlers, definitions)` | Kaldes ved opstart fra simple_tools: styre-vaerktoejer + registret. | [src](../../../core/tools/custom_tool_factory.py#L562) |
+
 ## `core/tools/daemon_alert_tools.py`
 _Daemon health alert — detects inactive/crashed daemons and sends notifications._
 
@@ -524,15 +563,4 @@ _Git introspection tools — operates on the Jarvis v2 repo._
 | function | `_exec_git_status` | `(args)` | — | [src](../../../core/tools/github_tools.py#L46) |
 | function | `_exec_git_branch` | `(args)` | — | [src](../../../core/tools/github_tools.py#L54) |
 | function | `_exec_git_blame` | `(args)` | — | [src](../../../core/tools/github_tools.py#L65) |
-
-## `core/tools/goals_tools.py`
-_Long-horizon goals tools — Jarvis-facing CRUD for persistent goals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normalize_tags` | `(raw)` | — | [src](../../../core/tools/goals_tools.py#L18) |
-| function | `_exec_goal_create` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L30) |
-| function | `_exec_goal_update` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L55) |
-| function | `_exec_goal_list` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L86) |
-| function | `_exec_goal_get` | `(args)` | — | [src](../../../core/tools/goals_tools.py#L108) |
 

@@ -75,6 +75,7 @@
     }
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@nut-tree-fork/nut-js": "^4.2.6",
     "@types/qrcode": "^1.5.6",

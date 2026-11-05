@@ -29,6 +29,7 @@ from core.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
 from core.services.open_loop_signal_tracking import (
+    _open_loop_domain_key,
     build_runtime_open_loop_signal_surface,
 )
 from core.services.private_initiative_tension_signal_tracking import (
@@ -428,7 +429,7 @@ def _build_lifecycle_candidate(
     )
     return {
         "signal_type": "proactive-loop-lifecycle",
-        "canonical_key": f"proactive-loop-lifecycle:{loop_kind}:{_slug(loop_focus)}",
+        "canonical_key": f"proactive-loop-lifecycle:{loop_kind}:{_loop_identity_key(latest_loop=open_loop, loop_focus=loop_focus)}",
         "status": lifecycle_status,
         "title": f"Proactive loop lifecycle: {loop_focus}",
         "summary": summary,
@@ -591,6 +592,14 @@ def _best_loop_focus(
     relation: dict[str, object],
     meaning: dict[str, object],
 ) -> str:
+    # LOOPETS EGET DOMÆNE FØRST (målt 5/11-2026). Nøglen er
+    # ``proactive-loop-lifecycle:{loop_kind}:{_slug(loop_focus)}``, så
+    # ``loop_focus`` er loopets IDENTITET — ikke en beskrivelse af det.
+    # Fokus-teksten fra loyalty/attachment/meaning er en hel sætning, så hver
+    # tur blev sit eget domæne og intet kunne mødes på tværs af kørsler.
+    # Domænet er tredje segment af open-loop-nøglen; det er den kobling
+    # lifecycle-laget beskriver. Fokus-teksten er fallback for syntetiske
+    # loops (initiative-tension-stien) der ikke har nogen nøgle.
     for value in (
         loyalty.get("summary", {}).get("current_focus"),
         attachment.get("summary", {}).get("current_focus"),
@@ -602,6 +611,21 @@ def _best_loop_focus(
         if candidate:
             return candidate[:96]
     return "bounded loop"
+
+
+def _loop_identity_key(*, latest_loop: dict[str, object], loop_focus: str) -> str:
+    """Loopets IDENTITET — tredje segment af nøglen, ikke visningsteksten.
+
+    Målt 5/11-2026: nøglen blev bygget fra ``_slug(loop_focus)``, og
+    ``loop_focus`` er en hel sætning fra loyalty/attachment/meaning-lagene.
+    Hver tur blev derfor sit eget domæne, og lifecycle-laget kunne ikke mødes
+    på tværs af kørsler. Domænet er den ægte kobling; fokus-teksten er
+    fortsat visningsteksten i titel og summary.
+    """
+    domain = _open_loop_domain_key(str(latest_loop.get("canonical_key") or ""))
+    if domain:
+        return domain[:96]
+    return _slug(loop_focus)
 
 
 def _normalize_focus_candidate(value: object) -> str:

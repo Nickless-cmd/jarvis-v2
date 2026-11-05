@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9719/18099 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9720/18100 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 9719/18099 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 869 | 1578 | 55% |
-| `core.services` | 6510 | 12339 | 52% |
+| `core.services` | 6511 | 12340 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1613,9 +1613,9 @@ Generated from source. 9719/18099 functions/methods documented (53%). The list b
 - `core/services/proactive_candidates.py` :: `remember_shown` (L482)
 - `core/services/proactive_context_governor.py` :: `list_context_versions` (L301)
 - `core/services/proactive_context_governor.py` :: `recall_context_version` (L316)
-- `core/services/proactive_loop_lifecycle_tracking.py` :: `build_runtime_proactive_loop_lifecycle_surface` (L159)
-- `core/services/proactive_loop_lifecycle_tracking.py` :: `refresh_runtime_proactive_loop_lifecycle_signal_statuses` (L96)
-- `core/services/proactive_loop_lifecycle_tracking.py` :: `track_runtime_proactive_loop_lifecycle_signals_for_visible_turn` (L73)
+- `core/services/proactive_loop_lifecycle_tracking.py` :: `build_runtime_proactive_loop_lifecycle_surface` (L160)
+- `core/services/proactive_loop_lifecycle_tracking.py` :: `refresh_runtime_proactive_loop_lifecycle_signal_statuses` (L97)
+- `core/services/proactive_loop_lifecycle_tracking.py` :: `track_runtime_proactive_loop_lifecycle_signals_for_visible_turn` (L74)
 - `core/services/proactive_question_gate_tracking.py` :: `build_runtime_proactive_question_gate_surface` (L105)
 - `core/services/proactive_question_gate_tracking.py` :: `refresh_runtime_proactive_question_gate_statuses` (L75)
 - `core/services/proactive_question_gate_tracking.py` :: `track_runtime_proactive_question_gates_for_visible_turn` (L52)

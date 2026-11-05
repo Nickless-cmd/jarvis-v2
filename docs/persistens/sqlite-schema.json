@@ -18198,7 +18198,7 @@
       ]
     },
     "delayed_notifications": {
-      "digest": "f4:b3:54:47:76:94:75:d5:f7:cd:4a:40:dc:7a:6b:1d:a4:68:f2:cd:73:63:13:6e:38:27:b8:47:9a:a4:06:8b",
+      "digest": "f5:2b:5b:a9:ff:24:0e:45:ba:03:0c:df:6d:43:63:fc:1d:88:60:98:c5:ff:47:af:65:f4:27:b2:bc:5f:7c:d0",
       "schema": {
         "columns": [
           {
@@ -18222,6 +18222,14 @@
             "type": "INTEGER",
             "nullable": false,
             "default": "0",
+            "pk": 0,
+            "hidden": 0
+          },
+          {
+            "name": "delivered_at",
+            "type": "TEXT",
+            "nullable": true,
+            "default": null,
             "pk": 0,
             "hidden": 0
           },

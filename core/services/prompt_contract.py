@@ -2780,6 +2780,17 @@ def _build_visible_chat_prompt_assembly_impl(
         sections=raw_sections,
     )
 
+    # V2: orienteringen er det cachebare prefiks' forreste blok og SKAL være
+    # byte-identisk med warmerens (`build_visible_stable_prefix`), som ikke går
+    # gennem budgettet. Målt 5/11-2026: orienteringen er ~22,6 k tegn, budgettet
+    # klipper den til 19 k (14,5 k compact) midt i en sektion, og så er warmer-
+    # prefikset ikke et prefix af live — den varmede cache rammes aldrig, uden at
+    # noget fejler. Budgettet har allerede regnet pladsen med; vi erstatter kun
+    # det klippede indhold med det fulde. Legacy (V1) er uændret.
+    from core.services.prompt_mode_layout import mode_layout_v2_enabled
+    if mode_orientation and mode_layout_v2_enabled():
+        selected = {**selected, "mode_orientation": mode_orientation}
+
     # Assemble budget-selected sections in priority order
     _section_labels = {
         "mode_orientation": "current mode orientation (chat vs code — what is expected here)",

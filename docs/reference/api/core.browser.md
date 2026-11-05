@@ -27,3 +27,25 @@ _Playwright browser session — dedicated worker thread._
 | function | `get_all_pages` | `()` | Return all open pages.  Returns [] if no session is active. | [src](../../../core/browser/playwright_session.py#L328) |
 | function | `switch_to_page_by_index` | `(index)` | Switch active page to the one at *index*.  Returns the new page. | [src](../../../core/browser/playwright_session.py#L339) |
 
+## `core/browser/screencast.py`
+_CDP-screencast af Jarvis' server-side browser — kilden til PWA'ens delte browser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `normaliser_url` | `(url)` | Kun http(s) og about:blank. file:, javascript:, chrome: m.fl. afvises. | [src](../../../core/browser/screencast.py#L33) |
+| function | `_tal` | `(v, lo, hi)` | — | [src](../../../core/browser/screencast.py#L48) |
+| class | `ScreencastSession` | `` | Én WS-forbindelses skærmstrøm + input mod den aktive side. | [src](../../../core/browser/screencast.py#L58) |
+| method | `ScreencastSession.__init__` | `(self, *, quality=…, max_queue=…)` | — | [src](../../../core/browser/screencast.py#L61) |
+| method | `ScreencastSession._on_frame` | `(self, params)` | — | [src](../../../core/browser/screencast.py#L70) |
+| method | `ScreencastSession._detach` | `(self)` | — | [src](../../../core/browser/screencast.py#L93) |
+| method | `ScreencastSession._attach` | `(self, ctx)` | — | [src](../../../core/browser/screencast.py#L103) |
+| method | `ScreencastSession._start_fn` | `(self, ctx)` | — | [src](../../../core/browser/screencast.py#L113) |
+| method | `ScreencastSession._pump_fn` | `(self, ctx)` | — | [src](../../../core/browser/screencast.py#L117) |
+| method | `ScreencastSession._stop_fn` | `(self, ctx)` | — | [src](../../../core/browser/screencast.py#L132) |
+| method | `ScreencastSession.start` | `(self)` | — | [src](../../../core/browser/screencast.py#L137) |
+| method | `ScreencastSession.pump` | `(self)` | — | [src](../../../core/browser/screencast.py#L140) |
+| method | `ScreencastSession.stop` | `(self)` | — | [src](../../../core/browser/screencast.py#L143) |
+| method | `ScreencastSession.next_frame` | `(self, timeout=…)` | — | [src](../../../core/browser/screencast.py#L149) |
+| function | `bygg_input` | `(msg)` | Oversaet en klientbesked til en worker-funktion, eller None hvis ugyldig. | [src](../../../core/browser/screencast.py#L158) |
+| function | `hent_faner` | `(ctx)` | Faneliste i samme form som Electron-broens `faner()`. | [src](../../../core/browser/screencast.py#L263) |
+

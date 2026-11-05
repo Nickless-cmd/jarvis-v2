@@ -237,6 +237,12 @@ _Billing / Stripe-integration (spec §21.6) — SKELET._
 | function | `create_checkout` | `(payload)` | Opret en Stripe Checkout-session for tier-opgradering (§21.6). | [src](../../../apps/api/jarvis_api/routes/billing.py#L52) |
 | function | `stripe_webhook` | `(request)` | Stripe webhook (§21.6). Verificér signatur, grant kvote/tier ved succes. | [src](../../../apps/api/jarvis_api/routes/billing.py#L64) |
 
+## `apps/api/jarvis_api/routes/browser_stream.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `browser_stream` | `(ws)` | Jarvis' browser som JPEG-frames (binære beskeder) + input tilbage. | [src](../../../apps/api/jarvis_api/routes/browser_stream.py#L16) |
+
 ## `apps/api/jarvis_api/routes/central.py`
 _Real-time Central-vindue til owner (jarvis-desk code mode)._
 
@@ -635,12 +641,4 @@ _Self-scoped API for Desk Chat Flow presentation preferences._
 | function | `onboarding_ack` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L81) |
 | function | `observations_post` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L89) |
 | function | `suggestion_outcome` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/chat_flow_preferences.py#L99) |
-
-## `apps/api/jarvis_api/routes/chat_inbox.py`
-_Bjørns egen vej ind i indbakken — den fjerde skriver._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `InboxFlagRequest` | `` | Det et menneske flagger. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L39) |
-| function | `flag_i_indbakken` | `(req)` | Opret en post i den autentificerede brugers indbakke. | [src](../../../apps/api/jarvis_api/routes/chat_inbox.py#L53) |
 

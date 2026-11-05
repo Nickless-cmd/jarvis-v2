@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ApiConfig } from '../../lib/tokenRenewal'
+import {
+  openBrowserStream, tilSideKoord, museKnap,
+  type BrowserStream, type StreamInput,
+} from '../../lib/browserStream'
 import { Globe, X, RotateCw, ArrowLeft, ArrowRight, Plus, Maximize2, Minimize2 } from 'lucide-react'
 import { ListeTilstand } from '../feedback/ListeTilstand'
 
@@ -25,8 +30,10 @@ interface Bro {
   genindlaes: () => Promise<boolean>
 }
 
-const bro = (): Bro | undefined =>
+const elektronBro = (): Bro | undefined =>
   (window as unknown as { jarvisDesk?: { browser?: Bro } }).jarvisDesk?.browser
+
+const TOM_FANE: Fane = { id: -1, url: '', titel: '', aktiv: true, kanTilbage: false, kanFrem: false, henter: true }
 
 /** Kort navn til fanen. En fane uden titel skal vise sit værtsnavn, ikke en
  *  hel URL — «github.com» frem for «https://github.com/x/y?z=1#a». */
@@ -61,8 +68,10 @@ function faneNavn(f: Fane): string {
  * ruden kunne åbne about:blank og derefter ingenting. En browser uden
  * adresselinje er et vindue uden håndtag.
  */
-export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
+export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose, config }: {
   aaben: boolean
+  /** API-adgang til WS-streamen. Bruges KUN når Electron-broen mangler (PWA). */
+  config?: ApiConfig | null
   /** Fuld visning — samme ⤢ som ændringer og baggrundsjob. */
   fuld?: boolean
   onFuld?: (fuld: boolean) => void
@@ -77,6 +86,83 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
   const holder = useRef<HTMLDivElement | null>(null)
   const adressefelt = useRef<HTMLInputElement | null>(null)
 
+  // ── PWA-fallback: uden Electron-broen tegnes siden fra en WS-frame-stream ──
+  // Med broen er alt nedenfor inaktivt (webTilstand er false) og `bro()` er
+  // præcis Electron-broen som før.
+  // Primitiver, ikke objektet: kaldere bygger `config` på ny ved hver render, og
+  // det ville lukke og genåbne streamen hele tiden.
+  const apiBase = config?.apiBaseUrl
+  const apiToken = config?.authToken ?? null
+  const cfg = useMemo<ApiConfig | null>(
+    () => (apiBase ? { apiBaseUrl: apiBase, authToken: apiToken } : null),
+    [apiBase, apiToken],
+  )
+  const webTilstand = !elektronBro() && !!cfg
+  const canvas = useRef<HTMLCanvasElement | null>(null)
+  const strom = useRef<BrowserStream | null>(null)
+  const webFaner = useRef<Fane[]>([])
+  const sidsteRect = useRef<{ width: number; height: number } | null>(null)
+  const rammeStr = useRef({ w: 1, h: 1 })
+  const sidsteMus = useRef(0)
+
+  const sendStorrelse = useCallback(() => {
+    const r = sidsteRect.current
+    if (r && r.width >= 100 && r.height >= 100) {
+      strom.current?.send({ t: 'resize', w: Math.round(r.width), h: Math.round(r.height) })
+    }
+  }, [])
+
+  const bro = useCallback((): Bro | undefined => {
+    const e = elektronBro()
+    if (e) return e
+    if (!cfg) return undefined
+    const send = (m: StreamInput) => strom.current?.send(m)
+    const ok = async () => true
+    const web: Bro = {
+      saetRect: async (r) => { sidsteRect.current = r; sendStorrelse(); return true },
+      saetSynlig: ok,
+      faner: async () => webFaner.current,
+      vaelg: async (id) => { send({ t: 'tab', action: 'switch', index: id }); return true },
+      luk: async (id) => { send({ t: 'tab', action: 'close', index: id }); return true },
+      aabn: async (url) => { send({ t: 'tab', action: 'new', url }); return TOM_FANE },
+      naviger: async (url) => { send({ t: 'nav', action: 'goto', url }); return true },
+      tilbage: async () => { send({ t: 'nav', action: 'back' }); return true },
+      frem: async () => { send({ t: 'nav', action: 'forward' }); return true },
+      genindlaes: async () => { send({ t: 'nav', action: 'reload' }); return true },
+    }
+    return web
+  }, [cfg, sendStorrelse])
+
+  useEffect(() => {
+    if (!aaben || !webTilstand || !cfg) return
+    const s = openBrowserStream(cfg, {
+      onFrame: (blob) => {
+        void createImageBitmap(blob).then((bmp) => {
+          const c = canvas.current
+          if (!c) { bmp.close(); return }
+          if (c.width !== bmp.width || c.height !== bmp.height) { c.width = bmp.width; c.height = bmp.height }
+          rammeStr.current = { w: bmp.width, h: bmp.height }
+          c.getContext('2d')?.drawImage(bmp, 0, 0)
+          bmp.close()
+        }).catch(() => { /* ødelagt frame — næste kommer */ })
+      },
+      onTabs: (f) => { webFaner.current = f; setFaner(f); setFejl(''); setHenter(false) },
+      onStatus: (st) => {
+        if (st === 'open') { setFejl(''); sendStorrelse() }
+        else if (st === 'error') setFejl('Forbindelsen til Jarvis’ browser fejlede.')
+        else setHenter(false)
+      },
+    })
+    strom.current = s
+    return () => { s.close(); strom.current = null }
+  }, [aaben, webTilstand, cfg, sendStorrelse])
+
+  const musKoord = (e: { clientX: number; clientY: number }) => {
+    const c = canvas.current
+    if (!c) return { x: 0, y: 0 }
+    return tilSideKoord(e.clientX, e.clientY, c.getBoundingClientRect(), rammeStr.current.w, rammeStr.current.h)
+  }
+
   const aktiv = faner.find((f) => f.aktiv) ?? null
 
   const meldRect = useCallback(() => {
@@ -85,7 +171,7 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
     if (!el || !b) return
     const r = el.getBoundingClientRect()
     void b.saetRect({ x: r.left, y: r.top, width: r.width, height: r.height })
-  }, [])
+  }, [bro])
 
   // Rektanglet skal meldes ved ENHVER ændring, ikke kun ved åbning: et
   // vinduesresize, et sidepanel der folder ud, en skalering. ResizeObserver
@@ -113,7 +199,7 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
     void b.saetSynlig(aaben)
     if (aaben) meldRect()
     return () => { void b.saetSynlig(false) }
-  }, [aaben, meldRect])
+  }, [aaben, meldRect, bro])
 
   const hentFaner = useCallback(() => {
     const b = bro()
@@ -125,7 +211,7 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
           ? `Kunne ikke hente fanerne: ${e.message}`
           : 'Kunne ikke hente fanerne.'))
       .finally(() => setHenter(false))
-  }, [])
+  }, [bro])
 
   useEffect(() => {
     if (!aaben) return
@@ -153,7 +239,7 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
     void Promise.resolve(p)
       .then(hentFaner)
       .catch(() => setFejl(`Kunne ikke åbne ${t}.`))
-  }, [adresse, aktiv, hentFaner])
+  }, [adresse, aktiv, hentFaner, bro])
 
   const handling = useCallback((fn: () => Promise<unknown>, hvad: string) => {
     void fn().then(hentFaner).catch(() => setFejl(`Kunne ikke ${hvad}.`))
@@ -270,6 +356,42 @@ export function JarvisBrowserPanel({ aaben, fuld = false, onFuld, onClose }: {
       {/* Hullet. Selve siden tegnes af Electron oven paa dette rektangel —
           derfor må der ikke ligge noget her naar en fane er aabne. */}
       <div className="jbrowser-hul" ref={holder} data-testid="jbrowser-hul">
+        {webTilstand && (
+          <canvas
+            ref={canvas}
+            data-testid="jbrowser-canvas"
+            tabIndex={0}
+            aria-label="Jarvis' browser"
+            style={{ width: '100%', height: '100%', display: 'block', outline: 'none' }}
+            onContextMenu={(e) => e.preventDefault()}
+            onMouseMove={(e) => {
+              const nu = performance.now()
+              if (nu - sidsteMus.current < 30) return
+              sidsteMus.current = nu
+              strom.current?.send({ t: 'mouse', kind: 'move', ...musKoord(e) })
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.focus()
+              strom.current?.send({ t: 'mouse', kind: 'down', button: museKnap(e.button), ...musKoord(e) })
+            }}
+            onMouseUp={(e) => strom.current?.send({ t: 'mouse', kind: 'up', button: museKnap(e.button), ...musKoord(e) })}
+            onWheel={(e) => strom.current?.send({ t: 'mouse', kind: 'wheel', dx: e.deltaX, dy: e.deltaY, ...musKoord(e) })}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey) return // lad paste/kopi m.m. i fred
+              e.preventDefault()
+              strom.current?.send({ t: 'key', kind: 'down', key: e.key === ' ' ? 'Space' : e.key })
+            }}
+            onKeyUp={(e) => {
+              if (e.ctrlKey || e.metaKey) return
+              e.preventDefault()
+              strom.current?.send({ t: 'key', kind: 'up', key: e.key === ' ' ? 'Space' : e.key })
+            }}
+            onPaste={(e) => {
+              const text = e.clipboardData.getData('text')
+              if (text) { e.preventDefault(); strom.current?.send({ t: 'text', text }) }
+            }}
+          />
+        )}
         {faner.length === 0 && !henter && !fejl && (
           <p className="jbrowser-intet">Ingen faner endnu. Skriv en adresse ovenfor.</p>
         )}

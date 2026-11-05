@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9751/18162 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9755/18178 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,13 +8,13 @@ Generated from source. 9751/18162 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 732 | 1024 | 71% |
+| `apps.api.jarvis_api.routes` | 733 | 1025 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `apps.voice_agent` | 4 | 22 | 18% |
 | `core.auth` | 7 | 52 | 13% |
-| `core.browser` | 11 | 13 | 84% |
+| `core.browser` | 14 | 28 | 50% |
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
@@ -42,9 +42,9 @@ Generated from source. 9751/18162 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2612)
+## Undocumented public functions (2616)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L229)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L230)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -227,6 +227,10 @@ Generated from source. 9751/18162 functions/methods documented (53%). The list b
 - `core/auth/profiles.py` :: `provider_has_real_credentials` (L266)
 - `core/auth/profiles.py` :: `revoke_provider` (L488)
 - `core/auth/profiles.py` :: `save_provider_credentials` (L84)
+- `core/browser/screencast.py` :: `ScreencastSession.next_frame` (L149)
+- `core/browser/screencast.py` :: `ScreencastSession.pump` (L140)
+- `core/browser/screencast.py` :: `ScreencastSession.start` (L137)
+- `core/browser/screencast.py` :: `ScreencastSession.stop` (L143)
 - `core/cli/capability_commands.py` :: `approve_capability_request_truth` (L92)
 - `core/cli/capability_commands.py` :: `cmd_approve_capability_request` (L36)
 - `core/cli/capability_commands.py` :: `cmd_execute_capability_request` (L54)

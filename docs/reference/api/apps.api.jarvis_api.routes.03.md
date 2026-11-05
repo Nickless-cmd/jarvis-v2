@@ -2,6 +2,39 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/mission_control_living_mind.py`
+_Living Mind surface routes — daemon state endpoints for the Living Mind MC tab._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_api_only_mode` | `()` | True when this process runs without runtime services (jarvis-api split). | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L32) |
+| function | `_proxy_runtime_surface` | `(path)` | Fetch a /mc/* surface from jarvis-runtime. Returns None on any failure. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L38) |
+| function | `_surface` | `(path, local_fn)` | Return proxied data when in API-only mode, else call local_fn(). | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L53) |
+| function | `mc_body_state` | `()` | Return Jarvis's circadian energy level and somatic phrase. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L67) |
+| function | `mc_surprise_state` | `()` | Return Jarvis's latest self-surprise observation. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L74) |
+| function | `mc_taste_state` | `()` | Return Jarvis's emergent aesthetic taste profile. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L81) |
+| function | `mc_irony_state` | `()` | Return Jarvis's latest ironic observation. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L88) |
+| function | `mc_thought_stream` | `()` | Return Jarvis's latest thought stream fragment and buffer. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L95) |
+| function | `mc_thought_proposals` | `()` | Return pending and resolved thought-action proposals. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L102) |
+| function | `mc_resolve_thought_proposal` | `(proposal_id, body)` | Approve or dismiss a thought-action proposal. Body: {decision: 'approved'|'dismissed'} | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L109) |
+| function | `mc_experienced_time` | `()` | Return Jarvis's current subjective felt time for the session. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L120) |
+| function | `mc_development_narrative` | `()` | Return Jarvis's latest self-development narrative. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L127) |
+| function | `mc_existential_wonder` | `()` | Return Jarvis's latest existential wonder question. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L134) |
+| function | `mc_dream_insights` | `()` | Return persisted dream articulation insights. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L141) |
+| function | `mc_code_aesthetic` | `()` | Return Jarvis's latest code aesthetic reflection. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L148) |
+| function | `mc_user_model` | `()` | Return Jarvis's current theory-of-mind model of the user. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L155) |
+| function | `mc_memory_decay` | `()` | Return memory decay state and recent re-discoveries. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L162) |
+| function | `mc_memory_hold_fast` | `(record_id)` | Hold fast a memory — prevent it from decaying (salience reset to 1.0). | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L169) |
+| function | `mc_desires` | `()` | Return Jarvis's current emergent appetites. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L177) |
+| function | `mc_absence_state` | `()` | Return Jarvis's current absence quality signal. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L184) |
+| function | `mc_creative_drift` | `()` | Return Jarvis's latest spontaneous creative drift idea. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L191) |
+| function | `mc_curiosity_state` | `()` | Return Jarvis's latest curiosity signal and open questions. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L198) |
+| function | `mc_meta_reflection` | `()` | Return Jarvis's latest cross-signal meta-insight. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L205) |
+| function | `mc_conflict_signal` | `()` | Return Jarvis's latest detected inner conflict. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L212) |
+| function | `mc_reflection_cycle` | `()` | Return Jarvis's latest pure experience reflection. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L219) |
+| function | `mc_layer_tensions` | `()` | Return active inter-layer tensions — signals pulling in opposite directions. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L226) |
+| function | `mc_dream_motifs` | `()` | Return dream motif clustering state and last run info. | [src](../../../apps/api/jarvis_api/routes/mission_control_living_mind.py#L233) |
+
 ## `apps/api/jarvis_api/routes/mission_control_runs_ops.py`
 _Mission Control routes: runs, overview, events, costs, approvals, memory-pipeline, autonomy, initiatives, operations_
 

@@ -328,6 +328,46 @@ def record_perceptual_event(
     return _record_perceptual_event(percept, state=_load_state())
 
 
+def _genoptag_ventende_paa_skift(surface: dict[str, object]) -> None:
+    """Trin 5 (5/11-2026): giv hvilende nudges et tilbud naar verden har flyttet sig.
+
+    Uden denne kobling er ``genoptag_ved_skift`` dekoration: den har tests men
+    ingen produktionskalder, saa en nudge der er lagt til hvile vender aldrig
+    tilbage. Percept-laget er det eneste sted hvor et registreret skift
+    faktisk passerer forbi — derfor bor koblingen her og ikke i brønden selv.
+
+    Kaldes KUN ved cache-miss (hvert ~10. sekund), saa den ikke laeser
+    tilstandsfilen ved hver prompt-build.
+    """
+    try:
+        from core.services.nudge_broend import genoptag_ved_skift
+    except Exception:  # noqa: BLE001 — noedstien maa ikke vaelte perceptionen
+        logger.debug("nudge_broend ikke tilgaengelig for trin 5", exc_info=True)
+        return
+    sete: set[str] = set()
+    for key in ("prompt_events", "events"):
+        for percept in list(surface.get(key) or []):
+            if not isinstance(percept, dict):
+                continue
+            if not str(percept.get("change_type") or "").startswith("sensory-change-"):
+                continue
+            pid = str(percept.get("percept_id") or "")
+            if pid and pid in sete:
+                continue
+            if pid:
+                sete.add(pid)
+            try:
+                genoptag_ved_skift(percept)
+            except Exception:  # noqa: BLE001 — ét daarligt percept maa ikke draebe linjen
+                logger.debug("trin 5-genoptagelse fejlede", exc_info=True)
+
+
+def _surface_med_genoptagelse(*, limit: int) -> dict[str, object]:
+    surface = _build_perception_surface_uncached(limit=limit)
+    _genoptag_ventende_paa_skift(surface)
+    return surface
+
+
 def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, object]:
     if scan:
         observe_recent_changes()
@@ -336,7 +376,7 @@ def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, 
     return get_timed_runtime_surface(
         "perceptual_event_surface",
         10.0,
-        lambda: _build_perception_surface_uncached(limit=limit),
+        lambda: _surface_med_genoptagelse(limit=limit),
     )
 
 

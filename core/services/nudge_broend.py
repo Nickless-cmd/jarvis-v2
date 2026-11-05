@@ -213,7 +213,9 @@ def mark_venter(nudge_id: str, *, grund: str = "kadence-loft") -> bool:
         n["status"] = STATUS_VENTER
         n["venter_siden"] = datetime.now(UTC).isoformat()
         n["venter_grund"] = str(grund)[:120]
-        n["prik"] = int(n.get("prik") or 0) + 1
+        # Prik tælles KUN ved afsendelse (mark_sent). En nudge der hviler tre
+        # gange uden at være sagt er ikke sagt tre gange — tæller man her,
+        # ser den ud som en gentagelse den aldrig var.
         n["trin"] = 4
         _save(nudges)
         return True
@@ -259,28 +261,46 @@ def genoptag_ved_skift(
     beskrivelse = str(skift.get("summary") or change_type)[:160]
 
     nudges = _load()
-    genoptagne: list[dict[str, Any]] = []
-    for n in nudges:
-        if n.get("status") != STATUS_VENTER:
-            continue
+    ventende = [n for n in nudges if n.get("status") == STATUS_VENTER]
+    if not ventende:
+        return []
+
+    # Ét tilbud pr. skift — ikke en maskinpistol. Et stemningsskift der
+    # genoptager baade opvasken og «ring til tandlaegen» er ikke et tilbud,
+    # det er en byge. Vi vaelger den sag der har ventet laengst paa netop et
+    # skift, med vigtighed som foerste noegle.
+    _rang = {"critical": 0, "high": 1, "normal": 2, "low": 3}
+    ventende.sort(
+        key=lambda n: (
+            _rang.get(str(n.get("importance") or "normal"), 2),
+            str(n.get("venter_siden") or ""),
+        )
+    )
+
+    valgt: dict[str, Any] | None = None
+    for n in ventende:
         if not kadence_tillader(str(n.get("emne") or ""), nu=nu):
             continue
-        n["status"] = "pending"
-        n["trin"] = 5
-        n["genoptaget_ved"] = {
-            "change_type": change_type,
-            "change_kind": skift_kind,
-            "observed_at": str(skift.get("observed_at") or ""),
-            "summary": beskrivelse,
-        }
-        n["tilbud"] = (
-            f"Skal vi tage den nu, eller lader vi den stå? "
-            f"(noget har flyttet sig: {beskrivelse})"
-        )[:400]
-        genoptagne.append(n)
-    if genoptagne:
-        _save(nudges)
-    return genoptagne
+        valgt = n
+        break
+    if valgt is None:
+        return []
+
+    valgt["status"] = "pending"
+    valgt["trin"] = 5
+    valgt["genoptaget_ved"] = {
+        "emne": str(valgt.get("emne") or ""),
+        "change_type": change_type,
+        "change_kind": skift_kind,
+        "observed_at": str(skift.get("observed_at") or ""),
+        "summary": beskrivelse,
+    }
+    valgt["tilbud"] = (
+        f"Skal vi tage den nu, eller lader vi den stå? "
+        f"(noget har flyttet sig: {beskrivelse})"
+    )[:400]
+    _save(nudges)
+    return [valgt]
 
 
 def count_pending() -> int:

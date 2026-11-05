@@ -46,7 +46,10 @@ def test_nudge_der_rammer_loftet_ender_i_venter_og_forsvinder_ikke(broend):
     n = nb.get(nid2)
     assert n["status"] == nb.STATUS_VENTER
     assert n["status"] != "dismissed"          # den er IKKE opgivet
-    assert n["prik"] == 1
+    # Prik tælles KUN ved afsendelse (rettet 5/11-2026). Denne nudge blev aldrig
+    # sagt — den blev holdt tilbage. Tæller man hvile som en prik, ser den ud
+    # som en gentagelse den ikke var, og kadence-loftet laaser sig selv.
+    assert n["prik"] == 0
     assert n["trin"] == 4
     assert n["venter_siden"]
     # og den er ikke længere i den kø der bliver sagt
@@ -136,3 +139,149 @@ def test_emne_nogle_udledes_naar_kalderen_ikke_giver_en(broend):
     n = nb.get(nid)
     assert n["emne"].startswith("freetheai_checkin:")
     assert "indhold" in n["emne"]
+
+
+# ── Kæden, ikke enkeltfunktionerne (punkt 8, 5/11-2026) ───────────────────────
+#
+# En test pr. funktion beviste tidligere at hver del virkede — og alligevel var
+# trin 4+5 dekoration, fordi INGEN produktionssti kaldte dem. Testene nedenfor
+# maaler sammenhaengen: at send-vaerktoejet faktisk haandhaever loftet, og at
+# percept-laget faktisk genoptager.
+
+
+def test_kaeden_send_til_venter_til_tilbud(broend, monkeypatch):
+    """push → send (afvist af kadence) → venter → skift → pending trin 5.
+
+    Dette er den kaede Bjorn bad om bevist: den gaar gennem det RIGTIGE
+    vaerktoej (_exec_nudge_send), ikke gennem service-laget direkte.
+    """
+    from core.tools import nudge_broend_tools as tools
+
+    sendt: list[dict] = []
+    monkeypatch.setattr(
+        "core.tools.simple_tools._exec_notify_user",
+        lambda args: sendt.append(args) or {"status": "ok"},
+    )
+
+    # 1. Foerste prik paa emnet — den maa sendes.
+    nid1 = nb.push(source="opvask", message="opvasken staar stadig", emne="opvask")
+    foerste = tools._exec_nudge_send({"nudge_id": nid1})
+    assert foerste["status"] == "ok"
+    assert not foerste.get("venter")
+    assert nb.get(nid1)["status"] == "sent"
+    assert len(sendt) == 1
+
+    # 2. Anden prik samme emne samme dag — den maa IKKE sendes.
+    nid2 = nb.push(source="opvask", message="opvasken staar stadig", emne="opvask")
+    anden = tools._exec_nudge_send({"nudge_id": nid2})
+
+    assert anden["status"] == "ok"          # ikke en fejl: den blev holdt tilbage
+    assert anden["venter"] is True
+    assert len(sendt) == 1                  # INTET blev sendt anden gang
+    n = nb.get(nid2)
+    assert n["status"] == nb.STATUS_VENTER  # ikke dismissed, ikke sendt
+    assert n["prik"] == 0                   # usagt = ingen prik
+    assert n["venter_grund"] == "kadence-loft"
+
+    # 3. Verden flytter sig (et doegn senere) — saa bliver det et tilbud.
+    om_25_timer = datetime.now(UTC) + timedelta(hours=25)
+    flyttet = nb.genoptag_ved_skift(_skift(), nu=om_25_timer)
+
+    assert [x["nudge_id"] for x in flyttet] == [nid2]
+    n = nb.get(nid2)
+    assert n["status"] == "pending"
+    assert n["trin"] == 5
+    assert "Skal vi tage den nu" in n["tilbud"]
+    assert n["genoptaget_ved"]["emne"] == "opvask"
+
+
+def test_genoptagelse_giver_kun_et_tilbud_pr_skift(broend):
+    """Trin 5 er et tilbud, ikke en maskinpistol.
+
+    To emner hvilende + ét skift = ÉT genoptaget emne, ikke to.
+    """
+    a = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    b = nb.push(source="tandlaege", message="ring til tandlaegen", emne="tandlaege")
+    nb.mark_venter(a)
+    nb.mark_venter(b)
+
+    flyttet = nb.genoptag_ved_skift(_skift())
+
+    assert len(flyttet) == 1, "et skift maa kun give ét tilbud"
+    genoptaget = flyttet[0]["nudge_id"]
+    assert genoptaget in (a, b)
+    den_anden = b if genoptaget == a else a
+    assert nb.get(den_anden)["status"] == nb.STATUS_VENTER
+
+
+def test_percept_linjen_genoptager_hvilende_nudge(broend, monkeypatch):
+    """Percept-laget er den produktionssti der faktisk kalder trin 5.
+
+    Uden denne kobling havde genoptag_ved_skift tests men ingen kalder — det var
+    praecis defekten 5/11-2026.
+    """
+    from core.services import perceptual_event_engine as pee
+
+    nid = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_venter(nid)
+    # Kadence maa ikke blokere: emnet er aldrig sagt.
+    assert nb.kadence_tillader("opvask") is True
+
+    surface = {"prompt_events": [_skift()], "events": [_skift()]}
+    pee._genoptag_ventende_paa_skift(surface)
+
+    assert nb.get(nid)["status"] == "pending"
+    assert nb.get(nid)["trin"] == 5
+
+
+def test_percept_linjen_ignorerer_ikke_sanse_events(broend):
+    """Et tool-error er ikke et skift — kun sensory-change-* genoptager."""
+    from core.services import perceptual_event_engine as pee
+
+    nid = nb.push(source="opvask", message="opvasken staar", emne="opvask")
+    nb.mark_venter(nid)
+
+    pee._genoptag_ventende_paa_skift({
+        "events": [{"change_type": "tool-error", "summary": "x",
+                    "observed_at": datetime.now(UTC).isoformat(), "evidence": {}}],
+    })
+
+    assert nb.get(nid)["status"] == nb.STATUS_VENTER
+
+
+def test_trin_4_og_5_har_produktionskaldere():
+    """Vagten der fangede defekten: en funktion uden kalder er dekoration.
+
+    Grep i kilden (ikke i tests) efter hver funktion. Fejler den her, er
+    mekanismen bygget men ikke baaret — praecis den fejl der blev maalt 5/11.
+    """
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[1]
+    kilder = [
+        p for p in (repo / "core").rglob("*.py")
+        if p.name != "nudge_broend.py"
+    ]
+    tekst = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in kilder)
+
+    for navn in ("mark_venter", "genoptag_ved_skift", "kadence_tillader"):
+        assert navn in tekst, f"{navn} har ingen produktionskalder uden for nudge_broend.py"
+
+
+def test_build_perception_surface_kalder_genoptagelsen(monkeypatch):
+    """Koblingen: build_perception_surface SKAL gaa gennem wrapperen.
+
+    Fejler denne, er _genoptag_ventende_paa_skift en funktion ingen kalder —
+    praecis den defekt der blev maalt 5/11-2026 (tests groenne, nul kalder).
+    """
+    from core.services import perceptual_event_engine as pee
+
+    kaldt: list[dict] = []
+    monkeypatch.setattr(pee, "observe_recent_changes", lambda: None)
+    monkeypatch.setattr(pee, "get_timed_runtime_surface", lambda navn, ttl, fn: fn())
+    monkeypatch.setattr(pee, "_build_perception_surface_uncached", lambda *, limit: {"events": []})
+    monkeypatch.setattr(pee, "_genoptag_ventende_paa_skift", lambda s: kaldt.append(s))
+
+    pee.build_perception_surface(limit=4)
+
+    assert len(kaldt) == 1, "build_perception_surface gik uden om genoptagelsen"

@@ -47,7 +47,12 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "nudge_id er påkrævet"}
 
     try:
-        from core.services.nudge_broend import get, mark_sent
+        from core.services.nudge_broend import (
+            get,
+            kadence_tillader,
+            mark_sent,
+            mark_venter,
+        )
     except Exception as exc:
         return {"status": "error", "error": f"nudge_broend not available: {exc}"}
 
@@ -56,6 +61,24 @@ def _exec_nudge_send(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": f"Nudge '{nudge_id}' ikke fundet"}
     if nudge.get("status") != "pending":
         return {"status": "error", "error": f"Nudge er allerede {nudge.get('status')}"}
+
+    # Kadence-loftet (trin 4's indgang, 5/11-2026): er emnet sagt inden for et
+    # doegn, sendes den IKKE igen — men den kasseres heller ikke. Den flyttes
+    # til `venter`, hvor trin 5 kan genoptage den som et tilbud naar et
+    # registreret skift goer den relevant. Uden dette tjek er loftet dekoration:
+    # den samme nudge kunne sendes ti gange paa en dag uden at noget markede det.
+    emne = str(nudge.get("emne") or "")
+    if not kadence_tillader(emne):
+        mark_venter(nudge_id, grund="kadence-loft")
+        return {
+            "status": "ok",
+            "nudge_id": nudge_id,
+            "venter": True,
+            "text": (
+                f"Emnet '{emne}' er allerede naevnt inden for et doegn. "
+                f"Nudgen hviler nu — den vender tilbage naar noget flytter sig."
+            ),
+        }
 
     message = str(nudge.get("message", ""))
     importance = str(nudge.get("importance", "normal"))

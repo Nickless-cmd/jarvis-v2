@@ -1623,6 +1623,10 @@ def _notify_checkin_required(provider: str) -> None:
                 return  # allerede nudget i dag
         nudge_broend.push(
             source=src, kind="provider_checkin", importance="normal",
+            # Emne-noeglen (5/11-2026): uden den gaetter _emne_for() ud fra de
+            # foerste fire ord, og to formuleringer af samme sag taeller som to
+            # emner — saa slipper samme checkin gennem kadence-loftet igen.
+            emne=f"provider-checkin:{provider}",
             message=(f"{provider} er låst i dag — den kræver Bjørns daglige Discord-/checkin. "
                      f"Hvis du får brug for dens modeller (gpt-5.5-mini/grok-4.1-fast/"
                      f"deepseek-v4-pro), så bed Bjørn køre /checkin på deres server."),

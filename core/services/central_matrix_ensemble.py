@@ -377,6 +377,9 @@ def push_active_character_nudges() -> int:
                     kind="matrix_character",
                     message=message,
                     importance="normal",
+                    # Karakterens cid ER emnet (5/11-2026): to linjer fra samme
+                    # karakter er samme sag set to gange, ikke to emner.
+                    emne=f"matrix:{cid}",
                 )
                 count += 1
             except Exception:

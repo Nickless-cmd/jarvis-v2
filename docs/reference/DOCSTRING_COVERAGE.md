@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9827/18303 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9828/18306 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 9827/18303 functions/methods documented (53%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 38 | 89% |
 | `apps.api.jarvis_api.middleware` | 15 | 26 | 57% |
-| `apps.api.jarvis_api.routes` | 735 | 1027 | 71% |
+| `apps.api.jarvis_api.routes` | 736 | 1030 | 71% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -43,7 +43,7 @@ Generated from source. 9827/18303 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2631)
+## Undocumented public functions (2633)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -98,6 +98,8 @@ Generated from source. 9827/18303 functions/methods documented (53%). The list b
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)
+- `apps/api/jarvis_api/routes/geo.py` :: `geo_reverse` (L27)
+- `apps/api/jarvis_api/routes/geo.py` :: `geo_search` (L40)
 - `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_log` (L390)
 - `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_stage` (L366)
 - `apps/api/jarvis_api/routes/git_panel.py` :: `git_panel_status` (L336)

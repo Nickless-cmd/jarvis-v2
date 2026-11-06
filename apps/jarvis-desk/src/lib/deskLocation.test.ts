@@ -1,6 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { parseMode, loadMode, saveMode, loadManual, saveManual, getDesktopLocation } from './deskLocation'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { parseMode, loadMode, saveMode, loadManual, saveManual, getDesktopLocation, geocodeAndSaveManual } from './deskLocation'
 import { buildPingBody } from './presence'
+
+const apiFetchMock = vi.hoisted(() => vi.fn())
+vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), apiFetch: apiFetchMock }))
 
 describe('deskLocation store', () => {
   beforeEach(() => localStorage.clear())
@@ -81,5 +84,51 @@ describe('browser-lokation må ikke melde et gæt som «precise»', () => {
       source: 'browser',
       precision: 'precise',
     })
+  })
+})
+
+describe('web/PWA uden Electron-bro: opslag via API', () => {
+  const stubBrowser = (coords: { latitude: number; longitude: number; accuracy: number }) => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition: (ok: (p: unknown) => void) => ok({ coords }) },
+    })
+  }
+  beforeEach(() => {
+    localStorage.clear()
+    delete (window as unknown as { jarvisDesk?: unknown }).jarvisDesk
+    apiFetchMock.mockReset()
+  })
+
+  it('browser-fix navngives via /geo/reverse', async () => {
+    stubBrowser({ latitude: 55.06, longitude: 10.61, accuracy: 25 })
+    apiFetchMock.mockResolvedValue({ label: 'Græsvej, Svendborg' })
+    expect(await getDesktopLocation('browser')).toEqual({
+      lat: 55.06, lon: 10.61, label: 'Græsvej, Svendborg', source: 'browser', precision: 'precise',
+    })
+    expect(apiFetchMock.mock.calls[0]?.[1]).toBe('/geo/reverse?lat=55.06&lon=10.61&precise=true')
+  })
+
+  it('kasserer fixet når API-opslaget fejler (Arlington-værnet holder)', async () => {
+    stubBrowser({ latitude: 38.883333, longitude: -77.0, accuracy: 25 })
+    apiFetchMock.mockRejectedValue(new Error('502'))
+    expect(await getDesktopLocation('browser')).toBeNull()
+  })
+
+  it('kasserer for upræcist fix uden at kalde API', async () => {
+    stubBrowser({ latitude: 38.883333, longitude: -77.0, accuracy: 100_000 })
+    expect(await getDesktopLocation('browser')).toBeNull()
+    expect(apiFetchMock).not.toHaveBeenCalled()
+  })
+
+  it('manuel adresse geocodes via /geo/search og gemmes', async () => {
+    apiFetchMock.mockResolvedValue({ lat: 55.06, lon: 10.61, label: 'Svendborg' })
+    expect(await geocodeAndSaveManual('Svendborg')).toEqual({ lat: 55.06, lon: 10.61, label: 'Svendborg' })
+    expect(loadManual()).toEqual({ lat: 55.06, lon: 10.61, label: 'Svendborg' })
+  })
+
+  it('ip-tilstand giver null i web (ingen server-IP-gæt)', async () => {
+    expect(await getDesktopLocation('ip')).toBeNull()
+    expect(apiFetchMock).not.toHaveBeenCalled()
   })
 })

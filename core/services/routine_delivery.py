@@ -98,11 +98,15 @@ def _push_owner(claim: DeliveryClaim) -> None:
         from core.services.push_dispatcher import _push_to_web
 
         navn = str(routine.get("name") or "Rutine")
+        # `url` med vilje (6/11-2026): et rutine-run har INGEN session, saa uden
+        # en eksplicit adresse byggede service workeren '/', og et tryk foerte
+        # til forsiden i stedet for til resultatet. Rutinen er adressen.
         _push_to_web(discord_id, {
             "title": navn,
             "body": "Dit rutine-resultat er klar i appen.",
             "run_id": claim.run_id,
             "kind": "routine",
+            "url": f"/?routine={routine_id}",
         })
     except Exception as exc:  # self-safe: push maa ikke vaelte en levering
         logger.warning(

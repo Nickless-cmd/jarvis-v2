@@ -192,3 +192,17 @@ def test_push_fejl_vaelter_ikke_leveringen(monkeypatch):
 
 
 # End of delivery guards.
+
+
+def test_push_payload_peger_paa_rutinen():
+    """Rutine-pushet skal baere en url — ellers lander trykket paa forsiden.
+
+    Maalt 6/11-2026: `routine_runs` har ingen `session_id`, saa service workeren
+    faldt tilbage til '/' og notifikationen «forsvandt» uden at foere til
+    resultatet. Testen laeser kilden: koblingen kan ikke bevises af en enhedstest
+    der blot kalder funktionen med en mock.
+    """
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[1] / "core/services/routine_delivery.py"
+    tekst = src.read_text(encoding="utf-8")
+    assert '"url": f"/?routine={routine_id}"' in tekst

@@ -27,7 +27,7 @@ import { SplitLayout } from './components/panel/SplitLayout'
 import { InspectorPanel } from './components/panel/InspectorPanel'
 import { useSessions } from './hooks/useSessions'
 import { genopretWebPush } from './pwa/webPush'
-import { sessionFraUrl, urlUdenSession } from './pwa/deepLink'
+import { routineFraUrl, sessionFraUrl, urlUdenSession } from './pwa/deepLink'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { PrivacyDialog } from './components/PrivacyDialog'
@@ -260,8 +260,10 @@ function Shell({
   useEffect(() => {
     if (typeof window === 'undefined') return
     const fraPush = sessionFraUrl(window.location.search)
-    if (!fraPush) return
-    select(fraPush)
+    const fraRutine = routineFraUrl(window.location.search)
+    if (!fraPush && !fraRutine) return
+    if (fraPush) select(fraPush)
+    if (fraRutine) setSurface('routines')
     window.history.replaceState(
       {},
       '',

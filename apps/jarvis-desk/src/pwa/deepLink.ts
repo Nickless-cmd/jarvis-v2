@@ -31,6 +31,21 @@ export function sessionFraUrl(sok: string): string | null {
 export function urlUdenSession(sok: string, sti: string, hash: string): string {
   const params = new URLSearchParams(sok)
   params.delete('session')
+  params.delete('routine')
   const rest = params.toString()
   return `${sti}${rest ? `?${rest}` : ''}${hash}`
+}
+
+/**
+ * Rutine-id fra `?routine=`, eller `null`.
+ *
+ * Et rutine-run lever ikke i en chat-session (`routine_runs` har ingen
+ * `session_id`), saa et rutine-push kan ikke pege paa `?session=`. Foer dette
+ * faldt service workeren tilbage til '/', og trykket foerte til forsiden —
+ * praecis den «notifikationen forsvandt»-oplevelse.
+ */
+export function routineFraUrl(sok: string): string | null {
+  if (!sok) return null
+  const id = new URLSearchParams(sok).get('routine')
+  return id && id.trim() ? id.trim() : null
 }

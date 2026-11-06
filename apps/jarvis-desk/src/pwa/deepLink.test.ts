@@ -15,7 +15,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { sessionFraUrl, urlUdenSession } from './deepLink'
+import { routineFraUrl, sessionFraUrl, urlUdenSession } from './deepLink'
 
 describe('sessionFraUrl', () => {
   it('finder session-id i query', () => {
@@ -69,5 +69,34 @@ describe('koblingen til App.tsx', () => {
   it('App.tsx rydder parameteren efter brug', () => {
     // Ellers springer et refresh til den samme samtale igen.
     expect(appKilde).toContain('replaceState')
+  })
+})
+
+describe('rutine-deep-link (6/11-2026)', () => {
+  it('læser ?routine=', () => {
+    expect(routineFraUrl('?routine=routine_abc123')).toBe('routine_abc123')
+  })
+
+  it('giver null uden parameter', () => {
+    expect(routineFraUrl('')).toBeNull()
+    expect(routineFraUrl('?session=chat-1')).toBeNull()
+  })
+
+  it('fjerner OGSÅ routine ved oprydning — ellers springer et refresh igen', () => {
+    expect(urlUdenSession('?routine=r1&x=2', '/', '')).toBe('/?x=2')
+    expect(urlUdenSession('?session=s1&routine=r1', '/', '')).toBe('/')
+  })
+
+  // Koblingstesten: uden disse to linjer i afsenderen findes der intet
+  // deep-link at læse — og fixet ville være bygget i den ene ende igen.
+  it('service workeren foretrækker en eksplicit url fra payloaden', () => {
+    const sw = readFileSync(resolve(process.cwd(), 'src/pwa/service-worker.ts'), 'utf-8')
+    expect(sw).toMatch(/data\.url/)
+    expect(sw).toMatch(/eksplicit\.startsWith\('\/'\)/)
+  })
+
+  it('rutine-pushet sender en url der peger på rutinen', () => {
+    const py = readFileSync(resolve(process.cwd(), '../../core/services/routine_delivery.py'), 'utf-8')
+    expect(py).toMatch(/"url": f"\/\?routine=\{routine_id\}"/)
   })
 })

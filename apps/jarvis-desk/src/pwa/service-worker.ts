@@ -38,7 +38,14 @@ self.addEventListener('push', (event) => {
   const title = String(data.title ?? 'Jarvis')
   const body = String(data.preview ?? data.body ?? 'Nyt svar fra Jarvis')
   const session = String(data.session_id ?? '')
-  const url = session ? `/?session=${encodeURIComponent(session)}` : '/'
+  // Eksplicit `url` vinder (6/11-2026). Rutine-pushet har intet `session_id` —
+  // en rutine lever ikke i en chat — saa det faldt tilbage til '/', og klikket
+  // landede paa forsiden uden at pege paa resultatet. Afsenderen ved hvor
+  // resultatet ligger; workeren skal ikke gaette.
+  const eksplicit = String(data.url ?? '')
+  const url = eksplicit.startsWith('/')
+    ? eksplicit
+    : session ? `/?session=${encodeURIComponent(session)}` : '/'
   event.waitUntil(
     self.registration.showNotification(title, {
       body,

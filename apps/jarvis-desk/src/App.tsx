@@ -27,6 +27,7 @@ import { SplitLayout } from './components/panel/SplitLayout'
 import { InspectorPanel } from './components/panel/InspectorPanel'
 import { useSessions } from './hooks/useSessions'
 import { genopretWebPush } from './pwa/webPush'
+import { sessionFraUrl, urlUdenSession } from './pwa/deepLink'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { PrivacyDialog } from './components/PrivacyDialog'
@@ -249,6 +250,24 @@ function Shell({
     if (!settings?.apiBaseUrl) return
     void genopretWebPush({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
   }, [settings?.apiBaseUrl, settings?.authToken])
+  // Deep-link fra en web-push (6/11-2026). Service workeren bygger
+  // `/?session=<id>` naar brugeren trykker paa en notifikation, men INGEN i
+  // appen laeste parameteren: klikket fokuserede vinduet, navigerede til en URL
+  // appen ignorerede, og notifikationen lukkede sig — den «forsvandt» uden at
+  // foere nogen steder hen (maalt: `?session=` fandtes kun i service-worker.ts).
+  // Vi laeser den derfor her, kalder den SAMME `select()` som sidepanelet
+  // bruger, og rydder parameteren saa et refresh ikke springer igen.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const fraPush = sessionFraUrl(window.location.search)
+    if (!fraPush) return
+    select(fraPush)
+    window.history.replaceState(
+      {},
+      '',
+      urlUdenSession(window.location.search, window.location.pathname, window.location.hash),
+    )
+  }, [select])
   // Inspektoren er en delt rude i højre side; sessionspanelet fra et notifikationskort er flydende og lå oven på
   // den, så et agentkort (session + inspector) skjulte inspectoren. Bredden gives videre som CSS-variabel.
   useEffect(() => {

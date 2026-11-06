@@ -158,19 +158,52 @@ export function useSideTasks(config?: ApiConfig): {
     }
   }, [config])
 
+  /** (Gen)start strømmen — både ved mount og når en død forbindelse skal erstattes. */
+  const startStream = useCallback(() => {
+    if (!config) return
+    streamRef.current?.abort()
+    streamRef.current = startSideTasksStream(config, {
+      onOpgaver: (liste) => { setOpgaver(liste); setFejl('') },
+      onFejl: (besked) => setFejl(besked),
+    })
+  }, [config])
+
   useEffect(() => {
     if (!config) return
     // Første visning: ét fetch med det samme. Strømmen etablerer sig først
     // efter en round-trip, og listen skal stå der inden da — ellers ville
     // panelet blinke tomt hver gang det åbnes.
     void hent()
-    streamRef.current?.abort()
-    streamRef.current = startSideTasksStream(config, {
-      onOpgaver: (liste) => { setOpgaver(liste); setFejl('') },
-      onFejl: (besked) => setFejl(besked),
-    })
+    startStream()
     return () => { streamRef.current?.abort(); streamRef.current = null }
   }, [config?.apiBaseUrl, config?.authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Dvale efterlader forbindelsen halvt-åben.
+   *
+   * Målt 6/11-2026: opgaven `side-92c36d3a0f` blev lukket 06:07:14 og
+   * signalet fyrede 0,02 s senere — men panelet viste den stadig som åben
+   * kl. 06:09. Lageret var altså korrekt; det var visningen der frøs.
+   * `reader.read()` på en socket der døde under dvale hverken fejler eller
+   * returnerer, så strømmens løkke står stille og panelet beholder sit
+   * gamle snapshot. Serverens keepalive redder det ikke: den sendes, men
+   * når aldrig frem over en død socket, og klienten kan ikke skelne «ingen
+   * ændringer» fra «ingen forbindelse».
+   *
+   * Synlighedsskift er den ene begivenhed der med sikkerhed indtræffer når
+   * maskinen vågner. Vi river forbindelsen ned og henter listen igen —
+   * `NotifikationsToast` og `CentralPanel` gør det samme.
+   */
+  useEffect(() => {
+    if (!config) return
+    const vedSynlighed = () => {
+      if (document.visibilityState !== 'visible') return
+      void hent()
+      startStream()
+    }
+    document.addEventListener('visibilitychange', vedSynlighed)
+    return () => document.removeEventListener('visibilitychange', vedSynlighed)
+  }, [config?.apiBaseUrl, config?.authToken, hent, startStream])
 
   return { opgaver, fejl, hent }
 }

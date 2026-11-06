@@ -44,6 +44,35 @@ def publish_operational_failure(
         _log.warning("routine failure projection could not be published", exc_info=True)
 
 
+_alerted_runs: set[str] = set()
+
+
+def _alert_owner(text: str, run_id: str) -> None:
+    """Råb op til ejeren via samme kanaler som routine_diagnostics."""
+    from core.identity.owner_resolver import (
+        owner_user_id,
+        resolve_owner_app_session,
+        session_is_external_channel,
+    )
+    from core.services.inbox_state import registrer_kilde
+
+    owner = str(owner_user_id() or "").strip()
+    if owner:
+        registrer_kilde(
+            bruger_id=owner, kildetype="routine_event",
+            kilde_id=f"{run_id}:ollama_blocked", kilde_ejer="jarvis",
+            beskrivelse=text,
+        )
+    session_id = str(resolve_owner_app_session() or "").strip()
+    if session_id and not session_is_external_channel(session_id):
+        from core.services.chat_sessions import append_chat_message
+
+        append_chat_message(
+            session_id=session_id, role="assistant", content=text,
+            user_id=owner or None,
+        )
+
+
 class StaleRoutineLease(RuntimeError):
     """The worker no longer owns the run generation."""
 
@@ -696,7 +725,53 @@ class RoutineRunner:
         # occurrence before either execution path may claim its lease.
         from core.services.routine_dispatch import route_next
 
-        return route_next(self)
+        outcome = route_next(self)
+        if getattr(outcome, "path", "") == "pending":
+            self._record_wait(str(outcome.run_id), str(outcome.reason or "unknown"))
+        return outcome
+
+    def _record_wait(self, run_id: str, reason: str) -> None:
+        """Gør ventetiden synlig: en kø-kørsel uden events ser hængt ud.
+
+        MÅLT 6/11-2026: run_58799a5b ventede 20 minutter med NUL events.
+        ``route_next`` kendte grunden (``reason``) men kastede den væk. Ét
+        event pr. (kørsel, grund) — fast ``event_id`` — så et tick hvert
+        sekund ikke oversvømmer tabellen.
+        """
+        try:
+            db_routines.append_run_event(
+                run_id=run_id, kind="waiting", payload={"reason": reason},
+                event_id=f"{run_id}:waiting:{reason}",
+            )
+        except Exception:  # noqa: BLE001 — synlighed må ikke vælte køen
+            _log.warning("rutine: ventegrund kunne ikke skrives", exc_info=True)
+        self._check_ollama_while_waiting(run_id)
+
+    def _check_ollama_while_waiting(self, run_id: str) -> None:
+        if _standard_provider() != "ollama":
+            return
+        try:
+            from core.services.ollama_balance import probe_ollama, render_reason
+
+            reading = probe_ollama(_standard_model())
+            if not reading.blocked:
+                return
+            text = render_reason(reading)
+            db_routines.append_run_event(
+                run_id=run_id, kind="waiting",
+                payload={"reason": "ollama_blocked", "detail": text},
+                event_id=f"{run_id}:waiting:ollama_blocked",
+            )
+            if run_id not in _alerted_runs:
+                _alerted_runs.add(run_id)
+                _alert_owner(
+                    f"Rutine-kørsel {run_id} venter: {text}. "
+                    "Det ligner en blokering på ollama-kontoen, ikke en kodefejl — "
+                    "tjek konto/saldo.",
+                    run_id,
+                )
+        except Exception:  # noqa: BLE001
+            _log.warning("rutine: ollama-tjek mislykkedes", exc_info=True)
 
     def cancel(self, run_id: str) -> RunState:
         return _state(db_routines.cancel_run(run_id))

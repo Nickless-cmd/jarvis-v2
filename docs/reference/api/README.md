@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 18295 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 18303 functions/methods, 53% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -49,19 +49,19 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 18295 functions/
 - [`core.services.16`](core.services.16.md) — `inbox_importance` … `ledger_canary`
 - [`core.services.17`](core.services.17.md) — `ledger_recovery` … `memory_maintenance_daemon`
 - [`core.services.18`](core.services.18.md) — `memory_md_update_proposal_tracking` … `nerve_registry`
-- [`core.services.19`](core.services.19.md) — `network_health` … `peak_varsel_daemon`
-- [`core.services.20`](core.services.20.md) — `perceptual_event_engine` … `projection_chat_messages`
-- [`core.services.21`](core.services.21.md) — `projection_drift` … `push_dispatcher`
-- [`core.services.22`](core.services.22.md) — `pushback` … `research_contract`
-- [`core.services.23`](core.services.23.md) — `research_evidence_collector` … `run_stream_proxy`
-- [`core.services.24`](core.services.24.md) — `run_trailing` … `selective_forgetting_candidate_tracking`
-- [`core.services.25`](core.services.25.md) — `self_authored_prompt_proposal_tracking` … `session_inbox`
-- [`core.services.26`](core.services.26.md) — `session_milestones` … `skill_contract_registry`
-- [`core.services.27`](core.services.27.md) — `skill_engine` … `temporal_body`
-- [`core.services.28`](core.services.28.md) — `temporal_context` … `tool_router_runtime`
-- [`core.services.29`](core.services.29.md) — `tool_tagger` … `visible_followup`
-- [`core.services.30`](core.services.30.md) — `visible_followup_adapters` … `visible_runs_sse_v2`
-- [`core.services.31`](core.services.31.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `network_health` … `peak_hours`
+- [`core.services.20`](core.services.20.md) — `peak_varsel_daemon` … `producer_novelty`
+- [`core.services.21`](core.services.21.md) — `projection_chat_messages` … `published_files`
+- [`core.services.22`](core.services.22.md) — `push_dispatcher` … `report_claim_guard`
+- [`core.services.23`](core.services.23.md) — `research_contract` … `run_stream_locator`
+- [`core.services.24`](core.services.24.md) — `run_stream_proxy` … `selective_consolidation_daemon`
+- [`core.services.25`](core.services.25.md) — `selective_forgetting_candidate_tracking` … `session_distillation`
+- [`core.services.26`](core.services.26.md) — `session_inbox` … `skill_autosurface`
+- [`core.services.27`](core.services.27.md) — `skill_contract_registry` … `temperament_tendency_signal_tracking`
+- [`core.services.28`](core.services.28.md) — `temporal_body` … `tool_router`
+- [`core.services.29`](core.services.29.md) — `tool_router_runtime` … `visible_first_pass_text`
+- [`core.services.30`](core.services.30.md) — `visible_followup` … `visible_runs_outcomes`
+- [`core.services.31`](core.services.31.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.routine-execution`](core.services.routine-execution.md) — `agentic_execution` … `routine_trigger_adapters`

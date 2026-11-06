@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_contract.py`
+_Typed contracts and source normalization for explicit research runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L30) |
+| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L44) |
+| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L57) |
+| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L64) |
+| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L70) |
+| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L83) |
+| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L92) |
+| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L99) |
+| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L103) |
+| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L120) |
+| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L137) |
+
 ## `core/services/research_evidence_collector.py`
 _Capture structured web-tool evidence for the active research run._
 
@@ -594,13 +611,4 @@ _Locate replayable run streams across API/runtime process boundaries._
 | function | `locate_run` | `(run_id)` | Resolve one stable run ID without mutating either authority. | [src](../../../core/services/run_stream_locator.py#L70) |
 | function | `active_locations` | `(max_idle_s=…)` | All currently running streams, de-duplicated by stable run ID. | [src](../../../core/services/run_stream_locator.py#L95) |
 | function | `live_run_for_session` | `(session_id)` | Newest authoritative live stream for a session, if one exists. | [src](../../../core/services/run_stream_locator.py#L119) |
-
-## `core/services/run_stream_proxy.py`
-_Local replay and authenticated cross-process proxying for run streams._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `stream_error` | `(status, code, retry_after=…, *, run_id=…)` | — | [src](../../../core/services/run_stream_proxy.py#L19) |
-| function | `local_frame_generator` | `(run_id, from_idx)` | Replay and follow one process-local authoritative frame log. | [src](../../../core/services/run_stream_proxy.py#L34) |
-| function | `proxy_owner_stream` | `(location, from_idx)` | Open the owner process before committing a public 200 response. | [src](../../../core/services/run_stream_proxy.py#L90) |
 

@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/push_dispatcher.py`
+_Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppression._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fcm_send` | `(token, data)` | — | [src](../../../core/services/push_dispatcher.py#L12) |
+| function | `_owner_of_run` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L17) |
+| function | `_push_to_user` | `(user_id, data)` | — | [src](../../../core/services/push_dispatcher.py#L24) |
+| function | `_push_to_web` | `(user_id, data)` | Web-push — fjerde udgang (side-67aea8c5b6). Additiv: FCM/routing røres ikke. | [src](../../../core/services/push_dispatcher.py#L38) |
+| function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L63) |
+| function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L88) |
+| function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L106) |
+| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L160) |
+| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L168) |
+| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L181) |
+| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L187) |
+| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L193) |
+
 ## `core/services/pushback.py`
 _Pushback — three prompt-level mechanisms that give Jarvis a real voice_
 
@@ -727,21 +745,4 @@ _Efterproev det et barn PAASTAAR — Fase 6._
 |---|---|---|---|---|
 | function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
 | function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L83) |
-
-## `core/services/research_contract.py`
-_Typed contracts and source normalization for explicit research runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L30) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L57) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L64) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L70) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L83) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L92) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L99) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L103) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L120) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L137) |
 

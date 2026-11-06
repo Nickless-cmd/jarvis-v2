@@ -290,6 +290,18 @@ _Offline recomposition: recombine recent cognitive material into candidates._
 | function | `_runtime_state` | `(key)` | — | [src](../../../core/services/offline_recomposition_engine.py#L113) |
 | function | `_load` | `()` | — | [src](../../../core/services/offline_recomposition_engine.py#L118) |
 
+## `core/services/ollama_balance.py`
+_Ollama-lanens tilstand — målt, aldrig gættet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `OllamaReading` | `` | — | [src](../../../core/services/ollama_balance.py#L50) |
+| method | `OllamaReading.blocked` | `(self)` | — | [src](../../../core/services/ollama_balance.py#L56) |
+| function | `reset_cache` | `()` | — | [src](../../../core/services/ollama_balance.py#L63) |
+| function | `_post` | `(base_url, model, timeout)` | — | [src](../../../core/services/ollama_balance.py#L68) |
+| function | `probe_ollama` | `(model, *, base_url=…, timeout=…, prober=…, now=…)` | Ægte 1-token-kald, cachet i :data:`CACHE_TTL_SECONDS`. | [src](../../../core/services/ollama_balance.py#L92) |
+| function | `render_reason` | `(reading)` | — | [src](../../../core/services/ollama_balance.py#L110) |
+
 ## `core/services/ollama_model_names.py`
 _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 
@@ -631,16 +643,4 @@ _core/services/peak_hours.py_
 | function | `booking_varsel` | `(naar)` | Én linje hvis et BOOKET tidspunkt rammer myldretiden. Ellers ``None``. | [src](../../../core/services/peak_hours.py#L200) |
 | function | `gentagelse_rammer_vindue` | `(interval_minutter)` | Vil en rutine med denne kadence uundgåeligt ramme et vindue? | [src](../../../core/services/peak_hours.py#L241) |
 | function | `tilfoej_booking_varsel` | `(svar, naar)` | Hæng ``peak_varsel`` på et booking-svar. Rører intet andet. | [src](../../../core/services/peak_hours.py#L257) |
-
-## `core/services/peak_varsel_daemon.py`
-_core/services/peak_varsel_daemon.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_vindue_slut` | `(aabning)` | Vinduets sluttid, læst fra ``MYLDRE_VINDUER`` — ikke et gæt på 4 timer. | [src](../../../core/services/peak_varsel_daemon.py#L67) |
-| function | `_allerede_varslet` | `(aabning)` | Har vi allerede sendt varsel for netop dette vindue? | [src](../../../core/services/peak_varsel_daemon.py#L75) |
-| function | `_marker_varslet` | `(aabning)` | — | [src](../../../core/services/peak_varsel_daemon.py#L81) |
-| function | `_varsel_tekst` | `(aabning)` | (titel, body) til både feed-rækken og pushet. | [src](../../../core/services/peak_varsel_daemon.py#L85) |
-| function | `tick_peak_varsel_daemon` | `(now=…)` | Ét tick. Sender højst ét varsel pr. vindue. Aldrig i weekenden. | [src](../../../core/services/peak_varsel_daemon.py#L98) |
-| function | `_send_varsel` | `(titel, body)` | Send gennem den kanoniske router — feed-række + mobil push i ét kald. | [src](../../../core/services/peak_varsel_daemon.py#L138) |
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 9824/18295 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 9827/18303 functions/methods documented (53%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -26,7 +26,7 @@ Generated from source. 9824/18295 functions/methods documented (53%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 872 | 1586 | 54% |
-| `core.services` | 6552 | 12392 | 52% |
+| `core.services` | 6555 | 12400 | 52% |
 | `core.services.decision_triggers` | 3 | 6 | 50% |
 | `core.services.prompt_sections` | 145 | 227 | 63% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -43,7 +43,7 @@ Generated from source. 9824/18295 functions/methods documented (53%). The list b
 | `scripts.diagnostics` | 1 | 7 | 14% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2628)
+## Undocumented public functions (2631)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L231)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1540,6 +1540,9 @@ Generated from source. 9824/18295 functions/methods documented (53%). The list b
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_prompt_section` (L55)
 - `core/services/offline_recomposition_engine.py` :: `build_offline_recomposition_surface` (L42)
 - `core/services/offline_recomposition_engine.py` :: `run_offline_recomposition` (L15)
+- `core/services/ollama_balance.py` :: `OllamaReading.blocked` (L56)
+- `core/services/ollama_balance.py` :: `render_reason` (L110)
+- `core/services/ollama_balance.py` :: `reset_cache` (L63)
 - `core/services/ollama_visible_prompt.py` :: `serialize_ollama_visible_prompt` (L14)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `build_runtime_open_loop_closure_proposal_surface` (L85)
 - `core/services/open_loop_closure_proposal_tracking.py` :: `refresh_runtime_open_loop_closure_proposal_statuses` (L54)
@@ -1823,24 +1826,24 @@ Generated from source. 9824/18295 functions/methods documented (53%). The list b
 - `core/services/routine_reconciler.py` :: `RoutineReconciler.sweep_retention` (L44)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.append` (L10)
 - `core/services/routine_run_recorder.py` :: `RoutineRunRecorder.list` (L24)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L334)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.claim` (L316)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.complete_success` (L401)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.get_failure_count` (L413)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.get_run` (L352)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.list_open_tool_effects` (L386)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.next_queued_run` (L358)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.reclaim` (L322)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.record_tool_dispatch_started` (L362)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L344)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L374)
-- `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L389)
-- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L701)
-- `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L564)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L707)
-- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L704)
-- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L694)
-- `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L614)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.assert_current` (L363)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.claim` (L345)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.complete_success` (L430)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_failure_count` (L442)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.get_run` (L381)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.list_open_tool_effects` (L415)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.next_queued_run` (L387)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.reclaim` (L351)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.record_tool_dispatch_started` (L391)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.renew` (L373)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.settle_tool_dispatch` (L403)
+- `core/services/routine_runner.py` :: `RoutineRunRepository.transition` (L418)
+- `core/services/routine_runner.py` :: `RoutineRunner.cancel` (L776)
+- `core/services/routine_runner.py` :: `RoutineRunner.dispatch_tool` (L593)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_failure` (L782)
+- `core/services/routine_runner.py` :: `RoutineRunner.record_execution_success` (L779)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_next` (L723)
+- `core/services/routine_runner.py` :: `RoutineRunner.run_once` (L643)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.claim_count_after_stop` (L104)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.reconciler_is_alive` (L101)
 - `core/services/routine_runtime.py` :: `RoutineRuntime.start` (L79)
